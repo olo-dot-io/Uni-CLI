@@ -20,9 +20,9 @@ Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for
 - weibo: 5 commands (hot, timeline, profile, comments, me) — cookie auth
 - zhihu: 6 commands (hot, feed, question, search, me, notifications) — cookie auth
 
-### Web Adapters — International (2 new sites, 10 commands)
+### Web Adapters — International (2 new sites, 15 commands)
 
-- twitter: 5 commands (search, profile, timeline, bookmarks, trending) — GraphQL + Bearer token + cookie auth
+- twitter: 10 commands (search, profile, timeline, bookmarks, trending, likes, thread, followers, following, notifications) — GraphQL + Bearer token + cookie auth
 - youtube: 5 commands (search, video, channel, comments, transcript) — InnerTube API
 
 ### Web Adapters — P1/P2 Sites (8 new sites, 19 commands)
@@ -46,8 +46,10 @@ Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for
 - Reference repos (opencli, CLI-Anything) synced to `/ref/` (gitignored, `npm run sync:ref`)
 - `authCookies` field in adapter manifests for declaring required cookies
 - `Strategy` re-exported from registry.ts for TS adapter pattern
+- Manifest builder now includes TS adapter metadata (regex extraction from source)
+- Fixed `sync:ref` script to use `--rebase` for divergent branches
 
-**Stats: 57 sites, 198 commands (was 43 sites, 141 commands — +14 sites, +57 commands)**
+**Stats: 57 sites, 203 commands (was 43 sites, 141 commands — +14 sites, +62 commands)**
 
 ---
 

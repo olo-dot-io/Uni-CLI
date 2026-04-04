@@ -8,6 +8,7 @@
 import { loadCookies, formatCookieHeader } from "../../engine/cookies.js";
 import { USER_AGENT } from "../../constants.js";
 
+// Public bearer token — same for all Twitter web clients, not a secret
 const BEARER_TOKEN =
   "AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA";
 
@@ -334,4 +335,66 @@ export function extractTweetsFromInstructions(
   }
 
   return tweets;
+}
+
+interface UserData {
+  id: string;
+  name: string;
+  screen_name: string;
+  followers: number;
+  following: number;
+  description: string;
+}
+
+/**
+ * Extract user entries from timeline instructions (followers/following endpoints).
+ */
+export function extractUsersFromInstructions(
+  instructions: unknown[],
+): UserData[] {
+  const users: UserData[] = [];
+
+  for (const instruction of instructions) {
+    const inst = instruction as Record<string, unknown>;
+    const type = inst.type as string | undefined;
+
+    if (type === "TimelineAddEntries") {
+      const entries = (inst.entries as unknown[]) ?? [];
+      for (const entry of entries) {
+        const e = entry as Record<string, unknown>;
+        const content = e.content as Record<string, unknown> | undefined;
+        if (!content) continue;
+
+        const itemContent = content.itemContent as
+          | Record<string, unknown>
+          | undefined;
+        if (!itemContent) continue;
+
+        const itemType = itemContent.itemType as string | undefined;
+        if (itemType !== "TimelineUser") continue;
+
+        const userResults = itemContent.user_results as
+          | Record<string, unknown>
+          | undefined;
+        const result = userResults?.result as
+          | Record<string, unknown>
+          | undefined;
+        if (!result) continue;
+
+        const legacy = result.legacy as Record<string, unknown> | undefined;
+        if (!legacy) continue;
+
+        users.push({
+          id: (result.rest_id as string) ?? "",
+          name: (legacy.name as string) ?? "",
+          screen_name: (legacy.screen_name as string) ?? "",
+          followers: (legacy.followers_count as number) ?? 0,
+          following: (legacy.friends_count as number) ?? 0,
+          description: (legacy.description as string) ?? "",
+        });
+      }
+    }
+  }
+
+  return users;
 }

@@ -54,11 +54,11 @@ async function fetchWbiKeys(): Promise<string> {
 export async function signWbi(params: Record<string, string>): Promise<string> {
   const mixinKey = await fetchWbiKeys();
   const wts = Math.floor(Date.now() / 1000);
-  params.wts = String(wts);
+  const signed: Record<string, string> = { ...params, wts: String(wts) };
 
-  const sorted = Object.keys(params).sort();
+  const sorted = Object.keys(signed).sort();
   const query = sorted
-    .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
+    .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(signed[k])}`)
     .join("&");
 
   const wRid = createHash("md5")
