@@ -81,6 +81,12 @@ docs: add desktop adapter guide
 test: add unit tests for YAML pipeline runner
 ```
 
+## Contributor License Agreement
+
+By submitting a pull request or otherwise contributing to this project, you agree to the terms of our [Contributor License Agreement](CLA.md). This agreement grants the project maintainer the necessary rights to distribute and sublicense your contributions as part of the project.
+
+Please review the CLA before submitting your first contribution.
+
 ## Submitting a Pull Request
 
 1. Fork the repo and create a feature branch from `main`
