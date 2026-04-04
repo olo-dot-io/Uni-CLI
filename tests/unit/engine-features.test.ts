@@ -24,6 +24,15 @@ function collectBody(req: IncomingMessage): Promise<string> {
 
 beforeAll(async () => {
   server = createServer(async (req, res) => {
+    // Serve raw HTML for html_to_md tests
+    if (req.url === "/html") {
+      res.writeHead(200, { "Content-Type": "text/html" });
+      res.end(
+        "<h1>Title</h1><p>Hello <strong>world</strong></p><ul><li>item 1</li><li>item 2</li></ul>",
+      );
+      return;
+    }
+
     const body = await collectBody(req);
     const echo = {
       method: req.method,
@@ -206,5 +215,21 @@ describe("exec output_file", () => {
     // Clean up
     const { unlink } = await import("node:fs/promises");
     await unlink(tmpFile).catch(() => {});
+  });
+});
+
+// --- html_to_md step ---
+
+describe("html_to_md step", () => {
+  it("converts HTML to markdown", async () => {
+    const steps = [
+      { fetch_text: { url: `${baseUrl}/html` } },
+      { html_to_md: {} },
+    ];
+    const result = await runPipeline(steps, {});
+    const md = String(result[0]);
+    expect(md).toContain("Title");
+    expect(md).toContain("**world**");
+    expect(md).toContain("item 1");
   });
 });

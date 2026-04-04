@@ -7,6 +7,7 @@
  *   map      → Transform each item using template expressions
  *   filter   → Keep items matching a condition
  *   limit    → Cap the number of results
+ *   html_to_md → Convert HTML to Markdown via turndown
  *   evaluate → Run JS expression (for browser adapters, future)
  *
  * Template syntax: ${{ expression }}
@@ -15,6 +16,7 @@
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import TurndownService from "turndown";
 import type { PipelineStep } from "../types.js";
 
 const execFileAsync = promisify(execFile);
@@ -103,6 +105,9 @@ export async function runPipeline(
           break;
         case "exec":
           ctx = await stepExec(ctx, config as ExecConfig);
+          break;
+        case "html_to_md":
+          ctx = stepHtmlToMd(ctx);
           break;
         default:
           break;
@@ -564,6 +569,18 @@ async function stepExec(
       suggestion: `Check that "${cmd}" is installed and accessible. Run: which ${cmd}`,
     });
   }
+}
+
+// --- HTML to Markdown ---
+
+function stepHtmlToMd(ctx: PipelineContext): PipelineContext {
+  const html = String(ctx.data ?? "");
+  const turndown = new TurndownService({
+    headingStyle: "atx",
+    codeBlockStyle: "fenced",
+  });
+  const md = turndown.turndown(html);
+  return { ...ctx, data: md };
 }
 
 // --- Template engine ---
