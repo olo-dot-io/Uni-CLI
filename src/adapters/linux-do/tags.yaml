@@ -1,0 +1,32 @@
+site: linux-do
+name: tags
+description: List Linux.do forum tags
+domain: linux.do
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 30
+    description: Number of tags
+
+pipeline:
+  - fetch:
+      url: https://linux.do/tags.json
+
+  - select: tags
+
+  - sort:
+      by: count
+      order: desc
+
+  - map:
+      rank: ${{ index + 1 }}
+      name: ${{ item.name || item.id }}
+      count: ${{ item.count || 0 }}
+      url: ${{ 'https://linux.do/tag/' + (item.slug || item.name) }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, name, count, url]

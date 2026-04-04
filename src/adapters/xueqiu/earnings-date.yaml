@@ -1,0 +1,38 @@
+site: xueqiu
+name: earnings-date
+description: Xueqiu stock earnings calendar
+domain: xueqiu.com
+type: web-api
+strategy: cookie
+auth_cookies: [xq_a_token]
+
+args:
+  symbol:
+    required: true
+    positional: true
+    description: "Stock symbol (e.g. SH600519, AAPL)"
+  limit:
+    type: int
+    default: 10
+    description: Number of events
+
+pipeline:
+  - fetch:
+      url: https://stock.xueqiu.com/v5/stock/screener/event/list.json
+      params:
+        symbol: "${{ args.symbol }}"
+        page: "1"
+        size: "100"
+
+  - select: data.items
+
+  - filter: "item.subtype === 2"
+
+  - map:
+      date: "${{ item.timestamp ? new Date(item.timestamp).toISOString().slice(0, 10) : '' }}"
+      report: ${{ item.message || '' }}
+      status: "${{ item.timestamp && item.timestamp > Date.now() ? 'upcoming' : 'released' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [date, report, status]

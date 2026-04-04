@@ -1,0 +1,37 @@
+site: reddit
+name: saved
+description: List saved Reddit posts for a user
+domain: www.reddit.com
+type: web-api
+strategy: cookie
+auth_cookies: [reddit_session]
+
+args:
+  username:
+    required: true
+    positional: true
+    description: Reddit username
+  limit:
+    type: int
+    default: 20
+    description: Number of saved items
+
+pipeline:
+  - fetch:
+      url: "https://www.reddit.com/user/${{ args.username }}/saved.json"
+      params:
+        limit: ${{ args.limit }}
+        raw_json: "1"
+
+  - select: data.children
+
+  - map:
+      title: ${{ item.data.title || (item.data.body || '') | slice(0, 100) }}
+      subreddit: ${{ item.data.subreddit_name_prefixed || '' }}
+      score: ${{ item.data.score || 0 }}
+      comments: ${{ item.data.num_comments || 0 }}
+      url: ${{ 'https://www.reddit.com' + (item.data.permalink || '') }}
+
+  - limit: ${{ args.limit }}
+
+columns: [title, subreddit, score, comments, url]

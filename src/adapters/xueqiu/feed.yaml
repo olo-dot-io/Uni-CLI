@@ -1,0 +1,33 @@
+site: xueqiu
+name: feed
+description: Xueqiu personal home timeline
+domain: xueqiu.com
+type: web-api
+strategy: cookie
+auth_cookies: [xq_a_token]
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of items
+
+pipeline:
+  - fetch:
+      url: https://xueqiu.com/v4/statuses/home_timeline.json
+      params:
+        page: "1"
+        count: "${{ args.limit }}"
+
+  - select: home_timeline
+
+  - map:
+      author: ${{ item.user?.screen_name || '' }}
+      text: ${{ (item.description || '') | strip_html | slice(0, 200) }}
+      likes: ${{ item.fav_count || 0 }}
+      replies: ${{ item.reply_count || 0 }}
+      url: ${{ 'https://xueqiu.com/' + (item.user?.id || '') + '/' + (item.id || '') }}
+
+  - limit: ${{ args.limit }}
+
+columns: [author, text, likes, replies, url]

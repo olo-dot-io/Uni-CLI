@@ -11,6 +11,7 @@ import { runPipeline, PipelineError } from "./engine/yaml-runner.js";
 import { ExitCode } from "./types.js";
 import { VERSION } from "./constants.js";
 import { registerAuthCommands } from "./commands/auth.js";
+import { registerBrowserCommands } from "./commands/browser.js";
 import type { OutputFormat } from "./types.js";
 
 export async function createCli(): Promise<Command> {
@@ -77,6 +78,9 @@ export async function createCli(): Promise<Command> {
 
   // Register auth commands — cookie management
   registerAuthCommands(program);
+
+  // Register browser commands — Chrome CDP management
+  registerBrowserCommands(program);
 
   // Register "repair" command — diagnostic for broken adapters
   program

@@ -1,0 +1,36 @@
+site: linux-do
+name: search
+description: Search Linux.do forum topics
+domain: linux.do
+type: web-api
+strategy: public
+
+args:
+  query:
+    required: true
+    positional: true
+    description: Search query
+  limit:
+    type: int
+    default: 20
+    description: Number of results
+
+pipeline:
+  - fetch:
+      url: https://linux.do/search.json
+      params:
+        q: "${{ args.query }}"
+
+  - select: topics
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.title }}
+      views: ${{ item.views }}
+      likes: ${{ item.like_count }}
+      replies: ${{ (item.posts_count || 1) - 1 }}
+      url: ${{ 'https://linux.do/t/topic/' + item.id }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, views, likes, replies, url]

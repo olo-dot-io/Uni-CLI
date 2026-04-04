@@ -1,0 +1,38 @@
+site: xueqiu
+name: watchlist
+description: Xueqiu personal watchlist
+domain: xueqiu.com
+type: web-api
+strategy: cookie
+auth_cookies: [xq_a_token]
+
+args:
+  category:
+    default: "1"
+    description: "Category: 1=watchlist 2=holdings 3=following"
+  limit:
+    type: int
+    default: 50
+    description: Number of stocks
+
+pipeline:
+  - fetch:
+      url: https://stock.xueqiu.com/v5/stock/portfolio/stock/list.json
+      params:
+        size: "100"
+        category: "${{ args.category }}"
+        pid: "-1"
+
+  - select: data.stocks
+
+  - map:
+      symbol: ${{ item.symbol }}
+      name: ${{ item.name }}
+      current: ${{ item.current }}
+      percent: ${{ item.percent }}
+      chg: ${{ item.chg }}
+      url: ${{ 'https://xueqiu.com/S/' + item.symbol }}
+
+  - limit: ${{ args.limit }}
+
+columns: [symbol, name, current, percent, chg]

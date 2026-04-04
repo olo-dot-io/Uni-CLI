@@ -1,0 +1,33 @@
+site: linux-do
+name: topic
+description: Linux.do topic detail and replies
+domain: linux.do
+type: web-api
+strategy: public
+
+args:
+  id:
+    required: true
+    positional: true
+    type: int
+    description: Topic ID
+  limit:
+    type: int
+    default: 20
+    description: Number of posts to show
+
+pipeline:
+  - fetch:
+      url: "https://linux.do/t/${{ args.id }}.json"
+
+  - select: post_stream.posts
+
+  - map:
+      author: ${{ item.username || '' }}
+      content: ${{ (item.cooked || '') | strip_html | slice(0, 200) }}
+      likes: ${{ item.like_count || 0 }}
+      created: ${{ item.created_at }}
+
+  - limit: ${{ args.limit }}
+
+columns: [author, content, likes, created]

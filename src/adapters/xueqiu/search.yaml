@@ -1,0 +1,37 @@
+site: xueqiu
+name: search
+description: Search Xueqiu stocks by code or name
+domain: xueqiu.com
+type: web-api
+strategy: cookie
+auth_cookies: [xq_a_token]
+
+args:
+  query:
+    required: true
+    positional: true
+    description: "Search keyword (e.g. AAPL, 茅台)"
+  limit:
+    type: int
+    default: 10
+    description: Number of results
+
+pipeline:
+  - fetch:
+      url: https://xueqiu.com/stock/search.json
+      params:
+        code: "${{ args.query }}"
+        size: "${{ args.limit }}"
+
+  - select: stocks
+
+  - map:
+      symbol: ${{ item.code }}
+      name: ${{ item.name }}
+      exchange: ${{ item.exchange }}
+      current: ${{ item.current }}
+      url: ${{ 'https://xueqiu.com/S/' + item.code }}
+
+  - limit: ${{ args.limit }}
+
+columns: [symbol, name, exchange, current, url]

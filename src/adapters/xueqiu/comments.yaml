@@ -1,0 +1,39 @@
+site: xueqiu
+name: comments
+description: Xueqiu stock discussion timeline
+domain: xueqiu.com
+type: web-api
+strategy: cookie
+auth_cookies: [xq_a_token]
+
+args:
+  symbol:
+    required: true
+    positional: true
+    description: "Stock symbol (e.g. SH600519, AAPL)"
+  limit:
+    type: int
+    default: 20
+    description: Number of discussions
+
+pipeline:
+  - fetch:
+      url: https://xueqiu.com/query/v1/symbol/search/status
+      params:
+        symbol: "${{ args.symbol }}"
+        count: "${{ args.limit }}"
+        page: "1"
+        sort: time
+
+  - select: list
+
+  - map:
+      author: ${{ item.user?.screen_name || '' }}
+      text: ${{ (item.description || '') | strip_html | slice(0, 200) }}
+      likes: ${{ item.fav_count || 0 }}
+      replies: ${{ item.reply_count || 0 }}
+      created: "${{ item.created_at ? new Date(item.created_at).toISOString().slice(0, 16) : '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [author, text, likes, replies, created]

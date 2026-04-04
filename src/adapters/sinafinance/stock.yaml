@@ -1,0 +1,42 @@
+site: sinafinance
+name: stock
+description: Sina Finance stock real-time quote via ranking API
+domain: vip.stock.finance.sina.com.cn
+type: web-api
+strategy: public
+
+args:
+  symbol:
+    required: true
+    positional: true
+    description: "Stock symbol (e.g. sh600519, sz000858)"
+  limit:
+    type: int
+    default: 1
+    description: Number of results
+
+pipeline:
+  - fetch:
+      url: https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData
+      params:
+        page: "1"
+        num: "1"
+        sort: symbol
+        asc: "1"
+        node: hs_a
+        symbol: "${{ args.symbol }}"
+        _s_r_a: page
+
+  - map:
+      symbol: ${{ item.symbol }}
+      name: ${{ item.name }}
+      price: ${{ item.trade }}
+      change: ${{ item.changepercent }}%
+      open: ${{ item.open }}
+      high: ${{ item.high }}
+      low: ${{ item.low }}
+      volume: ${{ item.volume }}
+
+  - limit: ${{ args.limit }}
+
+columns: [symbol, name, price, change, open, high, low, volume]

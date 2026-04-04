@@ -1,0 +1,39 @@
+site: linux-do
+name: category
+description: Topics in a Linux.do category
+domain: linux.do
+type: web-api
+strategy: public
+
+args:
+  slug:
+    required: true
+    positional: true
+    description: "Category slug (e.g. dev, share)"
+  id:
+    required: true
+    positional: true
+    type: int
+    description: Category ID
+  limit:
+    type: int
+    default: 20
+    description: Number of topics
+
+pipeline:
+  - fetch:
+      url: "https://linux.do/c/${{ args.slug }}/${{ args.id }}.json"
+
+  - select: topic_list.topics
+
+  - map:
+      title: ${{ item.title }}
+      views: ${{ item.views }}
+      replies: ${{ item.posts_count - 1 }}
+      likes: ${{ item.like_count }}
+      created: ${{ item.created_at }}
+      url: ${{ 'https://linux.do/t/topic/' + item.id }}
+
+  - limit: ${{ args.limit }}
+
+columns: [title, views, replies, likes, created]

@@ -1,0 +1,35 @@
+site: linux-do
+name: user-topics
+description: Linux.do topics created by a user
+domain: linux.do
+type: web-api
+strategy: public
+
+args:
+  username:
+    required: true
+    positional: true
+    description: Username
+  limit:
+    type: int
+    default: 20
+    description: Number of topics
+
+pipeline:
+  - fetch:
+      url: "https://linux.do/topics/created-by/${{ args.username }}.json"
+
+  - select: topic_list.topics
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.fancy_title || item.title || '' }}
+      replies: ${{ (item.posts_count || 1) - 1 }}
+      likes: ${{ item.like_count || 0 }}
+      views: ${{ item.views || 0 }}
+      created: ${{ item.created_at }}
+      url: ${{ 'https://linux.do/t/topic/' + item.id }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, replies, likes, views, created]

@@ -1,0 +1,37 @@
+site: medium
+name: feed
+description: Medium trending articles by topic
+domain: medium.com
+type: web-api
+strategy: public
+
+args:
+  topic:
+    default: ""
+    positional: true
+    description: "Topic tag (e.g. technology, programming, ai)"
+  limit:
+    type: int
+    default: 20
+    description: Number of articles
+
+pipeline:
+  - fetch:
+      url: "https://medium.com/tag/${{ args.topic || 'technology' }}/recommended"
+      params:
+        format: json
+      headers:
+        Accept: application/json
+
+  - select: payload.references.Post
+
+  - map:
+      title: ${{ item.title || '' }}
+      subtitle: ${{ (item.virtuals?.subtitle || '') | slice(0, 100) }}
+      claps: ${{ item.virtuals?.totalClapCount || 0 }}
+      responses: ${{ item.virtuals?.responsesCreatedCount || 0 }}
+      readTime: "${{ item.virtuals?.readingTime ? Math.ceil(item.virtuals.readingTime) + ' min' : '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [title, subtitle, claps, responses, readTime]

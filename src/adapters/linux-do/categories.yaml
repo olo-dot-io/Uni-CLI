@@ -1,0 +1,29 @@
+site: linux-do
+name: categories
+description: List all Linux.do forum categories
+domain: linux.do
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of categories
+
+pipeline:
+  - fetch:
+      url: https://linux.do/categories.json
+
+  - select: category_list.categories
+
+  - map:
+      name: ${{ item.name }}
+      slug: ${{ item.slug }}
+      id: ${{ item.id }}
+      topics: ${{ item.topic_count }}
+      description: ${{ (item.description_text || '') | slice(0, 80) }}
+
+  - limit: ${{ args.limit }}
+
+columns: [name, slug, id, topics, description]

@@ -1,0 +1,35 @@
+site: sinafinance
+name: news
+description: Sina Finance 7x24 live news feed
+domain: app.cj.sina.com.cn
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of news items
+  type:
+    type: int
+    default: 0
+    description: "News type: 0=all 1=A-shares 2=macro 3=company 5=market 6=international"
+
+pipeline:
+  - fetch:
+      url: https://app.cj.sina.com.cn/api/news/pc
+      params:
+        page: "1"
+        size: "${{ args.limit }}"
+        tag: "${{ args.type }}"
+
+  - select: result.data.feed.list
+
+  - map:
+      time: ${{ item.create_time || '' }}
+      content: ${{ (item.rich_text || '') | strip_html | slice(0, 200) }}
+      views: ${{ item.view_num || 0 }}
+
+  - limit: ${{ args.limit }}
+
+columns: [time, content, views]

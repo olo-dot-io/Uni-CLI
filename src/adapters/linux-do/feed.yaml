@@ -1,0 +1,31 @@
+site: linux-do
+name: feed
+description: Linux.do personal feed (new topics)
+domain: linux.do
+type: web-api
+strategy: cookie
+auth_cookies: [_forum_session, _t]
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of topics
+
+pipeline:
+  - fetch:
+      url: https://linux.do/new.json
+
+  - select: topic_list.topics
+
+  - map:
+      title: ${{ item.title }}
+      views: ${{ item.views }}
+      replies: ${{ item.posts_count - 1 }}
+      likes: ${{ item.like_count }}
+      created: ${{ item.created_at }}
+      url: ${{ 'https://linux.do/t/topic/' + item.id }}
+
+  - limit: ${{ args.limit }}
+
+columns: [title, views, replies, likes, created]

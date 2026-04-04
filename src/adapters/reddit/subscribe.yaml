@@ -1,0 +1,29 @@
+site: reddit
+name: subscribe
+description: Subscribe to a subreddit
+domain: www.reddit.com
+type: web-api
+strategy: cookie
+auth_cookies: [reddit_session]
+
+args:
+  subreddit:
+    required: true
+    positional: true
+    description: "Subreddit name (e.g. programming, rust)"
+
+pipeline:
+  - fetch:
+      url: https://www.reddit.com/api/subscribe
+      method: POST
+      headers:
+        Content-Type: application/x-www-form-urlencoded
+      body:
+        sr_name: "${{ args.subreddit }}"
+        action: sub
+
+  - map:
+      status: success
+      message: "Subscribed to r/${{ args.subreddit }}"
+
+columns: [status, message]

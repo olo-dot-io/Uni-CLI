@@ -1,0 +1,37 @@
+site: xueqiu
+name: fund-snapshot
+description: Xueqiu stock top shareholders snapshot
+domain: xueqiu.com
+type: web-api
+strategy: cookie
+auth_cookies: [xq_a_token]
+
+args:
+  symbol:
+    required: true
+    positional: true
+    description: "Stock symbol (e.g. SH600519, SZ000858)"
+  limit:
+    type: int
+    default: 10
+    description: Number of shareholders
+
+pipeline:
+  - fetch:
+      url: https://stock.xueqiu.com/v5/stock/f10/skHolder.json
+      params:
+        symbol: "${{ args.symbol }}"
+
+  - select: data.items
+
+  - map:
+      rank: ${{ index + 1 }}
+      name: ${{ item.holder_name || '' }}
+      held_num: ${{ item.held_num || 0 }}
+      held_ratio: ${{ item.held_ratio || '' }}
+      change: ${{ item.change || '' }}
+      holder_type: ${{ item.holder_type || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, name, held_num, held_ratio, change]

@@ -1,0 +1,40 @@
+site: reddit
+name: read
+description: Read a Reddit post and its comments
+domain: www.reddit.com
+type: web-api
+strategy: public
+
+args:
+  post-id:
+    required: true
+    positional: true
+    description: "Post ID (e.g. 1abc123) or path like r/sub/comments/id/title"
+  sort:
+    default: best
+    choices: [best, top, new, controversial, old, qa]
+    description: Comment sort order
+  limit:
+    type: int
+    default: 20
+    description: Number of top-level comments
+
+pipeline:
+  - fetch:
+      url: "https://www.reddit.com/comments/${{ args['post-id'] }}.json"
+      params:
+        sort: "${{ args.sort || 'best' }}"
+        limit: "${{ args.limit }}"
+        raw_json: "1"
+
+  - select: "1.data.children"
+
+  - map:
+      author: ${{ item.data?.author || '[deleted]' }}
+      body: ${{ (item.data?.body || '') | slice(0, 300) }}
+      score: ${{ item.data?.score || 0 }}
+      created: "${{ item.data?.created_utc ? new Date(item.data.created_utc * 1000).toISOString().slice(0, 16) : '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [author, body, score, created]

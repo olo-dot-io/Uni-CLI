@@ -1,0 +1,33 @@
+site: reddit
+name: upvote
+description: Upvote a Reddit post or comment
+domain: www.reddit.com
+type: web-api
+strategy: cookie
+auth_cookies: [reddit_session]
+
+args:
+  thing-id:
+    required: true
+    positional: true
+    description: "Post or comment fullname (t3_xxx or t1_xxx)"
+  direction:
+    default: up
+    choices: [up, down, none]
+    description: "Vote direction: up, down, or none to clear"
+
+pipeline:
+  - fetch:
+      url: https://www.reddit.com/api/vote
+      method: POST
+      headers:
+        Content-Type: application/x-www-form-urlencoded
+      body:
+        id: "${{ args['thing-id'] }}"
+        dir: "${{ args.direction === 'down' ? '-1' : args.direction === 'none' ? '0' : '1' }}"
+
+  - map:
+      status: success
+      message: "${{ args.direction === 'down' ? 'Downvoted' : args.direction === 'none' ? 'Vote removed on' : 'Upvoted' }} ${{ args['thing-id'] }}"
+
+columns: [status, message]

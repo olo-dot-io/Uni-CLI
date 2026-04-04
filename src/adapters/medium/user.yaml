@@ -1,0 +1,34 @@
+site: medium
+name: user
+description: Medium user profile and recent articles
+domain: medium.com
+type: web-api
+strategy: public
+
+args:
+  username:
+    required: true
+    positional: true
+    description: "Medium username (e.g. @username or username)"
+  limit:
+    type: int
+    default: 20
+    description: Number of articles
+
+pipeline:
+  - fetch:
+      url: "https://medium.com/@${{ args.username }}?format=json"
+      headers:
+        Accept: application/json
+
+  - select: payload.references.Post
+
+  - map:
+      title: ${{ item.title || '' }}
+      subtitle: ${{ (item.virtuals?.subtitle || '') | slice(0, 100) }}
+      claps: ${{ item.virtuals?.totalClapCount || 0 }}
+      responses: ${{ item.virtuals?.responsesCreatedCount || 0 }}
+
+  - limit: ${{ args.limit }}
+
+columns: [title, subtitle, claps, responses]

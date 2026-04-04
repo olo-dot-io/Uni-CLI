@@ -1,0 +1,39 @@
+site: linux-do
+name: user-posts
+description: Linux.do user posts (replies)
+domain: linux.do
+type: web-api
+strategy: public
+
+args:
+  username:
+    required: true
+    positional: true
+    description: Username
+  limit:
+    type: int
+    default: 20
+    description: Number of posts
+
+pipeline:
+  - fetch:
+      url: "https://linux.do/user_actions.json"
+      params:
+        username: "${{ args.username }}"
+        filter: "5"
+        offset: "0"
+        limit: "${{ args.limit }}"
+
+  - select: user_actions
+
+  - map:
+      rank: ${{ index + 1 }}
+      author: ${{ item.acting_username || item.username || '' }}
+      topic: ${{ item.title || '' }}
+      content: ${{ (item.excerpt || '') | strip_html | slice(0, 200) }}
+      created: ${{ item.created_at }}
+      url: ${{ 'https://linux.do/t/topic/' + item.topic_id + '/' + item.post_number }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, author, topic, content, created, url]

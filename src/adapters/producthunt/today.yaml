@@ -1,0 +1,29 @@
+site: producthunt
+name: today
+description: Today's top Product Hunt launches
+domain: www.producthunt.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of products
+
+pipeline:
+  - fetch_text:
+      url: https://www.producthunt.com/feed
+
+  - parse_rss: ~
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.title }}
+      date: ${{ item.pubDate }}
+      summary: ${{ item.description | strip_html | truncate(150) }}
+      link: ${{ item.link }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, date, summary]

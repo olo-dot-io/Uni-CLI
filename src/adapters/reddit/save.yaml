@@ -1,0 +1,28 @@
+site: reddit
+name: save
+description: Save a Reddit post or comment
+domain: www.reddit.com
+type: web-api
+strategy: cookie
+auth_cookies: [reddit_session]
+
+args:
+  thing-id:
+    required: true
+    positional: true
+    description: "Post or comment fullname (t3_xxx or t1_xxx)"
+
+pipeline:
+  - fetch:
+      url: https://www.reddit.com/api/save
+      method: POST
+      headers:
+        Content-Type: application/x-www-form-urlencoded
+      body:
+        id: "${{ args['thing-id'] }}"
+
+  - map:
+      status: success
+      message: "Saved ${{ args['thing-id'] }}"
+
+columns: [status, message]
