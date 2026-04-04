@@ -46,17 +46,21 @@ src/
 ├── types.ts             # Core types: AdapterType, Strategy, IPage, ExitCode
 ├── registry.ts          # Adapter registry + cli() helper
 ├── engine/
-│   ├── yaml-runner.ts   # Pipeline engine (17 steps: fetch, navigate, evaluate, click...)
+│   ├── yaml-runner.ts   # Pipeline engine (23 steps: fetch, navigate, press, tap, download...)
 │   ├── cookies.ts       # Cookie file reader for authenticated adapters
-│   └── cascade.ts       # Strategy cascade: auto-probe PUBLIC→COOKIE→HEADER
+│   ├── cascade.ts       # Strategy cascade: auto-probe PUBLIC→COOKIE→HEADER
+│   ├── interceptor.ts   # Dual fetch+XHR interceptor with anti-detection stealth
+│   ├── download.ts      # Download step: HTTP + yt-dlp + document save
+│   └── websocket.ts     # WebSocket step with OBS auth support
 ├── output/formatter.ts  # Multi-format output (table/json/yaml/csv/md)
 ├── discovery/loader.ts  # YAML + TS adapter scanner
 ├── adapters/            # Built-in adapters (YAML + TS)
 ├── browser/
 │   ├── cdp-client.ts    # Raw WebSocket CDP client (zero new deps, uses ws)
-│   ├── page.ts          # BrowserPage: goto, evaluate, click, type, cookies
+│   ├── page.ts          # BrowserPage: 22 methods (goto, evaluate, snapshot, screenshot...)
+│   ├── snapshot.ts      # DOM accessibility tree generator (interactive refs, scroll markers)
 │   ├── launcher.ts      # Chrome discovery + spawn with --remote-debugging-port
-│   └── stealth.ts       # Anti-detection injection (webdriver, plugins, toString)
+│   └── stealth.ts       # 13 anti-detection patches (webdriver, plugins, CDP cleanup...)
 ├── commands/
 │   ├── auth.ts          # unicli auth setup/check/list
 │   └── browser.ts       # unicli browser start/status
@@ -99,7 +103,7 @@ src/
 | Auth setup      | `unicli auth setup <site>`       |
 | Sync refs       | `npm run sync:ref`               |
 
-## Pipeline Steps (17)
+## Pipeline Steps (23)
 
 | Step         | Type      | What it does                                           |
 | ------------ | --------- | ------------------------------------------------------ |
@@ -119,7 +123,13 @@ src/
 | `click`      | Browser   | Click element by CSS selector                          |
 | `type`       | Browser   | Type text into input                                   |
 | `wait`       | Browser   | Wait for time (ms) or selector to appear               |
-| `intercept`  | Browser   | Capture page network requests matching pattern         |
+| `intercept`  | Browser   | Capture page network requests (fetch + XHR, stealthy)  |
+| `press`      | Browser   | Press keyboard key with optional modifiers             |
+| `scroll`     | Browser   | Scroll page (direction, to element, or auto-scroll)    |
+| `snapshot`   | Browser   | DOM accessibility tree snapshot with interactive refs  |
+| `tap`        | Browser   | Vue Store Action Bridge (Pinia/Vuex → capture network) |
+| `download`   | Media     | Download files (HTTP + yt-dlp, batch, skip_existing)   |
+| `websocket`  | Service   | WebSocket connect/send/receive (OBS auth support)      |
 
 ## Strategies
 
