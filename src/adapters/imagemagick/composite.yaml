@@ -37,7 +37,18 @@ args:
   gravity:
     type: str
     default: center
-    choices: [center, northwest, northeast, southwest, southeast, north, south, east, west]
+    choices:
+      [
+        center,
+        northwest,
+        northeast,
+        southwest,
+        southeast,
+        north,
+        south,
+        east,
+        west,
+      ]
     description: Gravity position for overlay placement
 
 columns: []

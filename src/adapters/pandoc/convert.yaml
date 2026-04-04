@@ -11,15 +11,15 @@ pipeline:
   - exec:
       command: pandoc
       args:
-        - ${{ args.input }}
-        - -f
-        - ${{ args.from }}
-        - -t
-        - ${{ args.to }}
-        - -o
-        - ${{ args.output }}
-        - ${{ args.standalone ? '-s' : '' }}
-        - ${{ args.toc ? '--toc' : '' }}
+        - "${{ args.input }}"
+        - "-f"
+        - "${{ args.from }}"
+        - "-t"
+        - "${{ args.to }}"
+        - "-o"
+        - "${{ args.output }}"
+        - "${{ args.standalone ? '-s' : '' }}"
+        - "${{ args.toc ? '--toc' : '' }}"
       parse: text
       timeout: 60000
 
