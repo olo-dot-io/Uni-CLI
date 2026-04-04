@@ -177,6 +177,18 @@ export async function runPipeline(
           case "intercept":
             ctx = await stepIntercept(ctx, config as InterceptConfig);
             break;
+          case "press":
+            ctx = await stepPress(ctx, config);
+            break;
+          case "scroll":
+            ctx = await stepScroll(ctx, config);
+            break;
+          case "snapshot":
+            ctx = await stepSnapshot(ctx, config);
+            break;
+          case "tap":
+            ctx = await stepTap(ctx, config as TapConfig);
+            break;
           default:
             break;
         }
@@ -1301,6 +1313,193 @@ async function stepIntercept(
         data = (data as Record<string, unknown>)[key];
       }
     }
+  }
+
+  return { ...ctx, data, page };
+}
+
+// --- press: keyboard event dispatch ---
+
+async function stepPress(
+  ctx: PipelineContext,
+  config: unknown,
+): Promise<PipelineContext> {
+  const page = await acquirePage(ctx);
+  if (typeof config === "string") {
+    await page.press(evalTemplate(config, ctx));
+  } else {
+    const cfg = config as { key: string; modifiers?: string[] };
+    const key = evalTemplate(cfg.key, ctx);
+    if (cfg.modifiers && cfg.modifiers.length > 0) {
+      await page.nativeKeyPress(key, cfg.modifiers);
+    } else {
+      await page.press(key);
+    }
+  }
+  return { ...ctx, page };
+}
+
+// --- scroll: page scrolling ---
+
+async function stepScroll(
+  ctx: PipelineContext,
+  config: unknown,
+): Promise<PipelineContext> {
+  const page = await acquirePage(ctx);
+  if (typeof config === "string") {
+    await page.scroll(config as "down" | "up" | "bottom" | "top");
+  } else {
+    const cfg = config as {
+      to?: string;
+      selector?: string;
+      auto?: boolean;
+      max?: number;
+      delay?: number;
+    };
+    if (cfg.auto) {
+      await page.autoScroll({ maxScrolls: cfg.max, delay: cfg.delay });
+    } else if (cfg.selector) {
+      const sel = evalTemplate(cfg.selector, ctx);
+      const escaped = sel.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+      await page.evaluate(
+        `document.querySelector('${escaped}')?.scrollIntoView({ behavior: 'smooth', block: 'center' })`,
+      );
+    } else if (cfg.to) {
+      await page.scroll(cfg.to as "down" | "up" | "bottom" | "top");
+    }
+  }
+  return { ...ctx, page };
+}
+
+// --- snapshot: DOM accessibility tree ---
+
+async function stepSnapshot(
+  ctx: PipelineContext,
+  config: unknown,
+): Promise<PipelineContext> {
+  const page = await acquirePage(ctx);
+  const opts =
+    typeof config === "object" && config !== null
+      ? (config as {
+          interactive?: boolean;
+          compact?: boolean;
+          max_depth?: number;
+          raw?: boolean;
+        })
+      : {};
+  // Normalize max_depth to maxDepth for BrowserPage.snapshot
+  const normalizedOpts = {
+    interactive: opts.interactive,
+    compact: opts.compact,
+    maxDepth: opts.max_depth,
+    raw: opts.raw,
+  };
+  const result = await page.snapshot(normalizedOpts);
+  return { ...ctx, data: result, page };
+}
+
+// --- tap: Vue store action bridge ---
+
+interface TapConfig {
+  store: string;
+  action: string;
+  capture: string;
+  timeout?: number;
+  select?: string;
+  framework?: "pinia" | "vuex" | "auto";
+  args?: unknown[];
+}
+
+async function stepTap(
+  ctx: PipelineContext,
+  config: TapConfig,
+): Promise<PipelineContext> {
+  const page = await acquirePage(ctx);
+  const { generateTapInterceptorJs } = await import("./interceptor.js");
+  const capturePattern = evalTemplate(config.capture, ctx);
+  const timeout = (config.timeout ?? 5) * 1000;
+  const storeName = evalTemplate(config.store, ctx);
+  const actionName = evalTemplate(config.action, ctx);
+  const framework = config.framework ?? "auto";
+  const actionArgs = config.args
+    ? config.args.map((a) => JSON.stringify(a)).join(", ")
+    : "";
+
+  const tap = generateTapInterceptorJs(capturePattern);
+
+  // Build optional select chain
+  const selectChain = config.select
+    ? config.select
+        .split(".")
+        .map((k) => `?.["${k}"]`)
+        .join("")
+    : "";
+
+  // Store discovery based on framework
+  const piniaDiscovery = `
+    const pinia = document.querySelector('#app')?.__vue_app__?.config?.globalProperties?.$pinia;
+    if (!pinia) throw new Error('Pinia not found');
+    const store = pinia._s.get('${storeName}');
+    if (!store) throw new Error('Store "${storeName}" not found');
+    await store['${actionName}'](${actionArgs});
+  `;
+
+  const vuexDiscovery = `
+    const vStore = document.querySelector('#app')?.__vue_app__?.config?.globalProperties?.$store;
+    if (!vStore) throw new Error('Vuex store not found');
+    await vStore.dispatch('${storeName}/${actionName}'${actionArgs ? ", " + actionArgs : ""});
+  `;
+
+  const autoDiscovery = `
+    const app = document.querySelector('#app')?.__vue_app__;
+    if (!app) throw new Error('No Vue app found');
+    const pinia = app.config?.globalProperties?.$pinia;
+    if (pinia && pinia._s.has('${storeName}')) {
+      const store = pinia._s.get('${storeName}');
+      await store['${actionName}'](${actionArgs});
+    } else {
+      const vStore = app.config?.globalProperties?.$store;
+      if (vStore) {
+        await vStore.dispatch('${storeName}/${actionName}'${actionArgs ? ", " + actionArgs : ""});
+      } else {
+        throw new Error('No Pinia or Vuex store found');
+      }
+    }
+  `;
+
+  const storeCode =
+    framework === "pinia"
+      ? piniaDiscovery
+      : framework === "vuex"
+        ? vuexDiscovery
+        : autoDiscovery;
+
+  const script = `(async () => {
+    ${tap.setupVar}
+    ${tap.fetchPatch}
+    ${tap.xhrPatch}
+    try {
+      ${storeCode}
+      const result = await Promise.race([
+        ${tap.promiseVar},
+        new Promise((_, reject) => setTimeout(() => reject(new Error('tap timeout')), ${timeout})),
+      ]);
+      return JSON.stringify(result${selectChain});
+    } finally {
+      ${tap.restorePatch}
+    }
+  })()`;
+
+  const raw = await page.evaluate(script);
+  let data: unknown;
+  if (typeof raw === "string") {
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      data = raw;
+    }
+  } else {
+    data = raw;
   }
 
   return { ...ctx, data, page };

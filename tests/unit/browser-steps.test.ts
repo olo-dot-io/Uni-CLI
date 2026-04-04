@@ -17,9 +17,12 @@ vi.mock("../../src/browser/page.js", () => {
     click: vi.fn().mockResolvedValue(undefined),
     type: vi.fn().mockResolvedValue(undefined),
     press: vi.fn().mockResolvedValue(undefined),
+    nativeKeyPress: vi.fn().mockResolvedValue(undefined),
     waitFor: vi.fn().mockResolvedValue(undefined),
     waitForSelector: vi.fn().mockResolvedValue(undefined),
     scroll: vi.fn().mockResolvedValue(undefined),
+    autoScroll: vi.fn().mockResolvedValue(undefined),
+    snapshot: vi.fn().mockResolvedValue("mock-snapshot-tree"),
     cookies: vi.fn().mockResolvedValue({}),
     close: vi.fn().mockResolvedValue(undefined),
     sendCDP: vi.fn().mockResolvedValue(undefined),
@@ -198,6 +201,161 @@ describe("browser page cleanup", () => {
     const steps = [{ evaluate: "document.title" }];
     await runPipeline(steps, {});
     expect(mockPage.close).toHaveBeenCalled();
+  });
+});
+
+describe("browser step: press", () => {
+  it("presses a simple key string", async () => {
+    const mockPage = await getMockPage();
+    mockPage.press.mockClear();
+    const steps = [{ press: "Enter" }];
+    await runPipeline(steps, {});
+    expect(mockPage.press).toHaveBeenCalledWith("Enter");
+  });
+
+  it("presses a key with template substitution", async () => {
+    const mockPage = await getMockPage();
+    mockPage.press.mockClear();
+    const steps = [{ press: "${{ args.key }}" }];
+    await runPipeline(steps, { key: "Tab" });
+    expect(mockPage.press).toHaveBeenCalledWith("Tab");
+  });
+
+  it("presses a key with modifiers via nativeKeyPress", async () => {
+    const mockPage = await getMockPage();
+    mockPage.nativeKeyPress.mockClear();
+    const steps = [{ press: { key: "a", modifiers: ["ctrl"] } }];
+    await runPipeline(steps, {});
+    expect(mockPage.nativeKeyPress).toHaveBeenCalledWith("a", ["ctrl"]);
+  });
+
+  it("presses object config without modifiers via press()", async () => {
+    const mockPage = await getMockPage();
+    mockPage.press.mockClear();
+    const steps = [{ press: { key: "Escape" } }];
+    await runPipeline(steps, {});
+    expect(mockPage.press).toHaveBeenCalledWith("Escape");
+  });
+});
+
+describe("browser step: scroll", () => {
+  it("scrolls by direction string", async () => {
+    const mockPage = await getMockPage();
+    mockPage.scroll.mockClear();
+    const steps = [{ scroll: "down" }];
+    await runPipeline(steps, {});
+    expect(mockPage.scroll).toHaveBeenCalledWith("down");
+  });
+
+  it("scrolls to an extreme via 'to' property", async () => {
+    const mockPage = await getMockPage();
+    mockPage.scroll.mockClear();
+    const steps = [{ scroll: { to: "bottom" } }];
+    await runPipeline(steps, {});
+    expect(mockPage.scroll).toHaveBeenCalledWith("bottom");
+  });
+
+  it("scrolls to element via selector", async () => {
+    const mockPage = await getMockPage();
+    mockPage.evaluate.mockClear();
+    mockPage.evaluate.mockResolvedValueOnce(undefined);
+    const steps = [{ scroll: { selector: "#comments" } }];
+    await runPipeline(steps, {});
+    expect(mockPage.evaluate).toHaveBeenCalledWith(
+      expect.stringContaining("scrollIntoView"),
+    );
+  });
+
+  it("auto-scrolls with max and delay", async () => {
+    const mockPage = await getMockPage();
+    mockPage.autoScroll.mockClear();
+    const steps = [{ scroll: { auto: true, max: 10, delay: 1000 } }];
+    await runPipeline(steps, {});
+    expect(mockPage.autoScroll).toHaveBeenCalledWith({
+      maxScrolls: 10,
+      delay: 1000,
+    });
+  });
+});
+
+describe("browser step: snapshot", () => {
+  it("takes a snapshot with default options", async () => {
+    const mockPage = await getMockPage();
+    mockPage.snapshot.mockClear();
+    mockPage.snapshot.mockResolvedValueOnce("snapshot-tree");
+    const steps = [{ snapshot: {} }];
+    const result = await runPipeline(steps, {});
+    expect(mockPage.snapshot).toHaveBeenCalledWith({
+      interactive: undefined,
+      compact: undefined,
+      maxDepth: undefined,
+      raw: undefined,
+    });
+    expect(result).toEqual(["snapshot-tree"]);
+  });
+
+  it("passes normalized options (max_depth -> maxDepth)", async () => {
+    const mockPage = await getMockPage();
+    mockPage.snapshot.mockClear();
+    mockPage.snapshot.mockResolvedValueOnce("tree");
+    const steps = [
+      { snapshot: { interactive: true, compact: true, max_depth: 5 } },
+    ];
+    const result = await runPipeline(steps, {});
+    expect(mockPage.snapshot).toHaveBeenCalledWith({
+      interactive: true,
+      compact: true,
+      maxDepth: 5,
+      raw: undefined,
+    });
+    expect(result).toEqual(["tree"]);
+  });
+});
+
+describe("browser step: tap", () => {
+  it("evaluates a tap script and returns parsed JSON data", async () => {
+    const mockPage = await getMockPage();
+    mockPage.evaluate.mockClear();
+    mockPage.evaluate.mockResolvedValueOnce(
+      JSON.stringify({ url: "/api/user", data: { name: "test" }, ts: 123 }),
+    );
+    const steps = [
+      {
+        tap: {
+          store: "userStore",
+          action: "fetchData",
+          capture: "/api/user",
+          framework: "pinia" as const,
+        },
+      },
+    ];
+    const result = await runPipeline(steps, {});
+    expect(mockPage.evaluate).toHaveBeenCalledWith(
+      expect.stringContaining("userStore"),
+    );
+    expect(mockPage.evaluate).toHaveBeenCalledWith(
+      expect.stringContaining("fetchData"),
+    );
+    expect(result).toEqual([
+      { url: "/api/user", data: { name: "test" }, ts: 123 },
+    ]);
+  });
+
+  it("returns raw string when JSON.parse fails", async () => {
+    const mockPage = await getMockPage();
+    mockPage.evaluate.mockClear();
+    mockPage.evaluate.mockResolvedValueOnce("not-json");
+    const steps = [
+      {
+        tap: {
+          store: "s",
+          action: "a",
+          capture: "/api",
+        },
+      },
+    ];
+    const result = await runPipeline(steps, {});
+    expect(result).toEqual(["not-json"]);
   });
 });
 
