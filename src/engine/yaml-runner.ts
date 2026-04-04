@@ -25,6 +25,7 @@ import TurndownService from "turndown";
 import { USER_AGENT } from "../constants.js";
 import type { PipelineStep } from "../types.js";
 import { loadCookies, formatCookieHeader } from "./cookies.js";
+import type { BrowserPage } from "../browser/page.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -40,6 +41,7 @@ type PipelineContext = {
   cookieHeader?: string;
   temp?: Record<string, string>;
   tempDir?: string;
+  page?: BrowserPage;
 };
 
 /**
@@ -149,6 +151,27 @@ export async function runPipeline(
           case "write_temp":
             ctx = stepWriteTemp(ctx, config as WriteTempConfig);
             break;
+          case "navigate":
+            ctx = await stepNavigate(ctx, config as NavigateConfig);
+            break;
+          case "evaluate":
+            ctx = await stepEvaluate(ctx, config as EvaluateConfig | string);
+            break;
+          case "click":
+            ctx = await stepClick(ctx, config as ClickConfig | string);
+            break;
+          case "type":
+            ctx = await stepType(ctx, config as TypeConfig);
+            break;
+          case "wait":
+            ctx = await stepWaitBrowser(
+              ctx,
+              config as WaitBrowserConfig | number,
+            );
+            break;
+          case "intercept":
+            ctx = await stepIntercept(ctx, config as InterceptConfig);
+            break;
           default:
             break;
         }
@@ -177,6 +200,13 @@ export async function runPipeline(
     if (tempDir) {
       try {
         rmSync(tempDir, { recursive: true, force: true });
+      } catch {
+        // Best-effort cleanup
+      }
+    }
+    if (ctx.page) {
+      try {
+        await ctx.page.close();
       } catch {
         // Best-effort cleanup
       }
@@ -942,6 +972,224 @@ function stepWriteTemp(
   const temp = { ...(ctx.temp ?? {}), [key]: filePath };
 
   return { ...ctx, temp, tempDir: td };
+}
+
+// --- Browser step implementations ---
+
+/**
+ * Lazily acquire a BrowserPage. Connects on first use and caches on ctx.
+ */
+async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
+  if (ctx.page) return ctx.page;
+
+  // Dynamic import to avoid loading browser code for non-browser pipelines
+  const { BrowserPage: BP } = await import("../browser/page.js");
+  const { injectStealth } = await import("../browser/stealth.js");
+
+  const port = process.env.UNICLI_CDP_PORT
+    ? parseInt(process.env.UNICLI_CDP_PORT, 10)
+    : 9222;
+  const page = await BP.connect(port);
+
+  // Inject anti-detection scripts before any navigation
+  await injectStealth(page.sendCDP.bind(page));
+
+  return page;
+}
+
+interface NavigateConfig {
+  url: string;
+  settleMs?: number;
+}
+
+async function stepNavigate(
+  ctx: PipelineContext,
+  config: NavigateConfig,
+): Promise<PipelineContext> {
+  const page = await acquirePage(ctx);
+  const url = evalTemplate(config.url, ctx);
+  const settleMs = config.settleMs ?? 0;
+  await page.goto(url, { settleMs });
+  return { ...ctx, page };
+}
+
+interface EvaluateConfig {
+  expression: string;
+}
+
+async function stepEvaluate(
+  ctx: PipelineContext,
+  config: EvaluateConfig | string,
+): Promise<PipelineContext> {
+  const page = await acquirePage(ctx);
+  const expr =
+    typeof config === "string"
+      ? evalTemplate(config, ctx)
+      : evalTemplate(config.expression, ctx);
+  const result = await page.evaluate(expr);
+  return { ...ctx, data: result, page };
+}
+
+interface ClickConfig {
+  selector: string;
+}
+
+async function stepClick(
+  ctx: PipelineContext,
+  config: ClickConfig | string,
+): Promise<PipelineContext> {
+  const page = await acquirePage(ctx);
+  const selector =
+    typeof config === "string"
+      ? evalTemplate(config, ctx)
+      : evalTemplate(config.selector, ctx);
+  await page.click(selector);
+  return { ...ctx, page };
+}
+
+interface TypeConfig {
+  text: string;
+  selector?: string;
+  submit?: boolean;
+}
+
+async function stepType(
+  ctx: PipelineContext,
+  config: TypeConfig,
+): Promise<PipelineContext> {
+  const page = await acquirePage(ctx);
+  const text = evalTemplate(config.text, ctx);
+  if (config.selector) {
+    const selector = evalTemplate(config.selector, ctx);
+    await page.type(selector, text);
+  } else {
+    // No selector — type into currently focused element via CDP
+    await page.sendCDP("Input.insertText", { text });
+  }
+  if (config.submit) await page.press("Enter");
+  return { ...ctx, page };
+}
+
+interface WaitBrowserConfig {
+  ms?: number;
+  selector?: string;
+  timeout?: number;
+}
+
+async function stepWaitBrowser(
+  ctx: PipelineContext,
+  config: WaitBrowserConfig | number,
+): Promise<PipelineContext> {
+  const page = await acquirePage(ctx);
+  if (typeof config === "number") {
+    await page.waitFor(config);
+  } else if (config.selector) {
+    await page.waitFor(config.selector, config.timeout ?? 10000);
+  } else if (config.ms) {
+    await page.waitFor(config.ms);
+  }
+  return { ...ctx, page };
+}
+
+interface InterceptConfig {
+  trigger: string;
+  capture: string;
+  select?: string;
+  timeout?: number;
+}
+
+async function stepIntercept(
+  ctx: PipelineContext,
+  config: InterceptConfig,
+): Promise<PipelineContext> {
+  const page = await acquirePage(ctx);
+  const capturePattern = evalTemplate(config.capture, ctx);
+  const timeout = config.timeout ?? 10000;
+
+  // Install interceptor: patch fetch to capture matching responses
+  const escapedPattern = capturePattern
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'");
+  const interceptorScript = `
+    (function() {
+      window.__unicli_captured = [];
+      const originalFetch = window.fetch;
+      window.fetch = async function(...args) {
+        const resp = await originalFetch.apply(this, args);
+        const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url ?? '');
+        if (url.includes('${escapedPattern}')) {
+          try {
+            const clone = resp.clone();
+            const json = await clone.json();
+            window.__unicli_captured.push({ url, data: json });
+          } catch {}
+        }
+        return resp;
+      };
+    })();
+  `;
+  await page.evaluate(interceptorScript);
+
+  // Execute trigger action
+  const trigger = evalTemplate(config.trigger, ctx);
+  if (trigger.startsWith("navigate:")) {
+    await page.goto(trigger.slice(9), { settleMs: 2000 });
+  } else if (trigger.startsWith("click:")) {
+    await page.click(trigger.slice(6));
+  } else if (trigger === "scroll") {
+    await page.scroll("down");
+  } else if (trigger.startsWith("evaluate:")) {
+    await page.evaluate(trigger.slice(9));
+  }
+
+  // Poll for captured response
+  const startTime = Date.now();
+  let captured: unknown = null;
+  while (Date.now() - startTime < timeout) {
+    const result = await page.evaluate(
+      "JSON.stringify(window.__unicli_captured || [])",
+    );
+    const arr = JSON.parse(result as string) as Array<{
+      url: string;
+      data: unknown;
+    }>;
+    if (arr.length > 0) {
+      captured = arr[arr.length - 1].data;
+      break;
+    }
+    await page.waitFor(200);
+  }
+
+  // Cleanup injected globals
+  await page.evaluate(
+    "delete window.__unicli_captured; delete window.__unicli_originalFetch;",
+  );
+
+  if (!captured) {
+    throw new PipelineError(
+      `Intercept timeout: no request matching "${capturePattern}" captured within ${String(timeout)}ms`,
+      {
+        step: -1,
+        action: "intercept",
+        config: { capture: capturePattern, trigger },
+        errorType: "timeout",
+        suggestion: `No network request matching "${capturePattern}" was observed. Verify the capture pattern matches the target API URL and that the trigger action causes the request.`,
+      },
+    );
+  }
+
+  // Apply optional dot-path selector to captured data
+  let data: unknown = captured;
+  if (config.select) {
+    const segments = config.select.split(".");
+    for (const key of segments) {
+      if (data !== null && data !== undefined && typeof data === "object") {
+        data = (data as Record<string, unknown>)[key];
+      }
+    }
+  }
+
+  return { ...ctx, data, page };
 }
 
 /**

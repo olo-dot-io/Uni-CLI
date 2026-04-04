@@ -308,6 +308,27 @@ export class BrowserPage implements IPage {
   }
 
   /**
+   * Polymorphic wait: milliseconds (number) or CSS selector (string).
+   */
+  async waitFor(condition: number | string, timeout?: number): Promise<void> {
+    if (typeof condition === "number") {
+      await new Promise<void>((resolve) => setTimeout(resolve, condition));
+    } else {
+      await this.waitForSelector(condition, timeout);
+    }
+  }
+
+  /**
+   * Raw CDP command passthrough for stealth injection etc.
+   */
+  async sendCDP(
+    method: string,
+    params?: Record<string, unknown>,
+  ): Promise<unknown> {
+    return this.client.send(method, params);
+  }
+
+  /**
    * Close/disconnect from the page.
    */
   async close(): Promise<void> {
