@@ -1,0 +1,41 @@
+# Desktop adapter — extract image metadata using GIMP's Script-Fu batch mode
+site: gimp
+name: info
+description: Get image info (dimensions, color mode, number of layers, resolution)
+type: desktop
+binary: gimp
+detect: which gimp
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to image file
+
+pipeline:
+  - exec:
+      command: gimp
+      args: ["-i", "-b", "-"]
+      stdin: |
+        (let* ((image (car (gimp-file-load RUN-NONINTERACTIVE "${{ args.file }}" "${{ args.file }}")))
+               (width (car (gimp-image-width image)))
+               (height (car (gimp-image-height image)))
+               (num-layers (length (vector->list (cadr (gimp-image-get-layers image)))))
+               (res (gimp-image-get-resolution image))
+               (x-res (car res))
+               (y-res (cadr res)))
+          (gimp-message (string-append
+            "UNICLI_JSON:"
+            "{\"width\":" (number->string width)
+            ",\"height\":" (number->string height)
+            ",\"layers\":" (number->string num-layers)
+            ",\"xdpi\":" (number->string (inexact->exact (round x-res)))
+            ",\"ydpi\":" (number->string (inexact->exact (round y-res)))
+            "}"))
+          (gimp-image-delete image)
+          (gimp-quit 0))
+      parse: text
+      timeout: 30000
+
+columns: [width, height, layers, xdpi, ydpi]

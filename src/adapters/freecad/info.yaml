@@ -1,0 +1,75 @@
+# Desktop adapter — extract document metadata from a FreeCAD file via headless Python
+site: freecad
+name: info
+description: Get FreeCAD file info (objects, dimensions, labels, bounding box)
+type: desktop
+binary: freecadcmd
+detect: which freecadcmd || which FreeCADCmd || which freecad
+timeout: 60000
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to .FCStd file
+
+pipeline:
+  - write_temp:
+      filename: info.py
+      content: |
+        import json
+        import FreeCAD
+
+        input_path = "${{ args.file }}"
+        doc = FreeCAD.openDocument(input_path)
+        FreeCAD.setActiveDocument(doc.Name)
+
+        objects = []
+        total_shapes = 0
+        bbox = None
+
+        for obj in doc.Objects:
+            entry = {"name": obj.Name, "label": obj.Label, "type": obj.TypeId}
+            if hasattr(obj, "Shape"):
+                total_shapes += 1
+                shape = obj.Shape
+                bb = shape.BoundBox
+                entry["volume"] = round(shape.Volume, 4)
+                entry["area"] = round(shape.Area, 4)
+                entry["bbox"] = {
+                    "xmin": round(bb.XMin, 2), "ymin": round(bb.YMin, 2), "zmin": round(bb.ZMin, 2),
+                    "xmax": round(bb.XMax, 2), "ymax": round(bb.YMax, 2), "zmax": round(bb.ZMax, 2),
+                }
+                if bbox is None:
+                    bbox = {"xmin": bb.XMin, "ymin": bb.YMin, "zmin": bb.ZMin,
+                            "xmax": bb.XMax, "ymax": bb.YMax, "zmax": bb.ZMax}
+                else:
+                    bbox["xmin"] = min(bbox["xmin"], bb.XMin)
+                    bbox["ymin"] = min(bbox["ymin"], bb.YMin)
+                    bbox["zmin"] = min(bbox["zmin"], bb.ZMin)
+                    bbox["xmax"] = max(bbox["xmax"], bb.XMax)
+                    bbox["ymax"] = max(bbox["ymax"], bb.YMax)
+                    bbox["zmax"] = max(bbox["zmax"], bb.ZMax)
+            objects.append(entry)
+
+        result = {
+            "filename": doc.FileName,
+            "label": doc.Label,
+            "total_objects": len(doc.Objects),
+            "total_shapes": total_shapes,
+            "objects": objects,
+        }
+        if bbox:
+            result["bounding_box"] = {k: round(v, 2) for k, v in bbox.items()}
+
+        print("UNICLI_JSON:" + json.dumps(result))
+        FreeCAD.closeDocument(doc.Name)
+
+  - exec:
+      command: freecadcmd
+      args: ["${{ temp.info_py }}"]
+      parse: text
+      timeout: 60000
+
+columns: [filename, label, total_objects, total_shapes, bounding_box]

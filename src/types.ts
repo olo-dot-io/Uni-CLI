@@ -96,6 +96,7 @@ export interface AdapterManifest {
   // Auth
   strategy?: Strategy;
   auth?: "cookie" | "header" | "oauth2" | "apikey" | "none";
+  authCookies?: string[];
   requires?: string;
 
   // Browser

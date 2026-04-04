@@ -1,0 +1,22 @@
+site: zhihu
+name: me
+description: Current Zhihu user profile
+domain: www.zhihu.com
+type: web-api
+strategy: cookie
+auth_cookies: [z_c0]
+
+pipeline:
+  - fetch:
+      url: https://www.zhihu.com/api/v4/me
+
+  - map:
+      uid: ${{ item.id }}
+      name: ${{ item.name }}
+      headline: ${{ item.headline || '' }}
+      followers: ${{ item.follower_count }}
+      following: ${{ item.following_count }}
+      voteup: ${{ item.voteup_count }}
+      answer_count: ${{ item.answer_count }}
+
+columns: [uid, name, headline, followers, following, voteup, answer_count]

@@ -1,0 +1,22 @@
+site: weibo
+name: me
+description: Current Weibo user profile
+domain: weibo.com
+type: web-api
+strategy: cookie
+auth_cookies: [SUB, SUBP]
+
+pipeline:
+  - fetch:
+      url: https://weibo.com/ajax/profile/me
+
+  - select: data.user
+
+  - map:
+      uid: ${{ item.id }}
+      name: ${{ item.screen_name }}
+      followers: ${{ item.followers_count }}
+      following: ${{ item.friends_count }}
+      statuses: ${{ item.statuses_count }}
+
+columns: [uid, name, followers, following, statuses]

@@ -1,0 +1,37 @@
+site: tieba
+name: search
+description: Baidu Tieba forum search
+domain: tieba.baidu.com
+type: web-api
+strategy: public
+
+args:
+  query:
+    required: true
+    positional: true
+    description: Search query
+  limit:
+    type: int
+    default: 20
+    description: Number of results
+
+pipeline:
+  - fetch:
+      url: https://tieba.baidu.com/mo/q/m/searchPost
+      params:
+        word: "${{ args.query }}"
+        pn: "1"
+        rn: "${{ args.limit }}"
+
+  - select: data.post_list
+
+  - map:
+      title: ${{ (item.title || '') | strip_html }}
+      content: ${{ (item.content || '') | strip_html | slice(0, 150) }}
+      author: ${{ item.author?.name || '' }}
+      forum: ${{ item.fname || '' }}
+      reply_num: ${{ item.reply_num || 0 }}
+
+  - limit: ${{ args.limit }}
+
+columns: [title, content, author, forum, reply_num]

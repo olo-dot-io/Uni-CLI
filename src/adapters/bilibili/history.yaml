@@ -1,0 +1,33 @@
+site: bilibili
+name: history
+description: Bilibili watch history
+domain: api.bilibili.com
+type: web-api
+strategy: cookie
+auth_cookies: [SESSDATA, bili_jct]
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of items
+
+pipeline:
+  - fetch:
+      url: https://api.bilibili.com/x/web-interface/history/cursor
+      params:
+        ps: "${{ args.limit }}"
+
+  - select: data.list
+
+  - map:
+      title: ${{ item.title }}
+      author: ${{ item.author_name }}
+      progress: ${{ item.progress }}
+      duration: ${{ item.duration }}
+      view_at: ${{ item.view_at }}
+      bvid: ${{ item.history?.bvid || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [title, author, progress, duration, view_at, bvid]

@@ -9,5 +9,5 @@
 
 import { createCli } from "./cli.js";
 
-const program = createCli();
+const program = await createCli();
 program.parse(process.argv);

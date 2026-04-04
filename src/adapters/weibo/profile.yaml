@@ -1,0 +1,32 @@
+site: weibo
+name: profile
+description: Weibo user profile info
+domain: weibo.com
+type: web-api
+strategy: cookie
+auth_cookies: [SUB, SUBP]
+
+args:
+  uid:
+    required: true
+    positional: true
+    description: User ID or screen name
+
+pipeline:
+  - fetch:
+      url: https://weibo.com/ajax/profile/info
+      params:
+        uid: "${{ args.uid }}"
+
+  - select: data.user
+
+  - map:
+      uid: ${{ item.id }}
+      name: ${{ item.screen_name }}
+      followers: ${{ item.followers_count }}
+      following: ${{ item.friends_count }}
+      statuses: ${{ item.statuses_count }}
+      description: ${{ item.description }}
+      verified: ${{ item.verified }}
+
+columns: [uid, name, followers, following, statuses, description]

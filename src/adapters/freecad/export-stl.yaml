@@ -1,0 +1,70 @@
+# Desktop adapter — export a FreeCAD file to STL via headless Python macro
+site: freecad
+name: export-stl
+description: Export a FreeCAD file (.FCStd) to STL mesh format
+type: desktop
+binary: freecadcmd
+detect: which freecadcmd || which FreeCADCmd || which freecad
+timeout: 120000
+
+args:
+  input:
+    type: str
+    required: true
+    positional: true
+    description: Path to .FCStd file
+  output:
+    type: str
+    required: true
+    description: Output .stl file path
+  deviation:
+    type: float
+    default: 0.1
+    description: Mesh tessellation deviation (lower = finer mesh)
+
+pipeline:
+  - write_temp:
+      filename: export_stl.py
+      content: |
+        import sys
+        import os
+        import FreeCAD
+        import Mesh
+
+        input_path = "${{ args.input }}"
+        output_path = "${{ args.output }}"
+        deviation = ${{ args.deviation }}
+
+        os.makedirs(os.path.dirname(os.path.abspath(output_path)) or ".", exist_ok=True)
+
+        doc = FreeCAD.openDocument(input_path)
+        FreeCAD.setActiveDocument(doc.Name)
+
+        objects = [obj for obj in doc.Objects if hasattr(obj, "Shape")]
+        if not objects:
+            print("UNICLI_JSON:{\"error\":\"No exportable shapes found in document\"}")
+            sys.exit(1)
+
+        meshes = []
+        for obj in objects:
+            mesh = Mesh.Mesh()
+            mesh.addFacets(obj.Shape.tessellate(deviation)[0:2])
+            meshes.append(mesh)
+
+        combined = Mesh.Mesh()
+        for m in meshes:
+            combined.addMesh(m)
+        combined.write(output_path)
+
+        file_size = os.path.getsize(output_path)
+        print(f"UNICLI_JSON:{{\"output\":\"{output_path}\",\"objects\":{len(objects)},\"file_size\":{file_size}}}")
+
+        FreeCAD.closeDocument(doc.Name)
+
+  - exec:
+      command: freecadcmd
+      args: ["${{ temp.export_stl_py }}"]
+      parse: text
+      timeout: 120000
+
+columns: [output, objects, file_size]

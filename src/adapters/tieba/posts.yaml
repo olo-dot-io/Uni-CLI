@@ -1,0 +1,36 @@
+site: tieba
+name: posts
+description: Baidu Tieba thread posts/replies
+domain: tieba.baidu.com
+type: web-api
+strategy: public
+
+args:
+  tid:
+    required: true
+    positional: true
+    description: Thread ID
+  limit:
+    type: int
+    default: 20
+    description: Number of posts
+
+pipeline:
+  - fetch:
+      url: https://tieba.baidu.com/mo/q/m/threadPage
+      params:
+        kz: "${{ args.tid }}"
+        pn: "1"
+        rn: "${{ args.limit }}"
+
+  - select: data.post_list
+
+  - map:
+      floor: ${{ item.floor || index + 1 }}
+      author: ${{ item.author?.name || '' }}
+      content: ${{ (item.content || '') | strip_html | slice(0, 200) }}
+      time: ${{ item.time }}
+
+  - limit: ${{ args.limit }}
+
+columns: [floor, author, content, time]

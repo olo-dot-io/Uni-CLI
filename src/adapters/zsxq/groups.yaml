@@ -1,0 +1,31 @@
+site: zsxq
+name: groups
+description: Zsxq (知识星球) joined groups
+domain: api.zsxq.com
+type: web-api
+strategy: cookie
+auth_cookies: [zsxq_access_token]
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of groups
+
+pipeline:
+  - fetch:
+      url: https://api.zsxq.com/v2/groups
+      headers:
+        Accept: application/json
+
+  - select: resp_data.groups
+
+  - map:
+      id: ${{ item.group_id }}
+      name: ${{ item.name }}
+      members: ${{ item.statistics?.members_count || 0 }}
+      topics: ${{ item.statistics?.topics_count || 0 }}
+
+  - limit: ${{ args.limit }}
+
+columns: [id, name, members, topics]

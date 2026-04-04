@@ -1,0 +1,37 @@
+site: jike
+name: feed
+description: Jike following feed
+domain: web-api.okjike.com
+type: web-api
+strategy: cookie
+auth_cookies: [accessToken]
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of posts
+
+pipeline:
+  - fetch:
+      url: https://web-api.okjike.com/api/graphql
+      method: POST
+      headers:
+        Content-Type: application/json
+      body:
+        operationName: FetchFollowingUpdates
+        query: "query FetchFollowingUpdates { viewer { followingUpdates { nodes { ... on OriginalPost { id content user { screenName } likeCount commentCount createdAt } } } } }"
+        variables: {}
+
+  - select: data.viewer.followingUpdates.nodes
+
+  - map:
+      author: ${{ item.user?.screenName || '' }}
+      content: ${{ (item.content || '') | slice(0, 200) }}
+      likes: ${{ item.likeCount || 0 }}
+      comments: ${{ item.commentCount || 0 }}
+      created: ${{ item.createdAt }}
+
+  - limit: ${{ args.limit }}
+
+columns: [author, content, likes, comments, created]

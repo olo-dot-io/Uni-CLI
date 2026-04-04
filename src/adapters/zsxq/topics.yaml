@@ -1,0 +1,39 @@
+site: zsxq
+name: topics
+description: Zsxq (知识星球) group topics/posts
+domain: api.zsxq.com
+type: web-api
+strategy: cookie
+auth_cookies: [zsxq_access_token]
+
+args:
+  group_id:
+    required: true
+    positional: true
+    description: Group ID
+  limit:
+    type: int
+    default: 20
+    description: Number of topics
+
+pipeline:
+  - fetch:
+      url: https://api.zsxq.com/v2/groups/${{ args.group_id }}/topics
+      params:
+        count: "${{ args.limit }}"
+      headers:
+        Accept: application/json
+
+  - select: resp_data.topics
+
+  - map:
+      author: ${{ item.talk?.owner?.name || item.question?.owner?.name || '' }}
+      type: ${{ item.type }}
+      content: ${{ (item.talk?.text || item.question?.text || '') | slice(0, 200) }}
+      likes: ${{ item.likes_count || 0 }}
+      comments: ${{ item.comments_count || 0 }}
+      created: ${{ item.create_time }}
+
+  - limit: ${{ args.limit }}
+
+columns: [author, type, content, likes, comments, created]

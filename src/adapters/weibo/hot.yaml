@@ -1,0 +1,30 @@
+site: weibo
+name: hot
+description: Weibo hot search trending topics
+domain: weibo.com
+type: web-api
+strategy: cookie
+auth_cookies: [SUB, SUBP]
+
+args:
+  limit:
+    type: int
+    default: 30
+    description: Number of items
+
+pipeline:
+  - fetch:
+      url: https://weibo.com/ajax/statuses/hot_band
+
+  - select: data.band_list
+
+  - map:
+      rank: ${{ item.realpos || (index + 1) }}
+      word: ${{ item.word }}
+      hot_value: ${{ item.num || 0 }}
+      category: ${{ item.category || '' }}
+      label: ${{ item.label_name || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, word, hot_value, category, label]

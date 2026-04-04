@@ -1,0 +1,33 @@
+site: bilibili
+name: ranking
+description: Bilibili video rankings
+domain: api.bilibili.com
+type: web-api
+strategy: cookie
+auth_cookies: [SESSDATA, bili_jct]
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of videos
+
+pipeline:
+  - fetch:
+      url: https://api.bilibili.com/x/web-interface/ranking/v2
+      params:
+        rid: "0"
+        type: all
+
+  - select: data.list
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.title }}
+      author: ${{ item.owner.name }}
+      views: ${{ item.stat.view }}
+      bvid: ${{ item.bvid }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, author, views, bvid]

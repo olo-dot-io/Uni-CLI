@@ -1,0 +1,36 @@
+site: xueqiu
+name: quote
+description: Xueqiu stock quote
+domain: xueqiu.com
+type: web-api
+strategy: cookie
+auth_cookies: [xq_a_token]
+
+args:
+  symbol:
+    required: true
+    positional: true
+    description: "Stock symbol (e.g. SH600519, AAPL)"
+
+pipeline:
+  - fetch:
+      url: https://stock.xueqiu.com/v5/stock/quote.json
+      params:
+        symbol: "${{ args.symbol }}"
+        extend: detail
+
+  - select: data.quote
+
+  - map:
+      symbol: ${{ item.symbol }}
+      name: ${{ item.name }}
+      current: ${{ item.current }}
+      percent: ${{ item.percent }}
+      chg: ${{ item.chg }}
+      high: ${{ item.high }}
+      low: ${{ item.low }}
+      open: ${{ item.open }}
+      volume: ${{ item.volume }}
+      market_capital: ${{ item.market_capital }}
+
+columns: [symbol, name, current, percent, chg, high, low, volume]

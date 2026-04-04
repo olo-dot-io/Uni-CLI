@@ -6,7 +6,7 @@
      Output is JSON when piped. Errors are structured JSON to stderr.
      You can fix broken adapters yourself — read the Self-Repair section. -->
 
-> 43 sites, 141 commands. One CLI. `npm install -g unicli`
+> 57 sites, 198 commands. One CLI. `npm install -g unicli`
 
 ## For AI Agents
 
@@ -27,20 +27,44 @@ npm install -g unicli
 
 ## What You Can Do
 
-### Web (25 sites)
+### Web (39 sites)
 
-hackernews, reddit, bluesky, google, stackoverflow, wikipedia, bloomberg,
-imdb, producthunt, tieba, 36kr, substack, arxiv, bbc, devto, dictionary,
-lobsters, steam, v2ex, weread, xiaoyuzhou, ctrip, paperreview, spotify, web
+**Chinese**: bilibili (12 cmds), weibo (5), zhihu (6), douban (3), xueqiu (2),
+linux-do (2), jike, zsxq (2), tieba (3), weread (3), v2ex (9)
 
-### Desktop (12 apps)
+**International**: twitter (5), youtube (5), reddit (9), hackernews (8),
+bluesky (9), medium, substack, producthunt, lobsters (4), devto (3),
+stackoverflow (4)
 
-ffmpeg (11 cmds), imagemagick (6), blender (4), inkscape (3), pandoc,
-libreoffice (2), mermaid, musescore (2), drawio, ollama, comfyui (4)
+**Finance**: bloomberg (9), sinafinance (2), xueqiu (2)
 
-### Bridge (4 CLIs)
+**Reference**: google (2), wikipedia (4), arxiv (2), dictionary (3),
+bbc, 36kr, paperreview (3), spotify, ctrip, xiaoyuzhou (3), steam, imdb (4),
+hf, web
 
-gh (5 cmds), docker (5), yt-dlp (4), jq (2)
+### Desktop (14 apps)
+
+ffmpeg (11 cmds), imagemagick (6), blender (4), gimp (3), freecad (2),
+inkscape (3), pandoc, libreoffice (2), mermaid, musescore (2), drawio,
+ollama, comfyui (4), docker (5)
+
+### Bridge (3 CLIs)
+
+gh (5 cmds), yt-dlp (4), jq (2)
+
+## Authentication
+
+Some sites require cookies. The engine reads cookies from `~/.unicli/cookies/<site>.json`:
+
+```bash
+unicli auth setup <site>    # Show required cookies + template
+unicli auth check <site>    # Validate cookie file
+unicli auth list            # List configured sites
+```
+
+Cookie file format: `{ "SESSDATA": "value", "bili_jct": "value" }`
+
+Sites requiring auth: bilibili, weibo, zhihu, twitter, xueqiu, zsxq, jike, weread, v2ex (some commands)
 
 ## Output Protocol
 

@@ -1,0 +1,37 @@
+site: bilibili
+name: following
+description: Bilibili user followings list
+domain: api.bilibili.com
+type: web-api
+strategy: cookie
+auth_cookies: [SESSDATA, bili_jct]
+
+args:
+  uid:
+    required: true
+    positional: true
+    description: User ID (mid)
+  limit:
+    type: int
+    default: 20
+    description: Number of users
+
+pipeline:
+  - fetch:
+      url: https://api.bilibili.com/x/relation/followings
+      params:
+        vmid: "${{ args.uid }}"
+        pn: "1"
+        ps: "${{ args.limit }}"
+
+  - select: data.list
+
+  - map:
+      mid: ${{ item.mid }}
+      name: ${{ item.uname }}
+      sign: ${{ item.sign }}
+      face: ${{ item.face }}
+
+  - limit: ${{ args.limit }}
+
+columns: [mid, name, sign]

@@ -1,0 +1,39 @@
+site: sinafinance
+name: stock-rank
+description: Sina Finance stock ranking by volume/price change
+domain: vip.stock.finance.sina.com.cn
+type: web-api
+strategy: public
+
+args:
+  sort:
+    default: changepercent
+    description: "Sort by: changepercent, volume, amount, turnoverratio"
+  limit:
+    type: int
+    default: 20
+    description: Number of stocks
+
+pipeline:
+  - fetch:
+      url: https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData
+      params:
+        page: "1"
+        num: "${{ args.limit }}"
+        sort: "${{ args.sort }}"
+        asc: "0"
+        node: hs_a
+        symbol: ""
+        _s_r_a: page
+
+  - map:
+      symbol: ${{ item.symbol }}
+      name: ${{ item.name }}
+      price: ${{ item.trade }}
+      change: ${{ item.changepercent }}%
+      volume: ${{ item.volume }}
+      amount: ${{ item.amount }}
+
+  - limit: ${{ args.limit }}
+
+columns: [symbol, name, price, change, volume, amount]

@@ -1,0 +1,35 @@
+site: reddit
+name: comments
+description: Reddit post comments
+domain: www.reddit.com
+type: web-api
+strategy: public
+
+args:
+  url:
+    required: true
+    positional: true
+    description: Reddit post URL or ID (e.g. /r/sub/comments/id/title)
+  limit:
+    type: int
+    default: 20
+    description: Number of comments
+
+pipeline:
+  - fetch:
+      url: https://www.reddit.com/${{ args.url }}.json
+      params:
+        limit: "${{ args.limit }}"
+        sort: top
+
+  - select: "1.data.children"
+
+  - map:
+      author: ${{ item.data?.author || '' }}
+      body: ${{ (item.data?.body || '') | slice(0, 200) }}
+      score: ${{ item.data?.score || 0 }}
+      created: ${{ item.data?.created_utc || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [author, body, score, created]

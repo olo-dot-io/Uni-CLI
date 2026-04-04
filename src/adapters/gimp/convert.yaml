@@ -1,0 +1,38 @@
+# Desktop adapter — convert an image between formats using GIMP batch mode
+site: gimp
+name: convert
+description: Convert an image to a different format (png, jpg, bmp, tiff, webp)
+type: desktop
+binary: gimp
+detect: which gimp
+timeout: 60000
+
+args:
+  input:
+    type: str
+    required: true
+    positional: true
+    description: Path to input image
+  output:
+    type: str
+    required: true
+    description: Output path (format inferred from extension)
+  quality:
+    type: int
+    default: 85
+    description: JPEG/WebP quality (0-100)
+
+pipeline:
+  - exec:
+      command: gimp
+      args: ["-i", "-b", "-"]
+      stdin: |
+        (let* ((image (car (gimp-file-load RUN-NONINTERACTIVE "${{ args.input }}" "${{ args.input }}")))
+               (drawable (car (gimp-image-flatten image))))
+          (gimp-file-overwrite RUN-NONINTERACTIVE image drawable "${{ args.output }}" "${{ args.output }}")
+          (gimp-image-delete image)
+          (gimp-quit 0))
+      parse: text
+      timeout: 60000
+
+columns: [result]

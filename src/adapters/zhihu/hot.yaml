@@ -1,0 +1,32 @@
+site: zhihu
+name: hot
+description: Zhihu hot topics list
+domain: www.zhihu.com
+type: web-api
+strategy: cookie
+auth_cookies: [z_c0]
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of items
+
+pipeline:
+  - fetch:
+      url: https://www.zhihu.com/api/v3/feed/topstory/hot-lists/total
+      params:
+        limit: "50"
+
+  - select: data
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.target?.title || '' }}
+      heat: ${{ item.detail_text || '' }}
+      answers: ${{ item.target?.answer_count || 0 }}
+      url: ${{ 'https://www.zhihu.com/question/' + (item.target?.id || '') }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, heat, answers, url]

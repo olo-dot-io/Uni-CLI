@@ -1,0 +1,38 @@
+site: zhihu
+name: question
+description: Zhihu question with top answers
+domain: www.zhihu.com
+type: web-api
+strategy: cookie
+auth_cookies: [z_c0]
+
+args:
+  id:
+    required: true
+    positional: true
+    description: Question ID
+  limit:
+    type: int
+    default: 10
+    description: Number of answers
+
+pipeline:
+  - fetch:
+      url: https://www.zhihu.com/api/v4/questions/${{ args.id }}/feeds
+      params:
+        limit: "${{ args.limit }}"
+        offset: "0"
+        order: default
+        include: "content,voteup_count,comment_count"
+
+  - select: data
+
+  - map:
+      author: ${{ item.target?.author?.name || '' }}
+      content: ${{ (item.target?.content || '') | strip_html | slice(0, 200) }}
+      voteup: ${{ item.target?.voteup_count || 0 }}
+      comments: ${{ item.target?.comment_count || 0 }}
+
+  - limit: ${{ args.limit }}
+
+columns: [author, content, voteup, comments]

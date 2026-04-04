@@ -3,6 +3,54 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
+## [0.202.0] — Vostok · Tereshkova
+
+### Engine
+
+- Cookie authentication strategy — reads cookies from `~/.unicli/cookies/<site>.json`
+- Cookie injection in fetch/fetch_text pipeline steps (strategy=cookie)
+- `write_temp` pipeline step for desktop adapters (temp file creation + auto-cleanup)
+- `auth` CLI commands: `auth setup`, `auth check`, `auth list`
+- Async TS adapter loading via dynamic import (loadTsAdapters)
+- `PipelineOptions` for passing site/strategy context to pipeline engine
+
+### Web Adapters — Chinese Platforms (3 new sites, 18 commands)
+
+- bilibili: 12 commands (hot, ranking, feed, following, me, history, favorites, search, user-videos, comments, subtitle, download) — WBI signed + cookie auth
+- weibo: 5 commands (hot, timeline, profile, comments, me) — cookie auth
+- zhihu: 6 commands (hot, feed, question, search, me, notifications) — cookie auth
+
+### Web Adapters — International (2 new sites, 10 commands)
+
+- twitter: 5 commands (search, profile, timeline, bookmarks, trending) — GraphQL + Bearer token + cookie auth
+- youtube: 5 commands (search, video, channel, comments, transcript) — InnerTube API
+
+### Web Adapters — P1/P2 Sites (8 new sites, 19 commands)
+
+- douban: 3 commands (movie-hot, book-hot, search)
+- xueqiu: 2 commands (hot, quote)
+- linux-do: 2 commands (hot, latest) — Discourse API
+- jike: 1 command (feed) — GraphQL
+- zsxq: 2 commands (groups, topics) — cookie auth
+- medium: 1 command (search)
+- sinafinance: 2 commands (rolling-news, stock-rank)
+- Expanded: v2ex (+2: notifications, me), weread (+1: shelf), tieba (+2: search, posts), reddit (+1: comments)
+
+### Desktop Adapters (2 new apps, 5 commands)
+
+- gimp: 3 commands (resize, convert, info) — Script-Fu via exec stdin
+- freecad: 2 commands (export-stl, info) — Python via write_temp + exec
+
+### Infrastructure
+
+- Reference repos (opencli, CLI-Anything) synced to `/ref/` (gitignored, `npm run sync:ref`)
+- `authCookies` field in adapter manifests for declaring required cookies
+- `Strategy` re-exported from registry.ts for TS adapter pattern
+
+**Stats: 57 sites, 198 commands (was 43 sites, 141 commands — +14 sites, +57 commands)**
+
+---
+
 ## [0.201.0] — Vostok · Chaika II
 
 ### Engine

@@ -26,6 +26,9 @@ coverage/
 *.log
 npm-debug.log*
 
+# Reference repos (never committed)
+ref/
+
 # Plugin data
 .unicli/adapters/
 .unicli/plugins/

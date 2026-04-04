@@ -1,0 +1,33 @@
+site: douban
+name: movie-hot
+description: Douban hot movies
+domain: movie.douban.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of movies
+
+pipeline:
+  - fetch:
+      url: https://movie.douban.com/j/search_subjects
+      params:
+        type: movie
+        tag: 热门
+        page_limit: "${{ args.limit }}"
+        page_start: "0"
+
+  - select: subjects
+
+  - map:
+      title: ${{ item.title }}
+      rate: ${{ item.rate }}
+      url: ${{ item.url }}
+      cover: ${{ item.cover }}
+
+  - limit: ${{ args.limit }}
+
+columns: [title, rate, url]

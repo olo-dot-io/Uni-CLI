@@ -1,0 +1,31 @@
+site: zhihu
+name: notifications
+description: Zhihu notifications
+domain: www.zhihu.com
+type: web-api
+strategy: cookie
+auth_cookies: [z_c0]
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of notifications
+
+pipeline:
+  - fetch:
+      url: https://www.zhihu.com/api/v4/notifications/v2/default
+      params:
+        limit: "${{ args.limit }}"
+        offset: "0"
+
+  - select: data
+
+  - map:
+      type: ${{ item.type }}
+      content: ${{ (item.content?.text || '') | strip_html | slice(0, 150) }}
+      created: ${{ item.created_time }}
+
+  - limit: ${{ args.limit }}
+
+columns: [type, content, created]

@@ -1,0 +1,37 @@
+site: medium
+name: search
+description: Search Medium articles
+domain: medium.com
+type: web-api
+strategy: public
+
+args:
+  query:
+    required: true
+    positional: true
+    description: Search query
+  limit:
+    type: int
+    default: 20
+    description: Number of results
+
+pipeline:
+  - fetch:
+      url: https://medium.com/search/posts
+      params:
+        q: "${{ args.query }}"
+        format: json
+      headers:
+        Accept: application/json
+
+  - select: payload.references.Post
+
+  - map:
+      title: ${{ item.title }}
+      subtitle: ${{ (item.virtuals?.subtitle || '') | slice(0, 100) }}
+      claps: ${{ item.virtuals?.totalClapCount || 0 }}
+      responses: ${{ item.virtuals?.responsesCreatedCount || 0 }}
+
+  - limit: ${{ args.limit }}
+
+columns: [title, subtitle, claps, responses]

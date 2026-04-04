@@ -1,6 +1,6 @@
 {
   "name": "unicli",
-  "version": "0.201.0",
+  "version": "0.202.0",
   "description": "CLI IS ALL YOU NEED — Turn any website, desktop app, cloud service, or system tool into a CLI command",
   "type": "module",
   "main": "dist/main.js",
@@ -26,7 +26,8 @@
     "docs:build": "vitepress build docs",
     "doctor": "tsx src/doctor.ts",
     "mcp": "tsx src/mcp/server.ts",
-    "release": "npm run build && tsx scripts/release.ts"
+    "release": "npm run build && tsx scripts/release.ts",
+    "sync:ref": "cd ref && (cd opencli && git pull --depth 1) && (cd CLI-Anything && git pull --depth 1) && echo 'ref repos synced'"
   },
   "keywords": [
     "cli",

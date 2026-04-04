@@ -1,0 +1,43 @@
+# Desktop adapter — resize an image using GIMP's Script-Fu batch mode
+site: gimp
+name: resize
+description: Resize an image to specified dimensions using GIMP
+type: desktop
+binary: gimp
+detect: which gimp
+timeout: 60000
+
+args:
+  input:
+    type: str
+    required: true
+    positional: true
+    description: Path to input image
+  width:
+    type: int
+    required: true
+    description: Target width in pixels
+  height:
+    type: int
+    required: true
+    description: Target height in pixels
+  output:
+    type: str
+    description: Output path (defaults to overwriting input)
+
+pipeline:
+  - exec:
+      command: gimp
+      args: ["-i", "-b", "-"]
+      stdin: |
+        (let* ((image (car (gimp-file-load RUN-NONINTERACTIVE "${{ args.input }}" "${{ args.input }}")))
+               (drawable (car (gimp-image-get-active-drawable image))))
+          (gimp-image-scale-full image ${{ args.width }} ${{ args.height }} INTERPOLATION-LINEAR)
+          (gimp-image-flatten image)
+          (file-png-save RUN-NONINTERACTIVE image (car (gimp-image-get-active-drawable image)) "${{ args.output || args.input }}" "${{ args.output || args.input }}" 0 9 1 1 1 1 1)
+          (gimp-image-delete image)
+          (gimp-quit 0))
+      parse: text
+      timeout: 60000
+
+columns: [result]

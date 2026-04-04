@@ -1,0 +1,34 @@
+site: xueqiu
+name: hot
+description: Xueqiu hot stocks and discussions
+domain: xueqiu.com
+type: web-api
+strategy: cookie
+auth_cookies: [xq_a_token]
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of items
+
+pipeline:
+  - fetch:
+      url: https://stock.xueqiu.com/v5/stock/hot_stock/list.json
+      params:
+        size: "${{ args.limit }}"
+        _type: "10"
+        type: "10"
+
+  - select: data.items
+
+  - map:
+      symbol: ${{ item.code }}
+      name: ${{ item.name }}
+      current: ${{ item.current }}
+      percent: ${{ item.percent }}
+      chg: ${{ item.chg }}
+
+  - limit: ${{ args.limit }}
+
+columns: [symbol, name, current, percent, chg]

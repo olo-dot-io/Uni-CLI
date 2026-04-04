@@ -1,0 +1,35 @@
+site: douban
+name: search
+description: Search Douban movies and books
+domain: www.douban.com
+type: web-api
+strategy: cookie
+auth_cookies: [dbcl2]
+
+args:
+  query:
+    required: true
+    positional: true
+    description: Search query
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://www.douban.com/j/search
+      params:
+        q: "${{ args.query }}"
+        start: "0"
+        cat: "1002"
+
+  - select: items
+
+  - map:
+      title: ${{ (item.title || '') | strip_html }}
+      url: ${{ item.url }}
+      rating: ${{ item.rating?.average || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [title, url, rating]

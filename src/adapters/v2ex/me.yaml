@@ -1,0 +1,23 @@
+site: v2ex
+name: me
+description: V2EX current user profile
+domain: www.v2ex.com
+type: web-api
+strategy: cookie
+auth_cookies: [A2]
+
+pipeline:
+  - fetch:
+      url: https://www.v2ex.com/api/v2/member
+      headers:
+        Authorization: "Bearer ${{ args.token || '' }}"
+
+  - select: result
+
+  - map:
+      id: ${{ item.id }}
+      username: ${{ item.username }}
+      bio: ${{ item.bio || '' }}
+      created: ${{ item.created }}
+
+columns: [id, username, bio, created]

@@ -1,0 +1,34 @@
+site: sinafinance
+name: rolling-news
+description: Sina Finance rolling news feed
+domain: feed.mix.sina.com.cn
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 30
+    description: Number of news items
+
+pipeline:
+  - fetch:
+      url: https://feed.mix.sina.com.cn/api/roll/get
+      params:
+        pageid: "153"
+        lid: "2509"
+        num: "${{ args.limit }}"
+        page: "1"
+
+  - select: result.data
+
+  - map:
+      title: ${{ item.title }}
+      summary: ${{ (item.summary || '') | slice(0, 100) }}
+      url: ${{ item.url }}
+      ctime: ${{ item.ctime }}
+      media: ${{ item.media_name || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [title, summary, media, ctime]

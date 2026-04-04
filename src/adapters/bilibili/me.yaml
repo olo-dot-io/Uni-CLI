@@ -1,0 +1,22 @@
+site: bilibili
+name: me
+description: Current Bilibili user profile info
+domain: api.bilibili.com
+type: web-api
+strategy: cookie
+auth_cookies: [SESSDATA, bili_jct]
+
+pipeline:
+  - fetch:
+      url: https://api.bilibili.com/x/web-interface/nav
+
+  - select: data
+
+  - map:
+      uid: ${{ item.mid }}
+      name: ${{ item.uname }}
+      coins: ${{ item.money }}
+      level: ${{ item.level_info?.current_level }}
+      vip: ${{ item.vipStatus }}
+
+columns: [uid, name, coins, level, vip]

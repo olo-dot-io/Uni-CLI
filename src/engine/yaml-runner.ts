@@ -8,24 +8,38 @@
  *   filter   → Keep items matching a condition
  *   limit    → Cap the number of results
  *   html_to_md → Convert HTML to Markdown via turndown
+ *   write_temp → Write content to a temp file (cleaned up after pipeline)
  *   evaluate → Run JS expression (for browser adapters, future)
  *
  * Template syntax: ${{ expression }}
- *   Available variables: item, index, args, base
+ *   Available variables: item, index, args, base, temp
  */
 
 import { execFile } from "node:child_process";
+import { mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { randomBytes } from "node:crypto";
 import { promisify } from "node:util";
 import TurndownService from "turndown";
 import { USER_AGENT } from "../constants.js";
 import type { PipelineStep } from "../types.js";
+import { loadCookies, formatCookieHeader } from "./cookies.js";
 
 const execFileAsync = promisify(execFile);
+
+export interface PipelineOptions {
+  site?: string;
+  strategy?: string;
+}
 
 type PipelineContext = {
   data: unknown;
   args: Record<string, unknown>;
   base?: string;
+  cookieHeader?: string;
+  temp?: Record<string, string>;
+  tempDir?: string;
 };
 
 /**
@@ -71,67 +85,103 @@ export async function runPipeline(
   steps: PipelineStep[],
   args: Record<string, unknown>,
   base?: string,
+  options?: PipelineOptions,
 ): Promise<unknown[]> {
-  let ctx: PipelineContext = { data: null, args, base };
-
-  for (let i = 0; i < steps.length; i++) {
-    const step = steps[i];
-    const [action, config] = Object.entries(step)[0];
-
-    try {
-      switch (action) {
-        case "fetch":
-          ctx = await stepFetch(ctx, config as FetchConfig);
-          break;
-        case "fetch_text":
-          ctx = await stepFetchText(ctx, config as FetchConfig);
-          break;
-        case "parse_rss":
-          ctx = stepParseRss(ctx, config as RssConfig | undefined);
-          break;
-        case "select":
-          ctx = stepSelect(ctx, config as string, i);
-          break;
-        case "map":
-          ctx = stepMap(ctx, config as Record<string, string>);
-          break;
-        case "filter":
-          ctx = stepFilter(ctx, config as string);
-          break;
-        case "sort":
-          ctx = stepSort(ctx, config as SortConfig);
-          break;
-        case "limit":
-          ctx = stepLimit(ctx, config);
-          break;
-        case "exec":
-          ctx = await stepExec(ctx, config as ExecConfig);
-          break;
-        case "html_to_md":
-          ctx = stepHtmlToMd(ctx);
-          break;
-        default:
-          break;
-      }
-    } catch (err) {
-      if (err instanceof PipelineError) throw err;
+  // Load cookies for cookie strategy
+  let cookieHeader: string | undefined;
+  if (options?.strategy === "cookie" && options?.site) {
+    const cookies = loadCookies(options.site);
+    if (!cookies) {
       throw new PipelineError(
-        `Step ${i} (${action}) failed: ${err instanceof Error ? err.message : String(err)}`,
+        `No cookies found for "${options.site}". Run: unicli auth setup ${options.site}`,
         {
-          step: i,
-          action,
-          config,
-          errorType: "parse_error",
-          suggestion: `Check the ${action} step at index ${i} in the adapter YAML. The expression or configuration may be invalid.`,
+          step: -1,
+          action: "auth",
+          config: { site: options.site, strategy: "cookie" },
+          errorType: "http_error",
+          suggestion: `Create cookie file at ~/.unicli/cookies/${options.site}.json with the required cookies. Run "unicli auth setup ${options.site}" for instructions.`,
         },
       );
     }
+    cookieHeader = formatCookieHeader(cookies);
   }
 
-  const result = ctx.data;
-  if (Array.isArray(result)) return result;
-  if (result !== null && result !== undefined) return [result];
-  return [];
+  let ctx: PipelineContext = { data: null, args, base, cookieHeader };
+  let tempDir: string | undefined;
+
+  try {
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i];
+      const [action, config] = Object.entries(step)[0];
+
+      try {
+        switch (action) {
+          case "fetch":
+            ctx = await stepFetch(ctx, config as FetchConfig);
+            break;
+          case "fetch_text":
+            ctx = await stepFetchText(ctx, config as FetchConfig);
+            break;
+          case "parse_rss":
+            ctx = stepParseRss(ctx, config as RssConfig | undefined);
+            break;
+          case "select":
+            ctx = stepSelect(ctx, config as string, i);
+            break;
+          case "map":
+            ctx = stepMap(ctx, config as Record<string, string>);
+            break;
+          case "filter":
+            ctx = stepFilter(ctx, config as string);
+            break;
+          case "sort":
+            ctx = stepSort(ctx, config as SortConfig);
+            break;
+          case "limit":
+            ctx = stepLimit(ctx, config);
+            break;
+          case "exec":
+            ctx = await stepExec(ctx, config as ExecConfig);
+            break;
+          case "html_to_md":
+            ctx = stepHtmlToMd(ctx);
+            break;
+          case "write_temp":
+            ctx = stepWriteTemp(ctx, config as WriteTempConfig);
+            break;
+          default:
+            break;
+        }
+      } catch (err) {
+        if (err instanceof PipelineError) throw err;
+        throw new PipelineError(
+          `Step ${i} (${action}) failed: ${err instanceof Error ? err.message : String(err)}`,
+          {
+            step: i,
+            action,
+            config,
+            errorType: "parse_error",
+            suggestion: `Check the ${action} step at index ${i} in the adapter YAML. The expression or configuration may be invalid.`,
+          },
+        );
+      }
+
+      if (ctx.tempDir) tempDir = ctx.tempDir;
+    }
+
+    const result = ctx.data;
+    if (Array.isArray(result)) return result;
+    if (result !== null && result !== undefined) return [result];
+    return [];
+  } finally {
+    if (tempDir) {
+      try {
+        rmSync(tempDir, { recursive: true, force: true });
+      } catch {
+        // Best-effort cleanup
+      }
+    }
+  }
 }
 
 // --- Step implementations ---
@@ -162,7 +212,7 @@ async function stepFetch(
         const resolvedConfig = config.body
           ? { ...config, body: resolveTemplateDeep(config.body, itemCtx) }
           : config;
-        const resp = await fetchJson(itemUrl, resolvedConfig);
+        const resp = await fetchJson(itemUrl, resolvedConfig, ctx.cookieHeader);
         return resp;
       }),
     );
@@ -182,17 +232,25 @@ async function stepFetch(
   const resolvedConfig = config.body
     ? { ...config, body: resolveTemplateDeep(config.body, ctx) }
     : config;
-  const data = await fetchJson(url, resolvedConfig);
+  const data = await fetchJson(url, resolvedConfig, ctx.cookieHeader);
   return { ...ctx, data };
 }
 
-async function fetchJson(url: string, config: FetchConfig): Promise<unknown> {
+async function fetchJson(
+  url: string,
+  config: FetchConfig,
+  cookieHeader?: string,
+): Promise<unknown> {
   const method = config.method ?? "GET";
   const headers: Record<string, string> = {
     Accept: "application/json",
     "User-Agent": USER_AGENT,
     ...config.headers,
   };
+
+  if (cookieHeader) {
+    headers["Cookie"] = cookieHeader;
+  }
 
   const init: RequestInit = { method, headers };
   if (config.body && method !== "GET") {
@@ -341,6 +399,10 @@ async function stepFetchText(
     "User-Agent": USER_AGENT,
     ...config.headers,
   };
+
+  if (ctx.cookieHeader) {
+    headers["Cookie"] = ctx.cookieHeader;
+  }
 
   const resp = await fetch(url, { method, headers });
   if (!resp.ok) {
@@ -629,6 +691,7 @@ function buildScope(ctx: PipelineContext): Record<string, unknown> {
   const scope: Record<string, unknown> = {
     args: ctx.args,
     base: ctx.base,
+    temp: ctx.temp ?? {},
   };
 
   if (
@@ -852,6 +915,33 @@ function evalExpression(expr: string, scope: Record<string, unknown>): unknown {
   } catch {
     return undefined;
   }
+}
+
+// --- write_temp: create ephemeral script files for desktop adapters ---
+
+interface WriteTempConfig {
+  filename: string;
+  content: string;
+}
+
+function stepWriteTemp(
+  ctx: PipelineContext,
+  config: WriteTempConfig,
+): PipelineContext {
+  const td =
+    ctx.tempDir ?? join(tmpdir(), `unicli-${randomBytes(6).toString("hex")}`);
+  mkdirSync(td, { recursive: true });
+
+  const filename = evalTemplate(config.filename, ctx);
+  const content = evalTemplate(config.content, ctx);
+  const filePath = join(td, filename);
+
+  writeFileSync(filePath, content, "utf-8");
+
+  const key = filename.replace(/[^a-zA-Z0-9]/g, "_");
+  const temp = { ...(ctx.temp ?? {}), [key]: filePath };
+
+  return { ...ctx, temp, tempDir: td };
 }
 
 /**

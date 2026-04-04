@@ -9,7 +9,7 @@
 
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, extname, basename, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import yaml from "js-yaml";
 import { registerAdapter } from "../registry.js";
 import type {
@@ -39,6 +39,7 @@ interface YamlAdapter {
   auth?: string;
   autoInstall?: string;
   passthrough?: boolean;
+  auth_cookies?: string[];
   args?: Record<string, YamlArg>;
   pipeline?: PipelineStep[];
   columns?: string[];
@@ -110,6 +111,7 @@ export function loadAdaptersFromDir(dir: string): number {
         if (parsed.autoInstall) siteMeta.autoInstall = parsed.autoInstall;
         if (parsed.passthrough !== undefined)
           siteMeta.passthrough = parsed.passthrough;
+        if (parsed.auth_cookies) siteMeta.authCookies = parsed.auth_cookies;
 
         // Parse args from YAML into AdapterArg[]
         let adapterArgs: AdapterArg[] | undefined;
@@ -159,10 +161,45 @@ export function loadAdaptersFromDir(dir: string): number {
   return count;
 }
 
-/** Load all adapters: built-in → user → plugins */
+/** Collect TS adapter files from a directory for dynamic import */
+function collectTsFiles(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  const files: string[] = [];
+  for (const site of readdirSync(dir)) {
+    if (site.startsWith("_") || site.startsWith(".")) continue;
+    const siteDir = join(dir, site);
+    if (!statSync(siteDir).isDirectory()) continue;
+    for (const file of readdirSync(siteDir)) {
+      if (extname(file) === ".ts" && !file.endsWith(".test.ts")) {
+        files.push(join(siteDir, file));
+      }
+    }
+  }
+  return files;
+}
+
+/** Load all adapters: built-in YAML → user YAML → TS adapters (async) */
 export function loadAllAdapters(): number {
   let total = 0;
   total += loadAdaptersFromDir(BUILTIN_DIR);
   total += loadAdaptersFromDir(USER_DIR);
   return total;
+}
+
+/** Load TS adapters that self-register via cli() */
+export async function loadTsAdapters(): Promise<number> {
+  const files = [...collectTsFiles(BUILTIN_DIR), ...collectTsFiles(USER_DIR)];
+  let count = 0;
+  for (const file of files) {
+    try {
+      await import(pathToFileURL(file).href);
+      count++;
+    } catch (err) {
+      if (process.env.UNICLI_DEBUG) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`Warning: Failed to import ${file}: ${msg}`);
+      }
+    }
+  }
+  return count;
 }

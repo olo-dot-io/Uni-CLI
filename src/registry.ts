@@ -6,13 +6,10 @@
  *   2. TS adapters   — registered via cli() function call
  */
 
-import { AdapterType } from "./types.js";
-import type {
-  AdapterManifest,
-  AdapterCommand,
-  AdapterArg,
-  Strategy,
-} from "./types.js";
+import { AdapterType, Strategy } from "./types.js";
+import type { AdapterManifest, AdapterCommand, AdapterArg } from "./types.js";
+
+export { Strategy };
 
 const adapters = new Map<string, AdapterManifest>();
 

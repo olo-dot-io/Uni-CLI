@@ -4,15 +4,16 @@
 
 import { Command } from "commander";
 import chalk from "chalk";
-import { loadAllAdapters } from "./discovery/loader.js";
+import { loadAllAdapters, loadTsAdapters } from "./discovery/loader.js";
 import { getAllAdapters, listCommands, resolveCommand } from "./registry.js";
 import { format, detectFormat } from "./output/formatter.js";
 import { runPipeline, PipelineError } from "./engine/yaml-runner.js";
 import { ExitCode } from "./types.js";
 import { VERSION } from "./constants.js";
+import { registerAuthCommands } from "./commands/auth.js";
 import type { OutputFormat } from "./types.js";
 
-export function createCli(): Command {
+export async function createCli(): Promise<Command> {
   const program = new Command();
 
   program
@@ -25,8 +26,10 @@ export function createCli(): Command {
     )
     .option("-v, --verbose", "show pipeline debug steps");
 
-  // Load adapters before parsing
-  const adapterCount = loadAllAdapters();
+  // Load YAML adapters synchronously, then TS adapters asynchronously
+  const yamlCount = loadAllAdapters();
+  const tsCount = await loadTsAdapters();
+  const adapterCount = yamlCount + tsCount;
 
   // Register "list" command
   program
@@ -71,6 +74,9 @@ export function createCli(): Command {
       console.log(`  Node.js: ${chalk.green(process.version)}`);
       console.log(`  Platform: ${chalk.green(process.platform)}`);
     });
+
+  // Register auth commands — cookie management
+  registerAuthCommands(program);
 
   // Register "repair" command — diagnostic for broken adapters
   program
@@ -128,6 +134,7 @@ export function createCli(): Command {
             command.pipeline,
             { limit: 3 },
             adapter.base,
+            { site: adapter.name, strategy: adapter.strategy },
           );
           console.log(
             chalk.green(`  ✓ Pipeline succeeded — ${results.length} result(s)`),
@@ -229,6 +236,7 @@ export function createCli(): Command {
               cmd.pipeline,
               { limit: 2 },
               adapter.base,
+              { site: adapter.name, strategy: adapter.strategy },
             );
             clearTimeout(timer);
 
@@ -353,7 +361,15 @@ export function createCli(): Command {
 
           if (cmd.pipeline) {
             // YAML pipeline execution
-            results = await runPipeline(cmd.pipeline, mergedArgs, adapter.base);
+            results = await runPipeline(
+              cmd.pipeline,
+              mergedArgs,
+              adapter.base,
+              {
+                site: adapter.name,
+                strategy: adapter.strategy,
+              },
+            );
           } else if (cmd.func) {
             // TypeScript adapter function
             const raw = await cmd.func(null as never, mergedArgs);

@@ -1,0 +1,40 @@
+site: zhihu
+name: search
+description: Search Zhihu questions and answers
+domain: www.zhihu.com
+type: web-api
+strategy: cookie
+auth_cookies: [z_c0]
+
+args:
+  query:
+    required: true
+    positional: true
+    description: Search query
+  limit:
+    type: int
+    default: 20
+    description: Number of results
+
+pipeline:
+  - fetch:
+      url: https://www.zhihu.com/api/v4/search_v3
+      params:
+        q: "${{ args.query }}"
+        t: general
+        offset: "0"
+        limit: "${{ args.limit }}"
+        correction: "1"
+
+  - select: data
+
+  - map:
+      type: ${{ item.type }}
+      title: ${{ (item.object?.title || item.object?.question?.title || '') | strip_html }}
+      excerpt: ${{ (item.object?.excerpt || '') | strip_html | slice(0, 150) }}
+      voteup: ${{ item.object?.voteup_count || 0 }}
+      author: ${{ item.object?.author?.name || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [type, title, excerpt, voteup, author]

@@ -1,0 +1,32 @@
+site: bilibili
+name: feed
+description: Bilibili dynamic feed (following updates)
+domain: api.bilibili.com
+type: web-api
+strategy: cookie
+auth_cookies: [SESSDATA, bili_jct]
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of items
+
+pipeline:
+  - fetch:
+      url: https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/all
+      params:
+        timezone_offset: "-480"
+        type: all
+
+  - select: data.items
+
+  - map:
+      author: ${{ item.modules?.module_author?.name || '' }}
+      type: ${{ item.type }}
+      text: ${{ item.modules?.module_dynamic?.desc?.text || '' }}
+      timestamp: ${{ item.modules?.module_author?.pub_ts || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [author, type, text, timestamp]
