@@ -41,6 +41,10 @@ import {
   generateFilename,
   mapConcurrent,
 } from "./download.js";
+import {
+  executeWebsocket,
+  type WebsocketStepConfig,
+} from "./websocket.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -201,6 +205,9 @@ export async function runPipeline(
             break;
           case "download":
             ctx = await stepDownload(ctx, config as DownloadStepConfig);
+            break;
+          case "websocket":
+            ctx = await stepWebsocket(ctx, config as WebsocketStepConfig);
             break;
           default:
             break;
@@ -1616,6 +1623,19 @@ async function stepDownload(
     const result = await downloadOne(item, 0);
     return { ...ctx, data: [result] };
   }
+}
+
+async function stepWebsocket(
+  ctx: PipelineContext,
+  config: WebsocketStepConfig,
+): Promise<PipelineContext> {
+  const resolvedConfig: WebsocketStepConfig = {
+    ...config,
+    url: evalTemplate(config.url, ctx),
+    send: evalTemplate(config.send, ctx),
+  };
+  const data = await executeWebsocket(resolvedConfig);
+  return { ...ctx, data };
 }
 
 // Exported for unit testing — not part of public API
