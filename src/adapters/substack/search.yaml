@@ -1,0 +1,37 @@
+site: substack
+name: search
+description: Search Substack publications
+domain: substack.com
+type: web-api
+strategy: public
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search query
+  limit:
+    type: int
+    default: 10
+    description: Number of results
+
+pipeline:
+  - fetch:
+      url: https://substack.com/api/v1/publication/search
+      params:
+        query: ${{ args.query }}
+        limit: ${{ args.limit }}
+
+  - select: results
+
+  - map:
+      name: ${{ item.name }}
+      author: ${{ item.author_name || '' }}
+      subscribers: ${{ item.subscriber_count || 0 }}
+      description: ${{ (item.description || '') | truncate(150) }}
+      url: ${{ item.base_url || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [name, author, subscribers, description]
