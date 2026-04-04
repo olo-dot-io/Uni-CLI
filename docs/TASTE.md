@@ -194,15 +194,14 @@ Inspired by Mission Control displays and the cosmic void.
 - Colors: white on deep space, or signal blue on dark.
 - No gradients. No shadows. Clean vector geometry.
 
-## Competitive Positioning
+## Positioning
 
 ### What We Say
 
-> "OpenCLI does websites. CLI-Anything does desktop apps. Uni-CLI does everything — in 20 lines of YAML."
+> "Uni-CLI adapts any software — web, desktop, or service — to a 20-line YAML adapter that AI agents can read, fix, and verify."
 
 ### What We Don't Say
 
-- Never disparage competitors. They pioneered this space.
 - Never claim features we haven't shipped.
 - Never use "revolutionary" or "groundbreaking." Let the work speak.
 

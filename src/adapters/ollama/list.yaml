@@ -1,5 +1,4 @@
 # Service adapter — wrapping Ollama's local REST API
-# Inspired by CLI-Anything's ollama harness
 site: ollama
 name: list
 description: List locally installed Ollama models

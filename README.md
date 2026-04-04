@@ -86,18 +86,18 @@ Uni-CLI turns **any interface** — websites, desktop apps, cloud APIs, local se
 └─────────────────────────────────────────────────────┘
 ```
 
-| Feature            | Uni-CLI               | OpenCLI           | CLI-Anything        |
-| ------------------ | --------------------- | ----------------- | ------------------- |
-| Websites → CLI     | ✅                    | ✅                | ❌                  |
-| Desktop apps → CLI | ✅                    | Partial           | ✅                  |
-| Browser automation | ✅                    | ✅                | ❌                  |
-| Local services     | ✅                    | ❌                | ✅                  |
-| Agent self-repair  | ✅ Full loop          | ❌                | ❌                  |
-| Structured errors  | ✅ JSON               | ❌ Strings        | ❌ Traceback        |
-| Adapter format     | 20-line YAML          | 50-300 line TS    | 500-900 line Python |
-| Fix persists       | ✅ ~/.unicli/ overlay | ❌ npm overwrites | ❌ pip overwrites   |
-| Repair command     | ✅ `unicli repair`    | ❌                | ❌                  |
-| Test command       | ✅ `unicli test`      | ❌                | ❌                  |
+| Feature            | Uni-CLI                       |
+| ------------------ | ----------------------------- |
+| Websites → CLI     | ✅ 70+ sites                  |
+| Desktop apps → CLI | ✅ 30+ apps                   |
+| Browser automation | ✅ Chrome Extension           |
+| Local services     | ✅ REST/WebSocket             |
+| Agent self-repair  | ✅ Full loop                  |
+| Structured errors  | ✅ JSON with path + step      |
+| Adapter format     | 20-line YAML (agent-editable) |
+| Fix persists       | ✅ ~/.unicli/ overlay         |
+| Repair command     | ✅ `unicli repair`            |
+| Test command       | ✅ `unicli test`              |
 
 ---
 
@@ -390,15 +390,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md). The fastest contribution: add a 20-lin
 
 ## Acknowledgments
 
-Uni-CLI stands on the shoulders of those who pioneered CLI-for-agents:
-
-- **[OpenCLI](https://github.com/jackwener/opencli)** by [@jackwener](https://github.com/jackwener) — Proved that any website can become a CLI command. The YAML adapter format, browser bridge architecture, and `explore`/`synthesize` workflow are foundational to this ecosystem. Uni-CLI's web adapter format is directly inspired by OpenCLI's elegant pipeline design.
-
-- **[CLI-Anything](https://github.com/HKUDS/CLI-Anything)** by [HKUDS](https://github.com/HKUDS) (Prof. Chao Huang's lab at HKU) — Showed that desktop software can be made agent-native. The vision of wrapping Blender, GIMP, FreeCAD, and even games into CLI harnesses expanded what "CLI" means. Uni-CLI's desktop adapter type exists because CLI-Anything proved it was possible.
-
-- **[Vercel agent-browser](https://github.com/vercel-labs/agent-browser)** — Demonstrated that accessibility-tree-first browser automation can be 16x more token-efficient than full-page approaches.
-
-- The broader open-source AI agent ecosystem: [Claude Code](https://github.com/anthropics/claude-code), [Codex CLI](https://github.com/openai/codex), [OpenCode](https://github.com/opencode-ai/opencode), [Stagehand](https://github.com/browserbase/stagehand), [Browser Use](https://github.com/browser-use/browser-use), and the [MCP](https://modelcontextprotocol.io/) standard — for building the world where tools like Uni-CLI are needed.
+Uni-CLI is built on the insight that CLI is the universal interface for AI agents. We thank the open-source AI agent ecosystem — [Claude Code](https://github.com/anthropics/claude-code), [Codex CLI](https://github.com/openai/codex), [OpenCode](https://github.com/opencode-ai/opencode), and the [MCP](https://modelcontextprotocol.io/) standard — for building the world where tools like Uni-CLI are needed.
 
 ## License
 

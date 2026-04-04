@@ -79,7 +79,7 @@ export function listCommands(): Array<{
   );
 }
 
-/** TypeScript adapter registration helper (OpenCLI-compatible pattern) */
+/** TypeScript adapter registration helper */
 export interface CliRegistration {
   site: string;
   name: string;

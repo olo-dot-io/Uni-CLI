@@ -117,7 +117,7 @@ export interface AdapterManifest {
   replacedBy?: string;
 }
 
-/** Browser page abstraction — compatible with OpenCLI's IPage */
+/** Browser page abstraction for browser-type adapters */
 export interface IPage {
   goto(url: string): Promise<void>;
   evaluate(script: string): Promise<unknown>;

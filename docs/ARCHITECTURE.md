@@ -58,17 +58,17 @@ Agent calls: unicli <site> <command>
        Fixed. No human needed. Fix persists across npm updates.
 ```
 
-### Why OpenCLI Can't Do This
+### Why Self-Healing Requires All Five
 
-| Requirement                         | OpenCLI                        | Uni-CLI                               |
+| Requirement                         | Traditional CLIs               | Uni-CLI                               |
 | ----------------------------------- | ------------------------------ | ------------------------------------- |
-| Structured errors with adapter path | ❌ Human strings               | ✅ JSON with path + step + suggestion |
-| Agent can find adapter file         | ❌ In node_modules             | ✅ Path in error output               |
-| Agent can read adapter              | ❌ 50-300 line TS with imports | ✅ 20-line YAML, zero imports         |
-| Agent fix survives update           | ❌ npm update overwrites       | ✅ ~/.unicli/adapters/ overlay        |
+| Structured errors with adapter path | ❌ Human-readable strings      | ✅ JSON with path + step + suggestion |
+| Agent can find adapter file         | ❌ Buried in node_modules      | ✅ Path in error output               |
+| Agent can read adapter              | ❌ 100+ line code with imports | ✅ 20-line YAML, zero imports         |
+| Agent fix survives update           | ❌ Package update overwrites   | ✅ ~/.unicli/adapters/ overlay        |
 | Agent can verify fix                | ❌ No test command             | ✅ unicli repair + unicli test        |
 
-All five must be true for the loop to close. We close it. They can't.
+All five must be true for the self-healing loop to close.
 
 ## Five Adapter Types
 

@@ -8,8 +8,7 @@ We are not a scraper. We are not a CLI tool. We are **agent infrastructure**.
 
 The insight: CLI is a stable execution layer — a cache for agent behaviors. Stable single operations compose into long-chain workflows. Our differentiator is not breadth (adapter count) but **self-sufficiency** — agents can write, fix, and verify their own tools.
 
-> "AI 不方便自修复，还得让用户手动提 PR 才能修复自己。如果能让 AI 很轻易的有修复网站适配器的能力，就不会有任何问题了。"
-> — OpenCLI creator, identifying the exact problem Uni-CLI solves
+The core problem: when a CLI adapter breaks (API changes, selector drifts, auth rotates), traditional tools require human intervention — file a bug, wait for a fix, update the package. Uni-CLI closes this loop: the agent reads the 20-line YAML, edits it, verifies the fix, and moves on.
 
 ### Self-Healing Architecture
 
@@ -34,7 +33,7 @@ unicli <site> <command>
 
 ## Complete Adapter Inventory
 
-### Web Adapters — From OpenCLI (73 sites, 460+ commands)
+### Web Adapters (73 sites)
 
 #### Tier 1: Public API (no browser needed) — 25 sites
 
@@ -146,7 +145,7 @@ unicli <site> <command>
 | 80  | wecom-cli | auto                | 企业微信       |
 | 81  | dws       | auto                | 钉钉工作空间   |
 
-### Desktop Adapters — From CLI-Anything (32 software)
+### Desktop Adapters (32 software)
 
 | #   | Software          | Category       | Backend                       | Requires        |
 | --- | ----------------- | -------------- | ----------------------------- | --------------- |
@@ -184,7 +183,7 @@ unicli <site> <command>
 | 113 | browser           | web            | DOMShell MCP                  | Node.js, Chrome |
 | 114 | anygen            | generation     | AnyGen cloud API              | ANYGEN_API_KEY  |
 
-### Our Unique Additions — Not In Either
+### Additional Tools
 
 | #   | Software         | Category | Type    | Why                                     |
 | --- | ---------------- | -------- | ------- | --------------------------------------- |
@@ -205,13 +204,13 @@ unicli <site> <command>
 
 ## Totals
 
-| Source                         | Sites/Software | Commands  |
-| ------------------------------ | -------------- | --------- |
-| OpenCLI (web)                  | 81             | ~470      |
-| CLI-Anything (desktop/service) | 33             | ~200+     |
-| Our additions                  | 12             | ~30+      |
-| **0.200 Total**                | **126**        | **~700+** |
-| **Currently done (0.200.0)**   | **21**         | **74**    |
+| Category           | Sites/Software | Commands  |
+| ------------------ | -------------- | --------- |
+| Web                | 81             | ~470      |
+| Desktop / Service  | 33             | ~200+     |
+| Bridge / Tools     | 12             | ~30+      |
+| **0.2xx Total**    | **126**        | **~700+** |
+| **Done (0.200.0)** | **21**         | **74**    |
 
 ---
 

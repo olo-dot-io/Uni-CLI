@@ -1,5 +1,4 @@
-# Desktop adapter — inspired by CLI-Anything's blender harness
-# Converts CLI-Anything's 928-line Python package into a 20-line YAML adapter
+# Desktop adapter — renders a Blender scene via headless CLI
 site: blender
 name: render
 description: Render a Blender scene to image
