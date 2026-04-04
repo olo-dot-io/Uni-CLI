@@ -149,8 +149,12 @@ async function stepFetch(
     const items = ctx.data as Array<Record<string, unknown>>;
     const results = await Promise.all(
       items.map(async (item) => {
-        const itemUrl = evalTemplate(config.url, { ...ctx, data: item });
-        const resp = await fetchJson(itemUrl, config);
+        const itemCtx = { ...ctx, data: item };
+        const itemUrl = evalTemplate(config.url, itemCtx);
+        const resolvedConfig = config.body
+          ? { ...config, body: resolveTemplateDeep(config.body, itemCtx) }
+          : config;
+        const resp = await fetchJson(itemUrl, resolvedConfig);
         return resp;
       }),
     );
@@ -167,7 +171,10 @@ async function stepFetch(
     url += (url.includes("?") ? "&" : "?") + params.toString();
   }
 
-  const data = await fetchJson(url, config);
+  const resolvedConfig = config.body
+    ? { ...config, body: resolveTemplateDeep(config.body, ctx) }
+    : config;
+  const data = await fetchJson(url, resolvedConfig);
   return { ...ctx, data };
 }
 
@@ -510,6 +517,27 @@ function buildScope(ctx: PipelineContext): Record<string, unknown> {
   }
 
   return scope;
+}
+
+/**
+ * Recursively resolve ${{ }} templates in nested objects, arrays, and strings.
+ * Non-string primitives (numbers, booleans, null) pass through unchanged.
+ */
+function resolveTemplateDeep(value: unknown, ctx: PipelineContext): unknown {
+  if (typeof value === "string") {
+    return evalTemplate(value, ctx);
+  }
+  if (Array.isArray(value)) {
+    return value.map((v) => resolveTemplateDeep(v, ctx));
+  }
+  if (value !== null && typeof value === "object") {
+    const result: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      result[k] = resolveTemplateDeep(v, ctx);
+    }
+    return result;
+  }
+  return value;
 }
 
 /**
