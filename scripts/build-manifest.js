@@ -18,7 +18,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ADAPTERS_DIR = join(__dirname, "..", "src", "adapters");
 const OUTPUT = join(__dirname, "..", "dist", "manifest.json");
 
-const manifest = { version: "0.200.0", sites: {} };
+const manifest = { version: "0.201.0", sites: {} };
 
 if (existsSync(ADAPTERS_DIR)) {
   for (const site of readdirSync(ADAPTERS_DIR)) {

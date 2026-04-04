@@ -10,7 +10,7 @@
 <p align="center">
   <a href="#-quick-start"><img src="https://img.shields.io/badge/Quick_Start-3_min-blue?style=for-the-badge" alt="Quick Start"></a>
   <a href="#-self-repair"><img src="https://img.shields.io/badge/Self--Repair-Agent_Fixes_Itself-ff69b4?style=for-the-badge" alt="Self-Repair"></a>
-  <a href="#-for-ai-agents"><img src="https://img.shields.io/badge/21_Sites-74_Commands-green?style=for-the-badge" alt="Coverage"></a>
+  <a href="#-for-ai-agents"><img src="https://img.shields.io/badge/43_Sites-141_Commands-green?style=for-the-badge" alt="Coverage"></a>
 </p>
 
 <p align="center">
@@ -399,6 +399,6 @@ Uni-CLI is built on the insight that CLI is the universal interface for AI agent
 ---
 
 <p align="center">
-  <sub>Codename <strong>Sputnik</strong> — First signal from orbit.</sub><br>
+  <sub>v0.201.0 · Codename <strong>Vostok · Chaika II</strong> — 43 sites, 141 commands</sub><br>
   <sub>Built with care for AI agents and the humans who guide them.</sub>
 </p>

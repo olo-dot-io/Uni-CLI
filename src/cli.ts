@@ -17,7 +17,7 @@ export function createCli(): Command {
   program
     .name("unicli")
     .description("CLI IS ALL YOU NEED — Universal CLI for AI agents")
-    .version("0.200.0")
+    .version("0.201.0")
     .option(
       "-f, --format <format>",
       "output format: table, json, yaml, csv, md",

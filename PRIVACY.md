@@ -28,4 +28,4 @@ Third-party plugins may have their own privacy practices. Review plugin source c
 
 ## Questions
 
-If you have privacy concerns, please open an issue or contact security@zenalexa.com.
+If you have privacy concerns, please open an issue or contact ziming.wang@connect.ust.hk.

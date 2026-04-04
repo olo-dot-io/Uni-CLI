@@ -11,7 +11,7 @@
 If you discover a security vulnerability, please report it responsibly:
 
 1. **Do NOT open a public issue.**
-2. Email: security@zenalexa.com (or use GitHub's private vulnerability reporting)
+2. Email: ziming.wang@connect.ust.hk (or use GitHub's private vulnerability reporting)
 3. Include: description, reproduction steps, and impact assessment.
 4. We will acknowledge within 48 hours and provide a fix timeline.
 

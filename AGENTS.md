@@ -41,9 +41,9 @@ When a command fails:
 
 All commands: `--format` / `-f` → `table` (default), `json`, `yaml`, `csv`, `md`
 
-## Available Sites (0.200.0)
+## Available Sites (0.201.0)
 
-21 sites, 74 commands. Run `unicli list -f json` for full inventory.
+43 sites, 141 commands. Run `unicli list -f json` for full inventory.
 
 ## Adding Adapters
 
