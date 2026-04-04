@@ -1,0 +1,33 @@
+site: weibo
+name: post
+description: Get a single Weibo post by ID
+domain: weibo.com
+type: web-api
+strategy: cookie
+auth_cookies: [SUB, SUBP]
+
+args:
+  id:
+    required: true
+    positional: true
+    description: Post ID (numeric idstr or mblogid)
+
+pipeline:
+  - fetch:
+      url: https://weibo.com/ajax/statuses/show
+      params:
+        id: "${{ args.id }}"
+
+  - map:
+      id: ${{ item.idstr || item.id }}
+      mblogid: ${{ item.mblogid || '' }}
+      author: ${{ item.user?.screen_name || '' }}
+      text: ${{ (item.text_raw || item.text || '') | strip_html }}
+      reposts: ${{ item.reposts_count || 0 }}
+      comments: ${{ item.comments_count || 0 }}
+      likes: ${{ item.attitudes_count || 0 }}
+      source: ${{ (item.source || '') | strip_html }}
+      created: ${{ item.created_at }}
+      url: ${{ 'https://weibo.com/' + (item.user?.id || '') + '/' + (item.mblogid || '') }}
+
+columns: [id, author, text, reposts, comments, likes, source, created, url]

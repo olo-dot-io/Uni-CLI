@@ -1,0 +1,37 @@
+site: weibo
+name: feed
+description: Weibo home feed from followed users
+domain: weibo.com
+type: web-api
+strategy: cookie
+auth_cookies: [SUB, SUBP]
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of posts
+
+pipeline:
+  - fetch:
+      url: https://weibo.com/ajax/feed/friendstimeline
+      params:
+        list_id: "0"
+        refresh: "4"
+        since_id: "0"
+        count: "${{ args.limit }}"
+
+  - select: data.statuses
+
+  - map:
+      author: ${{ item.user?.screen_name || '' }}
+      text: ${{ (item.text_raw || item.text || '') | strip_html | truncate(200) }}
+      reposts: ${{ item.reposts_count || 0 }}
+      comments: ${{ item.comments_count || 0 }}
+      likes: ${{ item.attitudes_count || 0 }}
+      created: ${{ item.created_at }}
+      url: ${{ 'https://weibo.com/' + (item.user?.id || '') + '/' + (item.mblogid || '') }}
+
+  - limit: ${{ args.limit }}
+
+columns: [author, text, reposts, comments, likes, created, url]

@@ -1,0 +1,36 @@
+site: jike
+name: notifications
+description: Jike notifications
+domain: web-api.okjike.com
+type: web-api
+strategy: cookie
+auth_cookies: [accessToken]
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of notifications
+
+pipeline:
+  - fetch:
+      url: https://web-api.okjike.com/api/graphql
+      method: POST
+      headers:
+        Content-Type: application/json
+      body:
+        operationName: FetchNotificationList
+        query: "query FetchNotificationList { viewer { notifications { nodes { type referenceItem { ... on OriginalPost { id content } } actionItem { ... on User { screenName } } createdAt } } } }"
+        variables: {}
+
+  - select: data.viewer.notifications.nodes
+
+  - map:
+      type: ${{ item.type || '' }}
+      user: ${{ item.actionItem?.screenName || '' }}
+      content: ${{ (item.referenceItem?.content || '') | truncate(100) }}
+      time: ${{ item.createdAt || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [type, user, content, time]

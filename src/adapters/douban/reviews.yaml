@@ -1,0 +1,61 @@
+site: douban
+name: reviews
+description: Douban user movie reviews
+domain: movie.douban.com
+type: browser
+strategy: cookie
+auth_cookies: [dbcl2]
+
+args:
+  uid:
+    required: true
+    positional: true
+    description: Douban user ID (from profile URL)
+  limit:
+    type: int
+    default: 20
+    description: Number of reviews
+
+pipeline:
+  - navigate: https://movie.douban.com/people/${{ args.uid }}/reviews?start=0&sort=time
+
+  - evaluate: |
+      (() => {
+        const reviews = [];
+        document.querySelectorAll('.tlst').forEach(el => {
+          const movieLinkEl = el.querySelector('.ilst a');
+          const reviewTitleEl = el.querySelector('.nlst a[title]');
+          const ratingEl = el.querySelector('.clst span[class*="allstar"]');
+          const contentEl = el.querySelector('.review-short span');
+          const votesEl = el.querySelector('.review-short .pl span');
+
+          const movieTitle = movieLinkEl?.getAttribute('title') || movieLinkEl?.textContent?.trim() || '';
+          const title = reviewTitleEl?.textContent?.trim() || '';
+          const reviewHref = reviewTitleEl?.href || '';
+
+          let myRating = '';
+          if (ratingEl) {
+            const cls = ratingEl.className || '';
+            const ratingMatch = cls.match(/allstar(\d)0/);
+            if (ratingMatch) myRating = String(parseInt(ratingMatch[1], 10) * 2);
+          }
+
+          const votesText = votesEl?.textContent || '';
+          const votesMatch = votesText.match(/(\d+)/);
+          const votes = votesMatch ? votesMatch[1] : '0';
+
+          reviews.push({
+            movieTitle,
+            title,
+            myRating,
+            votes,
+            content: (contentEl?.textContent?.trim() || '').substring(0, 150),
+            url: reviewHref
+          });
+        });
+        return reviews;
+      })()
+
+  - limit: ${{ args.limit }}
+
+columns: [movieTitle, title, myRating, votes, content, url]

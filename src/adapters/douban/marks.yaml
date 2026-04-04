@@ -1,0 +1,64 @@
+site: douban
+name: marks
+description: Douban movie marks/ratings for a user
+domain: movie.douban.com
+type: browser
+strategy: cookie
+auth_cookies: [dbcl2]
+
+args:
+  uid:
+    required: true
+    positional: true
+    description: Douban user ID (from profile URL)
+  status:
+    default: collect
+    description: "Mark type: collect (watched), wish, do (watching)"
+  limit:
+    type: int
+    default: 30
+    description: Number of marks
+
+pipeline:
+  - navigate: https://movie.douban.com/people/${{ args.uid }}/${{ args.status }}?start=0&sort=time&rating=all&filter=all&mode=grid
+
+  - evaluate: |
+      (() => {
+        const results = [];
+        const items = document.querySelectorAll('.item');
+        items.forEach(item => {
+          const titleLink = item.querySelector('.info a[href*="/subject/"]');
+          if (!titleLink) return;
+          const titleEl = titleLink.querySelector('em');
+          const title = (titleEl?.textContent?.trim() || titleLink.textContent?.trim() || '').split('/')[0].trim();
+          const href = titleLink.href || '';
+          const idMatch = href.match(/subject\/(\d+)/);
+          if (!idMatch || !title) return;
+
+          let myRating = '';
+          const ratingSpan = item.querySelector('span[class*="rating"]');
+          if (ratingSpan) {
+            const cls = ratingSpan.className || '';
+            const ratingMatch = cls.match(/rating(\d)-t/);
+            if (ratingMatch) myRating = String(parseInt(ratingMatch[1], 10) * 2);
+          }
+
+          const dateSpan = item.querySelector('.date');
+          const myDate = dateSpan?.textContent?.trim() || '';
+          const commentSpan = item.querySelector('.comment');
+          const myComment = commentSpan?.textContent?.trim() || '';
+
+          results.push({
+            title,
+            myRating,
+            myDate,
+            myComment: myComment.substring(0, 100),
+            url: href
+          });
+        });
+        return results;
+      })()
+
+  - limit: ${{ args.limit }}
+
+columns: [title, myRating, myDate, myComment, url]

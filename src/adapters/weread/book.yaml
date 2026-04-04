@@ -1,0 +1,32 @@
+site: weread
+name: book
+description: Get WeRead book details
+domain: i.weread.qq.com
+type: web-api
+strategy: cookie
+auth_cookies: [wr_skey, wr_vid]
+
+args:
+  book-id:
+    required: true
+    positional: true
+    description: Book ID (from search or shelf results)
+
+pipeline:
+  - fetch:
+      url: https://i.weread.qq.com/book/info
+      params:
+        bookId: "${{ args.book-id }}"
+      headers:
+        Origin: "https://weread.qq.com"
+        Referer: "https://weread.qq.com/"
+
+  - map:
+      title: ${{ item.title || '' }}
+      author: ${{ item.author || '' }}
+      publisher: ${{ item.publisher || '' }}
+      category: ${{ item.category || '' }}
+      intro: ${{ (item.intro || '') | truncate(300) }}
+      rating: ${{ item.newRating || '' }}
+
+columns: [title, author, publisher, category, intro, rating]

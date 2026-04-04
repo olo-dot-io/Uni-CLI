@@ -1,0 +1,32 @@
+site: weread
+name: notebooks
+description: List books that have highlights or notes
+domain: i.weread.qq.com
+type: web-api
+strategy: cookie
+auth_cookies: [wr_skey, wr_vid]
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of notebooks
+
+pipeline:
+  - fetch:
+      url: https://i.weread.qq.com/user/notebooks
+      headers:
+        Origin: "https://weread.qq.com"
+        Referer: "https://weread.qq.com/"
+
+  - select: books
+
+  - map:
+      title: ${{ item.book?.title || '' }}
+      author: ${{ item.book?.author || '' }}
+      noteCount: ${{ (item.bookmarkCount || 0) + (item.reviewCount || 0) }}
+      bookId: ${{ item.bookId || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [title, author, noteCount, bookId]

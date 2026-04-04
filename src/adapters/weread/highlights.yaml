@@ -1,0 +1,37 @@
+site: weread
+name: highlights
+description: List your highlights (underlines) in a book
+domain: i.weread.qq.com
+type: web-api
+strategy: cookie
+auth_cookies: [wr_skey, wr_vid]
+
+args:
+  book-id:
+    required: true
+    positional: true
+    description: Book ID (from shelf or search results)
+  limit:
+    type: int
+    default: 20
+    description: Number of highlights
+
+pipeline:
+  - fetch:
+      url: https://i.weread.qq.com/book/bookmarklist
+      params:
+        bookId: "${{ args.book-id }}"
+      headers:
+        Origin: "https://weread.qq.com"
+        Referer: "https://weread.qq.com/"
+
+  - select: updated
+
+  - map:
+      chapter: ${{ item.chapterName || '' }}
+      text: ${{ item.markText || '' }}
+      createTime: ${{ item.createTime || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [chapter, text, createTime]

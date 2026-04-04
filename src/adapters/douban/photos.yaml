@@ -1,0 +1,50 @@
+site: douban
+name: photos
+description: Get Douban movie posters and stills
+domain: movie.douban.com
+type: browser
+strategy: cookie
+auth_cookies: [dbcl2]
+
+args:
+  id:
+    positional: true
+    required: true
+    description: Movie subject ID
+  type:
+    default: R
+    description: Photo type (R=stills, S=posters)
+  limit:
+    type: int
+    default: 30
+    description: Number of photos
+
+pipeline:
+  - navigate: https://movie.douban.com/subject/${{ args.id }}/photos?type=${{ args.type }}
+
+  - evaluate: |
+      (() => {
+        const results = [];
+        const nodes = document.querySelectorAll('.poster-col3 li, .poster-col3l li, .article li');
+        for (const node of nodes) {
+          const link = node.querySelector('a[href*="/photos/photo/"]');
+          const img = node.querySelector('img');
+          if (!link || !img) continue;
+          const detailUrl = link.href || '';
+          const photoId = detailUrl.match(/\/photo\/(\d+)/)?.[1] || '';
+          const thumbUrl = img.getAttribute('data-origin') || img.getAttribute('data-src') || img.src || '';
+          const imageUrl = thumbUrl.replace(/\/view\/photo\/[^/]+\/public\//, '/view/photo/l/public/');
+          const title = link.getAttribute('title') || img.getAttribute('alt') || '';
+          results.push({
+            index: results.length + 1,
+            title: title || ('photo_' + (photoId || results.length + 1)),
+            image_url: imageUrl,
+            detail_url: detailUrl
+          });
+        }
+        return results;
+      })()
+
+  - limit: ${{ args.limit }}
+
+columns: [index, title, image_url, detail_url]

@@ -1,0 +1,45 @@
+site: weibo
+name: user
+description: Get Weibo user profile by UID
+domain: weibo.com
+type: web-api
+strategy: cookie
+auth_cookies: [SUB, SUBP]
+
+args:
+  uid:
+    required: true
+    positional: true
+    description: User ID (numeric uid)
+
+pipeline:
+  - fetch:
+      url: https://weibo.com/ajax/profile/info
+      params:
+        uid: "${{ args.uid }}"
+
+  - select: data.user
+
+  - map:
+      uid: ${{ item.id }}
+      name: ${{ item.screen_name }}
+      followers: ${{ item.followers_count }}
+      following: ${{ item.friends_count }}
+      statuses: ${{ item.statuses_count }}
+      verified: ${{ item.verified || false }}
+      description: ${{ item.description || '' }}
+      location: ${{ item.location || '' }}
+      url: ${{ 'https://weibo.com' + (item.profile_url || '/u/' + item.id) }}
+
+columns:
+  [
+    uid,
+    name,
+    followers,
+    following,
+    statuses,
+    verified,
+    description,
+    location,
+    url,
+  ]

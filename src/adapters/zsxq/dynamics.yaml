@@ -1,0 +1,36 @@
+site: zsxq
+name: dynamics
+description: Zsxq latest dynamics across all groups
+domain: api.zsxq.com
+type: web-api
+strategy: cookie
+auth_cookies: [zsxq_access_token]
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of dynamics
+
+pipeline:
+  - fetch:
+      url: https://api.zsxq.com/v2/dynamics
+      params:
+        scope: general
+        count: "${{ args.limit }}"
+      headers:
+        Accept: application/json
+
+  - select: resp_data.dynamics
+
+  - map:
+      time: ${{ item.create_time || '' }}
+      group: ${{ item.topic?.group?.name || '' }}
+      author: ${{ item.topic?.talk?.owner?.name || item.topic?.question?.owner?.name || item.topic?.owner?.name || '' }}
+      title: ${{ (item.topic?.talk?.text || item.topic?.question?.text || item.topic?.title || '') | truncate(120) }}
+      comments: ${{ item.topic?.comments_count || 0 }}
+      likes: ${{ item.topic?.likes_count || 0 }}
+
+  - limit: ${{ args.limit }}
+
+columns: [time, group, author, title, comments, likes]

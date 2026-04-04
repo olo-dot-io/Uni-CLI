@@ -1,0 +1,43 @@
+site: jike
+name: search
+description: Search Jike posts by keyword
+domain: web-api.okjike.com
+type: web-api
+strategy: cookie
+auth_cookies: [accessToken]
+
+args:
+  query:
+    required: true
+    positional: true
+    description: Search keyword
+  limit:
+    type: int
+    default: 20
+    description: Number of results
+
+pipeline:
+  - fetch:
+      url: https://web-api.okjike.com/api/graphql
+      method: POST
+      headers:
+        Content-Type: application/json
+      body:
+        operationName: SearchPosts
+        query: "query SearchPosts($keyword: String!, $loadMoreKey: JSON) { search(keywords: $keyword, type: ORIGINAL_POST, loadMoreKey: $loadMoreKey) { nodes { ... on OriginalPost { id content user { screenName } likeCount commentCount createdAt } } } }"
+        variables:
+          keyword: "${{ args.query }}"
+
+  - select: data.search.nodes
+
+  - map:
+      author: ${{ item.user?.screenName || '' }}
+      content: ${{ (item.content || '') | truncate(120) }}
+      likes: ${{ item.likeCount || 0 }}
+      comments: ${{ item.commentCount || 0 }}
+      time: ${{ item.createdAt || '' }}
+      url: ${{ 'https://web.okjike.com/originalPost/' + (item.id || '') }}
+
+  - limit: ${{ args.limit }}
+
+columns: [author, content, likes, comments, time, url]

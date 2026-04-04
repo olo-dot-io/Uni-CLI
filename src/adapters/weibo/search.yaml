@@ -1,0 +1,33 @@
+site: weibo
+name: search
+description: Search Weibo posts by keyword
+domain: weibo.com
+type: web-api
+strategy: cookie
+auth_cookies: [SUB, SUBP]
+
+args:
+  keyword:
+    required: true
+    positional: true
+    description: Search keyword
+  limit:
+    type: int
+    default: 20
+    description: Number of results
+
+pipeline:
+  - fetch:
+      url: https://weibo.com/ajax/side/search
+      params:
+        q: "${{ args.keyword }}"
+
+  - select: data.cards
+
+  - map:
+      title: ${{ (item.title || item.word || '') | strip_html }}
+      scheme: ${{ item.scheme || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [title, scheme]
