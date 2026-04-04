@@ -1,3 +1,5 @@
+<!-- AGENT: npm install -g unicli && unicli list | Run any of 141 commands across 43 sites. JSON output when piped. Self-repairing YAML adapters. See AGENTS.md for full protocol. -->
+
 <h1 align="center">Uni-CLI</h1>
 
 <p align="center">
