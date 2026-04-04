@@ -1,0 +1,75 @@
+{
+  "name": "unicli",
+  "version": "0.1.0",
+  "description": "CLI IS ALL YOU NEED — Turn any website, desktop app, cloud service, or system tool into a CLI command",
+  "type": "module",
+  "main": "dist/main.js",
+  "bin": {
+    "unicli": "dist/main.js"
+  },
+  "exports": {
+    ".": "./dist/main.js",
+    "./registry": "./dist/registry.js"
+  },
+  "scripts": {
+    "dev": "tsx src/main.ts",
+    "build": "tsc && node scripts/build-manifest.js",
+    "test": "vitest run --project unit",
+    "test:adapter": "vitest run --project adapter",
+    "test:all": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint src/",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "verify": "npm run format:check && npm run typecheck && npm run lint && npm run test && npm run build",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "doctor": "tsx src/doctor.ts",
+    "mcp": "tsx src/mcp/server.ts"
+  },
+  "keywords": [
+    "cli",
+    "ai-agent",
+    "browser-automation",
+    "desktop-automation",
+    "mcp",
+    "cli-hub",
+    "agent-tools",
+    "claude-code",
+    "codex",
+    "cursor"
+  ],
+  "author": "ZenAlexa",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ZenAlexa/Uni-CLI.git"
+  },
+  "homepage": "https://github.com/ZenAlexa/Uni-CLI",
+  "bugs": {
+    "url": "https://github.com/ZenAlexa/Uni-CLI/issues"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "cli-table3": "^0.6.5",
+    "commander": "^13.1.0",
+    "js-yaml": "^4.1.0",
+    "undici": "^7.5.0",
+    "ws": "^8.18.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.13.0",
+    "@types/ws": "^8.5.14",
+    "oxlint": "^1.0.0",
+    "prettier": "^3.5.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitepress": "^1.6.0",
+    "vitest": "^3.1.0"
+  }
+}

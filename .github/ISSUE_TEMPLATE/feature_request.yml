@@ -1,0 +1,37 @@
+name: Feature Request
+description: Suggest a new feature or adapter
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! We especially welcome new adapter requests.
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Request Type
+      options:
+        - New adapter (website)
+        - New adapter (desktop app)
+        - New adapter (service)
+        - Core feature
+        - Plugin system
+        - Documentation
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What would you like to see?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Use Case
+      description: How would you use this feature?

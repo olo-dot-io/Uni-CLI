@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+*.env
+
+# Test coverage
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Plugin data
+.unicli/adapters/
+.unicli/plugins/
+
+# Extension build
+extension/dist/
+
+# VitePress
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+
+# Claude Code
+.claude/headless-output/
+.claude/worktrees/
+
+# Temporary
+tmp/
+.tmp/

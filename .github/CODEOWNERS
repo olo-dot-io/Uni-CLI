@@ -1,0 +1,27 @@
+# Uni-CLI CODEOWNERS
+# Each adapter directory is owned by its contributor.
+# Core changes require maintainer review.
+
+# Core — maintainer review required
+/src/cli.ts              @ZenAlexa
+/src/types.ts            @ZenAlexa
+/src/registry.ts         @ZenAlexa
+/src/engine/             @ZenAlexa
+/src/output/             @ZenAlexa
+/src/discovery/          @ZenAlexa
+/src/mcp/                @ZenAlexa
+/src/browser/            @ZenAlexa
+
+# Adapters — open to any contributor, reviewed by maintainers
+/src/adapters/           @ZenAlexa
+
+# Documentation
+/docs/                   @ZenAlexa
+/CLAUDE.md               @ZenAlexa
+/AGENTS.md               @ZenAlexa
+
+# CI/CD
+/.github/workflows/      @ZenAlexa
+
+# Skills
+/skills/                 @ZenAlexa

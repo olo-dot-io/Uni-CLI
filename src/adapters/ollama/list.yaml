@@ -1,0 +1,30 @@
+# Service adapter — wrapping Ollama's local REST API
+# Inspired by CLI-Anything's ollama harness
+site: ollama
+name: list
+description: List locally installed Ollama models
+type: service
+base: "http://localhost:11434"
+health: /api/tags
+
+args:
+  limit:
+    type: int
+    default: 50
+
+pipeline:
+  - fetch:
+      url: "http://localhost:11434/api/tags"
+
+  - select: models
+
+  - map:
+      name: "${{ item.name }}"
+      size: "${{ Math.round(item.size / 1024 / 1024 / 1024 * 100) / 100 + ' GB' }}"
+      modified: "${{ item.modified_at ? item.modified_at.split('T')[0] : 'unknown' }}"
+      family: "${{ item.details ? item.details.family : 'unknown' }}"
+      params: "${{ item.details ? item.details.parameter_size : 'unknown' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [name, size, params, family, modified]

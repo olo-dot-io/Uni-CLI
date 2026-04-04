@@ -1,0 +1,37 @@
+site: github-trending
+name: daily
+description: GitHub trending repositories (daily)
+domain: github.com
+type: web-api
+strategy: public
+browser: false
+
+args:
+  language:
+    type: str
+    default: ""
+    description: Filter by programming language
+  limit:
+    type: int
+    default: 20
+    description: Number of repositories
+
+pipeline:
+  - fetch:
+      url: https://api.gitterapp.com/repositories
+      params:
+        language: ${{ args.language }}
+        since: daily
+
+  - limit: ${{ args.limit }}
+
+  - map:
+      rank: ${{ index + 1 }}
+      name: ${{ item.author + '/' + item.name }}
+      description: ${{ item.description }}
+      language: ${{ item.language }}
+      stars: ${{ item.stars }}
+      forks: ${{ item.forks }}
+      today: ${{ item.currentPeriodStars }}
+
+columns: [rank, name, language, stars, today, forks]

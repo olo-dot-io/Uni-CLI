@@ -1,0 +1,51 @@
+name: Adapter Request
+description: Request support for a new website, app, or service
+title: "[Adapter]: "
+labels: ["adapter-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Request a new adapter for Uni-CLI. If you can write the YAML yourself, PRs are even better!
+
+  - type: input
+    id: target
+    attributes:
+      label: Target
+      description: Website URL, app name, or service
+      placeholder: e.g., https://www.douban.com or Figma
+    validations:
+      required: true
+
+  - type: dropdown
+    id: adapter-type
+    attributes:
+      label: Adapter Type
+      options:
+        - web-api (REST API)
+        - desktop (local application)
+        - browser (needs browser automation)
+        - bridge (existing CLI tool)
+        - service (HTTP service)
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: commands
+    attributes:
+      label: Desired Commands
+      description: What commands should this adapter support?
+      placeholder: |
+        - `unicli douban top` — top rated movies
+        - `unicli douban search "keyword"` — search movies
+
+  - type: dropdown
+    id: auth
+    attributes:
+      label: Authentication
+      options:
+        - No auth needed (public API)
+        - Requires login (browser cookies)
+        - Requires API key
+        - Not sure

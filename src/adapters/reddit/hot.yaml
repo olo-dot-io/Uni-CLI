@@ -1,0 +1,36 @@
+site: reddit
+name: hot
+description: Reddit front page hot posts
+domain: www.reddit.com
+type: web-api
+strategy: public
+browser: false
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of posts
+
+pipeline:
+  - fetch:
+      url: https://www.reddit.com/r/all/hot.json
+      params:
+        limit: ${{ args.limit }}
+      headers:
+        User-Agent: Uni-CLI/0.1.0
+
+  - select: data.children
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.data.title }}
+      subreddit: ${{ item.data.subreddit_name_prefixed }}
+      score: ${{ item.data.score }}
+      comments: ${{ item.data.num_comments }}
+      author: ${{ item.data.author }}
+      url: ${{ item.data.url }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, subreddit, score, comments, author]

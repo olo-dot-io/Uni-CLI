@@ -1,0 +1,78 @@
+{
+  "meta": {
+    "repo": "https://github.com/ZenAlexa/Uni-CLI",
+    "description": "Uni-CLI — CLI IS ALL YOU NEED. Universal CLI hub for AI agents.",
+    "updated": "2026-04-04"
+  },
+  "adapters": [
+    {
+      "name": "hackernews",
+      "displayName": "Hacker News",
+      "type": "web-api",
+      "version": "0.1.0",
+      "description": "Top stories and search via Firebase API",
+      "commands": ["top", "search"],
+      "strategy": "public",
+      "browser": false,
+      "category": "tech",
+      "contributor": "ZenAlexa"
+    },
+    {
+      "name": "reddit",
+      "displayName": "Reddit",
+      "type": "web-api",
+      "version": "0.1.0",
+      "description": "Hot posts and search via Reddit JSON API",
+      "commands": ["hot", "search"],
+      "strategy": "public",
+      "browser": false,
+      "category": "social",
+      "contributor": "ZenAlexa"
+    },
+    {
+      "name": "github-trending",
+      "displayName": "GitHub Trending",
+      "type": "web-api",
+      "version": "0.1.0",
+      "description": "Trending repositories by language and period",
+      "commands": ["daily"],
+      "strategy": "public",
+      "browser": false,
+      "category": "tech",
+      "contributor": "ZenAlexa"
+    },
+    {
+      "name": "blender",
+      "displayName": "Blender",
+      "type": "desktop",
+      "version": "0.1.0",
+      "description": "3D rendering via Blender CLI",
+      "commands": ["render"],
+      "requires": "blender >= 4.0",
+      "category": "3d",
+      "contributor": "ZenAlexa"
+    },
+    {
+      "name": "ffmpeg",
+      "displayName": "FFmpeg",
+      "type": "desktop",
+      "version": "0.1.0",
+      "description": "Media conversion via ffmpeg",
+      "commands": ["convert"],
+      "requires": "ffmpeg",
+      "category": "media",
+      "contributor": "ZenAlexa"
+    },
+    {
+      "name": "ollama",
+      "displayName": "Ollama",
+      "type": "service",
+      "version": "0.1.0",
+      "description": "Local LLM model management via Ollama REST API",
+      "commands": ["list"],
+      "requires": "Ollama running at localhost:11434",
+      "category": "ai",
+      "contributor": "ZenAlexa"
+    }
+  ]
+}
