@@ -17,7 +17,7 @@ export function createCli(): Command {
   program
     .name('unicli')
     .description('CLI IS ALL YOU NEED — Universal CLI for AI agents')
-    .version('0.1.0')
+    .version('0.100.1')
     .option('-f, --format <format>', 'output format: table, json, yaml, csv, md')
     .option('-v, --verbose', 'show pipeline debug steps');
 

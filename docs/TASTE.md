@@ -34,22 +34,98 @@ Rule: **Uni-CLI** appears only where humans read prose. Everywhere machines pars
 
 The universe of software is vast. We are building a spacecraft to navigate it.
 
-### Version Codenames — Human Spaceflight Milestones
+### Versioning — `MAJOR.MINOR.PATCH`
 
-Each release is named after a milestone in human space exploration, in chronological order.
-This is not decoration — it's a timeline of ambition.
+Format: `0.100.1`, `0.200.0`, `1.0.0`, etc.
 
-| Version | Codename | Year | Significance |
-|---------|----------|------|-------------|
-| v0.1.x | **Sputnik** | 1957 | First satellite. First signal. First proof it works. |
-| v0.2.x | **Vostok** | 1961 | First human in space. The system carries a passenger. |
-| v0.3.x | **Mercury** | 1962 | First orbital flight. Sustained operation. |
-| v0.4.x | **Gemini** | 1965 | Docking. Multi-mission. Two things working together. |
-| v0.5.x | **Shenzhou** | 2003 | China's first crewed flight. East meets West. |
-| v1.0.0 | **Apollo** | 1969 | The moon. "One small step." Production-ready. |
-| v1.x | **Voyager** | 1977 | Leaving the solar system. Expanding beyond known territory. |
-| v2.0 | **Tiangong** | 2022 | Space station. Permanent infrastructure. |
-| v3.0 | **Artemis** | 2025 | Return to the moon with new technology. Maturity. |
+- **MAJOR** = era (0 = pre-production, 1 = stable, 2 = next-gen)
+- **MINOR** = mission number (100, 200, 300... like Mission Control sequences)
+- **PATCH** = revision within a mission
+
+Current: `0.100.x` — Mission 100, codename **Sputnik**.
+
+### Version Codenames — The Full Spectrum
+
+Codenames are NOT limited to spacecraft. They span five categories of human space history, each mapped to what the software achieves at that stage.
+
+#### Category 1: Missions & Programs (major milestones)
+
+| Version | Codename | Origin | Software meaning |
+|---------|----------|--------|-----------------|
+| 0.100.x | **Sputnik** | USSR 1957, first satellite | First signal. Proof the system works. |
+| 0.200.x | **Vostok** | USSR 1961, Gagarin's flight | First real user. The system carries payload. |
+| 0.300.x | **Mercury** | USA 1962, first orbital | Sustained operation. Adapters stay in orbit. |
+| 0.400.x | **Gemini** | USA 1965, rendezvous + docking | Two systems working together. Plugin docking. |
+| 0.500.x | **Soyuz** | USSR 1967, workhorse to present | Reliability. The adapter that never fails. |
+| 0.600.x | **Salyut** | USSR 1971, first space station | Persistent state. Config and session management. |
+| 0.700.x | **Skylab** | USA 1973, first US station | Long-duration operation. Caching, performance. |
+| 0.800.x | **Shenzhou** | China 2003, first Chinese crewed | East meets West. Full CJK platform coverage. |
+| 0.900.x | **Falcon** | SpaceX 2008, first private orbital | Community launches. Plugin ecosystem lift-off. |
+| 1.0.0 | **Eagle** | Apollo 11 LM, 1969 | "The Eagle has landed." Production-ready. |
+
+#### Category 2: Spacecraft & Vehicles (feature releases within a major)
+
+Used for minor versions between milestone releases:
+
+| Codename | Origin | Maps to |
+|----------|--------|---------|
+| **Laika** | First living creature in orbit, 1957 | Early testing — it works, but we're still learning |
+| **Explorer** | First US satellite, 1958 | Discovery features — scanning, probing |
+| **Voskhod** | First spacewalk (Leonov), 1964 | First steps outside comfort zone — new adapter types |
+| **Pioneer** | First to Jupiter, 1972 | Venturing into uncharted territory |
+| **Voyager** | Grand Tour, interstellar, 1977 | Beyond the original scope — deep integrations |
+| **Columbia** | First Space Shuttle flight, 1981 | Reusability — stable APIs, backward compat |
+| **Discovery** | Most-flown Shuttle, 39 missions | Workhorse release — reliability improvements |
+| **Mir** | First modular station, 1986 | Modular architecture — hot-loadable plugins |
+| **Buran** | Soviet shuttle, automated landing, 1988 | Automation — self-healing, auto-config |
+| **Endeavour** | Fifth Shuttle, replaced Challenger, 1992 | Rebuilt after a failure — resilience release |
+| **Dragon** | First private craft to ISS, 2012 | Third-party integration — community adapters |
+| **Tiangong** | Chinese space station, 2022 | Permanent infrastructure — stable platform |
+| **Starship** | Largest rocket ever, 2023 | Scale — massive adapter coverage |
+| **Artemis** | Return to Moon, 2025 | Return with maturity — v2 or v3 major |
+
+#### Category 3: Call Signs & Mission Codes (patch-level, internal)
+
+From the tradition of astronaut/cosmonaut radio call signs. Used for patch releases, hotfixes, or internal builds.
+
+| Call sign | Meaning | Origin | Use for |
+|-----------|---------|--------|---------|
+| **Kedr** | Cedar | Gagarin, Vostok 1 | The very first patch |
+| **Sokol** | Falcon | Nikolayev | Fast-response fixes |
+| **Almaz** | Diamond | Voskhod 1 crew | Hardening, security patches |
+| **Rubin** | Ruby | Beregovoi | Polishing, refinement |
+| **Granit** | Granite | Shatalov | Stability reinforcement |
+| **Kristall** | Crystal | Musabayev | Clarity — API cleanup |
+| **Mayak** | Beacon | Kizim | Guidance — documentation |
+| **Altair** | Star Altair | Multiple missions | Navigation — routing improvements |
+| **Aquarius** | Water bearer | Apollo 13 LM | Survival — crisis recovery |
+| **Intrepid** | Fearless | Apollo 12 LM | Bold changes |
+
+#### Category 4: Observatories & Probes (research/experimental features)
+
+| Codename | Origin | Maps to |
+|----------|--------|---------|
+| **Hubble** | Space telescope, 1990 | Observability — logging, debug, telemetry |
+| **Cassini** | Saturn orbiter, 1997 | Deep exploration — complex adapter chains |
+| **Curiosity** | Mars rover, 2012 | Investigation — `explore` and `synthesize` |
+| **Webb** | JWST, 2021 | Seeing further — advanced pattern matching |
+| **Perseverance** | Mars rover + Ingenuity, 2021 | First flight — browser automation engine |
+| **New Horizons** | Pluto flyby, 2015 | Reaching the edge — obscure platform support |
+| **Chandrayaan** | India lunar landing, 2023 | Precision landing — south pole of features |
+
+#### Category 5: Celestial Bodies & Phenomena (major architectural shifts)
+
+Reserved for epoch-defining changes. Used sparingly.
+
+| Codename | What it is | Maps to |
+|----------|-----------|---------|
+| **Lagrange** | Gravitational balance points | Equilibrium release — perfect stability |
+| **Aphelion** | Farthest point from the Sun | Maximum reach — broadest coverage |
+| **Perihelion** | Closest point to the Sun | Maximum speed — performance release |
+| **Eclipse** | Sun hidden by Moon | Breaking change — old obscured by new |
+| **Equinox** | Equal day and night | Balance release — equal CLI/Agent attention |
+| **Zenith** | Highest point in the sky | Peak — best release ever |
+| **Horizon** | Edge of the observable | Next frontier — experimental features |
 
 ### Architecture Metaphors
 

@@ -106,7 +106,7 @@ async function fetchJson(
   const method = config.method ?? 'GET';
   const headers: Record<string, string> = {
     'Accept': 'application/json',
-    'User-Agent': 'Uni-CLI/0.1.0',
+    'User-Agent': 'Uni-CLI/0.100.1',
     ...(config.headers ?? {}),
   };
 
