@@ -3,6 +3,51 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
+## [0.203.0] — Mercury · Glenn
+
+### Engine — Browser Strategy
+
+- **CDP client** — raw WebSocket Chrome DevTools Protocol, zero new runtime dependencies
+- **BrowserPage** — goto, evaluate, click, type, press, cookies, scroll, waitForSelector
+- **Chrome launcher** — auto-discover/start Chrome with `--remote-debugging-port`
+- **Stealth injection** — anti-detection evasions (webdriver, plugins, permissions, toString)
+- **6 new pipeline steps** — navigate, evaluate, click, type, wait, intercept
+- **Strategy cascade** — auto-probe PUBLIC → COOKIE → HEADER
+- CLI: `unicli browser start`, `unicli browser status`
+
+### Web Adapters — Write Operations
+
+- twitter: +15 write commands (post, like, reply, follow, unfollow, block, unblock, bookmark, unbookmark, delete, hide-reply, download, article, accept, reply-dm) — total 25 commands
+
+### Web Adapters — Platform Expansions
+
+- jike: +9 (create, like, repost, comment, search, notifications, post, topic, user)
+- douban: +6 (subject, top250, marks, reviews, photos, download)
+- weibo: +4 (feed, post, search, user)
+- weread: +4 (book, highlights, notebooks, notes)
+- zsxq: +3 (dynamics, search, topic)
+- reddit: +7 (comment, read, save, saved, subscribe, upvote, upvoted)
+- linux-do: +8 (categories, category, feed, search, tags, topic, user-posts, user-topics)
+- xueqiu: +8 (stock, fund-snapshot, comments, feed, watchlist, search, hot-stock, earnings-date)
+- medium: +2 (feed, user)
+- producthunt: +3 (browse, posts, today)
+- sinafinance: +2 (news, stock)
+- 36kr: +3 (article, hot, search)
+- v2ex: +2 (daily, user)
+- substack: +2 (feed, publication)
+- imdb: +2 (person, reviews)
+- bloomberg: +1 (news), google: +2 (search, trends), bilibili: +1 (dynamic), zhihu: +1 (download), tieba: +1 (read)
+
+### Infrastructure
+
+- Manifest builder includes TS adapter metadata
+- Browser module: cdp-client.ts, page.ts, launcher.ts, stealth.ts
+- 119 unit tests (was 42)
+
+**Stats: 57 sites, 289 commands (was 203 — +86 commands, +77 tests)**
+
+---
+
 ## [0.202.0] — Vostok · Tereshkova
 
 ### Engine

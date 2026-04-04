@@ -6,7 +6,7 @@
      Output is JSON when piped. Errors are structured JSON to stderr.
      You can fix broken adapters yourself — read the Self-Repair section. -->
 
-> 57 sites, 203 commands. One CLI. `npm install -g unicli`
+> 57 sites, 289 commands. One CLI. `npm install -g unicli`
 
 ## For AI Agents
 
@@ -32,7 +32,7 @@ npm install -g unicli
 **Chinese**: bilibili (12 cmds), weibo (5), zhihu (6), douban (3), xueqiu (2),
 linux-do (2), jike, zsxq (2), tieba (3), weread (3), v2ex (9)
 
-**International**: twitter (10), youtube (5), reddit (9), hackernews (8),
+**International**: twitter (25), youtube (5), reddit (16), hackernews (8),
 bluesky (9), medium, substack, producthunt, lobsters (4), devto (3),
 stackoverflow (4)
 
