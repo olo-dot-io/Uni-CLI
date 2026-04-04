@@ -1,0 +1,17 @@
+# Service adapter — lists all available ComfyUI node types from the local REST API
+site: comfyui
+name: nodes
+description: List available ComfyUI node types (returns raw JSON object keyed by node name)
+type: service
+strategy: public
+base: "http://localhost:8188"
+
+args:
+  port:
+    type: int
+    default: 8188
+    description: ComfyUI server port
+
+pipeline:
+  - fetch:
+      url: "http://localhost:${{ args.port }}/object_info"

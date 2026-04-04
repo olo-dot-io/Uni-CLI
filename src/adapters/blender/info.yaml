@@ -1,0 +1,26 @@
+# Desktop adapter — extracts scene metadata from a .blend file via headless Python
+site: blender
+name: info
+description: Extract scene metadata from a Blender file (objects, meshes, materials, frames, engine, resolution)
+type: desktop
+binary: blender
+detect: which blender
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to .blend file
+
+execArgs:
+  - -b
+  - ${{ args.file }}
+  - --python-expr
+  - "import bpy,json;s=bpy.context.scene;print('UNICLI_JSON:'+json.dumps({'objects':len(bpy.data.objects),'meshes':len(bpy.data.meshes),'materials':len(bpy.data.materials),'frames':[s.frame_start,s.frame_end],'engine':s.render.engine,'resolution':[s.render.resolution_x,s.render.resolution_y]}))"
+
+pipeline:
+  - exec:
+      command: blender
+      args: ${{ execArgs }}
+      parse: text

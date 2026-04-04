@@ -1,0 +1,25 @@
+# Service adapter — queues a workflow prompt to ComfyUI via the local REST API
+site: comfyui
+name: generate
+description: Queue a ComfyUI workflow prompt for generation
+type: service
+strategy: public
+base: "http://localhost:8188"
+
+args:
+  workflow:
+    type: str
+    required: true
+    positional: true
+    description: Workflow JSON string
+  port:
+    type: int
+    default: 8188
+    description: ComfyUI server port
+
+pipeline:
+  - fetch:
+      url: "http://localhost:${{ args.port }}/prompt"
+      method: POST
+      body:
+        prompt: "${{ args.workflow }}"

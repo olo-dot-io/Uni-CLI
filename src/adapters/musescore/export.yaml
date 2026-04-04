@@ -1,0 +1,29 @@
+# Desktop adapter — exports a MuseScore file to another format via mscore CLI
+site: musescore
+name: export
+description: Export a MuseScore file to pdf, png, mp3, wav, midi, or musicxml (format inferred from output extension)
+type: desktop
+binary: mscore
+detect: which mscore
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to source .mscz or .mscx file
+  output:
+    type: str
+    required: true
+    description: "Output file — format from extension: .pdf .png .mp3 .wav .midi .musicxml"
+
+execArgs:
+  - ${{ args.file }}
+  - -o
+  - ${{ args.output }}
+
+pipeline:
+  - exec:
+      command: mscore
+      args: ${{ execArgs }}
+      parse: text

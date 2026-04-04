@@ -1,0 +1,24 @@
+# Service adapter — retrieves ComfyUI system statistics from the local REST API
+site: comfyui
+name: status
+description: Get ComfyUI system stats (device, memory, Python version, torch version)
+type: service
+strategy: public
+base: "http://localhost:8188"
+
+args:
+  port:
+    type: int
+    default: 8188
+    description: ComfyUI server port
+
+pipeline:
+  - fetch:
+      url: "http://localhost:${{ args.port }}/system_stats"
+
+  - map:
+      python_version: "${{ item.system ? item.system.python_version : 'unknown' }}"
+      torch_version: "${{ item.system ? item.system.torch_version : 'unknown' }}"
+      devices: "${{ item.devices ? JSON.stringify(item.devices) : '[]' }}"
+
+columns: [python_version, torch_version, devices]

@@ -1,0 +1,51 @@
+# Desktop adapter — renders an animation frame range from a .blend file via headless CLI
+site: blender
+name: animation
+description: Render an animation range from a Blender file to an output directory
+type: desktop
+binary: blender
+detect: which blender
+timeout: 600000
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to .blend file
+  output:
+    type: str
+    required: true
+    description: Output path pattern (e.g. /tmp/frame_####.png)
+  engine:
+    type: str
+    default: CYCLES
+    choices: [CYCLES, EEVEE, WORKBENCH]
+    description: Render engine
+  start:
+    type: int
+    default: 1
+    description: Start frame
+  end:
+    type: int
+    default: 250
+    description: End frame
+
+execArgs:
+  - -b
+  - ${{ args.file }}
+  - --engine
+  - ${{ args.engine }}
+  - --render-output
+  - ${{ args.output }}
+  - -s
+  - ${{ args.start }}
+  - -e
+  - ${{ args.end }}
+  - --render-anim
+
+pipeline:
+  - exec:
+      command: blender
+      args: ${{ execArgs }}
+      parse: text
