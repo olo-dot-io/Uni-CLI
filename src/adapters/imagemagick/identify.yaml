@@ -1,0 +1,28 @@
+# Desktop adapter — wrapping ImageMagick for image metadata
+site: imagemagick
+name: identify
+description: Get image metadata (dimensions, format, depth, colorspace)
+type: desktop
+strategy: public
+binary: magick
+detect: which magick
+
+pipeline:
+  - exec:
+      command: magick
+      args:
+        - identify
+        - -format
+        - '{"width":%w,"height":%h,"format":"%m","depth":%z,"size":"%b","colorspace":"%r"}'
+        - ${{ args.file }}
+      parse: json
+      timeout: 30000
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Input image file path
+
+columns: [width, height, format, depth, size, colorspace]

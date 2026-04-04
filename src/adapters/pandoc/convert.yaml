@@ -1,0 +1,53 @@
+# Desktop adapter — wrapping Pandoc for universal document conversion
+site: pandoc
+name: convert
+description: Convert documents between formats (markdown, html, pdf, docx, and more)
+type: desktop
+strategy: public
+binary: pandoc
+detect: which pandoc
+
+pipeline:
+  - exec:
+      command: pandoc
+      args:
+        - ${{ args.input }}
+        - -f
+        - ${{ args.from }}
+        - -t
+        - ${{ args.to }}
+        - -o
+        - ${{ args.output }}
+        - ${{ args.standalone ? '-s' : '' }}
+        - ${{ args.toc ? '--toc' : '' }}
+      parse: text
+      timeout: 60000
+
+args:
+  input:
+    type: str
+    required: true
+    positional: true
+    description: Input file path
+  output:
+    type: str
+    required: true
+    description: Output file path
+  from:
+    type: str
+    default: markdown
+    description: Input format (e.g. markdown, html, rst, latex, docx)
+  to:
+    type: str
+    default: pdf
+    description: Output format (e.g. pdf, html, docx, epub, latex)
+  standalone:
+    type: bool
+    default: true
+    description: Produce a standalone document with header and footer
+  toc:
+    type: bool
+    default: false
+    description: Include an automatically generated table of contents
+
+columns: []

@@ -1,0 +1,43 @@
+# Desktop adapter — wrapping ImageMagick for image compositing
+site: imagemagick
+name: composite
+description: Overlay one image on top of another with gravity control
+type: desktop
+strategy: public
+binary: magick
+detect: which magick
+
+pipeline:
+  - exec:
+      command: magick
+      args:
+        - composite
+        - -gravity
+        - ${{ args.gravity }}
+        - ${{ args.overlay }}
+        - ${{ args.base }}
+        - ${{ args.output }}
+      parse: text
+      timeout: 30000
+
+args:
+  overlay:
+    type: str
+    required: true
+    positional: true
+    description: Overlay image file path
+  base:
+    type: str
+    required: true
+    description: Base image file path
+  output:
+    type: str
+    required: true
+    description: Output image file path
+  gravity:
+    type: str
+    default: center
+    choices: [center, northwest, northeast, southwest, southeast, north, south, east, west]
+    description: Gravity position for overlay placement
+
+columns: []

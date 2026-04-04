@@ -1,0 +1,46 @@
+# Desktop adapter — wrapping Mermaid CLI for diagram rendering
+site: mermaid
+name: render
+description: Render Mermaid diagram code to an image file
+type: desktop
+strategy: public
+binary: mmdc
+detect: which mmdc
+
+pipeline:
+  - exec:
+      command: mmdc
+      args:
+        - -i
+        - "-"
+        - -o
+        - ${{ args.output }}
+        - -t
+        - ${{ args.theme }}
+        - -b
+        - ${{ args.background }}
+      stdin: "${{ args.code }}"
+      parse: text
+      timeout: 30000
+
+args:
+  code:
+    type: str
+    required: true
+    positional: true
+    description: Mermaid diagram code
+  output:
+    type: str
+    default: diagram.png
+    description: Output image file path (supports .png, .svg, .pdf)
+  theme:
+    type: str
+    default: default
+    choices: [default, dark, forest, neutral]
+    description: Diagram color theme
+  background:
+    type: str
+    default: white
+    description: Background color (e.g. white, transparent, #ff0000)
+
+columns: []

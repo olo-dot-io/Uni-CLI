@@ -1,0 +1,36 @@
+# Desktop adapter — wrapping ImageMagick for image resizing
+site: imagemagick
+name: resize
+description: Resize image by geometry (pixels, percentage, or dimension constraint)
+type: desktop
+strategy: public
+binary: magick
+detect: which magick
+
+pipeline:
+  - exec:
+      command: magick
+      args:
+        - ${{ args.input }}
+        - -resize
+        - ${{ args.geometry }}
+        - ${{ args.output }}
+      parse: text
+      timeout: 30000
+
+args:
+  input:
+    type: str
+    required: true
+    positional: true
+    description: Input image file path
+  output:
+    type: str
+    required: true
+    description: Output image file path
+  geometry:
+    type: str
+    required: true
+    description: "Resize geometry (e.g. 800x600, 50%, 800x)"
+
+columns: []

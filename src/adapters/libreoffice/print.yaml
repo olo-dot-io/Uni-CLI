@@ -1,0 +1,36 @@
+# Desktop adapter — wrapping LibreOffice for headless print-to-file
+site: libreoffice
+name: print
+description: Print document to file headlessly via LibreOffice
+type: desktop
+strategy: public
+binary: soffice
+detect: which soffice
+
+pipeline:
+  - exec:
+      command: soffice
+      args:
+        - --headless
+        - --norestore
+        - --print-to-file
+        - --outdir
+        - ${{ args.outdir }}
+        - ${{ args.file }}
+      parse: text
+      timeout: 60000
+      env:
+        UserInstallation: "file:///tmp/unicli_lo_profile"
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Input document file path
+  outdir:
+    type: str
+    default: "."
+    description: Output directory for printed file
+
+columns: []
