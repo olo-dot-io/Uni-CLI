@@ -17,9 +17,6 @@ pipeline:
       url: https://www.reddit.com/r/all/hot.json
       params:
         limit: ${{ args.limit }}
-      headers:
-        User-Agent: Uni-CLI/0.100.1
-
   - select: data.children
 
   - map:

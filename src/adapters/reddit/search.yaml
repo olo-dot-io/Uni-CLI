@@ -29,9 +29,6 @@ pipeline:
         q: ${{ args.query }}
         sort: ${{ args.sort || 'relevance' }}
         limit: ${{ args.limit }}
-      headers:
-        User-Agent: Uni-CLI/0.100.1
-
   - select: data.children
 
   - map:

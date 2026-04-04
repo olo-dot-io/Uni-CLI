@@ -9,6 +9,7 @@ import { getAllAdapters, listCommands, resolveCommand } from "./registry.js";
 import { format, detectFormat } from "./output/formatter.js";
 import { runPipeline, PipelineError } from "./engine/yaml-runner.js";
 import { ExitCode } from "./types.js";
+import { VERSION } from "./constants.js";
 import type { OutputFormat } from "./types.js";
 
 export function createCli(): Command {
@@ -17,7 +18,7 @@ export function createCli(): Command {
   program
     .name("unicli")
     .description("CLI IS ALL YOU NEED — Universal CLI for AI agents")
-    .version("0.201.0")
+    .version(VERSION)
     .option(
       "-f, --format <format>",
       "output format: table, json, yaml, csv, md",

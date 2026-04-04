@@ -17,9 +17,6 @@ pipeline:
       url: "https://www.reddit.com/user/${{ args.username }}/about.json"
       params:
         raw_json: "1"
-      headers:
-        User-Agent: Uni-CLI/0.201
-
   - select: data
 
   - map:

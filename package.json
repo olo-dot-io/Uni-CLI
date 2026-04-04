@@ -25,7 +25,8 @@
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "doctor": "tsx src/doctor.ts",
-    "mcp": "tsx src/mcp/server.ts"
+    "mcp": "tsx src/mcp/server.ts",
+    "release": "npm run build && tsx scripts/release.ts"
   },
   "keywords": [
     "cli",

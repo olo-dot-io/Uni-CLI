@@ -17,8 +17,11 @@ import yaml from "js-yaml";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ADAPTERS_DIR = join(__dirname, "..", "src", "adapters");
 const OUTPUT = join(__dirname, "..", "dist", "manifest.json");
+const PKG = JSON.parse(
+  readFileSync(join(__dirname, "..", "package.json"), "utf-8"),
+);
 
-const manifest = { version: "0.201.0", sites: {} };
+const manifest = { version: PKG.version, sites: {} };
 
 if (existsSync(ADAPTERS_DIR)) {
   for (const site of readdirSync(ADAPTERS_DIR)) {

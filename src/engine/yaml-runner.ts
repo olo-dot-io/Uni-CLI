@@ -17,6 +17,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import TurndownService from "turndown";
+import { USER_AGENT } from "../constants.js";
 import type { PipelineStep } from "../types.js";
 
 const execFileAsync = promisify(execFile);
@@ -189,7 +190,7 @@ async function fetchJson(url: string, config: FetchConfig): Promise<unknown> {
   const method = config.method ?? "GET";
   const headers: Record<string, string> = {
     Accept: "application/json",
-    "User-Agent": "Uni-CLI/0.201",
+    "User-Agent": USER_AGENT,
     ...config.headers,
   };
 
@@ -337,7 +338,7 @@ async function stepFetchText(
 
   const method = config.method ?? "GET";
   const headers: Record<string, string> = {
-    "User-Agent": "Uni-CLI/0.201",
+    "User-Agent": USER_AGENT,
     ...config.headers,
   };
 

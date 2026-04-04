@@ -19,9 +19,6 @@ args:
 pipeline:
   - fetch:
       url: "https://${{ args.lang || 'en' }}.wikipedia.org/api/rest_v1/page/summary/${{ args.title | urlencode }}"
-      headers:
-        User-Agent: Uni-CLI/0.201
-
   - map:
       title: ${{ item.title }}
       description: ${{ item.description || '-' }}
