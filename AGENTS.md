@@ -27,20 +27,20 @@ npm install -g unicli
 
 ## What You Can Do
 
-### Web (39 sites)
+### Web (40 sites)
 
-**Chinese**: bilibili (12 cmds), weibo (5), zhihu (6), douban (3), xueqiu (2),
-linux-do (2), jike, zsxq (2), tieba (3), weread (3), v2ex (9)
+**Chinese**: bilibili (13), weibo (9), zhihu (7), douban (9), xueqiu (10),
+linux-do (10), jike (10), zsxq (5), tieba (4), weread (7), v2ex (11)
 
 **International**: twitter (25), youtube (5), reddit (16), hackernews (8),
-bluesky (9), medium, substack, producthunt, lobsters (4), devto (3),
+bluesky (9), medium (3), substack (3), producthunt (4), lobsters (4), devto (3),
 stackoverflow (4)
 
-**Finance**: bloomberg (9), sinafinance (2), xueqiu (2)
+**Finance**: bloomberg (10), sinafinance (4), xueqiu (10)
 
-**Reference**: google (2), wikipedia (4), arxiv (2), dictionary (3),
-bbc, 36kr, paperreview (3), spotify, ctrip, xiaoyuzhou (3), steam, imdb (4),
-hf, web
+**Reference**: google (4), wikipedia (4), arxiv (2), dictionary (3),
+bbc, 36kr (4), paperreview (3), spotify, ctrip, xiaoyuzhou (3), steam, imdb (6),
+github-trending, hf, web
 
 ### Desktop (14 apps)
 
@@ -64,7 +64,7 @@ unicli auth list            # List configured sites
 
 Cookie file format: `{ "SESSDATA": "value", "bili_jct": "value" }`
 
-Sites requiring auth: bilibili, weibo, zhihu, twitter, xueqiu, zsxq, jike, weread, v2ex (some commands)
+Sites requiring auth: bilibili, weibo, zhihu, twitter, xueqiu, zsxq, jike, weread, douban, linux-do, v2ex (some commands)
 
 ## Output Protocol
 

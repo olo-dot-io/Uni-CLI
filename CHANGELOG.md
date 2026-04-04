@@ -3,7 +3,7 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
-## [0.203.0] — Mercury · Glenn
+## [0.203.0] — Vostok · Leonov
 
 ### Engine — Browser Strategy
 

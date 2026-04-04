@@ -8,9 +8,9 @@
 | ------- | ------------------- | ----- | -------- | ---------- |
 | 0.100.0 | Sputnik             | 6     | 8        | ✅         |
 | 0.200.0 | Vostok · Chaika     | 21    | 74       | ✅         |
-| 0.201.0 | Vostok · Chaika II  | 43    | 141      | ✅ Current |
-| 0.202.0 | Vostok · Tereshkova | ~69   | ~301     | Planned    |
-| 0.203.0 | Vostok · Leonov     | ~83   | ~416     | Planned    |
+| 0.201.0 | Vostok · Chaika II  | 43    | 141      | ✅         |
+| 0.202.0 | Vostok · Tereshkova | 57    | 203      | ✅         |
+| 0.203.0 | Vostok · Leonov     | 57    | 289      | ✅ Current |
 | 0.204.0 | Vostok · Nikolayev  | ~105  | ~509     | Planned    |
 | 0.205.0 | Vostok · Bykovsky   | 126+  | 700+     | Planned    |
 
