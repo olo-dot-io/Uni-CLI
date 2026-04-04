@@ -169,7 +169,7 @@ describe("browser step: intercept", () => {
     const mockPage = await getMockPage();
     // Make evaluate return empty array for capture polling, then throw timeout
     mockPage.evaluate.mockImplementation(async (expr: string) => {
-      if (typeof expr === "string" && expr.includes("__unicli_captured")) {
+      if (typeof expr === "string" && expr.includes("__unicli_intercepted")) {
         return "[]";
       }
       return undefined;

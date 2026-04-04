@@ -27,6 +27,10 @@ import { USER_AGENT } from "../constants.js";
 import type { PipelineStep } from "../types.js";
 import { loadCookies, formatCookieHeader } from "./cookies.js";
 import type { BrowserPage } from "../browser/page.js";
+import {
+  generateInterceptorJs,
+  generateReadInterceptedJs,
+} from "./interceptor.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -1244,28 +1248,8 @@ async function stepIntercept(
   const capturePattern = evalTemplate(config.capture, ctx);
   const timeout = config.timeout ?? 10000;
 
-  // Install interceptor: patch fetch to capture matching responses
-  const patternJson = JSON.stringify(capturePattern);
-  const interceptorScript = `
-    (function() {
-      var __pattern = ${patternJson};
-      window.__unicli_captured = [];
-      var originalFetch = window.fetch;
-      window.fetch = async function(...args) {
-        var resp = await originalFetch.apply(this, args);
-        var url = typeof args[0] === 'string' ? args[0] : (args[0]?.url ?? '');
-        if (url.includes(__pattern)) {
-          try {
-            const clone = resp.clone();
-            const json = await clone.json();
-            window.__unicli_captured.push({ url, data: json });
-          } catch {}
-        }
-        return resp;
-      };
-    })();
-  `;
-  await page.evaluate(interceptorScript);
+  // Install interceptor: patch fetch + XHR to capture matching responses
+  await page.evaluate(generateInterceptorJs(capturePattern));
 
   // Execute trigger action
   const trigger = evalTemplate(config.trigger, ctx);
@@ -1283,9 +1267,7 @@ async function stepIntercept(
   const startTime = Date.now();
   let captured: unknown = null;
   while (Date.now() - startTime < timeout) {
-    const result = await page.evaluate(
-      "JSON.stringify(window.__unicli_captured || [])",
-    );
+    const result = await page.evaluate(generateReadInterceptedJs());
     const arr = JSON.parse(result as string) as Array<{
       url: string;
       data: unknown;
@@ -1296,11 +1278,6 @@ async function stepIntercept(
     }
     await page.waitFor(200);
   }
-
-  // Cleanup injected globals
-  await page.evaluate(
-    "delete window.__unicli_captured; delete window.__unicli_originalFetch;",
-  );
 
   if (!captured) {
     throw new PipelineError(
