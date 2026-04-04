@@ -67,6 +67,104 @@ Function.prototype.toString = function() {
   if (this === Function.prototype.toString) return nativeToStringStr;
   return originalToString.call(this);
 };
+
+// 7. Clean CDP/automation globals
+(function() {
+  var props = Object.getOwnPropertyNames(window);
+  for (var i = 0; i < props.length; i++) {
+    if (props[i].startsWith('cdc_') || props[i].startsWith('__playwright') ||
+        props[i].startsWith('__puppeteer') || props[i] === '$chrome_asyncScriptInfo') {
+      try { delete window[props[i]]; } catch(e) {}
+    }
+  }
+  try { delete document.$cdc_asdjflasutopfhvcZLmcfl_; } catch(e) {}
+  try { delete document.$chrome_asyncScriptInfo; } catch(e) {}
+})();
+
+// 8. Filter CDP script frames from Error.stack
+(function() {
+  var origStackDesc = Object.getOwnPropertyDescriptor(Error.prototype, 'stack');
+  if (origStackDesc && origStackDesc.get) {
+    var origGet = origStackDesc.get;
+    Object.defineProperty(Error.prototype, 'stack', {
+      get: function() {
+        var stack = origGet.call(this);
+        if (typeof stack !== 'string') return stack;
+        return stack.split('\\n').filter(function(line) {
+          return line.indexOf('__puppeteer_evaluation_script__') === -1 &&
+                 line.indexOf('__playwright_evaluation_script__') === -1 &&
+                 line.indexOf('pptr:') === -1;
+        }).join('\\n');
+      },
+      configurable: true,
+    });
+  }
+})();
+
+// 9. Reserved for debugger statement stripping (no-op for now)
+
+// 10. Normalize outerWidth/outerHeight to match realistic values
+Object.defineProperty(window, 'outerWidth', {
+  get: function() { return window.innerWidth; },
+  configurable: true,
+});
+Object.defineProperty(window, 'outerHeight', {
+  get: function() { return window.innerHeight + 85; },
+  configurable: true,
+});
+
+// 11. Filter automation entries from Performance API
+(function() {
+  if (typeof Performance === 'undefined') return;
+  var origGetEntries = Performance.prototype.getEntries;
+  if (origGetEntries) {
+    Performance.prototype.getEntries = function() {
+      return origGetEntries.call(this).filter(function(e) {
+        return e.name.indexOf('__puppeteer') === -1 && e.name.indexOf('pptr://') === -1;
+      });
+    };
+  }
+  var origGetByType = Performance.prototype.getEntriesByType;
+  if (origGetByType) {
+    Performance.prototype.getEntriesByType = function(type) {
+      return origGetByType.call(this, type).filter(function(e) {
+        return e.name.indexOf('__puppeteer') === -1 && e.name.indexOf('pptr://') === -1;
+      });
+    };
+  }
+})();
+
+// 12. Clean document-level CDP markers
+(function() {
+  var docProps = Object.getOwnPropertyNames(document);
+  for (var i = 0; i < docProps.length; i++) {
+    if (docProps[i].startsWith('$cdc_') || docProps[i].startsWith('$chrome_')) {
+      try { delete document[docProps[i]]; } catch(e) {}
+    }
+  }
+})();
+
+// 13. Ensure iframe contentWindow.chrome consistency
+(function() {
+  var origDesc = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'contentWindow');
+  if (origDesc && origDesc.get) {
+    var origGet = origDesc.get;
+    Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', {
+      get: function() {
+        var win = origGet.call(this);
+        if (win && !win.chrome) {
+          try {
+            win.chrome = {
+              runtime: { connect: function(){}, sendMessage: function(){}, id: undefined }
+            };
+          } catch(e) {}
+        }
+        return win;
+      },
+      configurable: true,
+    });
+  }
+})();
 `;
 
 /**
