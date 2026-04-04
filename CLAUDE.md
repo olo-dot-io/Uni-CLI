@@ -45,11 +45,21 @@ src/
 ├── cli.ts               # Commander routing + dynamic command registration
 ├── types.ts             # Core types: AdapterType, Strategy, IPage, ExitCode
 ├── registry.ts          # Adapter registry + cli() helper
-├── engine/              # Execution engines per adapter type
+├── engine/
+│   ├── yaml-runner.ts   # Pipeline engine (17 steps: fetch, navigate, evaluate, click...)
+│   ├── cookies.ts       # Cookie file reader for authenticated adapters
+│   └── cascade.ts       # Strategy cascade: auto-probe PUBLIC→COOKIE→HEADER
 ├── output/formatter.ts  # Multi-format output (table/json/yaml/csv/md)
 ├── discovery/loader.ts  # YAML + TS adapter scanner
 ├── adapters/            # Built-in adapters (YAML + TS)
-├── browser/             # Chrome Extension bridge
+├── browser/
+│   ├── cdp-client.ts    # Raw WebSocket CDP client (zero new deps, uses ws)
+│   ├── page.ts          # BrowserPage: goto, evaluate, click, type, cookies
+│   ├── launcher.ts      # Chrome discovery + spawn with --remote-debugging-port
+│   └── stealth.ts       # Anti-detection injection (webdriver, plugins, toString)
+├── commands/
+│   ├── auth.ts          # unicli auth setup/check/list
+│   └── browser.ts       # unicli browser start/status
 ├── hub/                 # External CLI hub (passthrough)
 ├── plugin/              # Plugin system
 └── mcp/                 # MCP stdio server
@@ -57,16 +67,16 @@ src/
 
 ## Technology Stack
 
-| Layer    | Technology           |
-| -------- | -------------------- |
-| Language | TypeScript (strict)  |
-| Runtime  | Node.js >= 20        |
-| CLI      | Commander            |
-| Test     | Vitest               |
-| Lint     | Oxlint               |
-| Format   | Prettier             |
-| Docs     | VitePress            |
-| Browser  | Chrome Extension CDP |
+| Layer    | Technology                   |
+| -------- | ---------------------------- |
+| Language | TypeScript (strict)          |
+| Runtime  | Node.js >= 20                |
+| CLI      | Commander                    |
+| Test     | Vitest                       |
+| Lint     | Oxlint                       |
+| Format   | Prettier                     |
+| Docs     | VitePress                    |
+| Browser  | Raw CDP via `ws` (WebSocket) |
 
 ## Commands
 
@@ -84,6 +94,44 @@ src/
 | Diagnostics     | `npm run doctor`                 |
 | Repair adapter  | `unicli repair <site> <command>` |
 | Test adapters   | `unicli test [site]`             |
+| Browser start   | `unicli browser start`           |
+| Browser status  | `unicli browser status`          |
+| Auth setup      | `unicli auth setup <site>`       |
+| Sync refs       | `npm run sync:ref`               |
+
+## Pipeline Steps (17)
+
+| Step         | Type      | What it does                                           |
+| ------------ | --------- | ------------------------------------------------------ |
+| `fetch`      | API       | HTTP JSON (GET/POST, retry, backoff, cookie injection) |
+| `fetch_text` | API       | HTTP raw text (RSS, HTML)                              |
+| `parse_rss`  | API       | Extract RSS/Atom feed items                            |
+| `html_to_md` | API       | Convert HTML to Markdown                               |
+| `select`     | Transform | Navigate into JSON path (`data.items`)                 |
+| `map`        | Transform | Transform each item via template                       |
+| `filter`     | Transform | Keep matching items                                    |
+| `sort`       | Transform | Sort by field                                          |
+| `limit`      | Transform | Cap result count                                       |
+| `exec`       | Desktop   | Run subprocess (stdin, env, file output)               |
+| `write_temp` | Desktop   | Create temp script file for desktop adapters           |
+| `navigate`   | Browser   | Navigate Chrome to URL via CDP                         |
+| `evaluate`   | Browser   | Execute JS in page context                             |
+| `click`      | Browser   | Click element by CSS selector                          |
+| `type`       | Browser   | Type text into input                                   |
+| `wait`       | Browser   | Wait for time (ms) or selector to appear               |
+| `intercept`  | Browser   | Capture page network requests matching pattern         |
+
+## Strategies
+
+| Strategy    | Auth          | How                                                   |
+| ----------- | ------------- | ----------------------------------------------------- |
+| `public`    | None          | Direct fetch, no credentials                          |
+| `cookie`    | Cookie file   | `~/.unicli/cookies/<site>.json` injected into headers |
+| `header`    | Cookie + CSRF | Cookie + auto-extracted CSRF token                    |
+| `intercept` | Browser       | Navigate page, capture XHR/fetch responses            |
+| `ui`        | Browser       | Interact with page UI (click, type)                   |
+
+Strategy cascade: `unicli` auto-probes PUBLIC → COOKIE → HEADER on first run.
 
 ## Adapter Format
 
@@ -127,3 +175,21 @@ cli({
 - All commands support `--json` output
 
 **Every task is complete only after `npm run verify` passes.**
+
+## Version Release Checklist
+
+When bumping version, ALL of these must update atomically:
+
+| File              | What                                          |
+| ----------------- | --------------------------------------------- |
+| `package.json`    | `version`                                     |
+| `CHANGELOG.md`    | New heading + content                         |
+| `CLAUDE.md`       | Version in Code Standards                     |
+| `AGENTS.md`       | Header count, site listings, version footer   |
+| `README.md`       | Agent comment (line 1), feature table, footer |
+| `docs/ROADMAP.md` | Progress table (mark ✅, update counts)       |
+| `docs/TASTE.md`   | Current version line                          |
+
+Codename series: 0.1xx=Sputnik, **0.2xx=Vostok**, 0.3xx=Mercury, 0.4xx=Gemini.
+
+After commit: `git tag -a v{X} -m "..."` → `gh release create` → `git push --tags`.

@@ -123,21 +123,45 @@ columns: [title, url]
 
 That's it. No TypeScript, no build step, no imports. The engine handles everything.
 
-## Pipeline Steps
+## Browser Automation
 
-| Step         | What it does                             |
-| ------------ | ---------------------------------------- |
-| `fetch`      | HTTP JSON (GET/POST, retry, backoff)     |
-| `fetch_text` | HTTP raw text (RSS, HTML)                |
-| `parse_rss`  | Extract RSS `<item>` blocks              |
-| `html_to_md` | Convert HTML to Markdown                 |
-| `select`     | Navigate into JSON (`data.items`)        |
-| `map`        | Transform each item                      |
-| `filter`     | Keep matching items                      |
-| `sort`       | Sort by field                            |
-| `limit`      | Cap results                              |
-| `exec`       | Run subprocess (stdin, env, file output) |
+For sites that require a real browser (intercept/UI strategy):
+
+```bash
+unicli browser start          # Launch Chrome with CDP
+unicli browser status         # Check connection
+```
+
+Requires Chrome. The engine connects via raw CDP WebSocket — zero extensions needed.
+
+## Pipeline Steps (17)
+
+| Step         | What it does                                     |
+| ------------ | ------------------------------------------------ |
+| `fetch`      | HTTP JSON (GET/POST, retry, backoff, cookies)    |
+| `fetch_text` | HTTP raw text (RSS, HTML)                        |
+| `parse_rss`  | Extract RSS + Atom feed items                    |
+| `html_to_md` | Convert HTML to Markdown                         |
+| `select`     | Navigate into JSON (`data.items`)                |
+| `map`        | Transform each item via `${{ }}` templates       |
+| `filter`     | Keep matching items                              |
+| `sort`       | Sort by field                                    |
+| `limit`      | Cap results                                      |
+| `exec`       | Run subprocess (stdin, env, file output)         |
+| `write_temp` | Create temp script file (for desktop adapters)   |
+| `navigate`   | Navigate Chrome to URL via CDP                   |
+| `evaluate`   | Execute JavaScript in page context               |
+| `click`      | Click element by CSS selector                    |
+| `type`       | Type text into input element                     |
+| `wait`       | Wait for time (ms) or CSS selector to appear     |
+| `intercept`  | Capture page network requests matching a pattern |
+
+## Strategies
+
+`public` → `cookie` → `header` → `intercept` → `ui`
+
+The engine auto-probes the first three on first run. `intercept` and `ui` require explicit configuration per adapter.
 
 ## Version
 
-0.201.0 — Vostok · Chaika II
+0.203.0 — Vostok · Leonov
