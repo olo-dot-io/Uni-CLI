@@ -1107,17 +1107,16 @@ async function stepIntercept(
   const timeout = config.timeout ?? 10000;
 
   // Install interceptor: patch fetch to capture matching responses
-  const escapedPattern = capturePattern
-    .replace(/\\/g, "\\\\")
-    .replace(/'/g, "\\'");
+  const patternJson = JSON.stringify(capturePattern);
   const interceptorScript = `
     (function() {
+      var __pattern = ${patternJson};
       window.__unicli_captured = [];
-      const originalFetch = window.fetch;
+      var originalFetch = window.fetch;
       window.fetch = async function(...args) {
-        const resp = await originalFetch.apply(this, args);
-        const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url ?? '');
-        if (url.includes('${escapedPattern}')) {
+        var resp = await originalFetch.apply(this, args);
+        var url = typeof args[0] === 'string' ? args[0] : (args[0]?.url ?? '');
+        if (url.includes(__pattern)) {
           try {
             const clone = resp.clone();
             const json = await clone.json();
