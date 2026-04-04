@@ -1,0 +1,21 @@
+site: web
+name: read
+description: Read any webpage and convert to Markdown
+type: web-api
+strategy: public
+
+pipeline:
+  - fetch_text:
+      url: "${{ args.url }}"
+      headers:
+        Accept: "text/html"
+  - html_to_md: {}
+
+args:
+  url:
+    type: str
+    required: true
+    positional: true
+    description: URL of the webpage to read
+
+columns: []

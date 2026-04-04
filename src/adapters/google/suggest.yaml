@@ -1,0 +1,26 @@
+site: google
+name: suggest
+description: Google autocomplete suggestions for a query
+type: web-api
+strategy: public
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search query to get suggestions for
+
+pipeline:
+  - fetch:
+      url: "https://suggestqueries.google.com/complete/search"
+      params:
+        client: firefox
+        q: ${{ args.query }}
+
+  - select: "1"
+
+  - map:
+      suggestion: "${{ item }}"
+
+columns: [suggestion]

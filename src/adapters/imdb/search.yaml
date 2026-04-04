@@ -1,0 +1,32 @@
+site: imdb
+name: search
+description: Search movies and shows via IMDb suggestion API
+type: web-api
+strategy: public
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Movie or show title to search
+  limit:
+    type: int
+    default: 10
+    description: Number of results
+
+pipeline:
+  - fetch:
+      url: "https://v3.sg.media-imdb.com/suggestion/x/${{ args.query | urlencode }}.json"
+
+  - select: d
+
+  - map:
+      title: ${{ item.l }}
+      year: ${{ item.y }}
+      type: ${{ item.qid }}
+      id: ${{ item.id }}
+
+  - limit: ${{ args.limit }}
+
+columns: [title, year, type, id]
