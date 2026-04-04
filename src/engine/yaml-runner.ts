@@ -21,6 +21,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomBytes } from "node:crypto";
 import { promisify } from "node:util";
+import { runInNewContext } from "node:vm";
 import TurndownService from "turndown";
 import { USER_AGENT } from "../constants.js";
 import type { PipelineStep } from "../types.js";
@@ -823,6 +824,43 @@ const PIPE_FILTERS: Record<string, (...args: unknown[]) => unknown> = {
     const n = Number(max) || 100;
     return s.length > n ? s.slice(0, n) + "..." : s;
   },
+  slugify: (val: unknown) => {
+    return String(val ?? "")
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  },
+  sanitize: (val: unknown) =>
+    String(val ?? "")
+      .replace(/[<>:"/\\|?*\x00-\x1f]/g, "_")
+      .replace(/^\.+/, "")
+      .trim() || "download",
+  ext: (val: unknown) => {
+    try {
+      const pathname = new URL(String(val)).pathname;
+      const dot = pathname.lastIndexOf(".");
+      return dot > 0 ? pathname.slice(dot + 1) : "";
+    } catch {
+      const s = String(val ?? "");
+      const dot = s.lastIndexOf(".");
+      return dot > 0 ? s.slice(dot + 1).split(/[?#]/)[0] : "";
+    }
+  },
+  basename: (val: unknown) => {
+    try {
+      const pathname = new URL(String(val)).pathname;
+      return pathname.split("/").pop() ?? "";
+    } catch {
+      return String(val ?? "").split("/").pop() ?? "";
+    }
+  },
+  keys: (val: unknown) =>
+    val && typeof val === "object" && !Array.isArray(val)
+      ? Object.keys(val)
+      : [],
+  json: (val: unknown) => JSON.stringify(val),
 };
 
 /**
@@ -925,49 +963,125 @@ function splitFilterArgs(raw: string): string[] {
   return args;
 }
 
+/** Patterns that must never appear in evaluated expressions. */
+const FORBIDDEN_EXPR =
+  /constructor|__proto__|prototype|globalThis|process|require|import\s*\(|eval\s*\(/;
+
 /**
- * Safe expression evaluator using Function constructor.
- * Scoped to the provided variables — no access to global state.
+ * Safe expression evaluator using Node.js VM sandbox.
+ * Provides stronger isolation than `new Function()` with a 50ms timeout
+ * to prevent DoS. Simple dotted access (the most common case) uses a
+ * fast path that avoids the VM overhead entirely.
+ *
  * Supports pipe filters: ${{ expr | join(', ') | slice(0, 100) }}
  */
 function evalExpression(expr: string, scope: Record<string, unknown>): unknown {
   try {
+    // Security: reject dangerous patterns
+    if (FORBIDDEN_EXPR.test(expr)) return undefined;
+
     const { baseExpr, filters } = parsePipes(expr);
 
-    const keys = Object.keys(scope);
-    const values = Object.values(scope);
-    const fn = new Function(...keys, `"use strict"; return (${baseExpr});`);
-    let result: unknown = fn(...values);
+    // Fast path: simple dotted access like "item.title" or "args.query"
+    if (/^[a-zA-Z_][\w.]*(\[\d+\])?$/.test(baseExpr)) {
+      let result: unknown = resolveDottedPath(baseExpr, scope);
+      for (const filter of filters) {
+        const filterFn = PIPE_FILTERS[filter.name];
+        if (!filterFn) continue;
+        const evaledArgs = filter.args.map((a) => resolveFilterArg(a, scope));
+        result = filterFn(result, ...evaledArgs);
+      }
+      return result;
+    }
+
+    // VM sandbox evaluation with 50ms timeout
+    const sandbox = {
+      ...scope,
+      encodeURIComponent,
+      decodeURIComponent,
+      JSON,
+      Math,
+      Number,
+      String,
+      Boolean,
+      Array,
+      Date,
+      Object,
+      parseInt,
+      parseFloat,
+      isNaN,
+      isFinite,
+    };
+
+    let result: unknown;
+    try {
+      result = runInNewContext(`(${baseExpr})`, sandbox, { timeout: 50 });
+    } catch {
+      return undefined;
+    }
 
     // Apply pipe filters
     for (const filter of filters) {
       const filterFn = PIPE_FILTERS[filter.name];
       if (!filterFn) continue;
-      // Evaluate filter args
-      const evaledArgs = filter.args.map((a) => {
-        // String literal
-        if (
-          (a.startsWith("'") && a.endsWith("'")) ||
-          (a.startsWith('"') && a.endsWith('"'))
-        ) {
-          return a.slice(1, -1);
-        }
-        // Number
-        if (/^-?\d+(\.\d+)?$/.test(a)) return Number(a);
-        // Expression
-        try {
-          const argFn = new Function(...keys, `"use strict"; return (${a});`);
-          return argFn(...values);
-        } catch {
-          return a;
-        }
-      });
+      const evaledArgs = filter.args.map((a) => resolveFilterArg(a, scope));
       result = filterFn(result, ...evaledArgs);
     }
 
     return result;
   } catch {
     return undefined;
+  }
+}
+
+/** Resolve a dotted path like "item.tags[0]" against the scope object. */
+function resolveDottedPath(
+  path: string,
+  scope: Record<string, unknown>,
+): unknown {
+  // Handle array index: "item.tags[0]"
+  const cleanPath = path.replace(/\[(\d+)\]/g, ".$1");
+  const parts = cleanPath.split(".");
+  let current: unknown = scope[parts[0]];
+  for (let i = 1; i < parts.length; i++) {
+    if (current == null || typeof current !== "object") return undefined;
+    current = (current as Record<string, unknown>)[parts[i]];
+  }
+  return current;
+}
+
+/** Resolve a single filter argument — string literal, number, or expression. */
+function resolveFilterArg(
+  a: string,
+  scope: Record<string, unknown>,
+): unknown {
+  // String literal
+  if (
+    (a.startsWith("'") && a.endsWith("'")) ||
+    (a.startsWith('"') && a.endsWith('"'))
+  ) {
+    return a.slice(1, -1);
+  }
+  // Number
+  if (/^-?\d+(\.\d+)?$/.test(a)) return Number(a);
+  // Security check
+  if (FORBIDDEN_EXPR.test(a)) return a;
+  // Expression via VM
+  try {
+    const sandbox = {
+      ...scope,
+      JSON,
+      Math,
+      Number,
+      String,
+      Boolean,
+      Array,
+      Date,
+      Object,
+    };
+    return runInNewContext(`(${a})`, sandbox, { timeout: 50 });
+  } catch {
+    return a;
   }
 }
 
@@ -1238,3 +1352,6 @@ function getNestedValue(obj: unknown, path: string): unknown {
 
   return current;
 }
+
+// Exported for unit testing — not part of public API
+export { PIPE_FILTERS, evalExpression, buildScope };
