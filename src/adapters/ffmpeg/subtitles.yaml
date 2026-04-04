@@ -1,0 +1,38 @@
+# Desktop adapter — burn SRT subtitles into a video file
+site: ffmpeg
+name: subtitles
+description: Burn SRT subtitles into a video file (hardcoded subtitles)
+type: desktop
+binary: ffmpeg
+detect: which ffmpeg
+strategy: public
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Input video file path
+  srt:
+    type: str
+    required: true
+    description: SRT subtitle file path
+  output:
+    type: str
+    required: true
+    description: Output video file path
+
+pipeline:
+  - exec:
+      command: ffmpeg
+      args:
+        - "-i"
+        - "${{ args.file }}"
+        - "-vf"
+        - "subtitles=${{ args.srt }}"
+        - "-y"
+        - "${{ args.output }}"
+      parse: text
+      timeout: 300000
+
+columns: []

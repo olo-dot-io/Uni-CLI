@@ -1,0 +1,56 @@
+# Desktop adapter — compress video using H.264 CRF encoding
+site: ffmpeg
+name: compress
+description: Compress video with H.264 CRF encoding (lower CRF = better quality)
+type: desktop
+binary: ffmpeg
+detect: which ffmpeg
+strategy: public
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Input video file path
+  output:
+    type: str
+    required: true
+    description: Output video file path
+  crf:
+    type: int
+    default: 28
+    description: Constant rate factor 0-51 (lower = better quality, larger file)
+  preset:
+    type: str
+    default: fast
+    choices:
+      [
+        ultrafast,
+        superfast,
+        veryfast,
+        faster,
+        fast,
+        medium,
+        slow,
+        slower,
+        veryslow,
+      ]
+    description: Encoding speed preset (slower = better compression ratio)
+
+pipeline:
+  - exec:
+      command: ffmpeg
+      args:
+        - "-i"
+        - "${{ args.file }}"
+        - "-crf"
+        - "${{ args.crf }}"
+        - "-preset"
+        - "${{ args.preset }}"
+        - "-y"
+        - "${{ args.output }}"
+      parse: text
+      timeout: 300000
+
+columns: []

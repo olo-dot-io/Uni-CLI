@@ -1,0 +1,43 @@
+# Desktop adapter — wrapping ImageMagick for image comparison
+site: imagemagick
+name: compare
+description: Compare two images using a difference metric and produce a diff image
+type: desktop
+strategy: public
+binary: magick
+detect: which magick
+
+pipeline:
+  - exec:
+      command: magick
+      args:
+        - compare
+        - -metric
+        - ${{ args.metric }}
+        - ${{ args.image1 }}
+        - ${{ args.image2 }}
+        - ${{ args.diff }}
+      parse: text
+      timeout: 30000
+
+args:
+  image1:
+    type: str
+    required: true
+    positional: true
+    description: First input image file path
+  image2:
+    type: str
+    required: true
+    description: Second input image file path
+  diff:
+    type: str
+    default: diff.png
+    description: Output difference image file path
+  metric:
+    type: str
+    default: RMSE
+    choices: [AE, FUZZ, MAE, MSE, NCC, PAE, PHASH, PSNR, RMSE, SSIM]
+    description: Comparison metric to use
+
+columns: []

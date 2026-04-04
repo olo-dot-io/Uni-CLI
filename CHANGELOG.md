@@ -3,6 +3,50 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
+## [0.201.0] — Vostok · Chaika II
+
+### Engine
+
+- POST JSON body template resolution in fetch steps
+- Exec stdin pipe for desktop tools (mermaid, pandoc, jq)
+- Exec environment variables and file output support
+- HTML-to-Markdown conversion step via turndown
+- Retry with exponential backoff for fetch steps (429/5xx)
+
+### Web Adapters (12 new sites)
+
+- tieba, 36kr, substack, producthunt
+- google (suggest, news), imdb (search, title, top, trending)
+- web/read (HTML to Markdown), ctrip, paperreview, spotify
+- xiaoyuzhou expanded (episode, podcast-episodes)
+
+### Bridge Adapters (4 new tools, 16 commands)
+
+- gh (repo, issue, pr, release, run)
+- docker (ps, images, run, build, logs)
+- yt-dlp (download, info, search, extract-audio)
+- jq (query, format)
+
+### Desktop Adapters (10 new apps, 36 commands)
+
+- ffmpeg expanded to 11 commands (probe, trim, gif, etc.)
+- imagemagick (convert, resize, identify, composite, montage, compare)
+- pandoc (universal document converter)
+- libreoffice (headless convert, print)
+- mermaid (diagram rendering via stdin)
+- inkscape (SVG export, convert, optimize)
+- blender expanded (info, convert, animation)
+- musescore (export, convert)
+- drawio (diagram export)
+- comfyui (generate, status, history, nodes)
+
+### Stats
+
+- Sites/apps: 21 → 43 (+22)
+- Commands: 74 → 141 (+67)
+- Engine steps: 9 → 10 (html_to_md)
+- Unit tests: 18 → 27
+
 ## [0.200.0] — Vostok · Chaika
 
 > _1961 — First human in space. Yuri Gagarin orbited Earth in 108 minutes._

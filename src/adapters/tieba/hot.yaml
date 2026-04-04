@@ -1,0 +1,30 @@
+site: tieba
+name: hot
+description: Baidu Tieba trending topics
+domain: tieba.baidu.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of topics
+
+pipeline:
+  - fetch:
+      url: https://tieba.baidu.com/hottopic/browse/topicList?res_type=1
+      headers:
+        User-Agent: "Mozilla/5.0 (compatible; Uni-CLI)"
+
+  - select: data.bang_topic.topic_list
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.topic_name }}
+      discuss: ${{ item.discuss_num }}
+      description: ${{ (item.topic_desc || '') | truncate(150) }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, discuss, description]

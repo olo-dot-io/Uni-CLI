@@ -1,0 +1,30 @@
+# Desktop adapter — wrapping Inkscape for SVG optimization and cleanup
+site: inkscape
+name: optimize
+description: Optimize and clean SVG by vacuuming unused defs and producing plain SVG
+type: desktop
+strategy: public
+binary: inkscape
+detect: which inkscape
+
+pipeline:
+  - exec:
+      command: inkscape
+      args:
+        - ${{ args.file }}
+        - ${{ '--actions=vacuum-defs;export-filename:' + args.output + ';export-plain-svg;export-do' }}
+      parse: text
+      timeout: 30000
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Input SVG file path
+  output:
+    type: str
+    required: true
+    description: Output optimized SVG file path
+
+columns: []

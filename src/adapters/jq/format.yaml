@@ -1,0 +1,23 @@
+site: jq
+name: format
+description: Pretty-print and format JSON data
+type: bridge
+strategy: public
+binary: jq
+detect: which jq
+
+pipeline:
+  - exec:
+      command: jq
+      args:
+        - "."
+      stdin: ${{ args.input }}
+      parse: text
+      timeout: 30000
+
+args:
+  input:
+    type: str
+    required: true
+    positional: true
+    description: JSON string to format

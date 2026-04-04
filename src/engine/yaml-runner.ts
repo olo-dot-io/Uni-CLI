@@ -7,6 +7,7 @@
  *   map      → Transform each item using template expressions
  *   filter   → Keep items matching a condition
  *   limit    → Cap the number of results
+ *   html_to_md → Convert HTML to Markdown via turndown
  *   evaluate → Run JS expression (for browser adapters, future)
  *
  * Template syntax: ${{ expression }}
@@ -15,6 +16,7 @@
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import TurndownService from "turndown";
 import type { PipelineStep } from "../types.js";
 
 const execFileAsync = promisify(execFile);
@@ -104,6 +106,9 @@ export async function runPipeline(
         case "exec":
           ctx = await stepExec(ctx, config as ExecConfig);
           break;
+        case "html_to_md":
+          ctx = stepHtmlToMd(ctx);
+          break;
         default:
           break;
       }
@@ -124,7 +129,7 @@ export async function runPipeline(
 
   const result = ctx.data;
   if (Array.isArray(result)) return result;
-  if (result && typeof result === "object") return [result];
+  if (result !== null && result !== undefined) return [result];
   return [];
 }
 
@@ -136,6 +141,8 @@ interface FetchConfig {
   params?: Record<string, unknown>;
   headers?: Record<string, string>;
   body?: unknown;
+  retry?: number; // max attempts (default 1 = no retry)
+  backoff?: number; // initial delay ms (doubles each retry)
 }
 
 async function stepFetch(
@@ -149,8 +156,12 @@ async function stepFetch(
     const items = ctx.data as Array<Record<string, unknown>>;
     const results = await Promise.all(
       items.map(async (item) => {
-        const itemUrl = evalTemplate(config.url, { ...ctx, data: item });
-        const resp = await fetchJson(itemUrl, config);
+        const itemCtx = { ...ctx, data: item };
+        const itemUrl = evalTemplate(config.url, itemCtx);
+        const resolvedConfig = config.body
+          ? { ...config, body: resolveTemplateDeep(config.body, itemCtx) }
+          : config;
+        const resp = await fetchJson(itemUrl, resolvedConfig);
         return resp;
       }),
     );
@@ -167,7 +178,10 @@ async function stepFetch(
     url += (url.includes("?") ? "&" : "?") + params.toString();
   }
 
-  const data = await fetchJson(url, config);
+  const resolvedConfig = config.body
+    ? { ...config, body: resolveTemplateDeep(config.body, ctx) }
+    : config;
+  const data = await fetchJson(url, resolvedConfig);
   return { ...ctx, data };
 }
 
@@ -175,8 +189,8 @@ async function fetchJson(url: string, config: FetchConfig): Promise<unknown> {
   const method = config.method ?? "GET";
   const headers: Record<string, string> = {
     Accept: "application/json",
-    "User-Agent": "Uni-CLI/0.200",
-    ...(config.headers ?? {}),
+    "User-Agent": "Uni-CLI/0.201",
+    ...config.headers,
   };
 
   const init: RequestInit = { method, headers };
@@ -185,8 +199,25 @@ async function fetchJson(url: string, config: FetchConfig): Promise<unknown> {
     init.body = JSON.stringify(config.body);
   }
 
-  const resp = await fetch(url, init);
-  if (!resp.ok) {
+  const maxAttempts = config.retry ?? 1;
+  const baseDelay = config.backoff ?? 1000;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const resp = await fetch(url, init);
+
+    if (resp.ok) {
+      return resp.json();
+    }
+
+    const isRetryable = resp.status === 429 || resp.status >= 500;
+    const isLastAttempt = attempt === maxAttempts;
+
+    if (isRetryable && !isLastAttempt) {
+      await new Promise((r) => setTimeout(r, baseDelay * 2 ** (attempt - 1)));
+      continue;
+    }
+
+    // Non-retryable error or last attempt — throw
     let preview = "";
     try {
       preview = (await resp.text()).slice(0, 200);
@@ -214,7 +245,9 @@ async function fetchJson(url: string, config: FetchConfig): Promise<unknown> {
       },
     );
   }
-  return resp.json();
+
+  // Unreachable — loop always returns or throws — but satisfies TypeScript
+  throw new Error("fetchJson: unreachable");
 }
 
 function stepSelect(
@@ -304,8 +337,8 @@ async function stepFetchText(
 
   const method = config.method ?? "GET";
   const headers: Record<string, string> = {
-    "User-Agent": "Uni-CLI/0.200",
-    ...(config.headers ?? {}),
+    "User-Agent": "Uni-CLI/0.201",
+    ...config.headers,
   };
 
   const resp = await fetch(url, { method, headers });
@@ -409,6 +442,9 @@ interface ExecConfig {
   args?: string[];
   parse?: "lines" | "json" | "csv" | "text";
   timeout?: number;
+  stdin?: string;
+  env?: Record<string, string>;
+  output_file?: string;
 }
 
 async function stepExec(
@@ -419,11 +455,95 @@ async function stepExec(
   const execArgs = (config.args ?? []).map((a) => evalTemplate(String(a), ctx));
   const timeout = config.timeout ?? 30000;
 
+  // Resolve env vars (merge with process.env)
+  let envOption: NodeJS.ProcessEnv | undefined;
+  if (config.env) {
+    const resolved: Record<string, string> = {};
+    for (const [k, v] of Object.entries(config.env)) {
+      resolved[k] = evalTemplate(String(v), ctx);
+    }
+    envOption = { ...process.env, ...resolved };
+  }
+
+  // Resolve stdin content
+  const stdinContent = config.stdin
+    ? evalTemplate(config.stdin, ctx)
+    : undefined;
+
+  // Resolve output_file path
+  const outputFile = config.output_file
+    ? evalTemplate(config.output_file, ctx)
+    : undefined;
+
   try {
-    const { stdout } = await execFileAsync(cmd, execArgs, {
-      timeout,
-      maxBuffer: 10 * 1024 * 1024,
-    });
+    let stdout: string;
+
+    if (stdinContent !== undefined) {
+      // Use spawn to pipe stdin
+      const { spawn } = await import("node:child_process");
+      stdout = await new Promise<string>((resolve, reject) => {
+        const child = spawn(cmd, execArgs, {
+          timeout,
+          env: envOption,
+          stdio: ["pipe", "pipe", "pipe"],
+        });
+
+        const chunks: Buffer[] = [];
+        const errChunks: Buffer[] = [];
+
+        child.stdout.on("data", (c: Buffer) => chunks.push(c));
+        child.stderr.on("data", (c: Buffer) => errChunks.push(c));
+
+        child.on("error", (err) => reject(err));
+        child.on("close", (code) => {
+          if (code !== 0) {
+            const stderr = Buffer.concat(errChunks).toString("utf8");
+            reject(
+              new Error(
+                `Process exited with code ${code}${stderr ? `: ${stderr}` : ""}`,
+              ),
+            );
+          } else {
+            resolve(Buffer.concat(chunks).toString("utf8"));
+          }
+        });
+
+        child.stdin.write(stdinContent);
+        child.stdin.end();
+      });
+    } else {
+      // Use execFileAsync (original path) with optional env
+      const opts: {
+        timeout: number;
+        maxBuffer: number;
+        env?: NodeJS.ProcessEnv;
+      } = {
+        timeout,
+        maxBuffer: 10 * 1024 * 1024,
+      };
+      if (envOption) opts.env = envOption;
+      ({ stdout } = await execFileAsync(cmd, execArgs, opts));
+    }
+
+    // If output_file is specified, return file info instead of stdout
+    if (outputFile) {
+      const { stat } = await import("node:fs/promises");
+      try {
+        const info = await stat(outputFile);
+        return { ...ctx, data: { file: outputFile, size: info.size } };
+      } catch {
+        throw new PipelineError(
+          `exec "${cmd}" did not produce expected output file: ${outputFile}`,
+          {
+            step: -1,
+            action: "exec",
+            config: { command: cmd, args: execArgs },
+            errorType: "parse_error",
+            suggestion: `Check that the command writes to "${outputFile}". Verify the path is correct.`,
+          },
+        );
+      }
+    }
 
     let data: unknown;
     switch (config.parse ?? "lines") {
@@ -460,6 +580,7 @@ async function stepExec(
 
     return { ...ctx, data };
   } catch (err) {
+    if (err instanceof PipelineError) throw err;
     const msg = err instanceof Error ? err.message : String(err);
     throw new PipelineError(`exec "${cmd}" failed: ${msg}`, {
       step: -1,
@@ -469,6 +590,18 @@ async function stepExec(
       suggestion: `Check that "${cmd}" is installed and accessible. Run: which ${cmd}`,
     });
   }
+}
+
+// --- HTML to Markdown ---
+
+function stepHtmlToMd(ctx: PipelineContext): PipelineContext {
+  const html = String(ctx.data ?? "");
+  const turndown = new TurndownService({
+    headingStyle: "atx",
+    codeBlockStyle: "fenced",
+  });
+  const md = turndown.turndown(html);
+  return { ...ctx, data: md };
 }
 
 // --- Template engine ---
@@ -510,6 +643,27 @@ function buildScope(ctx: PipelineContext): Record<string, unknown> {
   }
 
   return scope;
+}
+
+/**
+ * Recursively resolve ${{ }} templates in nested objects, arrays, and strings.
+ * Non-string primitives (numbers, booleans, null) pass through unchanged.
+ */
+function resolveTemplateDeep(value: unknown, ctx: PipelineContext): unknown {
+  if (typeof value === "string") {
+    return evalTemplate(value, ctx);
+  }
+  if (Array.isArray(value)) {
+    return value.map((v) => resolveTemplateDeep(v, ctx));
+  }
+  if (value !== null && typeof value === "object") {
+    const result: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      result[k] = resolveTemplateDeep(v, ctx);
+    }
+    return result;
+  }
+  return value;
 }
 
 /**

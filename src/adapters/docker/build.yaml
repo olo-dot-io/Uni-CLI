@@ -1,0 +1,28 @@
+site: docker
+name: build
+description: Build a Docker image from a Dockerfile
+type: bridge
+strategy: public
+binary: docker
+detect: which docker
+
+pipeline:
+  - exec:
+      command: docker
+      args:
+        - build
+        - -t
+        - ${{ args.tag }}
+        - ${{ args.context }}
+      parse: text
+      timeout: 300000
+
+args:
+  tag:
+    type: str
+    required: true
+    description: Tag for the built image (e.g. myapp:latest)
+  context:
+    type: str
+    default: "."
+    description: Build context path (directory containing Dockerfile)

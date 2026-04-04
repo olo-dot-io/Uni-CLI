@@ -1,0 +1,17 @@
+# Service adapter — retrieves ComfyUI execution history from the local REST API
+site: comfyui
+name: history
+description: Get ComfyUI execution history (returns raw JSON object keyed by prompt ID)
+type: service
+strategy: public
+base: "http://localhost:8188"
+
+args:
+  port:
+    type: int
+    default: 8188
+    description: ComfyUI server port
+
+pipeline:
+  - fetch:
+      url: "http://localhost:${{ args.port }}/history"

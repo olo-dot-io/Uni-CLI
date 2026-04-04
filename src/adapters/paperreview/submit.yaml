@@ -1,0 +1,38 @@
+site: paperreview
+name: submit
+description: Submit a paper to a venue via paperreview.ai
+type: web-api
+strategy: public
+
+pipeline:
+  - fetch:
+      url: "https://api.paperreview.ai/v1/submit"
+      method: POST
+      body:
+        paper_url: "${{ args.url }}"
+        venue: "${{ args.venue }}"
+        notes: "${{ args.notes }}"
+      headers:
+        Content-Type: application/json
+        Authorization: "Bearer ${{ args.apikey }}"
+  - select: data
+
+args:
+  url:
+    type: str
+    required: true
+    positional: true
+    description: URL or arXiv ID of paper
+  venue:
+    type: str
+    required: true
+    description: Target venue for submission
+  notes:
+    type: str
+    default: ""
+    description: Optional submission notes
+  apikey:
+    type: str
+    default: ""
+
+columns: [submission_id, status, venue, url]

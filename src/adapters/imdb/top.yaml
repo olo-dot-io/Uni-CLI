@@ -1,0 +1,28 @@
+site: imdb
+name: top
+description: IMDb Top 250 movies
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 25
+    description: Number of results
+
+pipeline:
+  - fetch:
+      url: "https://imdb-api.tprojects.workers.dev/top250"
+      retry: 2
+      backoff: 500
+
+  - map:
+      rank: ${{ item.rank }}
+      title: ${{ item.title }}
+      year: ${{ item.year }}
+      rating: ${{ item.rating }}
+      id: ${{ item.id }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, year, rating]

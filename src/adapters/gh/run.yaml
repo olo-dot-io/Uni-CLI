@@ -1,0 +1,35 @@
+site: gh
+name: run
+description: List GitHub Actions workflow runs for a repository
+type: bridge
+strategy: public
+binary: gh
+detect: which gh
+
+pipeline:
+  - exec:
+      command: gh
+      args:
+        - run
+        - list
+        - --repo
+        - ${{ args.repo }}
+        - --limit
+        - ${{ args.limit }}
+        - --json
+        - databaseId,displayTitle,status,conclusion,headBranch,createdAt
+      parse: json
+      timeout: 30000
+
+args:
+  repo:
+    type: str
+    required: true
+    positional: true
+    description: Repository in owner/name format
+  limit:
+    type: int
+    default: 10
+    description: Maximum number of runs to return
+
+columns: [databaseId, displayTitle, status, conclusion, headBranch, createdAt]

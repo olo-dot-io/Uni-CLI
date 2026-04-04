@@ -1,0 +1,40 @@
+# Desktop adapter — extract a single video frame as an image
+site: ffmpeg
+name: thumbnail
+description: Extract a video frame as a thumbnail image
+type: desktop
+binary: ffmpeg
+detect: which ffmpeg
+strategy: public
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Input video file path
+  time:
+    type: str
+    default: "00:00:05"
+    description: Timestamp to capture (e.g. 00:00:05 or 5)
+  output:
+    type: str
+    default: "thumbnail.jpg"
+    description: Output image file path
+
+pipeline:
+  - exec:
+      command: ffmpeg
+      args:
+        - "-i"
+        - "${{ args.file }}"
+        - "-ss"
+        - "${{ args.time }}"
+        - "-frames:v"
+        - "1"
+        - "-y"
+        - "${{ args.output }}"
+      parse: text
+      timeout: 30000
+
+columns: []

@@ -1,0 +1,36 @@
+# Desktop adapter — wrapping ImageMagick for image format conversion
+site: imagemagick
+name: convert
+description: Convert image format with optional quality control
+type: desktop
+strategy: public
+binary: magick
+detect: which magick
+
+pipeline:
+  - exec:
+      command: magick
+      args:
+        - ${{ args.input }}
+        - -quality
+        - ${{ args.quality }}
+        - ${{ args.output }}
+      parse: text
+      timeout: 30000
+
+args:
+  input:
+    type: str
+    required: true
+    positional: true
+    description: Input image file path
+  output:
+    type: str
+    required: true
+    description: Output image file path
+  quality:
+    type: int
+    default: 85
+    description: Output quality (1-100, lower=smaller file)
+
+columns: []

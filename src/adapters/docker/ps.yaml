@@ -1,0 +1,32 @@
+site: docker
+name: ps
+description: List running Docker containers
+type: bridge
+strategy: public
+binary: docker
+detect: which docker
+
+pipeline:
+  - exec:
+      command: docker
+      args:
+        - ps
+        - "--format"
+        - "json"
+      parse: lines
+      timeout: 30000
+
+  - map:
+      id: "${{ JSON.parse(item.line).ID }}"
+      name: "${{ JSON.parse(item.line).Names }}"
+      image: "${{ JSON.parse(item.line).Image }}"
+      status: "${{ JSON.parse(item.line).Status }}"
+      ports: "${{ JSON.parse(item.line).Ports }}"
+
+args:
+  all:
+    type: bool
+    default: false
+    description: Show all containers including stopped ones
+
+columns: [id, name, image, status, ports]

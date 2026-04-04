@@ -1,0 +1,52 @@
+site: ctrip
+name: search
+description: Search flights on Ctrip
+type: web-api
+strategy: public
+
+pipeline:
+  - fetch:
+      url: "https://flights.ctrip.com/international/search/api/search/batchSearch"
+      method: POST
+      body:
+        flightWay: OneWay
+        classType: ALL
+        hasChild: false
+        hasBaby: false
+        searchIndex: 1
+        airportParams:
+          - dcity: "${{ args.from }}"
+            acity: "${{ args.to }}"
+            date: "${{ args.date }}"
+      headers:
+        Content-Type: application/json
+        Referer: "https://flights.ctrip.com"
+      retry: 2
+      backoff: 1000
+  - select: data.flightItineraryList
+  - map:
+      airline: "${{ item.flightSegments ? item.flightSegments[0].airlineName : '' }}"
+      flight: "${{ item.flightSegments ? item.flightSegments[0].flightNumber : '' }}"
+      depart: "${{ item.flightSegments ? item.flightSegments[0].departureDateTime : '' }}"
+      arrive: "${{ item.flightSegments ? item.flightSegments[0].arrivalDateTime : '' }}"
+      price: "${{ item.priceList ? item.priceList[0].adultPrice : 'N/A' }}"
+  - limit: ${{ args.limit }}
+
+args:
+  from:
+    type: str
+    required: true
+    description: "Departure city code (e.g. SHA, PEK, HKG)"
+  to:
+    type: str
+    required: true
+    description: "Arrival city code"
+  date:
+    type: str
+    required: true
+    description: "Departure date (YYYY-MM-DD)"
+  limit:
+    type: int
+    default: 10
+
+columns: [airline, flight, depart, arrive, price]

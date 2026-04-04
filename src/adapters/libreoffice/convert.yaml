@@ -1,0 +1,41 @@
+# Desktop adapter — wrapping LibreOffice for headless document conversion
+site: libreoffice
+name: convert
+description: Convert documents headlessly to PDF or other formats via LibreOffice
+type: desktop
+strategy: public
+binary: soffice
+detect: which soffice
+
+pipeline:
+  - exec:
+      command: soffice
+      args:
+        - --headless
+        - --norestore
+        - --convert-to
+        - ${{ args.format }}
+        - --outdir
+        - ${{ args.outdir }}
+        - ${{ args.file }}
+      parse: text
+      timeout: 60000
+      env:
+        UserInstallation: "file:///tmp/unicli_lo_profile"
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Input document file path
+  format:
+    type: str
+    default: pdf
+    description: Output format (e.g. pdf, docx, odt, html, txt)
+  outdir:
+    type: str
+    default: "."
+    description: Output directory for converted file
+
+columns: []

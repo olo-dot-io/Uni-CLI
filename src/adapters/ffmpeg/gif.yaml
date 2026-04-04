@@ -1,0 +1,54 @@
+# Desktop adapter — convert a video clip to an animated GIF
+site: ffmpeg
+name: gif
+description: Convert a video segment to an animated GIF
+type: desktop
+binary: ffmpeg
+detect: which ffmpeg
+strategy: public
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Input video file path
+  output:
+    type: str
+    default: "output.gif"
+    description: Output GIF file path
+  start:
+    type: str
+    default: "0"
+    description: Start time offset (e.g. 0 or 00:00:10)
+  duration:
+    type: str
+    default: "5"
+    description: Duration in seconds to convert
+  fps:
+    type: int
+    default: 10
+    description: Frames per second for the GIF
+  width:
+    type: int
+    default: 480
+    description: Output width in pixels (height scales automatically)
+
+pipeline:
+  - exec:
+      command: ffmpeg
+      args:
+        - "-i"
+        - "${{ args.file }}"
+        - "-ss"
+        - "${{ args.start }}"
+        - "-t"
+        - "${{ args.duration }}"
+        - "-vf"
+        - "fps=${{ args.fps }},scale=${{ args.width }}:-1:flags=lanczos"
+        - "-y"
+        - "${{ args.output }}"
+      parse: text
+      timeout: 120000
+
+columns: []

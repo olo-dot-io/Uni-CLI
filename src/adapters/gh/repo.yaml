@@ -1,0 +1,28 @@
+site: gh
+name: repo
+description: View GitHub repository details
+type: bridge
+strategy: public
+binary: gh
+detect: which gh
+
+pipeline:
+  - exec:
+      command: gh
+      args:
+        - repo
+        - view
+        - ${{ args.repo }}
+        - --json
+        - name,owner,description,stargazerCount,forkCount,url,primaryLanguage
+      parse: json
+      timeout: 30000
+
+args:
+  repo:
+    type: str
+    required: true
+    positional: true
+    description: Repository in owner/name format
+
+columns: [name, description, stargazerCount, forkCount]

@@ -1,0 +1,43 @@
+# Desktop adapter — wrapping ImageMagick for image montage/contact sheet
+site: imagemagick
+name: montage
+description: Create image grid or contact sheet from multiple input files
+type: desktop
+strategy: public
+binary: magick
+detect: which magick
+
+pipeline:
+  - exec:
+      command: magick
+      args:
+        - montage
+        - ${{ args.files }}
+        - -geometry
+        - ${{ args.geometry }}
+        - -tile
+        - ${{ args.tile }}
+        - ${{ args.output }}
+      parse: text
+      timeout: 30000
+
+args:
+  files:
+    type: str
+    required: true
+    positional: true
+    description: Space-separated input files
+  output:
+    type: str
+    required: true
+    description: Output image file path
+  geometry:
+    type: str
+    default: "+2+2"
+    description: Geometry of each tile and border (e.g. 200x200+2+2)
+  tile:
+    type: str
+    default: "3x3"
+    description: Tile layout as COLSxROWS (e.g. 3x3, 4x2)
+
+columns: []

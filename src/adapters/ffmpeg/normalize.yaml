@@ -1,0 +1,34 @@
+# Desktop adapter — normalize audio loudness with EBU R128
+site: ffmpeg
+name: normalize
+description: Normalize audio loudness to EBU R128 standard
+type: desktop
+binary: ffmpeg
+detect: which ffmpeg
+strategy: public
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Input media file path
+  output:
+    type: str
+    required: true
+    description: Output file path
+
+pipeline:
+  - exec:
+      command: ffmpeg
+      args:
+        - "-i"
+        - "${{ args.file }}"
+        - "-af"
+        - "loudnorm"
+        - "-y"
+        - "${{ args.output }}"
+      parse: text
+      timeout: 300000
+
+columns: []

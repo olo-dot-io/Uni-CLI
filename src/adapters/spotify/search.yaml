@@ -1,0 +1,41 @@
+site: spotify
+name: search
+description: Search Spotify catalog
+type: web-api
+strategy: public
+
+pipeline:
+  - fetch:
+      url: "https://api.spotify.com/v1/search"
+      params:
+        q: "${{ args.query }}"
+        type: "${{ args.type }}"
+        limit: "${{ args.limit }}"
+      headers:
+        Authorization: "Bearer ${{ args.token }}"
+  - select: "${{ args.type + 's' }}.items"
+  - map:
+      name: "${{ item.name }}"
+      artist: "${{ item.artists ? item.artists[0].name : (item.owner ? item.owner.display_name : '') }}"
+      url: "${{ item.external_urls ? item.external_urls.spotify : '' }}"
+      popularity: "${{ item.popularity || '' }}"
+  - limit: ${{ args.limit }}
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+  type:
+    type: str
+    default: track
+    choices: [track, album, artist, playlist]
+  token:
+    type: str
+    default: ""
+    description: "Spotify API Bearer token"
+  limit:
+    type: int
+    default: 10
+
+columns: [name, artist, popularity, url]

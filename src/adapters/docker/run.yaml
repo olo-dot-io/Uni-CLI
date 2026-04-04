@@ -1,0 +1,29 @@
+site: docker
+name: run
+description: Run a command in a Docker container
+type: bridge
+strategy: public
+binary: docker
+detect: which docker
+
+pipeline:
+  - exec:
+      command: docker
+      args:
+        - run
+        - --rm
+        - ${{ args.image }}
+        - ${{ args.cmd }}
+      parse: text
+      timeout: 60000
+
+args:
+  image:
+    type: str
+    required: true
+    positional: true
+    description: Docker image to run
+  cmd:
+    type: str
+    default: ""
+    description: Command to run inside the container

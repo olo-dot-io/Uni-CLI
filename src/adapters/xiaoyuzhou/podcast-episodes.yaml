@@ -1,0 +1,40 @@
+site: xiaoyuzhou
+name: podcast-episodes
+description: List episodes for a Xiaoyuzhou podcast
+domain: www.xiaoyuzhoufm.com
+type: web-api
+strategy: public
+
+args:
+  pid:
+    type: str
+    required: true
+    positional: true
+    description: Podcast ID
+  limit:
+    type: int
+    default: 20
+    description: Number of episodes
+
+pipeline:
+  - fetch:
+      url: https://api.xiaoyuzhoufm.com/v1/episode/list
+      method: POST
+      body:
+        pid: ${{ args.pid }}
+        limit: ${{ args.limit }}
+      headers:
+        User-Agent: "Mozilla/5.0 (compatible; Uni-CLI)"
+
+  - select: data
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.title || '' }}
+      duration: ${{ item.duration || 0 }}
+      date: ${{ item.pubDate || '' }}
+      eid: ${{ item.eid || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, duration, date, eid]

@@ -1,0 +1,42 @@
+# Desktop adapter — resize video to target dimensions
+site: ffmpeg
+name: resize
+description: Resize video to specified dimensions (use -1 for auto aspect ratio)
+type: desktop
+binary: ffmpeg
+detect: which ffmpeg
+strategy: public
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Input video file path
+  output:
+    type: str
+    required: true
+    description: Output video file path
+  width:
+    type: int
+    required: true
+    description: Target width in pixels
+  height:
+    type: int
+    default: -1
+    description: Target height in pixels (-1 preserves aspect ratio)
+
+pipeline:
+  - exec:
+      command: ffmpeg
+      args:
+        - "-i"
+        - "${{ args.file }}"
+        - "-vf"
+        - "scale=${{ args.width }}:${{ args.height }}"
+        - "-y"
+        - "${{ args.output }}"
+      parse: text
+      timeout: 300000
+
+columns: []
