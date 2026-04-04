@@ -463,4 +463,282 @@ describe("BrowserPage", () => {
       expect(closeSpy).toHaveBeenCalledOnce();
     });
   });
+
+  describe("press() with modifiers", () => {
+    it("includes modifier bitmask when modifiers provided", async () => {
+      await page.press("a", ["ctrl", "shift"]);
+
+      const keyDown = mock.calls.find(
+        (c) =>
+          c.method === "Input.dispatchKeyEvent" && c.params?.type === "keyDown",
+      );
+      expect(keyDown).toBeDefined();
+      // ctrl=2, shift=8 => 10
+      expect(keyDown!.params?.modifiers).toBe(10);
+      expect(keyDown!.params?.key).toBe("a");
+    });
+
+    it("omits modifiers field when no modifiers given", async () => {
+      await page.press("Enter");
+
+      const keyDown = mock.calls.find(
+        (c) =>
+          c.method === "Input.dispatchKeyEvent" && c.params?.type === "keyDown",
+      );
+      expect(keyDown!.params?.modifiers).toBeUndefined();
+    });
+  });
+
+  describe("insertText()", () => {
+    it("sends Input.insertText with text", async () => {
+      await page.insertText("hello world");
+
+      expect(mock.calls).toHaveLength(1);
+      expect(mock.calls[0].method).toBe("Input.insertText");
+      expect(mock.calls[0].params).toEqual({ text: "hello world" });
+    });
+  });
+
+  describe("nativeClick()", () => {
+    it("sends mousePressed + mouseReleased at coordinates", async () => {
+      await page.nativeClick(100, 200);
+
+      expect(mock.calls).toHaveLength(2);
+      const pressed = mock.calls[0];
+      const released = mock.calls[1];
+
+      expect(pressed.method).toBe("Input.dispatchMouseEvent");
+      expect(pressed.params?.type).toBe("mousePressed");
+      expect(pressed.params?.x).toBe(100);
+      expect(pressed.params?.y).toBe(200);
+
+      expect(released.method).toBe("Input.dispatchMouseEvent");
+      expect(released.params?.type).toBe("mouseReleased");
+      expect(released.params?.x).toBe(100);
+      expect(released.params?.y).toBe(200);
+    });
+  });
+
+  describe("nativeKeyPress()", () => {
+    it("sends keyDown + keyUp with char code for single char", async () => {
+      await page.nativeKeyPress("a");
+
+      const keyDown = mock.calls.find(
+        (c) =>
+          c.method === "Input.dispatchKeyEvent" && c.params?.type === "keyDown",
+      );
+      expect(keyDown).toBeDefined();
+      expect(keyDown!.params?.key).toBe("a");
+      expect(keyDown!.params?.text).toBe("a");
+      expect(keyDown!.params?.windowsVirtualKeyCode).toBe(97); // 'a'.charCodeAt(0)
+    });
+
+    it("applies modifier bitmask", async () => {
+      await page.nativeKeyPress("c", ["meta"]);
+
+      const keyDown = mock.calls.find(
+        (c) =>
+          c.method === "Input.dispatchKeyEvent" && c.params?.type === "keyDown",
+      );
+      expect(keyDown!.params?.modifiers).toBe(4); // meta=4
+      // text should not be set when modifiers present
+      expect(keyDown!.params?.text).toBeUndefined();
+    });
+
+    it("uses KEY_MAP for named keys", async () => {
+      await page.nativeKeyPress("Enter");
+
+      const keyDown = mock.calls.find(
+        (c) =>
+          c.method === "Input.dispatchKeyEvent" && c.params?.type === "keyDown",
+      );
+      expect(keyDown!.params?.key).toBe("Enter");
+      expect(keyDown!.params?.windowsVirtualKeyCode).toBe(13);
+    });
+  });
+
+  describe("setFileInput()", () => {
+    it("sends DOM.setFileInputFiles for matching element", async () => {
+      mock.responses.set("DOM.getDocument", { root: { nodeId: 1 } });
+      mock.responses.set("DOM.querySelector", { nodeId: 7 });
+
+      await page.setFileInput('input[type="file"]', ["/tmp/a.jpg"]);
+
+      const setFiles = mock.calls.find(
+        (c) => c.method === "DOM.setFileInputFiles",
+      );
+      expect(setFiles).toBeDefined();
+      expect(setFiles!.params).toEqual({
+        nodeId: 7,
+        files: ["/tmp/a.jpg"],
+      });
+    });
+
+    it("throws when element not found (nodeId=0)", async () => {
+      mock.responses.set("DOM.getDocument", { root: { nodeId: 1 } });
+      mock.responses.set("DOM.querySelector", { nodeId: 0 });
+
+      await expect(
+        page.setFileInput("#missing", ["/tmp/a.jpg"]),
+      ).rejects.toThrow("setFileInput: element not found: #missing");
+    });
+  });
+
+  describe("autoScroll()", () => {
+    it("stops when page reaches bottom", async () => {
+      let callCount = 0;
+      const originalSend = mock.send.bind(mock);
+      mock.send = async (
+        method: string,
+        params?: Record<string, unknown>,
+      ): Promise<unknown> => {
+        if (method === "Runtime.evaluate") {
+          callCount++;
+          mock.calls.push({ method, params });
+          const expr = params?.expression as string;
+          // First evaluate = scrollBy, second = check atBottom
+          if (expr.includes("scrollY")) {
+            return { result: { value: true } }; // at bottom immediately
+          }
+          return { result: { value: undefined } };
+        }
+        return originalSend(method, params);
+      };
+
+      await page.autoScroll({ maxScrolls: 5, delay: 10 });
+
+      // Should have scrolled once + checked once = 2 evaluate calls
+      const evalCalls = mock.calls.filter(
+        (c) => c.method === "Runtime.evaluate",
+      );
+      expect(evalCalls.length).toBe(2);
+    });
+  });
+
+  describe("screenshot()", () => {
+    it("sends Page.captureScreenshot and returns Buffer", async () => {
+      const testData = Buffer.from("fake-png").toString("base64");
+      mock.responses.set("Page.captureScreenshot", { data: testData });
+
+      const result = await page.screenshot();
+
+      expect(Buffer.isBuffer(result)).toBe(true);
+      expect(result.toString()).toBe("fake-png");
+
+      const captureCall = mock.calls.find(
+        (c) => c.method === "Page.captureScreenshot",
+      );
+      expect(captureCall!.params?.format).toBe("png");
+    });
+
+    it("passes quality for jpeg format", async () => {
+      const testData = Buffer.from("fake-jpg").toString("base64");
+      mock.responses.set("Page.captureScreenshot", { data: testData });
+
+      await page.screenshot({ format: "jpeg", quality: 80 });
+
+      const captureCall = mock.calls.find(
+        (c) => c.method === "Page.captureScreenshot",
+      );
+      expect(captureCall!.params?.quality).toBe(80);
+      expect(captureCall!.params?.format).toBe("jpeg");
+    });
+
+    it("computes full page clip dimensions", async () => {
+      mock.responses.set("Runtime.evaluate", {
+        result: { value: '{"width":1200,"height":5000}' },
+      });
+      const testData = Buffer.from("full").toString("base64");
+      mock.responses.set("Page.captureScreenshot", { data: testData });
+
+      await page.screenshot({ fullPage: true });
+
+      const captureCall = mock.calls.find(
+        (c) => c.method === "Page.captureScreenshot",
+      );
+      expect(captureCall!.params?.clip).toEqual({
+        x: 0,
+        y: 0,
+        width: 1200,
+        height: 5000,
+        scale: 1,
+      });
+    });
+  });
+
+  describe("networkRequests()", () => {
+    it("enables Network domain on first call", async () => {
+      const result = await page.networkRequests();
+
+      expect(result).toEqual([]);
+      const enableCall = mock.calls.find(
+        (c) => c.method === "Network.enable",
+      );
+      expect(enableCall).toBeDefined();
+    });
+
+    it("does not re-enable Network on subsequent calls", async () => {
+      await page.networkRequests();
+      mock.calls = [];
+
+      await page.networkRequests();
+
+      const enableCalls = mock.calls.filter(
+        (c) => c.method === "Network.enable",
+      );
+      expect(enableCalls).toHaveLength(0);
+    });
+
+    it("accumulates events from Network.responseReceived", async () => {
+      await page.networkRequests();
+
+      // Simulate a network response event
+      mock.fireEvent("Network.responseReceived", {
+        response: {
+          url: "https://api.example.com/data",
+          status: 200,
+          mimeType: "application/json",
+          headers: { "content-length": "1024" },
+        },
+        type: "XHR",
+        timestamp: 12345.67,
+      });
+
+      const result = await page.networkRequests();
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        url: "https://api.example.com/data",
+        method: "GET",
+        status: 200,
+        type: "XHR",
+        size: 1024,
+        timestamp: 12345.67,
+      });
+    });
+  });
+
+  describe("closeWindow()", () => {
+    it("sends Browser.close", async () => {
+      await page.closeWindow();
+
+      expect(mock.calls).toHaveLength(1);
+      expect(mock.calls[0].method).toBe("Browser.close");
+    });
+
+    it("does not throw when Browser.close fails", async () => {
+      const originalSend = mock.send.bind(mock);
+      mock.send = async (
+        method: string,
+        params?: Record<string, unknown>,
+      ): Promise<unknown> => {
+        if (method === "Browser.close") {
+          throw new Error("Browser already closed");
+        }
+        return originalSend(method, params);
+      };
+
+      // Should not throw
+      await expect(page.closeWindow()).resolves.toBeUndefined();
+    });
+  });
 });

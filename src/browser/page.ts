@@ -6,7 +6,12 @@
  */
 
 import { CDPClient } from "./cdp-client.js";
-import type { IPage } from "../types.js";
+import type {
+  IPage,
+  SnapshotOptions,
+  ScreenshotOptions,
+  NetworkRequest,
+} from "../types.js";
 
 // ── CDP result types ────────────────────────────────────────────────
 
@@ -45,6 +50,21 @@ interface BoxModelResult {
   model: { content: number[] };
 }
 
+interface CaptureScreenshotResult {
+  data: string;
+}
+
+interface NetworkResponseEvent {
+  response: {
+    url: string;
+    status: number;
+    mimeType?: string;
+    headers?: Record<string, string>;
+  };
+  type?: string;
+  timestamp?: number;
+}
+
 // ── Key mapping ─────────────────────────────────────────────────────
 
 const KEY_MAP: Record<string, { key: string; code: string; keyCode: number }> =
@@ -65,6 +85,26 @@ const KEY_MAP: Record<string, { key: string; code: string; keyCode: number }> =
     PageDown: { key: "PageDown", code: "PageDown", keyCode: 34 },
   };
 
+// ── Modifier bitmask ────────────────────────────────────────────────
+
+const MODIFIER_MAP: Record<string, number> = {
+  alt: 1,
+  ctrl: 2,
+  control: 2,
+  meta: 4,
+  command: 4,
+  shift: 8,
+};
+
+function computeModifiers(modifiers?: string[]): number {
+  if (!modifiers || modifiers.length === 0) return 0;
+  let mask = 0;
+  for (const m of modifiers) {
+    mask |= MODIFIER_MAP[m.toLowerCase()] ?? 0;
+  }
+  return mask;
+}
+
 // ── Constants ───────────────────────────────────────────────────────
 
 const DEFAULT_WAIT_TIMEOUT = 10_000;
@@ -75,6 +115,8 @@ const LOAD_EVENT_TIMEOUT = 30_000;
 
 export class BrowserPage implements IPage {
   private client: CDPClient;
+  private _networkEnabled = false;
+  private _networkRequests: NetworkRequest[] = [];
 
   constructor(client: CDPClient) {
     this.client = client;
@@ -202,27 +244,32 @@ export class BrowserPage implements IPage {
   }
 
   /**
-   * Press a keyboard key.
+   * Press a keyboard key, optionally with modifier keys.
    */
-  async press(key: string): Promise<void> {
+  async press(key: string, modifiers?: string[]): Promise<void> {
     const mapped = KEY_MAP[key];
     const keyValue = mapped?.key ?? key;
     const code = mapped?.code ?? key;
     const keyCode = mapped?.keyCode ?? 0;
+    const mod = computeModifiers(modifiers);
+
+    const baseParams: Record<string, unknown> = {
+      key: keyValue,
+      code,
+      windowsVirtualKeyCode: keyCode,
+      nativeVirtualKeyCode: keyCode,
+    };
+    if (mod) {
+      baseParams.modifiers = mod;
+    }
 
     await this.client.send("Input.dispatchKeyEvent", {
       type: "keyDown",
-      key: keyValue,
-      code,
-      windowsVirtualKeyCode: keyCode,
-      nativeVirtualKeyCode: keyCode,
+      ...baseParams,
     });
     await this.client.send("Input.dispatchKeyEvent", {
       type: "keyUp",
-      key: keyValue,
-      code,
-      windowsVirtualKeyCode: keyCode,
-      nativeVirtualKeyCode: keyCode,
+      ...baseParams,
     });
   }
 
@@ -319,6 +366,197 @@ export class BrowserPage implements IPage {
   }
 
   /**
+   * Insert text directly via CDP Input.insertText.
+   * Bypasses controlled input handling (React, Vue, etc.).
+   */
+  async insertText(text: string): Promise<void> {
+    await this.client.send("Input.insertText", { text });
+  }
+
+  /**
+   * Coordinate-based native click via CDP mouse events.
+   */
+  async nativeClick(x: number, y: number): Promise<void> {
+    await this.client.send("Input.dispatchMouseEvent", {
+      type: "mousePressed",
+      x,
+      y,
+      button: "left",
+      clickCount: 1,
+    });
+    await this.client.send("Input.dispatchMouseEvent", {
+      type: "mouseReleased",
+      x,
+      y,
+      button: "left",
+      clickCount: 1,
+    });
+  }
+
+  /**
+   * Native key press with optional modifiers via CDP.
+   */
+  async nativeKeyPress(key: string, modifiers?: string[]): Promise<void> {
+    const mapped = KEY_MAP[key];
+    const keyValue = mapped?.key ?? key;
+    const code = mapped?.code ?? key;
+    const keyCode =
+      mapped?.keyCode ?? (key.length === 1 ? key.charCodeAt(0) : 0);
+    const mod = computeModifiers(modifiers);
+
+    const baseParams: Record<string, unknown> = {
+      key: keyValue,
+      code,
+      windowsVirtualKeyCode: keyCode,
+      nativeVirtualKeyCode: keyCode,
+    };
+    if (mod) {
+      baseParams.modifiers = mod;
+    }
+    // For single characters, include text for character input
+    if (key.length === 1 && !mod) {
+      baseParams.text = key;
+    }
+
+    await this.client.send("Input.dispatchKeyEvent", {
+      type: "keyDown",
+      ...baseParams,
+    });
+    await this.client.send("Input.dispatchKeyEvent", {
+      type: "keyUp",
+      ...baseParams,
+    });
+  }
+
+  /**
+   * Upload files to a file input element via CDP.
+   */
+  async setFileInput(selector: string, files: string[]): Promise<void> {
+    const docResult = (await this.client.send(
+      "DOM.getDocument",
+    )) as GetDocumentResult;
+    const queryResult = (await this.client.send("DOM.querySelector", {
+      nodeId: docResult.root.nodeId,
+      selector,
+    })) as QuerySelectorResult;
+
+    if (queryResult.nodeId === 0) {
+      throw new Error(`setFileInput: element not found: ${selector}`);
+    }
+
+    await this.client.send("DOM.setFileInputFiles", {
+      nodeId: queryResult.nodeId,
+      files,
+    });
+  }
+
+  /**
+   * Automatically scroll to the bottom of the page.
+   * Useful for infinite-scroll pages.
+   */
+  async autoScroll(opts?: {
+    maxScrolls?: number;
+    delay?: number;
+  }): Promise<void> {
+    const maxScrolls = opts?.maxScrolls ?? 20;
+    const delay = opts?.delay ?? 1000;
+
+    for (let i = 0; i < maxScrolls; i++) {
+      await this.evaluate("window.scrollBy(0, window.innerHeight)");
+      await new Promise<void>((resolve) => setTimeout(resolve, delay));
+
+      const atBottom = (await this.evaluate(
+        "(window.scrollY + window.innerHeight) >= (document.documentElement.scrollHeight - 50)",
+      )) as boolean;
+
+      if (atBottom) break;
+    }
+  }
+
+  /**
+   * Capture a screenshot of the page.
+   */
+  async screenshot(opts?: ScreenshotOptions): Promise<Buffer> {
+    const format = opts?.format ?? "png";
+    const params: Record<string, unknown> = { format };
+
+    if (opts?.quality !== undefined && format !== "png") {
+      params.quality = opts.quality;
+    }
+
+    if (opts?.fullPage) {
+      // Get full page dimensions
+      const dims = (await this.evaluate(
+        "JSON.stringify({ width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight })",
+      )) as string;
+      const { width, height } = JSON.parse(dims) as {
+        width: number;
+        height: number;
+      };
+      params.clip = { x: 0, y: 0, width, height, scale: 1 };
+    } else if (opts?.clip) {
+      params.clip = { ...opts.clip, scale: 1 };
+    }
+
+    const result = (await this.client.send(
+      "Page.captureScreenshot",
+      params,
+    )) as CaptureScreenshotResult;
+
+    const buffer = Buffer.from(result.data, "base64");
+
+    if (opts?.path) {
+      const { writeFile } = await import("node:fs/promises");
+      await writeFile(opts.path, buffer);
+    }
+
+    return buffer;
+  }
+
+  /**
+   * Collect network requests. Enables Network domain on first call
+   * and accumulates responses from that point on.
+   */
+  async networkRequests(): Promise<NetworkRequest[]> {
+    if (!this._networkEnabled) {
+      await this.client.send("Network.enable");
+      this._networkEnabled = true;
+
+      this.client.on(
+        "Network.responseReceived",
+        (params: unknown): void => {
+          const event = params as NetworkResponseEvent;
+          const resp = event.response;
+          const contentLength =
+            resp.headers?.["content-length"] ??
+            resp.headers?.["Content-Length"];
+          this._networkRequests.push({
+            url: resp.url,
+            method: "GET", // CDP responseReceived doesn't include request method directly
+            status: resp.status,
+            type: event.type ?? resp.mimeType ?? "unknown",
+            size: contentLength ? parseInt(contentLength, 10) : 0,
+            timestamp: event.timestamp ?? Date.now(),
+          });
+        },
+      );
+    }
+
+    return [...this._networkRequests];
+  }
+
+  /**
+   * Generate a DOM snapshot (accessibility-style text tree).
+   * Interactive elements are annotated with [N] refs.
+   */
+  async snapshot(opts?: SnapshotOptions): Promise<string> {
+    const { generateSnapshotJs } = await import("./snapshot.js");
+    const js = generateSnapshotJs(opts);
+    const result = await this.evaluate(js);
+    return (result as string) ?? "";
+  }
+
+  /**
    * Raw CDP command passthrough for stealth injection etc.
    */
   async sendCDP(
@@ -333,6 +571,17 @@ export class BrowserPage implements IPage {
    */
   async close(): Promise<void> {
     await this.client.close();
+  }
+
+  /**
+   * Close the entire browser window. Best-effort -- browser may already be gone.
+   */
+  async closeWindow(): Promise<void> {
+    try {
+      await this.client.send("Browser.close");
+    } catch {
+      // Browser may already be closed -- this is expected
+    }
   }
 
   /**
