@@ -1,0 +1,39 @@
+site: google
+name: search
+description: Google web search via RSS
+type: web-api
+strategy: public
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search query
+  lang:
+    type: str
+    default: en
+    description: "Language code (e.g. en, zh, ja)"
+  limit:
+    type: int
+    default: 20
+    description: Number of results
+
+pipeline:
+  - fetch_text:
+      url: "https://news.google.com/rss/search"
+      params:
+        q: ${{ args.query }}
+        hl: ${{ args.lang || 'en' }}
+
+  - parse_rss: ~
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.title }}
+      link: ${{ item.link }}
+      date: ${{ item.pubDate }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, date, link]

@@ -1,0 +1,28 @@
+site: zhihu
+name: download
+description: Download Zhihu answer/article content as markdown
+domain: www.zhihu.com
+type: web-api
+strategy: cookie
+auth_cookies: [z_c0]
+
+args:
+  url:
+    type: str
+    required: true
+    positional: true
+    description: "Zhihu answer or article URL"
+
+pipeline:
+  - fetch_text:
+      url: ${{ args.url }}
+      headers:
+        User-Agent: "Mozilla/5.0 (compatible; Uni-CLI)"
+
+  - html_to_md: ~
+
+  - map:
+      url: ${{ args.url }}
+      content: ${{ item | truncate(5000) }}
+
+columns: [url, content]

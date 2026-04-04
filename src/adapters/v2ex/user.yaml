@@ -1,0 +1,32 @@
+site: v2ex
+name: user
+description: V2EX user profile lookup
+domain: www.v2ex.com
+type: web-api
+strategy: public
+
+args:
+  username:
+    type: str
+    required: true
+    positional: true
+    description: V2EX username
+
+pipeline:
+  - fetch:
+      url: https://www.v2ex.com/api/members/show.json
+      params:
+        username: ${{ args.username }}
+
+  - map:
+      id: ${{ item.id }}
+      username: ${{ item.username }}
+      tagline: ${{ item.tagline }}
+      bio: ${{ item.bio || '' }}
+      website: ${{ item.website }}
+      github: ${{ item.github }}
+      twitter: ${{ item.twitter }}
+      location: ${{ item.location }}
+      created: ${{ item.created }}
+
+columns: [id, username, tagline, bio, website, github, twitter, location]

@@ -1,0 +1,27 @@
+site: substack
+name: publication
+description: Substack publication info
+domain: substack.com
+type: web-api
+strategy: public
+
+args:
+  publication:
+    type: str
+    required: true
+    positional: true
+    description: Publication subdomain name
+
+pipeline:
+  - fetch:
+      url: "https://${{ args.publication }}.substack.com/api/v1/publication"
+
+  - map:
+      name: ${{ item.name || '' }}
+      author: ${{ item.author_name || '' }}
+      description: ${{ (item.description || '') | truncate(200) }}
+      subscribers: ${{ item.subscriber_count || 0 }}
+      type: ${{ item.type || '' }}
+      url: ${{ item.base_url || '' }}
+
+columns: [name, author, description, subscribers, type, url]

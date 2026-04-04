@@ -1,0 +1,35 @@
+site: imdb
+name: reviews
+description: IMDb title reviews
+type: web-api
+strategy: public
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: "IMDB title ID (e.g. tt0111161)"
+  apikey:
+    type: str
+    default: ""
+    description: OMDb API key (get one at omdbapi.com)
+
+pipeline:
+  - fetch:
+      url: "https://www.omdbapi.com/"
+      params:
+        i: ${{ args.id }}
+        apikey: ${{ args.apikey || '' }}
+        plot: full
+
+  - map:
+      title: ${{ item.Title }}
+      year: ${{ item.Year }}
+      imdb_rating: ${{ item.imdbRating }}
+      imdb_votes: ${{ item.imdbVotes }}
+      metascore: ${{ item.Metascore || 'N/A' }}
+      awards: ${{ item.Awards || '' }}
+      plot: ${{ item.Plot | truncate(300) }}
+
+columns: [title, year, imdb_rating, imdb_votes, metascore, awards]

@@ -1,0 +1,33 @@
+site: imdb
+name: person
+description: IMDb person/actor details via suggestion API
+type: web-api
+strategy: public
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: "Person name to search (e.g. Tom Hanks)"
+  limit:
+    type: int
+    default: 5
+    description: Number of results
+
+pipeline:
+  - fetch:
+      url: "https://v3.sg.media-imdb.com/suggestion/x/${{ args.id | urlencode }}.json"
+
+  - select: d
+
+  - filter: item.id?.startsWith('nm')
+
+  - map:
+      name: ${{ item.l }}
+      id: ${{ item.id }}
+      role: ${{ item.s || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [name, id, role]

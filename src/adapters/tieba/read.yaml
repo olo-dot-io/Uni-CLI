@@ -1,0 +1,38 @@
+site: tieba
+name: read
+description: Read Baidu Tieba thread detail
+domain: tieba.baidu.com
+type: web-api
+strategy: public
+
+args:
+  thread_id:
+    required: true
+    positional: true
+    description: Thread ID
+  limit:
+    type: int
+    default: 20
+    description: Number of posts
+
+pipeline:
+  - fetch:
+      url: https://tieba.baidu.com/mo/q/m/threadPage
+      params:
+        kz: "${{ args.thread_id }}"
+        pn: "1"
+        rn: "${{ args.limit }}"
+      headers:
+        User-Agent: "Mozilla/5.0 (compatible; Uni-CLI)"
+
+  - select: data.post_list
+
+  - map:
+      floor: ${{ item.floor || index + 1 }}
+      author: ${{ item.author?.name || '' }}
+      content: ${{ (item.content || '') | strip_html | slice(0, 300) }}
+      time: ${{ item.time }}
+
+  - limit: ${{ args.limit }}
+
+columns: [floor, author, content, time]

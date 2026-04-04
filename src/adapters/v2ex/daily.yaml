@@ -1,0 +1,29 @@
+site: v2ex
+name: daily
+description: V2EX daily hot topics
+domain: www.v2ex.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of topics
+
+pipeline:
+  - fetch:
+      url: https://www.v2ex.com/api/topics/hot.json
+
+  - map:
+      id: ${{ item.id }}
+      rank: ${{ index + 1 }}
+      title: ${{ item.title }}
+      node: ${{ item.node.title }}
+      replies: ${{ item.replies }}
+      author: ${{ item.member?.username || '' }}
+      url: ${{ item.url }}
+
+  - limit: ${{ args.limit }}
+
+columns: [id, rank, title, node, replies, author]

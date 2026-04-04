@@ -1,0 +1,33 @@
+site: google
+name: trends
+description: Google Trends daily trending searches
+type: web-api
+strategy: public
+
+args:
+  geo:
+    type: str
+    default: US
+    description: "Country code (e.g. US, GB, JP)"
+  limit:
+    type: int
+    default: 20
+    description: Number of trends
+
+pipeline:
+  - fetch_text:
+      url: "https://trends.google.com/trending/rss"
+      params:
+        geo: ${{ args.geo || 'US' }}
+
+  - parse_rss: ~
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.title }}
+      traffic: ${{ item['ht:approx_traffic'] || '' }}
+      date: ${{ item.pubDate }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, traffic, date]

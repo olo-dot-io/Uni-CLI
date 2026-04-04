@@ -1,0 +1,30 @@
+site: 36kr
+name: article
+description: 36Kr article detail by ID
+domain: 36kr.com
+type: web-api
+strategy: public
+
+args:
+  id:
+    required: true
+    positional: true
+    description: Article ID
+  limit:
+    type: int
+    default: 1
+    description: Number of results (always 1 for single article)
+
+pipeline:
+  - fetch:
+      url: "https://36kr.com/api/newsflash/${{ args.id }}"
+      headers:
+        User-Agent: "Mozilla/5.0 (compatible; Uni-CLI)"
+
+  - map:
+      title: ${{ item.data?.title || '' }}
+      date: ${{ item.data?.published_at || '' }}
+      content: ${{ (item.data?.description || '') | strip_html | truncate(500) }}
+      url: ${{ 'https://36kr.com/newsflashes/' + args.id }}
+
+columns: [title, date, content, url]

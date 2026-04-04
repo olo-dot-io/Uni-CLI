@@ -1,0 +1,31 @@
+site: bloomberg
+name: news
+description: Bloomberg latest news headlines (RSS)
+domain: feeds.bloomberg.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of headlines
+
+pipeline:
+  - fetch_text:
+      url: https://feeds.bloomberg.com/news.rss
+      headers:
+        User-Agent: "Mozilla/5.0 (compatible; Uni-CLI)"
+
+  - parse_rss: ~
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.title }}
+      date: ${{ item.pubDate }}
+      summary: ${{ (item.description || '') | truncate(200) }}
+      url: ${{ item.link }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, date, summary]

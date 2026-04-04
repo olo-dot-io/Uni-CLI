@@ -102,6 +102,57 @@ export async function twitterFetch(
 }
 
 /**
+ * Make an authenticated GraphQL POST request (for mutations).
+ */
+export async function twitterPostFetch(
+  endpoint: string,
+  queryId: string,
+  variables: Record<string, unknown>,
+  features: Record<string, boolean> = FEATURES,
+): Promise<unknown> {
+  const cookies = loadCookies("twitter");
+  if (!cookies) {
+    throw new Error(
+      'No cookies found for "twitter". Run: unicli auth setup twitter',
+    );
+  }
+
+  const ct0 = cookies.ct0;
+  if (!ct0) {
+    throw new Error(
+      "Missing ct0 cookie (CSRF token). " +
+        "Ensure ~/.unicli/cookies/twitter.json contains ct0 and auth_token.",
+    );
+  }
+
+  const url = `${GRAPHQL_BASE}/${queryId}/${endpoint}`;
+
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${BEARER_TOKEN}`,
+      "X-Csrf-Token": ct0,
+      "X-Twitter-Auth-Type": "OAuth2Session",
+      "X-Twitter-Active-User": "yes",
+      "User-Agent": USER_AGENT,
+      "Content-Type": "application/json",
+      Cookie: formatCookieHeader(cookies),
+    },
+    body: JSON.stringify({ variables, features, queryId }),
+  });
+
+  if (!resp.ok) {
+    const preview = await resp.text().catch(() => "");
+    throw new Error(
+      `Twitter API error: HTTP ${resp.status} on ${endpoint}\n` +
+        `${preview.slice(0, 200)}`,
+    );
+  }
+
+  return resp.json();
+}
+
+/**
  * Make an authenticated REST API request to the Twitter v1.1 API.
  *
  * @param path - API path (e.g. "/1.1/users/show.json")

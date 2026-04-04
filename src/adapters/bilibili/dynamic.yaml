@@ -1,0 +1,37 @@
+site: bilibili
+name: dynamic
+description: Bilibili user dynamics/activity feed
+domain: api.bilibili.com
+type: web-api
+strategy: cookie
+auth_cookies: [SESSDATA, bili_jct]
+
+args:
+  uid:
+    required: true
+    positional: true
+    description: User mid (numeric ID)
+  limit:
+    type: int
+    default: 20
+    description: Number of items
+
+pipeline:
+  - fetch:
+      url: https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/space
+      params:
+        host_mid: "${{ args.uid }}"
+        timezone_offset: "-480"
+
+  - select: data.items
+
+  - map:
+      type: ${{ item.type }}
+      author: ${{ item.modules?.module_author?.name || '' }}
+      text: ${{ (item.modules?.module_dynamic?.desc?.text || '') | truncate(200) }}
+      timestamp: ${{ item.modules?.module_author?.pub_ts || '' }}
+      id: ${{ item.id_str || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [type, author, text, timestamp, id]
