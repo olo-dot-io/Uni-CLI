@@ -1,0 +1,36 @@
+site: yt-dlp
+name: extract-audio
+description: Download and extract audio from a video URL
+type: bridge
+strategy: public
+binary: yt-dlp
+detect: which yt-dlp
+
+pipeline:
+  - exec:
+      command: yt-dlp
+      args:
+        - ${{ args.url }}
+        - -x
+        - --audio-format
+        - ${{ args.format }}
+        - -o
+        - ${{ args.output }}
+      parse: text
+      timeout: 300000
+
+args:
+  url:
+    type: str
+    required: true
+    positional: true
+    description: Video URL to extract audio from
+  format:
+    type: str
+    default: mp3
+    choices: [mp3, wav, flac, m4a, opus]
+    description: Output audio format
+  output:
+    type: str
+    default: "%(title)s.%(ext)s"
+    description: Output filename template

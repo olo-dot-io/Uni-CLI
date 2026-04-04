@@ -1,0 +1,35 @@
+site: gh
+name: release
+description: List GitHub releases for a repository
+type: bridge
+strategy: public
+binary: gh
+detect: which gh
+
+pipeline:
+  - exec:
+      command: gh
+      args:
+        - release
+        - list
+        - --repo
+        - ${{ args.repo }}
+        - --limit
+        - ${{ args.limit }}
+        - --json
+        - tagName,name,publishedAt,isPrerelease
+      parse: json
+      timeout: 30000
+
+args:
+  repo:
+    type: str
+    required: true
+    positional: true
+    description: Repository in owner/name format
+  limit:
+    type: int
+    default: 10
+    description: Maximum number of releases to return
+
+columns: [tagName, name, publishedAt, isPrerelease]

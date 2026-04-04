@@ -1,0 +1,34 @@
+site: yt-dlp
+name: info
+description: Get metadata for a video URL without downloading
+type: bridge
+strategy: public
+binary: yt-dlp
+detect: which yt-dlp
+
+pipeline:
+  - exec:
+      command: yt-dlp
+      args:
+        - --dump-json
+        - --no-download
+        - ${{ args.url }}
+      parse: json
+      timeout: 30000
+
+  - map:
+      title: ${{ item.title }}
+      uploader: ${{ item.uploader }}
+      duration: ${{ Math.floor(item.duration / 60) + ' min' }}
+      views: ${{ item.view_count }}
+      upload_date: ${{ item.upload_date }}
+      url: ${{ item.webpage_url }}
+
+args:
+  url:
+    type: str
+    required: true
+    positional: true
+    description: Video URL to fetch metadata for
+
+columns: [title, uploader, duration, views, upload_date, url]

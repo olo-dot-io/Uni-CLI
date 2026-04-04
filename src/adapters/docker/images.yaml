@@ -1,0 +1,26 @@
+site: docker
+name: images
+description: List local Docker images
+type: bridge
+strategy: public
+binary: docker
+detect: which docker
+
+pipeline:
+  - exec:
+      command: docker
+      args:
+        - images
+        - "--format"
+        - "json"
+      parse: lines
+      timeout: 30000
+
+  - map:
+      repository: "${{ JSON.parse(item.line).Repository }}"
+      tag: "${{ JSON.parse(item.line).Tag }}"
+      id: "${{ JSON.parse(item.line).ID }}"
+      size: "${{ JSON.parse(item.line).Size }}"
+      created: "${{ JSON.parse(item.line).CreatedSince }}"
+
+columns: [repository, tag, id, size, created]

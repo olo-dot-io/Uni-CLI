@@ -1,0 +1,29 @@
+site: docker
+name: logs
+description: Fetch logs from a Docker container
+type: bridge
+strategy: public
+binary: docker
+detect: which docker
+
+pipeline:
+  - exec:
+      command: docker
+      args:
+        - logs
+        - ${{ args.container }}
+        - --tail
+        - ${{ args.tail }}
+      parse: text
+      timeout: 30000
+
+args:
+  container:
+    type: str
+    required: true
+    positional: true
+    description: Container name or ID
+  tail:
+    type: int
+    default: 100
+    description: Number of lines to show from the end of logs
