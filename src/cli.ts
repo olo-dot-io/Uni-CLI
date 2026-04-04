@@ -7,7 +7,7 @@ import chalk from 'chalk';
 import { loadAllAdapters } from './discovery/loader.js';
 import { getAllAdapters, listCommands } from './registry.js';
 import { format, detectFormat } from './output/formatter.js';
-import { runPipeline } from './engine/yaml-runner.js';
+import { runPipeline, PipelineError } from './engine/yaml-runner.js';
 import { ExitCode } from './types.js';
 import type { OutputFormat } from './types.js';
 
@@ -167,6 +167,28 @@ export function createCli(): Command {
 
           console.log(format(results, cmd.columns, fmt));
         } catch (err) {
+          if (err instanceof PipelineError) {
+            // Structured error for AI agents — includes adapter path,
+            // failing step, and repair suggestion
+            const agentError = err.toAgentJSON(
+              `src/adapters/${adapter.name}/${cmdName}.yaml`
+            );
+            if (fmt === 'json' || !process.stdout.isTTY) {
+              console.error(JSON.stringify(agentError, null, 2));
+            } else {
+              console.error(chalk.red(`Error: ${err.message}`));
+              console.error(chalk.dim(`  adapter: ${agentError.adapter}`));
+              console.error(chalk.dim(`  step: ${agentError.step} (${agentError.action})`));
+              console.error(chalk.yellow(`  suggestion: ${agentError.suggestion}`));
+            }
+            const exitCode = agentError.statusCode === 403 || agentError.statusCode === 401
+              ? ExitCode.AUTH_REQUIRED
+              : agentError.errorType === 'empty_result'
+                ? ExitCode.EMPTY_RESULT
+                : ExitCode.GENERIC_ERROR;
+            process.exit(exitCode);
+          }
+
           const message = err instanceof Error ? err.message : String(err);
           if (fmt === 'json') {
             console.error(JSON.stringify({ error: message }));

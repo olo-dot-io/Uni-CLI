@@ -21,6 +21,39 @@ type PipelineContext = {
   base?: string;
 };
 
+/**
+ * Structured pipeline error — designed for AI agent consumption.
+ * An agent receiving this error can read the adapter YAML, understand
+ * exactly what failed, and edit the file to fix it.
+ */
+export class PipelineError extends Error {
+  constructor(
+    message: string,
+    public readonly detail: {
+      step: number;
+      action: string;
+      config: unknown;
+      errorType: 'http_error' | 'selector_miss' | 'empty_result' | 'parse_error' | 'timeout' | 'expression_error';
+      url?: string;
+      statusCode?: number;
+      responsePreview?: string;
+      suggestion: string;
+    }
+  ) {
+    super(message);
+    this.name = 'PipelineError';
+  }
+
+  /** JSON output for AI agents — includes everything needed to self-repair */
+  toAgentJSON(adapterPath?: string) {
+    return {
+      error: this.message,
+      adapter: adapterPath,
+      ...this.detail,
+    };
+  }
+}
+
 export async function runPipeline(
   steps: PipelineStep[],
   args: Record<string, unknown>,
@@ -28,28 +61,42 @@ export async function runPipeline(
 ): Promise<unknown[]> {
   let ctx: PipelineContext = { data: null, args, base };
 
-  for (const step of steps) {
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
     const [action, config] = Object.entries(step)[0];
 
-    switch (action) {
-      case 'fetch':
-        ctx = await stepFetch(ctx, config as FetchConfig);
-        break;
-      case 'select':
-        ctx = stepSelect(ctx, config as string);
-        break;
-      case 'map':
-        ctx = stepMap(ctx, config as Record<string, string>);
-        break;
-      case 'filter':
-        ctx = stepFilter(ctx, config as string);
-        break;
-      case 'limit':
-        ctx = stepLimit(ctx, config);
-        break;
-      default:
-        // Skip unknown steps gracefully
-        break;
+    try {
+      switch (action) {
+        case 'fetch':
+          ctx = await stepFetch(ctx, config as FetchConfig);
+          break;
+        case 'select':
+          ctx = stepSelect(ctx, config as string, i);
+          break;
+        case 'map':
+          ctx = stepMap(ctx, config as Record<string, string>);
+          break;
+        case 'filter':
+          ctx = stepFilter(ctx, config as string);
+          break;
+        case 'limit':
+          ctx = stepLimit(ctx, config);
+          break;
+        default:
+          break;
+      }
+    } catch (err) {
+      if (err instanceof PipelineError) throw err;
+      throw new PipelineError(
+        `Step ${i} (${action}) failed: ${err instanceof Error ? err.message : String(err)}`,
+        {
+          step: i,
+          action,
+          config,
+          errorType: 'parse_error',
+          suggestion: `Check the ${action} step at index ${i} in the adapter YAML. The expression or configuration may be invalid.`,
+        }
+      );
     }
   }
 
@@ -118,14 +165,46 @@ async function fetchJson(
 
   const resp = await fetch(url, init);
   if (!resp.ok) {
-    throw new Error(`HTTP ${resp.status} ${resp.statusText} from ${url}`);
+    let preview = '';
+    try { preview = (await resp.text()).slice(0, 200); } catch { /* ignore */ }
+    throw new PipelineError(
+      `HTTP ${resp.status} ${resp.statusText} from ${url}`,
+      {
+        step: -1, // will be overwritten by caller
+        action: 'fetch',
+        config: { url, method },
+        errorType: 'http_error',
+        url,
+        statusCode: resp.status,
+        responsePreview: preview,
+        suggestion: resp.status === 403
+          ? 'The API is blocking requests. The endpoint may require authentication (cookie strategy) or the User-Agent may need updating.'
+          : resp.status === 404
+            ? 'The API endpoint was not found. The URL path may have changed — check the target site for the current API.'
+            : resp.status === 429
+              ? 'Rate limited. Add a delay between requests or reduce the limit parameter.'
+              : `HTTP ${resp.status} error. Check if the API endpoint is still valid.`,
+      }
+    );
   }
   return resp.json();
 }
 
-function stepSelect(ctx: PipelineContext, path: string): PipelineContext {
+function stepSelect(ctx: PipelineContext, path: string, stepIndex: number): PipelineContext {
   const resolved = evalTemplate(path, ctx);
   const data = getNestedValue(ctx.data, resolved);
+  if (data === undefined || data === null) {
+    throw new PipelineError(
+      `Select "${resolved}" returned nothing — the response structure may have changed`,
+      {
+        step: stepIndex,
+        action: 'select',
+        config: path,
+        errorType: 'selector_miss',
+        suggestion: `The path "${resolved}" does not exist in the API response. Inspect the actual response JSON to find the correct path, then update the "select" step in the adapter YAML.`,
+      }
+    );
+  }
   return { ...ctx, data };
 }
 
