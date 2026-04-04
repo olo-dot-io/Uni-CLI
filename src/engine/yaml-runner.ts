@@ -16,8 +16,9 @@
  */
 
 import { execFile } from "node:child_process";
-import { mkdirSync, writeFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { stat } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { randomBytes } from "node:crypto";
 import { promisify } from "node:util";
@@ -31,6 +32,15 @@ import {
   generateInterceptorJs,
   generateReadInterceptedJs,
 } from "./interceptor.js";
+import {
+  type DownloadResult,
+  httpDownload,
+  ytdlpDownload,
+  requiresYtdlp,
+  sanitizeFilename,
+  generateFilename,
+  mapConcurrent,
+} from "./download.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -188,6 +198,9 @@ export async function runPipeline(
             break;
           case "tap":
             ctx = await stepTap(ctx, config as TapConfig);
+            break;
+          case "download":
+            ctx = await stepDownload(ctx, config as DownloadStepConfig);
             break;
           default:
             break;
@@ -1527,6 +1540,82 @@ function getNestedValue(obj: unknown, path: string): unknown {
   }
 
   return current;
+}
+
+// ---------------------------------------------------------------------------
+// Download step
+// ---------------------------------------------------------------------------
+
+interface DownloadStepConfig {
+  url: string;
+  dir?: string;
+  filename?: string;
+  concurrency?: number;
+  skip_existing?: boolean;
+  use_ytdlp?: boolean;
+  type?: "auto" | "image" | "video" | "document";
+  content?: string;
+}
+
+async function stepDownload(
+  ctx: PipelineContext,
+  config: DownloadStepConfig,
+): Promise<PipelineContext> {
+  const dir = resolve(config.dir ?? "./downloads");
+  mkdirSync(dir, { recursive: true });
+  const concurrency = config.concurrency ?? 3;
+  const skipExisting = config.skip_existing !== false; // default true
+  const cookieHeader = ctx.cookieHeader;
+
+  async function downloadOne(
+    item: Record<string, unknown>,
+    index: number,
+  ): Promise<Record<string, unknown>> {
+    const itemCtx: PipelineContext = { ...ctx, data: { item, index } };
+    const url = evalTemplate(config.url, itemCtx);
+    const filename = config.filename
+      ? evalTemplate(config.filename, itemCtx)
+      : generateFilename(url, index);
+    const destPath = join(dir, sanitizeFilename(filename));
+
+    if (skipExisting && existsSync(destPath)) {
+      return { ...item, _download: { status: "skipped", path: destPath } };
+    }
+
+    const useYtdlp =
+      config.use_ytdlp ?? (config.type === "video" && requiresYtdlp(url));
+
+    let result: DownloadResult;
+    if (config.type === "document" && config.content) {
+      const content = evalTemplate(config.content, itemCtx);
+      writeFileSync(destPath, content, "utf-8");
+      const info = await stat(destPath);
+      result = {
+        status: "success",
+        path: destPath,
+        size: info.size,
+        duration: 0,
+      };
+    } else if (useYtdlp) {
+      result = await ytdlpDownload(url, dir);
+    } else {
+      const headers: Record<string, string> = {};
+      if (cookieHeader) headers["Cookie"] = cookieHeader;
+      result = await httpDownload(url, destPath, headers);
+    }
+
+    return { ...item, _download: result };
+  }
+
+  if (Array.isArray(ctx.data)) {
+    const items = ctx.data as Record<string, unknown>[];
+    const results = await mapConcurrent(items, concurrency, downloadOne);
+    return { ...ctx, data: results };
+  } else {
+    const item = (ctx.data ?? {}) as Record<string, unknown>;
+    const result = await downloadOne(item, 0);
+    return { ...ctx, data: [result] };
+  }
 }
 
 // Exported for unit testing — not part of public API
