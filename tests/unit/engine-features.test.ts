@@ -148,3 +148,63 @@ describe("POST body template resolution", () => {
     expect(echo.body.seed).toBe("42");
   });
 });
+
+// --- Exec stdin pipe, env vars, output_file tests ---
+
+describe("exec stdin pipe", () => {
+  it("pipes stdin content to subprocess", async () => {
+    const steps = [
+      {
+        exec: {
+          command: "cat",
+          args: [],
+          stdin: "${{ args.content }}",
+          parse: "text",
+        },
+      },
+    ];
+    const result = await runPipeline(steps, { content: "hello from stdin" });
+    expect(result[0]).toBe("hello from stdin");
+  });
+});
+
+describe("exec env vars", () => {
+  it("injects env vars into subprocess", async () => {
+    const steps = [
+      {
+        exec: {
+          command: "sh",
+          args: ["-c", "echo $UNICLI_TEST_VAR"],
+          env: { UNICLI_TEST_VAR: "${{ args.val }}" },
+          parse: "text",
+        },
+      },
+    ];
+    const result = await runPipeline(steps, { val: "injected_value" });
+    expect((result[0] as string).trim()).toBe("injected_value");
+  });
+});
+
+describe("exec output_file", () => {
+  it("returns file info when output_file exists", async () => {
+    // Create a temp file via a command, then check output_file
+    const tmpFile = `/tmp/unicli-test-${Date.now()}.txt`;
+    const steps = [
+      {
+        exec: {
+          command: "sh",
+          args: ["-c", `echo "test content" > ${tmpFile}`],
+          output_file: tmpFile,
+          parse: "text",
+        },
+      },
+    ];
+    const result = await runPipeline(steps, {});
+    const first = result[0] as { file: string; size: number };
+    expect(first.file).toBe(tmpFile);
+    expect(first.size).toBeGreaterThan(0);
+    // Clean up
+    const { unlink } = await import("node:fs/promises");
+    await unlink(tmpFile).catch(() => {});
+  });
+});
