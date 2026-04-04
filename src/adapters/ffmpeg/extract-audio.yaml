@@ -1,0 +1,40 @@
+# Desktop adapter — extract the audio track from a video file
+site: ffmpeg
+name: extract-audio
+description: Extract audio track from a video file
+type: desktop
+binary: ffmpeg
+detect: which ffmpeg
+strategy: public
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Input video file path
+  output:
+    type: str
+    required: true
+    description: Output audio file path
+  codec:
+    type: str
+    default: libmp3lame
+    choices: [libmp3lame, aac, flac, pcm_s16le, libopus]
+    description: Audio codec to encode with
+
+pipeline:
+  - exec:
+      command: ffmpeg
+      args:
+        - "-i"
+        - "${{ args.file }}"
+        - "-vn"
+        - "-acodec"
+        - "${{ args.codec }}"
+        - "-y"
+        - "${{ args.output }}"
+      parse: text
+      timeout: 120000
+
+columns: []

@@ -1,0 +1,31 @@
+# Desktop adapter — inspect media file metadata via ffprobe
+site: ffmpeg
+name: probe
+description: Show media file metadata (format, streams, duration, codec)
+type: desktop
+binary: ffprobe
+detect: which ffprobe
+strategy: public
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Media file path to inspect
+
+pipeline:
+  - exec:
+      command: ffprobe
+      args:
+        - "-v"
+        - "quiet"
+        - "-print_format"
+        - "json"
+        - "-show_format"
+        - "-show_streams"
+        - "${{ args.file }}"
+      parse: json
+      timeout: 30000
+
+columns: [format, streams, duration, size, bit_rate]
