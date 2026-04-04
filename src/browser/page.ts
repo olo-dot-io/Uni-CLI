@@ -462,14 +462,18 @@ export class BrowserPage implements IPage {
     const delay = opts?.delay ?? 1000;
 
     for (let i = 0; i < maxScrolls; i++) {
-      await this.evaluate("window.scrollBy(0, window.innerHeight)");
-      await new Promise<void>((resolve) => setTimeout(resolve, delay));
+      try {
+        await this.evaluate("window.scrollBy(0, window.innerHeight)");
+        await new Promise<void>((resolve) => setTimeout(resolve, delay));
 
-      const atBottom = (await this.evaluate(
-        "(window.scrollY + window.innerHeight) >= (document.documentElement.scrollHeight - 50)",
-      )) as boolean;
+        const atBottom = (await this.evaluate(
+          "(window.scrollY + window.innerHeight) >= (document.documentElement.scrollHeight - 50)",
+        )) as boolean;
 
-      if (atBottom) break;
+        if (atBottom) break;
+      } catch {
+        break; // Page closed or navigated away — stop scrolling
+      }
     }
   }
 
@@ -489,10 +493,17 @@ export class BrowserPage implements IPage {
       const dims = (await this.evaluate(
         "JSON.stringify({ width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight })",
       )) as string;
-      const { width, height } = JSON.parse(dims) as {
-        width: number;
-        height: number;
-      };
+      let width: number, height: number;
+      try {
+        ({ width, height } = JSON.parse(dims) as {
+          width: number;
+          height: number;
+        });
+      } catch {
+        throw new Error(
+          `screenshot: failed to read page dimensions: ${String(dims)}`,
+        );
+      }
       params.clip = { x: 0, y: 0, width, height, scale: 1 };
     } else if (opts?.clip) {
       params.clip = { ...opts.clip, scale: 1 };

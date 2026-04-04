@@ -21,7 +21,7 @@ export function generateSnapshotJs(opts?: SnapshotOptions): string {
   return `(() => {
   const INTERACTIVE = ${String(interactive)};
   const COMPACT = ${String(compact)};
-  const MAX_DEPTH = ${String(maxDepth)};
+  const MAX_DEPTH = ${Number.isFinite(Number(maxDepth)) ? Math.trunc(Number(maxDepth)) : 50};
   const RAW = ${String(raw)};
 
   const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'SVG', 'LINK', 'META']);
@@ -78,7 +78,7 @@ export function generateSnapshotJs(opts?: SnapshotOptions): string {
       if (el.hasAttribute(a)) {
         let val = el.getAttribute(a);
         if (a === 'href' && val && val.length > 80) val = val.slice(0, 77) + '...';
-        keep.push(a + '=' + val);
+        keep.push(a + '="' + (val || '').replace(/"/g, '&quot;') + '"');
       }
     }
     return keep.length ? ' ' + keep.join(' ') : '';
