@@ -37,9 +37,11 @@ extension/dist/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
 
-# Claude Code
-.claude/headless-output/
-.claude/worktrees/
+# Claude Code — entire directory is local dev state, never commit
+.claude/
+
+# Superpowers
+.superpowers/
 
 # Temporary
 tmp/
