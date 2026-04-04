@@ -1,0 +1,35 @@
+site: bloomberg
+name: feeds
+description: List available Bloomberg RSS feeds
+domain: feeds.bloomberg.com
+type: web-api
+strategy: public
+
+pipeline:
+  - map:
+      - name: main
+        url: https://feeds.bloomberg.com/news.rss
+        description: Bloomberg top stories
+      - name: markets
+        url: https://feeds.bloomberg.com/markets/news.rss
+        description: Markets news
+      - name: economics
+        url: https://feeds.bloomberg.com/economics/news.rss
+        description: Economics news
+      - name: industries
+        url: https://feeds.bloomberg.com/industries/news.rss
+        description: Industries news
+      - name: tech
+        url: https://feeds.bloomberg.com/technology/news.rss
+        description: Technology news
+      - name: politics
+        url: https://feeds.bloomberg.com/politics/news.rss
+        description: Politics news
+      - name: businessweek
+        url: https://feeds.bloomberg.com/businessweek/news.rss
+        description: Businessweek stories
+      - name: opinions
+        url: https://feeds.bloomberg.com/bview/news.rss
+        description: Opinion and analysis
+
+columns: [name, url, description]

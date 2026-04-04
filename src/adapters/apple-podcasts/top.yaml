@@ -1,0 +1,32 @@
+site: apple-podcasts
+name: top
+description: Top podcasts chart on Apple Podcasts
+domain: rss.marketingtools.apple.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of podcasts (max 100)
+  country:
+    type: str
+    default: us
+    description: "Country code (e.g. us, cn, gb, jp)"
+
+pipeline:
+  - fetch:
+      url: "https://rss.marketingtools.apple.com/api/v2/${{ (args.country || 'us').toLowerCase() }}/podcasts/top/${{ Math.min(args.limit || 20, 100) }}/podcasts.json"
+
+  - select: feed.results
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.name }}
+      author: ${{ item.artistName }}
+      id: ${{ item.id }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, author, id]

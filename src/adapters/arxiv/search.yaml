@@ -1,0 +1,40 @@
+site: arxiv
+name: search
+description: Search arXiv papers
+domain: arxiv.org
+type: web-api
+strategy: public
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: "Search keyword (e.g. attention is all you need)"
+  limit:
+    type: int
+    default: 10
+    description: Max results (max 25)
+
+pipeline:
+  - fetch_text:
+      url: "https://export.arxiv.org/api/query?search_query=all:${{ args.query | urlencode }}&max_results=${{ Math.min(args.limit || 10, 25) }}&sortBy=relevance"
+
+  - parse_rss:
+      fields:
+        id: id
+        title: title
+        authors: author
+        published: published
+        summary: summary
+
+  - map:
+      id: "${{ item.id.replace(/^https?:\\/\\/arxiv\\.org\\/abs\\//, '').replace(/v\\d+$/, '') }}"
+      title: "${{ item.title.replace(/\\s+/g, ' ').trim() }}"
+      authors: "${{ item.authors ? item.authors.split('\\n').map(a => a.trim()).filter(Boolean).slice(0, 3).join(', ') : '' }}"
+      published: "${{ item.published ? item.published.slice(0, 10) : '' }}"
+      url: "${{ 'https://arxiv.org/abs/' + item.id.replace(/^https?:\\/\\/arxiv\\.org\\/abs\\//, '').replace(/v\\d+$/, '') }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [id, title, authors, published, url]

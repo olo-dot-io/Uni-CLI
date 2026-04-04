@@ -37,13 +37,13 @@ Adding a new adapter is the fastest way to contribute. Most adapters are just 20
 
 ## Adapter Types
 
-| Type | Use When |
-|------|----------|
+| Type      | Use When                                        |
+| --------- | ----------------------------------------------- |
 | `web-api` | Target has a REST API (public or authenticated) |
-| `desktop` | Target is a local desktop application |
-| `browser` | Requires full browser automation |
-| `bridge` | Wrapping an existing CLI tool |
-| `service` | Target is an HTTP service (local or remote) |
+| `desktop` | Target is a local desktop application           |
+| `browser` | Requires full browser automation                |
+| `bridge`  | Wrapping an existing CLI tool                   |
+| `service` | Target is an HTTP service (local or remote)     |
 
 ## Development Setup
 

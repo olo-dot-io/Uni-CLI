@@ -1,0 +1,25 @@
+site: dictionary
+name: examples
+description: Get example sentences for a word
+domain: api.dictionaryapi.dev
+type: web-api
+strategy: public
+
+args:
+  word:
+    type: str
+    required: true
+    positional: true
+    description: Word to get example sentences for
+
+pipeline:
+  - fetch:
+      url: "https://api.dictionaryapi.dev/api/v2/entries/en/${{ args.word | urlencode }}"
+
+  - map:
+      word: ${{ item.word }}
+      example: "${{ (() => { if (item.meanings) { for (const m of item.meanings) { if (m.definitions) { for (const d of m.definitions) { if (d.example) return d.example; } } } } return 'No example found.'; })() }}"
+
+  - limit: 1
+
+columns: [word, example]

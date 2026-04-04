@@ -1,0 +1,30 @@
+site: hf
+name: top
+description: Top upvoted Hugging Face papers (daily)
+domain: huggingface.co
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of papers
+  date:
+    type: str
+    description: "Date (YYYY-MM-DD), defaults to today"
+
+pipeline:
+  - fetch:
+      url: "${{ args.date ? 'https://huggingface.co/api/daily_papers?date=' + args.date : 'https://huggingface.co/api/daily_papers' }}"
+
+  - map:
+      rank: ${{ index + 1 }}
+      id: "${{ item.paper ? item.paper.id : '' }}"
+      title: "${{ (item.title || '').length > 60 ? (item.title || '').slice(0, 57) + '...' : (item.title || '') }}"
+      upvotes: "${{ item.paper ? item.paper.upvotes : 0 }}"
+      authors: "${{ (() => { const a = item.paper && item.paper.authors ? item.paper.authors : []; const n = a.map(x => x.name); return n.length <= 3 ? n.join(', ') : n.slice(0, 3).join(', ') + ' et al.'; })() }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, id, title, upvotes, authors]

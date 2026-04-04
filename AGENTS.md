@@ -1,40 +1,51 @@
-# Uni-CLI — CLI IS ALL YOU NEED
+# Uni-CLI — CLI is all agents need
 
-> Universal CLI for AI agents. Turn any website, desktop app, cloud service, or system tool into a CLI command.
+> Agent infrastructure for touching, sensing, understanding, modifying, and controlling any internet application and local software via CLI.
 
-## Available Commands
+## Quick Reference
 
 ```bash
-unicli list                        # List all available commands
+unicli list                        # All available commands (JSON when piped)
 unicli <site> <command> [options]  # Run a command
-unicli doctor                     # Check system health
+unicli doctor                     # System health + adapter count
+unicli repair <site> <command>    # Diagnose broken adapter
+unicli test [site]                # Smoke test adapters
 ```
+
+## Agent Output Protocol
+
+- **Piped output** → auto-JSON (no flag needed)
+- **Errors** → structured JSON to stderr:
+  ```json
+  {
+    "error": "HTTP 403",
+    "adapter": "src/adapters/twitter/search.yaml",
+    "step": 0,
+    "action": "fetch",
+    "suggestion": "API requires cookie auth. Change strategy to cookie."
+  }
+  ```
+- **Exit codes**: 0=ok, 1=error, 2=usage, 66=empty, 69=unavailable, 77=auth, 78=config
+
+## Self-Repair Protocol
+
+When a command fails:
+
+1. Read the structured error (includes `adapter` path)
+2. Read the YAML adapter file (20 lines, no imports)
+3. Edit the YAML to fix the issue (URL, selector, params)
+4. Save fix to `~/.unicli/adapters/<site>/<command>.yaml` (persists across updates)
+5. Verify: `unicli repair <site> <command>` or `unicli test <site>`
 
 ## Output Formats
 
-All commands support `--format` / `-f` with `table` (default), `json`, `yaml`, `csv`, `md`.
-When stdout is piped (non-TTY), output defaults to `json` for agent consumption.
+All commands: `--format` / `-f` → `table` (default), `json`, `yaml`, `csv`, `md`
 
-```bash
-unicli hackernews top -f json      # Structured JSON for parsing
-unicli hackernews top              # Human-readable table
-```
+## Available Sites (0.200.0)
 
-## Exit Codes
-
-| Code | Meaning              |
-|------|----------------------|
-| 0    | Success              |
-| 1    | Generic error        |
-| 2    | Usage error          |
-| 66   | Empty result         |
-| 69   | Service unavailable  |
-| 75   | Temporary failure    |
-| 77   | Auth required        |
-| 78   | Config error         |
+21 sites, 74 commands. Run `unicli list -f json` for full inventory.
 
 ## Adding Adapters
 
-Drop YAML or TS files into `src/adapters/<site>/` — auto-registered at startup.
-
-See `docs/adapters/yaml-format.md` for the adapter schema.
+Drop YAML files into `src/adapters/<site>/` or `~/.unicli/adapters/<site>/`.
+User adapters in `~/.unicli/adapters/` override built-in ones.

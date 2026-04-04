@@ -4,10 +4,10 @@ Uni-CLI uses [Vitest](https://vitest.dev/) with two test projects.
 
 ## Test Projects
 
-| Project | Directory | What it tests | Requires |
-|---------|-----------|---------------|----------|
-| `unit` | `tests/unit/` | Core logic — registry, formatter, loader, types | Nothing |
-| `adapter` | `tests/adapter/` | Adapter integration — real API calls | Network (some need browser) |
+| Project   | Directory        | What it tests                                   | Requires                    |
+| --------- | ---------------- | ----------------------------------------------- | --------------------------- |
+| `unit`    | `tests/unit/`    | Core logic — registry, formatter, loader, types | Nothing                     |
+| `adapter` | `tests/adapter/` | Adapter integration — real API calls            | Network (some need browser) |
 
 ## Running Tests
 
@@ -32,12 +32,12 @@ npm run verify
 Place in `tests/unit/<module>.test.ts`:
 
 ```typescript
-import { describe, it, expect } from 'vitest';
-import { format } from '../../src/output/formatter.js';
+import { describe, it, expect } from "vitest";
+import { format } from "../../src/output/formatter.js";
 
-describe('formatter', () => {
-  it('formats empty data as empty array in json mode', () => {
-    expect(format([], undefined, 'json')).toBe('[]');
+describe("formatter", () => {
+  it("formats empty data as empty array in json mode", () => {
+    expect(format([], undefined, "json")).toBe("[]");
   });
 });
 ```
@@ -47,14 +47,14 @@ describe('formatter', () => {
 Place in `tests/adapter/<site>.test.ts`:
 
 ```typescript
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from "vitest";
 
-describe('hackernews adapter', () => {
-  it('top.yaml loads and has correct metadata', () => {
+describe("hackernews adapter", () => {
+  it("top.yaml loads and has correct metadata", () => {
     // Test adapter loading, not API calls
   });
 
-  it('fetches top stories from live API', async () => {
+  it("fetches top stories from live API", async () => {
     // Integration test — requires network
   });
 });

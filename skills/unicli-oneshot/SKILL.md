@@ -23,6 +23,7 @@ unicli operate state
 Open browser DevTools Network tab. Look for XHR/Fetch requests that return JSON data matching your goal.
 
 Key signals:
+
 - `/api/` or `/v1/` in URL → REST endpoint
 - JSON response with array of items → listable data
 - Query parameters → filterable
@@ -36,7 +37,7 @@ site: <site-name>
 name: <command>
 description: <what it does>
 type: web-api
-strategy: public  # or cookie if auth needed
+strategy: public # or cookie if auth needed
 pipeline:
   - fetch:
       url: <discovered-api-url>

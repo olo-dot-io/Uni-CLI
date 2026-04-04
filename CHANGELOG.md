@@ -3,10 +3,41 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
+## [0.200.0] — Vostok · Chaika
+
+> _1961 — First human in space. Yuri Gagarin orbited Earth in 108 minutes._
+> _Chaika (Seagull) — Valentina Tereshkova's call sign. First woman in space._
+
+### Engine
+
+- Pipe filter system: 15 filters (join, urlencode, truncate, strip_html, slice, replace, split, first, last, length, trim, default, lowercase, uppercase)
+- RSS/XML parsing: `fetch_text` + `parse_rss` pipeline steps
+- Desktop exec: `exec` step with json/lines/csv/text output parsing
+- Sort step: `sort` with by/order
+- Resilient loader: skip malformed YAML gracefully
+
+### Self-Repair Architecture
+
+- Structured pipeline errors: JSON with adapter_path, step, action, suggestion
+- `unicli repair <site> <command>` — diagnostic + fix suggestions
+- `unicli test [site]` — smoke test runner
+- User adapter overlay: `~/.unicli/adapters/` overrides built-in (survives updates)
+
+### Adapters (21 sites, 74 commands)
+
+New sites: lobsters (4), stackoverflow (4), bluesky (9), devto (3), dictionary (3), steam (1), bbc (1), wikipedia (4), arxiv (2), apple-podcasts (3), hf (1), bloomberg (9), v2ex (7), weread (2), xiaoyuzhou (1)
+Completed: hackernews (8/8), reddit (8/8)
+Pre-existing: github-trending (1), ollama (1), blender (1), ffmpeg (1)
+
+### Infrastructure
+
+- Build manifest: auto-generated dist/manifest.json
+- Version bump: 0.100.1 → 0.200.0
+
 ## [0.100.1] — Sputnik · Kedr
 
-> *1957 — The first artificial satellite. First signal from orbit. Proof that it works.*
-> *Kedr (Cedar) — Gagarin's call sign. The very first patch.*
+> _1957 — The first artificial satellite. First signal from orbit. Proof that it works._
+> _Kedr (Cedar) — Gagarin's call sign. The very first patch._
 
 ### Added
 

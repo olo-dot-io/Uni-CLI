@@ -1,0 +1,30 @@
+site: weread
+name: ranking
+description: WeRead book rankings by category
+domain: weread.qq.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of books
+
+pipeline:
+  - fetch:
+      url: https://weread.qq.com/web/bookListInCategory/all
+      params:
+        rank: "1"
+
+  - select: books
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.bookInfo.title }}
+      author: ${{ item.bookInfo.author }}
+      readingCount: ${{ item.readingCount }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, author, readingCount]

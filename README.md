@@ -1,15 +1,16 @@
 <h1 align="center">Uni-CLI</h1>
 
 <p align="center">
-  <strong>CLI IS ALL YOU NEED</strong><br>
-  Turn any website, desktop app, cloud service, or system tool into a CLI command.<br>
-  20-line YAML adapters · Zero LLM cost · Agent-native
+  <strong>CLI IS ALL AGENTS NEED</strong><br>
+  The entry point for AI agents to touch, sense, understand, modify, and control<br>
+  any internet application and local software — through CLI.<br>
+  20-line YAML · Self-repairing · Agent-native
 </p>
 
 <p align="center">
   <a href="#-quick-start"><img src="https://img.shields.io/badge/Quick_Start-3_min-blue?style=for-the-badge" alt="Quick Start"></a>
-  <a href="#-adapter-types"><img src="https://img.shields.io/badge/5_Adapter_Types-Universal-ff69b4?style=for-the-badge" alt="Adapter Types"></a>
-  <a href="#-for-ai-agents"><img src="https://img.shields.io/badge/Agent_Native-MCP_%2B_Skills-green?style=for-the-badge" alt="Agent Native"></a>
+  <a href="#-self-repair"><img src="https://img.shields.io/badge/Self--Repair-Agent_Fixes_Itself-ff69b4?style=for-the-badge" alt="Self-Repair"></a>
+  <a href="#-for-ai-agents"><img src="https://img.shields.io/badge/21_Sites-74_Commands-green?style=for-the-badge" alt="Coverage"></a>
 </p>
 
 <p align="center">
@@ -21,17 +22,50 @@
 
 ---
 
-A single CLI that turns **any interface** — websites, desktop apps, cloud APIs, local services, existing CLI tools — into structured, scriptable commands. Designed from the ground up for AI agents.
+**CLI is the universal interface for AI agents.** ~80 tokens per invocation. Composable via Unix pipes. Deterministic. And with Uni-CLI, **self-repairing** — when an adapter breaks, the agent reads the 20-line YAML, fixes it, and moves on. No human needed.
 
-**For AI Agents** — Built-in MCP server, Agent Skills, and auto-detection of piped output. Claude Code, Codex, Cursor, OpenCode — Uni-CLI works with all of them.
+**For AI Agents** — Structured JSON output, machine-readable exit codes, self-repair protocol. Agents can diagnose, fix, and verify their own tools.
 
-**For Humans** — Beautiful table output, multiple formats, shell completion, and `unicli doctor` for self-diagnostics.
+**For Humans** — Beautiful table output, multiple formats, `unicli doctor` for diagnostics.
 
 ---
 
-## Why Uni-CLI?
+## 🔧 Self-Repair — Why Uni-CLI Exists
 
-The AI agent ecosystem has fragmented CLI tools: one for websites, another for desktop apps, yet another for browser automation. **Uni-CLI unifies them all** with a single adapter format:
+This is not a feature. This is the reason the project exists.
+
+```
+unicli <site> <command>
+  → Fails (API changed, endpoint moved)
+  → Structured error JSON:
+    { "adapter": "src/adapters/twitter/search.yaml",
+      "step": 0, "action": "fetch", "statusCode": 403,
+      "suggestion": "API requires cookie auth." }
+  → Agent reads 20-line YAML (fits any context window)
+  → Agent edits YAML → saves to ~/.unicli/adapters/
+  → Agent retries → fixed. Fix persists across updates.
+```
+
+| Requirement                      | Other tools              | Uni-CLI                            |
+| -------------------------------- | ------------------------ | ---------------------------------- |
+| Structured errors with file path | ❌ Human strings         | ✅ JSON + adapter path             |
+| Agent can read the adapter       | ❌ 50-300 line TS/Python | ✅ 20-line YAML                    |
+| Fix survives updates             | ❌ Overwritten           | ✅ ~/.unicli/adapters/ overlay     |
+| Agent can verify the fix         | ❌ No test command       | ✅ `unicli repair` + `unicli test` |
+
+---
+
+## Why CLI, Not MCP?
+
+MCP sounds great in theory. In practice (April 2026): 3 MCP servers eat **72% of a 200K context window** before you type anything. Each tool definition costs 550-1,400 tokens. A CLI call costs ~80 tokens.
+
+CLI through Bash is: universal (every agent has it), composable (pipes), self-repairable (agent edits YAML), and context-efficient (2 orders of magnitude cheaper than MCP).
+
+---
+
+## 🌍 Coverage
+
+Uni-CLI turns **any interface** — websites, desktop apps, cloud APIs, local services, existing CLI tools — into structured, scriptable commands:
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -52,17 +86,18 @@ The AI agent ecosystem has fragmented CLI tools: one for websites, another for d
 └─────────────────────────────────────────────────────┘
 ```
 
-| Feature | Uni-CLI | OpenCLI | CLI-Anything |
-|---------|--------|---------|--------------|
-| Websites → CLI | ✅ | ✅ | ❌ |
-| Desktop apps → CLI | ✅ | Partial | ✅ |
-| Browser automation | ✅ | ✅ | ❌ |
-| System CLI hub | ✅ | ✅ | ❌ |
-| Local services | ✅ | ❌ | ✅ |
-| YAML adapters | ✅ 20 lines | ✅ | ❌ (Python pkg) |
-| MCP server | ✅ Built-in | ❌ | ❌ |
-| Agent Skills | ✅ | ✅ | ✅ |
-| Unified format | ✅ | ❌ (2 formats) | ❌ (Python) |
+| Feature            | Uni-CLI               | OpenCLI           | CLI-Anything        |
+| ------------------ | --------------------- | ----------------- | ------------------- |
+| Websites → CLI     | ✅                    | ✅                | ❌                  |
+| Desktop apps → CLI | ✅                    | Partial           | ✅                  |
+| Browser automation | ✅                    | ✅                | ❌                  |
+| Local services     | ✅                    | ❌                | ✅                  |
+| Agent self-repair  | ✅ Full loop          | ❌                | ❌                  |
+| Structured errors  | ✅ JSON               | ❌ Strings        | ❌ Traceback        |
+| Adapter format     | 20-line YAML          | 50-300 line TS    | 500-900 line Python |
+| Fix persists       | ✅ ~/.unicli/ overlay | ❌ npm overwrites | ❌ pip overwrites   |
+| Repair command     | ✅ `unicli repair`    | ❌                | ❌                  |
+| Test command       | ✅ `unicli test`      | ❌                | ❌                  |
 
 ---
 
@@ -232,6 +267,7 @@ Add to your project's `AGENTS.md` or `CLAUDE.md`:
 
 ```markdown
 ## CLI Tools
+
 - `unicli <site> <command>` — Universal CLI for websites, desktop apps, and services
 - `unicli list` — Discover all available commands
 ```
@@ -240,14 +276,14 @@ Add to your project's `AGENTS.md` or `CLAUDE.md`:
 
 ## 📦 Built-in Adapters
 
-| Site | Type | Commands | Auth |
-|------|------|----------|------|
-| **hackernews** | web-api | `top` `search` | No |
-| **reddit** | web-api | `hot` `search` | No |
-| **github-trending** | web-api | `daily` | No |
-| **blender** | desktop | `render` | No (requires blender) |
-| **ffmpeg** | desktop | `convert` | No (requires ffmpeg) |
-| **ollama** | service | `list` | No (requires ollama) |
+| Site                | Type    | Commands       | Auth                  |
+| ------------------- | ------- | -------------- | --------------------- |
+| **hackernews**      | web-api | `top` `search` | No                    |
+| **reddit**          | web-api | `hot` `search` | No                    |
+| **github-trending** | web-api | `daily`        | No                    |
+| **blender**         | desktop | `render`       | No (requires blender) |
+| **ffmpeg**          | desktop | `convert`      | No (requires ffmpeg)  |
+| **ollama**          | service | `list`         | No (requires ollama)  |
 
 > 6 sites, 8 commands across 3 adapter types. [Contribute yours →](./CONTRIBUTING.md)
 
@@ -315,16 +351,16 @@ unicli <site> <command> [options]
 
 Following Unix `sysexits.h` conventions:
 
-| Code | Meaning | When |
-|------|---------|------|
-| `0` | Success | Command completed |
-| `1` | Generic error | Unexpected failure |
-| `2` | Usage error | Bad arguments |
-| `66` | Empty result | No data returned |
+| Code | Meaning             | When                  |
+| ---- | ------------------- | --------------------- |
+| `0`  | Success             | Command completed     |
+| `1`  | Generic error       | Unexpected failure    |
+| `2`  | Usage error         | Bad arguments         |
+| `66` | Empty result        | No data returned      |
 | `69` | Service unavailable | Browser not connected |
-| `75` | Temporary failure | Timeout — retry |
-| `77` | Auth required | Not logged in |
-| `78` | Config error | Missing credentials |
+| `75` | Temporary failure   | Timeout — retry       |
+| `77` | Auth required       | Not logged in         |
+| `78` | Config error        | Missing credentials   |
 
 ---
 

@@ -13,7 +13,11 @@
  *   Available variables: item, index, args, base
  */
 
-import type { PipelineStep } from '../types.js';
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import type { PipelineStep } from "../types.js";
+
+const execFileAsync = promisify(execFile);
 
 type PipelineContext = {
   data: unknown;
@@ -33,15 +37,21 @@ export class PipelineError extends Error {
       step: number;
       action: string;
       config: unknown;
-      errorType: 'http_error' | 'selector_miss' | 'empty_result' | 'parse_error' | 'timeout' | 'expression_error';
+      errorType:
+        | "http_error"
+        | "selector_miss"
+        | "empty_result"
+        | "parse_error"
+        | "timeout"
+        | "expression_error";
       url?: string;
       statusCode?: number;
       responsePreview?: string;
       suggestion: string;
-    }
+    },
   ) {
     super(message);
-    this.name = 'PipelineError';
+    this.name = "PipelineError";
   }
 
   /** JSON output for AI agents — includes everything needed to self-repair */
@@ -57,7 +67,7 @@ export class PipelineError extends Error {
 export async function runPipeline(
   steps: PipelineStep[],
   args: Record<string, unknown>,
-  base?: string
+  base?: string,
 ): Promise<unknown[]> {
   let ctx: PipelineContext = { data: null, args, base };
 
@@ -67,20 +77,32 @@ export async function runPipeline(
 
     try {
       switch (action) {
-        case 'fetch':
+        case "fetch":
           ctx = await stepFetch(ctx, config as FetchConfig);
           break;
-        case 'select':
+        case "fetch_text":
+          ctx = await stepFetchText(ctx, config as FetchConfig);
+          break;
+        case "parse_rss":
+          ctx = stepParseRss(ctx, config as RssConfig | undefined);
+          break;
+        case "select":
           ctx = stepSelect(ctx, config as string, i);
           break;
-        case 'map':
+        case "map":
           ctx = stepMap(ctx, config as Record<string, string>);
           break;
-        case 'filter':
+        case "filter":
           ctx = stepFilter(ctx, config as string);
           break;
-        case 'limit':
+        case "sort":
+          ctx = stepSort(ctx, config as SortConfig);
+          break;
+        case "limit":
           ctx = stepLimit(ctx, config);
+          break;
+        case "exec":
+          ctx = await stepExec(ctx, config as ExecConfig);
           break;
         default:
           break;
@@ -93,16 +115,16 @@ export async function runPipeline(
           step: i,
           action,
           config,
-          errorType: 'parse_error',
+          errorType: "parse_error",
           suggestion: `Check the ${action} step at index ${i} in the adapter YAML. The expression or configuration may be invalid.`,
-        }
+        },
       );
     }
   }
 
   const result = ctx.data;
   if (Array.isArray(result)) return result;
-  if (result && typeof result === 'object') return [result];
+  if (result && typeof result === "object") return [result];
   return [];
 }
 
@@ -116,7 +138,10 @@ interface FetchConfig {
   body?: unknown;
 }
 
-async function stepFetch(ctx: PipelineContext, config: FetchConfig): Promise<PipelineContext> {
+async function stepFetch(
+  ctx: PipelineContext,
+  config: FetchConfig,
+): Promise<PipelineContext> {
   let url = evalTemplate(config.url, ctx);
 
   // If data is an array of items with IDs, fetch each one (fan-out pattern)
@@ -127,7 +152,7 @@ async function stepFetch(ctx: PipelineContext, config: FetchConfig): Promise<Pip
         const itemUrl = evalTemplate(config.url, { ...ctx, data: item });
         const resp = await fetchJson(itemUrl, config);
         return resp;
-      })
+      }),
     );
     return { ...ctx, data: results };
   }
@@ -139,58 +164,64 @@ async function stepFetch(ctx: PipelineContext, config: FetchConfig): Promise<Pip
       const val = evalTemplate(String(v), ctx);
       params.set(k, val);
     }
-    url += (url.includes('?') ? '&' : '?') + params.toString();
+    url += (url.includes("?") ? "&" : "?") + params.toString();
   }
 
   const data = await fetchJson(url, config);
   return { ...ctx, data };
 }
 
-async function fetchJson(
-  url: string,
-  config: FetchConfig
-): Promise<unknown> {
-  const method = config.method ?? 'GET';
+async function fetchJson(url: string, config: FetchConfig): Promise<unknown> {
+  const method = config.method ?? "GET";
   const headers: Record<string, string> = {
-    'Accept': 'application/json',
-    'User-Agent': 'Uni-CLI/0.100.1',
+    Accept: "application/json",
+    "User-Agent": "Uni-CLI/0.200",
     ...(config.headers ?? {}),
   };
 
   const init: RequestInit = { method, headers };
-  if (config.body && method !== 'GET') {
-    headers['Content-Type'] = 'application/json';
+  if (config.body && method !== "GET") {
+    headers["Content-Type"] = "application/json";
     init.body = JSON.stringify(config.body);
   }
 
   const resp = await fetch(url, init);
   if (!resp.ok) {
-    let preview = '';
-    try { preview = (await resp.text()).slice(0, 200); } catch { /* ignore */ }
+    let preview = "";
+    try {
+      preview = (await resp.text()).slice(0, 200);
+    } catch {
+      /* ignore */
+    }
     throw new PipelineError(
       `HTTP ${resp.status} ${resp.statusText} from ${url}`,
       {
         step: -1, // will be overwritten by caller
-        action: 'fetch',
+        action: "fetch",
         config: { url, method },
-        errorType: 'http_error',
+        errorType: "http_error",
         url,
         statusCode: resp.status,
         responsePreview: preview,
-        suggestion: resp.status === 403
-          ? 'The API is blocking requests. The endpoint may require authentication (cookie strategy) or the User-Agent may need updating.'
-          : resp.status === 404
-            ? 'The API endpoint was not found. The URL path may have changed — check the target site for the current API.'
-            : resp.status === 429
-              ? 'Rate limited. Add a delay between requests or reduce the limit parameter.'
-              : `HTTP ${resp.status} error. Check if the API endpoint is still valid.`,
-      }
+        suggestion:
+          resp.status === 403
+            ? "The API is blocking requests. The endpoint may require authentication (cookie strategy) or the User-Agent may need updating."
+            : resp.status === 404
+              ? "The API endpoint was not found. The URL path may have changed — check the target site for the current API."
+              : resp.status === 429
+                ? "Rate limited. Add a delay between requests or reduce the limit parameter."
+                : `HTTP ${resp.status} error. Check if the API endpoint is still valid.`,
+      },
     );
   }
   return resp.json();
 }
 
-function stepSelect(ctx: PipelineContext, path: string, stepIndex: number): PipelineContext {
+function stepSelect(
+  ctx: PipelineContext,
+  path: string,
+  stepIndex: number,
+): PipelineContext {
   const resolved = evalTemplate(path, ctx);
   const data = getNestedValue(ctx.data, resolved);
   if (data === undefined || data === null) {
@@ -198,11 +229,11 @@ function stepSelect(ctx: PipelineContext, path: string, stepIndex: number): Pipe
       `Select "${resolved}" returned nothing — the response structure may have changed`,
       {
         step: stepIndex,
-        action: 'select',
+        action: "select",
         config: path,
-        errorType: 'selector_miss',
+        errorType: "selector_miss",
         suggestion: `The path "${resolved}" does not exist in the API response. Inspect the actual response JSON to find the correct path, then update the "select" step in the adapter YAML.`,
-      }
+      },
     );
   }
   return { ...ctx, data };
@@ -210,7 +241,7 @@ function stepSelect(ctx: PipelineContext, path: string, stepIndex: number): Pipe
 
 function stepMap(
   ctx: PipelineContext,
-  template: Record<string, string>
+  template: Record<string, string>,
 ): PipelineContext {
   if (!Array.isArray(ctx.data)) return ctx;
 
@@ -245,7 +276,7 @@ function stepLimit(ctx: PipelineContext, config: unknown): PipelineContext {
   if (!Array.isArray(ctx.data)) return ctx;
 
   let n: number;
-  if (typeof config === 'number') {
+  if (typeof config === "number") {
     n = config;
   } else {
     const val = evalTemplate(String(config), ctx);
@@ -253,6 +284,191 @@ function stepLimit(ctx: PipelineContext, config: unknown): PipelineContext {
   }
 
   return { ...ctx, data: ctx.data.slice(0, n) };
+}
+
+// --- fetch_text: like fetch but returns raw text (for XML/RSS/HTML) ---
+
+async function stepFetchText(
+  ctx: PipelineContext,
+  config: FetchConfig,
+): Promise<PipelineContext> {
+  let url = evalTemplate(config.url, ctx);
+
+  if (config.params) {
+    const params = new URLSearchParams();
+    for (const [k, v] of Object.entries(config.params)) {
+      params.set(k, evalTemplate(String(v), ctx));
+    }
+    url += (url.includes("?") ? "&" : "?") + params.toString();
+  }
+
+  const method = config.method ?? "GET";
+  const headers: Record<string, string> = {
+    "User-Agent": "Uni-CLI/0.200",
+    ...(config.headers ?? {}),
+  };
+
+  const resp = await fetch(url, { method, headers });
+  if (!resp.ok) {
+    throw new PipelineError(
+      `HTTP ${resp.status} ${resp.statusText} from ${url}`,
+      {
+        step: -1,
+        action: "fetch_text",
+        config: { url, method },
+        errorType: "http_error",
+        url,
+        statusCode: resp.status,
+        suggestion: `Check if the URL is still valid: ${url}`,
+      },
+    );
+  }
+
+  const text = await resp.text();
+  return { ...ctx, data: text };
+}
+
+// --- RSS/XML parser ---
+
+interface RssConfig {
+  fields?: Record<string, string>;
+}
+
+function stepParseRss(
+  ctx: PipelineContext,
+  config: RssConfig | undefined,
+): PipelineContext {
+  const xml = String(ctx.data ?? "");
+  const items: Record<string, string>[] = [];
+  const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+  let match;
+
+  while ((match = itemRegex.exec(xml)) !== null) {
+    const block = match[1];
+    if (config?.fields) {
+      const row: Record<string, string> = {};
+      for (const [key, tag] of Object.entries(config.fields)) {
+        row[key] = extractXmlTag(block, tag);
+      }
+      items.push(row);
+    } else {
+      items.push({
+        title: extractXmlCdata(block, "title"),
+        description: extractXmlCdata(block, "description"),
+        link: extractXmlTag(block, "link"),
+        pubDate: extractXmlTag(block, "pubDate"),
+        guid: extractXmlTag(block, "guid"),
+      });
+    }
+  }
+
+  return { ...ctx, data: items };
+}
+
+function extractXmlCdata(xml: string, tag: string): string {
+  const cdataMatch = xml.match(
+    new RegExp(`<${tag}><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></${tag}>`),
+  );
+  if (cdataMatch) return cdataMatch[1].trim();
+  return extractXmlTag(xml, tag);
+}
+
+function extractXmlTag(xml: string, tag: string): string {
+  const m = xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`));
+  return m ? m[1].trim() : "";
+}
+
+// --- Sort step ---
+
+interface SortConfig {
+  by: string;
+  order?: "asc" | "desc";
+}
+
+function stepSort(ctx: PipelineContext, config: SortConfig): PipelineContext {
+  if (!Array.isArray(ctx.data)) return ctx;
+  const items = [...ctx.data] as Record<string, unknown>[];
+  const desc = config.order === "desc";
+  items.sort((a, b) => {
+    const va = a[config.by];
+    const vb = b[config.by];
+    const na = Number(va);
+    const nb = Number(vb);
+    if (!isNaN(na) && !isNaN(nb)) return desc ? nb - na : na - nb;
+    return desc
+      ? String(vb ?? "").localeCompare(String(va ?? ""))
+      : String(va ?? "").localeCompare(String(vb ?? ""));
+  });
+  return { ...ctx, data: items };
+}
+
+// --- Exec step for desktop adapters ---
+
+interface ExecConfig {
+  command: string;
+  args?: string[];
+  parse?: "lines" | "json" | "csv" | "text";
+  timeout?: number;
+}
+
+async function stepExec(
+  ctx: PipelineContext,
+  config: ExecConfig,
+): Promise<PipelineContext> {
+  const cmd = evalTemplate(config.command, ctx);
+  const execArgs = (config.args ?? []).map((a) => evalTemplate(String(a), ctx));
+  const timeout = config.timeout ?? 30000;
+
+  try {
+    const { stdout } = await execFileAsync(cmd, execArgs, {
+      timeout,
+      maxBuffer: 10 * 1024 * 1024,
+    });
+
+    let data: unknown;
+    switch (config.parse ?? "lines") {
+      case "json":
+        data = JSON.parse(stdout);
+        break;
+      case "lines":
+        data = stdout
+          .split("\n")
+          .filter(Boolean)
+          .map((line) => ({ line }));
+        break;
+      case "csv": {
+        const lines = stdout.split("\n").filter(Boolean);
+        if (lines.length < 2) {
+          data = [];
+          break;
+        }
+        const headers = lines[0].split(",").map((h) => h.trim());
+        data = lines.slice(1).map((line) => {
+          const vals = line.split(",");
+          const row: Record<string, string> = {};
+          headers.forEach((h, i) => {
+            row[h] = (vals[i] ?? "").trim();
+          });
+          return row;
+        });
+        break;
+      }
+      case "text":
+      default:
+        data = stdout;
+    }
+
+    return { ...ctx, data };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new PipelineError(`exec "${cmd}" failed: ${msg}`, {
+      step: -1,
+      action: "exec",
+      config: { command: cmd, args: execArgs },
+      errorType: "parse_error",
+      suggestion: `Check that "${cmd}" is installed and accessible. Run: which ${cmd}`,
+    });
+  }
 }
 
 // --- Template engine ---
@@ -266,12 +482,12 @@ function evalTemplate(template: string, ctx: PipelineContext): string {
   const fullMatch = template.match(/^\$\{\{\s*(.+?)\s*\}\}$/);
   if (fullMatch) {
     const result = evalExpression(fullMatch[1], buildScope(ctx));
-    return String(result ?? '');
+    return String(result ?? "");
   }
 
   return template.replace(/\$\{\{\s*(.+?)\s*\}\}/g, (_match, expr: string) => {
     const result = evalExpression(expr, buildScope(ctx));
-    return String(result ?? '');
+    return String(result ?? "");
   });
 }
 
@@ -281,7 +497,11 @@ function buildScope(ctx: PipelineContext): Record<string, unknown> {
     base: ctx.base,
   };
 
-  if (ctx.data && typeof ctx.data === 'object' && 'item' in (ctx.data as Record<string, unknown>)) {
+  if (
+    ctx.data &&
+    typeof ctx.data === "object" &&
+    "item" in (ctx.data as Record<string, unknown>)
+  ) {
     const d = ctx.data as Record<string, unknown>;
     scope.item = d.item;
     scope.index = d.index;
@@ -293,15 +513,187 @@ function buildScope(ctx: PipelineContext): Record<string, unknown> {
 }
 
 /**
+ * Built-in pipe filters — used in template expressions like:
+ *   ${{ item.tags | join(', ') }}
+ *   ${{ args.word | urlencode }}
+ *   ${{ item.text | slice(0, 200) }}
+ */
+const PIPE_FILTERS: Record<string, (...args: unknown[]) => unknown> = {
+  join: (val: unknown, sep: unknown) =>
+    Array.isArray(val) ? val.join(String(sep ?? ", ")) : String(val ?? ""),
+  urlencode: (val: unknown) => encodeURIComponent(String(val ?? "")),
+  slice: (val: unknown, start: unknown, end: unknown) => {
+    const s = String(val ?? "");
+    return s.slice(
+      Number(start) || 0,
+      end !== undefined ? Number(end) : undefined,
+    );
+  },
+  replace: (val: unknown, search: unknown, replacement: unknown) =>
+    String(val ?? "").replace(
+      new RegExp(String(search), "g"),
+      String(replacement ?? ""),
+    ),
+  lowercase: (val: unknown) => String(val ?? "").toLowerCase(),
+  uppercase: (val: unknown) => String(val ?? "").toUpperCase(),
+  trim: (val: unknown) => String(val ?? "").trim(),
+  default: (val: unknown, fallback: unknown) =>
+    val == null || val === "" ? fallback : val,
+  split: (val: unknown, sep: unknown) =>
+    String(val ?? "").split(String(sep ?? ",")),
+  first: (val: unknown) => (Array.isArray(val) ? val[0] : val),
+  last: (val: unknown) => (Array.isArray(val) ? val[val.length - 1] : val),
+  length: (val: unknown) =>
+    Array.isArray(val) ? val.length : String(val ?? "").length,
+  strip_html: (val: unknown) => String(val ?? "").replace(/<[^>]+>/g, ""),
+  truncate: (val: unknown, max: unknown) => {
+    const s = String(val ?? "");
+    const n = Number(max) || 100;
+    return s.length > n ? s.slice(0, n) + "..." : s;
+  },
+};
+
+/**
+ * Parse pipe filters from expression: "expr | filter1(arg) | filter2"
+ * Returns { baseExpr, filters: [{ name, args }] }
+ */
+function parsePipes(expr: string): {
+  baseExpr: string;
+  filters: Array<{ name: string; args: string[] }>;
+} {
+  // Only split on | that is NOT inside parentheses, quotes, or array syntax
+  const parts: string[] = [];
+  let current = "";
+  let depth = 0;
+  let inStr: string | null = null;
+
+  for (let i = 0; i < expr.length; i++) {
+    const ch = expr[i];
+    if (inStr) {
+      current += ch;
+      if (ch === inStr && expr[i - 1] !== "\\") inStr = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      inStr = ch;
+      current += ch;
+      continue;
+    }
+    if (ch === "(" || ch === "[") {
+      depth++;
+      current += ch;
+      continue;
+    }
+    if (ch === ")" || ch === "]") {
+      depth--;
+      current += ch;
+      continue;
+    }
+    if (ch === "|" && depth === 0 && expr[i + 1] !== "|") {
+      // Check it's not || (logical OR)
+      parts.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += ch;
+  }
+  parts.push(current.trim());
+
+  if (parts.length <= 1) return { baseExpr: expr, filters: [] };
+
+  const baseExpr = parts[0];
+  const filters = parts.slice(1).map((f) => {
+    const m = f.match(/^(\w+)\((.*)\)$/s);
+    if (m) {
+      // Parse args — simple comma split respecting strings
+      const rawArgs = m[2].trim();
+      const args = rawArgs ? splitFilterArgs(rawArgs) : [];
+      return { name: m[1], args };
+    }
+    return { name: f.trim(), args: [] };
+  });
+
+  return { baseExpr, filters };
+}
+
+function splitFilterArgs(raw: string): string[] {
+  const args: string[] = [];
+  let current = "";
+  let inStr: string | null = null;
+  let depth = 0;
+  for (const ch of raw) {
+    if (inStr) {
+      current += ch;
+      if (ch === inStr) inStr = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      inStr = ch;
+      current += ch;
+      continue;
+    }
+    if (ch === "(") {
+      depth++;
+      current += ch;
+      continue;
+    }
+    if (ch === ")") {
+      depth--;
+      current += ch;
+      continue;
+    }
+    if (ch === "," && depth === 0) {
+      args.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += ch;
+  }
+  args.push(current.trim());
+  return args;
+}
+
+/**
  * Safe expression evaluator using Function constructor.
  * Scoped to the provided variables — no access to global state.
+ * Supports pipe filters: ${{ expr | join(', ') | slice(0, 100) }}
  */
 function evalExpression(expr: string, scope: Record<string, unknown>): unknown {
   try {
+    const { baseExpr, filters } = parsePipes(expr);
+
     const keys = Object.keys(scope);
     const values = Object.values(scope);
-    const fn = new Function(...keys, `"use strict"; return (${expr});`);
-    return fn(...values);
+    const fn = new Function(...keys, `"use strict"; return (${baseExpr});`);
+    let result: unknown = fn(...values);
+
+    // Apply pipe filters
+    for (const filter of filters) {
+      const filterFn = PIPE_FILTERS[filter.name];
+      if (!filterFn) continue;
+      // Evaluate filter args
+      const evaledArgs = filter.args.map((a) => {
+        // String literal
+        if (
+          (a.startsWith("'") && a.endsWith("'")) ||
+          (a.startsWith('"') && a.endsWith('"'))
+        ) {
+          return a.slice(1, -1);
+        }
+        // Number
+        if (/^-?\d+(\.\d+)?$/.test(a)) return Number(a);
+        // Expression
+        try {
+          const argFn = new Function(...keys, `"use strict"; return (${a});`);
+          return argFn(...values);
+        } catch {
+          return a;
+        }
+      });
+      result = filterFn(result, ...evaledArgs);
+    }
+
+    return result;
   } catch {
     return undefined;
   }
@@ -311,13 +703,13 @@ function evalExpression(expr: string, scope: Record<string, unknown>): unknown {
  * Navigate nested object by dot-path: "data.list[].title"
  */
 function getNestedValue(obj: unknown, path: string): unknown {
-  const parts = path.split('.');
+  const parts = path.split(".");
   let current: unknown = obj;
 
   for (const part of parts) {
     if (current == null) return undefined;
 
-    if (part.endsWith('[]')) {
+    if (part.endsWith("[]")) {
       const key = part.slice(0, -2);
       if (key) {
         current = (current as Record<string, unknown>)[key];

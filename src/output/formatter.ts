@@ -5,29 +5,29 @@
  * Auto-detects piped output and switches to json for agent consumption.
  */
 
-import chalk from 'chalk';
-import Table from 'cli-table3';
-import type { OutputFormat } from '../types.js';
+import chalk from "chalk";
+import Table from "cli-table3";
+import type { OutputFormat } from "../types.js";
 
 export function format(
   data: unknown[],
   columns: string[] | undefined,
-  fmt: OutputFormat
+  fmt: OutputFormat,
 ): string {
   if (!data || data.length === 0) {
-    return fmt === 'json' ? '[]' : chalk.dim('No results');
+    return fmt === "json" ? "[]" : chalk.dim("No results");
   }
 
   switch (fmt) {
-    case 'json':
+    case "json":
       return JSON.stringify(data, null, 2);
-    case 'yaml':
+    case "yaml":
       return toYaml(data);
-    case 'csv':
+    case "csv":
       return toCsv(data, columns);
-    case 'md':
+    case "md":
       return toMarkdown(data, columns);
-    case 'table':
+    case "table":
     default:
       return toTable(data, columns);
   }
@@ -44,7 +44,7 @@ function toTable(data: unknown[], columns?: string[]): string {
   });
 
   for (const row of rows) {
-    table.push(cols.map((c) => truncate(String(row[c] ?? ''), 60)));
+    table.push(cols.map((c) => truncate(String(row[c] ?? ""), 60)));
   }
 
   return table.toString();
@@ -53,20 +53,22 @@ function toTable(data: unknown[], columns?: string[]): string {
 function toCsv(data: unknown[], columns?: string[]): string {
   const rows = data as Record<string, unknown>[];
   const cols = columns ?? Object.keys(rows[0] ?? {});
-  const header = cols.join(',');
-  const body = rows.map((r) => cols.map((c) => csvEscape(String(r[c] ?? ''))).join(','));
-  return [header, ...body].join('\n');
+  const header = cols.join(",");
+  const body = rows.map((r) =>
+    cols.map((c) => csvEscape(String(r[c] ?? ""))).join(","),
+  );
+  return [header, ...body].join("\n");
 }
 
 function toMarkdown(data: unknown[], columns?: string[]): string {
   const rows = data as Record<string, unknown>[];
   const cols = columns ?? Object.keys(rows[0] ?? {});
-  const header = `| ${cols.join(' | ')} |`;
-  const separator = `| ${cols.map(() => '---').join(' | ')} |`;
+  const header = `| ${cols.join(" | ")} |`;
+  const separator = `| ${cols.map(() => "---").join(" | ")} |`;
   const body = rows.map(
-    (r) => `| ${cols.map((c) => String(r[c] ?? '')).join(' | ')} |`
+    (r) => `| ${cols.map((c) => String(r[c] ?? "")).join(" | ")} |`,
   );
-  return [header, separator, ...body].join('\n');
+  return [header, separator, ...body].join("\n");
 }
 
 function toYaml(data: unknown[]): string {
@@ -75,32 +77,33 @@ function toYaml(data: unknown[]): string {
       const obj = item as Record<string, unknown>;
       const entries = Object.entries(obj)
         .map(([k, v]) => `  ${k}: ${yamlValue(v)}`)
-        .join('\n');
+        .join("\n");
       return `- # ${i + 1}\n${entries}`;
     })
-    .join('\n');
+    .join("\n");
 }
 
 function yamlValue(v: unknown): string {
-  if (v === null || v === undefined) return 'null';
-  if (typeof v === 'string') return v.includes(':') || v.includes('#') ? `"${v}"` : v;
+  if (v === null || v === undefined) return "null";
+  if (typeof v === "string")
+    return v.includes(":") || v.includes("#") ? `"${v}"` : v;
   return String(v);
 }
 
 function csvEscape(s: string): string {
-  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+  if (s.includes(",") || s.includes('"') || s.includes("\n")) {
     return `"${s.replace(/"/g, '""')}"`;
   }
   return s;
 }
 
 function truncate(s: string, max: number): string {
-  return s.length > max ? s.slice(0, max - 1) + '…' : s;
+  return s.length > max ? s.slice(0, max - 1) + "…" : s;
 }
 
 /** Auto-detect if output should be agent-optimized (piped stdout) */
 export function detectFormat(explicit?: OutputFormat): OutputFormat {
   if (explicit) return explicit;
-  if (!process.stdout.isTTY) return 'json';
-  return 'table';
+  if (!process.stdout.isTTY) return "json";
+  return "table";
 }

@@ -1,0 +1,32 @@
+site: v2ex
+name: replies
+description: V2EX topic replies
+domain: www.v2ex.com
+type: web-api
+strategy: public
+
+args:
+  id:
+    type: int
+    required: true
+    positional: true
+    description: Topic ID
+  limit:
+    type: int
+    default: 50
+    description: Number of replies
+
+pipeline:
+  - fetch:
+      url: https://www.v2ex.com/api/replies/show.json
+      params:
+        topic_id: ${{ args.id }}
+
+  - map:
+      floor: ${{ index + 1 }}
+      author: ${{ item.member.username }}
+      content: ${{ item.content }}
+
+  - limit: ${{ args.limit }}
+
+columns: [floor, author, content]

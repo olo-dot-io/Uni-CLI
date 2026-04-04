@@ -1,6 +1,6 @@
 {
   "name": "unicli",
-  "version": "0.100.1",
+  "version": "0.200.0",
   "description": "CLI IS ALL YOU NEED — Turn any website, desktop app, cloud service, or system tool into a CLI command",
   "type": "module",
   "main": "dist/main.js",
@@ -13,7 +13,7 @@
   },
   "scripts": {
     "dev": "tsx src/main.ts",
-    "build": "tsc && node scripts/build-manifest.js",
+    "build": "tsc && tsx scripts/build-manifest.js",
     "test": "vitest run --project unit",
     "test:adapter": "vitest run --project adapter",
     "test:all": "vitest run",

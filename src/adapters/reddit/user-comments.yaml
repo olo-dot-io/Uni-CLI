@@ -1,0 +1,38 @@
+site: reddit
+name: user-comments
+description: View a Reddit user's comment history
+domain: www.reddit.com
+type: web-api
+strategy: public
+
+args:
+  username:
+    type: str
+    required: true
+    positional: true
+    description: Reddit username
+  limit:
+    type: int
+    default: 20
+    description: Number of comments
+
+pipeline:
+  - fetch:
+      url: "https://www.reddit.com/user/${{ args.username }}/comments.json"
+      params:
+        limit: ${{ args.limit }}
+        raw_json: "1"
+      headers:
+        User-Agent: Uni-CLI/0.200
+
+  - select: data.children
+
+  - map:
+      subreddit: ${{ item.data.subreddit_name_prefixed }}
+      score: ${{ item.data.score }}
+      body: ${{ item.data.body | truncate(300) }}
+      url: ${{ 'https://www.reddit.com' + item.data.permalink }}
+
+  - limit: ${{ args.limit }}
+
+columns: [subreddit, score, body, url]

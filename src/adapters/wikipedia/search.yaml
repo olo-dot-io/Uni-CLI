@@ -1,0 +1,43 @@
+site: wikipedia
+name: search
+description: Search Wikipedia articles
+domain: wikipedia.org
+type: web-api
+strategy: public
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search keyword
+  limit:
+    type: int
+    default: 10
+    description: Max results
+  lang:
+    type: str
+    default: en
+    description: "Language code (e.g. en, zh, ja)"
+
+pipeline:
+  - fetch:
+      url: "https://${{ args.lang || 'en' }}.wikipedia.org/w/api.php"
+      params:
+        action: query
+        list: search
+        srsearch: ${{ args.query }}
+        srlimit: ${{ args.limit }}
+        format: json
+        utf8: "1"
+
+  - select: query.search
+
+  - map:
+      title: ${{ item.title }}
+      snippet: ${{ item.snippet | strip_html | truncate(120) }}
+      url: "${{ 'https://' + (args.lang || 'en') + '.wikipedia.org/wiki/' + encodeURIComponent(item.title.replace(/ /g, '_')) }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [title, snippet, url]

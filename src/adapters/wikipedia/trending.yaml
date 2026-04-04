@@ -1,0 +1,34 @@
+site: wikipedia
+name: trending
+description: Most-read Wikipedia articles (yesterday)
+domain: wikipedia.org
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 10
+    description: Max results
+  lang:
+    type: str
+    default: en
+    description: "Language code (e.g. en, zh, ja)"
+
+pipeline:
+  - fetch:
+      url: "${{ (() => { const d = new Date(Date.now() - 86400000); const y = d.getUTCFullYear(); const m = String(d.getUTCMonth() + 1).padStart(2, '0'); const dd = String(d.getUTCDate()).padStart(2, '0'); return 'https://' + (args.lang || 'en') + '.wikipedia.org/api/rest_v1/feed/featured/' + y + '/' + m + '/' + dd; })() }}"
+      headers:
+        User-Agent: Uni-CLI/0.200
+
+  - select: mostread.articles
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.title }}
+      description: ${{ (item.description || '-') | truncate(80) }}
+      views: ${{ item.views }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, description, views]

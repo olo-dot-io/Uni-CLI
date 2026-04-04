@@ -20,9 +20,9 @@
 
 ## Adapter Details (if applicable)
 
-| Field | Value |
-|-------|-------|
-| Site | |
-| Type | `web-api` / `desktop` / `browser` / `bridge` / `service` |
-| Auth | `public` / `cookie` / `header` |
-| Commands | |
+| Field    | Value                                                    |
+| -------- | -------------------------------------------------------- |
+| Site     |                                                          |
+| Type     | `web-api` / `desktop` / `browser` / `bridge` / `service` |
+| Auth     | `public` / `cookie` / `header`                           |
+| Commands |                                                          |

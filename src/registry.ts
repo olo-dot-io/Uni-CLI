@@ -6,8 +6,13 @@
  *   2. TS adapters   — registered via cli() function call
  */
 
-import { AdapterType } from './types.js';
-import type { AdapterManifest, AdapterCommand, AdapterArg, Strategy } from './types.js';
+import { AdapterType } from "./types.js";
+import type {
+  AdapterManifest,
+  AdapterCommand,
+  AdapterArg,
+  Strategy,
+} from "./types.js";
 
 const adapters = new Map<string, AdapterManifest>();
 
@@ -29,7 +34,7 @@ export function getAllAdapters(): AdapterManifest[] {
 /** Resolve a command from "unicli <site> <command>" */
 export function resolveCommand(
   site: string,
-  commandName: string
+  commandName: string,
 ): { adapter: AdapterManifest; command: AdapterCommand } | undefined {
   const adapter = adapters.get(site);
   if (!adapter) return undefined;
@@ -61,14 +66,17 @@ export function listCommands(): Array<{
       result.push({
         site: adapter.name,
         command: name,
-        description: cmd.description ?? '',
+        description: cmd.description ?? "",
         type: adapter.type,
-        auth: adapter.strategy !== 'public' && adapter.strategy !== undefined,
+        auth: adapter.strategy !== "public" && adapter.strategy !== undefined,
       });
     }
   }
 
-  return result.sort((a, b) => a.site.localeCompare(b.site) || a.command.localeCompare(b.command));
+  return result.sort(
+    (a, b) =>
+      a.site.localeCompare(b.site) || a.command.localeCompare(b.command),
+  );
 }
 
 /** TypeScript adapter registration helper (OpenCLI-compatible pattern) */
@@ -102,6 +110,6 @@ export function cli(config: CliRegistration): void {
     name: config.name,
     description: config.description,
     columns: config.columns,
-    func: config.func as AdapterCommand['func'],
+    func: config.func as AdapterCommand["func"],
   };
 }

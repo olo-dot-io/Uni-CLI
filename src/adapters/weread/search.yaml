@@ -1,0 +1,37 @@
+site: weread
+name: search
+description: Search books on WeRead
+domain: weread.qq.com
+type: web-api
+strategy: public
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search keyword
+  limit:
+    type: int
+    default: 10
+    description: Number of results
+
+pipeline:
+  - fetch:
+      url: https://weread.qq.com/web/search/global
+      params:
+        keyword: ${{ args.query }}
+        maxIdx: "0"
+        count: ${{ args.limit }}
+
+  - select: books
+
+  - map:
+      title: ${{ item.bookInfo.title }}
+      author: ${{ item.bookInfo.author }}
+      category: "${{ item.bookInfo.category || '' }}"
+      intro: "${{ (item.bookInfo.intro || '') | truncate(150) }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [title, author, category, intro]

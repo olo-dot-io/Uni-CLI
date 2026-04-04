@@ -1,0 +1,32 @@
+site: reddit
+name: user
+description: View a Reddit user profile
+domain: www.reddit.com
+type: web-api
+strategy: public
+
+args:
+  username:
+    type: str
+    required: true
+    positional: true
+    description: Reddit username
+
+pipeline:
+  - fetch:
+      url: "https://www.reddit.com/user/${{ args.username }}/about.json"
+      params:
+        raw_json: "1"
+      headers:
+        User-Agent: Uni-CLI/0.200
+
+  - select: data
+
+  - map:
+      username: ${{ 'u/' + item.name }}
+      post_karma: ${{ item.link_karma }}
+      comment_karma: ${{ item.comment_karma }}
+      total_karma: ${{ item.total_karma || (item.link_karma + item.comment_karma) }}
+      created: "${{ item.created_utc ? new Date(item.created_utc * 1000).toISOString().slice(0, 10) : '-' }}"
+
+columns: [username, post_karma, comment_karma, total_karma, created]

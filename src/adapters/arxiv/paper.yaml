@@ -1,0 +1,35 @@
+site: arxiv
+name: paper
+description: Get arXiv paper details by ID
+domain: arxiv.org
+type: web-api
+strategy: public
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: "arXiv paper ID (e.g. 1706.03762)"
+
+pipeline:
+  - fetch_text:
+      url: "https://export.arxiv.org/api/query?id_list=${{ args.id | urlencode }}"
+
+  - parse_rss:
+      fields:
+        id: id
+        title: title
+        authors: author
+        published: published
+        summary: summary
+
+  - map:
+      id: "${{ item.id.replace(/^https?:\\/\\/arxiv\\.org\\/abs\\//, '').replace(/v\\d+$/, '') }}"
+      title: "${{ item.title.replace(/\\s+/g, ' ').trim() }}"
+      authors: "${{ item.authors ? item.authors.split('\\n').map(a => a.trim()).filter(Boolean).slice(0, 5).join(', ') : '' }}"
+      published: "${{ item.published ? item.published.slice(0, 10) : '' }}"
+      abstract: "${{ item.summary ? item.summary.replace(/\\s+/g, ' ').trim().slice(0, 300) : '' }}"
+      url: "${{ 'https://arxiv.org/abs/' + item.id.replace(/^https?:\\/\\/arxiv\\.org\\/abs\\//, '').replace(/v\\d+$/, '') }}"
+
+columns: [id, title, authors, published, abstract, url]

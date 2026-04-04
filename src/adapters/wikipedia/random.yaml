@@ -1,0 +1,26 @@
+site: wikipedia
+name: random
+description: Get a random Wikipedia article
+domain: wikipedia.org
+type: web-api
+strategy: public
+
+args:
+  lang:
+    type: str
+    default: en
+    description: "Language code (e.g. en, zh, ja)"
+
+pipeline:
+  - fetch:
+      url: "https://${{ args.lang || 'en' }}.wikipedia.org/api/rest_v1/page/random/summary"
+      headers:
+        User-Agent: Uni-CLI/0.200
+
+  - map:
+      title: ${{ item.title }}
+      description: ${{ item.description || '-' }}
+      extract: ${{ item.extract | truncate(300) }}
+      url: "${{ item.content_urls && item.content_urls.desktop ? item.content_urls.desktop.page : '' }}"
+
+columns: [title, description, extract, url]

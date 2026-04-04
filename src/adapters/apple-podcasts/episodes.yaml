@@ -1,0 +1,38 @@
+site: apple-podcasts
+name: episodes
+description: List recent episodes of an Apple Podcast (use ID from search)
+domain: itunes.apple.com
+type: web-api
+strategy: public
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: Podcast ID (collectionId from search output)
+  limit:
+    type: int
+    default: 15
+    description: Max episodes to show
+
+pipeline:
+  - fetch:
+      url: "https://itunes.apple.com/lookup"
+      params:
+        id: ${{ args.id }}
+        entity: podcastEpisode
+        limit: ${{ (args.limit || 15) + 1 }}
+
+  - select: results
+
+  - filter: item.kind === 'podcast-episode'
+
+  - map:
+      title: ${{ item.trackName }}
+      duration: "${{ (() => { const ms = item.trackTimeMillis; if (!ms) return '-'; const s = Math.round(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); })() }}"
+      date: "${{ item.releaseDate ? item.releaseDate.slice(0, 10) : '-' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [title, duration, date]

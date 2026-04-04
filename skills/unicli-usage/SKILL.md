@@ -25,13 +25,13 @@ unicli doctor                         # System health check
 
 All commands support `--format` / `-f`:
 
-| Format | Use Case |
-|--------|----------|
-| `table` | Human-readable (default in TTY) |
-| `json` | AI agent consumption (default when piped) |
-| `yaml` | Config-friendly |
-| `csv` | Spreadsheet import |
-| `md` | Documentation |
+| Format  | Use Case                                  |
+| ------- | ----------------------------------------- |
+| `table` | Human-readable (default in TTY)           |
+| `json`  | AI agent consumption (default when piped) |
+| `yaml`  | Config-friendly                           |
+| `csv`   | Spreadsheet import                        |
+| `md`    | Documentation                             |
 
 ```bash
 unicli hackernews top -f json | jq '.[0].title'
@@ -40,13 +40,13 @@ unicli hackernews top -f csv > stories.csv
 
 ## Adapter Types
 
-| Type | Description | Example |
-|------|-------------|---------|
-| `web-api` | REST API calls | hackernews, bilibili |
-| `desktop` | Local desktop software | blender, gimp |
-| `browser` | Full browser automation | xiaohongshu |
-| `bridge` | Existing CLI passthrough | gh, docker |
-| `service` | HTTP services | ollama, comfyui |
+| Type      | Description              | Example              |
+| --------- | ------------------------ | -------------------- |
+| `web-api` | REST API calls           | hackernews, bilibili |
+| `desktop` | Local desktop software   | blender, gimp        |
+| `browser` | Full browser automation  | xiaohongshu          |
+| `bridge`  | Existing CLI passthrough | gh, docker           |
+| `service` | HTTP services            | ollama, comfyui      |
 
 ## Exit Codes
 
@@ -57,9 +57,9 @@ unicli hackernews top || echo "exit $?"
 [ $? -eq 77 ] && echo "Login required"
 ```
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 66 | Empty result |
-| 69 | Service unavailable |
-| 77 | Auth required |
+| Code | Meaning             |
+| ---- | ------------------- |
+| 0    | Success             |
+| 66   | Empty result        |
+| 69   | Service unavailable |
+| 77   | Auth required       |

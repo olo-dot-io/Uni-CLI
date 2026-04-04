@@ -1,0 +1,36 @@
+site: reddit
+name: popular
+description: Reddit popular posts (/r/popular)
+domain: www.reddit.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of posts
+
+pipeline:
+  - fetch:
+      url: https://www.reddit.com/r/popular.json
+      params:
+        limit: ${{ args.limit }}
+        raw_json: "1"
+      headers:
+        User-Agent: Uni-CLI/0.200
+
+  - select: data.children
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.data.title }}
+      subreddit: ${{ item.data.subreddit_name_prefixed }}
+      score: ${{ item.data.score }}
+      comments: ${{ item.data.num_comments }}
+      author: ${{ item.data.author }}
+      url: ${{ item.data.url }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, subreddit, score, comments, author]

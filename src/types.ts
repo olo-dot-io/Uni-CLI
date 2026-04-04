@@ -10,24 +10,24 @@
  */
 
 export enum AdapterType {
-  WEB_API = 'web-api',
-  DESKTOP = 'desktop',
-  BROWSER = 'browser',
-  BRIDGE = 'bridge',
-  SERVICE = 'service',
+  WEB_API = "web-api",
+  DESKTOP = "desktop",
+  BROWSER = "browser",
+  BRIDGE = "bridge",
+  SERVICE = "service",
 }
 
 export enum Strategy {
-  PUBLIC = 'public',
-  COOKIE = 'cookie',
-  HEADER = 'header',
-  INTERCEPT = 'intercept',
-  UI = 'ui',
+  PUBLIC = "public",
+  COOKIE = "cookie",
+  HEADER = "header",
+  INTERCEPT = "intercept",
+  UI = "ui",
 }
 
 export interface AdapterArg {
   name: string;
-  type?: 'str' | 'int' | 'float' | 'bool';
+  type?: "str" | "int" | "float" | "bool";
   default?: unknown;
   required?: boolean;
   positional?: boolean;
@@ -36,7 +36,7 @@ export interface AdapterArg {
 }
 
 export interface OutputSchema {
-  type?: 'array' | 'object' | 'string';
+  type?: "array" | "object" | "string";
   items?: Record<string, string>;
   agentHint?: string;
   maxItems?: number;
@@ -57,7 +57,7 @@ export interface AdapterCommand {
   func?: (page: IPage, kwargs: Record<string, unknown>) => Promise<unknown>;
 
   // For web-api type
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   path?: string;
   url?: string;
   params?: Record<string, unknown>;
@@ -75,7 +75,7 @@ export interface AdapterCommand {
   // Output
   output?: string | OutputSchema;
   columns?: string[];
-  defaultFormat?: 'table' | 'json' | 'yaml' | 'csv' | 'md';
+  defaultFormat?: "table" | "json" | "yaml" | "csv" | "md";
   stream?: boolean;
 }
 
@@ -95,7 +95,7 @@ export interface AdapterManifest {
 
   // Auth
   strategy?: Strategy;
-  auth?: 'cookie' | 'header' | 'oauth2' | 'apikey' | 'none';
+  auth?: "cookie" | "header" | "oauth2" | "apikey" | "none";
   requires?: string;
 
   // Browser
@@ -137,7 +137,7 @@ export interface ResolvedCommand {
 }
 
 /** Output format options */
-export type OutputFormat = 'table' | 'json' | 'yaml' | 'csv' | 'md';
+export type OutputFormat = "table" | "json" | "yaml" | "csv" | "md";
 
 /** Exit codes following sysexits.h */
 export const ExitCode = {

@@ -1,0 +1,29 @@
+site: xiaoyuzhou
+name: podcast
+description: View a Xiaoyuzhou podcast profile (via SSR page data)
+domain: www.xiaoyuzhoufm.com
+type: web-api
+strategy: public
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: "Podcast ID (from xiaoyuzhoufm.com URL)"
+
+pipeline:
+  - fetch:
+      url: "https://www.xiaoyuzhoufm.com/podcast/${{ args.id }}"
+      headers:
+        User-Agent: "Mozilla/5.0 (compatible; Uni-CLI)"
+        Accept: "application/json"
+
+  - map:
+      title: ${{ item.title || item.podcast && item.podcast.title || '' }}
+      author: ${{ item.author || '' }}
+      description: ${{ (item.brief || item.description || '') | truncate(200) }}
+      subscribers: ${{ item.subscriptionCount || 0 }}
+      episodes: ${{ item.episodeCount || 0 }}
+
+columns: [title, author, description, subscribers, episodes]

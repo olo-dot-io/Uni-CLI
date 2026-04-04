@@ -29,8 +29,8 @@ Create `src/adapters/<site>/<command>.yaml`:
 site: mysite
 name: mycommand
 description: What this command does
-type: web-api           # web-api | desktop | browser | bridge | service
-strategy: public        # public | cookie | header
+type: web-api # web-api | desktop | browser | bridge | service
+strategy: public # public | cookie | header
 browser: false
 
 args:

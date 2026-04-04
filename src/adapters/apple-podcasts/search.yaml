@@ -1,0 +1,39 @@
+site: apple-podcasts
+name: search
+description: Search Apple Podcasts
+domain: itunes.apple.com
+type: web-api
+strategy: public
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search keyword
+  limit:
+    type: int
+    default: 10
+    description: Max results
+
+pipeline:
+  - fetch:
+      url: "https://itunes.apple.com/search"
+      params:
+        term: ${{ args.query }}
+        media: podcast
+        limit: ${{ Math.min(args.limit || 10, 25) }}
+
+  - select: results
+
+  - map:
+      id: ${{ item.collectionId }}
+      title: ${{ item.collectionName }}
+      author: ${{ item.artistName }}
+      episodes: ${{ item.trackCount || '-' }}
+      genre: ${{ item.primaryGenreName || '-' }}
+      url: ${{ item.collectionViewUrl || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [id, title, author, episodes, genre, url]

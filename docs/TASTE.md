@@ -8,6 +8,7 @@
 **Uni-CLI** — Universal CLI. CLI IS ALL YOU NEED.
 
 The name carries two layers:
+
 - **Uni** = Universal. One CLI for all software.
 - **Uni** = Universe. The cosmos as our thematic backdrop.
 
@@ -16,17 +17,17 @@ Like a spacecraft's universal docking adapter, Uni-CLI connects any agent to any
 
 ## Naming Convention
 
-| Layer | Format | Example |
-|-------|--------|---------|
-| GitHub repo | `Uni-CLI` | github.com/ZenAlexa/Uni-CLI |
-| Display name | `Uni-CLI` | Used in prose, titles, documentation headers |
-| npm package | `unicli` | `npm install -g unicli` |
-| CLI binary | `unicli` | `unicli hackernews top` |
-| Code identifiers | `unicli` | function names, config paths, variables |
-| Config directory | `~/.unicli/` | user-level configuration |
-| Skill names | `unicli-*` | `unicli-usage`, `unicli-explorer` |
-| Plugin prefix | `unicli-plugin-*` | `unicli-plugin-github-trending` |
-| Environment vars | `UNICLI_*` | `UNICLI_BROWSER_PORT` |
+| Layer            | Format            | Example                                      |
+| ---------------- | ----------------- | -------------------------------------------- |
+| GitHub repo      | `Uni-CLI`         | github.com/ZenAlexa/Uni-CLI                  |
+| Display name     | `Uni-CLI`         | Used in prose, titles, documentation headers |
+| npm package      | `unicli`          | `npm install -g unicli`                      |
+| CLI binary       | `unicli`          | `unicli hackernews top`                      |
+| Code identifiers | `unicli`          | function names, config paths, variables      |
+| Config directory | `~/.unicli/`      | user-level configuration                     |
+| Skill names      | `unicli-*`        | `unicli-usage`, `unicli-explorer`            |
+| Plugin prefix    | `unicli-plugin-*` | `unicli-plugin-github-trending`              |
+| Environment vars | `UNICLI_*`        | `UNICLI_BROWSER_PORT`                        |
 
 Rule: **Uni-CLI** appears only where humans read prose. Everywhere machines parse, use **unicli**.
 
@@ -50,99 +51,99 @@ Codenames are NOT limited to spacecraft. They span five categories of human spac
 
 #### Category 1: Missions & Programs (major milestones)
 
-| Version | Codename | Origin | Software meaning |
-|---------|----------|--------|-----------------|
-| 0.100.x | **Sputnik** | USSR 1957, first satellite | First signal. Proof the system works. |
-| 0.200.x | **Vostok** | USSR 1961, Gagarin's flight | First real user. The system carries payload. |
-| 0.300.x | **Mercury** | USA 1962, first orbital | Sustained operation. Adapters stay in orbit. |
-| 0.400.x | **Gemini** | USA 1965, rendezvous + docking | Two systems working together. Plugin docking. |
-| 0.500.x | **Soyuz** | USSR 1967, workhorse to present | Reliability. The adapter that never fails. |
-| 0.600.x | **Salyut** | USSR 1971, first space station | Persistent state. Config and session management. |
-| 0.700.x | **Skylab** | USA 1973, first US station | Long-duration operation. Caching, performance. |
-| 0.800.x | **Shenzhou** | China 2003, first Chinese crewed | East meets West. Full CJK platform coverage. |
-| 0.900.x | **Falcon** | SpaceX 2008, first private orbital | Community launches. Plugin ecosystem lift-off. |
-| 1.0.0 | **Eagle** | Apollo 11 LM, 1969 | "The Eagle has landed." Production-ready. |
+| Version | Codename     | Origin                             | Software meaning                                 |
+| ------- | ------------ | ---------------------------------- | ------------------------------------------------ |
+| 0.100.x | **Sputnik**  | USSR 1957, first satellite         | First signal. Proof the system works.            |
+| 0.200.x | **Vostok**   | USSR 1961, Gagarin's flight        | First real user. The system carries payload.     |
+| 0.300.x | **Mercury**  | USA 1962, first orbital            | Sustained operation. Adapters stay in orbit.     |
+| 0.400.x | **Gemini**   | USA 1965, rendezvous + docking     | Two systems working together. Plugin docking.    |
+| 0.500.x | **Soyuz**    | USSR 1967, workhorse to present    | Reliability. The adapter that never fails.       |
+| 0.600.x | **Salyut**   | USSR 1971, first space station     | Persistent state. Config and session management. |
+| 0.700.x | **Skylab**   | USA 1973, first US station         | Long-duration operation. Caching, performance.   |
+| 0.800.x | **Shenzhou** | China 2003, first Chinese crewed   | East meets West. Full CJK platform coverage.     |
+| 0.900.x | **Falcon**   | SpaceX 2008, first private orbital | Community launches. Plugin ecosystem lift-off.   |
+| 1.0.0   | **Eagle**    | Apollo 11 LM, 1969                 | "The Eagle has landed." Production-ready.        |
 
 #### Category 2: Spacecraft & Vehicles (feature releases within a major)
 
 Used for minor versions between milestone releases:
 
-| Codename | Origin | Maps to |
-|----------|--------|---------|
-| **Laika** | First living creature in orbit, 1957 | Early testing — it works, but we're still learning |
-| **Explorer** | First US satellite, 1958 | Discovery features — scanning, probing |
-| **Voskhod** | First spacewalk (Leonov), 1964 | First steps outside comfort zone — new adapter types |
-| **Pioneer** | First to Jupiter, 1972 | Venturing into uncharted territory |
-| **Voyager** | Grand Tour, interstellar, 1977 | Beyond the original scope — deep integrations |
-| **Columbia** | First Space Shuttle flight, 1981 | Reusability — stable APIs, backward compat |
-| **Discovery** | Most-flown Shuttle, 39 missions | Workhorse release — reliability improvements |
-| **Mir** | First modular station, 1986 | Modular architecture — hot-loadable plugins |
-| **Buran** | Soviet shuttle, automated landing, 1988 | Automation — self-healing, auto-config |
-| **Endeavour** | Fifth Shuttle, replaced Challenger, 1992 | Rebuilt after a failure — resilience release |
-| **Dragon** | First private craft to ISS, 2012 | Third-party integration — community adapters |
-| **Tiangong** | Chinese space station, 2022 | Permanent infrastructure — stable platform |
-| **Starship** | Largest rocket ever, 2023 | Scale — massive adapter coverage |
-| **Artemis** | Return to Moon, 2025 | Return with maturity — v2 or v3 major |
+| Codename      | Origin                                   | Maps to                                              |
+| ------------- | ---------------------------------------- | ---------------------------------------------------- |
+| **Laika**     | First living creature in orbit, 1957     | Early testing — it works, but we're still learning   |
+| **Explorer**  | First US satellite, 1958                 | Discovery features — scanning, probing               |
+| **Voskhod**   | First spacewalk (Leonov), 1964           | First steps outside comfort zone — new adapter types |
+| **Pioneer**   | First to Jupiter, 1972                   | Venturing into uncharted territory                   |
+| **Voyager**   | Grand Tour, interstellar, 1977           | Beyond the original scope — deep integrations        |
+| **Columbia**  | First Space Shuttle flight, 1981         | Reusability — stable APIs, backward compat           |
+| **Discovery** | Most-flown Shuttle, 39 missions          | Workhorse release — reliability improvements         |
+| **Mir**       | First modular station, 1986              | Modular architecture — hot-loadable plugins          |
+| **Buran**     | Soviet shuttle, automated landing, 1988  | Automation — self-healing, auto-config               |
+| **Endeavour** | Fifth Shuttle, replaced Challenger, 1992 | Rebuilt after a failure — resilience release         |
+| **Dragon**    | First private craft to ISS, 2012         | Third-party integration — community adapters         |
+| **Tiangong**  | Chinese space station, 2022              | Permanent infrastructure — stable platform           |
+| **Starship**  | Largest rocket ever, 2023                | Scale — massive adapter coverage                     |
+| **Artemis**   | Return to Moon, 2025                     | Return with maturity — v2 or v3 major                |
 
 #### Category 3: Call Signs & Mission Codes (patch-level, internal)
 
 From the tradition of astronaut/cosmonaut radio call signs. Used for patch releases, hotfixes, or internal builds.
 
-| Call sign | Meaning | Origin | Use for |
-|-----------|---------|--------|---------|
-| **Kedr** | Cedar | Gagarin, Vostok 1 | The very first patch |
-| **Sokol** | Falcon | Nikolayev | Fast-response fixes |
-| **Almaz** | Diamond | Voskhod 1 crew | Hardening, security patches |
-| **Rubin** | Ruby | Beregovoi | Polishing, refinement |
-| **Granit** | Granite | Shatalov | Stability reinforcement |
-| **Kristall** | Crystal | Musabayev | Clarity — API cleanup |
-| **Mayak** | Beacon | Kizim | Guidance — documentation |
-| **Altair** | Star Altair | Multiple missions | Navigation — routing improvements |
-| **Aquarius** | Water bearer | Apollo 13 LM | Survival — crisis recovery |
-| **Intrepid** | Fearless | Apollo 12 LM | Bold changes |
+| Call sign    | Meaning      | Origin            | Use for                           |
+| ------------ | ------------ | ----------------- | --------------------------------- |
+| **Kedr**     | Cedar        | Gagarin, Vostok 1 | The very first patch              |
+| **Sokol**    | Falcon       | Nikolayev         | Fast-response fixes               |
+| **Almaz**    | Diamond      | Voskhod 1 crew    | Hardening, security patches       |
+| **Rubin**    | Ruby         | Beregovoi         | Polishing, refinement             |
+| **Granit**   | Granite      | Shatalov          | Stability reinforcement           |
+| **Kristall** | Crystal      | Musabayev         | Clarity — API cleanup             |
+| **Mayak**    | Beacon       | Kizim             | Guidance — documentation          |
+| **Altair**   | Star Altair  | Multiple missions | Navigation — routing improvements |
+| **Aquarius** | Water bearer | Apollo 13 LM      | Survival — crisis recovery        |
+| **Intrepid** | Fearless     | Apollo 12 LM      | Bold changes                      |
 
 #### Category 4: Observatories & Probes (research/experimental features)
 
-| Codename | Origin | Maps to |
-|----------|--------|---------|
-| **Hubble** | Space telescope, 1990 | Observability — logging, debug, telemetry |
-| **Cassini** | Saturn orbiter, 1997 | Deep exploration — complex adapter chains |
-| **Curiosity** | Mars rover, 2012 | Investigation — `explore` and `synthesize` |
-| **Webb** | JWST, 2021 | Seeing further — advanced pattern matching |
-| **Perseverance** | Mars rover + Ingenuity, 2021 | First flight — browser automation engine |
-| **New Horizons** | Pluto flyby, 2015 | Reaching the edge — obscure platform support |
-| **Chandrayaan** | India lunar landing, 2023 | Precision landing — south pole of features |
+| Codename         | Origin                       | Maps to                                      |
+| ---------------- | ---------------------------- | -------------------------------------------- |
+| **Hubble**       | Space telescope, 1990        | Observability — logging, debug, telemetry    |
+| **Cassini**      | Saturn orbiter, 1997         | Deep exploration — complex adapter chains    |
+| **Curiosity**    | Mars rover, 2012             | Investigation — `explore` and `synthesize`   |
+| **Webb**         | JWST, 2021                   | Seeing further — advanced pattern matching   |
+| **Perseverance** | Mars rover + Ingenuity, 2021 | First flight — browser automation engine     |
+| **New Horizons** | Pluto flyby, 2015            | Reaching the edge — obscure platform support |
+| **Chandrayaan**  | India lunar landing, 2023    | Precision landing — south pole of features   |
 
 #### Category 5: Celestial Bodies & Phenomena (major architectural shifts)
 
 Reserved for epoch-defining changes. Used sparingly.
 
-| Codename | What it is | Maps to |
-|----------|-----------|---------|
-| **Lagrange** | Gravitational balance points | Equilibrium release — perfect stability |
-| **Aphelion** | Farthest point from the Sun | Maximum reach — broadest coverage |
-| **Perihelion** | Closest point to the Sun | Maximum speed — performance release |
-| **Eclipse** | Sun hidden by Moon | Breaking change — old obscured by new |
-| **Equinox** | Equal day and night | Balance release — equal CLI/Agent attention |
-| **Zenith** | Highest point in the sky | Peak — best release ever |
-| **Horizon** | Edge of the observable | Next frontier — experimental features |
+| Codename       | What it is                   | Maps to                                     |
+| -------------- | ---------------------------- | ------------------------------------------- |
+| **Lagrange**   | Gravitational balance points | Equilibrium release — perfect stability     |
+| **Aphelion**   | Farthest point from the Sun  | Maximum reach — broadest coverage           |
+| **Perihelion** | Closest point to the Sun     | Maximum speed — performance release         |
+| **Eclipse**    | Sun hidden by Moon           | Breaking change — old obscured by new       |
+| **Equinox**    | Equal day and night          | Balance release — equal CLI/Agent attention |
+| **Zenith**     | Highest point in the sky     | Peak — best release ever                    |
+| **Horizon**    | Edge of the observable       | Next frontier — experimental features       |
 
 ### Architecture Metaphors
 
 Used in internal developer documentation and code comments, not in user-facing API.
 
-| Component | Metaphor | Rationale |
-|-----------|----------|-----------|
-| Core engine | **Flight Computer** | Executes mission sequences (pipelines) |
-| Adapter registry | **Star Catalog** | Index of all known targets |
-| Discovery/loader | **Radar** | Scans the environment for adapters |
-| Browser bridge | **Docking Port** | Connects to Chrome's airlock |
-| Output formatter | **Telemetry** | Structured data downlink |
-| MCP server | **Deep Space Network** | Long-range communication protocol |
-| Plugin system | **Payload Bay** | Carries mission-specific extensions |
-| External CLI hub | **Launch Complex** | Where external missions lift off |
-| Error handling | **Abort Modes** | Structured failure taxonomy |
-| Config directory | **Ground Station** | `~/.unicli/` — mission control on the ground |
+| Component        | Metaphor               | Rationale                                    |
+| ---------------- | ---------------------- | -------------------------------------------- |
+| Core engine      | **Flight Computer**    | Executes mission sequences (pipelines)       |
+| Adapter registry | **Star Catalog**       | Index of all known targets                   |
+| Discovery/loader | **Radar**              | Scans the environment for adapters           |
+| Browser bridge   | **Docking Port**       | Connects to Chrome's airlock                 |
+| Output formatter | **Telemetry**          | Structured data downlink                     |
+| MCP server       | **Deep Space Network** | Long-range communication protocol            |
+| Plugin system    | **Payload Bay**        | Carries mission-specific extensions          |
+| External CLI hub | **Launch Complex**     | Where external missions lift off             |
+| Error handling   | **Abort Modes**        | Structured failure taxonomy                  |
+| Config directory | **Ground Station**     | `~/.unicli/` — mission control on the ground |
 
 ### Error Messages — Subtle, Not Cosplay
 
@@ -158,7 +159,7 @@ Bad:   "Mission returned empty payload from target bilibili"
 
 ### Internal Documentation Tone
 
-- Technical precision first. The Space Shuttle's documentation was beautiful because it was *exact*, not because it was poetic.
+- Technical precision first. The Space Shuttle's documentation was beautiful because it was _exact_, not because it was poetic.
 - Architecture decisions are "mission briefs" — state the objective, constraints, and chosen approach.
 - Post-mortems are "anomaly reports" — what happened, root cause, corrective action.
 - Changelogs group by mission codename.
@@ -169,15 +170,15 @@ Bad:   "Mission returned empty payload from target bilibili"
 
 Inspired by Mission Control displays and the cosmic void.
 
-| Role | Color | Hex | Usage |
-|------|-------|-----|-------|
-| Primary | Deep Space | `#0D1117` | Backgrounds, hero sections |
-| Accent | Signal Blue | `#58A6FF` | Links, interactive elements |
-| Success | Orbit Green | `#3FB950` | Status indicators, success |
-| Warning | Reentry Orange | `#D29922` | Warnings, auth-required |
-| Error | Abort Red | `#F85149` | Errors, failures |
-| Muted | Nebula Gray | `#8B949E` | Secondary text, borders |
-| Highlight | Starlight | `#F0F6FC` | Primary text on dark |
+| Role      | Color          | Hex       | Usage                       |
+| --------- | -------------- | --------- | --------------------------- |
+| Primary   | Deep Space     | `#0D1117` | Backgrounds, hero sections  |
+| Accent    | Signal Blue    | `#58A6FF` | Links, interactive elements |
+| Success   | Orbit Green    | `#3FB950` | Status indicators, success  |
+| Warning   | Reentry Orange | `#D29922` | Warnings, auth-required     |
+| Error     | Abort Red      | `#F85149` | Errors, failures            |
+| Muted     | Nebula Gray    | `#8B949E` | Secondary text, borders     |
+| Highlight | Starlight      | `#F0F6FC` | Primary text on dark        |
 
 ### Typography
 
@@ -207,13 +208,13 @@ Inspired by Mission Control displays and the cosmic void.
 
 ### Tone of Voice
 
-| Do | Don't |
-|----|-------|
-| "Uni-CLI adapts any software to CLI" | "Uni-CLI is the BEST CLI tool EVER" |
-| "20-line YAML adapters" | "Incredibly easy to use" |
-| "Designed for AI agents" | "AI-powered next-gen platform" |
-| "Apache-2.0, MIT-compatible" | "Fully open source and free forever" |
-| Show a working example | Make a claim without proof |
+| Do                                   | Don't                                |
+| ------------------------------------ | ------------------------------------ |
+| "Uni-CLI adapts any software to CLI" | "Uni-CLI is the BEST CLI tool EVER"  |
+| "20-line YAML adapters"              | "Incredibly easy to use"             |
+| "Designed for AI agents"             | "AI-powered next-gen platform"       |
+| "Apache-2.0, MIT-compatible"         | "Fully open source and free forever" |
+| Show a working example               | Make a claim without proof           |
 
 ### README Structure (10K Star Formula)
 
@@ -232,6 +233,7 @@ Each section earns the next scroll. If a section doesn't pull the reader forward
 ## Quality Bar
 
 Before any release:
+
 - Every adapter must have at least one test
 - README examples must be copy-pastable and working
 - TypeScript strict mode, zero `any`
