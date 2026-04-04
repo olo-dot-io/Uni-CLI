@@ -582,6 +582,8 @@ export class BrowserPage implements IPage {
     } catch {
       // Browser may already be closed -- this is expected
     }
+    // Clean up client listeners and pending state to avoid memory leaks
+    await this.close();
   }
 
   /**
