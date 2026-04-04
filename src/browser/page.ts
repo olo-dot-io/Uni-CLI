@@ -522,24 +522,20 @@ export class BrowserPage implements IPage {
       await this.client.send("Network.enable");
       this._networkEnabled = true;
 
-      this.client.on(
-        "Network.responseReceived",
-        (params: unknown): void => {
-          const event = params as NetworkResponseEvent;
-          const resp = event.response;
-          const contentLength =
-            resp.headers?.["content-length"] ??
-            resp.headers?.["Content-Length"];
-          this._networkRequests.push({
-            url: resp.url,
-            method: "GET", // CDP responseReceived doesn't include request method directly
-            status: resp.status,
-            type: event.type ?? resp.mimeType ?? "unknown",
-            size: contentLength ? parseInt(contentLength, 10) : 0,
-            timestamp: event.timestamp ?? Date.now(),
-          });
-        },
-      );
+      this.client.on("Network.responseReceived", (params: unknown): void => {
+        const event = params as NetworkResponseEvent;
+        const resp = event.response;
+        const contentLength =
+          resp.headers?.["content-length"] ?? resp.headers?.["Content-Length"];
+        this._networkRequests.push({
+          url: resp.url,
+          method: "GET", // CDP responseReceived doesn't include request method directly
+          status: resp.status,
+          type: event.type ?? resp.mimeType ?? "unknown",
+          size: contentLength ? parseInt(contentLength, 10) : 0,
+          timestamp: event.timestamp ?? Date.now(),
+        });
+      });
     }
 
     return [...this._networkRequests];

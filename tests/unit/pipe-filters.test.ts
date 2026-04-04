@@ -119,9 +119,7 @@ describe("sanitize filter", () => {
 
 describe("ext filter", () => {
   it("extracts extension from URL with query params", () => {
-    expect(PIPE_FILTERS.ext("https://example.com/image.png?w=200")).toBe(
-      "png",
-    );
+    expect(PIPE_FILTERS.ext("https://example.com/image.png?w=200")).toBe("png");
   });
 
   it("extracts extension from compound filename", () => {

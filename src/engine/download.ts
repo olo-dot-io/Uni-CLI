@@ -144,12 +144,7 @@ export async function ytdlpDownload(
   try {
     mkdirSync(dir, { recursive: true });
 
-    const args = [
-      url,
-      "-o",
-      `${dir}/%(title)s.%(ext)s`,
-      "--no-warnings",
-    ];
+    const args = [url, "-o", `${dir}/%(title)s.%(ext)s`, "--no-warnings"];
 
     if (opts?.cookieFile) {
       args.push("--cookies", opts.cookieFile);

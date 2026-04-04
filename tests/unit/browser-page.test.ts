@@ -671,9 +671,7 @@ describe("BrowserPage", () => {
       const result = await page.networkRequests();
 
       expect(result).toEqual([]);
-      const enableCall = mock.calls.find(
-        (c) => c.method === "Network.enable",
-      );
+      const enableCall = mock.calls.find((c) => c.method === "Network.enable");
       expect(enableCall).toBeDefined();
     });
 

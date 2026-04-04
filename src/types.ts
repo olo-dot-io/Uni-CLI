@@ -128,7 +128,7 @@ export interface SnapshotOptions {
 
 /** Screenshot capture options */
 export interface ScreenshotOptions {
-  format?: 'png' | 'jpeg' | 'webp';
+  format?: "png" | "jpeg" | "webp";
   quality?: number;
   fullPage?: boolean;
   clip?: { x: number; y: number; width: number; height: number };
@@ -147,7 +147,7 @@ export interface NetworkRequest {
 
 /** Download result merged into each item */
 export interface DownloadResult {
-  status: 'success' | 'skipped' | 'failed';
+  status: "success" | "skipped" | "failed";
   path?: string;
   size?: number;
   error?: string;
@@ -157,7 +157,10 @@ export interface DownloadResult {
 /** Browser page abstraction for browser-type adapters */
 export interface IPage {
   // Navigation
-  goto(url: string, options?: { settleMs?: number; waitUntil?: string }): Promise<void>;
+  goto(
+    url: string,
+    options?: { settleMs?: number; waitUntil?: string },
+  ): Promise<void>;
 
   // Evaluation
   evaluate(script: string): Promise<unknown>;
@@ -172,7 +175,7 @@ export interface IPage {
   type(selector: string, text: string): Promise<void>;
   press(key: string, modifiers?: string[]): Promise<void>;
   insertText(text: string): Promise<void>;
-  scroll(direction: 'down' | 'up' | 'bottom' | 'top'): Promise<void>;
+  scroll(direction: "down" | "up" | "bottom" | "top"): Promise<void>;
   autoScroll(opts?: { maxScrolls?: number; delay?: number }): Promise<void>;
 
   // Native CDP input (coordinate-based)

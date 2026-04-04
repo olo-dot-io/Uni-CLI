@@ -46,7 +46,8 @@ async function obsAuth(
     ws.once("message", (raw) => {
       clearTimeout(timer);
       const msg = JSON.parse(String(raw));
-      if (msg.op === 2) resolve(); // Identified response
+      if (msg.op === 2)
+        resolve(); // Identified response
       else reject(new Error(`OBS auth failed: ${JSON.stringify(msg)}`));
     });
   });

@@ -41,10 +41,7 @@ import {
   generateFilename,
   mapConcurrent,
 } from "./download.js";
-import {
-  executeWebsocket,
-  type WebsocketStepConfig,
-} from "./websocket.js";
+import { executeWebsocket, type WebsocketStepConfig } from "./websocket.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -889,7 +886,11 @@ const PIPE_FILTERS: Record<string, (...args: unknown[]) => unknown> = {
       const pathname = new URL(String(val)).pathname;
       return pathname.split("/").pop() ?? "";
     } catch {
-      return String(val ?? "").split("/").pop() ?? "";
+      return (
+        String(val ?? "")
+          .split("/")
+          .pop() ?? ""
+      );
     }
   },
   keys: (val: unknown) =>
@@ -1087,10 +1088,7 @@ function resolveDottedPath(
 }
 
 /** Resolve a single filter argument — string literal, number, or expression. */
-function resolveFilterArg(
-  a: string,
-  scope: Record<string, unknown>,
-): unknown {
+function resolveFilterArg(a: string, scope: Record<string, unknown>): unknown {
   // String literal
   if (
     (a.startsWith("'") && a.endsWith("'")) ||
