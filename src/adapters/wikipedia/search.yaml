@@ -15,29 +15,25 @@ args:
     type: int
     default: 10
     description: Max results
-  lang:
-    type: str
-    default: en
-    description: "Language code (e.g. en, zh, ja)"
 
 pipeline:
   - fetch:
-      url: "https://${{ args.lang || 'en' }}.wikipedia.org/w/api.php"
+      url: "https://en.wikipedia.org/w/api.php"
       params:
         action: query
         list: search
-        srsearch: ${{ args.query }}
-        srlimit: ${{ args.limit }}
+        srsearch: "${{ args.query }}"
+        srlimit: "${{ args.limit }}"
         format: json
         utf8: "1"
 
   - select: query.search
 
   - map:
-      title: ${{ item.title }}
-      snippet: ${{ item.snippet | strip_html | truncate(120) }}
-      url: "${{ 'https://' + (args.lang || 'en') + '.wikipedia.org/wiki/' + encodeURIComponent(item.title.replace(/ /g, '_')) }}"
+      title: "${{ item.title }}"
+      snippet: "${{ item.snippet }}"
+      wordcount: "${{ item.wordcount }}"
 
-  - limit: ${{ args.limit }}
+  - limit: "${{ args.limit }}"
 
-columns: [title, snippet, url]
+columns: [title, snippet, wordcount]

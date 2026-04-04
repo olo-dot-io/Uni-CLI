@@ -1,10 +1,9 @@
 site: github-trending
 name: daily
-description: GitHub trending repositories (daily)
-domain: github.com
+description: GitHub trending repositories (by recent stars)
+domain: api.github.com
 type: web-api
 strategy: public
-browser: false
 
 args:
   language:
@@ -18,20 +17,25 @@ args:
 
 pipeline:
   - fetch:
-      url: https://api.gitterapp.com/repositories
+      url: "https://api.github.com/search/repositories"
       params:
-        language: ${{ args.language }}
-        since: daily
+        q: "stars:>100 pushed:>2026-04-01${{ args.language ? ' language:' + args.language : '' }}"
+        sort: stars
+        order: desc
+        per_page: "${{ args.limit }}"
+      headers:
+        Accept: "application/vnd.github.v3+json"
 
-  - limit: ${{ args.limit }}
+  - select: items
 
   - map:
-      rank: ${{ index + 1 }}
-      name: ${{ item.author + '/' + item.name }}
-      description: ${{ item.description }}
-      language: ${{ item.language }}
-      stars: ${{ item.stars }}
-      forks: ${{ item.forks }}
-      today: ${{ item.currentPeriodStars }}
+      rank: "${{ index + 1 }}"
+      name: "${{ item.full_name }}"
+      description: "${{ item.description }}"
+      language: "${{ item.language }}"
+      stars: "${{ item.stargazers_count }}"
+      forks: "${{ item.forks_count }}"
 
-columns: [rank, name, language, stars, today, forks]
+  - limit: "${{ args.limit }}"
+
+columns: [rank, name, language, stars, forks]

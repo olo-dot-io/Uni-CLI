@@ -1,6 +1,6 @@
 site: imdb
 name: top
-description: IMDb Top 250 movies
+description: IMDb popular titles (via chart API)
 type: web-api
 strategy: public
 
@@ -12,17 +12,20 @@ args:
 
 pipeline:
   - fetch:
-      url: "https://imdb-api.tprojects.workers.dev/top250"
-      retry: 2
-      backoff: 500
+      url: "https://www.imdb.com/chart/moviemeter/"
+      headers:
+        Accept: "text/html"
+        User-Agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
 
-  - map:
-      rank: ${{ item.rank }}
-      title: ${{ item.title }}
-      year: ${{ item.year }}
-      rating: ${{ item.rating }}
-      id: ${{ item.id }}
+  - html_to_md: {}
 
-  - limit: ${{ args.limit }}
+  - exec:
+      command: "node"
+      args:
+        [
+          "-e",
+          "const t=require('fs').readFileSync('/dev/stdin','utf8'); const re=/\\d+\\.\\s+\\[([^\\]]+)\\]\\((\\/title\\/[^)]+)/g; const rows=[]; let m; let i=1; while((m=re.exec(t))!==null && i<=${{ args.limit }}){rows.push({rank:i++,title:m[1],url:'https://www.imdb.com'+m[2]})} console.log(JSON.stringify(rows))",
+        ]
+      parse: json
 
-columns: [rank, title, year, rating]
+columns: [rank, title, url]

@@ -18,12 +18,11 @@ pipeline:
   - parse_rss: ~
 
   - map:
-      rank: ${{ index + 1 }}
-      title: ${{ item.title }}
-      date: ${{ item.pubDate }}
-      summary: ${{ item.description | strip_html | truncate(150) }}
-      link: ${{ item.link }}
+      rank: "${{ index + 1 }}"
+      title: "${{ item.title }}"
+      date: "${{ item.pubDate }}"
+      link: "${{ item.link }}"
 
-  - limit: ${{ args.limit }}
+  - limit: "${{ args.limit }}"
 
-columns: [rank, title, date, summary]
+columns: [rank, title, date, link]

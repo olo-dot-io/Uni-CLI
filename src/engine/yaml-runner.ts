@@ -466,7 +466,12 @@ function stepParseRss(
 ): PipelineContext {
   const xml = String(ctx.data ?? "");
   const items: Record<string, string>[] = [];
-  const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+
+  // Support both RSS 2.0 (<item>) and Atom (<entry>) formats
+  const isAtom = xml.includes("<entry>");
+  const itemRegex = isAtom
+    ? /<entry>([\s\S]*?)<\/entry>/g
+    : /<item>([\s\S]*?)<\/item>/g;
   let match;
 
   while ((match = itemRegex.exec(xml)) !== null) {
@@ -477,6 +482,25 @@ function stepParseRss(
         row[key] = extractXmlTag(block, tag);
       }
       items.push(row);
+    } else if (isAtom) {
+      // Atom format: <title>, <link href="...">, <published>, <summary>/<content>
+      const linkMatch = block.match(
+        /<link[^>]*rel=["']alternate["'][^>]*href=["']([^"']+)["']/,
+      );
+      const linkHref =
+        linkMatch?.[1] ??
+        block.match(/<link[^>]*href=["']([^"']+)["']/)?.[1] ??
+        "";
+      items.push({
+        title: extractXmlCdata(block, "title"),
+        description:
+          extractXmlCdata(block, "content") ||
+          extractXmlCdata(block, "summary"),
+        link: linkHref,
+        pubDate:
+          extractXmlTag(block, "published") || extractXmlTag(block, "updated"),
+        guid: extractXmlTag(block, "id"),
+      });
     } else {
       items.push({
         title: extractXmlCdata(block, "title"),

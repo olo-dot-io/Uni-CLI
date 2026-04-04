@@ -1,7 +1,7 @@
 site: arxiv
 name: search
 description: Search arXiv papers
-domain: arxiv.org
+domain: export.arxiv.org
 type: web-api
 strategy: public
 
@@ -10,15 +10,19 @@ args:
     type: str
     required: true
     positional: true
-    description: "Search keyword (e.g. attention is all you need)"
+    description: Search keyword
   limit:
     type: int
     default: 10
-    description: Max results (max 25)
+    description: Max results
 
 pipeline:
   - fetch_text:
-      url: "https://export.arxiv.org/api/query?search_query=all:${{ args.query | urlencode }}&max_results=${{ Math.min(args.limit || 10, 25) }}&sortBy=relevance"
+      url: "https://export.arxiv.org/api/query"
+      params:
+        search_query: "all:${{ args.query }}"
+        max_results: "${{ args.limit }}"
+        sortBy: relevance
 
   - parse_rss:
       fields:
@@ -28,13 +32,6 @@ pipeline:
         published: published
         summary: summary
 
-  - map:
-      id: "${{ item.id.replace(/^https?:\\/\\/arxiv\\.org\\/abs\\//, '').replace(/v\\d+$/, '') }}"
-      title: "${{ item.title.replace(/\\s+/g, ' ').trim() }}"
-      authors: "${{ item.authors ? item.authors.split('\\n').map(a => a.trim()).filter(Boolean).slice(0, 3).join(', ') : '' }}"
-      published: "${{ item.published ? item.published.slice(0, 10) : '' }}"
-      url: "${{ 'https://arxiv.org/abs/' + item.id.replace(/^https?:\\/\\/arxiv\\.org\\/abs\\//, '').replace(/v\\d+$/, '') }}"
+  - limit: "${{ args.limit }}"
 
-  - limit: ${{ args.limit }}
-
-columns: [id, title, authors, published, url]
+columns: [title, authors, published, id]

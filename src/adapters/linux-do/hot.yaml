@@ -3,7 +3,8 @@ name: hot
 description: Linux.do hot topics
 domain: linux.do
 type: web-api
-strategy: public
+strategy: cookie
+auth_cookies: [_t, _forum_session]
 
 args:
   limit:
@@ -16,17 +17,18 @@ pipeline:
       url: https://linux.do/top.json
       params:
         period: daily
+      headers:
+        User-Agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
 
   - select: topic_list.topics
 
   - map:
-      rank: ${{ index + 1 }}
-      title: ${{ item.title }}
-      views: ${{ item.views }}
-      replies: ${{ item.posts_count - 1 }}
-      likes: ${{ item.like_count }}
-      category: ${{ item.category_id }}
+      rank: "${{ index + 1 }}"
+      title: "${{ item.title }}"
+      views: "${{ item.views }}"
+      replies: "${{ item.posts_count - 1 }}"
+      likes: "${{ item.like_count }}"
 
-  - limit: ${{ args.limit }}
+  - limit: "${{ args.limit }}"
 
 columns: [rank, title, views, replies, likes]

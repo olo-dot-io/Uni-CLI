@@ -10,19 +10,15 @@ args:
     type: str
     required: true
     positional: true
-    description: "Article title (e.g. Transformer_(machine_learning_model))"
-  lang:
-    type: str
-    default: en
-    description: "Language code (e.g. en, zh, ja)"
+    description: Article title (use underscores for spaces)
 
 pipeline:
   - fetch:
-      url: "https://${{ args.lang || 'en' }}.wikipedia.org/api/rest_v1/page/summary/${{ args.title | urlencode }}"
-  - map:
-      title: ${{ item.title }}
-      description: ${{ item.description || '-' }}
-      extract: ${{ item.extract | truncate(300) }}
-      url: "${{ item.content_urls && item.content_urls.desktop ? item.content_urls.desktop.page : ('https://' + (args.lang || 'en') + '.wikipedia.org') }}"
+      url: "https://en.wikipedia.org/api/rest_v1/page/summary/${{ args.title }}"
 
-columns: [title, description, extract, url]
+  - map:
+      title: "${{ item.title }}"
+      description: "${{ item.description }}"
+      extract: "${{ item.extract }}"
+
+columns: [title, description, extract]
