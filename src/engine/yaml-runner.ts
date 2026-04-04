@@ -141,6 +141,8 @@ interface FetchConfig {
   params?: Record<string, unknown>;
   headers?: Record<string, string>;
   body?: unknown;
+  retry?: number; // max attempts (default 1 = no retry)
+  backoff?: number; // initial delay ms (doubles each retry)
 }
 
 async function stepFetch(
@@ -187,8 +189,8 @@ async function fetchJson(url: string, config: FetchConfig): Promise<unknown> {
   const method = config.method ?? "GET";
   const headers: Record<string, string> = {
     Accept: "application/json",
-    "User-Agent": "Uni-CLI/0.200",
-    ...(config.headers ?? {}),
+    "User-Agent": "Uni-CLI/0.201",
+    ...config.headers,
   };
 
   const init: RequestInit = { method, headers };
@@ -197,8 +199,25 @@ async function fetchJson(url: string, config: FetchConfig): Promise<unknown> {
     init.body = JSON.stringify(config.body);
   }
 
-  const resp = await fetch(url, init);
-  if (!resp.ok) {
+  const maxAttempts = config.retry ?? 1;
+  const baseDelay = config.backoff ?? 1000;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const resp = await fetch(url, init);
+
+    if (resp.ok) {
+      return resp.json();
+    }
+
+    const isRetryable = resp.status === 429 || resp.status >= 500;
+    const isLastAttempt = attempt === maxAttempts;
+
+    if (isRetryable && !isLastAttempt) {
+      await new Promise((r) => setTimeout(r, baseDelay * 2 ** (attempt - 1)));
+      continue;
+    }
+
+    // Non-retryable error or last attempt — throw
     let preview = "";
     try {
       preview = (await resp.text()).slice(0, 200);
@@ -226,7 +245,9 @@ async function fetchJson(url: string, config: FetchConfig): Promise<unknown> {
       },
     );
   }
-  return resp.json();
+
+  // Unreachable — loop always returns or throws — but satisfies TypeScript
+  throw new Error("fetchJson: unreachable");
 }
 
 function stepSelect(
@@ -316,8 +337,8 @@ async function stepFetchText(
 
   const method = config.method ?? "GET";
   const headers: Record<string, string> = {
-    "User-Agent": "Uni-CLI/0.200",
-    ...(config.headers ?? {}),
+    "User-Agent": "Uni-CLI/0.201",
+    ...config.headers,
   };
 
   const resp = await fetch(url, { method, headers });

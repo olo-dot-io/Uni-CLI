@@ -13,6 +13,7 @@ import { runPipeline } from "../../src/engine/yaml-runner.js";
 
 let server: Server;
 let baseUrl: string;
+let requestCounts: Record<string, number> = {};
 
 function collectBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve) => {
@@ -30,6 +31,19 @@ beforeAll(async () => {
       res.end(
         "<h1>Title</h1><p>Hello <strong>world</strong></p><ul><li>item 1</li><li>item 2</li></ul>",
       );
+      return;
+    }
+
+    // Flaky endpoint: returns 503 for first 2 requests, 200 on 3rd
+    if (req.url === "/flaky") {
+      requestCounts["/flaky"] = (requestCounts["/flaky"] ?? 0) + 1;
+      if (requestCounts["/flaky"] < 3) {
+        res.writeHead(503, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Service Unavailable" }));
+        return;
+      }
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true, attempt: requestCounts["/flaky"] }));
       return;
     }
 
@@ -231,5 +245,24 @@ describe("html_to_md step", () => {
     expect(md).toContain("Title");
     expect(md).toContain("**world**");
     expect(md).toContain("item 1");
+  });
+});
+
+// --- Retry with exponential backoff ---
+
+describe("retry with backoff", () => {
+  it("retries on 5xx and succeeds", async () => {
+    requestCounts["/flaky"] = 0;
+    const steps = [
+      {
+        fetch: {
+          url: `${baseUrl}/flaky`,
+          retry: 3,
+          backoff: 50,
+        },
+      },
+    ];
+    const result = await runPipeline(steps, {});
+    expect((result[0] as Record<string, unknown>).ok).toBe(true);
   });
 });
