@@ -57,6 +57,7 @@
     "cli-table3": "^0.6.5",
     "commander": "^13.1.0",
     "js-yaml": "^4.1.0",
+    "turndown": "^7.2.4",
     "undici": "^7.5.0",
     "ws": "^8.18.0",
     "zod": "^3.24.0"
@@ -64,6 +65,7 @@
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.13.0",
+    "@types/turndown": "^5.0.6",
     "@types/ws": "^8.5.14",
     "oxlint": "^1.0.0",
     "prettier": "^3.5.0",
