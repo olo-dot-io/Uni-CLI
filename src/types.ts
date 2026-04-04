@@ -118,16 +118,81 @@ export interface AdapterManifest {
   replacedBy?: string;
 }
 
+/** Snapshot options for DOM accessibility tree */
+export interface SnapshotOptions {
+  interactive?: boolean;
+  compact?: boolean;
+  maxDepth?: number;
+  raw?: boolean;
+}
+
+/** Screenshot capture options */
+export interface ScreenshotOptions {
+  format?: 'png' | 'jpeg' | 'webp';
+  quality?: number;
+  fullPage?: boolean;
+  clip?: { x: number; y: number; width: number; height: number };
+  path?: string;
+}
+
+/** Captured network request */
+export interface NetworkRequest {
+  url: string;
+  method: string;
+  status: number;
+  type: string;
+  size: number;
+  timestamp: number;
+}
+
+/** Download result merged into each item */
+export interface DownloadResult {
+  status: 'success' | 'skipped' | 'failed';
+  path?: string;
+  size?: number;
+  error?: string;
+  duration?: number;
+}
+
 /** Browser page abstraction for browser-type adapters */
 export interface IPage {
-  goto(url: string): Promise<void>;
+  // Navigation
+  goto(url: string, options?: { settleMs?: number; waitUntil?: string }): Promise<void>;
+
+  // Evaluation
   evaluate(script: string): Promise<unknown>;
+
+  // Waiting
   wait(seconds: number): Promise<void>;
   waitForSelector(selector: string, timeout?: number): Promise<void>;
+  waitFor(condition: number | string, timeout?: number): Promise<void>;
+
+  // Interaction
   click(selector: string): Promise<void>;
   type(selector: string, text: string): Promise<void>;
+  press(key: string, modifiers?: string[]): Promise<void>;
+  insertText(text: string): Promise<void>;
+  scroll(direction: 'down' | 'up' | 'bottom' | 'top'): Promise<void>;
+  autoScroll(opts?: { maxScrolls?: number; delay?: number }): Promise<void>;
+
+  // Native CDP input (coordinate-based)
+  nativeClick(x: number, y: number): Promise<void>;
+  nativeKeyPress(key: string, modifiers?: string[]): Promise<void>;
+  setFileInput(selector: string, files: string[]): Promise<void>;
+
+  // Data extraction
   cookies(): Promise<Record<string, string>>;
+  title(): Promise<string>;
+  url(): Promise<string>;
+  snapshot(opts?: SnapshotOptions): Promise<string>;
+  screenshot(opts?: ScreenshotOptions): Promise<Buffer>;
+  networkRequests(): Promise<NetworkRequest[]>;
+
+  // Lifecycle
+  addInitScript(source: string): Promise<void>;
+  sendCDP(method: string, params?: Record<string, unknown>): Promise<unknown>;
   close(): Promise<void>;
+  closeWindow(): Promise<void>;
 }
 
 /** Resolved command ready for execution */
