@@ -1,0 +1,19 @@
+site: railway
+name: deploy
+description: List Railway deployments
+type: bridge
+strategy: public
+binary: railway
+detect: which railway
+autoInstall: npm install -g @railway/cli
+
+pipeline:
+  - exec:
+      command: railway
+      args:
+        - status
+        - --json
+      parse: json
+      timeout: 30000
+
+columns: [name, status, url]
