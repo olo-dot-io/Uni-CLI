@@ -7,6 +7,7 @@
 
 import { execSync, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { getElectronApp, type ElectronAppEntry } from "../electron-apps.js";
 
 const DEFAULT_CDP_PORT = 9222;
@@ -70,6 +71,7 @@ export async function isCDPAvailable(port: number): Promise<boolean> {
  */
 export async function launchChrome(
   port: number = DEFAULT_CDP_PORT,
+  options?: { profile?: boolean; headless?: boolean },
 ): Promise<number> {
   const chromePath = findChrome();
   if (!chromePath) {
@@ -89,6 +91,21 @@ export async function launchChrome(
     "--no-first-run",
     "--no-default-browser-check",
   ];
+
+  // Dedicated automation profile — avoids polluting user's default Chrome profile
+  if (options?.profile) {
+    const profileDir = join(
+      process.env.HOME ?? "~",
+      ".unicli",
+      "chrome-profile",
+    );
+    args.push(`--user-data-dir=${profileDir}`);
+  }
+
+  // Chrome's new headless mode (for CI / server environments)
+  if (options?.headless) {
+    args.push("--headless=new");
+  }
 
   // Use env override if set
   const actualPath = process.env.CHROME_PATH ?? chromePath;
