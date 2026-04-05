@@ -266,20 +266,21 @@ async function stepFetch(
 ): Promise<PipelineContext> {
   let url = evalTemplate(config.url, ctx);
 
-  // If data is an array of items with IDs, fetch each one (fan-out pattern)
+  // If data is an array of items with IDs, fetch each one (fan-out with concurrency limit)
   if (Array.isArray(ctx.data)) {
     const items = ctx.data as Array<Record<string, unknown>>;
-    const results = await Promise.all(
-      items.map(async (item) => {
-        const itemCtx = { ...ctx, data: item };
-        const itemUrl = evalTemplate(config.url, itemCtx);
-        const resolvedConfig = config.body
-          ? { ...config, body: resolveTemplateDeep(config.body, itemCtx) }
-          : config;
-        const resp = await fetchJson(itemUrl, resolvedConfig, ctx.cookieHeader);
-        return resp;
-      }),
-    );
+    const concurrency = (config as unknown as Record<string, unknown>)
+      .concurrency
+      ? Number((config as unknown as Record<string, unknown>).concurrency)
+      : 5;
+    const results = await mapConcurrent(items, concurrency, async (item) => {
+      const itemCtx = { ...ctx, data: item };
+      const itemUrl = evalTemplate(config.url, itemCtx);
+      const resolvedConfig = config.body
+        ? { ...config, body: resolveTemplateDeep(config.body, itemCtx) }
+        : config;
+      return fetchJson(itemUrl, resolvedConfig, ctx.cookieHeader);
+    });
     return { ...ctx, data: results };
   }
 
@@ -1495,11 +1496,11 @@ async function stepTap(
 
   const tap = generateTapInterceptorJs(capturePattern);
 
-  // Build optional select chain
+  // Build optional select chain (escape keys to prevent JS injection)
   const selectChain = config.select
     ? config.select
         .split(".")
-        .map((k) => `?.["${k}"]`)
+        .map((k) => `?.[${JSON.stringify(k)}]`)
         .join("")
     : "";
 

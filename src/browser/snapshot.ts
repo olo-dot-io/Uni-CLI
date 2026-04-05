@@ -19,10 +19,10 @@ export function generateSnapshotJs(opts?: SnapshotOptions): string {
 
   // We embed the options as literals inside the IIFE so it runs standalone.
   return `(() => {
-  const INTERACTIVE = ${String(interactive)};
-  const COMPACT = ${String(compact)};
+  const INTERACTIVE = ${interactive === true};
+  const COMPACT = ${compact === true};
   const MAX_DEPTH = ${Number.isFinite(Number(maxDepth)) ? Math.trunc(Number(maxDepth)) : 50};
-  const RAW = ${String(raw)};
+  const RAW = ${raw === true};
 
   const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'SVG', 'LINK', 'META']);
   const INTERACTIVE_TAGS = new Set(['A', 'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'DETAILS', 'SUMMARY']);

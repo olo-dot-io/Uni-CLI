@@ -225,10 +225,10 @@ export class BrowserPage implements IPage {
         clickCount: 1,
       });
     } catch {
-      // Fallback: JS click
-      const escaped = selector.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+      // Fallback: JS click (use JSON.stringify to prevent injection)
+      const selectorJson = JSON.stringify(selector);
       await this.evaluate(
-        `(() => { const el = document.querySelector('${escaped}'); if (!el) throw new Error('Element not found: ${escaped}'); el.click(); })()`,
+        `(() => { const el = document.querySelector(${selectorJson}); if (!el) throw new Error('Element not found: ' + ${selectorJson}); el.click(); })()`,
       );
     }
   }
@@ -286,11 +286,11 @@ export class BrowserPage implements IPage {
   async waitForSelector(selector: string, timeout?: number): Promise<void> {
     const maxWait = timeout ?? DEFAULT_WAIT_TIMEOUT;
     const deadline = Date.now() + maxWait;
-    const escaped = selector.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+    const selectorJson = JSON.stringify(selector);
 
     while (Date.now() < deadline) {
       const found = await this.evaluate(
-        `!!document.querySelector('${escaped}')`,
+        `!!document.querySelector(${selectorJson})`,
       );
       if (found) return;
       await new Promise<void>((resolve) => setTimeout(resolve, POLL_INTERVAL));
@@ -546,6 +546,10 @@ export class BrowserPage implements IPage {
           size: contentLength ? parseInt(contentLength, 10) : 0,
           timestamp: event.timestamp ?? Date.now(),
         });
+        // Cap buffer to prevent unbounded memory growth
+        if (this._networkRequests.length > 500) {
+          this._networkRequests.shift();
+        }
       });
     }
 
