@@ -1046,28 +1046,32 @@ function evalExpression(expr: string, scope: Record<string, unknown>): unknown {
       return result;
     }
 
-    // VM sandbox evaluation with 50ms timeout
-    const sandbox = {
-      ...scope,
-      encodeURIComponent,
-      decodeURIComponent,
-      JSON,
-      Math,
-      Number,
-      String,
-      Boolean,
-      Array,
-      Date,
-      Object,
-      parseInt,
-      parseFloat,
-      isNaN,
-      isFinite,
-    };
+    // VM sandbox evaluation with 50ms timeout.
+    // SECURITY: Create a null-prototype sandbox to prevent prototype chain escape.
+    // Node.js vm is NOT a security boundary — host objects leak constructors.
+    // We mitigate by: (1) null-prototype sandbox, (2) frozen copies of built-ins,
+    // (3) contextCodeGeneration restriction, (4) FORBIDDEN_EXPR pre-check.
+    const sandbox = Object.create(null) as Record<string, unknown>;
+    // Copy scope values (args, item, index, etc.) — shallow copy with null prototype
+    for (const [k, v] of Object.entries(scope)) {
+      sandbox[k] = v;
+    }
+    // Add safe built-ins as frozen copies (prevents constructor chain traversal)
+    sandbox.encodeURIComponent = encodeURIComponent;
+    sandbox.decodeURIComponent = decodeURIComponent;
+    sandbox.JSON = { parse: JSON.parse, stringify: JSON.stringify };
+    sandbox.Math = Object.freeze({ ...Math });
+    sandbox.parseInt = parseInt;
+    sandbox.parseFloat = parseFloat;
+    sandbox.isNaN = isNaN;
+    sandbox.isFinite = isFinite;
 
     let result: unknown;
     try {
-      result = runInNewContext(`(${baseExpr})`, sandbox, { timeout: 50 });
+      result = runInNewContext(`(${baseExpr})`, sandbox, {
+        timeout: 50,
+        contextCodeGeneration: { strings: false, wasm: false },
+      });
     } catch {
       return undefined;
     }
@@ -1115,20 +1119,18 @@ function resolveFilterArg(a: string, scope: Record<string, unknown>): unknown {
   if (/^-?\d+(\.\d+)?$/.test(a)) return Number(a);
   // Security check
   if (FORBIDDEN_EXPR.test(a)) return a;
-  // Expression via VM
+  // Expression via VM (same hardened sandbox as evalExpression)
   try {
-    const sandbox = {
-      ...scope,
-      JSON,
-      Math,
-      Number,
-      String,
-      Boolean,
-      Array,
-      Date,
-      Object,
-    };
-    return runInNewContext(`(${a})`, sandbox, { timeout: 50 });
+    const sandbox = Object.create(null) as Record<string, unknown>;
+    for (const [k, v] of Object.entries(scope)) sandbox[k] = v;
+    sandbox.JSON = { parse: JSON.parse, stringify: JSON.stringify };
+    sandbox.Math = Object.freeze({ ...Math });
+    sandbox.parseInt = parseInt;
+    sandbox.parseFloat = parseFloat;
+    return runInNewContext(`(${a})`, sandbox, {
+      timeout: 50,
+      contextCodeGeneration: { strings: false, wasm: false },
+    });
   } catch {
     return a;
   }
@@ -1467,6 +1469,25 @@ async function stepTap(
   const timeout = (config.timeout ?? 5) * 1000;
   const storeName = evalTemplate(config.store, ctx);
   const actionName = evalTemplate(config.action, ctx);
+  // Sanitize store/action names to prevent JS injection in page context
+  if (!/^[a-zA-Z_$][\w$]*$/.test(storeName)) {
+    throw new PipelineError(`Invalid store name: "${storeName}"`, {
+      step: -1,
+      action: "tap",
+      config,
+      errorType: "expression_error",
+      suggestion: "Store name must be a valid JavaScript identifier.",
+    });
+  }
+  if (!/^[a-zA-Z_$][\w$]*$/.test(actionName)) {
+    throw new PipelineError(`Invalid action name: "${actionName}"`, {
+      step: -1,
+      action: "tap",
+      config,
+      errorType: "expression_error",
+      suggestion: "Action name must be a valid JavaScript identifier.",
+    });
+  }
   const framework = config.framework ?? "auto";
   const actionArgs = config.args
     ? config.args.map((a) => JSON.stringify(a)).join(", ")
