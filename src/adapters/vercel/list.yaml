@@ -1,0 +1,19 @@
+site: vercel
+name: list
+description: List Vercel deployments
+type: bridge
+strategy: public
+binary: vercel
+detect: which vercel
+autoInstall: npm install -g vercel
+
+pipeline:
+  - exec:
+      command: vercel
+      args:
+        - list
+        - --json
+      parse: json
+      timeout: 30000
+
+columns: [name, url, state, created]

@@ -1,0 +1,18 @@
+site: codex-cli
+name: version
+description: Check OpenAI Codex CLI version
+type: bridge
+strategy: public
+binary: codex
+detect: which codex
+autoInstall: npm install -g @openai/codex
+
+pipeline:
+  - exec:
+      command: codex
+      args:
+        - --version
+      parse: text
+      timeout: 10000
+
+columns: [output]

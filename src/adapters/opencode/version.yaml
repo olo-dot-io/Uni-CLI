@@ -1,0 +1,18 @@
+site: opencode
+name: version
+description: Check OpenCode CLI version
+type: bridge
+strategy: public
+binary: opencode
+detect: which opencode
+autoInstall: npm install -g opencode
+
+pipeline:
+  - exec:
+      command: opencode
+      args:
+        - --version
+      parse: text
+      timeout: 10000
+
+columns: [output]
