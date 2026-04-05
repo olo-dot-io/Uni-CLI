@@ -304,7 +304,10 @@ export async function runPipeline(
         ) {
           try {
             const { suggestSelectFix } = await import("./auto-fix.js");
-            const suggestions = suggestSelectFix(ctx.data, stepConfig as string);
+            const suggestions = suggestSelectFix(
+              ctx.data,
+              stepConfig as string,
+            );
             let fixed = false;
             for (const suggestion of suggestions) {
               try {
@@ -1067,17 +1070,14 @@ async function stepParallel(
   if (!Array.isArray(branches) || branches.length === 0) return ctx;
 
   if (depth > 10) {
-    throw new PipelineError(
-      "parallel step recursion depth exceeded (max 10)",
-      {
-        step: stepIndex,
-        action: "parallel",
-        config: branches,
-        errorType: "parse_error",
-        suggestion:
-          "Reduce nesting depth of parallel steps. Maximum is 10 levels.",
-      },
-    );
+    throw new PipelineError("parallel step recursion depth exceeded (max 10)", {
+      step: stepIndex,
+      action: "parallel",
+      config: branches,
+      errorType: "parse_error",
+      suggestion:
+        "Reduce nesting depth of parallel steps. Maximum is 10 levels.",
+    });
   }
 
   const results = await Promise.all(

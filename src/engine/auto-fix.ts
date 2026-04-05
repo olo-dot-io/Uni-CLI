@@ -64,12 +64,7 @@ export function applySelectFix(
     }
 
     // Write fix to user adapter dir
-    const userDir = join(
-      process.env.HOME ?? "~",
-      ".unicli",
-      "adapters",
-      site,
-    );
+    const userDir = join(process.env.HOME ?? "~", ".unicli", "adapters", site);
     mkdirSync(userDir, { recursive: true });
     const userPath = join(userDir, `${command}.yaml`);
 

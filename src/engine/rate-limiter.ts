@@ -11,10 +11,7 @@ interface Bucket {
 
 const buckets = new Map<string, Bucket>();
 
-export async function waitForToken(
-  domain: string,
-  rpm: number,
-): Promise<void> {
+export async function waitForToken(domain: string, rpm: number): Promise<void> {
   const now = Date.now();
   let bucket = buckets.get(domain);
 
