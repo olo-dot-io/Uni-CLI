@@ -1,370 +1,284 @@
-<!-- AGENT: npm install -g unicli && unicli list | Run any of 582 commands across 96 sites. JSON output when piped. Self-repairing YAML adapters. See AGENTS.md for full protocol. -->
+<!-- AGENT: npm install -g unicli && unicli list | 582 commands across 96 sites. JSON when piped. Self-repairing YAML adapters. See AGENTS.md -->
 
 <h1 align="center">Uni-CLI</h1>
 
 <p align="center">
-  <strong>CLI IS ALL AGENTS NEED</strong><br>
-  The entry point for AI agents to touch, sense, understand, modify, and control<br>
-  any internet application and local software — through CLI.<br>
-  20-line YAML · Self-repairing · Agent-native
-</p>
-
-<p align="center">
-  <a href="#-quick-start"><img src="https://img.shields.io/badge/Quick_Start-3_min-blue?style=for-the-badge" alt="Quick Start"></a>
-  <a href="#-self-repair"><img src="https://img.shields.io/badge/Self--Repair-Agent_Fixes_Itself-ff69b4?style=for-the-badge" alt="Self-Repair"></a>
-  <a href="#-for-ai-agents"><img src="https://img.shields.io/badge/43_Sites-141_Commands-green?style=for-the-badge" alt="Coverage"></a>
+  <strong>The universal interface between AI agents and the world's software.</strong>
 </p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/unicli"><img src="https://img.shields.io/npm/v/unicli?style=flat-square" alt="npm"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/unicli?style=flat-square" alt="Node.js"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/npm/l/unicli?style=flat-square" alt="License"></a>
-  <a href="./README.zh-CN.md"><img src="https://img.shields.io/badge/docs-中文-0F766E?style=flat-square" alt="中文文档"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/npm/l/unicli?style=flat-square" alt="Apache-2.0"></a>
+</p>
+
+<p align="center">
+  96 sites · 582 commands · 23 pipeline steps · 29 template filters · Zero runtime dependencies beyond Node.js
 </p>
 
 ---
 
-**CLI is the universal interface for AI agents.** ~80 tokens per invocation. Composable via Unix pipes. Deterministic. And with Uni-CLI, **self-repairing** — when an adapter breaks, the agent reads the 20-line YAML, fixes it, and moves on. No human needed.
+Agents cannot draw in SolidWorks. Cannot design PCBs. Cannot run CFD simulations. Cannot send Outlook emails. Cannot access most websites.
 
-**For AI Agents** — Structured JSON output, machine-readable exit codes, self-repair protocol. Agents can diagnose, fix, and verify their own tools.
-
-**For Humans** — Beautiful table output, multiple formats, `unicli doctor` for diagnostics.
-
----
-
-## 🔧 Self-Repair — Why Uni-CLI Exists
-
-This is not a feature. This is the reason the project exists.
-
-```
-unicli <site> <command>
-  → Fails (API changed, endpoint moved)
-  → Structured error JSON:
-    { "adapter": "src/adapters/twitter/search.yaml",
-      "step": 0, "action": "fetch", "statusCode": 403,
-      "suggestion": "API requires cookie auth." }
-  → Agent reads 20-line YAML (fits any context window)
-  → Agent edits YAML → saves to ~/.unicli/adapters/
-  → Agent retries → fixed. Fix persists across updates.
-```
-
-| Requirement                      | Other tools              | Uni-CLI                            |
-| -------------------------------- | ------------------------ | ---------------------------------- |
-| Structured errors with file path | ❌ Human strings         | ✅ JSON + adapter path             |
-| Agent can read the adapter       | ❌ 50-300 line TS/Python | ✅ 20-line YAML                    |
-| Fix survives updates             | ❌ Overwritten           | ✅ ~/.unicli/adapters/ overlay     |
-| Agent can verify the fix         | ❌ No test command       | ✅ `unicli repair` + `unicli test` |
-
----
-
-## Why CLI, Not MCP?
-
-MCP sounds great in theory. In practice (April 2026): 3 MCP servers eat **72% of a 200K context window** before you type anything. Each tool definition costs 550-1,400 tokens. A CLI call costs ~80 tokens.
-
-CLI through Bash is: universal (every agent has it), composable (pipes), self-repairable (agent edits YAML), and context-efficient (2 orders of magnitude cheaper than MCP).
-
----
-
-## 🌍 Coverage
-
-Uni-CLI turns **any interface** — websites, desktop apps, cloud APIs, local services, existing CLI tools — into structured, scriptable commands:
-
-```
-┌─────────────────────────────────────────────────────┐
-│                   Uni-CLI                            │
-│                                                     │
-│  ┌─────────┐ ┌─────────┐ ┌──────────┐ ┌─────────┐  │
-│  │ web-api │ │ desktop │ │ browser  │ │ bridge  │  │
-│  │         │ │         │ │          │ │         │  │
-│  │ Twitter │ │ Blender │ │ 小红书   │ │ gh      │  │
-│  │ Reddit  │ │ GIMP    │ │ Taobao   │ │ docker  │  │
-│  │ Bilibili│ │ FreeCAD │ │ WeChat   │ │ kubectl │  │
-│  │ HN      │ │ OBS     │ │ LinkedIn │ │ vercel  │  │
-│  └─────────┘ └─────────┘ └──────────┘ └─────────┘  │
-│                                                     │
-│  ┌─────────────────────────────────────────────────┐│
-│  │ service: Ollama · ComfyUI · WireMock · Zoom     ││
-│  └─────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────┘
-```
-
-| Feature            | Uni-CLI                       |
-| ------------------ | ----------------------------- |
-| Websites → CLI     | ✅ 57 sites, 289 commands     |
-| Desktop apps → CLI | ✅ 30+ apps                   |
-| Browser automation | ✅ Chrome Extension           |
-| Local services     | ✅ REST/WebSocket             |
-| Agent self-repair  | ✅ Full loop                  |
-| Structured errors  | ✅ JSON with path + step      |
-| Adapter format     | 20-line YAML (agent-editable) |
-| Fix persists       | ✅ ~/.unicli/ overlay         |
-| Repair command     | ✅ `unicli repair`            |
-| Test command       | ✅ `unicli test`              |
-
----
-
-## 🚀 Quick Start
-
-### Install
+Uni-CLI fixes this. One command, structured JSON output, self-repairing YAML adapters. **~80 tokens per invocation** — two orders of magnitude cheaper than MCP.
 
 ```bash
 npm install -g unicli
+unicli hackernews top --limit 5          # Public API
+unicli bilibili hot                      # Chinese platform
+unicli twitter search "AI agents"        # Authenticated
+unicli blender render scene.blend        # Desktop software
+unicli cursor ask "explain this code"    # Electron app
 ```
 
-### Try It
+## Why CLI
 
-```bash
-unicli doctor                         # Check system health
-unicli list                           # See all commands
-unicli hackernews top --limit 5       # Hacker News top stories
-unicli hackernews search "AI agents"  # Search HN
+| Criterion           | MCP                                     | CLI (Uni-CLI)                            |
+| ------------------- | --------------------------------------- | ---------------------------------------- |
+| Cost per invocation | 550–1,400 tokens (tool definition)      | ~80 tokens                               |
+| Context overhead    | 3 servers = 72% of 200K window consumed | Zero                                     |
+| Composability       | Single-tool calls                       | Unix pipes, `jq`, shell scripts          |
+| Self-repair         | Agents cannot read server source        | Agent reads 20-line YAML, edits, retries |
+| Universality        | Requires MCP client support             | Every agent has Bash                     |
+| Auth reuse          | Per-server configuration                | Chrome login sessions via daemon         |
+
+CLI is: universal, composable, self-repairable, and context-efficient. MCP is a protocol for tool registration. **They solve different problems.** Uni-CLI supports both — use `unicli mcp` for MCP-only environments.
+
+## Architecture
+
+```
+                         unicli <site> <command> [args]
+                                    │
+                    ┌───────────────┼───────────────┐
+                    ▼               ▼               ▼
+              YAML Adapter    TS Adapter      Bridge (passthrough)
+              (20 lines)      (complex logic)   (gh, docker, vercel)
+                    │               │               │
+                    ▼               ▼               ▼
+              ┌─────────────────────────────────────────┐
+              │          Pipeline Engine (23 steps)      │
+              │  fetch · navigate · evaluate · click     │
+              │  type · press · scroll · wait · tap      │
+              │  intercept · snapshot · download          │
+              │  websocket · exec · write_temp · ...      │
+              └─────────┬───────────────┬───────────────┘
+                        │               │
+              ┌─────────▼─────┐ ┌───────▼───────┐
+              │  Direct CDP   │ │    Daemon      │
+              │  (fast, local)│ │  (persistent,  │
+              │               │ │  reuses Chrome │
+              │               │ │  login state)  │
+              └───────────────┘ └───────────────┘
+                        │               │
+              ┌─────────▼───────────────▼───────┐
+              │       Output Formatter           │
+              │  table · json · yaml · csv · md  │
+              │  (auto-JSON when piped)          │
+              └─────────────────────────────────┘
 ```
 
-### Output Formats
+## Self-Repair
 
-```bash
-unicli hackernews top                 # Human-readable table
-unicli hackernews top -f json         # Structured JSON (for AI agents)
-unicli hackernews top -f csv          # Spreadsheet-friendly
-unicli hackernews top -f yaml         # Config-friendly
-unicli hackernews top -f md           # Markdown table
+This is the core differentiator. When a command fails:
+
+```
+unicli <site> <cmd> fails
+  → structured error JSON: { adapter_path, step, action, suggestion }
+  → agent reads the 20-line YAML at that path
+  → agent edits the YAML (selector changed, API versioned, auth rotated)
+  → agent retries → fixed
+  → fix persists in ~/.unicli/adapters/ (survives npm update)
 ```
 
-When piped (non-TTY), output **automatically** switches to JSON:
+Verification: `unicli repair <site> <command>` diagnoses, `unicli test [site]` validates.
 
-```bash
-unicli hackernews top | jq '.[0].title'   # Agent-friendly by default
-```
+## Coverage
 
----
+### Web Platforms (67 sites)
 
-## 🧩 Adapter Types
+| Category                   | Sites                                                                                                                     |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **Tech / Dev**             | hackernews, stackoverflow, devto, lobsters, producthunt, hf, github-trending, substack, lesswrong                         |
+| **Social — International** | twitter (25 cmds), reddit (16), instagram (19), tiktok (15), facebook (10), bluesky, medium                               |
+| **Social — Chinese**       | bilibili (13), weibo, zhihu, xiaohongshu (13), douyin (13), jike, douban, weread, tieba, v2ex, linux-do, zsxq, xiaoyuzhou |
+| **Video / Media**          | youtube (5), bilibili, douyin, tiktok                                                                                     |
+| **Finance**                | xueqiu, sinafinance, barchart, yahoo-finance                                                                              |
+| **News**                   | bbc, bloomberg (10), reuters, 36kr, google news                                                                           |
+| **Shopping**               | amazon (8), xianyu, coupang, smzdm, jd                                                                                    |
+| **Jobs**                   | boss (14), linkedin                                                                                                       |
+| **AI Platforms**           | gemini (5), grok, doubao-web (9), notebooklm (15), yollomi (12), jimeng, yuanbao                                          |
+| **Education**              | chaoxing, arxiv, wikipedia                                                                                                |
+| **Other**                  | ones (11), band, xiaoe, pixiv (6), hupu (7), ctrip, sinablog, steam, lobsters                                             |
 
-Uni-CLI supports **five adapter types** — covering every kind of software:
+### Desktop Software (28 apps)
 
-### Type 1: `web-api` — REST APIs
+| Category         | Apps                                                        |
+| ---------------- | ----------------------------------------------------------- |
+| **3D / CAD**     | blender (13 cmds), freecad (15), cloudcompare (4), openscad |
+| **Image**        | gimp (12), inkscape, imagemagick (6), krita (4)             |
+| **Video**        | ffmpeg (11), kdenlive (3), shotcut (3), musescore (5)       |
+| **Diagram**      | drawio, mermaid                                             |
+| **Document**     | libreoffice, pandoc                                         |
+| **Audio**        | audacity (8)                                                |
+| **Streaming**    | obs (8, WebSocket)                                          |
+| **Productivity** | zotero (8)                                                  |
+| **Dev Services** | wiremock (5), adguardhome (5), novita (3)                   |
+| **Game**         | slay-the-spire-ii (6, HTTP bridge mod)                      |
+| **Design**       | sketch (3)                                                  |
+
+### Electron Apps (8 apps, 66 commands)
+
+| App             | Commands                                                                                       | Method    |
+| --------------- | ---------------------------------------------------------------------------------------------- | --------- |
+| **Cursor**      | ask, send, read, model, composer, extract-code, new, status, screenshot, dump, history, export | CDP :9226 |
+| **Codex**       | ask, send, read, model, extract-diff, new, status, screenshot, dump, history, export           | CDP :9222 |
+| **ChatGPT**     | ask, send, read, model, new, status, screenshot, dump                                          | CDP :9236 |
+| **Notion**      | search, read, write, new, status, sidebar, favorites, export, screenshot                       | CDP :9230 |
+| **Discord**     | servers, channels, read, send, search, members, status                                         | CDP :9232 |
+| **ChatWise**    | ask, send, read, model, new, status, screenshot, dump                                          | CDP :9228 |
+| **Doubao**      | ask, send, read, new, status, screenshot, dump                                                 | CDP :9225 |
+| **Antigravity** | ask, send, read, model, new, status, screenshot, dump                                          | CDP :9234 |
+
+### Bridge (passthrough to existing CLIs)
+
+docker, gh, jq, yt-dlp — more planned for v0.205 (vercel, netlify, railway, flyctl, supabase, wrangler, lark, dingtalk)
+
+## Pipeline Engine
+
+23 steps execute in sequence. Each YAML adapter is a pipeline of these steps.
+
+| Step         | Type      | What it does                                                                  |
+| ------------ | --------- | ----------------------------------------------------------------------------- |
+| `fetch`      | API       | HTTP JSON with retry, backoff, cookie injection, concurrent fan-out (limit=5) |
+| `fetch_text` | API       | HTTP raw text (RSS, HTML, XML)                                                |
+| `parse_rss`  | API       | RSS 2.0 + Atom feed parser                                                    |
+| `html_to_md` | API       | HTML → Markdown via Turndown                                                  |
+| `select`     | Transform | Navigate JSON by dot-path (`data.items[]`)                                    |
+| `map`        | Transform | Transform each item via `${{ }}` templates                                    |
+| `filter`     | Transform | Keep items matching expression                                                |
+| `sort`       | Transform | Sort by field (numeric-aware)                                                 |
+| `limit`      | Transform | Cap result count                                                              |
+| `exec`       | Desktop   | Run subprocess with stdin, env, file output                                   |
+| `write_temp` | Desktop   | Create ephemeral script file                                                  |
+| `navigate`   | Browser   | Navigate Chrome to URL via CDP                                                |
+| `evaluate`   | Browser   | Execute JS in page context                                                    |
+| `click`      | Browser   | Click element by CSS selector                                                 |
+| `type`       | Browser   | Type text into input                                                          |
+| `press`      | Browser   | Keyboard key with modifiers (Ctrl+A, Enter)                                   |
+| `wait`       | Browser   | Wait for time, selector, or text                                              |
+| `scroll`     | Browser   | Direction scroll, auto-scroll to bottom                                       |
+| `intercept`  | Browser   | Capture fetch + XHR responses (dual-patched, stealthed)                       |
+| `snapshot`   | Browser   | DOM accessibility tree with interactive refs                                  |
+| `tap`        | Browser   | Vue Store Action Bridge (Pinia/Vuex → capture network)                        |
+| `download`   | Media     | HTTP + yt-dlp, batch concurrent, skip_existing                                |
+| `websocket`  | Service   | WebSocket connect/send/receive (OBS auth support)                             |
+
+### Template Expressions
+
+29 pipe filters: `join`, `urlencode`, `urldecode`, `slice`, `replace`, `lowercase`, `uppercase`, `trim`, `default`, `split`, `first`, `last`, `length`, `strip_html`, `truncate`, `slugify`, `sanitize`, `ext`, `basename`, `keys`, `json`, `abs`, `round`, `ceil`, `floor`, `int`, `float`, `str`, `reverse`, `unique`
 
 ```yaml
-# src/adapters/hackernews/top.yaml
-site: hackernews
-type: web-api
-strategy: public
-
-pipeline:
-  - fetch:
-      url: https://hacker-news.firebaseio.com/v0/topstories.json
-  - map:
-      title: ${{ item.title }}
-      score: ${{ item.score }}
-columns: [title, score]
+${{ item.title | truncate(50) }}
+${{ item.tags | join(', ') }}
+${{ args.query | urlencode }}
+${{ item.url | basename | sanitize }}
+${{ item.score > 100 ? 'hot' : 'normal' }}
 ```
 
-### Type 2: `desktop` — Local Desktop Software
+VM sandbox with null-prototype isolation, 50ms timeout, forbidden pattern blocklist.
 
-```yaml
-# src/adapters/blender/render.yaml
-site: blender
-type: desktop
-binary: blender
-detect: which blender
+## Authentication Strategies
 
-args:
-  file: { type: str, required: true, positional: true }
-  output: { type: str, default: ./output.png }
+| Strategy    | Auth          | How                                                      |
+| ----------- | ------------- | -------------------------------------------------------- |
+| `public`    | None          | Direct HTTP fetch                                        |
+| `cookie`    | Cookie file   | `~/.unicli/cookies/<site>.json` injected into headers    |
+| `header`    | Cookie + CSRF | Cookie + auto-extracted CSRF token (ct0, bili_jct, etc.) |
+| `intercept` | Browser       | Navigate page, capture XHR/fetch responses               |
+| `ui`        | Browser       | Direct DOM interaction (click, type, submit)             |
 
-execArgs:
-  - --background
-  - ${{ args.file }}
-  - --render-output
-  - ${{ args.output }}
-  - --render-frame
-  - "1"
+Strategy cascade: auto-probes PUBLIC → COOKIE → HEADER on first run.
+
+## Browser Daemon
+
+Persistent background process that bridges CLI commands to Chrome tabs. Reuses existing Chrome login sessions — no cookie files, no extension install required for basic operation.
+
 ```
+unicli daemon status              # Check daemon state
+unicli daemon stop                # Graceful shutdown (auto-exits after 4h idle)
+
+unicli operate open <url>         # Navigate browser
+unicli operate state              # DOM snapshot (accessibility tree)
+unicli operate click <ref>        # Click by ref from snapshot
+unicli operate type <ref> <text>  # Type into element
+unicli operate eval <js>          # Execute JavaScript
+unicli operate screenshot [path]  # Capture page
+unicli operate network            # View captured requests
+
+unicli record <url>               # Auto-generate adapter from page traffic
+```
+
+## Plugin System
 
 ```bash
-unicli blender render scene.blend --output ./render.png
+unicli plugin install github:user/repo     # From GitHub
+unicli plugin install /local/path          # From local directory
+unicli plugin list                         # Show installed
+unicli plugin update                       # Update all
 ```
 
-### Type 3: `browser` — Full Browser Automation
+Plugins can register custom pipeline steps via `registerStep()` and lifecycle hooks:
 
-```yaml
-# src/adapters/xiaohongshu/feed.yaml
-site: xiaohongshu
-type: browser
-strategy: cookie
-requires: login
-
-navigate: https://www.xiaohongshu.com/explore
-wait: .note-item
-extract: .note-item[].{title, likes, author}
+```typescript
+import { onBeforeExecute, onAfterExecute } from "unicli/hooks";
+onBeforeExecute(async (ctx) => {
+  /* rate limiting, logging */
+});
+onAfterExecute(async (ctx, result) => {
+  /* analytics, caching */
+});
 ```
 
-### Type 4: `bridge` — Existing CLI Passthrough
-
-```yaml
-# src/adapters/gh/bridge.yaml
-site: gh
-type: bridge
-binary: gh
-autoInstall: brew install gh
-passthrough: true
-```
+## Shell Completion
 
 ```bash
-unicli gh pr list --limit 5    # Passes through to `gh pr list --limit 5`
+unicli completion bash >> ~/.bashrc
+unicli completion zsh >> ~/.zshrc
+unicli completion fish > ~/.config/fish/completions/unicli.fish
 ```
 
-### Type 5: `service` — Local/Remote HTTP Services
+## Anti-Detection
 
-```yaml
-# src/adapters/ollama/list.yaml
-site: ollama
-type: service
-base: http://localhost:11434
-health: /api/tags
+13-layer stealth injection for browser automation:
 
-pipeline:
-  - fetch:
-      url: ${{ base }}/api/tags
-  - select: models
-  - map:
-      name: ${{ item.name }}
-      size: ${{ item.size }}
-columns: [name, size]
-```
-
----
-
-## 🤖 For AI Agents
-
-Uni-CLI is designed agent-first. Three integration paths:
-
-### MCP Server (Universal)
-
-Works with Claude Code, Cursor, Windsurf, Codex, OpenCode — any MCP-compatible agent:
-
-```json
-{
-  "mcpServers": {
-    "unicli": {
-      "command": "unicli",
-      "args": ["mcp"]
-    }
-  }
-}
-```
-
-### Agent Skills
-
-```bash
-npx skills add ZenAlexa/Uni-CLI                         # All skills
-npx skills add ZenAlexa/Uni-CLI --skill unicli-usage     # Usage guide
-npx skills add ZenAlexa/Uni-CLI --skill unicli-operate   # Browser automation
-npx skills add ZenAlexa/Uni-CLI --skill unicli-explorer  # Adapter development
-```
-
-### AGENTS.md / CLAUDE.md
-
-Add to your project's `AGENTS.md` or `CLAUDE.md`:
-
-```markdown
-## CLI Tools
-
-- `unicli <site> <command>` — Universal CLI for websites, desktop apps, and services
-- `unicli list` — Discover all available commands
-```
-
----
-
-## 📦 Built-in Adapters
-
-| Site                | Type    | Commands       | Auth                  |
-| ------------------- | ------- | -------------- | --------------------- |
-| **hackernews**      | web-api | `top` `search` | No                    |
-| **reddit**          | web-api | `hot` `search` | No                    |
-| **github-trending** | web-api | `daily`        | No                    |
-| **blender**         | desktop | `render`       | No (requires blender) |
-| **ffmpeg**          | desktop | `convert`      | No (requires ffmpeg)  |
-| **ollama**          | service | `list`         | No (requires ollama)  |
-
-> 6 sites, 8 commands across 3 adapter types. [Contribute yours →](./CONTRIBUTING.md)
-
----
-
-## 🔌 Plugins
-
-Extend Uni-CLI with community adapters:
-
-```bash
-unicli plugin install github:user/unicli-plugin-example
-unicli plugin list
-unicli plugin update --all
-```
-
----
-
-## 🏗️ Architecture
-
-```
-src/
-├── main.ts              # Entry point
-├── cli.ts               # Commander routing
-├── types.ts             # 5 adapter types, Strategy enum, IPage, ExitCode
-├── registry.ts          # Adapter registry + cli() helper
-├── engine/              # Execution engines (YAML pipeline, subprocess, browser, HTTP)
-├── output/formatter.ts  # table/json/yaml/csv/md + agent auto-detection
-├── discovery/loader.ts  # Scans adapters/ for YAML + TS files
-├── adapters/            # Built-in adapters
-├── browser/             # Chrome Extension CDP bridge
-├── hub/                 # External CLI hub + auto-install
-├── plugin/              # Plugin system
-└── mcp/                 # MCP stdio server for AI agents
-```
-
-### Adapter Resolution
-
-```
-unicli <site> <command> [options]
-         │         │
-         ▼         ▼
-    ┌──────────────────┐
-    │  Adapter Registry │
-    │  (YAML + TS scan) │
-    └────────┬─────────┘
-             │
-    ┌────────▼─────────┐
-    │  Execution Engine │
-    │  ┌─────┐ ┌─────┐ │
-    │  │ HTTP│ │ CDP │ │
-    │  ├─────┤ ├─────┤ │
-    │  │ exec│ │ hub │ │
-    │  └─────┘ └─────┘ │
-    └────────┬─────────┘
-             │
-    ┌────────▼─────────┐
-    │ Output Formatter  │
-    │ table│json│csv│md │
-    └──────────────────┘
-```
-
----
+1. `navigator.webdriver` removal
+2. `window.chrome.runtime` mock
+3. Plugin array normalization
+4. Language header consistency
+5. Permissions API notification fix
+6. `Function.prototype.toString` spoofing
+7. CDP global cleanup (`cdc_`, `__playwright`, `__puppeteer`)
+8. `Error.stack` frame filtering
+9. `outerWidth`/`outerHeight` normalization
+10. Performance API entry filtering
+11. Document-level CDP marker cleanup
+12. iframe `contentWindow.chrome` consistency
+13. Reserved (debugger trap neutralization)
 
 ## Exit Codes
 
-Following Unix `sysexits.h` conventions:
+Following `sysexits.h`:
 
-| Code | Meaning             | When                  |
-| ---- | ------------------- | --------------------- |
-| `0`  | Success             | Command completed     |
-| `1`  | Generic error       | Unexpected failure    |
-| `2`  | Usage error         | Bad arguments         |
-| `66` | Empty result        | No data returned      |
-| `69` | Service unavailable | Browser not connected |
-| `75` | Temporary failure   | Timeout — retry       |
-| `77` | Auth required       | Not logged in         |
-| `78` | Config error        | Missing credentials   |
-
----
+| Code | Meaning     | When                          |
+| ---- | ----------- | ----------------------------- |
+| `0`  | Success     | Command completed             |
+| `1`  | Error       | Unexpected failure            |
+| `2`  | Usage       | Bad arguments                 |
+| `66` | Empty       | No data returned              |
+| `69` | Unavailable | Browser/service not connected |
+| `75` | Temporary   | Timeout — retry               |
+| `77` | Auth        | Not logged in                 |
+| `78` | Config      | Missing credentials           |
 
 ## Development
 
@@ -372,27 +286,38 @@ Following Unix `sysexits.h` conventions:
 git clone https://github.com/ZenAlexa/Uni-CLI.git && cd Uni-CLI
 npm install
 npm run dev -- list                   # Test adapter loading
-npm run dev -- hackernews top         # Test a command
-npm run verify                        # Full check: format + tsc + lint + test + build
+npm run verify                        # format + typecheck + lint + test + build
+npm run test:adapter                  # Validate all 582 YAML/TS adapters
 ```
+
+| Command                | Purpose                   |
+| ---------------------- | ------------------------- |
+| `npm run dev`          | Development run           |
+| `npm run build`        | Production build          |
+| `npm run typecheck`    | TypeScript strict check   |
+| `npm run lint`         | Oxlint                    |
+| `npm run test`         | Unit tests (231)          |
+| `npm run test:adapter` | Adapter validation (2041) |
+| `npm run verify`       | Full pipeline             |
+
+## Technology
+
+| Layer    | Technology                                                 |
+| -------- | ---------------------------------------------------------- |
+| Language | TypeScript (strict)                                        |
+| Runtime  | Node.js ≥ 20                                               |
+| CLI      | Commander                                                  |
+| Browser  | Raw CDP via `ws` (WebSocket) — no Puppeteer, no Playwright |
+| Test     | Vitest                                                     |
+| Lint     | Oxlint                                                     |
+| Format   | Prettier                                                   |
+| Template | VM sandbox (null-prototype, 50ms timeout)                  |
+
+Zero production dependencies beyond: `chalk`, `cli-table3`, `commander`, `js-yaml`, `turndown`, `undici`, `ws`.
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md). The fastest contribution: add a 20-line YAML adapter for a site you use.
-
-## Star History
-
-<a href="https://star-history.com/#ZenAlexa/Uni-CLI&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ZenAlexa/Uni-CLI&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ZenAlexa/Uni-CLI&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=ZenAlexa/Uni-CLI&type=Date" />
-  </picture>
-</a>
-
-## Acknowledgments
-
-Uni-CLI is built on the insight that CLI is the universal interface for AI agents. We thank the open-source AI agent ecosystem — [Claude Code](https://github.com/anthropics/claude-code), [Codex CLI](https://github.com/openai/codex), [OpenCode](https://github.com/opencode-ai/opencode), and the [MCP](https://modelcontextprotocol.io/) standard — for building the world where tools like Uni-CLI are needed.
+See [CONTRIBUTING.md](./CONTRIBUTING.md). The fastest way to contribute: write a 20-line YAML adapter for a site you use.
 
 ## License
 
@@ -401,6 +326,6 @@ Uni-CLI is built on the insight that CLI is the universal interface for AI agent
 ---
 
 <p align="center">
-  <sub>v0.204.0 · Codename <strong>Vostok · Nikolayev</strong> — 96 sites, 582 commands</sub><br>
-  <sub>Built with care for AI agents and the humans who guide them.</sub>
+  <sub>v0.204.0 — Vostok · Nikolayev</sub><br>
+  <sub>96 sites · 582 commands · 23 pipeline steps · 29 filters · 2,272 tests</sub>
 </p>
