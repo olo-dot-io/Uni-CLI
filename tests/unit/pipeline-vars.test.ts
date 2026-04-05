@@ -174,3 +174,96 @@ describe("fallback", () => {
     expect(result).toHaveLength(1);
   });
 });
+
+describe("if step", () => {
+  it("executes then branch when condition is truthy", async () => {
+    const result = await runPipeline(
+      [
+        { set: { mode: "detailed" } },
+        {
+          if: "${{ vars.mode == 'detailed' }}",
+          then: [{ fetch: { url: `${baseUrl}/data` } }, { select: "items" }],
+        },
+        { map: { id: "${{ item.id }}" } },
+      ],
+      {},
+    );
+    expect(result).toHaveLength(1);
+    expect((result[0] as Record<string, unknown>).id).toBe("1");
+  });
+
+  it("executes else branch when condition is falsy", async () => {
+    const result = await runPipeline(
+      [
+        { set: { mode: "brief" } },
+        {
+          if: "${{ vars.mode == 'detailed' }}",
+          then: [{ set: { result: "detailed" } }],
+          else: [{ set: { result: "brief" } }],
+        },
+        { fetch: { url: `${baseUrl}/data` } },
+        { select: "items" },
+        { map: { result: "${{ vars.result }}" } },
+      ],
+      {},
+    );
+    expect(result).toHaveLength(1);
+    expect((result[0] as Record<string, unknown>).result).toBe("brief");
+  });
+
+  it("skips when condition is falsy and no else branch", async () => {
+    const result = await runPipeline(
+      [
+        { fetch: { url: `${baseUrl}/data` } },
+        { select: "items" },
+        {
+          if: "${{ false }}",
+          then: [{ select: "nonexistent_will_error" }],
+        },
+      ],
+      {},
+    );
+    expect(result).toHaveLength(1);
+  });
+
+  it("supports args in condition", async () => {
+    const result = await runPipeline(
+      [
+        {
+          if: "${{ args.verbose }}",
+          then: [{ set: { detail: "yes" } }],
+          else: [{ set: { detail: "no" } }],
+        },
+        { fetch: { url: `${baseUrl}/data` } },
+        { select: "items" },
+        { map: { detail: "${{ vars.detail }}" } },
+      ],
+      { verbose: true },
+    );
+    expect(result).toHaveLength(1);
+    expect((result[0] as Record<string, unknown>).detail).toBe("yes");
+  });
+
+  it("supports nested if steps", async () => {
+    const result = await runPipeline(
+      [
+        { set: { a: true, b: true } },
+        {
+          if: "${{ vars.a }}",
+          then: [
+            {
+              if: "${{ vars.b }}",
+              then: [{ set: { nested: "both_true" } }],
+            },
+          ],
+        },
+        { fetch: { url: `${baseUrl}/data` } },
+        { select: "items" },
+        { map: { nested: "${{ vars.nested }}" } },
+      ],
+      {},
+    );
+    expect(result).toHaveLength(1);
+    expect((result[0] as Record<string, unknown>).nested).toBe("both_true");
+  });
+});

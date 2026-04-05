@@ -106,6 +106,7 @@ async function executeStep(
   action: string,
   config: unknown,
   stepIndex: number,
+  fullStep?: PipelineStep,
 ): Promise<PipelineContext> {
   switch (action) {
     case "fetch":
@@ -156,6 +157,14 @@ async function executeStep(
       return stepWebsocket(ctx, config as WebsocketStepConfig);
     case "set":
       return stepSet(ctx, config as Record<string, unknown>);
+    case "if": {
+      const ifStep = (fullStep ?? { if: config }) as {
+        if: string;
+        then?: PipelineStep[];
+        else?: PipelineStep[];
+      };
+      return stepIf(ctx, ifStep, stepIndex);
+    }
     default:
       return ctx;
   }
@@ -193,7 +202,9 @@ export async function runPipeline(
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
       const entries = Object.entries(step);
-      const actionEntry = entries.find(([k]) => k !== "fallback") ?? entries[0];
+      const actionEntry =
+        entries.find(([k]) => k !== "fallback" && k !== "then" && k !== "else") ??
+        entries[0];
       const [action, config] = actionEntry;
 
       // --- Fallback extraction ---
@@ -234,7 +245,7 @@ export async function runPipeline(
       try {
         // Inner try — executes the primary step, falls back on failure
         try {
-          ctx = await executeStep(ctx, action, stepConfig, i);
+          ctx = await executeStep(ctx, action, stepConfig, i, step);
         } catch (primaryErr) {
           if (!fallbacks || fallbacks.length === 0) throw primaryErr;
 
@@ -242,7 +253,7 @@ export async function runPipeline(
           let succeeded = false;
           for (const fb of fallbacks) {
             try {
-              ctx = await executeStep(ctx, action, fb, i);
+              ctx = await executeStep(ctx, action, fb, i, step);
               succeeded = true;
               break;
             } catch (fbErr) {
@@ -853,6 +864,37 @@ function stepSet(
     resolved[key] = resolveTemplateDeep(value, ctx);
   }
   return { ...ctx, vars: { ...ctx.vars, ...resolved } };
+}
+
+// --- If/else step (conditional branching) ---
+
+async function stepIf(
+  ctx: PipelineContext,
+  config: { if: string; then?: PipelineStep[]; else?: PipelineStep[] },
+  stepIndex: number,
+): Promise<PipelineContext> {
+  const conditionStr =
+    typeof config.if === "string" ? config.if : String(config.if);
+
+  // Strip ${{ }} wrapper if present
+  const exprMatch = conditionStr.match(/^\$\{\{\s*(.+?)\s*\}\}$/);
+  const expr = exprMatch ? exprMatch[1] : conditionStr;
+  const result = evalExpression(expr, buildScope(ctx));
+
+  const branch = result ? config.then : config.else;
+  if (!branch || branch.length === 0) return ctx;
+
+  // Execute sub-pipeline steps sequentially
+  for (let j = 0; j < branch.length; j++) {
+    const subStep = branch[j];
+    const entries = Object.entries(subStep);
+    const actionEntry =
+      entries.find(([k]) => k !== "fallback" && k !== "then" && k !== "else") ??
+      entries[0];
+    const [subAction, subConfig] = actionEntry;
+    ctx = await executeStep(ctx, subAction, subConfig, stepIndex, subStep);
+  }
+  return ctx;
 }
 
 /**
