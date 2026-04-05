@@ -1,0 +1,21 @@
+site: neonctl
+name: projects
+description: List Neon database projects
+type: bridge
+strategy: public
+binary: neonctl
+detect: which neonctl
+autoInstall: npm install -g neonctl
+
+pipeline:
+  - exec:
+      command: neonctl
+      args:
+        - projects
+        - list
+        - --output
+        - json
+      parse: json
+      timeout: 30000
+
+columns: [id, name, region_id, created_at]

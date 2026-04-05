@@ -1,0 +1,21 @@
+site: pscale
+name: databases
+description: List PlanetScale databases
+type: bridge
+strategy: public
+binary: pscale
+detect: which pscale
+autoInstall: brew install pscale
+
+pipeline:
+  - exec:
+      command: pscale
+      args:
+        - database
+        - list
+        - --format
+        - json
+      parse: json
+      timeout: 30000
+
+columns: [name, region, created_at]

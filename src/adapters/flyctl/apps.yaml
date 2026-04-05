@@ -1,0 +1,20 @@
+site: flyctl
+name: apps
+description: List Fly.io applications
+type: bridge
+strategy: public
+binary: fly
+detect: which fly
+autoInstall: brew install flyctl
+
+pipeline:
+  - exec:
+      command: fly
+      args:
+        - apps
+        - list
+        - --json
+      parse: json
+      timeout: 30000
+
+columns: [Name, Status, Organization]

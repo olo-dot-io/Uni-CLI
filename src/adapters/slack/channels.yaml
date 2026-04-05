@@ -1,0 +1,19 @@
+site: slack
+name: channels
+description: List Slack channels
+type: bridge
+strategy: public
+binary: slack
+detect: which slack
+
+pipeline:
+  - exec:
+      command: slack
+      args:
+        - channel
+        - list
+        - --json
+      parse: json
+      timeout: 30000
+
+columns: [name, id, is_private, num_members]

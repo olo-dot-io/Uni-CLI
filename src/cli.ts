@@ -20,6 +20,9 @@ import {
 import { registerOperateCommands } from "./commands/operate.js";
 import { registerRecordCommand } from "./commands/record.js";
 import { registerPluginCommands } from "./commands/plugin.js";
+import { registerAdapterCommands } from "./commands/adapter.js";
+import { registerInitCommand } from "./commands/init.js";
+import { registerDevCommand } from "./commands/dev.js";
 import { emitHook } from "./hooks.js";
 import type { OutputFormat } from "./types.js";
 
@@ -105,6 +108,15 @@ export async function createCli(): Promise<Command> {
 
   // Register plugin commands — third-party adapter management
   registerPluginCommands(program);
+
+  // Register adapter marketplace commands — install/update/list community adapters
+  registerAdapterCommands(program);
+
+  // Register init command — scaffold new adapter YAML files
+  registerInitCommand(program);
+
+  // Register dev command — hot-reload for adapter development
+  registerDevCommand(program);
 
   // Emit startup hook — plugins can listen for CLI boot
   await emitHook("onStartup", { command: "__startup__", args: {} });

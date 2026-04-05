@@ -7,6 +7,14 @@
   "bin": {
     "unicli": "dist/main.js"
   },
+  "files": [
+    "dist/",
+    "src/adapters/",
+    "AGENTS.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "exports": {
     ".": "./dist/main.js",
     "./registry": "./dist/registry.js"
@@ -24,6 +32,7 @@
     "verify": "npm run format:check && npm run typecheck && npm run lint && npm run test && npm run build",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "doctor": "tsx src/doctor.ts",
     "mcp": "tsx src/mcp/server.ts",
     "release": "npm run build && tsx scripts/release.ts",
@@ -42,7 +51,7 @@
     "cursor"
   ],
   "author": "ZenAlexa",
-  "license": "AGPL-3.0-only",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ZenAlexa/Uni-CLI.git"
