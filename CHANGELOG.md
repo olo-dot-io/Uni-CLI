@@ -3,6 +3,71 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
+## [0.204.0] — Vostok · Nikolayev
+
+### Engine Core (Sub-Project A)
+
+- **6 new pipeline steps** — press, scroll, snapshot (DOM a11y tree), tap (Vue Store Bridge), download (HTTP+yt-dlp), websocket (OBS auth)
+- **9 new BrowserPage methods** — insertText, nativeClick, nativeKeyPress, setFileInput, autoScroll, screenshot, networkRequests, snapshot, closeWindow
+- **9 new pipe filters** — slugify, sanitize, ext, basename, keys, json, abs, round, ceil, floor, int, float, str, reverse, unique (total: 29)
+- **VM sandbox migration** — replaced `new Function()` with hardened `vm.runInNewContext()` (null-prototype, frozen built-ins, 50ms timeout)
+- **Dual interceptor** — fetch + XHR monkey-patching with WeakMap anti-detection stealth
+- **Stealth upgrade** — 6 → 13 anti-detection patches (CDP cleanup, Error.stack filter, Performance API, iframe chrome consistency)
+
+### Daemon + Browser Bridge (Sub-Project B)
+
+- **Browser daemon** — standalone HTTP+WS server (port 19825), auto-spawn, 4h idle timeout, CSRF protection
+- **DaemonPage** — IPage implementation over daemon HTTP (reuses Chrome login sessions)
+- **Chrome extension** — Manifest V3 service worker, workspace isolation, command dispatch via chrome.debugger
+- **`operate` command** — 16 interactive browser subcommands (open, state, click, type, keys, scroll, screenshot, eval, network, etc.)
+- **`record` command** — capture network requests and auto-generate YAML adapters
+- **Shell completion** — bash, zsh, fish tab completion
+- **Daemon-first page acquisition** — yaml-runner tries daemon before direct CDP
+
+### Electron App Control (Sub-Project C)
+
+- **8 Electron apps** — Cursor, Codex, ChatGPT, Notion, Discord, ChatWise, Doubao, Antigravity
+- **66 commands** via shared AI chat pattern + per-app specialization
+- **App registry** — auto-discovery, CDP port assignment, user-extensible via ~/.unicli/apps.yaml
+
+### New Web Sites (Sub-Project D)
+
+- **+39 sites, +293 commands** — xiaohongshu (13), douyin (13), instagram (19), tiktok (15), facebook (10), amazon (8), boss (14), pixiv (6), hupu (7), xianyu (3), ones (11), notebooklm (15), doubao-web (9), lesswrong (15), gemini (+2 deep-research), yollomi (12), and 13 more P2 sites
+- **Existing site gaps filled** — xueqiu fund-holdings, hupu mentions
+
+### Desktop Expansion (Sub-Project E)
+
+- **FreeCAD** 2→15 commands, **Blender** 4→13, **GIMP** 3→12
+- **13 new apps** — OBS Studio (8, WebSocket), Zotero (8), Audacity/Sox (8), Krita (4), Kdenlive (3), Shotcut (3), MuseScore (5), CloudCompare (4), WireMock (5), AdGuardHome (5), Novita (3), Sketch (3), Slay the Spire II (6)
+
+### Ecosystem (Sub-Project F)
+
+- **Plugin system** — `unicli plugin install/uninstall/list/update` with GitHub/local sources
+- **Lifecycle hooks** — onStartup, onBeforeExecute, onAfterExecute (globalThis singleton, sequential execution)
+
+### Security
+
+- Shell injection fix in plugin.ts (execFileSync replaces execSync)
+- Path traversal prevention (plugin name validation + startsWith guard)
+- JS injection prevention in operate commands (ref validation, JSON.stringify selectors)
+- VM sandbox hardening (null-prototype, frozen built-ins, contextCodeGeneration restrictions)
+- Tap step sanitization (identifier regex for store/action names)
+- Fetch concurrency cap (mapConcurrent with limit=5)
+- Network buffer cap (500 entries max)
+
+### Metrics
+
+| Metric          | v0.203.0 | v0.204.0 |
+| --------------- | -------- | -------- |
+| Sites           | 57       | 96       |
+| Commands        | 289      | 582      |
+| Pipeline steps  | 17       | 23       |
+| Pipe filters    | 14       | 29       |
+| Stealth patches | 6        | 13       |
+| Tests           | ~137     | 2272     |
+
+---
+
 ## [0.203.0] — Vostok · Leonov
 
 ### Engine — Browser Strategy

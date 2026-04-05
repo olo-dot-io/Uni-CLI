@@ -6,7 +6,7 @@
      Output is JSON when piped. Errors are structured JSON to stderr.
      You can fix broken adapters yourself — read the Self-Repair section. -->
 
-> 57 sites, 289 commands. One CLI. `npm install -g unicli`
+> 96 sites, 582 commands. One CLI. `npm install -g unicli`
 
 ## For AI Agents
 
@@ -164,4 +164,4 @@ The engine auto-probes the first three on first run. `intercept` and `ui` requir
 
 ## Version
 
-0.203.0 — Vostok · Leonov
+0.204.0 — Vostok · Nikolayev

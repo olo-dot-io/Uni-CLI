@@ -1,4 +1,4 @@
-<!-- AGENT: npm install -g unicli && unicli list | Run any of 289 commands across 57 sites. JSON output when piped. Self-repairing YAML adapters. See AGENTS.md for full protocol. -->
+<!-- AGENT: npm install -g unicli && unicli list | Run any of 582 commands across 96 sites. JSON output when piped. Self-repairing YAML adapters. See AGENTS.md for full protocol. -->
 
 <h1 align="center">Uni-CLI</h1>
 
@@ -401,6 +401,6 @@ Uni-CLI is built on the insight that CLI is the universal interface for AI agent
 ---
 
 <p align="center">
-  <sub>v0.203.0 · Codename <strong>Vostok · Leonov</strong> — 57 sites, 289 commands</sub><br>
+  <sub>v0.204.0 · Codename <strong>Vostok · Nikolayev</strong> — 96 sites, 582 commands</sub><br>
   <sub>Built with care for AI agents and the humans who guide them.</sub>
 </p>
