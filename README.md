@@ -321,7 +321,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md). The fastest way to contribute: write a
 
 ## License
 
-[AGPL-3.0](./LICENSE) — Commercial license available. See [LICENSE-COMMERCIAL.md](./LICENSE-COMMERCIAL.md).
+[AGPL-3.0](./LICENSE)
 
 ---
 

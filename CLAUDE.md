@@ -194,7 +194,7 @@ cli({
 ## Code Standards
 
 - Version: 0.204.0
-- AGPL-3.0 license (dual-licensed: AGPL-3.0 + Commercial)
+- AGPL-3.0 license
 - Strict TypeScript — no `any` unless unavoidable
 - YAML adapters are the preferred contribution format
 - All commands support `--json` output
