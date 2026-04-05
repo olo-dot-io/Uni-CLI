@@ -167,6 +167,12 @@ async function executeStep(
       return stepDownload(ctx, config as DownloadStepConfig);
     case "websocket":
       return stepWebsocket(ctx, config as WebsocketStepConfig);
+    case "rate_limit": {
+      const rlConfig = config as { domain: string; rpm?: number };
+      const { waitForToken } = await import("./rate-limiter.js");
+      await waitForToken(rlConfig.domain, rlConfig.rpm ?? 60);
+      return ctx;
+    }
     case "set":
       return stepSet(ctx, config as Record<string, unknown>);
     case "append":

@@ -226,6 +226,35 @@ describe("each step", () => {
   });
 });
 
+describe("rate_limit step", () => {
+  it("does not block when under the rate limit", async () => {
+    const start = Date.now();
+    const result = await runPipeline(
+      [
+        { rate_limit: { domain: "test-fast.example.com", rpm: 600 } },
+        { fetch: { url: `${baseUrl}/?page=1` } },
+        { select: "items" },
+      ],
+      {},
+    );
+    const elapsed = Date.now() - start;
+    expect(result).toHaveLength(2);
+    expect(elapsed).toBeLessThan(3000);
+  });
+
+  it("defaults rpm to 60 when not specified", async () => {
+    const result = await runPipeline(
+      [
+        { rate_limit: { domain: "test-default.example.com" } },
+        { fetch: { url: `${baseUrl}/?page=1` } },
+        { select: "items" },
+      ],
+      {},
+    );
+    expect(result).toHaveLength(2);
+  });
+});
+
 describe("parallel step", () => {
   it("runs branches concurrently and concatenates by default", async () => {
     const result = await runPipeline(
