@@ -100,6 +100,17 @@ export class PipelineError extends Error {
   }
 }
 
+/** Reserved sibling keys that are not step action names */
+const SIBLING_KEYS = new Set(["fallback", "then", "else"]);
+
+function getActionEntry(step: PipelineStep): [string, unknown] {
+  const entries = Object.entries(step);
+  return (entries.find(([k]) => !SIBLING_KEYS.has(k)) ?? entries[0]) as [
+    string,
+    unknown,
+  ];
+}
+
 /** Dispatch a single pipeline step by action name. */
 async function executeStep(
   ctx: PipelineContext,
@@ -107,6 +118,7 @@ async function executeStep(
   config: unknown,
   stepIndex: number,
   fullStep?: PipelineStep,
+  depth?: number,
 ): Promise<PipelineContext> {
   switch (action) {
     case "fetch":
@@ -163,7 +175,7 @@ async function executeStep(
         then?: PipelineStep[];
         else?: PipelineStep[];
       };
-      return stepIf(ctx, ifStep, stepIndex);
+      return stepIf(ctx, ifStep, stepIndex, (depth ?? 0) + 1);
     }
     default:
       return ctx;
@@ -201,11 +213,7 @@ export async function runPipeline(
   try {
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
-      const entries = Object.entries(step);
-      const actionEntry =
-        entries.find(([k]) => k !== "fallback" && k !== "then" && k !== "else") ??
-        entries[0];
-      const [action, config] = actionEntry;
+      const [action, config] = getActionEntry(step);
 
       // --- Fallback extraction ---
       // Fallback can live inside the step config (object configs like fetch)
@@ -872,7 +880,19 @@ async function stepIf(
   ctx: PipelineContext,
   config: { if: string; then?: PipelineStep[]; else?: PipelineStep[] },
   stepIndex: number,
+  depth: number = 0,
 ): Promise<PipelineContext> {
+  if (depth > 10) {
+    throw new PipelineError("if step recursion depth exceeded (max 10)", {
+      step: stepIndex,
+      action: "if",
+      config,
+      errorType: "parse_error",
+      suggestion:
+        "Reduce nesting depth of if/else steps. Maximum is 10 levels.",
+    });
+  }
+
   const conditionStr =
     typeof config.if === "string" ? config.if : String(config.if);
 
@@ -882,17 +902,13 @@ async function stepIf(
   const result = evalExpression(expr, buildScope(ctx));
 
   const branch = result ? config.then : config.else;
-  if (!branch || branch.length === 0) return ctx;
+  if (!branch || !Array.isArray(branch) || branch.length === 0) return ctx;
 
   // Execute sub-pipeline steps sequentially
   for (let j = 0; j < branch.length; j++) {
     const subStep = branch[j];
-    const entries = Object.entries(subStep);
-    const actionEntry =
-      entries.find(([k]) => k !== "fallback" && k !== "then" && k !== "else") ??
-      entries[0];
-    const [subAction, subConfig] = actionEntry;
-    ctx = await executeStep(ctx, subAction, subConfig, stepIndex, subStep);
+    const [subAction, subConfig] = getActionEntry(subStep);
+    ctx = await executeStep(ctx, subAction, subConfig, stepIndex, subStep, depth);
   }
   return ctx;
 }
