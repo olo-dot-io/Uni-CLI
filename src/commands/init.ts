@@ -21,7 +21,7 @@ const TEMPLATES: Record<string, string> = {
     "strategy: public",
     "",
     "pipeline:",
-    '  - fetch:',
+    "  - fetch:",
     '      url: "https://{{site}}.com/api/{{name}}"',
     '  - select: "data"',
     "  - map:",
@@ -100,7 +100,7 @@ const TEMPLATES: Record<string, string> = {
     "pipeline:",
     "  - websocket:",
     '      url: "ws://localhost:4455"',
-    "      send: '{\"op\": 6, \"d\": {}}'",
+    '      send: \'{"op": 6, "d": {}}\'',
     "      timeout: 5000",
     "",
     "columns: [type, data]",
@@ -152,9 +152,7 @@ export function registerInitCommand(program: Command): void {
         writeFileSync(filePath, yaml, "utf-8");
         console.log(chalk.green(`Created ${filePath}`));
         console.log(
-          chalk.dim(
-            `Edit the file, then test with: unicli ${site} ${command}`,
-          ),
+          chalk.dim(`Edit the file, then test with: unicli ${site} ${command}`),
         );
       },
     );

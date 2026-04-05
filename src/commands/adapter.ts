@@ -9,12 +9,7 @@
 
 import { Command } from "commander";
 import chalk from "chalk";
-import {
-  writeFileSync,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-} from "node:fs";
+import { writeFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const REGISTRY_URL =

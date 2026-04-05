@@ -63,7 +63,9 @@ async function runAdapter(filePath: string, fmt: string): Promise<void> {
     });
 
     const columns = doc.columns as string[] | undefined;
-    const outputFmt = detectFormat(fmt as "table" | "json" | "yaml" | "csv" | "md" | undefined);
+    const outputFmt = detectFormat(
+      fmt as "table" | "json" | "yaml" | "csv" | "md" | undefined,
+    );
     console.log(format(result, columns, outputFmt));
   } catch (err) {
     console.error(chalk.red(err instanceof Error ? err.message : String(err)));
