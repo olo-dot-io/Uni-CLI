@@ -295,6 +295,34 @@ export async function runPipeline(
           if (!succeeded) throw lastErr;
         }
       } catch (err) {
+        // Auto-fix: try alternative select paths when selector_miss
+        if (
+          action === "select" &&
+          err instanceof PipelineError &&
+          err.detail.errorType === "selector_miss" &&
+          options?.site
+        ) {
+          try {
+            const { suggestSelectFix } = await import("./auto-fix.js");
+            const suggestions = suggestSelectFix(ctx.data, stepConfig as string);
+            let fixed = false;
+            for (const suggestion of suggestions) {
+              try {
+                ctx = stepSelect(ctx, suggestion, i);
+                process.stderr.write(
+                  `[auto-fix] ${options.site}: select path changed "${String(stepConfig)}" → "${suggestion}"\n`,
+                );
+                fixed = true;
+                break;
+              } catch {
+                // Try next suggestion
+              }
+            }
+            if (fixed) continue;
+          } catch {
+            // Auto-fix module not available
+          }
+        }
         if (err instanceof PipelineError) throw err;
         throw new PipelineError(
           `Step ${i} (${action}) failed: ${err instanceof Error ? err.message : String(err)}`,
