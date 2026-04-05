@@ -99,27 +99,27 @@ For entirely new sites with no existing adapter, agents can generate one from sc
 
 Every error includes enough context for an agent to act without asking a human:
 
-| Field          | Type   | Description                                  |
-| -------------- | ------ | -------------------------------------------- |
+| Field          | Type   | Description                                                        |
+| -------------- | ------ | ------------------------------------------------------------------ |
 | `error`        | string | Error type: `selector_miss`, `auth_expired`, `network_error`, etc. |
-| `adapter_path` | string | Absolute path to the YAML file               |
-| `step`         | number | Pipeline step index (0-based)                |
-| `action`       | string | Step action name (`fetch`, `select`, etc.)   |
-| `config`       | any    | The step configuration that failed           |
-| `suggestion`   | string | Human/agent-readable fix suggestion          |
-| `actual_keys`  | array  | Available keys when a `select` path misses   |
+| `adapter_path` | string | Absolute path to the YAML file                                     |
+| `step`         | number | Pipeline step index (0-based)                                      |
+| `action`       | string | Step action name (`fetch`, `select`, etc.)                         |
+| `config`       | any    | The step configuration that failed                                 |
+| `suggestion`   | string | Human/agent-readable fix suggestion                                |
+| `actual_keys`  | array  | Available keys when a `select` path misses                         |
 
 ## Error Types
 
-| Error Type        | Meaning                           | Typical Fix                       |
-| ----------------- | --------------------------------- | --------------------------------- |
-| `selector_miss`   | CSS selector or JSON path missed  | Update selector in YAML           |
-| `auth_expired`    | Cookie/token no longer valid      | `unicli auth setup <site>`        |
-| `network_error`   | Connection failed                 | Check network, retry later        |
-| `rate_limited`    | Too many requests                 | Wait, add `rate_limit` step       |
-| `schema_change`   | Response shape changed            | Update `select` and `map` steps   |
-| `binary_missing`  | Desktop CLI not installed         | Install the binary                |
-| `parse_error`     | Response is not valid JSON/HTML   | Check URL, add `fetch_text` step  |
+| Error Type       | Meaning                          | Typical Fix                      |
+| ---------------- | -------------------------------- | -------------------------------- |
+| `selector_miss`  | CSS selector or JSON path missed | Update selector in YAML          |
+| `auth_expired`   | Cookie/token no longer valid     | `unicli auth setup <site>`       |
+| `network_error`  | Connection failed                | Check network, retry later       |
+| `rate_limited`   | Too many requests                | Wait, add `rate_limit` step      |
+| `schema_change`  | Response shape changed           | Update `select` and `map` steps  |
+| `binary_missing` | Desktop CLI not installed        | Install the binary               |
+| `parse_error`    | Response is not valid JSON/HTML  | Check URL, add `fetch_text` step |
 
 ## Repair Workflow
 

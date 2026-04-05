@@ -116,7 +116,13 @@ src/
 | Daemon stop     | `unicli daemon stop`              |
 | Operate browser | `unicli operate <subcommand>`     |
 | Record adapter  | `unicli record <url>`             |
+| Adapter install | `unicli adapter install <s>/<c>`  |
+| Adapter list    | `unicli adapter list`             |
+| Init adapter    | `unicli init <site> <command>`    |
+| Dev hot-reload  | `unicli dev <path>`               |
 | Completion      | `unicli completion <shell>`       |
+| Docs dev        | `npm run docs:dev`                |
+| Docs build      | `npm run docs:build`              |
 | Sync refs       | `npm run sync:ref`                |
 
 ## Pipeline Steps (30)
@@ -201,7 +207,7 @@ cli({
 ## Code Standards
 
 - Version: 0.204.0
-- AGPL-3.0 license
+- Apache-2.0 license
 - Strict TypeScript — no `any` unless unavoidable
 - YAML adapters are the preferred contribution format
 - All commands support `--json` output

@@ -4,16 +4,16 @@ Uni-CLI uses exit codes from `sysexits.h` — the UNIX standard for machine-pars
 
 ## Code Reference
 
-| Code | Constant             | Meaning               | Agent Response                    |
-| ---- | -------------------- | --------------------- | --------------------------------- |
-| 0    | `SUCCESS`            | Command succeeded     | Use the data from stdout          |
-| 1    | `GENERIC_ERROR`      | Unclassified error    | Read stderr JSON for details      |
-| 2    | `USAGE_ERROR`        | Bad arguments or syntax | Fix the command invocation      |
-| 66   | `EMPTY_RESULT`       | No data returned      | Try different parameters or query |
-| 69   | `SERVICE_UNAVAILABLE`| Target site is down   | Retry later                       |
-| 75   | `TEMP_FAILURE`       | Temporary failure     | Retry with exponential backoff    |
-| 77   | `AUTH_REQUIRED`      | Authentication needed | Run `unicli auth setup <site>`    |
-| 78   | `CONFIG_ERROR`       | Adapter misconfigured | Read and fix the YAML adapter     |
+| Code | Constant              | Meaning                 | Agent Response                    |
+| ---- | --------------------- | ----------------------- | --------------------------------- |
+| 0    | `SUCCESS`             | Command succeeded       | Use the data from stdout          |
+| 1    | `GENERIC_ERROR`       | Unclassified error      | Read stderr JSON for details      |
+| 2    | `USAGE_ERROR`         | Bad arguments or syntax | Fix the command invocation        |
+| 66   | `EMPTY_RESULT`        | No data returned        | Try different parameters or query |
+| 69   | `SERVICE_UNAVAILABLE` | Target site is down     | Retry later                       |
+| 75   | `TEMP_FAILURE`        | Temporary failure       | Retry with exponential backoff    |
+| 77   | `AUTH_REQUIRED`       | Authentication needed   | Run `unicli auth setup <site>`    |
+| 78   | `CONFIG_ERROR`        | Adapter misconfigured   | Read and fix the YAML adapter     |
 
 ## Code 0 — Success
 

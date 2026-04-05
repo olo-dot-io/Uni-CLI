@@ -4,15 +4,15 @@ Uni-CLI adapters execute a sequence of pipeline steps. Each step performs one ac
 
 ## Overview
 
-| Category  | Steps                                                              | Count |
-| --------- | ------------------------------------------------------------------ | ----- |
-| API       | fetch, fetch_text, parse_rss, html_to_md                          | 4     |
-| Transform | select, map, filter, sort, limit                                   | 5     |
-| Desktop   | exec, write_temp                                                   | 2     |
-| Browser   | navigate, evaluate, click, type, wait, intercept, press, scroll, snapshot, tap | 10 |
-| Media     | download                                                           | 1     |
-| Service   | websocket                                                          | 1     |
-| Control   | set, if, append, each, parallel, rate_limit                        | 6     |
+| Category  | Steps                                                                          | Count |
+| --------- | ------------------------------------------------------------------------------ | ----- |
+| API       | fetch, fetch_text, parse_rss, html_to_md                                       | 4     |
+| Transform | select, map, filter, sort, limit                                               | 5     |
+| Desktop   | exec, write_temp                                                               | 2     |
+| Browser   | navigate, evaluate, click, type, wait, intercept, press, scroll, snapshot, tap | 10    |
+| Media     | download                                                                       | 1     |
+| Service   | websocket                                                                      | 1     |
+| Control   | set, if, append, each, parallel, rate_limit                                    | 6     |
 
 ---
 
@@ -25,14 +25,14 @@ HTTP request that returns parsed JSON. Supports GET, POST, PUT, DELETE, PATCH wi
 ```yaml
 - fetch:
     url: "https://api.example.com/v1/posts"
-    method: GET                     # default
+    method: GET # default
     params:
       page: 1
       limit: 20
     headers:
       Accept: "application/json"
-    retry: 3                        # max retries
-    backoff: exponential            # linear | exponential
+    retry: 3 # max retries
+    backoff: exponential # linear | exponential
 ```
 
 POST with a JSON body:
@@ -138,7 +138,7 @@ Sort an array by a field. Ascending by default.
 ```yaml
 - sort:
     by: "score"
-    order: desc          # asc | desc
+    order: desc # asc | desc
 ```
 
 ### limit
@@ -168,8 +168,16 @@ Run a subprocess command. Captures stdout and optionally parses it as JSON.
 ```yaml
 - exec:
     cmd: "ffprobe"
-    args: ["-v", "quiet", "-print_format", "json", "-show_format", "${{ args.file }}"]
-    json: true             # parse stdout as JSON
+    args:
+      [
+        "-v",
+        "quiet",
+        "-print_format",
+        "json",
+        "-show_format",
+        "${{ args.file }}",
+      ]
+    json: true # parse stdout as JSON
 ```
 
 With environment variables:
@@ -231,8 +239,8 @@ Navigate Chrome to a URL. Waits for the page to load.
 ```yaml
 - navigate:
     url: "https://example.com/page"
-    waitUntil: networkidle    # load | domcontentloaded | networkidle
-    settleMs: 2000            # additional wait after load event
+    waitUntil: networkidle # load | domcontentloaded | networkidle
+    settleMs: 2000 # additional wait after load event
 ```
 
 Short form:
@@ -284,7 +292,7 @@ Type text into an input element.
 - type:
     selector: "#search-input"
     text: "${{ args.query }}"
-    submit: true              # press Enter after typing
+    submit: true # press Enter after typing
 ```
 
 ### wait
@@ -311,19 +319,19 @@ Capture network requests made by the page. Uni-CLI intercepts both `fetch()` and
 ```yaml
 - intercept:
     pattern: "**/api/v1/feed"
-    trigger: "scroll:down"       # action that triggers the request
-    timeout: 10000               # max wait for matching request
-    select: "data.items"         # extract from response JSON
+    trigger: "scroll:down" # action that triggers the request
+    timeout: 10000 # max wait for matching request
+    select: "data.items" # extract from response JSON
 ```
 
 Trigger types:
 
-| Trigger                   | Action                              |
-| ------------------------- | ----------------------------------- |
-| `navigate:<url>`          | Navigate to URL and capture         |
-| `scroll:down`             | Scroll down to trigger lazy loading |
-| `click:<selector>`        | Click element to trigger request    |
-| `wait:<ms>`               | Wait passively for the request      |
+| Trigger            | Action                              |
+| ------------------ | ----------------------------------- |
+| `navigate:<url>`   | Navigate to URL and capture         |
+| `scroll:down`      | Scroll down to trigger lazy loading |
+| `click:<selector>` | Click element to trigger request    |
+| `wait:<ms>`        | Wait passively for the request      |
 
 ### press
 
@@ -338,7 +346,7 @@ With modifiers:
 ```yaml
 - press:
     key: "a"
-    modifiers: ["Meta"]          # Cmd+A on macOS
+    modifiers: ["Meta"] # Cmd+A on macOS
 ```
 
 ### scroll
@@ -347,7 +355,7 @@ Scroll the page in a direction, to a specific element, or auto-scroll to load al
 
 ```yaml
 # Scroll direction
-- scroll: "down"                 # down | up | bottom | top
+- scroll: "down" # down | up | bottom | top
 
 # Auto-scroll (load all lazy content)
 - scroll:
@@ -362,8 +370,8 @@ Generate a DOM accessibility tree snapshot. Returns a text representation of the
 
 ```yaml
 - snapshot:
-    interactive: true            # include ref numbers for interactive elements
-    compact: true                # minimal output
+    interactive: true # include ref numbers for interactive elements
+    compact: true # minimal output
 ```
 
 The snapshot output includes `[ref=N]` markers on interactive elements. These refs can be used with the `operate` command for precise interaction.
@@ -374,11 +382,11 @@ Vue Store Action Bridge. Triggers a Pinia or Vuex store action and captures the 
 
 ```yaml
 - tap:
-    store: "useMainStore"        # Pinia store name
-    action: "fetchPosts"         # action to call
-    args: [{ page: 1 }]         # action arguments
-    capture: "**/api/posts"      # network pattern to capture
-    select: "data.list"          # extract from response
+    store: "useMainStore" # Pinia store name
+    action: "fetchPosts" # action to call
+    args: [{ page: 1 }] # action arguments
+    capture: "**/api/posts" # network pattern to capture
+    select: "data.list" # extract from response
 ```
 
 This is useful for Vue-based SPAs where the data loading is triggered by store actions rather than direct API calls.
@@ -403,7 +411,7 @@ Batch download from an array:
 
 ```yaml
 - download:
-    field: "url"                 # field containing the URL in each item
+    field: "url" # field containing the URL in each item
     dir: "~/Downloads/images"
     type: image
 ```
@@ -414,7 +422,7 @@ yt-dlp integration (auto-detected for video platforms):
 - download:
     url: "${{ item.url }}"
     dir: "~/Downloads"
-    type: video                  # uses yt-dlp when available
+    type: video # uses yt-dlp when available
 ```
 
 Each item in the result gets a `_download` field with status, path, size, and duration.
@@ -430,7 +438,7 @@ Connect to a WebSocket server, send a message, and wait for a matching response.
 ```yaml
 - websocket:
     url: "ws://localhost:4455"
-    auth: obs                    # OBS WebSocket auth handshake
+    auth: obs # OBS WebSocket auth handshake
     send:
       op: 6
       d:
@@ -499,7 +507,7 @@ Iterate over an array, executing a sub-pipeline for each item. Supports parallel
 
 ```yaml
 - each:
-    parallel: 5                  # max concurrent
+    parallel: 5 # max concurrent
     pipeline:
       - fetch:
           url: "https://api.example.com/item/${{ item.id }}"
@@ -527,7 +535,7 @@ Execute multiple pipeline branches concurrently and merge results.
     - pipeline:
         - fetch: { url: "https://api.example.com/new" }
         - select: "data.items"
-  merge: concat                  # concat | zip | object
+  merge: concat # concat | zip | object
 ```
 
 ### rate_limit
@@ -537,7 +545,7 @@ Pause execution to respect rate limits. Blocks until a token is available.
 ```yaml
 - rate_limit:
     domain: "api.example.com"
-    rpm: 30                      # requests per minute (default: 60)
+    rpm: 30 # requests per minute (default: 60)
 ```
 
 Place this step before `fetch` calls to rate-limited APIs. The rate limiter is shared across all adapters for the same domain.
@@ -550,15 +558,15 @@ All step configurations support template expressions with the syntax `${{ expres
 
 ### Available Variables
 
-| Variable   | Description                                  | Available In         |
-| ---------- | -------------------------------------------- | -------------------- |
-| `args`     | Command-line arguments                       | All steps            |
-| `data`     | Current pipeline data                        | All steps            |
-| `item`     | Current item (in `map`, `filter`, `each`)    | Iteration steps      |
-| `index`    | Current iteration index                      | `map`, `each`        |
-| `steps`    | Results from named steps                     | After the named step |
-| `vars`     | Variables set with `set`                     | After `set`          |
-| `env`      | Environment variables                        | All steps            |
+| Variable | Description                               | Available In         |
+| -------- | ----------------------------------------- | -------------------- |
+| `args`   | Command-line arguments                    | All steps            |
+| `data`   | Current pipeline data                     | All steps            |
+| `item`   | Current item (in `map`, `filter`, `each`) | Iteration steps      |
+| `index`  | Current iteration index                   | `map`, `each`        |
+| `steps`  | Results from named steps                  | After the named step |
+| `vars`   | Variables set with `set`                  | After `set`          |
+| `env`    | Environment variables                     | All steps            |
 
 ### Filters
 

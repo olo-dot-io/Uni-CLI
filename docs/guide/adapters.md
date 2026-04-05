@@ -4,13 +4,13 @@ An adapter maps one site or tool to a set of CLI commands. Uni-CLI supports five
 
 ## Adapter Types
 
-| Type       | Surface              | Auth                    | Example Sites                    |
-| ---------- | -------------------- | ----------------------- | -------------------------------- |
-| `web-api`  | HTTP APIs            | None, cookie, or header | hackernews, reddit, bilibili     |
-| `browser`  | Full browser control | Chrome session          | chatgpt, notion, discord         |
-| `desktop`  | Local subprocess     | None                    | ffmpeg, imagemagick, blender     |
-| `bridge`   | Existing CLIs        | Passthrough             | gh, docker, vercel, yt-dlp       |
-| `service`  | WebSocket / HTTP     | API key or none         | ollama, obs-studio, comfyui      |
+| Type      | Surface              | Auth                    | Example Sites                |
+| --------- | -------------------- | ----------------------- | ---------------------------- |
+| `web-api` | HTTP APIs            | None, cookie, or header | hackernews, reddit, bilibili |
+| `browser` | Full browser control | Chrome session          | chatgpt, notion, discord     |
+| `desktop` | Local subprocess     | None                    | ffmpeg, imagemagick, blender |
+| `bridge`  | Existing CLIs        | Passthrough             | gh, docker, vercel, yt-dlp   |
+| `service` | WebSocket / HTTP     | API key or none         | ollama, obs-studio, comfyui  |
 
 ## YAML Format
 
@@ -172,7 +172,16 @@ args:
 pipeline:
   - exec:
       cmd: "ffprobe"
-      args: ["-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", "${{ args.file }}"]
+      args:
+        [
+          "-v",
+          "quiet",
+          "-print_format",
+          "json",
+          "-show_format",
+          "-show_streams",
+          "${{ args.file }}",
+        ]
       json: true
   - map:
       format: "${{ item.format.format_long_name }}"
@@ -209,7 +218,12 @@ pipeline:
           (gimp-file-overwrite RUN-NONINTERACTIVE image drawable "${{ args.file }}" "${{ args.file }}"))
   - exec:
       cmd: "gimp"
-      args: ["-i", "-b", "(gimp-script-fu-console-run 0 \"${{ steps.write_temp.path }}\")"]
+      args:
+        [
+          "-i",
+          "-b",
+          '(gimp-script-fu-console-run 0 "${{ steps.write_temp.path }}")',
+        ]
 ```
 
 ## bridge — CLI Passthrough
@@ -227,7 +241,15 @@ detect: "gh --version"
 pipeline:
   - exec:
       cmd: "gh"
-      args: ["repo", "list", "--json", "name,description,stargazerCount,updatedAt", "--limit", "20"]
+      args:
+        [
+          "repo",
+          "list",
+          "--json",
+          "name,description,stargazerCount,updatedAt",
+          "--limit",
+          "20",
+        ]
       json: true
   - map:
       name: "${{ item.name }}"
@@ -300,11 +322,11 @@ TypeScript adapters use the `cli()` helper from the registry. They have full acc
 
 ## File Locations
 
-| Location                              | Purpose                          |
-| ------------------------------------- | -------------------------------- |
-| `src/adapters/<site>/`                | Built-in adapters (ship with npm)|
-| `~/.unicli/adapters/<site>/`          | User-local overrides             |
-| `~/.unicli/adapters/<site>/<cmd>.yml` | Single command override          |
+| Location                              | Purpose                           |
+| ------------------------------------- | --------------------------------- |
+| `src/adapters/<site>/`                | Built-in adapters (ship with npm) |
+| `~/.unicli/adapters/<site>/`          | User-local overrides              |
+| `~/.unicli/adapters/<site>/<cmd>.yml` | Single command override           |
 
 User-local adapters take precedence over built-in ones. This is how self-repair works — an agent edits the YAML in `~/.unicli/adapters/`, and the fix survives `npm update`.
 
@@ -316,7 +338,7 @@ Adapters declare arguments in the `args` field:
 args:
   - name: query
     required: true
-    positional: true        # unicli site cmd "my query"
+    positional: true # unicli site cmd "my query"
     description: Search term
   - name: limit
     type: int
@@ -327,12 +349,12 @@ args:
     default: hot
 ```
 
-| Field        | Type     | Description                        |
-| ------------ | -------- | ---------------------------------- |
-| `name`       | string   | Argument name (becomes `--name`)   |
-| `type`       | string   | `str`, `int`, `float`, or `bool`   |
-| `required`   | boolean  | Fail if missing                    |
-| `positional` | boolean  | Can be passed without `--name`     |
-| `default`    | any      | Default value                      |
-| `choices`    | string[] | Allowed values                     |
-| `description`| string   | Help text                          |
+| Field         | Type     | Description                      |
+| ------------- | -------- | -------------------------------- |
+| `name`        | string   | Argument name (becomes `--name`) |
+| `type`        | string   | `str`, `int`, `float`, or `bool` |
+| `required`    | boolean  | Fail if missing                  |
+| `positional`  | boolean  | Can be passed without `--name`   |
+| `default`     | any      | Default value                    |
+| `choices`     | string[] | Allowed values                   |
+| `description` | string   | Help text                        |

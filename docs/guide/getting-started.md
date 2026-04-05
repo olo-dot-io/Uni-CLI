@@ -163,16 +163,16 @@ unicli hackernews top --md         # Markdown table
 
 Uni-CLI uses `sysexits.h`-compatible exit codes so agents can programmatically handle failures:
 
-| Code | Meaning             | Agent Action              |
-| ---- | ------------------- | ------------------------- |
-| 0    | Success             | Use the data              |
-| 1    | Generic error       | Read stderr JSON          |
-| 2    | Usage error         | Fix the command syntax    |
-| 66   | Empty result        | Try different parameters  |
-| 69   | Service unavailable | Retry later               |
-| 75   | Temporary failure   | Retry with backoff        |
-| 77   | Auth required       | Run `unicli auth setup`   |
-| 78   | Config error        | Check adapter YAML        |
+| Code | Meaning             | Agent Action             |
+| ---- | ------------------- | ------------------------ |
+| 0    | Success             | Use the data             |
+| 1    | Generic error       | Read stderr JSON         |
+| 2    | Usage error         | Fix the command syntax   |
+| 66   | Empty result        | Try different parameters |
+| 69   | Service unavailable | Retry later              |
+| 75   | Temporary failure   | Retry with backoff       |
+| 77   | Auth required       | Run `unicli auth setup`  |
+| 78   | Config error        | Check adapter YAML       |
 
 ## Next Steps
 
