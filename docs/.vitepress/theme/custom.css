@@ -1,0 +1,52 @@
+/* Uni-CLI VitePress Theme — DESIGN.md tokens
+   Geist Mono headings, Geist Sans body, Terminal Green accent on #0a0a0a */
+
+:root {
+  --vp-c-brand-1: #22c55e;
+  --vp-c-brand-2: #4ade80;
+  --vp-c-brand-3: #166534;
+  --vp-c-brand-soft: rgba(34, 197, 94, 0.14);
+}
+
+.dark {
+  --vp-c-bg: #0a0a0a;
+  --vp-c-bg-alt: #111111;
+  --vp-c-bg-elv: #1a1a1a;
+  --vp-c-bg-soft: #111111;
+  --vp-c-text-1: #e5e5e5;
+  --vp-c-text-2: #737373;
+  --vp-c-text-3: #525252;
+  --vp-c-divider: rgba(255, 255, 255, 0.06);
+}
+
+/* Headings — Geist Mono */
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3,
+.vp-doc h4 {
+  font-family: "Geist Mono", ui-monospace, monospace;
+  letter-spacing: -0.5px;
+}
+
+/* Body text — Geist Sans */
+.vp-doc p,
+.vp-doc li,
+.vp-doc td {
+  font-family: "Geist", system-ui, sans-serif;
+}
+
+/* Code blocks — Geist Mono */
+.vp-doc [class*="language-"] code {
+  font-family: "Geist Mono", ui-monospace, monospace;
+}
+
+/* Hero title */
+.VPHero .name {
+  font-family: "Geist Mono", ui-monospace, monospace !important;
+  letter-spacing: -2px;
+}
+
+/* Feature cards — sharp corners */
+.VPFeature {
+  border-radius: 2px !important;
+}
