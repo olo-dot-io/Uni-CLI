@@ -1,0 +1,17 @@
+site: dingtalk
+name: version
+description: Check DingTalk CLI version
+type: bridge
+strategy: public
+binary: dingtalk-cli
+detect: which dingtalk-cli
+
+pipeline:
+  - exec:
+      command: dingtalk-cli
+      args:
+        - --version
+      parse: text
+      timeout: 10000
+
+columns: [output]

@@ -26,7 +26,7 @@ import { runInNewContext } from "node:vm";
 import TurndownService from "turndown";
 import { USER_AGENT } from "../constants.js";
 import type { PipelineStep } from "../types.js";
-import { loadCookies, formatCookieHeader } from "./cookies.js";
+import { formatCookieHeader, loadCookiesWithCDP } from "./cookies.js";
 import type { BrowserPage } from "../browser/page.js";
 import {
   generateInterceptorJs,
@@ -53,6 +53,7 @@ export interface PipelineOptions {
 type PipelineContext = {
   data: unknown;
   args: Record<string, unknown>;
+  vars: Record<string, unknown>;
   base?: string;
   cookieHeader?: string;
   temp?: Record<string, string>;
@@ -99,115 +100,178 @@ export class PipelineError extends Error {
   }
 }
 
+/** Reserved sibling keys that are not step action names */
+const SIBLING_KEYS = new Set(["fallback", "then", "else"]);
+
+function getActionEntry(step: PipelineStep): [string, unknown] {
+  const entries = Object.entries(step);
+  return (entries.find(([k]) => !SIBLING_KEYS.has(k)) ?? entries[0]) as [
+    string,
+    unknown,
+  ];
+}
+
+/** Dispatch a single pipeline step by action name. */
+async function executeStep(
+  ctx: PipelineContext,
+  action: string,
+  config: unknown,
+  stepIndex: number,
+  fullStep?: PipelineStep,
+  depth?: number,
+): Promise<PipelineContext> {
+  switch (action) {
+    case "fetch":
+      return stepFetch(ctx, config as FetchConfig);
+    case "fetch_text":
+      return stepFetchText(ctx, config as FetchConfig);
+    case "parse_rss":
+      return stepParseRss(ctx, config as RssConfig | undefined);
+    case "select":
+      return stepSelect(ctx, config as string, stepIndex);
+    case "map":
+      return stepMap(ctx, config as Record<string, string>);
+    case "filter":
+      return stepFilter(ctx, config as string);
+    case "sort":
+      return stepSort(ctx, config as SortConfig);
+    case "limit":
+      return stepLimit(ctx, config);
+    case "exec":
+      return stepExec(ctx, config as ExecConfig);
+    case "html_to_md":
+      return stepHtmlToMd(ctx);
+    case "write_temp":
+      return stepWriteTemp(ctx, config as WriteTempConfig);
+    case "navigate":
+      return stepNavigate(ctx, config as NavigateConfig);
+    case "evaluate":
+      return stepEvaluate(ctx, config as EvaluateConfig | string);
+    case "click":
+      return stepClick(ctx, config as ClickConfig | string);
+    case "type":
+      return stepType(ctx, config as TypeConfig);
+    case "wait":
+      return stepWaitBrowser(ctx, config as WaitBrowserConfig | number);
+    case "intercept":
+      return stepIntercept(ctx, config as InterceptConfig);
+    case "press":
+      return stepPress(ctx, config);
+    case "scroll":
+      return stepScroll(ctx, config);
+    case "snapshot":
+      return stepSnapshot(ctx, config);
+    case "tap":
+      return stepTap(ctx, config as TapConfig);
+    case "download":
+      return stepDownload(ctx, config as DownloadStepConfig);
+    case "websocket":
+      return stepWebsocket(ctx, config as WebsocketStepConfig);
+    case "set":
+      return stepSet(ctx, config as Record<string, unknown>);
+    case "if": {
+      const ifStep = (fullStep ?? { if: config }) as {
+        if: string;
+        then?: PipelineStep[];
+        else?: PipelineStep[];
+      };
+      return stepIf(ctx, ifStep, stepIndex, (depth ?? 0) + 1);
+    }
+    default:
+      return ctx;
+  }
+}
+
 export async function runPipeline(
   steps: PipelineStep[],
   args: Record<string, unknown>,
   base?: string,
   options?: PipelineOptions,
 ): Promise<unknown[]> {
-  // Load cookies for cookie strategy
+  // Load cookies for cookie/header strategy (disk first, CDP fallback)
   let cookieHeader: string | undefined;
-  if (options?.strategy === "cookie" && options?.site) {
-    const cookies = loadCookies(options.site);
+  if (
+    (options?.strategy === "cookie" || options?.strategy === "header") &&
+    options?.site
+  ) {
+    const cookies = await loadCookiesWithCDP(options.site);
     if (!cookies) {
       throw new PipelineError(
         `No cookies found for "${options.site}". Run: unicli auth setup ${options.site}`,
         {
           step: -1,
           action: "auth",
-          config: { site: options.site, strategy: "cookie" },
+          config: { site: options.site, strategy: options.strategy },
           errorType: "http_error",
-          suggestion: `Create cookie file at ~/.unicli/cookies/${options.site}.json with the required cookies. Run "unicli auth setup ${options.site}" for instructions.`,
+          suggestion: `Either start Chrome with "unicli browser start" and login to ${options.site}, or create cookie file at ~/.unicli/cookies/${options.site}.json`,
         },
       );
     }
     cookieHeader = formatCookieHeader(cookies);
   }
 
-  let ctx: PipelineContext = { data: null, args, base, cookieHeader };
+  let ctx: PipelineContext = { data: null, args, vars: {}, base, cookieHeader };
   let tempDir: string | undefined;
 
   try {
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
-      const [action, config] = Object.entries(step)[0];
+      const [action, config] = getActionEntry(step);
+
+      // --- Fallback extraction ---
+      // Fallback can live inside the step config (object configs like fetch)
+      // or as a sibling key in the step object (string configs like select).
+      let stepConfig = config;
+      let fallbacks: unknown[] | undefined;
+
+      if (
+        stepConfig &&
+        typeof stepConfig === "object" &&
+        !Array.isArray(stepConfig)
+      ) {
+        const configObj = stepConfig as Record<string, unknown>;
+        if ("fallback" in configObj) {
+          fallbacks = Array.isArray(configObj.fallback)
+            ? configObj.fallback
+            : [configObj.fallback];
+          const { fallback: _, ...rest } = configObj;
+          stepConfig = rest;
+        }
+      }
+
+      if (!fallbacks) {
+        const stepObj = step as Record<string, unknown>;
+        if ("fallback" in stepObj) {
+          const fb = stepObj.fallback;
+          fallbacks = Array.isArray(fb) ? fb : [fb];
+        }
+      }
+
+      // Filter out null/undefined fallback entries (e.g. `fallback:` with no value in YAML)
+      if (fallbacks) {
+        fallbacks = fallbacks.filter((fb) => fb != null);
+        if (fallbacks.length === 0) fallbacks = undefined;
+      }
 
       try {
-        switch (action) {
-          case "fetch":
-            ctx = await stepFetch(ctx, config as FetchConfig);
-            break;
-          case "fetch_text":
-            ctx = await stepFetchText(ctx, config as FetchConfig);
-            break;
-          case "parse_rss":
-            ctx = stepParseRss(ctx, config as RssConfig | undefined);
-            break;
-          case "select":
-            ctx = stepSelect(ctx, config as string, i);
-            break;
-          case "map":
-            ctx = stepMap(ctx, config as Record<string, string>);
-            break;
-          case "filter":
-            ctx = stepFilter(ctx, config as string);
-            break;
-          case "sort":
-            ctx = stepSort(ctx, config as SortConfig);
-            break;
-          case "limit":
-            ctx = stepLimit(ctx, config);
-            break;
-          case "exec":
-            ctx = await stepExec(ctx, config as ExecConfig);
-            break;
-          case "html_to_md":
-            ctx = stepHtmlToMd(ctx);
-            break;
-          case "write_temp":
-            ctx = stepWriteTemp(ctx, config as WriteTempConfig);
-            break;
-          case "navigate":
-            ctx = await stepNavigate(ctx, config as NavigateConfig);
-            break;
-          case "evaluate":
-            ctx = await stepEvaluate(ctx, config as EvaluateConfig | string);
-            break;
-          case "click":
-            ctx = await stepClick(ctx, config as ClickConfig | string);
-            break;
-          case "type":
-            ctx = await stepType(ctx, config as TypeConfig);
-            break;
-          case "wait":
-            ctx = await stepWaitBrowser(
-              ctx,
-              config as WaitBrowserConfig | number,
-            );
-            break;
-          case "intercept":
-            ctx = await stepIntercept(ctx, config as InterceptConfig);
-            break;
-          case "press":
-            ctx = await stepPress(ctx, config);
-            break;
-          case "scroll":
-            ctx = await stepScroll(ctx, config);
-            break;
-          case "snapshot":
-            ctx = await stepSnapshot(ctx, config);
-            break;
-          case "tap":
-            ctx = await stepTap(ctx, config as TapConfig);
-            break;
-          case "download":
-            ctx = await stepDownload(ctx, config as DownloadStepConfig);
-            break;
-          case "websocket":
-            ctx = await stepWebsocket(ctx, config as WebsocketStepConfig);
-            break;
-          default:
-            break;
+        // Inner try — executes the primary step, falls back on failure
+        try {
+          ctx = await executeStep(ctx, action, stepConfig, i, step);
+        } catch (primaryErr) {
+          if (!fallbacks || fallbacks.length === 0) throw primaryErr;
+
+          let lastErr = primaryErr;
+          let succeeded = false;
+          for (const fb of fallbacks) {
+            try {
+              ctx = await executeStep(ctx, action, fb, i, step);
+              succeeded = true;
+              break;
+            } catch (fbErr) {
+              lastErr = fbErr;
+            }
+          }
+          if (!succeeded) throw lastErr;
         }
       } catch (err) {
         if (err instanceof PipelineError) throw err;
@@ -779,6 +843,7 @@ function evalTemplate(template: string, ctx: PipelineContext): string {
 function buildScope(ctx: PipelineContext): Record<string, unknown> {
   const scope: Record<string, unknown> = {
     args: ctx.args,
+    vars: ctx.vars ?? {},
     base: ctx.base,
     temp: ctx.temp ?? {},
   };
@@ -796,6 +861,67 @@ function buildScope(ctx: PipelineContext): Record<string, unknown> {
   }
 
   return scope;
+}
+
+// --- Set step (store pipeline variables) ---
+
+function stepSet(
+  ctx: PipelineContext,
+  config: Record<string, unknown>,
+): PipelineContext {
+  if (!config || typeof config !== "object" || Array.isArray(config))
+    return ctx;
+  const resolved: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(config)) {
+    resolved[key] = resolveTemplateDeep(value, ctx);
+  }
+  return { ...ctx, vars: { ...ctx.vars, ...resolved } };
+}
+
+// --- If/else step (conditional branching) ---
+
+async function stepIf(
+  ctx: PipelineContext,
+  config: { if: string; then?: PipelineStep[]; else?: PipelineStep[] },
+  stepIndex: number,
+  depth: number = 0,
+): Promise<PipelineContext> {
+  if (depth > 10) {
+    throw new PipelineError("if step recursion depth exceeded (max 10)", {
+      step: stepIndex,
+      action: "if",
+      config,
+      errorType: "parse_error",
+      suggestion:
+        "Reduce nesting depth of if/else steps. Maximum is 10 levels.",
+    });
+  }
+
+  const conditionStr =
+    typeof config.if === "string" ? config.if : String(config.if);
+
+  // Strip ${{ }} wrapper if present
+  const exprMatch = conditionStr.match(/^\$\{\{\s*(.+?)\s*\}\}$/);
+  const expr = exprMatch ? exprMatch[1] : conditionStr;
+  const result = evalExpression(expr, buildScope(ctx));
+
+  const branch = result ? config.then : config.else;
+  if (!branch || !Array.isArray(branch) || branch.length === 0) return ctx;
+
+  // Execute sub-pipeline steps sequentially
+  for (let j = 0; j < branch.length; j++) {
+    const subStep = branch[j];
+    const [subAction, subConfig] = getActionEntry(subStep);
+    ctx = await executeStep(
+      ctx,
+      subAction,
+      subConfig,
+      stepIndex,
+      subStep,
+      depth,
+    );
+  }
+  return ctx;
 }
 
 /**
@@ -1172,7 +1298,27 @@ function stepWriteTemp(
 async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
   if (ctx.page) return ctx.page;
 
-  // Try daemon first (reuses Chrome login sessions)
+  let port = 9222;
+  const rawPort = process.env.UNICLI_CDP_PORT;
+  if (rawPort) {
+    const p = parseInt(rawPort, 10);
+    if (Number.isInteger(p) && p >= 1 && p <= 65535) {
+      port = p;
+    }
+  }
+
+  // 1. Try direct CDP first (fastest, no daemon overhead)
+  try {
+    const { BrowserPage: BP } = await import("../browser/page.js");
+    const { injectStealth } = await import("../browser/stealth.js");
+    const page = await BP.connect(port);
+    await injectStealth(page.sendCDP.bind(page));
+    return page;
+  } catch {
+    // CDP not available — try daemon
+  }
+
+  // 2. Fallback: daemon (reuses Chrome login sessions via extension)
   try {
     const { checkDaemonStatus } = await import("../browser/discover.js");
     const status = await checkDaemonStatus({ timeout: 300 });
@@ -1183,22 +1329,33 @@ async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
       return page as unknown as BrowserPage;
     }
   } catch {
-    // Daemon not available — fall through to direct CDP
+    // Daemon not available either
   }
 
-  // Fallback: direct CDP connection
-  const { BrowserPage: BP } = await import("../browser/page.js");
-  const { injectStealth } = await import("../browser/stealth.js");
-
-  const port = process.env.UNICLI_CDP_PORT
-    ? parseInt(process.env.UNICLI_CDP_PORT, 10)
-    : 9222;
-  const page = await BP.connect(port);
-
-  // Inject anti-detection scripts before any navigation
-  await injectStealth(page.sendCDP.bind(page));
-
-  return page;
+  // 3. Last resort: auto-launch Chrome with debug port
+  try {
+    const { launchChrome } = await import("../browser/launcher.js");
+    const { BrowserPage: BP } = await import("../browser/page.js");
+    const { injectStealth } = await import("../browser/stealth.js");
+    await launchChrome(port);
+    // Poll for connection (5 attempts, 500ms intervals)
+    let page: BrowserPage | undefined;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        page = await BP.connect(port);
+        break;
+      } catch {
+        if (attempt < 4) await new Promise((r) => setTimeout(r, 500));
+      }
+    }
+    if (!page) throw new Error("Chrome launched but no page target available");
+    await injectStealth(page.sendCDP.bind(page));
+    return page;
+  } catch (err) {
+    throw new Error(
+      `Cannot connect to Chrome. Run "unicli browser start" first. (${err instanceof Error ? err.message : String(err)})`,
+    );
+  }
 }
 
 interface NavigateConfig {

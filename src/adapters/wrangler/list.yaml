@@ -1,0 +1,20 @@
+site: wrangler
+name: list
+description: List Cloudflare Workers
+type: bridge
+strategy: public
+binary: wrangler
+detect: which wrangler
+autoInstall: npm install -g wrangler
+
+pipeline:
+  - exec:
+      command: wrangler
+      args:
+        - deployments
+        - list
+        - --json
+      parse: json
+      timeout: 30000
+
+columns: [id, source, strategy, created_on]

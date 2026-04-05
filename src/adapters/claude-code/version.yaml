@@ -1,0 +1,18 @@
+site: claude-code
+name: version
+description: Check Claude Code CLI version and status
+type: bridge
+strategy: public
+binary: claude
+detect: which claude
+autoInstall: npm install -g @anthropic-ai/claude-code
+
+pipeline:
+  - exec:
+      command: claude
+      args:
+        - --version
+      parse: text
+      timeout: 10000
+
+columns: [output]

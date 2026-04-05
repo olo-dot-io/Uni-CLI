@@ -1,0 +1,21 @@
+site: supabase
+name: projects
+description: List Supabase projects
+type: bridge
+strategy: public
+binary: supabase
+detect: which supabase
+autoInstall: npm install -g supabase
+
+pipeline:
+  - exec:
+      command: supabase
+      args:
+        - projects
+        - list
+        - --output
+        - json
+      parse: json
+      timeout: 30000
+
+columns: [id, name, region, created_at]

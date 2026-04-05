@@ -1,0 +1,17 @@
+site: lark
+name: version
+description: Check Lark CLI version and status
+type: bridge
+strategy: public
+binary: lark
+detect: which lark
+
+pipeline:
+  - exec:
+      command: lark
+      args:
+        - --version
+      parse: text
+      timeout: 10000
+
+columns: [output]
