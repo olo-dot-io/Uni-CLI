@@ -12,6 +12,11 @@ import { ExitCode } from "./types.js";
 import { VERSION } from "./constants.js";
 import { registerAuthCommands } from "./commands/auth.js";
 import { registerBrowserCommands } from "./commands/browser.js";
+import { registerDaemonCommands } from "./commands/daemon.js";
+import {
+  registerCompletionCommand,
+  getCompletions,
+} from "./commands/completion.js";
 import type { OutputFormat } from "./types.js";
 
 export async function createCli(): Promise<Command> {
@@ -81,6 +86,12 @@ export async function createCli(): Promise<Command> {
 
   // Register browser commands — Chrome CDP management
   registerBrowserCommands(program);
+
+  // Register daemon commands — lifecycle management
+  registerDaemonCommands(program);
+
+  // Register completion command — shell tab completion
+  registerCompletionCommand(program);
 
   // Register "repair" command — diagnostic for broken adapters
   program
@@ -433,6 +444,19 @@ export async function createCli(): Promise<Command> {
         }
       });
     }
+  }
+
+  // Handle internal completion requests
+  if (process.argv.includes("--get-completions")) {
+    const cursorIdx = process.argv.indexOf("--cursor");
+    const cursor =
+      cursorIdx >= 0 ? parseInt(process.argv[cursorIdx + 1], 10) : 1;
+    const words = process.argv
+      .slice(process.argv.indexOf("--get-completions") + 1)
+      .filter((a) => a !== "--cursor" && !/^\d+$/.test(a));
+    const completions = getCompletions(words, cursor);
+    console.log(completions.join("\n"));
+    process.exit(0);
   }
 
   return program;
