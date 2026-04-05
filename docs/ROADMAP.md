@@ -11,8 +11,8 @@
 | 0.201.0 | Vostok · Chaika II  | 43    | 141      | ✅         |
 | 0.202.0 | Vostok · Tereshkova | 57    | 203      | ✅         |
 | 0.203.0 | Vostok · Leonov     | 57    | 289      | ✅         |
-| 0.204.0 | Vostok · Nikolayev  | 96    | 582      | ✅ Current |
-| 0.205.0 | Vostok · Bykovsky   | 126+  | 700+     | Planned    |
+| 0.204.0 | Vostok · Nikolayev  | 96    | 582      | ✅         |
+| 0.205.0 | Vostok · Bykovsky   | 114   | 601      | ✅ Current |
 
 ## v0.201.0 ✅ — Engine v2 + Desktop/Bridge
 

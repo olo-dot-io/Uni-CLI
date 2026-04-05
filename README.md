@@ -1,4 +1,4 @@
-<!-- AGENT: npm install -g unicli && unicli list | 582 commands across 96 sites. JSON when piped. Self-repairing YAML adapters. See AGENTS.md -->
+<!-- AGENT: npm install -g unicli && unicli list | 601 commands across 114 sites. JSON when piped. Self-repairing YAML adapters. See AGENTS.md -->
 
 <h1 align="center">Uni-CLI</h1>
 
@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  96 sites · 582 commands · 23 pipeline steps · 29 template filters · Zero runtime dependencies beyond Node.js
+  114 sites · 601 commands · 30 pipeline steps · 29 template filters · Zero runtime dependencies beyond Node.js
 </p>
 
 ---
@@ -56,7 +56,7 @@ CLI is: universal, composable, self-repairable, and context-efficient. MCP is a 
                     │               │               │
                     ▼               ▼               ▼
               ┌─────────────────────────────────────────┐
-              │          Pipeline Engine (23 steps)      │
+              │          Pipeline Engine (30 steps)      │
               │  fetch · navigate · evaluate · click     │
               │  type · press · scroll · wait · tap      │
               │  intercept · snapshot · download          │
@@ -141,11 +141,11 @@ Verification: `unicli repair <site> <command>` diagnoses, `unicli test [site]` v
 
 ### Bridge (passthrough to existing CLIs)
 
-docker, gh, jq, yt-dlp — more planned for v0.205 (vercel, netlify, railway, flyctl, supabase, wrangler, lark, dingtalk)
+docker, gh, jq, yt-dlp, vercel, supabase, wrangler, lark, dingtalk, hf, claude-code, codex-cli, opencode, aws, gcloud, az, doctl, netlify, railway, flyctl, pscale, neonctl, slack
 
 ## Pipeline Engine
 
-23 steps execute in sequence. Each YAML adapter is a pipeline of these steps.
+30 steps execute in sequence. Each YAML adapter is a pipeline of these steps.
 
 | Step         | Type      | What it does                                                                  |
 | ------------ | --------- | ----------------------------------------------------------------------------- |
@@ -172,6 +172,12 @@ docker, gh, jq, yt-dlp — more planned for v0.205 (vercel, netlify, railway, fl
 | `tap`        | Browser   | Vue Store Action Bridge (Pinia/Vuex → capture network)                        |
 | `download`   | Media     | HTTP + yt-dlp, batch concurrent, skip_existing                                |
 | `websocket`  | Service   | WebSocket connect/send/receive (OBS auth support)                             |
+| `set`        | Control   | Store variables into `vars` context for templates                             |
+| `if`         | Control   | Conditional execution of sub-pipeline branches                                |
+| `append`     | Control   | Push ctx.data into vars array for accumulation                                |
+| `each`       | Control   | Loop sub-pipeline with do-while + max iteration limit                         |
+| `parallel`   | Control   | Run sub-pipelines concurrently with merge strategies                          |
+| `rate_limit` | Control   | Per-domain token bucket request throttling                                    |
 
 ### Template Expressions
 
@@ -287,7 +293,7 @@ git clone https://github.com/ZenAlexa/Uni-CLI.git && cd Uni-CLI
 npm install
 npm run dev -- list                   # Test adapter loading
 npm run verify                        # format + typecheck + lint + test + build
-npm run test:adapter                  # Validate all 582 YAML/TS adapters
+npm run test:adapter                  # Validate all 601 YAML/TS adapters
 ```
 
 | Command                | Purpose                   |
@@ -296,7 +302,7 @@ npm run test:adapter                  # Validate all 582 YAML/TS adapters
 | `npm run build`        | Production build          |
 | `npm run typecheck`    | TypeScript strict check   |
 | `npm run lint`         | Oxlint                    |
-| `npm run test`         | Unit tests (231)          |
+| `npm run test`         | Unit tests (272)          |
 | `npm run test:adapter` | Adapter validation (2041) |
 | `npm run verify`       | Full pipeline             |
 
@@ -326,6 +332,6 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md). The fastest way to contribute: write a
 ---
 
 <p align="center">
-  <sub>v0.204.0 — Vostok · Nikolayev</sub><br>
-  <sub>96 sites · 582 commands · 23 pipeline steps · 29 filters · 2,272 tests</sub>
+  <sub>v0.205.0 — Vostok · Bykovsky</sub><br>
+  <sub>114 sites · 601 commands · 30 pipeline steps · 29 filters · 272 unit tests</sub>
 </p>

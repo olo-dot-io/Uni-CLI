@@ -3,6 +3,33 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
+## [0.205.0] — 2026-04-05 — Vostok · Bykovsky
+
+### Added
+
+- **Pipeline**: 7 new steps — `set`, `if/else`, `append`, `each`, `parallel`, `rate_limit`, plus `fallback` property (23 → 30 steps)
+- **CDP Direct Mode**: Zero-extension browser auth — direct CDP connection, smart cookie extraction, auto-launch Chrome
+- **Self-Repair**: Level 1 auto-fix (detect `selector_miss`, suggest alternative paths), Level 3 community-fix stub
+- **Bridge CLIs**: 19 new bridges — vercel, supabase, wrangler, lark, dingtalk, hf, claude-code, codex-cli, opencode, aws, gcloud, az, doctl, netlify, railway, flyctl, pscale, neonctl, slack
+- **DX**: `unicli init` (adapter scaffolding), `unicli dev` (hot-reload), `unicli adapter install/list` (marketplace)
+- **Documentation**: VitePress site with DESIGN.md theme (Geist Mono + Terminal Green), 7 content pages
+- **Browser**: `unicli browser cookies <domain>`, `--profile`, `--headless` options
+- **Infrastructure**: npm publish config, rate limiter module, cookie extractor module
+
+### Changed
+
+- `acquirePage()` now prioritizes direct CDP over daemon (CDP → daemon → auto-launch)
+- Cookie loading now transparently falls back to CDP extraction from Chrome
+- Pipeline engine refactored: `executeStep()` helper, `getActionEntry()` + `SIBLING_KEYS`
+
+### Security
+
+- Path traversal guard on cookie `saveCookies()` and `loadCookies()`
+- Port validation for `UNICLI_CDP_PORT` environment variable
+- Recursion depth limit (max 10) for nested `if` and `each` steps
+
+---
+
 ## [0.204.0] — Vostok · Nikolayev
 
 ### Engine Core (Sub-Project A)
