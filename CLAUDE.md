@@ -60,10 +60,20 @@ src/
 │   ├── page.ts          # BrowserPage: 22 methods (goto, evaluate, snapshot, screenshot...)
 │   ├── snapshot.ts      # DOM accessibility tree generator (interactive refs, scroll markers)
 │   ├── launcher.ts      # Chrome discovery + spawn with --remote-debugging-port
-│   └── stealth.ts       # 13 anti-detection patches (webdriver, plugins, CDP cleanup...)
+│   ├── stealth.ts       # 13 anti-detection patches (webdriver, plugins, CDP cleanup...)
+│   ├── daemon.ts        # Standalone daemon HTTP+WS server (port 19825)
+│   ├── daemon-client.ts # CLI→daemon HTTP client with retry
+│   ├── bridge.ts        # BrowserBridge auto-spawn + DaemonPage (IPage over daemon)
+│   ├── discover.ts      # Daemon status discovery
+│   ├── protocol.ts      # Shared daemon/extension types + constants
+│   └── idle-manager.ts  # Idle timeout auto-exit for daemon
 ├── commands/
 │   ├── auth.ts          # unicli auth setup/check/list
-│   └── browser.ts       # unicli browser start/status
+│   ├── browser.ts       # unicli browser start/status
+│   ├── daemon.ts        # unicli daemon status/stop/restart
+│   ├── operate.ts       # unicli operate (16 browser subcommands)
+│   ├── record.ts        # unicli record <url> (adapter generation)
+│   └── completion.ts    # unicli completion bash/zsh/fish
 ├── hub/                 # External CLI hub (passthrough)
 ├── plugin/              # Plugin system
 └── mcp/                 # MCP stdio server
@@ -101,6 +111,11 @@ src/
 | Browser start   | `unicli browser start`           |
 | Browser status  | `unicli browser status`          |
 | Auth setup      | `unicli auth setup <site>`       |
+| Daemon status   | `unicli daemon status`           |
+| Daemon stop     | `unicli daemon stop`             |
+| Operate browser | `unicli operate <subcommand>`    |
+| Record adapter  | `unicli record <url>`            |
+| Completion      | `unicli completion <shell>`      |
 | Sync refs       | `npm run sync:ref`               |
 
 ## Pipeline Steps (23)

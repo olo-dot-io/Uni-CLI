@@ -338,7 +338,10 @@ wss.on("connection", (ws: WebSocket) => {
       return;
     }
 
-    pushLog("warn", `Unknown message type: ${JSON.stringify(msg).slice(0, 200)}`);
+    pushLog(
+      "warn",
+      `Unknown message type: ${JSON.stringify(msg).slice(0, 200)}`,
+    );
   });
 
   ws.on("close", () => {

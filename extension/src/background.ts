@@ -40,24 +40,41 @@ const origWarn = console.warn;
 const origError = console.error;
 
 function forwardLog(level: string, ...args: unknown[]): void {
-  const msg = args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" ");
+  const msg = args
+    .map((a) => (typeof a === "string" ? a : JSON.stringify(a)))
+    .join(" ");
   if (ws?.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: "log", level, msg, ts: Date.now() }));
   }
 }
 
-console.log = (...args: unknown[]) => { origLog(...args); forwardLog("log", ...args); };
-console.warn = (...args: unknown[]) => { origWarn(...args); forwardLog("warn", ...args); };
-console.error = (...args: unknown[]) => { origError(...args); forwardLog("error", ...args); };
+console.log = (...args: unknown[]) => {
+  origLog(...args);
+  forwardLog("log", ...args);
+};
+console.warn = (...args: unknown[]) => {
+  origWarn(...args);
+  forwardLog("warn", ...args);
+};
+console.error = (...args: unknown[]) => {
+  origError(...args);
+  forwardLog("error", ...args);
+};
 
 // ── WebSocket Connection ────────────────────────────────────────────
 
 async function connect(): Promise<void> {
-  if (ws?.readyState === WebSocket.OPEN || ws?.readyState === WebSocket.CONNECTING) return;
+  if (
+    ws?.readyState === WebSocket.OPEN ||
+    ws?.readyState === WebSocket.CONNECTING
+  )
+    return;
 
   // Pre-probe daemon reachability
   try {
-    const resp = await fetch(DAEMON_PING_URL, { signal: AbortSignal.timeout(1000) });
+    const resp = await fetch(DAEMON_PING_URL, {
+      signal: AbortSignal.timeout(1000),
+    });
     if (!resp.ok) return;
   } catch {
     return; // Daemon not running — skip WS attempt
@@ -73,10 +90,12 @@ async function connect(): Promise<void> {
   ws.onopen = () => {
     console.log("[bridge] Connected to daemon");
     reconnectAttempts = 0;
-    ws!.send(JSON.stringify({
-      type: "hello",
-      version: chrome.runtime.getManifest().version,
-    }));
+    ws!.send(
+      JSON.stringify({
+        type: "hello",
+        version: chrome.runtime.getManifest().version,
+      }),
+    );
   };
 
   ws.onmessage = async (event) => {
@@ -125,7 +144,10 @@ async function getAutomationWindow(
   if (existing) {
     // Reset idle timer
     if (existing.idleTimer) clearTimeout(existing.idleTimer);
-    existing.idleTimer = setTimeout(() => closeSession(workspace), WINDOW_IDLE_TIMEOUT);
+    existing.idleTimer = setTimeout(
+      () => closeSession(workspace),
+      WINDOW_IDLE_TIMEOUT,
+    );
     existing.idleDeadlineAt = Date.now() + WINDOW_IDLE_TIMEOUT;
 
     // Get preferred tab
@@ -167,7 +189,9 @@ async function closeSession(workspace: string): Promise<void> {
   if (session.idleTimer) clearTimeout(session.idleTimer);
   try {
     await chrome.windows.remove(session.windowId);
-  } catch { /* already closed */ }
+  } catch {
+    /* already closed */
+  }
 }
 
 // ── Command Dispatcher ──────────────────────────────────────────────
@@ -264,11 +288,18 @@ async function handleCommand(cmd: Command): Promise<Result> {
 
       case "set-file-input": {
         // Resolve node and set files
-        const doc = await chrome.debugger.sendCommand({ tabId }, "DOM.getDocument");
-        const node = await chrome.debugger.sendCommand({ tabId }, "DOM.querySelector", {
-          nodeId: (doc as any).root.nodeId,
-          selector: cmd.selector,
-        });
+        const doc = await chrome.debugger.sendCommand(
+          { tabId },
+          "DOM.getDocument",
+        );
+        const node = await chrome.debugger.sendCommand(
+          { tabId },
+          "DOM.querySelector",
+          {
+            nodeId: (doc as any).root.nodeId,
+            selector: cmd.selector,
+          },
+        );
         await chrome.debugger.sendCommand({ tabId }, "DOM.setFileInputFiles", {
           nodeId: (node as any).nodeId,
           files: cmd.files,
@@ -297,7 +328,10 @@ async function handleCommand(cmd: Command): Promise<Result> {
 
       case "bind-current": {
         // Bind the currently focused tab to this workspace
-        const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const [activeTab] = await chrome.tabs.query({
+          active: true,
+          currentWindow: true,
+        });
         if (!activeTab?.id) {
           return { id: cmd.id, ok: false, error: "No active tab" };
         }
@@ -305,11 +339,19 @@ async function handleCommand(cmd: Command): Promise<Result> {
         if (session) {
           session.preferredTabId = activeTab.id;
         }
-        return { id: cmd.id, ok: true, data: { tabId: activeTab.id, url: activeTab.url } };
+        return {
+          id: cmd.id,
+          ok: true,
+          data: { tabId: activeTab.id, url: activeTab.url },
+        };
       }
 
       default:
-        return { id: cmd.id, ok: false, error: `Unknown action: ${cmd.action}` };
+        return {
+          id: cmd.id,
+          ok: false,
+          error: `Unknown action: ${cmd.action}`,
+        };
     }
   } catch (err) {
     return {
@@ -324,7 +366,9 @@ async function handleCommand(cmd: Command): Promise<Result> {
 
 function initialize(): void {
   connect();
-  chrome.alarms.create("keepalive", { periodInMinutes: KEEPALIVE_ALARM_PERIOD });
+  chrome.alarms.create("keepalive", {
+    periodInMinutes: KEEPALIVE_ALARM_PERIOD,
+  });
 }
 
 chrome.alarms.onAlarm.addListener((alarm) => {
