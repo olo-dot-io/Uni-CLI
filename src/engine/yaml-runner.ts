@@ -53,12 +53,12 @@ export interface PipelineOptions {
 type PipelineContext = {
   data: unknown;
   args: Record<string, unknown>;
+  vars: Record<string, unknown>;
   base?: string;
   cookieHeader?: string;
   temp?: Record<string, string>;
   tempDir?: string;
   page?: BrowserPage;
-  vars: Record<string, unknown>;
 };
 
 /**
@@ -125,7 +125,7 @@ export async function runPipeline(
     cookieHeader = formatCookieHeader(cookies);
   }
 
-  let ctx: PipelineContext = { data: null, args, base, cookieHeader, vars: {} };
+  let ctx: PipelineContext = { data: null, args, vars: {}, base, cookieHeader };
   let tempDir: string | undefined;
 
   try {
@@ -445,20 +445,6 @@ function stepLimit(ctx: PipelineContext, config: unknown): PipelineContext {
   }
 
   return { ...ctx, data: ctx.data.slice(0, n) };
-}
-
-// --- set: store variables in ctx.vars for use in subsequent templates ---
-
-function stepSet(
-  ctx: PipelineContext,
-  config: Record<string, unknown>,
-): PipelineContext {
-  const resolved: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(config)) {
-    resolved[key] =
-      typeof value === "string" ? evalTemplate(value, ctx) : value;
-  }
-  return { ...ctx, vars: { ...ctx.vars, ...resolved } };
 }
 
 // --- fetch_text: like fetch but returns raw text (for XML/RSS/HTML) ---
@@ -797,9 +783,9 @@ function evalTemplate(template: string, ctx: PipelineContext): string {
 function buildScope(ctx: PipelineContext): Record<string, unknown> {
   const scope: Record<string, unknown> = {
     args: ctx.args,
+    vars: ctx.vars ?? {},
     base: ctx.base,
     temp: ctx.temp ?? {},
-    vars: ctx.vars,
   };
 
   if (
@@ -815,6 +801,20 @@ function buildScope(ctx: PipelineContext): Record<string, unknown> {
   }
 
   return scope;
+}
+
+// --- Set step (store pipeline variables) ---
+
+function stepSet(
+  ctx: PipelineContext,
+  config: Record<string, unknown>,
+): PipelineContext {
+  if (!config || typeof config !== "object" || Array.isArray(config)) return ctx;
+  const resolved: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(config)) {
+    resolved[key] = resolveTemplateDeep(value, ctx);
+  }
+  return { ...ctx, vars: { ...ctx.vars, ...resolved } };
 }
 
 /**

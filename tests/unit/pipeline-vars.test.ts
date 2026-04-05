@@ -1,7 +1,3 @@
-/**
- * Pipeline vars + set step tests — uses a real local HTTP server (no mocks).
- */
-
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createServer, type Server } from "node:http";
 import { runPipeline } from "../../src/engine/yaml-runner.js";
@@ -28,37 +24,75 @@ afterAll(() => {
 });
 
 describe("set step", () => {
-  it("stores variables accessible in subsequent templates", async () => {
+  it("stores variables accessible via ${{ vars.key }} in templates", async () => {
     const result = await runPipeline(
       [
-        { set: { api_url: "https://example.com", max: 5 } },
-        { fetch: { url: `${baseUrl}/data` } },
+        { set: { endpoint: `${baseUrl}` } },
+        { fetch: { url: "${{ vars.endpoint }}/data" } },
         { select: "items" },
+        { map: { id: "${{ item.id }}", endpoint: "${{ vars.endpoint }}" } },
       ],
       {},
     );
     expect(result).toHaveLength(1);
-    expect((result[0] as { id: number }).id).toBe(1);
+    const row = result[0] as Record<string, unknown>;
+    expect(row.id).toBe("1");
+    expect(row.endpoint).toBe(baseUrl);
   });
 
-  it("resolves templates in set values using ${{ vars.key }}", async () => {
+  it("resolves templates in set values using earlier vars", async () => {
     const result = await runPipeline(
       [
         { set: { base: "hello" } },
         { set: { greeting: "${{ vars.base }} world" } },
         { fetch: { url: `${baseUrl}/data` } },
         { select: "items" },
+        { map: { greeting: "${{ vars.greeting }}" } },
       ],
       {},
     );
     expect(result).toHaveLength(1);
+    expect((result[0] as Record<string, unknown>).greeting).toBe("hello world");
   });
 
   it("merges multiple set steps (later overrides earlier)", async () => {
     const result = await runPipeline(
       [
-        { set: { a: 1 } },
-        { set: { b: 2, a: 10 } },
+        { set: { a: 1, b: 2 } },
+        { set: { b: 99, c: 3 } },
+        { fetch: { url: `${baseUrl}/data` } },
+        { select: "items" },
+        { map: { a: "${{ vars.a }}", b: "${{ vars.b }}", c: "${{ vars.c }}" } },
+      ],
+      {},
+    );
+    expect(result).toHaveLength(1);
+    const row = result[0] as Record<string, unknown>;
+    expect(row.a).toBe("1");
+    expect(row.b).toBe("99");
+    expect(row.c).toBe("3");
+  });
+
+  it("passes non-string values through unchanged", async () => {
+    const result = await runPipeline(
+      [
+        { set: { count: 42, active: true } },
+        { fetch: { url: `${baseUrl}/data` } },
+        { select: "items" },
+        { map: { count: "${{ vars.count }}", active: "${{ vars.active }}" } },
+      ],
+      {},
+    );
+    expect(result).toHaveLength(1);
+    const row = result[0] as Record<string, unknown>;
+    expect(row.count).toBe("42");
+    expect(row.active).toBe("true");
+  });
+
+  it("handles empty set as no-op", async () => {
+    const result = await runPipeline(
+      [
+        { set: {} },
         { fetch: { url: `${baseUrl}/data` } },
         { select: "items" },
       ],
@@ -67,16 +101,16 @@ describe("set step", () => {
     expect(result).toHaveLength(1);
   });
 
-  it("vars accessible in fetch URL templates", async () => {
+  it("handles invalid config shapes gracefully", async () => {
+    // set: "string" should be a no-op, not crash
     const result = await runPipeline(
       [
-        { set: { endpoint: `${baseUrl}` } },
-        { fetch: { url: "${{ vars.endpoint }}/data" } },
+        { set: "invalid" as unknown },
+        { fetch: { url: `${baseUrl}/data` } },
         { select: "items" },
       ],
       {},
     );
     expect(result).toHaveLength(1);
-    expect((result[0] as { id: number }).id).toBe(1);
   });
 });
