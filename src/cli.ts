@@ -19,6 +19,8 @@ import {
 } from "./commands/completion.js";
 import { registerOperateCommands } from "./commands/operate.js";
 import { registerRecordCommand } from "./commands/record.js";
+import { registerPluginCommands } from "./commands/plugin.js";
+import { emitHook } from "./hooks.js";
 import type { OutputFormat } from "./types.js";
 
 export async function createCli(): Promise<Command> {
@@ -100,6 +102,12 @@ export async function createCli(): Promise<Command> {
 
   // Register record command — capture network requests and generate adapters
   registerRecordCommand(program);
+
+  // Register plugin commands — third-party adapter management
+  registerPluginCommands(program);
+
+  // Emit startup hook — plugins can listen for CLI boot
+  await emitHook("onStartup", { command: "__startup__", args: {} });
 
   // Register "repair" command — diagnostic for broken adapters
   program
