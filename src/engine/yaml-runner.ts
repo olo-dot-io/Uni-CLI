@@ -26,7 +26,7 @@ import { runInNewContext } from "node:vm";
 import TurndownService from "turndown";
 import { USER_AGENT } from "../constants.js";
 import type { PipelineStep } from "../types.js";
-import { loadCookies, formatCookieHeader } from "./cookies.js";
+import { formatCookieHeader } from "./cookies.js";
 import type { BrowserPage } from "../browser/page.js";
 import {
   generateInterceptorJs,
@@ -188,19 +188,23 @@ export async function runPipeline(
   base?: string,
   options?: PipelineOptions,
 ): Promise<unknown[]> {
-  // Load cookies for cookie strategy
+  // Load cookies for cookie/header strategy (disk first, CDP fallback)
   let cookieHeader: string | undefined;
-  if (options?.strategy === "cookie" && options?.site) {
-    const cookies = loadCookies(options.site);
+  if (
+    (options?.strategy === "cookie" || options?.strategy === "header") &&
+    options?.site
+  ) {
+    const { loadCookiesWithCDP } = await import("./cookies.js");
+    const cookies = await loadCookiesWithCDP(options.site);
     if (!cookies) {
       throw new PipelineError(
         `No cookies found for "${options.site}". Run: unicli auth setup ${options.site}`,
         {
           step: -1,
           action: "auth",
-          config: { site: options.site, strategy: "cookie" },
+          config: { site: options.site, strategy: options.strategy },
           errorType: "http_error",
-          suggestion: `Create cookie file at ~/.unicli/cookies/${options.site}.json with the required cookies. Run "unicli auth setup ${options.site}" for instructions.`,
+          suggestion: `Either start Chrome with "unicli browser start" and login to ${options.site}, or create cookie file at ~/.unicli/cookies/${options.site}.json`,
         },
       );
     }
