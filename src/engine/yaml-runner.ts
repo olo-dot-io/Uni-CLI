@@ -100,6 +100,67 @@ export class PipelineError extends Error {
   }
 }
 
+/** Dispatch a single pipeline step by action name. */
+async function executeStep(
+  ctx: PipelineContext,
+  action: string,
+  config: unknown,
+  stepIndex: number,
+): Promise<PipelineContext> {
+  switch (action) {
+    case "fetch":
+      return stepFetch(ctx, config as FetchConfig);
+    case "fetch_text":
+      return stepFetchText(ctx, config as FetchConfig);
+    case "parse_rss":
+      return stepParseRss(ctx, config as RssConfig | undefined);
+    case "select":
+      return stepSelect(ctx, config as string, stepIndex);
+    case "map":
+      return stepMap(ctx, config as Record<string, string>);
+    case "filter":
+      return stepFilter(ctx, config as string);
+    case "sort":
+      return stepSort(ctx, config as SortConfig);
+    case "limit":
+      return stepLimit(ctx, config);
+    case "exec":
+      return stepExec(ctx, config as ExecConfig);
+    case "html_to_md":
+      return stepHtmlToMd(ctx);
+    case "write_temp":
+      return stepWriteTemp(ctx, config as WriteTempConfig);
+    case "navigate":
+      return stepNavigate(ctx, config as NavigateConfig);
+    case "evaluate":
+      return stepEvaluate(ctx, config as EvaluateConfig | string);
+    case "click":
+      return stepClick(ctx, config as ClickConfig | string);
+    case "type":
+      return stepType(ctx, config as TypeConfig);
+    case "wait":
+      return stepWaitBrowser(ctx, config as WaitBrowserConfig | number);
+    case "intercept":
+      return stepIntercept(ctx, config as InterceptConfig);
+    case "press":
+      return stepPress(ctx, config);
+    case "scroll":
+      return stepScroll(ctx, config);
+    case "snapshot":
+      return stepSnapshot(ctx, config);
+    case "tap":
+      return stepTap(ctx, config as TapConfig);
+    case "download":
+      return stepDownload(ctx, config as DownloadStepConfig);
+    case "websocket":
+      return stepWebsocket(ctx, config as WebsocketStepConfig);
+    case "set":
+      return stepSet(ctx, config as Record<string, unknown>);
+    default:
+      return ctx;
+  }
+}
+
 export async function runPipeline(
   steps: PipelineStep[],
   args: Record<string, unknown>,
@@ -133,85 +194,70 @@ export async function runPipeline(
       const step = steps[i];
       const [action, config] = Object.entries(step)[0];
 
+      // --- Fallback extraction ---
+      // Fallback can live inside the step config (object configs like fetch)
+      // or as a sibling key in the step object (string configs like select).
+      let stepConfig = config;
+      let fallbacks: unknown[] | undefined;
+
+      if (
+        stepConfig &&
+        typeof stepConfig === "object" &&
+        !Array.isArray(stepConfig)
+      ) {
+        const configObj = stepConfig as Record<string, unknown>;
+        if ("fallback" in configObj) {
+          fallbacks = Array.isArray(configObj.fallback)
+            ? configObj.fallback
+            : [configObj.fallback];
+          const { fallback: _, ...rest } = configObj;
+          stepConfig = rest;
+        }
+      }
+
+      if (!fallbacks) {
+        const stepObj = step as Record<string, unknown>;
+        if ("fallback" in stepObj) {
+          const fb = stepObj.fallback;
+          fallbacks = Array.isArray(fb) ? fb : [fb];
+        }
+      }
+
       try {
-        switch (action) {
-          case "fetch":
-            ctx = await stepFetch(ctx, config as FetchConfig);
-            break;
-          case "fetch_text":
-            ctx = await stepFetchText(ctx, config as FetchConfig);
-            break;
-          case "parse_rss":
-            ctx = stepParseRss(ctx, config as RssConfig | undefined);
-            break;
-          case "select":
-            ctx = stepSelect(ctx, config as string, i);
-            break;
-          case "map":
-            ctx = stepMap(ctx, config as Record<string, string>);
-            break;
-          case "filter":
-            ctx = stepFilter(ctx, config as string);
-            break;
-          case "sort":
-            ctx = stepSort(ctx, config as SortConfig);
-            break;
-          case "limit":
-            ctx = stepLimit(ctx, config);
-            break;
-          case "exec":
-            ctx = await stepExec(ctx, config as ExecConfig);
-            break;
-          case "html_to_md":
-            ctx = stepHtmlToMd(ctx);
-            break;
-          case "write_temp":
-            ctx = stepWriteTemp(ctx, config as WriteTempConfig);
-            break;
-          case "navigate":
-            ctx = await stepNavigate(ctx, config as NavigateConfig);
-            break;
-          case "evaluate":
-            ctx = await stepEvaluate(ctx, config as EvaluateConfig | string);
-            break;
-          case "click":
-            ctx = await stepClick(ctx, config as ClickConfig | string);
-            break;
-          case "type":
-            ctx = await stepType(ctx, config as TypeConfig);
-            break;
-          case "wait":
-            ctx = await stepWaitBrowser(
-              ctx,
-              config as WaitBrowserConfig | number,
-            );
-            break;
-          case "intercept":
-            ctx = await stepIntercept(ctx, config as InterceptConfig);
-            break;
-          case "press":
-            ctx = await stepPress(ctx, config);
-            break;
-          case "scroll":
-            ctx = await stepScroll(ctx, config);
-            break;
-          case "snapshot":
-            ctx = await stepSnapshot(ctx, config);
-            break;
-          case "tap":
-            ctx = await stepTap(ctx, config as TapConfig);
-            break;
-          case "download":
-            ctx = await stepDownload(ctx, config as DownloadStepConfig);
-            break;
-          case "websocket":
-            ctx = await stepWebsocket(ctx, config as WebsocketStepConfig);
-            break;
-          case "set":
-            ctx = stepSet(ctx, config as Record<string, unknown>);
-            break;
-          default:
-            break;
+        // Inner try — executes the primary step, falls back on failure
+        try {
+          ctx = await executeStep(ctx, action, stepConfig, i);
+        } catch (primaryErr) {
+          if (!fallbacks || fallbacks.length === 0) throw primaryErr;
+
+          let lastErr = primaryErr;
+          let succeeded = false;
+          for (const fb of fallbacks) {
+            try {
+              if (action === "select" && typeof fb === "string") {
+                ctx = stepSelect(ctx, fb, i);
+                succeeded = true;
+                break;
+              }
+              if (action === "fetch" && typeof fb === "object" && fb !== null) {
+                ctx = await stepFetch(ctx, fb as FetchConfig);
+                succeeded = true;
+                break;
+              }
+              if (
+                action === "fetch_text" &&
+                typeof fb === "object" &&
+                fb !== null
+              ) {
+                ctx = await stepFetchText(ctx, fb as FetchConfig);
+                succeeded = true;
+                break;
+              }
+            } catch (fbErr) {
+              lastErr = fbErr;
+            }
+          }
+          if (!succeeded) throw lastErr;
         }
       } catch (err) {
         if (err instanceof PipelineError) throw err;

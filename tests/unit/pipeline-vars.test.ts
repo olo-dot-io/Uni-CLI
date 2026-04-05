@@ -114,3 +114,63 @@ describe("set step", () => {
     expect(result).toHaveLength(1);
   });
 });
+
+describe("fallback", () => {
+  it("tries fallback URL when primary fetch fails", async () => {
+    const result = await runPipeline(
+      [
+        {
+          fetch: {
+            url: "http://127.0.0.1:1/will-fail",
+            fallback: [{ url: `${baseUrl}/data` }],
+          },
+        },
+        { select: "items" },
+        { map: { id: "${{ item.id }}" } },
+      ],
+      {},
+    );
+    expect(result).toHaveLength(1);
+    expect((result[0] as Record<string, unknown>).id).toBe("1");
+  });
+
+  it("tries fallback select paths when primary misses", async () => {
+    const result = await runPipeline(
+      [
+        { fetch: { url: `${baseUrl}/data` } },
+        { select: "nonexistent", fallback: ["also_missing", "items"] },
+      ],
+      {},
+    );
+    expect(result).toHaveLength(1);
+    expect((result[0] as Record<string, unknown>).id).toBe(1);
+  });
+
+  it("throws last error when all fallbacks fail", async () => {
+    await expect(
+      runPipeline(
+        [
+          { fetch: { url: `${baseUrl}/data` } },
+          { select: "no_path", fallback: ["also_no", "still_no"] },
+        ],
+        {},
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("uses primary when it succeeds (fallback ignored)", async () => {
+    const result = await runPipeline(
+      [
+        {
+          fetch: {
+            url: `${baseUrl}/data`,
+            fallback: [{ url: "http://127.0.0.1:1/should-not-reach" }],
+          },
+        },
+        { select: "items" },
+      ],
+      {},
+    );
+    expect(result).toHaveLength(1);
+  });
+});
