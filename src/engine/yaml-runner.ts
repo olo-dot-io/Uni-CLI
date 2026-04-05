@@ -169,6 +169,8 @@ async function executeStep(
       return stepWebsocket(ctx, config as WebsocketStepConfig);
     case "set":
       return stepSet(ctx, config as Record<string, unknown>);
+    case "append":
+      return stepAppend(ctx, config as string);
     case "if": {
       const ifStep = (fullStep ?? { if: config }) as {
         if: string;
@@ -876,6 +878,24 @@ function stepSet(
     resolved[key] = resolveTemplateDeep(value, ctx);
   }
   return { ...ctx, vars: { ...ctx.vars, ...resolved } };
+}
+
+// --- Append step (accumulate data into vars array) ---
+
+function stepAppend(ctx: PipelineContext, key: string): PipelineContext {
+  if (typeof key !== "string" || !key) return ctx;
+  const existing = ctx.vars[key];
+  const arr = Array.isArray(existing)
+    ? [...existing]
+    : existing !== undefined
+      ? [existing]
+      : [];
+  if (Array.isArray(ctx.data)) {
+    arr.push(...(ctx.data as unknown[]));
+  } else if (ctx.data !== null && ctx.data !== undefined) {
+    arr.push(ctx.data);
+  }
+  return { ...ctx, vars: { ...ctx.vars, [key]: arr } };
 }
 
 // --- If/else step (conditional branching) ---
