@@ -1154,7 +1154,21 @@ function stepWriteTemp(
 async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
   if (ctx.page) return ctx.page;
 
-  // Dynamic import to avoid loading browser code for non-browser pipelines
+  // Try daemon first (reuses Chrome login sessions)
+  try {
+    const { checkDaemonStatus } = await import("../browser/discover.js");
+    const status = await checkDaemonStatus({ timeout: 300 });
+    if (status.running && status.extensionConnected) {
+      const { BrowserBridge } = await import("../browser/bridge.js");
+      const bridge = new BrowserBridge();
+      const page = await bridge.connect({ timeout: 5000 });
+      return page as unknown as BrowserPage;
+    }
+  } catch {
+    // Daemon not available — fall through to direct CDP
+  }
+
+  // Fallback: direct CDP connection
   const { BrowserPage: BP } = await import("../browser/page.js");
   const { injectStealth } = await import("../browser/stealth.js");
 

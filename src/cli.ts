@@ -18,6 +18,7 @@ import {
   getCompletions,
 } from "./commands/completion.js";
 import { registerOperateCommands } from "./commands/operate.js";
+import { registerRecordCommand } from "./commands/record.js";
 import type { OutputFormat } from "./types.js";
 
 export async function createCli(): Promise<Command> {
@@ -96,6 +97,9 @@ export async function createCli(): Promise<Command> {
 
   // Register operate commands — interactive browser control for agents
   registerOperateCommands(program);
+
+  // Register record command — capture network requests and generate adapters
+  registerRecordCommand(program);
 
   // Register "repair" command — diagnostic for broken adapters
   program
