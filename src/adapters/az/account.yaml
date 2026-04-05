@@ -1,0 +1,21 @@
+site: az
+name: account
+description: List Azure subscriptions
+type: bridge
+strategy: public
+binary: az
+detect: which az
+autoInstall: pip install azure-cli
+
+pipeline:
+  - exec:
+      command: az
+      args:
+        - account
+        - list
+        - --output
+        - json
+      parse: json
+      timeout: 30000
+
+columns: [name, id, state, isDefault]

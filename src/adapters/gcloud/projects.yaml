@@ -1,0 +1,19 @@
+site: gcloud
+name: projects
+description: List Google Cloud projects
+type: bridge
+strategy: public
+binary: gcloud
+detect: which gcloud
+
+pipeline:
+  - exec:
+      command: gcloud
+      args:
+        - projects
+        - list
+        - --format=json
+      parse: json
+      timeout: 30000
+
+columns: [projectId, name, projectNumber, lifecycleState]

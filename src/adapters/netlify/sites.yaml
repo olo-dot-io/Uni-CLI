@@ -1,0 +1,19 @@
+site: netlify
+name: sites
+description: List Netlify sites
+type: bridge
+strategy: public
+binary: netlify
+detect: which netlify
+autoInstall: npm install -g netlify-cli
+
+pipeline:
+  - exec:
+      command: netlify
+      args:
+        - sites:list
+        - --json
+      parse: json
+      timeout: 30000
+
+columns: [name, url, id, ssl_url]
