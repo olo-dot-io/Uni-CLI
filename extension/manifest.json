@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Unicli Browser Bridge",
+  "version": "0.1.0",
+  "description": "Bridges unicli CLI commands to Chrome browser tabs via the daemon",
+  "permissions": [
+    "debugger",
+    "scripting",
+    "tabs",
+    "cookies",
+    "activeTab",
+    "alarms"
+  ],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "icons": {}
+}
