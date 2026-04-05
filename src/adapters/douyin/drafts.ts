@@ -14,7 +14,12 @@ cli({
   strategy: Strategy.COOKIE,
   browser: true,
   args: [
-    { name: "limit", type: "int", default: 20, description: "Number of results" },
+    {
+      name: "limit",
+      type: "int",
+      default: 20,
+      description: "Number of results",
+    },
   ],
   columns: ["aweme_id", "title", "create_time"],
   func: async (page, kwargs) => {

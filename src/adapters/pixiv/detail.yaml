@@ -12,7 +12,20 @@ args:
     positional: true
     description: Illustration ID
 
-columns: [illust_id, title, author, type, pages, bookmarks, likes, views, tags, created, url]
+columns:
+  [
+    illust_id,
+    title,
+    author,
+    type,
+    pages,
+    bookmarks,
+    likes,
+    views,
+    tags,
+    created,
+    url,
+  ]
 
 pipeline:
   - navigate: https://www.pixiv.net

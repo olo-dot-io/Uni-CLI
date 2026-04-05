@@ -21,7 +21,13 @@ args:
 pipeline:
   - exec:
       command: krita
-      args: ["--export", "--export-filename", "${{ args.output }}", "${{ args.input }}"]
+      args:
+        [
+          "--export",
+          "--export-filename",
+          "${{ args.output }}",
+          "${{ args.input }}",
+        ]
       parse: text
       timeout: 60000
 

@@ -30,7 +30,15 @@ args:
 pipeline:
   - exec:
       command: sketchtool
-      args: ["export", "artboards", "${{ args.input }}", "--output=${{ args.output }}", "--formats=${{ args.format }}", "--scales=${{ args.scales }}"]
+      args:
+        [
+          "export",
+          "artboards",
+          "${{ args.input }}",
+          "--output=${{ args.output }}",
+          "--formats=${{ args.format }}",
+          "--scales=${{ args.scales }}",
+        ]
       parse: text
       timeout: 120000
 

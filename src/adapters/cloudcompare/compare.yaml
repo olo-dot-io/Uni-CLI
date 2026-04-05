@@ -21,7 +21,15 @@ args:
 pipeline:
   - exec:
       command: CloudCompare
-      args: ["-SILENT", "-O", "${{ args.reference }}", "-O", "${{ args.compared }}", "-C2C_DIST"]
+      args:
+        [
+          "-SILENT",
+          "-O",
+          "${{ args.reference }}",
+          "-O",
+          "${{ args.compared }}",
+          "-C2C_DIST",
+        ]
       parse: text
       timeout: 300000
 

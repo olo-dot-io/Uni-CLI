@@ -66,9 +66,7 @@ cli({
 
     const formatTrend = (list: unknown): string => {
       if (!Array.isArray(list) || !list.length) return "-";
-      return list
-        .map((d: Record<string, unknown>) => d.count)
-        .join(" -> ");
+      return list.map((d: Record<string, unknown>) => d.count).join(" -> ");
     };
 
     return [

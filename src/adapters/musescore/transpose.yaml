@@ -25,7 +25,14 @@ args:
 pipeline:
   - exec:
       command: musescore4
-      args: ["${{ args.input }}", "--score-transpose", "${{ args.semitones }}", "-o", "${{ args.output }}"]
+      args:
+        [
+          "${{ args.input }}",
+          "--score-transpose",
+          "${{ args.semitones }}",
+          "-o",
+          "${{ args.output }}",
+        ]
       parse: text
       timeout: 120000
 

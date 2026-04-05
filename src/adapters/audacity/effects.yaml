@@ -29,7 +29,13 @@ args:
 pipeline:
   - exec:
       command: sox
-      args: ["${{ args.input }}", "${{ args.output }}", "${{ args.effect }}", "${{ args.value }}"]
+      args:
+        [
+          "${{ args.input }}",
+          "${{ args.output }}",
+          "${{ args.effect }}",
+          "${{ args.value }}",
+        ]
       parse: text
 
 columns: [result]

@@ -59,7 +59,12 @@ cli({
       positional: true,
       description: "Search keyword",
     },
-    { name: "limit", type: "int", default: 20, description: "Number of results" },
+    {
+      name: "limit",
+      type: "int",
+      default: 20,
+      description: "Number of results",
+    },
   ],
   columns: ["rank", "title", "author", "likes", "published_at", "url"],
   func: async (page, kwargs) => {

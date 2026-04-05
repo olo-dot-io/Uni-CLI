@@ -14,11 +14,16 @@ cli({
   strategy: Strategy.COOKIE,
   browser: true,
   args: [],
-  columns: ["uid", "nickname", "follower_count", "following_count", "aweme_count"],
+  columns: [
+    "uid",
+    "nickname",
+    "follower_count",
+    "following_count",
+    "aweme_count",
+  ],
   func: async (page, _kwargs) => {
     const p = page as IPage;
-    const url =
-      "https://creator.douyin.com/web/api/media/user/info/?aid=1128";
+    const url = "https://creator.douyin.com/web/api/media/user/info/?aid=1128";
     const res = (await browserFetch(p, "GET", url)) as {
       user_info?: {
         uid: string;

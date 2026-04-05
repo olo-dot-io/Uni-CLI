@@ -12,7 +12,8 @@ args:
     positional: true
     description: "Job detail URL or encrypted job ID"
 
-columns: [title, salary, company, location, experience, degree, description, url]
+columns:
+  [title, salary, company, location, experience, degree, description, url]
 
 pipeline:
   - navigate:

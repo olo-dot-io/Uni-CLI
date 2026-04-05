@@ -38,7 +38,11 @@ cli({
       required: true,
       description: "Video title (max 30 chars)",
     },
-    { name: "caption", default: "", description: "Caption text (max 1000 chars)" },
+    {
+      name: "caption",
+      default: "",
+      description: "Caption text (max 1000 chars)",
+    },
     { name: "cover", default: "", description: "Cover image path" },
     {
       name: "visibility",
@@ -163,10 +167,7 @@ cli({
       )) as number;
       if (coverInputs > 1) {
         // Use the last file input (likely the cover one)
-        await p.setFileInput(
-          'input[type="file"]:last-of-type',
-          [coverPath],
-        );
+        await p.setFileInput('input[type="file"]:last-of-type', [coverPath]);
         await p.wait(3);
       }
     }

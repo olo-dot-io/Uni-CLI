@@ -3,9 +3,7 @@
 /** Extract a bare note ID from a full URL or raw ID string. */
 export function parseNoteId(input: string): string {
   const trimmed = input.trim();
-  const match = trimmed.match(
-    /\/(?:explore|note|search_result)\/([a-f0-9]+)/,
-  );
+  const match = trimmed.match(/\/(?:explore|note|search_result)\/([a-f0-9]+)/);
   return match ? match[1] : trimmed;
 }
 

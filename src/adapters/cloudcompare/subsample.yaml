@@ -26,7 +26,16 @@ args:
 pipeline:
   - exec:
       command: CloudCompare
-      args: ["-SILENT", "-O", "${{ args.input }}", "-SS", "${{ args.method }}", "${{ args.value }}", "-SAVE_CLOUDS"]
+      args:
+        [
+          "-SILENT",
+          "-O",
+          "${{ args.input }}",
+          "-SS",
+          "${{ args.method }}",
+          "${{ args.value }}",
+          "-SAVE_CLOUDS",
+        ]
       parse: text
       timeout: 300000
 

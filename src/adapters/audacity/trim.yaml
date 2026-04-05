@@ -28,7 +28,14 @@ args:
 pipeline:
   - exec:
       command: sox
-      args: ["${{ args.input }}", "${{ args.output }}", "trim", "${{ args.start }}", "${{ args.duration }}"]
+      args:
+        [
+          "${{ args.input }}",
+          "${{ args.output }}",
+          "trim",
+          "${{ args.start }}",
+          "${{ args.duration }}",
+        ]
       parse: text
 
 columns: [result]

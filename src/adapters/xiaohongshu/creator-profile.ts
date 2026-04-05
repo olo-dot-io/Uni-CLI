@@ -12,7 +12,8 @@ import type { IPage } from "../../types.js";
 cli({
   site: "xiaohongshu",
   name: "creator-profile",
-  description: "Xiaohongshu creator account info (followers/following/likes/level)",
+  description:
+    "Xiaohongshu creator account info (followers/following/likes/level)",
   domain: "creator.xiaohongshu.com",
   strategy: Strategy.COOKIE,
   browser: true,

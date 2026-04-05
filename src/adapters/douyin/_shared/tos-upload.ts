@@ -337,9 +337,7 @@ export async function tosUpload(options: TosUploadOptions): Promise<void> {
     saveResumeState(resumePath, { uploadId, fileSize, parts: completedParts });
   }
 
-  const completedPartNumbers = new Set(
-    completedParts.map((p) => p.partNumber),
-  );
+  const completedPartNumbers = new Set(completedParts.map((p) => p.partNumber));
   const totalParts = Math.ceil(fileSize / PART_SIZE);
   let uploadedBytes = completedParts.length * PART_SIZE;
   if (onProgress) onProgress(Math.min(uploadedBytes, fileSize), fileSize);

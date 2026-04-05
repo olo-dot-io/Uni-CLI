@@ -24,7 +24,8 @@ args:
 pipeline:
   - exec:
       command: sox
-      args: ["--norm=${{ args.level }}", "${{ args.input }}", "${{ args.output }}"]
+      args:
+        ["--norm=${{ args.level }}", "${{ args.input }}", "${{ args.output }}"]
       parse: text
 
 columns: [result]

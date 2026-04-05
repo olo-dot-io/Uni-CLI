@@ -24,7 +24,16 @@ args:
 pipeline:
   - exec:
       command: sox
-      args: ["${{ args.input }}", "-n", "spectrogram", "-o", "${{ args.output }}", "-t", "${{ args.title }}"]
+      args:
+        [
+          "${{ args.input }}",
+          "-n",
+          "spectrogram",
+          "-o",
+          "${{ args.output }}",
+          "-t",
+          "${{ args.title }}",
+        ]
       parse: text
 
 columns: [result]

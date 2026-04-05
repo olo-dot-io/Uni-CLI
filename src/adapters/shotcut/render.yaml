@@ -21,7 +21,14 @@ args:
 pipeline:
   - exec:
       command: melt
-      args: ["${{ args.input }}", "-consumer", "avformat:${{ args.output }}", "acodec=aac", "vcodec=libx264"]
+      args:
+        [
+          "${{ args.input }}",
+          "-consumer",
+          "avformat:${{ args.output }}",
+          "acodec=aac",
+          "vcodec=libx264",
+        ]
       parse: text
       timeout: 600000
 

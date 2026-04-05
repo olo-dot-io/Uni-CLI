@@ -81,11 +81,7 @@ export function extractXhsUserNotes(
     if (!noteCard || typeof noteCard !== "object") continue;
 
     const noteId = toCleanString(
-      noteCard.noteId ??
-        noteCard.note_id ??
-        e?.noteId ??
-        e?.note_id ??
-        e?.id,
+      noteCard.noteId ?? noteCard.note_id ?? e?.noteId ?? e?.note_id ?? e?.id,
     );
     if (!noteId || seen.has(noteId)) continue;
     seen.add(noteId);

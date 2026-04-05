@@ -22,7 +22,15 @@ args:
 pipeline:
   - exec:
       command: CloudCompare
-      args: ["-SILENT", "-O", "${{ args.input }}", "-C_EXPORT_FMT", "${{ args.format }}", "-SAVE_CLOUDS"]
+      args:
+        [
+          "-SILENT",
+          "-O",
+          "${{ args.input }}",
+          "-C_EXPORT_FMT",
+          "${{ args.format }}",
+          "-SAVE_CLOUDS",
+        ]
       parse: text
       timeout: 120000
 

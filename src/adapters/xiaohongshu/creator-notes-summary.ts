@@ -27,10 +27,7 @@ interface CreatorNoteSummaryRow {
   url: string;
 }
 
-function findDetailValue(
-  rows: CreatorNoteDetailRow[],
-  metric: string,
-): string {
+function findDetailValue(rows: CreatorNoteDetailRow[], metric: string): string {
   return rows.find((row) => row.metric === metric)?.value ?? "";
 }
 
@@ -43,10 +40,8 @@ function summarizeCreatorNote(
     rank,
     id: note.id,
     title: note.title,
-    views:
-      findDetailValue(rows, "\u89c2\u770b\u6570") || String(note.views),
-    likes:
-      findDetailValue(rows, "\u70b9\u8d5e\u6570") || String(note.likes),
+    views: findDetailValue(rows, "\u89c2\u770b\u6570") || String(note.views),
+    likes: findDetailValue(rows, "\u70b9\u8d5e\u6570") || String(note.likes),
     collects:
       findDetailValue(rows, "\u6536\u85cf\u6570") || String(note.collects),
     comments:
