@@ -1,0 +1,22 @@
+site: aws
+name: s3-ls
+description: List S3 buckets
+type: bridge
+strategy: public
+binary: aws
+detect: which aws
+autoInstall: pip install awscli
+
+pipeline:
+  - exec:
+      command: aws
+      args:
+        - s3api
+        - list-buckets
+        - --output
+        - json
+      parse: json
+      timeout: 30000
+  - select: "Buckets"
+
+columns: [Name, CreationDate]

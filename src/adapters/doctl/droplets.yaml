@@ -1,0 +1,22 @@
+site: doctl
+name: droplets
+description: List DigitalOcean droplets
+type: bridge
+strategy: public
+binary: doctl
+detect: which doctl
+autoInstall: brew install doctl
+
+pipeline:
+  - exec:
+      command: doctl
+      args:
+        - compute
+        - droplet
+        - list
+        - --output
+        - json
+      parse: json
+      timeout: 30000
+
+columns: [id, name, region, status, vcpus, memory]

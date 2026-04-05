@@ -119,7 +119,7 @@ src/
 | Completion      | `unicli completion <shell>`       |
 | Sync refs       | `npm run sync:ref`                |
 
-## Pipeline Steps (26)
+## Pipeline Steps (30)
 
 | Step         | Type      | What it does                                           |
 | ------------ | --------- | ------------------------------------------------------ |
@@ -148,6 +148,10 @@ src/
 | `websocket`  | Service   | WebSocket connect/send/receive (OBS auth support)      |
 | `set`        | Control   | Store variables into `vars` context for templates      |
 | `if`         | Control   | Conditional execution of sub-pipeline branches         |
+| `append`     | Control   | Push ctx.data into vars array for accumulation         |
+| `each`       | Control   | Loop sub-pipeline with do-while + max iteration limit  |
+| `parallel`   | Control   | Run sub-pipelines concurrently with merge strategies   |
+| `rate_limit` | Control   | Per-domain token bucket request throttling             |
 
 ## Strategies
 

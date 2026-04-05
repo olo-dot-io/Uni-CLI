@@ -101,7 +101,7 @@ export class PipelineError extends Error {
 }
 
 /** Reserved sibling keys that are not step action names */
-const SIBLING_KEYS = new Set(["fallback", "then", "else"]);
+const SIBLING_KEYS = new Set(["fallback", "then", "else", "merge"]);
 
 function getActionEntry(step: PipelineStep): [string, unknown] {
   const entries = Object.entries(step);
@@ -167,8 +167,16 @@ async function executeStep(
       return stepDownload(ctx, config as DownloadStepConfig);
     case "websocket":
       return stepWebsocket(ctx, config as WebsocketStepConfig);
+    case "rate_limit": {
+      const rlConfig = config as { domain: string; rpm?: number };
+      const { waitForToken } = await import("./rate-limiter.js");
+      await waitForToken(rlConfig.domain, rlConfig.rpm ?? 60);
+      return ctx;
+    }
     case "set":
       return stepSet(ctx, config as Record<string, unknown>);
+    case "append":
+      return stepAppend(ctx, config as string);
     case "if": {
       const ifStep = (fullStep ?? { if: config }) as {
         if: string;
@@ -176,6 +184,19 @@ async function executeStep(
         else?: PipelineStep[];
       };
       return stepIf(ctx, ifStep, stepIndex, (depth ?? 0) + 1);
+    }
+    case "each":
+      return stepEach(ctx, config as EachConfig, stepIndex, depth ?? 0);
+    case "parallel": {
+      const mergeStrategy =
+        ((fullStep as Record<string, unknown>)?.merge as string) ?? "concat";
+      return stepParallel(
+        ctx,
+        config as PipelineStep[],
+        mergeStrategy,
+        stepIndex,
+        depth ?? 0,
+      );
     }
     default:
       return ctx;
@@ -274,6 +295,37 @@ export async function runPipeline(
           if (!succeeded) throw lastErr;
         }
       } catch (err) {
+        // Auto-fix: try alternative select paths when selector_miss
+        if (
+          action === "select" &&
+          err instanceof PipelineError &&
+          err.detail.errorType === "selector_miss" &&
+          options?.site
+        ) {
+          try {
+            const { suggestSelectFix } = await import("./auto-fix.js");
+            const suggestions = suggestSelectFix(
+              ctx.data,
+              stepConfig as string,
+            );
+            let fixed = false;
+            for (const suggestion of suggestions) {
+              try {
+                ctx = stepSelect(ctx, suggestion, i);
+                process.stderr.write(
+                  `[auto-fix] ${options.site}: select path changed "${String(stepConfig)}" → "${suggestion}"\n`,
+                );
+                fixed = true;
+                break;
+              } catch {
+                // Try next suggestion
+              }
+            }
+            if (fixed) continue;
+          } catch {
+            // Auto-fix module not available
+          }
+        }
         if (err instanceof PipelineError) throw err;
         throw new PipelineError(
           `Step ${i} (${action}) failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -878,6 +930,24 @@ function stepSet(
   return { ...ctx, vars: { ...ctx.vars, ...resolved } };
 }
 
+// --- Append step (accumulate data into vars array) ---
+
+function stepAppend(ctx: PipelineContext, key: string): PipelineContext {
+  if (typeof key !== "string" || !key) return ctx;
+  const existing = ctx.vars[key];
+  const arr = Array.isArray(existing)
+    ? [...existing]
+    : existing !== undefined
+      ? [existing]
+      : [];
+  if (Array.isArray(ctx.data)) {
+    arr.push(...(ctx.data as unknown[]));
+  } else if (ctx.data !== null && ctx.data !== undefined) {
+    arr.push(ctx.data);
+  }
+  return { ...ctx, vars: { ...ctx.vars, [key]: arr } };
+}
+
 // --- If/else step (conditional branching) ---
 
 async function stepIf(
@@ -922,6 +992,136 @@ async function stepIf(
     );
   }
   return ctx;
+}
+
+// --- Each loop step (do-while with max iteration guard) ---
+
+interface EachConfig {
+  max?: number;
+  do: PipelineStep[];
+  until?: string;
+}
+
+async function stepEach(
+  ctx: PipelineContext,
+  config: EachConfig,
+  stepIndex: number,
+  depth: number,
+): Promise<PipelineContext> {
+  if (depth > 10) {
+    throw new PipelineError("each step recursion depth exceeded (max 10)", {
+      step: stepIndex,
+      action: "each",
+      config,
+      errorType: "parse_error",
+      suggestion: "Reduce nesting depth of loop steps. Maximum is 10 levels.",
+    });
+  }
+
+  const maxIterations = Math.max(config.max ?? 100, 1);
+  const body = config.do;
+  if (!body || !Array.isArray(body) || body.length === 0) return ctx;
+
+  for (let iteration = 0; iteration < maxIterations; iteration++) {
+    // Reset data at start of each iteration to prevent fetch fan-out
+    // from previous iteration's array data. State is carried via ctx.vars.
+    ctx = { ...ctx, data: null };
+
+    // Execute body sub-pipeline
+    for (const subStep of body) {
+      const [subAction, subConfig] = getActionEntry(subStep);
+      ctx = await executeStep(
+        ctx,
+        subAction,
+        subConfig,
+        stepIndex,
+        subStep,
+        depth + 1,
+      );
+    }
+
+    // Check until condition (after body execution — do-while semantics)
+    if (config.until) {
+      const condStr =
+        typeof config.until === "string" ? config.until : String(config.until);
+      // Strip ${{ }} wrapper if present
+      const exprMatch = condStr.match(/^\$\{\{\s*(.+?)\s*\}\}$/);
+      const expr = exprMatch ? exprMatch[1] : condStr;
+      // Build scope with data alias for until condition evaluation
+      const scope = buildScope(ctx);
+      scope.data = ctx.data;
+      const result = evalExpression(expr, scope);
+      if (result) break;
+    }
+  }
+
+  return ctx;
+}
+
+// --- Parallel step (concurrent branch execution with merge strategies) ---
+
+async function stepParallel(
+  ctx: PipelineContext,
+  branches: PipelineStep[],
+  merge: string,
+  stepIndex: number,
+  depth: number,
+): Promise<PipelineContext> {
+  if (!Array.isArray(branches) || branches.length === 0) return ctx;
+
+  if (depth > 10) {
+    throw new PipelineError("parallel step recursion depth exceeded (max 10)", {
+      step: stepIndex,
+      action: "parallel",
+      config: branches,
+      errorType: "parse_error",
+      suggestion:
+        "Reduce nesting depth of parallel steps. Maximum is 10 levels.",
+    });
+  }
+
+  const results = await Promise.all(
+    branches.map(async (branch) => {
+      const branchCtx: PipelineContext = {
+        ...ctx,
+        vars: { ...ctx.vars },
+      };
+      const [action, config] = getActionEntry(branch);
+      const result = await executeStep(
+        branchCtx,
+        action,
+        config,
+        stepIndex,
+        branch,
+        depth + 1,
+      );
+      return result.data;
+    }),
+  );
+
+  let merged: unknown;
+  switch (merge) {
+    case "zip": {
+      const first = results[0];
+      if (Array.isArray(first)) {
+        merged = first.map((_, i) =>
+          results.map((r) => (Array.isArray(r) ? r[i] : r)),
+        );
+      } else {
+        merged = results;
+      }
+      break;
+    }
+    case "object":
+      merged = Object.fromEntries(results.map((r, i) => [String(i), r]));
+      break;
+    case "concat":
+    default:
+      merged = results.flatMap((r) => (Array.isArray(r) ? r : [r]));
+      break;
+  }
+
+  return { ...ctx, data: merged };
 }
 
 /**
