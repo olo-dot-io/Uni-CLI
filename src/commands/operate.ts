@@ -1,0 +1,366 @@
+/**
+ * Interactive browser control — `unicli operate` command family.
+ *
+ * Enables AI agents to navigate, interact with, and inspect web pages
+ * through the browser daemon. Each subcommand maps to a daemon action.
+ */
+
+import { Command } from "commander";
+import chalk from "chalk";
+import { BrowserBridge, DaemonPage } from "../browser/bridge.js";
+
+const OPERATE_WORKSPACE = "operate:default";
+
+async function getOperatePage(): Promise<DaemonPage> {
+  const bridge = new BrowserBridge();
+  const page = await bridge.connect({
+    timeout: 30_000,
+    workspace: OPERATE_WORKSPACE,
+  });
+  return page as DaemonPage;
+}
+
+/** Wrap operate actions for consistent error handling */
+async function operateAction(
+  name: string,
+  fn: () => Promise<unknown>,
+): Promise<void> {
+  try {
+    const result = await fn();
+    if (result !== undefined && result !== null) {
+      if (typeof result === "string") {
+        console.log(result);
+      } else {
+        console.log(JSON.stringify(result, null, 2));
+      }
+    }
+  } catch (err) {
+    console.error(
+      chalk.red(
+        `operate ${name}: ${err instanceof Error ? err.message : String(err)}`,
+      ),
+    );
+    process.exitCode = 1;
+  }
+}
+
+export function registerOperateCommands(program: Command): void {
+  const operate = program
+    .command("operate")
+    .description("Interactive browser control for agents");
+
+  // open <url> — Navigate to URL
+  operate
+    .command("open <url>")
+    .description("Navigate to URL in daemon browser")
+    .action((url: string) =>
+      operateAction("open", async () => {
+        const page = await getOperatePage();
+        await page.goto(url, { settleMs: 2000 });
+        const title = await page.title();
+        return { ok: true, url, title };
+      }),
+    );
+
+  // back — Navigate back
+  operate
+    .command("back")
+    .description("Navigate back in history")
+    .action(() =>
+      operateAction("back", async () => {
+        const page = await getOperatePage();
+        await page.evaluate("history.back()");
+        await page.wait(2);
+        const url = await page.url();
+        return { ok: true, url };
+      }),
+    );
+
+  // state — DOM snapshot
+  operate
+    .command("state")
+    .description("Get DOM accessibility tree snapshot")
+    .option("--interactive", "only show interactive elements")
+    .option("--compact", "omit decorative nodes")
+    .action((opts: { interactive?: boolean; compact?: boolean }) =>
+      operateAction("state", async () => {
+        const page = await getOperatePage();
+        const url = await page.url();
+        const snapshot = await page.snapshot({
+          interactive: opts.interactive,
+          compact: opts.compact,
+        });
+        console.log(chalk.dim(`URL: ${url}`));
+        return snapshot;
+      }),
+    );
+
+  // screenshot [path] — Capture screenshot
+  operate
+    .command("screenshot [path]")
+    .description("Capture page screenshot")
+    .option("--full-page", "capture full scrollable page")
+    .action((path: string | undefined, opts: { fullPage?: boolean }) =>
+      operateAction("screenshot", async () => {
+        const page = await getOperatePage();
+        const buf = await page.screenshot({
+          fullPage: opts.fullPage,
+          path: path ?? undefined,
+        });
+        if (path) {
+          return { ok: true, path, size: buf.length };
+        }
+        // Output base64 to stdout for agent consumption
+        return buf.toString("base64");
+      }),
+    );
+
+  // click <ref> — Click element by ref number
+  operate
+    .command("click <ref>")
+    .description("Click element by ref number from state")
+    .action((ref: string) =>
+      operateAction("click", async () => {
+        const page = await getOperatePage();
+        await page.click(`[data-unicli-ref="${ref}"]`);
+        return { ok: true, clicked: ref };
+      }),
+    );
+
+  // type <ref> <text> — Type into element
+  operate
+    .command("type <ref> <text>")
+    .description("Type text into element by ref number")
+    .action((ref: string, text: string) =>
+      operateAction("type", async () => {
+        const page = await getOperatePage();
+        await page.click(`[data-unicli-ref="${ref}"]`);
+        await page.wait(0.3);
+        await page.insertText(text);
+        return { ok: true, ref, text };
+      }),
+    );
+
+  // keys <key> — Press keyboard keys
+  operate
+    .command("keys <key>")
+    .description("Press keyboard key (e.g., Enter, Escape, Control+a)")
+    .action((key: string) =>
+      operateAction("keys", async () => {
+        const page = await getOperatePage();
+        // Support combo keys: "Control+a" → press with modifiers
+        if (key.includes("+")) {
+          const parts = key.split("+");
+          const actualKey = parts.pop()!;
+          const modifiers = parts.map((m) => m.toLowerCase());
+          await page.press(actualKey, modifiers);
+        } else {
+          await page.press(key);
+        }
+        return { ok: true, key };
+      }),
+    );
+
+  // scroll [direction] — Scroll page
+  operate
+    .command("scroll [direction]")
+    .description("Scroll page (down, up, bottom, top)")
+    .option("--auto", "auto-scroll to bottom")
+    .option("--max <n>", "max scroll iterations for auto", "10")
+    .action(
+      (direction: string | undefined, opts: { auto?: boolean; max: string }) =>
+        operateAction("scroll", async () => {
+          const page = await getOperatePage();
+          if (opts.auto) {
+            await page.autoScroll({
+              maxScrolls: parseInt(opts.max, 10),
+              delay: 1000,
+            });
+          } else {
+            await page.scroll(
+              (direction ?? "down") as "down" | "up" | "bottom" | "top",
+            );
+          }
+          return { ok: true, direction: direction ?? "down" };
+        }),
+    );
+
+  // get <what> [ref] — Get page data
+  const get = operate
+    .command("get")
+    .description("Get page data (title, url, text, value, html, attributes)");
+
+  get
+    .command("title")
+    .description("Get page title")
+    .action(() =>
+      operateAction("get title", async () => {
+        const page = await getOperatePage();
+        return await page.title();
+      }),
+    );
+
+  get
+    .command("url")
+    .description("Get current URL")
+    .action(() =>
+      operateAction("get url", async () => {
+        const page = await getOperatePage();
+        return await page.url();
+      }),
+    );
+
+  get
+    .command("text <ref>")
+    .description("Get text content of element by ref")
+    .action((ref: string) =>
+      operateAction("get text", async () => {
+        const page = await getOperatePage();
+        return await page.evaluate(
+          `document.querySelector('[data-unicli-ref="${ref}"]')?.textContent?.trim() ?? null`,
+        );
+      }),
+    );
+
+  get
+    .command("value <ref>")
+    .description("Get value of input element by ref")
+    .action((ref: string) =>
+      operateAction("get value", async () => {
+        const page = await getOperatePage();
+        return await page.evaluate(
+          `document.querySelector('[data-unicli-ref="${ref}"]')?.value ?? null`,
+        );
+      }),
+    );
+
+  get
+    .command("html [selector]")
+    .description("Get outerHTML of element (or full page)")
+    .action((selector: string | undefined) =>
+      operateAction("get html", async () => {
+        const page = await getOperatePage();
+        if (selector) {
+          return await page.evaluate(
+            `document.querySelector('${selector.replace(/'/g, "\\'")}')?.outerHTML?.slice(0, 50000) ?? null`,
+          );
+        }
+        return await page.evaluate(
+          "document.documentElement.outerHTML.slice(0, 50000)",
+        );
+      }),
+    );
+
+  get
+    .command("attributes <ref>")
+    .description("Get all attributes of element by ref")
+    .action((ref: string) =>
+      operateAction("get attributes", async () => {
+        const page = await getOperatePage();
+        return await page.evaluate(
+          `(() => { const el = document.querySelector('[data-unicli-ref="${ref}"]'); if (!el) return null; const attrs = {}; for (const a of el.attributes) attrs[a.name] = a.value; return JSON.stringify(attrs); })()`,
+        );
+      }),
+    );
+
+  // wait <type> [value] — Wait for condition
+  operate
+    .command("wait <type> [value]")
+    .description("Wait for condition (time <ms>, selector <sel>, text <str>)")
+    .option("--timeout <ms>", "timeout in ms", "10000")
+    .action(
+      (type: string, value: string | undefined, opts: { timeout: string }) =>
+        operateAction("wait", async () => {
+          const page = await getOperatePage();
+          const timeout = parseInt(opts.timeout, 10);
+          switch (type) {
+            case "time":
+              await page.wait(parseInt(value ?? "1000", 10) / 1000);
+              break;
+            case "selector":
+              if (!value) throw new Error("selector value required");
+              await page.waitForSelector(value, timeout);
+              break;
+            case "text":
+              if (!value) throw new Error("text value required");
+              // Poll for text content
+              {
+                const deadline = Date.now() + timeout;
+                while (Date.now() < deadline) {
+                  const found = await page.evaluate(
+                    `document.body.innerText.includes('${value.replace(/'/g, "\\'")}')`,
+                  );
+                  if (found) return { ok: true, found: true };
+                  await new Promise((r) => setTimeout(r, 200));
+                }
+                throw new Error(
+                  `Text "${value}" not found within ${String(timeout)}ms`,
+                );
+              }
+            default:
+              throw new Error(
+                `Unknown wait type: ${type}. Use: time, selector, text`,
+              );
+          }
+          return { ok: true };
+        }),
+    );
+
+  // eval <js> — Execute JavaScript
+  operate
+    .command("eval <js>")
+    .description("Execute JavaScript in page context")
+    .action((js: string) =>
+      operateAction("eval", async () => {
+        const page = await getOperatePage();
+        return await page.evaluate(js);
+      }),
+    );
+
+  // network [pattern] — Show network requests
+  operate
+    .command("network [pattern]")
+    .description("Show captured network requests")
+    .option("--all", "show all requests (no filter)")
+    .action((pattern: string | undefined, opts: { all?: boolean }) =>
+      operateAction("network", async () => {
+        const page = await getOperatePage();
+        const requests = await page.networkRequests();
+        if (pattern && !opts.all) {
+          return requests.filter((r) => r.url.includes(pattern));
+        }
+        return requests;
+      }),
+    );
+
+  // select <ref> <option> — Select dropdown option
+  operate
+    .command("select <ref> <option>")
+    .description("Select option in dropdown by ref")
+    .action((ref: string, option: string) =>
+      operateAction("select", async () => {
+        const page = await getOperatePage();
+        await page.evaluate(
+          `(() => {
+            const el = document.querySelector('[data-unicli-ref="${ref}"]');
+            if (!el || el.tagName !== 'SELECT') throw new Error('Not a <select> element');
+            el.value = '${option.replace(/'/g, "\\'")}';
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+          })()`,
+        );
+        return { ok: true, ref, option };
+      }),
+    );
+
+  // close — Close automation window
+  operate
+    .command("close")
+    .description("Close the automation browser window")
+    .action(() =>
+      operateAction("close", async () => {
+        const page = await getOperatePage();
+        await page.closeWindow();
+        return { ok: true };
+      }),
+    );
+}

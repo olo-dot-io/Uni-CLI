@@ -17,6 +17,7 @@ import {
   registerCompletionCommand,
   getCompletions,
 } from "./commands/completion.js";
+import { registerOperateCommands } from "./commands/operate.js";
 import type { OutputFormat } from "./types.js";
 
 export async function createCli(): Promise<Command> {
@@ -92,6 +93,9 @@ export async function createCli(): Promise<Command> {
 
   // Register completion command — shell tab completion
   registerCompletionCommand(program);
+
+  // Register operate commands — interactive browser control for agents
+  registerOperateCommands(program);
 
   // Register "repair" command — diagnostic for broken adapters
   program
