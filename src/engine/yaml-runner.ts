@@ -1291,7 +1291,22 @@ function stepWriteTemp(
 async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
   if (ctx.page) return ctx.page;
 
-  // Try daemon first (reuses Chrome login sessions)
+  const port = process.env.UNICLI_CDP_PORT
+    ? parseInt(process.env.UNICLI_CDP_PORT, 10)
+    : 9222;
+
+  // 1. Try direct CDP first (fastest, no daemon overhead)
+  try {
+    const { BrowserPage: BP } = await import("../browser/page.js");
+    const { injectStealth } = await import("../browser/stealth.js");
+    const page = await BP.connect(port);
+    await injectStealth(page.sendCDP.bind(page));
+    return page;
+  } catch {
+    // CDP not available — try daemon
+  }
+
+  // 2. Fallback: daemon (reuses Chrome login sessions via extension)
   try {
     const { checkDaemonStatus } = await import("../browser/discover.js");
     const status = await checkDaemonStatus({ timeout: 300 });
@@ -1302,22 +1317,24 @@ async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
       return page as unknown as BrowserPage;
     }
   } catch {
-    // Daemon not available — fall through to direct CDP
+    // Daemon not available either
   }
 
-  // Fallback: direct CDP connection
-  const { BrowserPage: BP } = await import("../browser/page.js");
-  const { injectStealth } = await import("../browser/stealth.js");
-
-  const port = process.env.UNICLI_CDP_PORT
-    ? parseInt(process.env.UNICLI_CDP_PORT, 10)
-    : 9222;
-  const page = await BP.connect(port);
-
-  // Inject anti-detection scripts before any navigation
-  await injectStealth(page.sendCDP.bind(page));
-
-  return page;
+  // 3. Last resort: auto-launch Chrome with debug port
+  try {
+    const { launchChrome } = await import("../browser/launcher.js");
+    const { BrowserPage: BP } = await import("../browser/page.js");
+    const { injectStealth } = await import("../browser/stealth.js");
+    await launchChrome(port);
+    await new Promise((r) => setTimeout(r, 1500));
+    const page = await BP.connect(port);
+    await injectStealth(page.sendCDP.bind(page));
+    return page;
+  } catch (err) {
+    throw new Error(
+      `Cannot connect to Chrome. Run "unicli browser start" first. (${err instanceof Error ? err.message : String(err)})`,
+    );
+  }
 }
 
 interface NavigateConfig {
