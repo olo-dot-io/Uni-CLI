@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/unicli"><img src="https://img.shields.io/npm/v/unicli?style=flat-square" alt="npm"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/unicli?style=flat-square" alt="Node.js"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/npm/l/unicli?style=flat-square" alt="Apache-2.0"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="AGPL-3.0"></a>
 </p>
 
 <p align="center">
@@ -321,7 +321,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md). The fastest way to contribute: write a
 
 ## License
 
-[Apache-2.0](./LICENSE)
+[AGPL-3.0](./LICENSE) — Commercial license available. See [LICENSE-COMMERCIAL](./LICENSE-COMMERCIAL).
 
 ---
 
