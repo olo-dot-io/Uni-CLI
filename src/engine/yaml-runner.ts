@@ -869,7 +869,8 @@ function stepSet(
   ctx: PipelineContext,
   config: Record<string, unknown>,
 ): PipelineContext {
-  if (!config || typeof config !== "object" || Array.isArray(config)) return ctx;
+  if (!config || typeof config !== "object" || Array.isArray(config))
+    return ctx;
   const resolved: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(config)) {
     resolved[key] = resolveTemplateDeep(value, ctx);
@@ -911,7 +912,14 @@ async function stepIf(
   for (let j = 0; j < branch.length; j++) {
     const subStep = branch[j];
     const [subAction, subConfig] = getActionEntry(subStep);
-    ctx = await executeStep(ctx, subAction, subConfig, stepIndex, subStep, depth);
+    ctx = await executeStep(
+      ctx,
+      subAction,
+      subConfig,
+      stepIndex,
+      subStep,
+      depth,
+    );
   }
   return ctx;
 }

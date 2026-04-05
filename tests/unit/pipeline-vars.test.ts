@@ -91,11 +91,7 @@ describe("set step", () => {
 
   it("handles empty set as no-op", async () => {
     const result = await runPipeline(
-      [
-        { set: {} },
-        { fetch: { url: `${baseUrl}/data` } },
-        { select: "items" },
-      ],
+      [{ set: {} }, { fetch: { url: `${baseUrl}/data` } }, { select: "items" }],
       {},
     );
     expect(result).toHaveLength(1);

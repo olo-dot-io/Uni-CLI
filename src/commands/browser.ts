@@ -27,51 +27,56 @@ export function registerBrowserCommands(program: Command): void {
     .command("start")
     .description("Start or connect to Chrome with CDP enabled")
     .option("--port <port>", "CDP port", String(getCDPPort()))
-    .option("--profile", "Use dedicated automation profile (~/.unicli/chrome-profile)")
+    .option(
+      "--profile",
+      "Use dedicated automation profile (~/.unicli/chrome-profile)",
+    )
     .option("--headless", "Launch in headless mode (for CI)")
-    .action(async (opts: { port: string; profile?: boolean; headless?: boolean }) => {
-      const port = parseInt(opts.port, 10);
+    .action(
+      async (opts: { port: string; profile?: boolean; headless?: boolean }) => {
+        const port = parseInt(opts.port, 10);
 
-      // Check if already available
-      if (await isCDPAvailable(port)) {
-        console.log(
-          chalk.green(`Chrome CDP already available on port ${String(port)}`),
-        );
-        await printTargetSummary(port);
-        return;
-      }
+        // Check if already available
+        if (await isCDPAvailable(port)) {
+          console.log(
+            chalk.green(`Chrome CDP already available on port ${String(port)}`),
+          );
+          await printTargetSummary(port);
+          return;
+        }
 
-      // Find Chrome
-      const chromePath = findChrome();
-      if (!chromePath) {
-        console.error(
-          chalk.red(
-            "Chrome not found. Install Google Chrome or set CHROME_PATH env var.",
-          ),
-        );
-        process.exitCode = 1;
-        return;
-      }
+        // Find Chrome
+        const chromePath = findChrome();
+        if (!chromePath) {
+          console.error(
+            chalk.red(
+              "Chrome not found. Install Google Chrome or set CHROME_PATH env var.",
+            ),
+          );
+          process.exitCode = 1;
+          return;
+        }
 
-      console.log(chalk.dim(`Found Chrome: ${chromePath}`));
-      console.log(chalk.dim(`Launching with CDP on port ${String(port)}...`));
+        console.log(chalk.dim(`Found Chrome: ${chromePath}`));
+        console.log(chalk.dim(`Launching with CDP on port ${String(port)}...`));
 
-      try {
-        const actualPort = await launchChrome(port, {
-          profile: opts.profile,
-          headless: opts.headless,
-        });
-        console.log(
-          chalk.green(`Chrome CDP ready on port ${String(actualPort)}`),
-        );
-        await printTargetSummary(actualPort);
-      } catch (err) {
-        console.error(
-          chalk.red(err instanceof Error ? err.message : String(err)),
-        );
-        process.exitCode = 1;
-      }
-    });
+        try {
+          const actualPort = await launchChrome(port, {
+            profile: opts.profile,
+            headless: opts.headless,
+          });
+          console.log(
+            chalk.green(`Chrome CDP ready on port ${String(actualPort)}`),
+          );
+          await printTargetSummary(actualPort);
+        } catch (err) {
+          console.error(
+            chalk.red(err instanceof Error ? err.message : String(err)),
+          );
+          process.exitCode = 1;
+        }
+      },
+    );
 
   // unicli browser status
   browser
@@ -99,7 +104,10 @@ export function registerBrowserCommands(program: Command): void {
     .command("cookies <domain>")
     .description("Extract cookies from Chrome for a domain")
     .option("--port <port>", "CDP port", String(getCDPPort()))
-    .option("--save-as <site>", "Save with custom site name (default: derived from domain)")
+    .option(
+      "--save-as <site>",
+      "Save with custom site name (default: derived from domain)",
+    )
     .action(async (domain: string, opts: { port: string; saveAs?: string }) => {
       const port = parseInt(opts.port, 10);
 
@@ -113,9 +121,8 @@ export function registerBrowserCommands(program: Command): void {
       }
 
       try {
-        const { extractCookiesViaCDP, saveCookies } = await import(
-          "../engine/cookie-extractor.js"
-        );
+        const { extractCookiesViaCDP, saveCookies } =
+          await import("../engine/cookie-extractor.js");
         const cookies = await extractCookiesViaCDP(domain, port);
         const count = Object.keys(cookies).length;
 

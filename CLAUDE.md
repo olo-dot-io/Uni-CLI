@@ -94,31 +94,32 @@ src/
 
 ## Commands
 
-| Purpose         | Command                          |
-| --------------- | -------------------------------- |
-| Dev run         | `npm run dev`                    |
-| Build           | `npm run build`                  |
-| Type check      | `npm run typecheck`              |
-| Lint            | `npm run lint`                   |
-| Test (unit)     | `npm run test`                   |
-| Test (adapters) | `npm run test:adapter`           |
-| Test (all)      | `npm run test:all`               |
-| Full verify     | `npm run verify`                 |
-| Format check    | `npm run format:check`           |
-| Diagnostics     | `npm run doctor`                 |
-| Repair adapter  | `unicli repair <site> <command>` |
-| Test adapters   | `unicli test [site]`             |
-| Browser start   | `unicli browser start`           |
-| Browser status  | `unicli browser status`          |
-| Auth setup      | `unicli auth setup <site>`       |
-| Daemon status   | `unicli daemon status`           |
-| Daemon stop     | `unicli daemon stop`             |
-| Operate browser | `unicli operate <subcommand>`    |
-| Record adapter  | `unicli record <url>`            |
-| Completion      | `unicli completion <shell>`      |
-| Sync refs       | `npm run sync:ref`               |
+| Purpose         | Command                           |
+| --------------- | --------------------------------- |
+| Dev run         | `npm run dev`                     |
+| Build           | `npm run build`                   |
+| Type check      | `npm run typecheck`               |
+| Lint            | `npm run lint`                    |
+| Test (unit)     | `npm run test`                    |
+| Test (adapters) | `npm run test:adapter`            |
+| Test (all)      | `npm run test:all`                |
+| Full verify     | `npm run verify`                  |
+| Format check    | `npm run format:check`            |
+| Diagnostics     | `npm run doctor`                  |
+| Repair adapter  | `unicli repair <site> <command>`  |
+| Test adapters   | `unicli test [site]`              |
+| Browser start   | `unicli browser start`            |
+| Browser status  | `unicli browser status`           |
+| Browser cookies | `unicli browser cookies <domain>` |
+| Auth setup      | `unicli auth setup <site>`        |
+| Daemon status   | `unicli daemon status`            |
+| Daemon stop     | `unicli daemon stop`              |
+| Operate browser | `unicli operate <subcommand>`     |
+| Record adapter  | `unicli record <url>`             |
+| Completion      | `unicli completion <shell>`       |
+| Sync refs       | `npm run sync:ref`                |
 
-## Pipeline Steps (23)
+## Pipeline Steps (26)
 
 | Step         | Type      | What it does                                           |
 | ------------ | --------- | ------------------------------------------------------ |
@@ -145,6 +146,8 @@ src/
 | `tap`        | Browser   | Vue Store Action Bridge (Pinia/Vuex → capture network) |
 | `download`   | Media     | Download files (HTTP + yt-dlp, batch, skip_existing)   |
 | `websocket`  | Service   | WebSocket connect/send/receive (OBS auth support)      |
+| `set`        | Control   | Store variables into `vars` context for templates      |
+| `if`         | Control   | Conditional execution of sub-pipeline branches         |
 
 ## Strategies
 

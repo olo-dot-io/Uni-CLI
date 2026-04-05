@@ -13,17 +13,15 @@ describe("cookie-extractor", () => {
   });
 
   it("extractCookiesViaCDP rejects when CDP is not available", async () => {
-    const { extractCookiesViaCDP } = await import(
-      "../../src/engine/cookie-extractor.js"
-    );
+    const { extractCookiesViaCDP } =
+      await import("../../src/engine/cookie-extractor.js");
     // Port 19999 should not have Chrome running
     await expect(extractCookiesViaCDP("example.com", 19999)).rejects.toThrow();
   });
 
   it("saveCookies writes JSON to disk", async () => {
-    const { saveCookies } = await import(
-      "../../src/engine/cookie-extractor.js"
-    );
+    const { saveCookies } =
+      await import("../../src/engine/cookie-extractor.js");
     // Override cookie dir via env
     const origDir = process.env.UNICLI_COOKIE_DIR;
     process.env.UNICLI_COOKIE_DIR = testDir;
@@ -43,9 +41,8 @@ describe("cookie-extractor", () => {
   });
 
   it("saveCookies creates directory if it does not exist", async () => {
-    const { saveCookies } = await import(
-      "../../src/engine/cookie-extractor.js"
-    );
+    const { saveCookies } =
+      await import("../../src/engine/cookie-extractor.js");
     const nested = join(testDir, "deep", "nested");
     const origDir = process.env.UNICLI_COOKIE_DIR;
     process.env.UNICLI_COOKIE_DIR = nested;
@@ -60,9 +57,8 @@ describe("cookie-extractor", () => {
   });
 
   it("saveCookies returns the file path", async () => {
-    const { saveCookies } = await import(
-      "../../src/engine/cookie-extractor.js"
-    );
+    const { saveCookies } =
+      await import("../../src/engine/cookie-extractor.js");
     const origDir = process.env.UNICLI_COOKIE_DIR;
     process.env.UNICLI_COOKIE_DIR = testDir;
     mkdirSync(testDir, { recursive: true });
