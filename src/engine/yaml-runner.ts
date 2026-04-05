@@ -179,6 +179,8 @@ async function executeStep(
       };
       return stepIf(ctx, ifStep, stepIndex, (depth ?? 0) + 1);
     }
+    case "each":
+      return stepEach(ctx, config as EachConfig, stepIndex, depth ?? 0);
     default:
       return ctx;
   }
@@ -941,6 +943,70 @@ async function stepIf(
       depth,
     );
   }
+  return ctx;
+}
+
+// --- Each loop step (do-while with max iteration guard) ---
+
+interface EachConfig {
+  max?: number;
+  do: PipelineStep[];
+  until?: string;
+}
+
+async function stepEach(
+  ctx: PipelineContext,
+  config: EachConfig,
+  stepIndex: number,
+  depth: number,
+): Promise<PipelineContext> {
+  if (depth > 10) {
+    throw new PipelineError("each step recursion depth exceeded (max 10)", {
+      step: stepIndex,
+      action: "each",
+      config,
+      errorType: "parse_error",
+      suggestion: "Reduce nesting depth of loop steps. Maximum is 10 levels.",
+    });
+  }
+
+  const maxIterations = config.max ?? 100;
+  const body = config.do;
+  if (!body || !Array.isArray(body) || body.length === 0) return ctx;
+
+  for (let iteration = 0; iteration < maxIterations; iteration++) {
+    // Reset data at start of each iteration to prevent fetch fan-out
+    // from previous iteration's array data. State is carried via ctx.vars.
+    ctx = { ...ctx, data: null };
+
+    // Execute body sub-pipeline
+    for (const subStep of body) {
+      const [subAction, subConfig] = getActionEntry(subStep);
+      ctx = await executeStep(
+        ctx,
+        subAction,
+        subConfig,
+        stepIndex,
+        subStep,
+        depth + 1,
+      );
+    }
+
+    // Check until condition (after body execution — do-while semantics)
+    if (config.until) {
+      const condStr =
+        typeof config.until === "string" ? config.until : String(config.until);
+      // Strip ${{ }} wrapper if present
+      const exprMatch = condStr.match(/^\$\{\{\s*(.+?)\s*\}\}$/);
+      const expr = exprMatch ? exprMatch[1] : condStr;
+      // Build scope with data alias for until condition evaluation
+      const scope = buildScope(ctx);
+      scope.data = ctx.data;
+      const result = evalExpression(expr, scope);
+      if (result) break;
+    }
+  }
+
   return ctx;
 }
 

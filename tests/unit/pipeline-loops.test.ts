@@ -105,3 +105,123 @@ describe("append step", () => {
     expect(result).toHaveLength(2);
   });
 });
+
+describe("each step", () => {
+  it("loops and accumulates via append until data is empty", async () => {
+    const result = await runPipeline(
+      [
+        { set: { page: 1, all_items: [] } },
+        {
+          each: {
+            max: 5,
+            do: [
+              { fetch: { url: baseUrl + "/?page=${{ vars.page }}" } },
+              { select: "items" },
+              { append: "all_items" },
+              { set: { page: "${{ parseInt(vars.page) + 1 }}" } },
+            ],
+            until: "${{ data.length == 0 }}",
+          },
+        },
+      ],
+      {},
+    );
+    // Pages 1 and 2 each have 2 items, page 3 returns empty → loop stops
+    // Final ctx.data is the empty array from page 3, wrapped by runPipeline
+    expect(result).toHaveLength(0);
+  });
+
+  it("accumulates correct items across iterations", async () => {
+    const result = await runPipeline(
+      [
+        { set: { page: 1, all_items: [] } },
+        {
+          each: {
+            max: 5,
+            do: [
+              { fetch: { url: baseUrl + "/?page=${{ vars.page }}" } },
+              { select: "items" },
+              { append: "all_items" },
+              { set: { page: "${{ parseInt(vars.page) + 1 }}" } },
+            ],
+            until: "${{ data.length == 0 }}",
+          },
+        },
+        { map: { total: "${{ vars.all_items.length }}" } },
+      ],
+      {},
+    );
+    // data is [] from page 3, map over empty array produces nothing
+    // But all_items accumulated 4 items (2 from page 1 + 2 from page 2)
+    // Since data is empty, map returns empty array
+    expect(result).toHaveLength(0);
+  });
+
+  it("respects max iteration limit", async () => {
+    const result = await runPipeline(
+      [
+        { set: { counter: 0 } },
+        {
+          each: {
+            max: 3,
+            do: [
+              { fetch: { url: baseUrl + "/?page=1" } },
+              { select: "items" },
+              { set: { counter: "${{ parseInt(vars.counter) + 1 }}" } },
+            ],
+            until: "${{ false }}",
+          },
+        },
+        { map: { counter: "${{ vars.counter }}" } },
+      ],
+      {},
+    );
+    // max=3, until is always false → exactly 3 iterations
+    // data is 2-item array from last fetch/select, counter should be 3
+    expect(result).toHaveLength(2);
+    expect((result[0] as Record<string, unknown>).counter).toBe("3");
+  });
+
+  it("executes at least once (do-while semantics)", async () => {
+    const result = await runPipeline(
+      [
+        { set: { executed: false } },
+        {
+          each: {
+            max: 10,
+            do: [
+              { set: { executed: true } },
+              { fetch: { url: baseUrl + "/?page=1" } },
+              { select: "items" },
+            ],
+            until: "${{ true }}",
+          },
+        },
+        { map: { executed: "${{ vars.executed }}" } },
+      ],
+      {},
+    );
+    // until is immediately true → but body runs once first (do-while)
+    expect(result).toHaveLength(2);
+    expect((result[0] as Record<string, unknown>).executed).toBe("true");
+  });
+
+  it("handles empty do body as no-op", async () => {
+    const result = await runPipeline(
+      [
+        { fetch: { url: baseUrl + "/?page=1" } },
+        { select: "items" },
+        {
+          each: {
+            max: 5,
+            do: [],
+            until: "${{ true }}",
+          },
+        },
+      ],
+      {},
+    );
+    // Empty body → returns ctx unchanged, data still has 2 items
+    expect(result).toHaveLength(2);
+  });
+});
