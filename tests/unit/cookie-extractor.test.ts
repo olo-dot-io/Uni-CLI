@@ -37,7 +37,8 @@ describe("cookie-extractor", () => {
       expect(saved.SESSDATA).toBe("abc123");
       expect(saved.bili_jct).toBe("def456");
     } finally {
-      process.env.UNICLI_COOKIE_DIR = origDir;
+      if (origDir === undefined) delete process.env.UNICLI_COOKIE_DIR;
+      else process.env.UNICLI_COOKIE_DIR = origDir;
     }
   });
 
@@ -53,7 +54,8 @@ describe("cookie-extractor", () => {
       saveCookies("test-site", { key: "val" });
       expect(existsSync(join(nested, "test-site.json"))).toBe(true);
     } finally {
-      process.env.UNICLI_COOKIE_DIR = origDir;
+      if (origDir === undefined) delete process.env.UNICLI_COOKIE_DIR;
+      else process.env.UNICLI_COOKIE_DIR = origDir;
     }
   });
 
@@ -69,7 +71,8 @@ describe("cookie-extractor", () => {
       const path = saveCookies("example", { a: "1" });
       expect(path).toBe(join(testDir, "example.json"));
     } finally {
-      process.env.UNICLI_COOKIE_DIR = origDir;
+      if (origDir === undefined) delete process.env.UNICLI_COOKIE_DIR;
+      else process.env.UNICLI_COOKIE_DIR = origDir;
     }
   });
 });

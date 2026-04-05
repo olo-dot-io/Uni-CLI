@@ -30,11 +30,15 @@ export async function extractCookiesViaCDP(
   port?: number,
 ): Promise<Record<string, string>> {
   const { CDPClient } = await import("../browser/cdp-client.js");
-  const cdpPort =
-    port ??
-    (process.env.UNICLI_CDP_PORT
-      ? parseInt(process.env.UNICLI_CDP_PORT, 10)
-      : 9222);
+  const rawPort = process.env.UNICLI_CDP_PORT;
+  let cdpPort = port ?? 9222;
+  if (!port && rawPort) {
+    const p = parseInt(rawPort, 10);
+    if (!Number.isInteger(p) || p < 1 || p > 65535) {
+      throw new Error(`Invalid UNICLI_CDP_PORT: "${rawPort}"`);
+    }
+    cdpPort = p;
+  }
   const client = await CDPClient.connectToChrome(cdpPort);
 
   try {
@@ -53,7 +57,7 @@ export async function extractCookiesViaCDP(
     }
     return result;
   } finally {
-    await client.close();
+    await client.close().catch(() => {});
   }
 }
 
@@ -65,11 +69,16 @@ export function saveCookies(
   site: string,
   cookies: Record<string, string>,
 ): string {
+  if (!/^[a-zA-Z0-9._-]+$/.test(site)) {
+    throw new Error(
+      `Invalid site name: "${site}" — only alphanumeric, dot, dash, underscore allowed`,
+    );
+  }
   const dir =
     process.env.UNICLI_COOKIE_DIR ??
     join(process.env.HOME ?? "~", ".unicli", "cookies");
   mkdirSync(dir, { recursive: true });
   const filePath = join(dir, `${site}.json`);
-  writeFileSync(filePath, JSON.stringify(cookies, null, 2));
+  writeFileSync(filePath, JSON.stringify(cookies, null, 2), "utf-8");
   return filePath;
 }
