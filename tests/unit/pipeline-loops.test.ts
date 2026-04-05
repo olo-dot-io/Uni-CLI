@@ -225,3 +225,76 @@ describe("each step", () => {
     expect(result).toHaveLength(2);
   });
 });
+
+describe("parallel step", () => {
+  it("runs branches concurrently and concatenates by default", async () => {
+    const result = await runPipeline(
+      [
+        {
+          parallel: [
+            { fetch: { url: `${baseUrl}/?page=1` } },
+            { fetch: { url: `${baseUrl}/?page=2` } },
+          ],
+        },
+      ],
+      {},
+    );
+    // Each fetch returns { items: [...], page: N }
+    // Two results concatenated into a flat array
+    expect(result).toHaveLength(2);
+    expect(result[0]).toHaveProperty("items");
+    expect(result[1]).toHaveProperty("items");
+  });
+
+  it("supports object merge strategy", async () => {
+    const result = await runPipeline(
+      [
+        {
+          parallel: [
+            { fetch: { url: `${baseUrl}/?page=1` } },
+            { fetch: { url: `${baseUrl}/?page=2` } },
+          ],
+          merge: "object",
+        },
+      ],
+      {},
+    );
+    // runPipeline wraps non-array data in [data], so result is a 1-element array
+    // containing the merged object with keys "0" and "1"
+    expect(result).toHaveLength(1);
+    const obj = result[0] as Record<string, unknown>;
+    expect(obj).toHaveProperty("0");
+    expect(obj).toHaveProperty("1");
+  });
+
+  it("supports zip merge strategy", async () => {
+    const result = await runPipeline(
+      [
+        {
+          parallel: [
+            { fetch: { url: `${baseUrl}/?page=1` } },
+            { fetch: { url: `${baseUrl}/?page=2` } },
+          ],
+          merge: "zip",
+        },
+      ],
+      {},
+    );
+    // fetch returns single objects (not arrays), so zip falls through
+    // to the non-array branch, returning results array
+    expect(result).toHaveLength(2);
+  });
+
+  it("handles empty branches as no-op", async () => {
+    const result = await runPipeline(
+      [
+        { fetch: { url: `${baseUrl}/?page=1` } },
+        { select: "items" },
+        { parallel: [] },
+      ],
+      {},
+    );
+    // Empty parallel is a no-op, data still has 2 items from select
+    expect(result).toHaveLength(2);
+  });
+});

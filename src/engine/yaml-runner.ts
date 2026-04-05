@@ -101,7 +101,7 @@ export class PipelineError extends Error {
 }
 
 /** Reserved sibling keys that are not step action names */
-const SIBLING_KEYS = new Set(["fallback", "then", "else"]);
+const SIBLING_KEYS = new Set(["fallback", "then", "else", "merge"]);
 
 function getActionEntry(step: PipelineStep): [string, unknown] {
   const entries = Object.entries(step);
@@ -181,6 +181,17 @@ async function executeStep(
     }
     case "each":
       return stepEach(ctx, config as EachConfig, stepIndex, depth ?? 0);
+    case "parallel": {
+      const mergeStrategy =
+        ((fullStep as Record<string, unknown>)?.merge as string) ?? "concat";
+      return stepParallel(
+        ctx,
+        config as PipelineStep[],
+        mergeStrategy,
+        stepIndex,
+        depth ?? 0,
+      );
+    }
     default:
       return ctx;
   }
@@ -1008,6 +1019,75 @@ async function stepEach(
   }
 
   return ctx;
+}
+
+// --- Parallel step (concurrent branch execution with merge strategies) ---
+
+async function stepParallel(
+  ctx: PipelineContext,
+  branches: PipelineStep[],
+  merge: string,
+  stepIndex: number,
+  depth: number,
+): Promise<PipelineContext> {
+  if (!Array.isArray(branches) || branches.length === 0) return ctx;
+
+  if (depth > 10) {
+    throw new PipelineError(
+      "parallel step recursion depth exceeded (max 10)",
+      {
+        step: stepIndex,
+        action: "parallel",
+        config: branches,
+        errorType: "parse_error",
+        suggestion:
+          "Reduce nesting depth of parallel steps. Maximum is 10 levels.",
+      },
+    );
+  }
+
+  const results = await Promise.all(
+    branches.map(async (branch) => {
+      const branchCtx: PipelineContext = {
+        ...ctx,
+        vars: { ...ctx.vars },
+      };
+      const [action, config] = getActionEntry(branch);
+      const result = await executeStep(
+        branchCtx,
+        action,
+        config,
+        stepIndex,
+        branch,
+        depth + 1,
+      );
+      return result.data;
+    }),
+  );
+
+  let merged: unknown;
+  switch (merge) {
+    case "zip": {
+      const first = results[0];
+      if (Array.isArray(first)) {
+        merged = first.map((_, i) =>
+          results.map((r) => (Array.isArray(r) ? r[i] : r)),
+        );
+      } else {
+        merged = results;
+      }
+      break;
+    }
+    case "object":
+      merged = Object.fromEntries(results.map((r, i) => [String(i), r]));
+      break;
+    case "concat":
+    default:
+      merged = results.flatMap((r) => (Array.isArray(r) ? r : [r]));
+      break;
+  }
+
+  return { ...ctx, data: merged };
 }
 
 /**
