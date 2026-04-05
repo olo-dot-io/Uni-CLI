@@ -16,7 +16,7 @@ columns: [name, username, friends, followers, url]
 
 pipeline:
   - navigate:
-      url: https://www.facebook.com/${{ args.username }}
+      url: https://www.facebook.com/${{ args.username | urlencode }}
       settleMs: 3000
 
   - evaluate: |

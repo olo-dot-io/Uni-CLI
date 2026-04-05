@@ -18,7 +18,8 @@ pipeline:
       url: "ws://localhost:${{ args.port }}"
       auth:
         password_env: OBS_WS_PASSWORD
-      send: '{"op":6,"d":{"requestType":"GetSceneItemList","requestId":"1","requestData":{"sceneName":"${{ args.scene || '' }}"}}}'
+      send: >-
+        {"op":6,"d":{"requestType":"GetSceneItemList","requestId":"1","requestData":{"sceneName":"${{ args.scene || '' }}"}}}
       parse: json
       timeout: 5000
 

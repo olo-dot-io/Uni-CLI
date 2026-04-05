@@ -11,6 +11,16 @@ import { BrowserBridge, DaemonPage } from "../browser/bridge.js";
 
 const OPERATE_WORKSPACE = "operate:default";
 
+/** Validate ref is numeric (from DOM snapshot) to prevent JS injection. */
+function validateRef(ref: string): string {
+  if (!/^\d+$/.test(ref)) {
+    throw new Error(
+      `Invalid ref "${ref}". Expected a number from the state output.`,
+    );
+  }
+  return ref;
+}
+
 async function getOperatePage(): Promise<DaemonPage> {
   const bridge = new BrowserBridge();
   const page = await bridge.connect({
@@ -121,6 +131,7 @@ export function registerOperateCommands(program: Command): void {
     .description("Click element by ref number from state")
     .action((ref: string) =>
       operateAction("click", async () => {
+        validateRef(ref);
         const page = await getOperatePage();
         await page.click(`[data-unicli-ref="${ref}"]`);
         return { ok: true, clicked: ref };
@@ -133,6 +144,7 @@ export function registerOperateCommands(program: Command): void {
     .description("Type text into element by ref number")
     .action((ref: string, text: string) =>
       operateAction("type", async () => {
+        validateRef(ref);
         const page = await getOperatePage();
         await page.click(`[data-unicli-ref="${ref}"]`);
         await page.wait(0.3);
@@ -215,6 +227,7 @@ export function registerOperateCommands(program: Command): void {
     .description("Get text content of element by ref")
     .action((ref: string) =>
       operateAction("get text", async () => {
+        validateRef(ref);
         const page = await getOperatePage();
         return await page.evaluate(
           `document.querySelector('[data-unicli-ref="${ref}"]')?.textContent?.trim() ?? null`,
@@ -227,6 +240,7 @@ export function registerOperateCommands(program: Command): void {
     .description("Get value of input element by ref")
     .action((ref: string) =>
       operateAction("get value", async () => {
+        validateRef(ref);
         const page = await getOperatePage();
         return await page.evaluate(
           `document.querySelector('[data-unicli-ref="${ref}"]')?.value ?? null`,
@@ -241,8 +255,12 @@ export function registerOperateCommands(program: Command): void {
       operateAction("get html", async () => {
         const page = await getOperatePage();
         if (selector) {
+          const escaped = selector
+            .replace(/\\/g, "\\\\")
+            .replace(/'/g, "\\'")
+            .replace(/`/g, "\\`");
           return await page.evaluate(
-            `document.querySelector('${selector.replace(/'/g, "\\'")}')?.outerHTML?.slice(0, 50000) ?? null`,
+            `document.querySelector('${escaped}')?.outerHTML?.slice(0, 50000) ?? null`,
           );
         }
         return await page.evaluate(
@@ -256,6 +274,7 @@ export function registerOperateCommands(program: Command): void {
     .description("Get all attributes of element by ref")
     .action((ref: string) =>
       operateAction("get attributes", async () => {
+        validateRef(ref);
         const page = await getOperatePage();
         return await page.evaluate(
           `(() => { const el = document.querySelector('[data-unicli-ref="${ref}"]'); if (!el) return null; const attrs = {}; for (const a of el.attributes) attrs[a.name] = a.value; return JSON.stringify(attrs); })()`,
@@ -287,8 +306,12 @@ export function registerOperateCommands(program: Command): void {
               {
                 const deadline = Date.now() + timeout;
                 while (Date.now() < deadline) {
+                  const escapedValue = value
+                    .replace(/\\/g, "\\\\")
+                    .replace(/'/g, "\\'")
+                    .replace(/`/g, "\\`");
                   const found = await page.evaluate(
-                    `document.body.innerText.includes('${value.replace(/'/g, "\\'")}')`,
+                    `document.body.innerText.includes('${escapedValue}')`,
                   );
                   if (found) return { ok: true, found: true };
                   await new Promise((r) => setTimeout(r, 200));
@@ -339,12 +362,17 @@ export function registerOperateCommands(program: Command): void {
     .description("Select option in dropdown by ref")
     .action((ref: string, option: string) =>
       operateAction("select", async () => {
+        validateRef(ref);
         const page = await getOperatePage();
+        const escapedOption = option
+          .replace(/\\/g, "\\\\")
+          .replace(/'/g, "\\'")
+          .replace(/`/g, "\\`");
         await page.evaluate(
           `(() => {
             const el = document.querySelector('[data-unicli-ref="${ref}"]');
             if (!el || el.tagName !== 'SELECT') throw new Error('Not a <select> element');
-            el.value = '${option.replace(/'/g, "\\'")}';
+            el.value = '${escapedOption}';
             el.dispatchEvent(new Event('change', { bubbles: true }));
           })()`,
         );

@@ -17,7 +17,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
 const PLUGINS_DIR = join(homedir(), ".unicli", "plugins");
 const LOCK_FILE = join(homedir(), ".unicli", "plugins.lock.json");
@@ -89,10 +89,22 @@ function parseSource(source: string): {
 }
 
 /**
+ * Validate plugin name to prevent path traversal.
+ */
+function validatePluginName(name: string): void {
+  if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+    throw new Error(
+      `Invalid plugin name "${name}". Only alphanumeric, dash, and underscore allowed.`,
+    );
+  }
+}
+
+/**
  * Install a plugin from a source.
  */
 export function installPlugin(source: string): PluginInfo {
   const parsed = parseSource(source);
+  validatePluginName(parsed.name);
   const destDir = join(PLUGINS_DIR, parsed.name);
 
   if (existsSync(destDir)) {
@@ -104,13 +116,13 @@ export function installPlugin(source: string): PluginInfo {
   mkdirSync(PLUGINS_DIR, { recursive: true });
 
   if (parsed.type === "git") {
-    execSync(`git clone --depth 1 "${parsed.url}" "${destDir}"`, {
+    execFileSync("git", ["clone", "--depth", "1", parsed.url, destDir], {
       stdio: "pipe",
       timeout: 60_000,
     });
     // Install dependencies if package.json exists
     if (existsSync(join(destDir, "package.json"))) {
-      execSync("npm install --omit=dev", {
+      execFileSync("npm", ["install", "--omit=dev"], {
         cwd: destDir,
         stdio: "pipe",
         timeout: 120_000,
@@ -146,7 +158,11 @@ export function installPlugin(source: string): PluginInfo {
  * Uninstall a plugin.
  */
 export function uninstallPlugin(name: string): void {
+  validatePluginName(name);
   const destDir = join(PLUGINS_DIR, name);
+  if (!destDir.startsWith(PLUGINS_DIR)) {
+    throw new Error(`Invalid plugin name: ${name}`);
+  }
   if (!existsSync(destDir)) {
     throw new Error(`Plugin "${name}" is not installed.`);
   }
@@ -190,13 +206,13 @@ export function updatePlugin(name: string): PluginInfo {
 
   // Check if it's a git repo
   if (existsSync(join(destDir, ".git"))) {
-    execSync("git pull --rebase", {
+    execFileSync("git", ["pull", "--rebase"], {
       cwd: destDir,
       stdio: "pipe",
       timeout: 60_000,
     });
     if (existsSync(join(destDir, "package.json"))) {
-      execSync("npm install --omit=dev", {
+      execFileSync("npm", ["install", "--omit=dev"], {
         cwd: destDir,
         stdio: "pipe",
         timeout: 120_000,
@@ -233,7 +249,7 @@ function countAdapters(dir: string): number {
 
 function getCommitHash(dir: string): string | undefined {
   try {
-    return execSync("git rev-parse --short HEAD", {
+    return execFileSync("git", ["rev-parse", "--short", "HEAD"], {
       cwd: dir,
       encoding: "utf-8",
     }).trim();

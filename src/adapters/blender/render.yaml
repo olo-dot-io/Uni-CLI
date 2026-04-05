@@ -35,3 +35,9 @@ execArgs:
   - ${{ args.output }}
   - --render-frame
   - ${{ args.frame }}
+
+pipeline:
+  - exec:
+      command: blender
+      args: ${{ execArgs }}
+      parse: text

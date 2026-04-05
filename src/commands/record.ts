@@ -80,11 +80,17 @@ export function registerRecordCommand(program: Command): void {
 
         // Wait for timeout
         await new Promise<void>((resolve) => {
-          const timer = setTimeout(resolve, timeoutMs);
-          process.on("SIGINT", () => {
+          let settled = false;
+          const settle = () => {
+            if (settled) return;
+            settled = true;
             clearTimeout(timer);
+            process.removeListener("SIGINT", sigintHandler);
             resolve();
-          });
+          };
+          const timer = setTimeout(settle, timeoutMs);
+          const sigintHandler = () => settle();
+          process.on("SIGINT", sigintHandler);
         });
 
         clearInterval(pollInterval);

@@ -19,7 +19,11 @@ args:
 
 pipeline:
   - fetch:
-      url: "http://localhost:23119/api/users/0/items?q=${{ encodeURIComponent(args.query) }}&limit=${{ args.limit }}&format=json"
+      url: "http://localhost:23119/api/users/0/items"
+      params:
+        q: "${{ args.query }}"
+        limit: "${{ args.limit }}"
+        format: json
       headers:
         Accept: application/json
 

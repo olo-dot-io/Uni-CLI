@@ -36,7 +36,7 @@ cli({
   ],
   func: async (_page: unknown, kwargs: Record<string, unknown>) => {
     const p = await connectElectronApp("cursor");
-    await p.press("k", ["meta"]); // Cmd+K for composer
+    await p.press("i", ["meta"]); // Cmd+I for Composer
     await p.wait(0.5);
     await p.insertText(String(kwargs.prompt));
     await p.press("Enter");
