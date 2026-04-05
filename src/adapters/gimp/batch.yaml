@@ -1,0 +1,50 @@
+# Desktop adapter — batch process images in a directory using GIMP
+site: gimp
+name: batch
+description: Batch convert images in a directory to a target format
+type: desktop
+binary: gimp
+detect: which gimp
+timeout: 300000
+
+args:
+  dir:
+    type: str
+    required: true
+    positional: true
+    description: Directory containing images
+  format:
+    type: str
+    required: true
+    choices: [png, jpg, webp, bmp, tiff]
+    description: Target output format
+  quality:
+    type: int
+    default: 85
+    description: JPEG/WebP quality (0-100)
+
+pipeline:
+  - exec:
+      command: gimp
+      args: ["-i", "-b", "-"]
+      stdin: |
+        (let* ((dir "${{ args.dir }}")
+               (pattern (string-append dir "/*"))
+               (filelist (cadr (file-glob pattern 1)))
+               (count 0))
+          (while (not (null? filelist))
+            (let* ((filename (car filelist))
+                   (image (car (gimp-file-load RUN-NONINTERACTIVE filename filename)))
+                   (drawable (car (gimp-image-flatten image)))
+                   (basename (car (gimp-image-get-name image)))
+                   (outname (string-append dir "/" basename ".${{ args.format }}")))
+              (gimp-file-overwrite RUN-NONINTERACTIVE image drawable outname outname)
+              (gimp-image-delete image)
+              (set! count (+ count 1))
+              (set! filelist (cdr filelist))))
+          (gimp-message (string-append "UNICLI_JSON:{\"processed\":" (number->string count) "}"))
+          (gimp-quit 0))
+      parse: text
+      timeout: 300000
+
+columns: [processed]

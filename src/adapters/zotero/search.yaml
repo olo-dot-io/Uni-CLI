@@ -1,0 +1,33 @@
+# Service adapter — search Zotero library via local API
+site: zotero
+name: search
+description: Search Zotero library by query string
+type: service
+strategy: public
+base: "http://localhost:23119"
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search query
+  limit:
+    type: int
+    default: 25
+    description: Max results
+
+pipeline:
+  - fetch:
+      url: "http://localhost:23119/api/users/0/items?q=${{ encodeURIComponent(args.query) }}&limit=${{ args.limit }}&format=json"
+      headers:
+        Accept: application/json
+
+  - map:
+      key: "${{ item.key }}"
+      title: "${{ item.data ? item.data.title : '' }}"
+      type: "${{ item.data ? item.data.itemType : '' }}"
+      date: "${{ item.data ? item.data.date : '' }}"
+      creators: "${{ item.data && item.data.creators ? item.data.creators.map(c => c.lastName || c.name).join(', ') : '' }}"
+
+columns: [key, title, type, date, creators]

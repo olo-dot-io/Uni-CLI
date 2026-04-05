@@ -1,0 +1,30 @@
+# Desktop adapter — generate a spectrogram image from an audio file using SoX
+site: audacity
+name: spectrogram
+description: Generate a spectrogram PNG from an audio file
+type: desktop
+binary: sox
+detect: which sox
+
+args:
+  input:
+    type: str
+    required: true
+    positional: true
+    description: Path to input audio file
+  output:
+    type: str
+    required: true
+    description: Output PNG file path
+  title:
+    type: str
+    default: ""
+    description: Title for the spectrogram
+
+pipeline:
+  - exec:
+      command: sox
+      args: ["${{ args.input }}", "-n", "spectrogram", "-o", "${{ args.output }}", "-t", "${{ args.title }}"]
+      parse: text
+
+columns: [result]

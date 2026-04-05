@@ -1,0 +1,31 @@
+# Desktop adapter — run a Python script inside Blender
+site: blender
+name: script
+description: Execute a Python script in Blender's headless environment
+type: desktop
+binary: blender
+detect: which blender
+timeout: 300000
+
+args:
+  script:
+    type: str
+    required: true
+    positional: true
+    description: Path to Python script
+  file:
+    type: str
+    description: Optional .blend file to open before running the script
+
+pipeline:
+  - exec:
+      command: blender
+      args:
+        - -b
+        - ${{ args.file || '' }}
+        - --python
+        - ${{ args.script }}
+      parse: text
+      timeout: 300000
+
+columns: [result]

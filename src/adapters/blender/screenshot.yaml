@@ -1,0 +1,52 @@
+# Desktop adapter — capture a viewport screenshot from a Blender file
+site: blender
+name: screenshot
+description: Capture a viewport render screenshot from a Blender scene
+type: desktop
+binary: blender
+detect: which blender
+timeout: 120000
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to .blend file
+  output:
+    type: str
+    required: true
+    description: Output PNG image path
+  width:
+    type: int
+    default: 1920
+    description: Image width
+  height:
+    type: int
+    default: 1080
+    description: Image height
+
+pipeline:
+  - exec:
+      command: blender
+      args:
+        - -b
+        - ${{ args.file }}
+        - --python-expr
+        - |
+          import bpy, json, os
+          out = "${{ args.output }}"
+          os.makedirs(os.path.dirname(os.path.abspath(out)) or ".", exist_ok=True)
+          s = bpy.context.scene
+          s.render.resolution_x = ${{ args.width }}
+          s.render.resolution_y = ${{ args.height }}
+          s.render.resolution_percentage = 100
+          s.render.filepath = out
+          s.render.image_settings.file_format = "PNG"
+          bpy.ops.render.render(write_still=True)
+          size = os.path.getsize(out)
+          print("UNICLI_JSON:" + json.dumps({"output": out, "width": ${{ args.width }}, "height": ${{ args.height }}, "file_size": size}))
+      parse: text
+      timeout: 120000
+
+columns: [output, width, height, file_size]

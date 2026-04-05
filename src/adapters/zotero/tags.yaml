@@ -1,0 +1,20 @@
+# Service adapter — list tags in Zotero library via local API
+site: zotero
+name: tags
+description: List all tags in Zotero library with item counts
+type: service
+strategy: public
+base: "http://localhost:23119"
+
+pipeline:
+  - fetch:
+      url: "http://localhost:23119/api/users/0/tags?format=json"
+      headers:
+        Accept: application/json
+
+  - map:
+      tag: "${{ item.tag }}"
+      type: "${{ item.meta ? item.meta.type : 0 }}"
+      items: "${{ item.meta ? item.meta.numItems : 0 }}"
+
+columns: [tag, type, items]

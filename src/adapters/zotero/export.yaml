@@ -1,0 +1,26 @@
+# Service adapter — export Zotero items in a bibliography format
+site: zotero
+name: export
+description: Export Zotero items as BibTeX, RIS, or other citation format
+type: service
+strategy: public
+base: "http://localhost:23119"
+
+args:
+  format:
+    type: str
+    default: bibtex
+    choices: [bibtex, ris, csljson, coins, refer, rdf_bibliontology]
+    description: Export format
+  collection:
+    type: str
+    description: Collection key to export (exports all if omitted)
+
+pipeline:
+  - fetch:
+      url: "http://localhost:23119/api/users/0/${{ args.collection ? 'collections/' + args.collection + '/items' : 'items' }}?format=${{ args.format }}"
+      headers:
+        Accept: "*/*"
+      parse: text
+
+columns: [result]

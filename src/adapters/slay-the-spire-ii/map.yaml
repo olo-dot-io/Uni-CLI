@@ -1,0 +1,24 @@
+# Service adapter — get map info from Slay the Spire II
+site: slay-the-spire-ii
+name: map
+description: Get current map layout and available paths
+type: service
+strategy: public
+base: "http://localhost:15526"
+
+args:
+  port:
+    type: int
+    default: 15526
+    description: HTTP bridge port
+
+pipeline:
+  - fetch:
+      url: "http://localhost:${{ args.port }}/api/map"
+
+  - map:
+      floor: "${{ item.current_floor }}"
+      nodes: "${{ item.available_nodes }}"
+      boss: "${{ item.boss }}"
+
+columns: [floor, nodes, boss]

@@ -1,0 +1,28 @@
+# Service adapter — list WireMock stub mappings
+site: wiremock
+name: stubs
+description: List all WireMock stub mappings
+type: service
+strategy: public
+base: "http://localhost:8080"
+
+args:
+  port:
+    type: int
+    default: 8080
+    description: WireMock server port
+
+pipeline:
+  - fetch:
+      url: "http://localhost:${{ args.port }}/__admin/mappings"
+
+  - select: mappings
+
+  - map:
+      id: "${{ item.id }}"
+      method: "${{ item.request ? item.request.method : '' }}"
+      url: "${{ item.request ? (item.request.url || item.request.urlPattern || '') : '' }}"
+      status: "${{ item.response ? item.response.status : '' }}"
+      priority: "${{ item.priority || '' }}"
+
+columns: [id, method, url, status, priority]

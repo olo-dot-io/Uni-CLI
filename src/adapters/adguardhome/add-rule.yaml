@@ -1,0 +1,30 @@
+# Service adapter — add a custom filtering rule to AdGuard Home
+site: adguardhome
+name: add-rule
+description: Add a custom DNS filtering rule
+type: service
+strategy: public
+base: "http://localhost:3000"
+
+args:
+  rule:
+    type: str
+    required: true
+    positional: true
+    description: 'Filtering rule (e.g. "||ads.example.com^")'
+  host:
+    type: str
+    default: "localhost:3000"
+    description: AdGuard Home host:port
+
+pipeline:
+  - fetch:
+      url: "http://${{ args.host }}/control/filtering/set_rules"
+      method: POST
+      headers:
+        Content-Type: application/json
+      body:
+        rules:
+          - "${{ args.rule }}"
+
+columns: [result]

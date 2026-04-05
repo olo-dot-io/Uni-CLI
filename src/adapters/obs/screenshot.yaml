@@ -1,0 +1,40 @@
+# Service adapter — take a screenshot of the current OBS scene
+site: obs
+name: screenshot
+description: Save a screenshot of the current OBS output
+type: service
+
+args:
+  output:
+    type: str
+    required: true
+    positional: true
+    description: Output file path for screenshot
+  format:
+    type: str
+    default: png
+    choices: [png, jpg, bmp]
+    description: Image format
+  width:
+    type: int
+    default: 1920
+    description: Screenshot width
+  height:
+    type: int
+    default: 1080
+    description: Screenshot height
+  port:
+    type: int
+    default: 4455
+    description: OBS WebSocket port
+
+pipeline:
+  - websocket:
+      url: "ws://localhost:${{ args.port }}"
+      auth:
+        password_env: OBS_WS_PASSWORD
+      send: '{"op":6,"d":{"requestType":"SaveSourceScreenshot","requestId":"1","requestData":{"imageFormat":"${{ args.format }}","imageFilePath":"${{ args.output }}","imageWidth":${{ args.width }},"imageHeight":${{ args.height }}}}}'
+      parse: json
+      timeout: 10000
+
+columns: [result]

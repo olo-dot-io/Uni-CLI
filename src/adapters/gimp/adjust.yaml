@@ -1,0 +1,42 @@
+# Desktop adapter — adjust brightness/contrast of an image using GIMP
+site: gimp
+name: adjust
+description: Adjust brightness and contrast of an image
+type: desktop
+binary: gimp
+detect: which gimp
+timeout: 60000
+
+args:
+  input:
+    type: str
+    required: true
+    positional: true
+    description: Path to input image
+  brightness:
+    type: int
+    default: 0
+    description: Brightness adjustment (-127 to 127)
+  contrast:
+    type: int
+    default: 0
+    description: Contrast adjustment (-127 to 127)
+  output:
+    type: str
+    description: Output path (defaults to overwriting input)
+
+pipeline:
+  - exec:
+      command: gimp
+      args: ["-i", "-b", "-"]
+      stdin: |
+        (let* ((image (car (gimp-file-load RUN-NONINTERACTIVE "${{ args.input }}" "${{ args.input }}")))
+               (drawable (car (gimp-image-flatten image))))
+          (gimp-brightness-contrast drawable ${{ args.brightness }} ${{ args.contrast }})
+          (gimp-file-overwrite RUN-NONINTERACTIVE image drawable "${{ args.output || args.input }}" "${{ args.output || args.input }}")
+          (gimp-image-delete image)
+          (gimp-quit 0))
+      parse: text
+      timeout: 60000
+
+columns: [result]

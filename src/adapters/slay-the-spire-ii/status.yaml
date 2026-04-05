@@ -1,0 +1,26 @@
+# Service adapter — get Slay the Spire II game status via HTTP bridge
+site: slay-the-spire-ii
+name: status
+description: Get current game state (health, gold, floor, act)
+type: service
+strategy: public
+base: "http://localhost:15526"
+
+args:
+  port:
+    type: int
+    default: 15526
+    description: HTTP bridge port
+
+pipeline:
+  - fetch:
+      url: "http://localhost:${{ args.port }}/api/status"
+
+  - map:
+      health: "${{ item.current_hp + '/' + item.max_hp }}"
+      gold: "${{ item.gold }}"
+      floor: "${{ item.floor }}"
+      act: "${{ item.act }}"
+      ascension: "${{ item.ascension_level }}"
+
+columns: [health, gold, floor, act, ascension]

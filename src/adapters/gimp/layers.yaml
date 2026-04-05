@@ -1,0 +1,49 @@
+# Desktop adapter — list layers in an image using GIMP
+site: gimp
+name: layers
+description: List all layers in an image (name, size, visibility, opacity)
+type: desktop
+binary: gimp
+detect: which gimp
+timeout: 30000
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to image file
+
+pipeline:
+  - exec:
+      command: gimp
+      args: ["-i", "-b", "-"]
+      stdin: |
+        (let* ((image (car (gimp-file-load RUN-NONINTERACTIVE "${{ args.file }}" "${{ args.file }}")))
+               (layers (vector->list (cadr (gimp-image-get-layers image))))
+               (count (length layers)))
+          (gimp-message (string-append "UNICLI_JSON:{\"count\":" (number->string count) ",\"layers\":["))
+          (let loop ((remaining layers) (first #t))
+            (when (not (null? remaining))
+              (let* ((layer (car remaining))
+                     (name (car (gimp-item-get-name layer)))
+                     (w (car (gimp-drawable-width layer)))
+                     (h (car (gimp-drawable-height layer)))
+                     (vis (car (gimp-item-get-visible layer)))
+                     (opacity (car (gimp-layer-get-opacity layer))))
+                (gimp-message (string-append
+                  (if first "" ",")
+                  "{\"name\":\"" name "\""
+                  ",\"width\":" (number->string w)
+                  ",\"height\":" (number->string h)
+                  ",\"visible\":" (if (= vis 1) "true" "false")
+                  ",\"opacity\":" (number->string (inexact->exact (round opacity)))
+                  "}"))
+                (loop (cdr remaining) #f))))
+          (gimp-message "]}")
+          (gimp-image-delete image)
+          (gimp-quit 0))
+      parse: text
+      timeout: 30000
+
+columns: [count, layers]

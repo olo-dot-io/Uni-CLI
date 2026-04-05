@@ -1,0 +1,28 @@
+# Desktop adapter — render a Shotcut/MLT project to video
+site: shotcut
+name: render
+description: Render a Shotcut .mlt project to video file via melt
+type: desktop
+binary: melt
+detect: which melt
+timeout: 600000
+
+args:
+  input:
+    type: str
+    required: true
+    positional: true
+    description: Path to .mlt project file
+  output:
+    type: str
+    required: true
+    description: Output video file path
+
+pipeline:
+  - exec:
+      command: melt
+      args: ["${{ args.input }}", "-consumer", "avformat:${{ args.output }}", "acodec=aac", "vcodec=libx264"]
+      parse: text
+      timeout: 600000
+
+columns: [result]

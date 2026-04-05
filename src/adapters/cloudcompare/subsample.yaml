@@ -1,0 +1,33 @@
+# Desktop adapter — subsample a point cloud using CloudCompare
+site: cloudcompare
+name: subsample
+description: Subsample (reduce) a point cloud by minimum distance or random
+type: desktop
+binary: CloudCompare
+detect: which CloudCompare || which cloudcompare
+timeout: 300000
+
+args:
+  input:
+    type: str
+    required: true
+    positional: true
+    description: Path to input point cloud file
+  method:
+    type: str
+    default: SPATIAL
+    choices: [SPATIAL, RANDOM, OCTREE]
+    description: Subsampling method
+  value:
+    type: float
+    default: 0.01
+    description: Method parameter (min distance for SPATIAL, ratio for RANDOM, level for OCTREE)
+
+pipeline:
+  - exec:
+      command: CloudCompare
+      args: ["-SILENT", "-O", "${{ args.input }}", "-SS", "${{ args.method }}", "${{ args.value }}", "-SAVE_CLOUDS"]
+      parse: text
+      timeout: 300000
+
+columns: [result]

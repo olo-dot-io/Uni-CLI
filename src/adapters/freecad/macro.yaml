@@ -1,0 +1,47 @@
+# Desktop adapter — run a FreeCAD Python macro file
+site: freecad
+name: macro
+description: Execute a FreeCAD Python macro (.FCMacro or .py)
+type: desktop
+binary: freecadcmd
+detect: which freecadcmd || which FreeCADCmd || which freecad
+timeout: 300000
+
+args:
+  script:
+    type: str
+    required: true
+    positional: true
+    description: Path to Python macro file
+  file:
+    type: str
+    description: Optional .FCStd file to open before running the macro
+
+pipeline:
+  - write_temp:
+      filename: run_macro.py
+      content: |
+        import sys, json
+        import FreeCAD
+
+        file_path = "${{ args.file }}"
+        script_path = "${{ args.script }}"
+
+        if file_path:
+            doc = FreeCAD.openDocument(file_path)
+            FreeCAD.setActiveDocument(doc.Name)
+
+        try:
+            exec(open(script_path).read())
+            print('UNICLI_JSON:{"status":"ok","script":"' + script_path + '"}')
+        except Exception as e:
+            print('UNICLI_JSON:{"status":"error","error":"' + str(e).replace('"', '\\"') + '"}')
+            sys.exit(1)
+
+  - exec:
+      command: freecadcmd
+      args: ["${{ temp.run_macro_py }}"]
+      parse: text
+      timeout: 300000
+
+columns: [status, script, error]

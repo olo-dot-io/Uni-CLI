@@ -1,0 +1,55 @@
+# Desktop adapter — import a 3D file into a new Blender document
+site: blender
+name: import
+description: Import a 3D file (FBX, OBJ, STL, GLTF) into a Blender file
+type: desktop
+binary: blender
+detect: which blender
+timeout: 120000
+
+args:
+  input:
+    type: str
+    required: true
+    positional: true
+    description: Path to 3D file to import
+  output:
+    type: str
+    required: true
+    description: Output .blend file path
+
+pipeline:
+  - exec:
+      command: blender
+      args:
+        - -b
+        - --python-expr
+        - |
+          import bpy, json, os
+          inp = "${{ args.input }}"
+          out = "${{ args.output }}"
+          ext = os.path.splitext(inp)[1].lower()
+          os.makedirs(os.path.dirname(os.path.abspath(out)) or ".", exist_ok=True)
+          for obj in bpy.data.objects:
+              bpy.data.objects.remove(obj)
+          importers = {
+              ".fbx": lambda: bpy.ops.import_scene.fbx(filepath=inp),
+              ".obj": lambda: bpy.ops.wm.obj_import(filepath=inp),
+              ".stl": lambda: bpy.ops.import_mesh.stl(filepath=inp),
+              ".gltf": lambda: bpy.ops.import_scene.gltf(filepath=inp),
+              ".glb": lambda: bpy.ops.import_scene.gltf(filepath=inp),
+              ".abc": lambda: bpy.ops.wm.alembic_import(filepath=inp),
+              ".usd": lambda: bpy.ops.wm.usd_import(filepath=inp),
+              ".usda": lambda: bpy.ops.wm.usd_import(filepath=inp),
+              ".usdc": lambda: bpy.ops.wm.usd_import(filepath=inp),
+          }
+          if ext in importers:
+              importers[ext]()
+          count = len(bpy.data.objects)
+          bpy.ops.wm.save_as_mainfile(filepath=out)
+          size = os.path.getsize(out)
+          print("UNICLI_JSON:" + json.dumps({"output": out, "objects": count, "file_size": size}))
+      parse: text
+      timeout: 120000
+
+columns: [output, objects, file_size]

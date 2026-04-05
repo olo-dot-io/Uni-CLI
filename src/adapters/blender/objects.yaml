@@ -1,0 +1,40 @@
+# Desktop adapter — list all objects in a Blender scene
+site: blender
+name: objects
+description: List all objects (meshes, cameras, lights, empties) in a Blender file
+type: desktop
+binary: blender
+detect: which blender
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to .blend file
+
+pipeline:
+  - exec:
+      command: blender
+      args:
+        - -b
+        - ${{ args.file }}
+        - --python-expr
+        - |
+          import bpy, json
+          objects = []
+          for obj in bpy.data.objects:
+              entry = {
+                  "name": obj.name,
+                  "type": obj.type,
+                  "location": [round(obj.location.x, 3), round(obj.location.y, 3), round(obj.location.z, 3)],
+                  "visible": not obj.hide_viewport,
+              }
+              if obj.type == "MESH" and obj.data:
+                  entry["vertices"] = len(obj.data.vertices)
+                  entry["faces"] = len(obj.data.polygons)
+              objects.append(entry)
+          print("UNICLI_JSON:" + json.dumps({"objects": objects, "count": len(objects)}))
+      parse: text
+
+columns: [objects, count]

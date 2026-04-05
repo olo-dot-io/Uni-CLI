@@ -1,0 +1,30 @@
+# Service adapter — toggle AdGuard Home protection on/off
+site: adguardhome
+name: toggle
+description: Enable or disable AdGuard Home DNS filtering protection
+type: service
+strategy: public
+base: "http://localhost:3000"
+
+args:
+  enabled:
+    type: str
+    required: true
+    positional: true
+    choices: ["true", "false"]
+    description: Set protection enabled (true/false)
+  host:
+    type: str
+    default: "localhost:3000"
+    description: AdGuard Home host:port
+
+pipeline:
+  - fetch:
+      url: "http://${{ args.host }}/control/dns_config"
+      method: POST
+      headers:
+        Content-Type: application/json
+      body:
+        protection_enabled: "${{ args.enabled === 'true' }}"
+
+columns: [result]

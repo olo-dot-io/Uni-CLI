@@ -1,0 +1,41 @@
+# Desktop adapter — rotate an image using GIMP's Script-Fu batch mode
+site: gimp
+name: rotate
+description: Rotate an image by 90, 180, or 270 degrees
+type: desktop
+binary: gimp
+detect: which gimp
+timeout: 60000
+
+args:
+  input:
+    type: str
+    required: true
+    positional: true
+    description: Path to input image
+  angle:
+    type: int
+    required: true
+    choices: [90, 180, 270]
+    description: Rotation angle in degrees (clockwise)
+  output:
+    type: str
+    description: Output path (defaults to overwriting input)
+
+pipeline:
+  - exec:
+      command: gimp
+      args: ["-i", "-b", "-"]
+      stdin: |
+        (let* ((image (car (gimp-file-load RUN-NONINTERACTIVE "${{ args.input }}" "${{ args.input }}")))
+               (angle ${{ args.angle }})
+               (rotation (cond ((= angle 90) ROTATE-90) ((= angle 180) ROTATE-180) ((= angle 270) ROTATE-270))))
+          (gimp-image-rotate image rotation)
+          (gimp-image-flatten image)
+          (gimp-file-overwrite RUN-NONINTERACTIVE image (car (gimp-image-get-active-drawable image)) "${{ args.output || args.input }}" "${{ args.output || args.input }}")
+          (gimp-image-delete image)
+          (gimp-quit 0))
+      parse: text
+      timeout: 60000
+
+columns: [result]

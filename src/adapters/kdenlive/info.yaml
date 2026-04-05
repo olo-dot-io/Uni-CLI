@@ -1,0 +1,41 @@
+# Desktop adapter — extract project info from a Kdenlive file
+site: kdenlive
+name: info
+description: Extract project metadata from a .kdenlive file (tracks, clips, duration)
+type: desktop
+binary: python3
+detect: which python3
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to .kdenlive project file
+
+pipeline:
+  - write_temp:
+      filename: kdenlive_info.py
+      content: |
+        import json, xml.etree.ElementTree as ET
+        tree = ET.parse("${{ args.file }}")
+        root = tree.getroot()
+        profile = root.find('.//profile')
+        tracks = root.findall('.//track')
+        producers = root.findall('.//producer')
+        info = {
+            "tracks": len(tracks),
+            "clips": len(producers),
+        }
+        if profile is not None:
+            info["width"] = profile.get("width", "")
+            info["height"] = profile.get("height", "")
+            info["fps"] = profile.get("frame_rate_num", "")
+        print("UNICLI_JSON:" + json.dumps(info))
+
+  - exec:
+      command: python3
+      args: ["${{ temp.kdenlive_info_py }}"]
+      parse: text
+
+columns: [tracks, clips, width, height, fps]

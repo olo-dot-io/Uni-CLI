@@ -1,0 +1,23 @@
+# Service adapter — list available Novita AI models
+site: novita
+name: models
+description: List available AI models on Novita platform
+type: service
+strategy: public
+
+pipeline:
+  - fetch:
+      url: "https://api.novita.ai/v3/model"
+      headers:
+        Authorization: "Bearer ${{ env.NOVITA_API_KEY }}"
+
+  - select: models
+
+  - map:
+      name: "${{ item.sd_name || item.name }}"
+      type: "${{ item.type }}"
+      civitai_nsfw: "${{ item.civitai_nsfw }}"
+
+  - limit: 50
+
+columns: [name, type, civitai_nsfw]

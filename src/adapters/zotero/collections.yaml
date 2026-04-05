@@ -1,0 +1,21 @@
+# Service adapter — list Zotero collections via local API
+site: zotero
+name: collections
+description: List all collections in Zotero library
+type: service
+strategy: public
+base: "http://localhost:23119"
+
+pipeline:
+  - fetch:
+      url: "http://localhost:23119/api/users/0/collections?format=json"
+      headers:
+        Accept: application/json
+
+  - map:
+      key: "${{ item.key }}"
+      name: "${{ item.data ? item.data.name : '' }}"
+      parent: "${{ item.data ? item.data.parentCollection : '' }}"
+      items: "${{ item.meta ? item.meta.numItems : 0 }}"
+
+columns: [key, name, parent, items]

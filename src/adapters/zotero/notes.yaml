@@ -1,0 +1,30 @@
+# Service adapter — list notes for a Zotero item
+site: zotero
+name: notes
+description: List child notes attached to a Zotero item
+type: service
+strategy: public
+base: "http://localhost:23119"
+
+args:
+  key:
+    type: str
+    required: true
+    positional: true
+    description: Item key to get notes for
+
+pipeline:
+  - fetch:
+      url: "http://localhost:23119/api/users/0/items/${{ args.key }}/children?format=json"
+      headers:
+        Accept: application/json
+
+  - filter:
+      where: "${{ item.data && item.data.itemType === 'note' }}"
+
+  - map:
+      key: "${{ item.key }}"
+      note: "${{ item.data ? item.data.note.replace(/<[^>]*>/g, '').substring(0, 200) : '' }}"
+      modified: "${{ item.data ? item.data.dateModified : '' }}"
+
+columns: [key, note, modified]

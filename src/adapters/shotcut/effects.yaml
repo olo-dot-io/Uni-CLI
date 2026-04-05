@@ -1,0 +1,15 @@
+# Desktop adapter — list available MLT transitions for Shotcut
+site: shotcut
+name: effects
+description: List available MLT transitions and effects
+type: desktop
+binary: melt
+detect: which melt
+
+pipeline:
+  - exec:
+      command: melt
+      args: ["-query", "transitions"]
+      parse: text
+
+columns: [result]

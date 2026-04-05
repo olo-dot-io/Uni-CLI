@@ -1,0 +1,39 @@
+# Desktop adapter — list scene details from a Blender file
+site: blender
+name: scene
+description: List all scenes, their settings, and world properties
+type: desktop
+binary: blender
+detect: which blender
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to .blend file
+
+pipeline:
+  - exec:
+      command: blender
+      args:
+        - -b
+        - ${{ args.file }}
+        - --python-expr
+        - |
+          import bpy, json
+          scenes = []
+          for sc in bpy.data.scenes:
+              scenes.append({
+                  "name": sc.name,
+                  "frames": [sc.frame_start, sc.frame_end],
+                  "fps": sc.render.fps,
+                  "engine": sc.render.engine,
+                  "resolution": [sc.render.resolution_x, sc.render.resolution_y],
+                  "world": sc.world.name if sc.world else None,
+                  "objects": len(sc.objects),
+              })
+          print("UNICLI_JSON:" + json.dumps({"scenes": scenes, "count": len(scenes)}))
+      parse: text
+
+columns: [scenes, count]

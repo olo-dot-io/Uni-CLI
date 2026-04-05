@@ -1,0 +1,22 @@
+# Service adapter — stop OBS streaming
+site: obs
+name: stream-stop
+description: Stop OBS streaming
+type: service
+
+args:
+  port:
+    type: int
+    default: 4455
+    description: OBS WebSocket port
+
+pipeline:
+  - websocket:
+      url: "ws://localhost:${{ args.port }}"
+      auth:
+        password_env: OBS_WS_PASSWORD
+      send: '{"op":6,"d":{"requestType":"StopStream","requestId":"1"}}'
+      parse: json
+      timeout: 10000
+
+columns: [result]

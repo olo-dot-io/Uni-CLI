@@ -1,0 +1,53 @@
+# Desktop adapter — measure dimensions of a FreeCAD part
+site: freecad
+name: measure
+description: Measure dimensions, volume, area, and center of mass of a part
+type: desktop
+binary: freecadcmd
+detect: which freecadcmd || which FreeCADCmd || which freecad
+timeout: 60000
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to .FCStd file
+
+pipeline:
+  - write_temp:
+      filename: measure.py
+      content: |
+        import json
+        import FreeCAD
+
+        doc = FreeCAD.openDocument("${{ args.file }}")
+        FreeCAD.setActiveDocument(doc.Name)
+
+        results = []
+        for obj in doc.Objects:
+            if not hasattr(obj, "Shape"):
+                continue
+            shape = obj.Shape
+            bb = shape.BoundBox
+            com = shape.CenterOfMass
+            results.append({
+                "name": obj.Label,
+                "volume": round(shape.Volume, 4),
+                "area": round(shape.Area, 4),
+                "length_x": round(bb.XLength, 2),
+                "length_y": round(bb.YLength, 2),
+                "length_z": round(bb.ZLength, 2),
+                "center_of_mass": [round(com.x, 2), round(com.y, 2), round(com.z, 2)],
+            })
+
+        print("UNICLI_JSON:" + json.dumps({"parts": results, "count": len(results)}))
+        FreeCAD.closeDocument(doc.Name)
+
+  - exec:
+      command: freecadcmd
+      args: ["${{ temp.measure_py }}"]
+      parse: text
+      timeout: 60000
+
+columns: [parts, count]

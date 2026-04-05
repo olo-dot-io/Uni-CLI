@@ -1,0 +1,25 @@
+# Service adapter — delete a WireMock stub mapping
+site: wiremock
+name: delete-stub
+description: Delete a WireMock stub mapping by ID
+type: service
+strategy: public
+base: "http://localhost:8080"
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: Stub mapping UUID
+  port:
+    type: int
+    default: 8080
+    description: WireMock server port
+
+pipeline:
+  - fetch:
+      url: "http://localhost:${{ args.port }}/__admin/mappings/${{ args.id }}"
+      method: DELETE
+
+columns: [result]

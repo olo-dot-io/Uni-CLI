@@ -1,0 +1,43 @@
+# Desktop adapter — list cameras and their settings in a Blender file
+site: blender
+name: camera
+description: List all cameras and their properties (focal length, sensor, clipping)
+type: desktop
+binary: blender
+detect: which blender
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to .blend file
+
+pipeline:
+  - exec:
+      command: blender
+      args:
+        - -b
+        - ${{ args.file }}
+        - --python-expr
+        - |
+          import bpy, json
+          cameras = []
+          for obj in bpy.data.objects:
+              if obj.type != "CAMERA":
+                  continue
+              cam = obj.data
+              cameras.append({
+                  "name": obj.name,
+                  "type": cam.type,
+                  "focal_length": round(cam.lens, 2),
+                  "sensor_width": round(cam.sensor_width, 2),
+                  "clip_start": cam.clip_start,
+                  "clip_end": cam.clip_end,
+                  "location": [round(obj.location.x, 3), round(obj.location.y, 3), round(obj.location.z, 3)],
+              })
+          active = bpy.context.scene.camera.name if bpy.context.scene.camera else None
+          print("UNICLI_JSON:" + json.dumps({"cameras": cameras, "active": active, "count": len(cameras)}))
+      parse: text
+
+columns: [cameras, active, count]

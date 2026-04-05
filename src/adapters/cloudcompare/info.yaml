@@ -1,0 +1,24 @@
+# Desktop adapter — get point cloud info using CloudCompare
+site: cloudcompare
+name: info
+description: Get point cloud statistics (point count, bounding box)
+type: desktop
+binary: CloudCompare
+detect: which CloudCompare || which cloudcompare
+timeout: 60000
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to point cloud file
+
+pipeline:
+  - exec:
+      command: CloudCompare
+      args: ["-SILENT", "-O", "${{ args.file }}", "-STAT_TEST", "0"]
+      parse: text
+      timeout: 60000
+
+columns: [result]

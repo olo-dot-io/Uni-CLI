@@ -1,0 +1,45 @@
+# Desktop adapter — batch export Krita files using a Python script
+site: krita
+name: batch
+description: Batch convert multiple image files to a target format
+type: desktop
+binary: krita
+detect: which krita
+timeout: 300000
+
+args:
+  dir:
+    type: str
+    required: true
+    positional: true
+    description: Directory containing source files
+  format:
+    type: str
+    required: true
+    choices: [png, jpg, webp, tiff]
+    description: Target output format
+
+pipeline:
+  - write_temp:
+      filename: batch_export.py
+      content: |
+        import os, json, subprocess, glob
+        src_dir = "${{ args.dir }}"
+        fmt = "${{ args.format }}"
+        files = glob.glob(os.path.join(src_dir, "*"))
+        count = 0
+        for f in files:
+            ext = os.path.splitext(f)[1].lower()
+            if ext in ('.kra', '.png', '.jpg', '.jpeg', '.tiff', '.webp', '.bmp'):
+                out = os.path.splitext(f)[0] + '.' + fmt
+                subprocess.run(['krita', '--export', '--export-filename', out, f], capture_output=True)
+                count += 1
+        print(f'UNICLI_JSON:{{"processed":{count},"format":"{fmt}"}}')
+
+  - exec:
+      command: python3
+      args: ["${{ temp.batch_export_py }}"]
+      parse: text
+      timeout: 300000
+
+columns: [processed, format]

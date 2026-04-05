@@ -1,0 +1,60 @@
+# Desktop adapter — export 2D sketches from a FreeCAD document
+site: freecad
+name: sketch
+description: Export 2D sketch geometry to SVG or DXF
+type: desktop
+binary: freecadcmd
+detect: which freecadcmd || which FreeCADCmd || which freecad
+timeout: 60000
+
+args:
+  input:
+    type: str
+    required: true
+    positional: true
+    description: Path to .FCStd file
+  output:
+    type: str
+    required: true
+    description: Output file path (SVG or DXF)
+
+pipeline:
+  - write_temp:
+      filename: sketch_export.py
+      content: |
+        import sys, os, json
+        import FreeCAD
+        import importSVG
+        import importDXF
+
+        input_path = "${{ args.input }}"
+        output_path = "${{ args.output }}"
+        ext = os.path.splitext(output_path)[1].lower()
+
+        os.makedirs(os.path.dirname(os.path.abspath(output_path)) or ".", exist_ok=True)
+        doc = FreeCAD.openDocument(input_path)
+        FreeCAD.setActiveDocument(doc.Name)
+
+        sketches = [obj for obj in doc.Objects if obj.TypeId == "Sketcher::SketchObject"]
+        if not sketches:
+            print('UNICLI_JSON:{"error":"No sketches found in document"}')
+            sys.exit(1)
+
+        if ext == ".svg":
+            importSVG.export(sketches, output_path)
+        elif ext == ".dxf":
+            importDXF.export(sketches, output_path)
+        else:
+            importSVG.export(sketches, output_path)
+
+        size = os.path.getsize(output_path)
+        print(f'UNICLI_JSON:{{"output":"{output_path}","sketches":{len(sketches)},"file_size":{size}}}')
+        FreeCAD.closeDocument(doc.Name)
+
+  - exec:
+      command: freecadcmd
+      args: ["${{ temp.sketch_export_py }}"]
+      parse: text
+      timeout: 60000
+
+columns: [output, sketches, file_size]

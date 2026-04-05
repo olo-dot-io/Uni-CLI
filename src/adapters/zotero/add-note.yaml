@@ -1,0 +1,31 @@
+# Service adapter — add a note to a Zotero item
+site: zotero
+name: add-note
+description: Add a child note to an existing Zotero item
+type: service
+strategy: public
+base: "http://localhost:23119"
+
+args:
+  key:
+    type: str
+    required: true
+    positional: true
+    description: Parent item key
+  content:
+    type: str
+    required: true
+    description: Note content (plain text or HTML)
+
+pipeline:
+  - fetch:
+      url: "http://localhost:23119/api/users/0/items"
+      method: POST
+      headers:
+        Content-Type: application/json
+      body:
+        - itemType: note
+          parentItem: "${{ args.key }}"
+          note: "${{ args.content }}"
+
+columns: [result]

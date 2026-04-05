@@ -1,0 +1,38 @@
+# Service adapter — verify WireMock request count
+site: wiremock
+name: verify
+description: Get count of requests matched to a URL pattern
+type: service
+strategy: public
+base: "http://localhost:8080"
+
+args:
+  url:
+    type: str
+    required: true
+    positional: true
+    description: URL pattern to verify
+  method:
+    type: str
+    default: GET
+    choices: [GET, POST, PUT, DELETE, PATCH]
+    description: HTTP method
+  port:
+    type: int
+    default: 8080
+    description: WireMock server port
+
+pipeline:
+  - fetch:
+      url: "http://localhost:${{ args.port }}/__admin/requests/count"
+      method: POST
+      headers:
+        Content-Type: application/json
+      body:
+        method: "${{ args.method }}"
+        url: "${{ args.url }}"
+
+  - map:
+      count: "${{ item.count }}"
+
+columns: [count]

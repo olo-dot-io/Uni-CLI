@@ -1,0 +1,60 @@
+# Desktop adapter — add text overlay to an image using GIMP
+site: gimp
+name: text
+description: Add a text overlay to an image at specified position
+type: desktop
+binary: gimp
+detect: which gimp
+timeout: 60000
+
+args:
+  input:
+    type: str
+    required: true
+    positional: true
+    description: Path to input image
+  content:
+    type: str
+    required: true
+    description: Text content to add
+  x:
+    type: int
+    default: 10
+    description: X position
+  "y":
+    type: int
+    default: 10
+    description: Y position
+  size:
+    type: int
+    default: 24
+    description: Font size
+  color:
+    type: str
+    default: "000000"
+    description: Text color as hex (RRGGBB)
+  output:
+    type: str
+    description: Output path (defaults to overwriting input)
+
+pipeline:
+  - exec:
+      command: gimp
+      args: ["-i", "-b", "-"]
+      stdin: |
+        (let* ((image (car (gimp-file-load RUN-NONINTERACTIVE "${{ args.input }}" "${{ args.input }}")))
+               (drawable (car (gimp-image-get-active-drawable image)))
+               (hex "${{ args.color }}")
+               (r (string->number (substring hex 0 2) 16))
+               (g (string->number (substring hex 2 4) 16))
+               (b (string->number (substring hex 4 6) 16)))
+          (gimp-context-set-foreground (list r g b))
+          (gimp-text-fontname image drawable ${{ args.x }} ${{ args.y }} "${{ args.content }}" 0 TRUE ${{ args.size }} UNIT-PIXEL "Sans")
+          (gimp-image-flatten image)
+          (gimp-file-overwrite RUN-NONINTERACTIVE image (car (gimp-image-get-active-drawable image)) "${{ args.output || args.input }}" "${{ args.output || args.input }}")
+          (gimp-image-delete image)
+          (gimp-quit 0))
+      parse: text
+      timeout: 60000
+
+columns: [result]

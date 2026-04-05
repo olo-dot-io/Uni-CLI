@@ -1,0 +1,55 @@
+# Desktop adapter — validate geometry of a FreeCAD model
+site: freecad
+name: check
+description: Validate geometry (check for invalid shapes, open edges, self-intersections)
+type: desktop
+binary: freecadcmd
+detect: which freecadcmd || which FreeCADCmd || which freecad
+timeout: 60000
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to .FCStd file
+
+pipeline:
+  - write_temp:
+      filename: check.py
+      content: |
+        import json
+        import FreeCAD
+
+        doc = FreeCAD.openDocument("${{ args.file }}")
+        FreeCAD.setActiveDocument(doc.Name)
+
+        results = []
+        all_valid = True
+        for obj in doc.Objects:
+            if not hasattr(obj, "Shape"):
+                continue
+            shape = obj.Shape
+            entry = {
+                "name": obj.Label,
+                "valid": shape.isValid(),
+                "closed": shape.isClosed() if hasattr(shape, "isClosed") else True,
+                "faces": shape.Faces.__len__(),
+                "edges": shape.Edges.__len__(),
+                "vertices": shape.Vertexes.__len__(),
+            }
+            if not shape.isValid():
+                all_valid = False
+                entry["errors"] = shape.check() if hasattr(shape, "check") else ["invalid shape"]
+            results.append(entry)
+
+        print("UNICLI_JSON:" + json.dumps({"valid": all_valid, "parts": results, "count": len(results)}))
+        FreeCAD.closeDocument(doc.Name)
+
+  - exec:
+      command: freecadcmd
+      args: ["${{ temp.check_py }}"]
+      parse: text
+      timeout: 60000
+
+columns: [valid, parts, count]

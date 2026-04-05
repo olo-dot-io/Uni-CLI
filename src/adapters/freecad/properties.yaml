@@ -1,0 +1,61 @@
+# Desktop adapter — list part properties from a FreeCAD document
+site: freecad
+name: properties
+description: List all properties (material, placement, color) of parts in a document
+type: desktop
+binary: freecadcmd
+detect: which freecadcmd || which FreeCADCmd || which freecad
+timeout: 60000
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to .FCStd file
+
+pipeline:
+  - write_temp:
+      filename: properties.py
+      content: |
+        import json
+        import FreeCAD
+
+        doc = FreeCAD.openDocument("${{ args.file }}")
+        FreeCAD.setActiveDocument(doc.Name)
+
+        results = []
+        for obj in doc.Objects:
+            entry = {
+                "name": obj.Label,
+                "type": obj.TypeId,
+                "properties": {}
+            }
+            for prop in obj.PropertiesList:
+                try:
+                    val = getattr(obj, prop)
+                    if isinstance(val, (str, int, float, bool)):
+                        entry["properties"][prop] = val
+                    elif hasattr(val, "__str__"):
+                        entry["properties"][prop] = str(val)
+                except:
+                    pass
+            if hasattr(obj, "Shape"):
+                p = obj.Placement
+                entry["placement"] = {
+                    "x": round(p.Base.x, 2),
+                    "y": round(p.Base.y, 2),
+                    "z": round(p.Base.z, 2),
+                }
+            results.append(entry)
+
+        print("UNICLI_JSON:" + json.dumps({"objects": results, "count": len(results)}))
+        FreeCAD.closeDocument(doc.Name)
+
+  - exec:
+      command: freecadcmd
+      args: ["${{ temp.properties_py }}"]
+      parse: text
+      timeout: 60000
+
+columns: [objects, count]

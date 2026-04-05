@@ -1,0 +1,74 @@
+# Desktop adapter — boolean operations on FreeCAD shapes
+site: freecad
+name: boolean
+description: Perform boolean operations (union, subtract, intersect) on two shapes
+type: desktop
+binary: freecadcmd
+detect: which freecadcmd || which FreeCADCmd || which freecad
+timeout: 120000
+
+args:
+  input:
+    type: str
+    required: true
+    positional: true
+    description: Path to .FCStd file with at least two shapes
+  operation:
+    type: str
+    required: true
+    choices: [union, subtract, intersect]
+    description: Boolean operation to perform
+  output:
+    type: str
+    required: true
+    description: Output file path
+
+pipeline:
+  - write_temp:
+      filename: boolean.py
+      content: |
+        import sys, os, json
+        import FreeCAD
+        import Part
+
+        input_path = "${{ args.input }}"
+        output_path = "${{ args.output }}"
+        operation = "${{ args.operation }}"
+
+        os.makedirs(os.path.dirname(os.path.abspath(output_path)) or ".", exist_ok=True)
+        doc = FreeCAD.openDocument(input_path)
+        FreeCAD.setActiveDocument(doc.Name)
+
+        shapes = [obj for obj in doc.Objects if hasattr(obj, "Shape")]
+        if len(shapes) < 2:
+            print('UNICLI_JSON:{"error":"Need at least 2 shapes for boolean operation"}')
+            sys.exit(1)
+
+        base = shapes[0].Shape
+        tool = shapes[1].Shape
+
+        if operation == "union":
+            result = base.fuse(tool)
+        elif operation == "subtract":
+            result = base.cut(tool)
+        elif operation == "intersect":
+            result = base.common(tool)
+
+        new_doc = FreeCAD.newDocument("BoolResult")
+        Part.show(result)
+        new_doc.recompute()
+
+        Part.export(new_doc.Objects, output_path)
+        size = os.path.getsize(output_path)
+
+        print(f'UNICLI_JSON:{{"output":"{output_path}","operation":"{operation}","volume":{round(result.Volume, 4)},"file_size":{size}}}')
+        FreeCAD.closeDocument(doc.Name)
+        FreeCAD.closeDocument(new_doc.Name)
+
+  - exec:
+      command: freecadcmd
+      args: ["${{ temp.boolean_py }}"]
+      parse: text
+      timeout: 120000
+
+columns: [output, operation, volume, file_size]

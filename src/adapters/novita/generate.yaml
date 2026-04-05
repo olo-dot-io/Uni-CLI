@@ -1,0 +1,46 @@
+# Service adapter — generate an image using Novita AI API
+site: novita
+name: generate
+description: Generate an image using Novita AI text-to-image API
+type: service
+strategy: public
+
+args:
+  prompt:
+    type: str
+    required: true
+    positional: true
+    description: Text prompt for image generation
+  model:
+    type: str
+    default: "sd_xl_base_1.0.safetensors"
+    description: Model name
+  width:
+    type: int
+    default: 1024
+    description: Image width
+  height:
+    type: int
+    default: 1024
+    description: Image height
+
+pipeline:
+  - fetch:
+      url: "https://api.novita.ai/v3/async/txt2img"
+      method: POST
+      headers:
+        Content-Type: application/json
+        Authorization: "Bearer ${{ env.NOVITA_API_KEY }}"
+      body:
+        model_name: "${{ args.model }}"
+        prompt: "${{ args.prompt }}"
+        width: "${{ args.width }}"
+        height: "${{ args.height }}"
+        steps: 20
+        sampler_name: "DPM++ 2M Karras"
+
+  - map:
+      task_id: "${{ item.task_id }}"
+      status: "${{ item.status || 'queued' }}"
+
+columns: [task_id, status]

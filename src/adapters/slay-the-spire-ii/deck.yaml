@@ -1,0 +1,28 @@
+# Service adapter — list current deck in Slay the Spire II
+site: slay-the-spire-ii
+name: deck
+description: List all cards in the current deck
+type: service
+strategy: public
+base: "http://localhost:15526"
+
+args:
+  port:
+    type: int
+    default: 15526
+    description: HTTP bridge port
+
+pipeline:
+  - fetch:
+      url: "http://localhost:${{ args.port }}/api/deck"
+
+  - select: cards
+
+  - map:
+      name: "${{ item.name }}"
+      type: "${{ item.type }}"
+      cost: "${{ item.cost }}"
+      upgraded: "${{ item.upgraded }}"
+      description: "${{ item.description }}"
+
+columns: [name, type, cost, upgraded, description]

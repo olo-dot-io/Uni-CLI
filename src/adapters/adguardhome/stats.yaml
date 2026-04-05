@@ -1,0 +1,25 @@
+# Service adapter — get AdGuard Home query statistics
+site: adguardhome
+name: stats
+description: Get DNS query statistics (total queries, blocked, top clients)
+type: service
+strategy: public
+base: "http://localhost:3000"
+
+args:
+  host:
+    type: str
+    default: "localhost:3000"
+    description: AdGuard Home host:port
+
+pipeline:
+  - fetch:
+      url: "http://${{ args.host }}/control/stats"
+
+  - map:
+      total_queries: "${{ item.num_dns_queries }}"
+      blocked: "${{ item.num_blocked_filtering }}"
+      replaced_safebrowsing: "${{ item.num_replaced_safebrowsing }}"
+      avg_processing_time: "${{ item.avg_processing_time }}"
+
+columns: [total_queries, blocked, replaced_safebrowsing, avg_processing_time]

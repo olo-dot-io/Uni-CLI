@@ -1,0 +1,52 @@
+# Desktop adapter — apply a filter to an image using GIMP
+site: gimp
+name: filter
+description: Apply a filter (blur, sharpen, edge-detect, emboss) to an image
+type: desktop
+binary: gimp
+detect: which gimp
+timeout: 60000
+
+args:
+  input:
+    type: str
+    required: true
+    positional: true
+    description: Path to input image
+  type:
+    type: str
+    required: true
+    choices: [blur, sharpen, edge-detect, emboss]
+    description: Filter type to apply
+  radius:
+    type: float
+    default: 5.0
+    description: Filter radius/strength
+  output:
+    type: str
+    description: Output path (defaults to overwriting input)
+
+pipeline:
+  - exec:
+      command: gimp
+      args: ["-i", "-b", "-"]
+      stdin: |
+        (let* ((image (car (gimp-file-load RUN-NONINTERACTIVE "${{ args.input }}" "${{ args.input }}")))
+               (drawable (car (gimp-image-flatten image)))
+               (radius ${{ args.radius }}))
+          (cond
+            ((string=? "${{ args.type }}" "blur")
+             (plug-in-gauss RUN-NONINTERACTIVE image drawable radius radius 0))
+            ((string=? "${{ args.type }}" "sharpen")
+             (plug-in-unsharp-mask RUN-NONINTERACTIVE image drawable radius 0.5 0))
+            ((string=? "${{ args.type }}" "edge-detect")
+             (plug-in-edge RUN-NONINTERACTIVE image drawable 1 0 0))
+            ((string=? "${{ args.type }}" "emboss")
+             (plug-in-emboss RUN-NONINTERACTIVE image drawable 315 45 7 TRUE)))
+          (gimp-file-overwrite RUN-NONINTERACTIVE image drawable "${{ args.output || args.input }}" "${{ args.output || args.input }}")
+          (gimp-image-delete image)
+          (gimp-quit 0))
+      parse: text
+      timeout: 60000
+
+columns: [result]

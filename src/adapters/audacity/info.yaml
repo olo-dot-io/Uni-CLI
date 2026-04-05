@@ -1,0 +1,22 @@
+# Desktop adapter — get audio file metadata using SoX
+site: audacity
+name: info
+description: Get audio file info (duration, channels, sample rate, encoding)
+type: desktop
+binary: sox
+detect: which sox
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to audio file
+
+pipeline:
+  - exec:
+      command: soxi
+      args: ["-V0", "${{ args.file }}"]
+      parse: text
+
+columns: [result]

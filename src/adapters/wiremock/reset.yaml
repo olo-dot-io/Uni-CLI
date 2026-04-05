@@ -1,0 +1,20 @@
+# Service adapter — reset WireMock (clear all stubs and request journal)
+site: wiremock
+name: reset
+description: Reset WireMock server (clear all stubs and request history)
+type: service
+strategy: public
+base: "http://localhost:8080"
+
+args:
+  port:
+    type: int
+    default: 8080
+    description: WireMock server port
+
+pipeline:
+  - fetch:
+      url: "http://localhost:${{ args.port }}/__admin/reset"
+      method: POST
+
+columns: [result]

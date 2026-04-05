@@ -1,0 +1,22 @@
+# Desktop adapter — list artboards in a Sketch file
+site: sketch
+name: artboards
+description: List all artboards in a .sketch file
+type: desktop
+binary: sketchtool
+detect: which sketchtool
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to .sketch file
+
+pipeline:
+  - exec:
+      command: sketchtool
+      args: ["list", "artboards", "${{ args.file }}"]
+      parse: text
+
+columns: [result]

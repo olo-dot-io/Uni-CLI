@@ -1,0 +1,52 @@
+# Desktop adapter — get metadata from a MuseScore file
+site: musescore
+name: info
+description: Extract metadata from a MuseScore file (title, composer, parts, measures)
+type: desktop
+binary: python3
+detect: which python3
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to MuseScore file (.mscx or .mscz)
+
+pipeline:
+  - write_temp:
+      filename: ms_info.py
+      content: |
+        import json, zipfile, xml.etree.ElementTree as ET, os
+        path = "${{ args.file }}"
+        ext = os.path.splitext(path)[1].lower()
+        if ext == ".mscz":
+            with zipfile.ZipFile(path, 'r') as z:
+                names = [n for n in z.namelist() if n.endswith('.mscx')]
+                if names:
+                    with z.open(names[0]) as f:
+                        tree = ET.parse(f)
+                else:
+                    print('UNICLI_JSON:{"error":"No .mscx found in archive"}')
+                    exit(1)
+        else:
+            tree = ET.parse(path)
+        root = tree.getroot()
+        info = {}
+        for tag in ['workTitle', 'composer', 'lyricist']:
+            el = root.find(f'.//{{{tag}}}') or root.find(f'.//{tag}')
+            if el is None:
+                el = root.find(f'.//*[{tag}]/{tag}')
+            info[tag] = el.text if el is not None and el.text else ""
+        parts = root.findall('.//{*}Part') or root.findall('.//Part')
+        measures = root.findall('.//{*}Measure') or root.findall('.//Measure')
+        info["parts"] = len(parts)
+        info["measures"] = len(measures)
+        print("UNICLI_JSON:" + json.dumps(info))
+
+  - exec:
+      command: python3
+      args: ["${{ temp.ms_info_py }}"]
+      parse: text
+
+columns: [workTitle, composer, parts, measures]

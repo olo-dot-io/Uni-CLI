@@ -1,0 +1,35 @@
+# Service adapter — add a tag to a Zotero item
+site: zotero
+name: add-tag
+description: Add a tag to an existing Zotero item
+type: service
+strategy: public
+base: "http://localhost:23119"
+
+args:
+  key:
+    type: str
+    required: true
+    positional: true
+    description: Item key
+  tag:
+    type: str
+    required: true
+    description: Tag to add
+
+pipeline:
+  - fetch:
+      url: "http://localhost:23119/api/users/0/items/${{ args.key }}"
+      headers:
+        Accept: application/json
+
+  - fetch:
+      url: "http://localhost:23119/api/users/0/items/${{ args.key }}"
+      method: PATCH
+      headers:
+        Content-Type: application/json
+        If-Unmodified-Since-Version: "${{ item.version }}"
+      body:
+        tags: "${{ [...(item.data ? item.data.tags : []), { tag: args.tag }] }}"
+
+columns: [result]

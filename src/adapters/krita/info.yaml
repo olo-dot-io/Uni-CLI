@@ -1,0 +1,46 @@
+# Desktop adapter — get Krita file info via Python
+site: krita
+name: info
+description: Extract metadata from a Krita .kra file (dimensions, layers, color space)
+type: desktop
+binary: python3
+detect: which python3
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to .kra file
+
+pipeline:
+  - write_temp:
+      filename: krita_info.py
+      content: |
+        import zipfile, json, xml.etree.ElementTree as ET
+        path = "${{ args.file }}"
+        with zipfile.ZipFile(path, 'r') as z:
+            with z.open('maindoc.xml') as f:
+                tree = ET.parse(f)
+                root = tree.getroot()
+                ns = {'k': root.tag.split('}')[0].strip('{')} if '{' in root.tag else {}
+                img = root.find('.//IMAGE') or root.find('.//{*}IMAGE') or root.find('.//image')
+                if img is not None:
+                    info = {
+                        "width": img.get("width", ""),
+                        "height": img.get("height", ""),
+                        "name": img.get("name", ""),
+                        "colorspace": img.get("colorspacename", ""),
+                    }
+                    layers = img.findall('.//{*}layer') or img.findall('.//layer')
+                    info["layers"] = len(layers)
+                else:
+                    info = {"error": "Could not parse maindoc.xml"}
+        print("UNICLI_JSON:" + json.dumps(info))
+
+  - exec:
+      command: python3
+      args: ["${{ temp.krita_info_py }}"]
+      parse: text
+
+columns: [name, width, height, colorspace, layers]

@@ -1,0 +1,35 @@
+# Service adapter — list items from Zotero's local API
+site: zotero
+name: items
+description: List items from Zotero library (title, authors, date, type)
+type: service
+strategy: public
+base: "http://localhost:23119"
+
+args:
+  limit:
+    type: int
+    default: 25
+    description: Number of items to return
+  sort:
+    type: str
+    default: dateModified
+    choices: [dateModified, dateAdded, title, creator]
+    description: Sort field
+
+pipeline:
+  - fetch:
+      url: "http://localhost:23119/api/users/0/items?limit=${{ args.limit }}&sort=${{ args.sort }}&format=json"
+      headers:
+        Accept: application/json
+
+  - map:
+      key: "${{ item.key }}"
+      title: "${{ item.data ? item.data.title : '' }}"
+      type: "${{ item.data ? item.data.itemType : '' }}"
+      date: "${{ item.data ? item.data.date : '' }}"
+      creators: "${{ item.data && item.data.creators ? item.data.creators.map(c => c.lastName || c.name).join(', ') : '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [key, title, type, date, creators]

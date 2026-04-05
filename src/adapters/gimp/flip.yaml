@@ -1,0 +1,41 @@
+# Desktop adapter — flip an image using GIMP's Script-Fu batch mode
+site: gimp
+name: flip
+description: Flip an image horizontally or vertically
+type: desktop
+binary: gimp
+detect: which gimp
+timeout: 60000
+
+args:
+  input:
+    type: str
+    required: true
+    positional: true
+    description: Path to input image
+  direction:
+    type: str
+    default: horizontal
+    choices: [horizontal, vertical]
+    description: Flip direction
+  output:
+    type: str
+    description: Output path (defaults to overwriting input)
+
+pipeline:
+  - exec:
+      command: gimp
+      args: ["-i", "-b", "-"]
+      stdin: |
+        (let* ((image (car (gimp-file-load RUN-NONINTERACTIVE "${{ args.input }}" "${{ args.input }}")))
+               (drawable (car (gimp-image-get-active-drawable image)))
+               (orientation (if (string=? "${{ args.direction }}" "horizontal") ORIENTATION-HORIZONTAL ORIENTATION-VERTICAL)))
+          (gimp-item-transform-flip-simple drawable orientation TRUE 0)
+          (gimp-image-flatten image)
+          (gimp-file-overwrite RUN-NONINTERACTIVE image (car (gimp-image-get-active-drawable image)) "${{ args.output || args.input }}" "${{ args.output || args.input }}")
+          (gimp-image-delete image)
+          (gimp-quit 0))
+      parse: text
+      timeout: 60000
+
+columns: [result]

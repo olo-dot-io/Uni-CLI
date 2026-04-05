@@ -1,0 +1,34 @@
+# Service adapter — use a potion in Slay the Spire II
+site: slay-the-spire-ii
+name: use-potion
+description: Use a potion from inventory
+type: service
+strategy: public
+base: "http://localhost:15526"
+
+args:
+  index:
+    type: int
+    required: true
+    positional: true
+    description: Potion slot index (0-based)
+  target:
+    type: int
+    default: 0
+    description: Target enemy index (0-based)
+  port:
+    type: int
+    default: 15526
+    description: HTTP bridge port
+
+pipeline:
+  - fetch:
+      url: "http://localhost:${{ args.port }}/api/potion"
+      method: POST
+      headers:
+        Content-Type: application/json
+      body:
+        potion_index: "${{ args.index }}"
+        target_index: "${{ args.target }}"
+
+columns: [result]

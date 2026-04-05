@@ -1,0 +1,26 @@
+# Service adapter — check Novita AI task status
+site: novita
+name: status
+description: Check the status of a Novita AI generation task
+type: service
+strategy: public
+
+args:
+  task_id:
+    type: str
+    required: true
+    positional: true
+    description: Task ID from generate command
+
+pipeline:
+  - fetch:
+      url: "https://api.novita.ai/v3/async/task-result?task_id=${{ args.task_id }}"
+      headers:
+        Authorization: "Bearer ${{ env.NOVITA_API_KEY }}"
+
+  - map:
+      task_id: "${{ item.task.task_id }}"
+      status: "${{ item.task.status }}"
+      images: "${{ item.images ? item.images.map(i => i.image_url) : [] }}"
+
+columns: [task_id, status, images]

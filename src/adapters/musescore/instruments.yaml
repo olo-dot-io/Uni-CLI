@@ -1,0 +1,54 @@
+# Desktop adapter — list instruments in a MuseScore file
+site: musescore
+name: instruments
+description: List instruments/parts in a MuseScore file
+type: desktop
+binary: python3
+detect: which python3
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to MuseScore file (.mscx or .mscz)
+
+pipeline:
+  - write_temp:
+      filename: ms_instruments.py
+      content: |
+        import json, zipfile, xml.etree.ElementTree as ET, os
+        path = "${{ args.file }}"
+        ext = os.path.splitext(path)[1].lower()
+        if ext == ".mscz":
+            with zipfile.ZipFile(path, 'r') as z:
+                names = [n for n in z.namelist() if n.endswith('.mscx')]
+                if names:
+                    with z.open(names[0]) as f:
+                        tree = ET.parse(f)
+                else:
+                    print('UNICLI_JSON:{"error":"No .mscx found in archive"}')
+                    exit(1)
+        else:
+            tree = ET.parse(path)
+        root = tree.getroot()
+        parts = root.findall('.//{*}Part') or root.findall('.//Part')
+        instruments = []
+        for p in parts:
+            inst = p.find('.//{*}Instrument') or p.find('.//Instrument')
+            name = ""
+            if inst is not None:
+                ln = inst.find('.//{*}longName') or inst.find('.//longName')
+                if ln is not None and ln.text:
+                    name = ln.text
+                else:
+                    name = inst.get("id", "unknown")
+            instruments.append({"name": name})
+        print("UNICLI_JSON:" + json.dumps({"instruments": instruments, "count": len(instruments)}))
+
+  - exec:
+      command: python3
+      args: ["${{ temp.ms_instruments_py }}"]
+      parse: text
+
+columns: [instruments, count]

@@ -1,0 +1,24 @@
+# Service adapter — list AdGuard Home filtering rules
+site: adguardhome
+name: rules
+description: List custom filtering rules from AdGuard Home
+type: service
+strategy: public
+base: "http://localhost:3000"
+
+args:
+  host:
+    type: str
+    default: "localhost:3000"
+    description: AdGuard Home host:port
+
+pipeline:
+  - fetch:
+      url: "http://${{ args.host }}/control/filtering/status"
+
+  - map:
+      enabled: "${{ item.enabled }}"
+      filters: "${{ item.filters }}"
+      user_rules: "${{ item.user_rules }}"
+
+columns: [enabled, filters, user_rules]

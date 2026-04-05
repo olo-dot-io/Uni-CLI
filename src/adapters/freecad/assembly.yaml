@@ -1,0 +1,58 @@
+# Desktop adapter — extract assembly information from a FreeCAD document
+site: freecad
+name: assembly
+description: List assembly structure, constraints, and part relationships
+type: desktop
+binary: freecadcmd
+detect: which freecadcmd || which FreeCADCmd || which freecad
+timeout: 60000
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to .FCStd file
+
+pipeline:
+  - write_temp:
+      filename: assembly.py
+      content: |
+        import json
+        import FreeCAD
+
+        doc = FreeCAD.openDocument("${{ args.file }}")
+        FreeCAD.setActiveDocument(doc.Name)
+
+        parts = []
+        constraints = []
+        for obj in doc.Objects:
+            entry = {"name": obj.Label, "type": obj.TypeId}
+            if hasattr(obj, "Shape"):
+                p = obj.Placement
+                entry["placement"] = {
+                    "x": round(p.Base.x, 2),
+                    "y": round(p.Base.y, 2),
+                    "z": round(p.Base.z, 2),
+                }
+                parts.append(entry)
+            if "Constraint" in obj.TypeId:
+                constraints.append({"name": obj.Label, "type": obj.TypeId})
+
+        groups = [obj.Label for obj in doc.Objects if hasattr(obj, "Group")]
+        print("UNICLI_JSON:" + json.dumps({
+            "parts": parts,
+            "constraints": constraints,
+            "groups": groups,
+            "total_parts": len(parts),
+            "total_constraints": len(constraints),
+        }))
+        FreeCAD.closeDocument(doc.Name)
+
+  - exec:
+      command: freecadcmd
+      args: ["${{ temp.assembly_py }}"]
+      parse: text
+      timeout: 60000
+
+columns: [total_parts, total_constraints, parts, constraints, groups]

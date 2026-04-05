@@ -1,0 +1,15 @@
+# Desktop adapter — list available MLT effects for Kdenlive
+site: kdenlive
+name: effects
+description: List available MLT video/audio effects
+type: desktop
+binary: melt
+detect: which melt
+
+pipeline:
+  - exec:
+      command: melt
+      args: ["-query", "filters"]
+      parse: text
+
+columns: [result]

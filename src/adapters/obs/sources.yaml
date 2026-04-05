@@ -1,0 +1,33 @@
+# Service adapter — list sources in the current OBS scene
+site: obs
+name: sources
+description: List all sources in the current OBS scene
+type: service
+
+args:
+  scene:
+    type: str
+    description: Scene name (defaults to current scene)
+  port:
+    type: int
+    default: 4455
+    description: OBS WebSocket port
+
+pipeline:
+  - websocket:
+      url: "ws://localhost:${{ args.port }}"
+      auth:
+        password_env: OBS_WS_PASSWORD
+      send: '{"op":6,"d":{"requestType":"GetSceneItemList","requestId":"1","requestData":{"sceneName":"${{ args.scene || '' }}"}}}'
+      parse: json
+      timeout: 5000
+
+  - select: "d.responseData.sceneItems"
+
+  - map:
+      name: "${{ item.sourceName }}"
+      type: "${{ item.inputKind || item.sourceType }}"
+      visible: "${{ item.sceneItemEnabled }}"
+      index: "${{ item.sceneItemIndex }}"
+
+columns: [name, type, visible, index]

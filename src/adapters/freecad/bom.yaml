@@ -1,0 +1,48 @@
+# Desktop adapter — generate bill of materials from a FreeCAD document
+site: freecad
+name: bom
+description: Generate a bill of materials (name, type, volume, material) from a FreeCAD file
+type: desktop
+binary: freecadcmd
+detect: which freecadcmd || which FreeCADCmd || which freecad
+timeout: 60000
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to .FCStd file
+
+pipeline:
+  - write_temp:
+      filename: bom.py
+      content: |
+        import json
+        import FreeCAD
+
+        doc = FreeCAD.openDocument("${{ args.file }}")
+        FreeCAD.setActiveDocument(doc.Name)
+
+        items = []
+        for obj in doc.Objects:
+            entry = {"name": obj.Label, "type": obj.TypeId}
+            if hasattr(obj, "Shape"):
+                entry["volume"] = round(obj.Shape.Volume, 4)
+                entry["area"] = round(obj.Shape.Area, 4)
+            if hasattr(obj, "Material") and obj.Material:
+                entry["material"] = str(obj.Material.get("Name", "unknown"))
+            else:
+                entry["material"] = "unset"
+            items.append(entry)
+
+        print("UNICLI_JSON:" + json.dumps({"items": items, "total_parts": len(items)}))
+        FreeCAD.closeDocument(doc.Name)
+
+  - exec:
+      command: freecadcmd
+      args: ["${{ temp.bom_py }}"]
+      parse: text
+      timeout: 60000
+
+columns: [items, total_parts]

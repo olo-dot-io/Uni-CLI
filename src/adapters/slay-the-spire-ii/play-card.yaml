@@ -1,0 +1,34 @@
+# Service adapter — play a card in Slay the Spire II combat
+site: slay-the-spire-ii
+name: play-card
+description: Play a card from hand during combat
+type: service
+strategy: public
+base: "http://localhost:15526"
+
+args:
+  index:
+    type: int
+    required: true
+    positional: true
+    description: Card index in hand (0-based)
+  target:
+    type: int
+    default: 0
+    description: Target enemy index (0-based)
+  port:
+    type: int
+    default: 15526
+    description: HTTP bridge port
+
+pipeline:
+  - fetch:
+      url: "http://localhost:${{ args.port }}/api/play"
+      method: POST
+      headers:
+        Content-Type: application/json
+      body:
+        card_index: "${{ args.index }}"
+        target_index: "${{ args.target }}"
+
+columns: [result]

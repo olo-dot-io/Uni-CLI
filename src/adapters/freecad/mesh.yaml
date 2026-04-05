@@ -1,0 +1,75 @@
+# Desktop adapter — mesh operations on a FreeCAD model
+site: freecad
+name: mesh
+description: Mesh operations (tessellate to STL with configurable deviation and format)
+type: desktop
+binary: freecadcmd
+detect: which freecadcmd || which FreeCADCmd || which freecad
+timeout: 120000
+
+args:
+  input:
+    type: str
+    required: true
+    positional: true
+    description: Path to .FCStd or STEP file
+  output:
+    type: str
+    required: true
+    description: Output mesh file path (.stl, .obj, .ply)
+  deviation:
+    type: float
+    default: 0.1
+    description: Tessellation deviation (lower = finer mesh)
+  simplify:
+    type: float
+    default: 0.0
+    description: Simplification ratio (0 = no simplification, 0.5 = halve faces)
+
+pipeline:
+  - write_temp:
+      filename: mesh_op.py
+      content: |
+        import sys, os, json
+        import FreeCAD
+        import Mesh
+
+        input_path = "${{ args.input }}"
+        output_path = "${{ args.output }}"
+        deviation = ${{ args.deviation }}
+        simplify_ratio = ${{ args.simplify }}
+
+        os.makedirs(os.path.dirname(os.path.abspath(output_path)) or ".", exist_ok=True)
+        doc = FreeCAD.openDocument(input_path)
+        FreeCAD.setActiveDocument(doc.Name)
+
+        shapes = [obj for obj in doc.Objects if hasattr(obj, "Shape")]
+        if not shapes:
+            print('UNICLI_JSON:{"error":"No shapes found"}')
+            sys.exit(1)
+
+        combined = Mesh.Mesh()
+        for obj in shapes:
+            mesh = Mesh.Mesh()
+            mesh.addFacets(obj.Shape.tessellate(deviation)[0:2])
+            combined.addMesh(mesh)
+
+        faces_before = combined.CountFacets
+        if simplify_ratio > 0:
+            target = int(faces_before * (1 - simplify_ratio))
+            combined.decimate(target)
+
+        combined.write(output_path)
+        faces_after = combined.CountFacets
+        size = os.path.getsize(output_path)
+
+        print(f'UNICLI_JSON:{{"output":"{output_path}","faces_before":{faces_before},"faces_after":{faces_after},"file_size":{size}}}')
+        FreeCAD.closeDocument(doc.Name)
+
+  - exec:
+      command: freecadcmd
+      args: ["${{ temp.mesh_op_py }}"]
+      parse: text
+      timeout: 120000
+
+columns: [output, faces_before, faces_after, file_size]

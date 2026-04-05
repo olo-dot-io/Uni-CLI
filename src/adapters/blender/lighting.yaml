@@ -1,0 +1,44 @@
+# Desktop adapter — list lights and their settings in a Blender file
+site: blender
+name: lighting
+description: List all lights and their properties (type, color, energy, shadow)
+type: desktop
+binary: blender
+detect: which blender
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Path to .blend file
+
+pipeline:
+  - exec:
+      command: blender
+      args:
+        - -b
+        - ${{ args.file }}
+        - --python-expr
+        - |
+          import bpy, json
+          lights = []
+          for obj in bpy.data.objects:
+              if obj.type != "LIGHT":
+                  continue
+              light = obj.data
+              entry = {
+                  "name": obj.name,
+                  "type": light.type,
+                  "energy": round(light.energy, 2),
+                  "color": [round(light.color.r, 3), round(light.color.g, 3), round(light.color.b, 3)],
+                  "shadow": light.use_shadow,
+                  "location": [round(obj.location.x, 3), round(obj.location.y, 3), round(obj.location.z, 3)],
+              }
+              if light.type == "SPOT":
+                  entry["spot_size"] = round(light.spot_size, 3)
+              lights.append(entry)
+          print("UNICLI_JSON:" + json.dumps({"lights": lights, "count": len(lights)}))
+      parse: text
+
+columns: [lights, count]

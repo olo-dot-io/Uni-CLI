@@ -1,0 +1,20 @@
+# Service adapter — end the current turn in Slay the Spire II combat
+site: slay-the-spire-ii
+name: end-turn
+description: End the current combat turn
+type: service
+strategy: public
+base: "http://localhost:15526"
+
+args:
+  port:
+    type: int
+    default: 15526
+    description: HTTP bridge port
+
+pipeline:
+  - fetch:
+      url: "http://localhost:${{ args.port }}/api/end_turn"
+      method: POST
+
+columns: [result]
