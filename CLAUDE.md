@@ -193,7 +193,7 @@ cli({
 
 ## Code Standards
 
-- Version: 0.203.0
+- Version: 0.204.0
 - Apache-2.0 license
 - Strict TypeScript — no `any` unless unavoidable
 - YAML adapters are the preferred contribution format
