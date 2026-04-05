@@ -1,0 +1,48 @@
+site: chaoxing
+name: exams
+description: List Chaoxing (XuexiTong) exams
+domain: mooc1.chaoxing.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of exams
+
+columns: [rank, title, course, status, start_time, end_time]
+
+pipeline:
+  - navigate:
+      url: https://mooc1.chaoxing.com/visit/stuexam
+      settleMs: 4000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const items = document.querySelectorAll('.exam-item, .task-item, tr[class*="item"]');
+        if (items.length > 0) {
+          return Array.from(items).slice(0, limit).map((el, i) => ({
+            rank: i + 1,
+            title: clean(el.querySelector('.exam-title, .name, td:nth-child(1)')?.textContent),
+            course: clean(el.querySelector('.course-name, td:nth-child(2)')?.textContent),
+            status: clean(el.querySelector('.status, td:nth-child(3)')?.textContent),
+            start_time: clean(el.querySelector('.start-time, td:nth-child(4)')?.textContent),
+            end_time: clean(el.querySelector('.end-time, td:nth-child(5)')?.textContent),
+          }));
+        }
+        const rows = document.querySelectorAll('table tbody tr');
+        return Array.from(rows).slice(0, limit).map((el, i) => {
+          const cells = el.querySelectorAll('td');
+          return {
+            rank: i + 1,
+            title: clean(cells[0]?.textContent),
+            course: clean(cells[1]?.textContent),
+            status: clean(cells[2]?.textContent),
+            start_time: clean(cells[3]?.textContent),
+            end_time: clean(cells[4]?.textContent),
+          };
+        });
+      })()

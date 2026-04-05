@@ -1,0 +1,52 @@
+site: ones
+name: my-tasks
+description: List my ONES tasks
+domain: ones.cn
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of tasks
+
+columns: [rank, title, status, priority, project, assignee, url]
+
+pipeline:
+  - navigate:
+      url: https://ones.cn
+      settleMs: 2000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const meRes = await fetch('/project/api/project/users/me', { credentials: 'include' });
+        const meData = await meRes.json();
+        const userUuid = (meData.user || meData).uuid;
+        if (!userUuid) throw new Error('Not authenticated');
+
+        const body = JSON.stringify({
+          query: { must: [{ should: [{ match: { 'assign.uuid': userUuid } }] }] },
+          sort: [{ 'create_time': { order: 'desc' } }],
+          limit: limit,
+        });
+        const res = await fetch('/project/api/project/team/' + ((meData.teams || [])[0]?.uuid || '') + '/filters/peek', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+        });
+        if (!res.ok) throw new Error('Tasks query failed (HTTP ' + res.status + ')');
+        const data = await res.json();
+        const tasks = data.tasks || data.list || [];
+        return tasks.slice(0, limit).map((t, i) => ({
+          rank: i + 1,
+          title: t.name || t.summary || '',
+          status: t.status?.name || '',
+          priority: t.priority?.name || '',
+          project: t.project?.name || '',
+          assignee: t.assign?.name || '',
+          url: t.uuid ? location.origin + '/project/#/task/' + t.uuid : '',
+        }));
+      })()

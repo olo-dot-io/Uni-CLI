@@ -1,0 +1,29 @@
+site: ones
+name: token-info
+description: Get ONES auth token information
+domain: ones.cn
+strategy: intercept
+browser: true
+
+columns: [user_id, team_id, org_id, status]
+
+pipeline:
+  - navigate:
+      url: https://ones.cn
+      settleMs: 2000
+
+  - evaluate: |
+      (async () => {
+        const res = await fetch('/project/api/project/auth/token_info', {
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        });
+        if (!res.ok) throw new Error('Token info unavailable (HTTP ' + res.status + ')');
+        const data = await res.json();
+        return [{
+          user_id: data.user?.uuid || data.uuid || '',
+          team_id: data.team?.uuid || '',
+          org_id: data.org?.uuid || '',
+          status: res.ok ? 'valid' : 'invalid',
+        }];
+      })()

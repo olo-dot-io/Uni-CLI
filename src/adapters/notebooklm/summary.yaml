@@ -1,0 +1,28 @@
+site: notebooklm
+name: summary
+description: Get NotebookLM notebook summary
+domain: notebooklm.google.com
+strategy: intercept
+browser: true
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: Notebook ID
+
+columns: [title, summary, url]
+
+pipeline:
+  - navigate:
+      url: https://notebooklm.google.com/notebook/${{ args.id }}
+      settleMs: 4000
+
+  - evaluate: |
+      (async () => {
+        const title = document.title.replace(/ - NotebookLM$/, '').trim();
+        const summaryEl = document.querySelector('[class*="summary"], [class*="notebook-guide"], [class*="overview"]');
+        const summary = (summaryEl?.textContent || '').replace(/\s+/g, ' ').trim().substring(0, 2000);
+        return [{ title, summary: summary || 'No summary available. Open the notebook and generate one.', url: location.href }];
+      })()

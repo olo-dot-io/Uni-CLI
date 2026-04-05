@@ -1,0 +1,31 @@
+site: ones
+name: resolve-labels
+description: Resolve ONES label/tag UUIDs to names
+domain: ones.cn
+strategy: intercept
+browser: true
+
+columns: [uuid, name, color]
+
+pipeline:
+  - navigate:
+      url: https://ones.cn
+      settleMs: 2000
+
+  - evaluate: |
+      (async () => {
+        const meRes = await fetch('/project/api/project/users/me', { credentials: 'include' });
+        const meData = await meRes.json();
+        const teamUuid = (meData.teams || [])[0]?.uuid || '';
+        const res = await fetch('/project/api/project/team/' + teamUuid + '/task_labels', {
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        });
+        if (!res.ok) throw new Error('Labels query failed');
+        const data = await res.json();
+        return (data.labels || data.list || []).map(l => ({
+          uuid: l.uuid || '',
+          name: l.name || '',
+          color: l.color || '',
+        }));
+      })()

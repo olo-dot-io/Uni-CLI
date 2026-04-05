@@ -1,0 +1,39 @@
+site: boss
+name: detail
+description: Get BOSS Zhipin job details
+domain: www.zhipin.com
+strategy: intercept
+browser: true
+
+args:
+  url:
+    type: str
+    required: true
+    positional: true
+    description: "Job detail URL or encrypted job ID"
+
+columns: [title, salary, company, location, experience, degree, description, url]
+
+pipeline:
+  - navigate:
+      url: ${{ args.url }}
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const title = clean(document.querySelector('.name h1, .job-title .name')?.textContent);
+        const salary = clean(document.querySelector('.salary, .job-title .salary')?.textContent);
+        const company = clean(document.querySelector('.company-info .name, .sider-company .name a')?.textContent);
+        const infoItems = document.querySelectorAll('.job-detail .info-primary p, .job-primary .detail-content span');
+        const infoArr = Array.from(infoItems).map(el => clean(el.textContent)).filter(Boolean);
+        const desc = clean(document.querySelector('.job-sec-text, .job-detail-section .text')?.textContent).substring(0, 500);
+        return [{
+          title, salary, company,
+          location: infoArr[0] || '',
+          experience: infoArr[1] || '',
+          degree: infoArr[2] || '',
+          description: desc,
+          url: location.href,
+        }];
+      })()

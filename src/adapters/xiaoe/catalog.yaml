@@ -1,0 +1,61 @@
+site: xiaoe
+name: catalog
+description: Get Xiaoe course catalog/chapters
+domain: xiaoe-tech.com
+strategy: intercept
+browser: true
+
+args:
+  url:
+    type: str
+    required: true
+    positional: true
+    description: Course page URL
+
+columns: [ch, chapter, no, title, type, resource_id, status]
+
+pipeline:
+  - navigate:
+      url: ${{ args.url }}
+      settleMs: 8000
+
+  - evaluate: |
+      (async () => {
+        const el = document.querySelector('#app');
+        const store = (el && el.__vue__) ? el.__vue__.$store : null;
+        if (!store) return [];
+        const coreInfo = store.state.coreInfo || {};
+        const courseName = coreInfo.resource_name || '';
+
+        function typeLabel(t) {
+          return {1:'text',2:'live',3:'audio',4:'video',6:'column',8:'mega'}[Number(t)] || String(t||'');
+        }
+
+        const tabs = document.querySelectorAll('span, div');
+        for (const tab of tabs) {
+          if (tab.children.length === 0 && tab.textContent.trim() === '目录') {
+            tab.click(); break;
+          }
+        }
+        await new Promise(r => setTimeout(r, 2000));
+
+        const chapters = document.querySelectorAll('.chapter_box');
+        const result = [];
+        for (let ci = 0; ci < chapters.length; ci++) {
+          const v = chapters[ci].__vue__;
+          if (!v) continue;
+          const chTitle = (v.chapterItem && v.chapterItem.chapter_title) || '';
+          const children = v.chapterChildren || [];
+          for (let ck = 0; ck < children.length; ck++) {
+            const child = children[ck];
+            result.push({
+              ch: ci + 1, chapter: chTitle, no: ck + 1,
+              title: child.chapter_title || child.resource_title || '',
+              type: typeLabel(child.chapter_type || child.resource_type),
+              resource_id: child.resource_id || child.chapter_id || '',
+              status: child.is_finish === 1 ? 'done' : (child.learn_progress > 0 ? child.learn_progress + '%' : 'pending'),
+            });
+          }
+        }
+        return result;
+      })()

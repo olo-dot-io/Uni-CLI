@@ -1,0 +1,39 @@
+site: ones
+name: task-helpers
+description: List ONES task field options (statuses, priorities, types)
+domain: ones.cn
+strategy: intercept
+browser: true
+
+columns: [category, name, uuid]
+
+pipeline:
+  - navigate:
+      url: https://ones.cn
+      settleMs: 2000
+
+  - evaluate: |
+      (async () => {
+        const meRes = await fetch('/project/api/project/users/me', { credentials: 'include' });
+        const meData = await meRes.json();
+        const teamUuid = (meData.teams || [])[0]?.uuid || '';
+        const results = [];
+
+        const statusRes = await fetch('/project/api/project/team/' + teamUuid + '/task_statuses', { credentials: 'include' });
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          for (const s of (statusData.statuses || statusData.list || [])) {
+            results.push({ category: 'status', name: s.name || '', uuid: s.uuid || '' });
+          }
+        }
+
+        const prioRes = await fetch('/project/api/project/team/' + teamUuid + '/task_priorities', { credentials: 'include' });
+        if (prioRes.ok) {
+          const prioData = await prioRes.json();
+          for (const p of (prioData.priorities || prioData.list || [])) {
+            results.push({ category: 'priority', name: p.name || '', uuid: p.uuid || '' });
+          }
+        }
+
+        return results;
+      })()

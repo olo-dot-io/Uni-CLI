@@ -1,0 +1,38 @@
+site: boss
+name: recommend
+description: Get BOSS Zhipin recommended candidates
+domain: www.zhipin.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of results
+
+columns: [name, title, experience, degree, expect_salary, uid]
+
+pipeline:
+  - navigate:
+      url: https://www.zhipin.com/web/chat/index
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const res = await fetch('https://www.zhipin.com/wapi/zprelation/friend/greetRecSortList', {
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        });
+        const data = await res.json();
+        if (data.code !== 0) throw new Error(data.message || 'API error');
+        return (data.zpData?.friendList || []).slice(0, limit).map(f => ({
+          name: f.name || f.geekName || '',
+          title: f.title || '',
+          experience: f.jobExperience || '',
+          degree: f.jobDegree || '',
+          expect_salary: f.expectSalary || '',
+          uid: f.encryptUid || '',
+        }));
+      })()

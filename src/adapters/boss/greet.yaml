@@ -1,0 +1,34 @@
+site: boss
+name: greet
+description: Send greeting to a candidate on BOSS Zhipin
+domain: www.zhipin.com
+strategy: intercept
+browser: true
+
+args:
+  uid:
+    type: str
+    required: true
+    positional: true
+    description: Encrypted user ID to greet
+
+columns: [status, message]
+
+pipeline:
+  - navigate:
+      url: https://www.zhipin.com/web/chat/index
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const uid = ${{ args.uid | json }};
+        const res = await fetch('https://www.zhipin.com/wapi/zprelation/friend/greet.json', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+          body: 'uid=' + encodeURIComponent(uid),
+        });
+        const data = await res.json();
+        if (data.code !== 0) throw new Error(data.message || 'Greet failed');
+        return [{ status: 'success', message: 'Greeting sent to ' + uid }];
+      })()

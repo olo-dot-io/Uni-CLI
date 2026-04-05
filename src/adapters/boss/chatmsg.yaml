@@ -1,0 +1,37 @@
+site: boss
+name: chatmsg
+description: Get BOSS Zhipin chat messages with a candidate
+domain: www.zhipin.com
+strategy: intercept
+browser: true
+
+args:
+  uid:
+    type: str
+    required: true
+    positional: true
+    description: Encrypted user ID
+
+columns: [from, text, time]
+
+pipeline:
+  - navigate:
+      url: https://www.zhipin.com/web/chat/index
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const uid = ${{ args.uid | json }};
+        const res = await fetch('https://www.zhipin.com/wapi/zpchat/exchange/historyMsg?uid=' + encodeURIComponent(uid), {
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        });
+        const data = await res.json();
+        if (data.code !== 0) throw new Error(data.message || 'API error');
+        const msgs = data.zpData?.messages || data.zpData?.historyMsgList || [];
+        return msgs.map(m => ({
+          from: m.from === 1 ? 'me' : 'candidate',
+          text: (m.body?.text || m.text || '').substring(0, 200),
+          time: m.time ? new Date(m.time).toISOString() : '',
+        }));
+      })()

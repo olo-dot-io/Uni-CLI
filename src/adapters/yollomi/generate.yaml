@@ -1,0 +1,49 @@
+site: yollomi
+name: generate
+description: Generate an image with Yollomi AI
+domain: yollomi.com
+strategy: intercept
+browser: true
+
+args:
+  prompt:
+    type: str
+    required: true
+    positional: true
+    description: Image prompt
+  model:
+    type: str
+    default: flux-schnell
+    description: "Model: flux-schnell, flux, imagen-4-fast, z-image-turbo, seedream-4-5"
+
+columns: [status, model, image_url]
+
+pipeline:
+  - navigate:
+      url: https://yollomi.com
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const prompt = ${{ args.prompt | json }};
+        const model = ${{ args.model | json }};
+        const routes = {
+          'flux': '/api/ai/flux', 'flux-schnell': '/api/ai/flux-schnell',
+          'flux-2-pro': '/api/ai/flux-2-pro', 'z-image-turbo': '/api/ai/z-image-turbo',
+          'imagen-4-fast': '/api/ai/imagen-4-fast', 'imagen-4-ultra': '/api/ai/imagen-4-ultra',
+          'seedream-4-5': '/api/ai/seedream-4-5', 'ideogram-v3-turbo': '/api/ai/ideogram-v3-turbo',
+        };
+        const route = routes[model] || '/api/ai/' + model;
+        const res = await fetch(route, {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt }),
+        });
+        if (!res.ok) {
+          const err = await res.text();
+          throw new Error('Yollomi API ' + res.status + ': ' + err.substring(0, 200));
+        }
+        const data = await res.json();
+        const url = data.images?.[0]?.url || data.output?.url || data.url || '';
+        return [{ status: 'success', model, image_url: url }];
+      })()

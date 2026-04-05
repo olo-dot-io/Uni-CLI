@@ -1,0 +1,31 @@
+site: boss
+name: joblist
+description: List my published jobs on BOSS Zhipin
+domain: www.zhipin.com
+strategy: intercept
+browser: true
+
+columns: [title, salary, city, status, url]
+
+pipeline:
+  - navigate:
+      url: https://www.zhipin.com/web/boss/job
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const res = await fetch('https://www.zhipin.com/wapi/zpjob/job/online.json', {
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        });
+        const data = await res.json();
+        if (data.code !== 0) throw new Error(data.message || 'API error');
+        const jobs = data.zpData?.jobList || [];
+        return jobs.map(j => ({
+          title: j.jobName || '',
+          salary: j.salaryDesc || '',
+          city: j.cityName || '',
+          status: j.jobStatus === 1 ? 'active' : 'inactive',
+          url: 'https://www.zhipin.com/job_detail/' + (j.encryptJobId || '') + '.html',
+        }));
+      })()

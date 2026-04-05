@@ -1,0 +1,47 @@
+site: ones
+name: worklog
+description: List ONES work logs
+domain: ones.cn
+strategy: intercept
+browser: true
+
+args:
+  task:
+    type: str
+    default: ""
+    description: Task UUID filter
+  limit:
+    type: int
+    default: 20
+    description: Number of entries
+
+columns: [rank, task, user, hours, description, date]
+
+pipeline:
+  - navigate:
+      url: https://ones.cn
+      settleMs: 2000
+
+  - evaluate: |
+      (async () => {
+        const taskFilter = ${{ args.task | json }};
+        const limit = ${{ args.limit }};
+        let url = '/project/api/project/manhours';
+        if (taskFilter) url += '?task_uuid=' + encodeURIComponent(taskFilter);
+
+        const res = await fetch(url, {
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        });
+        if (!res.ok) throw new Error('Worklog query failed');
+        const data = await res.json();
+        const logs = (data.manhours || data.list || []).slice(0, limit);
+        return logs.map((l, i) => ({
+          rank: i + 1,
+          task: l.task?.name || l.task_uuid || '',
+          user: l.owner?.name || '',
+          hours: l.hours || (l.start_time && l.end_time ? ((l.end_time - l.start_time) / 3600).toFixed(1) : ''),
+          description: (l.description || '').substring(0, 100),
+          date: l.start_time ? new Date(l.start_time * 1000).toISOString().split('T')[0] : '',
+        }));
+      })()

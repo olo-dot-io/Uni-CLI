@@ -1,0 +1,27 @@
+site: yollomi
+name: upload
+description: Upload an image to Yollomi for processing
+domain: yollomi.com
+strategy: intercept
+browser: true
+
+args:
+  image:
+    type: str
+    required: true
+    positional: true
+    description: Image URL or local file path
+
+columns: [status, url]
+
+pipeline:
+  - navigate:
+      url: https://yollomi.com
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const image = ${{ args.image | json }};
+        if (image.startsWith('http')) return [{ status: 'ready', url: image }];
+        return [{ status: 'note', url: 'Local files must be converted to base64 or uploaded separately. Use a URL instead.' }];
+      })()

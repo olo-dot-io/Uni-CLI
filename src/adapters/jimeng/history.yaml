@@ -1,0 +1,30 @@
+site: jimeng
+name: history
+description: List Jimeng AI generation history
+domain: jimeng.jianying.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of results
+
+columns: [rank, prompt, image_count, url]
+
+pipeline:
+  - navigate:
+      url: https://jimeng.jianying.com/ai-tool/generate?type=image&workspace=0
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const cards = document.querySelectorAll('[class*="history-item"], [class*="creation-card"]');
+        return Array.from(cards).slice(0, limit).map((el, i) => {
+          const prompt = (el.querySelector('[class*="prompt"], [class*="desc"]')?.textContent || '').trim().substring(0, 100);
+          const images = el.querySelectorAll('img').length;
+          return { rank: i + 1, prompt, image_count: images, url: location.href };
+        });
+      })()

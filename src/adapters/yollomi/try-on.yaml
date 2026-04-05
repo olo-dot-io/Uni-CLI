@@ -1,0 +1,39 @@
+site: yollomi
+name: try-on
+description: Virtual clothing try-on
+domain: yollomi.com
+strategy: intercept
+browser: true
+
+args:
+  person:
+    type: str
+    required: true
+    positional: true
+    description: Person image URL
+  garment:
+    type: str
+    required: true
+    positional: true
+    description: Garment image URL
+
+columns: [status, image_url]
+
+pipeline:
+  - navigate:
+      url: https://yollomi.com
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const person = ${{ args.person | json }};
+        const garment = ${{ args.garment | json }};
+        const res = await fetch('/api/ai/virtual-try-on', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ person_image: person, garment_image: garment }),
+        });
+        if (!res.ok) throw new Error('Try-on failed: HTTP ' + res.status);
+        const data = await res.json();
+        return [{ status: 'success', image_url: data.images?.[0]?.url || data.url || '' }];
+      })()

@@ -1,0 +1,30 @@
+site: notebooklm
+name: history
+description: Get NotebookLM chat history for a notebook
+domain: notebooklm.google.com
+strategy: intercept
+browser: true
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: Notebook ID
+
+columns: [rank, role, text]
+
+pipeline:
+  - navigate:
+      url: https://notebooklm.google.com/notebook/${{ args.id }}
+      settleMs: 4000
+
+  - evaluate: |
+      (async () => {
+        const msgs = document.querySelectorAll('[class*="message-row"], [class*="ChatMessage"], [class*="chat-turn"]');
+        return Array.from(msgs).map((el, i) => {
+          const isUser = el.classList.toString().includes('user') || el.querySelector('[class*="user"]');
+          const text = (el.textContent || '').replace(/\s+/g, ' ').trim().substring(0, 300);
+          return { rank: i + 1, role: isUser ? 'user' : 'assistant', text };
+        }).filter(r => r.text);
+      })()

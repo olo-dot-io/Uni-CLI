@@ -1,0 +1,33 @@
+site: notebooklm
+name: shared
+description: List shared NotebookLM notebooks
+domain: notebooklm.google.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of notebooks
+
+columns: [rank, id, title, url]
+
+pipeline:
+  - navigate:
+      url: https://notebooklm.google.com/
+      settleMs: 4000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const sharedTab = document.querySelector('[class*="shared"], [aria-label*="Shared"]');
+        if (sharedTab) { sharedTab.click(); await new Promise(r => setTimeout(r, 2000)); }
+        const cards = document.querySelectorAll('a[href*="/notebook/"]');
+        return Array.from(cards).slice(0, limit).map((el, i) => {
+          const href = el.href || '';
+          const idMatch = href.match(/\/notebook\/([^/?#]+)/);
+          const title = (el.querySelector('[class*="title"], h3')?.textContent || el.textContent || '').replace(/\s+/g, ' ').trim().substring(0, 100);
+          return { rank: i + 1, id: idMatch ? idMatch[1] : '', title, url: href };
+        }).filter(r => r.id);
+      })()

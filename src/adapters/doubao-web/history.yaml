@@ -1,0 +1,31 @@
+site: doubao-web
+name: history
+description: List Doubao conversation history
+domain: www.doubao.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of conversations
+
+columns: [rank, title, url]
+
+pipeline:
+  - navigate:
+      url: https://www.doubao.com/chat
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const sidebar = document.querySelector('[data-testid="flow_chat_sidebar"]');
+        const items = (sidebar || document).querySelectorAll('a[href*="/chat/"], [class*="session-item"]');
+        return Array.from(items).slice(0, limit).map((el, i) => ({
+          rank: i + 1,
+          title: (el.textContent || '').replace(/\s+/g, ' ').trim().substring(0, 100),
+          url: el.href || '',
+        })).filter(r => r.title);
+      })()

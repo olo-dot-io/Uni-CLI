@@ -1,0 +1,28 @@
+site: notebooklm
+name: current
+description: Get current NotebookLM notebook info
+domain: notebooklm.google.com
+strategy: intercept
+browser: true
+
+columns: [id, title, url, source_count]
+
+pipeline:
+  - navigate:
+      url: https://notebooklm.google.com/
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const url = location.href;
+        const idMatch = url.match(/\/notebook\/([^/?#]+)/);
+        if (!idMatch) return [{ id: '', title: 'Not on a notebook page', url, source_count: 0 }];
+        const title = document.title.replace(/ - NotebookLM$/, '').trim();
+        const sources = document.querySelectorAll('[class*="source-item"], [class*="SourceListItem"]').length;
+        return [{
+          id: idMatch[1],
+          title,
+          url,
+          source_count: sources,
+        }];
+      })()

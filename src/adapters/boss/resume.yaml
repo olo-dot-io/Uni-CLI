@@ -1,0 +1,40 @@
+site: boss
+name: resume
+description: View a candidate resume on BOSS Zhipin
+domain: www.zhipin.com
+strategy: intercept
+browser: true
+
+args:
+  uid:
+    type: str
+    required: true
+    positional: true
+    description: Encrypted user ID
+
+columns: [name, title, experience, education, skills, expect_salary]
+
+pipeline:
+  - navigate:
+      url: https://www.zhipin.com/web/chat/index
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const uid = ${{ args.uid | json }};
+        const res = await fetch('https://www.zhipin.com/wapi/zpgeek/resume/detail.json?uid=' + encodeURIComponent(uid), {
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        });
+        const data = await res.json();
+        if (data.code !== 0) throw new Error(data.message || 'API error');
+        const r = data.zpData || {};
+        return [{
+          name: r.geekName || r.name || '',
+          title: r.expectJob || '',
+          experience: r.workYear || '',
+          education: (r.eduList || []).map(e => [e.school, e.major].filter(Boolean).join(' ')).join('; ') || '',
+          skills: (r.skillList || r.skills || []).join(', '),
+          expect_salary: r.expectSalary || '',
+        }];
+      })()

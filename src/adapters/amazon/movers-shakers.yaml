@@ -1,0 +1,37 @@
+site: amazon
+name: movers-shakers
+description: Amazon Movers & Shakers ranking
+domain: www.amazon.com
+strategy: intercept
+browser: true
+
+args:
+  url:
+    type: str
+    default: ""
+    description: "Movers & Shakers URL or category path"
+  limit:
+    type: int
+    default: 20
+    description: Number of results
+
+columns: [rank, title, price, change, url]
+
+pipeline:
+  - navigate:
+      url: ${{ args.url || 'https://www.amazon.com/gp/movers-and-shakers' }}
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const items = document.querySelectorAll('.zg-grid-general-faceout, [id^="gridItemRoot"]');
+        return Array.from(items).slice(0, limit).map((el, i) => {
+          const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+          const link = el.querySelector('a[href*="/dp/"]');
+          const title = clean(el.querySelector('.p13n-sc-truncated, ._cDEzb_p13n-sc-css-line-clamp-3_g3dy1')?.textContent);
+          const price = clean(el.querySelector('.a-price .a-offscreen, .p13n-sc-price')?.textContent);
+          const change = clean(el.querySelector('.zg-percent-change, .zg-badge-text')?.textContent);
+          return { rank: i + 1, title, price, change, url: link ? link.href.split('?')[0] : '' };
+        });
+      })()

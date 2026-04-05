@@ -1,0 +1,39 @@
+site: yollomi
+name: background
+description: Generate custom background for image
+domain: yollomi.com
+strategy: intercept
+browser: true
+
+args:
+  image:
+    type: str
+    required: true
+    positional: true
+    description: Foreground image URL
+  prompt:
+    type: str
+    required: true
+    positional: true
+    description: Background description
+
+columns: [status, image_url]
+
+pipeline:
+  - navigate:
+      url: https://yollomi.com
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const image = ${{ args.image | json }};
+        const prompt = ${{ args.prompt | json }};
+        const res = await fetch('/api/ai/ai-background-generator', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image, prompt }),
+        });
+        if (!res.ok) throw new Error('Background gen failed: HTTP ' + res.status);
+        const data = await res.json();
+        return [{ status: 'success', image_url: data.images?.[0]?.url || data.url || '' }];
+      })()

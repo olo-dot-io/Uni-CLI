@@ -1,0 +1,63 @@
+site: gemini
+name: ask
+description: Ask Google Gemini a question
+domain: gemini.google.com
+strategy: intercept
+browser: true
+
+args:
+  prompt:
+    type: str
+    required: true
+    positional: true
+    description: Question to ask
+  wait:
+    type: int
+    default: 30
+    description: Seconds to wait for response
+
+columns: [role, text]
+
+pipeline:
+  - navigate:
+      url: https://gemini.google.com/app
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const prompt = ${{ args.prompt | json }};
+        const waitSec = ${{ args.wait }};
+
+        const editor = document.querySelector('[contenteditable="true"], .ql-editor, textarea');
+        if (!editor) throw new Error('Chat input not found. Make sure you are logged in to Gemini.');
+        editor.focus();
+        if (editor.tagName === 'TEXTAREA') {
+          editor.value = prompt;
+          editor.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+          document.execCommand('insertText', false, prompt);
+        }
+        await new Promise(r => setTimeout(r, 500));
+
+        const sendBtn = document.querySelector('button[aria-label*="Send"], button[class*="send"]');
+        if (sendBtn) sendBtn.click();
+        else editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+        const beforeCount = document.querySelectorAll('.response-container, .model-response-text, [class*="response"]').length;
+        for (let i = 0; i < waitSec * 2; i++) {
+          await new Promise(r => setTimeout(r, 500));
+          const responses = document.querySelectorAll('.response-container, .model-response-text, [class*="response"]');
+          if (responses.length > beforeCount) {
+            const last = responses[responses.length - 1];
+            if (!last.querySelector('[class*="loading"], [class*="typing"]')) break;
+          }
+        }
+
+        const responses = document.querySelectorAll('.response-container, .model-response-text, [class*="response"]');
+        const lastResp = responses[responses.length - 1];
+        const text = (lastResp?.textContent || '').replace(/\s+/g, ' ').trim();
+        return [
+          { role: 'user', text: prompt.substring(0, 200) },
+          { role: 'assistant', text: text.substring(0, 5000) },
+        ];
+      })()

@@ -1,0 +1,40 @@
+site: notebooklm
+name: rpc
+description: Make a raw RPC call to NotebookLM backend
+domain: notebooklm.google.com
+strategy: intercept
+browser: true
+
+args:
+  method:
+    type: str
+    required: true
+    positional: true
+    description: "RPC method name (e.g. ListNotebooks, GetNotebook)"
+  body:
+    type: str
+    default: "[]"
+    description: "JSON body array"
+
+columns: [status, response]
+
+pipeline:
+  - navigate:
+      url: https://notebooklm.google.com/
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const method = ${{ args.method | json }};
+        const bodyStr = ${{ args.body | json }};
+        let body;
+        try { body = JSON.parse(bodyStr); } catch { body = []; }
+        const res = await fetch('https://notebooklm.google.com/api/rpc/' + method, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const text = await res.text();
+        return [{ status: res.ok ? 'ok' : 'error ' + res.status, response: text.substring(0, 3000) }];
+      })()

@@ -1,0 +1,21 @@
+site: doubao-web
+name: status
+description: Check Doubao login status
+domain: www.doubao.com
+strategy: intercept
+browser: true
+
+columns: [logged_in, account, url]
+
+pipeline:
+  - navigate:
+      url: https://www.doubao.com/chat
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const isLogin = !location.href.includes('/login') && !location.href.includes('/signin');
+        const accountEl = document.querySelector('[class*="account"], [class*="avatar"], [class*="user-info"]');
+        const account = (accountEl?.getAttribute('aria-label') || accountEl?.textContent || '').trim();
+        return [{ logged_in: isLogin ? 'Yes' : 'No', account, url: location.href }];
+      })()

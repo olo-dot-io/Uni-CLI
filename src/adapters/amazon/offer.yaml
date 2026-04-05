@@ -1,0 +1,47 @@
+site: amazon
+name: offer
+description: Get Amazon product offer/pricing details
+domain: www.amazon.com
+strategy: intercept
+browser: true
+
+args:
+  asin:
+    type: str
+    required: true
+    positional: true
+    description: "ASIN or product URL"
+
+columns: [asin, title, price, list_price, savings, seller, condition, delivery]
+
+pipeline:
+  - navigate:
+      url: https://www.amazon.com/dp/${{ args.asin }}
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const clean = v => (v || '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+        const priceSelectors = [
+          '#corePrice_feature_div .a-offscreen',
+          '#corePriceDisplay_desktop_feature_div .a-offscreen',
+          '#apex_desktop .a-offscreen',
+        ];
+        let price = '';
+        for (const sel of priceSelectors) {
+          const el = document.querySelector(sel);
+          if (el) { price = clean(el.textContent); break; }
+        }
+        const title = clean(document.querySelector('#productTitle')?.textContent);
+        const listPrice = clean(document.querySelector('.basisPrice .a-offscreen, .a-text-price .a-offscreen')?.textContent);
+        const savings = clean(document.querySelector('#dealprice_savings .a-offscreen, .savingsPercentage')?.textContent);
+        const seller = clean(document.querySelector('#sellerProfileTriggerId, #merchant-info')?.textContent);
+        const condition = clean(document.querySelector('#newBuyBoxPrice')?.textContent) ? 'New' : 'Unknown';
+        const delivery = clean(document.querySelector('#deliveryBlockMessage .a-text-bold')?.textContent);
+        const asinMatch = location.pathname.match(/\/dp\/([A-Z0-9]{10})/i);
+        return [{
+          asin: asinMatch ? asinMatch[1] : '',
+          title: title.substring(0, 120), price, list_price: listPrice,
+          savings, seller, condition, delivery,
+        }];
+      })()

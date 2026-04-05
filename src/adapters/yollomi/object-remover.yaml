@@ -1,0 +1,39 @@
+site: yollomi
+name: object-remover
+description: Remove unwanted objects from image
+domain: yollomi.com
+strategy: intercept
+browser: true
+
+args:
+  image:
+    type: str
+    required: true
+    positional: true
+    description: Image URL
+  mask:
+    type: str
+    required: true
+    positional: true
+    description: Mask image URL (white = remove area)
+
+columns: [status, image_url]
+
+pipeline:
+  - navigate:
+      url: https://yollomi.com
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const image = ${{ args.image | json }};
+        const mask = ${{ args.mask | json }};
+        const res = await fetch('/api/ai/object-remover', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image, mask }),
+        });
+        if (!res.ok) throw new Error('Object removal failed: HTTP ' + res.status);
+        const data = await res.json();
+        return [{ status: 'success', image_url: data.images?.[0]?.url || data.url || '' }];
+      })()

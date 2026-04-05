@@ -1,0 +1,37 @@
+site: notebooklm
+name: source-fulltext
+description: Get full text of a NotebookLM source
+domain: notebooklm.google.com
+strategy: intercept
+browser: true
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: Notebook ID
+  index:
+    type: int
+    default: 0
+    description: Source index (0-based)
+
+columns: [title, char_count, content]
+
+pipeline:
+  - navigate:
+      url: https://notebooklm.google.com/notebook/${{ args.id }}
+      settleMs: 4000
+
+  - evaluate: |
+      (async () => {
+        const idx = ${{ args.index }};
+        const items = document.querySelectorAll('[class*="source-item"], [class*="SourceListItem"]');
+        if (idx >= items.length) throw new Error('Source index out of range');
+        items[idx].click();
+        await new Promise(r => setTimeout(r, 3000));
+        const panel = document.querySelector('[class*="source-viewer"], [class*="source-detail"], [class*="SourcePanel"]');
+        const title = (panel?.querySelector('[class*="title"]')?.textContent || '').trim();
+        const content = (panel?.textContent || '').replace(/\s+/g, ' ').trim();
+        return [{ title, char_count: content.length, content: content.substring(0, 5000) }];
+      })()

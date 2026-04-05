@@ -1,0 +1,30 @@
+site: xiaoe
+name: courses
+description: List purchased Xiaoe courses
+domain: study.xiaoe-tech.com
+strategy: intercept
+browser: true
+
+columns: [rank, title, shop, url]
+
+pipeline:
+  - navigate:
+      url: https://study.xiaoe-tech.com/
+      settleMs: 8000
+
+  - evaluate: |
+      (async () => {
+        const tabs = document.querySelectorAll('span, div');
+        for (const tab of tabs) {
+          if (tab.children.length === 0 && tab.textContent.trim() === '内容') {
+            tab.click(); break;
+          }
+        }
+        await new Promise(r => setTimeout(r, 2000));
+
+        const cards = document.querySelectorAll('.course-card-list, [class*="course-card"]');
+        return Array.from(cards).map((el, i) => {
+          const title = (el.querySelector('.card-title-box, [class*="title"]')?.textContent || '').trim();
+          return { rank: i + 1, title, shop: '', url: '' };
+        }).filter(r => r.title);
+      })()

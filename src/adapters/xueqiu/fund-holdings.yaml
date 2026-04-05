@@ -1,0 +1,37 @@
+site: xueqiu
+name: fund-holdings
+description: Xueqiu fund holdings/positions
+domain: xueqiu.com
+type: web-api
+strategy: cookie
+auth_cookies: [xq_a_token]
+
+args:
+  symbol:
+    required: true
+    positional: true
+    description: "Fund symbol (e.g. SH510300, SZ159915)"
+  limit:
+    type: int
+    default: 10
+    description: Number of holdings
+
+pipeline:
+  - fetch:
+      url: https://stock.xueqiu.com/v5/stock/f10/fundholding.json
+      params:
+        symbol: "${{ args.symbol }}"
+
+  - select: data.items
+
+  - map:
+      rank: ${{ index + 1 }}
+      name: ${{ item.stock_name || '' }}
+      symbol: ${{ item.stock_code || '' }}
+      ratio: ${{ item.held_ratio || '' }}
+      shares: ${{ item.held_num || 0 }}
+      value: ${{ item.held_amount || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, name, symbol, ratio, shares, value]

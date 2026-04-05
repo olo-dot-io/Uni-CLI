@@ -1,0 +1,31 @@
+site: coupang
+name: add-to-cart
+description: Add a Coupang product to cart
+domain: www.coupang.com
+strategy: intercept
+browser: true
+
+args:
+  url:
+    type: str
+    required: true
+    positional: true
+    description: Product URL
+
+columns: [status, title, message]
+
+pipeline:
+  - navigate:
+      url: ${{ args.url }}
+      settleMs: 4000
+
+  - evaluate: |
+      (async () => {
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const title = clean(document.querySelector('h2.prod-buy-header__title, .prod-buy-header__title')?.textContent);
+        const cartBtn = document.querySelector('.prod-cart-btn, button[class*="cart"]');
+        if (!cartBtn) throw new Error('Add to cart button not found');
+        cartBtn.click();
+        await new Promise(r => setTimeout(r, 2000));
+        return [{ status: 'success', title, message: 'Added to cart' }];
+      })()

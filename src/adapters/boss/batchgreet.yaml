@@ -1,0 +1,48 @@
+site: boss
+name: batchgreet
+description: Batch greet recommended candidates on BOSS Zhipin
+domain: www.zhipin.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 5
+    description: Number of candidates to greet
+
+columns: [name, uid, status]
+
+pipeline:
+  - navigate:
+      url: https://www.zhipin.com/web/chat/index
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const listRes = await fetch('https://www.zhipin.com/wapi/zprelation/friend/greetRecSortList', {
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        });
+        const listData = await listRes.json();
+        if (listData.code !== 0) throw new Error(listData.message || 'List API error');
+        const candidates = (listData.zpData?.friendList || []).slice(0, limit);
+        const results = [];
+        for (const c of candidates) {
+          try {
+            const res = await fetch('https://www.zhipin.com/wapi/zprelation/friend/greet.json', {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+              body: 'uid=' + encodeURIComponent(c.encryptUid),
+            });
+            const d = await res.json();
+            results.push({ name: c.name || c.geekName || '', uid: c.encryptUid, status: d.code === 0 ? 'sent' : d.message });
+            await new Promise(r => setTimeout(r, 1000 + Math.random() * 2000));
+          } catch (e) {
+            results.push({ name: c.name || '', uid: c.encryptUid, status: 'error: ' + e.message });
+          }
+        }
+        return results;
+      })()

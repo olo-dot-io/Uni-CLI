@@ -1,0 +1,20 @@
+site: notebooklm
+name: status
+description: Check NotebookLM login status
+domain: notebooklm.google.com
+strategy: intercept
+browser: true
+
+columns: [logged_in, account, url]
+
+pipeline:
+  - navigate:
+      url: https://notebooklm.google.com/
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const isLogin = !location.href.includes('/signin') && !location.href.includes('accounts.google.com');
+        const account = (document.querySelector('[class*="account"], [aria-label*="Account"], img[alt*="@"]')?.getAttribute('aria-label') || '').trim();
+        return [{ logged_in: isLogin ? 'Yes' : 'No', account, url: location.href }];
+      })()

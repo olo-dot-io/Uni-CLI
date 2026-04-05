@@ -1,0 +1,31 @@
+site: ones
+name: me
+description: Get current ONES user info
+domain: ones.cn
+strategy: intercept
+browser: true
+
+columns: [uuid, name, email, title, status]
+
+pipeline:
+  - navigate:
+      url: https://ones.cn
+      settleMs: 2000
+
+  - evaluate: |
+      (async () => {
+        const res = await fetch('/project/api/project/users/me', {
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        });
+        if (!res.ok) throw new Error('Not authenticated. Please log in to ONES in Chrome.');
+        const data = await res.json();
+        const u = data.user || data;
+        return [{
+          uuid: u.uuid || '',
+          name: u.name || '',
+          email: u.email || '',
+          title: u.title || '',
+          status: u.status === 1 ? 'active' : 'inactive',
+        }];
+      })()

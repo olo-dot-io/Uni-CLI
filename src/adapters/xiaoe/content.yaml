@@ -1,0 +1,29 @@
+site: xiaoe
+name: content
+description: Get Xiaoe course content/lesson details
+domain: xiaoe-tech.com
+strategy: intercept
+browser: true
+
+args:
+  url:
+    type: str
+    required: true
+    positional: true
+    description: Lesson page URL
+
+columns: [title, type, content]
+
+pipeline:
+  - navigate:
+      url: ${{ args.url }}
+      settleMs: 8000
+
+  - evaluate: |
+      (async () => {
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const title = clean(document.querySelector('.course-title, .video-title, h1')?.textContent);
+        const content = clean(document.querySelector('.course-content, .detail-content, .rich-text')?.textContent).substring(0, 5000);
+        const type = document.querySelector('video') ? 'video' : document.querySelector('audio') ? 'audio' : 'text';
+        return [{ title, type, content }];
+      })()

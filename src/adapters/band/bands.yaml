@@ -1,0 +1,32 @@
+site: band
+name: bands
+description: List BAND groups
+domain: band.us
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of bands
+
+columns: [rank, name, member_count, url]
+
+pipeline:
+  - navigate:
+      url: https://band.us/home
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const items = document.querySelectorAll('[class*="bandList"] a, .bandItem, a[href*="/band/"]');
+        return Array.from(items).slice(0, limit).map((el, i) => ({
+          rank: i + 1,
+          name: clean(el.querySelector('[class*="name"], .title')?.textContent || el.textContent),
+          member_count: clean(el.querySelector('[class*="member"], [class*="count"]')?.textContent),
+          url: el.href || '',
+        })).filter(r => r.name);
+      })()

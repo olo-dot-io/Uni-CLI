@@ -1,0 +1,21 @@
+site: yuanbao
+name: new
+description: Start a new Tencent Yuanbao conversation
+domain: yuanbao.tencent.com
+strategy: intercept
+browser: true
+
+columns: [status, url]
+
+pipeline:
+  - navigate:
+      url: https://yuanbao.tencent.com/chat
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const newBtn = document.querySelector('[class*="new-chat"], button[aria-label*="New"]');
+        if (newBtn) newBtn.click();
+        await new Promise(r => setTimeout(r, 1000));
+        return [{ status: 'created', url: location.href }];
+      })()

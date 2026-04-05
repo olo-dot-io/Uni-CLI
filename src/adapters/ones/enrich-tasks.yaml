@@ -1,0 +1,45 @@
+site: ones
+name: enrich-tasks
+description: Enrich ONES tasks with additional field data
+domain: ones.cn
+strategy: intercept
+browser: true
+
+args:
+  ids:
+    type: str
+    required: true
+    positional: true
+    description: "Comma-separated task UUIDs"
+
+columns: [title, status, priority, assignee, sprint, story_points]
+
+pipeline:
+  - navigate:
+      url: https://ones.cn
+      settleMs: 2000
+
+  - evaluate: |
+      (async () => {
+        const ids = ${{ args.ids | json }}.split(',').map(s => s.trim()).filter(Boolean);
+        const results = [];
+        for (const id of ids) {
+          const res = await fetch('/project/api/project/tasks/' + id, {
+            credentials: 'include',
+            headers: { Accept: 'application/json' },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const t = data.task || data;
+            results.push({
+              title: t.name || t.summary || '',
+              status: t.status?.name || '',
+              priority: t.priority?.name || '',
+              assignee: t.assign?.name || '',
+              sprint: t.sprint?.name || '',
+              story_points: t.story_points || t.storyPoint || '',
+            });
+          }
+        }
+        return results;
+      })()

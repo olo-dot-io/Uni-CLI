@@ -1,0 +1,40 @@
+site: hupu
+name: unlike
+description: Unlike (unlight) a Hupu post
+domain: bbs.hupu.com
+strategy: intercept
+browser: true
+
+args:
+  tid:
+    type: str
+    required: true
+    positional: true
+    description: Post ID
+  pid:
+    type: str
+    required: true
+    positional: true
+    description: Reply/post PID to unlight
+
+columns: [status, message]
+
+pipeline:
+  - navigate:
+      url: https://bbs.hupu.com/${{ args.tid }}.html
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const tid = ${{ args.tid | json }};
+        const pid = ${{ args.pid | json }};
+        const res = await fetch('https://bbs.hupu.com/api/v1/reply/unlight', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tid: Number(tid), pid: Number(pid) }),
+        });
+        const data = await res.json();
+        if (data.code !== 200 && data.code !== 0) throw new Error(data.msg || data.message || 'Unlike failed');
+        return [{ status: 'success', message: 'Unliked post ' + tid + ' reply ' + pid }];
+      })()

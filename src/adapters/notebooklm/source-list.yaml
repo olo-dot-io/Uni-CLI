@@ -1,0 +1,31 @@
+site: notebooklm
+name: source-list
+description: List sources in a NotebookLM notebook
+domain: notebooklm.google.com
+strategy: intercept
+browser: true
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: Notebook ID
+
+columns: [rank, title, type, url]
+
+pipeline:
+  - navigate:
+      url: https://notebooklm.google.com/notebook/${{ args.id }}
+      settleMs: 4000
+
+  - evaluate: |
+      (async () => {
+        const items = document.querySelectorAll('[class*="source-item"], [class*="SourceListItem"], [class*="source-card"]');
+        return Array.from(items).map((el, i) => {
+          const title = (el.querySelector('[class*="title"], [class*="name"]')?.textContent || el.textContent || '').replace(/\s+/g, ' ').trim().substring(0, 100);
+          const typeEl = el.querySelector('[class*="type"], [class*="icon"]');
+          const type = typeEl ? (typeEl.getAttribute('aria-label') || typeEl.textContent || '').trim() : '';
+          return { rank: i + 1, title, type, url: '' };
+        });
+      })()

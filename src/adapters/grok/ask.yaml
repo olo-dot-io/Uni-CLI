@@ -1,0 +1,59 @@
+site: grok
+name: ask
+description: Ask Grok AI a question
+domain: grok.com
+strategy: intercept
+browser: true
+
+args:
+  prompt:
+    type: str
+    required: true
+    positional: true
+    description: Question to ask
+  wait:
+    type: int
+    default: 30
+    description: Seconds to wait for response
+
+columns: [role, text]
+
+pipeline:
+  - navigate:
+      url: https://grok.com/
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const prompt = ${{ args.prompt | json }};
+        const waitSec = ${{ args.wait }};
+
+        const editor = document.querySelector('[contenteditable="true"], textarea');
+        if (!editor) throw new Error('Chat input not found. Make sure you are logged in to Grok.');
+        editor.focus();
+        if (editor.tagName === 'TEXTAREA') {
+          editor.value = prompt;
+          editor.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+          document.execCommand('insertText', false, prompt);
+        }
+        await new Promise(r => setTimeout(r, 500));
+
+        const sendBtn = document.querySelector('button[aria-label*="Send"], button[type="submit"]');
+        if (sendBtn) sendBtn.click();
+        else editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+        for (let i = 0; i < waitSec * 2; i++) {
+          await new Promise(r => setTimeout(r, 500));
+          const msgs = document.querySelectorAll('[class*="message"], [class*="response"]');
+          const last = msgs[msgs.length - 1];
+          if (last && !last.querySelector('[class*="loading"]') && last.textContent.trim().length > 10) {
+            const text = last.textContent.replace(/\s+/g, ' ').trim();
+            return [
+              { role: 'user', text: prompt.substring(0, 200) },
+              { role: 'assistant', text: text.substring(0, 5000) },
+            ];
+          }
+        }
+        return [{ role: 'user', text: prompt.substring(0, 200) }, { role: 'assistant', text: 'Response timeout' }];
+      })()

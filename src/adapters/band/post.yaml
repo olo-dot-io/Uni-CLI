@@ -1,0 +1,45 @@
+site: band
+name: post
+description: Create a post in a BAND group
+domain: band.us
+strategy: intercept
+browser: true
+
+args:
+  band-id:
+    type: str
+    required: true
+    positional: true
+    description: Band/group ID
+  text:
+    type: str
+    required: true
+    positional: true
+    description: Post text
+
+columns: [status, message]
+
+pipeline:
+  - navigate:
+      url: https://band.us/band/${{ args['band-id'] }}
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const text = ${{ args.text | json }};
+        const writeBtn = document.querySelector('[class*="writePost"], [class*="newPost"], button[class*="write"]');
+        if (writeBtn) { writeBtn.click(); await new Promise(r => setTimeout(r, 2000)); }
+        const editor = document.querySelector('[contenteditable="true"], textarea[class*="post"]');
+        if (!editor) throw new Error('Post editor not found');
+        editor.focus();
+        if (editor.tagName === 'TEXTAREA') {
+          editor.value = text;
+          editor.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+          document.execCommand('insertText', false, text);
+        }
+        await new Promise(r => setTimeout(r, 500));
+        const submitBtn = document.querySelector('[class*="submit"], button[class*="done"]');
+        if (submitBtn) submitBtn.click();
+        return [{ status: 'posted', message: 'Post created in band' }];
+      })()

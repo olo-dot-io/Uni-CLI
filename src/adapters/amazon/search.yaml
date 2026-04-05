@@ -1,0 +1,39 @@
+site: amazon
+name: search
+description: Search Amazon products
+domain: www.amazon.com
+strategy: intercept
+browser: true
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search query
+  limit:
+    type: int
+    default: 20
+    description: Number of results
+
+columns: [rank, asin, title, price, rating, reviews, url]
+
+pipeline:
+  - navigate:
+      url: https://www.amazon.com/s?k=${{ args.query | urlencode }}
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const cards = document.querySelectorAll('[data-component-type="s-search-result"]');
+        return Array.from(cards).slice(0, limit).map((card, i) => ({
+          rank: i + 1,
+          asin: card.getAttribute('data-asin') || '',
+          title: (card.querySelector('h2')?.textContent || '').trim(),
+          price: (card.querySelector('.a-price .a-offscreen')?.textContent || '').trim(),
+          rating: (card.querySelector('[aria-label*="out of 5"]')?.getAttribute('aria-label') || '').replace(/ out of 5 stars/, ''),
+          reviews: (card.querySelector('a[href*="#customerReviews"]')?.textContent || '').trim(),
+          url: 'https://www.amazon.com/dp/' + (card.getAttribute('data-asin') || ''),
+        }));
+      })()

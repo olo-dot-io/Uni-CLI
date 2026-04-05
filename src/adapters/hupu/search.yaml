@@ -1,0 +1,51 @@
+site: hupu
+name: search
+description: Search Hupu posts
+domain: bbs.hupu.com
+strategy: intercept
+browser: true
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search keyword
+  page:
+    type: int
+    default: 1
+    description: Page number
+  limit:
+    type: int
+    default: 20
+    description: Number of results
+
+columns: [rank, title, author, replies, lights, forum, url]
+
+pipeline:
+  - navigate:
+      url: https://bbs.hupu.com/
+      settleMs: 2000
+
+  - evaluate: |
+      (async () => {
+        const query = ${{ args.query | json }};
+        const page = ${{ args.page }};
+        const limit = ${{ args.limit }};
+        const res = await fetch(
+          'https://games.mobileapi.hupu.com/1/7.5.80/search/bbs?q=' + encodeURIComponent(query) + '&page=' + page + '&orderby=general',
+          { headers: { 'User-Agent': 'Mozilla/5.0' } }
+        );
+        if (!res.ok) throw new Error('Search failed (HTTP ' + res.status + ')');
+        const data = await res.json();
+        const results = (data?.searchRes?.data || data?.data || []).slice(0, limit);
+        return results.map((item, i) => ({
+          rank: i + 1,
+          title: (item.title || '').replace(/<[^>]*>/g, ''),
+          author: item.username || '',
+          replies: item.replies || '0',
+          lights: item.lights || '0',
+          forum: item.forum_name || '',
+          url: 'https://bbs.hupu.com/' + item.id + '.html',
+        }));
+      })()

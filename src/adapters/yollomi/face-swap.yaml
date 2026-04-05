@@ -1,0 +1,39 @@
+site: yollomi
+name: face-swap
+description: Swap faces between two images
+domain: yollomi.com
+strategy: intercept
+browser: true
+
+args:
+  source:
+    type: str
+    required: true
+    positional: true
+    description: Source face image URL
+  target:
+    type: str
+    required: true
+    positional: true
+    description: Target image URL
+
+columns: [status, image_url]
+
+pipeline:
+  - navigate:
+      url: https://yollomi.com
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const source = ${{ args.source | json }};
+        const target = ${{ args.target | json }};
+        const res = await fetch('/api/ai/face-swap', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source_image: source, target_image: target }),
+        });
+        if (!res.ok) throw new Error('Face swap failed: HTTP ' + res.status);
+        const data = await res.json();
+        return [{ status: 'success', image_url: data.images?.[0]?.url || data.url || '' }];
+      })()

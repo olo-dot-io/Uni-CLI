@@ -1,0 +1,30 @@
+site: doubao-web
+name: detail
+description: Get Doubao conversation details
+domain: www.doubao.com
+strategy: intercept
+browser: true
+
+args:
+  url:
+    type: str
+    required: true
+    positional: true
+    description: Conversation URL
+
+columns: [rank, role, text]
+
+pipeline:
+  - navigate:
+      url: ${{ args.url }}
+      settleMs: 4000
+
+  - evaluate: |
+      (async () => {
+        const msgs = document.querySelectorAll('[data-testid="message_text_content"]');
+        return Array.from(msgs).map((el, i) => {
+          const isUser = el.closest('[class*="user"]') || (i % 2 === 0);
+          const text = (el.textContent || '').replace(/\s+/g, ' ').trim().substring(0, 1000);
+          return { rank: i + 1, role: isUser ? 'user' : 'assistant', text };
+        });
+      })()

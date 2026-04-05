@@ -1,0 +1,27 @@
+site: boss
+name: stats
+description: Get BOSS Zhipin account statistics
+domain: www.zhipin.com
+strategy: intercept
+browser: true
+
+columns: [metric, value]
+
+pipeline:
+  - navigate:
+      url: https://www.zhipin.com/web/boss/data
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const cards = document.querySelectorAll('.data-card, .data-item, .stat-item');
+        if (cards.length > 0) {
+          return Array.from(cards).map(el => {
+            const label = clean(el.querySelector('.label, .title, dt')?.textContent);
+            const value = clean(el.querySelector('.value, .count, dd')?.textContent);
+            return { metric: label, value };
+          }).filter(r => r.metric);
+        }
+        return [{ metric: 'note', value: 'Statistics page structure may vary. Check in browser.' }];
+      })()

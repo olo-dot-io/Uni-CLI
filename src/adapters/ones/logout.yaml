@@ -1,0 +1,23 @@
+site: ones
+name: logout
+description: Logout from ONES Project
+domain: ones.cn
+strategy: intercept
+browser: true
+
+columns: [status, message]
+
+pipeline:
+  - navigate:
+      url: https://ones.cn
+      settleMs: 2000
+
+  - evaluate: |
+      (async () => {
+        const res = await fetch('/project/api/project/auth/logout', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        return [{ status: 'success', message: 'Logged out from ONES' }];
+      })()

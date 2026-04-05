@@ -1,0 +1,44 @@
+site: ones
+name: login
+description: Login to ONES Project
+domain: ones.cn
+strategy: intercept
+browser: true
+
+args:
+  email:
+    type: str
+    required: true
+    positional: true
+    description: ONES account email
+  password:
+    type: str
+    required: true
+    positional: true
+    description: ONES password
+
+columns: [status, user_id, token]
+
+pipeline:
+  - navigate:
+      url: https://ones.cn/project/signin
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const email = ${{ args.email | json }};
+        const password = ${{ args.password | json }};
+        const res = await fetch('https://ones.cn/project/api/project/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.reason || data.message || 'Login failed');
+        const user = data.user || {};
+        return [{
+          status: 'success',
+          user_id: user.uuid || '',
+          token: data.user?.token || '',
+        }];
+      })()

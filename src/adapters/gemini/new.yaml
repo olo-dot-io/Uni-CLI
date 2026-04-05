@@ -1,0 +1,21 @@
+site: gemini
+name: new
+description: Start a new Gemini conversation
+domain: gemini.google.com
+strategy: intercept
+browser: true
+
+columns: [status, url]
+
+pipeline:
+  - navigate:
+      url: https://gemini.google.com/app
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const newBtn = document.querySelector('[aria-label*="New chat"], button[class*="new-chat"]');
+        if (newBtn) newBtn.click();
+        await new Promise(r => setTimeout(r, 1000));
+        return [{ status: 'created', url: location.href }];
+      })()

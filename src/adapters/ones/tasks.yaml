@@ -1,0 +1,65 @@
+site: ones
+name: tasks
+description: List ONES tasks with optional filter
+domain: ones.cn
+strategy: intercept
+browser: true
+
+args:
+  project:
+    type: str
+    default: ""
+    description: Project UUID filter
+  status:
+    type: str
+    default: ""
+    description: Status filter
+  limit:
+    type: int
+    default: 20
+    description: Number of tasks
+
+columns: [rank, title, status, priority, assignee, project]
+
+pipeline:
+  - navigate:
+      url: https://ones.cn
+      settleMs: 2000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const projectFilter = ${{ args.project | json }};
+        const statusFilter = ${{ args.status | json }};
+
+        const must = [];
+        if (projectFilter) must.push({ match: { 'project.uuid': projectFilter } });
+        if (statusFilter) must.push({ match: { 'status.name': statusFilter } });
+
+        const body = JSON.stringify({
+          query: must.length ? { must } : {},
+          sort: [{ 'create_time': { order: 'desc' } }],
+          limit,
+        });
+
+        const meRes = await fetch('/project/api/project/users/me', { credentials: 'include' });
+        const meData = await meRes.json();
+        const teamUuid = (meData.teams || [])[0]?.uuid || '';
+
+        const res = await fetch('/project/api/project/team/' + teamUuid + '/filters/peek', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+        });
+        if (!res.ok) throw new Error('Tasks query failed');
+        const data = await res.json();
+        return (data.tasks || data.list || []).slice(0, limit).map((t, i) => ({
+          rank: i + 1,
+          title: t.name || t.summary || '',
+          status: t.status?.name || '',
+          priority: t.priority?.name || '',
+          assignee: t.assign?.name || '',
+          project: t.project?.name || '',
+        }));
+      })()

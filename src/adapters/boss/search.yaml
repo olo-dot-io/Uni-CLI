@@ -1,0 +1,58 @@
+site: boss
+name: search
+description: Search BOSS Zhipin jobs
+domain: www.zhipin.com
+strategy: intercept
+browser: true
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Job search keyword
+  city:
+    type: str
+    default: "101010100"
+    description: "City code (101010100=Beijing, 101020100=Shanghai, 101280100=Guangzhou, 101280600=Shenzhen)"
+  page:
+    type: int
+    default: 1
+    description: Page number
+  limit:
+    type: int
+    default: 15
+    description: Number of results
+
+columns: [name, salary, company, area, experience, degree, skills, url]
+
+pipeline:
+  - navigate:
+      url: https://www.zhipin.com/web/geek/job?query=${{ args.query | urlencode }}&city=${{ args.city }}
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const query = ${{ args.query | json }};
+        const city = ${{ args.city | json }};
+        const page = ${{ args.page }};
+        const limit = ${{ args.limit }};
+        const qs = new URLSearchParams({ scene: '1', query, city, page: String(page), pageSize: '15' });
+        const res = await fetch('https://www.zhipin.com/wapi/zpgeek/search/joblist.json?' + qs.toString(), {
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        });
+        const data = await res.json();
+        if (data.code !== 0) throw new Error(data.message || 'API error code=' + data.code);
+        const jobs = (data.zpData?.jobList || []).slice(0, limit);
+        return jobs.map(j => ({
+          name: j.jobName,
+          salary: j.salaryDesc,
+          company: j.brandName,
+          area: [j.cityName, j.areaDistrict, j.businessDistrict].filter(Boolean).join('·'),
+          experience: j.jobExperience,
+          degree: j.jobDegree,
+          skills: (j.skills || []).join(','),
+          url: 'https://www.zhipin.com/job_detail/' + j.encryptJobId + '.html',
+        }));
+      })()

@@ -1,0 +1,32 @@
+site: xianyu
+name: chat
+description: List Xianyu chat conversations
+domain: www.goofish.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of conversations
+
+columns: [rank, user, last_msg, time]
+
+pipeline:
+  - navigate:
+      url: https://www.goofish.com/im
+      settleMs: 4000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const items = document.querySelectorAll('[class*="session-item"], [class*="conversation-item"]');
+        return Array.from(items).slice(0, limit).map((el, i) => ({
+          rank: i + 1,
+          user: clean(el.querySelector('[class*="nickname"], [class*="name"]')?.textContent),
+          last_msg: clean(el.querySelector('[class*="last-message"], [class*="msg-content"]')?.textContent).substring(0, 100),
+          time: clean(el.querySelector('[class*="time"], [class*="date"]')?.textContent),
+        }));
+      })()

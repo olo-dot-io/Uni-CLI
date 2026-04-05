@@ -1,0 +1,55 @@
+site: doubao-web
+name: send
+description: Send a message to current Doubao conversation
+domain: www.doubao.com
+strategy: intercept
+browser: true
+
+args:
+  text:
+    type: str
+    required: true
+    positional: true
+    description: Message text
+  wait:
+    type: int
+    default: 30
+    description: Seconds to wait for response
+
+columns: [status, response]
+
+pipeline:
+  - navigate:
+      url: https://www.doubao.com/chat
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const text = ${{ args.text | json }};
+        const waitSec = ${{ args.wait }};
+        const editor = document.querySelector('[contenteditable="true"], textarea[data-testid="chat_input"]');
+        if (!editor) throw new Error('Chat input not found');
+        editor.focus();
+        if (editor.tagName === 'TEXTAREA') {
+          editor.value = text;
+          editor.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+          document.execCommand('insertText', false, text);
+        }
+        await new Promise(r => setTimeout(r, 500));
+        const sendBtn = document.querySelector('[data-testid="chat_input_send"], button[class*="send"]');
+        if (sendBtn) sendBtn.click();
+
+        const beforeCount = document.querySelectorAll('[data-testid="message_text_content"]').length;
+        for (let i = 0; i < waitSec * 2; i++) {
+          await new Promise(r => setTimeout(r, 500));
+          const msgs = document.querySelectorAll('[data-testid="message_text_content"]');
+          if (msgs.length > beforeCount) {
+            const last = msgs[msgs.length - 1];
+            if (!last.querySelector('[class*="cursor"]')) break;
+          }
+        }
+        const msgs = document.querySelectorAll('[data-testid="message_text_content"]');
+        const response = (msgs[msgs.length - 1]?.textContent || '').replace(/\s+/g, ' ').trim();
+        return [{ status: 'sent', response: response.substring(0, 3000) }];
+      })()

@@ -1,0 +1,38 @@
+site: hupu
+name: detail
+description: Get Hupu post details
+domain: bbs.hupu.com
+strategy: intercept
+browser: true
+
+args:
+  tid:
+    type: str
+    required: true
+    positional: true
+    description: "Post ID (9-digit number)"
+
+columns: [title, author, content, replies, lights, url]
+
+pipeline:
+  - navigate:
+      url: https://bbs.hupu.com/${{ args.tid }}.html
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const script = document.querySelector('#__NEXT_DATA__');
+        if (!script) throw new Error('Could not find page data');
+        const data = JSON.parse(script.textContent);
+        const thread = data?.props?.pageProps?.detail?.thread;
+        if (!thread) throw new Error('Post not found or deleted');
+        const content = (thread.content || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+        return [{
+          title: thread.title,
+          author: thread.author?.puname || '',
+          content: content.substring(0, 500),
+          replies: thread.replies || 0,
+          lights: thread.lights || 0,
+          url: location.href,
+        }];
+      })()

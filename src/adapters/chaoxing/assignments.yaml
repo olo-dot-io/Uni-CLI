@@ -1,0 +1,48 @@
+site: chaoxing
+name: assignments
+description: List Chaoxing (XuexiTong) assignments
+domain: mooc1.chaoxing.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of assignments
+
+columns: [rank, title, course, status, deadline, url]
+
+pipeline:
+  - navigate:
+      url: https://mooc1.chaoxing.com/visit/stuwork
+      settleMs: 4000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const items = document.querySelectorAll('.task-item, .work-item, tr[class*="item"]');
+        if (items.length > 0) {
+          return Array.from(items).slice(0, limit).map((el, i) => ({
+            rank: i + 1,
+            title: clean(el.querySelector('.task-title, .name, td:nth-child(1)')?.textContent),
+            course: clean(el.querySelector('.course-name, .course, td:nth-child(2)')?.textContent),
+            status: clean(el.querySelector('.status, .state, td:nth-child(3)')?.textContent),
+            deadline: clean(el.querySelector('.deadline, .time, td:nth-child(4)')?.textContent),
+            url: el.querySelector('a')?.href || '',
+          }));
+        }
+        const rows = document.querySelectorAll('table tbody tr');
+        return Array.from(rows).slice(0, limit).map((el, i) => {
+          const cells = el.querySelectorAll('td');
+          return {
+            rank: i + 1,
+            title: clean(cells[0]?.textContent),
+            course: clean(cells[1]?.textContent),
+            status: clean(cells[2]?.textContent),
+            deadline: clean(cells[3]?.textContent),
+            url: el.querySelector('a')?.href || '',
+          };
+        });
+      })()

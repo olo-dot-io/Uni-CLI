@@ -1,0 +1,59 @@
+site: jimeng
+name: generate
+description: Generate images with Jimeng AI (text-to-image)
+domain: jimeng.jianying.com
+strategy: intercept
+browser: true
+
+args:
+  prompt:
+    type: str
+    required: true
+    positional: true
+    description: Image description prompt
+  wait:
+    type: int
+    default: 40
+    description: Seconds to wait for generation
+
+columns: [status, prompt, image_count, image_urls]
+
+pipeline:
+  - navigate:
+      url: https://jimeng.jianying.com/ai-tool/generate?type=image&workspace=0
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const prompt = ${{ args.prompt | json }};
+        const waitSec = ${{ args.wait }};
+        const beforeImgs = document.querySelectorAll('img[src*="dreamina-sign"], img[src*="tb4s082cfz"]').length;
+
+        const editor = document.querySelector('[contenteditable="true"]');
+        if (!editor) return [{ status: 'failed', prompt, image_count: 0, image_urls: 'Editor not found' }];
+        editor.focus();
+        await new Promise(r => setTimeout(r, 200));
+        document.execCommand('selectAll');
+        document.execCommand('delete');
+        await new Promise(r => setTimeout(r, 200));
+        document.execCommand('insertText', false, prompt);
+        await new Promise(r => setTimeout(r, 500));
+
+        const btn = document.querySelector('.lv-btn.lv-btn-primary[class*="circle"]');
+        if (!btn) return [{ status: 'failed', prompt, image_count: 0, image_urls: 'Generate button not found' }];
+        btn.click();
+
+        let newImgs = [];
+        for (let i = 0; i < waitSec; i++) {
+          await new Promise(r => setTimeout(r, 1000));
+          const allImgs = document.querySelectorAll('img[src*="dreamina-sign"], img[src*="tb4s082cfz"]');
+          if (allImgs.length > beforeImgs) {
+            newImgs = Array.from(allImgs).slice(0, allImgs.length - beforeImgs);
+            break;
+          }
+        }
+
+        if (newImgs.length === 0) return [{ status: 'timeout', prompt: prompt.substring(0, 80), image_count: 0, image_urls: 'Still generating' }];
+        const urls = newImgs.map(img => img.src);
+        return [{ status: 'success', prompt: prompt.substring(0, 80), image_count: urls.length, image_urls: urls.join('\n') }];
+      })()

@@ -1,0 +1,41 @@
+site: ones
+name: task
+description: Get ONES task details
+domain: ones.cn
+strategy: intercept
+browser: true
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: Task UUID
+
+columns: [title, status, priority, project, assignee, created, description]
+
+pipeline:
+  - navigate:
+      url: https://ones.cn
+      settleMs: 2000
+
+  - evaluate: |
+      (async () => {
+        const id = ${{ args.id | json }};
+        const res = await fetch('/project/api/project/tasks/' + id, {
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        });
+        if (!res.ok) throw new Error('Task not found (HTTP ' + res.status + ')');
+        const data = await res.json();
+        const t = data.task || data;
+        return [{
+          title: t.name || t.summary || '',
+          status: t.status?.name || '',
+          priority: t.priority?.name || '',
+          project: t.project?.name || '',
+          assignee: t.assign?.name || '',
+          created: t.create_time ? new Date(t.create_time * 1000).toISOString().split('T')[0] : '',
+          description: (t.desc_rich || t.desc || '').substring(0, 500),
+        }];
+      })()

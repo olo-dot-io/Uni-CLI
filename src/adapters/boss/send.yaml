@@ -1,0 +1,40 @@
+site: boss
+name: send
+description: Send a chat message on BOSS Zhipin
+domain: www.zhipin.com
+strategy: intercept
+browser: true
+
+args:
+  uid:
+    type: str
+    required: true
+    positional: true
+    description: Encrypted user ID
+  text:
+    type: str
+    required: true
+    positional: true
+    description: Message text to send
+
+columns: [status, message]
+
+pipeline:
+  - navigate:
+      url: https://www.zhipin.com/web/chat/index
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const uid = ${{ args.uid | json }};
+        const text = ${{ args.text | json }};
+        const res = await fetch('https://www.zhipin.com/wapi/zpchat/exchange/send', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+          body: 'uid=' + encodeURIComponent(uid) + '&content=' + encodeURIComponent(text),
+        });
+        const data = await res.json();
+        if (data.code !== 0) throw new Error(data.message || 'Send failed');
+        return [{ status: 'success', message: 'Message sent to ' + uid }];
+      })()

@@ -1,0 +1,54 @@
+site: gemini
+name: image
+description: Generate an image with Gemini
+domain: gemini.google.com
+strategy: intercept
+browser: true
+
+args:
+  prompt:
+    type: str
+    required: true
+    positional: true
+    description: Image generation prompt
+  wait:
+    type: int
+    default: 40
+    description: Seconds to wait
+
+columns: [status, prompt, image_urls]
+
+pipeline:
+  - navigate:
+      url: https://gemini.google.com/app
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const prompt = 'generate an image of: ' + ${{ args.prompt | json }};
+        const waitSec = ${{ args.wait }};
+
+        const editor = document.querySelector('[contenteditable="true"], .ql-editor, textarea');
+        if (!editor) throw new Error('Chat input not found');
+        editor.focus();
+        if (editor.tagName === 'TEXTAREA') {
+          editor.value = prompt;
+          editor.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+          document.execCommand('insertText', false, prompt);
+        }
+        await new Promise(r => setTimeout(r, 500));
+
+        const sendBtn = document.querySelector('button[aria-label*="Send"], button[class*="send"]');
+        if (sendBtn) sendBtn.click();
+
+        for (let i = 0; i < waitSec * 2; i++) {
+          await new Promise(r => setTimeout(r, 500));
+          const images = document.querySelectorAll('.response-container img[src*="googleusercontent"], img[class*="generated"]');
+          if (images.length > 0) {
+            const urls = Array.from(images).map(img => img.src).filter(Boolean);
+            return [{ status: 'success', prompt: prompt.substring(0, 80), image_urls: urls.join('\n') }];
+          }
+        }
+        return [{ status: 'timeout', prompt: prompt.substring(0, 80), image_urls: 'Generation may still be in progress' }];
+      })()

@@ -1,0 +1,33 @@
+site: yollomi
+name: models
+description: List available Yollomi AI models
+domain: yollomi.com
+strategy: intercept
+browser: true
+
+columns: [model, credits, type, description]
+
+pipeline:
+  - navigate:
+      url: https://yollomi.com
+      settleMs: 2000
+
+  - evaluate: |
+      (() => {
+        return [
+          { model: 'z-image-turbo', credits: 1, type: 'image', description: 'Alibaba Qwen turbo (cheapest)' },
+          { model: 'flux-schnell', credits: 2, type: 'image', description: 'High-speed Flux' },
+          { model: 'ideogram-v3-turbo', credits: 3, type: 'image', description: 'Ideogram V3 Turbo' },
+          { model: 'imagen-4-fast', credits: 3, type: 'image', description: 'Google Imagen 4 Fast' },
+          { model: 'seedream-4-5', credits: 4, type: 'image', description: 'ByteDance Seedream 4.5' },
+          { model: 'flux', credits: 4, type: 'image', description: 'Flux 1.1 Pro' },
+          { model: 'imagen-4-ultra', credits: 6, type: 'image', description: 'Google Imagen 4 Ultra' },
+          { model: 'flux-2-pro', credits: 15, type: 'image', description: 'Flux 2 Pro (premium)' },
+          { model: 'remove-bg', credits: 0, type: 'tool', description: 'Remove background (free)' },
+          { model: 'image-upscaler', credits: 1, type: 'tool', description: 'Enhance resolution' },
+          { model: 'face-swap', credits: 3, type: 'tool', description: 'Swap faces' },
+          { model: 'virtual-try-on', credits: 3, type: 'tool', description: 'Try clothes on photos' },
+          { model: 'object-remover', credits: 3, type: 'tool', description: 'Remove objects' },
+          { model: 'photo-restoration', credits: 4, type: 'tool', description: 'Restore old photos' },
+        ];
+      })()

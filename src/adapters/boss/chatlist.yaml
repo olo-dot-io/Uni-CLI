@@ -1,0 +1,38 @@
+site: boss
+name: chatlist
+description: List BOSS Zhipin chat conversations
+domain: www.zhipin.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of conversations
+
+columns: [name, title, company, last_msg, uid]
+
+pipeline:
+  - navigate:
+      url: https://www.zhipin.com/web/chat/index
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const res = await fetch('https://www.zhipin.com/wapi/zprelation/friend/getBossFriendListV2.json?page=1&status=0&jobId=0', {
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        });
+        const data = await res.json();
+        if (data.code !== 0) throw new Error(data.message || 'API error');
+        const friends = (data.zpData?.friendList || []).slice(0, limit);
+        return friends.map(f => ({
+          name: f.name || f.geekName || '',
+          title: f.title || '',
+          company: f.brandName || '',
+          last_msg: (f.lastMsg || '').substring(0, 80),
+          uid: f.encryptUid || '',
+        }));
+      })()

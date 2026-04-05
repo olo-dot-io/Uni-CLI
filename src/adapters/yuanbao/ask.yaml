@@ -1,0 +1,61 @@
+site: yuanbao
+name: ask
+description: Ask Tencent Yuanbao AI a question
+domain: yuanbao.tencent.com
+strategy: intercept
+browser: true
+
+args:
+  prompt:
+    type: str
+    required: true
+    positional: true
+    description: Question to ask
+  wait:
+    type: int
+    default: 30
+    description: Seconds to wait for response
+
+columns: [role, text]
+
+pipeline:
+  - navigate:
+      url: https://yuanbao.tencent.com/chat
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const prompt = ${{ args.prompt | json }};
+        const waitSec = ${{ args.wait }};
+
+        const editor = document.querySelector('[contenteditable="true"], textarea');
+        if (!editor) throw new Error('Chat input not found. Log in to Yuanbao first.');
+        editor.focus();
+        if (editor.tagName === 'TEXTAREA') {
+          editor.value = prompt;
+          editor.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+          document.execCommand('insertText', false, prompt);
+        }
+        await new Promise(r => setTimeout(r, 500));
+
+        const sendBtn = document.querySelector('button[class*="send"], [class*="submit"]');
+        if (sendBtn) sendBtn.click();
+
+        const beforeCount = document.querySelectorAll('[class*="message"], [class*="answer"]').length;
+        for (let i = 0; i < waitSec * 2; i++) {
+          await new Promise(r => setTimeout(r, 500));
+          const msgs = document.querySelectorAll('[class*="message"], [class*="answer"]');
+          if (msgs.length > beforeCount) {
+            const last = msgs[msgs.length - 1];
+            if (!last.querySelector('[class*="loading"], [class*="cursor"]')) break;
+          }
+        }
+
+        const msgs = document.querySelectorAll('[class*="message"], [class*="answer"]');
+        const text = (msgs[msgs.length - 1]?.textContent || '').replace(/\s+/g, ' ').trim();
+        return [
+          { role: 'user', text: prompt.substring(0, 200) },
+          { role: 'assistant', text: text.substring(0, 5000) },
+        ];
+      })()

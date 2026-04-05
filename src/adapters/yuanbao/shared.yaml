@@ -1,0 +1,31 @@
+site: yuanbao
+name: shared
+description: List Tencent Yuanbao shared conversations
+domain: yuanbao.tencent.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of conversations
+
+columns: [rank, title, url]
+
+pipeline:
+  - navigate:
+      url: https://yuanbao.tencent.com/chat
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const items = document.querySelectorAll('[class*="chat-item"], [class*="history-item"], a[href*="/chat/"]');
+        return Array.from(items).slice(0, limit).map((el, i) => ({
+          rank: i + 1,
+          title: clean(el.textContent).substring(0, 100),
+          url: el.href || '',
+        })).filter(r => r.title);
+      })()
