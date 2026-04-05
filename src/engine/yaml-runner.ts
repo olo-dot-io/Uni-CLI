@@ -1018,7 +1018,7 @@ async function stepEach(
     });
   }
 
-  const maxIterations = config.max ?? 100;
+  const maxIterations = Math.max(config.max ?? 100, 1);
   const body = config.do;
   if (!body || !Array.isArray(body) || body.length === 0) return ctx;
 
