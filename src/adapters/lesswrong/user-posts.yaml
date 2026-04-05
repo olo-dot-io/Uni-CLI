@@ -1,0 +1,61 @@
+site: lesswrong
+name: user-posts
+description: "List a user's posts"
+domain: www.lesswrong.com
+strategy: public
+
+args:
+  username:
+    type: str
+    required: true
+    positional: true
+    description: LessWrong username or slug
+  limit:
+    type: int
+    default: 10
+    description: Number of results
+
+columns: [rank, title, karma, comments, date, url]
+
+pipeline:
+  # Step 1: Resolve username to user ID
+  - fetch:
+      url: https://www.lesswrong.com/graphql
+      method: POST
+      headers:
+        Content-Type: application/json
+        Accept: application/json
+      body:
+        query: >
+          query UserProfile {
+            user(input: {selector: {slug: "${{ args.username | lowercase | trim }}"}}) {
+              result { _id displayName slug }
+            }
+          }
+
+  - select: data.user.result._id
+
+  # Step 2: Fetch user's posts
+  - fetch:
+      url: https://www.lesswrong.com/graphql
+      method: POST
+      headers:
+        Content-Type: application/json
+        Accept: application/json
+      body:
+        query: >
+          query UserPosts {
+            posts(input: {terms: {view: "userPosts", userId: "${{ data }}", limit: ${{ args.limit }}}}) {
+              results { _id title baseScore commentCount slug postedAt }
+            }
+          }
+
+  - select: data.posts.results
+
+  - map:
+      rank: "${{ index + 1 }}"
+      title: "${{ item.title }}"
+      karma: "${{ item.baseScore || 0 }}"
+      comments: "${{ item.commentCount || 0 }}"
+      date: "${{ item.postedAt }}"
+      url: "https://www.lesswrong.com/posts/${{ item._id }}/${{ item.slug }}"

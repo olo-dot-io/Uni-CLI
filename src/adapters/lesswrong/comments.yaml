@@ -1,0 +1,41 @@
+site: lesswrong
+name: comments
+description: Top comments on a post
+domain: www.lesswrong.com
+strategy: public
+
+args:
+  post-id:
+    type: str
+    required: true
+    positional: true
+    description: Post URL or LessWrong post ID
+  limit:
+    type: int
+    default: 5
+    description: Number of comments
+
+columns: [rank, score, author, text]
+
+pipeline:
+  - fetch:
+      url: https://www.lesswrong.com/graphql
+      method: POST
+      headers:
+        Content-Type: application/json
+        Accept: application/json
+      body:
+        query: >
+          query Comments {
+            comments(input: {terms: {view: "postCommentsTop", postId: "${{ (args['post-id'].match(/posts\\/([a-zA-Z0-9]+)/) || [null, args['post-id']])[1] }}", limit: ${{ args.limit }}}}) {
+              results { _id user { displayName } baseScore htmlBody }
+            }
+          }
+
+  - select: data.comments.results
+
+  - map:
+      rank: "${{ index + 1 }}"
+      score: "${{ item.baseScore || 0 }}"
+      author: "${{ item.user.displayName || 'Unknown' }}"
+      text: "${{ (item.htmlBody || '').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim() | truncate(500) }}"

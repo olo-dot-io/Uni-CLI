@@ -1,0 +1,38 @@
+site: lesswrong
+name: top-week
+description: Top posts this week
+domain: www.lesswrong.com
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 10
+    description: Number of results
+
+columns: [rank, title, author, karma, comments, url]
+
+pipeline:
+  - fetch:
+      url: https://www.lesswrong.com/graphql
+      method: POST
+      headers:
+        Content-Type: application/json
+        Accept: application/json
+      body:
+        query: >
+          query PostsList {
+            posts(input: {terms: {view: "top", after: "${{ new Date(Date.now() - 7*86400000).toISOString() }}", limit: ${{ args.limit }}}}) {
+              results { _id title user { displayName } baseScore commentCount slug }
+            }
+          }
+
+  - select: data.posts.results
+
+  - map:
+      rank: "${{ index + 1 }}"
+      title: "${{ item.title }}"
+      author: "${{ item.user.displayName || 'Unknown' }}"
+      karma: "${{ item.baseScore || 0 }}"
+      comments: "${{ item.commentCount || 0 }}"
+      url: "https://www.lesswrong.com/posts/${{ item._id }}/${{ item.slug }}"

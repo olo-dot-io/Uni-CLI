@@ -1,0 +1,40 @@
+site: lesswrong
+name: read
+description: Read full post by URL or ID
+domain: www.lesswrong.com
+strategy: public
+
+args:
+  post-id:
+    type: str
+    required: true
+    positional: true
+    description: Post URL or LessWrong post ID (e.g. "abc123" or full URL)
+
+columns: [title, author, karma, comments, tags, content, url]
+
+pipeline:
+  - fetch:
+      url: https://www.lesswrong.com/graphql
+      method: POST
+      headers:
+        Content-Type: application/json
+        Accept: application/json
+      body:
+        query: >
+          query PostsSingle {
+            post(input: {selector: {documentId: "${{ (args['post-id'].match(/posts\\/([a-zA-Z0-9]+)/) || [null, args['post-id']])[1] }}"}}) {
+              result { _id title user { displayName } baseScore commentCount htmlBody slug tags { name } }
+            }
+          }
+
+  - select: data.post.result
+
+  - map:
+      title: "${{ item.title }}"
+      author: "${{ item.user.displayName || 'Unknown' }}"
+      karma: "${{ item.baseScore || 0 }}"
+      comments: "${{ item.commentCount || 0 }}"
+      tags: "${{ (item.tags || []).map(t => t.name).join(', ') }}"
+      content: "${{ (item.htmlBody || '').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim() | truncate(3000) }}"
+      url: "https://www.lesswrong.com/posts/${{ item._id }}/${{ item.slug }}"

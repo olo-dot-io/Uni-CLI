@@ -1,0 +1,109 @@
+site: gemini
+name: deep-research-result
+description: Export Deep Research report as Google Docs URL
+domain: gemini.google.com
+strategy: intercept
+browser: true
+
+args:
+  query:
+    type: str
+    positional: true
+    description: Conversation title or URL (optional; defaults to latest)
+  timeout:
+    type: int
+    default: 120
+    description: Max seconds to wait for Docs export
+
+columns: [response]
+
+pipeline:
+  - navigate:
+      url: "${{ args.query && args.query.startsWith('http') ? args.query : 'https://gemini.google.com/app' }}"
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const query = (${{ args.query | json }} || '').trim();
+        const timeout = ${{ args.timeout }};
+
+        // If query is a title (not URL), try to find and click it in sidebar
+        if (query && !query.startsWith('http')) {
+          const links = document.querySelectorAll('a[href*="/app/"], [role="listitem"] a, nav a');
+          let found = false;
+          for (const link of links) {
+            const text = (link.textContent || '').trim().toLowerCase();
+            if (text.includes(query.toLowerCase())) {
+              link.click();
+              await new Promise(r => setTimeout(r, 3000));
+              found = true;
+              break;
+            }
+          }
+          if (!found) return [{ response: 'No conversation matched: ' + query }];
+        }
+
+        // Wait for content to load
+        await new Promise(r => setTimeout(r, 2000));
+
+        // Check if research is still in progress
+        const bodyText = document.body.innerText || '';
+        if (/researching|research in progress|working on your research/i.test(bodyText) &&
+            !/completed|report completed|research complete/i.test(bodyText)) {
+          return [{ response: 'Deep Research is still running. Please wait and retry later.' }];
+        }
+
+        // Try to find and click Share & Export -> Export to Docs
+        const findButton = (labels) => {
+          for (const label of labels) {
+            const btn = document.querySelector('button[aria-label="' + label + '"]');
+            if (btn) return btn;
+          }
+          for (const label of labels) {
+            for (const el of document.querySelectorAll('button, [role="button"], [role="menuitem"]')) {
+              if ((el.textContent || '').trim() === label || el.getAttribute('aria-label') === label) return el;
+            }
+          }
+          return null;
+        };
+
+        // Look for Share & Export button
+        const shareLabels = ['Share & export', 'Share & Export', 'Share and export', '\u5206\u4eab\u4e0e\u5bfc\u51fa', '\u5206\u4eab'];
+        const shareBtn = findButton(shareLabels);
+        if (shareBtn) {
+          shareBtn.click();
+          await new Promise(r => setTimeout(r, 1500));
+        }
+
+        // Look for Export to Docs option
+        const docsLabels = ['Export to Docs', 'Export to Google Docs', '\u5bfc\u51fa\u5230 Google \u6587\u6863', '\u5bfc\u51fa\u5230\u6587\u6863'];
+        const docsBtn = findButton(docsLabels);
+        if (docsBtn) {
+          docsBtn.click();
+
+          // Wait for Docs URL to appear
+          for (let i = 0; i < timeout * 2; i++) {
+            await new Promise(r => setTimeout(r, 500));
+            // Check for Docs link in page
+            const links = document.querySelectorAll('a[href*="docs.google.com"]');
+            if (links.length > 0) {
+              const url = links[links.length - 1].href;
+              return [{ response: url }];
+            }
+            // Check for toast/notification with link
+            const toasts = document.querySelectorAll('[class*="toast"], [class*="snack"], [role="status"]');
+            for (const toast of toasts) {
+              const link = toast.querySelector('a[href*="docs.google.com"]');
+              if (link) return [{ response: link.href }];
+            }
+          }
+          return [{ response: 'Export initiated but no Docs URL found. Check Gemini UI manually.' }];
+        }
+
+        // Check if completed but no export button found
+        if (/completed|report completed|research complete/i.test(bodyText)) {
+          return [{ response: 'No Docs URL found. Please check Share & Export -> Export to Docs in Gemini UI.' }];
+        }
+
+        return [{ response: 'Deep Research may still be running or preparing export. Please wait and retry later.' }];
+      })()

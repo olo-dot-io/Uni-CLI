@@ -898,6 +898,21 @@ const PIPE_FILTERS: Record<string, (...args: unknown[]) => unknown> = {
       ? Object.keys(val)
       : [],
   json: (val: unknown) => JSON.stringify(val),
+  abs: (val: unknown) => Math.abs(Number(val) || 0),
+  round: (val: unknown) => Math.round(Number(val) || 0),
+  ceil: (val: unknown) => Math.ceil(Number(val) || 0),
+  floor: (val: unknown) => Math.floor(Number(val) || 0),
+  int: (val: unknown) => parseInt(String(val), 10) || 0,
+  float: (val: unknown) => parseFloat(String(val)) || 0,
+  str: (val: unknown) => String(val ?? ""),
+  reverse: (val: unknown) =>
+    Array.isArray(val)
+      ? [...val].reverse()
+      : String(val ?? "")
+          .split("")
+          .reverse()
+          .join(""),
+  unique: (val: unknown) => (Array.isArray(val) ? [...new Set(val)] : val),
 };
 
 /**

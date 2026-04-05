@@ -1,0 +1,61 @@
+site: lesswrong
+name: tag
+description: Posts by tag slug
+domain: www.lesswrong.com
+strategy: public
+
+args:
+  tag:
+    type: str
+    required: true
+    positional: true
+    description: Tag slug (e.g. "ai-safety", "rationality")
+  limit:
+    type: int
+    default: 10
+    description: Number of results
+
+columns: [rank, title, author, karma, comments, url]
+
+pipeline:
+  # Step 1: Resolve tag slug to tag ID
+  - fetch:
+      url: https://www.lesswrong.com/graphql
+      method: POST
+      headers:
+        Content-Type: application/json
+        Accept: application/json
+      body:
+        query: >
+          query TagBySlug {
+            tags(input: {terms: {view: "tagBySlug", slug: "${{ args.tag | lowercase | trim }}"}}) {
+              results { _id name slug }
+            }
+          }
+
+  - select: data.tags.results.0._id
+
+  # Step 2: Fetch posts by tag ID
+  - fetch:
+      url: https://www.lesswrong.com/graphql
+      method: POST
+      headers:
+        Content-Type: application/json
+        Accept: application/json
+      body:
+        query: >
+          query PostsByTag {
+            posts(input: {terms: {view: "tagRelevance", tagId: "${{ data }}", limit: ${{ args.limit }}}}) {
+              results { _id title user { displayName } baseScore commentCount slug }
+            }
+          }
+
+  - select: data.posts.results
+
+  - map:
+      rank: "${{ index + 1 }}"
+      title: "${{ item.title }}"
+      author: "${{ item.user.displayName || 'Unknown' }}"
+      karma: "${{ item.baseScore || 0 }}"
+      comments: "${{ item.commentCount || 0 }}"
+      url: "https://www.lesswrong.com/posts/${{ item._id }}/${{ item.slug }}"

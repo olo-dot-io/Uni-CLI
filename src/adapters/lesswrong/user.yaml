@@ -1,0 +1,48 @@
+site: lesswrong
+name: user
+description: User profile
+domain: www.lesswrong.com
+strategy: public
+
+args:
+  username:
+    type: str
+    required: true
+    positional: true
+    description: LessWrong username or slug
+
+columns: [field, value]
+
+pipeline:
+  - fetch:
+      url: https://www.lesswrong.com/graphql
+      method: POST
+      headers:
+        Content-Type: application/json
+        Accept: application/json
+      body:
+        query: >
+          query UserProfile {
+            user(input: {selector: {slug: "${{ args.username | lowercase | trim }}"}}) {
+              result { _id displayName slug bio karma postCount commentCount createdAt }
+            }
+          }
+
+  - select: data.user.result
+
+  - evaluate: |
+      (() => {
+        const u = data;
+        if (!u || !u._id) return [];
+        const bio = (u.bio || '').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();
+        return [
+          { field: 'Name', value: u.displayName || '' },
+          { field: 'Username', value: u.slug || '' },
+          { field: 'Karma', value: String(u.karma || 0) },
+          { field: 'Posts', value: String(u.postCount || 0) },
+          { field: 'Comments', value: String(u.commentCount || 0) },
+          { field: 'Joined', value: u.createdAt || '' },
+          { field: 'Bio', value: bio.substring(0, 500) },
+          { field: 'URL', value: 'https://www.lesswrong.com/users/' + (u.slug || '') },
+        ];
+      })()

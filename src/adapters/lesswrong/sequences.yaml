@@ -1,0 +1,35 @@
+site: lesswrong
+name: sequences
+description: List post collections (sequences)
+domain: www.lesswrong.com
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 10
+    description: Number of results
+
+columns: [rank, title, author]
+
+pipeline:
+  - fetch:
+      url: https://www.lesswrong.com/graphql
+      method: POST
+      headers:
+        Content-Type: application/json
+        Accept: application/json
+      body:
+        query: >
+          query Sequences {
+            sequences(input: {terms: {view: "communitySequences", limit: ${{ args.limit }}}}) {
+              results { _id title user { displayName } }
+            }
+          }
+
+  - select: data.sequences.results
+
+  - map:
+      rank: "${{ index + 1 }}"
+      title: "${{ item.title }}"
+      author: "${{ item.user.displayName || 'Unknown' }}"

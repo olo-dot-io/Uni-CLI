@@ -1,0 +1,110 @@
+site: gemini
+name: deep-research
+description: Start a Gemini Deep Research run
+domain: gemini.google.com
+strategy: intercept
+browser: true
+
+args:
+  prompt:
+    type: str
+    required: true
+    positional: true
+    description: Research prompt to send
+  timeout:
+    type: int
+    default: 30
+    description: Max seconds to wait for confirm button
+
+columns: [status, url]
+
+pipeline:
+  - navigate:
+      url: https://gemini.google.com/app
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const prompt = ${{ args.prompt | json }};
+        const timeout = ${{ args.timeout }};
+
+        // Helper: click element matching aria-label or text
+        const findButton = (labels) => {
+          for (const label of labels) {
+            const btn = document.querySelector('button[aria-label="' + label + '"]');
+            if (btn) return btn;
+          }
+          for (const label of labels) {
+            for (const el of document.querySelectorAll('button, [role="button"], [role="menuitem"]')) {
+              if ((el.textContent || '').trim() === label || el.getAttribute('aria-label') === label) return el;
+            }
+          }
+          return null;
+        };
+
+        // Step 1: Start new chat
+        const newBtn = document.querySelector('[aria-label*="New chat"], button[class*="new-chat"]');
+        if (newBtn) { newBtn.click(); await new Promise(r => setTimeout(r, 1500)); }
+
+        // Step 2: Select Deep Research tool
+        const toolLabels = ['Deep Research', 'Deep research', '\u6df1\u5ea6\u7814\u7a76'];
+        let toolSelected = false;
+        for (const label of toolLabels) {
+          const toolBtn = findButton([label]);
+          if (toolBtn) { toolBtn.click(); toolSelected = true; await new Promise(r => setTimeout(r, 1000)); break; }
+        }
+        if (!toolSelected) {
+          // Try the model selector / tools menu
+          const moreTools = findButton(['More', 'Tools', '\u5de5\u5177', '\u66f4\u591a']);
+          if (moreTools) {
+            moreTools.click();
+            await new Promise(r => setTimeout(r, 800));
+            for (const label of toolLabels) {
+              const toolBtn = findButton([label]);
+              if (toolBtn) { toolBtn.click(); toolSelected = true; await new Promise(r => setTimeout(r, 1000)); break; }
+            }
+          }
+        }
+        if (!toolSelected) return [{ status: 'tool-not-found', url: location.href }];
+
+        // Step 3: Enter prompt
+        const editor = document.querySelector('[contenteditable="true"], .ql-editor, textarea');
+        if (!editor) return [{ status: 'input-not-found', url: location.href }];
+        editor.focus();
+        if (editor.tagName === 'TEXTAREA') {
+          editor.value = prompt;
+          editor.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+          document.execCommand('insertText', false, prompt);
+        }
+        await new Promise(r => setTimeout(r, 500));
+
+        // Step 4: Send message
+        const sendBtn = document.querySelector('button[aria-label*="Send"], button[class*="send"]');
+        if (sendBtn) sendBtn.click();
+        else editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        await new Promise(r => setTimeout(r, 3000));
+
+        // Step 5: Wait for and click confirm button
+        const confirmLabels = [
+          'Start research', 'Start Research', 'Start deep research', 'Start Deep Research',
+          'Generate research plan', 'Generate Research Plan',
+          '\u5f00\u59cb\u7814\u7a76', '\u5f00\u59cb\u6df1\u5ea6\u7814\u7a76', '\u751f\u6210\u7814\u7a76\u8ba1\u5212'
+        ];
+        for (let i = 0; i < timeout * 2; i++) {
+          const confirmBtn = findButton(confirmLabels);
+          if (confirmBtn) {
+            confirmBtn.click();
+            await new Promise(r => setTimeout(r, 2000));
+            return [{ status: 'started', url: location.href }];
+          }
+          await new Promise(r => setTimeout(r, 500));
+        }
+
+        // Check if research started without explicit confirm
+        const bodyText = document.body.innerText || '';
+        if (/researching|research in progress|working on your research/i.test(bodyText)) {
+          return [{ status: 'started', url: location.href }];
+        }
+        return [{ status: 'confirm-not-found', url: location.href }];
+      })()

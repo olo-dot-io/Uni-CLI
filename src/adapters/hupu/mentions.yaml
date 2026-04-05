@@ -1,0 +1,69 @@
+site: hupu
+name: mentions
+description: View Hupu replies that mention you (requires login)
+domain: my.hupu.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Maximum number of mentions to return
+  max_pages:
+    type: int
+    default: 3
+    description: Maximum pages to fetch
+
+columns: [time, username, thread_title, post_content, quote_content, reply_url]
+
+pipeline:
+  - navigate:
+      url: https://my.hupu.com/message?tabKey=1
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const maxPages = ${{ args.max_pages }};
+        const apiBase = 'https://my.hupu.com/pcmapi/pc/space/v1/getMentionedRemindList';
+        const items = [];
+        let pageStr = '';
+
+        const stripHtml = (html) => (html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
+        for (let pageIndex = 0; pageIndex < maxPages && items.length < limit; pageIndex++) {
+          const url = new URL(apiBase);
+          url.searchParams.set('plate', '1');
+          if (pageStr) url.searchParams.set('pageStr', pageStr);
+
+          const res = await fetch(url.toString(), { method: 'GET', credentials: 'include' });
+          if (res.status === 401 || res.status === 403) throw new Error('Please log in to Hupu first');
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+
+          const api = await res.json();
+          if ((api?.code ?? 0) > 1) throw new Error(api?.msg || 'API error');
+
+          const data = api?.data || {};
+          const currentItems = Array.isArray(data.hisList) ? data.hisList : [];
+          items.push(...currentItems);
+
+          const hasNextPage = Boolean(data.hasNextPage);
+          const nextPageStr = typeof data.pageStr === 'string' ? data.pageStr : '';
+          if (!hasNextPage || !nextPageStr || nextPageStr === pageStr) break;
+          pageStr = nextPageStr;
+        }
+
+        return items.slice(0, limit).map(item => {
+          const tid = item.tid ? String(item.tid) : '';
+          const pid = item.pid ? String(item.pid) : '';
+          return {
+            time: item.publishTime || '',
+            username: item.username || '',
+            thread_title: item.threadTitle || '',
+            post_content: stripHtml(item.postContent),
+            quote_content: stripHtml(item.quoteContent),
+            reply_url: tid && pid ? 'https://bbs.hupu.com/' + tid + '.html?pid=' + pid : (tid ? 'https://bbs.hupu.com/' + tid + '.html' : ''),
+          };
+        });
+      })()
