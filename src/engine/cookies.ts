@@ -92,7 +92,11 @@ export async function loadCookiesWithCDP(
   if (diskCookies) return diskCookies;
 
   // 2. Try CDP extraction
-  const cookieDomain = domain ?? site.replace(/_/g, ".");
+  let cookieDomain = domain ?? site.replace(/_/g, ".");
+  // If no TLD in domain, append .com as default (covers bilibili, zhihu, weibo, etc.)
+  if (!cookieDomain.includes(".")) {
+    cookieDomain = `${cookieDomain}.com`;
+  }
   try {
     const cdpCookies = await extractCookiesViaCDP(cookieDomain);
     if (Object.keys(cdpCookies).length > 0) {

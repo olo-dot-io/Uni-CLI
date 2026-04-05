@@ -26,7 +26,7 @@ import { runInNewContext } from "node:vm";
 import TurndownService from "turndown";
 import { USER_AGENT } from "../constants.js";
 import type { PipelineStep } from "../types.js";
-import { formatCookieHeader } from "./cookies.js";
+import { formatCookieHeader, loadCookiesWithCDP } from "./cookies.js";
 import type { BrowserPage } from "../browser/page.js";
 import {
   generateInterceptorJs,
@@ -194,7 +194,6 @@ export async function runPipeline(
     (options?.strategy === "cookie" || options?.strategy === "header") &&
     options?.site
   ) {
-    const { loadCookiesWithCDP } = await import("./cookies.js");
     const cookies = await loadCookiesWithCDP(options.site);
     if (!cookies) {
       throw new PipelineError(
@@ -1291,9 +1290,14 @@ function stepWriteTemp(
 async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
   if (ctx.page) return ctx.page;
 
-  const port = process.env.UNICLI_CDP_PORT
-    ? parseInt(process.env.UNICLI_CDP_PORT, 10)
-    : 9222;
+  let port = 9222;
+  const rawPort = process.env.UNICLI_CDP_PORT;
+  if (rawPort) {
+    const p = parseInt(rawPort, 10);
+    if (Number.isInteger(p) && p >= 1 && p <= 65535) {
+      port = p;
+    }
+  }
 
   // 1. Try direct CDP first (fastest, no daemon overhead)
   try {
@@ -1326,8 +1330,17 @@ async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
     const { BrowserPage: BP } = await import("../browser/page.js");
     const { injectStealth } = await import("../browser/stealth.js");
     await launchChrome(port);
-    await new Promise((r) => setTimeout(r, 1500));
-    const page = await BP.connect(port);
+    // Poll for connection (5 attempts, 500ms intervals)
+    let page: BrowserPage | undefined;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        page = await BP.connect(port);
+        break;
+      } catch {
+        if (attempt < 4) await new Promise((r) => setTimeout(r, 500));
+      }
+    }
+    if (!page) throw new Error("Chrome launched but no page target available");
     await injectStealth(page.sendCDP.bind(page));
     return page;
   } catch (err) {
