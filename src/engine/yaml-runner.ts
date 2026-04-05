@@ -58,6 +58,7 @@ type PipelineContext = {
   temp?: Record<string, string>;
   tempDir?: string;
   page?: BrowserPage;
+  vars: Record<string, unknown>;
 };
 
 /**
@@ -124,7 +125,7 @@ export async function runPipeline(
     cookieHeader = formatCookieHeader(cookies);
   }
 
-  let ctx: PipelineContext = { data: null, args, base, cookieHeader };
+  let ctx: PipelineContext = { data: null, args, base, cookieHeader, vars: {} };
   let tempDir: string | undefined;
 
   try {
@@ -205,6 +206,9 @@ export async function runPipeline(
             break;
           case "websocket":
             ctx = await stepWebsocket(ctx, config as WebsocketStepConfig);
+            break;
+          case "set":
+            ctx = stepSet(ctx, config as Record<string, unknown>);
             break;
           default:
             break;
@@ -441,6 +445,20 @@ function stepLimit(ctx: PipelineContext, config: unknown): PipelineContext {
   }
 
   return { ...ctx, data: ctx.data.slice(0, n) };
+}
+
+// --- set: store variables in ctx.vars for use in subsequent templates ---
+
+function stepSet(
+  ctx: PipelineContext,
+  config: Record<string, unknown>,
+): PipelineContext {
+  const resolved: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(config)) {
+    resolved[key] =
+      typeof value === "string" ? evalTemplate(value, ctx) : value;
+  }
+  return { ...ctx, vars: { ...ctx.vars, ...resolved } };
 }
 
 // --- fetch_text: like fetch but returns raw text (for XML/RSS/HTML) ---
@@ -781,6 +799,7 @@ function buildScope(ctx: PipelineContext): Record<string, unknown> {
     args: ctx.args,
     base: ctx.base,
     temp: ctx.temp ?? {},
+    vars: ctx.vars,
   };
 
   if (
