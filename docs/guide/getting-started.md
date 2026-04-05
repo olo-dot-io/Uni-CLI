@@ -14,7 +14,7 @@ Verify the installation:
 
 ```bash
 unicli --version
-# 0.204.0
+# 0.205.0
 ```
 
 ## Your First Command

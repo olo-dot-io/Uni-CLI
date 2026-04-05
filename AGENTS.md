@@ -6,7 +6,7 @@
      Output is JSON when piped. Errors are structured JSON to stderr.
      You can fix broken adapters yourself — read the Self-Repair section. -->
 
-> 96 sites, 582 commands. One CLI. `npm install -g unicli`
+> 114 sites, 601 commands. One CLI. `npm install -g unicli`
 
 ## For AI Agents
 
@@ -134,7 +134,7 @@ unicli browser status         # Check connection
 
 Requires Chrome. The engine connects via raw CDP WebSocket — zero extensions needed.
 
-## Pipeline Steps (17)
+## Pipeline Steps (30)
 
 | Step         | What it does                                     |
 | ------------ | ------------------------------------------------ |
@@ -155,6 +155,18 @@ Requires Chrome. The engine connects via raw CDP WebSocket — zero extensions n
 | `type`       | Type text into input element                     |
 | `wait`       | Wait for time (ms) or CSS selector to appear     |
 | `intercept`  | Capture page network requests matching a pattern |
+| `press`      | Keyboard key with modifiers (Ctrl+A, Enter)      |
+| `scroll`     | Direction scroll, auto-scroll to bottom          |
+| `snapshot`   | DOM accessibility tree with interactive refs     |
+| `tap`        | Vue Store Action Bridge (Pinia/Vuex → network)   |
+| `download`   | HTTP + yt-dlp, batch concurrent, skip_existing   |
+| `websocket`  | WebSocket connect/send/receive (OBS auth)        |
+| `set`        | Store variables into `vars` context              |
+| `if`         | Conditional execution of sub-pipeline branches   |
+| `append`     | Push ctx.data into vars array for accumulation   |
+| `each`       | Loop sub-pipeline with do-while + max iterations |
+| `parallel`   | Run sub-pipelines concurrently with merge        |
+| `rate_limit` | Per-domain token bucket request throttling       |
 
 ## Strategies
 
@@ -164,4 +176,4 @@ The engine auto-probes the first three on first run. `intercept` and `ui` requir
 
 ## Version
 
-0.204.0 — Vostok · Nikolayev
+0.205.0 — Vostok · Bykovsky
