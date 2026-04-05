@@ -192,7 +192,9 @@ export async function runPipeline(
   try {
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
-      const [action, config] = Object.entries(step)[0];
+      const entries = Object.entries(step);
+      const actionEntry = entries.find(([k]) => k !== "fallback") ?? entries[0];
+      const [action, config] = actionEntry;
 
       // --- Fallback extraction ---
       // Fallback can live inside the step config (object configs like fetch)
@@ -223,6 +225,12 @@ export async function runPipeline(
         }
       }
 
+      // Filter out null/undefined fallback entries (e.g. `fallback:` with no value in YAML)
+      if (fallbacks) {
+        fallbacks = fallbacks.filter((fb) => fb != null);
+        if (fallbacks.length === 0) fallbacks = undefined;
+      }
+
       try {
         // Inner try — executes the primary step, falls back on failure
         try {
@@ -234,25 +242,9 @@ export async function runPipeline(
           let succeeded = false;
           for (const fb of fallbacks) {
             try {
-              if (action === "select" && typeof fb === "string") {
-                ctx = stepSelect(ctx, fb, i);
-                succeeded = true;
-                break;
-              }
-              if (action === "fetch" && typeof fb === "object" && fb !== null) {
-                ctx = await stepFetch(ctx, fb as FetchConfig);
-                succeeded = true;
-                break;
-              }
-              if (
-                action === "fetch_text" &&
-                typeof fb === "object" &&
-                fb !== null
-              ) {
-                ctx = await stepFetchText(ctx, fb as FetchConfig);
-                succeeded = true;
-                break;
-              }
+              ctx = await executeStep(ctx, action, fb, i);
+              succeeded = true;
+              break;
             } catch (fbErr) {
               lastErr = fbErr;
             }
