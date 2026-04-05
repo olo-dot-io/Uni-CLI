@@ -164,12 +164,12 @@ async function tosRequest(opts: {
   headers: Record<string, string>;
   body?: Buffer | string;
 }): Promise<{ status: number; headers: Record<string, string>; body: string }> {
-  const fetchBody: BodyInit | null =
+  const fetchBody: RequestInit["body"] =
     opts.body == null
       ? null
       : typeof opts.body === "string"
         ? opts.body
-        : (opts.body as unknown as Uint8Array<ArrayBuffer>);
+        : (opts.body as unknown as Uint8Array);
   const res = await fetch(opts.url, {
     method: opts.method,
     headers: opts.headers,

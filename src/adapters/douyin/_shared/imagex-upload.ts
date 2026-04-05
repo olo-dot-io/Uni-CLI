@@ -43,7 +43,7 @@ export async function imagexUpload(
       "Content-Type": contentType,
       "Content-Length": String(imageBuffer.byteLength),
     },
-    body: imageBuffer as unknown as BodyInit,
+    body: imageBuffer as unknown as RequestInit["body"],
   });
 
   if (!res.ok) {
