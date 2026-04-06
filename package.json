@@ -1,5 +1,5 @@
 {
-  "name": "unicli",
+  "name": "@zenalexa/unicli",
   "version": "0.207.1",
   "description": "CLI IS ALL YOU NEED — Turn any website, desktop app, cloud service, or system tool into a CLI command",
   "type": "module",
