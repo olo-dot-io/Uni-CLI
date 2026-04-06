@@ -43,6 +43,12 @@ docs/.vitepress/cache/
 # Claude Code — entire directory is local dev state, never commit
 .claude/
 
+# Project instructions — local only, may contain internal references
+CLAUDE.md
+
+# npm auth — never commit tokens
+.npmrc
+
 # Superpowers
 .superpowers/
 
