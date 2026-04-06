@@ -3,6 +3,40 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
+## [0.207.1] — 2026-04-06 — Vostok · Gagarin (Hotfix)
+
+### Fixed
+
+- **Node 20 compatibility**: replaced `node:fs` `globSync` (Node 22+) with manual glob implementation in repair engine
+- **Shell injection prevention**: all `execSync` string interpolation in repair engine replaced with `execFileSync` + argument arrays; site/command names validated against `[a-z0-9._-]` pattern
+- **Lower-direction metric**: verify failures now return `Infinity` (not `0`) for `direction: "lower"`, preventing broken commits from being kept as improvements
+- **CDP flat session protocol**: `sessionId` now placed at top-level of JSON-RPC envelope (not inside `params`), fixing multi-tab recording
+- **Interceptor data pipeline**: JS interceptor now captures HTTP method, status code, and request body — enables write candidate detection (POST/PUT/PATCH) in `unicli record`
+- **Diagnostic crash prevention**: `parseDiagnostic` validates parsed JSON shape before cast, preventing TypeError on truncated payloads
+- **DaemonPage network capture**: `startNetworkCapture` and `readNetworkCapture` methods added to DaemonPage, enabling CDP-first path in `unicli operate`
+
+### Security
+
+- **JWT full redaction**: entire JWT token replaced with `[JWT-REDACTED]` (previously only signature was redacted, leaking payload claims)
+- **Upload path boundary**: `operate upload` now blocks paths outside workspace and home directory
+- **Bracket-notation param redaction**: `token[]`, `auth[token]` etc. now matched by sensitive param filter
+- **Body redaction depth limit**: recursive `redactBody` capped at 50 levels to prevent stack overflow
+
+### Changed
+
+- Failure classifier: 404 status only classified as `api_versioned` when URL contains API path pattern; generic 404 falls through to `unknown`
+- `extractPerfectScore` cached from first successful verify output instead of re-running verify command each iteration
+- `safeRevert` uses `git reset --hard HEAD~1` directly instead of creating noisy revert commits
+- `isNoiseUrl` now correctly filters `facebook.com` domain (was dead code with `/tr` path in hostname check)
+- `endpointSortKey` uses first array item's key count for wrapped responses like `{data: [...], total: N}`
+- `explore.ts` uses real interceptor method/status data instead of fabricating `GET`/`200`
+- Record and explore request capture arrays capped at 10,000 entries to prevent OOM
+- Record polling has re-entrancy guard to prevent overlapping captures
+- `extractMetric` resets `lastIndex` before exec for global/sticky regex safety
+- `EvalJudge` type changed to discriminated union for type-safe value access
+- `operate` string escaping uses `JSON.stringify` instead of hand-rolled replace chains
+- `templatizeUrl` skips duplicate query parameters
+
 ## [0.207.0] — 2026-04-06 — Vostok · Gagarin
 
 ### Added

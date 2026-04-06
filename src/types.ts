@@ -193,7 +193,11 @@ export interface IPage {
 
   // Lifecycle
   addInitScript(source: string): Promise<void>;
-  sendCDP(method: string, params?: Record<string, unknown>): Promise<unknown>;
+  sendCDP(
+    method: string,
+    params?: Record<string, unknown>,
+    sessionId?: string,
+  ): Promise<unknown>;
   close(): Promise<void>;
   closeWindow(): Promise<void>;
 }

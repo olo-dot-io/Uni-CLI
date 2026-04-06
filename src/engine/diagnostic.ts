@@ -90,6 +90,36 @@ const SENSITIVE_PARAMS = new Set([
 const JWT_REGEX =
   /\b(ey[A-Za-z0-9\-_=]+)\.(ey[A-Za-z0-9\-_=]+)\.[A-Za-z0-9\-_.+/=]+\b/g;
 
+/**
+ * Check if a key name matches a sensitive parameter, including bracket-notation
+ * variants like `token[0]`, `password[field]`, etc.
+ */
+function isSensitiveKey(key: string): boolean {
+  const base = key.toLowerCase().replace(/\[.*$/, "");
+  return SENSITIVE_PARAMS.has(base);
+}
+
+// ── Type guard for RepairContext parsing ──────────────────────────────
+
+/**
+ * Validate that a parsed object has the minimum shape of a RepairContext.
+ * Guards against truncated or malformed diagnostic JSON.
+ */
+export function isValidRepairContext(obj: unknown): obj is RepairContext {
+  if (typeof obj !== "object" || obj === null) return false;
+  const o = obj as Record<string, unknown>;
+  // Require error.message and error.code (classifyFailure depends on both)
+  if (typeof o.error !== "object" || o.error === null) return false;
+  const err = o.error as Record<string, unknown>;
+  if (typeof err.message !== "string") return false;
+  if (typeof err.code !== "string") return false;
+  // Require adapter.site (classifyFailure depends on it)
+  if (typeof o.adapter !== "object" || o.adapter === null) return false;
+  const adapter = o.adapter as Record<string, unknown>;
+  if (typeof adapter.site !== "string") return false;
+  return true;
+}
+
 // ── Redaction functions ───────────────────────────────────────────────
 
 /**
@@ -133,7 +163,7 @@ export function redactUrl(url: string): string {
 
   let modified = false;
   for (const [key, value] of parsed.searchParams.entries()) {
-    if (SENSITIVE_PARAMS.has(key.toLowerCase()) && value !== "[REDACTED]") {
+    if (isSensitiveKey(key) && value !== "[REDACTED]") {
       parsed.searchParams.set(key, "[REDACTED]");
       modified = true;
     }
@@ -151,11 +181,11 @@ export function redactUrl(url: string): string {
 }
 
 /**
- * Redact JWT signatures in a string.
- * Preserves header.payload for debugging, strips the signature component.
+ * Redact full JWTs in a string.
+ * Replaces entire header.payload.signature with [JWT-REDACTED].
  */
 export function redactJwt(text: string): string {
-  return text.replace(JWT_REGEX, "$1.$2.[sig-redacted]");
+  return text.replace(JWT_REGEX, "[JWT-REDACTED]");
 }
 
 /**
@@ -166,10 +196,18 @@ export function redactJwt(text: string): string {
  * Returns a new structure (does not mutate input).
  */
 export function redactBody(body: unknown): unknown {
-  return _redactBody(body, new WeakSet());
+  return _redactBody(body, new WeakSet(), 0);
 }
 
-function _redactBody(body: unknown, seen: WeakSet<object>): unknown {
+const MAX_REDACT_DEPTH = 50;
+
+function _redactBody(
+  body: unknown,
+  seen: WeakSet<object>,
+  depth: number,
+): unknown {
+  if (depth > MAX_REDACT_DEPTH) return "[depth-limit]";
+
   if (typeof body === "string") {
     return redactJwt(body);
   }
@@ -177,7 +215,7 @@ function _redactBody(body: unknown, seen: WeakSet<object>): unknown {
   if (Array.isArray(body)) {
     if (seen.has(body)) return "[circular]";
     seen.add(body);
-    return body.map((item) => _redactBody(item, seen));
+    return body.map((item) => _redactBody(item, seen, depth + 1));
   }
 
   if (body !== null && typeof body === "object") {
@@ -187,9 +225,9 @@ function _redactBody(body: unknown, seen: WeakSet<object>): unknown {
     for (const [key, value] of Object.entries(
       body as Record<string, unknown>,
     )) {
-      result[key] = SENSITIVE_PARAMS.has(key.toLowerCase())
+      result[key] = isSensitiveKey(key)
         ? "[REDACTED]"
-        : _redactBody(value, seen);
+        : _redactBody(value, seen, depth + 1);
     }
     return result;
   }

@@ -302,6 +302,53 @@ export class DaemonPage implements IPage {
     return Buffer.from(data, "base64");
   }
 
+  async startNetworkCapture(pattern?: string): Promise<void> {
+    try {
+      await sendCommand(
+        "network-capture-start",
+        this.cmdOpts(pattern ? { pattern } : {}),
+      );
+    } catch {
+      // Daemon/extension may not support this action yet — degrade gracefully
+    }
+  }
+
+  async readNetworkCapture(): Promise<
+    Array<{
+      url: string;
+      method: string;
+      status: number;
+      contentType: string;
+      size: number;
+      responseBody?: string;
+    }>
+  > {
+    try {
+      const result = await sendCommand("network-capture-read", this.cmdOpts());
+      // daemon-client unwraps { data } already, so result may be the array directly
+      if (Array.isArray(result))
+        return result as Array<{
+          url: string;
+          method: string;
+          status: number;
+          contentType: string;
+          size: number;
+          responseBody?: string;
+        }>;
+      const data = (result as { data?: unknown[] })?.data;
+      return (Array.isArray(data) ? data : []) as Array<{
+        url: string;
+        method: string;
+        status: number;
+        contentType: string;
+        size: number;
+        responseBody?: string;
+      }>;
+    } catch {
+      return []; // Degrade gracefully if daemon doesn't support this
+    }
+  }
+
   async networkRequests(): Promise<NetworkRequest[]> {
     const result = await sendCommand("network-capture-read", this.cmdOpts());
     return (result as NetworkRequest[]) ?? [];
@@ -320,10 +367,15 @@ export class DaemonPage implements IPage {
   async sendCDP(
     method: string,
     params?: Record<string, unknown>,
+    sessionId?: string,
   ): Promise<unknown> {
     return sendCommand(
       "cdp",
-      this.cmdOpts({ cdpMethod: method, cdpParams: params }),
+      this.cmdOpts({
+        cdpMethod: method,
+        cdpParams: params,
+        cdpSessionId: sessionId,
+      }),
     );
   }
 

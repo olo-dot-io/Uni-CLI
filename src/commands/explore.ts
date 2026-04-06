@@ -28,6 +28,8 @@ interface CapturedRequest {
   url: string;
   data: unknown;
   ts: number;
+  method?: string;
+  status?: number;
 }
 
 interface AuthInfo {
@@ -110,10 +112,12 @@ export function registerExploreCommand(program: Command): void {
 
           // Collect captured requests over the timeout period
           const allRequests: CapturedRequest[] = [];
+          const MAX_CAPTURED = 10_000;
 
           let polling = false;
           const pollInterval = setInterval(async () => {
             if (polling) return;
+            if (allRequests.length >= MAX_CAPTURED) return;
             polling = true;
             try {
               const raw = (await page.evaluate(
@@ -121,7 +125,8 @@ export function registerExploreCommand(program: Command): void {
               )) as string;
               const batch = JSON.parse(raw) as CapturedRequest[];
               if (batch.length > 0) {
-                allRequests.push(...batch);
+                const remaining = MAX_CAPTURED - allRequests.length;
+                allRequests.push(...batch.slice(0, remaining));
                 if (!jsonOnly) {
                   process.stderr.write(
                     chalk.dim(`  Captured ${allRequests.length} requests\r`),
@@ -154,11 +159,14 @@ export function registerExploreCommand(program: Command): void {
 
           // Final drain
           try {
-            const raw = (await page.evaluate(
-              generateReadInterceptedJs(),
-            )) as string;
-            const batch = JSON.parse(raw) as CapturedRequest[];
-            allRequests.push(...batch);
+            if (allRequests.length < MAX_CAPTURED) {
+              const raw = (await page.evaluate(
+                generateReadInterceptedJs(),
+              )) as string;
+              const batch = JSON.parse(raw) as CapturedRequest[];
+              const remaining = MAX_CAPTURED - allRequests.length;
+              allRequests.push(...batch.slice(0, remaining));
+            }
           } catch {
             /* ok */
           }
@@ -462,8 +470,8 @@ function convertToEndpointEntries(
 
     entries.push({
       url: req.url,
-      method: "GET", // interceptor does not capture method; default to GET
-      status: 200, // interceptor only captures successful responses
+      method: req.method ?? "GET",
+      status: req.status ?? 200,
       contentType: "application/json",
       responseBody: bodyStr || undefined,
       size: bodyStr.length,

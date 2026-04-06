@@ -55,6 +55,9 @@ describe("operate upload", () => {
   });
 
   it("calls setFileInput with correct selector and absolute path", async () => {
+    // Use a path inside the home directory to pass the upload boundary check
+    const { homedir } = await import("node:os");
+    const testPath = `${homedir()}/photo.png`;
     const program = createProgram();
     await program.parseAsync([
       "node",
@@ -62,12 +65,12 @@ describe("operate upload", () => {
       "operate",
       "upload",
       "42",
-      "/tmp/photo.png",
+      testPath,
     ]);
 
     expect(mockPage.setFileInput).toHaveBeenCalledWith(
       '[data-unicli-ref="42"]',
-      ["/tmp/photo.png"],
+      [testPath],
     );
   });
 

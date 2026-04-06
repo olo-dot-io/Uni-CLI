@@ -332,6 +332,6 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md). The fastest way to contribute: write a
 ---
 
 <p align="center">
-  <sub>v0.207.0 — Vostok · Gagarin</sub><br>
+  <sub>v0.207.1 — Vostok · Gagarin</sub><br>
   <sub>122 sites · 635 commands · 35 pipeline steps · 29 filters · 639 unit tests</sub>
 </p>

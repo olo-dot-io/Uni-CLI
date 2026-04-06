@@ -7,6 +7,7 @@
 
 import { Command } from "commander";
 import { resolve } from "node:path";
+import { homedir } from "node:os";
 import chalk from "chalk";
 import { BrowserBridge, DaemonPage } from "../browser/bridge.js";
 import { generateReadInterceptedJs } from "../engine/interceptor.js";
@@ -265,12 +266,9 @@ export function registerOperateCommands(program: Command): void {
       operateAction("get html", async () => {
         const page = await getOperatePage();
         if (selector) {
-          const escaped = selector
-            .replace(/\\/g, "\\\\")
-            .replace(/'/g, "\\'")
-            .replace(/`/g, "\\`");
+          const selectorStr = JSON.stringify(selector);
           return await page.evaluate(
-            `document.querySelector('${escaped}')?.outerHTML?.slice(0, 50000) ?? null`,
+            `document.querySelector(${selectorStr})?.outerHTML?.slice(0, 50000) ?? null`,
           );
         }
         return await page.evaluate(
@@ -315,13 +313,10 @@ export function registerOperateCommands(program: Command): void {
               // Poll for text content
               {
                 const deadline = Date.now() + timeout;
+                const valueStr = JSON.stringify(value);
                 while (Date.now() < deadline) {
-                  const escapedValue = value
-                    .replace(/\\/g, "\\\\")
-                    .replace(/'/g, "\\'")
-                    .replace(/`/g, "\\`");
                   const found = await page.evaluate(
-                    `document.body.innerText.includes('${escapedValue}')`,
+                    `document.body.innerText.includes(${valueStr})`,
                   );
                   if (found) return { ok: true, found: true };
                   await new Promise((r) => setTimeout(r, 200));
@@ -447,15 +442,12 @@ export function registerOperateCommands(program: Command): void {
       operateAction("select", async () => {
         validateRef(ref);
         const page = await getOperatePage();
-        const escapedOption = option
-          .replace(/\\/g, "\\\\")
-          .replace(/'/g, "\\'")
-          .replace(/`/g, "\\`");
+        const optionStr = JSON.stringify(option);
         await page.evaluate(
           `(() => {
             const el = document.querySelector('[data-unicli-ref="${ref}"]');
             if (!el || el.tagName !== 'SELECT') throw new Error('Not a <select> element');
-            el.value = '${escapedOption}';
+            el.value = ${optionStr};
             el.dispatchEvent(new Event('change', { bubbles: true }));
           })()`,
         );
@@ -472,6 +464,14 @@ export function registerOperateCommands(program: Command): void {
         validateRef(ref);
         const selector = `[data-unicli-ref="${ref}"]`;
         const absolutePath = resolve(filePath);
+        const cwd = process.cwd();
+        const home = homedir();
+        if (!absolutePath.startsWith(cwd) && !absolutePath.startsWith(home)) {
+          console.error(
+            `Upload blocked: path ${absolutePath} is outside workspace and home directory`,
+          );
+          process.exit(78); // EX_CONFIG
+        }
         const page = await getOperatePage();
         await page.setFileInput(selector, [absolutePath]);
         return { ok: true, ref, path: absolutePath };

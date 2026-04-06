@@ -15,8 +15,42 @@ export type FailureType =
 export interface ClassifiedFailure {
   type: FailureType;
   guidance: string;
-  preAction?: string;
+  preAction?: string[];
 }
+
+/**
+ * Extract all HTTP error statuses (>= 400) from structured network request data.
+ * Returns a Set of unique failing status codes.
+ */
+function extractStatusesFromContext(ctx?: {
+  page?: {
+    networkRequests?: Array<{ status?: number }>;
+  };
+}): Set<number> {
+  const statuses = new Set<number>();
+  if (!ctx?.page?.networkRequests) return statuses;
+  for (const req of ctx.page.networkRequests) {
+    if (req.status && req.status >= 400) statuses.add(req.status);
+  }
+  return statuses;
+}
+
+/**
+ * Extract HTTP status code from an error message string.
+ * Requires nearby HTTP context words to avoid false positives from
+ * numbers like port numbers or IDs.
+ */
+const STATUS_PATTERN = /(?:status|http|response|code|error)[:\s]*(\d{3})\b/i;
+
+function extractStatusFromMessage(message: string): number | null {
+  const match = STATUS_PATTERN.exec(message);
+  if (!match) return null;
+  const code = Number(match[1]);
+  return code >= 400 && code <= 599 ? code : null;
+}
+
+/** Pattern to detect API-style URL paths */
+const API_PATH_PATTERN = /\/(api|v\d|graphql|rest|endpoint)\//i;
 
 /**
  * Classify a pipeline failure from its RepairContext and return
@@ -29,15 +63,10 @@ export function classifyFailure(
   const code = repairContext.error.code.toUpperCase();
   const site = repairContext.adapter.site;
 
-  // Determine HTTP status from the error message if available
-  const statusMatch = /\b(401|403|404|429)\b/.exec(
-    repairContext.error.message,
-  );
-  const httpStatus = statusMatch ? Number(statusMatch[1]) : undefined;
-
-  // Also check network requests for status codes
-  const networkStatuses =
-    repairContext.page?.networkRequests.map((r) => r.status) ?? [];
+  // Collect all failing HTTP statuses from structured data + message
+  const networkStatuses = extractStatusesFromContext(repairContext);
+  const messageStatus = extractStatusFromMessage(repairContext.error.message);
+  if (messageStatus) networkStatuses.add(messageStatus);
 
   // 1. Selector miss
   if (
@@ -56,10 +85,8 @@ export function classifyFailure(
 
   // 2. Auth expired
   if (
-    httpStatus === 401 ||
-    httpStatus === 403 ||
-    networkStatuses.includes(401) ||
-    networkStatuses.includes(403) ||
+    networkStatuses.has(401) ||
+    networkStatuses.has(403) ||
     message.includes("unauthorized") ||
     message.includes("forbidden") ||
     message.includes("login")
@@ -68,14 +95,28 @@ export function classifyFailure(
       type: "auth_expired",
       guidance:
         "Authentication expired. The adapter needs fresh cookies or updated auth headers.",
-      preAction: `npx unicli auth setup ${site}`,
+      preAction: ["npx", "unicli", "auth", "setup", site],
     };
   }
 
-  // 3. API versioned
+  // 3. API versioned — only classify 404 as api_versioned if URL looks like an API endpoint
+  if (networkStatuses.has(404)) {
+    if (
+      repairContext.error.message &&
+      API_PATH_PATTERN.test(repairContext.error.message)
+    ) {
+      return {
+        type: "api_versioned",
+        guidance:
+          "The API endpoint or response shape has changed. " +
+          "Inspect the current response and update the adapter URL, select path, or map fields.",
+      };
+    }
+    // Generic 404 without API path — fall through to unknown
+  }
+
+  // 3b. Schema/shape changes
   if (
-    httpStatus === 404 ||
-    networkStatuses.includes(404) ||
     message.includes("unexpected") ||
     message.includes("schema") ||
     message.includes("shape")
@@ -90,8 +131,7 @@ export function classifyFailure(
 
   // 4. Rate limited
   if (
-    httpStatus === 429 ||
-    networkStatuses.includes(429) ||
+    networkStatuses.has(429) ||
     message.includes("rate limit") ||
     message.includes("too many requests") ||
     message.includes("throttle")

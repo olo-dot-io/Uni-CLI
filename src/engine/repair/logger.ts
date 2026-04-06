@@ -3,12 +3,7 @@
  * Logs to ~/.unicli/repair/<site>/log.tsv
  */
 
-import {
-  appendFileSync,
-  readFileSync,
-  mkdirSync,
-  existsSync,
-} from "node:fs";
+import { appendFileSync, readFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
@@ -21,8 +16,7 @@ export interface LogEntry {
   timestamp: string;
 }
 
-const TSV_HEADER =
-  "iteration\tmetric\tstatus\tdelta\tsummary\ttimestamp";
+const TSV_HEADER = "iteration\tmetric\tstatus\tdelta\tsummary\ttimestamp";
 
 export class RepairLogger {
   private readonly filePath: string;

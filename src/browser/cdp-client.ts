@@ -118,6 +118,7 @@ export class CDPClient {
   async send(
     method: string,
     params?: Record<string, unknown>,
+    sessionId?: string,
   ): Promise<unknown> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error("CDP connection is not open");
@@ -135,7 +136,9 @@ export class CDPClient {
       }, CDP_SEND_TIMEOUT);
 
       this.pending.set(id, { resolve, reject, timer });
-      this.ws!.send(JSON.stringify({ id, method, params: params ?? {} }));
+      const msg: Record<string, unknown> = { id, method, params: params ?? {} };
+      if (sessionId) msg.sessionId = sessionId;
+      this.ws!.send(JSON.stringify(msg));
     });
   }
 

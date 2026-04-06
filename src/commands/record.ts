@@ -138,7 +138,10 @@ export function templatizeUrl(rawUrl: string): TemplatizeResult {
 
   // --- Templatize query params (build raw query string to avoid encoding) ---
   const queryParts: string[] = [];
+  const seenParams = new Set<string>();
   for (const [key, value] of parsed.searchParams.entries()) {
+    if (seenParams.has(key)) continue;
+    seenParams.add(key);
     const mapping = QUERY_PARAM_MAP[key];
     if (mapping) {
       const { varName, default: def } = mapping;
@@ -159,9 +162,7 @@ export function templatizeUrl(rawUrl: string): TemplatizeResult {
   // Use parsed.host (includes port) rather than parsed.origin, and preserve
   // any username:password@ credentials that origin would drop.
   const auth = parsed.username
-    ? parsed.username +
-      (parsed.password ? ":" + parsed.password : "") +
-      "@"
+    ? parsed.username + (parsed.password ? ":" + parsed.password : "") + "@"
     : "";
   const base = `${parsed.protocol}//${auth}${parsed.host}`;
   const search = queryParts.length > 0 ? `?${queryParts.join("&")}` : "";
@@ -292,7 +293,10 @@ export function buildWriteCandidateYaml(
   const argsYaml =
     args.length > 0
       ? args
-          .map((a) => `  ${a.name}:\n    required: ${String(a.required)}\n    positional: false`)
+          .map(
+            (a) =>
+              `  ${a.name}:\n    required: ${String(a.required)}\n    positional: false`,
+          )
           .join("\n")
       : "  {}";
 
@@ -593,7 +597,11 @@ export function registerRecordCommand(program: Command): void {
         try {
           // Get the main target ID
           const targets = (await page.sendCDP("Target.getTargets")) as {
-            targetInfos?: Array<{ targetId: string; type: string; attached?: boolean }>;
+            targetInfos?: Array<{
+              targetId: string;
+              type: string;
+              attached?: boolean;
+            }>;
           };
           const mainTarget = targets.targetInfos?.find(
             (t) => t.type === "page" && t.attached !== false,
@@ -614,8 +622,13 @@ export function registerRecordCommand(program: Command): void {
 
         // Poll for captured requests (main tab + any newly discovered tabs)
         const allRequests: RecordedRequest[] = [];
+        const MAX_CAPTURED = 10_000;
 
+        let polling = false;
         const pollInterval = setInterval(async () => {
+          if (polling) return;
+          if (allRequests.length >= MAX_CAPTURED) return;
+          polling = true;
           try {
             // Poll main tab
             const raw = (await page.evaluate(
@@ -635,8 +648,8 @@ export function registerRecordCommand(program: Command): void {
                     expression: generateReadInterceptedJs(),
                     returnByValue: true,
                     awaitPromise: true,
-                    sessionId: session.sessionId,
                   },
+                  session.sessionId,
                 )) as { result?: { value?: string } };
                 if (sessionRaw?.result?.value) {
                   const sessionBatch = JSON.parse(
@@ -685,13 +698,12 @@ export function registerRecordCommand(program: Command): void {
                     )) as { sessionId: string };
 
                     // Enable Network + inject interceptor on new session
-                    await page.sendCDP("Network.enable", {
+                    await page.sendCDP("Network.enable", {}, sessionId);
+                    await page.sendCDP(
+                      "Runtime.evaluate",
+                      { expression: interceptorJs },
                       sessionId,
-                    } as Record<string, unknown>);
-                    await page.sendCDP("Runtime.evaluate", {
-                      expression: interceptorJs,
-                      sessionId,
-                    } as Record<string, unknown>);
+                    );
 
                     activeSessions.push({
                       targetId: target.targetId,
@@ -716,6 +728,8 @@ export function registerRecordCommand(program: Command): void {
             }
           } catch {
             /* page may have navigated */
+          } finally {
+            polling = false;
           }
         }, 2000);
 

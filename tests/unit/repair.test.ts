@@ -60,6 +60,16 @@ describe("extractMetric", () => {
     const result = extractMetric("passed: 7 out of 10", custom);
     expect(result).toBe(7);
   });
+
+  it("resets lastIndex for global regex patterns", () => {
+    const globalPattern = /SCORE=(\d+)\/(\d+)/g;
+    // First call advances lastIndex
+    const first = extractMetric("SCORE=5/10", globalPattern);
+    expect(first).toBe(5);
+    // Second call should still work (lastIndex reset)
+    const second = extractMetric("SCORE=5/10", globalPattern);
+    expect(second).toBe(5);
+  });
 });
 
 // ── buildDefaultConfig ──────────────────────────────────────────────
@@ -94,6 +104,27 @@ describe("buildDefaultConfig", () => {
     expect(match).not.toBeNull();
     expect(match![1]).toBe("3");
     expect(match![2]).toBe("5");
+  });
+
+  it("rejects invalid site names", () => {
+    expect(() => buildDefaultConfig("foo; rm -rf /")).toThrow(
+      "Invalid site name",
+    );
+    expect(() => buildDefaultConfig("")).toThrow("Invalid site name");
+    expect(() => buildDefaultConfig("-leading")).toThrow("Invalid site name");
+    expect(() => buildDefaultConfig("has space")).toThrow("Invalid site name");
+  });
+
+  it("rejects invalid command names", () => {
+    expect(() => buildDefaultConfig("good", "bad; evil")).toThrow(
+      "Invalid command name",
+    );
+  });
+
+  it("allows valid names with dots, dashes, underscores", () => {
+    const config = buildDefaultConfig("my-site.v2", "my_cmd");
+    expect(config.site).toBe("my-site.v2");
+    expect(config.command).toBe("my_cmd");
   });
 });
 
@@ -296,7 +327,10 @@ describe("buildRepairPrompt", () => {
   });
 
   it("includes failure guidance when provided", () => {
-    const ctx = { ...baseContext, failureGuidance: "The CSS selector is broken." };
+    const ctx = {
+      ...baseContext,
+      failureGuidance: "The CSS selector is broken.",
+    };
     const prompt = buildRepairPrompt(ctx, defaultConfig);
     expect(prompt).toContain("Failure Analysis");
     expect(prompt).toContain("The CSS selector is broken.");
@@ -382,9 +416,7 @@ describe("getStuckHint", () => {
 // ── classifyFailure ─────────────────────────────────────────────────
 
 describe("classifyFailure", () => {
-  function makeContext(
-    overrides: Partial<RepairContext> = {},
-  ): RepairContext {
+  function makeContext(overrides: Partial<RepairContext> = {}): RepairContext {
     return {
       error: { code: "GENERIC_ERROR", message: "something failed" },
       adapter: { site: "testsite", command: "cmd" },
@@ -433,7 +465,13 @@ describe("classifyFailure", () => {
     });
     const result = classifyFailure(ctx);
     expect(result.type).toBe("auth_expired");
-    expect(result.preAction).toContain("auth setup testsite");
+    expect(result.preAction).toEqual([
+      "npx",
+      "unicli",
+      "auth",
+      "setup",
+      "testsite",
+    ]);
   });
 
   it("detects auth_expired from 403 status", () => {
@@ -462,7 +500,12 @@ describe("classifyFailure", () => {
         snapshot: "",
         consoleErrors: [],
         networkRequests: [
-          { url: "https://api.example.com/data", method: "GET", status: 401, type: "fetch" },
+          {
+            url: "https://api.example.com/data",
+            method: "GET",
+            status: 401,
+            type: "fetch",
+          },
         ],
       },
     });
@@ -470,13 +513,27 @@ describe("classifyFailure", () => {
     expect(result.type).toBe("auth_expired");
   });
 
-  it("detects api_versioned from 404 status", () => {
+  it("detects api_versioned from 404 on API path", () => {
     const ctx = makeContext({
-      error: { code: "GENERIC_ERROR", message: "HTTP 404 Not Found" },
+      error: {
+        code: "GENERIC_ERROR",
+        message: "HTTP error 404 at https://example.com/api/v2/data",
+      },
     });
     const result = classifyFailure(ctx);
     expect(result.type).toBe("api_versioned");
     expect(result.guidance).toContain("endpoint");
+  });
+
+  it("falls through to unknown for 404 on non-API path", () => {
+    const ctx = makeContext({
+      error: {
+        code: "GENERIC_ERROR",
+        message: "HTTP error 404 at https://example.com/page",
+      },
+    });
+    const result = classifyFailure(ctx);
+    expect(result.type).toBe("unknown");
   });
 
   it("detects api_versioned from 'unexpected' in message", () => {
@@ -530,7 +587,13 @@ describe("classifyFailure", () => {
     });
     const result = classifyFailure(ctx);
     expect(result.type).toBe("auth_expired");
-    expect(result.preAction).toBe("npx unicli auth setup zhihu");
+    expect(result.preAction).toEqual([
+      "npx",
+      "unicli",
+      "auth",
+      "setup",
+      "zhihu",
+    ]);
   });
 });
 
@@ -544,9 +607,9 @@ describe("judgeOutput", () => {
   });
 
   it("contains: returns false when output does not include value", () => {
-    expect(
-      judgeOutput("hello", { type: "contains", value: "world" }),
-    ).toBe(false);
+    expect(judgeOutput("hello", { type: "contains", value: "world" })).toBe(
+      false,
+    );
   });
 
   it("nonEmpty: returns true for non-empty output", () => {
@@ -558,27 +621,27 @@ describe("judgeOutput", () => {
   });
 
   it("arrayMinLength: returns true when JSON array meets minimum", () => {
-    expect(
-      judgeOutput('[1,2,3]', { type: "arrayMinLength", value: 3 }),
-    ).toBe(true);
+    expect(judgeOutput("[1,2,3]", { type: "arrayMinLength", value: 3 })).toBe(
+      true,
+    );
   });
 
   it("arrayMinLength: returns false when JSON array is too short", () => {
-    expect(
-      judgeOutput('[1]', { type: "arrayMinLength", value: 3 }),
-    ).toBe(false);
+    expect(judgeOutput("[1]", { type: "arrayMinLength", value: 3 })).toBe(
+      false,
+    );
   });
 
   it("arrayMinLength: returns false for non-JSON output", () => {
-    expect(
-      judgeOutput("not json", { type: "arrayMinLength", value: 1 }),
-    ).toBe(false);
+    expect(judgeOutput("not json", { type: "arrayMinLength", value: 1 })).toBe(
+      false,
+    );
   });
 
   it("arrayMinLength: returns false for non-array JSON", () => {
-    expect(
-      judgeOutput('{"a":1}', { type: "arrayMinLength", value: 1 }),
-    ).toBe(false);
+    expect(judgeOutput('{"a":1}', { type: "arrayMinLength", value: 1 })).toBe(
+      false,
+    );
   });
 
   it("matchesPattern: returns true when regex matches", () => {

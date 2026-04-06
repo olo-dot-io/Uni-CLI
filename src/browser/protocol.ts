@@ -48,6 +48,7 @@ export interface DaemonCommand {
   pattern?: string;
   cdpMethod?: string;
   cdpParams?: Record<string, unknown>;
+  cdpSessionId?: string;
   selector?: string;
   text?: string;
   files?: string[];

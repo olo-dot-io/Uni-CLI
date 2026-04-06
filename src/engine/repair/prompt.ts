@@ -68,20 +68,12 @@ export function buildRepairPrompt(
 
   // 5. Failure guidance
   if (ctx.failureGuidance) {
-    sections.push(
-      "## Failure Analysis",
-      ctx.failureGuidance,
-      "",
-    );
+    sections.push("## Failure Analysis", ctx.failureGuidance, "");
   }
 
   // 6. Stuck hint
   if (ctx.stuckHint) {
-    sections.push(
-      "## Hint (you are stuck)",
-      ctx.stuckHint,
-      "",
-    );
+    sections.push("## Hint (you are stuck)", ctx.stuckHint, "");
   }
 
   // 7. Rules
@@ -103,9 +95,7 @@ export function buildRepairPrompt(
  * Get a hint based on how many consecutive iterations have been discarded.
  * Returns undefined if the loop is not stuck.
  */
-export function getStuckHint(
-  consecutiveDiscards: number,
-): string | undefined {
+export function getStuckHint(consecutiveDiscards: number): string | undefined {
   if (consecutiveDiscards >= 11)
     return "Simplify — remove complexity. Strip the adapter down to its minimal working form.";
   if (consecutiveDiscards >= 9)

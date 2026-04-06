@@ -17,7 +17,10 @@ import {
   analyzeRequests,
   buildWriteCandidateYaml,
 } from "../../src/commands/record.js";
-import type { RecordedRequest, ScoredCandidate } from "../../src/commands/record.js";
+import type {
+  RecordedRequest,
+  ScoredCandidate,
+} from "../../src/commands/record.js";
 
 // ── templatizeUrl ─────────────────────────────────────────────────────────────
 
@@ -370,12 +373,16 @@ describe("analyzeRequests — write candidate separation", () => {
 
 describe("templatizeUrl — URL auth and port preservation", () => {
   it("preserves non-standard port in reconstructed URL", () => {
-    const result = templatizeUrl("https://api.example.com:8080/v1/items?page=1");
+    const result = templatizeUrl(
+      "https://api.example.com:8080/v1/items?page=1",
+    );
     expect(result.url).toContain("api.example.com:8080");
   });
 
   it("preserves username:password credentials in reconstructed URL", () => {
-    const result = templatizeUrl("https://user:pass@api.example.com/items?page=1");
+    const result = templatizeUrl(
+      "https://user:pass@api.example.com/items?page=1",
+    );
     expect(result.url).toContain("user:pass@api.example.com");
   });
 
@@ -421,7 +428,11 @@ describe("buildWriteCandidateYaml — args YAML shape", () => {
       responsePreview: {},
       method: "POST",
     };
-    const yaml = buildWriteCandidateYaml("example", candidate, "https://example.com");
+    const yaml = buildWriteCandidateYaml(
+      "example",
+      candidate,
+      "https://example.com",
+    );
     // Mapping format: "  type:\n    required: ..."
     // NOT list format: "  - name: type\n    required: ..."
     expect(yaml).toMatch(/args:\n  type:/);
@@ -437,7 +448,11 @@ describe("buildWriteCandidateYaml — args YAML shape", () => {
       responsePreview: {},
       method: "POST",
     };
-    const yaml = buildWriteCandidateYaml("example", candidate, "https://example.com");
+    const yaml = buildWriteCandidateYaml(
+      "example",
+      candidate,
+      "https://example.com",
+    );
     expect(yaml).toContain("args:\n  {}");
     expect(yaml).not.toContain("args:\n  []");
   });
@@ -456,7 +471,11 @@ describe("buildWriteCandidateYaml", () => {
   };
 
   it("generates valid YAML with required fields", () => {
-    const yaml = buildWriteCandidateYaml("example", baseCandidate, "https://example.com");
+    const yaml = buildWriteCandidateYaml(
+      "example",
+      baseCandidate,
+      "https://example.com",
+    );
     expect(yaml).toContain("site: example");
     expect(yaml).toContain("name: create-item");
     expect(yaml).toContain("type: web-api");
@@ -465,12 +484,20 @@ describe("buildWriteCandidateYaml", () => {
   });
 
   it("includes Content-Type header for POST", () => {
-    const yaml = buildWriteCandidateYaml("example", baseCandidate, "https://example.com");
+    const yaml = buildWriteCandidateYaml(
+      "example",
+      baseCandidate,
+      "https://example.com",
+    );
     expect(yaml).toContain("Content-Type: application/json");
   });
 
   it("includes body template for POST (not DELETE)", () => {
-    const yaml = buildWriteCandidateYaml("example", baseCandidate, "https://example.com");
+    const yaml = buildWriteCandidateYaml(
+      "example",
+      baseCandidate,
+      "https://example.com",
+    );
     expect(yaml).toContain('${{ args.body | default("{}") }}');
   });
 
@@ -480,9 +507,13 @@ describe("buildWriteCandidateYaml", () => {
       name: "delete-item",
       method: "DELETE",
     };
-    const yaml = buildWriteCandidateYaml("example", deleteCandidate, "https://example.com");
+    const yaml = buildWriteCandidateYaml(
+      "example",
+      deleteCandidate,
+      "https://example.com",
+    );
     expect(yaml).toContain("method: DELETE");
-    expect(yaml).not.toContain('${{ args.body');
+    expect(yaml).not.toContain("${{ args.body");
   });
 
   it("templatizes URL query params in the YAML", () => {
@@ -490,12 +521,20 @@ describe("buildWriteCandidateYaml", () => {
       ...baseCandidate,
       url: "https://api.example.com/api/items?type=post",
     };
-    const yaml = buildWriteCandidateYaml("example", candidateWithParams, "https://example.com");
+    const yaml = buildWriteCandidateYaml(
+      "example",
+      candidateWithParams,
+      "https://example.com",
+    );
     expect(yaml).toContain('${{ args.type | default("") }}');
   });
 
   it("includes the domain", () => {
-    const yaml = buildWriteCandidateYaml("example", baseCandidate, "https://example.com");
+    const yaml = buildWriteCandidateYaml(
+      "example",
+      baseCandidate,
+      "https://example.com",
+    );
     expect(yaml).toContain("domain: api.example.com");
   });
 
@@ -505,7 +544,11 @@ describe("buildWriteCandidateYaml", () => {
       name: "update-item",
       method: "PUT",
     };
-    const yaml = buildWriteCandidateYaml("example", putCandidate, "https://example.com");
+    const yaml = buildWriteCandidateYaml(
+      "example",
+      putCandidate,
+      "https://example.com",
+    );
     expect(yaml).toContain("method: PUT");
     expect(yaml).toContain('${{ args.body | default("{}") }}');
   });

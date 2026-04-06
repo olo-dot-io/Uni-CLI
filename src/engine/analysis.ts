@@ -44,7 +44,7 @@ const NOISE_DOMAINS = [
   "hotjar.io",
   "doubleclick.net",
   "connect.facebook.net",
-  "facebook.com/tr",
+  "facebook.com",
   "sentry.io",
   "cdn.segment.com",
   "api.segment.io",
@@ -73,6 +73,7 @@ const NOISE_PATH_PATTERNS = [
   /\/telemetry(\/|$)/i,
   /\/log(\/|$)/i,
   /\/event(\/|$)/i,
+  /\/tr(\/|$)/i,
   /\/_next\/data\//i,
   /\/sockjs-node(\/|$)/i,
   /\.hot-update\./i,
@@ -261,7 +262,12 @@ export function endpointSortKey(entry: {
       // Check for a top-level array field with a well-known name
       for (const key of topKeys) {
         if (TOP_LEVEL_ARRAY_FIELDS.has(key) && Array.isArray(obj[key])) {
-          itemCount = (obj[key] as unknown[]).length;
+          const arr = obj[key] as unknown[];
+          itemCount = arr.length;
+          // Use the first array item's field count instead of the wrapper's
+          if (arr.length > 0 && typeof arr[0] === "object" && arr[0] !== null) {
+            fieldCount = Object.keys(arr[0] as Record<string, unknown>).length;
+          }
           break;
         }
       }

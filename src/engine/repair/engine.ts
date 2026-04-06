@@ -11,15 +11,16 @@
  *   7. Log: append result to TSV log
  */
 
-import { execSync } from "node:child_process";
-import { globSync } from "node:fs";
+import { execFileSync, execSync } from "node:child_process";
+import { readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
 
-import type { RepairConfig } from "./config.js";
+import type { RepairConfig, MetricDirection } from "./config.js";
 import { extractMetric } from "./config.js";
 import { RepairLogger, type LogEntry } from "./logger.js";
 import { buildRepairPrompt, getStuckHint } from "./prompt.js";
 import { classifyFailure } from "./failure-classifier.js";
-import type { RepairContext } from "../diagnostic.js";
+import { isValidRepairContext, type RepairContext } from "../diagnostic.js";
 
 export interface RepairResult {
   iterations: number;
@@ -39,15 +40,22 @@ export async function runRepairLoop(
   assertGitClean();
 
   // Baseline metric
-  const initialMetric = runVerify(config);
+  const initialMetric = runVerify(
+    config.verify,
+    config.metricPattern,
+    config.direction,
+  );
   let bestMetric = initialMetric;
   const logger = new RepairLogger(config.site);
 
   let lastDiagnostic: RepairContext | undefined;
 
+  // Cache perfect score — extracted from the first successful verify output
+  let perfectScore: number | null = null;
+
   for (let i = 1; i <= config.maxIterations; i++) {
     // Phase 1: Review
-    const gitLog = safeExec("git log --oneline -20");
+    const gitLog = safeExecFile("git", ["log", "--oneline", "-20"]);
     const recentLog = logger.readLast(20);
     const scopeFiles = resolveScope(config.scope);
 
@@ -58,8 +66,15 @@ export async function runRepairLoop(
       failureGuidance = classified.guidance;
 
       // Run pre-action if specified (e.g., auth refresh)
-      if (classified.preAction) {
-        safeExec(classified.preAction);
+      if (classified.preAction && classified.preAction.length > 0) {
+        try {
+          execFileSync(classified.preAction[0], classified.preAction.slice(1), {
+            encoding: "utf-8",
+            timeout: 30_000,
+          });
+        } catch {
+          // Pre-action failure is non-fatal
+        }
       }
     }
 
@@ -110,8 +125,17 @@ export async function runRepairLoop(
       });
       metric = extractMetric(verifyOut, config.metricPattern) ?? bestMetric;
       lastDiagnostic = undefined;
+
+      // Cache perfect score from first successful verify
+      if (perfectScore === null) {
+        config.metricPattern.lastIndex = 0;
+        const match = config.metricPattern.exec(verifyOut);
+        if (match?.[2] !== undefined) {
+          perfectScore = Number(match[2]);
+        }
+      }
     } catch (e) {
-      metric = 0;
+      metric = config.direction === "lower" ? Infinity : 0;
       // Try to capture diagnostic from stderr
       if (e instanceof Error && "stderr" in e) {
         stderrCapture = String((e as { stderr?: string }).stderr ?? "");
@@ -135,9 +159,7 @@ export async function runRepairLoop(
     // Phase 6: Decide
     const delta = metric - bestMetric;
     const improved =
-      config.direction === "higher"
-        ? metric > bestMetric
-        : metric < bestMetric;
+      config.direction === "higher" ? metric > bestMetric : metric < bestMetric;
     const absDelta = Math.abs(delta);
 
     let status: "keep" | "discard";
@@ -166,7 +188,6 @@ export async function runRepairLoop(
     });
 
     // Early exit on perfect score
-    const perfectScore = extractPerfectScore(config);
     if (perfectScore !== null) {
       const reachedPerfect =
         config.direction === "lower"
@@ -193,7 +214,7 @@ export async function runRepairLoop(
 // ── Internal helpers ──────────────────────────────────────────────────
 
 function assertGitClean(): void {
-  const status = safeExec("git status --porcelain").trim();
+  const status = safeExecFile("git", ["status", "--porcelain"]).trim();
   if (status.length > 0) {
     throw new Error(
       "Git working directory is not clean. Commit or stash changes before running repair loop.",
@@ -201,7 +222,15 @@ function assertGitClean(): void {
   }
 
   // Check not in detached HEAD
-  const head = safeExec("git symbolic-ref HEAD 2>/dev/null").trim();
+  let head = "";
+  try {
+    head = execFileSync("git", ["symbolic-ref", "HEAD"], {
+      encoding: "utf-8",
+      timeout: 10_000,
+    }).trim();
+  } catch {
+    // execFileSync throws when git symbolic-ref fails (detached HEAD)
+  }
   if (!head) {
     throw new Error(
       "Detached HEAD state. Check out a branch before running repair loop.",
@@ -209,31 +238,101 @@ function assertGitClean(): void {
   }
 }
 
-function runVerify(config: RepairConfig): number {
+function runVerify(
+  verify: string,
+  metricPattern: RegExp,
+  direction: MetricDirection,
+): number {
   try {
-    const output = execSync(config.verify, {
+    const output = execSync(verify, {
       encoding: "utf-8",
       timeout: 60_000,
     });
-    return extractMetric(output, config.metricPattern) ?? 0;
+    return extractMetric(output, metricPattern) ?? 0;
   } catch {
-    return 0;
+    return direction === "lower" ? Infinity : 0;
   }
 }
 
+/**
+ * Resolve scope glob patterns to concrete file paths.
+ * Uses readdirSync({ recursive: true }) + simple extension matching for
+ * Node 20 compatibility (node:fs globSync requires Node 22+).
+ */
 function resolveScope(patterns: string[]): string[] {
   const files: string[] = [];
+  const cwd = process.cwd();
   for (const pattern of patterns) {
     try {
-      const matched = globSync(pattern, { cwd: process.cwd() });
-      for (const f of matched) {
-        if (!files.includes(f)) files.push(f);
+      // Get the static base directory from the pattern (before any glob chars)
+      const baseDir = getGlobBase(pattern);
+      const absBase = join(cwd, baseDir);
+      // Verify the base directory exists
+      try {
+        statSync(absBase);
+      } catch {
+        continue;
+      }
+      const matcher = simpleGlobMatcher(pattern);
+      const entries = readdirSync(absBase, { recursive: true });
+      for (const entry of entries) {
+        const entryStr = typeof entry === "string" ? entry : String(entry);
+        const relPath = join(baseDir, entryStr);
+        if (matcher(relPath) && !files.includes(relPath)) {
+          files.push(relPath);
+        }
       }
     } catch {
       // Pattern may not match anything
     }
   }
   return files;
+}
+
+/**
+ * Extract the static base directory from a glob pattern.
+ * e.g. "src/adapters/zhihu/**\/*.yaml" → "src/adapters/zhihu"
+ */
+function getGlobBase(pattern: string): string {
+  const parts = pattern.split("/");
+  const staticParts: string[] = [];
+  for (const part of parts) {
+    if (
+      part.includes("*") ||
+      part.includes("?") ||
+      part.includes("{") ||
+      part.includes("[")
+    ) {
+      break;
+    }
+    staticParts.push(part);
+  }
+  return staticParts.length > 0 ? staticParts.join("/") : ".";
+}
+
+/**
+ * Convert a simple glob pattern to a matcher function.
+ * Supports: ** (any path), * (any name segment), and literal path segments.
+ * Covers the patterns used by repair scope: "dir/**\/*.ext"
+ */
+function simpleGlobMatcher(pattern: string): (path: string) => boolean {
+  // Escape regex special chars except * and ?
+  const parts = pattern
+    .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+    // **/ matches zero or more path segments (including zero)
+    .replace(/\*\*\//g, "\u0000")
+    // Remaining ** (at end) matches any path
+    .replace(/\*\*/g, "\u0001")
+    // * matches anything except /
+    .replace(/\*/g, "[^/]*")
+    // ? matches single char except /
+    .replace(/\?/g, "[^/]")
+    // Restore **/ as optional path prefix (zero or more dirs)
+    .replace(/\u0000/g, "(.*/)?")
+    // Restore trailing ** as .* (any path)
+    .replace(/\u0001/g, ".*");
+  const re = new RegExp(`^${parts}$`);
+  return (path: string) => re.test(path);
 }
 
 function commitScopeFiles(
@@ -244,16 +343,31 @@ function commitScopeFiles(
   try {
     // Stage known resolved files first
     if (scopeFiles.length > 0) {
-      const paths = scopeFiles.map((f) => `"${f}"`).join(" ");
-      safeExec(`git add ${paths}`);
+      try {
+        execFileSync("git", ["add", "--", ...scopeFiles], {
+          encoding: "utf-8",
+        });
+      } catch {
+        // Some files may not exist
+      }
     }
     // Also stage any new files matching the scope glob patterns (handles files
     // created by Claude that weren't in the pre-run resolveScope result).
     for (const pattern of scopePatterns) {
-      safeExec(`git add --ignore-errors -- ${pattern}`);
+      try {
+        execFileSync("git", ["add", "--", pattern], {
+          encoding: "utf-8",
+        });
+      } catch {
+        // Pattern may not match
+      }
     }
     // Check if there is anything staged before committing
-    const staged = safeExec("git diff --cached --name-only").trim();
+    const staged = safeExecFile("git", [
+      "diff",
+      "--cached",
+      "--name-only",
+    ]).trim();
     if (!staged) return false;
     execSync(`git commit -m "repair: auto-fix iteration ${iteration}"`, {
       encoding: "utf-8",
@@ -266,13 +380,9 @@ function commitScopeFiles(
 
 function safeRevert(): void {
   try {
-    execSync("git revert HEAD --no-edit", { encoding: "utf-8" });
+    execFileSync("git", ["reset", "--hard", "HEAD~1"], { encoding: "utf-8" });
   } catch {
-    try {
-      execSync("git reset --hard HEAD~1", { encoding: "utf-8" });
-    } catch {
-      // Give up
-    }
+    /* give up */
   }
 }
 
@@ -283,41 +393,27 @@ function safeRevert(): void {
  */
 function safeRevertUnstaged(files: string[]): void {
   if (files.length === 0) return;
-  const paths = files.map((f) => `"${f}"`).join(" ");
-  safeExec(`git checkout -- ${paths}`);
+  try {
+    execFileSync("git", ["checkout", "--", ...files], { encoding: "utf-8" });
+  } catch {
+    // Some files may not exist in HEAD
+  }
   // Also remove any untracked files in scope (new files that were never staged)
   for (const f of files) {
-    safeExec(`git clean -f -- "${f}"`);
+    try {
+      execFileSync("git", ["clean", "-f", "--", f], { encoding: "utf-8" });
+    } catch {
+      // Ignore
+    }
   }
 }
 
-function safeExec(cmd: string): string {
+function safeExecFile(cmd: string, args: string[]): string {
   try {
-    return execSync(cmd, { encoding: "utf-8", timeout: 10_000 });
+    return execFileSync(cmd, args, { encoding: "utf-8", timeout: 10_000 });
   } catch {
     return "";
   }
-}
-
-/**
- * Try to extract a perfect score from the metric pattern.
- * For SCORE=N/M patterns, returns M (the denominator).
- */
-function extractPerfectScore(config: RepairConfig): number | null {
-  // Run verify once more to get the denominator
-  try {
-    const output = execSync(config.verify, {
-      encoding: "utf-8",
-      timeout: 60_000,
-    });
-    const match = config.metricPattern.exec(output);
-    if (match && match[2] !== undefined) {
-      return Number(match[2]);
-    }
-  } catch {
-    // Ignore
-  }
-  return null;
 }
 
 /**
@@ -332,7 +428,9 @@ function parseDiagnostic(stderr: string): RepairContext | undefined {
   }
   const jsonStr = stderr.slice(startIdx + marker.length, endIdx).trim();
   try {
-    return JSON.parse(jsonStr) as RepairContext;
+    const parsed: unknown = JSON.parse(jsonStr);
+    if (!isValidRepairContext(parsed)) return undefined;
+    return parsed as RepairContext;
   } catch {
     return undefined;
   }

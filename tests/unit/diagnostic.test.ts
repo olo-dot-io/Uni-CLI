@@ -7,6 +7,7 @@ import { createServer, type Server, type IncomingMessage } from "node:http";
 import {
   buildRepairContext,
   emitRepairContext,
+  isValidRepairContext,
   redactHeaders,
   redactUrl,
   redactJwt,
@@ -493,7 +494,7 @@ describe("redactUrl", () => {
 // ── redactJwt ───────────────────────────────────────────────────────
 
 describe("redactJwt", () => {
-  it("redacts JWT signature while preserving header and payload", () => {
+  it("redacts the entire JWT token", () => {
     // A realistic-looking JWT (header.payload.signature)
     const header = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9";
     const payload = "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIn0";
@@ -501,10 +502,10 @@ describe("redactJwt", () => {
     const jwt = `${header}.${payload}.${signature}`;
 
     const result = redactJwt(jwt);
-    expect(result).toContain(header);
-    expect(result).toContain(payload);
+    expect(result).not.toContain(header);
+    expect(result).not.toContain(payload);
     expect(result).not.toContain(signature);
-    expect(result).toContain("[sig-redacted]");
+    expect(result).toBe("[JWT-REDACTED]");
   });
 
   it("preserves non-JWT text unchanged", () => {
@@ -520,13 +521,21 @@ describe("redactJwt", () => {
 
     const text = `First token: ${jwt} and second: ${jwt}`;
     const result = redactJwt(text);
-    expect((result.match(/\[sig-redacted\]/g) ?? []).length).toBe(2);
+    expect((result.match(/\[JWT-REDACTED\]/g) ?? []).length).toBe(2);
+    expect(result).not.toContain(header);
   });
 
   it("preserves partial JWT-looking strings that are not valid JWTs", () => {
     // Only two parts — not a JWT (needs 3)
     const text = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0";
     expect(redactJwt(text)).toBe(text);
+  });
+
+  it("replaces the full token including header and payload", () => {
+    const jwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.somesignaturehere";
+    const text = `Bearer ${jwt}`;
+    const result = redactJwt(text);
+    expect(result).toBe("Bearer [JWT-REDACTED]");
   });
 });
 
@@ -573,8 +582,9 @@ describe("redactBody", () => {
     const sig = "abc123defghijklmnopqrstuvwxyz";
     const jwt = `${header}.${payload}.${sig}`;
     const result = redactBody(jwt) as string;
-    expect(result).toContain("[sig-redacted]");
+    expect(result).toBe("[JWT-REDACTED]");
     expect(result).not.toContain(sig);
+    expect(result).not.toContain(header);
   });
 
   it("does not mutate input object", () => {
@@ -685,9 +695,9 @@ describe("redactRepairContext", () => {
 
     const result = redactRepairContext(ctx);
     expect(result.page!.snapshot).not.toContain(sig);
-    expect(result.page!.snapshot).toContain("[sig-redacted]");
+    expect(result.page!.snapshot).toContain("[JWT-REDACTED]");
     expect(result.page!.consoleErrors[0]).not.toContain(sig);
-    expect(result.page!.consoleErrors[0]).toContain("[sig-redacted]");
+    expect(result.page!.consoleErrors[0]).toContain("[JWT-REDACTED]");
   });
 
   it("redacts body in network requests", () => {
@@ -928,5 +938,134 @@ describe("buildRepairContext truncation", () => {
 
     expect(ctx.error.stack).toBeDefined();
     expect(ctx.error.stack).not.toContain("...[truncated]");
+  });
+});
+
+// ── isValidRepairContext ──────────────────────────────────────────────
+
+describe("isValidRepairContext", () => {
+  it("returns true for a valid RepairContext shape", () => {
+    const ctx = {
+      error: { code: "GENERIC_ERROR", message: "test" },
+      adapter: { site: "test", command: "cmd" },
+      timestamp: "2026-01-01T00:00:00.000Z",
+    };
+    expect(isValidRepairContext(ctx)).toBe(true);
+  });
+
+  it("returns false for null", () => {
+    expect(isValidRepairContext(null)).toBe(false);
+  });
+
+  it("returns false for a string", () => {
+    expect(isValidRepairContext("not an object")).toBe(false);
+  });
+
+  it("returns false for object without error field", () => {
+    expect(isValidRepairContext({ adapter: { site: "x", command: "y" } })).toBe(
+      false,
+    );
+  });
+
+  it("returns false for object with non-object error", () => {
+    expect(isValidRepairContext({ error: "string error" })).toBe(false);
+  });
+
+  it("returns false for error without message string", () => {
+    expect(isValidRepairContext({ error: { code: "ERR" } })).toBe(false);
+  });
+
+  it("returns false for truncated JSON payload (no message)", () => {
+    // Simulates what happens when diagnostic JSON is cut mid-stream
+    const truncated = { error: { code: "GENERIC_ERROR" }, _truncated: true };
+    expect(isValidRepairContext(truncated)).toBe(false);
+  });
+
+  it("returns true when all required fields are present", () => {
+    expect(
+      isValidRepairContext({
+        error: { message: "boom", code: "ERR" },
+        adapter: { site: "test" },
+      }),
+    ).toBe(true);
+  });
+
+  it("returns false when error.code is missing", () => {
+    expect(
+      isValidRepairContext({
+        error: { message: "boom" },
+        adapter: { site: "test" },
+      }),
+    ).toBe(false);
+  });
+
+  it("returns false when adapter.site is missing", () => {
+    expect(
+      isValidRepairContext({ error: { message: "boom", code: "ERR" } }),
+    ).toBe(false);
+  });
+});
+
+// ── bracket-notation param redaction ─────────────────────────────────
+
+describe("bracket-notation sensitive param redaction", () => {
+  it("redacts token[] in URL params", () => {
+    const result = redactUrl(
+      "https://example.com/api?token[]=abc&token[]=def&page=1",
+    );
+    expect(result).not.toContain("abc");
+    expect(result).not.toContain("def");
+    expect(result).toContain("page=1");
+  });
+
+  it("redacts password[field] in URL params", () => {
+    const result = redactUrl(
+      "https://example.com/login?password[new]=secret&user=bob",
+    );
+    expect(result).not.toContain("secret");
+    expect(result).toContain("user=bob");
+  });
+
+  it("redacts bracket-notation keys in redactBody", () => {
+    const body = {
+      "token[0]": "secret-a",
+      "token[1]": "secret-b",
+      username: "alice",
+    };
+    const result = redactBody(body) as Record<string, unknown>;
+    expect(result["token[0]"]).toBe("[REDACTED]");
+    expect(result["token[1]"]).toBe("[REDACTED]");
+    expect(result["username"]).toBe("alice");
+  });
+
+  it("redacts access_token[field] in body", () => {
+    const body = { "access_token[value]": "my-token", format: "json" };
+    const result = redactBody(body) as Record<string, unknown>;
+    expect(result["access_token[value]"]).toBe("[REDACTED]");
+    expect(result["format"]).toBe("json");
+  });
+});
+
+// ── redactBody depth limit ───────────────────────────────────────────
+
+describe("redactBody depth limit", () => {
+  it("returns [depth-limit] for deeply nested structures", () => {
+    // Build a structure 60 levels deep
+    let obj: Record<string, unknown> = { value: "leaf" };
+    for (let i = 0; i < 60; i++) {
+      obj = { nested: obj };
+    }
+    const result = redactBody(obj);
+    // Somewhere in the chain, it should hit the depth limit
+    const json = JSON.stringify(result);
+    expect(json).toContain("[depth-limit]");
+  });
+
+  it("does not hit depth limit for shallow structures", () => {
+    const body = { a: { b: { c: { d: "value" } } } };
+    const result = redactBody(body);
+    const json = JSON.stringify(result);
+    expect(json).not.toContain("[depth-limit]");
+    expect(json).toContain("value");
   });
 });

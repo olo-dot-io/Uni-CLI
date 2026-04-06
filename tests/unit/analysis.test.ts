@@ -125,6 +125,20 @@ describe("isNoiseUrl", () => {
       isNoiseUrl("https://myapp.com/page?redirect=https://cdn.segment.com/foo"),
     ).toBe(false);
   });
+
+  it("flags facebook.com tracking pixel at /tr path", () => {
+    expect(isNoiseUrl("https://www.facebook.com/tr?id=123&ev=PageView")).toBe(
+      true,
+    );
+  });
+
+  it("flags facebook.com domain even without /tr path", () => {
+    expect(isNoiseUrl("https://www.facebook.com/plugins/like.php")).toBe(true);
+  });
+
+  it("flags /tr path on any domain (generic tracking pixel)", () => {
+    expect(isNoiseUrl("https://example.com/tr")).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -421,6 +435,22 @@ describe("endpointSortKey", () => {
       body: [],
     });
     expect(key[2]).toBe(0);
+  });
+
+  it("uses first array item field count for wrapped responses", () => {
+    // Wrapper has 2 keys (data, total), but first item has 3 fields
+    const key = endpointSortKey({
+      url: "https://example.com/posts",
+      body: {
+        data: [
+          { id: 1, title: "A", author: "X" },
+          { id: 2, title: "B", author: "Y" },
+        ],
+        total: 100,
+      },
+    });
+    expect(key[0]).toBe(2); // itemCount = data.length
+    expect(key[1]).toBe(3); // fieldCount = first item's keys, not wrapper's
   });
 });
 

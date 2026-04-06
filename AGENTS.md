@@ -176,4 +176,4 @@ The engine auto-probes the first three on first run. `intercept` and `ui` requir
 
 ## Version
 
-0.205.0 — Vostok · Bykovsky
+0.207.1 — Vostok · Gagarin

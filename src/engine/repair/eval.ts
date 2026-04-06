@@ -5,14 +5,17 @@
 
 import { execSync } from "node:child_process";
 
+export type EvalJudge =
+  | { type: "contains"; value: string }
+  | { type: "arrayMinLength"; value: number }
+  | { type: "nonEmpty" }
+  | { type: "matchesPattern"; value: string };
+
 export interface EvalTask {
   name: string;
   command: string;
   args?: string[];
-  judge: {
-    type: "contains" | "arrayMinLength" | "nonEmpty" | "matchesPattern";
-    value?: string | number;
-  };
+  judge: EvalJudge;
 }
 
 export interface EvalResult {
@@ -66,13 +69,10 @@ export function runEval(tasks: EvalTask[]): {
 /**
  * Judge command output against a criterion.
  */
-export function judgeOutput(
-  output: string,
-  judge: EvalTask["judge"],
-): boolean {
+export function judgeOutput(output: string, judge: EvalJudge): boolean {
   switch (judge.type) {
     case "contains":
-      return output.includes(String(judge.value));
+      return output.includes(judge.value);
 
     case "nonEmpty":
       return output.trim().length > 0;
@@ -80,13 +80,13 @@ export function judgeOutput(
     case "arrayMinLength": {
       try {
         const arr: unknown = JSON.parse(output);
-        return Array.isArray(arr) && arr.length >= Number(judge.value);
+        return Array.isArray(arr) && arr.length >= judge.value;
       } catch {
         return false;
       }
     }
 
     case "matchesPattern":
-      return new RegExp(String(judge.value)).test(output);
+      return new RegExp(judge.value).test(output);
   }
 }

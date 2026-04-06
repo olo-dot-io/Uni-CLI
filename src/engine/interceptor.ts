@@ -109,22 +109,32 @@ export function generateInterceptorJs(
   var __patchedFetch = __disguise(async function() {
     var resp = await __origFetch.apply(this, arguments);
     var url = '';
+    var method = 'GET';
+    var reqBody = undefined;
     var firstArg = arguments[0];
     if (typeof firstArg === 'string') {
       url = firstArg;
-    } else if (firstArg && typeof firstArg === 'object' && firstArg.url) {
-      url = firstArg.url;
+      if (arguments[1]) {
+        if (arguments[1].method) method = arguments[1].method;
+        if (arguments[1].body) { try { reqBody = JSON.parse(arguments[1].body); } catch(_) {} }
+      }
+    } else if (firstArg && typeof firstArg === 'object') {
+      url = firstArg.url || '';
+      method = firstArg.method || 'GET';
+      if (arguments[1] && arguments[1].method) method = arguments[1].method;
+      if (arguments[1] && arguments[1].body) { try { reqBody = JSON.parse(arguments[1].body); } catch(_) {} }
     }
+    method = method.toUpperCase();
     if (__urlMatches(url)) {
       try {
         var clone = resp.clone();
         try {
           var json = await clone.json();
-          window.__unicli_intercepted.push({ url: url, data: json, ts: Date.now(), type: 'json' });
+          window.__unicli_intercepted.push({ url: url, data: json, ts: Date.now(), type: 'json', method: method, status: resp.status, requestBody: reqBody });
         } catch (_jsonErr) {
           if (__captureText) {
             var text = await resp.clone().text();
-            window.__unicli_intercepted.push({ url: url, data: text, ts: Date.now(), type: 'text' });
+            window.__unicli_intercepted.push({ url: url, data: text, ts: Date.now(), type: 'text', method: method, status: resp.status, requestBody: reqBody });
           }
         }
       } catch (_e) {}
@@ -139,20 +149,23 @@ export function generateInterceptorJs(
 
   XMLHttpRequest.prototype.open = __disguise(function(method, url) {
     __defHidden(this, '__unicli_url', typeof url === 'string' ? url : String(url));
+    __defHidden(this, '__unicli_method', (typeof method === 'string' ? method : 'GET').toUpperCase());
     return __origOpen.apply(this, arguments);
   }, __origOpen);
 
-  XMLHttpRequest.prototype.send = __disguise(function() {
+  XMLHttpRequest.prototype.send = __disguise(function(body) {
     var xhr = this;
     var captureUrl = xhr.__unicli_url || '';
+    var reqBody = undefined;
+    if (body) { try { reqBody = JSON.parse(body); } catch(_) {} }
     if (__urlMatches(captureUrl)) {
       xhr.addEventListener('load', function() {
         try {
           var json = JSON.parse(xhr.responseText);
-          window.__unicli_intercepted.push({ url: captureUrl, data: json, ts: Date.now(), type: 'json' });
+          window.__unicli_intercepted.push({ url: captureUrl, data: json, ts: Date.now(), type: 'json', method: xhr.__unicli_method || 'GET', status: xhr.status, requestBody: reqBody });
         } catch (_jsonErr) {
           if (__captureText) {
-            window.__unicli_intercepted.push({ url: captureUrl, data: xhr.responseText, ts: Date.now(), type: 'text' });
+            window.__unicli_intercepted.push({ url: captureUrl, data: xhr.responseText, ts: Date.now(), type: 'text', method: xhr.__unicli_method || 'GET', status: xhr.status, requestBody: reqBody });
           }
         }
       });

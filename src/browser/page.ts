@@ -737,8 +737,9 @@ export class BrowserPage implements IPage {
   async sendCDP(
     method: string,
     params?: Record<string, unknown>,
+    sessionId?: string,
   ): Promise<unknown> {
-    return this.client.send(method, params);
+    return this.client.send(method, params, sessionId);
   }
 
   /**
