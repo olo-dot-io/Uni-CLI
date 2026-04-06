@@ -96,8 +96,9 @@ export async function runRepairLoop(
       // Timeout or error — continue to verify
     }
 
-    // Phase 4: Commit
-    const committed = commitScopeFiles(scopeFiles, i);
+    // Phase 4: Commit — re-resolve scope AFTER Claude ran so new files are included
+    const freshScopeFiles = resolveScope(config.scope);
+    const committed = commitScopeFiles(freshScopeFiles, config.scope, i);
 
     // Phase 5: Verify
     let metric: number;
@@ -147,6 +148,10 @@ export async function runRepairLoop(
       status = "discard";
       if (committed) {
         safeRevert();
+      } else {
+        // Nothing was committed but Claude may have left unstaged changes in scope —
+        // clean them up so the next iteration starts from a clean working tree.
+        safeRevertUnstaged(freshScopeFiles);
       }
     }
 
@@ -162,15 +167,25 @@ export async function runRepairLoop(
 
     // Early exit on perfect score
     const perfectScore = extractPerfectScore(config);
-    if (perfectScore !== null && metric >= perfectScore) break;
+    if (perfectScore !== null) {
+      const reachedPerfect =
+        config.direction === "lower"
+          ? metric <= perfectScore && metric <= 0
+          : metric >= perfectScore;
+      if (reachedPerfect) break;
+    }
   }
 
   const allLogs = logger.readAll();
+  const improved =
+    config.direction === "lower"
+      ? bestMetric < initialMetric
+      : bestMetric > initialMetric;
   return {
     iterations: allLogs.length,
     finalMetric: bestMetric,
     bestMetric,
-    improved: bestMetric > initialMetric,
+    improved,
     log: allLogs,
   };
 }
@@ -221,11 +236,25 @@ function resolveScope(patterns: string[]): string[] {
   return files;
 }
 
-function commitScopeFiles(scopeFiles: string[], iteration: number): boolean {
+function commitScopeFiles(
+  scopeFiles: string[],
+  scopePatterns: string[],
+  iteration: number,
+): boolean {
   try {
-    if (scopeFiles.length === 0) return false;
-    const paths = scopeFiles.map((f) => `"${f}"`).join(" ");
-    execSync(`git add ${paths}`, { encoding: "utf-8" });
+    // Stage known resolved files first
+    if (scopeFiles.length > 0) {
+      const paths = scopeFiles.map((f) => `"${f}"`).join(" ");
+      safeExec(`git add ${paths}`);
+    }
+    // Also stage any new files matching the scope glob patterns (handles files
+    // created by Claude that weren't in the pre-run resolveScope result).
+    for (const pattern of scopePatterns) {
+      safeExec(`git add --ignore-errors -- ${pattern}`);
+    }
+    // Check if there is anything staged before committing
+    const staged = safeExec("git diff --cached --name-only").trim();
+    if (!staged) return false;
     execSync(`git commit -m "repair: auto-fix iteration ${iteration}"`, {
       encoding: "utf-8",
     });
@@ -244,6 +273,21 @@ function safeRevert(): void {
     } catch {
       // Give up
     }
+  }
+}
+
+/**
+ * Discard unstaged changes to the given files. Used when commit returned false
+ * (nothing was staged/committed) but Claude may have modified scope files
+ * without staging them.
+ */
+function safeRevertUnstaged(files: string[]): void {
+  if (files.length === 0) return;
+  const paths = files.map((f) => `"${f}"`).join(" ");
+  safeExec(`git checkout -- ${paths}`);
+  // Also remove any untracked files in scope (new files that were never staged)
+  for (const f of files) {
+    safeExec(`git clean -f -- "${f}"`);
   }
 }
 
