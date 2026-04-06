@@ -17,7 +17,7 @@ import {
   generateReadInterceptedJs,
 } from "../engine/interceptor.js";
 import {
-  scoreEndpoints,
+  processEndpoints,
   type EndpointEntry,
   type ScoredEndpoint,
 } from "../engine/endpoint-scorer.js";
@@ -34,7 +34,6 @@ interface CandidateInfo {
   name: string;
   file: string;
   endpoint: string;
-  score: number;
   capability: string | undefined;
   strategy: string;
 }
@@ -212,10 +211,9 @@ export function registerGenerateCommand(program: Command): void {
             );
           }
 
-          // Convert and score
+          // Convert, filter, sort, annotate, and deduplicate
           const entries = convertToEndpointEntries(allRequests);
-          const scored = scoreEndpoints(entries);
-          const usable = scored.filter((ep) => ep.score > 0);
+          const usable = processEndpoints(entries);
 
           if (usable.length === 0) {
             const msg = "No usable API endpoints found.";
@@ -268,7 +266,6 @@ export function registerGenerateCommand(program: Command): void {
               name,
               file: filePath,
               endpoint: ep.url,
-              score: ep.score,
               capability: ep.capability,
               strategy,
             });
@@ -310,7 +307,6 @@ export function registerGenerateCommand(program: Command): void {
                   site: siteName,
                   name: winner.name,
                   capability: winner.capability,
-                  score: winner.score,
                   strategy: winner.strategy,
                   adapterPath: destPath,
                   yaml: yamlContent,
@@ -323,9 +319,7 @@ export function registerGenerateCommand(program: Command): void {
           } else {
             process.stderr.write(
               chalk.green(`\n  ✓ Selected: ${winner.name}`) +
-                chalk.dim(
-                  ` (score: ${winner.score}, capability: ${winner.capability ?? "general"})`,
-                ) +
+                chalk.dim(` (capability: ${winner.capability ?? "general"})`) +
                 "\n",
             );
             process.stderr.write(chalk.dim(`  Installed to: ${destPath}\n\n`));
@@ -353,8 +347,8 @@ function selectBest(
   goal: string | undefined,
 ): CandidateInfo {
   if (!goal) {
-    // No goal — return highest score
-    return candidates.reduce((best, c) => (c.score > best.score ? c : best));
+    // No goal — return first candidate (processEndpoints already sorted by quality)
+    return candidates[0];
   }
 
   // Map goal to capability via alias table
@@ -375,10 +369,10 @@ function selectBest(
   // Fallback: fuzzy match goal words against candidate names and capabilities
   const goalWords = goal.toLowerCase().split(/\s+/);
   let bestMatch = candidates[0];
-  let bestMatchScore = 0;
+  let bestMatchCount = 0;
 
   for (const candidate of candidates) {
-    let matchScore = 0;
+    let matchCount = 0;
     const text = [
       candidate.name,
       candidate.capability ?? "",
@@ -389,15 +383,12 @@ function selectBest(
 
     for (const word of goalWords) {
       if (text.includes(word)) {
-        matchScore += 1;
+        matchCount += 1;
       }
     }
 
-    // Weight by endpoint score too
-    matchScore += candidate.score / 100;
-
-    if (matchScore > bestMatchScore) {
-      bestMatchScore = matchScore;
+    if (matchCount > bestMatchCount) {
+      bestMatchCount = matchCount;
       bestMatch = candidate;
     }
   }

@@ -405,7 +405,11 @@ export function emitRepairContext(ctx: RepairContext): void {
   if (json.length > MAX_DIAGNOSTIC_BYTES) {
     // Stage 3: hard truncate — wrap in a valid JSON envelope so output is always parseable
     const truncated = json.slice(0, MAX_DIAGNOSTIC_BYTES - 100);
-    json = JSON.stringify({ _truncated: true, _originalSize: json.length, partial: truncated });
+    json = JSON.stringify({
+      _truncated: true,
+      _originalSize: json.length,
+      partial: truncated,
+    });
   }
 
   process.stderr.write(`\n${marker}\n${json}\n${marker}\n`);

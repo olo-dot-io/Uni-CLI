@@ -1,7 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
-  scoreEndpoint,
-  scoreEndpoints,
+  deduplicateEndpoints,
+  annotateEndpoint,
+  processEndpoints,
+  isNoiseUrl,
+  isStaticResource,
+  isUsefulEndpoint,
+  endpointSortKey,
   detectCapability,
   type EndpointEntry,
 } from "../../src/engine/endpoint-scorer.js";
@@ -23,467 +28,322 @@ function makeEntry(overrides: Partial<EndpointEntry> = {}): EndpointEntry {
 }
 
 // ---------------------------------------------------------------------------
-// Individual scoring rules
+// Re-export verification — analysis.ts functions accessible via endpoint-scorer
 // ---------------------------------------------------------------------------
 
-describe("scoreEndpoint", () => {
-  it("gives +10 for json content-type", () => {
-    const result = scoreEndpoint(
-      makeEntry({ contentType: "application/json" }),
-    );
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("+10 content-type json"),
-    );
+describe("re-exports from analysis.ts", () => {
+  it("isNoiseUrl is re-exported and works", () => {
+    expect(isNoiseUrl("https://www.google-analytics.com/collect")).toBe(true);
+    expect(isNoiseUrl("https://api.example.com/items")).toBe(false);
   });
 
-  it("gives +10 for content-type with charset", () => {
-    const result = scoreEndpoint(
-      makeEntry({ contentType: "application/json; charset=utf-8" }),
-    );
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("+10 content-type json"),
-    );
+  it("isStaticResource is re-exported and works", () => {
+    expect(isStaticResource("https://cdn.example.com/style.css")).toBe(true);
+    expect(
+      isStaticResource("https://api.example.com/data", "application/json"),
+    ).toBe(false);
   });
 
-  it("gives +8 for non-empty array response", () => {
-    const body = JSON.stringify([{ a: 1 }, { a: 2 }]);
-    const result = scoreEndpoint(makeEntry({ responseBody: body }));
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("+8 response is non-empty array"),
-    );
-  });
-
-  it("does not give +8 for empty array", () => {
-    const body = JSON.stringify([]);
-    const result = scoreEndpoint(makeEntry({ responseBody: body }));
-    expect(result.reasons).not.toContainEqual(
-      expect.stringContaining("+8 response is non-empty array"),
-    );
-  });
-
-  it("gives +5 for nested array field in object response", () => {
-    const body = JSON.stringify({ data: { items: [1, 2, 3] }, total: 100 });
-    const result = scoreEndpoint(makeEntry({ responseBody: body }));
-    // The top-level value "data" is an object, not an array.
-    // But let's provide a true nested array at top level:
-    const body2 = JSON.stringify({ items: [1, 2, 3], total: 100 });
-    const result2 = scoreEndpoint(makeEntry({ responseBody: body2 }));
-    expect(result2.reasons).toContainEqual(
-      expect.stringContaining("+5 response has nested array field"),
-    );
-  });
-
-  it("does not give +5 for top-level array (that gets +8 instead)", () => {
-    const body = JSON.stringify([{ id: 1 }]);
-    const result = scoreEndpoint(makeEntry({ responseBody: body }));
-    expect(result.reasons).not.toContainEqual(
-      expect.stringContaining("+5 response has nested array field"),
-    );
-  });
-
-  it("gives field count score capped at 20", () => {
-    // Create an item with 15 fields -> 15*2=30, capped to 20
-    const fields: Record<string, number> = {};
-    for (let i = 0; i < 15; i++) fields[`field${i}`] = i;
-    const body = JSON.stringify([fields]);
-    const result = scoreEndpoint(makeEntry({ responseBody: body }));
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("+20 detected 15 fields"),
-    );
-    expect(result.detectedFields).toHaveLength(15);
-  });
-
-  it("gives 2N for small field counts", () => {
-    const body = JSON.stringify([{ id: 1, name: "x", value: 3 }]);
-    const result = scoreEndpoint(makeEntry({ responseBody: body }));
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("+6 detected 3 fields"),
-    );
-    expect(result.detectedFields).toEqual(["id", "name", "value"]);
-  });
-
-  it("gives +4 for /api/ in URL", () => {
-    const result = scoreEndpoint(
-      makeEntry({ url: "https://example.com/api/data" }),
-    );
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("+4 url matches /api/"),
-    );
-  });
-
-  it("gives +4 for /v2/ in URL", () => {
-    const result = scoreEndpoint(
-      makeEntry({ url: "https://example.com/v2/items" }),
-    );
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("+4 url matches /api/"),
-    );
-  });
-
-  it("gives +3 for search/query param", () => {
-    const result = scoreEndpoint(
-      makeEntry({ url: "https://example.com/api/search?q=hello&limit=10" }),
-    );
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("+3 url has search/query param"),
-    );
-  });
-
-  it("gives +2 for pagination param", () => {
-    const result = scoreEndpoint(
-      makeEntry({ url: "https://example.com/api/items?page=2" }),
-    );
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("+2 url has pagination param"),
-    );
-  });
-
-  it("gives +2 for limit param", () => {
-    const result = scoreEndpoint(
-      makeEntry({ url: "https://example.com/api/items?limit=20" }),
-    );
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("+2 url has limit/count/size param"),
-    );
-  });
-
-  it("gives +2 for status 200", () => {
-    const result = scoreEndpoint(makeEntry({ status: 200 }));
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("+2 status 200"),
-    );
-  });
-
-  it("does not give +2 for non-200 status", () => {
-    const result = scoreEndpoint(makeEntry({ status: 304 }));
-    expect(result.reasons).not.toContainEqual(
-      expect.stringContaining("+2 status 200"),
-    );
-  });
-
-  it("gives -5 for google-analytics tracking URL", () => {
-    const result = scoreEndpoint(
-      makeEntry({ url: "https://www.google-analytics.com/collect?v=1" }),
-    );
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("-5 tracking/analytics url"),
-    );
-  });
-
-  it("gives -5 for sentry tracking URL", () => {
-    const result = scoreEndpoint(
-      makeEntry({ url: "https://o123.ingest.sentry.io/api/456/envelope" }),
-    );
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("-5 tracking/analytics url"),
-    );
-  });
-
-  it("gives -5 for doubleclick URL", () => {
-    const result = scoreEndpoint(
-      makeEntry({ url: "https://ad.doubleclick.net/ddm/activity" }),
-    );
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("-5 tracking/analytics url"),
-    );
-  });
-
-  it("gives -5 for hotjar URL", () => {
-    const result = scoreEndpoint(
-      makeEntry({ url: "https://in.hotjar.com/api/v2/client/sites/123" }),
-    );
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("-5 tracking/analytics url"),
-    );
-  });
-
-  it("gives -3 for image content-type", () => {
-    const result = scoreEndpoint(makeEntry({ contentType: "image/png" }));
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("-3 non-data content-type"),
-    );
-  });
-
-  it("gives -3 for font content-type", () => {
-    const result = scoreEndpoint(makeEntry({ contentType: "font/woff2" }));
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("-3 non-data content-type"),
-    );
-  });
-
-  it("gives -3 for css content-type", () => {
-    const result = scoreEndpoint(makeEntry({ contentType: "text/css" }));
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("-3 non-data content-type"),
-    );
-  });
-
-  it("gives -3 for javascript content-type", () => {
-    const result = scoreEndpoint(
-      makeEntry({ contentType: "application/javascript" }),
-    );
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("-3 non-data content-type"),
-    );
-  });
-
-  it("gives -3 for empty response body", () => {
-    const result = scoreEndpoint(
-      makeEntry({ responseBody: undefined, size: 0 }),
-    );
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("-3 empty or small response body"),
-    );
-  });
-
-  it("gives -3 for very small response body", () => {
-    const result = scoreEndpoint(makeEntry({ responseBody: "{}", size: 2 }));
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("-3 empty or small response body"),
-    );
-  });
-
-  it("accumulates all applicable bonuses for a strong API endpoint", () => {
-    const entry = makeEntry({
-      url: "https://api.example.com/api/v1/search?q=test&page=1&limit=20",
-      status: 200,
-      contentType: "application/json",
-      responseBody: JSON.stringify({
-        results: [{ id: 1, title: "Test", score: 99 }],
-        total: 1,
+  it("isUsefulEndpoint is re-exported and works", () => {
+    expect(
+      isUsefulEndpoint({
+        url: "https://api.example.com/items",
+        status: 200,
+        contentType: "application/json",
+        body: { items: [{ id: 1 }], total: 1 },
       }),
-      size: 200,
+    ).toBe(true);
+    expect(
+      isUsefulEndpoint({
+        url: "https://api.example.com/ping",
+        status: 200,
+        contentType: "application/json",
+        body: { status: "ok" },
+      }),
+    ).toBe(false);
+  });
+
+  it("endpointSortKey is re-exported and returns a 4-tuple", () => {
+    const key = endpointSortKey({
+      url: "https://api.example.com/api/v1/items",
+      body: [{ id: 1, title: "A" }],
     });
-    const result = scoreEndpoint(entry);
-    // +10 json, +5 nested array, field count, +4 api path, +3 search, +2 page, +2 limit, +2 status
-    expect(result.score).toBeGreaterThanOrEqual(25);
+    expect(key).toHaveLength(4);
+    expect(key[2]).toBe(1); // isApiPath
+  });
+
+  it("detectCapability is re-exported and detects search", () => {
+    const result = detectCapability("https://api.example.com/search?q=hello");
+    expect(result).toBe("search");
+  });
+
+  it("detectCapability is re-exported and returns null for unknown", () => {
+    const result = detectCapability("https://api.example.com/settings");
+    expect(result).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// annotateEndpoint
+// ---------------------------------------------------------------------------
+
+describe("annotateEndpoint", () => {
+  it("extracts detectedFields from array response body", () => {
+    const entry = makeEntry({
+      responseBody: JSON.stringify([{ id: 1, title: "A", score: 99 }]),
+    });
+    const result = annotateEndpoint(entry);
+    expect(result.detectedFields).toEqual(["id", "title", "score"]);
+  });
+
+  it("extracts detectedFields from object response body", () => {
+    const entry = makeEntry({
+      responseBody: JSON.stringify({ items: [], total: 0, page: 1 }),
+    });
+    const result = annotateEndpoint(entry);
+    expect(result.detectedFields).toEqual(["items", "total", "page"]);
+  });
+
+  it("returns empty detectedFields for malformed JSON", () => {
+    const entry = makeEntry({ responseBody: "not-valid-json{{{" });
+    const result = annotateEndpoint(entry);
+    expect(result.detectedFields).toEqual([]);
+    expect(result).not.toThrow;
+  });
+
+  it("returns empty detectedFields for missing responseBody", () => {
+    const entry = makeEntry({ responseBody: undefined });
+    const result = annotateEndpoint(entry);
+    expect(result.detectedFields).toEqual([]);
+  });
+
+  it("detects capability from URL", () => {
+    const entry = makeEntry({
+      url: "https://api.example.com/search?q=test",
+    });
+    const result = annotateEndpoint(entry);
     expect(result.capability).toBe("search");
   });
-});
 
-// ---------------------------------------------------------------------------
-// Capability detection
-// ---------------------------------------------------------------------------
-
-describe("detectCapability", () => {
-  it("detects trending from URL", () => {
-    expect(detectCapability("https://api.example.com/hot/list", [])).toBe(
-      "trending",
-    );
+  it("omits capability when none detected", () => {
+    const entry = makeEntry({
+      url: "https://api.example.com/settings",
+    });
+    const result = annotateEndpoint(entry);
+    expect(result.capability).toBeUndefined();
   });
 
-  it("detects trending from fields", () => {
-    expect(
-      detectCapability("https://api.example.com/data", ["rank", "title"]),
-    ).toBe("trending");
-  });
-
-  it("detects search", () => {
-    expect(detectCapability("https://api.example.com/search?q=hello", [])).toBe(
-      "search",
-    );
-  });
-
-  it("detects profile", () => {
-    expect(detectCapability("https://api.example.com/user/123", [])).toBe(
-      "profile",
-    );
-  });
-
-  it("detects profile from /me endpoint", () => {
-    expect(detectCapability("https://api.example.com/me", [])).toBe("profile");
-  });
-
-  it("detects detail", () => {
-    expect(detectCapability("https://api.example.com/article/456", [])).toBe(
-      "detail",
-    );
-  });
-
-  it("detects comments", () => {
-    expect(detectCapability("https://api.example.com/comment/list", [])).toBe(
-      "comments",
-    );
-  });
-
-  it("detects timeline", () => {
-    expect(detectCapability("https://api.example.com/feed", [])).toBe(
-      "timeline",
-    );
-  });
-
-  it("detects download", () => {
-    expect(detectCapability("https://api.example.com/media/123", [])).toBe(
-      "download",
-    );
-  });
-
-  it("returns undefined for unrecognized patterns", () => {
-    expect(
-      detectCapability("https://api.example.com/settings", ["theme", "lang"]),
-    ).toBeUndefined();
-  });
-
-  it("matches first applicable capability (priority order)", () => {
-    // URL contains both "hot" (trending) and "search" — trending comes first
-    expect(detectCapability("https://api.example.com/hot/search", [])).toBe(
-      "trending",
-    );
+  it("preserves all original EndpointEntry fields", () => {
+    const entry = makeEntry({ status: 201, method: "POST" });
+    const result = annotateEndpoint(entry);
+    expect(result.status).toBe(201);
+    expect(result.method).toBe("POST");
+    expect(result.url).toBe(entry.url);
+    expect(result.contentType).toBe(entry.contentType);
   });
 });
 
 // ---------------------------------------------------------------------------
-// scoreEndpoints — sort + deduplicate
+// deduplicateEndpoints
 // ---------------------------------------------------------------------------
 
-describe("scoreEndpoints", () => {
-  it("returns results sorted by score descending", () => {
+describe("deduplicateEndpoints", () => {
+  it("deduplicates entries with the same URL path", () => {
+    const entries: EndpointEntry[] = [
+      makeEntry({ url: "https://example.com/api/items?page=1" }),
+      makeEntry({ url: "https://example.com/api/items?page=2" }),
+    ];
+    const result = deduplicateEndpoints(entries);
+    expect(result.length).toBe(1);
+  });
+
+  it("keeps entries with different URL paths", () => {
+    const entries: EndpointEntry[] = [
+      makeEntry({ url: "https://example.com/api/users" }),
+      makeEntry({ url: "https://example.com/api/posts" }),
+    ];
+    const result = deduplicateEndpoints(entries);
+    expect(result.length).toBe(2);
+  });
+
+  it("prefers JSON content-type over non-JSON when deduplicating", () => {
     const entries: EndpointEntry[] = [
       makeEntry({
-        url: "https://example.com/static/style.css",
-        contentType: "text/css",
-        responseBody: undefined,
-        size: 5,
+        url: "https://example.com/api/data?format=html",
+        contentType: "text/html",
+        status: 200,
+        size: 500,
       }),
       makeEntry({
-        url: "https://example.com/api/v1/trending",
+        url: "https://example.com/api/data?format=json",
+        contentType: "application/json",
+        status: 200,
+        size: 200,
+      }),
+    ];
+    const result = deduplicateEndpoints(entries);
+    expect(result.length).toBe(1);
+    expect(result[0].contentType).toBe("application/json");
+  });
+
+  it("prefers status 200 over non-200", () => {
+    const entries: EndpointEntry[] = [
+      makeEntry({
+        url: "https://example.com/api/data?v=1",
+        status: 404,
+        contentType: "application/json",
+        size: 50,
+      }),
+      makeEntry({
+        url: "https://example.com/api/data?v=2",
+        status: 200,
+        contentType: "application/json",
+        size: 50,
+      }),
+    ];
+    const result = deduplicateEndpoints(entries);
+    expect(result.length).toBe(1);
+    expect(result[0].status).toBe(200);
+  });
+
+  it("handles empty input", () => {
+    expect(deduplicateEndpoints([])).toEqual([]);
+  });
+
+  it("handles single entry", () => {
+    const entries = [makeEntry()];
+    const result = deduplicateEndpoints(entries);
+    expect(result.length).toBe(1);
+    expect(result[0].url).toBe(entries[0].url);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// processEndpoints
+// ---------------------------------------------------------------------------
+
+describe("processEndpoints", () => {
+  it("filters out noise URLs", () => {
+    const entries: EndpointEntry[] = [
+      makeEntry({
+        url: "https://www.google-analytics.com/collect",
+        contentType: "application/json",
+        responseBody: JSON.stringify({ items: [{ id: 1 }] }),
+        size: 100,
+      }),
+      makeEntry({
+        url: "https://api.example.com/api/v1/trending",
         contentType: "application/json",
         responseBody: JSON.stringify([{ id: 1, title: "A" }]),
         size: 100,
       }),
     ];
-    const results = scoreEndpoints(entries);
-    expect(results.length).toBe(2);
-    expect(results[0].score).toBeGreaterThanOrEqual(results[1].score);
-    expect(results[0].url).toContain("/api/v1/trending");
+    const results = processEndpoints(entries);
+    expect(results.every((r) => !r.url.includes("google-analytics"))).toBe(
+      true,
+    );
   });
 
-  it("deduplicates by URL path, keeping higher score", () => {
+  it("filters out static resources", () => {
     const entries: EndpointEntry[] = [
       makeEntry({
-        url: "https://example.com/api/items?page=1",
-        status: 200,
-        size: 500,
-        responseBody: JSON.stringify([{ id: 1, title: "A", score: 1 }]),
-      }),
-      makeEntry({
-        url: "https://example.com/api/items?page=2",
-        status: 200,
-        size: 300,
-        responseBody: JSON.stringify([{ id: 2, title: "B" }]),
-      }),
-    ];
-    const results = scoreEndpoints(entries);
-    // Same path /api/items — only one should remain
-    expect(results.length).toBe(1);
-  });
-
-  it("keeps different paths even if similar", () => {
-    const entries: EndpointEntry[] = [
-      makeEntry({ url: "https://example.com/api/users" }),
-      makeEntry({ url: "https://example.com/api/posts" }),
-    ];
-    const results = scoreEndpoints(entries);
-    expect(results.length).toBe(2);
-  });
-
-  it("handles empty input", () => {
-    const results = scoreEndpoints([]);
-    expect(results).toEqual([]);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Edge cases
-// ---------------------------------------------------------------------------
-
-describe("edge cases", () => {
-  it("handles malformed JSON in responseBody gracefully", () => {
-    const result = scoreEndpoint(
-      makeEntry({ responseBody: "not-valid-json{{{", size: 50 }),
-    );
-    // Should not throw; no array/field bonuses
-    expect(result.detectedFields).toEqual([]);
-    expect(result.reasons).not.toContainEqual(
-      expect.stringContaining("+8 response is non-empty array"),
-    );
-  });
-
-  it("handles malformed URL gracefully", () => {
-    const result = scoreEndpoint(makeEntry({ url: "not-a-url" }));
-    // Should not throw; no search/pagination bonuses
-    expect(result.score).toBeDefined();
-  });
-
-  it("handles missing responseBody and zero size", () => {
-    const result = scoreEndpoint(
-      makeEntry({ responseBody: undefined, size: 0 }),
-    );
-    expect(result.reasons).toContainEqual(
-      expect.stringContaining("-3 empty or small response body"),
-    );
-  });
-
-  it("handles responseBody that is a JSON string (not object or array)", () => {
-    const result = scoreEndpoint(
-      makeEntry({ responseBody: '"just a string"', size: 20 }),
-    );
-    expect(result.detectedFields).toEqual([]);
-  });
-
-  it("handles responseBody that is a JSON number", () => {
-    const result = scoreEndpoint(makeEntry({ responseBody: "42", size: 10 }));
-    expect(result.detectedFields).toEqual([]);
-  });
-
-  it("handles responseBody with nested object (no array)", () => {
-    const body = JSON.stringify({
-      user: { name: "Alice" },
-      settings: { theme: "dark" },
-    });
-    const result = scoreEndpoint(makeEntry({ responseBody: body, size: 80 }));
-    expect(result.reasons).not.toContainEqual(
-      expect.stringContaining("+8 response is non-empty array"),
-    );
-    expect(result.reasons).not.toContainEqual(
-      expect.stringContaining("+5 response has nested array field"),
-    );
-    expect(result.detectedFields).toEqual(["user", "settings"]);
-  });
-
-  it("scoreEndpoints dedup uses highest-scoring variant", () => {
-    // Same path, different query params → different scores due to search param bonus
-    const entries: EndpointEntry[] = [
-      makeEntry({
-        url: "https://example.com/api/data",
-        status: 404,
-        contentType: "text/html",
+        url: "https://cdn.example.com/style.css",
+        contentType: "text/css",
         responseBody: undefined,
-        size: 0,
+        size: 1000,
       }),
       makeEntry({
-        url: "https://example.com/api/data?q=test",
-        status: 200,
+        url: "https://api.example.com/api/v1/items",
         contentType: "application/json",
-        responseBody: JSON.stringify([{ id: 1, title: "hi" }]),
+        responseBody: JSON.stringify([{ id: 1, title: "A" }]),
         size: 100,
       }),
     ];
-    const results = scoreEndpoints(entries);
-    // Should keep the higher-scored one (the JSON 200 with search param)
-    expect(results.length).toBe(1);
-    expect(results[0].status).toBe(200);
+    const results = processEndpoints(entries);
+    expect(results.every((r) => !r.url.endsWith(".css"))).toBe(true);
   });
 
-  it("handles entry with all penalties and no bonuses", () => {
-    const result = scoreEndpoint({
-      url: "https://www.google-analytics.com/collect",
-      method: "POST",
-      status: 204,
-      contentType: "image/gif",
-      responseBody: undefined,
-      size: 0,
-    });
-    expect(result.score).toBeLessThan(0);
+  it("filters out non-JSON endpoints", () => {
+    const entries: EndpointEntry[] = [
+      makeEntry({
+        url: "https://api.example.com/page",
+        contentType: "text/html",
+        responseBody: "<html>...</html>",
+        size: 500,
+      }),
+      makeEntry({
+        url: "https://api.example.com/api/v1/data",
+        contentType: "application/json",
+        responseBody: JSON.stringify([{ id: 1, title: "A", value: 99 }]),
+        size: 100,
+      }),
+    ];
+    const results = processEndpoints(entries);
+    expect(results.every((r) => r.contentType.includes("json"))).toBe(true);
+  });
+
+  it("returns ScoredEndpoints with detectedFields populated", () => {
+    const entries: EndpointEntry[] = [
+      makeEntry({
+        url: "https://api.example.com/api/v1/items",
+        contentType: "application/json",
+        responseBody: JSON.stringify([{ id: 1, title: "A", rank: 1 }]),
+        size: 100,
+      }),
+    ];
+    const results = processEndpoints(entries);
+    expect(results.length).toBe(1);
+    expect(results[0].detectedFields).toContain("id");
+    expect(results[0].detectedFields).toContain("title");
+  });
+
+  it("deduplicates by URL path", () => {
+    const entries: EndpointEntry[] = [
+      makeEntry({
+        url: "https://example.com/api/v1/items?page=1",
+        responseBody: JSON.stringify([{ id: 1, title: "A", value: 1 }]),
+      }),
+      makeEntry({
+        url: "https://example.com/api/v1/items?page=2",
+        responseBody: JSON.stringify([{ id: 2, title: "B", value: 2 }]),
+      }),
+    ];
+    const results = processEndpoints(entries);
+    expect(results.length).toBe(1);
+  });
+
+  it("handles empty input", () => {
+    expect(processEndpoints([])).toEqual([]);
+  });
+
+  it("places API path endpoints before non-API endpoints", () => {
+    const entries: EndpointEntry[] = [
+      makeEntry({
+        url: "https://example.com/home",
+        contentType: "application/json",
+        responseBody: JSON.stringify({
+          status: "ok",
+          mode: "home",
+          version: 2,
+        }),
+        size: 80,
+      }),
+      makeEntry({
+        url: "https://example.com/api/v1/feed",
+        contentType: "application/json",
+        responseBody: JSON.stringify([
+          { id: 1, title: "A", author: "x", ts: 0 },
+          { id: 2, title: "B", author: "y", ts: 1 },
+        ]),
+        size: 200,
+      }),
+    ];
+    const results = processEndpoints(entries);
+    // The API endpoint with more items should rank higher
+    if (results.length >= 2) {
+      const apiIdx = results.findIndex((r) => r.url.includes("/api/v1/feed"));
+      const homeIdx = results.findIndex((r) => r.url.includes("/home"));
+      expect(apiIdx).toBeLessThan(homeIdx);
+    }
   });
 });

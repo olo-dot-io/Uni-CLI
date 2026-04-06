@@ -149,7 +149,10 @@ export function isStaticResource(url: string, contentType?: string): boolean {
     // malformed URL — try raw string
     const dot = url.lastIndexOf(".");
     if (dot !== -1) {
-      const ext = url.slice(dot, dot + 10).toLowerCase().split(/[?#]/)[0];
+      const ext = url
+        .slice(dot, dot + 10)
+        .toLowerCase()
+        .split(/[?#]/)[0];
       if (STATIC_EXTENSIONS.has(ext)) return true;
     }
   }
@@ -248,11 +251,7 @@ export function endpointSortKey(entry: {
   if (body !== null && body !== undefined) {
     if (Array.isArray(body)) {
       itemCount = body.length;
-      if (
-        body.length > 0 &&
-        typeof body[0] === "object" &&
-        body[0] !== null
-      ) {
+      if (body.length > 0 && typeof body[0] === "object" && body[0] !== null) {
         fieldCount = Object.keys(body[0] as Record<string, unknown>).length;
       }
     } else if (typeof body === "object") {
@@ -271,8 +270,9 @@ export function endpointSortKey(entry: {
 
   // Test API path regex against pathname only to avoid false positives from
   // query params that happen to contain /api/ or /v1/.
-  const isApiPath =
-    /\/api\/|\/v[1-9]\d*\/|\/graphql\b/i.test(safePathname(url)) ? 1 : 0;
+  const isApiPath = /\/api\/|\/v[1-9]\d*\/|\/graphql\b/i.test(safePathname(url))
+    ? 1
+    : 0;
 
   let hasParams = 0;
   try {
@@ -296,15 +296,18 @@ interface CapabilityRule {
 const URL_CAPABILITY_RULES: CapabilityRule[] = [
   { urlPattern: /\/search(\/|$|\?)|\/query(\/|$|\?)/i, label: "search" },
   {
-    urlPattern: /\/hot(\/|$|\?)|\/trending(\/|$|\?)|\/popular(\/|$|\?)|\/rank(\/|$|\?)|\/top(\/|$|\?)/i,
+    urlPattern:
+      /\/hot(\/|$|\?)|\/trending(\/|$|\?)|\/popular(\/|$|\?)|\/rank(\/|$|\?)|\/top(\/|$|\?)/i,
     label: "hot",
   },
   {
-    urlPattern: /\/feed(\/|$|\?)|\/timeline(\/|$|\?)|\/stream(\/|$|\?)|\/latest(\/|$|\?)|\/new(\/|$|\?)/i,
+    urlPattern:
+      /\/feed(\/|$|\?)|\/timeline(\/|$|\?)|\/stream(\/|$|\?)|\/latest(\/|$|\?)|\/new(\/|$|\?)/i,
     label: "feed",
   },
   {
-    urlPattern: /\/profile(\/|$|\?)|\/user(\/|$|\?)|\/account(\/|$|\?)|\/me(\/|$|\?)/i,
+    urlPattern:
+      /\/profile(\/|$|\?)|\/user(\/|$|\?)|\/account(\/|$|\?)|\/me(\/|$|\?)/i,
     label: "profile",
   },
   {
@@ -312,11 +315,13 @@ const URL_CAPABILITY_RULES: CapabilityRule[] = [
     label: "comments",
   },
   {
-    urlPattern: /\/detail(\/|$|\?)|\/article(\/|$|\?)|\/post(\/|$|\?)|\/item(\/|$|\?)|\/content(\/|$|\?)/i,
+    urlPattern:
+      /\/detail(\/|$|\?)|\/article(\/|$|\?)|\/post(\/|$|\?)|\/item(\/|$|\?)|\/content(\/|$|\?)/i,
     label: "detail",
   },
   {
-    urlPattern: /\/download(\/|$|\?)|\/media(\/|$|\?)|\/video(\/|$|\?)|\/audio(\/|$|\?)/i,
+    urlPattern:
+      /\/download(\/|$|\?)|\/media(\/|$|\?)|\/video(\/|$|\?)|\/audio(\/|$|\?)/i,
     label: "download",
   },
 ];
@@ -327,10 +332,7 @@ const URL_CAPABILITY_RULES: CapabilityRule[] = [
  * URL patterns take priority. If no URL match, falls back to field-name
  * heuristics on the first item in an array body.
  */
-export function detectCapability(
-  url: string,
-  body?: unknown,
-): string | null {
+export function detectCapability(url: string, body?: unknown): string | null {
   // URL-based detection (highest priority) — test against pathname only to
   // avoid false positives from capability keywords in query parameters.
   const pathname = safePathname(url);
@@ -348,11 +350,7 @@ export function detectCapability(
     const obj = body as Record<string, unknown>;
     for (const key of Object.keys(obj)) {
       const val = obj[key];
-      if (
-        Array.isArray(val) &&
-        val.length > 0 &&
-        typeof val[0] === "object"
-      ) {
+      if (Array.isArray(val) && val.length > 0 && typeof val[0] === "object") {
         firstItem = val[0] as Record<string, unknown>;
         break;
       }

@@ -18,9 +18,9 @@ import {
 
 describe("isNoiseUrl", () => {
   it("flags google-analytics domain", () => {
-    expect(
-      isNoiseUrl("https://www.google-analytics.com/collect?v=1"),
-    ).toBe(true);
+    expect(isNoiseUrl("https://www.google-analytics.com/collect?v=1")).toBe(
+      true,
+    );
   });
 
   it("flags googletagmanager domain", () => {
@@ -30,9 +30,9 @@ describe("isNoiseUrl", () => {
   });
 
   it("flags hotjar domain", () => {
-    expect(
-      isNoiseUrl("https://vc.hotjar.io/api/v2/sites/123/feedback"),
-    ).toBe(true);
+    expect(isNoiseUrl("https://vc.hotjar.io/api/v2/sites/123/feedback")).toBe(
+      true,
+    );
   });
 
   it("flags sentry.io domain", () => {
@@ -42,15 +42,15 @@ describe("isNoiseUrl", () => {
   });
 
   it("flags doubleclick.net domain", () => {
-    expect(
-      isNoiseUrl("https://ad.doubleclick.net/ddm/activity/dc_ips=1"),
-    ).toBe(true);
+    expect(isNoiseUrl("https://ad.doubleclick.net/ddm/activity/dc_ips=1")).toBe(
+      true,
+    );
   });
 
   it("flags connect.facebook.net domain", () => {
-    expect(
-      isNoiseUrl("https://connect.facebook.net/en_US/fbevents.js"),
-    ).toBe(true);
+    expect(isNoiseUrl("https://connect.facebook.net/en_US/fbevents.js")).toBe(
+      true,
+    );
   });
 
   it("flags cdn.segment.com domain", () => {
@@ -66,9 +66,7 @@ describe("isNoiseUrl", () => {
   });
 
   it("flags amplitude domain", () => {
-    expect(
-      isNoiseUrl("https://api.amplitude.com/2/httpapi"),
-    ).toBe(true);
+    expect(isNoiseUrl("https://api.amplitude.com/2/httpapi")).toBe(true);
   });
 
   it("flags clarity.ms domain", () => {
@@ -96,15 +94,15 @@ describe("isNoiseUrl", () => {
   });
 
   it("flags /_next/data path (Next.js internals)", () => {
-    expect(
-      isNoiseUrl("https://example.com/_next/data/abc123/index.json"),
-    ).toBe(true);
+    expect(isNoiseUrl("https://example.com/_next/data/abc123/index.json")).toBe(
+      true,
+    );
   });
 
   it("flags .hot-update. files (webpack HMR)", () => {
-    expect(
-      isNoiseUrl("https://localhost:3000/main.abc123.hot-update.js"),
-    ).toBe(true);
+    expect(isNoiseUrl("https://localhost:3000/main.abc123.hot-update.js")).toBe(
+      true,
+    );
   });
 
   it("does not flag a clean API endpoint", () => {
@@ -112,9 +110,9 @@ describe("isNoiseUrl", () => {
   });
 
   it("does not flag a clean search endpoint", () => {
-    expect(
-      isNoiseUrl("https://search.example.com/api/results?q=hello"),
-    ).toBe(false);
+    expect(isNoiseUrl("https://search.example.com/api/results?q=hello")).toBe(
+      false,
+    );
   });
 
   it("does not flag a path that merely contains 'log' as a word in the domain", () => {
@@ -124,9 +122,7 @@ describe("isNoiseUrl", () => {
   it("does not flag URL where noise domain appears only in query param (redirect)", () => {
     // cdn.segment.com is in the query string, not the hostname — must return false
     expect(
-      isNoiseUrl(
-        "https://myapp.com/page?redirect=https://cdn.segment.com/foo",
-      ),
+      isNoiseUrl("https://myapp.com/page?redirect=https://cdn.segment.com/foo"),
     ).toBe(false);
   });
 });
@@ -167,15 +163,15 @@ describe("isStaticResource", () => {
   });
 
   it("flags font/* content-type", () => {
-    expect(
-      isStaticResource("https://example.com/anything", "font/woff2"),
-    ).toBe(true);
+    expect(isStaticResource("https://example.com/anything", "font/woff2")).toBe(
+      true,
+    );
   });
 
   it("flags text/css content-type", () => {
-    expect(
-      isStaticResource("https://example.com/anything", "text/css"),
-    ).toBe(true);
+    expect(isStaticResource("https://example.com/anything", "text/css")).toBe(
+      true,
+    );
   });
 
   it("flags application/javascript content-type", () => {
@@ -189,10 +185,7 @@ describe("isStaticResource", () => {
 
   it("does not flag a JSON API URL", () => {
     expect(
-      isStaticResource(
-        "https://api.example.com/v1/posts",
-        "application/json",
-      ),
+      isStaticResource("https://api.example.com/v1/posts", "application/json"),
     ).toBe(false);
   });
 

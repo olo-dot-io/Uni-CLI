@@ -17,7 +17,7 @@ import {
   generateReadInterceptedJs,
 } from "../engine/interceptor.js";
 import {
-  scoreEndpoints,
+  processEndpoints,
   type EndpointEntry,
   type ScoredEndpoint,
 } from "../engine/endpoint-scorer.js";
@@ -175,8 +175,8 @@ export function registerExploreCommand(program: Command): void {
           // Convert captured requests to EndpointEntry format
           const entries = convertToEndpointEntries(allRequests);
 
-          // Score endpoints
-          const scored = scoreEndpoints(entries);
+          // Filter, sort, annotate, and deduplicate endpoints
+          const scored = processEndpoints(entries);
 
           // Detect auth
           const cookies = await page.cookies();
@@ -212,7 +212,7 @@ export function registerExploreCommand(program: Command): void {
                 {
                   site: siteName,
                   endpointCount: scored.length,
-                  topEndpoints: scored.filter((e) => e.score > 0).slice(0, 10),
+                  topEndpoints: scored.slice(0, 10),
                   capabilities,
                   auth,
                   outputDir: outDir,
@@ -385,23 +385,18 @@ function groupByCapability(scored: ScoredEndpoint[]): CapabilityGroup[] {
   const groups = new Map<string, ScoredEndpoint[]>();
 
   for (const ep of scored) {
-    if (ep.capability && ep.score > 0) {
+    if (ep.capability) {
       const existing = groups.get(ep.capability) ?? [];
       existing.push(ep);
       groups.set(ep.capability, existing);
     }
   }
 
-  return Array.from(groups.entries())
-    .map(([capability, endpoints]) => ({
-      capability,
-      endpoints: endpoints.sort((a, b) => b.score - a.score),
-    }))
-    .sort((a, b) => {
-      const aMax = a.endpoints[0]?.score ?? 0;
-      const bMax = b.endpoints[0]?.score ?? 0;
-      return bMax - aMax;
-    });
+  // Order preserves the sort from processEndpoints (endpointSortKey descending)
+  return Array.from(groups.entries()).map(([capability, endpoints]) => ({
+    capability,
+    endpoints,
+  }));
 }
 
 // ── Output ────────────────────────────────────────────────────────────
@@ -413,18 +408,12 @@ function printSummary(
   auth: AuthInfo,
   outDir: string,
 ): void {
-  const usable = scored.filter((e) => e.score > 0);
-
   process.stderr.write(chalk.bold(`\n--- Explore Results: ${siteName} ---\n`));
-  process.stderr.write(
-    chalk.dim(
-      `  ${scored.length} endpoints scored, ${usable.length} usable (score > 0)\n\n`,
-    ),
-  );
+  process.stderr.write(chalk.dim(`  ${scored.length} endpoints found\n\n`));
 
   // Top endpoints table
   process.stderr.write(chalk.bold("  Top Endpoints:\n"));
-  for (const ep of usable.slice(0, 10)) {
+  for (const ep of scored.slice(0, 10)) {
     let pathname: string;
     try {
       pathname = new URL(ep.url).pathname;
@@ -436,9 +425,7 @@ function printSummary(
       ep.detectedFields.length > 0
         ? chalk.dim(` (${ep.detectedFields.slice(0, 5).join(", ")})`)
         : "";
-    process.stderr.write(
-      `    ${chalk.green(String(ep.score).padStart(3))}  ${pathname}${cap}${fields}\n`,
-    );
+    process.stderr.write(`    ${pathname}${cap}${fields}\n`);
   }
 
   // Capabilities

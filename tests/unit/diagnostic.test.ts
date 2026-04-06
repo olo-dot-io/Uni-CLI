@@ -712,7 +712,10 @@ describe("redactRepairContext", () => {
     };
 
     const result = redactRepairContext(ctx);
-    const body = result.page!.networkRequests[0].body as Record<string, unknown>;
+    const body = result.page!.networkRequests[0].body as Record<
+      string,
+      unknown
+    >;
     expect(body["password"]).toBe("[REDACTED]");
     expect(body["username"]).toBe("alice");
   });
@@ -859,7 +862,10 @@ describe("emitRepairContext size degradation", () => {
     const hugeSource = "y".repeat(300 * 1024);
 
     const ctx: RepairContext = {
-      error: { code: "GENERIC_ERROR", message: "huge error " + "e".repeat(260 * 1024) },
+      error: {
+        code: "GENERIC_ERROR",
+        message: "huge error " + "e".repeat(260 * 1024),
+      },
       adapter: { site: "test", command: "cmd", source: hugeSource },
       timestamp: "2026-01-01T00:00:00.000Z",
     };
@@ -871,7 +877,8 @@ describe("emitRepairContext size degradation", () => {
     expect(output.length).toBeLessThan(MAX_DIAGNOSTIC_BYTES + 200);
 
     // Extract the JSON portion between the diagnostic markers
-    const markerPattern = /___UNICLI_DIAGNOSTIC___\n([\s\S]*?)\n___UNICLI_DIAGNOSTIC___/;
+    const markerPattern =
+      /___UNICLI_DIAGNOSTIC___\n([\s\S]*?)\n___UNICLI_DIAGNOSTIC___/;
     const match = markerPattern.exec(output);
     expect(match).not.toBeNull();
     const jsonStr = match![1];
@@ -894,7 +901,9 @@ describe("buildRepairContext truncation", () => {
   it("truncates stack trace at 5000 chars", async () => {
     const err = new Error("test error");
     // Manually assign a very long stack
-    err.stack = "Error: test error\n" + "    at longFunction (/path/file.js:1:1)\n".repeat(200);
+    err.stack =
+      "Error: test error\n" +
+      "    at longFunction (/path/file.js:1:1)\n".repeat(200);
 
     const ctx = await buildRepairContext({
       error: err,
@@ -903,7 +912,9 @@ describe("buildRepairContext truncation", () => {
     });
 
     expect(ctx.error.stack).toBeDefined();
-    expect(ctx.error.stack!.length).toBeLessThanOrEqual(5000 + "[...truncated]".length);
+    expect(ctx.error.stack!.length).toBeLessThanOrEqual(
+      5000 + "[...truncated]".length,
+    );
     expect(ctx.error.stack).toContain("...[truncated]");
   });
 

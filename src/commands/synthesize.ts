@@ -11,6 +11,7 @@ import chalk from "chalk";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { isUsefulEndpoint } from "../engine/analysis.js";
 import type { ScoredEndpoint } from "../engine/endpoint-scorer.js";
 
 // ── Types ─────────────────────────────────────────────────────────────
@@ -26,7 +27,6 @@ interface CandidateInfo {
   name: string;
   file: string;
   endpoint: string;
-  score: number;
   capability: string | undefined;
   strategy: string;
 }
@@ -37,157 +37,167 @@ export function registerSynthesizeCommand(program: Command): void {
   program
     .command("synthesize <site>")
     .description("Generate YAML adapter candidates from explore results")
-    .option("--min-score <n>", "minimum endpoint score", "10")
     .option("--max <n>", "maximum candidates to generate", "10")
     .option("--json", "output JSON only (for piping)")
-    .action(
-      async (
-        site: string,
-        opts: { minScore: string; max: string; json?: boolean },
-      ) => {
-        const minScore = parseInt(opts.minScore, 10) || 10;
-        const maxCandidates = parseInt(opts.max, 10) || 10;
-        const jsonOnly = opts.json ?? false;
+    .action(async (site: string, opts: { max: string; json?: boolean }) => {
+      const maxCandidates = parseInt(opts.max, 10) || 10;
+      const jsonOnly = opts.json ?? false;
 
-        const exploreDir = join(homedir(), ".unicli", "explore", site);
-        const endpointsPath = join(exploreDir, "endpoints.json");
-        const authPath = join(exploreDir, "auth.json");
+      const exploreDir = join(homedir(), ".unicli", "explore", site);
+      const endpointsPath = join(exploreDir, "endpoints.json");
+      const authPath = join(exploreDir, "auth.json");
 
-        // Validate explore data exists
-        if (!existsSync(endpointsPath)) {
-          const msg = `No explore data found for "${site}". Run: unicli explore <url> --site ${site}`;
+      // Validate explore data exists
+      if (!existsSync(endpointsPath)) {
+        const msg = `No explore data found for "${site}". Run: unicli explore <url> --site ${site}`;
+        if (jsonOnly) {
+          console.error(JSON.stringify({ error: msg }));
+        } else {
+          console.error(chalk.red(msg));
+        }
+        process.exitCode = 1;
+        return;
+      }
+
+      try {
+        // Read explore data
+        const endpoints: ScoredEndpoint[] = JSON.parse(
+          readFileSync(endpointsPath, "utf-8"),
+        );
+
+        let auth: AuthInfo = {
+          strategy: "public",
+          cookies: [],
+          csrfToken: false,
+          notes: [],
+        };
+        if (existsSync(authPath)) {
+          auth = JSON.parse(readFileSync(authPath, "utf-8")) as AuthInfo;
+        }
+
+        // Filter to useful endpoints and take the top N
+        const topEndpoints = endpoints
+          .filter((ep) => {
+            let body: unknown;
+            if (ep.responseBody) {
+              try {
+                body = JSON.parse(ep.responseBody);
+              } catch {
+                // ignore malformed JSON
+              }
+            }
+            return isUsefulEndpoint({
+              url: ep.url,
+              status: ep.status,
+              contentType: ep.contentType,
+              body,
+            });
+          })
+          .slice(0, maxCandidates);
+
+        if (topEndpoints.length === 0) {
+          const msg =
+            "No useful endpoints found. Re-run unicli explore to capture more data.";
           if (jsonOnly) {
             console.error(JSON.stringify({ error: msg }));
           } else {
-            console.error(chalk.red(msg));
+            console.error(chalk.yellow(msg));
           }
-          process.exitCode = 1;
           return;
         }
 
-        try {
-          // Read explore data
-          const endpoints: ScoredEndpoint[] = JSON.parse(
-            readFileSync(endpointsPath, "utf-8"),
+        if (!jsonOnly) {
+          process.stderr.write(
+            chalk.bold(
+              `Synthesizing ${topEndpoints.length} adapter candidates for ${site}...\n\n`,
+            ),
           );
+        }
 
-          let auth: AuthInfo = {
-            strategy: "public",
-            cookies: [],
-            csrfToken: false,
-            notes: [],
-          };
-          if (existsSync(authPath)) {
-            auth = JSON.parse(readFileSync(authPath, "utf-8")) as AuthInfo;
-          }
+        // Generate YAML candidates
+        const candidatesDir = join(exploreDir, "candidates");
+        mkdirSync(candidatesDir, { recursive: true });
 
-          // Filter to high-scoring endpoints
-          const topEndpoints = endpoints
-            .filter((ep) => ep.score > minScore)
-            .slice(0, maxCandidates);
+        const candidates: CandidateInfo[] = [];
+        const usedNames = new Set<string>();
 
-          if (topEndpoints.length === 0) {
-            const msg = `No endpoints with score > ${minScore} found. Try lowering --min-score.`;
-            if (jsonOnly) {
-              console.error(JSON.stringify({ error: msg }));
-            } else {
-              console.error(chalk.yellow(msg));
-            }
-            return;
-          }
+        for (const ep of topEndpoints) {
+          const name = uniqueName(
+            ep.capability ?? deriveCommandName(ep.url),
+            usedNames,
+          );
+          usedNames.add(name);
+
+          const strategy = pickStrategy(auth, ep);
+          const yaml = buildYaml(site, name, ep, strategy);
+          const fileName = `${name}.yaml`;
+          const filePath = join(candidatesDir, fileName);
+
+          writeFileSync(filePath, yaml, "utf-8");
+
+          candidates.push({
+            name,
+            file: filePath,
+            endpoint: ep.url,
+            capability: ep.capability,
+            strategy,
+          });
 
           if (!jsonOnly) {
             process.stderr.write(
-              chalk.bold(
-                `Synthesizing ${topEndpoints.length} adapter candidates for ${site}...\n\n`,
-              ),
+              chalk.green(`  ✓ ${name}`) +
+                chalk.dim(
+                  ` (strategy: ${strategy}${ep.capability ? `, capability: ${ep.capability}` : ""})`,
+                ) +
+                "\n",
             );
           }
-
-          // Generate YAML candidates
-          const candidatesDir = join(exploreDir, "candidates");
-          mkdirSync(candidatesDir, { recursive: true });
-
-          const candidates: CandidateInfo[] = [];
-          const usedNames = new Set<string>();
-
-          for (const ep of topEndpoints) {
-            const name = uniqueName(
-              ep.capability ?? deriveCommandName(ep.url),
-              usedNames,
-            );
-            usedNames.add(name);
-
-            const strategy = pickStrategy(auth, ep);
-            const yaml = buildYaml(site, name, ep, strategy);
-            const fileName = `${name}.yaml`;
-            const filePath = join(candidatesDir, fileName);
-
-            writeFileSync(filePath, yaml, "utf-8");
-
-            candidates.push({
-              name,
-              file: filePath,
-              endpoint: ep.url,
-              score: ep.score,
-              capability: ep.capability,
-              strategy,
-            });
-
-            if (!jsonOnly) {
-              process.stderr.write(
-                chalk.green(`  ✓ ${name}`) +
-                  chalk.dim(` (score: ${ep.score}, strategy: ${strategy})`) +
-                  "\n",
-              );
-            }
-          }
-
-          // Write candidates index
-          writeFileSync(
-            join(exploreDir, "candidates.json"),
-            JSON.stringify(candidates, null, 2),
-            "utf-8",
-          );
-
-          // Output
-          if (jsonOnly) {
-            console.log(
-              JSON.stringify(
-                {
-                  site,
-                  candidateCount: candidates.length,
-                  candidates,
-                  candidatesDir,
-                },
-                null,
-                2,
-              ),
-            );
-          } else {
-            process.stderr.write(
-              chalk.bold(
-                `\n${candidates.length} candidates written to ${candidatesDir}\n`,
-              ),
-            );
-            process.stderr.write(
-              chalk.dim(`Index: ${join(exploreDir, "candidates.json")}\n`),
-            );
-            process.stderr.write(
-              chalk.dim(`Next: unicli generate <url> --site ${site}\n\n`),
-            );
-          }
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          if (jsonOnly) {
-            console.error(JSON.stringify({ error: msg }));
-          } else {
-            console.error(chalk.red(`Synthesize failed: ${msg}`));
-          }
-          process.exitCode = 1;
         }
-      },
-    );
+
+        // Write candidates index
+        writeFileSync(
+          join(exploreDir, "candidates.json"),
+          JSON.stringify(candidates, null, 2),
+          "utf-8",
+        );
+
+        // Output
+        if (jsonOnly) {
+          console.log(
+            JSON.stringify(
+              {
+                site,
+                candidateCount: candidates.length,
+                candidates,
+                candidatesDir,
+              },
+              null,
+              2,
+            ),
+          );
+        } else {
+          process.stderr.write(
+            chalk.bold(
+              `\n${candidates.length} candidates written to ${candidatesDir}\n`,
+            ),
+          );
+          process.stderr.write(
+            chalk.dim(`Index: ${join(exploreDir, "candidates.json")}\n`),
+          );
+          process.stderr.write(
+            chalk.dim(`Next: unicli generate <url> --site ${site}\n\n`),
+          );
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (jsonOnly) {
+          console.error(JSON.stringify({ error: msg }));
+        } else {
+          console.error(chalk.red(`Synthesize failed: ${msg}`));
+        }
+        process.exitCode = 1;
+      }
+    });
 }
 
 // ── Strategy Selection ────────────────────────────────────────────────
