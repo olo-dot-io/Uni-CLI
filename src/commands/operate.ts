@@ -9,6 +9,7 @@ import { Command } from "commander";
 import { resolve } from "node:path";
 import chalk from "chalk";
 import { BrowserBridge, DaemonPage } from "../browser/bridge.js";
+import { generateReadInterceptedJs } from "../engine/interceptor.js";
 
 const OPERATE_WORKSPACE = "operate:default";
 
@@ -67,6 +68,14 @@ export function registerOperateCommands(program: Command): void {
     .action((url: string) =>
       operateAction("open", async () => {
         const page = await getOperatePage();
+        // Start CDP-level network capture before navigation so initial
+        // requests are not missed. Only available on BrowserPage (not DaemonPage).
+        const pageAnyOpen = page as unknown as Record<string, unknown>;
+        if (typeof pageAnyOpen.startNetworkCapture === "function") {
+          await (
+            pageAnyOpen as unknown as { startNetworkCapture(): Promise<void> }
+          ).startNetworkCapture();
+        }
         await page.goto(url, { settleMs: 2000 });
         const title = await page.title();
         return { ok: true, url, title };
@@ -341,7 +350,7 @@ export function registerOperateCommands(program: Command): void {
       }),
     );
 
-  // network [pattern] — Show network requests
+  // network [pattern] — Show network requests (CDP-first, JS-interceptor fallback)
   operate
     .command("network [pattern]")
     .description("Show captured network requests")
@@ -349,11 +358,84 @@ export function registerOperateCommands(program: Command): void {
     .action((pattern: string | undefined, opts: { all?: boolean }) =>
       operateAction("network", async () => {
         const page = await getOperatePage();
-        const requests = await page.networkRequests();
-        if (pattern && !opts.all) {
-          return requests.filter((r) => r.url.includes(pattern));
+
+        // Normalized entry shape for both CDP and JS-interceptor paths
+        interface NormalizedEntry {
+          url: string;
+          method: string;
+          status: number;
+          contentType: string;
+          bodySize: number;
         }
-        return requests;
+
+        let entries: NormalizedEntry[] = [];
+
+        // Path 1: CDP-level capture via readNetworkCapture() (BrowserPage only)
+        const pageAny = page as unknown as Record<string, unknown>;
+        if (typeof pageAny.readNetworkCapture === "function") {
+          const cdpEntries =
+            (await (
+              pageAny as unknown as {
+                readNetworkCapture(): Promise<
+                  Array<{
+                    url: string;
+                    method: string;
+                    status: number;
+                    contentType: string;
+                    size: number;
+                  }>
+                >;
+              }
+            ).readNetworkCapture()) ?? [];
+
+          entries = cdpEntries.map((e) => ({
+            url: e.url,
+            method: e.method,
+            status: e.status,
+            contentType: e.contentType,
+            bodySize: e.size,
+          }));
+        }
+
+        // Path 2: JS-interceptor fallback when CDP capture is empty
+        if (entries.length === 0) {
+          try {
+            const raw = (await page.evaluate(
+              generateReadInterceptedJs(),
+            )) as string;
+            const jsEntries = JSON.parse(raw) as Array<{
+              url: string;
+              data?: unknown;
+              ts?: number;
+            }>;
+            entries = jsEntries.map((e) => ({
+              url: e.url,
+              method: "GET",
+              status: 200,
+              contentType: "application/json",
+              bodySize: e.data != null ? JSON.stringify(e.data).length : 0,
+            }));
+          } catch {
+            // JS interceptor not injected or page navigated — return empty
+          }
+        }
+
+        // Path 3: networkRequests() metadata (always available as last resort)
+        if (entries.length === 0) {
+          const requests = await page.networkRequests();
+          entries = requests.map((r) => ({
+            url: r.url,
+            method: r.method,
+            status: r.status,
+            contentType: r.type,
+            bodySize: r.size,
+          }));
+        }
+
+        if (pattern && !opts.all) {
+          return entries.filter((r) => r.url.includes(pattern));
+        }
+        return entries;
       }),
     );
 

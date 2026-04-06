@@ -1,5 +1,5 @@
 /**
- * Unit tests for operate subcommands (upload, hover).
+ * Unit tests for operate subcommands (upload, hover, open, network).
  *
  * Mocks BrowserBridge to avoid needing a live daemon/Chrome.
  */
@@ -25,6 +25,9 @@ const mockPage = {
   autoScroll: vi.fn().mockResolvedValue(undefined),
   networkRequests: vi.fn().mockResolvedValue([]),
   closeWindow: vi.fn().mockResolvedValue(undefined),
+  // CDP-level capture methods (present on BrowserPage, optional on DaemonPage)
+  startNetworkCapture: vi.fn().mockResolvedValue(undefined),
+  readNetworkCapture: vi.fn().mockResolvedValue([]),
 };
 
 vi.mock("../../src/browser/bridge.js", () => ({
@@ -136,5 +139,160 @@ describe("operate hover", () => {
       expect.stringContaining("Invalid ref"),
     );
     consoleSpy.mockRestore();
+  });
+});
+
+describe("operate open — CDP pre-capture", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.exitCode = undefined;
+  });
+
+  it("calls startNetworkCapture before goto when the method exists", async () => {
+    const program = createProgram();
+    const callOrder: string[] = [];
+    mockPage.startNetworkCapture.mockImplementation(() => {
+      callOrder.push("startNetworkCapture");
+      return Promise.resolve();
+    });
+    mockPage.goto.mockImplementation(() => {
+      callOrder.push("goto");
+      return Promise.resolve();
+    });
+
+    await program.parseAsync([
+      "node",
+      "test",
+      "operate",
+      "open",
+      "https://example.com",
+    ]);
+
+    expect(callOrder[0]).toBe("startNetworkCapture");
+    expect(callOrder[1]).toBe("goto");
+  });
+
+  it("still navigates even if startNetworkCapture is absent", async () => {
+    // Simulate a page without startNetworkCapture (e.g., DaemonPage)
+    const pageWithoutCapture = { ...mockPage } as Record<string, unknown>;
+    delete pageWithoutCapture.startNetworkCapture;
+
+    const { BrowserBridge } = await import("../../src/browser/bridge.js");
+    vi.mocked(BrowserBridge).mockImplementationOnce(() => ({
+      connect: vi.fn().mockResolvedValue(pageWithoutCapture),
+    }));
+
+    const program = createProgram();
+    await program.parseAsync([
+      "node",
+      "test",
+      "operate",
+      "open",
+      "https://example.com",
+    ]);
+
+    expect(process.exitCode).toBeUndefined();
+    expect(
+      pageWithoutCapture.goto as ReturnType<typeof vi.fn>,
+    ).toHaveBeenCalledWith("https://example.com", { settleMs: 2000 });
+  });
+});
+
+describe("operate network — CDP-first normalization", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.exitCode = undefined;
+  });
+
+  it("returns CDP entries with normalized shape when readNetworkCapture has data", async () => {
+    mockPage.readNetworkCapture.mockResolvedValueOnce([
+      {
+        url: "https://example.com/api/data",
+        method: "GET",
+        status: 200,
+        contentType: "application/json",
+        size: 1234,
+        timestamp: Date.now(),
+      },
+    ]);
+
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const program = createProgram();
+    await program.parseAsync(["node", "test", "operate", "network"]);
+
+    expect(logSpy).toHaveBeenCalled();
+    const output = JSON.parse(logSpy.mock.calls[0][0] as string) as Array<{
+      url: string;
+      method: string;
+      status: number;
+      contentType: string;
+      bodySize: number;
+    }>;
+    expect(output).toHaveLength(1);
+    expect(output[0]).toMatchObject({
+      url: "https://example.com/api/data",
+      method: "GET",
+      status: 200,
+      contentType: "application/json",
+      bodySize: 1234,
+    });
+    logSpy.mockRestore();
+  });
+
+  it("falls back to JS interceptor when CDP capture is empty", async () => {
+    mockPage.readNetworkCapture.mockResolvedValueOnce([]);
+    // JS interceptor returns JSON-encoded intercepted data
+    mockPage.evaluate.mockResolvedValueOnce(
+      JSON.stringify([
+        {
+          url: "https://example.com/api/list",
+          data: { items: [] },
+          ts: Date.now(),
+        },
+      ]),
+    );
+
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const program = createProgram();
+    await program.parseAsync(["node", "test", "operate", "network"]);
+
+    expect(logSpy).toHaveBeenCalled();
+    const output = JSON.parse(logSpy.mock.calls[0][0] as string) as Array<{
+      url: string;
+      method: string;
+    }>;
+    expect(output).toHaveLength(1);
+    expect(output[0].url).toBe("https://example.com/api/list");
+    expect(output[0].method).toBe("GET");
+    logSpy.mockRestore();
+  });
+
+  it("filters by pattern when pattern argument is provided", async () => {
+    mockPage.readNetworkCapture.mockResolvedValueOnce([
+      {
+        url: "https://example.com/api/users",
+        method: "GET",
+        status: 200,
+        contentType: "application/json",
+        size: 100,
+        timestamp: Date.now(),
+      },
+      {
+        url: "https://example.com/api/products",
+        method: "GET",
+        status: 200,
+        contentType: "application/json",
+        size: 200,
+        timestamp: Date.now(),
+      },
+    ]);
+
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const program = createProgram();
+    await program.parseAsync(["node", "test", "operate", "network", "users"]);
+
+    const output = JSON.parse(logSpy.mock.calls[0][0] as string) as unknown[];
+    expect(output).toHaveLength(1);
+    logSpy.mockRestore();
   });
 });

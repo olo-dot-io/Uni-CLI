@@ -51,6 +51,10 @@ export function registerExploreCommand(program: Command): void {
     .option("--timeout <seconds>", "exploration timeout", "30")
     .option("--site <name>", "override auto-detected site name")
     .option("--interact", "auto-interact with page (scroll, click tabs)")
+    .option(
+      "--interactive",
+      "click buttons/tabs/anchors to trigger XHR requests",
+    )
     .option("--json", "output JSON only (for piping)")
     .action(
       async (
@@ -59,6 +63,7 @@ export function registerExploreCommand(program: Command): void {
           timeout: string;
           site?: string;
           interact?: boolean;
+          interactive?: boolean;
           json?: boolean;
         },
       ) => {
@@ -70,7 +75,7 @@ export function registerExploreCommand(program: Command): void {
           process.stderr.write(chalk.bold(`Exploring: ${url}\n`));
           process.stderr.write(
             chalk.dim(
-              `Site: ${siteName} | Timeout: ${opts.timeout}s | Interact: ${opts.interact ? "yes" : "no"}\n`,
+              `Site: ${siteName} | Timeout: ${opts.timeout}s | Interact: ${opts.interact ? "yes" : "no"} | Interactive: ${opts.interactive ? "yes" : "no"}\n`,
             ),
           );
           process.stderr.write(chalk.dim("Press Ctrl+C to stop early.\n\n"));
@@ -96,6 +101,11 @@ export function registerExploreCommand(program: Command): void {
           // Auto-interact if requested
           if (opts.interact) {
             await autoInteract(page, jsonOnly);
+          }
+
+          // --interactive: click clickable elements to trigger XHR
+          if (opts.interactive) {
+            await interactiveClickFuzz(page, jsonOnly);
           }
 
           // Collect captured requests over the timeout period
@@ -174,6 +184,9 @@ export function registerExploreCommand(program: Command): void {
 
           // Convert captured requests to EndpointEntry format
           const entries = convertToEndpointEntries(allRequests);
+
+          // Re-fetch empty GET JSON endpoints via hidden iframe (same-origin only)
+          await iframeRefetch(page, entries, url, jsonOnly);
 
           // Filter, sort, annotate, and deduplicate endpoints
           const scored = processEndpoints(entries);
@@ -285,6 +298,144 @@ async function autoInteract(
     }
   } catch {
     /* snapshot may fail */
+  }
+}
+
+// ── Interactive Click Fuzzing ─────────────────────────────────────────
+
+/** Selectors for clickable elements that commonly trigger XHR requests. */
+const INTERACTIVE_FUZZ_SELECTORS = [
+  "button",
+  '[role="tab"]',
+  'a[href^="#"]',
+  "[data-tab]",
+];
+
+/**
+ * Click buttons, tabs, and anchor links to trigger XHR/fetch requests.
+ * Collects up to 10 elements and waits 2 seconds after each click.
+ */
+async function interactiveClickFuzz(
+  page: import("../types.js").IPage,
+  jsonOnly: boolean,
+): Promise<void> {
+  if (!jsonOnly) {
+    process.stderr.write(chalk.dim("  Interactive click fuzzing...\n"));
+  }
+
+  const MAX_ELEMENTS = 10;
+
+  // Build a combined selector and collect up to MAX_ELEMENTS matching elements
+  const combined = INTERACTIVE_FUZZ_SELECTORS.join(", ");
+  let elementCount = 0;
+  try {
+    const rawCount = (await page.evaluate(
+      `document.querySelectorAll(${JSON.stringify(combined)}).length`,
+    )) as number;
+    elementCount = Math.min(rawCount ?? 0, MAX_ELEMENTS);
+  } catch {
+    return; // Page evaluation failed — skip fuzzing
+  }
+
+  for (let i = 0; i < elementCount; i++) {
+    try {
+      // Click the i-th element via JS to avoid selector ambiguity
+      await page.evaluate(
+        `(() => {
+          const els = document.querySelectorAll(${JSON.stringify(combined)});
+          const el = els[${String(i)}];
+          if (el) el.click();
+        })()`,
+      );
+      // Wait 2 seconds for XHR to fire
+      await page.wait(2);
+    } catch {
+      /* element may have disappeared after a previous click — continue */
+    }
+  }
+
+  if (!jsonOnly) {
+    process.stderr.write(
+      chalk.dim(`  Clicked ${String(elementCount)} interactive elements.\n`),
+    );
+  }
+}
+
+// ── Iframe Re-Fetch ───────────────────────────────────────────────────
+
+/**
+ * For GET JSON endpoints with missing/empty response body, re-fetch the URL
+ * from within a hidden iframe (same-origin) to capture the body content.
+ *
+ * Max 5 endpoints, 3-second timeout each. Skips cross-origin URLs.
+ */
+async function iframeRefetch(
+  page: import("../types.js").IPage,
+  entries: EndpointEntry[],
+  pageUrl: string,
+  _jsonOnly: boolean,
+): Promise<void> {
+  let pageOrigin: string;
+  try {
+    pageOrigin = new URL(pageUrl).origin;
+  } catch {
+    return; // Invalid URL — skip
+  }
+
+  const IFRAME_TIMEOUT_MS = 3000;
+  const MAX_REFETCH = 5;
+
+  // Find GET JSON endpoints with no body or empty body
+  const candidates = entries.filter(
+    (e) =>
+      e.method === "GET" &&
+      e.contentType.includes("json") &&
+      (!e.responseBody || e.responseBody === ""),
+  );
+
+  let refetched = 0;
+  for (const entry of candidates.slice(0, MAX_REFETCH)) {
+    // Skip cross-origin URLs
+    let entryOrigin: string;
+    try {
+      entryOrigin = new URL(entry.url).origin;
+    } catch {
+      continue;
+    }
+    if (entryOrigin !== pageOrigin) continue;
+
+    // Fetch the URL from page context (same-origin, no CORS) via iframe-equivalent
+    try {
+      const result = (await Promise.race([
+        page.evaluate(
+          `(async () => {
+            try {
+              const resp = await fetch(${JSON.stringify(entry.url)}, { credentials: 'include' });
+              if (!resp.ok) return null;
+              const text = await resp.text();
+              return text;
+            } catch (_) { return null; }
+          })()`,
+        ),
+        new Promise<null>((resolve) =>
+          setTimeout(() => resolve(null), IFRAME_TIMEOUT_MS),
+        ),
+      ])) as string | null;
+
+      if (result && result.length > 0) {
+        entry.responseBody = result;
+        entry.size = result.length;
+        refetched++;
+      }
+    } catch {
+      /* fetch failed — skip this entry */
+    }
+  }
+
+  if (refetched > 0 && !_jsonOnly) {
+    process.stderr.write(
+      chalk.dim(`  Re-fetched ${String(refetched)} endpoint bodies.\n`),
+    );
   }
 }
 
