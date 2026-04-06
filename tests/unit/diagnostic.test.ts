@@ -475,6 +475,19 @@ describe("redactUrl", () => {
     const result = redactUrl("https://example.com/?TOKEN=secret");
     expect(result).not.toContain("secret");
   });
+
+  it("redacts sensitive params in relative URLs", () => {
+    const result = redactUrl("/api/login?token=secret&page=2");
+    expect(result).not.toContain("secret");
+    expect(result).toContain("page=2");
+    // Must still be relative (no scheme/host)
+    expect(result).not.toContain("http://");
+  });
+
+  it("preserves relative URL with no sensitive params unchanged", () => {
+    const url = "/api/search?q=hello&page=1";
+    expect(redactUrl(url)).toBe(url);
+  });
 });
 
 // ── redactJwt ───────────────────────────────────────────────────────
@@ -574,6 +587,24 @@ describe("redactBody", () => {
     expect(redactBody(null)).toBeNull();
     expect(redactBody(42)).toBe(42);
     expect(redactBody(true)).toBe(true);
+  });
+
+  it("does not throw on circular object references, returns [circular]", () => {
+    const obj: Record<string, unknown> = { name: "alice" };
+    obj["self"] = obj; // circular reference
+    expect(() => redactBody(obj)).not.toThrow();
+    const result = redactBody(obj) as Record<string, unknown>;
+    expect(result["name"]).toBe("alice");
+    expect(result["self"]).toBe("[circular]");
+  });
+
+  it("does not throw on circular array references, returns [circular]", () => {
+    const arr: unknown[] = [1, 2];
+    arr.push(arr); // circular reference
+    expect(() => redactBody(arr)).not.toThrow();
+    const result = redactBody(arr) as unknown[];
+    expect(result[0]).toBe(1);
+    expect(result[2]).toBe("[circular]");
   });
 });
 
@@ -818,7 +849,7 @@ describe("emitRepairContext size degradation", () => {
     writeSpy.mockRestore();
   });
 
-  it("hard truncates at 256KB", () => {
+  it("hard truncates at 256KB and produces valid JSON", () => {
     const writeSpy = vi
       .spyOn(process.stderr, "write")
       .mockImplementation(() => true);
@@ -836,9 +867,22 @@ describe("emitRepairContext size degradation", () => {
     emitRepairContext(ctx);
 
     const output = writeSpy.mock.calls[0][0] as string;
-    // The JSON portion should not exceed MAX_DIAGNOSTIC_BYTES
     // The full output includes markers/newlines but the JSON itself should be truncated
     expect(output.length).toBeLessThan(MAX_DIAGNOSTIC_BYTES + 200);
+
+    // Extract the JSON portion between the diagnostic markers
+    const markerPattern = /___UNICLI_DIAGNOSTIC___\n([\s\S]*?)\n___UNICLI_DIAGNOSTIC___/;
+    const match = markerPattern.exec(output);
+    expect(match).not.toBeNull();
+    const jsonStr = match![1];
+
+    // The JSON must be parseable — hard truncate must not produce broken JSON
+    expect(() => JSON.parse(jsonStr)).not.toThrow();
+
+    // The envelope should flag that it was truncated
+    const parsed = JSON.parse(jsonStr) as Record<string, unknown>;
+    expect(parsed["_truncated"]).toBe(true);
+    expect(typeof parsed["_originalSize"]).toBe("number");
 
     writeSpy.mockRestore();
   });

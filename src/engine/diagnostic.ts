@@ -111,14 +111,24 @@ export function redactHeaders(
 /**
  * Redact sensitive query parameters from a URL.
  * Case-insensitive match against SENSITIVE_PARAMS.
+ * Handles both absolute and relative URLs.
  * Returns the sanitized URL string, or the original on parse failure.
  */
 export function redactUrl(url: string): string {
   let parsed: URL;
+  let isRelative = false;
+  const PLACEHOLDER = "http://placeholder";
+
   try {
     parsed = new URL(url);
   } catch {
-    return url;
+    // Try treating it as a relative URL
+    try {
+      parsed = new URL(url, PLACEHOLDER);
+      isRelative = true;
+    } catch {
+      return url;
+    }
   }
 
   let modified = false;
@@ -129,7 +139,15 @@ export function redactUrl(url: string): string {
     }
   }
 
-  return modified ? parsed.toString() : url;
+  if (!modified) return url;
+
+  if (isRelative) {
+    // Strip the placeholder origin to reconstruct as a relative URL
+    const full = parsed.toString();
+    return full.startsWith(PLACEHOLDER) ? full.slice(PLACEHOLDER.length) : full;
+  }
+
+  return parsed.toString();
 }
 
 /**
@@ -148,22 +166,30 @@ export function redactJwt(text: string): string {
  * Returns a new structure (does not mutate input).
  */
 export function redactBody(body: unknown): unknown {
+  return _redactBody(body, new WeakSet());
+}
+
+function _redactBody(body: unknown, seen: WeakSet<object>): unknown {
   if (typeof body === "string") {
     return redactJwt(body);
   }
 
   if (Array.isArray(body)) {
-    return body.map((item) => redactBody(item));
+    if (seen.has(body)) return "[circular]";
+    seen.add(body);
+    return body.map((item) => _redactBody(item, seen));
   }
 
   if (body !== null && typeof body === "object") {
+    if (seen.has(body)) return "[circular]";
+    seen.add(body);
     const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(
       body as Record<string, unknown>,
     )) {
       result[key] = SENSITIVE_PARAMS.has(key.toLowerCase())
         ? "[REDACTED]"
-        : redactBody(value);
+        : _redactBody(value, seen);
     }
     return result;
   }
@@ -377,8 +403,9 @@ export function emitRepairContext(ctx: RepairContext): void {
   }
 
   if (json.length > MAX_DIAGNOSTIC_BYTES) {
-    // Stage 3: hard truncate
-    json = json.slice(0, MAX_DIAGNOSTIC_BYTES);
+    // Stage 3: hard truncate — wrap in a valid JSON envelope so output is always parseable
+    const truncated = json.slice(0, MAX_DIAGNOSTIC_BYTES - 100);
+    json = JSON.stringify({ _truncated: true, _originalSize: json.length, partial: truncated });
   }
 
   process.stderr.write(`\n${marker}\n${json}\n${marker}\n`);
