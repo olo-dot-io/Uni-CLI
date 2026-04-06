@@ -8,6 +8,32 @@
  */
 
 // ---------------------------------------------------------------------------
+// URL helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the pathname component of a URL, or the full string for invalid URLs.
+ */
+function safePathname(url: string): string {
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Returns the hostname component of a URL, or the full string for invalid URLs.
+ */
+function safeHostname(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // isNoiseUrl
 // ---------------------------------------------------------------------------
 
@@ -57,18 +83,14 @@ const NOISE_PATH_PATTERNS = [
  * beacons, Next.js internals, or hot-reload endpoints.
  */
 export function isNoiseUrl(url: string): boolean {
-  // Domain check
-  const lower = url.toLowerCase();
-  if (NOISE_DOMAINS.some((domain) => lower.includes(domain))) {
+  // Domain check — match against hostname only to avoid false positives from
+  // noise domain names appearing in query params or redirect paths.
+  const hostname = safeHostname(url).toLowerCase();
+  if (NOISE_DOMAINS.some((domain) => hostname.includes(domain))) {
     return true;
   }
-  // Path pattern check
-  let pathname = url;
-  try {
-    pathname = new URL(url).pathname;
-  } catch {
-    // malformed URL — fall through to full-string match
-  }
+  // Path pattern check — match against pathname only.
+  const pathname = safePathname(url);
   return NOISE_PATH_PATTERNS.some((re) => re.test(pathname));
 }
 
@@ -247,8 +269,10 @@ export function endpointSortKey(entry: {
     }
   }
 
+  // Test API path regex against pathname only to avoid false positives from
+  // query params that happen to contain /api/ or /v1/.
   const isApiPath =
-    /\/api\/|\/v[1-9]\d*\/|\/graphql\b/i.test(url) ? 1 : 0;
+    /\/api\/|\/v[1-9]\d*\/|\/graphql\b/i.test(safePathname(url)) ? 1 : 0;
 
   let hasParams = 0;
   try {
@@ -307,9 +331,11 @@ export function detectCapability(
   url: string,
   body?: unknown,
 ): string | null {
-  // URL-based detection (highest priority)
+  // URL-based detection (highest priority) — test against pathname only to
+  // avoid false positives from capability keywords in query parameters.
+  const pathname = safePathname(url);
   for (const rule of URL_CAPABILITY_RULES) {
-    if (rule.urlPattern.test(url)) return rule.label;
+    if (rule.urlPattern.test(pathname)) return rule.label;
   }
 
   // Body field heuristics

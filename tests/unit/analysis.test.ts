@@ -120,6 +120,15 @@ describe("isNoiseUrl", () => {
   it("does not flag a path that merely contains 'log' as a word in the domain", () => {
     expect(isNoiseUrl("https://blog.example.com/api/posts")).toBe(false);
   });
+
+  it("does not flag URL where noise domain appears only in query param (redirect)", () => {
+    // cdn.segment.com is in the query string, not the hostname — must return false
+    expect(
+      isNoiseUrl(
+        "https://myapp.com/page?redirect=https://cdn.segment.com/foo",
+      ),
+    ).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -411,6 +420,15 @@ describe("endpointSortKey", () => {
     });
     expect(key[1]).toBe(4);
   });
+
+  it("sets isApiPath=0 when /api/ appears only in query param, not pathname", () => {
+    // Pathname is /data — /api/ is inside a query param value
+    const key = endpointSortKey({
+      url: "https://example.com/data?source=/api/v1/feed",
+      body: [],
+    });
+    expect(key[2]).toBe(0);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -542,6 +560,13 @@ describe("detectCapability", () => {
         { title: "Post", url: "https://example.com/1" },
       ]),
     ).toBe("search");
+  });
+
+  it("does not match /search in query param as search capability", () => {
+    // Pathname is /api/data — /search only appears in a query param
+    expect(
+      detectCapability("https://api.example.com/api/data?fallback=/search"),
+    ).toBeNull();
   });
 });
 
