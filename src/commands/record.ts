@@ -155,11 +155,18 @@ export function templatizeUrl(rawUrl: string): TemplatizeResult {
     }
   }
 
-  // Reconstruct URL as raw string to preserve template expressions verbatim
-  const origin = parsed.origin; // e.g. "https://api.example.com"
+  // Reconstruct URL as raw string to preserve template expressions verbatim.
+  // Use parsed.host (includes port) rather than parsed.origin, and preserve
+  // any username:password@ credentials that origin would drop.
+  const auth = parsed.username
+    ? parsed.username +
+      (parsed.password ? ":" + parsed.password : "") +
+      "@"
+    : "";
+  const base = `${parsed.protocol}//${auth}${parsed.host}`;
   const search = queryParts.length > 0 ? `?${queryParts.join("&")}` : "";
   const hash = parsed.hash; // preserve fragment if present
-  const templatizedUrl = `${origin}${newPathname}${search}${hash}`;
+  const templatizedUrl = `${base}${newPathname}${search}${hash}`;
 
   return {
     url: templatizedUrl,
@@ -193,7 +200,9 @@ function normalizeUrlForDedup(url: string, method: string): string {
     .map((seg) => (/^\d{4,}$/.test(seg) ? ":id" : seg))
     .join("/");
 
-  return `${method.toUpperCase()}:${parsed.hostname}${pathNorm}${paramSuffix}`.toLowerCase();
+  // Use parsed.host (hostname + port) so ports are not dropped.
+  // e.g. "api.example.com:8080" and "api.example.com:8443" stay distinct.
+  return `${method.toUpperCase()}:${parsed.host}${pathNorm}${paramSuffix}`.toLowerCase();
 }
 
 /**
@@ -275,15 +284,17 @@ export function buildWriteCandidateYaml(
   // Templatize the URL
   const { url: templateUrl, args } = templatizeUrl(url);
 
+  // Args as YAML mapping (name → properties) to match the loader's expectation:
+  //   args:
+  //     query:
+  //       required: true
+  //       positional: false
   const argsYaml =
     args.length > 0
       ? args
-          .map(
-            (a) =>
-              `  - name: ${a.name}\n    required: ${String(a.required)}\n    positional: false`,
-          )
+          .map((a) => `  ${a.name}:\n    required: ${String(a.required)}\n    positional: false`)
           .join("\n")
-      : "  []";
+      : "  {}";
 
   const hasBody = method !== "DELETE";
 
@@ -342,15 +353,16 @@ function buildReadCandidateYaml(
   // Templatize the URL
   const { url: templateUrl, args } = templatizeUrl(url);
 
+  // Args as YAML mapping (name → properties) to match the loader's expectation.
   const argsYaml =
     args.length > 0
       ? args
           .map(
             (a) =>
-              `  - name: ${a.name}\n    required: ${String(a.required)}\n    positional: ${a.name === "query" ? "true" : "false"}`,
+              `  ${a.name}:\n    required: ${String(a.required)}\n    positional: ${a.name === "query" ? "true" : "false"}`,
           )
           .join("\n")
-      : "  []";
+      : "  {}";
 
   const lines = [
     `site: ${site}`,

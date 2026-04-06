@@ -366,6 +366,83 @@ describe("analyzeRequests — write candidate separation", () => {
   });
 });
 
+// ── templatizeUrl — URL auth and port preservation ───────────────────────────
+
+describe("templatizeUrl — URL auth and port preservation", () => {
+  it("preserves non-standard port in reconstructed URL", () => {
+    const result = templatizeUrl("https://api.example.com:8080/v1/items?page=1");
+    expect(result.url).toContain("api.example.com:8080");
+  });
+
+  it("preserves username:password credentials in reconstructed URL", () => {
+    const result = templatizeUrl("https://user:pass@api.example.com/items?page=1");
+    expect(result.url).toContain("user:pass@api.example.com");
+  });
+
+  it("preserves username-only credentials in reconstructed URL", () => {
+    const result = templatizeUrl("https://user@api.example.com/items?page=1");
+    expect(result.url).toContain("user@api.example.com");
+    expect(result.url).not.toContain(":@");
+  });
+});
+
+// ── deduplicateRequests — port awareness ─────────────────────────────────────
+
+describe("deduplicateRequests — port awareness", () => {
+  it("does NOT deduplicate requests on different ports of the same host", () => {
+    const reqs: RecordedRequest[] = [
+      {
+        url: "https://api.example.com:8080/items?page=1",
+        data: [1, 2, 3],
+        ts: 1,
+        method: "GET",
+      },
+      {
+        url: "https://api.example.com:8443/items?page=1",
+        data: [4, 5, 6],
+        ts: 2,
+        method: "GET",
+      },
+    ];
+    const result = deduplicateRequests(reqs);
+    expect(result).toHaveLength(2);
+  });
+});
+
+// ── buildWriteCandidateYaml — args shape ─────────────────────────────────────
+
+describe("buildWriteCandidateYaml — args YAML shape", () => {
+  it("generates args as a YAML mapping (not a list) when URL has template params", () => {
+    const candidate: ScoredCandidate = {
+      name: "create-post",
+      url: "https://api.example.com/api/posts?type=article",
+      score: 5,
+      isWrite: true,
+      responsePreview: {},
+      method: "POST",
+    };
+    const yaml = buildWriteCandidateYaml("example", candidate, "https://example.com");
+    // Mapping format: "  type:\n    required: ..."
+    // NOT list format: "  - name: type\n    required: ..."
+    expect(yaml).toMatch(/args:\n  type:/);
+    expect(yaml).not.toMatch(/args:\n  - name:/);
+  });
+
+  it("generates '{}' (not '[]') when there are no template args", () => {
+    const candidate: ScoredCandidate = {
+      name: "create-item",
+      url: "https://api.example.com/api/items",
+      score: 5,
+      isWrite: true,
+      responsePreview: {},
+      method: "POST",
+    };
+    const yaml = buildWriteCandidateYaml("example", candidate, "https://example.com");
+    expect(yaml).toContain("args:\n  {}");
+    expect(yaml).not.toContain("args:\n  []");
+  });
+});
+
 // ── buildWriteCandidateYaml ────────────────────────────────────────────────────
 
 describe("buildWriteCandidateYaml", () => {
