@@ -5,7 +5,7 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import { loadAllAdapters, loadTsAdapters } from "./discovery/loader.js";
-import { getAllAdapters, listCommands, resolveCommand } from "./registry.js";
+import { getAllAdapters, listCommands } from "./registry.js";
 import { format, detectFormat } from "./output/formatter.js";
 import { runPipeline, PipelineError } from "./engine/yaml-runner.js";
 import { ExitCode } from "./types.js";
@@ -28,6 +28,7 @@ import { registerSynthesizeCommand } from "./commands/synthesize.js";
 import { registerGenerateCommand } from "./commands/generate.js";
 import { registerHealthCommand } from "./commands/health.js";
 import { registerAgentsCommand } from "./commands/agents.js";
+import { registerRepairCommand } from "./commands/repair.js";
 import { emitHook } from "./hooks.js";
 import { checkForUpdates } from "./engine/update-check.js";
 import type { OutputFormat } from "./types.js";
@@ -253,109 +254,8 @@ export async function createCli(): Promise<Command> {
   // Emit startup hook — plugins can listen for CLI boot
   await emitHook("onStartup", { command: "__startup__", args: {} });
 
-  // Register "repair" command — diagnostic for broken adapters
-  program
-    .command("repair <site> <command>")
-    .description("Diagnose and suggest fixes for a broken adapter command")
-    .option("--verbose", "show full pipeline trace")
-    .action(
-      async (
-        site: string,
-        commandName: string,
-        opts: Record<string, unknown>,
-      ) => {
-        const resolved = resolveCommand(site, commandName);
-        if (!resolved) {
-          console.error(chalk.red(`Unknown command: ${site} ${commandName}`));
-          console.error(
-            chalk.dim(
-              `Available sites: ${getAllAdapters()
-                .map((a) => a.name)
-                .join(", ")}`,
-            ),
-          );
-          process.exit(ExitCode.USAGE_ERROR);
-        }
-
-        const { adapter, command } = resolved;
-        const adapterPath = `src/adapters/${adapter.name}/${commandName}.yaml`;
-
-        console.log(chalk.bold(`Diagnosing: unicli ${site} ${commandName}`));
-        console.log(chalk.dim(`  adapter: ${adapterPath}`));
-        console.log(chalk.dim(`  type: ${adapter.type}`));
-        console.log(chalk.dim(`  strategy: ${adapter.strategy ?? "public"}`));
-
-        if (!command.pipeline) {
-          console.log(
-            chalk.yellow(
-              "  This command uses a TypeScript function, not a YAML pipeline.",
-            ),
-          );
-          console.log(
-            chalk.yellow(
-              "  Self-repair is only available for YAML pipeline adapters.",
-            ),
-          );
-          process.exit(ExitCode.CONFIG_ERROR);
-        }
-
-        console.log(chalk.dim(`  pipeline steps: ${command.pipeline.length}`));
-        console.log("");
-
-        // Run pipeline with verbose tracing
-        try {
-          console.log(chalk.cyan("Running pipeline..."));
-          const results = await runPipeline(
-            command.pipeline,
-            { limit: 3 },
-            adapter.base,
-            { site: adapter.name, strategy: adapter.strategy },
-          );
-          console.log(
-            chalk.green(`  ✓ Pipeline succeeded — ${results.length} result(s)`),
-          );
-          if (results.length > 0 && opts.verbose) {
-            console.log(chalk.dim(JSON.stringify(results[0], null, 2)));
-          }
-        } catch (err) {
-          if (err instanceof PipelineError) {
-            const info = err.toAgentJSON(adapterPath);
-            console.log(
-              chalk.red(
-                `  ✗ Pipeline failed at step ${info.step} (${info.action})`,
-              ),
-            );
-            console.log(chalk.red(`    ${err.message}`));
-            if (info.url) console.log(chalk.dim(`    url: ${info.url}`));
-            if (info.statusCode)
-              console.log(chalk.dim(`    status: ${info.statusCode}`));
-            if (info.responsePreview)
-              console.log(
-                chalk.dim(
-                  `    response: ${info.responsePreview.slice(0, 100)}`,
-                ),
-              );
-            console.log("");
-            console.log(chalk.yellow("  Suggested fix:"));
-            console.log(chalk.yellow(`    ${info.suggestion}`));
-            console.log("");
-            console.log(chalk.dim(`  To fix: edit ${adapterPath}`));
-
-            // Output JSON for AI agents
-            if (!process.stdout.isTTY) {
-              console.log(JSON.stringify(info, null, 2));
-            }
-          } else {
-            console.error(
-              chalk.red(
-                `  ✗ ${err instanceof Error ? err.message : String(err)}`,
-              ),
-            );
-          }
-          process.exit(ExitCode.GENERIC_ERROR);
-        }
-      },
-    );
+  // Register repair command — self-repair broken adapters using AI
+  registerRepairCommand(program);
 
   // Register "test" command — run all commands for a site
   program
