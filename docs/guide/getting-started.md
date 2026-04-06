@@ -5,7 +5,7 @@ Uni-CLI turns any website, desktop app, or cloud service into a CLI command. Ins
 ## Installation
 
 ```bash
-npm install -g unicli
+npm install -g @zenalexa/unicli
 ```
 
 Requires Node.js 20 or later.

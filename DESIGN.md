@@ -271,7 +271,7 @@ Card: Agent-Native (~80 tokens per call)
 
 [Pipeline Section — horizontal step flow visualization]
 
-[CTA] npm install -g unicli
+[CTA] npm install -g @zenalexa/unicli
 ```
 
 ### Documentation (VitePress)

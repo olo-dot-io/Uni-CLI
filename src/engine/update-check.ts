@@ -90,7 +90,7 @@ function registerExitMessage(latest: string): void {
   process.on("exit", (code) => {
     if (code === 0) {
       process.stderr.write(
-        `\n${chalk.yellow(`Update available: ${VERSION} → ${latest}`)} — run ${chalk.cyan("npm i -g unicli")} to upgrade\n`,
+        `\n${chalk.yellow(`Update available: ${VERSION} → ${latest}`)} — run ${chalk.cyan("npm i -g @zenalexa/unicli")} to upgrade\n`,
       );
     }
   });

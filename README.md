@@ -1,4 +1,4 @@
-<!-- AGENT: npm install -g unicli && unicli list | 635 commands across 122 sites. JSON when piped. Self-repairing YAML adapters. unicli repair --loop for autonomous fix. See AGENTS.md -->
+<!-- AGENT: npm install -g @zenalexa/unicli && unicli list | 635 commands across 122 sites. JSON when piped. Self-repairing YAML adapters. unicli repair --loop for autonomous fix. See AGENTS.md -->
 
 <h1 align="center">Uni-CLI</h1>
 
@@ -7,8 +7,8 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/unicli"><img src="https://img.shields.io/npm/v/unicli?style=flat-square" alt="npm"></a>
-  <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/unicli?style=flat-square" alt="Node.js"></a>
+  <a href="https://www.npmjs.com/package/@zenalexa/unicli"><img src="https://img.shields.io/npm/v/@zenalexa/unicli?style=flat-square" alt="npm"></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/@zenalexa/unicli?style=flat-square" alt="Node.js"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="Apache-2.0"></a>
 </p>
 
@@ -23,7 +23,7 @@ Agents cannot draw in SolidWorks. Cannot design PCBs. Cannot run CFD simulations
 Uni-CLI fixes this. One command, structured JSON output, self-repairing YAML adapters. **~80 tokens per invocation** — two orders of magnitude cheaper than MCP.
 
 ```bash
-npm install -g unicli
+npm install -g @zenalexa/unicli
 unicli hackernews top --limit 5          # Public API
 unicli bilibili hot                      # Chinese platform
 unicli twitter search "AI agents"        # Authenticated
@@ -333,5 +333,5 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md). The fastest way to contribute: write a
 
 <p align="center">
   <sub>v0.207.1 — Vostok · Gagarin</sub><br>
-  <sub>122 sites · 635 commands · 35 pipeline steps · 29 filters · 639 unit tests</sub>
+  <sub>122 sites · 635 commands · 35 pipeline steps · 29 filters · 665 unit tests</sub>
 </p>

@@ -1,12 +1,12 @@
 # Uni-CLI
 
 <!-- IF YOU ARE AN AI AGENT: Read this file. It tells you everything you need.
-     Install: npm install -g unicli
+     Install: npm install -g @zenalexa/unicli
      Run: unicli <site> <command> [args]
      Output is JSON when piped. Errors are structured JSON to stderr.
      You can fix broken adapters yourself — read the Self-Repair section. -->
 
-> 122 sites, 635 commands, 35 pipeline steps. One CLI. `npm install -g unicli`
+> 122 sites, 635 commands, 35 pipeline steps. One CLI. `npm install -g @zenalexa/unicli`
 
 ## For AI Agents
 
@@ -22,7 +22,7 @@ unicli test [site]                 # Verify adapters work
 ## Install
 
 ```bash
-npm install -g unicli
+npm install -g @zenalexa/unicli
 ```
 
 ## What You Can Do
