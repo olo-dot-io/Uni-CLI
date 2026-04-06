@@ -55,6 +55,7 @@ interface CaptureScreenshotResult {
 }
 
 interface NetworkResponseEvent {
+  requestId: string;
   response: {
     url: string;
     status: number;
@@ -63,6 +64,35 @@ interface NetworkResponseEvent {
   };
   type?: string;
   timestamp?: number;
+}
+
+interface NetworkRequestWillBeSentEvent {
+  requestId: string;
+  request: {
+    url: string;
+    method: string;
+  };
+}
+
+interface NetworkLoadingFinishedEvent {
+  requestId: string;
+  encodedDataLength?: number;
+}
+
+interface GetResponseBodyResult {
+  body: string;
+  base64Encoded: boolean;
+}
+
+/** Captured network response with body content */
+export interface NetworkCaptureEntry {
+  url: string;
+  method: string;
+  status: number;
+  contentType: string;
+  responseBody?: string;
+  size: number;
+  timestamp: number;
 }
 
 // ── Key mapping ─────────────────────────────────────────────────────
@@ -118,6 +148,12 @@ export class BrowserPage implements IPage {
   private _networkEnabled = false;
   private _networkRequests: NetworkRequest[] = [];
 
+  // Network body capture state
+  private _networkCapture = new Map<string, NetworkCaptureEntry>();
+  private _networkCaptureEnabled = false;
+  private _networkCapturePattern?: string | RegExp;
+  private _requestMethods = new Map<string, string>();
+
   constructor(client: CDPClient) {
     this.client = client;
   }
@@ -153,10 +189,18 @@ export class BrowserPage implements IPage {
 
     await loadPromise;
 
-    // Optional settle delay for JS-heavy pages
+    // DOM settle detection for JS-heavy pages (replaces simple setTimeout)
     const settleMs = options?.settleMs;
     if (settleMs && settleMs > 0) {
-      await new Promise<void>((resolve) => setTimeout(resolve, settleMs));
+      const { waitForDomStableJs } = await import("./dom-helpers.js");
+      try {
+        await this.evaluate(
+          waitForDomStableJs(settleMs, Math.min(settleMs, 500)),
+        );
+      } catch {
+        // Fallback to simple wait if MutationObserver fails (e.g., about:blank)
+        await new Promise<void>((resolve) => setTimeout(resolve, settleMs));
+      }
     }
   }
 
@@ -554,6 +598,126 @@ export class BrowserPage implements IPage {
     }
 
     return [...this._networkRequests];
+  }
+
+  /**
+   * Start capturing network responses with body content.
+   * Optionally filter by URL pattern (substring match or /regex/).
+   *
+   * Unlike networkRequests() which only captures metadata, this method
+   * also fetches the response body via Network.getResponseBody.
+   *
+   * Captured entries are read and drained via readNetworkCapture().
+   */
+  async startNetworkCapture(pattern?: string): Promise<void> {
+    if (this._networkCaptureEnabled) return;
+
+    // Enable Network domain if not already
+    if (!this._networkEnabled) {
+      await this.client.send("Network.enable");
+      this._networkEnabled = true;
+    }
+
+    // Parse pattern: string → substring match, /pattern/ → RegExp
+    if (pattern) {
+      const regexMatch = /^\/(.+)\/([gimsuy]*)$/.exec(pattern);
+      if (regexMatch) {
+        // Strip 'g' flag — stateful lastIndex causes intermittent misses with .test()
+        const flags = regexMatch[2].replace(/g/g, "");
+        this._networkCapturePattern = new RegExp(regexMatch[1], flags);
+      } else {
+        this._networkCapturePattern = pattern;
+      }
+    }
+
+    this._networkCaptureEnabled = true;
+
+    // Track request methods from requestWillBeSent
+    this.client.on("Network.requestWillBeSent", (params: unknown): void => {
+      const event = params as NetworkRequestWillBeSentEvent;
+      this._requestMethods.set(event.requestId, event.request.method);
+      // Cap method map to prevent unbounded growth
+      if (this._requestMethods.size > 1000) {
+        const firstKey = this._requestMethods.keys().next().value;
+        if (firstKey !== undefined) this._requestMethods.delete(firstKey);
+      }
+    });
+
+    // Store pending entries on responseReceived (metadata only)
+    this.client.on("Network.responseReceived", (params: unknown): void => {
+      if (!this._networkCaptureEnabled) return;
+      const event = params as NetworkResponseEvent;
+      const url = event.response.url;
+
+      // Apply URL filter
+      if (this._networkCapturePattern) {
+        if (typeof this._networkCapturePattern === "string") {
+          if (!url.includes(this._networkCapturePattern)) return;
+        } else {
+          if (!this._networkCapturePattern.test(url)) return;
+        }
+      }
+
+      const contentType = event.response.mimeType ?? "unknown";
+      const contentLength =
+        event.response.headers?.["content-length"] ??
+        event.response.headers?.["Content-Length"];
+      const method = this._requestMethods.get(event.requestId) ?? "GET";
+
+      this._networkCapture.set(event.requestId, {
+        url,
+        method,
+        status: event.response.status,
+        contentType,
+        size: contentLength ? parseInt(contentLength, 10) : 0,
+        timestamp: event.timestamp ?? Date.now(),
+      });
+
+      // Cap buffer at 100 entries
+      if (this._networkCapture.size > 100) {
+        const firstKey = this._networkCapture.keys().next().value;
+        if (firstKey !== undefined) this._networkCapture.delete(firstKey);
+      }
+    });
+
+    // Fetch body on loadingFinished
+    this.client.on("Network.loadingFinished", (params: unknown): void => {
+      if (!this._networkCaptureEnabled) return;
+      const event = params as NetworkLoadingFinishedEvent;
+      const entry = this._networkCapture.get(event.requestId);
+      if (!entry) return;
+
+      // Update size from encodedDataLength if available
+      if (
+        event.encodedDataLength !== undefined &&
+        event.encodedDataLength > 0
+      ) {
+        entry.size = event.encodedDataLength;
+      }
+
+      // Fetch response body asynchronously
+      this.client
+        .send("Network.getResponseBody", { requestId: event.requestId })
+        .then((result: unknown) => {
+          const body = result as GetResponseBodyResult;
+          entry.responseBody = body.base64Encoded
+            ? Buffer.from(body.body, "base64").toString("utf-8")
+            : body.body;
+        })
+        .catch(() => {
+          // Body may be unavailable (e.g., redirects, streaming)
+        });
+    });
+  }
+
+  /**
+   * Read all captured network entries and clear the buffer.
+   * Call startNetworkCapture() first to begin capturing.
+   */
+  async readNetworkCapture(): Promise<NetworkCaptureEntry[]> {
+    const entries = [...this._networkCapture.values()];
+    this._networkCapture.clear();
+    return entries;
   }
 
   /**

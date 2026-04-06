@@ -1,0 +1,7 @@
+site: "1688"
+displayName: 1688.com
+type: web-api
+domain: 1688.com
+description: "1688.com — Alibaba wholesale B2B marketplace"
+strategy: cookie
+category: shopping

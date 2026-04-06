@@ -1,0 +1,44 @@
+site: "1688"
+name: search
+description: Search 1688.com wholesale products
+domain: 1688.com
+type: web-api
+strategy: cookie
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Product search keywords
+  page:
+    type: int
+    default: 1
+    description: Page number
+  limit:
+    type: int
+    default: 20
+    description: Number of results per page
+
+pipeline:
+  - fetch:
+      url: https://search.1688.com/service/marketOfferResultViewService
+      params:
+        keywords: "${{ args.query }}"
+        beginPage: "${{ args.page }}"
+        pageSize: "${{ args.limit }}"
+
+  - select: data.offerList
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: "${{ item.information?.subject || '' }}"
+      price: "${{ item.tradePrice?.offerPrice?.valueString || '' }}"
+      unit: "${{ item.tradePrice?.offerPrice?.priceUnit || '' }}"
+      sales: "${{ item.tradeQuantity?.saleCount || '' }}"
+      shop: "${{ item.company?.name || '' }}"
+      location: "${{ item.company?.location || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, price, unit, sales, shop, location]

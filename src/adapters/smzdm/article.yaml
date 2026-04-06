@@ -1,0 +1,28 @@
+site: smzdm
+name: article
+description: Read a SMZDM article/post by ID
+domain: smzdm.com
+type: web-api
+strategy: cookie
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: Article/post ID
+
+pipeline:
+  - fetch_text:
+      url: "https://post.smzdm.com/p/${{ args.id }}/"
+      headers:
+        User-Agent: "Mozilla/5.0 (compatible; Uni-CLI)"
+
+  - html_to_md: ~
+
+  - map:
+      id: "${{ args.id }}"
+      content: "${{ item | truncate(3000) }}"
+      url: "https://post.smzdm.com/p/${{ args.id }}/"
+
+columns: [id, content, url]

@@ -3,6 +3,28 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
+## [0.206.0] — 2026-04-05 — Vostok · Tereshkova
+
+### Added
+
+- **Adapter Generation Engine**: `unicli explore <url>` (API discovery), `unicli synthesize <site>` (YAML candidate generation), `unicli generate <url>` (one-shot explore+synthesize+select) — complete adapter generation pipeline with endpoint scoring algorithm
+- **Browser Enhancements**: DOM settle detection via MutationObserver, network body capture with `startNetworkCapture`/`readNetworkCapture`, navigate with `waitUntil: networkidle`, click with x/y coordinates, interceptor regex patterns + text capture + multi-capture
+- **Diagnostic Engine**: `RepairContext` module — full error context with DOM snapshot, network requests, console errors, and adapter source for AI agent self-repair. Triggered via `UNICLI_DIAGNOSTIC=1`
+- **Plugin System v1**: Custom step registration (`registerStep`), manifest-based plugin loader (`unicli-plugin.json`), `unicli plugin install/uninstall/list/create/steps` commands
+- **Agent-Native Primitives**: `assert` step (URL/selector/text/condition), `extract` step (structured browser data extraction with CSS selectors and type coercion), `retry` property on any step with exponential backoff
+- **Smart Cookie Refresh**: Auto-detect 401/403 on cookie/header adapters → navigate Chrome → re-extract cookies via CDP
+- **Infrastructure**: HTTP proxy support (`http_proxy`/`https_proxy`/`no_proxy` via undici), update auto-checker (24h cache, non-blocking), `unicli health [site]` (adapter health monitoring), `unicli agents generate` (AGENTS.md auto-generation)
+- **New Sites (8)**: linkedin, jd, weixin, reuters, barchart, 1688, smzdm, sinablog — 26 new adapter commands
+- **Operate Enhancements**: `operate upload <ref> <path>`, `operate hover <ref>`
+- **Pipeline Steps**: assert, extract → 30 → 35 total (including retry as a cross-cutting property)
+
+### Changed
+
+- Pipeline engine: `SIBLING_KEYS` extended with `retry`, `backoff`; `executeStep` default case checks plugin custom step registry
+- `fetchJson` and `stepFetchText` now use proxy agent when proxy env vars set
+- `BrowserPage.goto()` uses DOM settle detection (MutationObserver) instead of simple setTimeout
+- CLI startup: non-blocking update check + plugin loading before hook emission
+
 ## [0.205.0] — 2026-04-05 — Vostok · Bykovsky
 
 ### Added

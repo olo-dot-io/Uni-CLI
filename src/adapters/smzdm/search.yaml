@@ -1,0 +1,45 @@
+site: smzdm
+name: search
+description: Search SMZDM deals and articles
+domain: smzdm.com
+type: web-api
+strategy: public
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search keywords
+  page:
+    type: int
+    default: 1
+    description: Page number
+  limit:
+    type: int
+    default: 20
+    description: Number of results
+
+pipeline:
+  - fetch:
+      url: https://search-api.smzdm.com/v1/search
+      params:
+        keyword: "${{ args.query }}"
+        page: "${{ args.page }}"
+        limit: "${{ args.limit }}"
+      headers:
+        User-Agent: "Mozilla/5.0 (compatible; Uni-CLI)"
+
+  - select: data.rows
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: "${{ item.article_title || item.title || '' }}"
+      price: "${{ item.article_price || '' }}"
+      mall: "${{ item.article_mall || '' }}"
+      rating: "${{ item.article_rating || '' }}"
+      url: "${{ item.article_url || item.url || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, price, mall, rating, url]

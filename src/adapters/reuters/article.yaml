@@ -1,0 +1,32 @@
+site: reuters
+name: article
+description: Fetch a single Reuters article by URL path
+domain: reuters.com
+type: web-api
+strategy: public
+
+args:
+  url:
+    type: str
+    required: true
+    positional: true
+    description: "Article URL path (e.g. /world/us/some-article-id)"
+
+pipeline:
+  - fetch:
+      url: https://www.reuters.com/pf/api/v3/content/fetch/article-by-id-or-url-v1
+      params:
+        query: '{"url":"${{ args.url }}","website":"reuters"}'
+      headers:
+        User-Agent: "Mozilla/5.0 (compatible; Uni-CLI)"
+
+  - select: result
+
+  - map:
+      title: "${{ item.title || '' }}"
+      authors: "${{ (item.authors || []).map(a => a.name).join(', ') }}"
+      date: "${{ item.display_date || item.published_time || '' }}"
+      body: "${{ (item.content_elements || []).filter(e => e.type === 'text').map(e => e.content).join(' ') | truncate(1000) }}"
+      url: "https://www.reuters.com${{ item.canonical_url || '' }}"
+
+columns: [title, authors, date, body, url]

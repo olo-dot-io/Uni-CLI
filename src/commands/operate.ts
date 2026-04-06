@@ -6,6 +6,7 @@
  */
 
 import { Command } from "commander";
+import { resolve } from "node:path";
 import chalk from "chalk";
 import { BrowserBridge, DaemonPage } from "../browser/bridge.js";
 
@@ -377,6 +378,45 @@ export function registerOperateCommands(program: Command): void {
           })()`,
         );
         return { ok: true, ref, option };
+      }),
+    );
+
+  // upload <ref> <path> — Upload file to file input
+  operate
+    .command("upload <ref> <path>")
+    .description("Upload file to file input element by ref number")
+    .action((ref: string, filePath: string) =>
+      operateAction("upload", async () => {
+        validateRef(ref);
+        const selector = `[data-unicli-ref="${ref}"]`;
+        const absolutePath = resolve(filePath);
+        const page = await getOperatePage();
+        await page.setFileInput(selector, [absolutePath]);
+        return { ok: true, ref, path: absolutePath };
+      }),
+    );
+
+  // hover <ref> — Hover over element
+  operate
+    .command("hover <ref>")
+    .description(
+      "Hover over element by ref number to trigger mouseover effects",
+    )
+    .action((ref: string) =>
+      operateAction("hover", async () => {
+        validateRef(ref);
+        const selector = `[data-unicli-ref="${ref}"]`;
+        const selectorJson = JSON.stringify(selector);
+        const page = await getOperatePage();
+        await page.evaluate(
+          `(() => {
+            const el = document.querySelector(${selectorJson});
+            if (!el) throw new Error('Element not found: ' + ${selectorJson});
+            el.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+            el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+          })()`,
+        );
+        return { ok: true, ref };
       }),
     );
 

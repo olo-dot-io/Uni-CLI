@@ -1,0 +1,28 @@
+site: sinablog
+name: article
+description: Read a Sina Blog article as Markdown
+domain: blog.sina.com.cn
+type: web-api
+strategy: public
+
+args:
+  path:
+    type: str
+    required: true
+    positional: true
+    description: "Blog article path (e.g. s/blog_abc123.html)"
+
+pipeline:
+  - fetch_text:
+      url: "https://blog.sina.com.cn/${{ args.path }}"
+      headers:
+        User-Agent: "Mozilla/5.0 (compatible; Uni-CLI)"
+
+  - html_to_md: ~
+
+  - map:
+      path: "${{ args.path }}"
+      content: "${{ item | truncate(3000) }}"
+      url: "https://blog.sina.com.cn/${{ args.path }}"
+
+columns: [path, content, url]

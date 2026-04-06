@@ -1,0 +1,40 @@
+site: weixin
+name: search
+description: Search WeChat articles via Sogou
+domain: weixin.sogou.com
+type: browser
+strategy: cookie
+browser: true
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search keywords
+  limit:
+    type: int
+    default: 10
+    description: Number of results
+
+pipeline:
+  - navigate:
+      url: "https://weixin.sogou.com/weixin?type=2&query=${{ encodeURIComponent(args.query) }}"
+
+  - wait:
+      selector: ".news-list li"
+      timeout: 8000
+
+  - evaluate:
+      expression: |
+        Array.from(document.querySelectorAll('.news-list li')).map((el, i) => ({
+          rank: i + 1,
+          title: el.querySelector('h3 a')?.textContent?.trim() || '',
+          source: el.querySelector('.account')?.textContent?.trim() || '',
+          summary: el.querySelector('.txt-info')?.textContent?.trim() || '',
+          url: el.querySelector('h3 a')?.href || ''
+        }))
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, source, summary, url]

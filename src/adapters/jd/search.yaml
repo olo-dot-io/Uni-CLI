@@ -1,0 +1,39 @@
+site: jd
+name: search
+description: Search JD.com products
+domain: jd.com
+type: web-api
+strategy: public
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Product search keywords
+  limit:
+    type: int
+    default: 20
+    description: Number of results
+
+pipeline:
+  - fetch:
+      url: https://api.m.jd.com/api
+      params:
+        appid: search-pc
+        functionId: pc_search_new
+        body: '{"keyword":"${{ args.query }}","page":"1","pageSize":"${{ args.limit }}"}'
+
+  - select: data.searchResult
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: "${{ item.wareTitle || item.title || '' }}"
+      price: "${{ item.price || '' }}"
+      shop: "${{ item.shopName || '' }}"
+      comments: "${{ item.commentCount || '' }}"
+      sku: "${{ item.wareId || item.skuId || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, price, shop, comments, sku]

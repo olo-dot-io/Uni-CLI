@@ -26,6 +26,8 @@ vi.mock("../../src/browser/page.js", () => {
     cookies: vi.fn().mockResolvedValue({}),
     close: vi.fn().mockResolvedValue(undefined),
     sendCDP: vi.fn().mockResolvedValue(undefined),
+    nativeClick: vi.fn().mockResolvedValue(undefined),
+    networkRequests: vi.fn().mockResolvedValue([]),
   };
 
   return {
@@ -71,6 +73,33 @@ describe("browser step: navigate", () => {
       settleMs: 2000,
     });
   });
+
+  it("passes waitUntil option and waits for networkidle", async () => {
+    const mockPage = await getMockPage();
+    mockPage.goto.mockClear();
+    mockPage.networkRequests.mockClear();
+    mockPage.waitFor.mockClear();
+    // Simulate stable network: always return same count
+    mockPage.networkRequests.mockResolvedValue([
+      { url: "https://example.com" },
+    ]);
+    const steps = [
+      {
+        navigate: {
+          url: "https://example.com",
+          waitUntil: "networkidle",
+          settleMs: 500,
+        },
+      },
+    ];
+    await runPipeline(steps, {});
+    expect(mockPage.goto).toHaveBeenCalledWith("https://example.com", {
+      settleMs: 500,
+      waitUntil: "networkidle",
+    });
+    // networkRequests should have been polled at least once
+    expect(mockPage.networkRequests).toHaveBeenCalled();
+  });
 });
 
 describe("browser step: evaluate", () => {
@@ -107,6 +136,30 @@ describe("browser step: click", () => {
     const steps = [{ click: "#main-button" }];
     await runPipeline(steps, {});
     expect(mockPage.click).toHaveBeenCalledWith("#main-button");
+  });
+
+  it("clicks by x/y coordinates via nativeClick", async () => {
+    const mockPage = await getMockPage();
+    mockPage.nativeClick.mockClear();
+    const steps = [{ click: { x: 150, y: 300 } }];
+    await runPipeline(steps, {});
+    expect(mockPage.nativeClick).toHaveBeenCalledWith(150, 300);
+  });
+
+  it("clicks by selector in object form", async () => {
+    const mockPage = await getMockPage();
+    mockPage.click.mockClear();
+    const steps = [{ click: { selector: "#btn" } }];
+    await runPipeline(steps, {});
+    expect(mockPage.click).toHaveBeenCalledWith("#btn");
+  });
+
+  it("throws PipelineError when neither selector nor coordinates provided", async () => {
+    const steps = [{ click: {} }];
+    await expect(runPipeline(steps, {})).rejects.toThrow(PipelineError);
+    await expect(runPipeline(steps, {})).rejects.toThrow(
+      /click step requires either selector or x\/y coordinates/,
+    );
   });
 });
 

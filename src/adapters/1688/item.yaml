@@ -1,0 +1,36 @@
+site: "1688"
+name: item
+description: 1688.com product detail page (browser extraction)
+domain: 1688.com
+type: browser
+strategy: cookie
+browser: true
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: Offer/product ID
+
+pipeline:
+  - navigate:
+      url: "https://detail.1688.com/offer/${{ args.id }}.html"
+
+  - wait:
+      selector: ".title-text"
+      timeout: 8000
+
+  - evaluate:
+      expression: |
+        (() => {
+          const title = document.querySelector('.title-text')?.textContent?.trim() || '';
+          const price = document.querySelector('.price-text')?.textContent?.trim() || '';
+          const minOrder = document.querySelector('.unit-text')?.textContent?.trim() || '';
+          const shop = document.querySelector('.company-name a')?.textContent?.trim() || '';
+          const location = document.querySelector('.company-location')?.textContent?.trim() || '';
+          const sales = document.querySelector('.sale-count')?.textContent?.trim() || '';
+          return [{ title, price, minOrder, shop, location, sales, id: location.href }];
+        })()
+
+columns: [title, price, minOrder, shop, location, sales]

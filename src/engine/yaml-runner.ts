@@ -42,6 +42,7 @@ import {
   mapConcurrent,
 } from "./download.js";
 import { executeWebsocket, type WebsocketStepConfig } from "./websocket.js";
+import { getProxyAgent } from "./proxy.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -79,7 +80,8 @@ export class PipelineError extends Error {
         | "empty_result"
         | "parse_error"
         | "timeout"
-        | "expression_error";
+        | "expression_error"
+        | "assertion_failed";
       url?: string;
       statusCode?: number;
       responsePreview?: string;
@@ -101,7 +103,14 @@ export class PipelineError extends Error {
 }
 
 /** Reserved sibling keys that are not step action names */
-const SIBLING_KEYS = new Set(["fallback", "then", "else", "merge"]);
+const SIBLING_KEYS = new Set([
+  "fallback",
+  "then",
+  "else",
+  "merge",
+  "retry",
+  "backoff",
+]);
 
 function getActionEntry(step: PipelineStep): [string, unknown] {
   const entries = Object.entries(step);
@@ -173,6 +182,8 @@ async function executeStep(
       await waitForToken(rlConfig.domain, rlConfig.rpm ?? 60);
       return ctx;
     }
+    case "assert":
+      return stepAssert(ctx, config as AssertConfig, stepIndex);
     case "set":
       return stepSet(ctx, config as Record<string, unknown>);
     case "append":
@@ -198,8 +209,25 @@ async function executeStep(
         depth ?? 0,
       );
     }
-    default:
+    case "extract":
+      return stepExtract(ctx, config as ExtractConfig);
+    default: {
+      // Check plugin custom step registry before giving up
+      const { getCustomStep } = await import("../plugin/step-registry.js");
+      const customHandler = getCustomStep(action);
+      if (customHandler) {
+        const pluginCtx = {
+          data: ctx.data,
+          args: ctx.args,
+          vars: ctx.vars,
+          base: ctx.base,
+          cookieHeader: ctx.cookieHeader,
+        };
+        const result = await customHandler(pluginCtx, config);
+        return { ...ctx, data: result.data, vars: result.vars };
+      }
       return ctx;
+    }
   }
 }
 
@@ -274,25 +302,79 @@ export async function runPipeline(
         if (fallbacks.length === 0) fallbacks = undefined;
       }
 
-      try {
-        // Inner try — executes the primary step, falls back on failure
-        try {
-          ctx = await executeStep(ctx, action, stepConfig, i, step);
-        } catch (primaryErr) {
-          if (!fallbacks || fallbacks.length === 0) throw primaryErr;
+      // --- Retry configuration ---
+      const retryCount = getRetryCount(step, stepConfig);
+      const backoffMs = getBackoffMs(step, stepConfig);
 
-          let lastErr = primaryErr;
-          let succeeded = false;
-          for (const fb of fallbacks) {
+      // Strip retry/backoff from stepConfig to avoid passing them to step implementations
+      if (
+        stepConfig &&
+        typeof stepConfig === "object" &&
+        !Array.isArray(stepConfig)
+      ) {
+        const cfgObj = stepConfig as Record<string, unknown>;
+        if ("retry" in cfgObj || "backoff" in cfgObj) {
+          const { retry: _r, backoff: _b, ...rest } = cfgObj;
+          stepConfig = rest;
+        }
+      }
+
+      try {
+        if (retryCount > 0) {
+          // Retry-aware execution: wraps primary + fallback
+          let lastRetryErr: unknown;
+          let retrySucceeded = false;
+          for (let attempt = 0; attempt <= retryCount; attempt++) {
             try {
-              ctx = await executeStep(ctx, action, fb, i, step);
-              succeeded = true;
+              // Inner: primary step + fallback
+              try {
+                ctx = await executeStep(ctx, action, stepConfig, i, step);
+              } catch (primaryErr) {
+                if (!fallbacks || fallbacks.length === 0) throw primaryErr;
+                let lastErr = primaryErr;
+                let fbOk = false;
+                for (const fb of fallbacks) {
+                  try {
+                    ctx = await executeStep(ctx, action, fb, i, step);
+                    fbOk = true;
+                    break;
+                  } catch (fbErr) {
+                    lastErr = fbErr;
+                  }
+                }
+                if (!fbOk) throw lastErr;
+              }
+              retrySucceeded = true;
               break;
-            } catch (fbErr) {
-              lastErr = fbErr;
+            } catch (retryErr) {
+              lastRetryErr = retryErr;
+              if (attempt < retryCount) {
+                const delay = backoffMs * Math.pow(2, attempt);
+                await new Promise((r) => setTimeout(r, delay));
+              }
             }
           }
-          if (!succeeded) throw lastErr;
+          if (!retrySucceeded && lastRetryErr) throw lastRetryErr;
+        } else {
+          // Original execution path (no retry): primary + fallback
+          try {
+            ctx = await executeStep(ctx, action, stepConfig, i, step);
+          } catch (primaryErr) {
+            if (!fallbacks || fallbacks.length === 0) throw primaryErr;
+
+            let lastErr = primaryErr;
+            let succeeded = false;
+            for (const fb of fallbacks) {
+              try {
+                ctx = await executeStep(ctx, action, fb, i, step);
+                succeeded = true;
+                break;
+              } catch (fbErr) {
+                lastErr = fbErr;
+              }
+            }
+            if (!succeeded) throw lastErr;
+          }
         }
       } catch (err) {
         // Auto-fix: try alternative select paths when selector_miss
@@ -326,6 +408,43 @@ export async function runPipeline(
             // Auto-fix module not available
           }
         }
+        // Emit diagnostic context for agent self-repair
+        if (process.env.UNICLI_DIAGNOSTIC === "1") {
+          try {
+            const { buildRepairContext, emitRepairContext } =
+              await import("./diagnostic.js");
+            const repairCtx = await buildRepairContext({
+              error: err instanceof Error ? err : new Error(String(err)),
+              site: options?.site ?? "unknown",
+              command: "unknown",
+              page: ctx.page,
+            });
+            emitRepairContext(repairCtx);
+          } catch {
+            // Diagnostic collection failure should never mask the original error
+          }
+        }
+
+        // Smart cookie refresh on auth failure
+        if (
+          err instanceof PipelineError &&
+          (err.detail.statusCode === 401 || err.detail.statusCode === 403) &&
+          (options?.strategy === "cookie" || options?.strategy === "header") &&
+          options?.site
+        ) {
+          try {
+            const { refreshCookies } = await import("./cookie-refresh.js");
+            const refreshed = await refreshCookies(options.site);
+            if (refreshed) {
+              process.stderr.write(
+                `[cookie-refresh] Cookies refreshed for ${options.site}, retry the command.\n`,
+              );
+            }
+          } catch {
+            // Cookie refresh failure is non-fatal
+          }
+        }
+
         if (err instanceof PipelineError) throw err;
         throw new PipelineError(
           `Step ${i} (${action}) failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -362,6 +481,137 @@ export async function runPipeline(
       }
     }
   }
+}
+
+// --- Retry helpers ---
+
+function getRetryCount(step: PipelineStep, config: unknown): number {
+  const stepObj = step as Record<string, unknown>;
+  if (typeof stepObj.retry === "number") return stepObj.retry;
+  if (
+    config &&
+    typeof config === "object" &&
+    !Array.isArray(config) &&
+    "retry" in (config as Record<string, unknown>)
+  ) {
+    return Number((config as Record<string, unknown>).retry) || 0;
+  }
+  return 0;
+}
+
+function getBackoffMs(step: PipelineStep, config: unknown): number {
+  const stepObj = step as Record<string, unknown>;
+  if (typeof stepObj.backoff === "number") return stepObj.backoff;
+  if (
+    config &&
+    typeof config === "object" &&
+    !Array.isArray(config) &&
+    "backoff" in (config as Record<string, unknown>)
+  ) {
+    return Number((config as Record<string, unknown>).backoff) || 1000;
+  }
+  return 1000;
+}
+
+// --- Assert step ---
+
+interface AssertConfig {
+  url?: string;
+  selector?: string;
+  text?: string;
+  condition?: string;
+  message?: string;
+}
+
+async function stepAssert(
+  ctx: PipelineContext,
+  config: AssertConfig,
+  stepIndex: number,
+): Promise<PipelineContext> {
+  const page = ctx.page ? ctx.page : undefined;
+
+  // URL assertion
+  if (config.url) {
+    if (!page)
+      throw assertionError(
+        "url assertion requires a browser page",
+        config,
+        stepIndex,
+      );
+    const currentUrl = await page.url();
+    const expected = evalTemplate(config.url, ctx);
+    if (!currentUrl.includes(expected)) {
+      throw assertionError(
+        `URL mismatch: expected "${expected}" in "${currentUrl}"`,
+        config,
+        stepIndex,
+      );
+    }
+  }
+
+  // Selector assertion
+  if (config.selector) {
+    if (!page)
+      throw assertionError(
+        "selector assertion requires a browser page",
+        config,
+        stepIndex,
+      );
+    const selector = evalTemplate(config.selector, ctx);
+    const exists = await page.evaluate(
+      `!!document.querySelector(${JSON.stringify(selector)})`,
+    );
+    if (!exists) {
+      throw assertionError(`Element not found: ${selector}`, config, stepIndex);
+    }
+  }
+
+  // Text assertion
+  if (config.text) {
+    if (!page)
+      throw assertionError(
+        "text assertion requires a browser page",
+        config,
+        stepIndex,
+      );
+    const expected = evalTemplate(config.text, ctx);
+    const bodyText = (await page.evaluate(
+      "document.body?.innerText || ''",
+    )) as string;
+    if (!bodyText.includes(expected)) {
+      throw assertionError(`Text not found: "${expected}"`, config, stepIndex);
+    }
+  }
+
+  // Condition assertion (works without browser)
+  if (config.condition) {
+    const expr = evalTemplate(config.condition, ctx);
+    const result = evalExpression(expr, {
+      data: ctx.data,
+      args: ctx.args,
+      vars: ctx.vars,
+    });
+    if (!result) {
+      throw assertionError(`Condition failed: ${expr}`, config, stepIndex);
+    }
+  }
+
+  return ctx;
+}
+
+function assertionError(
+  message: string,
+  config: AssertConfig,
+  stepIndex: number,
+): PipelineError {
+  return new PipelineError(config.message ?? message, {
+    step: stepIndex,
+    action: "assert",
+    config,
+    errorType: "assertion_failed",
+    suggestion:
+      "Check the assertion conditions in the adapter YAML. The page state may not match expectations.",
+  });
 }
 
 // --- Step implementations ---
@@ -433,17 +683,20 @@ async function fetchJson(
     headers["Cookie"] = cookieHeader;
   }
 
-  const init: RequestInit = { method, headers };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dispatcher from undici not in standard RequestInit
+  const init: Record<string, any> = { method, headers };
   if (config.body && method !== "GET") {
     headers["Content-Type"] = "application/json";
     init.body = JSON.stringify(config.body);
   }
+  const proxyAgent = getProxyAgent();
+  if (proxyAgent) init.dispatcher = proxyAgent;
 
   const maxAttempts = config.retry ?? 1;
   const baseDelay = config.backoff ?? 1000;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const resp = await fetch(url, init);
+    const resp = await fetch(url, init as RequestInit);
 
     if (resp.ok) {
       return resp.json();
@@ -585,7 +838,12 @@ async function stepFetchText(
     headers["Cookie"] = ctx.cookieHeader;
   }
 
-  const resp = await fetch(url, { method, headers });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dispatcher from undici not in standard RequestInit
+  const fetchInit: Record<string, any> = { method, headers };
+  const ftAgent = getProxyAgent();
+  if (ftAgent) fetchInit.dispatcher = ftAgent;
+
+  const resp = await fetch(url, fetchInit as RequestInit);
   if (!resp.ok) {
     throw new PipelineError(
       `HTTP ${resp.status} ${resp.statusText} from ${url}`,
@@ -1561,6 +1819,35 @@ async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
 interface NavigateConfig {
   url: string;
   settleMs?: number;
+  waitUntil?: "load" | "domcontentloaded" | "networkidle" | "commit";
+}
+
+/**
+ * Wait until no new network requests occur for quietMs.
+ * Uses polling — checks page.networkRequests() count stability.
+ */
+async function waitForNetworkIdle(
+  page: BrowserPage,
+  maxMs = 5000,
+  quietMs = 500,
+): Promise<void> {
+  const start = Date.now();
+  let lastCount = -1;
+  let stableSince = Date.now();
+
+  while (Date.now() - start < maxMs) {
+    const requests = await page.networkRequests();
+    const currentCount = requests.length;
+
+    if (currentCount !== lastCount) {
+      lastCount = currentCount;
+      stableSince = Date.now();
+    } else if (Date.now() - stableSince >= quietMs) {
+      return;
+    }
+
+    await page.waitFor(100);
+  }
 }
 
 async function stepNavigate(
@@ -1570,7 +1857,13 @@ async function stepNavigate(
   const page = await acquirePage(ctx);
   const url = evalTemplate(config.url, ctx);
   const settleMs = config.settleMs ?? 0;
-  await page.goto(url, { settleMs });
+
+  await page.goto(url, { settleMs, waitUntil: config.waitUntil });
+
+  if (config.waitUntil === "networkidle") {
+    await waitForNetworkIdle(page, 5000, 500);
+  }
+
   return { ...ctx, page };
 }
 
@@ -1592,7 +1885,10 @@ async function stepEvaluate(
 }
 
 interface ClickConfig {
-  selector: string;
+  selector?: string;
+  x?: number;
+  y?: number;
+  quads?: boolean;
 }
 
 async function stepClick(
@@ -1600,12 +1896,38 @@ async function stepClick(
   config: ClickConfig | string,
 ): Promise<PipelineContext> {
   const page = await acquirePage(ctx);
-  const selector =
-    typeof config === "string"
-      ? evalTemplate(config, ctx)
-      : evalTemplate(config.selector, ctx);
-  await page.click(selector);
-  return { ...ctx, page };
+
+  // String shorthand: just a CSS selector
+  if (typeof config === "string") {
+    const selector = evalTemplate(config, ctx);
+    await page.click(selector);
+    return { ...ctx, page };
+  }
+
+  // Coordinate-based click
+  if (config.x !== undefined && config.y !== undefined) {
+    await page.nativeClick(config.x, config.y);
+    return { ...ctx, page };
+  }
+
+  // Selector-based click
+  if (config.selector) {
+    const selector = evalTemplate(config.selector, ctx);
+    await page.click(selector);
+    return { ...ctx, page };
+  }
+
+  throw new PipelineError(
+    "click step requires either selector or x/y coordinates",
+    {
+      step: -1,
+      action: "click",
+      config,
+      errorType: "expression_error",
+      suggestion:
+        'Provide either a CSS selector string, {selector: "..."}, or {x: N, y: N} for coordinate click.',
+    },
+  );
 }
 
 interface TypeConfig {
@@ -1657,6 +1979,9 @@ interface InterceptConfig {
   capture: string;
   select?: string;
   timeout?: number;
+  regex?: boolean;
+  all?: boolean;
+  captureText?: boolean;
 }
 
 async function stepIntercept(
@@ -1668,7 +1993,13 @@ async function stepIntercept(
   const timeout = config.timeout ?? 10000;
 
   // Install interceptor: patch fetch + XHR to capture matching responses
-  await page.evaluate(generateInterceptorJs(capturePattern));
+  await page.evaluate(
+    generateInterceptorJs(capturePattern, {
+      regex: config.regex,
+      captureAll: config.all,
+      captureText: config.captureText,
+    }),
+  );
 
   // Execute trigger action
   const trigger = evalTemplate(config.trigger, ctx);
@@ -1690,9 +2021,14 @@ async function stepIntercept(
     const arr = JSON.parse(result as string) as Array<{
       url: string;
       data: unknown;
+      type?: string;
     }>;
     if (arr.length > 0) {
-      captured = arr[arr.length - 1].data;
+      if (config.all) {
+        captured = arr.map((item) => item.data);
+      } else {
+        captured = arr[arr.length - 1].data;
+      }
       break;
     }
     await page.waitFor(200);
@@ -2042,6 +2378,71 @@ async function stepWebsocket(
   };
   const data = await executeWebsocket(resolvedConfig);
   return { ...ctx, data };
+}
+
+// --- Extract step ---
+
+interface FieldDef {
+  selector: string;
+  type?: "text" | "number" | "html" | "attribute";
+  attribute?: string;
+  pattern?: string;
+}
+
+interface ExtractConfig {
+  from: string;
+  fields: Record<string, FieldDef>;
+}
+
+async function stepExtract(
+  ctx: PipelineContext,
+  config: ExtractConfig,
+): Promise<PipelineContext> {
+  const page = await acquirePage(ctx);
+  const containerSelector = evalTemplate(config.from, ctx);
+
+  // Build a JS expression that extracts structured data
+  const fieldEntries = Object.entries(config.fields);
+  const fieldJs = fieldEntries
+    .map(([key, def]) => {
+      const sel = JSON.stringify(def.selector);
+      const attr = def.attribute ? JSON.stringify(def.attribute) : null;
+      const pattern = def.pattern ? JSON.stringify(def.pattern) : null;
+      const type = def.type ?? "text";
+
+      if (type === "attribute" || attr) {
+        return `${JSON.stringify(key)}: (() => { const el = item.querySelector(${sel}); return el ? el.getAttribute(${attr ?? JSON.stringify("href")}) : null; })()`;
+      } else if (type === "number") {
+        return `${JSON.stringify(key)}: (() => { const el = item.querySelector(${sel}); if (!el) return null; const txt = el.textContent || ''; ${pattern ? `const m = txt.match(new RegExp(${pattern})); return m ? parseFloat(m[0]) : null;` : `return parseFloat(txt.replace(/[^\\d.-]/g, '')) || null;`} })()`;
+      } else if (type === "html") {
+        return `${JSON.stringify(key)}: (() => { const el = item.querySelector(${sel}); return el ? el.innerHTML : null; })()`;
+      } else {
+        // text (default)
+        if (pattern) {
+          return `${JSON.stringify(key)}: (() => { const el = item.querySelector(${sel}); if (!el) return null; const txt = el.textContent || ''; const m = txt.match(new RegExp(${pattern})); return m ? (m[1] || m[0]) : txt.trim(); })()`;
+        }
+        return `${JSON.stringify(key)}: (() => { const el = item.querySelector(${sel}); return el ? el.textContent.trim() : null; })()`;
+      }
+    })
+    .join(",\n      ");
+
+  const extractJs = `
+    JSON.stringify(
+      Array.from(document.querySelectorAll(${JSON.stringify(containerSelector)})).map(item => ({
+        ${fieldJs}
+      }))
+    )
+  `;
+
+  const resultStr = (await page.evaluate(extractJs)) as string;
+  let data: unknown[];
+  try {
+    data = JSON.parse(resultStr) as unknown[];
+  } catch {
+    data = [];
+  }
+
+  return { ...ctx, data, page };
 }
 
 // Exported for unit testing — not part of public API

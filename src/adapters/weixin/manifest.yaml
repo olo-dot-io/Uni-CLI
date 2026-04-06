@@ -1,0 +1,7 @@
+site: weixin
+displayName: WeChat Official Accounts
+type: web-api
+domain: mp.weixin.qq.com
+description: "WeChat Official Accounts — article publishing and search"
+strategy: cookie
+category: social

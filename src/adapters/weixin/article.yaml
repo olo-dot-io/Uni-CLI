@@ -1,0 +1,38 @@
+site: weixin
+name: article
+description: List articles from WeChat Official Account backend
+domain: mp.weixin.qq.com
+type: web-api
+strategy: cookie
+
+args:
+  offset:
+    type: int
+    default: 0
+    description: Pagination offset
+  limit:
+    type: int
+    default: 10
+    description: Number of articles
+
+pipeline:
+  - fetch:
+      url: https://mp.weixin.qq.com/cgi-bin/appmsg
+      params:
+        action: list_ex
+        begin: "${{ args.offset }}"
+        count: "${{ args.limit }}"
+        type: "9"
+
+  - select: app_msg_list
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: "${{ item.title || '' }}"
+      digest: "${{ item.digest || '' | truncate(200) }}"
+      url: "${{ item.link || '' }}"
+      create_time: "${{ item.create_time || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, digest, create_time, url]

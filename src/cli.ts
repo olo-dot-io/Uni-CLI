@@ -23,11 +23,20 @@ import { registerPluginCommands } from "./commands/plugin.js";
 import { registerAdapterCommands } from "./commands/adapter.js";
 import { registerInitCommand } from "./commands/init.js";
 import { registerDevCommand } from "./commands/dev.js";
+import { registerExploreCommand } from "./commands/explore.js";
+import { registerSynthesizeCommand } from "./commands/synthesize.js";
+import { registerGenerateCommand } from "./commands/generate.js";
+import { registerHealthCommand } from "./commands/health.js";
+import { registerAgentsCommand } from "./commands/agents.js";
 import { emitHook } from "./hooks.js";
+import { checkForUpdates } from "./engine/update-check.js";
 import type { OutputFormat } from "./types.js";
 
 export async function createCli(): Promise<Command> {
   const program = new Command();
+
+  // Non-blocking update check (fire-and-forget)
+  checkForUpdates();
 
   program
     .name("unicli")
@@ -79,13 +88,108 @@ export async function createCli(): Promise<Command> {
   // Register "doctor" command
   program
     .command("doctor")
-    .description("Check extension + daemon connectivity")
-    .action(() => {
-      console.log(chalk.bold("unicli doctor"));
-      console.log(`  Adapters loaded: ${chalk.green(adapterCount)}`);
-      console.log(`  Sites: ${chalk.green(getAllAdapters().length)}`);
-      console.log(`  Node.js: ${chalk.green(process.version)}`);
+    .description("Diagnose environment: adapters, browser, daemon, tools")
+    .action(async () => {
+      console.log(chalk.bold("unicli doctor\n"));
+
+      // 1. Basic info
+      console.log(`  Adapters: ${chalk.green(adapterCount)}`);
+      console.log(`  Sites:    ${chalk.green(getAllAdapters().length)}`);
+      console.log(`  Node.js:  ${chalk.green(process.version)}`);
       console.log(`  Platform: ${chalk.green(process.platform)}`);
+      console.log("");
+
+      // 2. Daemon status
+      try {
+        const { fetchDaemonStatus } =
+          await import("./browser/daemon-client.js");
+        const status = await fetchDaemonStatus({ timeout: 2000 });
+        if (status) {
+          console.log(
+            `  Daemon:   ${chalk.green("running")} (port ${status.port ?? 19825})`,
+          );
+        } else {
+          console.log(
+            `  Daemon:   ${chalk.yellow("not running")} — run: unicli daemon start`,
+          );
+        }
+      } catch {
+        console.log(
+          `  Daemon:   ${chalk.yellow("not running")} — run: unicli daemon start`,
+        );
+      }
+
+      // 3. Chrome / CDP connectivity
+      try {
+        const { isCDPAvailable, getCDPPort } =
+          await import("./browser/launcher.js");
+        const port = getCDPPort();
+        const available = await isCDPAvailable(port);
+        if (available) {
+          console.log(
+            `  Chrome:   ${chalk.green("reachable")} (CDP port ${port})`,
+          );
+        } else {
+          console.log(
+            `  Chrome:   ${chalk.yellow("not detected")} — run: unicli browser start`,
+          );
+        }
+      } catch {
+        console.log(
+          `  Chrome:   ${chalk.yellow("not detected")} — run: unicli browser start`,
+        );
+      }
+
+      // 4. Cookie directory
+      const { existsSync, readdirSync } = await import("node:fs");
+      const { join } = await import("node:path");
+      const { homedir } = await import("node:os");
+      const cookieDir = join(homedir(), ".unicli", "cookies");
+      if (existsSync(cookieDir)) {
+        const cookieFiles = readdirSync(cookieDir).filter((f) =>
+          f.endsWith(".json"),
+        );
+        console.log(
+          `  Cookies:  ${chalk.green(`${cookieFiles.length} site(s)`)} in ${cookieDir}`,
+        );
+      } else {
+        console.log(
+          `  Cookies:  ${chalk.dim("none")} — run: unicli auth setup <site>`,
+        );
+      }
+
+      // 5. External tools
+      console.log("");
+      const tools = [
+        { name: "yt-dlp", check: "yt-dlp --version" },
+        { name: "ffmpeg", check: "ffmpeg -version" },
+      ];
+      for (const tool of tools) {
+        try {
+          const { execSync } = await import("node:child_process");
+          execSync(tool.check, { stdio: "pipe", timeout: 3000 });
+          console.log(`  ${tool.name.padEnd(8)}: ${chalk.green("installed")}`);
+        } catch {
+          console.log(
+            `  ${tool.name.padEnd(8)}: ${chalk.dim("not found")} (optional, needed for download step)`,
+          );
+        }
+      }
+
+      // 6. Plugin directory
+      const pluginsDir = join(homedir(), ".unicli", "plugins");
+      if (existsSync(pluginsDir)) {
+        const plugins = readdirSync(pluginsDir, { withFileTypes: true }).filter(
+          (d) => d.isDirectory(),
+        );
+        console.log(
+          `  Plugins:  ${chalk.green(`${plugins.length} installed`)} in ${pluginsDir}`,
+        );
+      } else {
+        console.log(`  Plugins:  ${chalk.dim("none")}`);
+      }
+
+      console.log(chalk.dim(`\n  Version:  ${VERSION}`));
     });
 
   // Register auth commands — cookie management
@@ -117,6 +221,34 @@ export async function createCli(): Promise<Command> {
 
   // Register dev command — hot-reload for adapter development
   registerDevCommand(program);
+
+  // Register explore command — API discovery engine
+  registerExploreCommand(program);
+
+  // Register synthesize command — YAML adapter candidate generator
+  registerSynthesizeCommand(program);
+
+  // Register generate command — one-shot explore+synthesize+select
+  registerGenerateCommand(program);
+
+  // Register health command — adapter health checker
+  registerHealthCommand(program);
+
+  // Register agents command — AGENTS.md auto-generation
+  registerAgentsCommand(program);
+
+  // Load third-party plugins (manifest-based)
+  try {
+    const { loadPlugins } = await import("./plugin/loader.js");
+    const { errors: pluginErrors } = await loadPlugins();
+    if (pluginErrors.length > 0 && program.opts().verbose) {
+      for (const err of pluginErrors) {
+        console.error(chalk.yellow(`[plugin] ${err}`));
+      }
+    }
+  } catch {
+    // Plugin system failure is non-fatal
+  }
 
   // Emit startup hook — plugins can listen for CLI boot
   await emitHook("onStartup", { command: "__startup__", args: {} });

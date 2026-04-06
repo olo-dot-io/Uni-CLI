@@ -158,17 +158,22 @@ describe("BrowserPage", () => {
       );
     });
 
-    it("respects settleMs option", async () => {
+    it("respects settleMs option by calling evaluate with DOM settle", async () => {
       mock.responses.set("Page.navigate", { frameId: "abc" });
+      mock.responses.set("Runtime.evaluate", { result: { value: undefined } });
 
-      const start = Date.now();
       setTimeout(() => mock.fireEvent("Page.loadEventFired"), 5);
 
-      await page.goto("https://example.com", { settleMs: 100 });
+      await page.goto("https://example.com", { settleMs: 2000 });
 
-      const elapsed = Date.now() - start;
-      // Should have waited at least ~100ms for settle
-      expect(elapsed).toBeGreaterThanOrEqual(90);
+      // Should have called evaluate with DOM settle IIFE (not a plain setTimeout)
+      const evaluateCall = mock.calls.find(
+        (c) => c.method === "Runtime.evaluate",
+      );
+      expect(evaluateCall).toBeDefined();
+      const expr = evaluateCall!.params?.expression as string;
+      expect(expr).toContain("MutationObserver");
+      expect(expr).toContain("2000"); // maxMs = settleMs
     });
   });
 
@@ -737,6 +742,324 @@ describe("BrowserPage", () => {
 
       // Should not throw
       await expect(page.closeWindow()).resolves.toBeUndefined();
+    });
+  });
+
+  describe("goto() with DOM settle", () => {
+    it("uses DOM settle via evaluate when settleMs is provided", async () => {
+      mock.responses.set("Page.navigate", { frameId: "abc" });
+      // The evaluate call for DOM settle should return (promise resolves)
+      mock.responses.set("Runtime.evaluate", { result: { value: undefined } });
+
+      setTimeout(() => mock.fireEvent("Page.loadEventFired"), 5);
+      await page.goto("https://example.com", { settleMs: 1000 });
+
+      // Should have called evaluate with the DOM settle IIFE
+      const evaluateCall = mock.calls.find(
+        (c) => c.method === "Runtime.evaluate",
+      );
+      expect(evaluateCall).toBeDefined();
+      const expr = evaluateCall!.params?.expression as string;
+      expect(expr).toContain("MutationObserver");
+      expect(expr).toContain("1000"); // maxMs
+      expect(expr).toContain("500"); // quietMs = min(1000, 500)
+    });
+
+    it("falls back to setTimeout when evaluate throws", async () => {
+      mock.responses.set("Page.navigate", { frameId: "abc" });
+
+      // Make evaluate throw to trigger fallback
+      const originalSend = mock.send.bind(mock);
+      mock.send = async (
+        method: string,
+        params?: Record<string, unknown>,
+      ): Promise<unknown> => {
+        if (method === "Runtime.evaluate") {
+          mock.calls.push({ method, params });
+          throw new Error("Evaluate failed on about:blank");
+        }
+        return originalSend(method, params);
+      };
+
+      const start = Date.now();
+      setTimeout(() => mock.fireEvent("Page.loadEventFired"), 5);
+      await page.goto("https://example.com", { settleMs: 100 });
+      const elapsed = Date.now() - start;
+
+      // Should have waited ~100ms via the fallback setTimeout
+      expect(elapsed).toBeGreaterThanOrEqual(80);
+    });
+
+    it("skips settle when settleMs is 0", async () => {
+      mock.responses.set("Page.navigate", { frameId: "abc" });
+
+      setTimeout(() => mock.fireEvent("Page.loadEventFired"), 5);
+      await page.goto("https://example.com", { settleMs: 0 });
+
+      // No evaluate call should have been made
+      const evaluateCall = mock.calls.find(
+        (c) => c.method === "Runtime.evaluate",
+      );
+      expect(evaluateCall).toBeUndefined();
+    });
+  });
+
+  describe("startNetworkCapture() + readNetworkCapture()", () => {
+    it("enables Network domain and sets up listeners", async () => {
+      await page.startNetworkCapture();
+
+      const enableCall = mock.calls.find((c) => c.method === "Network.enable");
+      expect(enableCall).toBeDefined();
+
+      // Should have registered listeners
+      expect(mock.listeners.has("Network.requestWillBeSent")).toBe(true);
+      expect(mock.listeners.has("Network.responseReceived")).toBe(true);
+      expect(mock.listeners.has("Network.loadingFinished")).toBe(true);
+    });
+
+    it("does not re-enable on second call", async () => {
+      await page.startNetworkCapture();
+      mock.calls = [];
+      await page.startNetworkCapture();
+
+      const enableCalls = mock.calls.filter(
+        (c) => c.method === "Network.enable",
+      );
+      expect(enableCalls).toHaveLength(0);
+    });
+
+    it("captures responses matching substring pattern", async () => {
+      // Set up getResponseBody response
+      mock.responses.set("Network.getResponseBody", {
+        body: '{"items":[1,2,3]}',
+        base64Encoded: false,
+      });
+
+      await page.startNetworkCapture("api.example.com");
+
+      // Simulate request
+      mock.fireEvent("Network.requestWillBeSent", {
+        requestId: "req-1",
+        request: { url: "https://api.example.com/data", method: "POST" },
+      });
+
+      // Simulate response
+      mock.fireEvent("Network.responseReceived", {
+        requestId: "req-1",
+        response: {
+          url: "https://api.example.com/data",
+          status: 200,
+          mimeType: "application/json",
+          headers: { "content-length": "512" },
+        },
+        type: "XHR",
+        timestamp: 99999,
+      });
+
+      // Simulate loading finished
+      mock.fireEvent("Network.loadingFinished", {
+        requestId: "req-1",
+        encodedDataLength: 512,
+      });
+
+      // Allow the async getResponseBody promise to settle
+      await new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+      const entries = await page.readNetworkCapture();
+      expect(entries).toHaveLength(1);
+      expect(entries[0].url).toBe("https://api.example.com/data");
+      expect(entries[0].method).toBe("POST");
+      expect(entries[0].status).toBe(200);
+      expect(entries[0].contentType).toBe("application/json");
+      expect(entries[0].responseBody).toBe('{"items":[1,2,3]}');
+      expect(entries[0].size).toBe(512);
+    });
+
+    it("filters out non-matching URLs", async () => {
+      await page.startNetworkCapture("api.example.com");
+
+      mock.fireEvent("Network.requestWillBeSent", {
+        requestId: "req-1",
+        request: { url: "https://cdn.other.com/style.css", method: "GET" },
+      });
+
+      mock.fireEvent("Network.responseReceived", {
+        requestId: "req-1",
+        response: {
+          url: "https://cdn.other.com/style.css",
+          status: 200,
+          mimeType: "text/css",
+        },
+        type: "Stylesheet",
+        timestamp: 1000,
+      });
+
+      const entries = await page.readNetworkCapture();
+      expect(entries).toHaveLength(0);
+    });
+
+    it("supports regex pattern via /pattern/ syntax", async () => {
+      mock.responses.set("Network.getResponseBody", {
+        body: "ok",
+        base64Encoded: false,
+      });
+
+      await page.startNetworkCapture("/\\.json$/");
+
+      mock.fireEvent("Network.requestWillBeSent", {
+        requestId: "req-1",
+        request: { url: "https://api.example.com/data.json", method: "GET" },
+      });
+      mock.fireEvent("Network.responseReceived", {
+        requestId: "req-1",
+        response: {
+          url: "https://api.example.com/data.json",
+          status: 200,
+          mimeType: "application/json",
+        },
+        timestamp: 1000,
+      });
+      mock.fireEvent("Network.loadingFinished", { requestId: "req-1" });
+
+      mock.fireEvent("Network.requestWillBeSent", {
+        requestId: "req-2",
+        request: { url: "https://api.example.com/data.xml", method: "GET" },
+      });
+      mock.fireEvent("Network.responseReceived", {
+        requestId: "req-2",
+        response: {
+          url: "https://api.example.com/data.xml",
+          status: 200,
+          mimeType: "text/xml",
+        },
+        timestamp: 1001,
+      });
+      mock.fireEvent("Network.loadingFinished", { requestId: "req-2" });
+
+      await new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+      const entries = await page.readNetworkCapture();
+      expect(entries).toHaveLength(1);
+      expect(entries[0].url).toContain(".json");
+    });
+
+    it("captures all URLs when no pattern given", async () => {
+      mock.responses.set("Network.getResponseBody", {
+        body: "data",
+        base64Encoded: false,
+      });
+
+      await page.startNetworkCapture();
+
+      mock.fireEvent("Network.requestWillBeSent", {
+        requestId: "req-1",
+        request: { url: "https://anything.com/path", method: "GET" },
+      });
+      mock.fireEvent("Network.responseReceived", {
+        requestId: "req-1",
+        response: {
+          url: "https://anything.com/path",
+          status: 200,
+          mimeType: "text/html",
+        },
+        timestamp: 1000,
+      });
+
+      const entries = await page.readNetworkCapture();
+      expect(entries).toHaveLength(1);
+    });
+
+    it("clears buffer after readNetworkCapture()", async () => {
+      await page.startNetworkCapture();
+
+      mock.fireEvent("Network.requestWillBeSent", {
+        requestId: "req-1",
+        request: { url: "https://a.com", method: "GET" },
+      });
+      mock.fireEvent("Network.responseReceived", {
+        requestId: "req-1",
+        response: { url: "https://a.com", status: 200 },
+        timestamp: 1000,
+      });
+
+      const first = await page.readNetworkCapture();
+      expect(first).toHaveLength(1);
+
+      const second = await page.readNetworkCapture();
+      expect(second).toHaveLength(0);
+    });
+
+    it("handles base64-encoded response bodies", async () => {
+      const originalBody = "Hello World";
+      mock.responses.set("Network.getResponseBody", {
+        body: Buffer.from(originalBody).toString("base64"),
+        base64Encoded: true,
+      });
+
+      await page.startNetworkCapture();
+
+      mock.fireEvent("Network.requestWillBeSent", {
+        requestId: "req-1",
+        request: { url: "https://a.com/bin", method: "GET" },
+      });
+      mock.fireEvent("Network.responseReceived", {
+        requestId: "req-1",
+        response: {
+          url: "https://a.com/bin",
+          status: 200,
+          mimeType: "application/octet-stream",
+        },
+        timestamp: 1000,
+      });
+      mock.fireEvent("Network.loadingFinished", {
+        requestId: "req-1",
+        encodedDataLength: 11,
+      });
+
+      await new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+      const entries = await page.readNetworkCapture();
+      expect(entries).toHaveLength(1);
+      expect(entries[0].responseBody).toBe("Hello World");
+    });
+
+    it("reuses Network.enable from networkRequests()", async () => {
+      // First enable via networkRequests
+      await page.networkRequests();
+      mock.calls = [];
+
+      // startNetworkCapture should NOT call Network.enable again
+      await page.startNetworkCapture();
+
+      const enableCalls = mock.calls.filter(
+        (c) => c.method === "Network.enable",
+      );
+      expect(enableCalls).toHaveLength(0);
+    });
+
+    it("caps buffer at 100 entries", async () => {
+      await page.startNetworkCapture();
+
+      // Fire 105 responses
+      for (let i = 0; i < 105; i++) {
+        const id = `req-${String(i)}`;
+        mock.fireEvent("Network.requestWillBeSent", {
+          requestId: id,
+          request: { url: `https://a.com/${String(i)}`, method: "GET" },
+        });
+        mock.fireEvent("Network.responseReceived", {
+          requestId: id,
+          response: {
+            url: `https://a.com/${String(i)}`,
+            status: 200,
+            mimeType: "text/html",
+          },
+          timestamp: i,
+        });
+      }
+
+      const entries = await page.readNetworkCapture();
+      expect(entries.length).toBeLessThanOrEqual(100);
     });
   });
 });

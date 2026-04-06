@@ -1,0 +1,40 @@
+site: smzdm
+name: hot
+description: SMZDM trending/recommended deals
+domain: smzdm.com
+type: web-api
+strategy: public
+
+args:
+  page:
+    type: int
+    default: 1
+    description: Page number
+  limit:
+    type: int
+    default: 20
+    description: Number of items
+
+pipeline:
+  - fetch:
+      url: https://post.smzdm.com/json_more/
+      params:
+        tab_id: tuijian
+        p: "${{ args.page }}"
+      headers:
+        User-Agent: "Mozilla/5.0 (compatible; Uni-CLI)"
+
+  - select: data
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: "${{ item.article_title || '' }}"
+      price: "${{ item.article_price || '' }}"
+      mall: "${{ item.article_mall || '' }}"
+      worthy: "${{ item.article_worthy || '' }}"
+      unworthy: "${{ item.article_unworthy || '' }}"
+      url: "${{ item.article_url || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, price, mall, worthy, unworthy, url]

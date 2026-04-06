@@ -1,0 +1,37 @@
+site: linkedin
+name: timeline
+description: LinkedIn feed (recent posts from connections)
+domain: linkedin.com
+type: web-api
+strategy: header
+auth_cookies: [li_at, JSESSIONID]
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of feed items
+
+pipeline:
+  - fetch:
+      url: https://www.linkedin.com/voyager/api/feed/updatesV2
+      params:
+        count: "${{ args.limit }}"
+        q: feedDashMainFeed
+      headers:
+        csrf-token: "${{ cookies.JSESSIONID }}"
+
+  - select: elements
+
+  - map:
+      author: "${{ item.actor?.name?.text || '' }}"
+      text: "${{ item.commentary?.text?.text || '' | truncate(200) }}"
+      likes: "${{ item.socialDetail?.totalSocialActivityCounts?.numLikes || 0 }}"
+      comments: "${{ item.socialDetail?.totalSocialActivityCounts?.numComments || 0 }}"
+      url: "${{ item.permalink || '' }}"
+
+  - filter: item.author
+
+  - limit: ${{ args.limit }}
+
+columns: [author, text, likes, comments, url]

@@ -37,7 +37,7 @@ export function registerRecordCommand(program: Command): void {
     .option("--timeout <seconds>", "recording timeout", "60")
     .option("--site <name>", "site name for generated adapters")
     .action(async (url: string, opts: { timeout: string; site?: string }) => {
-      const timeoutMs = parseInt(opts.timeout, 10) * 1000;
+      const timeoutMs = (parseInt(opts.timeout, 10) || 60) * 1000;
       const siteName = opts.site ?? extractSiteName(url);
 
       console.log(chalk.bold(`Recording: ${url}`));

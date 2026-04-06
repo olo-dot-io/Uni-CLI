@@ -1,0 +1,40 @@
+site: barchart
+name: greeks
+description: Options Greeks (delta, gamma, theta, vega, IV) for a symbol
+domain: barchart.com
+type: web-api
+strategy: cookie
+auth_cookies: [bcFreeUserPage498, laravel_session, XSRF-TOKEN]
+
+args:
+  symbol:
+    type: str
+    required: true
+    positional: true
+    description: Underlying ticker symbol
+  limit:
+    type: int
+    default: 20
+    description: Number of contracts
+
+pipeline:
+  - fetch:
+      url: https://www.barchart.com/proxies/core-api/v1/options/chain
+      params:
+        symbol: "${{ args.symbol }}"
+        fields: "strikePrice,delta,gamma,theta,vega,rho,impliedVolatility"
+
+  - select: data
+
+  - map:
+      strike: "${{ item.strikePrice }}"
+      delta: "${{ item.delta }}"
+      gamma: "${{ item.gamma }}"
+      theta: "${{ item.theta }}"
+      vega: "${{ item.vega }}"
+      rho: "${{ item.rho }}"
+      iv: "${{ item.impliedVolatility }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [strike, delta, gamma, theta, vega, rho, iv]

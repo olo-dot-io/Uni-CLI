@@ -1,0 +1,31 @@
+site: jd
+name: item
+description: JD.com product detail by SKU ID
+domain: jd.com
+type: web-api
+strategy: cookie
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: Product SKU ID
+
+pipeline:
+  - fetch:
+      url: https://api.m.jd.com/api
+      params:
+        appid: item-v3
+        functionId: pc_detailpage_wareBusiness
+        body: '{"skuId":"${{ args.id }}"}'
+
+  - map:
+      title: "${{ item.wareInfo?.wname || '' }}"
+      price: "${{ item.priceInfo?.price || '' }}"
+      shop: "${{ item.shopInfo?.shop || '' }}"
+      brand: "${{ item.wareInfo?.brand || '' }}"
+      stock: "${{ item.stockInfo?.stockDesc || '' }}"
+      sku: "${{ args.id }}"
+
+columns: [title, price, shop, brand, stock, sku]

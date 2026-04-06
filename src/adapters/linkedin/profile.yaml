@@ -1,0 +1,35 @@
+site: linkedin
+name: profile
+description: LinkedIn user profile details
+domain: linkedin.com
+type: web-api
+strategy: header
+auth_cookies: [li_at, JSESSIONID]
+
+args:
+  user:
+    type: str
+    required: true
+    positional: true
+    description: LinkedIn member identity (vanity name or ID)
+
+pipeline:
+  - fetch:
+      url: https://www.linkedin.com/voyager/api/identity/dash/profiles
+      params:
+        q: memberIdentity
+        memberIdentity: "${{ args.user }}"
+      headers:
+        csrf-token: "${{ cookies.JSESSIONID }}"
+
+  - select: elements[0]
+
+  - map:
+      name: "${{ item.firstName }} ${{ item.lastName }}"
+      headline: "${{ item.headline || '' }}"
+      location: "${{ item.locationName || '' }}"
+      industry: "${{ item.industryName || '' }}"
+      connections: "${{ item.connections?.connectionCount || '' }}"
+      summary: "${{ item.summary || '' | truncate(300) }}"
+
+columns: [name, headline, location, industry, connections]

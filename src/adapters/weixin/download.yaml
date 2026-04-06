@@ -1,0 +1,34 @@
+site: weixin
+name: download
+description: Download WeChat article content as Markdown
+domain: mp.weixin.qq.com
+type: browser
+strategy: cookie
+browser: true
+
+args:
+  url:
+    type: str
+    required: true
+    positional: true
+    description: WeChat article URL
+
+pipeline:
+  - navigate:
+      url: "${{ args.url }}"
+
+  - wait:
+      selector: "#js_content"
+      timeout: 8000
+
+  - evaluate:
+      expression: |
+        (() => {
+          const title = document.querySelector('#activity-name')?.textContent?.trim() || '';
+          const author = document.querySelector('#js_name')?.textContent?.trim() || '';
+          const date = document.querySelector('#publish_time')?.textContent?.trim() || '';
+          const content = document.querySelector('#js_content')?.innerText?.trim() || '';
+          return [{ title, author, date, content }];
+        })()
+
+columns: [title, author, date, content]

@@ -1,0 +1,35 @@
+site: barchart
+name: quote
+description: Get stock/ETF quote with price and volume data
+domain: barchart.com
+type: web-api
+strategy: cookie
+auth_cookies: [bcFreeUserPage498, laravel_session, XSRF-TOKEN]
+
+args:
+  symbol:
+    type: str
+    required: true
+    positional: true
+    description: Ticker symbol (e.g. AAPL, SPY)
+
+pipeline:
+  - fetch:
+      url: https://www.barchart.com/proxies/core-api/v1/quotes/get
+      params:
+        symbol: "${{ args.symbol }}"
+        fields: "symbol,lastPrice,priceChange,percentChange,volume,openPrice,highPrice,lowPrice"
+
+  - select: data
+
+  - map:
+      symbol: "${{ item.symbol }}"
+      price: "${{ item.lastPrice }}"
+      change: "${{ item.priceChange }}"
+      pct_change: "${{ item.percentChange }}"
+      volume: "${{ item.volume }}"
+      open: "${{ item.openPrice }}"
+      high: "${{ item.highPrice }}"
+      low: "${{ item.lowPrice }}"
+
+columns: [symbol, price, change, pct_change, volume, open, high, low]

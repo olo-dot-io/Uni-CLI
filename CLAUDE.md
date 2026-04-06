@@ -125,7 +125,7 @@ src/
 | Docs build      | `npm run docs:build`              |
 | Sync refs       | `npm run sync:ref`                |
 
-## Pipeline Steps (30)
+## Pipeline Steps (35)
 
 | Step         | Type      | What it does                                           |
 | ------------ | --------- | ------------------------------------------------------ |
@@ -158,6 +158,9 @@ src/
 | `each`       | Control   | Loop sub-pipeline with do-while + max iteration limit  |
 | `parallel`   | Control   | Run sub-pipelines concurrently with merge strategies   |
 | `rate_limit` | Control   | Per-domain token bucket request throttling             |
+| `assert`     | Control   | Verify page state (URL, selector, text, condition)     |
+| `extract`    | Browser   | Structured data extraction with CSS selectors + types  |
+| `retry`      | Property  | Generic retry with exponential backoff on any step     |
 
 ## Strategies
 
@@ -206,7 +209,7 @@ cli({
 
 ## Code Standards
 
-- Version: 0.205.0
+- Version: 0.206.0
 - Apache-2.0 license
 - Strict TypeScript — no `any` unless unavoidable
 - YAML adapters are the preferred contribution format

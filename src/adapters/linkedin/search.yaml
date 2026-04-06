@@ -1,0 +1,43 @@
+site: linkedin
+name: search
+description: Search LinkedIn profiles, jobs, and content
+domain: linkedin.com
+type: web-api
+strategy: header
+auth_cookies: [li_at, JSESSIONID]
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search keywords
+  limit:
+    type: int
+    default: 10
+    description: Number of results
+
+pipeline:
+  - fetch:
+      url: https://www.linkedin.com/voyager/api/search/dash/clusters
+      params:
+        decorationId: com.linkedin.voyager.dash.deco.search.SearchClusterCollection-174
+        origin: SWITCH_SEARCH_VERTICAL
+        q: all
+        keywords: "${{ args.query }}"
+        count: "${{ args.limit }}"
+      headers:
+        csrf-token: "${{ cookies.JSESSIONID }}"
+
+  - select: elements
+
+  - map:
+      title: "${{ item.title?.text || '' }}"
+      subtitle: "${{ item.primarySubtitle?.text || '' }}"
+      url: "${{ item.navigationUrl || '' }}"
+
+  - filter: item.title
+
+  - limit: ${{ args.limit }}
+
+columns: [title, subtitle, url]

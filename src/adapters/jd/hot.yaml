@@ -1,0 +1,30 @@
+site: jd
+name: hot
+description: JD.com hot search keywords and trending products
+domain: jd.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of hot items
+
+pipeline:
+  - fetch:
+      url: https://api.m.jd.com/api
+      params:
+        appid: search-pc
+        functionId: pc_hot_search
+
+  - select: hotWords
+
+  - map:
+      rank: ${{ index + 1 }}
+      keyword: "${{ item.word || item }}"
+      score: "${{ item.hotScore || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, keyword, score]

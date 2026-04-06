@@ -1,0 +1,44 @@
+site: sinablog
+name: user
+description: Sina Blog user profile and recent posts
+domain: blog.sina.com.cn
+type: browser
+strategy: public
+browser: true
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: User ID (numeric)
+  limit:
+    type: int
+    default: 10
+    description: Number of recent posts
+
+pipeline:
+  - navigate:
+      url: "https://blog.sina.com.cn/u/${{ args.id }}"
+
+  - wait:
+      selector: ".bloglist_title, .title"
+      timeout: 8000
+
+  - evaluate:
+      expression: |
+        (() => {
+          const name = document.querySelector('.blogtitle, .blog_name h1')?.textContent?.trim() || '';
+          const desc = document.querySelector('.blogdesc, .blog_description')?.textContent?.trim() || '';
+          const posts = Array.from(document.querySelectorAll('.bloglist_title a, .title a')).map((el, i) => ({
+            rank: i + 1,
+            author: name,
+            title: el.textContent?.trim() || '',
+            url: el.href || ''
+          }));
+          return posts.length > 0 ? posts : [{ rank: 1, author: name, title: desc, url: '' }];
+        })()
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, author, title, url]

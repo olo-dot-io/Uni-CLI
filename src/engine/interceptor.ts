@@ -11,14 +11,54 @@
  */
 
 /**
+ * Options for interceptor generation.
+ */
+export interface InterceptorOptions {
+  /** Treat pattern as regex, or auto-detect if pattern is wrapped in /slashes/ */
+  regex?: boolean;
+  /** Capture all matching responses (embedded as flag for consumer use) */
+  captureAll?: boolean;
+  /** Capture non-JSON responses as text when JSON parse fails */
+  captureText?: boolean;
+}
+
+/**
+ * Determine whether to use regex matching and prepare the pattern.
+ *
+ * Auto-detects /pattern/ syntax. Returns the raw regex source (no slashes)
+ * when regex mode is active.
+ */
+function resolvePatternMode(
+  pattern: string,
+  options?: InterceptorOptions,
+): { useRegex: boolean; cleanPattern: string } {
+  if (options?.regex) {
+    return { useRegex: true, cleanPattern: pattern };
+  }
+  // Auto-detect /pattern/ syntax
+  if (pattern.startsWith("/") && pattern.endsWith("/") && pattern.length > 2) {
+    return { useRegex: true, cleanPattern: pattern.slice(1, -1) };
+  }
+  return { useRegex: false, cleanPattern: pattern };
+}
+
+/**
  * Generate a persistent global interceptor IIFE.
  *
- * Patches window.fetch and XMLHttpRequest to capture JSON responses whose
- * URL contains `pattern`. Results accumulate in window.__unicli_intercepted.
- * Safe to inject multiple times — idempotency guard prevents double-patching.
+ * Patches window.fetch and XMLHttpRequest to capture responses whose
+ * URL matches `pattern` (substring or regex). Results accumulate in
+ * window.__unicli_intercepted. Safe to inject multiple times —
+ * idempotency guard prevents double-patching.
  */
-export function generateInterceptorJs(pattern: string): string {
-  const patternJson = JSON.stringify(pattern);
+export function generateInterceptorJs(
+  pattern: string,
+  options?: InterceptorOptions,
+): string {
+  const { useRegex, cleanPattern } = resolvePatternMode(pattern, options);
+  const patternJson = JSON.stringify(cleanPattern);
+  const captureText = options?.captureText ?? false;
+  const captureAll = options?.captureAll ?? false;
+
   return `(function() {
   if (window.__unicli_interceptor_patched) return;
   window.__unicli_interceptor_patched = true;
@@ -54,7 +94,14 @@ export function generateInterceptorJs(pattern: string): string {
     return fn;
   }
 
-  var __pattern = ${patternJson};
+  var __isRegex = ${String(useRegex)};
+  var __captureText = ${String(captureText)};
+  var __captureAll = ${String(captureAll)};
+  var __pattern = __isRegex ? new RegExp(${patternJson}) : ${patternJson};
+
+  function __urlMatches(url) {
+    return __isRegex ? __pattern.test(url) : url.includes(__pattern);
+  }
 
   // --- Patch window.fetch ---
   var __origFetch = window.fetch;
@@ -68,11 +115,18 @@ export function generateInterceptorJs(pattern: string): string {
     } else if (firstArg && typeof firstArg === 'object' && firstArg.url) {
       url = firstArg.url;
     }
-    if (url.includes(__pattern)) {
+    if (__urlMatches(url)) {
       try {
         var clone = resp.clone();
-        var json = await clone.json();
-        window.__unicli_intercepted.push({ url: url, data: json, ts: Date.now() });
+        try {
+          var json = await clone.json();
+          window.__unicli_intercepted.push({ url: url, data: json, ts: Date.now(), type: 'json' });
+        } catch (_jsonErr) {
+          if (__captureText) {
+            var text = await resp.clone().text();
+            window.__unicli_intercepted.push({ url: url, data: text, ts: Date.now(), type: 'text' });
+          }
+        }
       } catch (_e) {}
     }
     return resp;
@@ -91,12 +145,16 @@ export function generateInterceptorJs(pattern: string): string {
   XMLHttpRequest.prototype.send = __disguise(function() {
     var xhr = this;
     var captureUrl = xhr.__unicli_url || '';
-    if (captureUrl.includes(__pattern)) {
+    if (__urlMatches(captureUrl)) {
       xhr.addEventListener('load', function() {
         try {
           var json = JSON.parse(xhr.responseText);
-          window.__unicli_intercepted.push({ url: captureUrl, data: json, ts: Date.now() });
-        } catch (_e) {}
+          window.__unicli_intercepted.push({ url: captureUrl, data: json, ts: Date.now(), type: 'json' });
+        } catch (_jsonErr) {
+          if (__captureText) {
+            window.__unicli_intercepted.push({ url: captureUrl, data: xhr.responseText, ts: Date.now(), type: 'text' });
+          }
+        }
       });
     }
     return __origSend.apply(this, arguments);
@@ -133,13 +191,24 @@ export interface TapInterceptorSnippets {
  */
 export function generateTapInterceptorJs(
   pattern: string,
+  options?: InterceptorOptions,
 ): TapInterceptorSnippets {
-  const patternJson = JSON.stringify(pattern);
+  const { useRegex, cleanPattern } = resolvePatternMode(pattern, options);
+  const patternJson = JSON.stringify(cleanPattern);
+  const captureText = options?.captureText ?? false;
+
+  const matchSetup = useRegex
+    ? `var __tapIsRegex = true;\nvar __tapPattern = new RegExp(${patternJson});\nvar __tapCaptureText = ${String(captureText)};`
+    : `var __tapIsRegex = false;\nvar __tapPattern = ${patternJson};\nvar __tapCaptureText = ${String(captureText)};`;
+
+  const matchExpr = `__tapIsRegex ? __tapPattern.test(url) : url.includes(__tapPattern)`;
+  const matchExprCapture = `__tapIsRegex ? __tapPattern.test(captureUrl) : captureUrl.includes(__tapPattern)`;
 
   const setupVar = `
 var __captured = null;
 var __captureResolve;
 var __capturePromise = new Promise(function(resolve) { __captureResolve = resolve; });
+${matchSetup}
 `.trim();
 
   const fetchPatch = `
@@ -150,11 +219,18 @@ window.fetch = async function() {
   var firstArg = arguments[0];
   if (typeof firstArg === 'string') { url = firstArg; }
   else if (firstArg && typeof firstArg === 'object' && firstArg.url) { url = firstArg.url; }
-  if (url.includes(${patternJson})) {
+  if (${matchExpr}) {
     try {
       var clone = resp.clone();
-      var json = await clone.json();
-      if (!__captured) { __captured = { url: url, data: json, ts: Date.now() }; __captureResolve(__captured); }
+      try {
+        var json = await clone.json();
+        if (!__captured) { __captured = { url: url, data: json, ts: Date.now(), type: 'json' }; __captureResolve(__captured); }
+      } catch (_jsonErr) {
+        if (__tapCaptureText) {
+          var text = await resp.clone().text();
+          if (!__captured) { __captured = { url: url, data: text, ts: Date.now(), type: 'text' }; __captureResolve(__captured); }
+        }
+      }
     } catch (_e) {}
   }
   return resp;
@@ -171,12 +247,16 @@ XMLHttpRequest.prototype.open = function(method, url) {
 XMLHttpRequest.prototype.send = function() {
   var xhr = this;
   var captureUrl = xhr.__tap_url || '';
-  if (captureUrl.includes(${patternJson})) {
+  if (${matchExprCapture}) {
     xhr.addEventListener('load', function() {
       try {
         var json = JSON.parse(xhr.responseText);
-        if (!__captured) { __captured = { url: captureUrl, data: json, ts: Date.now() }; __captureResolve(__captured); }
-      } catch (_e) {}
+        if (!__captured) { __captured = { url: captureUrl, data: json, ts: Date.now(), type: 'json' }; __captureResolve(__captured); }
+      } catch (_jsonErr) {
+        if (__tapCaptureText) {
+          if (!__captured) { __captured = { url: captureUrl, data: xhr.responseText, ts: Date.now(), type: 'text' }; __captureResolve(__captured); }
+        }
+      }
     });
   }
   return origXhrSend.apply(this, arguments);
