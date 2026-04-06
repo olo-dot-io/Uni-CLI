@@ -5,7 +5,7 @@
 
 ## Core Identity
 
-**Uni-CLI** — Universal CLI. CLI IS ALL YOU NEED.
+**Uni-CLI** — The universal interface between AI agents and the world's software.
 
 The name carries two layers:
 

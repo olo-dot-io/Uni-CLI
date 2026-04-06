@@ -41,7 +41,7 @@ export async function createCli(): Promise<Command> {
 
   program
     .name("unicli")
-    .description("CLI IS ALL YOU NEED — Universal CLI for AI agents")
+    .description("The universal interface between AI agents and the world's software")
     .version(VERSION)
     .option(
       "-f, --format <format>",

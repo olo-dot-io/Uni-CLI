@@ -1,7 +1,7 @@
 {
   "meta": {
     "repo": "https://github.com/ZenAlexa/Uni-CLI",
-    "description": "Uni-CLI — CLI IS ALL YOU NEED. Universal CLI hub for AI agents.",
+    "description": "Uni-CLI — The universal interface between AI agents and the world's software.",
     "updated": "2026-04-04"
   },
   "adapters": [
