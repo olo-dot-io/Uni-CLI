@@ -3,6 +3,36 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
+## [0.207.0] — 2026-04-06 — Vostok · Gagarin
+
+### Added
+
+- **Self-Repair Loop**: `unicli repair <site> [cmd] --loop` — Karpathy-style autonomous adapter repair with failure-type-aware prompting (selector_miss, auth_expired, api_versioned, rate_limited). 8-phase loop: review → classify → modify (Claude Code) → commit → verify → guard → decide → log. Stuck hint escalation at 3/5/7/9/11 consecutive discards.
+- **Eval Harness**: `unicli repair --eval <file>` — run evaluation suite with 4 judge criteria (contains, arrayMinLength, nonEmpty, matchesPattern). Outputs `SCORE=N/M` for metric extraction.
+- **Endpoint Analysis Module**: `src/engine/analysis.ts` — shared boolean filters (`isNoiseUrl`, `isStaticResource`, `isUsefulEndpoint`) + transparent sort key (`endpointSortKey`) replacing opaque numeric scoring.
+- **Record Multi-Tab**: CDP `Target.setDiscoverTargets` for cross-tab network capture, write candidate generation (POST/PUT/PATCH replay), URL parameter templatization (query → `${{ args.query }}`), request deduplication.
+- **Explore Interactive Fuzzing**: `unicli explore --interactive` — click buttons, tabs, and anchors to trigger additional XHR endpoints. iframe re-fetch for empty-body GET JSON endpoints.
+- **Operate CDP-First Network**: `operate open` pre-navigation capture, `operate network` prefers CDP `readNetworkCapture()` with JS interceptor fallback.
+
+### Changed
+
+- Endpoint scoring replaced: numeric `scoreEndpoint()` → boolean filter cascade (`isNoiseUrl` → `isStaticResource` → `isUsefulEndpoint`) + `endpointSortKey([itemCount, fieldCount, isApiPath, hasParams])`
+- `endpoint-scorer.ts` rewritten as thin facade re-exporting from `analysis.ts`
+- `synthesize.ts`: removed `--min-score` parameter, uses `isUsefulEndpoint()` instead
+
+### Security
+
+- Diagnostic redaction: JWT signature stripping (Cloudflare har-sanitizer pattern), sensitive header/URL param/body key redaction, 3-level size degradation (128KB/192KB/256KB cap)
+- `redactUrl` handles relative URLs safely, `redactBody` has circular reference protection (WeakSet guard)
+- `isNoiseUrl` matches against hostname only (not full URL string), preventing false positives from query parameters
+
+### Fixed
+
+- RegExp matching in analysis: noise domains checked against hostname, capability patterns against pathname only
+- Record URL templatization preserves URL auth credentials and port numbers in dedup keys
+- Record generates correct YAML args shape (mapping, not list) matching loader expectations
+- Repair engine: correct metric comparison for `direction: 'lower'`, scope file re-resolution after Claude modifications
+
 ## [0.206.0] — 2026-04-05 — Vostok · Tereshkova
 
 ### Added

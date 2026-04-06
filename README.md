@@ -1,4 +1,4 @@
-<!-- AGENT: npm install -g unicli && unicli list | 635 commands across 122 sites. JSON when piped. Self-repairing YAML adapters. See AGENTS.md -->
+<!-- AGENT: npm install -g unicli && unicli list | 635 commands across 122 sites. JSON when piped. Self-repairing YAML adapters. unicli repair --loop for autonomous fix. See AGENTS.md -->
 
 <h1 align="center">Uni-CLI</h1>
 
@@ -332,6 +332,6 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md). The fastest way to contribute: write a
 ---
 
 <p align="center">
-  <sub>v0.205.0 — Vostok · Bykovsky</sub><br>
-  <sub>122 sites · 635 commands · 35 pipeline steps · 29 filters · 428 unit tests</sub>
+  <sub>v0.207.0 — Vostok · Gagarin</sub><br>
+  <sub>122 sites · 635 commands · 35 pipeline steps · 29 filters · 639 unit tests</sub>
 </p>
