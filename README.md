@@ -302,7 +302,7 @@ Following `sysexits.h`:
 ## Development
 
 ```bash
-git clone https://github.com/ZenAlexa/Uni-CLI.git && cd Uni-CLI
+git clone https://github.com/olo-dot-io/Uni-CLI.git && cd Uni-CLI
 npm install
 npm run dev -- list                   # Test adapter loading
 npm run verify                        # format + typecheck + lint + test + build

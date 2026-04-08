@@ -48,7 +48,7 @@ Adding a new adapter is the fastest way to contribute. Most adapters are just 20
 ## Development Setup
 
 ```bash
-git clone https://github.com/ZenAlexa/Uni-CLI.git
+git clone https://github.com/olo-dot-io/Uni-CLI.git
 cd Uni-CLI
 npm install
 npm run dev -- list              # Verify setup
@@ -96,4 +96,4 @@ Please review the CLA before submitting your first contribution.
 
 ## Questions?
 
-Open a [Discussion](https://github.com/ZenAlexa/Uni-CLI/discussions) or an issue tagged `question`.
+Open a [Discussion](https://github.com/olo-dot-io/Uni-CLI/discussions) or an issue tagged `question`.

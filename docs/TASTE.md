@@ -21,7 +21,7 @@ Like a spacecraft's universal docking adapter, Uni-CLI connects any agent to any
 
 | Layer            | Format             | Example                                      |
 | ---------------- | ------------------ | -------------------------------------------- |
-| GitHub repo      | `Uni-CLI`          | github.com/ZenAlexa/Uni-CLI                  |
+| GitHub repo      | `Uni-CLI`          | github.com/olo-dot-io/Uni-CLI                |
 | Display name     | `Uni-CLI`          | Used in prose, titles, documentation headers |
 | npm package      | `@zenalexa/unicli` | `npm install -g @zenalexa/unicli`            |
 | CLI binary       | `unicli`           | `unicli hackernews top`                      |
