@@ -1,12 +1,21 @@
 # NousResearch/hermes-agent sessions/search — query Hermes session FTS.
 # Hermes stores session history in a SQLite database at ~/.hermes/sessions.db.
-# This adapter shells out to sqlite3 with FTS5 MATCH for fast lookup.
+#
+# Security:
+#   - `args.query` is passed via env var UNICLI_QUERY (bash literal, no shell injection)
+#   - Single quotes in the query are doubled (`'` → `''`) via bash parameter
+#     expansion before being injected into the SQL string literal — this is
+#     the standard SQL string-literal escape. FTS5 MATCH still interprets its
+#     own query grammar (e.g. `OR`, `*`) as FTS operators, which is
+#     intentional for search.
+#   - `args.limit` is typed int in adapter args; bash strips non-digits as
+#     a belt-and-suspenders guard to keep LIMIT clause integer-only.
 site: hermes
 name: sessions/search
 description: Search Hermes session history via SQLite FTS5
 type: desktop
 strategy: public
-binary: sqlite3
+binary: sh
 detect: test -f ~/.hermes/sessions.db
 
 args:
@@ -22,7 +31,7 @@ args:
 
 pipeline:
   - exec:
-      command: bash
+      command: sh
       args:
         - -c
         - |
@@ -31,16 +40,22 @@ pipeline:
             echo "[]"
             exit 0
           fi
-          # Try FTS5 table; fall back to LIKE if FTS table is missing.
+          # SQL-escape single quotes: ' -> ''
+          q=${UNICLI_QUERY//\'/\'\'}
+          # Force integer on limit (strip non-digits)
+          lim=${UNICLI_LIMIT//[^0-9]/}
+          : "${lim:=20}"
+          # Try FTS5 table first; fall back to LIKE if FTS table is missing
           sqlite3 -json "$db" \
-            "SELECT id, ts, snippet(sessions_fts, -1, '<b>', '</b>', '...', 16) AS snippet
-             FROM sessions_fts WHERE sessions_fts MATCH '${{ args.query }}' LIMIT ${{ args.limit }};" \
+            "SELECT id, ts, snippet(sessions_fts, -1, '<b>', '</b>', '...', 16) AS snippet FROM sessions_fts WHERE sessions_fts MATCH '$q' LIMIT $lim;" \
             2>/dev/null \
           || sqlite3 -json "$db" \
-            "SELECT id, ts, substr(content, 1, 200) AS snippet
-             FROM sessions WHERE content LIKE '%${{ args.query }}%' LIMIT ${{ args.limit }};" \
+            "SELECT id, ts, substr(content, 1, 200) AS snippet FROM sessions WHERE content LIKE '%$q%' LIMIT $lim;" \
             2>/dev/null \
           || echo "[]"
+      env:
+        UNICLI_QUERY: "${{ args.query }}"
+        UNICLI_LIMIT: "${{ args.limit }}"
       parse: json
 
 columns: [id, ts, snippet]

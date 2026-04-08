@@ -1,15 +1,17 @@
 # HKUDS/OpenHarness skills/list — list installed OpenHarness skills.
+#
+# Security: no user input; safe argv-only call.
 site: openharness
 name: skills/list
 description: List skills installed in the local OpenHarness (~/.openharness/skills/)
 type: desktop
 strategy: public
-binary: ls
+binary: sh
 detect: test -d ~/.openharness/skills
 
 pipeline:
   - exec:
-      command: bash
+      command: sh
       args:
         - -c
         - |
@@ -19,8 +21,8 @@ pipeline:
             exit 0
           fi
           find "$dir" -maxdepth 2 -name '*.md' -type f 2>/dev/null \
-            | sed "s|$HOME/.openharness/skills/||" \
-            | jq -R -s 'split("\n") | map(select(length > 0))'
+            | sed "s|$dir/||" \
+            | jq -R -s 'split("\n") | map(select(length > 0)) | map({name: .})'
       parse: json
 
 columns: [name]

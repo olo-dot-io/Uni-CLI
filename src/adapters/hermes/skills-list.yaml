@@ -1,16 +1,19 @@
 # NousResearch/hermes-agent skills/list — read on-disk skill files.
 # Hermes stores agent skills as markdown under ~/.hermes/skills/
+#
+# Security note: no user input, so no injection surface. Uses `find`
+# directly with argv (no shell interpolation).
 site: hermes
 name: skills/list
 description: List skills installed in the local Hermes agent (~/.hermes/skills/)
 type: desktop
 strategy: public
-binary: ls
+binary: sh
 detect: test -d ~/.hermes/skills
 
 pipeline:
   - exec:
-      command: bash
+      command: sh
       args:
         - -c
         - |
@@ -19,7 +22,9 @@ pipeline:
             echo "[]"
             exit 0
           fi
-          ls -1 "$dir" 2>/dev/null | grep -E '\.md$' | head -200 | jq -R -s 'split("\n") | map(select(length > 0))'
+          find "$dir" -maxdepth 1 -name '*.md' -type f 2>/dev/null \
+            | sed "s|$dir/||" \
+            | jq -R -s 'split("\n") | map(select(length > 0)) | map({name: .})'
       parse: json
 
 columns: [name]

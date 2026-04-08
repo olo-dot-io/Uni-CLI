@@ -175,4 +175,48 @@ describe("MCP server — expanded mode (default)", () => {
     const error = response.error as { code: number; message: string };
     expect(error.code).toBe(-32601);
   });
+
+  it("registers tools for commands with hyphens in the filename", async () => {
+    // v0.208 ships adapters with hyphenated command filenames like
+    // `hermes/skills-read.yaml`, `renderdoc/capture-list.yaml`. The tool
+    // name normalizer collapses hyphens to underscores, but the dispatch
+    // path must still resolve to the original command key via the
+    // expandedRegistry lookup (not by reversing the normalization).
+    const response = await sendRequest(proc, {
+      jsonrpc: "2.0",
+      id: 105,
+      method: "tools/list",
+      params: {},
+    });
+    const result = response.result as { tools: Array<{ name: string }> };
+    const names = new Set(result.tools.map((t) => t.name));
+    // These are new in v0.208 and all have hyphen-bearing command files.
+    expect(names.has("unicli_hermes_skills_read")).toBe(true);
+    expect(names.has("unicli_hermes_sessions_search")).toBe(true);
+    expect(names.has("unicli_renderdoc_capture_list")).toBe(true);
+    expect(names.has("unicli_motion_studio_component_get")).toBe(true);
+    expect(names.has("unicli_godot_scene_export")).toBe(true);
+  });
+
+  it("dispatches a hyphenated command name via the registry lookup", async () => {
+    // We can't actually run these adapters (they require hermes/openharness
+    // on disk), so we verify the dispatcher at least RESOLVES the tool and
+    // tries to execute it. A registry miss would return the "Unknown tool"
+    // error (-32601); a successful resolution will fail later in the
+    // pipeline with a user-visible error, which we tolerate here.
+    const response = await sendRequest(proc, {
+      jsonrpc: "2.0",
+      id: 106,
+      method: "tools/call",
+      params: {
+        name: "unicli_hermes_skills_list",
+        arguments: {},
+      },
+    });
+    // The call should NOT return an MCP error object; it returns a result
+    // with either the adapter output or a pipeline error wrapped in text.
+    // What matters: error must be undefined (no "Unknown tool").
+    expect(response.error).toBeUndefined();
+    expect(response.result).toBeDefined();
+  });
 });

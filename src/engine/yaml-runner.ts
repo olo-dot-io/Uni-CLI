@@ -28,7 +28,7 @@ import { USER_AGENT } from "../constants.js";
 import type { PipelineStep } from "../types.js";
 import { formatCookieHeader, loadCookiesWithCDP } from "./cookies.js";
 import {
-  matchSensitivePath,
+  matchSensitivePathRealpath,
   buildSensitivePathDenial,
 } from "../permissions/sensitive-paths.js";
 import type { BrowserPage } from "../browser/page.js";
@@ -988,17 +988,29 @@ async function stepExec(
   // Sensitive-path deny list — scan every arg that looks like a path before
   // touching subprocess. Cannot be overridden by permission mode. Defends
   // against prompt-injection that smuggles a credential path into args.
+  // Uses the realpath-aware variant so `ln -s ~/.ssh/id_rsa /tmp/x.txt` is
+  // still blocked.
   for (const arg of execArgs) {
     if (typeof arg !== "string" || arg.length === 0) continue;
     if (!arg.startsWith("/") && !arg.startsWith("~/")) continue;
     const expanded = arg.startsWith("~/") ? join(homedir(), arg.slice(2)) : arg;
-    const matched = matchSensitivePath(expanded);
+    const matched = matchSensitivePathRealpath(expanded);
     if (matched) {
       const denial = buildSensitivePathDenial(expanded);
-      throw new PipelineError(`exec blocked: sensitive_path_denied`, {
+      // The error message is the canonical `sensitive_path_denied` string so
+      // agents can pattern-match the same identifier regardless of whether
+      // the block fires in operate upload or the exec pipeline step. The
+      // full denial payload (path, pattern, hint) is inlined into `config`
+      // for `toAgentJSON()` to surface.
+      throw new PipelineError("sensitive_path_denied", {
         step: -1,
         action: "exec",
-        config: { command: cmd, args: execArgs, denial },
+        config: {
+          command: cmd,
+          args: execArgs,
+          denial_path: denial.path,
+          denial_pattern: denial.pattern,
+        },
         errorType: "assertion_failed",
         suggestion: denial.hint,
       });

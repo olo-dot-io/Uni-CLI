@@ -1,10 +1,16 @@
 # NousResearch/hermes-agent skills/read — read one skill file by name.
+#
+# Security: `args.name` is passed via environment variable UNICLI_NAME, not
+# template-interpolated into the shell script. Bash expands "$UNICLI_NAME"
+# inside double quotes as a literal string, so command injection is not
+# possible. Path traversal (`name=../../etc/passwd`) is blocked by the
+# case check that rejects slashes and `..` in the name.
 site: hermes
 name: skills/read
 description: Read a Hermes skill file by name (without .md extension)
 type: desktop
 strategy: public
-binary: cat
+binary: sh
 detect: test -d ~/.hermes/skills
 
 args:
@@ -16,16 +22,25 @@ args:
 
 pipeline:
   - exec:
-      command: bash
+      command: sh
       args:
         - -c
         - |
-          file="$HOME/.hermes/skills/${{ args.name }}.md"
+          # Reject path traversal and anything with a slash or ".."
+          case "$UNICLI_NAME" in
+            */*|*..*|"")
+              echo '{"error":"invalid skill name"}'
+              exit 1
+              ;;
+          esac
+          file="$HOME/.hermes/skills/${UNICLI_NAME}.md"
           if [ ! -f "$file" ]; then
-            echo "{\"error\":\"not found\",\"path\":\"$file\"}"
+            printf '%s' "$file" | jq -Rs '{error:"not found",path:.}'
             exit 1
           fi
-          jq -Rs '{name:"${{ args.name }}",content:.}' < "$file"
+          jq -Rs --arg name "$UNICLI_NAME" '{name:$name,content:.}' < "$file"
+      env:
+        UNICLI_NAME: "${{ args.name }}"
       parse: json
 
 columns: [name, content]

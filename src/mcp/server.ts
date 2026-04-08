@@ -199,6 +199,16 @@ function buildInputSchema(cmd: AdapterCommand): JsonSchemaObject {
  * `columns` shape (string-typed properties — Uni-CLI columns are
  * format-agnostic and the runtime emits whatever the pipeline produced).
  */
+/**
+ * Build an output JSON Schema. We model results as `{count, results}` where
+ * `results` is an array of items. `columns` becomes the item's property set.
+ *
+ * Note: we return a simple nested schema rather than a full JSON Schema
+ * (which would need a deeper `items` type for `array`). Most MCP clients
+ * only inspect the top-level type; Anthropic's client is permissive. If a
+ * strict validator rejects this, it will still fall back to the lazy tool
+ * path via `run_command`.
+ */
 function buildOutputSchema(cmd: AdapterCommand): JsonSchemaObject {
   const itemProps: Record<string, JsonSchemaProperty> = {};
   for (const col of cmd.columns ?? []) {
@@ -209,26 +219,58 @@ function buildOutputSchema(cmd: AdapterCommand): JsonSchemaObject {
     properties: {
       count: { type: "integer", description: "Number of results returned" },
       results: {
-        type: "array" as unknown as string,
+        type: "array",
         description: "Result rows",
+        items: {
+          type: "object",
+          ...(Object.keys(itemProps).length > 0
+            ? { properties: itemProps }
+            : {}),
+        } as JsonSchemaProperty,
       } as JsonSchemaProperty,
     },
-  } as JsonSchemaObject;
+  };
 }
 
 /**
  * MCP tool name: `unicli_<site>_<command>` with non-alphanumeric chars
  * collapsed to `_`. Anthropic / Claude Desktop accept underscores; some
  * older clients reject hyphens, so we normalize defensively.
+ *
+ * CRITICAL: normalization is NOT reversible (e.g. both `claude-code_version`
+ * and `claude_code-version` would yield the same normalized name). The
+ * expanded-mode dispatcher uses a name → {adapter, cmdName} lookup table
+ * built at the same time as the tool list, so callers never need to reverse
+ * the normalization. See `expandedRegistry` and `buildExpandedTools` below.
  */
 function buildToolName(site: string, command: string): string {
   return `unicli_${site}_${command}`.replace(/[^a-zA-Z0-9_]/g, "_");
 }
 
+/**
+ * Reverse-lookup registry for expanded-mode tool calls. Maps the normalized
+ * tool name to the resolved adapter + original command name, so dispatch
+ * does not depend on whether `buildToolName` is invertible. Populated by
+ * `buildExpandedTools` and queried by `handleExpandedTool`.
+ */
+interface ExpandedEntry {
+  adapter: AdapterManifest;
+  cmdName: string;
+  cmd: AdapterCommand;
+}
+const expandedRegistry = new Map<string, ExpandedEntry>();
+
 function buildExpandedTools(): McpTool[] {
   const tools: McpTool[] = [];
   // Always include list_adapters for discovery + as a smoke test.
   tools.push(buildLazyTools()[0]);
+
+  expandedRegistry.clear();
+  // Collision detection: if two (site, command) pairs normalize to the same
+  // tool name, the first one wins and the second is silently shadowed. We
+  // don't expect this in practice (most adapters use lowercase alphanumeric
+  // + hyphen names), but flag it on stderr so it gets noticed.
+  const seen = new Set<string>();
 
   for (const adapter of getAllAdapters()) {
     for (const [cmdName, cmd] of Object.entries(adapter.commands)) {
@@ -236,8 +278,17 @@ function buildExpandedTools(): McpTool[] {
         cmd.description?.trim() ||
         adapter.description?.trim() ||
         `${cmdName} for ${adapter.name}`;
+      const toolName = buildToolName(adapter.name, cmdName);
+      if (seen.has(toolName)) {
+        process.stderr.write(
+          `unicli MCP: tool name collision: ${toolName} — shadowing ${adapter.name}/${cmdName}\n`,
+        );
+        continue;
+      }
+      seen.add(toolName);
+      expandedRegistry.set(toolName, { adapter, cmdName, cmd });
       tools.push({
-        name: buildToolName(adapter.name, cmdName),
+        name: toolName,
         description: `[${adapter.name}] ${description}`,
         inputSchema: buildInputSchema(cmd),
         outputSchema: buildOutputSchema(cmd),
@@ -436,23 +487,17 @@ async function handleExpandedTool(
   args: Record<string, unknown>,
 ): Promise<McpToolResult | undefined> {
   if (!toolName.startsWith("unicli_")) return undefined;
-  const stripped = toolName.slice("unicli_".length);
 
-  // Look up adapter by trying the longest possible prefix first — adapter
-  // names may contain underscores (rare but possible after normalization).
-  const adapters = getAllAdapters();
-  for (const adapter of adapters) {
-    const norm = adapter.name.replace(/[^a-zA-Z0-9]/g, "_");
-    const prefix = `${norm}_`;
-    if (stripped.startsWith(prefix)) {
-      const cmdName = stripped.slice(prefix.length);
-      const cmd = adapter.commands[cmdName];
-      if (cmd) {
-        return runResolvedCommand(adapter, cmd, cmdName, args);
-      }
-    }
-  }
-  return undefined;
+  // Dictionary lookup into the expansion registry built by
+  // `buildExpandedTools`. This is the ONLY correct way to map a normalized
+  // tool name back to its adapter + command because the normalization
+  // (`s/[^a-zA-Z0-9_]/_/g`) is not reversible — a command file named
+  // `capture-list.yaml` and another named `capture_list.yaml` would map
+  // to the same tool name. The registry resolves the ambiguity deterministically
+  // (first-write-wins, collisions logged to stderr in `buildExpandedTools`).
+  const entry = expandedRegistry.get(toolName);
+  if (!entry) return undefined;
+  return runResolvedCommand(entry.adapter, entry.cmd, entry.cmdName, args);
 }
 
 // ── MCP Protocol Handler ────────────────────────────────────────────────────

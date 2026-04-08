@@ -15,7 +15,8 @@
 | 0.205.0 | Vostok · Bykovsky   | 114   | 601      | ✅         |
 | 0.206.0 | Vostok · Tereshkova | 122   | 635      | ✅         |
 | 0.207.0 | Vostok · Gagarin    | 122   | 635      | ✅         |
-| 0.207.1 | Vostok · Gagarin    | 122   | 635      | ✅ Current |
+| 0.207.1 | Vostok · Gagarin    | 122   | 635      | ✅         |
+| 0.208.0 | Vostok · Titov      | 134   | 711      | ✅ Current |
 
 ## v0.201.0 ✅ — Engine v2 + Desktop/Bridge
 

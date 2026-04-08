@@ -1,11 +1,17 @@
 # RenderDoc capture/list — enumerate captures in a directory.
-# Closes the v0.208 coverage gap with CLI-Anything's RenderDoc harness.
+#
+# Security: `args.dir` is passed via UNICLI_DIR env var (bash literal). There's
+# no attempt to block absolute paths — this is a local directory lister and
+# the user is free to list anywhere they have read access to. The sensitive-
+# path deny list in src/permissions/sensitive-paths.ts does not apply here
+# because we're listing, not reading, and credential directories are allowed
+# to be *listed* by name (the deny list blocks read/exec of credential files).
 site: renderdoc
 name: capture/list
 description: List RenderDoc capture files (.rdc) in a directory
 type: desktop
 strategy: public
-binary: ls
+binary: sh
 detect: which renderdoccmd
 
 args:
@@ -17,16 +23,20 @@ args:
 
 pipeline:
   - exec:
-      command: bash
+      command: sh
       args:
         - -c
         - |
-          dir="${{ args.dir }}"
+          dir="${UNICLI_DIR:-./captures}"
           if [ ! -d "$dir" ]; then
             echo "[]"
             exit 0
           fi
-          ls -1 "$dir"/*.rdc 2>/dev/null | jq -R -s 'split("\n") | map(select(length > 0))'
+          find "$dir" -maxdepth 1 -name '*.rdc' -type f 2>/dev/null \
+            | sed "s|$dir/||" \
+            | jq -R -s 'split("\n") | map(select(length > 0)) | map({name: .})'
+      env:
+        UNICLI_DIR: "${{ args.dir }}"
       parse: json
 
 columns: [name]

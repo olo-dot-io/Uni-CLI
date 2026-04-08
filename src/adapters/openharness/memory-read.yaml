@@ -1,11 +1,14 @@
 # HKUDS/OpenHarness memory/read — read MEMORY.md and per-topic memory files
 # from a local OpenHarness install.
+#
+# Security: `args.topic` is passed via UNICLI_TOPIC env var (literal in bash).
+# Path traversal is blocked by the case check rejecting slashes and `..`.
 site: openharness
 name: memory/read
 description: Read OpenHarness MEMORY.md and per-topic memory files (~/.openharness/memory/)
 type: desktop
 strategy: public
-binary: cat
+binary: sh
 detect: test -d ~/.openharness
 
 args:
@@ -16,7 +19,7 @@ args:
 
 pipeline:
   - exec:
-      command: bash
+      command: sh
       args:
         - -c
         - |
@@ -25,16 +28,24 @@ pipeline:
             echo '{"error":"openharness not installed","hint":"~/.openharness not found"}'
             exit 1
           fi
-          if [ -n "${{ args.topic }}" ]; then
-            file="$base/memory/${{ args.topic }}.md"
+          if [ -n "$UNICLI_TOPIC" ]; then
+            case "$UNICLI_TOPIC" in
+              */*|*..*)
+                echo '{"error":"invalid topic name"}'
+                exit 1
+                ;;
+            esac
+            file="$base/memory/${UNICLI_TOPIC}.md"
           else
             file="$base/MEMORY.md"
           fi
           if [ ! -f "$file" ]; then
-            echo '{"error":"not found","path":"'"$file"'"}'
+            printf '%s' "$file" | jq -Rs '{error:"not found",path:.}'
             exit 1
           fi
-          jq -Rs '{path:"'"$file"'",content:.}' < "$file"
+          jq -Rs --arg path "$file" '{path:$path,content:.}' < "$file"
+      env:
+        UNICLI_TOPIC: "${{ args.topic }}"
       parse: json
 
 columns: [path, content]

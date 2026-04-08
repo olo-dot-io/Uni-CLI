@@ -68,17 +68,29 @@ export function generateSnapshotJs(opts?: SnapshotOptions): string {
     return '(' + up.toFixed(1) + '\\u2191 ' + down.toFixed(1) + '\\u2193)';
   }
 
-  function getAttrs(el) {
-    const keep = [];
-    const tag = el.tagName.toLowerCase();
-    const attrNames = ['type', 'name', 'value', 'placeholder', 'href', 'role',
+  const ATTR_NAMES = ['type', 'name', 'value', 'placeholder', 'href', 'role',
                        'aria-label', 'aria-expanded', 'aria-checked', 'disabled',
                        'readonly', 'required', 'checked', 'selected'];
-    for (const a of attrNames) {
+
+  /** Build the { k: v } bag consumed by \`unicli operate observe\`. */
+  function collectAttrs(el) {
+    const bag = {};
+    for (const a of ATTR_NAMES) {
       if (el.hasAttribute(a)) {
-        let val = el.getAttribute(a);
-        if (a === 'href' && val && val.length > 80) val = val.slice(0, 77) + '...';
-        keep.push(a + '="' + (val || '').replace(/"/g, '&quot;') + '"');
+        let val = el.getAttribute(a) || '';
+        if (a === 'href' && val.length > 80) val = val.slice(0, 77) + '...';
+        bag[a] = val;
+      }
+    }
+    return bag;
+  }
+
+  function getAttrs(el) {
+    const bag = collectAttrs(el);
+    const keep = [];
+    for (const a of ATTR_NAMES) {
+      if (a in bag) {
+        keep.push(a + '="' + bag[a].replace(/"/g, '&quot;') + '"');
       }
     }
     return keep.length ? ' ' + keep.join(' ') : '';
@@ -135,7 +147,15 @@ export function generateSnapshotJs(opts?: SnapshotOptions): string {
     if (interactive) {
       const ref = ++refCounter;
       el.setAttribute('data-unicli-ref', String(ref));
-      refs.push({ ref, tag: tag.toLowerCase(), text: textContent(el).slice(0, 50) });
+      // Refs carry the attribute bag so \`unicli operate observe\` can match
+      // role, aria-label, placeholder, etc. without re-parsing the rendered
+      // tree string. See src/browser/observe.ts scoreCandidate().
+      refs.push({
+        ref,
+        tag: tag.toLowerCase(),
+        text: textContent(el).slice(0, 50),
+        attrs: collectAttrs(el),
+      });
       line += '[' + ref + ']';
     }
 

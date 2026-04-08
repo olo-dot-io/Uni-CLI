@@ -21,7 +21,63 @@ import type {
 } from "../types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const BUILTIN_DIR = join(__dirname, "..", "adapters");
+
+/**
+ * Directory resolution — two different concerns:
+ *
+ *   1. YAML adapters are source-only assets. They ship in `src/adapters/`
+ *      per the package.json `files` field, NOT in `dist/`, because `tsc`
+ *      does not copy YAML files. We therefore prefer `src/adapters/`
+ *      whenever it exists, which works both in dev (running from the repo)
+ *      and in a globally installed package (`node_modules/@zenalexa/unicli/src/adapters/`).
+ *
+ *   2. TS adapters need to be imported as ES modules. In dev the source
+ *      lives at `src/adapters/*.ts` and is loaded via tsx. In production
+ *      the compiled `.js` files live at `dist/adapters/*.js`. We pick
+ *      whichever directory has the matching extension available.
+ *
+ * The `__dirname` trick: in dev, `import.meta.url` resolves inside
+ * `src/discovery/`; in prod it resolves inside `dist/discovery/`. We
+ * climb out to the package root and look for siblings.
+ */
+function findAdapterDirs(): { yamlDir: string; tsDir: string } {
+  // Dev layout: <pkg>/src/discovery → <pkg>/src/adapters
+  // Prod layout: <pkg>/dist/discovery → <pkg>/src/adapters (for yaml)
+  //                                   → <pkg>/dist/adapters (for js)
+  const candidates = [
+    join(__dirname, "..", "adapters"), // dev: src/adapters OR prod: dist/adapters
+    join(__dirname, "..", "..", "src", "adapters"), // prod: src/adapters sibling
+  ];
+
+  // YAML dir: prefer whichever candidate actually contains yaml files.
+  let yamlDir = candidates[0];
+  for (const dir of candidates) {
+    if (!existsSync(dir)) continue;
+    const hasYaml = readdirSync(dir, { withFileTypes: true }).some((e) => {
+      if (!e.isDirectory() || e.name.startsWith("_") || e.name.startsWith("."))
+        return false;
+      try {
+        return readdirSync(join(dir, e.name)).some(
+          (f) => f.endsWith(".yaml") || f.endsWith(".yml"),
+        );
+      } catch {
+        return false;
+      }
+    });
+    if (hasYaml) {
+      yamlDir = dir;
+      break;
+    }
+  }
+
+  // TS/JS dir: first candidate that exists. This is the same as dev for both
+  // paths and becomes `dist/adapters` in prod builds.
+  const tsDir = candidates.find((d) => existsSync(d)) ?? candidates[0];
+
+  return { yamlDir, tsDir };
+}
+
+const { yamlDir: BUILTIN_YAML_DIR, tsDir: BUILTIN_TS_DIR } = findAdapterDirs();
 const USER_DIR = join(process.env.HOME ?? "~", ".unicli", "adapters");
 
 interface YamlAdapter {
@@ -161,16 +217,47 @@ export function loadAdaptersFromDir(dir: string): number {
   return count;
 }
 
-/** Collect TS adapter files from a directory for dynamic import */
+/**
+ * Collect adapter entry-point files for dynamic import.
+ *
+ * In dev (src/adapters) we want `.ts` files. In prod (dist/adapters) we want
+ * `.js` files. Critically we MUST exclude `.d.ts` declaration files:
+ * `extname('foo.d.ts')` returns `.ts`, so a naive check catches them and
+ * imports them as empty ES modules — silently inflating the "loaded
+ * adapters" count while registering nothing.
+ */
 function collectTsFiles(dir: string): string[] {
   if (!existsSync(dir)) return [];
   const files: string[] = [];
+  // Pick the entry-point extension by probing the first site directory.
+  // If we find `.js` files, we're in prod (dist/adapters); otherwise use `.ts`.
+  let entryExt: ".ts" | ".js" = ".ts";
+  for (const probe of readdirSync(dir)) {
+    if (probe.startsWith("_") || probe.startsWith(".")) continue;
+    const probeDir = join(dir, probe);
+    if (!statSync(probeDir).isDirectory()) continue;
+    const hasJs = readdirSync(probeDir).some(
+      (f) =>
+        f.endsWith(".js") && !f.endsWith(".d.ts") && !f.endsWith(".test.js"),
+    );
+    if (hasJs) {
+      entryExt = ".js";
+      break;
+    }
+  }
+
   for (const site of readdirSync(dir)) {
     if (site.startsWith("_") || site.startsWith(".")) continue;
     const siteDir = join(dir, site);
     if (!statSync(siteDir).isDirectory()) continue;
     for (const file of readdirSync(siteDir)) {
-      if (extname(file) === ".ts" && !file.endsWith(".test.ts")) {
+      // Always skip declaration files and sourcemaps
+      if (file.endsWith(".d.ts")) continue;
+      if (file.endsWith(".d.ts.map")) continue;
+      if (file.endsWith(".js.map")) continue;
+      if (file.endsWith(".test.ts")) continue;
+      if (file.endsWith(".test.js")) continue;
+      if (extname(file) === entryExt) {
         files.push(join(siteDir, file));
       }
     }
@@ -181,14 +268,17 @@ function collectTsFiles(dir: string): string[] {
 /** Load all adapters: built-in YAML → user YAML → TS adapters (async) */
 export function loadAllAdapters(): number {
   let total = 0;
-  total += loadAdaptersFromDir(BUILTIN_DIR);
+  total += loadAdaptersFromDir(BUILTIN_YAML_DIR);
   total += loadAdaptersFromDir(USER_DIR);
   return total;
 }
 
-/** Load TS adapters that self-register via cli() */
+/** Load TS/JS adapters that self-register via cli() */
 export async function loadTsAdapters(): Promise<number> {
-  const files = [...collectTsFiles(BUILTIN_DIR), ...collectTsFiles(USER_DIR)];
+  const files = [
+    ...collectTsFiles(BUILTIN_TS_DIR),
+    ...collectTsFiles(USER_DIR),
+  ];
   let count = 0;
   for (const file of files) {
     try {
@@ -202,4 +292,11 @@ export async function loadTsAdapters(): Promise<number> {
     }
   }
   return count;
+}
+
+/**
+ * Exposed for diagnostics / tests: resolved built-in adapter directories.
+ */
+export function getBuiltinDirs(): { yamlDir: string; tsDir: string } {
+  return { yamlDir: BUILTIN_YAML_DIR, tsDir: BUILTIN_TS_DIR };
 }

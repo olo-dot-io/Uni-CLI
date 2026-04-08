@@ -12,7 +12,7 @@ import chalk from "chalk";
 import { BrowserBridge, DaemonPage } from "../browser/bridge.js";
 import { generateReadInterceptedJs } from "../engine/interceptor.js";
 import {
-  isSensitivePath,
+  isSensitivePathRealpath,
   buildSensitivePathDenial,
 } from "../permissions/sensitive-paths.js";
 import { ExitCode } from "../types.js";
@@ -475,7 +475,9 @@ export function registerOperateCommands(program: Command): void {
         // Sensitive-path deny list runs FIRST, before any workspace check.
         // Cannot be overridden by permission mode (defense against prompt
         // injection that points the agent at credentials, keys, or tokens).
-        if (isSensitivePath(absolutePath)) {
+        // Uses the symlink-aware variant so `ln -s ~/.ssh/id_rsa /tmp/x.txt`
+        // is still blocked.
+        if (isSensitivePathRealpath(absolutePath)) {
           const denial = buildSensitivePathDenial(absolutePath);
           console.error(JSON.stringify(denial));
           process.exit(ExitCode.CONFIG_ERROR);

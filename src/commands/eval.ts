@@ -38,7 +38,7 @@ import {
 import { join, resolve, dirname, basename, extname, relative } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
-import { execSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import yaml from "js-yaml";
 import chalk from "chalk";
 
@@ -262,6 +262,26 @@ function buildCliInvocation(adapter: string, c: EvalCase): string[] {
   return args;
 }
 
+/**
+ * Parse a CLI command string into [executable, ...prefixArgs]. Supports the
+ * common case where `UNICLI_BIN` is a single word ("unicli") and the less
+ * common case where it's a dev invocation ("npx tsx src/main.ts"). Tokens
+ * are split on whitespace — we do NOT attempt to honor shell quoting rules,
+ * because that would reintroduce the class of bugs this function exists to
+ * prevent. If you need spaces in the executable path, move the quoted parts
+ * into a wrapper script instead.
+ */
+function parseCliCommand(cliCommand: string): {
+  executable: string;
+  prefixArgs: string[];
+} {
+  const tokens = cliCommand.trim().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) {
+    return { executable: "unicli", prefixArgs: [] };
+  }
+  return { executable: tokens[0], prefixArgs: tokens.slice(1) };
+}
+
 export function runCase(
   adapter: string,
   c: EvalCase,
@@ -269,22 +289,30 @@ export function runCase(
 ): CaseResult {
   const timeout = options.timeout ?? 30_000;
   const cliCommand = options.cliCommand ?? process.env.UNICLI_BIN ?? "unicli";
-  const args = buildCliInvocation(adapter, c);
+  const { executable, prefixArgs } = parseCliCommand(cliCommand);
+  const cliArgs = buildCliInvocation(adapter, c);
 
   let rawOutput = "";
   let exitCode = 0;
   let runErr: string | undefined;
-  try {
-    rawOutput = execSync(`${cliCommand} ${args.join(" ")}`, {
-      encoding: "utf-8",
-      timeout,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-  } catch (e) {
-    const err = e as { status?: number; stdout?: string; message?: string };
-    exitCode = err.status ?? 1;
-    rawOutput = err.stdout ?? "";
-    runErr = err.message;
+  // spawnSync takes an argv array, so nothing in the args passes through a
+  // shell. Positional values with spaces, quotes, or shell metachars
+  // (`;`, `$(...)`, backticks) are literal argv elements, not shell syntax.
+  const result = spawnSync(executable, [...prefixArgs, ...cliArgs], {
+    encoding: "utf-8",
+    timeout,
+    stdio: ["ignore", "pipe", "pipe"],
+    // Prevent child from inheriting stdin, and capture both stdout + stderr.
+  });
+  if (result.error) {
+    runErr = result.error.message;
+    exitCode = 1;
+  } else {
+    rawOutput = typeof result.stdout === "string" ? result.stdout : "";
+    exitCode = result.status ?? 1;
+    if (exitCode !== 0 && result.stderr) {
+      runErr = String(result.stderr);
+    }
   }
 
   let parsedOutput: unknown;
@@ -396,9 +424,20 @@ export function registerEvalCommand(program: Command): void {
         }
         filesToRun.push(...all.map((f) => f.path));
       } else if (opts.all) {
-        // Treat target as a directory prefix
+        // Treat target as a directory. Two cases:
+        //   1. Relative name like "smoke" or "smoke/" → match f.relative prefix
+        //   2. Absolute or file:// path → resolve and match f.path prefix
+        const resolvedTarget = resolve(target);
+        const isExistingAbs = target.startsWith("/") || target.startsWith("~/");
         for (const f of all) {
-          if (f.relative.startsWith(target) || f.path.includes(`/${target}/`)) {
+          const relativeMatch =
+            f.relative === target ||
+            f.relative.startsWith(`${target.replace(/\/$/, "")}/`);
+          const absoluteMatch =
+            isExistingAbs &&
+            (f.path === resolvedTarget ||
+              f.path.startsWith(`${resolvedTarget.replace(/\/$/, "")}/`));
+          if (relativeMatch || absoluteMatch) {
             filesToRun.push(f.path);
           }
         }
@@ -503,19 +542,33 @@ export function registerEvalCommand(program: Command): void {
     .action((opts: CiOptions) => {
       // Best-effort: list adapters changed in the window via `git log`. We
       // intentionally tolerate non-git workspaces by skipping the filter.
+      // `since` is passed as an argv element, not interpolated into a shell
+      // string, so hostile values cannot escape into git or sh.
       const since = opts.since ?? "7d";
-      let touchedAdapters = new Set<string>();
-      try {
-        const out = execSync(
-          `git log --since="${since}" --name-only --pretty=format: -- src/adapters`,
+      const touchedAdapters = new Set<string>();
+      // Validate `since` matches a safe shape before passing to git — git
+      // accepts a wide range of time specs, but we restrict to digits + unit
+      // letters to avoid surprising behavior from pathological input.
+      if (/^[0-9]+(d|h|m|s|w)?$|^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(since)) {
+        const git = spawnSync(
+          "git",
+          [
+            "log",
+            `--since=${since}`,
+            "--name-only",
+            "--pretty=format:",
+            "--",
+            "src/adapters",
+          ],
           { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] },
         );
-        for (const line of out.split("\n")) {
-          const m = line.match(/^src\/adapters\/([^/]+)\//);
-          if (m) touchedAdapters.add(m[1]);
+        if (!git.error && git.status === 0) {
+          const out = typeof git.stdout === "string" ? git.stdout : "";
+          for (const line of out.split("\n")) {
+            const m = line.match(/^src\/adapters\/([^/]+)\//);
+            if (m) touchedAdapters.add(m[1]);
+          }
         }
-      } catch {
-        // Not a git repo or git missing — fall through with empty set
       }
 
       const all = discoverEvalFiles();
