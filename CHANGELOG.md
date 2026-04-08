@@ -9,6 +9,11 @@ Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for
 > Closes the SKILL.md gap with CLI-Anything, hardens the MCP gateway,
 > ships the eval catalog, lands Stagehand-style `observe()`, and ports
 > OpenHarness's sensitive-path deny list.
+>
+> **Post-release hardening:** a 4-reviewer audit of the initial release
+> commit (`a1e75cb`) surfaced 6 BLOCKERs and 9 MAJORs. All were fixed in
+> `5e6237f` before the tag was cut — the release-facing SHA. See the
+> "Post-release audit (5e6237f)" section below for the full list.
 
 ### Added
 
@@ -31,6 +36,46 @@ Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for
 - **MCP server default mode** — `unicli mcp serve` now boots in expanded mode (one tool per adapter command). Lazy mode (the v0.207 default) is opt-in via `--lazy`. The existing `tests/unit/mcp-server.test.ts` was updated to spawn with `--lazy` to preserve the 2-tool contract; new `tests/unit/mcp-server-expanded.test.ts` covers the expanded surface.
 - **`npm run verify`** — chains `lint:context` between `lint` and `test`. Soft-skips when Agent Lint is not installed.
 - **`recordUsage` cli.ts hook** — every dynamic site command writes a ledger entry on success, empty result, pipeline error, and generic error.
+
+### Post-release audit (5e6237f)
+
+A 4-reviewer parallel audit (plumbing / runtime / security / release-wiring) over `a1e75cb` identified 6 BLOCKERs and 9 MAJORs. All fixed in commit `5e6237f` before the v0.208.0 tag was cut. The numbered list below is the authoritative record for anyone tracing "what did v0.208 change beyond its own release notes."
+
+**BLOCKERs fixed:**
+
+1. **Shell injection in 4 new adapter YAMLs.** `hermes/skills-read`, `hermes/sessions-search`, `openharness/memory-read`, `renderdoc/capture-list` used `bash -c` with `${{ args.* }}` raw-interpolated into the script body. The template engine emits `String(value)` with no shell quoting, so a crafted arg like `foo"; printf OWNED; #` escaped the string literal. **Fix:** rewrote all bash adapters to pass user input via environment variables (`UNICLI_NAME`, `UNICLI_TOPIC`, `UNICLI_QUERY`, etc.) and reference them as `"$VAR"` bash literals. Added path-traversal rejection (case globs for `..` and `/`) where the name flows into a file path. PoC was verified by Codex against the live engine.
+
+2. **SQL injection in `hermes/sessions-search.yaml`.** `${{ args.query }}` was spliced into the FTS5 `MATCH` and `LIKE` clauses. Verified against `sqlite3 :memory:`: `query=hello' UNION SELECT '999','888','PWN' --` returned the injected row. **Fix:** the env-var rewrite above plus bash `${UNICLI_QUERY//\'/\'\'}` parameter expansion to SQL-escape single quotes. `LIMIT` clause strips non-digits via `${UNICLI_LIMIT//[^0-9]/}`.
+
+3. **Eval runner shell injection in `src/commands/eval.ts`.** `runCase()` used `execSync` with a string-concatenated command line, so positional values with spaces, quotes, or shell metachars were reinterpreted. **Fix:** replaced with `spawnSync(executable, argv)`. Added `parseCliCommand()` to handle `UNICLI_BIN="npx tsx src/main.ts"` dev invocations without reintroducing shell parsing. The `eval ci --since` git log call was also converted from `execSync` to `spawnSync`, and `--since` is now regex-validated before being passed to git.
+
+4. **Pre-existing: dist-mode loader could not see YAML adapters.** `src/discovery/loader.ts` set `BUILTIN_DIR = join(__dirname, "..", "adapters")` which resolves to `dist/adapters` in built mode, but `tsc` does not copy YAML files — only `.js` + `.d.ts`. Compounding this, `collectTsFiles` matched `.d.ts` declaration files via `extname(file) === ".ts"` and imported them as empty ES modules, silently inflating the TS adapter count to 81 while registering zero commands. `node dist/main.js doctor` reported `Sites: 0`. This bug existed since v0.1.0 but was dormant until the package was first published to npm in v0.207.1 (commit `607cedb`). **Fix:** new `findAdapterDirs()` resolves the YAML directory to whichever candidate (`src/adapters` or `dist/adapters`) actually contains `.yaml` files — works in dev, production builds, and global npm installs. `collectTsFiles` now auto-detects the entry-point extension (`.ts` in dev, `.js` in built mode) by probing the first site directory, and explicitly excludes `.d.ts`, `.d.ts.map`, `.js.map`, `.test.ts`, `.test.js`. Post-fix verification: `node dist/main.js list --format json | count` returns 134 sites / 711 commands, matching src mode.
+
+5. **`unicli operate observe` ranker was blind to attributes.** `src/browser/snapshot.ts` emitted raw refs as `{ref, tag, text}` but `scoreCandidate` in `src/browser/observe.ts` awarded confidence for `role` and `aria-label` bonuses. Interactive elements with empty text (search boxes with only `aria-label`) were dropped at confidence 0 in `rankCandidates`. Tests passed because they constructed fake refs with attrs. **Fix:** refactored `getAttrs` to `collectAttrs` returning an object bag; each interactive ref now carries `{ref, tag, text, attrs}` so the ranker's role/aria-label logic actually fires in production.
+
+6. **MCP expanded-mode dispatch broken for hyphenated command filenames.** `buildToolName` normalizes non-alphanumeric chars to `_`, but `handleExpandedTool` attempted to reverse the normalization by trying to split `unicli_<site>_<command>` at adapter-name prefixes and look up `adapter.commands[strippedSuffix]`. Command file names preserve hyphens (`skills-list.yaml` → `skills-list` key), so the reverse lookup never matched. Every v0.208 new command (`skills-list`, `capture-list`, `component-get`, `scene-export`, `project-run`, `sessions-search`, `skills-read`, `memory-read`, `eval-run`, `bench-list`, `bench-run`, `frame-export`, `wrap-observe`) was unreachable via MCP. **Fix:** `buildExpandedTools` now builds a `Map<toolName, {adapter, cmdName, cmd}>` at tool-list time and `handleExpandedTool` does a single O(1) lookup. Collision detection writes shadow warnings to stderr. Regression test asserts all 5 representative hyphenated names appear in the registered tool list.
+
+**MAJORs fixed:**
+
+7. **Symlink bypass** — `operate upload` and the exec pipeline step used string-based guards. `ln -s ~/.ssh/id_rsa /tmp/pretty.txt` defeated the check. **Fix:** new `matchSensitivePathRealpath` / `isSensitivePathRealpath` follow the symlink via `realpathSync` before matching, with a graceful fallback to string-only checking on broken symlinks. Both callers switched.
+
+8. **Pattern coverage** — 9 new credential paths: `.pgpass`, `.netrc` (+ Windows `_netrc`), `.wgetrc`, `.my.cnf`, Azure CLI (`accessTokens.json`, `azureProfile.json`), GitHub CLI (`hosts.yml`), 1Password CLI (`~/.config/op/`), rclone (`rclone.conf`).
+
+9. **Case-insensitive filesystem bypass (macOS/Windows)** — `/Users/x/.SSH/id_rsa` slipped past the case-sensitive regexes. **Fix:** new `normalizeForMatch()` lowercases the path on Darwin and Win32 before matching; POSIX paths stay case-sensitive.
+
+10. **`eval run --all` absolute-path branch was broken.** `f.path.includes(\`/${target}/\`)`produced`//tmp/evals/smoke/`for absolute targets and never matched. **Fix:** two-branch logic: relative names match`f.relative`prefix, absolute paths match`f.path`prefix after`resolve()`.
+
+11. **Version residue** in `AGENTS.md`, `docs/ROADMAP.md`, `docs/TASTE.md` — still said `0.207.1 — Vostok · Gagarin`. Updated.
+
+12. **Missing `docs/adapters-catalog.json`** — the CHANGELOG promised a canonical machine-readable manifest but the generator was never run. Ran `tsx scripts/generate-catalog.ts` → 134 sites / 711 commands / 467KB JSON. Committed.
+
+13. **Denial error shape mismatch** — `operate upload` emitted top-level `{error: "sensitive_path_denied", ...}` while the exec step wrapped the denial in `PipelineError.detail.config.denial` with `error = "exec blocked: sensitive_path_denied"`. Agents pattern-matching the canonical identifier had to handle two shapes. **Fix:** exec step now throws `PipelineError("sensitive_path_denied", ...)` so `toAgentJSON()` surfaces the same top-level identifier. Denial path + pattern inlined into `config.denial_path` / `config.denial_pattern`.
+
+**Known limitations (not fixed in v0.208):**
+
+- `detect:` YAML field is loader decoration — parsed but never executed. Adapters that rely on `detect` for registration gating do not currently self-disable on machines missing the binary. Moving this to a real `existsSync`/`statSync` probe is deferred to v0.209 because changing the loader semantics could introduce surprising adapter warnings in existing installs.
+
+**Test-count delta:** 753 → 769 (26 → 40 sensitive-paths tests after adding case-insensitive, extended pattern, and symlink realpath suites; 5 → 7 MCP expanded tests after adding hyphen registration + dispatch coverage).
 
 ### Fixed
 
