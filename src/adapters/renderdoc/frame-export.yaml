@@ -1,0 +1,32 @@
+# RenderDoc frame/export — convert one capture's first frame to image via renderdoccmd.
+site: renderdoc
+name: frame/export
+description: Export the first frame from a RenderDoc capture (.rdc) as an image
+type: desktop
+strategy: public
+binary: renderdoccmd
+detect: which renderdoccmd
+
+args:
+  capture:
+    type: str
+    required: true
+    positional: true
+    description: Path to .rdc capture file
+  output:
+    type: str
+    required: true
+    description: Output image path (.png recommended)
+
+pipeline:
+  - exec:
+      command: renderdoccmd
+      args:
+        - thumb
+        - ${{ args.capture }}
+        - --out
+        - ${{ args.output }}
+      parse: text
+      timeout: 60000
+
+columns: [output]

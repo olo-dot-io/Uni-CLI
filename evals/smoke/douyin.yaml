@@ -1,0 +1,9 @@
+name: douyin-smoke
+adapter: douyin
+description: Douyin trending smoke test
+cases:
+  - command: trending
+    args:
+      limit: 5
+    judges:
+      - { type: arrayMinLength, min: 1 }

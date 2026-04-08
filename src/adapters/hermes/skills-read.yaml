@@ -1,0 +1,31 @@
+# NousResearch/hermes-agent skills/read — read one skill file by name.
+site: hermes
+name: skills/read
+description: Read a Hermes skill file by name (without .md extension)
+type: desktop
+strategy: public
+binary: cat
+detect: test -d ~/.hermes/skills
+
+args:
+  name:
+    type: str
+    required: true
+    positional: true
+    description: Skill name (filename without .md)
+
+pipeline:
+  - exec:
+      command: bash
+      args:
+        - -c
+        - |
+          file="$HOME/.hermes/skills/${{ args.name }}.md"
+          if [ ! -f "$file" ]; then
+            echo "{\"error\":\"not found\",\"path\":\"$file\"}"
+            exit 1
+          fi
+          jq -Rs '{name:"${{ args.name }}",content:.}' < "$file"
+      parse: json
+
+columns: [name, content]

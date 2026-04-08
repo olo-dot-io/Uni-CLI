@@ -1,0 +1,22 @@
+name: hackernews-smoke
+adapter: hackernews
+description: Hacker News public-API smoke test (top + new + search)
+cases:
+  - command: top
+    args:
+      limit: 5
+    judges:
+      - { type: arrayMinLength, min: 5 }
+      - { type: nonEmpty }
+  - command: new
+    args:
+      limit: 5
+    judges:
+      - { type: arrayMinLength, min: 5 }
+  - command: search
+    positional: [ai]
+    args:
+      limit: 3
+    judges:
+      - { type: arrayMinLength, min: 1 }
+      - { type: contains, value: "ai" }

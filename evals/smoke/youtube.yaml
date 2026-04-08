@@ -1,0 +1,9 @@
+name: youtube-smoke
+adapter: youtube
+description: YouTube trending smoke test
+cases:
+  - command: trending
+    args:
+      limit: 5
+    judges:
+      - { type: arrayMinLength, min: 1 }

@@ -1,0 +1,9 @@
+name: github-smoke
+adapter: github
+description: GitHub passthrough smoke test
+cases:
+  - command: trending
+    args:
+      limit: 5
+    judges:
+      - { type: arrayMinLength, min: 1 }

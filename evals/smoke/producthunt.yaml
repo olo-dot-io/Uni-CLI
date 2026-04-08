@@ -1,0 +1,9 @@
+name: producthunt-smoke
+adapter: producthunt
+description: ProductHunt trending smoke test
+cases:
+  - command: trending
+    args:
+      limit: 5
+    judges:
+      - { type: arrayMinLength, min: 1 }

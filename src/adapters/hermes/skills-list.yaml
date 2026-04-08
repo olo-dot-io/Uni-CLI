@@ -1,0 +1,25 @@
+# NousResearch/hermes-agent skills/list — read on-disk skill files.
+# Hermes stores agent skills as markdown under ~/.hermes/skills/
+site: hermes
+name: skills/list
+description: List skills installed in the local Hermes agent (~/.hermes/skills/)
+type: desktop
+strategy: public
+binary: ls
+detect: test -d ~/.hermes/skills
+
+pipeline:
+  - exec:
+      command: bash
+      args:
+        - -c
+        - |
+          dir="$HOME/.hermes/skills"
+          if [ ! -d "$dir" ]; then
+            echo "[]"
+            exit 0
+          fi
+          ls -1 "$dir" 2>/dev/null | grep -E '\.md$' | head -200 | jq -R -s 'split("\n") | map(select(length > 0))'
+      parse: json
+
+columns: [name]

@@ -1,0 +1,42 @@
+# Stagehand wrap/observe — subprocess wrapper around stagehand-cli.
+#
+# Stagehand exposes a vision-grounded `observe()` verb. This adapter shells
+# out to it (if installed) and parses the JSON candidates the same way
+# `unicli operate observe` does. The wrapper exists so users on Uni-CLI's
+# declarative pipelines can tap Stagehand without porting a full LLM stack.
+site: stagehand
+name: wrap/observe
+description: Run Stagehand's observe() verb against an open page (subprocess wrapper)
+type: bridge
+strategy: public
+binary: stagehand
+detect: which stagehand
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Natural-language goal (what should I click to do X?)
+  url:
+    type: str
+    required: false
+    description: URL to navigate to before observing
+  top_k:
+    type: int
+    default: 5
+    description: Max candidates
+
+pipeline:
+  - exec:
+      command: stagehand
+      args:
+        - observe
+        - --query
+        - ${{ args.query }}
+        - --top-k
+        - ${{ args.top_k }}
+      parse: json
+      timeout: 60000
+
+columns: [action, ref, selector, confidence]

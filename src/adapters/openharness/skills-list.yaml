@@ -1,0 +1,26 @@
+# HKUDS/OpenHarness skills/list — list installed OpenHarness skills.
+site: openharness
+name: skills/list
+description: List skills installed in the local OpenHarness (~/.openharness/skills/)
+type: desktop
+strategy: public
+binary: ls
+detect: test -d ~/.openharness/skills
+
+pipeline:
+  - exec:
+      command: bash
+      args:
+        - -c
+        - |
+          dir="$HOME/.openharness/skills"
+          if [ ! -d "$dir" ]; then
+            echo "[]"
+            exit 0
+          fi
+          find "$dir" -maxdepth 2 -name '*.md' -type f 2>/dev/null \
+            | sed "s|$HOME/.openharness/skills/||" \
+            | jq -R -s 'split("\n") | map(select(length > 0))'
+      parse: json
+
+columns: [name]

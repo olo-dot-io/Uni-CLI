@@ -1,0 +1,20 @@
+# trycua/cua bench/list — list available cua benchmarks.
+site: cua
+name: bench/list
+description: List trycua/cua computer-use benchmarks
+type: bridge
+strategy: public
+binary: cua
+detect: which cua
+
+pipeline:
+  - exec:
+      command: cua
+      args:
+        - bench
+        - list
+        - --json
+      parse: json
+      timeout: 30000
+
+columns: [name, description]

@@ -1,21 +1,40 @@
 #!/usr/bin/env node
 
 /**
- * MCP (Model Context Protocol) stdio server for Uni-CLI.
+ * MCP (Model Context Protocol) server for Uni-CLI.
  *
- * Lazy tool registration strategy:
- *   - At startup, only two tools are registered: list_adapters + run_command
- *   - run_command takes site + command as params, resolves the adapter dynamically
- *   - This avoids registering 600+ tools upfront, keeping MCP handshake fast
+ * Two registration modes:
+ *   1. **Expanded (default)** — one tool per adapter command
+ *      (`unicli_<site>_<command>`) with JSON Schema derived from `args` +
+ *      `columns`. This is the production mode the v0.208 plan calls out:
+ *      MCP clients see the full Uni-CLI surface area without an extra
+ *      list_adapters → run_command roundtrip.
+ *   2. **Lazy (`--lazy`)** — only `list_adapters` + `run_command` are
+ *      registered. Useful when an MCP client has a hard tool-count limit
+ *      or wants the smallest possible handshake.
  *
- * Protocol: JSON-RPC 2.0 over stdio (newline-delimited JSON)
+ * Two transports:
+ *   - **stdio (default)** — newline-delimited JSON over stdin/stdout
+ *   - **http (`--transport http [--port 19826]`)** — POST /mcp accepts a
+ *     single JSON-RPC envelope and returns a single JSON response. No
+ *     SSE streaming yet — additive in a future release.
+ *
+ * Auth pass-through is automatic: every adapter the CLI loads (including
+ * cookie-based ones) is exposed by name; the runtime resolves cookies on
+ * each call via the same code path as the CLI.
  */
 
 import { createInterface } from "node:readline";
+import {
+  createServer,
+  type IncomingMessage,
+  type ServerResponse,
+} from "node:http";
 import { loadAllAdapters, loadTsAdapters } from "../discovery/loader.js";
 import { getAllAdapters, listCommands, resolveCommand } from "../registry.js";
 import { runPipeline } from "../engine/yaml-runner.js";
 import { VERSION } from "../constants.js";
+import type { AdapterManifest, AdapterCommand } from "../types.js";
 
 // ── JSON-RPC Types ──────────────────────────────────────────────────────────
 
@@ -35,14 +54,29 @@ interface JsonRpcResponse {
 
 // ── MCP Tool Schema ─────────────────────────────────────────────────────────
 
+interface JsonSchemaProperty {
+  type: string;
+  description?: string;
+  default?: unknown;
+  enum?: string[];
+  /** For object-typed properties — allows nested run_command-style payloads. */
+  additionalProperties?: boolean;
+  /** For array-typed properties. */
+  items?: JsonSchemaProperty;
+}
+
+interface JsonSchemaObject {
+  type: "object";
+  properties: Record<string, JsonSchemaProperty>;
+  required?: string[];
+  additionalProperties?: boolean;
+}
+
 interface McpTool {
   name: string;
   description: string;
-  inputSchema: {
-    type: "object";
-    properties: Record<string, unknown>;
-    required?: string[];
-  };
+  inputSchema: JsonSchemaObject;
+  outputSchema?: JsonSchemaObject;
 }
 
 interface McpToolResult {
@@ -50,9 +84,9 @@ interface McpToolResult {
   isError?: boolean;
 }
 
-// ── Tool Definitions ────────────────────────────────────────────────────────
+// ── Lazy-mode core tools (preserved for `--lazy` flag) ──────────────────────
 
-function buildCoreTools(): McpTool[] {
+function buildLazyTools(): McpTool[] {
   return [
     {
       name: "list_adapters",
@@ -103,6 +137,114 @@ function buildCoreTools(): McpTool[] {
       },
     },
   ];
+}
+
+// ── Expanded-mode: one tool per adapter command ─────────────────────────────
+
+/**
+ * Map an adapter `arg.type` to a JSON Schema primitive. Defaults to "string"
+ * for unknown / missing types — safer than failing the schema build.
+ */
+function jsonTypeFor(t: string | undefined): string {
+  switch (t) {
+    case "int":
+      return "integer";
+    case "float":
+      return "number";
+    case "bool":
+      return "boolean";
+    case "str":
+    default:
+      return "string";
+  }
+}
+
+/**
+ * Build the input JSON Schema for one adapter command from its `args`.
+ */
+function buildInputSchema(cmd: AdapterCommand): JsonSchemaObject {
+  const props: Record<string, JsonSchemaProperty> = {
+    limit: {
+      type: "integer",
+      description: "Cap result count (default 20)",
+      default: 20,
+    },
+  };
+  const required: string[] = [];
+
+  for (const a of cmd.adapterArgs ?? []) {
+    if (a.name === "limit") continue; // already added
+    const prop: JsonSchemaProperty = {
+      type: jsonTypeFor(a.type),
+      description: a.description,
+    };
+    if (a.default !== undefined) prop.default = a.default;
+    if (a.choices) prop.enum = a.choices;
+    props[a.name] = prop;
+    if (a.required) required.push(a.name);
+  }
+
+  const schema: JsonSchemaObject = {
+    type: "object",
+    properties: props,
+    additionalProperties: false,
+  };
+  if (required.length > 0) schema.required = required;
+  return schema;
+}
+
+/**
+ * Build the output JSON Schema. We model results as `{ count, results }`
+ * mirroring run_command, where each item in `results` follows the
+ * `columns` shape (string-typed properties — Uni-CLI columns are
+ * format-agnostic and the runtime emits whatever the pipeline produced).
+ */
+function buildOutputSchema(cmd: AdapterCommand): JsonSchemaObject {
+  const itemProps: Record<string, JsonSchemaProperty> = {};
+  for (const col of cmd.columns ?? []) {
+    itemProps[col] = { type: "string", description: `Column: ${col}` };
+  }
+  return {
+    type: "object",
+    properties: {
+      count: { type: "integer", description: "Number of results returned" },
+      results: {
+        type: "array" as unknown as string,
+        description: "Result rows",
+      } as JsonSchemaProperty,
+    },
+  } as JsonSchemaObject;
+}
+
+/**
+ * MCP tool name: `unicli_<site>_<command>` with non-alphanumeric chars
+ * collapsed to `_`. Anthropic / Claude Desktop accept underscores; some
+ * older clients reject hyphens, so we normalize defensively.
+ */
+function buildToolName(site: string, command: string): string {
+  return `unicli_${site}_${command}`.replace(/[^a-zA-Z0-9_]/g, "_");
+}
+
+function buildExpandedTools(): McpTool[] {
+  const tools: McpTool[] = [];
+  // Always include list_adapters for discovery + as a smoke test.
+  tools.push(buildLazyTools()[0]);
+
+  for (const adapter of getAllAdapters()) {
+    for (const [cmdName, cmd] of Object.entries(adapter.commands)) {
+      const description =
+        cmd.description?.trim() ||
+        adapter.description?.trim() ||
+        `${cmdName} for ${adapter.name}`;
+      tools.push({
+        name: buildToolName(adapter.name, cmdName),
+        description: `[${adapter.name}] ${description}`,
+        inputSchema: buildInputSchema(cmd),
+        outputSchema: buildOutputSchema(cmd),
+      });
+    }
+  }
+  return tools;
 }
 
 // ── Tool Handlers ───────────────────────────────────────────────────────────
@@ -160,59 +302,12 @@ function handleListAdapters(params: Record<string, unknown>): McpToolResult {
   };
 }
 
-async function handleRunCommand(
-  params: Record<string, unknown>,
+async function runResolvedCommand(
+  adapter: AdapterManifest,
+  cmd: AdapterCommand,
+  cmdName: string,
+  args: Record<string, unknown>,
 ): Promise<McpToolResult> {
-  const site = params.site as string;
-  const command = params.command as string;
-  const args = (params.args as Record<string, unknown>) ?? {};
-
-  if (!site || !command) {
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({ error: "site and command are required" }),
-        },
-      ],
-      isError: true,
-    };
-  }
-
-  const resolved = resolveCommand(site, command);
-  if (!resolved) {
-    // Provide helpful suggestion
-    const adapters = getAllAdapters();
-    const matchingSites = adapters
-      .filter((a) => a.name.includes(site))
-      .map((a) => ({
-        site: a.name,
-        commands: Object.keys(a.commands),
-      }));
-
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(
-            {
-              error: `Unknown command: ${site} ${command}`,
-              suggestion:
-                matchingSites.length > 0
-                  ? `Did you mean one of these? ${JSON.stringify(matchingSites)}`
-                  : "Use list_adapters to see all available commands.",
-            },
-            null,
-            2,
-          ),
-        },
-      ],
-      isError: true,
-    };
-  }
-
-  const { adapter, command: cmd } = resolved;
-
   // Merge default args
   const mergedArgs: Record<string, unknown> = { limit: 20, ...args };
   if (args.limit !== undefined) {
@@ -264,7 +359,7 @@ async function handleRunCommand(
           text: JSON.stringify(
             {
               error: message,
-              adapter_path: `src/adapters/${adapter.name}/${command}.yaml`,
+              adapter_path: `src/adapters/${adapter.name}/${cmdName}.yaml`,
               suggestion: "The adapter may need updating. Check the YAML file.",
             },
             null,
@@ -277,96 +372,211 @@ async function handleRunCommand(
   }
 }
 
+async function handleRunCommand(
+  params: Record<string, unknown>,
+): Promise<McpToolResult> {
+  const site = params.site as string;
+  const command = params.command as string;
+  const args = (params.args as Record<string, unknown>) ?? {};
+
+  if (!site || !command) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({ error: "site and command are required" }),
+        },
+      ],
+      isError: true,
+    };
+  }
+
+  const resolved = resolveCommand(site, command);
+  if (!resolved) {
+    const adapters = getAllAdapters();
+    const matchingSites = adapters
+      .filter((a) => a.name.includes(site))
+      .map((a) => ({
+        site: a.name,
+        commands: Object.keys(a.commands),
+      }));
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(
+            {
+              error: `Unknown command: ${site} ${command}`,
+              suggestion:
+                matchingSites.length > 0
+                  ? `Did you mean one of these? ${JSON.stringify(matchingSites)}`
+                  : "Use list_adapters to see all available commands.",
+            },
+            null,
+            2,
+          ),
+        },
+      ],
+      isError: true,
+    };
+  }
+
+  return runResolvedCommand(resolved.adapter, resolved.command, command, args);
+}
+
+/**
+ * Expanded-tool dispatcher — parse `unicli_<site>_<command>` back to its
+ * components and call the resolver. Returns `undefined` when the tool name
+ * is not in expanded form, so the caller can fall through to lazy-tool
+ * handling (list_adapters / run_command).
+ */
+async function handleExpandedTool(
+  toolName: string,
+  args: Record<string, unknown>,
+): Promise<McpToolResult | undefined> {
+  if (!toolName.startsWith("unicli_")) return undefined;
+  const stripped = toolName.slice("unicli_".length);
+
+  // Look up adapter by trying the longest possible prefix first — adapter
+  // names may contain underscores (rare but possible after normalization).
+  const adapters = getAllAdapters();
+  for (const adapter of adapters) {
+    const norm = adapter.name.replace(/[^a-zA-Z0-9]/g, "_");
+    const prefix = `${norm}_`;
+    if (stripped.startsWith(prefix)) {
+      const cmdName = stripped.slice(prefix.length);
+      const cmd = adapter.commands[cmdName];
+      if (cmd) {
+        return runResolvedCommand(adapter, cmd, cmdName, args);
+      }
+    }
+  }
+  return undefined;
+}
+
 // ── MCP Protocol Handler ────────────────────────────────────────────────────
 
 const PROTOCOL_VERSION = "2024-11-05";
 
-const tools = buildCoreTools();
+interface ServerOptions {
+  lazy: boolean;
+  transport: "stdio" | "http";
+  port: number;
+}
 
-function handleRequest(
-  req: JsonRpcRequest,
-): JsonRpcResponse | Promise<JsonRpcResponse> {
-  const id = req.id ?? null;
+function parseArgs(argv: string[]): ServerOptions {
+  const opts: ServerOptions = {
+    lazy: false,
+    transport: "stdio",
+    port: 19826,
+  };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === "--lazy") opts.lazy = true;
+    else if (a === "--transport") {
+      const v = argv[++i];
+      if (v === "stdio" || v === "http") opts.transport = v;
+    } else if (a === "--port") {
+      const v = parseInt(argv[++i], 10);
+      if (Number.isFinite(v)) opts.port = v;
+    }
+  }
+  return opts;
+}
 
-  switch (req.method) {
-    case "initialize":
-      return {
-        jsonrpc: "2.0",
-        id,
-        result: {
-          protocolVersion: PROTOCOL_VERSION,
-          capabilities: {
-            tools: {},
-          },
-          serverInfo: {
-            name: "unicli",
-            version: VERSION,
-          },
-        },
-      };
+function buildHandler(
+  tools: McpTool[],
+): (req: JsonRpcRequest) => JsonRpcResponse | Promise<JsonRpcResponse> {
+  return function handleRequest(
+    req: JsonRpcRequest,
+  ): JsonRpcResponse | Promise<JsonRpcResponse> {
+    const id = req.id ?? null;
 
-    case "notifications/initialized":
-      // Client acknowledgement — no response needed for notifications
-      return null as unknown as JsonRpcResponse;
-
-    case "tools/list":
-      return {
-        jsonrpc: "2.0",
-        id,
-        result: { tools },
-      };
-
-    case "tools/call": {
-      const params = req.params as
-        | { name: string; arguments?: Record<string, unknown> }
-        | undefined;
-      if (!params?.name) {
+    switch (req.method) {
+      case "initialize":
         return {
           jsonrpc: "2.0",
           id,
-          error: { code: -32602, message: "Missing tool name" },
+          result: {
+            protocolVersion: PROTOCOL_VERSION,
+            capabilities: {
+              tools: {},
+            },
+            serverInfo: {
+              name: "unicli",
+              version: VERSION,
+            },
+          },
         };
-      }
 
-      const toolArgs = params.arguments ?? {};
+      case "notifications/initialized":
+        return null as unknown as JsonRpcResponse;
 
-      switch (params.name) {
-        case "list_adapters": {
-          const result = handleListAdapters(toolArgs);
-          return { jsonrpc: "2.0", id, result };
-        }
-        case "run_command":
-          return handleRunCommand(toolArgs).then((result) => ({
+      case "tools/list":
+        return {
+          jsonrpc: "2.0",
+          id,
+          result: { tools },
+        };
+
+      case "tools/call": {
+        const params = req.params as
+          | { name: string; arguments?: Record<string, unknown> }
+          | undefined;
+        if (!params?.name) {
+          return {
             jsonrpc: "2.0",
             id,
-            result,
-          }));
-        default:
+            error: { code: -32602, message: "Missing tool name" },
+          };
+        }
+
+        const toolArgs = params.arguments ?? {};
+
+        switch (params.name) {
+          case "list_adapters": {
+            const result = handleListAdapters(toolArgs);
+            return { jsonrpc: "2.0", id, result };
+          }
+          case "run_command":
+            return handleRunCommand(toolArgs).then((result) => ({
+              jsonrpc: "2.0",
+              id,
+              result,
+            }));
+          default:
+            return handleExpandedTool(params.name, toolArgs).then((result) => {
+              if (result) return { jsonrpc: "2.0", id, result };
+              return {
+                jsonrpc: "2.0",
+                id,
+                error: {
+                  code: -32601,
+                  message: `Unknown tool: ${params.name}. Use list_adapters to see all available commands.`,
+                },
+              };
+            });
+        }
+      }
+
+      case "ping":
+        return { jsonrpc: "2.0", id, result: {} };
+
+      default:
+        if (id !== null && id !== undefined) {
           return {
             jsonrpc: "2.0",
             id,
             error: {
               code: -32601,
-              message: `Unknown tool: ${params.name}. Available tools: ${tools.map((t) => t.name).join(", ")}`,
+              message: `Method not found: ${req.method}`,
             },
           };
-      }
+        }
+        return null as unknown as JsonRpcResponse;
     }
-
-    case "ping":
-      return { jsonrpc: "2.0", id, result: {} };
-
-    default:
-      // Unknown method — return error for requests (has id), ignore notifications
-      if (id !== null && id !== undefined) {
-        return {
-          jsonrpc: "2.0",
-          id,
-          error: { code: -32601, message: `Method not found: ${req.method}` },
-        };
-      }
-      return null as unknown as JsonRpcResponse;
-  }
+  };
 }
 
 // ── Stdio Transport ─────────────────────────────────────────────────────────
@@ -376,11 +586,9 @@ function send(response: JsonRpcResponse): void {
   process.stdout.write(json + "\n");
 }
 
-async function main(): Promise<void> {
-  // Load adapters (same as CLI)
-  loadAllAdapters();
-  await loadTsAdapters();
-
+async function startStdio(
+  handler: ReturnType<typeof buildHandler>,
+): Promise<void> {
   const rl = createInterface({
     input: process.stdin,
     terminal: false,
@@ -403,7 +611,7 @@ async function main(): Promise<void> {
     }
 
     try {
-      const response = await handleRequest(req);
+      const response = await handler(req);
       if (response) {
         send(response);
       }
@@ -420,12 +628,120 @@ async function main(): Promise<void> {
   rl.on("close", () => {
     process.exit(0);
   });
+}
 
-  // Log to stderr so it doesn't interfere with JSON-RPC on stdout
+// ── HTTP Transport ──────────────────────────────────────────────────────────
+
+/**
+ * Simple JSON-RPC over HTTP. POST /mcp accepts a single JSON-RPC envelope and
+ * returns a single JSON response. GET /mcp returns server info — handy for
+ * a health check from a browser.
+ *
+ * Note: this is intentionally NOT a full MCP Streamable HTTP transport —
+ * no SSE event stream, no session resume. Most clients that "speak HTTP"
+ * to MCP only need request/response, and starting with the simpler shape
+ * means zero new dependencies and a tiny attack surface.
+ */
+async function startHttp(
+  handler: ReturnType<typeof buildHandler>,
+  port: number,
+  toolCount: number,
+): Promise<void> {
+  const server = createServer((req: IncomingMessage, res: ServerResponse) => {
+    if (req.method === "GET" && (req.url === "/" || req.url === "/mcp")) {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          server: "unicli",
+          version: VERSION,
+          tools: toolCount,
+          protocol: PROTOCOL_VERSION,
+        }),
+      );
+      return;
+    }
+    if (req.method !== "POST" || req.url !== "/mcp") {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "POST /mcp" }));
+      return;
+    }
+
+    const chunks: Buffer[] = [];
+    req.on("data", (chunk: Buffer) => chunks.push(chunk));
+    req.on("end", async () => {
+      const body = Buffer.concat(chunks).toString("utf-8");
+      let parsed: JsonRpcRequest;
+      try {
+        parsed = JSON.parse(body) as JsonRpcRequest;
+      } catch {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: null,
+            error: { code: -32700, message: "Parse error" },
+          }),
+        );
+        return;
+      }
+      try {
+        const response = await handler(parsed);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(response ?? null));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: parsed.id ?? null,
+            error: { code: -32603, message: `Internal error: ${message}` },
+          }),
+        );
+      }
+    });
+  });
+
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(port, () => {
+      server.off("error", reject);
+      resolve();
+    });
+  });
+
+  process.stderr.write(
+    `unicli MCP server v${VERSION} — HTTP transport on http://127.0.0.1:${port}/mcp\n`,
+  );
+}
+
+// ── main ────────────────────────────────────────────────────────────────────
+
+async function main(): Promise<void> {
+  const opts = parseArgs(process.argv.slice(2));
+
+  // Load adapters (same as CLI)
+  loadAllAdapters();
+  await loadTsAdapters();
+
+  const tools = opts.lazy ? buildLazyTools() : buildExpandedTools();
+  const handler = buildHandler(tools);
+
   const adapterCount = getAllAdapters().length;
   const commandCount = listCommands().length;
+
+  if (opts.transport === "http") {
+    await startHttp(handler, opts.port, tools.length);
+    process.stderr.write(
+      `unicli MCP server v${VERSION} — ${adapterCount} sites, ${commandCount} commands (${tools.length} tools registered, mode=${opts.lazy ? "lazy" : "expanded"})\n`,
+    );
+    return;
+  }
+
+  // stdio (default)
+  await startStdio(handler);
   process.stderr.write(
-    `unicli MCP server v${VERSION} — ${adapterCount} sites, ${commandCount} commands (2 tools registered)\n`,
+    `unicli MCP server v${VERSION} — ${adapterCount} sites, ${commandCount} commands (${tools.length} tools registered, mode=${opts.lazy ? "lazy" : "expanded"})\n`,
   );
 }
 

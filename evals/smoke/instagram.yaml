@@ -1,0 +1,9 @@
+name: instagram-smoke
+adapter: instagram
+description: Instagram smoke test (cookie auth)
+cases:
+  - command: feed
+    args:
+      limit: 3
+    judges:
+      - { type: arrayMinLength, min: 1 }

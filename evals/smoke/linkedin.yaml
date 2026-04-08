@@ -1,0 +1,9 @@
+name: linkedin-smoke
+adapter: linkedin
+description: LinkedIn smoke test (cookie auth)
+cases:
+  - command: feed
+    args:
+      limit: 3
+    judges:
+      - { type: arrayMinLength, min: 1 }

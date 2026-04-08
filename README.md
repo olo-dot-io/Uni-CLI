@@ -1,4 +1,4 @@
-<!-- AGENT: npm install -g @zenalexa/unicli && unicli list | 635 commands across 122 sites. JSON when piped. Self-repairing YAML adapters. unicli repair --loop for autonomous fix. See AGENTS.md -->
+<!-- AGENT: npm install -g @zenalexa/unicli && unicli list | 711 commands across 134 sites. JSON when piped. Self-repairing YAML adapters. unicli repair --loop for autonomous fix. See AGENTS.md -->
 
 <h1 align="center">Uni-CLI</h1>
 
@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  122 sites · 635 commands · 35 pipeline steps · 29 template filters · Zero runtime dependencies beyond Node.js
+  134 sites · 711 commands · 35 pipeline steps · 29 template filters · Zero runtime dependencies beyond Node.js
 </p>
 
 ---
@@ -30,6 +30,19 @@ unicli twitter search "AI agents"        # Authenticated
 unicli blender render scene.blend        # Desktop software
 unicli cursor ask "explain this code"    # Electron app
 ```
+
+## Compared to
+
+> Source-level honest comparison. Numbers are from a 2026-04-07 audit of cloned reference repos under `ref/`. Full breakdown in [docs/COMPARE.md](./docs/COMPARE.md).
+
+| Project                       | Shape                              | Best when                           | Where Uni-CLI fits                                   |
+| ----------------------------- | ---------------------------------- | ----------------------------------- | ---------------------------------------------------- |
+| **opencli** (14K)             | TypeScript adapter hub             | The genome — Uni-CLI extends it     | Uni-CLI = 35 pipeline steps vs 15, +eval, +repair    |
+| **CLI-Anything** (29K, HKUDS) | Python adapter hub + skill gen     | Desktop-app coverage (44 harnesses) | Uni-CLI = 134 sites web breadth, single-binary       |
+| **browser-use** (86K)         | Python library, LLM per step       | Open-ended browser tasks            | Different shape — embed vs invoke                    |
+| **goose** (38K, MCP-first)    | MCP-host runtime                   | MCP-only environments               | `unicli mcp serve` mounts as MCP server              |
+| **hermes-agent** (30K)        | Agent w/ memory + multi-platform   | Long-running personal agent         | Different category — hermes is agent, Uni-CLI = tool |
+| **Stagehand**                 | Browser-only `observe/act/extract` | Vision-grounded web tasks           | Uni-CLI v0.208 ships `unicli operate observe`        |
 
 ## Why CLI
 
@@ -296,15 +309,15 @@ npm run verify                        # format + typecheck + lint + test + build
 npm run test:adapter                  # Validate all 601 YAML/TS adapters
 ```
 
-| Command                | Purpose                   |
-| ---------------------- | ------------------------- |
-| `npm run dev`          | Development run           |
-| `npm run build`        | Production build          |
-| `npm run typecheck`    | TypeScript strict check   |
-| `npm run lint`         | Oxlint                    |
-| `npm run test`         | Unit tests (272)          |
-| `npm run test:adapter` | Adapter validation (2041) |
-| `npm run verify`       | Full pipeline             |
+| Command                | Purpose                 |
+| ---------------------- | ----------------------- |
+| `npm run dev`          | Development run         |
+| `npm run build`        | Production build        |
+| `npm run typecheck`    | TypeScript strict check |
+| `npm run lint`         | Oxlint                  |
+| `npm run test`         | Unit tests (753)        |
+| `npm run test:adapter` | Adapter validation      |
+| `npm run verify`       | Full pipeline           |
 
 ## Technology
 
@@ -332,6 +345,6 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md). The fastest way to contribute: write a
 ---
 
 <p align="center">
-  <sub>v0.207.1 — Vostok · Gagarin</sub><br>
-  <sub>122 sites · 635 commands · 35 pipeline steps · 29 filters · 665 unit tests</sub>
+  <sub>v0.208.0 — Vostok · Titov</sub><br>
+  <sub>134 sites · 711 commands · 35 pipeline steps · 29 filters · 753 unit tests</sub>
 </p>

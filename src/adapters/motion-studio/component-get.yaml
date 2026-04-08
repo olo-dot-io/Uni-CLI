@@ -1,0 +1,35 @@
+# Motion Studio (motion.dev) — fetch one example component as paste-ready code.
+# motion.dev/examples/<id> serves a Next.js page; we hit the underlying
+# data endpoint and surface the source body.
+site: motion-studio
+name: component/get
+description: Fetch a Motion (motion.dev) example component as paste-ready code
+domain: motion.dev
+type: web-api
+strategy: public
+browser: false
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: Example slug from motion.dev/examples/<id> (e.g. react-command-palette)
+
+pipeline:
+  - fetch_text:
+      url: "https://motion.dev/examples/${{ args.id }}"
+      headers:
+        Accept: text/html
+        User-Agent: Uni-CLI/0.208
+
+  - set:
+      html: ${{ ctx.data }}
+
+  - map:
+      id: ${{ args.id }}
+      url: "https://motion.dev/examples/${{ args.id }}"
+      length: ${{ vars.html.length }}
+      preview: ${{ vars.html.slice(0, 1200) }}
+
+columns: [id, url, length, preview]

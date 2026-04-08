@@ -1,0 +1,31 @@
+# Godot project/run — run a project headlessly with optional script.
+site: godot
+name: project/run
+description: Run a Godot project in headless mode
+type: desktop
+strategy: public
+binary: godot
+detect: which godot
+
+args:
+  project:
+    type: str
+    required: true
+    positional: true
+    description: Path to project directory or project.godot file
+  script:
+    type: str
+    required: false
+    description: Optional GDScript file to run as main scene
+
+pipeline:
+  - exec:
+      command: godot
+      args:
+        - --headless
+        - --path
+        - ${{ args.project }}
+      parse: text
+      timeout: 60000
+
+columns: [output]

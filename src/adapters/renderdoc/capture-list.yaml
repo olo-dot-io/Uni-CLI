@@ -1,0 +1,32 @@
+# RenderDoc capture/list — enumerate captures in a directory.
+# Closes the v0.208 coverage gap with CLI-Anything's RenderDoc harness.
+site: renderdoc
+name: capture/list
+description: List RenderDoc capture files (.rdc) in a directory
+type: desktop
+strategy: public
+binary: ls
+detect: which renderdoccmd
+
+args:
+  dir:
+    type: str
+    required: false
+    default: ./captures
+    description: Capture directory (defaults to ./captures)
+
+pipeline:
+  - exec:
+      command: bash
+      args:
+        - -c
+        - |
+          dir="${{ args.dir }}"
+          if [ ! -d "$dir" ]; then
+            echo "[]"
+            exit 0
+          fi
+          ls -1 "$dir"/*.rdc 2>/dev/null | jq -R -s 'split("\n") | map(select(length > 0))'
+      parse: json
+
+columns: [name]

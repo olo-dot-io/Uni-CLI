@@ -1,0 +1,15 @@
+name: auth-rotation-regression
+adapter: hackernews
+description: |
+  Catches drift where the cookie / token rotation logic in
+  src/engine/cookies.ts breaks public-strategy adapters. The hackernews
+  top endpoint is intentionally chosen because it does NOT require auth —
+  if this regresses with a 403, the cookie path is leaking into public
+  requests.
+cases:
+  - command: top
+    args:
+      limit: 1
+    judges:
+      - { type: exitCode, equals: 0 }
+      - { type: arrayMinLength, min: 1 }

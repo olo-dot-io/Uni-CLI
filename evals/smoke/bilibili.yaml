@@ -1,0 +1,14 @@
+name: bilibili-smoke
+adapter: bilibili
+description: Bilibili ranking smoke test
+cases:
+  - command: ranking
+    args:
+      limit: 5
+    judges:
+      - { type: arrayMinLength, min: 5 }
+  - command: hot
+    args:
+      limit: 3
+    judges:
+      - { type: arrayMinLength, min: 3 }

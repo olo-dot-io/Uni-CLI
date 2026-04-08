@@ -1,0 +1,14 @@
+name: reddit-smoke
+adapter: reddit
+description: Reddit public JSON API smoke test
+cases:
+  - command: hot
+    args:
+      limit: 5
+    judges:
+      - { type: arrayMinLength, min: 5 }
+  - command: top
+    args:
+      limit: 5
+    judges:
+      - { type: arrayMinLength, min: 5 }

@@ -11,6 +11,14 @@ import { homedir } from "node:os";
 import chalk from "chalk";
 import { BrowserBridge, DaemonPage } from "../browser/bridge.js";
 import { generateReadInterceptedJs } from "../engine/interceptor.js";
+import {
+  isSensitivePath,
+  buildSensitivePathDenial,
+} from "../permissions/sensitive-paths.js";
+import { ExitCode } from "../types.js";
+import { rankCandidates, type SnapshotRef } from "../browser/observe.js";
+import { mkdirSync, appendFileSync } from "node:fs";
+import { join, dirname as pathDirname } from "node:path";
 
 const OPERATE_WORKSPACE = "operate:default";
 
@@ -464,13 +472,21 @@ export function registerOperateCommands(program: Command): void {
         validateRef(ref);
         const selector = `[data-unicli-ref="${ref}"]`;
         const absolutePath = resolve(filePath);
+        // Sensitive-path deny list runs FIRST, before any workspace check.
+        // Cannot be overridden by permission mode (defense against prompt
+        // injection that points the agent at credentials, keys, or tokens).
+        if (isSensitivePath(absolutePath)) {
+          const denial = buildSensitivePathDenial(absolutePath);
+          console.error(JSON.stringify(denial));
+          process.exit(ExitCode.CONFIG_ERROR);
+        }
         const cwd = process.cwd();
         const home = homedir();
         if (!absolutePath.startsWith(cwd) && !absolutePath.startsWith(home)) {
           console.error(
             `Upload blocked: path ${absolutePath} is outside workspace and home directory`,
           );
-          process.exit(78); // EX_CONFIG
+          process.exit(ExitCode.CONFIG_ERROR);
         }
         const page = await getOperatePage();
         await page.setFileInput(selector, [absolutePath]);
@@ -499,6 +515,71 @@ export function registerOperateCommands(program: Command): void {
           })()`,
         );
         return { ok: true, ref };
+      }),
+    );
+
+  // observe <query> — preview ranked candidate actions for a natural-language goal
+  operate
+    .command("observe <query>")
+    .description(
+      "Preview ranked candidate actions for a natural-language goal (Stagehand-style)",
+    )
+    .option("--top-k <n>", "Number of candidates to return", "5")
+    .option(
+      "--cache <path>",
+      "Cache file (default ~/.unicli/observe-cache.jsonl)",
+    )
+    .action((query: string, opts: { topK?: string; cache?: string }) =>
+      operateAction("observe", async () => {
+        const page = await getOperatePage();
+        // We need refs with tag + text + optional attrs. The existing
+        // snapshot generator returns this when raw=true. The runtime
+        // returns either an object or a JSON string depending on the page
+        // implementation; normalize both.
+        const rawSnapshotResult = await page.snapshot({
+          interactive: true,
+          raw: true,
+        });
+        let parsed: { tree?: string; refs?: SnapshotRef[] };
+        if (typeof rawSnapshotResult === "string") {
+          try {
+            parsed = JSON.parse(rawSnapshotResult) as {
+              tree?: string;
+              refs?: SnapshotRef[];
+            };
+          } catch {
+            parsed = { refs: [] };
+          }
+        } else {
+          parsed = rawSnapshotResult as { tree?: string; refs?: SnapshotRef[] };
+        }
+        const refs: SnapshotRef[] = Array.isArray(parsed.refs)
+          ? parsed.refs
+          : [];
+        const topK = parseInt(opts.topK ?? "5", 10) || 5;
+        const candidates = rankCandidates(refs, query, topK);
+
+        // Append to cache for self-healing audits
+        const cachePath =
+          opts.cache ?? join(homedir(), ".unicli", "observe-cache.jsonl");
+        try {
+          mkdirSync(pathDirname(cachePath), { recursive: true });
+          const url = await page.url();
+          appendFileSync(
+            cachePath,
+            JSON.stringify({
+              ts: new Date().toISOString(),
+              url,
+              query,
+              candidates,
+            }) + "\n",
+            "utf-8",
+          );
+        } catch {
+          // Cache write failure is non-fatal — observability infra.
+        }
+
+        return { query, candidates };
       }),
     );
 

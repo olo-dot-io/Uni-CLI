@@ -19,7 +19,7 @@ import { execFile } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { tmpdir } from "node:os";
+import { tmpdir, homedir } from "node:os";
 import { randomBytes } from "node:crypto";
 import { promisify } from "node:util";
 import { runInNewContext } from "node:vm";
@@ -27,6 +27,10 @@ import TurndownService from "turndown";
 import { USER_AGENT } from "../constants.js";
 import type { PipelineStep } from "../types.js";
 import { formatCookieHeader, loadCookiesWithCDP } from "./cookies.js";
+import {
+  matchSensitivePath,
+  buildSensitivePathDenial,
+} from "../permissions/sensitive-paths.js";
 import type { BrowserPage } from "../browser/page.js";
 import {
   generateInterceptorJs,
@@ -980,6 +984,26 @@ async function stepExec(
   const cmd = evalTemplate(config.command, ctx);
   const execArgs = (config.args ?? []).map((a) => evalTemplate(String(a), ctx));
   const timeout = config.timeout ?? 30000;
+
+  // Sensitive-path deny list — scan every arg that looks like a path before
+  // touching subprocess. Cannot be overridden by permission mode. Defends
+  // against prompt-injection that smuggles a credential path into args.
+  for (const arg of execArgs) {
+    if (typeof arg !== "string" || arg.length === 0) continue;
+    if (!arg.startsWith("/") && !arg.startsWith("~/")) continue;
+    const expanded = arg.startsWith("~/") ? join(homedir(), arg.slice(2)) : arg;
+    const matched = matchSensitivePath(expanded);
+    if (matched) {
+      const denial = buildSensitivePathDenial(expanded);
+      throw new PipelineError(`exec blocked: sensitive_path_denied`, {
+        step: -1,
+        action: "exec",
+        config: { command: cmd, args: execArgs, denial },
+        errorType: "assertion_failed",
+        suggestion: denial.hint,
+      });
+    }
+  }
 
   // Resolve env vars (merge with process.env)
   let envOption: NodeJS.ProcessEnv | undefined;

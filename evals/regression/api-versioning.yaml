@@ -1,0 +1,15 @@
+name: api-versioning-regression
+adapter: hackernews
+description: |
+  Catches breakage from upstream API version bumps that change response
+  shape. The judge requires both the v0 path style (`hacker-news.firebaseio.com/v0/`)
+  AND the expected fields to be present.
+cases:
+  - command: search
+    positional: [llm]
+    args:
+      limit: 2
+    judges:
+      - { type: exitCode, equals: 0 }
+      - { type: arrayMinLength, min: 1 }
+      - { type: contains, value: "title" }

@@ -1,0 +1,9 @@
+name: twitter-smoke
+adapter: twitter
+description: Twitter / X smoke test (requires cookie auth)
+cases:
+  - command: timeline
+    args:
+      limit: 5
+    judges:
+      - { type: arrayMinLength, min: 1 }

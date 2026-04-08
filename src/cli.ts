@@ -29,6 +29,11 @@ import { registerGenerateCommand } from "./commands/generate.js";
 import { registerHealthCommand } from "./commands/health.js";
 import { registerAgentsCommand } from "./commands/agents.js";
 import { registerRepairCommand } from "./commands/repair.js";
+import { registerSkillsCommand } from "./commands/skills.js";
+import { registerUsageCommands } from "./commands/usage.js";
+import { registerMcpCommand } from "./commands/mcp.js";
+import { registerEvalCommand } from "./commands/eval.js";
+import { recordUsage } from "./runtime/usage-ledger.js";
 import { emitHook } from "./hooks.js";
 import { checkForUpdates } from "./engine/update-check.js";
 import type { OutputFormat } from "./types.js";
@@ -41,7 +46,9 @@ export async function createCli(): Promise<Command> {
 
   program
     .name("unicli")
-    .description("The universal interface between AI agents and the world's software")
+    .description(
+      "The universal interface between AI agents and the world's software",
+    )
     .version(VERSION)
     .option(
       "-f, --format <format>",
@@ -257,6 +264,18 @@ export async function createCli(): Promise<Command> {
   // Register repair command — self-repair broken adapters using AI
   registerRepairCommand(program);
 
+  // Register skills command — export adapter SKILL.md files for agent registries
+  registerSkillsCommand(program);
+
+  // Register usage command — read the per-call cost ledger
+  registerUsageCommands(program);
+
+  // Register mcp command — MCP gateway server + health check
+  registerMcpCommand(program);
+
+  // Register eval command — declarative regression suites
+  registerEvalCommand(program);
+
   // Register "test" command — run all commands for a site
   program
     .command("test [site]")
@@ -381,6 +400,7 @@ export async function createCli(): Promise<Command> {
       }
 
       subCmd.action(async (...actionArgs: unknown[]) => {
+        const startedAt = Date.now();
         // Commander passes positional args first, then opts object, then Command
         const opts = actionArgs[actionArgs.length - 2] as Record<
           string,
@@ -462,10 +482,29 @@ export async function createCli(): Promise<Command> {
             } else {
               console.log(chalk.dim("No results"));
             }
+            recordUsage({
+              site: adapter.name,
+              cmd: cmdName,
+              strategy: adapter.strategy ?? "unknown",
+              tokens: 0,
+              ms: Date.now() - startedAt,
+              bytes: 0,
+              exit: ExitCode.EMPTY_RESULT,
+            });
             process.exit(ExitCode.EMPTY_RESULT);
           }
 
-          console.log(format(results, cmd.columns, fmt));
+          const rendered = format(results, cmd.columns, fmt);
+          console.log(rendered);
+          recordUsage({
+            site: adapter.name,
+            cmd: cmdName,
+            strategy: adapter.strategy ?? "unknown",
+            tokens: 0,
+            ms: Date.now() - startedAt,
+            bytes: Buffer.byteLength(rendered, "utf-8"),
+            exit: ExitCode.SUCCESS,
+          });
         } catch (err) {
           if (err instanceof PipelineError) {
             // Structured error for AI agents — includes adapter path,
@@ -491,6 +530,15 @@ export async function createCli(): Promise<Command> {
                 : agentError.errorType === "empty_result"
                   ? ExitCode.EMPTY_RESULT
                   : ExitCode.GENERIC_ERROR;
+            recordUsage({
+              site: adapter.name,
+              cmd: cmdName,
+              strategy: adapter.strategy ?? "unknown",
+              tokens: 0,
+              ms: Date.now() - startedAt,
+              bytes: 0,
+              exit: exitCode,
+            });
             process.exit(exitCode);
           }
 
@@ -500,6 +548,15 @@ export async function createCli(): Promise<Command> {
           } else {
             console.error(chalk.red(`Error: ${message}`));
           }
+          recordUsage({
+            site: adapter.name,
+            cmd: cmdName,
+            strategy: adapter.strategy ?? "unknown",
+            tokens: 0,
+            ms: Date.now() - startedAt,
+            bytes: 0,
+            exit: ExitCode.GENERIC_ERROR,
+          });
           process.exit(ExitCode.GENERIC_ERROR);
         }
       });

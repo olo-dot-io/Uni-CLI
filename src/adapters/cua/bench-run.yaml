@@ -1,0 +1,32 @@
+# trycua/cua bench/run — run a single computer-use benchmark.
+site: cua
+name: bench/run
+description: Run a trycua/cua computer-use benchmark
+type: bridge
+strategy: public
+binary: cua
+detect: which cua
+
+args:
+  benchmark:
+    type: str
+    required: true
+    positional: true
+    description: Benchmark name from `cua bench/list`
+  agent:
+    type: str
+    required: false
+    description: Agent backend (e.g. unicli, browser-use, claude)
+
+pipeline:
+  - exec:
+      command: cua
+      args:
+        - bench
+        - run
+        - ${{ args.benchmark }}
+        - --json
+      parse: json
+      timeout: 600000
+
+columns: [task, score, duration, agent]

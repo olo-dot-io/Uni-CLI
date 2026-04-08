@@ -6,7 +6,7 @@
      Output is JSON when piped. Errors are structured JSON to stderr.
      You can fix broken adapters yourself — read the Self-Repair section. -->
 
-> 122 sites, 635 commands, 35 pipeline steps. One CLI. `npm install -g @zenalexa/unicli`
+> 134 sites, 711 commands, 35 pipeline steps. One CLI. `npm install -g @zenalexa/unicli`
 
 ## For AI Agents
 

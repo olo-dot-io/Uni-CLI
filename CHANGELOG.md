@@ -3,7 +3,34 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
-## [0.207.1] — 2026-04-06 — Vostok · Gagarin (Hotfix)
+## [0.208.0] — 2026-04-08 — Vostok · Titov
+
+> Standards, Distribution, and Self-Improvement. 134 sites · 711 commands.
+> Closes the SKILL.md gap with CLI-Anything, hardens the MCP gateway,
+> ships the eval catalog, lands Stagehand-style `observe()`, and ports
+> OpenHarness's sensitive-path deny list.
+
+### Added
+
+- **`unicli skills export` (deliverable A)** — auto-generates one Anthropic-spec SKILL.md per adapter command into `skills/`. `unicli skills publish [--to ~/.claude/skills/uni-cli/]` copies into a Claude/Cursor skills directory. `unicli skills catalog` writes the canonical machine-readable manifest at `docs/adapters-catalog.json`. `scripts/generate-catalog.ts` ships as the build-time entry point.
+- **`unicli mcp serve` (deliverable B)** — production-ready MCP gateway. Default expanded mode auto-registers one tool per adapter command (`unicli_<site>_<command>`) with input schemas derived from `args` and output schemas from `columns`. Lazy mode (`--lazy`) preserves the v0.207 2-tool surface. New `--transport http --port 19826` adds JSON-RPC over `POST /mcp` for self-hosted environments. `unicli mcp health` is the offline pre-flight check.
+- **`unicli eval` (deliverable C)** — declarative regression suites. 15 starter eval files ship under `evals/`: 12 smoke (hackernews, bilibili, github, reddit, weibo, zhihu, xiaohongshu, douyin, youtube, twitter, instagram, linkedin, hupu, douban, producthunt) + 3 regression (auth-rotation, selector-drift, api-versioning). Subcommands: `eval list`, `eval run [--all]`, `eval ci --since 7d`. Output format: `SCORE=N/M` plus structured JSON for CI.
+- **Per-call cost ledger (deliverable D)** — append-only JSONL at `~/.unicli/usage.jsonl` capturing `{ts, site, cmd, strategy, tokens, ms, bytes, exit}` for every CLI invocation. `unicli usage report [--since 7d] [--slow] [--failing]` aggregates by site+cmd with median, p95, error rate, and bytes. Opt out with `UNICLI_NO_LEDGER=1`.
+- **`unicli operate observe <query>` (deliverable I)** — Stagehand-style preview verb. Snapshots the page, ranks interactive elements against the natural-language query (token overlap, exact label, role/aria bonuses), returns `{action, ref, selector, confidence, reason}` candidates. Caches every observation to `~/.unicli/observe-cache.jsonl` for self-healing audits.
+- **8 strategic adapters (deliverable F)** — `hermes` (skills-list, skills-read, sessions-search), `openharness` (memory-read, skills-list), `motion-studio` (component-get), `stagehand` (wrap-observe), `godot` (scene-export, project-run), `renderdoc` (capture-list, frame-export), `autoagent` (eval-run), `cua` (bench-list, bench-run). +14 commands total.
+- **AgentLint integration (deliverable E)** — `scripts/lint-context.sh` runs Agent Lint against the workspace and gates `npm run verify` on context quality. Resolution order: global `agent-lint` → vendored `ref/agentlint/packages/cli/dist/index.js` → soft skip with warning. Default threshold 60/100, override with `UNICLI_LINT_THRESHOLD`. Disable with `UNICLI_LINT_DISABLE=1`.
+- **`scripts/sync-ref.sh`** — generic sync of every git repository under `ref/` to its remote HEAD. Replaces the inline two-repo `sync:ref` script.
+- **Documentation (deliverable H)** — 5 new docs: `docs/COMPARE.md`, `docs/SKILL-EXPORT.md`, `docs/MCP-GATEWAY.md`, `docs/EVAL-HARNESS.md`, `docs/CONTEXT-LINT.md`. README gets a "Compared to" section with honest source-level comparisons against opencli, CLI-Anything, browser-use, goose, hermes-agent, Stagehand.
+
+### Security
+
+- **Sensitive path deny list (deliverable J)** — `src/permissions/sensitive-paths.ts` ports OpenHarness's hardcoded deny patterns to TypeScript with anchored regex: `.ssh`, `.aws/credentials`, `.aws/config`, `.gnupg`, `.kube/config`, `.docker/config.json`, `.npmrc`, `~/.unicli/cookies/*.json`, `~/.unicli/credentials.json`, OpenHarness creds, GCP application default credentials. Enforced in `unicli operate upload` (before workspace+home boundary check) and the `exec` pipeline step (scans every path-like arg). Cannot be overridden by permission mode. Returns structured `{error: "sensitive_path_denied", path, pattern, hint}` on stderr.
+
+### Changed
+
+- **MCP server default mode** — `unicli mcp serve` now boots in expanded mode (one tool per adapter command). Lazy mode (the v0.207 default) is opt-in via `--lazy`. The existing `tests/unit/mcp-server.test.ts` was updated to spawn with `--lazy` to preserve the 2-tool contract; new `tests/unit/mcp-server-expanded.test.ts` covers the expanded surface.
+- **`npm run verify`** — chains `lint:context` between `lint` and `test`. Soft-skips when Agent Lint is not installed.
+- **`recordUsage` cli.ts hook** — every dynamic site command writes a ledger entry on success, empty result, pipeline error, and generic error.
 
 ### Fixed
 

@@ -1,0 +1,40 @@
+# HKUDS/OpenHarness memory/read — read MEMORY.md and per-topic memory files
+# from a local OpenHarness install.
+site: openharness
+name: memory/read
+description: Read OpenHarness MEMORY.md and per-topic memory files (~/.openharness/memory/)
+type: desktop
+strategy: public
+binary: cat
+detect: test -d ~/.openharness
+
+args:
+  topic:
+    type: str
+    required: false
+    description: Optional topic file (without .md). When omitted, returns MEMORY.md.
+
+pipeline:
+  - exec:
+      command: bash
+      args:
+        - -c
+        - |
+          base="$HOME/.openharness"
+          if [ ! -d "$base" ]; then
+            echo '{"error":"openharness not installed","hint":"~/.openharness not found"}'
+            exit 1
+          fi
+          if [ -n "${{ args.topic }}" ]; then
+            file="$base/memory/${{ args.topic }}.md"
+          else
+            file="$base/MEMORY.md"
+          fi
+          if [ ! -f "$file" ]; then
+            echo '{"error":"not found","path":"'"$file"'"}'
+            exit 1
+          fi
+          jq -Rs '{path:"'"$file"'",content:.}' < "$file"
+      parse: json
+
+columns: [path, content]

@@ -2,6 +2,8 @@
 
 > Internal design philosophy and naming conventions.
 > This document governs aesthetics, tone, and thematic decisions across the project.
+>
+> **Current version:** v0.208.0 — Vostok · Titov (Vostok 2 cosmonaut, second human in space, 25-hour flight — natural successor to Vostok 1 Gagarin).
 
 ## Core Identity
 
@@ -17,17 +19,17 @@ Like a spacecraft's universal docking adapter, Uni-CLI connects any agent to any
 
 ## Naming Convention
 
-| Layer            | Format            | Example                                      |
-| ---------------- | ----------------- | -------------------------------------------- |
-| GitHub repo      | `Uni-CLI`         | github.com/ZenAlexa/Uni-CLI                  |
-| Display name     | `Uni-CLI`         | Used in prose, titles, documentation headers |
+| Layer            | Format             | Example                                      |
+| ---------------- | ------------------ | -------------------------------------------- |
+| GitHub repo      | `Uni-CLI`          | github.com/ZenAlexa/Uni-CLI                  |
+| Display name     | `Uni-CLI`          | Used in prose, titles, documentation headers |
 | npm package      | `@zenalexa/unicli` | `npm install -g @zenalexa/unicli`            |
-| CLI binary       | `unicli`          | `unicli hackernews top`                      |
-| Code identifiers | `unicli`          | function names, config paths, variables      |
-| Config directory | `~/.unicli/`      | user-level configuration                     |
-| Skill names      | `unicli-*`        | `unicli-usage`, `unicli-explorer`            |
-| Plugin prefix    | `unicli-plugin-*` | `unicli-plugin-github-trending`              |
-| Environment vars | `UNICLI_*`        | `UNICLI_BROWSER_PORT`                        |
+| CLI binary       | `unicli`           | `unicli hackernews top`                      |
+| Code identifiers | `unicli`           | function names, config paths, variables      |
+| Config directory | `~/.unicli/`       | user-level configuration                     |
+| Skill names      | `unicli-*`         | `unicli-usage`, `unicli-explorer`            |
+| Plugin prefix    | `unicli-plugin-*`  | `unicli-plugin-github-trending`              |
+| Environment vars | `UNICLI_*`         | `UNICLI_BROWSER_PORT`                        |
 
 Rule: **Uni-CLI** appears only where humans read prose. Everywhere machines parse, use **unicli**.
 

@@ -1,6 +1,6 @@
 {
   "name": "@zenalexa/unicli",
-  "version": "0.207.1",
+  "version": "0.208.0",
   "description": "The universal interface between AI agents and the world's software",
   "type": "module",
   "main": "dist/main.js",
@@ -29,7 +29,8 @@
     "lint": "oxlint src/",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "npm run format:check && npm run typecheck && npm run lint && npm run test && npm run build",
+    "lint:context": "bash scripts/lint-context.sh",
+    "verify": "npm run format:check && npm run typecheck && npm run lint && npm run lint:context && npm run test && npm run build",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
@@ -37,7 +38,7 @@
     "mcp": "tsx src/mcp/server.ts",
     "release": "npm run build && tsx scripts/release.ts",
     "bench": "tsx scripts/bench.ts",
-    "sync:ref": "cd ref && (cd opencli && git pull --rebase --depth 1) && (cd CLI-Anything && git pull --rebase --depth 1) && echo 'ref repos synced'"
+    "sync:ref": "bash scripts/sync-ref.sh"
   },
   "keywords": [
     "cli",

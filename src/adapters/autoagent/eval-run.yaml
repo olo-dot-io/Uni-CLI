@@ -1,0 +1,36 @@
+# kevinrgu/autoagent eval/run — delegate hill-climbing optimization to AutoAgent.
+# Subprocess wrapper that streams JSON results back.
+site: autoagent
+name: eval/run
+description: Run an AutoAgent evaluation (hill-climbing on agent.py)
+type: bridge
+strategy: public
+binary: autoagent
+detect: which autoagent
+
+args:
+  task:
+    type: str
+    required: true
+    positional: true
+    description: Task name or path to a YAML task spec
+  iterations:
+    type: int
+    default: 5
+    description: Max hill-climb iterations
+
+pipeline:
+  - exec:
+      command: autoagent
+      args:
+        - eval
+        - run
+        - --task
+        - ${{ args.task }}
+        - --iterations
+        - ${{ args.iterations }}
+        - --json
+      parse: json
+      timeout: 600000
+
+columns: [iteration, score, change]

@@ -1,0 +1,13 @@
+name: selector-drift-regression
+adapter: hackernews
+description: |
+  Detects when an adapter's pipeline `map` step selects a non-existent
+  field. The judge is a `contains` against a known field name in the
+  output, so a silent {} payload fails fast.
+cases:
+  - command: top
+    args:
+      limit: 1
+    judges:
+      - { type: contains, value: "title" }
+      - { type: contains, value: "score" }

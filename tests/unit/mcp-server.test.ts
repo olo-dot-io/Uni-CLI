@@ -56,7 +56,10 @@ describe("MCP server", () => {
   let proc: ChildProcess;
 
   beforeAll(async () => {
-    proc = spawn("npx", ["tsx", SERVER_PATH], {
+    // The default mode in v0.208 expands every adapter into its own MCP tool.
+    // This file pins the LAZY mode (`--lazy`) so the existing 2-tool contract
+    // is exercised. Expanded mode is covered in `mcp-server-expanded.test.ts`.
+    proc = spawn("npx", ["tsx", SERVER_PATH, "--lazy"], {
       stdio: ["pipe", "pipe", "pipe"],
       cwd: join(__dirname, "..", ".."),
     });

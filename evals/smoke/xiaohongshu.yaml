@@ -1,0 +1,9 @@
+name: xiaohongshu-smoke
+adapter: xiaohongshu
+description: Xiaohongshu smoke test
+cases:
+  - command: feed
+    args:
+      limit: 3
+    judges:
+      - { type: arrayMinLength, min: 1 }

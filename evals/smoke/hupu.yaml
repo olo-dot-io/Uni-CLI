@@ -1,0 +1,9 @@
+name: hupu-smoke
+adapter: hupu
+description: Hupu trending smoke test
+cases:
+  - command: hot
+    args:
+      limit: 5
+    judges:
+      - { type: arrayMinLength, min: 5 }
