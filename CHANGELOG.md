@@ -3,6 +3,42 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
+## [0.209.0] — 2026-04-10 — Vostok · Popovich
+
+> Discover, Evolve, Connect. 167 sites · 756 commands.
+> Auto-discovery pipeline, AutoResearch self-improvement loop, Adapter Hub,
+> 29 new adapter sites spanning AI/ML, finance, music, news, devtools, and
+> enterprise collaboration. MiniMax MMX-CLI integration (day-0), Feishu/Lark
+> CLI bridge, and 5 security hardening fixes from triple-review audit.
+
+### Added
+
+- **Auto-discovery engine** — `src/engine/endpoint.ts` (unified endpoint analysis with role-based field mapping), `src/engine/probe.ts` (snapshot-based interactive probing), `src/engine/framework.ts` (React/Vue/Next/Nuxt/Svelte/Angular detection + Pinia/Vuex store discovery), `src/engine/capability.ts` (12 EN+ZH goal aliases, 5 pipeline patterns: public-fetch, cookie-fetch, browser-evaluate, intercept, store-action). Builds on existing `explore`/`synthesize`/`generate` commands.
+- **AutoResearch engine** — `unicli research run <site>` — Karpathy-style 8-phase self-improvement loop (precondition → review → modify via Claude Code → commit → verify via eval → guard → decide keep/discard → log). 4 presets: reliability, coverage, freshness, security. `unicli research log` and `unicli research report` for history and aggregation. Stuck detection at 5 consecutive discards with escalating hints.
+- **Adapter Hub** — `unicli hub search/install/publish/update/verify` — git-based community adapter registry via GitHub API (`olo-dot-io/unicli-hub`). Install adapters from hub, publish via PR.
+- **Test generator** — `unicli test-gen generate <site>` auto-generates Vitest tests from eval files. `unicli test-gen ci` tests only adapters changed in current commit.
+- **Multi-harness AGENTS.md** — `unicli agents generate --for cursor|codex|goose|generic` generates harness-optimized discovery files.
+- **MCP discover tool** — `unicli_discover` exposed as MCP tool in expanded mode. URL → explore → generate, callable from any MCP client.
+- **Auto-eval generation** — `unicli generate` now auto-creates `evals/smoke/<site>.yaml` when installing a new adapter.
+- **Response caching** — `cache: <seconds>` field on `fetch` pipeline step. Cached to `~/.unicli/cache/` with 10MB per-entry limit.
+- **Strategy fallback** — `fetch` step auto-retries with cookie injection on 401/403 responses.
+- **29 new adapter sites** — minimax (chat, models, tts), feishu (send, docs, calendar, tasks), gitlab (trending, search), netease-music (hot, search), techcrunch (latest), theverge (latest), nytimes (top), cnn (top), sspai (latest, hot), ithome (news), infoq (articles), eastmoney (hot, search), mastodon (trending, search), twitch (top), openrouter (models), huggingface-papers (daily), replicate (trending, search), ycombinator (launches), gitee (trending, search), crates-io (search), pypi (info), homebrew (info), npm-trends (compare), docker-hub (search), cocoapods (search), unsplash (search), pexels (search), exchangerate (convert), ip-info (lookup), qweather (now), itch-io (popular), meituan (search), pinduoduo (hot).
+
+### Security
+
+- **Shell injection prevention in research engine** — all scope pattern resolution uses Node `readdirSync` (no shell). `runVerify` and `runGuard` use `execFileSync("unicli", [...args])` instead of `sh -c`. Site names validated against `/^[a-zA-Z0-9_-]+$/`.
+- **Hub path traversal prevention** — site/command names validated in all subcommands (install, publish, verify). `execFileSync` with args array instead of shell interpolation.
+- **MCP HTTP loopback binding** — HTTP transport explicitly binds to `127.0.0.1`, not `0.0.0.0`.
+- **Probe ref validation** — CSS selector injection prevented by `/^\d+$/` check on snapshot refs.
+- **Cache size limit** — 10MB per-entry cap prevents disk exhaustion from oversized API responses.
+- **Claude Code tool restriction** — research engine uses `--allowedTools "Read,Edit,Glob,Grep"` (no Write, no Bash).
+
+### Changed
+
+- **All adapters always visible** — `detect:` field is informational only, does not gate adapter registration. Desktop adapters appear in `unicli list` regardless of whether the binary is installed. Runtime errors give clear install instructions.
+- **`agents generate` multi-format** — new `--for` flag generates Cursor Rules, Codex-optimized, Goose recipe, or generic markdown formats.
+- **`generate` auto-eval** — installing an adapter via `unicli generate` now auto-creates a smoke eval file.
+
 ## [0.208.0] — 2026-04-08 — Vostok · Titov
 
 > Standards, Distribution, and Self-Improvement. 134 sites · 711 commands.

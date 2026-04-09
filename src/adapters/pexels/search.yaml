@@ -1,0 +1,28 @@
+site: pexels
+name: search
+description: Search free stock photos on Pexels
+type: web-api
+domain: api.pexels.com
+strategy: header
+args:
+  query:
+    required: true
+    positional: true
+    description: Photo search query
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://api.pexels.com/v1/search?query=${{ args.query }}&per_page=${{ args.limit | default(20) }}"
+      headers:
+        Authorization: "${{ env.PEXELS_API_KEY }}"
+  - select: photos
+  - map:
+      photographer: "${{ item.photographer }}"
+      url: "${{ item.src.large }}"
+      alt: "${{ item.alt }}"
+      width: "${{ item.width }}"
+      height: "${{ item.height }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [photographer, alt, url, width, height]

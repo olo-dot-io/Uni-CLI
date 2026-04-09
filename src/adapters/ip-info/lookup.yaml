@@ -1,0 +1,15 @@
+site: ip-info
+name: lookup
+description: IP geolocation lookup (free, no key)
+type: web-api
+domain: ipapi.co
+strategy: public
+args:
+  ip:
+    required: false
+    positional: true
+    description: IP address (omit for your own IP)
+pipeline:
+  - fetch:
+      url: "https://ipapi.co/${{ args.ip | default('') }}/json/"
+columns: [ip, city, region, country_name, org, timezone, latitude, longitude]

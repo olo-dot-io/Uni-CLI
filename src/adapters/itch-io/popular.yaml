@@ -1,0 +1,22 @@
+site: itch-io
+name: popular
+description: Popular games on itch.io
+type: web-api
+domain: itch.io
+strategy: public
+args:
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://itch.io/games/top-rated.json"
+  - select: games
+  - map:
+      title: "${{ item.title }}"
+      url: "${{ item.url }}"
+      author: "${{ item.user.display_name }}"
+      classification: "${{ item.classification }}"
+      price: "${{ item.min_price ? ('$' + (item.min_price / 100).toFixed(2)) : 'Free' }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [title, author, classification, price, url]

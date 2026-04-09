@@ -1,0 +1,24 @@
+site: feishu
+name: calendar
+description: List upcoming Feishu/Lark calendar events
+type: bridge
+domain: feishu-cli.com
+detect: which feishu
+strategy: public
+args:
+  days:
+    required: false
+    default: 7
+    description: Number of days to look ahead
+pipeline:
+  - exec:
+      command: feishu
+      args:
+        [
+          "calendar",
+          "events",
+          "--days",
+          "${{ args.days | default(7) }}",
+          "--json",
+        ]
+columns: [title, start, end, location, organizer]

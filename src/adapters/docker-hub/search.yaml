@@ -1,0 +1,26 @@
+site: docker-hub
+name: search
+description: Search Docker Hub images
+type: web-api
+domain: hub.docker.com
+strategy: public
+args:
+  query:
+    required: true
+    positional: true
+    description: Image search query
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://hub.docker.com/v2/search/repositories/?query=${{ args.query }}&page_size=${{ args.limit | default(20) }}"
+  - select: results
+  - map:
+      name: "${{ item.repo_name }}"
+      description: "${{ item.short_description }}"
+      stars: "${{ item.star_count }}"
+      pulls: "${{ item.pull_count }}"
+      official: "${{ item.is_official }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [name, description, stars, pulls, official]

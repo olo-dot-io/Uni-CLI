@@ -1,0 +1,25 @@
+site: eastmoney
+name: search
+description: Search stocks on Eastmoney
+type: web-api
+domain: searchapi.eastmoney.com
+strategy: public
+args:
+  query:
+    required: true
+    positional: true
+    description: Stock name or code (e.g. "贵州茅台" or "600519")
+  limit:
+    required: false
+    default: 10
+pipeline:
+  - fetch:
+      url: "https://searchapi.eastmoney.com/api/suggest/get?input=${{ args.query }}&type=14&count=${{ args.limit | default(10) }}"
+  - select: QuotationCodeTable.Data
+  - map:
+      code: "${{ item.Code }}"
+      name: "${{ item.Name }}"
+      market: "${{ item.MktNum }}"
+      type: "${{ item.SecurityTypeName }}"
+  - limit: "${{ args.limit | default(10) }}"
+columns: [code, name, market, type]

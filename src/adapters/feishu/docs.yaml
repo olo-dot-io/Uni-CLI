@@ -1,0 +1,17 @@
+site: feishu
+name: docs
+description: List recent Feishu/Lark documents
+type: bridge
+domain: feishu-cli.com
+detect: which feishu
+strategy: public
+args:
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - exec:
+      command: feishu
+      args:
+        ["docs", "list", "--limit", "${{ args.limit | default(20) }}", "--json"]
+columns: [title, url, owner, updated_at]

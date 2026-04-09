@@ -1,0 +1,33 @@
+site: minimax
+name: chat
+description: MiniMax M2 chat completion (OpenAI-compatible API)
+type: web-api
+domain: api.minimax.chat
+strategy: header
+args:
+  prompt:
+    required: true
+    positional: true
+    description: Chat message
+  model:
+    required: false
+    default: MiniMax-M2.7
+    description: Model name (MiniMax-M2.7, MiniMax-M2.5, MiniMax-M1)
+pipeline:
+  - fetch:
+      url: "https://api.minimax.chat/v1/text/chatcompletion_v2"
+      method: POST
+      headers:
+        Content-Type: application/json
+        Authorization: "Bearer ${{ env.MINIMAX_API_KEY }}"
+      body:
+        model: "${{ args.model | default('MiniMax-M2.7') }}"
+        messages:
+          - role: user
+            content: "${{ args.prompt }}"
+  - select: choices
+  - map:
+      content: "${{ item.message.content }}"
+      model: "${{ item.model }}"
+      usage: "${{ item.usage }}"
+columns: [content]

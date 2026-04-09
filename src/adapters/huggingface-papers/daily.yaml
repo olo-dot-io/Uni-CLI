@@ -1,0 +1,21 @@
+site: huggingface-papers
+name: daily
+description: Daily trending papers on Hugging Face
+type: web-api
+domain: huggingface.co
+strategy: public
+args:
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://huggingface.co/api/daily_papers"
+  - map:
+      title: "${{ item.paper.title }}"
+      authors: "${{ item.paper.authors[0].name }}"
+      upvotes: "${{ item.paper.upvotes }}"
+      url: "${{ 'https://huggingface.co/papers/' + item.paper.id }}"
+      date: "${{ item.publishedAt }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [title, authors, upvotes, url]

@@ -33,6 +33,9 @@ import { registerSkillsCommand } from "./commands/skills.js";
 import { registerUsageCommands } from "./commands/usage.js";
 import { registerMcpCommand } from "./commands/mcp.js";
 import { registerEvalCommand } from "./commands/eval.js";
+import { registerResearchCommand } from "./commands/research.js";
+import { registerHubCommand } from "./commands/hub.js";
+import { registerTestGenCommand } from "./commands/test-gen.js";
 import { recordUsage } from "./runtime/usage-ledger.js";
 import { emitHook } from "./hooks.js";
 import { checkForUpdates } from "./engine/update-check.js";
@@ -275,6 +278,9 @@ export async function createCli(): Promise<Command> {
 
   // Register eval command — declarative regression suites
   registerEvalCommand(program);
+  registerResearchCommand(program);
+  registerHubCommand(program);
+  registerTestGenCommand(program);
 
   // Register "test" command — run all commands for a site
   program

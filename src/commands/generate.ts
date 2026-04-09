@@ -8,7 +8,13 @@
 
 import { Command } from "commander";
 import chalk from "chalk";
-import { copyFileSync, mkdirSync, readFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { BrowserBridge } from "../browser/bridge.js";
@@ -296,6 +302,29 @@ export function registerGenerateCommand(program: Command): void {
           mkdirSync(adapterDir, { recursive: true });
           const destPath = join(adapterDir, `${winner.name}.yaml`);
           copyFileSync(winner.file, destPath);
+
+          // Auto-generate minimal eval file for the new adapter
+          const evalDir = join("evals", "smoke");
+          const evalPath = join(evalDir, `${siteName}.yaml`);
+          if (!existsSync(evalPath)) {
+            mkdirSync(evalDir, { recursive: true });
+            const evalContent =
+              [
+                `# Auto-generated eval for ${siteName} (via unicli generate)`,
+                `name: ${siteName} smoke`,
+                `cases:`,
+                `  - name: ${winner.name} returns data`,
+                `    command: unicli ${siteName} ${winner.name} --json`,
+                `    judge:`,
+                `      - type: nonEmpty`,
+              ].join("\n") + "\n";
+            writeFileSync(evalPath, evalContent, "utf-8");
+            if (!jsonOnly) {
+              process.stderr.write(
+                chalk.dim(`  Auto-generated eval: ${evalPath}\n`),
+              );
+            }
+          }
 
           // Read and output the winning YAML
           const yamlContent = readFileSync(winner.file, "utf-8");

@@ -1,0 +1,29 @@
+site: feishu
+name: send
+description: Send a message via Feishu/Lark CLI
+type: bridge
+domain: feishu-cli.com
+detect: which feishu
+strategy: public
+args:
+  chat:
+    required: true
+    positional: true
+    description: Chat ID or group name
+  message:
+    required: true
+    description: Message content
+pipeline:
+  - exec:
+      command: feishu
+      args:
+        [
+          "messenger",
+          "send",
+          "--chat",
+          "${{ args.chat }}",
+          "--text",
+          "${{ args.message }}",
+          "--json",
+        ]
+columns: [message_id, chat_id, status]

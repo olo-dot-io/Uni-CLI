@@ -1,0 +1,28 @@
+site: unsplash
+name: search
+description: Search free photos on Unsplash
+type: web-api
+domain: unsplash.com
+strategy: public
+args:
+  query:
+    required: true
+    positional: true
+    description: Photo search query
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://unsplash.com/napi/search/photos?query=${{ args.query }}&per_page=${{ args.limit | default(20) }}"
+  - select: results
+  - map:
+      description: "${{ item.description || item.alt_description }}"
+      author: "${{ item.user.name }}"
+      url: "${{ item.urls.regular }}"
+      download: "${{ item.links.download }}"
+      likes: "${{ item.likes }}"
+      width: "${{ item.width }}"
+      height: "${{ item.height }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [description, author, url, likes]

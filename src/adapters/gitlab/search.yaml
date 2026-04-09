@@ -1,0 +1,24 @@
+site: gitlab
+name: search
+description: Search GitLab projects
+type: web-api
+domain: gitlab.com
+strategy: public
+args:
+  query:
+    required: true
+    positional: true
+    description: Search keyword
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://gitlab.com/api/v4/search?scope=projects&search=${{ args.query }}&per_page=${{ args.limit | default(20) }}"
+  - map:
+      name: "${{ item.path_with_namespace }}"
+      description: "${{ item.description }}"
+      stars: "${{ item.star_count }}"
+      url: "${{ item.web_url }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [name, description, stars, url]

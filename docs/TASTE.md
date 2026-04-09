@@ -3,7 +3,7 @@
 > Internal design philosophy and naming conventions.
 > This document governs aesthetics, tone, and thematic decisions across the project.
 >
-> **Current version:** v0.208.0 — Vostok · Titov (Vostok 2 cosmonaut, second human in space, 25-hour flight — natural successor to Vostok 1 Gagarin).
+> **Current version:** v0.209.0 — Vostok · Popovich (Vostok 4 cosmonaut, joint flight with Vostok 3 — first group flight in space).
 
 ## Core Identity
 
@@ -45,7 +45,7 @@ Format: `0.100.1`, `0.200.0`, `1.0.0`, etc.
 - **MINOR** = mission number (100, 200, 300... like Mission Control sequences)
 - **PATCH** = revision within a mission
 
-Current: `0.208.0` — Mission 200, codename **Vostok · Titov**.
+Current: `0.209.0` — Mission 200, codename **Vostok · Popovich**.
 
 ### Version Codenames — The Full Spectrum
 

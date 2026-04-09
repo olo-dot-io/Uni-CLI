@@ -1,0 +1,20 @@
+site: pinduoduo
+name: hot
+description: Pinduoduo hot/trending products
+type: web-api
+domain: mobile.yangkeduo.com
+strategy: cookie
+args:
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://mobile.yangkeduo.com/proxy/api/api/darwin/hot_search/list"
+  - select: data.list
+  - map:
+      rank: "${{ index + 1 }}"
+      keyword: "${{ item.keyword }}"
+      heat: "${{ item.heat }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [rank, keyword, heat]

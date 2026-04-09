@@ -1,0 +1,23 @@
+site: eastmoney
+name: hot
+description: Eastmoney hot stocks (A-share volume leaders)
+type: web-api
+domain: push2.eastmoney.com
+strategy: public
+args:
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://push2.eastmoney.com/api/qt/clist/get?pn=1&pz=${{ args.limit | default(20) }}&po=1&np=1&fltt=2&invt=2&fs=m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23&fields=f2,f3,f4,f5,f6,f12,f14"
+  - select: data.diff
+  - map:
+      code: "${{ item.f12 }}"
+      name: "${{ item.f14 }}"
+      price: "${{ item.f2 }}"
+      change_pct: "${{ item.f3 }}%"
+      volume: "${{ item.f5 }}"
+      amount: "${{ item.f6 }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [code, name, price, change_pct, volume]

@@ -1,0 +1,21 @@
+site: ithome
+name: news
+description: IT Home (IT之家) latest tech news via RSS
+type: web-api
+domain: ithome.com
+strategy: public
+args:
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch_text:
+      url: "https://www.ithome.com/rss/"
+  - parse_rss: ~
+  - map:
+      title: "${{ item.title }}"
+      url: "${{ item.link }}"
+      date: "${{ item.pubDate }}"
+      description: "${{ item.contentSnippet }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [title, url, date]

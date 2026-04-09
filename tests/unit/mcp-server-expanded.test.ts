@@ -190,7 +190,7 @@ describe("MCP server — expanded mode (default)", () => {
     });
     const result = response.result as { tools: Array<{ name: string }> };
     const names = new Set(result.tools.map((t) => t.name));
-    // These are new in v0.208 and all have hyphen-bearing command files.
+    // All adapters register regardless of detect: — verify hyphenated names
     expect(names.has("unicli_hermes_skills_read")).toBe(true);
     expect(names.has("unicli_hermes_sessions_search")).toBe(true);
     expect(names.has("unicli_renderdoc_capture_list")).toBe(true);
@@ -199,11 +199,8 @@ describe("MCP server — expanded mode (default)", () => {
   });
 
   it("dispatches a hyphenated command name via the registry lookup", async () => {
-    // We can't actually run these adapters (they require hermes/openharness
-    // on disk), so we verify the dispatcher at least RESOLVES the tool and
-    // tries to execute it. A registry miss would return the "Unknown tool"
-    // error (-32601); a successful resolution will fail later in the
-    // pipeline with a user-visible error, which we tolerate here.
+    // Verify the dispatcher resolves a tool and tries to execute it.
+    // hermes adapter is always registered (detect: doesn't gate registration).
     const response = await sendRequest(proc, {
       jsonrpc: "2.0",
       id: 106,

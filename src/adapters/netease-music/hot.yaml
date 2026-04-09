@@ -1,0 +1,24 @@
+site: netease-music
+name: hot
+description: NetEase Cloud Music hot/trending songs
+type: web-api
+domain: music.163.com
+strategy: public
+args:
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://music.163.com/api/playlist/detail?id=3778678"
+      headers:
+        Referer: "https://music.163.com"
+  - select: result.tracks
+  - map:
+      rank: "${{ index + 1 }}"
+      name: "${{ item.name }}"
+      artist: "${{ item.artists[0].name }}"
+      album: "${{ item.album.name }}"
+      duration: "${{ Math.floor(item.duration / 60000) }}:${{ String(Math.floor((item.duration % 60000) / 1000)).padStart(2, '0') }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [rank, name, artist, album]

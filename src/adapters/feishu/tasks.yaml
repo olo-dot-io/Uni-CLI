@@ -1,0 +1,24 @@
+site: feishu
+name: tasks
+description: List Feishu/Lark tasks
+type: bridge
+domain: feishu-cli.com
+detect: which feishu
+strategy: public
+args:
+  status:
+    required: false
+    default: open
+    description: Task status filter (open, completed, all)
+pipeline:
+  - exec:
+      command: feishu
+      args:
+        [
+          "tasks",
+          "list",
+          "--status",
+          "${{ args.status | default('open') }}",
+          "--json",
+        ]
+columns: [title, assignee, due_date, status]

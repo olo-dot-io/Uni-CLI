@@ -1,0 +1,22 @@
+site: gitee
+name: trending
+description: Trending repositories on Gitee
+type: web-api
+domain: gitee.com
+strategy: public
+args:
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://gitee.com/api/v5/projects?sort=stars_count&direction=desc&page=1&per_page=${{ args.limit | default(20) }}"
+  - map:
+      name: "${{ item.full_name }}"
+      description: "${{ item.description }}"
+      stars: "${{ item.stargazers_count }}"
+      forks: "${{ item.forks_count }}"
+      language: "${{ item.language }}"
+      url: "${{ item.html_url }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [name, description, stars, language, url]

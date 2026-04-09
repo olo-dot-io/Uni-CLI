@@ -1,0 +1,19 @@
+site: exchangerate
+name: convert
+description: Get exchange rates (free API, no key needed)
+type: web-api
+domain: open.er-api.com
+strategy: public
+args:
+  from:
+    required: true
+    positional: true
+    description: Base currency code (e.g. USD, EUR, CNY)
+  to:
+    required: false
+    description: Target currency (if omitted, returns all rates)
+pipeline:
+  - fetch:
+      url: "https://open.er-api.com/v6/latest/${{ args.from }}"
+  - select: rates
+columns: [currency, rate]

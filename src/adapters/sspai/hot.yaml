@@ -1,0 +1,21 @@
+site: sspai
+name: hot
+description: Hot/trending articles on Sspai (少数派)
+type: web-api
+domain: sspai.com
+strategy: public
+args:
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://sspai.com/api/v1/articles?offset=0&limit=${{ args.limit | default(20) }}&sort=hot"
+  - select: data
+  - map:
+      title: "${{ item.title }}"
+      author: "${{ item.author.nickname }}"
+      likes: "${{ item.like_count }}"
+      url: "${{ 'https://sspai.com/post/' + item.id }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [title, author, likes, url]

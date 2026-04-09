@@ -1,0 +1,22 @@
+site: gitlab
+name: trending
+description: Trending/popular GitLab projects
+type: web-api
+domain: gitlab.com
+strategy: public
+args:
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://gitlab.com/api/v4/projects?order_by=star_count&sort=desc&per_page=${{ args.limit | default(20) }}"
+  - map:
+      name: "${{ item.path_with_namespace }}"
+      description: "${{ item.description }}"
+      stars: "${{ item.star_count }}"
+      forks: "${{ item.forks_count }}"
+      language: "${{ item.language }}"
+      url: "${{ item.web_url }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [name, description, stars, language, url]

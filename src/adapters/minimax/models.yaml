@@ -1,0 +1,18 @@
+site: minimax
+name: models
+description: List available MiniMax models
+type: web-api
+domain: api.minimax.chat
+strategy: header
+args: {}
+pipeline:
+  - fetch:
+      url: "https://api.minimax.chat/v1/models"
+      headers:
+        Authorization: "Bearer ${{ env.MINIMAX_API_KEY }}"
+  - select: data
+  - map:
+      id: "${{ item.id }}"
+      type: "${{ item.type }}"
+      created: "${{ item.created }}"
+columns: [id, type, created]

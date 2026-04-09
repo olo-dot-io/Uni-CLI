@@ -1,0 +1,16 @@
+site: qweather
+name: now
+description: Current weather from QWeather (和风天气, free tier)
+type: web-api
+domain: devapi.qweather.com
+strategy: public
+args:
+  location:
+    required: true
+    positional: true
+    description: Location ID or coordinates (e.g. "101010100" for Beijing)
+pipeline:
+  - fetch:
+      url: "https://devapi.qweather.com/v7/weather/now?location=${{ args.location }}&key=${{ env.QWEATHER_KEY | default('') }}"
+  - select: now
+columns: [temp, feelsLike, text, windDir, windSpeed, humidity, pressure]

@@ -80,6 +80,11 @@ function findAdapterDirs(): { yamlDir: string; tsDir: string } {
 const { yamlDir: BUILTIN_YAML_DIR, tsDir: BUILTIN_TS_DIR } = findAdapterDirs();
 const USER_DIR = join(process.env.HOME ?? "~", ".unicli", "adapters");
 
+// detect: field is stored on the adapter manifest for informational purposes.
+// It does NOT gate registration. All adapters are always visible and available.
+// If a desktop adapter requires a missing binary, the exec step gives a clear
+// runtime error with install instructions — matching OpenCLI/CLI-Anything behavior.
+
 interface YamlAdapter {
   site: string;
   name: string;
@@ -154,6 +159,10 @@ export function loadAdaptersFromDir(dir: string): number {
           }
           continue;
         }
+
+        // detect: field is stored on the adapter manifest for runtime checks,
+        // but does NOT gate registration. All adapters are always visible.
+        // Runtime exec step checks binary availability and gives clear errors.
 
         if (parsed.type) siteType = parsed.type as AdapterType;
         if (parsed.domain) siteMeta.domain = parsed.domain;

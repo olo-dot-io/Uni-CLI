@@ -1,0 +1,19 @@
+site: npm-trends
+name: compare
+description: Compare npm package download counts
+type: web-api
+domain: api.npmjs.org
+strategy: public
+args:
+  packages:
+    required: true
+    positional: true
+    description: Comma-separated package names (e.g. "react,vue,svelte")
+  period:
+    required: false
+    default: last-month
+    description: Time period (last-week, last-month, last-year)
+pipeline:
+  - fetch:
+      url: "https://api.npmjs.org/downloads/point/${{ args.period | default('last-month') }}/${{ args.packages }}"
+columns: [package, downloads, start, end]

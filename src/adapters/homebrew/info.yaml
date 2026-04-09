@@ -1,0 +1,15 @@
+site: homebrew
+name: info
+description: Get Homebrew formula details
+type: web-api
+domain: formulae.brew.sh
+strategy: public
+args:
+  formula:
+    required: true
+    positional: true
+    description: Formula name (e.g. "ffmpeg", "node", "python")
+pipeline:
+  - fetch:
+      url: "https://formulae.brew.sh/api/formula/${{ args.formula }}.json"
+columns: [name, desc, homepage, versions]

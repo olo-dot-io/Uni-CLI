@@ -1,0 +1,29 @@
+site: infoq
+name: articles
+description: Latest InfoQ articles (Chinese edition)
+type: web-api
+domain: infoq.cn
+strategy: public
+args:
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://www.infoq.cn/public/v1/article/getList"
+      method: POST
+      headers:
+        Content-Type: application/json
+        Referer: "https://www.infoq.cn"
+      body:
+        type: 1
+        size: "${{ args.limit | default(20) }}"
+  - select: data
+  - map:
+      title: "${{ item.article_title }}"
+      author: "${{ item.author[0].nickname }}"
+      views: "${{ item.views }}"
+      url: "${{ 'https://www.infoq.cn/article/' + item.uuid }}"
+      date: "${{ item.publish_time }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [title, author, views, url]

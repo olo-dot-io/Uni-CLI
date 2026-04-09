@@ -159,7 +159,8 @@ describe("dist parity — production build must match source mode", () => {
       const srcSites = new Set(srcRows.map((r) => r.site));
 
       // The critical invariant: dist must not regress to empty. Both modes
-      // should surface the same sites and commands.
+      // should surface the same sites and commands. All adapters register
+      // regardless of detect: field (runtime check only, not registration gate).
       expect(distSites.size).toBeGreaterThan(100);
       expect(distSites.size).toBe(srcSites.size);
       expect(distRows.length).toBe(srcRows.length);

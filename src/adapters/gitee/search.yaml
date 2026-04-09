@@ -1,0 +1,25 @@
+site: gitee
+name: search
+description: Search repositories on Gitee
+type: web-api
+domain: gitee.com
+strategy: public
+args:
+  query:
+    required: true
+    positional: true
+    description: Search keyword
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://gitee.com/api/v5/search/repositories?q=${{ args.query }}&page=1&per_page=${{ args.limit | default(20) }}&sort=stars_count&order=desc"
+  - map:
+      name: "${{ item.full_name }}"
+      description: "${{ item.description }}"
+      stars: "${{ item.stargazers_count }}"
+      language: "${{ item.language }}"
+      url: "${{ item.html_url }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [name, description, stars, language]

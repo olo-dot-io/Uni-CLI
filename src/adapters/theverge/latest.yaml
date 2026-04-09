@@ -1,0 +1,21 @@
+site: theverge
+name: latest
+description: Latest The Verge articles via RSS
+type: web-api
+domain: theverge.com
+strategy: public
+args:
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch_text:
+      url: "https://www.theverge.com/rss/index.xml"
+  - parse_rss: ~
+  - map:
+      title: "${{ item.title }}"
+      url: "${{ item.link }}"
+      author: "${{ item.creator }}"
+      date: "${{ item.pubDate }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [title, url, author, date]

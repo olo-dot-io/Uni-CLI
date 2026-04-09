@@ -295,6 +295,25 @@ function buildExpandedTools(): McpTool[] {
       });
     }
   }
+  // Add unicli_discover tool — expose explore+synthesize+generate as MCP tool
+  tools.push({
+    name: "unicli_discover",
+    description:
+      "Auto-discover CLI capabilities for any website URL. Navigates the page, captures API endpoints, and optionally generates YAML adapters.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        url: { type: "string", description: "Website URL to explore" },
+        goal: {
+          type: "string",
+          description:
+            "Optional: capability to find (e.g. 'search', 'hot', 'feed')",
+        },
+      },
+      required: ["url"],
+    },
+  });
+
   return tools;
 }
 
@@ -590,6 +609,53 @@ function buildHandler(
               id,
               result,
             }));
+          case "unicli_discover": {
+            const discoverUrl = toolArgs.url as string;
+            const discoverGoal = toolArgs.goal as string | undefined;
+            if (!discoverUrl) {
+              return {
+                jsonrpc: "2.0",
+                id,
+                error: {
+                  code: -32602,
+                  message: "Missing required parameter: url",
+                },
+              };
+            }
+            return import("node:child_process").then(({ execFile: ef }) =>
+              import("node:util").then(({ promisify: prom }) => {
+                const execFileP = prom(ef);
+                const discoverArgs = ["generate", discoverUrl, "--json"];
+                if (discoverGoal) discoverArgs.push("--goal", discoverGoal);
+                return execFileP("unicli", discoverArgs, {
+                  timeout: 120_000,
+                  encoding: "utf-8",
+                }).then(
+                  ({ stdout }) => ({
+                    jsonrpc: "2.0" as const,
+                    id,
+                    result: { content: [{ type: "text", text: stdout }] },
+                  }),
+                  (err: unknown) => ({
+                    jsonrpc: "2.0" as const,
+                    id,
+                    result: {
+                      content: [
+                        {
+                          type: "text",
+                          text: JSON.stringify({
+                            error:
+                              err instanceof Error ? err.message : String(err),
+                          }),
+                        },
+                      ],
+                      isError: true,
+                    },
+                  }),
+                );
+              }),
+            );
+          }
           default:
             return handleExpandedTool(params.name, toolArgs).then((result) => {
               if (result) return { jsonrpc: "2.0", id, result };
@@ -749,7 +815,7 @@ async function startHttp(
 
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
-    server.listen(port, () => {
+    server.listen(port, "127.0.0.1", () => {
       server.off("error", reject);
       resolve();
     });

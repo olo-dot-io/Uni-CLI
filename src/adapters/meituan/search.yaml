@@ -1,0 +1,30 @@
+site: meituan
+name: search
+description: Search restaurants/shops on Meituan
+type: web-api
+domain: apimobile.meituan.com
+strategy: cookie
+args:
+  query:
+    required: true
+    positional: true
+    description: Search keyword (e.g. "火锅", "coffee")
+  city:
+    required: false
+    default: "1"
+    description: City ID (1=北京, 10=上海, 20=广州)
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://apimobile.meituan.com/group/v4/poi/pcsearch/${{ args.city | default('1') }}?uuid=auto&limit=${{ args.limit | default(20) }}&q=${{ args.query }}"
+  - select: data.searchResult
+  - map:
+      name: "${{ item.title }}"
+      score: "${{ item.avgscore }}"
+      price: "${{ item.avgprice }}"
+      address: "${{ item.address }}"
+      category: "${{ item.catName }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [name, score, price, address, category]

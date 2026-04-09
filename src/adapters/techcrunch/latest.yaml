@@ -1,0 +1,22 @@
+site: techcrunch
+name: latest
+description: Latest TechCrunch articles via RSS
+type: web-api
+domain: techcrunch.com
+strategy: public
+args:
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch_text:
+      url: "https://techcrunch.com/feed/"
+  - parse_rss: ~
+  - map:
+      title: "${{ item.title }}"
+      url: "${{ item.link }}"
+      author: "${{ item.creator }}"
+      date: "${{ item.pubDate }}"
+      description: "${{ item.contentSnippet }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [title, url, author, date]

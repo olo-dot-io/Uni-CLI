@@ -1,4 +1,4 @@
-<!-- AGENT: npm install -g @zenalexa/unicli && unicli list | 711 commands across 134 sites. JSON when piped. Self-repairing YAML adapters. unicli repair --loop for autonomous fix. See AGENTS.md -->
+<!-- AGENT: npm install -g @zenalexa/unicli && unicli list | 756 commands across 167 sites. JSON when piped. Self-repairing YAML adapters. unicli repair --loop for autonomous fix. unicli research for self-improvement. See AGENTS.md -->
 
 <h1 align="center">Uni-CLI</h1>
 
@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  134 sites · 711 commands · 35 pipeline steps · 29 template filters · Zero runtime dependencies beyond Node.js
+  167 sites · 756 commands · 35 pipeline steps · 29 template filters · Zero runtime dependencies beyond Node.js
 </p>
 
 ---
@@ -38,11 +38,11 @@ unicli cursor ask "explain this code"    # Electron app
 | Project                       | Shape                              | Best when                           | Where Uni-CLI fits                                   |
 | ----------------------------- | ---------------------------------- | ----------------------------------- | ---------------------------------------------------- |
 | **opencli** (14K)             | TypeScript adapter hub             | The genome — Uni-CLI extends it     | Uni-CLI = 35 pipeline steps vs 15, +eval, +repair    |
-| **CLI-Anything** (29K, HKUDS) | Python adapter hub + skill gen     | Desktop-app coverage (44 harnesses) | Uni-CLI = 134 sites web breadth, single-binary       |
+| **CLI-Anything** (29K, HKUDS) | Python adapter hub + skill gen     | Desktop-app coverage (44 harnesses) | Uni-CLI = 167 sites web breadth, single-binary       |
 | **browser-use** (86K)         | Python library, LLM per step       | Open-ended browser tasks            | Different shape — embed vs invoke                    |
 | **goose** (38K, MCP-first)    | MCP-host runtime                   | MCP-only environments               | `unicli mcp serve` mounts as MCP server              |
 | **hermes-agent** (30K)        | Agent w/ memory + multi-platform   | Long-running personal agent         | Different category — hermes is agent, Uni-CLI = tool |
-| **Stagehand**                 | Browser-only `observe/act/extract` | Vision-grounded web tasks           | Uni-CLI v0.208 ships `unicli operate observe`        |
+| **Stagehand**                 | Browser-only `observe/act/extract` | Vision-grounded web tasks           | Uni-CLI v0.209 ships `unicli operate observe`        |
 
 ## Why CLI
 
@@ -345,6 +345,6 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md). The fastest way to contribute: write a
 ---
 
 <p align="center">
-  <sub>v0.208.0 — Vostok · Titov</sub><br>
-  <sub>134 sites · 711 commands · 35 pipeline steps · 29 filters · 753 unit tests</sub>
+  <sub>v0.209.0 — Vostok · Popovich</sub><br>
+  <sub>167 sites · 756 commands · 35 pipeline steps · 29 filters · 775 unit tests</sub>
 </p>

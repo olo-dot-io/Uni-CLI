@@ -1,0 +1,21 @@
+site: cnn
+name: top
+description: CNN top stories via RSS
+type: web-api
+domain: rss.cnn.com
+strategy: public
+args:
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch_text:
+      url: "http://rss.cnn.com/rss/edition.rss"
+  - parse_rss: ~
+  - map:
+      title: "${{ item.title }}"
+      url: "${{ item.link }}"
+      date: "${{ item.pubDate }}"
+      description: "${{ item.contentSnippet }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [title, url, date]

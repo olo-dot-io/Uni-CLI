@@ -1,0 +1,16 @@
+site: cocoapods
+name: search
+description: Search CocoaPods iOS/macOS libraries
+type: web-api
+domain: cocoapods.org
+strategy: public
+args:
+  query:
+    required: true
+    positional: true
+    description: Pod search query
+pipeline:
+  - fetch:
+      url: "https://search.cocoapods.org/api/v1/pods.picky.hash.json?query=${{ args.query }}&amount=20"
+  - select: allocations
+columns: [name, version, summary, source]

@@ -1,0 +1,16 @@
+site: pypi
+name: info
+description: Get PyPI package details
+type: web-api
+domain: pypi.org
+strategy: public
+args:
+  package:
+    required: true
+    positional: true
+    description: Package name (e.g. "requests", "flask")
+pipeline:
+  - fetch:
+      url: "https://pypi.org/pypi/${{ args.package }}/json"
+  - select: info
+columns: [name, version, summary, author, license]

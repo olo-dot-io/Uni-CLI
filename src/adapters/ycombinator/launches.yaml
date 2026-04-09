@@ -1,0 +1,20 @@
+site: ycombinator
+name: launches
+description: Latest YC company launches
+type: web-api
+domain: www.ycombinator.com
+strategy: public
+args:
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://www.ycombinator.com/launches.json"
+  - map:
+      name: "${{ item.name }}"
+      tagline: "${{ item.tagline }}"
+      url: "${{ item.url }}"
+      batch: "${{ item.batch }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [name, tagline, url, batch]

@@ -1,0 +1,22 @@
+site: openrouter
+name: models
+description: List all available AI models on OpenRouter
+type: web-api
+domain: openrouter.ai
+strategy: public
+args:
+  limit:
+    required: false
+    default: 30
+pipeline:
+  - fetch:
+      url: "https://openrouter.ai/api/v1/models"
+  - select: data
+  - map:
+      id: "${{ item.id }}"
+      name: "${{ item.name }}"
+      context_length: "${{ item.context_length }}"
+      pricing_prompt: "${{ item.pricing.prompt }}"
+      pricing_completion: "${{ item.pricing.completion }}"
+  - limit: "${{ args.limit | default(30) }}"
+columns: [id, name, context_length, pricing_prompt]

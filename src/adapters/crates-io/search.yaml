@@ -1,0 +1,27 @@
+site: crates-io
+name: search
+description: Search Rust crates on crates.io
+type: web-api
+domain: crates.io
+strategy: public
+args:
+  query:
+    required: true
+    positional: true
+    description: Search keyword
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://crates.io/api/v1/crates?q=${{ args.query }}&per_page=${{ args.limit | default(20) }}&sort=downloads"
+      headers:
+        User-Agent: "unicli/0.209.0 (https://github.com/olo-dot-io/Uni-CLI)"
+  - select: crates
+  - map:
+      name: "${{ item.name }}"
+      version: "${{ item.newest_version }}"
+      description: "${{ item.description }}"
+      downloads: "${{ item.downloads }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [name, version, description, downloads]

@@ -1,0 +1,27 @@
+site: mastodon
+name: trending
+description: Trending posts on a Mastodon instance (default mastodon.social)
+type: web-api
+domain: mastodon.social
+strategy: public
+args:
+  instance:
+    required: false
+    default: mastodon.social
+    description: Mastodon instance domain
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://${{ args.instance | default('mastodon.social') }}/api/v1/trends/statuses?limit=${{ args.limit | default(20) }}"
+  - map:
+      author: "${{ item.account.display_name }}"
+      handle: "${{ '@' + item.account.acct }}"
+      content: "${{ item.content.replace(/<[^>]*>/g, '').slice(0, 120) }}"
+      reblogs: "${{ item.reblogs_count }}"
+      favorites: "${{ item.favourites_count }}"
+      url: "${{ item.url }}"
+      date: "${{ item.created_at }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [author, content, reblogs, favorites, url]

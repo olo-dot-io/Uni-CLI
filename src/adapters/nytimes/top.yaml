@@ -1,0 +1,26 @@
+site: nytimes
+name: top
+description: New York Times top stories via RSS
+type: web-api
+domain: rss.nytimes.com
+strategy: public
+args:
+  section:
+    required: false
+    default: HomePage
+    description: Section (HomePage, World, Business, Technology, Science, Arts)
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch_text:
+      url: "https://rss.nytimes.com/services/xml/rss/nyt/${{ args.section | default('HomePage') }}.xml"
+  - parse_rss: ~
+  - map:
+      title: "${{ item.title }}"
+      url: "${{ item.link }}"
+      author: "${{ item.creator }}"
+      date: "${{ item.pubDate }}"
+      description: "${{ item.contentSnippet }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [title, url, author, date]

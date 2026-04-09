@@ -1,8 +1,8 @@
 {
-  "source": "unicli@0.208.0",
-  "generated": "2026-04-08T08:39:46.328Z",
-  "total_sites": 134,
-  "total_commands": 711,
+  "source": "unicli@0.209.0",
+  "generated": "2026-04-09T16:16:58.554Z",
+  "total_sites": 167,
+  "total_commands": 756,
   "adapters": [
     {
       "site": "1688",
@@ -2466,6 +2466,55 @@
       ]
     },
     {
+      "site": "cnn",
+      "type": "web-api",
+      "domain": "rss.cnn.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "top",
+          "description": "CNN top stories via RSS",
+          "when_to_use": "When you need the current top items from cnn.",
+          "command": "unicli cnn top",
+          "columns": ["title", "url", "date"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "cocoapods",
+      "type": "web-api",
+      "domain": "cocoapods.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search CocoaPods iOS/macOS libraries",
+          "when_to_use": "When you need to search cocoapods for a specific query.",
+          "command": "unicli cocoapods search",
+          "columns": ["name", "version", "summary", "source"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Pod search query"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "codex-cli",
       "type": "bridge",
       "auth": false,
@@ -2599,6 +2648,37 @@
               "required": false,
               "positional": false,
               "description": "Number of results"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "crates-io",
+      "type": "web-api",
+      "domain": "crates.io",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Rust crates on crates.io",
+          "when_to_use": "When you need to search crates-io for a specific query.",
+          "command": "unicli crates-io search",
+          "columns": ["name", "version", "description", "downloads"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Search keyword"
+            },
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -2935,6 +3015,37 @@
               "required": false,
               "positional": false,
               "description": "Command to run inside the container"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "docker-hub",
+      "type": "web-api",
+      "domain": "hub.docker.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Docker Hub images",
+          "when_to_use": "When you need to search docker-hub for a specific query.",
+          "command": "unicli docker-hub search",
+          "columns": ["name", "description", "stars", "pulls", "official"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Image search query"
+            },
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -3364,6 +3475,84 @@
       ]
     },
     {
+      "site": "eastmoney",
+      "type": "web-api",
+      "domain": "searchapi.eastmoney.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "hot",
+          "description": "Eastmoney hot stocks (A-share volume leaders)",
+          "when_to_use": "When you need the current hot items from eastmoney.",
+          "command": "unicli eastmoney hot",
+          "columns": ["code", "name", "price", "change_pct", "volume"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search stocks on Eastmoney",
+          "when_to_use": "When you need to search eastmoney for a specific query.",
+          "command": "unicli eastmoney search",
+          "columns": ["code", "name", "market", "type"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Stock name or code (e.g. \"贵州茅台\" or \"600519\")"
+            },
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "exchangerate",
+      "type": "web-api",
+      "domain": "open.er-api.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "convert",
+          "description": "Get exchange rates (free API, no key needed)",
+          "when_to_use": "Get exchange rates (free API, no key needed)",
+          "command": "unicli exchangerate convert",
+          "columns": ["currency", "rate"],
+          "args": [
+            {
+              "name": "from",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Base currency code (e.g. USD, EUR, CNY)"
+            },
+            {
+              "name": "to",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Target currency (if omitted, returns all rates)"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "facebook",
       "type": "web-api",
       "domain": "www.facebook.com",
@@ -3541,6 +3730,85 @@
               "required": false,
               "positional": false,
               "description": "Number of results"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "feishu",
+      "type": "bridge",
+      "domain": "feishu-cli.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "calendar",
+          "description": "List upcoming Feishu/Lark calendar events",
+          "when_to_use": "List upcoming Feishu/Lark calendar events",
+          "command": "unicli feishu calendar",
+          "columns": ["title", "start", "end", "location", "organizer"],
+          "args": [
+            {
+              "name": "days",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Number of days to look ahead"
+            }
+          ]
+        },
+        {
+          "name": "docs",
+          "description": "List recent Feishu/Lark documents",
+          "when_to_use": "List recent Feishu/Lark documents",
+          "command": "unicli feishu docs",
+          "columns": ["title", "url", "owner", "updated_at"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "send",
+          "description": "Send a message via Feishu/Lark CLI",
+          "when_to_use": "When you need to post content to feishu.",
+          "command": "unicli feishu send",
+          "columns": ["message_id", "chat_id", "status"],
+          "args": [
+            {
+              "name": "chat",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Chat ID or group name"
+            },
+            {
+              "name": "message",
+              "type": "str",
+              "required": true,
+              "positional": false,
+              "description": "Message content"
+            }
+          ]
+        },
+        {
+          "name": "tasks",
+          "description": "List Feishu/Lark tasks",
+          "when_to_use": "List Feishu/Lark tasks",
+          "command": "unicli feishu tasks",
+          "columns": ["title", "assignee", "due_date", "status"],
+          "args": [
+            {
+              "name": "status",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Task status filter (open, completed, all)"
             }
           ]
         }
@@ -4967,6 +5235,52 @@
       ]
     },
     {
+      "site": "gitee",
+      "type": "web-api",
+      "domain": "gitee.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search repositories on Gitee",
+          "when_to_use": "When you need to search gitee for a specific query.",
+          "command": "unicli gitee search",
+          "columns": ["name", "description", "stars", "language"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Search keyword"
+            },
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "trending",
+          "description": "Trending repositories on Gitee",
+          "when_to_use": "When you need the current trending items from gitee.",
+          "command": "unicli gitee trending",
+          "columns": ["name", "description", "stars", "language", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "github-trending",
       "type": "web-api",
       "domain": "api.github.com",
@@ -4993,6 +5307,52 @@
               "required": false,
               "positional": false,
               "description": "Number of repositories"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "gitlab",
+      "type": "web-api",
+      "domain": "gitlab.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search GitLab projects",
+          "when_to_use": "When you need to search gitlab for a specific query.",
+          "command": "unicli gitlab search",
+          "columns": ["name", "description", "stars", "url"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Search keyword"
+            },
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "trending",
+          "description": "Trending/popular GitLab projects",
+          "when_to_use": "When you need the current trending items from gitlab.",
+          "command": "unicli gitlab trending",
+          "columns": ["name", "description", "stars", "language", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -5446,6 +5806,55 @@
               "required": false,
               "positional": false,
               "description": "Date (YYYY-MM-DD), defaults to today"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "homebrew",
+      "type": "web-api",
+      "domain": "formulae.brew.sh",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "info",
+          "description": "Get Homebrew formula details",
+          "when_to_use": "When you need details about a specific item on homebrew.",
+          "command": "unicli homebrew info",
+          "columns": ["name", "desc", "homepage", "versions"],
+          "args": [
+            {
+              "name": "formula",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Formula name (e.g. \"ffmpeg\", \"node\", \"python\")"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "huggingface-papers",
+      "type": "web-api",
+      "domain": "huggingface.co",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "daily",
+          "description": "Daily trending papers on Hugging Face",
+          "when_to_use": "Daily trending papers on Hugging Face",
+          "command": "unicli huggingface-papers daily",
+          "columns": ["title", "authors", "upvotes", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -5978,6 +6387,30 @@
       ]
     },
     {
+      "site": "infoq",
+      "type": "web-api",
+      "domain": "infoq.cn",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "articles",
+          "description": "Latest InfoQ articles (Chinese edition)",
+          "when_to_use": "Latest InfoQ articles (Chinese edition)",
+          "command": "unicli infoq articles",
+          "columns": ["title", "author", "views", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "inkscape",
       "type": "desktop",
       "auth": false,
@@ -6418,6 +6851,88 @@
           "when_to_use": "Post a single Instagram story image or video",
           "command": "unicli instagram story",
           "columns": ["status", "detail"]
+        }
+      ]
+    },
+    {
+      "site": "ip-info",
+      "type": "web-api",
+      "domain": "ipapi.co",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "lookup",
+          "description": "IP geolocation lookup (free, no key)",
+          "when_to_use": "IP geolocation lookup (free, no key)",
+          "command": "unicli ip-info lookup",
+          "columns": [
+            "ip",
+            "city",
+            "region",
+            "country_name",
+            "org",
+            "timezone",
+            "latitude",
+            "longitude"
+          ],
+          "args": [
+            {
+              "name": "ip",
+              "type": "str",
+              "required": false,
+              "positional": true,
+              "description": "IP address (omit for your own IP)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "itch-io",
+      "type": "web-api",
+      "domain": "itch.io",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "popular",
+          "description": "Popular games on itch.io",
+          "when_to_use": "Popular games on itch.io",
+          "command": "unicli itch-io popular",
+          "columns": ["title", "author", "classification", "price", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "ithome",
+      "type": "web-api",
+      "domain": "ithome.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "news",
+          "description": "IT Home (IT之家) latest tech news via RSS",
+          "when_to_use": "IT Home (IT之家) latest tech news via RSS",
+          "command": "unicli ithome news",
+          "columns": ["title", "url", "date"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
         }
       ]
     },
@@ -7612,6 +8127,65 @@
       ]
     },
     {
+      "site": "mastodon",
+      "type": "web-api",
+      "domain": "mastodon.social",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search posts on a Mastodon instance",
+          "when_to_use": "When you need to search mastodon for a specific query.",
+          "command": "unicli mastodon search",
+          "columns": ["author", "content", "url", "date"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Search query"
+            },
+            {
+              "name": "instance",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "trending",
+          "description": "Trending posts on a Mastodon instance (default mastodon.social)",
+          "when_to_use": "When you need the current trending items from mastodon.",
+          "command": "unicli mastodon trending",
+          "columns": ["author", "content", "reblogs", "favorites", "url"],
+          "args": [
+            {
+              "name": "instance",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Mastodon instance domain"
+            },
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "medium",
       "type": "web-api",
       "domain": "medium.com",
@@ -7690,6 +8264,44 @@
       ]
     },
     {
+      "site": "meituan",
+      "type": "web-api",
+      "domain": "apimobile.meituan.com",
+      "auth": true,
+      "strategy": "cookie",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search restaurants/shops on Meituan",
+          "when_to_use": "When you need to search meituan for a specific query.",
+          "command": "unicli meituan search",
+          "columns": ["name", "score", "price", "address", "category"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Search keyword (e.g. \"火锅\", \"coffee\")"
+            },
+            {
+              "name": "city",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "City ID (1=北京, 10=上海, 20=广州)"
+            },
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "mermaid",
       "type": "desktop",
       "auth": false,
@@ -7729,6 +8341,76 @@
               "required": false,
               "positional": false,
               "description": "Background color (e.g. white, transparent,"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "minimax",
+      "type": "web-api",
+      "domain": "api.minimax.chat",
+      "auth": true,
+      "strategy": "header",
+      "commands": [
+        {
+          "name": "chat",
+          "description": "MiniMax M2 chat completion (OpenAI-compatible API)",
+          "when_to_use": "MiniMax M2 chat completion (OpenAI-compatible API)",
+          "command": "unicli minimax chat",
+          "columns": ["content"],
+          "args": [
+            {
+              "name": "prompt",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Chat message"
+            },
+            {
+              "name": "model",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Model name (MiniMax-M2.7, MiniMax-M2.5, MiniMax-M1)"
+            }
+          ]
+        },
+        {
+          "name": "models",
+          "description": "List available MiniMax models",
+          "when_to_use": "List available MiniMax models",
+          "command": "unicli minimax models",
+          "columns": ["id", "type", "created"],
+          "args": []
+        },
+        {
+          "name": "tts",
+          "description": "MiniMax text-to-speech generation",
+          "when_to_use": "MiniMax text-to-speech generation",
+          "command": "unicli minimax tts",
+          "columns": ["audio_url", "duration"],
+          "args": [
+            {
+              "name": "text",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Text to convert to speech"
+            },
+            {
+              "name": "voice",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Voice ID"
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output file path"
             }
           ]
         }
@@ -7891,6 +8573,52 @@
           "when_to_use": "List Neon database projects",
           "command": "unicli neonctl projects",
           "columns": ["id", "name", "region_id", "created_at"]
+        }
+      ]
+    },
+    {
+      "site": "netease-music",
+      "type": "web-api",
+      "domain": "music.163.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "hot",
+          "description": "NetEase Cloud Music hot/trending songs",
+          "when_to_use": "When you need the current hot items from netease-music.",
+          "command": "unicli netease-music hot",
+          "columns": ["rank", "name", "artist", "album"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search songs on NetEase Cloud Music",
+          "when_to_use": "When you need to search netease-music for a specific query.",
+          "command": "unicli netease-music search",
+          "columns": ["name", "artist", "album", "id"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Search keyword"
+            },
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
         }
       ]
     },
@@ -8238,6 +8966,69 @@
               "required": true,
               "positional": true,
               "description": "Task ID from generate command"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "npm-trends",
+      "type": "web-api",
+      "domain": "api.npmjs.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "compare",
+          "description": "Compare npm package download counts",
+          "when_to_use": "Compare npm package download counts",
+          "command": "unicli npm-trends compare",
+          "columns": ["package", "downloads", "start", "end"],
+          "args": [
+            {
+              "name": "packages",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Comma-separated package names (e.g. \"react,vue,svelte\")"
+            },
+            {
+              "name": "period",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Time period (last-week, last-month, last-year)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "nytimes",
+      "type": "web-api",
+      "domain": "rss.nytimes.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "top",
+          "description": "New York Times top stories via RSS",
+          "when_to_use": "When you need the current top items from nytimes.",
+          "command": "unicli nytimes top",
+          "columns": ["title", "url", "author", "date"],
+          "args": [
+            {
+              "name": "section",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Section (HomePage, World, Business, Technology, Science, Arts)"
+            },
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -8680,6 +9471,30 @@
       ]
     },
     {
+      "site": "openrouter",
+      "type": "web-api",
+      "domain": "openrouter.ai",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "models",
+          "description": "List all available AI models on OpenRouter",
+          "when_to_use": "List all available AI models on OpenRouter",
+          "command": "unicli openrouter models",
+          "columns": ["id", "name", "context_length", "pricing_prompt"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "pandoc",
       "type": "desktop",
       "auth": false,
@@ -8832,6 +9647,61 @@
             },
             {
               "name": "apikey",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "pexels",
+      "type": "web-api",
+      "domain": "api.pexels.com",
+      "auth": true,
+      "strategy": "header",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search free stock photos on Pexels",
+          "when_to_use": "When you need to search pexels for a specific query.",
+          "command": "unicli pexels search",
+          "columns": ["photographer", "alt", "url", "width", "height"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Photo search query"
+            },
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "pinduoduo",
+      "type": "web-api",
+      "domain": "mobile.yangkeduo.com",
+      "auth": true,
+      "strategy": "cookie",
+      "commands": [
+        {
+          "name": "hot",
+          "description": "Pinduoduo hot/trending products",
+          "when_to_use": "When you need the current hot items from pinduoduo.",
+          "command": "unicli pinduoduo hot",
+          "columns": ["rank", "keyword", "heat"],
+          "args": [
+            {
+              "name": "limit",
               "type": "str",
               "required": false,
               "positional": false
@@ -9114,6 +9984,64 @@
           "when_to_use": "List PlanetScale databases",
           "command": "unicli pscale databases",
           "columns": ["name", "region", "created_at"]
+        }
+      ]
+    },
+    {
+      "site": "pypi",
+      "type": "web-api",
+      "domain": "pypi.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "info",
+          "description": "Get PyPI package details",
+          "when_to_use": "When you need details about a specific item on pypi.",
+          "command": "unicli pypi info",
+          "columns": ["name", "version", "summary", "author", "license"],
+          "args": [
+            {
+              "name": "package",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Package name (e.g. \"requests\", \"flask\")"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "qweather",
+      "type": "web-api",
+      "domain": "devapi.qweather.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "now",
+          "description": "Current weather from QWeather (和风天气, free tier)",
+          "when_to_use": "Current weather from QWeather (和风天气, free tier)",
+          "command": "unicli qweather now",
+          "columns": [
+            "temp",
+            "feelsLike",
+            "text",
+            "windDir",
+            "windSpeed",
+            "humidity",
+            "pressure"
+          ],
+          "args": [
+            {
+              "name": "location",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Location ID or coordinates (e.g. \"101010100\" for Beijing)"
+            }
+          ]
         }
       ]
     },
@@ -9564,6 +10492,52 @@
               "required": true,
               "positional": false,
               "description": "Output image path (.png recommended)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "replicate",
+      "type": "web-api",
+      "domain": "replicate.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search AI models on Replicate",
+          "when_to_use": "When you need to search replicate for a specific query.",
+          "command": "unicli replicate search",
+          "columns": ["name", "owner", "description", "run_count"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Model search query"
+            },
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "trending",
+          "description": "Trending AI models on Replicate",
+          "when_to_use": "When you need the current trending items from replicate.",
+          "command": "unicli replicate trending",
+          "columns": ["name", "owner", "description", "run_count"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -10253,6 +11227,45 @@
       ]
     },
     {
+      "site": "sspai",
+      "type": "web-api",
+      "domain": "sspai.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "hot",
+          "description": "Hot/trending articles on Sspai (少数派)",
+          "when_to_use": "When you need the current hot items from sspai.",
+          "command": "unicli sspai hot",
+          "columns": ["title", "author", "likes", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "latest",
+          "description": "Latest articles on Sspai (少数派)",
+          "when_to_use": "Latest articles on Sspai (少数派)",
+          "command": "unicli sspai latest",
+          "columns": ["title", "author", "likes", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "stackoverflow",
       "type": "web-api",
       "domain": "stackoverflow.com",
@@ -10485,6 +11498,54 @@
           "when_to_use": "List Supabase projects",
           "command": "unicli supabase projects",
           "columns": ["id", "name", "region", "created_at"]
+        }
+      ]
+    },
+    {
+      "site": "techcrunch",
+      "type": "web-api",
+      "domain": "techcrunch.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "latest",
+          "description": "Latest TechCrunch articles via RSS",
+          "when_to_use": "Latest TechCrunch articles via RSS",
+          "command": "unicli techcrunch latest",
+          "columns": ["title", "url", "author", "date"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "theverge",
+      "type": "web-api",
+      "domain": "theverge.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "latest",
+          "description": "Latest The Verge articles via RSS",
+          "when_to_use": "Latest The Verge articles via RSS",
+          "command": "unicli theverge latest",
+          "columns": ["title", "url", "author", "date"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
         }
       ]
     },
@@ -10872,6 +11933,61 @@
               "required": false,
               "positional": false,
               "description": "Number of videos"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "twitch",
+      "type": "web-api",
+      "domain": "gql.twitch.tv",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "top",
+          "description": "Top live streams on Twitch via GQL public endpoint",
+          "when_to_use": "When you need the current top items from twitch.",
+          "command": "unicli twitch top",
+          "columns": ["streamer", "title", "viewers", "game"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "unsplash",
+      "type": "web-api",
+      "domain": "unsplash.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search free photos on Unsplash",
+          "when_to_use": "When you need to search unsplash for a specific query.",
+          "command": "unicli unsplash search",
+          "columns": ["description", "author", "url", "likes"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Photo search query"
+            },
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -12426,6 +13542,30 @@
               "required": false,
               "positional": false,
               "description": "Number of stocks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "ycombinator",
+      "type": "web-api",
+      "domain": "www.ycombinator.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "launches",
+          "description": "Latest YC company launches",
+          "when_to_use": "Latest YC company launches",
+          "command": "unicli ycombinator launches",
+          "columns": ["name", "tagline", "url", "batch"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
             }
           ]
         }

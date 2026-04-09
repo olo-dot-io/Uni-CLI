@@ -16,11 +16,17 @@
  */
 
 import { execFile } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  writeFileSync,
+  rmSync,
+  readFileSync,
+} from "node:fs";
 import { stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir, homedir } from "node:os";
-import { randomBytes } from "node:crypto";
+import { randomBytes, createHash } from "node:crypto";
 import { promisify } from "node:util";
 import { runInNewContext } from "node:vm";
 import TurndownService from "turndown";
@@ -628,6 +634,7 @@ interface FetchConfig {
   body?: unknown;
   retry?: number; // max attempts (default 1 = no retry)
   backoff?: number; // initial delay ms (doubles each retry)
+  cache?: number; // cache TTL in seconds (0 = no cache, default: no cache)
 }
 
 async function stepFetch(
@@ -667,8 +674,80 @@ async function stepFetch(
   const resolvedConfig = config.body
     ? { ...config, body: resolveTemplateDeep(config.body, ctx) }
     : config;
-  const data = await fetchJson(url, resolvedConfig, ctx.cookieHeader);
-  return { ...ctx, data };
+
+  // Strategy fallback: if no cookie and fetch returns 401/403, try with cookies
+  try {
+    const data = await fetchJson(url, resolvedConfig, ctx.cookieHeader);
+    return { ...ctx, data };
+  } catch (err) {
+    if (
+      err instanceof PipelineError &&
+      (err.detail.statusCode === 401 || err.detail.statusCode === 403) &&
+      !ctx.cookieHeader
+    ) {
+      // Attempt cookie fallback — try loading cookies for the domain
+      try {
+        const hostname = new URL(url).hostname;
+        const siteName = hostname
+          .replace(/^www\./, "")
+          .split(".")
+          .slice(0, -1)
+          .join("-");
+        const cookies = await loadCookiesWithCDP(siteName);
+        if (cookies) {
+          const fallbackCookie = formatCookieHeader(cookies);
+          const data = await fetchJson(url, resolvedConfig, fallbackCookie);
+          return { ...ctx, data, cookieHeader: fallbackCookie };
+        }
+      } catch {
+        // Cookie fallback also failed — throw original
+      }
+    }
+    throw err;
+  }
+}
+
+// --- Fetch response cache ---
+
+const CACHE_DIR = join(homedir(), ".unicli", "cache");
+
+function fetchCacheKey(url: string, method: string): string {
+  return createHash("sha256")
+    .update(`${method}:${url}`)
+    .digest("hex")
+    .slice(0, 16);
+}
+
+function readFetchCache(
+  url: string,
+  method: string,
+  ttlSeconds: number,
+): unknown | null {
+  const key = fetchCacheKey(url, method);
+  const filePath = join(CACHE_DIR, `${key}.json`);
+  if (!existsSync(filePath)) return null;
+  try {
+    const raw = readFileSync(filePath, "utf-8");
+    const entry = JSON.parse(raw) as { ts: number; data: unknown };
+    if (Date.now() - entry.ts > ttlSeconds * 1000) return null;
+    return entry.data;
+  } catch {
+    return null;
+  }
+}
+
+const MAX_CACHE_ENTRY_BYTES = 10 * 1024 * 1024; // 10MB per entry
+
+function writeFetchCache(url: string, method: string, data: unknown): void {
+  try {
+    const payload = JSON.stringify({ ts: Date.now(), url, data });
+    if (payload.length > MAX_CACHE_ENTRY_BYTES) return; // reject oversized responses
+    mkdirSync(CACHE_DIR, { recursive: true });
+    const key = fetchCacheKey(url, method);
+    writeFileSync(join(CACHE_DIR, `${key}.json`), payload);
+  } catch {
+    /* cache write failure is non-fatal */
+  }
 }
 
 async function fetchJson(
@@ -677,6 +756,13 @@ async function fetchJson(
   cookieHeader?: string,
 ): Promise<unknown> {
   const method = config.method ?? "GET";
+
+  // Check cache before making network request
+  if (config.cache && config.cache > 0) {
+    const cached = readFetchCache(url, method, config.cache);
+    if (cached !== null) return cached;
+  }
+
   const headers: Record<string, string> = {
     Accept: "application/json",
     "User-Agent": USER_AGENT,
@@ -703,7 +789,9 @@ async function fetchJson(
     const resp = await fetch(url, init as RequestInit);
 
     if (resp.ok) {
-      return resp.json();
+      const data = await resp.json();
+      if (config.cache && config.cache > 0) writeFetchCache(url, method, data);
+      return data;
     }
 
     const isRetryable = resp.status === 429 || resp.status >= 500;

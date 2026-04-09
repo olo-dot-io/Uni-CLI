@@ -1,0 +1,22 @@
+site: replicate
+name: trending
+description: Trending AI models on Replicate
+type: web-api
+domain: replicate.com
+strategy: public
+args:
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://replicate.com/api/v1/collections/trending-models"
+  - select: models
+  - map:
+      name: "${{ item.name }}"
+      owner: "${{ item.owner }}"
+      description: "${{ item.description }}"
+      run_count: "${{ item.run_count }}"
+      url: "${{ item.url }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [name, owner, description, run_count]

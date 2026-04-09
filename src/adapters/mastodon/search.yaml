@@ -1,0 +1,29 @@
+site: mastodon
+name: search
+description: Search posts on a Mastodon instance
+type: web-api
+domain: mastodon.social
+strategy: public
+args:
+  query:
+    required: true
+    positional: true
+    description: Search query
+  instance:
+    required: false
+    default: mastodon.social
+  limit:
+    required: false
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://${{ args.instance | default('mastodon.social') }}/api/v2/search?q=${{ args.query }}&type=statuses&limit=${{ args.limit | default(20) }}"
+  - select: statuses
+  - map:
+      author: "${{ item.account.display_name }}"
+      handle: "${{ '@' + item.account.acct }}"
+      content: "${{ item.content.replace(/<[^>]*>/g, '').slice(0, 120) }}"
+      url: "${{ item.url }}"
+      date: "${{ item.created_at }}"
+  - limit: "${{ args.limit | default(20) }}"
+columns: [author, content, url, date]
