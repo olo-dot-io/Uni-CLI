@@ -1,0 +1,42 @@
+site: yahoo-finance
+name: search
+description: Search Yahoo Finance for tickers and companies
+domain: finance.yahoo.com
+type: web-api
+strategy: public
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search query (company name or ticker)
+  limit:
+    type: int
+    default: 10
+    description: Maximum results
+
+pipeline:
+  - fetch:
+      url: https://query2.finance.yahoo.com/v1/finance/search
+      params:
+        q: "${{ args.query }}"
+        quotesCount: "${{ args.limit }}"
+        newsCount: "0"
+        enableFuzzyQuery: "false"
+      headers:
+        User-Agent: "Mozilla/5.0"
+
+  - select: quotes
+
+  - map:
+      rank: ${{ index + 1 }}
+      symbol: "${{ item.symbol || '' }}"
+      name: "${{ item.shortname || item.longname || '' }}"
+      type: "${{ item.quoteType || '' }}"
+      exchange: "${{ item.exchDisp || '' }}"
+      sector: "${{ item.sector || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, symbol, name, type, exchange, sector]

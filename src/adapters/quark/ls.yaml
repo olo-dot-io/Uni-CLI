@@ -1,0 +1,39 @@
+site: quark
+name: ls
+description: List files in Quark cloud drive
+domain: drive-pc.quark.cn
+type: web-api
+strategy: cookie
+
+args:
+  dir:
+    type: str
+    default: "0"
+    description: Directory ID (0 for root)
+  limit:
+    type: int
+    default: 50
+    description: Maximum files to list
+
+pipeline:
+  - fetch:
+      url: https://drive-pc.quark.cn/1/clouddrive/file/sort
+      params:
+        pdir_fid: "${{ args.dir }}"
+        _size: "${{ args.limit }}"
+        _page: "1"
+        _sort: "file_type:asc,updated_at:desc"
+        fr: pc
+
+  - select: data.list
+
+  - map:
+      name: "${{ item.file_name || '' }}"
+      size: "${{ item.format_type === 'folder' ? '-' : (item.size ? (item.size / 1048576).toFixed(1) + ' MB' : '') }}"
+      type: "${{ item.format_type || item.obj_category || '' }}"
+      updated: "${{ item.updated_at ? item.updated_at.slice(0, 10) : '' }}"
+      fid: "${{ item.fid || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [name, size, type, updated, fid]

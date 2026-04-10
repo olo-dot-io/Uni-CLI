@@ -1,0 +1,64 @@
+site: doubao
+name: ask
+description: Ask Doubao AI a question
+domain: www.doubao.com
+strategy: intercept
+browser: true
+
+args:
+  prompt:
+    type: str
+    required: true
+    positional: true
+    description: Question to ask
+  wait:
+    type: int
+    default: 30
+    description: Seconds to wait for response
+
+columns: [role, text]
+
+pipeline:
+  - navigate:
+      url: https://www.doubao.com/chat
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const prompt = ${{ args.prompt | json }};
+        const waitSec = ${{ args.wait }};
+
+        const editor = document.querySelector('[contenteditable="true"], textarea[data-testid="chat_input"]');
+        if (!editor) throw new Error('Chat input not found');
+        editor.focus();
+        if (editor.tagName === 'TEXTAREA') {
+          editor.value = prompt;
+          editor.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+          document.execCommand('insertText', false, prompt);
+        }
+        await new Promise(r => setTimeout(r, 500));
+
+        const sendBtn = document.querySelector('[data-testid="chat_input_send"], button[class*="send"]');
+        if (sendBtn) sendBtn.click();
+        else { const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }); editor.dispatchEvent(event); }
+
+        const beforeCount = document.querySelectorAll('[data-testid="message_text_content"]').length;
+        for (let i = 0; i < waitSec * 2; i++) {
+          await new Promise(r => setTimeout(r, 500));
+          const msgs = document.querySelectorAll('[data-testid="message_text_content"]');
+          if (msgs.length > beforeCount) {
+            const lastMsg = msgs[msgs.length - 1];
+            const isStreaming = lastMsg.querySelector('[class*="cursor"], [class*="typing"]');
+            if (!isStreaming) break;
+          }
+        }
+
+        const msgs = document.querySelectorAll('[data-testid="message_text_content"]');
+        const lastMsg = msgs[msgs.length - 1];
+        const text = (lastMsg?.textContent || '').replace(/\s+/g, ' ').trim();
+        return [
+          { role: 'user', text: prompt.substring(0, 200) },
+          { role: 'assistant', text: text.substring(0, 5000) },
+        ];
+      })()

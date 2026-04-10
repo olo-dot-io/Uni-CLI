@@ -1,0 +1,44 @@
+site: taobao
+name: search
+description: Search Taobao products
+domain: s.taobao.com
+type: browser
+strategy: intercept
+browser: true
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Product search keywords
+  limit:
+    type: int
+    default: 20
+    description: Maximum results
+
+pipeline:
+  - navigate:
+      url: "https://s.taobao.com/search?q=${{ args.query | urlencode }}"
+      settleMs: 5000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const cards = document.querySelectorAll(
+          '[class*="Card--"] a[href*="item.taobao.com"], [class*="item"] a[href*="detail.tmall.com"], .Content--contentInner--QVTcU0M'
+        );
+        const items = [];
+        for (const card of Array.from(cards).slice(0, limit)) {
+          const parent = card.closest('[class*="Card--"]') || card.closest('[class*="item"]') || card;
+          const title = parent.querySelector('[class*="Title--"], .title, [class*="title"]')?.textContent?.trim() || '';
+          const price = parent.querySelector('[class*="Price--"], .price, [class*="price"]')?.textContent?.trim() || '';
+          const sales = parent.querySelector('[class*="realSales"], [class*="sold"], [class*="sale"]')?.textContent?.trim() || '';
+          const shop = parent.querySelector('[class*="shopName"], [class*="shop"], .shop')?.textContent?.trim() || '';
+          const location = parent.querySelector('[class*="procity"], [class*="location"]')?.textContent?.trim() || '';
+          if (title) items.push({ rank: items.length + 1, title: title.slice(0, 100), price, sales, shop, location });
+        }
+        return items;
+      })()
+
+columns: [rank, title, price, sales, shop, location]

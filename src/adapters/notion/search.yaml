@@ -1,0 +1,41 @@
+site: notion
+name: search
+description: Search Notion pages via web API
+domain: www.notion.so
+type: web-api
+strategy: cookie
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search query
+  limit:
+    type: int
+    default: 10
+    description: Maximum results
+
+pipeline:
+  - fetch:
+      url: https://www.notion.so/api/v3/search
+      method: POST
+      json:
+        type: BlocksInSpace
+        query: "${{ args.query }}"
+        limit: ${{ args.limit }}
+        filters:
+          isDeletedOnly: false
+          navigableBlockContentOnly: true
+
+  - select: results
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: "${{ item.highlight?.text || item.id || '' }}"
+      type: "${{ item.highlightBlockId ? 'block' : 'page' }}"
+      id: "${{ item.id || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, type, id]

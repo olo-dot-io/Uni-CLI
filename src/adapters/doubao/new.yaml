@@ -1,0 +1,18 @@
+site: doubao
+name: new
+description: Start a new Doubao chat conversation
+domain: www.doubao.com
+strategy: intercept
+browser: true
+
+columns: [status, url]
+
+pipeline:
+  - navigate:
+      url: https://www.doubao.com/chat/new-thread/create-by-msg
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        return [{ status: 'created', url: location.href }];
+      })()

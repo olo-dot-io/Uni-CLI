@@ -1,0 +1,39 @@
+site: quark
+name: search
+description: Search files in Quark cloud drive
+domain: drive-pc.quark.cn
+type: web-api
+strategy: cookie
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: File name to search
+  limit:
+    type: int
+    default: 20
+    description: Maximum results
+
+pipeline:
+  - fetch:
+      url: https://drive-pc.quark.cn/1/clouddrive/file/search
+      params:
+        key: "${{ args.query }}"
+        _size: "${{ args.limit }}"
+        _page: "1"
+        fr: pc
+
+  - select: data.list
+
+  - map:
+      rank: ${{ index + 1 }}
+      name: "${{ item.file_name || '' }}"
+      size: "${{ item.format_type === 'folder' ? '-' : (item.size ? (item.size / 1048576).toFixed(1) + ' MB' : '') }}"
+      type: "${{ item.format_type || item.obj_category || '' }}"
+      updated: "${{ item.updated_at ? item.updated_at.slice(0, 10) : '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, name, size, type, updated]

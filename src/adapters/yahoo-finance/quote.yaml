@@ -1,0 +1,35 @@
+site: yahoo-finance
+name: quote
+description: Get stock quote from Yahoo Finance
+domain: finance.yahoo.com
+type: web-api
+strategy: public
+
+args:
+  symbol:
+    type: str
+    required: true
+    positional: true
+    description: Stock ticker symbol (e.g. AAPL, MSFT)
+
+pipeline:
+  - fetch:
+      url: "https://query1.finance.yahoo.com/v8/finance/chart/${{ args.symbol }}"
+      params:
+        range: 1d
+        interval: 5m
+      headers:
+        User-Agent: "Mozilla/5.0"
+
+  - select: chart.result[0]
+
+  - map:
+      symbol: "${{ item.meta?.symbol || '' }}"
+      price: ${{ item.meta?.regularMarketPrice || 0 }}
+      previous_close: ${{ item.meta?.previousClose || 0 }}
+      change: "${{ ((item.meta?.regularMarketPrice || 0) - (item.meta?.previousClose || 0)).toFixed(2) }}"
+      change_pct: "${{ (((item.meta?.regularMarketPrice || 0) - (item.meta?.previousClose || 0)) / (item.meta?.previousClose || 1) * 100).toFixed(2) + '%' }}"
+      currency: "${{ item.meta?.currency || 'USD' }}"
+      exchange: "${{ item.meta?.exchangeName || '' }}"
+
+columns: [symbol, price, previous_close, change, change_pct, currency, exchange]
