@@ -6,6 +6,8 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { loadAllAdapters, loadTsAdapters } from "./discovery/loader.js";
 import { getAllAdapters, listCommands } from "./registry.js";
+import { loadExternalClis, isInstalled } from "./hub/index.js";
+import { executeExternal } from "./hub/passthrough.js";
 import { format, detectFormat } from "./output/formatter.js";
 import { runPipeline, PipelineError } from "./engine/yaml-runner.js";
 import { ExitCode } from "./types.js";
@@ -35,6 +37,7 @@ import { registerMcpCommand } from "./commands/mcp.js";
 import { registerEvalCommand } from "./commands/eval.js";
 import { registerResearchCommand } from "./commands/research.js";
 import { registerHubCommand } from "./commands/hub.js";
+import { registerExtCommand } from "./commands/ext.js";
 import { registerTestGenCommand } from "./commands/test-gen.js";
 import { recordUsage } from "./runtime/usage-ledger.js";
 import { emitHook } from "./hooks.js";
@@ -280,6 +283,7 @@ export async function createCli(): Promise<Command> {
   registerEvalCommand(program);
   registerResearchCommand(program);
   registerHubCommand(program);
+  registerExtCommand(program);
   registerTestGenCommand(program);
 
   // Register "test" command — run all commands for a site
@@ -566,6 +570,21 @@ export async function createCli(): Promise<Command> {
           process.exit(ExitCode.GENERIC_ERROR);
         }
       });
+    }
+  }
+
+  // Dynamic external CLI passthrough — register installed CLIs as top-level commands
+  for (const extCli of loadExternalClis()) {
+    if (isInstalled(extCli.binary)) {
+      program
+        .command(extCli.name, { hidden: false })
+        .description(`[ext] ${extCli.description}`)
+        .allowUnknownOption()
+        .allowExcessArguments()
+        .action((_opts: Record<string, unknown>, cmd: Command) => {
+          const args = cmd.args;
+          executeExternal(extCli, args);
+        });
     }
   }
 

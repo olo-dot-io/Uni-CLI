@@ -1,0 +1,314 @@
+# External CLI Registry — declarative catalog of passthrough CLI tools.
+#
+# Each entry maps an external CLI binary so agents can discover and invoke
+# it via `unicli ext run <name> <args>`.  The registry is read at startup;
+# only CLIs whose binary is found on $PATH are registered as live commands.
+
+# ── Tier 0 — Chinese Office (highest value) ─────────────────────────────
+
+- name: lark-cli
+  binary: lark-cli
+  description: "Lark/Feishu — messages, documents, calendar, tasks, 200+ commands"
+  homepage: "https://github.com/larksuite/cli"
+  tags: [lark, feishu, collaboration, productivity]
+  json_flag: "--format json"
+  install:
+    mac: "npm install -g @larksuite/cli"
+    linux: "npm install -g @larksuite/cli"
+    default: "npm install -g @larksuite/cli"
+
+- name: wecom-cli
+  binary: wecom-cli
+  description: "WeCom/WeChat Work — contacts, messages, bots, 100+ commands"
+  homepage: "https://github.com/WecomTeam/wecom-cli"
+  tags: [wecom, wechat-work, enterprise, messaging]
+  json_flag: "--json"
+  install:
+    default: "npm install -g @wecom/cli"
+
+- name: dws
+  binary: dws
+  description: "DingTalk Workspace — messages, docs, calendar, contacts, 86 commands"
+  homepage: "https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli"
+  tags: [dingtalk, workspace, collaboration]
+  install:
+    mac: "curl -fsSL https://raw.githubusercontent.com/DingTalk-Real-AI/dingtalk-workspace-cli/main/scripts/install.sh | sh"
+    linux: "curl -fsSL https://raw.githubusercontent.com/DingTalk-Real-AI/dingtalk-workspace-cli/main/scripts/install.sh | sh"
+    default: "npm install -g dingtalk-workspace-cli"
+
+# ── Tier 1 — Essential ──────────────────────────────────────────────────
+
+- name: vercel
+  binary: vercel
+  description: "Vercel — deploy, domains, env vars, serverless functions"
+  homepage: "https://vercel.com/docs/cli"
+  tags: [vercel, deployment, serverless]
+  install:
+    default: "npm install -g vercel"
+
+- name: supabase
+  binary: supabase
+  description: "Supabase — Postgres, auth, storage, edge functions"
+  homepage: "https://supabase.com/docs/reference/cli"
+  tags: [supabase, postgres, backend]
+  json_flag: "--output json"
+  install:
+    mac: "brew install supabase/tap/supabase"
+    default: "npm install -g supabase"
+
+- name: stripe
+  binary: stripe
+  description: "Stripe — payments, subscriptions, invoices, webhooks"
+  homepage: "https://stripe.com/docs/stripe-cli"
+  tags: [stripe, payments, billing]
+  json_flag: "--json"
+  install:
+    mac: "brew install stripe/stripe-cli/stripe"
+    default: "brew install stripe/stripe-cli/stripe"
+
+- name: firebase
+  binary: firebase
+  description: "Firebase — hosting, firestore, auth, cloud functions"
+  homepage: "https://firebase.google.com/docs/cli"
+  tags: [firebase, google, backend, hosting]
+  json_flag: "--json"
+  install:
+    default: "npm install -g firebase-tools"
+
+- name: wrangler
+  binary: wrangler
+  description: "Cloudflare Workers — deploy, KV, R2, D1, queues"
+  homepage: "https://developers.cloudflare.com/workers/wrangler"
+  tags: [cloudflare, workers, edge, serverless]
+  json_flag: "--json"
+  install:
+    default: "npm install -g wrangler"
+
+- name: netlify
+  binary: netlify
+  description: "Netlify — deploy, functions, forms, identity"
+  homepage: "https://docs.netlify.com/cli/get-started"
+  tags: [netlify, deployment, jamstack]
+  json_flag: "--json"
+  install:
+    default: "npm install -g netlify-cli"
+
+- name: flyctl
+  binary: fly
+  description: "Fly.io — deploy containers, machines, volumes, secrets"
+  homepage: "https://fly.io/docs/flyctl"
+  tags: [fly, containers, deployment]
+  json_flag: "--json"
+  install:
+    mac: "brew install flyctl"
+    default: "brew install flyctl"
+
+- name: sentry-cli
+  binary: sentry-cli
+  description: "Sentry — releases, source maps, debug symbols"
+  homepage: "https://docs.sentry.io/cli"
+  tags: [sentry, monitoring, error-tracking]
+  install:
+    default: "npm install -g @sentry/cli"
+
+- name: railway
+  binary: railway
+  description: "Railway — deploy, databases, variables, logs"
+  homepage: "https://docs.railway.app/reference/cli-api"
+  tags: [railway, deployment, backend]
+  json_flag: "--json"
+  install:
+    mac: "brew install railway"
+    default: "brew install railway"
+
+- name: mmx-cli
+  binary: mmx
+  description: "MiniMax AI — text, vision, speech, video generation"
+  homepage: "https://www.minimaxi.com"
+  tags: [minimax, ai, generation]
+  install:
+    default: "npm install -g mmx-cli"
+
+# ── Tier 2 — High Value ─────────────────────────────────────────────────
+
+- name: aliyun
+  binary: aliyun
+  description: "Alibaba Cloud — ECS, OSS, RDS, 1000+ commands"
+  homepage: "https://github.com/aliyun/aliyun-cli"
+  tags: [alibaba, cloud, aliyun]
+  json_flag: "--output json"
+  install:
+    mac: "brew install aliyun-cli"
+    default: "brew install aliyun-cli"
+
+- name: tccli
+  binary: tccli
+  description: "Tencent Cloud — CVM, COS, TencentDB, 500+ commands"
+  homepage: "https://cloud.tencent.com/document/product/440"
+  tags: [tencent, cloud, tccli]
+  json_flag: "--output json"
+  install:
+    default: "pip install tccli"
+
+- name: doctl
+  binary: doctl
+  description: "DigitalOcean — droplets, databases, spaces, apps"
+  homepage: "https://docs.digitalocean.com/reference/doctl"
+  tags: [digitalocean, cloud, droplets]
+  json_flag: "--output json"
+  install:
+    mac: "brew install doctl"
+    default: "brew install doctl"
+
+- name: hcloud
+  binary: hcloud
+  description: "Hetzner Cloud — servers, volumes, networks, firewalls"
+  homepage: "https://github.com/hetznercloud/cli"
+  tags: [hetzner, cloud, servers]
+  json_flag: "--output json"
+  install:
+    mac: "brew install hcloud"
+    default: "brew install hcloud"
+
+- name: turso
+  binary: turso
+  description: "Turso — SQLite edge database, groups, replicas"
+  homepage: "https://docs.turso.tech/cli"
+  tags: [turso, sqlite, edge, database]
+  json_flag: "--json"
+  install:
+    default: "curl -sSfL https://get.tur.so/install.sh | bash"
+
+- name: pscale
+  binary: pscale
+  description: "PlanetScale — MySQL branches, deploy requests, backups"
+  homepage: "https://planetscale.com/docs/reference/planetscale-cli"
+  tags: [planetscale, mysql, database]
+  json_flag: "--format json"
+  install:
+    mac: "brew install planetscale/tap/pscale"
+    default: "brew install planetscale/tap/pscale"
+
+- name: neonctl
+  binary: neonctl
+  description: "Neon — serverless Postgres branches, endpoints, roles"
+  homepage: "https://neon.tech/docs/reference/neon-cli"
+  tags: [neon, postgres, serverless, database]
+  json_flag: "--output json"
+  install:
+    default: "npm install -g neonctl"
+
+- name: auth0
+  binary: auth0
+  description: "Auth0 — applications, APIs, users, roles, rules"
+  homepage: "https://auth0.github.io/auth0-cli"
+  tags: [auth0, authentication, identity]
+  json_flag: "--json"
+  install:
+    mac: "brew install auth0"
+    default: "brew install auth0"
+
+- name: algolia
+  binary: algolia
+  description: "Algolia — indices, search rules, API keys, analytics"
+  homepage: "https://www.algolia.com/doc/tools/cli"
+  tags: [algolia, search, indexing]
+  install:
+    mac: "brew install algolia/algolia-cli/algolia"
+    default: "brew install algolia/algolia-cli/algolia"
+
+- name: twilio
+  binary: twilio
+  description: "Twilio — SMS, voice, video, conversations"
+  homepage: "https://www.twilio.com/docs/twilio-cli"
+  tags: [twilio, sms, voice, communication]
+  json_flag: "--output-format json"
+  install:
+    default: "npm install -g twilio-cli"
+
+- name: resend
+  binary: resend
+  description: "Resend — transactional email, domains, API keys"
+  homepage: "https://resend.com/docs/cli"
+  tags: [resend, email, transactional]
+  install:
+    default: "npm install -g resend"
+
+- name: linear
+  binary: linear
+  description: "Linear — issues, projects, cycles, teams"
+  homepage: "https://linear.app/docs"
+  tags: [linear, project-management, issues]
+  install:
+    mac: "brew install linear"
+    default: "brew install linear"
+
+# ── Already have adapters — full passthrough ─────────────────────────────
+
+- name: gh
+  binary: gh
+  description: "GitHub — repos, PRs, issues, actions, releases"
+  homepage: "https://cli.github.com"
+  tags: [github, git, devops]
+  json_flag: "--json"
+  install:
+    mac: "brew install gh"
+    default: "brew install gh"
+
+- name: docker
+  binary: docker
+  description: "Docker — containers, images, volumes, networks"
+  homepage: "https://docs.docker.com/engine/reference/commandline/cli"
+  tags: [docker, containers, devops]
+  json_flag: "--format json"
+  install:
+    default: "https://docs.docker.com/get-docker/"
+
+- name: kubectl
+  binary: kubectl
+  description: "Kubernetes — pods, services, deployments, config"
+  homepage: "https://kubernetes.io/docs/reference/kubectl"
+  tags: [kubernetes, k8s, containers, orchestration]
+  json_flag: "-o json"
+  install:
+    mac: "brew install kubectl"
+    default: "brew install kubectl"
+
+- name: aws
+  binary: aws
+  description: "AWS CLI — EC2, S3, Lambda, 300+ services"
+  homepage: "https://aws.amazon.com/cli"
+  tags: [aws, cloud, amazon]
+  json_flag: "--output json"
+  install:
+    mac: "brew install awscli"
+    default: "brew install awscli"
+
+- name: gcloud
+  binary: gcloud
+  description: "Google Cloud — compute, storage, BigQuery, 200+ services"
+  homepage: "https://cloud.google.com/sdk/gcloud"
+  tags: [gcp, google, cloud]
+  json_flag: "--format json"
+  install:
+    default: "https://cloud.google.com/sdk/docs/install"
+
+- name: az
+  binary: az
+  description: "Azure CLI — VMs, storage, databases, 200+ services"
+  homepage: "https://learn.microsoft.com/cli/azure"
+  tags: [azure, microsoft, cloud]
+  json_flag: "--output json"
+  install:
+    mac: "brew install azure-cli"
+    default: "brew install azure-cli"
+
+- name: ollama
+  binary: ollama
+  description: "Ollama — local LLM runner, model management"
+  homepage: "https://ollama.ai"
+  tags: [ollama, llm, ai, local]
+  json_flag: "--format json"
+  install:
+    mac: "brew install ollama"
+    default: "brew install ollama"
