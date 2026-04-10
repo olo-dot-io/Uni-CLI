@@ -26,44 +26,20 @@ coverage/
 *.log
 npm-debug.log*
 
-# Reference repos (never committed)
+# Local
 ref/
-
-# Plugin data
-.unicli/adapters/
-.unicli/plugins/
+.unicli/
+.claude/
+.superpowers/
+CLAUDE.md
+.npmrc
+tmp/
+.tmp/
+*.patch
 
 # Extension build
 extension/dist/
 
-# VitePress
+# VitePress cache
 docs/.vitepress/dist/
 docs/.vitepress/cache/
-
-# Claude Code — entire directory is local dev state, never commit
-.claude/
-
-# Project instructions — local only, may contain internal references
-CLAUDE.md
-
-# npm auth — never commit tokens
-.npmrc
-
-# Superpowers
-.superpowers/
-
-# Temporary
-tmp/
-.tmp/
-
-# Internal development files — never commit
-*.patch
-PATCH-*.md
-DELIVERABLE-*.md
-apply-*.py
-apply-*.sh
-test-write.txt
-newtest.txt
-
-# Internal comparison / competitive analysis docs
-docs/COMPARE.md
