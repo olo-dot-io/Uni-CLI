@@ -42,7 +42,14 @@ const _installedCache = new Map<string, boolean>();
  */
 function resolveYamlPath(): string {
   // Running from dist/hub/index.js → ../../src/hub/external-clis.yaml
-  const fromDist = join(__dirname, "..", "..", "src", "hub", "external-clis.yaml");
+  const fromDist = join(
+    __dirname,
+    "..",
+    "..",
+    "src",
+    "hub",
+    "external-clis.yaml",
+  );
   // Running from src/hub/index.ts (dev via tsx)
   const fromSrc = join(__dirname, "external-clis.yaml");
 
@@ -104,7 +111,9 @@ export function isInstalled(binary: string): boolean {
 /**
  * Return every registered external CLI with its install status.
  */
-export function listExternalClis(): Array<ExternalCli & { installed: boolean }> {
+export function listExternalClis(): Array<
+  ExternalCli & { installed: boolean }
+> {
   return loadExternalClis().map((cli) => ({
     ...cli,
     installed: isInstalled(cli.binary),

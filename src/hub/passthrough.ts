@@ -81,9 +81,5 @@ interface ExecError {
 }
 
 function isExecError(err: unknown): err is ExecError {
-  return (
-    typeof err === "object" &&
-    err !== null &&
-    "status" in err
-  );
+  return typeof err === "object" && err !== null && "status" in err;
 }

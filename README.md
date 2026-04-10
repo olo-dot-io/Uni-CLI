@@ -71,36 +71,36 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
 <details open>
 <summary><strong>Web Platforms — 67 sites</strong></summary>
 
-| Category | Sites |
-|----------|-------|
-| **Tech / Dev** | hackernews, stackoverflow, devto, lobsters, producthunt, hf, github-trending, substack, lesswrong |
-| **Social** | twitter (25 cmds), reddit (16), instagram (19), tiktok (15), facebook (10), bluesky, medium |
+| Category           | Sites                                                                                                                     |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| **Tech / Dev**     | hackernews, stackoverflow, devto, lobsters, producthunt, hf, github-trending, substack, lesswrong                         |
+| **Social**         | twitter (25 cmds), reddit (16), instagram (19), tiktok (15), facebook (10), bluesky, medium                               |
 | **Chinese Social** | bilibili (13), weibo, zhihu, xiaohongshu (13), douyin (13), jike, douban, weread, tieba, v2ex, linux-do, zsxq, xiaoyuzhou |
-| **Video / Media** | youtube (5), bilibili, douyin, tiktok |
-| **Finance** | xueqiu, sinafinance, barchart, yahoo-finance |
-| **News** | bbc, bloomberg (10), reuters, 36kr, google news |
-| **Shopping** | amazon (8), xianyu, coupang, smzdm, jd |
-| **Jobs** | boss (14), linkedin |
-| **AI Platforms** | gemini (5), grok, doubao-web (9), notebooklm (15), yollomi (12), jimeng, yuanbao |
-| **Education** | chaoxing, arxiv, wikipedia |
-| **Other** | ones (11), band, xiaoe, pixiv (6), hupu (7), ctrip, sinablog, steam |
+| **Video / Media**  | youtube (5), bilibili, douyin, tiktok                                                                                     |
+| **Finance**        | xueqiu, sinafinance, barchart, yahoo-finance                                                                              |
+| **News**           | bbc, bloomberg (10), reuters, 36kr, google news                                                                           |
+| **Shopping**       | amazon (8), xianyu, coupang, smzdm, jd                                                                                    |
+| **Jobs**           | boss (14), linkedin                                                                                                       |
+| **AI Platforms**   | gemini (5), grok, doubao-web (9), notebooklm (15), yollomi (12), jimeng, yuanbao                                          |
+| **Education**      | chaoxing, arxiv, wikipedia                                                                                                |
+| **Other**          | ones (11), band, xiaoe, pixiv (6), hupu (7), ctrip, sinablog, steam                                                       |
 
 </details>
 
 <details>
 <summary><strong>Desktop Software — 28 apps</strong></summary>
 
-| Category | Apps |
-|----------|------|
-| **3D / CAD** | blender (13 cmds), freecad (15), cloudcompare (4), openscad |
-| **Image** | gimp (12), inkscape, imagemagick (6), krita (4) |
+| Category          | Apps                                                                |
+| ----------------- | ------------------------------------------------------------------- |
+| **3D / CAD**      | blender (13 cmds), freecad (15), cloudcompare (4), openscad         |
+| **Image**         | gimp (12), inkscape, imagemagick (6), krita (4)                     |
 | **Video / Audio** | ffmpeg (11), kdenlive (3), shotcut (3), audacity (8), musescore (5) |
-| **Diagram** | drawio, mermaid |
-| **Document** | libreoffice, pandoc |
-| **Streaming** | obs (8, WebSocket) |
-| **Productivity** | zotero (8) |
-| **Dev Services** | wiremock (5), adguardhome (5), novita (3) |
-| **Other** | slay-the-spire-ii (6), sketch (3) |
+| **Diagram**       | drawio, mermaid                                                     |
+| **Document**      | libreoffice, pandoc                                                 |
+| **Streaming**     | obs (8, WebSocket)                                                  |
+| **Productivity**  | zotero (8)                                                          |
+| **Dev Services**  | wiremock (5), adguardhome (5), novita (3)                           |
+| **Other**         | slay-the-spire-ii (6), sketch (3)                                   |
 
 </details>
 
@@ -109,16 +109,16 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
 
 All via Chrome DevTools Protocol — no extensions, no hacks.
 
-| App | Commands | Port |
-|-----|----------|------|
-| **Cursor** | ask, send, read, model, composer, extract-code, new, status, screenshot, dump, history, export | 9226 |
-| **Codex** | ask, send, read, model, extract-diff, new, status, screenshot, dump, history, export | 9222 |
-| **ChatGPT** | ask, send, read, model, new, status, screenshot, dump | 9236 |
-| **Notion** | search, read, write, new, status, sidebar, favorites, export, screenshot | 9230 |
-| **Discord** | servers, channels, read, send, search, members, status | 9232 |
-| **ChatWise** | ask, send, read, model, new, status, screenshot, dump | 9228 |
-| **Doubao** | ask, send, read, new, status, screenshot, dump | 9225 |
-| **Antigravity** | ask, send, read, model, new, status, screenshot, dump | 9234 |
+| App             | Commands                                                                                       | Port |
+| --------------- | ---------------------------------------------------------------------------------------------- | ---- |
+| **Cursor**      | ask, send, read, model, composer, extract-code, new, status, screenshot, dump, history, export | 9226 |
+| **Codex**       | ask, send, read, model, extract-diff, new, status, screenshot, dump, history, export           | 9222 |
+| **ChatGPT**     | ask, send, read, model, new, status, screenshot, dump                                          | 9236 |
+| **Notion**      | search, read, write, new, status, sidebar, favorites, export, screenshot                       | 9230 |
+| **Discord**     | servers, channels, read, send, search, members, status                                         | 9232 |
+| **ChatWise**    | ask, send, read, model, new, status, screenshot, dump                                          | 9228 |
+| **Doubao**      | ask, send, read, new, status, screenshot, dump                                                 | 9225 |
+| **Antigravity** | ask, send, read, model, new, status, screenshot, dump                                          | 9234 |
 
 </details>
 
@@ -195,13 +195,13 @@ Five adapter types: `web-api`, `desktop`, `browser`, `bridge`, `service`.
 
 Five strategies, auto-detected via cascade (`PUBLIC → COOKIE → HEADER`):
 
-| Strategy | How |
-|----------|-----|
-| `public` | Direct HTTP — no credentials |
-| `cookie` | Injects cookies from `~/.unicli/cookies/<site>.json` |
-| `header` | Cookie + auto-extracted CSRF token (ct0, bili_jct, etc.) |
-| `intercept` | Navigates page in Chrome, captures XHR/fetch responses |
-| `ui` | Direct DOM interaction (click, type, submit) |
+| Strategy    | How                                                      |
+| ----------- | -------------------------------------------------------- |
+| `public`    | Direct HTTP — no credentials                             |
+| `cookie`    | Injects cookies from `~/.unicli/cookies/<site>.json`     |
+| `header`    | Cookie + auto-extracted CSRF token (ct0, bili_jct, etc.) |
+| `intercept` | Navigates page in Chrome, captures XHR/fetch responses   |
+| `ui`        | Direct DOM interaction (click, type, submit)             |
 
 ```bash
 unicli auth setup twitter    # Show required cookies + template
@@ -241,15 +241,15 @@ git clone https://github.com/olo-dot-io/Uni-CLI.git && cd Uni-CLI
 npm install && npm run verify
 ```
 
-| Command | Purpose |
-|---------|---------|
-| `npm run dev` | Dev run |
-| `npm run build` | Production build |
-| `npm run typecheck` | TypeScript strict |
-| `npm run lint` | Oxlint |
-| `npm run test` | Unit tests (775) |
+| Command                | Purpose                   |
+| ---------------------- | ------------------------- |
+| `npm run dev`          | Dev run                   |
+| `npm run build`        | Production build          |
+| `npm run typecheck`    | TypeScript strict         |
+| `npm run lint`         | Oxlint                    |
+| `npm run test`         | Unit tests (775)          |
 | `npm run test:adapter` | Validate all 601 adapters |
-| `npm run verify` | Full pipeline |
+| `npm run verify`       | Full pipeline             |
 
 7 production dependencies: `chalk`, `cli-table3`, `commander`, `js-yaml`, `turndown`, `undici`, `ws`.
 

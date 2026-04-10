@@ -6,7 +6,7 @@
      Output is JSON when piped. Errors are structured JSON to stderr.
      You can fix broken adapters yourself — read the Self-Repair section. -->
 
-> 167 sites, 756 commands, 35 pipeline steps. One CLI. `npm install -g @zenalexa/unicli`
+> 175 sites, 725 commands, 35 pipeline steps, 32 external CLI passthroughs. `npm install -g @zenalexa/unicli`
 
 ## For AI Agents
 
@@ -72,6 +72,19 @@ Sites requiring auth: bilibili, weibo, zhihu, twitter, xueqiu, zsxq, jike, werea
 - **TTY** → human-readable table
 - **Errors** → structured JSON to stderr with `adapter` path, `step`, `suggestion`
 - **Exit codes**: 0=ok, 66=empty, 69=unavailable, 77=auth, 78=config
+
+## External CLI Passthrough
+
+32 external CLIs are registered for passthrough. If installed on your system, they're available as top-level commands:
+
+```bash
+unicli ext list                    # Show all external CLIs + install status
+unicli ext install <name>          # Install an external CLI
+unicli ext run <name> [args]       # Run explicitly
+unicli lark-cli calendar +agenda   # Direct passthrough (if installed)
+```
+
+Key CLIs: lark-cli (200+ cmds), wecom-cli (100+), dws (86), vercel, supabase, stripe, firebase, wrangler, aliyun (1000+), tccli (500+).
 
 ## Self-Repair Protocol
 

@@ -573,8 +573,11 @@ export async function createCli(): Promise<Command> {
     }
   }
 
-  // Dynamic external CLI passthrough — register installed CLIs as top-level commands
+  // Dynamic external CLI passthrough — register installed CLIs as top-level commands.
+  // Skip CLIs that already have a dedicated adapter (avoids Commander name collision).
+  const existingNames = new Set(program.commands.map((c: Command) => c.name()));
   for (const extCli of loadExternalClis()) {
+    if (existingNames.has(extCli.name)) continue;
     if (isInstalled(extCli.binary)) {
       program
         .command(extCli.name, { hidden: false })

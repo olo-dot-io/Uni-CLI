@@ -10,11 +10,7 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import { execFileSync } from "node:child_process";
-import {
-  listExternalClis,
-  getExternalCli,
-  isInstalled,
-} from "../hub/index.js";
+import { listExternalClis, getExternalCli, isInstalled } from "../hub/index.js";
 import { executeExternal } from "../hub/passthrough.js";
 import { format, detectFormat } from "../output/formatter.js";
 import type { OutputFormat } from "../types.js";
@@ -91,20 +87,19 @@ export function registerExtCommand(program: Command): void {
       }
 
       if (isInstalled(cli.binary)) {
-        console.log(chalk.green(`${cli.name} is already installed (${cli.binary}).`));
+        console.log(
+          chalk.green(`${cli.name} is already installed (${cli.binary}).`),
+        );
         return;
       }
 
       // Resolve platform-specific install command
       const platform = process.platform === "darwin" ? "mac" : "linux";
-      const installCmd =
-        cli.install?.[platform] ?? cli.install?.["default"];
+      const installCmd = cli.install?.[platform] ?? cli.install?.["default"];
 
       if (!installCmd) {
         console.error(
-          chalk.yellow(
-            `No install command for ${cli.name} on ${platform}.`,
-          ),
+          chalk.yellow(`No install command for ${cli.name} on ${platform}.`),
         );
         if (cli.homepage) {
           console.error(chalk.dim(`  See: ${cli.homepage}`));
