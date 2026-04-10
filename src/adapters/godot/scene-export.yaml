@@ -1,5 +1,5 @@
 # Godot scene/export — export a scene to a known format via godot --headless.
-# Closes the v0.208 coverage gap with CLI-Anything's Godot harness.
+# Export a Godot scene to a target format via headless mode.
 site: godot
 name: scene/export
 description: Export a Godot scene to PNG / GLTF / DAE via headless mode

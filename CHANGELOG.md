@@ -42,9 +42,8 @@ Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for
 ## [0.208.0] — 2026-04-08 — Vostok · Titov
 
 > Standards, Distribution, and Self-Improvement. 134 sites · 711 commands.
-> Closes the SKILL.md gap with CLI-Anything, hardens the MCP gateway,
-> ships the eval catalog, lands Stagehand-style `observe()`, and ports
-> OpenHarness's sensitive-path deny list.
+> Skills export, hardened MCP gateway, eval catalog, `observe()` verb,
+> and sensitive-path deny list.
 >
 > **Post-release hardening:** a 4-reviewer audit of the initial release
 > commit (`a1e75cb`) surfaced 6 BLOCKERs and 9 MAJORs. All were fixed in
@@ -57,15 +56,15 @@ Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for
 - **`unicli mcp serve` (deliverable B)** — production-ready MCP gateway. Default expanded mode auto-registers one tool per adapter command (`unicli_<site>_<command>`) with input schemas derived from `args` and output schemas from `columns`. Lazy mode (`--lazy`) preserves the v0.207 2-tool surface. New `--transport http --port 19826` adds JSON-RPC over `POST /mcp` for self-hosted environments. `unicli mcp health` is the offline pre-flight check.
 - **`unicli eval` (deliverable C)** — declarative regression suites. 15 starter eval files ship under `evals/`: 12 smoke (hackernews, bilibili, github, reddit, weibo, zhihu, xiaohongshu, douyin, youtube, twitter, instagram, linkedin, hupu, douban, producthunt) + 3 regression (auth-rotation, selector-drift, api-versioning). Subcommands: `eval list`, `eval run [--all]`, `eval ci --since 7d`. Output format: `SCORE=N/M` plus structured JSON for CI.
 - **Per-call cost ledger (deliverable D)** — append-only JSONL at `~/.unicli/usage.jsonl` capturing `{ts, site, cmd, strategy, tokens, ms, bytes, exit}` for every CLI invocation. `unicli usage report [--since 7d] [--slow] [--failing]` aggregates by site+cmd with median, p95, error rate, and bytes. Opt out with `UNICLI_NO_LEDGER=1`.
-- **`unicli operate observe <query>` (deliverable I)** — Stagehand-style preview verb. Snapshots the page, ranks interactive elements against the natural-language query (token overlap, exact label, role/aria bonuses), returns `{action, ref, selector, confidence, reason}` candidates. Caches every observation to `~/.unicli/observe-cache.jsonl` for self-healing audits.
-- **8 strategic adapters (deliverable F)** — `hermes` (skills-list, skills-read, sessions-search), `openharness` (memory-read, skills-list), `motion-studio` (component-get), `stagehand` (wrap-observe), `godot` (scene-export, project-run), `renderdoc` (capture-list, frame-export), `autoagent` (eval-run), `cua` (bench-list, bench-run). +14 commands total.
-- **AgentLint integration (deliverable E)** — `scripts/lint-context.sh` runs Agent Lint against the workspace and gates `npm run verify` on context quality. Resolution order: global `agent-lint` → vendored `ref/agentlint/packages/cli/dist/index.js` → soft skip with warning. Default threshold 60/100, override with `UNICLI_LINT_THRESHOLD`. Disable with `UNICLI_LINT_DISABLE=1`.
-- **`scripts/sync-ref.sh`** — generic sync of every git repository under `ref/` to its remote HEAD. Replaces the inline two-repo `sync:ref` script.
-- **Documentation (deliverable H)** — 5 new docs: `docs/COMPARE.md`, `docs/SKILL-EXPORT.md`, `docs/MCP-GATEWAY.md`, `docs/EVAL-HARNESS.md`, `docs/CONTEXT-LINT.md`. README gets a "Compared to" section with honest source-level comparisons against opencli, CLI-Anything, browser-use, goose, hermes-agent, Stagehand.
+- **`unicli operate observe <query>` (deliverable I)** — Preview verb. Snapshots the page, ranks interactive elements against the natural-language query (token overlap, exact label, role/aria bonuses), returns `{action, ref, selector, confidence, reason}` candidates. Caches every observation to `~/.unicli/observe-cache.jsonl` for self-healing audits.
+- **8 strategic adapters (deliverable F)** — `hermes`, `openharness`, `motion-studio`, `stagehand`, `godot`, `renderdoc`, `autoagent`, `cua`. +14 commands total.
+- **AgentLint integration (deliverable E)** — `scripts/lint-context.sh` runs Agent Lint against the workspace and gates `npm run verify` on context quality. Default threshold 60/100, override with `UNICLI_LINT_THRESHOLD`. Disable with `UNICLI_LINT_DISABLE=1`.
+- **`scripts/sync-ref.sh`** — generic sync of local reference repositories.
+- **Documentation (deliverable H)** — 4 new docs: `docs/SKILL-EXPORT.md`, `docs/MCP-GATEWAY.md`, `docs/EVAL-HARNESS.md`, `docs/CONTEXT-LINT.md`.
 
 ### Security
 
-- **Sensitive path deny list (deliverable J)** — `src/permissions/sensitive-paths.ts` ports OpenHarness's hardcoded deny patterns to TypeScript with anchored regex: `.ssh`, `.aws/credentials`, `.aws/config`, `.gnupg`, `.kube/config`, `.docker/config.json`, `.npmrc`, `~/.unicli/cookies/*.json`, `~/.unicli/credentials.json`, OpenHarness creds, GCP application default credentials. Enforced in `unicli operate upload` (before workspace+home boundary check) and the `exec` pipeline step (scans every path-like arg). Cannot be overridden by permission mode. Returns structured `{error: "sensitive_path_denied", path, pattern, hint}` on stderr.
+- **Sensitive path deny list (deliverable J)** — `src/permissions/sensitive-paths.ts` blocks access to sensitive paths (`.ssh`, `.aws/credentials`, `.gnupg`, `.kube/config`, `.docker/config.json`, `.npmrc`, cookie/credential files). Enforced in `unicli operate upload` and the `exec` pipeline step. Returns structured error JSON on stderr.
 
 ### Changed
 
@@ -374,7 +373,7 @@ A 4-reviewer parallel audit (plumbing / runtime / security / release-wiring) ove
 
 ### Infrastructure
 
-- Reference repos (opencli, CLI-Anything) synced to `/ref/` (gitignored, `npm run sync:ref`)
+- Reference repos synced to `/ref/` (gitignored, `npm run sync:ref`)
 - `authCookies` field in adapter manifests for declaring required cookies
 - `Strategy` re-exported from registry.ts for TS adapter pattern
 - Manifest builder now includes TS adapter metadata (regex extraction from source)

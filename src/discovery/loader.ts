@@ -83,7 +83,7 @@ const USER_DIR = join(process.env.HOME ?? "~", ".unicli", "adapters");
 // detect: field is stored on the adapter manifest for informational purposes.
 // It does NOT gate registration. All adapters are always visible and available.
 // If a desktop adapter requires a missing binary, the exec step gives a clear
-// runtime error with install instructions — matching OpenCLI/CLI-Anything behavior.
+// runtime error with install instructions.
 
 interface YamlAdapter {
   site: string;

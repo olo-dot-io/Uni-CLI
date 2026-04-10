@@ -15,7 +15,7 @@ Bad context = bad code. The `AGENTS.md`, `CLAUDE.md`, skills, and docs are the o
 The script tries the following, in order:
 
 1. `agent-lint` on `PATH` (globally installed via `npm i -g @agent-lint/cli`)
-2. `ref/agentlint/packages/cli/dist/index.js` (vendored + built)
+2. Vendored local build (if available)
 3. **Soft skip** with a warning — does NOT fail verify
 
 We deliberately do **not** fall back to `npx @agent-lint/cli`, because npx will silently fetch from the network during `npm run verify`. Explicit installation paths are easier to audit.

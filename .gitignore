@@ -55,3 +55,15 @@ CLAUDE.md
 # Temporary
 tmp/
 .tmp/
+
+# Internal development files — never commit
+*.patch
+PATCH-*.md
+DELIVERABLE-*.md
+apply-*.py
+apply-*.sh
+test-write.txt
+newtest.txt
+
+# Internal comparison / competitive analysis docs
+docs/COMPARE.md

@@ -8,9 +8,8 @@
  * Why this exists:
  *   The Anthropic SKILL.md spec is becoming the de-facto standard for agent
  *   capability discovery (Claude Code, Codex, Cursor, Cline, Windsurf all read
- *   it). CLI-Anything ships an automatic skill generator per harness — that's
- *   their #1 distribution moat. This command closes the gap by emitting one
- *   SKILL.md per adapter command from the existing YAML/TS metadata.
+ *   it). This command emits one SKILL.md per adapter command from the existing
+ *   YAML/TS metadata, enabling agent discovery without separate documentation.
  *
  * Output shape (per adapter command):
  *   skills/<site>/<command>.md
