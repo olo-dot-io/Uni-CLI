@@ -1,0 +1,25 @@
+site: exchangerate
+name: list
+description: List all exchange rates for a base currency
+domain: open.er-api.com
+type: web-api
+strategy: public
+
+args:
+  base:
+    type: str
+    default: USD
+    positional: true
+    description: Base currency code
+
+pipeline:
+  - fetch:
+      url: "https://open.er-api.com/v6/latest/${{ args.base }}"
+
+  - select: rates
+
+  - map:
+      currency: ${{ key }}
+      rate: ${{ item }}
+
+columns: [currency, rate]

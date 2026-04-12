@@ -1,0 +1,29 @@
+site: devto
+name: latest
+description: Latest Dev.to articles
+type: web-api
+domain: dev.to
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://dev.to/api/articles/latest
+      params:
+        per_page: "${{ args.limit }}"
+
+  - map:
+      title: ${{ item.title }}
+      author: "${{ item.user ? item.user.name : '' }}"
+      reactions: ${{ item.positive_reactions_count }}
+      comments: ${{ item.comments_count }}
+      tags: "${{ (item.tag_list || []).join(', ') }}"
+      url: ${{ item.url }}
+
+  - limit: ${{ args.limit }}
+
+columns: [title, author, reactions, comments, tags]

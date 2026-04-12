@@ -1,0 +1,35 @@
+site: bluesky
+name: likes
+description: Get Bluesky liked posts for a user
+domain: bsky.social
+type: web-api
+strategy: cookie
+
+args:
+  actor:
+    required: true
+    positional: true
+    description: User handle or DID
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://bsky.social/xrpc/app.bsky.feed.getActorLikes
+      params:
+        actor: "${{ args.actor }}"
+        limit: "${{ args.limit }}"
+
+  - select: feed
+
+  - map:
+      author: "${{ item.post?.author?.handle || '' }}"
+      text: "${{ item.post?.record?.text ? (item.post.record.text) | truncate(100) : '' }}"
+      likes: "${{ item.post?.likeCount || 0 }}"
+      reposts: "${{ item.post?.repostCount || 0 }}"
+      date: "${{ item.post?.indexedAt || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [author, text, likes, reposts, date]

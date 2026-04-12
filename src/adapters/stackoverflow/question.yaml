@@ -1,0 +1,34 @@
+site: stackoverflow
+name: question
+description: Get a StackOverflow question with answers
+type: web-api
+domain: api.stackexchange.com
+strategy: public
+
+args:
+  id:
+    required: true
+    positional: true
+    description: Question ID
+
+pipeline:
+  - fetch:
+      url: "https://api.stackexchange.com/2.3/questions/${{ args.id }}"
+      params:
+        order: desc
+        sort: votes
+        site: stackoverflow
+        filter: withbody
+
+  - select: items
+
+  - map:
+      title: ${{ item.title }}
+      score: ${{ item.score }}
+      answers: ${{ item.answer_count }}
+      views: ${{ item.view_count }}
+      tags: "${{ (item.tags || []).join(', ') }}"
+      asked: ${{ item.creation_date }}
+      url: ${{ item.link }}
+
+columns: [title, score, answers, views, tags, url]

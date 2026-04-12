@@ -1,0 +1,26 @@
+site: infoq
+name: latest
+description: Latest InfoQ articles
+domain: www.infoq.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch_text:
+      url: https://feed.infoq.com/
+
+  - parse_rss:
+      fields:
+        title: title
+        link: link
+        pubDate: pubDate
+        description: description
+
+  - limit: "${{ args.limit }}"
+
+columns: [title, description, pubDate]

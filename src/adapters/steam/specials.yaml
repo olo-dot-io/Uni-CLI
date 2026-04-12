@@ -1,0 +1,29 @@
+site: steam
+name: specials
+description: Steam games on special/sale
+domain: store.steampowered.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 10
+
+pipeline:
+  - fetch:
+      url: https://store.steampowered.com/api/featuredcategories/
+
+  - select: specials.items
+
+  - map:
+      rank: ${{ index + 1 }}
+      name: ${{ item.name }}
+      discount: "${{ item.discount_percent }}%"
+      final_price: ${{ item.final_price }}
+      original_price: ${{ item.original_price }}
+      url: ${{ 'https://store.steampowered.com/app/' + item.id }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, name, discount, final_price, original_price]

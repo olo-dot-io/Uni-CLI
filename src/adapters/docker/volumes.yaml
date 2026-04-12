@@ -1,0 +1,19 @@
+site: docker
+name: volumes
+description: List Docker volumes
+type: desktop
+binary: docker
+detect: which docker
+
+pipeline:
+  - exec:
+      command: docker
+      args: ["volume", "ls", "--format", "{{json .}}"]
+      parse: jsonl
+
+  - map:
+      name: ${{ item.Name }}
+      driver: ${{ item.Driver }}
+      mountpoint: "${{ item.Mountpoint || '' }}"
+
+columns: [name, driver, mountpoint]

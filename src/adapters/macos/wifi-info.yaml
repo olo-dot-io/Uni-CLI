@@ -1,0 +1,14 @@
+site: macos
+name: wifi-info
+description: Get current WiFi connection info
+type: desktop
+binary: networksetup
+detect: which networksetup
+
+pipeline:
+  - exec:
+      command: networksetup
+      args: ["-getairportnetwork", "en0"]
+      parse: text
+
+columns: [result]

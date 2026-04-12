@@ -1,0 +1,32 @@
+site: douban
+name: new-movies
+description: Douban new movies in theaters
+domain: movie.douban.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://movie.douban.com/j/search_subjects
+      params:
+        type: movie
+        tag: "最新"
+        page_limit: "${{ args.limit }}"
+        page_start: "0"
+
+  - select: subjects
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: "${{ item.title || '' }}"
+      rate: "${{ item.rate || '' }}"
+      url: "${{ item.url || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, rate, url]

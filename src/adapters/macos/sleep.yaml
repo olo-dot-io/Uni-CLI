@@ -1,0 +1,14 @@
+site: macos
+name: sleep
+description: Put macOS to sleep
+type: desktop
+binary: pmset
+detect: which pmset
+
+pipeline:
+  - exec:
+      command: pmset
+      args: ["sleepnow"]
+      parse: text
+
+columns: [result]

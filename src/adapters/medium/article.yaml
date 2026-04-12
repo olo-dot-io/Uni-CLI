@@ -1,0 +1,22 @@
+site: medium
+name: article
+description: Read a Medium article as Markdown
+type: web-api
+domain: medium.com
+strategy: public
+
+args:
+  url:
+    required: true
+    positional: true
+    description: Medium article URL
+
+pipeline:
+  - fetch_text:
+      url: "${{ args.url }}"
+      headers:
+        Accept: "text/html"
+
+  - html_to_md: {}
+
+columns: [content]

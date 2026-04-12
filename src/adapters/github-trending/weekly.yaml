@@ -1,0 +1,34 @@
+site: github-trending
+name: weekly
+description: GitHub trending repositories this week
+domain: api.gitterapp.com
+type: web-api
+strategy: public
+
+args:
+  language:
+    type: str
+    description: Filter by language (e.g. python, javascript, rust)
+  limit:
+    type: int
+    default: 25
+
+pipeline:
+  - fetch:
+      url: "https://api.gitterapp.com/repositories"
+      params:
+        language: "${{ args.language || '' }}"
+        since: weekly
+
+  - map:
+      rank: ${{ index + 1 }}
+      name: "${{ item.author + '/' + item.name }}"
+      description: "${{ (item.description || '') | truncate(80) }}"
+      stars: ${{ item.stars }}
+      forks: ${{ item.forks }}
+      language: "${{ item.language || '' }}"
+      new_stars: "${{ item.currentPeriodStars || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, name, stars, new_stars, language, description]

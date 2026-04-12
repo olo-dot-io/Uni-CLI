@@ -3,6 +3,30 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
+## [0.210.0] — 2026-04-12 — Vostok · Komarov
+
+> The compiler that turns the internet into deterministic programs for AI agents.
+> 195 sites · 956 commands · 30 macOS system adapters · 35 external CLIs · 5 agent skills.
+
+### Added
+
+- **Error reliability system** — `retryable` and `alternatives` fields in all structured error output; agents never get opaque errors
+- **Agent platform skills** — 5 SKILL.md files (agentskills.io standard) covering 39 agent platforms
+- **`unicli status` command** — lightweight system health JSON for agent pre-flight checks
+- **Cloudflare remote browser** — `UNICLI_CDP_ENDPOINT` connects to any remote CDP WebSocket (Cloudflare Browser Rendering, etc.)
+- **30 macOS system adapters** — volume, dark-mode, battery, notify, clipboard, screenshot, say, spotlight, system-info, disk-info, wifi, lock-screen, caffeinate, trash, open, apps, calendar-list, calendar-create, contacts-search, mail-status, mail-send, reminder-create, notes-list, notes-search, music-now, music-control, messages-send, photos-search, finder-tags, finder-recent
+- **20 new web sites** — threads, deepseek, perplexity, baidu, toutiao, maoyan, futu, coinbase, kuaishou, ele, dianping, dangdang, mubu, douyu, wechat-channels, binance, ke, maimai, slock, and more
+- **Desktop app adapters** — vscode (extensions, install-ext, open), obsidian (open, search, daily), chrome (bookmarks, tabs), zoom (join, start)
+- **Electron app deepening** — cursor (+export, +history), discord (+delete), slack (+search, +send, +status)
+- **Site command deepening** — zhihu +13, xiaohongshu +9, twitter +9, instagram +5, bilibili +4, youtube +3, plus 100+ commands across 40+ existing sites
+- **External CLI hub** — kimi-cli (8K★), gws (Google Workspace), deepagents (LangChain) → 35 total
+
+### Changed
+
+- `BridgeConnectionError` now includes structured JSON with retry guidance
+- Non-PipelineError catch-all in cli.ts emits full structured error (was opaque `{error: message}`)
+- AGENTS.md fully rewritten with accurate site/command counts and category listings
+
 ## [0.209.0] — 2026-04-10 — Vostok · Popovich
 
 > Discover, Evolve, Connect. 167 sites · 756 commands.

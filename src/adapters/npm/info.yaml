@@ -1,0 +1,25 @@
+site: npm
+name: info
+description: Get npm package details
+type: web-api
+domain: registry.npmjs.org
+strategy: public
+
+args:
+  package:
+    required: true
+    positional: true
+    description: Package name (e.g. "express", "react")
+
+pipeline:
+  - fetch:
+      url: "https://registry.npmjs.org/${{ args.package }}"
+
+  - map:
+      name: ${{ item.name }}
+      version: "${{ item['dist-tags']?.latest || '' }}"
+      description: ${{ item.description }}
+      license: ${{ item.license }}
+      homepage: ${{ item.homepage }}
+
+columns: [name, version, description, license, homepage]

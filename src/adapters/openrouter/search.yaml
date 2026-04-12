@@ -1,0 +1,31 @@
+site: openrouter
+name: search
+description: Search OpenRouter AI models
+type: web-api
+domain: openrouter.ai
+strategy: public
+
+args:
+  query:
+    type: str
+    positional: true
+    description: Search query (model name, provider)
+
+pipeline:
+  - fetch:
+      url: https://openrouter.ai/api/v1/models
+
+  - select: data
+
+  - filter: "!('${{ args.query }}') || item.name.toLowerCase().includes('${{ args.query }}'.toLowerCase()) || item.id.toLowerCase().includes('${{ args.query }}'.toLowerCase())"
+
+  - map:
+      id: ${{ item.id }}
+      name: ${{ item.name }}
+      context: "${{ item.context_length || '' }}"
+      prompt_price: "${{ item.pricing?.prompt || '' }}"
+      completion_price: "${{ item.pricing?.completion || '' }}"
+
+  - limit: 20
+
+columns: [id, name, context, prompt_price, completion_price]

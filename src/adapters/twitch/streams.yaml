@@ -1,0 +1,38 @@
+site: twitch
+name: streams
+description: Get top live streams on Twitch
+type: web-api
+domain: api.twitch.tv
+strategy: cookie
+
+args:
+  game_id:
+    type: str
+    description: Filter by game ID
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://api.twitch.tv/helix/streams
+      params:
+        first: "${{ args.limit }}"
+        game_id: "${{ args.game_id || '' }}"
+      headers:
+        Client-Id: "${{ env.TWITCH_CLIENT_ID || '' }}"
+        Authorization: "Bearer ${{ env.TWITCH_TOKEN || '' }}"
+
+  - select: data
+
+  - map:
+      rank: ${{ index + 1 }}
+      streamer: ${{ item.user_name }}
+      title: "${{ (item.title || '') | truncate(60) }}"
+      game: ${{ item.game_name }}
+      viewers: ${{ item.viewer_count }}
+      language: ${{ item.language }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, streamer, game, viewers, title, language]

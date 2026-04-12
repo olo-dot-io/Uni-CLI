@@ -1,0 +1,14 @@
+site: macos
+name: shortcuts-list
+description: List all Shortcuts.app shortcuts
+type: desktop
+binary: shortcuts
+detect: which shortcuts
+
+pipeline:
+  - exec:
+      command: shortcuts
+      args: ["list"]
+      parse: lines
+
+columns: [name]

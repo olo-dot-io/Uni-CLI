@@ -1,0 +1,20 @@
+site: docker
+name: networks
+description: List Docker networks
+type: desktop
+binary: docker
+detect: which docker
+
+pipeline:
+  - exec:
+      command: docker
+      args: ["network", "ls", "--format", "{{json .}}"]
+      parse: jsonl
+
+  - map:
+      name: ${{ item.Name }}
+      id: "${{ (item.ID || '') | truncate(12) }}"
+      driver: ${{ item.Driver }}
+      scope: ${{ item.Scope }}
+
+columns: [name, id, driver, scope]

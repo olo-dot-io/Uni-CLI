@@ -1,0 +1,14 @@
+site: macos
+name: processes
+description: List top processes by CPU usage
+type: desktop
+binary: ps
+detect: which ps
+
+pipeline:
+  - exec:
+      command: ps
+      args: ["aux", "--sort=-%cpu"]
+      parse: text
+
+columns: [result]

@@ -6,7 +6,7 @@
      Output is JSON when piped. Errors are structured JSON to stderr.
      You can fix broken adapters yourself — read the Self-Repair section. -->
 
-> 175 sites, 725 commands, 35 pipeline steps, 32 external CLI passthroughs. `npm install -g @zenalexa/unicli`
+> 172 sites, 851 commands, 35 pipeline steps, 32 external CLI passthroughs, 32 macOS commands. `npm install -g @zenalexa/unicli`
 
 ## For AI Agents
 
@@ -27,26 +27,51 @@ npm install -g @zenalexa/unicli
 
 ## What You Can Do
 
-### Web (40 sites)
+### Web (80+ sites)
 
-**Chinese**: bilibili (13), weibo (9), zhihu (7), douban (9), xueqiu (10),
-linux-do (10), jike (10), zsxq (5), tieba (4), weread (7), v2ex (11)
+**Chinese**: bilibili (14), weibo (10), zhihu (9), douban (12), xueqiu (12),
+linux-do (10), jike (10), zsxq (5), tieba (4), weread (7), v2ex (12),
+xiaohongshu (14), douyin (13), 36kr (5), sspai (2), smzdm (4), taobao (2),
+pinduoduo (2), meituan (2), ctrip (2), netease-music (4), eastmoney (4),
+cnki, jd (4), 1688 (4), weixin (5), sinablog (5)
 
-**International**: twitter (25), youtube (5), reddit (16), hackernews (8),
-bluesky (9), medium (3), substack (3), producthunt (4), lobsters (4), devto (3),
-stackoverflow (4)
+**International**: twitter (27), youtube (5), reddit (20), hackernews (10),
+bluesky (12), medium (5), substack (4), producthunt (5), lobsters (5), devto (5),
+stackoverflow (6), mastodon (4), facebook (12), instagram (21), tiktok (16),
+twitch (4), unsplash (2), pexels (2)
 
-**Finance**: bloomberg (10), sinafinance (4), xueqiu (10)
+**AI / ML**: ollama (4), openrouter (2), hf (4), huggingface-papers (2),
+replicate (3), deepseek, perplexity, grok, gemini (5), minimax (3),
+doubao (3), doubao-web (9), novita (3), notebooklm (15)
 
-**Reference**: google (4), wikipedia (4), arxiv (2), dictionary (3),
-bbc, 36kr (4), paperreview (3), spotify, ctrip, xiaoyuzhou (3), steam, imdb (6),
-github-trending, hf, web
+**Finance**: bloomberg (10), sinafinance (5), xueqiu (12), eastmoney (4),
+yahoo-finance (3), barchart (5)
 
-### Desktop (14 apps)
+**Developer**: github-trending (3), gitlab (3), gitee (3), npm (4),
+pypi (3), crates-io (3), cocoapods (2), docker-hub (3), npm-trends (2),
+homebrew (2), stackoverflow (6)
+
+**News**: bbc (4), cnn (2), nytimes (2), reuters (5), techcrunch (2),
+theverge (2), infoq (2), ithome (2)
+
+**Reference**: google (4), wikipedia (5), arxiv (3), dictionary (3),
+paperreview (3), spotify (4), ctrip (2), xiaoyuzhou (3), steam (6), imdb (7),
+exchangerate (2), ip-info, qweather (2), web
+
+### macOS (32 cmds)
+
+reminders-list, reminders-complete, shortcuts-list, shortcuts-run,
+calendar-today, notes-list, contacts-search, spotlight, system-info,
+battery, disk-usage, clipboard, wifi-info, processes, open-app, say,
+screenshot, volume, brightness, apps-list, notification, trash, empty-trash,
+dark-mode, active-app, uptime, sleep, do-not-disturb, bluetooth,
+finder-selection, screen-lock, safari-tabs
+
+### Desktop (15 apps)
 
 ffmpeg (11 cmds), imagemagick (6), blender (4), gimp (3), freecad (2),
 inkscape (3), pandoc, libreoffice (2), mermaid, musescore (2), drawio,
-ollama, comfyui (4), docker (5)
+ollama (4), comfyui (4), docker (7), macos (32)
 
 ### Bridge (3 CLIs)
 
@@ -147,7 +172,7 @@ unicli browser status         # Check connection
 
 Requires Chrome. The engine connects via raw CDP WebSocket — zero extensions needed.
 
-## Pipeline Steps (30)
+## Pipeline Steps (35)
 
 | Step         | What it does                                     |
 | ------------ | ------------------------------------------------ |
@@ -180,6 +205,9 @@ Requires Chrome. The engine connects via raw CDP WebSocket — zero extensions n
 | `each`       | Loop sub-pipeline with do-while + max iterations |
 | `parallel`   | Run sub-pipelines concurrently with merge        |
 | `rate_limit` | Per-domain token bucket request throttling       |
+| `assert`     | Verify page state (URL, selector, text)          |
+| `extract`    | Structured data extraction with CSS + types      |
+| `retry`      | Generic retry with exponential backoff           |
 
 ## Strategies
 
@@ -189,4 +217,4 @@ The engine auto-probes the first three on first run. `intercept` and `ui` requir
 
 ## Version
 
-0.208.0 — Vostok · Titov
+0.209.0 — Vostok · Popovich

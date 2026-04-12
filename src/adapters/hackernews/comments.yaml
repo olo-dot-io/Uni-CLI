@@ -1,0 +1,36 @@
+site: hackernews
+name: comments
+description: Get comments for a Hacker News story
+domain: news.ycombinator.com
+type: web-api
+strategy: public
+
+args:
+  id:
+    required: true
+    positional: true
+    description: Story ID
+
+pipeline:
+  - fetch:
+      url: "https://hacker-news.firebaseio.com/v0/item/${{ args.id }}.json"
+
+  - select: kids
+
+  - limit: 20
+
+  - map:
+      id: ${{ item }}
+
+  - fetch:
+      url: "https://hacker-news.firebaseio.com/v0/item/${{ item.id }}.json"
+
+  - filter: "item.text && !item.deleted && !item.dead"
+
+  - map:
+      author: ${{ item.by }}
+      text: "${{ (item.text || '') | strip_html | truncate(200) }}"
+      time: ${{ item.time }}
+      replies: "${{ item.kids ? item.kids.length : 0 }}"
+
+columns: [author, text, replies, time]

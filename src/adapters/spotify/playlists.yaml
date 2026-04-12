@@ -1,0 +1,37 @@
+site: spotify
+name: playlists
+description: Get user's playlists on Spotify
+type: web-api
+domain: api.spotify.com
+strategy: cookie
+
+args:
+  token:
+    type: str
+    required: true
+    description: Spotify API Bearer token
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://api.spotify.com/v1/me/playlists
+      params:
+        limit: "${{ args.limit }}"
+      headers:
+        Authorization: "Bearer ${{ args.token }}"
+
+  - select: items
+
+  - map:
+      name: ${{ item.name }}
+      id: ${{ item.id }}
+      tracks: ${{ item.tracks.total }}
+      owner: ${{ item.owner.display_name }}
+      public: ${{ item.public }}
+      url: ${{ item.external_urls.spotify }}
+
+  - limit: ${{ args.limit }}
+
+columns: [name, tracks, owner, public, url]

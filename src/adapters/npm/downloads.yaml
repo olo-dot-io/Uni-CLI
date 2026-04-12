@@ -1,0 +1,28 @@
+site: npm
+name: downloads
+description: Get npm package download stats
+type: web-api
+domain: api.npmjs.org
+strategy: public
+
+args:
+  package:
+    required: true
+    positional: true
+    description: Package name
+  period:
+    type: str
+    default: last-week
+    choices: [last-day, last-week, last-month, last-year]
+
+pipeline:
+  - fetch:
+      url: "https://api.npmjs.org/downloads/point/${{ args.period }}/${{ args.package }}"
+
+  - map:
+      package: ${{ item.package }}
+      downloads: ${{ item.downloads }}
+      start: ${{ item.start }}
+      end: ${{ item.end }}
+
+columns: [package, downloads, start, end]

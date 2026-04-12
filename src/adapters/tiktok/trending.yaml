@@ -1,0 +1,28 @@
+site: tiktok
+name: trending
+description: TikTok trending hashtags and sounds
+domain: www.tiktok.com
+type: web-api
+strategy: cookie
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://www.tiktok.com/api/discover/
+      params:
+        count: "${{ args.limit }}"
+
+  - select: data
+
+  - map:
+      rank: ${{ index + 1 }}
+      name: "${{ item.cardItem?.title || item.title || '' }}"
+      description: "${{ (item.cardItem?.subTitle || item.description || '') | truncate(80) }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, name, description]

@@ -1,0 +1,31 @@
+site: itch-io
+name: top
+description: Top rated itch.io games
+domain: itch.io
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://itch.io/api/1/x/games
+      params:
+        sort: rating
+        limit: "${{ args.limit }}"
+
+  - select: games
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.title }}
+      type: ${{ item.type }}
+      price: "${{ item.min_price ? '$' + (item.min_price / 100) : 'Free' }}"
+      url: ${{ item.url }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, type, price, url]

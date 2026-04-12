@@ -1,0 +1,43 @@
+site: facebook
+name: marketplace
+description: Search Facebook Marketplace listings
+domain: www.facebook.com
+type: web-api
+strategy: cookie
+auth_cookies: [c_user, xs]
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search query
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://www.facebook.com/api/graphql/
+      method: POST
+      body:
+        fb_api_req_friendly_name: MarketplaceSearchQuery
+        variables:
+          buyLocation:
+            latitude: 0
+            longitude: 0
+          count: "${{ args.limit }}"
+          query: "${{ args.query }}"
+      headers:
+        Content-Type: application/x-www-form-urlencoded
+
+  - select: data.marketplace_search.feed_units.edges
+
+  - map:
+      title: "${{ item.node?.listing?.marketplace_listing_title || '' }}"
+      price: "${{ item.node?.listing?.listing_price?.formatted_amount || '' }}"
+      location: "${{ item.node?.listing?.location?.reverse_geocode?.city || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [title, price, location]

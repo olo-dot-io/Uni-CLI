@@ -1,0 +1,34 @@
+site: instagram
+name: reels
+description: Get Instagram trending reels
+domain: www.instagram.com
+type: web-api
+strategy: cookie
+auth_cookies: [sessionid, csrftoken]
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://www.instagram.com/api/v1/clips/trending/
+      method: POST
+      body:
+        max_id: ""
+        page_size: "${{ args.limit }}"
+      headers:
+        X-CSRFToken: "${{ cookies.csrftoken }}"
+
+  - select: items
+
+  - map:
+      author: "${{ item.media?.user?.username || '' }}"
+      caption: "${{ (item.media?.caption?.text || '') | truncate(100) }}"
+      plays: "${{ item.media?.play_count || 0 }}"
+      likes: "${{ item.media?.like_count || 0 }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [author, caption, plays, likes]

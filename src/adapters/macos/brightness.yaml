@@ -1,0 +1,22 @@
+site: macos
+name: brightness
+description: Get current screen brightness
+type: desktop
+binary: osascript
+detect: which osascript
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          const app = Application.currentApplication();
+          app.includeStandardAdditions = true;
+          const result = app.doShellScript('ioreg -c AppleBacklightDisplay | grep brightness');
+          JSON.stringify({ brightness: result });
+      parse: json
+
+columns: [brightness]

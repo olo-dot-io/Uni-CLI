@@ -1,0 +1,28 @@
+site: macos
+name: reminders-list
+description: List all reminders from macOS Reminders.app
+type: desktop
+binary: osascript
+detect: which osascript
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          const app = Application('Reminders');
+          const lists = app.lists();
+          const out = [];
+          for (const list of lists) {
+            const rems = list.reminders.whose({completed: false})();
+            for (const r of rems) {
+              out.push({ list: list.name(), name: r.name(), dueDate: r.dueDate() ? r.dueDate().toISOString() : '', priority: r.priority() });
+            }
+          }
+          JSON.stringify(out);
+      parse: json
+
+columns: [list, name, dueDate, priority]

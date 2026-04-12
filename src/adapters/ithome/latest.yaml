@@ -1,0 +1,26 @@
+site: ithome
+name: latest
+description: Latest IT Home news articles
+domain: www.ithome.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch_text:
+      url: https://www.ithome.com/rss/
+
+  - parse_rss:
+      fields:
+        title: title
+        link: link
+        pubDate: pubDate
+        description: description
+
+  - limit: "${{ args.limit }}"
+
+columns: [title, description, pubDate]

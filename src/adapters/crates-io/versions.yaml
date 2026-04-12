@@ -1,0 +1,33 @@
+site: crates-io
+name: versions
+description: List versions of a Rust crate
+type: web-api
+domain: crates.io
+strategy: public
+
+args:
+  crate:
+    required: true
+    positional: true
+    description: Crate name
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: "https://crates.io/api/v1/crates/${{ args.crate }}/versions"
+      headers:
+        User-Agent: "unicli (github.com/olo-dot-io/uni-cli)"
+
+  - select: versions
+
+  - map:
+      version: ${{ item.num }}
+      downloads: ${{ item.downloads }}
+      created: "${{ item.created_at }}"
+      yanked: ${{ item.yanked }}
+
+  - limit: ${{ args.limit }}
+
+columns: [version, downloads, created, yanked]

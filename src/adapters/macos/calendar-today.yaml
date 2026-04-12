@@ -1,0 +1,30 @@
+site: macos
+name: calendar-today
+description: List today's calendar events from macOS Calendar.app
+type: desktop
+binary: osascript
+detect: which osascript
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          const app = Application('Calendar');
+          const now = new Date();
+          const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const end = new Date(start.getTime() + 86400000);
+          const out = [];
+          for (const cal of app.calendars()) {
+            const evts = cal.events.whose({startDate: {_greaterThan: start}, startDate: {_lessThan: end}})();
+            for (const e of evts) {
+              out.push({ calendar: cal.name(), summary: e.summary(), start: e.startDate().toISOString(), end: e.endDate().toISOString(), location: e.location() || '' });
+            }
+          }
+          JSON.stringify(out);
+      parse: json
+
+columns: [calendar, summary, start, end, location]

@@ -1,0 +1,26 @@
+site: macos
+name: safari-tabs
+description: List all open Safari tabs
+type: desktop
+binary: osascript
+detect: which osascript
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          const safari = Application('Safari');
+          const out = [];
+          for (const win of safari.windows()) {
+            for (const tab of win.tabs()) {
+              out.push({ title: tab.name(), url: tab.url() });
+            }
+          }
+          JSON.stringify(out);
+      parse: json
+
+columns: [title, url]

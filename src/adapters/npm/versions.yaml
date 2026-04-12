@@ -1,0 +1,33 @@
+site: npm
+name: versions
+description: List all versions of an npm package
+type: web-api
+domain: registry.npmjs.org
+strategy: public
+
+args:
+  package:
+    required: true
+    positional: true
+    description: Package name
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: "https://registry.npmjs.org/${{ args.package }}"
+
+  - select: versions
+
+  - map:
+      version: ${{ item.version }}
+      description: "${{ (item.description || '') | truncate(60) }}"
+
+  - sort:
+      by: version
+      order: desc
+
+  - limit: ${{ args.limit }}
+
+columns: [version, description]

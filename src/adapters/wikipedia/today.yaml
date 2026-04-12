@@ -1,0 +1,25 @@
+site: wikipedia
+name: today
+description: Wikipedia featured article of the day
+domain: en.wikipedia.org
+type: web-api
+strategy: public
+
+args:
+  lang:
+    type: str
+    default: en
+
+pipeline:
+  - fetch:
+      url: "https://${{ args.lang }}.wikipedia.org/api/rest_v1/feed/featured/${{ new Date().toISOString().slice(0,10).replace(/-/g,'/') }}"
+
+  - select: tfa
+
+  - map:
+      title: ${{ item.title }}
+      description: "${{ item.description || '' }}"
+      extract: "${{ (item.extract || '') | truncate(400) }}"
+      url: "${{ item.content_urls?.desktop?.page || '' }}"
+
+columns: [title, description, extract, url]

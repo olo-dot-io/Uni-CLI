@@ -1,0 +1,39 @@
+site: twitch
+name: search
+description: Search Twitch channels
+type: web-api
+domain: api.twitch.tv
+strategy: cookie
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search query
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://api.twitch.tv/helix/search/channels
+      params:
+        query: "${{ args.query }}"
+        first: "${{ args.limit }}"
+      headers:
+        Client-Id: "${{ env.TWITCH_CLIENT_ID || '' }}"
+        Authorization: "Bearer ${{ env.TWITCH_TOKEN || '' }}"
+
+  - select: data
+
+  - map:
+      name: ${{ item.display_name }}
+      game: ${{ item.game_name }}
+      is_live: ${{ item.is_live }}
+      title: "${{ (item.title || '') | truncate(60) }}"
+      id: ${{ item.id }}
+
+  - limit: ${{ args.limit }}
+
+columns: [name, game, is_live, title]

@@ -1,0 +1,28 @@
+site: spotify
+name: now-playing
+description: Get currently playing track on Spotify
+type: web-api
+domain: api.spotify.com
+strategy: cookie
+
+args:
+  token:
+    type: str
+    required: true
+    description: Spotify API Bearer token
+
+pipeline:
+  - fetch:
+      url: https://api.spotify.com/v1/me/player/currently-playing
+      headers:
+        Authorization: "Bearer ${{ args.token }}"
+
+  - map:
+      track: "${{ item.item ? item.item.name : '' }}"
+      artist: "${{ item.item && item.item.artists ? item.item.artists[0].name : '' }}"
+      album: "${{ item.item ? item.item.album.name : '' }}"
+      progress: "${{ item.progress_ms || 0 }}"
+      duration: "${{ item.item ? item.item.duration_ms : 0 }}"
+      is_playing: ${{ item.is_playing }}
+
+columns: [track, artist, album, is_playing, progress, duration]

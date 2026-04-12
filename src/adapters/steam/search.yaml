@@ -1,0 +1,36 @@
+site: steam
+name: search
+description: Search Steam store for games
+domain: store.steampowered.com
+type: web-api
+strategy: public
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search query
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://store.steampowered.com/api/storesearch/
+      params:
+        term: "${{ args.query }}"
+        l: en
+        cc: US
+
+  - select: items
+
+  - map:
+      name: ${{ item.name }}
+      appid: ${{ item.id }}
+      price: "${{ item.price ? item.price.final / 100 : 'Free' }}"
+      url: ${{ 'https://store.steampowered.com/app/' + item.id }}
+
+  - limit: ${{ args.limit }}
+
+columns: [name, appid, price, url]

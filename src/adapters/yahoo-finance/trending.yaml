@@ -1,0 +1,30 @@
+site: yahoo-finance
+name: trending
+description: Yahoo Finance trending tickers
+domain: finance.yahoo.com
+type: web-api
+strategy: public
+
+args:
+  region:
+    type: str
+    default: US
+    description: Market region (US, HK, etc.)
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://query1.finance.yahoo.com/v1/finance/trending/${{ args.region }}
+      params:
+        count: "${{ args.limit }}"
+
+  - select: "finance.result[0].quotes"
+
+  - map:
+      symbol: ${{ item.symbol }}
+
+  - limit: ${{ args.limit }}
+
+columns: [symbol]

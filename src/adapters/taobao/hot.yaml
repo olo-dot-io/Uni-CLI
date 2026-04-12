@@ -1,0 +1,31 @@
+site: taobao
+name: hot
+description: Taobao hot search keywords
+domain: suggest.taobao.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://suggest.taobao.com/sug
+      params:
+        code: utf-8
+        q: ""
+        area: c2c
+        nick: ""
+
+  - select: result
+
+  - map:
+      rank: ${{ index + 1 }}
+      keyword: "${{ item[0] || '' }}"
+      count: "${{ item[1] || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, keyword, count]

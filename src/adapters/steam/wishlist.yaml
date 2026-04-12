@@ -1,0 +1,36 @@
+site: steam
+name: wishlist
+description: Get a Steam user's public wishlist
+domain: store.steampowered.com
+type: web-api
+strategy: public
+
+args:
+  steam_id:
+    required: true
+    positional: true
+    description: Steam user ID (numeric, e.g. 76561198012345678)
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: "https://store.steampowered.com/wishlist/profiles/${{ args.steam_id }}/wishlistdata/"
+      params:
+        p: "0"
+
+  - map:
+      appid: ${{ key }}
+      name: ${{ item.name }}
+      priority: ${{ item.priority }}
+      added: ${{ item.added }}
+      review_score: ${{ item.review_score }}
+
+  - sort:
+      by: priority
+      order: asc
+
+  - limit: ${{ args.limit }}
+
+columns: [name, appid, priority, review_score]

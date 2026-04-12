@@ -1,0 +1,36 @@
+site: 36kr
+name: latest
+description: Latest 36Kr tech news articles
+domain: 36kr.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://gateway.36kr.com/api/mis/nav/home/nav/rank/hot
+      method: POST
+      body:
+        partner_id: web
+        param:
+          subnavType: 2
+          pageSize: "${{ args.limit }}"
+          pageEvent: 0
+      headers:
+        Content-Type: application/json
+
+  - select: data.hotRankList
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: "${{ item.templateMaterial?.widgetTitle || '' }}"
+      author: "${{ item.templateMaterial?.authorName || '' }}"
+      url: "${{ item.templateMaterial?.itemId ? 'https://36kr.com/p/' + item.templateMaterial.itemId : '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, author, url]

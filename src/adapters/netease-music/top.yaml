@@ -1,0 +1,33 @@
+site: netease-music
+name: top
+description: NetEase Cloud Music top charts
+domain: music.163.com
+type: web-api
+strategy: public
+
+args:
+  id:
+    type: str
+    default: "3778678"
+    description: "Chart ID (3778678=new, 19723756=soaring, 3779629=original)"
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://music.163.com/api/playlist/detail
+      params:
+        id: "${{ args.id }}"
+
+  - select: result.tracks
+
+  - map:
+      rank: ${{ index + 1 }}
+      name: ${{ item.name }}
+      artist: "${{ item.artists ? item.artists[0].name : '' }}"
+      album: "${{ item.album ? item.album.name : '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, name, artist, album]

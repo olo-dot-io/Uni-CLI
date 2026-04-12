@@ -1,0 +1,37 @@
+site: pypi
+name: search
+description: Search PyPI packages via warehouse API
+type: web-api
+domain: pypi.org
+strategy: public
+
+args:
+  query:
+    required: true
+    positional: true
+    description: Search query
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: "https://pypi.org/search/"
+      params:
+        q: "${{ args.query }}"
+      headers:
+        Accept: "application/json"
+
+  - fetch:
+      url: "https://hugovk-pypi-tools.herokuapp.com/top"
+      params:
+        q: "${{ args.query }}"
+        limit: "${{ args.limit }}"
+
+  - map:
+      name: "${{ item.project || item.name || '' }}"
+      downloads: "${{ item.download_count || item.downloads || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [name, downloads]

@@ -1,0 +1,29 @@
+site: crates-io
+name: info
+description: Get Rust crate details from crates.io
+type: web-api
+domain: crates.io
+strategy: public
+
+args:
+  crate:
+    required: true
+    positional: true
+    description: Crate name
+
+pipeline:
+  - fetch:
+      url: "https://crates.io/api/v1/crates/${{ args.crate }}"
+      headers:
+        User-Agent: "unicli (github.com/olo-dot-io/uni-cli)"
+
+  - select: crate
+
+  - map:
+      name: ${{ item.name }}
+      version: ${{ item.max_version }}
+      downloads: ${{ item.downloads }}
+      description: ${{ item.description }}
+      repository: ${{ item.repository }}
+
+columns: [name, version, downloads, description, repository]

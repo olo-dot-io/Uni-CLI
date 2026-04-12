@@ -1,0 +1,33 @@
+site: reddit
+name: rising
+description: Reddit rising posts
+domain: www.reddit.com
+type: web-api
+strategy: public
+
+args:
+  subreddit:
+    type: str
+    description: Subreddit name (without r/)
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: "https://www.reddit.com/${{ args.subreddit ? 'r/' + args.subreddit + '/' : '' }}rising.json"
+      params:
+        limit: "${{ args.limit }}"
+
+  - select: data.children
+
+  - map:
+      title: "${{ item.data.title }}"
+      author: "${{ item.data.author }}"
+      subreddit: "${{ item.data.subreddit }}"
+      score: "${{ item.data.score }}"
+      comments: "${{ item.data.num_comments }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [title, author, subreddit, score, comments]

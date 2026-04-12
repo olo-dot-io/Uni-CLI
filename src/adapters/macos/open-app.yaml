@@ -1,0 +1,21 @@
+site: macos
+name: open-app
+description: Open a macOS application
+type: desktop
+binary: open
+detect: which open
+
+args:
+  app:
+    type: str
+    required: true
+    positional: true
+    description: Application name (e.g. Safari, Finder, Terminal)
+
+pipeline:
+  - exec:
+      command: open
+      args: ["-a", "${{ args.app }}"]
+      parse: text
+
+columns: [result]

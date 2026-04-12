@@ -1,0 +1,16 @@
+site: macos
+name: empty-trash
+description: Empty the macOS Trash
+type: desktop
+binary: osascript
+detect: which osascript
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-e"
+        - "tell application \"Finder\" to empty the trash"
+      parse: text
+
+columns: [result]

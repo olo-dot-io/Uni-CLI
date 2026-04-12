@@ -1,0 +1,27 @@
+site: homebrew
+name: search
+description: Search Homebrew formulae
+type: web-api
+domain: formulae.brew.sh
+strategy: public
+
+args:
+  query:
+    required: true
+    positional: true
+    description: Search query
+
+pipeline:
+  - fetch:
+      url: "https://formulae.brew.sh/api/formula.json"
+
+  - filter: "item.name.includes('${{ args.query }}') || (item.desc || '').toLowerCase().includes('${{ args.query }}'.toLowerCase())"
+
+  - map:
+      name: ${{ item.name }}
+      version: "${{ item.versions ? item.versions.stable : '' }}"
+      description: "${{ (item.desc || '') | truncate(80) }}"
+
+  - limit: 20
+
+columns: [name, version, description]

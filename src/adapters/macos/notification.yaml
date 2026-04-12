@@ -1,0 +1,27 @@
+site: macos
+name: notification
+description: Send a macOS notification
+type: desktop
+binary: osascript
+detect: which osascript
+
+args:
+  title:
+    type: str
+    required: true
+    positional: true
+    description: Notification title
+  message:
+    type: str
+    required: true
+    description: Notification message
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-e"
+        - "display notification \"${{ args.message }}\" with title \"${{ args.title }}\""
+      parse: text
+
+columns: [result]

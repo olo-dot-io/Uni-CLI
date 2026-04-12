@@ -1,0 +1,27 @@
+site: ithome
+name: hot
+description: IT Home hot news
+domain: www.ithome.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://m.ithome.com/api/news/hot
+
+  - select: data
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: "${{ item.title || '' }}"
+      comments: "${{ item.commentcount || 0 }}"
+      url: "${{ item.url || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, comments, url]

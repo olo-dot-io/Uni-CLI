@@ -1,0 +1,25 @@
+site: bluesky
+name: post
+description: Create a Bluesky post
+domain: bsky.social
+type: web-api
+strategy: cookie
+
+args:
+  text:
+    type: str
+    required: true
+    positional: true
+    description: Post text content
+
+pipeline:
+  - fetch:
+      url: https://bsky.social/xrpc/com.atproto.repo.createRecord
+      method: POST
+      body:
+        collection: app.bsky.feed.post
+        record:
+          text: "${{ args.text }}"
+          createdAt: "${{ new Date().toISOString() }}"
+
+columns: [uri, cid]

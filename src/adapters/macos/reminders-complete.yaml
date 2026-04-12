@@ -1,0 +1,33 @@
+site: macos
+name: reminders-complete
+description: Mark a reminder as complete in macOS Reminders.app
+type: desktop
+binary: osascript
+detect: which osascript
+
+args:
+  title:
+    type: str
+    required: true
+    positional: true
+    description: Reminder title to mark complete
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          const app = Application('Reminders');
+          const title = '${{ args.title }}';
+          let found = false;
+          for (const list of app.lists()) {
+            const rems = list.reminders.whose({name: title})();
+            for (const r of rems) { r.completed = true; found = true; }
+          }
+          JSON.stringify({ completed: found, title: title });
+      parse: json
+
+columns: [completed, title]

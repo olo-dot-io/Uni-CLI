@@ -1,0 +1,25 @@
+site: xueqiu
+name: market
+description: Xueqiu market indices overview
+domain: xueqiu.com
+type: web-api
+strategy: cookie
+auth_cookies: [xq_a_token]
+
+pipeline:
+  - fetch:
+      url: https://stock.xueqiu.com/v5/stock/batch/quote.json
+      params:
+        symbol: "SH000001,SZ399001,SZ399006,HKHSI,HKHSCEI,.DJI,.IXIC,.INX"
+        extend: detail
+
+  - select: data.items
+
+  - map:
+      name: "${{ item.quote?.name || '' }}"
+      symbol: "${{ item.quote?.symbol || '' }}"
+      current: "${{ item.quote?.current || '' }}"
+      change: "${{ item.quote?.percent || '' }}%"
+      volume: "${{ item.quote?.volume || '' }}"
+
+columns: [name, symbol, current, change, volume]

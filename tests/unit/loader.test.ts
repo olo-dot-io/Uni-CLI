@@ -29,12 +29,23 @@ describe("adapter loader", () => {
     }
   });
 
-  it("loads hackernews adapter with all 8 commands", () => {
+  it("loads hackernews adapter with all 10 commands", () => {
     const adapters = getAllAdapters();
     const hn = adapters.find((a) => a.name === "hackernews");
     expect(hn).toBeDefined();
     expect(Object.keys(hn!.commands).sort()).toEqual(
-      ["ask", "best", "jobs", "new", "search", "show", "top", "user"].sort(),
+      [
+        "ask",
+        "best",
+        "comments",
+        "item",
+        "jobs",
+        "new",
+        "search",
+        "show",
+        "top",
+        "user",
+      ].sort(),
     );
   });
 
@@ -49,11 +60,11 @@ describe("adapter loader", () => {
     expect(cmds).toContain("user");
   });
 
-  it("loads bluesky adapter with all 9 commands", () => {
+  it("loads bluesky adapter with all 12 commands", () => {
     const adapters = getAllAdapters();
     const bsky = adapters.find((a) => a.name === "bluesky");
     expect(bsky).toBeDefined();
-    expect(Object.keys(bsky!.commands).length).toBe(9);
+    expect(Object.keys(bsky!.commands).length).toBe(12);
   });
 
   it("parses adapter args correctly", () => {

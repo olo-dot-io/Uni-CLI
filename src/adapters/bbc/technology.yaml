@@ -1,0 +1,26 @@
+site: bbc
+name: technology
+description: BBC technology news
+domain: www.bbc.co.uk
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch_text:
+      url: https://feeds.bbci.co.uk/news/technology/rss.xml
+
+  - parse_rss:
+      fields:
+        title: title
+        description: description
+        link: link
+        pubDate: pubDate
+
+  - limit: "${{ args.limit }}"
+
+columns: [title, description, pubDate]

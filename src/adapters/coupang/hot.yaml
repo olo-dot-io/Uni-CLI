@@ -1,0 +1,29 @@
+site: coupang
+name: hot
+description: Coupang trending/popular products
+domain: www.coupang.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://www.coupang.com/np/goldbox
+      headers:
+        Accept: application/json
+
+  - select: data.products
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: "${{ (item.name || item.title || '') | truncate(80) }}"
+      price: "${{ item.price || item.salePrice || '' }}"
+      discount: "${{ item.discountRate || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, price, discount]

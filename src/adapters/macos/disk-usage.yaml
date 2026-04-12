@@ -1,0 +1,14 @@
+site: macos
+name: disk-usage
+description: Get disk usage summary
+type: desktop
+binary: df
+detect: which df
+
+pipeline:
+  - exec:
+      command: df
+      args: ["-h"]
+      parse: text
+
+columns: [result]

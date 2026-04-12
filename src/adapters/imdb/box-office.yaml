@@ -1,0 +1,28 @@
+site: imdb
+name: box-office
+description: IMDB box office / popular movies
+domain: www.imdb.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://imdb-api.tprojects.workers.dev/chart/boxoffice
+
+  - select: data
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: "${{ item.title || '' }}"
+      gross: "${{ item.gross || '' }}"
+      weeks: "${{ item.weeks || '' }}"
+      url: "${{ item.imdbid ? 'https://www.imdb.com/title/' + item.imdbid : '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, gross, weeks, url]

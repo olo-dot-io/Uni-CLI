@@ -1,0 +1,26 @@
+site: eastmoney
+name: market
+description: East Money market indices overview
+domain: push2.eastmoney.com
+type: web-api
+strategy: public
+
+pipeline:
+  - fetch:
+      url: https://push2.eastmoney.com/api/qt/ulist.np/get
+      params:
+        fltt: "2"
+        secids: "1.000001,0.399001,0.399006,100.HSI,100.HSCEI,105.NDX,105.DJIA,105.SPX"
+        fields: "f12,f14,f2,f3,f4,f6"
+
+  - select: data.diff
+
+  - map:
+      name: ${{ item.f14 }}
+      code: ${{ item.f12 }}
+      current: ${{ item.f2 }}
+      change_pct: "${{ item.f3 }}%"
+      change: ${{ item.f4 }}
+      volume: ${{ item.f6 }}
+
+columns: [name, code, current, change_pct, change, volume]

@@ -3,7 +3,7 @@
 > Internal design philosophy and naming conventions.
 > This document governs aesthetics, tone, and thematic decisions across the project.
 >
-> **Current version:** v0.209.0 — Vostok · Popovich (Vostok 4 cosmonaut, joint flight with Vostok 3 — first group flight in space).
+> **Current version:** v0.210.0 — Vostok · Komarov (Vladimir Komarov, Voskhod 1 commander — first multi-crew spaceflight, October 1964).
 
 ## Core Identity
 

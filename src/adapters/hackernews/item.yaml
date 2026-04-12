@@ -1,0 +1,28 @@
+site: hackernews
+name: item
+description: Get a Hacker News item (story, comment, job, poll)
+domain: news.ycombinator.com
+type: web-api
+strategy: public
+
+args:
+  id:
+    required: true
+    positional: true
+    description: Item ID
+
+pipeline:
+  - fetch:
+      url: "https://hacker-news.firebaseio.com/v0/item/${{ args.id }}.json"
+
+  - map:
+      id: ${{ item.id }}
+      type: ${{ item.type }}
+      title: "${{ item.title || '' }}"
+      author: "${{ item.by || '' }}"
+      score: "${{ item.score || 0 }}"
+      comments: "${{ item.descendants || 0 }}"
+      url: "${{ item.url || '' }}"
+      text: "${{ item.text ? (item.text) | strip_html | truncate(300) : '' }}"
+
+columns: [id, type, title, author, score, comments, url]

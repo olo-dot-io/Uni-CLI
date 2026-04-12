@@ -1,0 +1,20 @@
+site: ollama
+name: ps
+description: List running Ollama models
+type: service
+base: "http://localhost:11434"
+strategy: public
+
+pipeline:
+  - fetch:
+      url: http://localhost:11434/api/ps
+
+  - select: models
+
+  - map:
+      name: ${{ item.name }}
+      size: "${{ Math.round((item.size || 0) / 1073741824 * 10) / 10 }}GB"
+      digest: "${{ (item.digest || '') | truncate(12) }}"
+      expires_at: "${{ item.expires_at || '' }}"
+
+columns: [name, size, digest, expires_at]

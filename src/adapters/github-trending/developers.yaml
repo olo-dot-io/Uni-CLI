@@ -1,0 +1,33 @@
+site: github-trending
+name: developers
+description: GitHub trending developers
+domain: api.gitterapp.com
+type: web-api
+strategy: public
+
+args:
+  language:
+    type: str
+    description: Filter by language
+  since:
+    type: str
+    default: daily
+    choices: [daily, weekly, monthly]
+
+pipeline:
+  - fetch:
+      url: "https://api.gitterapp.com/developers"
+      params:
+        language: "${{ args.language || '' }}"
+        since: "${{ args.since }}"
+
+  - map:
+      rank: ${{ index + 1 }}
+      username: ${{ item.username }}
+      name: "${{ item.name || '' }}"
+      repo: "${{ item.repo ? item.repo.name : '' }}"
+      repo_desc: "${{ item.repo ? (item.repo.description || '') | truncate(60) : '' }}"
+
+  - limit: 25
+
+columns: [rank, username, name, repo, repo_desc]

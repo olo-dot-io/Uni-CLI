@@ -1,0 +1,37 @@
+site: slack
+name: users
+description: List Slack workspace users
+domain: slack.com
+type: web-api
+strategy: cookie
+
+args:
+  token:
+    type: str
+    required: true
+    description: Slack Bot/User token
+  limit:
+    type: int
+    default: 50
+
+pipeline:
+  - fetch:
+      url: https://slack.com/api/users.list
+      params:
+        token: "${{ args.token }}"
+        limit: "${{ args.limit }}"
+
+  - select: members
+
+  - filter: "!item.deleted && !item.is_bot"
+
+  - map:
+      name: "${{ item.real_name || item.name }}"
+      username: ${{ item.name }}
+      title: "${{ item.profile ? item.profile.title || '' : '' }}"
+      status: "${{ item.profile ? item.profile.status_text || '' : '' }}"
+      timezone: "${{ item.tz || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [name, username, title, status, timezone]

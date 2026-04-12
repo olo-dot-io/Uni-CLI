@@ -1,0 +1,34 @@
+site: hf
+name: spaces
+description: Search Hugging Face Spaces
+type: web-api
+domain: huggingface.co
+strategy: public
+
+args:
+  query:
+    type: str
+    positional: true
+    description: Search query
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://huggingface.co/api/spaces
+      params:
+        search: "${{ args.query || '' }}"
+        limit: "${{ args.limit }}"
+        sort: likes
+        direction: "-1"
+
+  - map:
+      id: ${{ item.id }}
+      likes: "${{ item.likes || 0 }}"
+      sdk: "${{ item.sdk || '' }}"
+      url: "${{ 'https://huggingface.co/spaces/' + item.id }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [id, likes, sdk, url]

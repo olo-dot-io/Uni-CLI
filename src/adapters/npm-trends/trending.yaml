@@ -1,0 +1,17 @@
+site: npm-trends
+name: trending
+description: Get trending npm packages
+type: web-api
+domain: npmtrends.com
+strategy: public
+
+pipeline:
+  - fetch:
+      url: https://api.npmjs.org/downloads/point/last-week
+
+  - map:
+      downloads: ${{ item.downloads }}
+      start: ${{ item.start }}
+      end: ${{ item.end }}
+
+columns: [downloads, start, end]

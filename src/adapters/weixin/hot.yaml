@@ -1,0 +1,22 @@
+site: weixin
+name: hot
+description: WeChat/Weixin hot articles trending
+domain: mp.weixin.qq.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch_text:
+      url: https://mp.weixin.qq.com/s?__biz=MjM5MjAwODM4MA==
+
+  - html_to_md: {}
+
+  - map:
+      content: "${{ (item || '') | truncate(500) }}"
+
+columns: [content]

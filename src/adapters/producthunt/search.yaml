@@ -1,0 +1,41 @@
+site: producthunt
+name: search
+description: Search Product Hunt products
+type: web-api
+domain: www.producthunt.com
+strategy: public
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://www.producthunt.com/frontend/graphql
+      method: POST
+      body:
+        operationName: SearchQuery
+        variables:
+          query: "${{ args.query }}"
+          first: "${{ args.limit }}"
+        query: "query SearchQuery($query: String!, $first: Int) { search(query: $query, first: $first, type: POSTS) { edges { node { ... on Post { name tagline votesCount commentsCount website } } } } }"
+      headers:
+        Content-Type: application/json
+
+  - select: data.search.edges
+
+  - map:
+      name: "${{ item.node ? item.node.name : '' }}"
+      tagline: "${{ item.node ? item.node.tagline : '' }}"
+      votes: "${{ item.node ? item.node.votesCount : 0 }}"
+      comments: "${{ item.node ? item.node.commentsCount : 0 }}"
+      website: "${{ item.node ? item.node.website : '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [name, tagline, votes, comments, website]

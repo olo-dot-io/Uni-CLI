@@ -1,0 +1,28 @@
+site: steam
+name: new-releases
+description: Steam new releases
+domain: store.steampowered.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 10
+
+pipeline:
+  - fetch:
+      url: https://store.steampowered.com/api/featuredcategories/
+
+  - select: new_releases.items
+
+  - map:
+      rank: ${{ index + 1 }}
+      name: ${{ item.name }}
+      price: ${{ item.final_price }}
+      discount: ${{ item.discount_percent }}
+      url: ${{ 'https://store.steampowered.com/app/' + item.id }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, name, price, discount, url]

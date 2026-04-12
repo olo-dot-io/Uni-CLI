@@ -1,0 +1,34 @@
+site: hf
+name: datasets
+description: Search Hugging Face datasets
+type: web-api
+domain: huggingface.co
+strategy: public
+
+args:
+  query:
+    type: str
+    positional: true
+    description: Search query
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://huggingface.co/api/datasets
+      params:
+        search: "${{ args.query || '' }}"
+        limit: "${{ args.limit }}"
+        sort: downloads
+        direction: "-1"
+
+  - map:
+      id: ${{ item.id }}
+      downloads: "${{ item.downloads || 0 }}"
+      likes: "${{ item.likes || 0 }}"
+      tags: "${{ (item.tags || []).slice(0,3).join(', ') }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [id, downloads, likes, tags]

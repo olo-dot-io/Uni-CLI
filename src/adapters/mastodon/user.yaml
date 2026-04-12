@@ -1,0 +1,32 @@
+site: mastodon
+name: user
+description: Get Mastodon user profile
+type: web-api
+domain: mastodon.social
+strategy: public
+
+args:
+  username:
+    required: true
+    positional: true
+    description: "Username (e.g. gargron@mastodon.social)"
+  instance:
+    type: str
+    default: mastodon.social
+
+pipeline:
+  - fetch:
+      url: "https://${{ args.instance }}/api/v1/accounts/lookup"
+      params:
+        acct: "${{ args.username }}"
+
+  - map:
+      username: ${{ item.acct }}
+      display_name: ${{ item.display_name }}
+      followers: ${{ item.followers_count }}
+      following: ${{ item.following_count }}
+      statuses: ${{ item.statuses_count }}
+      bio: "${{ (item.note || '') | strip_html | truncate(200) }}"
+      url: ${{ item.url }}
+
+columns: [username, display_name, followers, following, statuses, url]

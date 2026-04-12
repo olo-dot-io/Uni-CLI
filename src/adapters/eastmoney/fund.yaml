@@ -1,0 +1,36 @@
+site: eastmoney
+name: fund
+description: East Money fund search
+domain: fund.eastmoney.com
+type: web-api
+strategy: public
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Fund code or keyword
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://fundsuggest.eastmoney.com/FundSearch/api/FundSearchAPI.ashx
+      params:
+        m: "1"
+        key: "${{ args.query }}"
+
+  - select: Datas
+
+  - map:
+      code: "${{ item.CODE || '' }}"
+      name: "${{ item.NAME || '' }}"
+      type: "${{ item.FundType || '' }}"
+      nav: "${{ item.NAV || '' }}"
+      change: "${{ item.RZDF || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [code, name, type, nav, change]

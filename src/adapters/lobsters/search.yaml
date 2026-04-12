@@ -1,0 +1,35 @@
+site: lobsters
+name: search
+description: Search Lobsters stories
+type: web-api
+domain: lobste.rs
+strategy: public
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://lobste.rs/search.json
+      params:
+        q: "${{ args.query }}"
+        what: stories
+        order: relevance
+
+  - map:
+      title: ${{ item.title }}
+      score: ${{ item.score }}
+      author: "${{ item.submitter_user ? item.submitter_user.username : '' }}"
+      comments: ${{ item.comment_count }}
+      tags: "${{ (item.tags || []).join(', ') }}"
+      url: ${{ item.url }}
+
+  - limit: ${{ args.limit }}
+
+columns: [title, score, author, comments, tags]

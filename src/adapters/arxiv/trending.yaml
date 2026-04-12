@@ -1,0 +1,37 @@
+site: arxiv
+name: trending
+description: Recent arXiv papers by category (newest submissions)
+domain: export.arxiv.org
+type: web-api
+strategy: public
+
+args:
+  category:
+    type: str
+    default: cs.AI
+    positional: true
+    description: arXiv category (e.g. cs.AI, cs.LG, math.CO)
+  limit:
+    type: int
+    default: 10
+
+pipeline:
+  - fetch_text:
+      url: "https://export.arxiv.org/api/query"
+      params:
+        search_query: "cat:${{ args.category }}"
+        max_results: "${{ args.limit }}"
+        sortBy: submittedDate
+        sortOrder: descending
+
+  - parse_rss:
+      fields:
+        id: id
+        title: title
+        authors: author
+        published: published
+        summary: summary
+
+  - limit: "${{ args.limit }}"
+
+columns: [title, authors, published, id]

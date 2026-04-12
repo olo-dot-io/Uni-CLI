@@ -1,0 +1,16 @@
+site: macos
+name: active-app
+description: Get the currently active macOS application
+type: desktop
+binary: osascript
+detect: which osascript
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-e"
+        - "tell application \"System Events\" to get name of first application process whose frontmost is true"
+      parse: text
+
+columns: [result]

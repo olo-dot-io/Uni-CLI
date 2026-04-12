@@ -1,0 +1,42 @@
+site: spotify
+name: top-tracks
+description: Get user's top tracks on Spotify
+type: web-api
+domain: api.spotify.com
+strategy: cookie
+
+args:
+  token:
+    type: str
+    required: true
+    description: Spotify API Bearer token
+  time_range:
+    type: str
+    default: medium_term
+    choices: [short_term, medium_term, long_term]
+    description: Time range (short_term=4wk, medium_term=6mo, long_term=all)
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://api.spotify.com/v1/me/top/tracks
+      params:
+        time_range: "${{ args.time_range }}"
+        limit: "${{ args.limit }}"
+      headers:
+        Authorization: "Bearer ${{ args.token }}"
+
+  - select: items
+
+  - map:
+      rank: ${{ index + 1 }}
+      name: ${{ item.name }}
+      artist: "${{ item.artists[0].name }}"
+      album: ${{ item.album.name }}
+      popularity: ${{ item.popularity }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, name, artist, album, popularity]

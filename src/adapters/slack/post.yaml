@@ -1,0 +1,32 @@
+site: slack
+name: post
+description: Post a message to a Slack channel
+domain: slack.com
+type: web-api
+strategy: cookie
+
+args:
+  channel:
+    type: str
+    required: true
+    positional: true
+    description: Channel ID
+  text:
+    type: str
+    required: true
+    description: Message text
+  token:
+    type: str
+    required: true
+    description: Slack Bot/User token
+
+pipeline:
+  - fetch:
+      url: https://slack.com/api/chat.postMessage
+      method: POST
+      body:
+        token: "${{ args.token }}"
+        channel: "${{ args.channel }}"
+        text: "${{ args.text }}"
+
+columns: [ok, ts, channel]

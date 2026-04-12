@@ -1,0 +1,30 @@
+site: medium
+name: trending
+description: Medium trending articles
+type: web-api
+domain: medium.com
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 10
+
+pipeline:
+  - fetch:
+      url: https://medium.com/trending
+      headers:
+        Accept: application/json
+
+  - select: payload.references.Post
+
+  - map:
+      title: "${{ item.title || '' }}"
+      subtitle: "${{ (item.content?.subtitle || '') | truncate(80) }}"
+      claps: "${{ item.virtuals?.totalClapCount || 0 }}"
+      reading_time: "${{ Math.round(item.virtuals?.readingTime || 0) }}min"
+      url: "${{ 'https://medium.com/p/' + item.uniqueSlug }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [title, subtitle, claps, reading_time, url]

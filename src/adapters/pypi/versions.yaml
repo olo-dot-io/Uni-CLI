@@ -1,0 +1,31 @@
+site: pypi
+name: versions
+description: List all versions of a PyPI package
+type: web-api
+domain: pypi.org
+strategy: public
+
+args:
+  package:
+    required: true
+    positional: true
+    description: Package name
+
+pipeline:
+  - fetch:
+      url: "https://pypi.org/pypi/${{ args.package }}/json"
+
+  - select: releases
+
+  - map:
+      version: ${{ key }}
+      upload_date: "${{ item[0] ? item[0].upload_time_iso_8601 : '' }}"
+      python_requires: "${{ item[0] ? item[0].requires_python || '' : '' }}"
+
+  - sort:
+      by: upload_date
+      order: desc
+
+  - limit: 30
+
+columns: [version, upload_date, python_requires]

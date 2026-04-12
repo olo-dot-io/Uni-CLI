@@ -1,0 +1,27 @@
+site: unsplash
+name: random
+description: Get a random Unsplash photo
+type: web-api
+domain: api.unsplash.com
+strategy: public
+
+args:
+  query:
+    type: str
+    description: Optional topic filter
+
+pipeline:
+  - fetch:
+      url: https://unsplash.com/napi/photos/random
+      params:
+        query: "${{ args.query || '' }}"
+
+  - map:
+      id: ${{ item.id }}
+      description: "${{ (item.description || item.alt_description || '') | truncate(120) }}"
+      author: "${{ item.user ? item.user.name : '' }}"
+      likes: ${{ item.likes }}
+      url: "${{ item.urls ? item.urls.regular : '' }}"
+      download: "${{ item.links ? item.links.download : '' }}"
+
+columns: [id, description, author, likes, url]

@@ -1,0 +1,34 @@
+site: reddit
+name: new
+description: Reddit newest posts from all subreddits
+domain: www.reddit.com
+type: web-api
+strategy: public
+
+args:
+  subreddit:
+    type: str
+    description: Subreddit name (without r/)
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: "https://www.reddit.com/${{ args.subreddit ? 'r/' + args.subreddit + '/' : '' }}new.json"
+      params:
+        limit: "${{ args.limit }}"
+
+  - select: data.children
+
+  - map:
+      title: "${{ item.data.title }}"
+      author: "${{ item.data.author }}"
+      subreddit: "${{ item.data.subreddit }}"
+      score: "${{ item.data.score }}"
+      comments: "${{ item.data.num_comments }}"
+      url: "${{ 'https://www.reddit.com' + item.data.permalink }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [title, author, subreddit, score, comments]

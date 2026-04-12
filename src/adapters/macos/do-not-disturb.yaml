@@ -1,0 +1,21 @@
+site: macos
+name: do-not-disturb
+description: Toggle macOS Focus/Do Not Disturb mode
+type: desktop
+binary: osascript
+detect: which osascript
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          const app = Application.currentApplication();
+          app.includeStandardAdditions = true;
+          app.doShellScript('defaults -currentHost read com.apple.notificationcenterui doNotDisturb 2>/dev/null || echo 0');
+      parse: text
+
+columns: [result]

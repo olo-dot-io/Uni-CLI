@@ -1,0 +1,26 @@
+site: docker-hub
+name: info
+description: Get Docker Hub image details
+type: web-api
+domain: hub.docker.com
+strategy: public
+
+args:
+  image:
+    required: true
+    positional: true
+    description: "Image name (e.g. library/nginx, bitnami/redis)"
+
+pipeline:
+  - fetch:
+      url: "https://hub.docker.com/v2/repositories/${{ args.image }}"
+
+  - map:
+      name: ${{ item.name }}
+      namespace: ${{ item.namespace }}
+      description: "${{ (item.description || '') | truncate(100) }}"
+      stars: ${{ item.star_count }}
+      pulls: ${{ item.pull_count }}
+      last_updated: ${{ item.last_updated }}
+
+columns: [name, namespace, stars, pulls, last_updated, description]

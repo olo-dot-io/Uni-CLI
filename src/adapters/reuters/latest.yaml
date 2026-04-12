@@ -1,0 +1,26 @@
+site: reuters
+name: latest
+description: Latest Reuters news articles
+domain: www.reuters.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch_text:
+      url: https://www.reutersagency.com/feed/?taxonomy=best-topics&post_type=best
+
+  - parse_rss:
+      fields:
+        title: title
+        link: link
+        pubDate: pubDate
+        description: description
+
+  - limit: "${{ args.limit }}"
+
+columns: [title, description, pubDate]

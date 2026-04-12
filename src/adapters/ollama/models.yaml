@@ -1,0 +1,29 @@
+site: ollama
+name: models
+description: List available Ollama models in registry
+type: service
+base: "http://localhost:11434"
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://ollama.com/api/models
+      params:
+        limit: "${{ args.limit }}"
+
+  - select: models
+
+  - map:
+      name: ${{ item.name }}
+      size: "${{ item.size || '' }}"
+      modified: "${{ item.modified || '' }}"
+      description: "${{ (item.description || '') | truncate(80) }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [name, size, modified, description]

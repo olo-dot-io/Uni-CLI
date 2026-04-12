@@ -1,0 +1,33 @@
+site: cocoapods
+name: info
+description: Get CocoaPods pod details
+type: web-api
+domain: cocoapods.org
+strategy: public
+
+args:
+  pod:
+    required: true
+    positional: true
+    description: Pod name (e.g. "Alamofire", "SnapKit")
+
+pipeline:
+  - fetch:
+      url: "https://trunk.cocoapods.org/api/v1/pods/${{ args.pod }}"
+
+  - map:
+      name: ${{ item.name || '' }}
+      versions: "${{ item.versions ? item.versions.length : 0 }}"
+
+  - fetch:
+      url: "https://trunk.cocoapods.org/api/v1/pods/${{ args.pod }}/specs/latest"
+
+  - map:
+      name: ${{ item.name }}
+      version: ${{ item.version }}
+      summary: "${{ item.summary || '' }}"
+      homepage: "${{ item.homepage || '' }}"
+      license: "${{ item.license ? (item.license.type || item.license) : '' }}"
+      source: "${{ item.source ? item.source.git || '' : '' }}"
+
+columns: [name, version, summary, homepage, license]

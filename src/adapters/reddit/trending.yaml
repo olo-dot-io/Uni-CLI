@@ -1,0 +1,25 @@
+site: reddit
+name: trending
+description: Reddit trending subreddits
+domain: www.reddit.com
+type: web-api
+strategy: public
+
+pipeline:
+  - fetch:
+      url: https://www.reddit.com/subreddits/popular.json
+      params:
+        limit: "25"
+
+  - select: data.children
+
+  - map:
+      name: "${{ item.data.display_name }}"
+      title: "${{ item.data.title }}"
+      subscribers: "${{ item.data.subscribers }}"
+      description: "${{ (item.data.public_description || '') | truncate(100) }}"
+      url: "${{ 'https://www.reddit.com' + item.data.url }}"
+
+  - limit: 25
+
+columns: [name, subscribers, title, description]

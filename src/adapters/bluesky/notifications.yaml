@@ -1,0 +1,30 @@
+site: bluesky
+name: notifications
+description: Get Bluesky notifications
+domain: bsky.social
+type: web-api
+strategy: cookie
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://bsky.social/xrpc/app.bsky.notification.listNotifications
+      params:
+        limit: "${{ args.limit }}"
+
+  - select: notifications
+
+  - map:
+      reason: ${{ item.reason }}
+      author: "${{ item.author ? item.author.handle : '' }}"
+      text: "${{ item.record?.text ? (item.record.text) | truncate(100) : '' }}"
+      indexed_at: ${{ item.indexedAt }}
+      is_read: ${{ item.isRead }}
+
+  - limit: ${{ args.limit }}
+
+columns: [reason, author, text, indexed_at, is_read]

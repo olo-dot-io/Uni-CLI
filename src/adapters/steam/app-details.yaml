@@ -1,0 +1,32 @@
+site: steam
+name: app-details
+description: Get Steam game details by appid
+domain: store.steampowered.com
+type: web-api
+strategy: public
+
+args:
+  appid:
+    required: true
+    positional: true
+    description: Steam app ID (numeric)
+
+pipeline:
+  - fetch:
+      url: "https://store.steampowered.com/api/appdetails"
+      params:
+        appids: "${{ args.appid }}"
+
+  - select: "${{ args.appid }}.data"
+
+  - map:
+      name: ${{ item.name }}
+      type: ${{ item.type }}
+      developers: "${{ (item.developers || []).join(', ') }}"
+      publishers: "${{ (item.publishers || []).join(', ') }}"
+      price: "${{ item.price_overview ? item.price_overview.final_formatted : 'Free' }}"
+      metacritic: "${{ item.metacritic ? item.metacritic.score : '' }}"
+      release_date: "${{ item.release_date ? item.release_date.date : '' }}"
+      description: "${{ (item.short_description || '') | truncate(120) }}"
+
+columns: [name, type, developers, price, metacritic, release_date]

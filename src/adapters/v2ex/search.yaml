@@ -1,0 +1,36 @@
+site: v2ex
+name: search
+description: Search V2EX topics via SOV2EX
+domain: www.sov2ex.com
+type: web-api
+strategy: public
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://www.sov2ex.com/api/search
+      params:
+        q: "${{ args.query }}"
+        from: "0"
+        size: "${{ args.limit }}"
+
+  - select: hits
+
+  - map:
+      title: "${{ item._source ? item._source.title : '' }}"
+      node: "${{ item._source ? item._source.node : '' }}"
+      author: "${{ item._source ? item._source.member : '' }}"
+      replies: "${{ item._source ? item._source.replies : 0 }}"
+      created: "${{ item._source ? item._source.created : '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [title, node, author, replies, created]

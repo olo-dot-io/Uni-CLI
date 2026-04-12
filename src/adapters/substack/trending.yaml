@@ -1,0 +1,28 @@
+site: substack
+name: trending
+description: Trending Substack posts
+type: web-api
+domain: substack.com
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://substack.com/api/v1/trending
+      params:
+        limit: "${{ args.limit }}"
+
+  - map:
+      title: "${{ item.title || '' }}"
+      subtitle: "${{ (item.subtitle || '') | truncate(80) }}"
+      publication: "${{ item.publishedBylines?.[0]?.name || '' }}"
+      reactions: "${{ item.reactions || 0 }}"
+      url: "${{ item.canonical_url || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [title, publication, reactions, subtitle, url]

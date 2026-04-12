@@ -1,0 +1,35 @@
+site: zhihu
+name: topic
+description: Get Zhihu topic best answers
+domain: www.zhihu.com
+type: web-api
+strategy: cookie
+auth_cookies: [z_c0]
+
+args:
+  topic_id:
+    required: true
+    positional: true
+    description: Topic ID (numeric)
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: "https://www.zhihu.com/api/v4/topics/${{ args.topic_id }}/feeds/top_activity"
+      params:
+        limit: "${{ args.limit }}"
+
+  - select: data
+
+  - map:
+      type: "${{ item.target ? item.target.type : '' }}"
+      title: "${{ item.target?.question?.title || item.target?.title || '' }}"
+      author: "${{ item.target?.author?.name || '' }}"
+      voteup: "${{ item.target?.voteup_count || 0 }}"
+      excerpt: "${{ (item.target?.excerpt || '') | strip_html | truncate(150) }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [title, author, voteup, excerpt]

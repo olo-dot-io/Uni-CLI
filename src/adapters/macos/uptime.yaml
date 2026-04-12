@@ -1,0 +1,14 @@
+site: macos
+name: uptime
+description: Get system uptime
+type: desktop
+binary: uptime
+detect: which uptime
+
+pipeline:
+  - exec:
+      command: uptime
+      args: []
+      parse: text
+
+columns: [result]

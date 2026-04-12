@@ -1,0 +1,28 @@
+site: weibo
+name: trending
+description: Weibo trending topics (real-time hot search)
+domain: weibo.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 50
+
+pipeline:
+  - fetch:
+      url: https://weibo.com/ajax/side/hotSearch
+
+  - select: data.realtime
+
+  - map:
+      rank: ${{ item.rank || index + 1 }}
+      keyword: "${{ item.word || item.note || '' }}"
+      category: "${{ item.category || '' }}"
+      num: "${{ item.num || item.raw_hot || '' }}"
+      label: "${{ item.label_name || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, keyword, num, category, label]

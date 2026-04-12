@@ -1,0 +1,28 @@
+site: macos
+name: shortcuts-run
+description: Run a Shortcuts.app shortcut
+type: desktop
+binary: shortcuts
+detect: which shortcuts
+
+args:
+  name:
+    type: str
+    required: true
+    positional: true
+    description: Shortcut name
+  input:
+    type: str
+    description: Input text for the shortcut
+
+pipeline:
+  - exec:
+      command: shortcuts
+      args:
+        - "run"
+        - "${{ args.name }}"
+        - "${{ args.input ? '--input-path' : '' }}"
+        - "${{ args.input || '' }}"
+      parse: text
+
+columns: [result]

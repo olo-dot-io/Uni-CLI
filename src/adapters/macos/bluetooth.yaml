@@ -1,0 +1,14 @@
+site: macos
+name: bluetooth
+description: Check macOS Bluetooth status
+type: desktop
+binary: system_profiler
+detect: which system_profiler
+
+pipeline:
+  - exec:
+      command: system_profiler
+      args: ["SPBluetoothDataType", "-json"]
+      parse: json
+
+columns: [result]

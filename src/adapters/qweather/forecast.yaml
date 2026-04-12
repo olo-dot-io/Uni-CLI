@@ -1,0 +1,37 @@
+site: qweather
+name: forecast
+description: Weather forecast from QWeather
+domain: devapi.qweather.com
+type: web-api
+strategy: public
+
+args:
+  location:
+    type: str
+    required: true
+    positional: true
+    description: "City name or location ID"
+  key:
+    type: str
+    required: true
+    description: QWeather API key
+
+pipeline:
+  - fetch:
+      url: "https://devapi.qweather.com/v7/weather/3d"
+      params:
+        location: "${{ args.location }}"
+        key: "${{ args.key }}"
+
+  - select: daily
+
+  - map:
+      date: ${{ item.fxDate }}
+      day: "${{ item.textDay }}"
+      night: "${{ item.textNight }}"
+      temp_max: "${{ item.tempMax }}°C"
+      temp_min: "${{ item.tempMin }}°C"
+      humidity: "${{ item.humidity }}%"
+      wind: "${{ item.windDirDay }} ${{ item.windScaleDay }}"
+
+columns: [date, day, night, temp_max, temp_min, humidity, wind]

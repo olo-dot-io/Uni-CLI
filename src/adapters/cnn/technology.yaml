@@ -1,0 +1,26 @@
+site: cnn
+name: technology
+description: CNN technology news
+domain: edition.cnn.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch_text:
+      url: http://rss.cnn.com/rss/edition_technology.rss
+
+  - parse_rss:
+      fields:
+        title: title
+        description: description
+        link: link
+        pubDate: pubDate
+
+  - limit: "${{ args.limit }}"
+
+columns: [title, description, pubDate]

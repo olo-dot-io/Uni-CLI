@@ -1,0 +1,34 @@
+site: netease-music
+name: playlist
+description: Get NetEase Cloud Music playlist tracks
+domain: music.163.com
+type: web-api
+strategy: public
+
+args:
+  id:
+    required: true
+    positional: true
+    description: Playlist ID
+  limit:
+    type: int
+    default: 30
+
+pipeline:
+  - fetch:
+      url: https://music.163.com/api/playlist/detail
+      params:
+        id: "${{ args.id }}"
+
+  - select: result.tracks
+
+  - map:
+      name: ${{ item.name }}
+      artist: "${{ item.artists ? item.artists[0].name : '' }}"
+      album: "${{ item.album ? item.album.name : '' }}"
+      duration: "${{ Math.floor((item.duration || 0) / 60000) }}:${{ String(Math.floor(((item.duration || 0) % 60000) / 1000)).padStart(2, '0') }}"
+      id: ${{ item.id }}
+
+  - limit: ${{ args.limit }}
+
+columns: [name, artist, album, duration]

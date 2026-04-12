@@ -1,0 +1,31 @@
+site: twitch
+name: games
+description: Get top games on Twitch by viewer count
+type: web-api
+domain: api.twitch.tv
+strategy: cookie
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://api.twitch.tv/helix/games/top
+      params:
+        first: "${{ args.limit }}"
+      headers:
+        Client-Id: "${{ env.TWITCH_CLIENT_ID || '' }}"
+        Authorization: "Bearer ${{ env.TWITCH_TOKEN || '' }}"
+
+  - select: data
+
+  - map:
+      rank: ${{ index + 1 }}
+      name: ${{ item.name }}
+      id: ${{ item.id }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, name, id]

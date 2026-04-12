@@ -1,0 +1,26 @@
+site: bbc
+name: top
+description: BBC top news headlines
+domain: www.bbc.co.uk
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch_text:
+      url: https://feeds.bbci.co.uk/news/rss.xml
+
+  - parse_rss:
+      fields:
+        title: title
+        description: description
+        link: link
+        pubDate: pubDate
+
+  - limit: "${{ args.limit }}"
+
+columns: [title, description, pubDate]

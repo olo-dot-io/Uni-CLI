@@ -1,0 +1,36 @@
+site: pinduoduo
+name: search
+description: Search Pinduoduo products
+domain: mobile.yangkeduo.com
+type: web-api
+strategy: cookie
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Product search query
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://mobile.yangkeduo.com/proxy/api/search
+      params:
+        q: "${{ args.query }}"
+        page: "1"
+        size: "${{ args.limit }}"
+
+  - select: items
+
+  - map:
+      title: "${{ (item.title || item.goodsName || '') | truncate(80) }}"
+      price: "${{ item.priceInfo?.price || item.price || '' }}"
+      sales: "${{ item.sales || '' }}"
+      url: "${{ item.linkUrl || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [title, price, sales, url]

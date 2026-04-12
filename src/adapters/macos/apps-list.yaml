@@ -1,0 +1,14 @@
+site: macos
+name: apps-list
+description: List installed macOS applications
+type: desktop
+binary: ls
+detect: which ls
+
+pipeline:
+  - exec:
+      command: ls
+      args: ["/Applications"]
+      parse: lines
+
+columns: [name]

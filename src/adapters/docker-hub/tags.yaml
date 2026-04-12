@@ -1,0 +1,34 @@
+site: docker-hub
+name: tags
+description: List Docker Hub image tags
+type: web-api
+domain: hub.docker.com
+strategy: public
+
+args:
+  image:
+    required: true
+    positional: true
+    description: "Image name (e.g. library/nginx)"
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: "https://hub.docker.com/v2/repositories/${{ args.image }}/tags"
+      params:
+        page_size: "${{ args.limit }}"
+        ordering: last_updated
+
+  - select: results
+
+  - map:
+      name: ${{ item.name }}
+      size: "${{ Math.round((item.full_size || 0) / 1048576) }}MB"
+      last_updated: ${{ item.last_updated }}
+      digest: "${{ (item.digest || '') | truncate(24) }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [name, size, last_updated, digest]

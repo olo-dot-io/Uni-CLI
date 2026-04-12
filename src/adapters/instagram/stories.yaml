@@ -1,0 +1,29 @@
+site: instagram
+name: stories
+description: Get Instagram stories for a user
+domain: www.instagram.com
+type: web-api
+strategy: cookie
+auth_cookies: [sessionid, csrftoken]
+
+args:
+  user_id:
+    required: true
+    positional: true
+    description: User ID (numeric)
+
+pipeline:
+  - fetch:
+      url: "https://www.instagram.com/api/v1/feed/reels_media/"
+      params:
+        reel_ids: "${{ args.user_id }}"
+
+  - select: "reels_media[0].items"
+
+  - map:
+      id: ${{ item.id }}
+      type: "${{ item.media_type === 1 ? 'photo' : 'video' }}"
+      taken_at: ${{ item.taken_at }}
+      url: "${{ item.image_versions2 ? item.image_versions2.candidates[0].url : '' }}"
+
+columns: [id, type, taken_at, url]

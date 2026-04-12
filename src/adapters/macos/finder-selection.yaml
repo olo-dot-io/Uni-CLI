@@ -1,0 +1,22 @@
+site: macos
+name: finder-selection
+description: Get currently selected files in Finder
+type: desktop
+binary: osascript
+detect: which osascript
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          const finder = Application('Finder');
+          const sel = finder.selection();
+          const out = sel.map(item => ({ name: item.name(), path: item.url().replace('file://', '') }));
+          JSON.stringify(out);
+      parse: json
+
+columns: [name, path]

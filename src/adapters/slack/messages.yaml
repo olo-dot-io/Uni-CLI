@@ -1,0 +1,41 @@
+site: slack
+name: messages
+description: Read Slack channel messages
+domain: slack.com
+type: web-api
+strategy: cookie
+
+args:
+  channel:
+    type: str
+    required: true
+    positional: true
+    description: Channel ID
+  token:
+    type: str
+    required: true
+    description: Slack Bot/User token
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://slack.com/api/conversations.history
+      params:
+        token: "${{ args.token }}"
+        channel: "${{ args.channel }}"
+        limit: "${{ args.limit }}"
+
+  - select: messages
+
+  - map:
+      user: ${{ item.user }}
+      text: "${{ (item.text || '') | truncate(200) }}"
+      ts: ${{ item.ts }}
+      type: ${{ item.type }}
+      reactions: "${{ item.reactions ? item.reactions.length : 0 }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [user, text, ts, reactions]

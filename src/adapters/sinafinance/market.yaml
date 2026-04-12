@@ -1,0 +1,21 @@
+site: sinafinance
+name: market
+description: Sina Finance stock market overview
+domain: hq.sinajs.cn
+type: web-api
+strategy: public
+
+args:
+  symbols:
+    type: str
+    default: "sh000001,sz399001,sz399006,hkHSI"
+    description: "Comma-separated stock symbols"
+
+pipeline:
+  - fetch_text:
+      url: "https://hq.sinajs.cn/list=${{ args.symbols }}"
+
+  - map:
+      content: "${{ item }}"
+
+columns: [content]

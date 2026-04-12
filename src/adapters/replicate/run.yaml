@@ -1,0 +1,39 @@
+site: replicate
+name: run
+description: Run a Replicate AI model
+type: web-api
+domain: api.replicate.com
+strategy: cookie
+
+args:
+  model:
+    type: str
+    required: true
+    positional: true
+    description: "Model version (owner/model:version)"
+  input:
+    type: str
+    required: true
+    description: JSON input for the model
+  token:
+    type: str
+    required: true
+    description: Replicate API token
+
+pipeline:
+  - fetch:
+      url: https://api.replicate.com/v1/predictions
+      method: POST
+      body:
+        version: "${{ args.model.split(':')[1] || args.model }}"
+        input: "${{ JSON.parse(args.input) }}"
+      headers:
+        Authorization: "Token ${{ args.token }}"
+        Content-Type: application/json
+
+  - map:
+      id: ${{ item.id }}
+      status: ${{ item.status }}
+      urls: "${{ item.urls ? item.urls.get : '' }}"
+
+columns: [id, status, urls]

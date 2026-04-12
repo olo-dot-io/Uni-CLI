@@ -1,0 +1,30 @@
+site: stackoverflow
+name: tags
+description: Popular StackOverflow tags
+type: web-api
+domain: api.stackexchange.com
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://api.stackexchange.com/2.3/tags
+      params:
+        order: desc
+        sort: popular
+        site: stackoverflow
+        pagesize: "${{ args.limit }}"
+
+  - select: items
+
+  - map:
+      name: ${{ item.name }}
+      count: ${{ item.count }}
+
+  - limit: ${{ args.limit }}
+
+columns: [name, count]

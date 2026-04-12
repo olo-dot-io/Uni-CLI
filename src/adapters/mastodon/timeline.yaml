@@ -1,0 +1,33 @@
+site: mastodon
+name: timeline
+description: Get Mastodon public timeline
+type: web-api
+domain: mastodon.social
+strategy: public
+
+args:
+  instance:
+    type: str
+    default: mastodon.social
+    description: Mastodon instance domain
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: "https://${{ args.instance }}/api/v1/timelines/public"
+      params:
+        limit: "${{ args.limit }}"
+
+  - map:
+      author: "${{ item.account ? item.account.acct : '' }}"
+      content: "${{ (item.content || '') | strip_html | truncate(200) }}"
+      created: ${{ item.created_at }}
+      reblogs: ${{ item.reblogs_count }}
+      favourites: ${{ item.favourites_count }}
+      url: ${{ item.url }}
+
+  - limit: ${{ args.limit }}
+
+columns: [author, content, reblogs, favourites, created]

@@ -1,0 +1,47 @@
+site: linkedin
+name: jobs
+description: Search LinkedIn job postings
+domain: www.linkedin.com
+type: web-api
+strategy: cookie
+auth_cookies: [li_at, JSESSIONID]
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Job search query
+  location:
+    type: str
+    description: Location filter
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://www.linkedin.com/voyager/api/voyagerJobsDashJobCards
+      params:
+        decorationId: "com.linkedin.voyager.dash.deco.jobs.search.JobSearchCardsCollection-186"
+        q: jserpFilters
+        queryContext: "List(primaryHitType->JOBS,spellCorrectionEnabled->true)"
+        keywords: "${{ args.query }}"
+        locationFallback: "${{ args.location || '' }}"
+        count: "${{ args.limit }}"
+      headers:
+        csrf-token: "${{ cookies.JSESSIONID }}"
+
+  - select: "included"
+
+  - filter: "item.title || item.entityCustomTrackingInfo"
+
+  - map:
+      title: "${{ item.title || '' }}"
+      company: "${{ item.primaryDescription?.text || '' }}"
+      location: "${{ item.secondaryDescription?.text || '' }}"
+      posted: "${{ item.tertiaryDescription?.text || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [title, company, location, posted]

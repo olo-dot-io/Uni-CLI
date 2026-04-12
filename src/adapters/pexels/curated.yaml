@@ -1,0 +1,31 @@
+site: pexels
+name: curated
+description: Get Pexels curated photos
+type: web-api
+domain: api.pexels.com
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://api.pexels.com/v1/curated
+      params:
+        per_page: "${{ args.limit }}"
+      headers:
+        Authorization: "${{ env.PEXELS_API_KEY || '' }}"
+
+  - select: photos
+
+  - map:
+      id: ${{ item.id }}
+      photographer: ${{ item.photographer }}
+      alt: "${{ (item.alt || '') | truncate(80) }}"
+      url: "${{ item.src ? item.src.large : '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [id, photographer, alt, url]
