@@ -1,0 +1,27 @@
+site: coinbase
+name: prices
+description: Get cryptocurrency spot prices from Coinbase
+domain: api.coinbase.com
+type: web-api
+strategy: public
+browser: false
+
+args:
+  pair:
+    type: str
+    default: BTC-USD
+    positional: true
+    description: Trading pair (e.g. BTC-USD, ETH-USD)
+
+pipeline:
+  - fetch:
+      url: https://api.coinbase.com/v2/prices/${{ args.pair }}/spot
+
+  - select: data
+
+  - map:
+      pair: ${{ args.pair }}
+      price: ${{ item.amount }}
+      currency: ${{ item.currency }}
+
+columns: [pair, price, currency]

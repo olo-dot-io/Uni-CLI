@@ -10,6 +10,9 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { fetchDaemonStatus, sendCommand } from "./daemon-client.js";
+import { getRemoteEndpoint, CDPClient } from "./cdp-client.js";
+import { BrowserPage } from "./page.js";
+import { isRemoteBrowser } from "./launcher.js";
 import type { DaemonCommand } from "./protocol.js";
 import type {
   IPage,
@@ -48,16 +51,46 @@ export class BridgeConnectionError extends Error {
   }
 }
 
+/**
+ * Structured connection error for remote CDP endpoints.
+ * Thrown when connection to a remote browser fails.
+ */
+export class RemoteConnectionError extends Error {
+  readonly retryable = true;
+  readonly suggestion: string;
+
+  constructor(message: string, endpoint: string) {
+    super(message);
+    this.name = "RemoteConnectionError";
+    this.suggestion = `Check that the remote CDP endpoint is reachable: ${endpoint}`;
+  }
+
+  /** JSON output for AI agents */
+  toAgentJSON() {
+    return {
+      error: this.message,
+      retryable: this.retryable,
+      step: -1,
+      action: "remote_browser_connect",
+      suggestion: this.suggestion,
+      exit_code: 69, // SERVICE_UNAVAILABLE
+    };
+  }
+}
+
 // ── Constants ──────────────────────────────────────────────────────
 
 const DAEMON_SPAWN_TIMEOUT = 10_000; // 10s to start daemon
 const DAEMON_POLL_INTERVAL = 200;
+const REMOTE_CONNECT_RETRIES = 2;
+const REMOTE_RETRY_DELAY = 1000;
 
 // ── BrowserBridge ──────────────────────────────────────────────────
 
 export class BrowserBridge {
-  private _page: DaemonPage | null = null;
+  private _page: DaemonPage | IPage | null = null;
   private _state: "idle" | "connecting" | "connected" | "closed" = "idle";
+  private _remotePage: BrowserPage | null = null;
 
   async connect(opts?: {
     timeout?: number;
@@ -66,6 +99,16 @@ export class BrowserBridge {
     if (this._state === "connected" && this._page) return this._page;
 
     this._state = "connecting";
+
+    // Remote browser takes priority — skip daemon entirely
+    if (isRemoteBrowser()) {
+      const page = await this.connectRemote();
+      this._page = page;
+      this._remotePage = page;
+      this._state = "connected";
+      return page;
+    }
+
     const timeout = opts?.timeout ?? DAEMON_SPAWN_TIMEOUT;
     const workspace = opts?.workspace ?? "default";
 
@@ -77,9 +120,48 @@ export class BrowserBridge {
   }
 
   async close(): Promise<void> {
+    if (this._remotePage) {
+      await this._remotePage.close();
+      this._remotePage = null;
+    }
     // Does NOT kill daemon — daemon auto-exits on idle
     this._state = "closed";
     this._page = null;
+  }
+
+  /**
+   * Connect to a remote CDP endpoint with retry logic.
+   * Handles Cloudflare Browser Rendering and any standard CDP WebSocket.
+   */
+  private async connectRemote(): Promise<BrowserPage> {
+    const remote = getRemoteEndpoint();
+    if (!remote) {
+      throw new RemoteConnectionError(
+        "UNICLI_CDP_ENDPOINT is not set",
+        "(none)",
+      );
+    }
+
+    let lastError: Error | null = null;
+    for (let attempt = 0; attempt <= REMOTE_CONNECT_RETRIES; attempt++) {
+      try {
+        const client = await CDPClient.connectToRemote(
+          remote.endpoint,
+          Object.keys(remote.headers).length > 0 ? remote.headers : undefined,
+        );
+        return new BrowserPage(client);
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        if (attempt < REMOTE_CONNECT_RETRIES) {
+          await new Promise((r) => setTimeout(r, REMOTE_RETRY_DELAY));
+        }
+      }
+    }
+
+    throw new RemoteConnectionError(
+      `Failed to connect to remote CDP endpoint after ${String(REMOTE_CONNECT_RETRIES + 1)} attempts: ${lastError?.message ?? "unknown error"}`,
+      remote.endpoint,
+    );
   }
 
   private async ensureDaemon(timeout: number): Promise<void> {

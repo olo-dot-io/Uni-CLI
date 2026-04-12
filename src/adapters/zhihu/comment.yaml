@@ -1,0 +1,42 @@
+site: zhihu
+name: comment
+description: Get comments on a Zhihu answer or article
+domain: www.zhihu.com
+type: web-api
+strategy: cookie
+auth_cookies: [z_c0]
+
+args:
+  type:
+    required: true
+    positional: true
+    description: "Content type: answer or article"
+  id:
+    required: true
+    positional: true
+    description: Answer or article ID
+  limit:
+    type: int
+    default: 20
+    description: Number of comments
+
+pipeline:
+  - fetch:
+      url: https://www.zhihu.com/api/v4/comment_v5/${{ args.type }}s/${{ args.id }}/root_comment
+      params:
+        limit: "${{ args.limit }}"
+        offset: "0"
+        order_by: score
+
+  - select: data
+
+  - map:
+      author: ${{ item.author?.name || '' }}
+      content: ${{ (item.content || '') | strip_html | slice(0, 200) }}
+      likes: ${{ item.like_count || 0 }}
+      replies: ${{ item.child_comment_count || 0 }}
+      created: ${{ item.created_time || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [author, content, likes, replies, created]

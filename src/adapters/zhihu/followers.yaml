@@ -1,0 +1,37 @@
+site: zhihu
+name: followers
+description: List followers of a Zhihu user
+domain: www.zhihu.com
+type: web-api
+strategy: cookie
+auth_cookies: [z_c0]
+
+args:
+  id:
+    required: true
+    positional: true
+    description: User URL token
+  limit:
+    type: int
+    default: 20
+    description: Number of followers
+
+pipeline:
+  - fetch:
+      url: https://www.zhihu.com/api/v4/members/${{ args.id }}/followers
+      params:
+        limit: "${{ args.limit }}"
+        offset: "0"
+
+  - select: data
+
+  - map:
+      rank: ${{ index + 1 }}
+      name: ${{ item.name || '' }}
+      headline: ${{ (item.headline || '') | slice(0, 80) }}
+      followers: ${{ item.follower_count || 0 }}
+      answer_count: ${{ item.answer_count || 0 }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, name, headline, followers, answer_count]

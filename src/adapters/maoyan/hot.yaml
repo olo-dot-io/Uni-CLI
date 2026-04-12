@@ -1,0 +1,33 @@
+site: maoyan
+name: hot
+description: Maoyan current hot movies (box office)
+domain: piaofang.maoyan.com
+type: web-api
+strategy: public
+browser: false
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of movies
+
+pipeline:
+  - fetch:
+      url: https://piaofang.maoyan.com/dashboard-ajax/movie
+      headers:
+        Referer: https://piaofang.maoyan.com/dashboard
+
+  - select: movieList.data.list
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.movieInfo?.movieName || '' }}
+      box_office: ${{ item.boxSplitUnit?.num || '' }}
+      box_unit: ${{ item.boxSplitUnit?.unit || '' }}
+      show_count: ${{ item.showCount || '' }}
+      audience: ${{ item.audienceCount || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, box_office, box_unit, show_count, audience]

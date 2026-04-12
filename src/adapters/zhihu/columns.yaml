@@ -1,0 +1,38 @@
+site: zhihu
+name: columns
+description: Get articles from a Zhihu column (zhuanlan)
+domain: zhuanlan.zhihu.com
+type: web-api
+strategy: cookie
+auth_cookies: [z_c0]
+
+args:
+  id:
+    required: true
+    positional: true
+    description: Column ID (URL slug)
+  limit:
+    type: int
+    default: 20
+    description: Number of articles
+
+pipeline:
+  - fetch:
+      url: https://www.zhihu.com/api/v4/columns/${{ args.id }}/items
+      params:
+        limit: "${{ args.limit }}"
+        offset: "0"
+
+  - select: data
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.title || '' }}
+      author: ${{ item.author?.name || '' }}
+      voteup: ${{ item.voteup_count || 0 }}
+      comments: ${{ item.comment_count || 0 }}
+      url: ${{ 'https://zhuanlan.zhihu.com/p/' + (item.id || '') }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, author, voteup, comments, url]

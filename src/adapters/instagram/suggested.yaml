@@ -1,0 +1,40 @@
+site: instagram
+name: suggested
+description: Get suggested users to follow on Instagram
+domain: www.instagram.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 15
+    description: Number of suggested users
+
+columns: [rank, username, name, verified, followers, bio]
+
+pipeline:
+  - navigate: https://www.instagram.com
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const headers = { 'X-IG-App-ID': '936619743392459' };
+        const opts = { credentials: 'include', headers };
+
+        const res = await fetch(
+          'https://www.instagram.com/api/v1/discover/ayml/',
+          opts
+        );
+        if (!res.ok) throw new Error('HTTP ' + res.status + ' - make sure you are logged in');
+        const data = await res.json();
+        const users = data?.suggested_users?.suggestions || data?.groups?.[0]?.items || [];
+        return users.slice(0, limit).map((item, i) => ({
+          rank: i + 1,
+          username: item.user?.username || '',
+          name: item.user?.full_name || '',
+          verified: item.user?.is_verified ? 'Yes' : 'No',
+          followers: item.user?.follower_count ?? '',
+          bio: (item.user?.biography || item.description || '').replace(/\n/g, ' ').substring(0, 80),
+        }));
+      })()

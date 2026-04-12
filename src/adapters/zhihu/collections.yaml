@@ -1,0 +1,37 @@
+site: zhihu
+name: collections
+description: List Zhihu collections (favorites) for a user
+domain: www.zhihu.com
+type: web-api
+strategy: cookie
+auth_cookies: [z_c0]
+
+args:
+  id:
+    required: true
+    positional: true
+    description: User URL token
+  limit:
+    type: int
+    default: 20
+    description: Number of collections
+
+pipeline:
+  - fetch:
+      url: https://www.zhihu.com/api/v4/people/${{ args.id }}/collections
+      params:
+        limit: "${{ args.limit }}"
+        offset: "0"
+
+  - select: data
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.title || '' }}
+      item_count: ${{ item.item_count || 0 }}
+      follower_count: ${{ item.follower_count || 0 }}
+      id: ${{ item.id || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, item_count, follower_count, id]

@@ -1,0 +1,39 @@
+site: kuaishou
+name: hot
+description: Kuaishou trending videos
+domain: www.kuaishou.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of videos
+
+columns: [rank, title, author, likes, url]
+
+pipeline:
+  - navigate:
+      url: https://www.kuaishou.com/brilliant
+      settleMs: 4000
+
+  - scroll:
+      times: 2
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const cards = document.querySelectorAll('[class*="video-card"], [class*="feed-item"], a[href*="/short-video/"]');
+        return Array.from(cards).slice(0, limit).map((card, i) => {
+          const title = clean(card.querySelector('[class*="title"], [class*="caption"], [class*="desc"]')?.textContent);
+          const author = clean(card.querySelector('[class*="author"], [class*="nickname"], [class*="user-name"]')?.textContent);
+          const likes = clean(card.querySelector('[class*="like"], [class*="count"]')?.textContent);
+          const link = card.querySelector('a[href*="/short-video/"]') || card.closest('a');
+          return {
+            rank: i + 1, title: title.substring(0, 100), author, likes,
+            url: link?.href || '',
+          };
+        }).filter(r => r.title || r.author);
+      })()

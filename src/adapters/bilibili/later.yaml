@@ -1,0 +1,31 @@
+site: bilibili
+name: later
+description: Bilibili watch later list
+domain: api.bilibili.com
+type: web-api
+strategy: cookie
+auth_cookies: [SESSDATA, bili_jct]
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of items
+
+pipeline:
+  - fetch:
+      url: https://api.bilibili.com/x/v2/history/toview
+
+  - select: data.list
+
+  - map:
+      title: ${{ item.title || '' }}
+      author: ${{ item.owner?.name || '' }}
+      bvid: ${{ item.bvid || '' }}
+      views: ${{ item.stat?.view || 0 }}
+      progress: ${{ item.progress || 0 }}
+      duration: ${{ item.duration || 0 }}
+
+  - limit: ${{ args.limit }}
+
+columns: [title, author, bvid, views, progress, duration]

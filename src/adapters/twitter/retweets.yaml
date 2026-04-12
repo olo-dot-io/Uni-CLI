@@ -1,0 +1,44 @@
+site: twitter
+name: retweets
+description: Get users who retweeted a specific tweet
+domain: x.com
+strategy: intercept
+browser: true
+
+args:
+  url:
+    type: str
+    required: true
+    positional: true
+    description: Tweet URL
+  limit:
+    type: int
+    default: 20
+    description: Number of users
+
+columns: [rank, name, username, verified, followers]
+
+pipeline:
+  - navigate: ${{ args.url }}/retweets
+  - wait: 4000
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const cells = document.querySelectorAll('[data-testid="cellInnerDiv"]');
+        const results = [];
+        for (const cell of Array.from(cells).slice(0, limit)) {
+          const nameEl = cell.querySelector('[data-testid="UserCell"] a div[dir="ltr"] span');
+          const handleEl = cell.querySelector('[data-testid="UserCell"] a[tabindex="-1"]');
+          const verifiedEl = cell.querySelector('svg[data-testid="icon-verified"]');
+          const bioEl = cell.querySelector('[data-testid="UserCell"] [dir="auto"]:last-child');
+          if (!nameEl) continue;
+          results.push({
+            rank: results.length + 1,
+            name: (nameEl?.textContent || '').trim(),
+            username: (handleEl?.textContent || '').replace('@', '').trim(),
+            verified: verifiedEl ? 'Yes' : 'No',
+            followers: '',
+          });
+        }
+        return results;
+      })()

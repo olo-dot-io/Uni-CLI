@@ -1,0 +1,44 @@
+site: xiaohongshu
+name: hashtag
+description: "Browse notes under a Xiaohongshu hashtag/topic"
+domain: www.xiaohongshu.com
+strategy: intercept
+browser: true
+
+args:
+  tag:
+    type: str
+    required: true
+    positional: true
+    description: Hashtag or topic keyword
+  limit:
+    type: int
+    default: 20
+    description: Number of notes
+
+columns: [rank, title, author, likes, url]
+
+pipeline:
+  - navigate: https://www.xiaohongshu.com/search_result?keyword=${{ args.tag | urlencode }}&source=web_search_result_notes
+  - wait: 4000
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const items = document.querySelectorAll('section.note-item');
+        const results = [];
+        for (const item of Array.from(items).slice(0, limit)) {
+          const titleEl = item.querySelector('.title, a span');
+          const authorEl = item.querySelector('.author-wrapper .name, .author .name');
+          const likesEl = item.querySelector('.like-wrapper .count, .like .count, [class*="like"] span');
+          const linkEl = item.querySelector('a[href*="/explore/"], a[href*="/discovery/item/"]');
+          results.push({
+            rank: results.length + 1,
+            title: (titleEl?.textContent || '').trim().substring(0, 80),
+            author: (authorEl?.textContent || '').trim(),
+            likes: (likesEl?.textContent || '0').trim(),
+            url: linkEl ? 'https://www.xiaohongshu.com' + linkEl.getAttribute('href') : '',
+          });
+        }
+        if (!results.length) throw new Error('No notes found for this hashtag');
+        return results;
+      })()

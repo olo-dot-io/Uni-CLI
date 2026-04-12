@@ -1,0 +1,40 @@
+site: ele
+name: hot
+description: Ele.me trending restaurants
+domain: www.ele.me
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of restaurants
+
+columns: [rank, name, rating, monthly_sales, delivery_time, min_price]
+
+pipeline:
+  - navigate:
+      url: https://www.ele.me/home/
+      settleMs: 4000
+
+  - scroll:
+      times: 2
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const cards = document.querySelectorAll('[class*="shopcard"], [class*="restaurant"], [class*="shop-item"]');
+        return Array.from(cards).slice(0, limit).map((card, i) => {
+          const name = clean(card.querySelector('[class*="name"], h3, [class*="title"]')?.textContent);
+          const rating = clean(card.querySelector('[class*="rating"], [class*="score"]')?.textContent);
+          const sales = clean(card.querySelector('[class*="sale"], [class*="order"]')?.textContent);
+          const delivery = clean(card.querySelector('[class*="delivery"], [class*="time"]')?.textContent);
+          const price = clean(card.querySelector('[class*="price"], [class*="start-fee"]')?.textContent);
+          return {
+            rank: i + 1, name, rating, monthly_sales: sales,
+            delivery_time: delivery, min_price: price,
+          };
+        }).filter(r => r.name);
+      })()

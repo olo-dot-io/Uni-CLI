@@ -1,0 +1,37 @@
+site: zhihu
+name: pins
+description: List Zhihu pins (thoughts/status updates) by a user
+domain: www.zhihu.com
+type: web-api
+strategy: cookie
+auth_cookies: [z_c0]
+
+args:
+  id:
+    required: true
+    positional: true
+    description: User URL token
+  limit:
+    type: int
+    default: 20
+    description: Number of pins
+
+pipeline:
+  - fetch:
+      url: https://www.zhihu.com/api/v4/members/${{ args.id }}/pins
+      params:
+        limit: "${{ args.limit }}"
+        offset: "0"
+
+  - select: data
+
+  - map:
+      rank: ${{ index + 1 }}
+      content: ${{ (item.content?.[0]?.content || '') | strip_html | slice(0, 200) }}
+      likes: ${{ item.like_count || 0 }}
+      comments: ${{ item.comment_count || 0 }}
+      created: ${{ item.created || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, content, likes, comments, created]

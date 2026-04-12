@@ -1,0 +1,29 @@
+site: bilibili
+name: trending
+description: Bilibili trending searches
+domain: api.bilibili.com
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of trending items
+
+pipeline:
+  - fetch:
+      url: https://api.bilibili.com/x/web-interface/wbi/search/square
+      params:
+        limit: "${{ args.limit }}"
+
+  - select: data.trending.list
+
+  - map:
+      rank: ${{ index + 1 }}
+      keyword: ${{ item.keyword || item.show_name || '' }}
+      icon: ${{ item.icon || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, keyword, icon]

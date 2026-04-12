@@ -1,0 +1,42 @@
+site: youtube
+name: shorts
+description: Get YouTube Shorts from a channel or trending
+domain: www.youtube.com
+strategy: intercept
+browser: true
+
+args:
+  channel:
+    type: str
+    positional: true
+    description: Channel handle (@name) or ID (omit for trending shorts)
+  limit:
+    type: int
+    default: 20
+    description: Number of shorts
+
+columns: [rank, title, views, url]
+
+pipeline:
+  - navigate: https://www.youtube.com/${{ args.channel ? args.channel + '/shorts' : 'feed/shorts' }}
+  - wait: 4000
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const items = document.querySelectorAll('ytd-rich-item-renderer, ytd-reel-item-renderer, ytd-grid-video-renderer');
+        const results = [];
+        for (const item of Array.from(items).slice(0, limit)) {
+          const titleEl = item.querySelector('#video-title, .shortsLockupViewModelHostOutsideMetadataTitle span, h3 a');
+          const viewsEl = item.querySelector('.shortsLockupViewModelHostOutsideMetadataSubhead span, #metadata-line span, .inline-metadata-item');
+          const linkEl = item.querySelector('a[href*="/shorts/"], a#video-title-link, h3 a');
+          const href = linkEl?.getAttribute('href') || '';
+          if (!titleEl) continue;
+          results.push({
+            rank: results.length + 1,
+            title: (titleEl.textContent || '').trim().substring(0, 80),
+            views: (viewsEl?.textContent || '').trim(),
+            url: href.startsWith('http') ? href : href ? 'https://www.youtube.com' + href : '',
+          });
+        }
+        return results;
+      })()

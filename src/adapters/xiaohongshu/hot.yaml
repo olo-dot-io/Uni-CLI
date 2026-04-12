@@ -1,0 +1,34 @@
+site: xiaohongshu
+name: hot
+description: "Xiaohongshu trending/hot notes"
+domain: www.xiaohongshu.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of items
+
+columns: [rank, title, author, likes, type, url]
+
+pipeline:
+  - navigate: https://www.xiaohongshu.com/explore
+  - tap:
+      store: feed
+      action: fetchFeeds
+      capture: homefeed
+      select: data.items
+      timeout: 8
+  - sort:
+      by: note_card.interact_info.liked_count
+      order: desc
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.note_card.display_title }}
+      type: ${{ item.note_card.type }}
+      author: ${{ item.note_card.user.nickname }}
+      likes: ${{ item.note_card.interact_info.liked_count }}
+      url: https://www.xiaohongshu.com/explore/${{ item.id }}
+  - limit: ${{ args.limit | default(20) }}

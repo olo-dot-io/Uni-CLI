@@ -12,6 +12,14 @@ import { getElectronApp, type ElectronAppEntry } from "../electron-apps.js";
 
 const DEFAULT_CDP_PORT = 9222;
 
+/**
+ * Check if a remote browser is configured via UNICLI_CDP_ENDPOINT.
+ * When true, local Chrome launch should be skipped entirely.
+ */
+export function isRemoteBrowser(): boolean {
+  return !!process.env.UNICLI_CDP_ENDPOINT;
+}
+
 /** Known Chrome executable paths by platform */
 const CHROME_PATHS: Record<string, string[]> = {
   darwin: [

@@ -1,0 +1,43 @@
+site: twitter
+name: spaces
+description: Browse live and upcoming Twitter/X Spaces
+domain: x.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 10
+    description: Number of spaces
+
+columns: [rank, title, host, listeners, state, url]
+
+pipeline:
+  - navigate: https://x.com/i/spaces
+  - wait: 5000
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        await new Promise(r => setTimeout(r, 3000));
+        const cards = document.querySelectorAll('[data-testid="card.wrapper"], [data-testid="cellInnerDiv"]');
+        const results = [];
+        for (const card of Array.from(cards).slice(0, limit * 2)) {
+          const titleEl = card.querySelector('[data-testid="card.layoutLarge.detail"] span, [dir="ltr"] span');
+          const linkEl = card.querySelector('a[href*="/i/spaces/"]');
+          if (!titleEl || !linkEl) continue;
+          const text = card.textContent || '';
+          const listenersMatch = text.match(/(\d[\d,]*)\s*(?:listening|listeners?|人在听)/i);
+          const hostEl = card.querySelector('[data-testid="UserCell"] span, .r-1awozwy');
+          results.push({
+            rank: results.length + 1,
+            title: (titleEl.textContent || '').trim().substring(0, 80),
+            host: (hostEl?.textContent || '').trim(),
+            listeners: listenersMatch ? listenersMatch[1] : '0',
+            state: /live|直播/i.test(text) ? 'Live' : 'Scheduled',
+            url: 'https://x.com' + linkEl.getAttribute('href'),
+          });
+          if (results.length >= limit) break;
+        }
+        return results;
+      })()

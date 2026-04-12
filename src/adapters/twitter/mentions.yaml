@@ -1,0 +1,38 @@
+site: twitter
+name: mentions
+description: Get recent mentions/replies for the logged-in Twitter/X user
+domain: x.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of mentions
+
+columns: [rank, author, text, date, url]
+
+pipeline:
+  - navigate: https://x.com/notifications/mentions
+  - wait: 4000
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const articles = document.querySelectorAll('article[data-testid="tweet"]');
+        const results = [];
+        for (const article of Array.from(articles).slice(0, limit)) {
+          const userEl = article.querySelector('[data-testid="User-Name"]');
+          const textEl = article.querySelector('[data-testid="tweetText"]');
+          const timeEl = article.querySelector('time');
+          const linkEl = article.querySelector('a[href*="/status/"]');
+          results.push({
+            rank: results.length + 1,
+            author: (userEl?.textContent || '').split('@').pop()?.split('\n')[0]?.trim() || '',
+            text: (textEl?.textContent || '').substring(0, 140),
+            date: timeEl?.getAttribute('datetime')?.slice(0, 10) || '',
+            url: linkEl ? 'https://x.com' + linkEl.getAttribute('href') : '',
+          });
+        }
+        return results;
+      })()

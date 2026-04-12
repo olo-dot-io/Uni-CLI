@@ -1,0 +1,43 @@
+site: dianping
+name: hot
+description: Dianping trending restaurants
+domain: www.dianping.com
+strategy: intercept
+browser: true
+
+args:
+  city:
+    type: str
+    default: beijing
+    description: City slug (e.g. beijing, shanghai, guangzhou)
+  limit:
+    type: int
+    default: 20
+    description: Number of restaurants
+
+columns: [rank, name, category, rating, avg_price, address, url]
+
+pipeline:
+  - navigate:
+      url: https://www.dianping.com/${{ args.city }}/ch10
+      settleMs: 4000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const cards = document.querySelectorAll('[class*="shop-list"] li, .shoplist li, [class*="poi-list"] li');
+        return Array.from(cards).slice(0, limit).map((card, i) => {
+          const link = card.querySelector('a[href*="/shop/"]');
+          const name = clean(link?.textContent || card.querySelector('[class*="tit"], h4')?.textContent);
+          const category = clean(card.querySelector('[class*="tag"], [class*="cuisine"], .tag')?.textContent);
+          const rating = clean(card.querySelector('[class*="score"], [class*="star"]')?.textContent);
+          const price = clean(card.querySelector('[class*="price"], .mean-price')?.textContent);
+          const address = clean(card.querySelector('[class*="addr"], .addr')?.textContent);
+          return {
+            rank: i + 1, name, category, rating,
+            avg_price: price, address,
+            url: link?.href || '',
+          };
+        }).filter(r => r.name);
+      })()

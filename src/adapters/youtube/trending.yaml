@@ -1,0 +1,41 @@
+site: youtube
+name: trending
+description: Get YouTube trending videos
+domain: www.youtube.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of trending videos
+
+columns: [rank, title, channel, views, duration, url]
+
+pipeline:
+  - navigate: https://www.youtube.com/feed/trending
+  - wait: 4000
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const items = document.querySelectorAll('ytd-video-renderer, ytd-rich-item-renderer');
+        const results = [];
+        for (const item of Array.from(items).slice(0, limit)) {
+          const titleEl = item.querySelector('#video-title');
+          const channelEl = item.querySelector('#channel-name a, .ytd-channel-name a, yt-formatted-string.ytd-channel-name');
+          const viewsEl = item.querySelector('#metadata-line span, .inline-metadata-item');
+          const durationEl = item.querySelector('badge-shape .badge-shape-wiz__text, ytd-thumbnail-overlay-time-status-renderer span, .ytd-thumbnail-overlay-time-status-renderer');
+          const linkEl = item.querySelector('a#video-title-link, a#video-title, h3 a');
+          const href = linkEl?.getAttribute('href') || titleEl?.getAttribute('href') || '';
+          results.push({
+            rank: results.length + 1,
+            title: (titleEl?.textContent || '').trim().substring(0, 80),
+            channel: (channelEl?.textContent || '').trim(),
+            views: (viewsEl?.textContent || '').trim(),
+            duration: (durationEl?.textContent || '').trim(),
+            url: href.startsWith('http') ? href : href ? 'https://www.youtube.com' + href : '',
+          });
+        }
+        return results;
+      })()

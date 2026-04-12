@@ -1,0 +1,27 @@
+site: zhihu
+name: article
+description: Get a Zhihu article (zhuanlan) by ID
+domain: zhuanlan.zhihu.com
+type: web-api
+strategy: cookie
+auth_cookies: [z_c0]
+
+args:
+  id:
+    required: true
+    positional: true
+    description: Article ID
+
+pipeline:
+  - fetch:
+      url: https://www.zhihu.com/api/v4/articles/${{ args.id }}
+
+  - map:
+      title: ${{ item.title || '' }}
+      author: ${{ item.author?.name || '' }}
+      content: ${{ (item.content || '') | strip_html | slice(0, 300) }}
+      voteup: ${{ item.voteup_count || 0 }}
+      comments: ${{ item.comment_count || 0 }}
+      created: ${{ item.created || '' }}
+
+columns: [title, author, content, voteup, comments, created]

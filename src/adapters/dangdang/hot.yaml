@@ -1,0 +1,38 @@
+site: dangdang
+name: hot
+description: Dangdang bestseller book list
+domain: bang.dangdang.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of books
+
+columns: [rank, title, author, publisher, price, rating, url]
+
+pipeline:
+  - navigate:
+      url: http://bang.dangdang.com/books/bestsellers/01.00.00.00.00.00-recent7-0-0-1-1
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const items = document.querySelectorAll('.bang_list li, .bang_list_mode li, ul.bang_list li');
+        return Array.from(items).slice(0, limit).map((item, i) => {
+          const link = item.querySelector('.name a, [class*="title"] a');
+          const title = clean(link?.textContent);
+          const author = clean(item.querySelector('.publisher_info a, [class*="author"] a')?.textContent);
+          const publisher = clean(item.querySelector('.publisher_info span a, [class*="press"] a')?.textContent);
+          const price = clean(item.querySelector('.price .price_n, .price_e')?.textContent);
+          const rating = clean(item.querySelector('[class*="star"], .rating')?.textContent);
+          return {
+            rank: i + 1, title, author, publisher, price, rating,
+            url: link?.href || '',
+          };
+        }).filter(r => r.title);
+      })()

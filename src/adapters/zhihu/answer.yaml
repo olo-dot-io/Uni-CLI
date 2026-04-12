@@ -1,0 +1,29 @@
+site: zhihu
+name: answer
+description: Get a specific Zhihu answer by ID
+domain: www.zhihu.com
+type: web-api
+strategy: cookie
+auth_cookies: [z_c0]
+
+args:
+  id:
+    required: true
+    positional: true
+    description: Answer ID
+
+pipeline:
+  - fetch:
+      url: https://www.zhihu.com/api/v4/answers/${{ args.id }}
+      params:
+        include: "content,voteup_count,comment_count,created_time"
+
+  - map:
+      author: ${{ item.author?.name || '' }}
+      question: ${{ item.question?.title || '' }}
+      content: ${{ (item.content || '') | strip_html | slice(0, 300) }}
+      voteup: ${{ item.voteup_count || 0 }}
+      comments: ${{ item.comment_count || 0 }}
+      created: ${{ item.created_time || '' }}
+
+columns: [author, question, content, voteup, comments, created]

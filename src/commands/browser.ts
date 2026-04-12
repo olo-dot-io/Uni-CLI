@@ -15,7 +15,7 @@ import {
   launchChrome,
   getCDPPort,
 } from "../browser/launcher.js";
-import { CDPClient } from "../browser/cdp-client.js";
+import { CDPClient, getRemoteEndpoint } from "../browser/cdp-client.js";
 
 export function registerBrowserCommands(program: Command): void {
   const browser = program
@@ -97,6 +97,114 @@ export function registerBrowserCommands(program: Command): void {
 
       console.log(chalk.green(`Chrome CDP connected on port ${String(port)}`));
       await printTargetSummary(port);
+    });
+
+  // unicli browser remote
+  browser
+    .command("remote")
+    .description("Manage remote CDP browser endpoint (Cloudflare, etc.)")
+    .option("--status", "Show remote endpoint info and connectivity")
+    .option("--connect <endpoint>", "Test connection to a remote CDP endpoint")
+    .action(async (opts: { status?: boolean; connect?: string }) => {
+      if (opts.connect) {
+        // Test connection to a specific endpoint
+        console.log(chalk.dim(`Testing connection to: ${opts.connect}`));
+        const client = new CDPClient();
+        try {
+          await client.connect(opts.connect);
+          console.log(chalk.green("Connected successfully"));
+          // Try to get browser version info
+          try {
+            const info = (await client.send("Browser.getVersion")) as {
+              product?: string;
+              userAgent?: string;
+            };
+            if (info.product) {
+              console.log(chalk.dim(`  Browser: ${info.product}`));
+            }
+            if (info.userAgent) {
+              console.log(
+                chalk.dim(
+                  `  User-Agent: ${info.userAgent.slice(0, 80)}${info.userAgent.length > 80 ? "..." : ""}`,
+                ),
+              );
+            }
+          } catch {
+            // Non-fatal — version info is optional
+          }
+          await client.close();
+        } catch (err) {
+          console.error(
+            chalk.red(
+              `Connection failed: ${err instanceof Error ? err.message : String(err)}`,
+            ),
+          );
+          process.exitCode = 1;
+        }
+        return;
+      }
+
+      // Default: --status behavior
+      const remote = getRemoteEndpoint();
+      if (!remote) {
+        console.log(chalk.yellow("No remote CDP endpoint configured"));
+        console.log(
+          chalk.dim(
+            "Set UNICLI_CDP_ENDPOINT to a WebSocket URL (e.g., wss://browser.example.com)",
+          ),
+        );
+        console.log(
+          chalk.dim(
+            "Optional: set UNICLI_CDP_HEADERS to a JSON string of auth headers",
+          ),
+        );
+        return;
+      }
+
+      console.log(chalk.green("Remote CDP endpoint configured"));
+      console.log(chalk.dim(`  Endpoint: ${remote.endpoint}`));
+
+      const headerCount = Object.keys(remote.headers).length;
+      if (headerCount > 0) {
+        console.log(chalk.dim(`  Headers: ${String(headerCount)} configured`));
+        for (const key of Object.keys(remote.headers)) {
+          console.log(chalk.dim(`    ${key}: ****`));
+        }
+      } else {
+        console.log(chalk.dim("  Headers: none"));
+      }
+
+      // Test connectivity
+      console.log(chalk.dim("  Testing connection..."));
+      const client = new CDPClient();
+      try {
+        await client.connect(
+          remote.endpoint,
+          Object.keys(remote.headers).length > 0
+            ? { headers: remote.headers }
+            : undefined,
+        );
+        console.log(chalk.green("  Status: connected"));
+
+        try {
+          const info = (await client.send("Browser.getVersion")) as {
+            product?: string;
+          };
+          if (info.product) {
+            console.log(chalk.dim(`  Browser: ${info.product}`));
+          }
+        } catch {
+          // Non-fatal
+        }
+
+        await client.close();
+      } catch (err) {
+        console.log(
+          chalk.red(
+            `  Status: unreachable (${err instanceof Error ? err.message : String(err)})`,
+          ),
+        );
+      }
     });
 
   // unicli browser cookies <domain>

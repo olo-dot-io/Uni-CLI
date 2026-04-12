@@ -1,28 +1,46 @@
 ---
 name: unicli-explorer
 description: >
-  Guide for creating new unicli adapters. Use when building a new adapter for
-  a website, desktop app, or service that unicli doesn't yet support.
+  Create new Uni-CLI adapters by exploring websites and APIs. Use when adding
+  support for a new site, desktop app, or service that unicli doesn't cover yet.
+version: 1.0.0
+triggers:
+  - "create adapter"
+  - "new adapter"
+  - "add site"
+  - "explore site"
+allowed-tools: [Bash, Read, Write]
+protocol: 2.0
 ---
 
-# Creating unicli Adapters
+## When to Use
 
-## Decision Tree
+Adding a new website, API, or local app to Uni-CLI's adapter catalog (~20-line YAML files).
 
+## Workflow
+
+### 1. Discover the API
+
+```bash
+unicli browser start                     # Ensure Chrome is running
+unicli operate open <target-url>         # Navigate to target page
+unicli operate state                     # Inspect DOM structure
+unicli operate network                   # List captured JSON API requests
+unicli operate click <ref>               # Trigger lazy-loaded APIs
+unicli operate network                   # Check for new requests
 ```
-Is it a public REST API?
-  → Yes: YAML adapter, type: web-api, strategy: public
-  → No: Does it need browser login?
-    → Yes, simple fetch with cookies: YAML, strategy: cookie
-    → Yes, request interception: YAML, strategy: intercept
-    → Yes, DOM interaction: TypeScript, strategy: ui
-    → No: Is it a local app?
-      → CLI exists: YAML, type: desktop or bridge
-      → HTTP API (localhost): YAML, type: service
-      → No CLI or API: TypeScript adapter
-```
 
-## YAML Adapter Template
+### 2. Choose Strategy
+
+| Condition | Strategy | Browser? |
+|-----------|----------|----------|
+| `fetch(url)` returns data | `public` | No |
+| Needs login cookies | `cookie` | Yes |
+| Needs CSRF/Bearer token | `header` | Yes |
+| Complex signed requests | `intercept` | Yes |
+| No API, DOM only | `ui` | Yes |
+
+### 3. Write YAML Adapter
 
 Create `src/adapters/<site>/<command>.yaml`:
 
@@ -32,92 +50,37 @@ name: mycommand
 description: What this command does
 type: web-api
 strategy: public
-
 args:
-  query:
-    type: str
-    required: true
-    positional: true
-    description: Search query
-  limit:
-    type: int
-    default: 20
-
+  query: { type: str, required: true, positional: true }
+  limit: { type: int, default: 20 }
 pipeline:
-  - fetch:
-      url: "https://api.example.com/search"
-      params:
-        q: "${{ args.query }}"
-        limit: "${{ args.limit }}"
-      retry: 2
-      backoff: 500
-
+  - fetch: { url: "https://api.example.com/search", params: { q: "${{ args.query }}" } }
   - select: data.results
-
-  - map:
-      rank: "${{ index + 1 }}"
-      title: "${{ item.title }}"
-      url: "${{ item.url }}"
-
+  - map: { title: "${{ item.title }}", url: "${{ item.url }}" }
   - limit: ${{ args.limit }}
-
-columns: [rank, title, url]
+columns: [title, url]
 ```
 
-## Pipeline Steps
-
-| Step         | Purpose                      | Example                                                            |
-| ------------ | ---------------------------- | ------------------------------------------------------------------ |
-| `fetch`      | HTTP JSON request (GET/POST) | `fetch: { url: "...", method: POST, body: {...}, retry: 2 }`       |
-| `fetch_text` | HTTP raw text (for RSS/HTML) | `fetch_text: { url: "..." }`                                       |
-| `parse_rss`  | Parse RSS/XML items          | `parse_rss: {}`                                                    |
-| `html_to_md` | Convert HTML to Markdown     | `html_to_md: {}`                                                   |
-| `select`     | Navigate into response       | `select: data.items`                                               |
-| `map`        | Transform each item          | `map: { title: "${{ item.title }}" }`                              |
-| `filter`     | Keep matching items          | `filter: "item.score > 10"`                                        |
-| `sort`       | Sort results                 | `sort: { by: score, order: desc }`                                 |
-| `limit`      | Cap result count             | `limit: ${{ args.limit }}`                                         |
-| `exec`       | Run subprocess               | `exec: { command: ffmpeg, args: [...], stdin: "...", env: {...} }` |
-
-## Exec Step (Desktop/Bridge)
-
-```yaml
-pipeline:
-  - exec:
-      command: ffprobe
-      args:
-        [
-          "-v",
-          "quiet",
-          "-print_format",
-          "json",
-          "-show_format",
-          "${{ args.file }}",
-        ]
-      parse: json
-      stdin: "${{ args.input }}"
-      env:
-        MY_VAR: "${{ args.val }}"
-      output_file: "${{ args.output }}"
-      timeout: 30000
-```
-
-## Pipe Filters
-
-Use in templates: `${{ item.tags | join(', ') | truncate(100) }}`
-
-Available: `join`, `urlencode`, `slice`, `replace`, `lowercase`, `uppercase`, `trim`, `default`, `split`, `first`, `last`, `length`, `strip_html`, `truncate`
-
-## Testing
+### 4. Test
 
 ```bash
-npm run dev -- <site> <command> [args]
-npm run test:adapter
+npm run dev -- mysite mycommand "test" --limit 3
 npm run verify
 ```
 
-## Checklist
+### 5. Self-Repair
 
-- [ ] YAML file in `src/adapters/<site>/`
-- [ ] `npm run verify` passes
-- [ ] Smoke test returns expected data
+When adapters break: read error JSON `adapter_path` -> fix the ~20-line YAML ->
+save to `~/.unicli/adapters/<site>/<cmd>.yaml` -> `unicli test <site>`.
+
+## Key Pipeline Steps
+
+`fetch`, `fetch_text`, `parse_rss`, `html_to_md`, `select`, `map`, `filter`, `sort`,
+`limit`, `exec`, `navigate`, `evaluate`, `intercept`, `click`, `type`, `wait`,
+`press`, `scroll`, `snapshot`, `download`, `set`, `if`, `each`, `parallel`
+
+## Pipe Filters
+
+`${{ item.field | join(', ') | truncate(100) }}` -- available: `join`, `urlencode`,
+`slice`, `replace`, `lowercase`, `uppercase`, `trim`, `default`, `split`, `first`,
+`last`, `length`, `strip_html`, `truncate`

@@ -1,0 +1,51 @@
+site: instagram
+name: reels-trending
+description: Get trending Instagram Reels
+domain: www.instagram.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of reels
+
+columns: [rank, user, caption, likes, views, plays]
+
+pipeline:
+  - navigate: https://www.instagram.com
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const headers = { 'X-IG-App-ID': '936619743392459' };
+        const opts = { credentials: 'include', headers };
+
+        const res = await fetch(
+          'https://www.instagram.com/api/v1/clips/trending/',
+          {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              ...headers,
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'paging_token=&max_id=',
+          }
+        );
+        if (!res.ok) throw new Error('HTTP ' + res.status + ' - make sure you are logged in');
+        const data = await res.json();
+        const items = data?.items || [];
+        return items.slice(0, limit).map((item, i) => {
+          const media = item?.media;
+          return {
+            rank: i + 1,
+            user: media?.user?.username || '',
+            caption: (media?.caption?.text || '').replace(/\n/g, ' ').substring(0, 100),
+            likes: media?.like_count ?? 0,
+            views: media?.view_count ?? media?.play_count ?? 0,
+            plays: media?.play_count ?? 0,
+          };
+        });
+      })()

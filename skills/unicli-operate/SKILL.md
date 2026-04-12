@@ -1,54 +1,101 @@
 ---
 name: unicli-operate
 description: >
-  Browser automation for AI agents via unicli. Use when you need to interact
-  with a website through unicli's browser bridge — navigate, click, type, extract.
+  Direct browser automation with unicli operate subcommands. Navigate, inspect,
+  interact, and extract data from any website step by step via Chrome CDP.
+version: 1.0.0
+triggers:
+  - "operate browser"
+  - "click element"
+  - "fill form"
+  - "extract page data"
+  - "unicli operate"
+allowed-tools: [Bash]
+protocol: 2.0
 ---
 
-# unicli Browser Automation
+## When to Use
 
-## Prerequisites
+Step-by-step browser interaction: navigate, click, fill forms, extract data, screenshot.
+For browser lifecycle (start/stop/auth), see `unicli-browser`.
 
-1. Chrome/Chromium running with the unicli Browser Bridge extension
-2. Logged into the target website
+## Core Workflow
 
-## Available Commands
+1. `open` -> navigate to URL
+2. `state` -> inspect DOM, get `[ref]` numbers for interactive elements
+3. interact -> `click`, `type`, `select`, `keys` using ref numbers
+4. verify -> `state` again or `get value <ref>` to confirm
+5. extract -> `eval` for structured data
 
-```bash
-unicli operate open <url>              # Open a page
-unicli operate state                   # Get current page state
-unicli operate click <selector>        # Click an element
-unicli operate type <selector> <text>  # Type into an input
-unicli operate screenshot [path]       # Take screenshot
-unicli operate extract <selector>      # Extract text/data
-unicli operate wait <selector>         # Wait for element
-unicli operate eval <script>           # Run JavaScript
-unicli operate scroll [direction]      # Scroll page
-unicli operate back                    # Navigate back
-unicli operate close                   # Close tab
-```
+**Always `state` before interacting. Never guess ref numbers.**
 
-## Workflow
-
-1. **Open** the target page
-2. **State** — check what's on the page
-3. **Interact** — click, type, select as needed
-4. **Extract** — get the data you need
-5. **Close** when done
-
-## Example: Search Xiaohongshu
+## All Operate Subcommands
 
 ```bash
-unicli operate open "https://www.xiaohongshu.com/explore"
-unicli operate type "#search-input" "travel tips"
-unicli operate click ".search-button"
-unicli operate wait ".note-item"
-unicli operate extract ".note-item" -f json
+# Navigation
+unicli operate open <url>             # Navigate to URL
+unicli operate back                   # Go back in history
+unicli operate scroll [direction]     # down, up, bottom, top
+unicli operate close                  # Close automation window
+
+# Inspection
+unicli operate state                  # DOM tree with [ref] indices
+unicli operate screenshot [path]      # Save visual capture
+
+# Get data
+unicli operate get title|url          # Page title or URL
+unicli operate get text <ref>         # Element text by ref
+unicli operate get value <ref>        # Input value (verify after type)
+unicli operate get html [selector]    # Page or scoped HTML
+unicli operate get attributes <ref>   # Element attributes
+
+# Interaction
+unicli operate click <ref>            # Click element
+unicli operate type <ref> <text>      # Type into element
+unicli operate select <ref> <option>  # Select dropdown
+unicli operate keys <key>             # Press key (Enter, Escape, Control+a)
+unicli operate upload <ref> <path>    # Upload file
+unicli operate hover <ref>            # Hover over element
+
+# Wait
+unicli operate wait time <ms>         # Fixed delay
+unicli operate wait selector <sel>    # Until element appears
+unicli operate wait text <str>        # Until text appears
+
+# Advanced
+unicli operate eval <js>              # Execute JS in page
+unicli operate network [pattern]      # Captured network requests
+unicli operate observe <query>        # Natural language observation
 ```
 
-## Tips for AI Agents
+## Patterns
 
-- Use `state` to understand the page before interacting
-- Use `wait` before `extract` to ensure content is loaded
-- Use `-f json` for structured output
-- Check exit code 77 for login-required pages
+```bash
+# Browse + extract
+unicli operate open "https://news.ycombinator.com" && unicli operate state
+unicli operate eval "JSON.stringify([...document.querySelectorAll('.titleline a')].slice(0,5).map(a=>({title:a.textContent,url:a.href})))"
+
+# Fill form (chain to reduce round trips)
+unicli operate type 3 "user@example.com" && unicli operate type 5 "pass" && unicli operate click 7
+
+# API discovery
+unicli operate open "https://example.com/feed" && unicli operate wait time 3000
+unicli operate network                # See captured JSON APIs
+```
+
+## Rules
+
+1. Always `state` first -- never guess refs
+2. `eval` is read-only -- never `eval "el.click()"`, use `click <ref>`
+3. Verify inputs with `get value <ref>` after `type`
+4. Re-inspect after navigation -- run `state` after `open` or link clicks
+5. Prefer API over DOM -- if `network` reveals JSON APIs, use YAML adapters
+
+## Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| Browser not connected | `unicli browser start` |
+| Element not found | `scroll down` then `state` |
+| Stale refs after click | `state` to refresh |
+| eval returns undefined | Wrap: `"(function(){ return ...; })()"` |

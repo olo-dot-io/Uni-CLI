@@ -1,0 +1,40 @@
+site: maoyan
+name: search
+description: Search movies on Maoyan
+domain: www.maoyan.com
+strategy: intercept
+browser: true
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search keyword
+  limit:
+    type: int
+    default: 20
+    description: Number of results
+
+columns: [rank, title, year, score, actors, url]
+
+pipeline:
+  - navigate:
+      url: https://www.maoyan.com/films?showType=3&keyword=${{ args.query | urlencode }}
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const cards = document.querySelectorAll('.movie-item, .channel-detail .movie-item-hover, dl.movie-list dd');
+        return Array.from(cards).slice(0, limit).map((card, i) => {
+          const link = card.querySelector('a[href*="/films/"]') || card.closest('a');
+          const title = clean(card.querySelector('.channel-detail-movie-name, .movie-title-info .name, .name')?.textContent);
+          const year = clean(card.querySelector('.star, .movie-hover-title .year')?.textContent).replace(/[()]/g, '');
+          const score = clean(card.querySelector('.channel-detail-orange, .score, .integer')?.textContent);
+          const actors = clean(card.querySelector('.movie-hover-info, .actors, .star')?.textContent).substring(0, 80);
+          const href = link?.href || '';
+          return { rank: i + 1, title, year, score, actors, url: href };
+        }).filter(r => r.title);
+      })()

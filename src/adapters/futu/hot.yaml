@@ -1,0 +1,49 @@
+site: futu
+name: hot
+description: Futu hot stocks list
+domain: www.futunn.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of stocks
+
+columns: [rank, name, symbol, price, change, change_pct, volume]
+
+pipeline:
+  - navigate:
+      url: https://www.futunn.com/quote/hot
+      settleMs: 4000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const rows = document.querySelectorAll('table tbody tr, .stock-list-item, [class*="hot-stock"] [class*="row"]');
+        return Array.from(rows).slice(0, limit).map((row, i) => {
+          const cells = row.querySelectorAll('td');
+          if (cells.length >= 3) {
+            return {
+              rank: i + 1,
+              name: clean(cells[0]?.querySelector('[class*="name"], a')?.textContent),
+              symbol: clean(cells[0]?.querySelector('[class*="code"], .symbol')?.textContent),
+              price: clean(cells[1]?.textContent),
+              change: clean(cells[2]?.textContent),
+              change_pct: clean(cells[3]?.textContent),
+              volume: clean(cells[4]?.textContent),
+            };
+          }
+          return {
+            rank: i + 1,
+            name: clean(row.querySelector('[class*="name"]')?.textContent),
+            symbol: clean(row.querySelector('[class*="code"], [class*="symbol"]')?.textContent),
+            price: clean(row.querySelector('[class*="price"], [class*="last"]')?.textContent),
+            change: clean(row.querySelector('[class*="change"]')?.textContent),
+            change_pct: clean(row.querySelector('[class*="pct"], [class*="percent"]')?.textContent),
+            volume: clean(row.querySelector('[class*="volume"], [class*="turnover"]')?.textContent),
+          };
+        }).filter(r => r.name);
+      })()

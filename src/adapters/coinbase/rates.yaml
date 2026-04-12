@@ -1,0 +1,24 @@
+site: coinbase
+name: rates
+description: Get cryptocurrency exchange rates from Coinbase
+domain: api.coinbase.com
+type: web-api
+strategy: public
+browser: false
+
+args:
+  currency:
+    type: str
+    default: USD
+    positional: true
+    description: Base currency for rates (e.g. USD, EUR, BTC)
+
+pipeline:
+  - fetch:
+      url: https://api.coinbase.com/v2/exchange-rates
+      params:
+        currency: ${{ args.currency }}
+
+  - select: data
+
+columns: [currency, rates]

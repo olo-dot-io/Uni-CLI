@@ -1,0 +1,27 @@
+site: xiaohongshu
+name: like
+description: "Like a Xiaohongshu note"
+domain: www.xiaohongshu.com
+strategy: intercept
+browser: true
+
+args:
+  note-id:
+    type: str
+    required: true
+    positional: true
+    description: Note ID or full URL
+
+columns: [status, note_id]
+
+pipeline:
+  - navigate: https://www.xiaohongshu.com/explore/${{ args['note-id'] | replace('https://www.xiaohongshu.com/explore/', '') }}
+  - wait: 3000
+  - evaluate: |
+      (async () => {
+        const likeBtn = document.querySelector('.like-wrapper .like-icon, [class*="like"] svg, .engage-bar .like');
+        if (!likeBtn) throw new Error('Like button not found');
+        likeBtn.click();
+        await new Promise(r => setTimeout(r, 1000));
+        return [{ status: 'Liked', note_id: location.pathname.split('/').pop() }];
+      })()

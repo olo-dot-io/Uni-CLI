@@ -1,0 +1,30 @@
+site: zhihu
+name: user
+description: Get a Zhihu user profile by URL name
+domain: www.zhihu.com
+type: web-api
+strategy: cookie
+auth_cookies: [z_c0]
+
+args:
+  id:
+    required: true
+    positional: true
+    description: User URL token (e.g. zhang-san-12)
+
+pipeline:
+  - fetch:
+      url: https://www.zhihu.com/api/v4/members/${{ args.id }}
+      params:
+        include: "follower_count,following_count,voteup_count,answer_count,articles_count,headline"
+
+  - map:
+      name: ${{ item.name || '' }}
+      headline: ${{ item.headline || '' }}
+      followers: ${{ item.follower_count || 0 }}
+      following: ${{ item.following_count || 0 }}
+      voteup: ${{ item.voteup_count || 0 }}
+      answers: ${{ item.answer_count || 0 }}
+      articles: ${{ item.articles_count || 0 }}
+
+columns: [name, headline, followers, following, voteup, answers, articles]

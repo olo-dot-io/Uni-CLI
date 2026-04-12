@@ -1,0 +1,57 @@
+site: wechat-channels
+name: search
+description: Search WeChat Channels (Video Accounts) videos
+domain: channels.weixin.qq.com
+strategy: intercept
+browser: true
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search keyword
+  limit:
+    type: int
+    default: 20
+    description: Number of results
+
+columns: [rank, title, author, likes, url]
+
+pipeline:
+  - navigate:
+      url: https://channels.weixin.qq.com/
+      settleMs: 4000
+
+  - click:
+      selector: '[class*="search"], input[type="search"], [class*="search-icon"], [class*="search-btn"]'
+
+  - type:
+      selector: 'input[class*="search"], input[placeholder*="搜索"], input[type="search"]'
+      text: ${{ args.query }}
+
+  - press:
+      key: Enter
+
+  - wait:
+      time: 3000
+
+  - scroll:
+      times: 2
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const cards = document.querySelectorAll('[class*="feed-item"], [class*="video-card"], [class*="search-result"]');
+        return Array.from(cards).slice(0, limit).map((card, i) => {
+          const title = clean(card.querySelector('[class*="title"], [class*="desc"], [class*="content"]')?.textContent).substring(0, 100);
+          const author = clean(card.querySelector('[class*="author"], [class*="nickname"], [class*="name"]')?.textContent);
+          const likes = clean(card.querySelector('[class*="like"], [class*="heart"], [class*="count"]')?.textContent);
+          const link = card.querySelector('a') || card.closest('a');
+          return {
+            rank: i + 1, title, author, likes,
+            url: link?.href || '',
+          };
+        }).filter(r => r.title || r.author);
+      })()

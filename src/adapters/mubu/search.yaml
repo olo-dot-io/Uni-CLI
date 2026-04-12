@@ -1,0 +1,54 @@
+site: mubu
+name: search
+description: Search Mubu notes
+domain: mubu.com
+strategy: intercept
+browser: true
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search keyword
+  limit:
+    type: int
+    default: 20
+    description: Number of results
+
+columns: [rank, title, snippet, updated, url]
+
+pipeline:
+  - navigate:
+      url: https://mubu.com/app
+      settleMs: 3000
+
+  - click:
+      selector: '[class*="search"], input[type="search"], [class*="search-icon"]'
+
+  - type:
+      selector: 'input[class*="search"], input[placeholder*="search"], input[placeholder*="搜索"]'
+      text: ${{ args.query }}
+
+  - press:
+      key: Enter
+
+  - wait:
+      time: 2000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const items = document.querySelectorAll('[class*="search-result"], [class*="result-item"]');
+        return Array.from(items).slice(0, limit).map((item, i) => {
+          const link = item.querySelector('a') || item.closest('a');
+          const title = clean(item.querySelector('[class*="title"], [class*="name"]')?.textContent);
+          const snippet = clean(item.querySelector('[class*="content"], [class*="snippet"], [class*="desc"]')?.textContent).substring(0, 150);
+          const updated = clean(item.querySelector('[class*="time"], [class*="date"]')?.textContent);
+          return {
+            rank: i + 1, title, snippet, updated,
+            url: link?.href || '',
+          };
+        }).filter(r => r.title);
+      })()

@@ -1,0 +1,33 @@
+site: bilibili
+name: coin
+description: Bilibili recently coined videos
+domain: api.bilibili.com
+type: web-api
+strategy: cookie
+auth_cookies: [SESSDATA, bili_jct]
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of items
+
+pipeline:
+  - fetch:
+      url: https://api.bilibili.com/x/v2/history/toview
+      params:
+        ps: "${{ args.limit }}"
+        pn: "1"
+
+  - select: data.list
+
+  - map:
+      title: ${{ item.title || '' }}
+      author: ${{ item.owner?.name || '' }}
+      bvid: ${{ item.bvid || '' }}
+      views: ${{ item.stat?.view || 0 }}
+      add_at: ${{ item.add_at || '' }}
+
+  - limit: ${{ args.limit }}
+
+columns: [title, author, bvid, views, add_at]

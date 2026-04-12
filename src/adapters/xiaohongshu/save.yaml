@@ -1,0 +1,27 @@
+site: xiaohongshu
+name: save
+description: "Save/collect a Xiaohongshu note"
+domain: www.xiaohongshu.com
+strategy: intercept
+browser: true
+
+args:
+  note-id:
+    type: str
+    required: true
+    positional: true
+    description: Note ID or full URL
+
+columns: [status, note_id]
+
+pipeline:
+  - navigate: https://www.xiaohongshu.com/explore/${{ args['note-id'] | replace('https://www.xiaohongshu.com/explore/', '') }}
+  - wait: 3000
+  - evaluate: |
+      (async () => {
+        const collectBtn = document.querySelector('.collect-wrapper .collect-icon, [class*="collect"] svg, .engage-bar .collect');
+        if (!collectBtn) throw new Error('Collect button not found');
+        collectBtn.click();
+        await new Promise(r => setTimeout(r, 1000));
+        return [{ status: 'Saved', note_id: location.pathname.split('/').pop() }];
+      })()

@@ -1,0 +1,41 @@
+site: bilibili
+name: live
+description: Bilibili popular live streams
+domain: api.live.bilibili.com
+type: web-api
+strategy: public
+
+args:
+  area:
+    type: int
+    default: 0
+    description: Area/category ID (0 for all)
+  limit:
+    type: int
+    default: 20
+    description: Number of streams
+
+pipeline:
+  - fetch:
+      url: https://api.live.bilibili.com/xlive/web-interface/v1/second/getList
+      params:
+        platform: web
+        parent_area_id: "${{ args.area }}"
+        area_id: "0"
+        page: "1"
+        sort_type: online
+
+  - select: data.list
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.title || '' }}
+      streamer: ${{ item.uname || '' }}
+      area: ${{ item.area_name || '' }}
+      viewers: ${{ item.online || 0 }}
+      room_id: ${{ item.roomid || '' }}
+      url: ${{ 'https://live.bilibili.com/' + (item.roomid || '') }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, streamer, area, viewers, url]

@@ -19,7 +19,8 @@ args:
     default: 20
     description: Number of results
 
-columns: [title, community, layout, area, direction, total_price, unit_price, url]
+columns:
+  [title, community, layout, area, direction, total_price, unit_price, url]
 
 pipeline:
   - navigate:

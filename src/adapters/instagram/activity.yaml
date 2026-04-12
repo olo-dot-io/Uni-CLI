@@ -1,0 +1,45 @@
+site: instagram
+name: activity
+description: Get recent activity/notifications for logged-in Instagram user
+domain: www.instagram.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of activities
+
+columns: [rank, type, user, text, time]
+
+pipeline:
+  - navigate: https://www.instagram.com
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const headers = { 'X-IG-App-ID': '936619743392459' };
+        const opts = { credentials: 'include', headers };
+
+        const res = await fetch(
+          'https://www.instagram.com/api/v1/news/inbox/',
+          opts
+        );
+        if (!res.ok) throw new Error('HTTP ' + res.status + ' - make sure you are logged in');
+        const data = await res.json();
+        const stories = data?.old_stories || data?.new_stories || [];
+        const results = [];
+        for (const s of stories) {
+          for (const arg of (s?.args?.links || [s.args])) {
+            results.push({
+              type: s.story_type || s.type || '',
+              user: arg?.profile_name || s.args?.profile_name || '',
+              text: (s.args?.text || '').replace(/\n/g, ' ').substring(0, 120),
+              time: s.args?.timestamp ? new Date(s.args.timestamp * 1000).toISOString().slice(0, 16) : '',
+            });
+          }
+          if (results.length >= limit) break;
+        }
+        return results.slice(0, limit).map((r, i) => ({ rank: i + 1, ...r }));
+      })()

@@ -1,0 +1,36 @@
+site: zhihu
+name: trending
+description: Zhihu trending topics by category
+domain: www.zhihu.com
+type: web-api
+strategy: cookie
+auth_cookies: [z_c0]
+
+args:
+  category:
+    type: str
+    default: total
+    description: "Category: total, science, digital, sport, fashion, film, campus"
+  limit:
+    type: int
+    default: 20
+    description: Number of items
+
+pipeline:
+  - fetch:
+      url: https://www.zhihu.com/api/v3/feed/topstory/hot-lists/${{ args.category }}
+      params:
+        limit: "50"
+
+  - select: data
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.target?.title || '' }}
+      heat: ${{ item.detail_text || '' }}
+      excerpt: ${{ (item.target?.excerpt || '') | strip_html | slice(0, 100) }}
+      url: ${{ 'https://www.zhihu.com/question/' + (item.target?.id || '') }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, heat, excerpt, url]

@@ -37,6 +37,13 @@ interface PendingRequest {
   timer: ReturnType<typeof setTimeout>;
 }
 
+// ── Remote endpoint types ───────────────────────────────────────────
+
+export interface RemoteEndpoint {
+  endpoint: string;
+  headers: Record<string, string>;
+}
+
 // ── Constants ────────────────────────────────────────────────────────
 
 const CDP_SEND_TIMEOUT = 30_000;
@@ -76,14 +83,22 @@ export class CDPClient {
 
   /**
    * Connect to a Chrome tab via WebSocket.
+   * Optionally pass headers for authenticated remote endpoints (e.g., Cloudflare).
    */
-  async connect(wsUrl: string): Promise<void> {
+  async connect(
+    wsUrl: string,
+    options?: { headers?: Record<string, string> },
+  ): Promise<void> {
     if (this.ws) {
       throw new Error("CDPClient is already connected. Call close() first.");
     }
 
     return new Promise<void>((resolve, reject) => {
-      const ws = new WebSocket(wsUrl);
+      const wsOptions: WebSocket.ClientOptions = {};
+      if (options?.headers && Object.keys(options.headers).length > 0) {
+        wsOptions.headers = options.headers;
+      }
+      const ws = new WebSocket(wsUrl, wsOptions);
       const timer = setTimeout(() => {
         ws.terminate();
         reject(new Error(`CDP connect timeout after ${CDP_CONNECT_TIMEOUT}ms`));
@@ -247,6 +262,27 @@ export class CDPClient {
     return client;
   }
 
+  /**
+   * Connect directly to a remote CDP endpoint (e.g., Cloudflare Browser Rendering).
+   * Returns a connected CDPClient ready to use.
+   */
+  static async connectToRemote(
+    endpoint: string,
+    headers?: Record<string, string>,
+  ): Promise<CDPClient> {
+    const client = new CDPClient();
+    await client.connect(endpoint, headers ? { headers } : undefined);
+
+    // Enable Page domain immediately after connection
+    try {
+      await client.send("Page.enable");
+    } catch {
+      debugLog("Failed to enable Page domain on remote (non-fatal)");
+    }
+
+    return client;
+  }
+
   // ── Private ──────────────────────────────────────────────────────
 
   private handleMessage(data: WebSocket.RawData): void {
@@ -338,7 +374,45 @@ function scoreTarget(target: CDPTarget): number {
 // Exported for testing
 export const __test__ = {
   scoreTarget,
+  getRemoteEndpoint,
 };
+
+// ── Remote endpoint helper ──────────────────────────────────────────
+
+/**
+ * Check for a remote CDP endpoint configured via environment variables.
+ *
+ * - UNICLI_CDP_ENDPOINT: WebSocket URL (e.g., wss://browser.example.com)
+ * - UNICLI_CDP_HEADERS: Optional JSON string of headers for auth
+ *   (e.g., '{"CF-Access-Client-Id":"...","CF-Access-Client-Secret":"..."}')
+ *
+ * Returns null if no remote endpoint is configured.
+ */
+export function getRemoteEndpoint(): RemoteEndpoint | null {
+  const endpoint = process.env.UNICLI_CDP_ENDPOINT;
+  if (!endpoint) return null;
+
+  let headers: Record<string, string> = {};
+  const headersJson = process.env.UNICLI_CDP_HEADERS;
+  if (headersJson) {
+    try {
+      const parsed: unknown = JSON.parse(headersJson);
+      if (
+        typeof parsed === "object" &&
+        parsed !== null &&
+        !Array.isArray(parsed)
+      ) {
+        headers = parsed as Record<string, string>;
+      }
+    } catch {
+      debugLog(
+        "Failed to parse UNICLI_CDP_HEADERS — expected JSON object, ignoring",
+      );
+    }
+  }
+
+  return { endpoint, headers };
+}
 
 // ── HTTP fetch helper ────────────────────────────────────────────────
 

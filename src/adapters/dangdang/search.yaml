@@ -1,0 +1,43 @@
+site: dangdang
+name: search
+description: Search books on Dangdang
+domain: www.dangdang.com
+strategy: intercept
+browser: true
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search keyword
+  limit:
+    type: int
+    default: 20
+    description: Number of results
+
+columns: [rank, title, author, publisher, price, rating, url]
+
+pipeline:
+  - navigate:
+      url: http://search.dangdang.com/?key=${{ args.query | urlencode }}&act=input
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const items = document.querySelectorAll('ul.bigimg li, [class*="list_item"], .shoplist li');
+        return Array.from(items).slice(0, limit).map((item, i) => {
+          const link = item.querySelector('a[href*="product.dangdang.com"], a[name="itemlist-title"]');
+          const title = clean(link?.textContent || item.querySelector('[class*="name"], .title')?.textContent);
+          const author = clean(item.querySelector('[class*="search_book_author"] a, .author a')?.textContent);
+          const publisher = clean(item.querySelector('[class*="press"] a, .publisher a, [class*="publisher"]')?.textContent);
+          const price = clean(item.querySelector('[class*="price"] .search_now_price, .price_n')?.textContent);
+          const rating = clean(item.querySelector('[class*="star"], .rating')?.textContent);
+          return {
+            rank: i + 1, title, author, publisher, price, rating,
+            url: link?.href || '',
+          };
+        }).filter(r => r.title);
+      })()

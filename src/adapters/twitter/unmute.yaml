@@ -1,0 +1,42 @@
+site: twitter
+name: unmute
+description: Unmute a Twitter/X user
+domain: x.com
+strategy: intercept
+browser: true
+
+args:
+  user:
+    type: str
+    required: true
+    positional: true
+    description: Twitter username to unmute
+
+columns: [status, username]
+
+pipeline:
+  - navigate: https://x.com/${{ args.user }}
+  - wait: 3000
+  - evaluate: |
+      (async () => {
+        const username = ${{ args.user | json }};
+        const ct0 = document.cookie.match(/ct0=([^;]+)/)?.[1] || '';
+        if (!ct0) throw new Error('Not logged in (ct0 cookie missing)');
+        const resp = await fetch('https://x.com/' + username);
+        const html = await resp.text();
+        const idMatch = html.match(/"rest_id":"(\d+)"/);
+        if (!idMatch) throw new Error('Could not find user ID for ' + username);
+        const userId = idMatch[1];
+        const unmuteResp = await fetch('https://x.com/i/api/1.1/mutes/users/destroy.json', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Csrf-Token': ct0,
+            'Authorization': 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA',
+          },
+          body: 'user_id=' + userId,
+        });
+        if (!unmuteResp.ok) throw new Error('Failed to unmute: HTTP ' + unmuteResp.status);
+        return [{ status: 'Unmuted', username }];
+      })()

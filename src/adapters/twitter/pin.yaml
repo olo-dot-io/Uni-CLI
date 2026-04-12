@@ -1,0 +1,43 @@
+site: twitter
+name: pin
+description: Get pinned tweet from a Twitter/X user
+domain: x.com
+strategy: intercept
+browser: true
+
+args:
+  user:
+    type: str
+    required: true
+    positional: true
+    description: Twitter username
+
+columns: [author, text, likes, retweets, replies, date, url]
+
+pipeline:
+  - navigate: https://x.com/${{ args.user }}
+  - wait: 4000
+  - evaluate: |
+      (async () => {
+        const username = ${{ args.user | json }};
+        const pinLabel = document.querySelector('[data-testid="socialContext"]');
+        if (!pinLabel || !/pinned|置顶/i.test(pinLabel.textContent || '')) {
+          return [{ author: username, text: '(no pinned tweet)', likes: '', retweets: '', replies: '', date: '', url: '' }];
+        }
+        const article = pinLabel.closest('article[data-testid="tweet"]');
+        if (!article) throw new Error('Pinned tweet article not found');
+        const textEl = article.querySelector('[data-testid="tweetText"]');
+        const timeEl = article.querySelector('time');
+        const linkEl = article.querySelector('a[href*="/status/"]');
+        const groups = article.querySelectorAll('[role="group"] [data-testid$="count"], [role="group"] span');
+        const metrics = Array.from(groups).map(g => (g.textContent || '').trim()).filter(Boolean);
+        return [{
+          author: username,
+          text: (textEl?.textContent || '').substring(0, 200),
+          likes: metrics[2] || '0',
+          retweets: metrics[1] || '0',
+          replies: metrics[0] || '0',
+          date: timeEl?.getAttribute('datetime')?.slice(0, 10) || '',
+          url: linkEl ? 'https://x.com' + linkEl.getAttribute('href') : '',
+        }];
+      })()

@@ -1,0 +1,52 @@
+site: instagram
+name: tags
+description: Browse recent posts for an Instagram hashtag
+domain: www.instagram.com
+strategy: intercept
+browser: true
+
+args:
+  tag:
+    type: str
+    required: true
+    positional: true
+    description: Hashtag (without #)
+  limit:
+    type: int
+    default: 20
+    description: Number of posts
+
+columns: [rank, user, caption, likes, comments, type]
+
+pipeline:
+  - navigate: https://www.instagram.com
+
+  - evaluate: |
+      (async () => {
+        const tag = ${{ args.tag | json }};
+        const limit = ${{ args.limit }};
+        const headers = { 'X-IG-App-ID': '936619743392459' };
+        const opts = { credentials: 'include', headers };
+
+        const res = await fetch(
+          'https://www.instagram.com/api/v1/tags/web_info/?tag_name=' + encodeURIComponent(tag),
+          opts
+        );
+        if (!res.ok) throw new Error('HTTP ' + res.status + ' - tag not found or not logged in');
+        const data = await res.json();
+        const sections = data?.data?.recent?.sections || data?.data?.top?.sections || [];
+        const posts = [];
+        for (const sec of sections) {
+          for (const m of (sec?.layout_content?.medias || [])) {
+            const media = m?.media;
+            if (media) posts.push({
+              user: media.user?.username || '',
+              caption: (media.caption?.text || '').replace(/\n/g, ' ').substring(0, 100),
+              likes: media.like_count ?? 0,
+              comments: media.comment_count ?? 0,
+              type: media.media_type === 1 ? 'photo' : media.media_type === 2 ? 'video' : 'carousel',
+            });
+          }
+        }
+        return posts.slice(0, limit).map((p, i) => ({ rank: i + 1, ...p }));
+      })()

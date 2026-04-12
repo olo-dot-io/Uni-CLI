@@ -1,0 +1,35 @@
+site: xiaohongshu
+name: trending
+description: "Xiaohongshu trending searches"
+domain: www.xiaohongshu.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of trending topics
+
+columns: [rank, keyword, score, url]
+
+pipeline:
+  - navigate: https://www.xiaohongshu.com/explore
+  - wait: 2000
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const resp = await fetch('/api/sns/v1/search/hot_list', {
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        const items = data?.data?.items || data?.data || [];
+        return items.slice(0, limit).map((item, i) => ({
+          rank: i + 1,
+          keyword: item.title || item.name || item.word || '',
+          score: item.score || item.hot_value || '',
+          url: 'https://www.xiaohongshu.com/search_result?keyword=' + encodeURIComponent(item.title || item.name || item.word || ''),
+        }));
+      })()

@@ -1,0 +1,34 @@
+site: xiaohongshu
+name: suggest
+description: "Xiaohongshu search suggestions/autocomplete"
+domain: www.xiaohongshu.com
+strategy: intercept
+browser: true
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search query prefix
+
+columns: [rank, suggestion]
+
+pipeline:
+  - navigate: https://www.xiaohongshu.com/explore
+  - wait: 2000
+  - evaluate: |
+      (async () => {
+        const query = ${{ args.query | json }};
+        const resp = await fetch('/api/sns/v1/search/recommend?keyword=' + encodeURIComponent(query), {
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        const items = data?.data?.sug_items || data?.data || [];
+        return items.map((item, i) => ({
+          rank: i + 1,
+          suggestion: item.text || item.title || item.query || JSON.stringify(item),
+        }));
+      })()

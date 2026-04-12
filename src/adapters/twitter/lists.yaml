@@ -1,0 +1,49 @@
+site: twitter
+name: lists
+description: Get Twitter/X lists for a user
+domain: x.com
+strategy: intercept
+browser: true
+
+args:
+  user:
+    type: str
+    positional: true
+    description: Twitter username (omit for logged-in user)
+  limit:
+    type: int
+    default: 20
+    description: Number of lists
+
+columns: [name, members, followers, mode, url]
+
+pipeline:
+  - navigate: https://x.com/${{ args.user || 'i/lists' }}/lists
+  - wait: 4000
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        await new Promise(r => setTimeout(r, 2000));
+        const cards = [];
+        const seen = new Set();
+        for (const anchor of document.querySelectorAll('a[href*="/i/lists/"]')) {
+          const href = anchor.getAttribute('href') || '';
+          if (!/\/i\/lists\/\d+/.test(href) || seen.has(href)) continue;
+          seen.add(href);
+          const container = anchor.closest('[data-testid="cellInnerDiv"]') || anchor;
+          const text = (container.innerText || anchor.innerText || '').trim();
+          if (!text) continue;
+          const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+          const name = lines[0] || '';
+          const membersMatch = text.match(/(\d+)\s*(?:members?|成员)/i);
+          const followersMatch = text.match(/(\d+)\s*(?:followers?|关注者)/i);
+          cards.push({
+            name,
+            members: membersMatch ? parseInt(membersMatch[1]) : 0,
+            followers: followersMatch ? parseInt(followersMatch[1]) : 0,
+            mode: /private|私密/.test(text) ? 'Private' : 'Public',
+            url: 'https://x.com' + href,
+          });
+        }
+        return cards.slice(0, limit);
+      })()
