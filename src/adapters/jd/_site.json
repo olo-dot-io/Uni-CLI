@@ -1,0 +1,9 @@
+{
+  "site": "jd",
+  "displayName": "JD.com",
+  "type": "web-api",
+  "domain": "jd.com",
+  "description": "JD.com — Chinese e-commerce platform",
+  "strategy": "public",
+  "category": "shopping"
+}

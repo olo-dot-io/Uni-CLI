@@ -1,0 +1,9 @@
+{
+  "site": "reuters",
+  "displayName": "Reuters",
+  "type": "web-api",
+  "domain": "reuters.com",
+  "description": "Reuters — international news and wire service",
+  "strategy": "public",
+  "category": "tech"
+}
