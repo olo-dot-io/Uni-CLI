@@ -402,7 +402,10 @@ export function getRemoteEndpoint(): RemoteEndpoint | null {
         parsed !== null &&
         !Array.isArray(parsed)
       ) {
-        headers = parsed as Record<string, string>;
+        const filtered = Object.entries(
+          parsed as Record<string, unknown>,
+        ).filter((kv): kv is [string, string] => typeof kv[1] === "string");
+        headers = Object.fromEntries(filtered);
       }
     } catch {
       debugLog(

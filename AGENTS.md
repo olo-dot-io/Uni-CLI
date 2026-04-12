@@ -6,7 +6,7 @@
      Output is JSON when piped. Errors are structured JSON to stderr.
      You can fix broken adapters yourself — read the Self-Repair section. -->
 
-> 172 sites, 851 commands, 35 pipeline steps, 32 external CLI passthroughs, 32 macOS commands. `npm install -g @zenalexa/unicli`
+> 195 sites, 957 commands, 35 pipeline steps, 35 external CLI passthroughs, 30 macOS system commands. `npm install -g @zenalexa/unicli`
 
 ## For AI Agents
 
@@ -217,4 +217,4 @@ The engine auto-probes the first three on first run. `intercept` and `ui` requir
 
 ## Version
 
-0.209.0 — Vostok · Popovich
+0.210.0 — Vostok · Komarov

@@ -45,7 +45,7 @@ Format: `0.100.1`, `0.200.0`, `1.0.0`, etc.
 - **MINOR** = mission number (100, 200, 300... like Mission Control sequences)
 - **PATCH** = revision within a mission
 
-Current: `0.209.0` — Mission 200, codename **Vostok · Popovich**.
+Current: `0.210.0` — Mission 200, codename **Vostok · Komarov**.
 
 ### Version Codenames — The Full Spectrum
 

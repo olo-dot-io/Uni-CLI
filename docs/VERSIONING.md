@@ -45,8 +45,8 @@ Example: `0.200.0 Vostok · Chaika` → Mission 200 ("Vostok"), call sign "Chaik
 | Version | Codename            | Target     | Scope                                       |
 | ------- | ------------------- | ---------- | ------------------------------------------- |
 | 0.202.0 | Vostok · Tereshkova | TBD        | Chrome Extension + cookie infrastructure    |
-| 0.203.0 | Vostok · Leonov     | TBD        | Cookie adapters batch 1 (Chinese platforms) |
-| 0.204.0 | Vostok · Nikolayev  | 2026-04-05 | Cookie adapters batch 2 (international)     |
+| 0.203.0 | Vostok · Leonov     | TBD        | Cookie adapters for Chinese platforms       |
+| 0.204.0 | Vostok · Nikolayev  | 2026-04-05 | Cookie adapters for international platforms |
 | 0.205.0 | Vostok · Bykovsky   | 2026-04-05 | Full parity — all sites, all desktop apps   |
 | 0.300.0 | Mercury             | TBD        | Sustained operation, adapter reliability    |
 | 1.0.0   | Eagle               | TBD        | "The Eagle has landed" — production-ready   |

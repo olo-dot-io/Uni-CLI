@@ -73,6 +73,7 @@ export class RemoteConnectionError extends Error {
       step: -1,
       action: "remote_browser_connect",
       suggestion: this.suggestion,
+      alternatives: ["unicli browser start"],
       exit_code: 69, // SERVICE_UNAVAILABLE
     };
   }
