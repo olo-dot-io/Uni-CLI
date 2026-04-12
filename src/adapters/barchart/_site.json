@@ -1,0 +1,10 @@
+{
+  "site": "barchart",
+  "displayName": "Barchart",
+  "type": "web-api",
+  "domain": "barchart.com",
+  "description": "Barchart — financial data, options, and market analytics",
+  "strategy": "cookie",
+  "category": "finance",
+  "auth_cookies": ["bcFreeUserPage498", "laravel_session", "XSRF-TOKEN"]
+}
