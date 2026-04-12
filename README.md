@@ -1,4 +1,4 @@
-<!-- AGENT: npm install -g @zenalexa/unicli && unicli list | 756 commands across 167 sites. JSON when piped. Self-repairing YAML adapters. unicli repair --loop for autonomous fix. See AGENTS.md -->
+<!-- AGENT: npm install -g @zenalexa/unicli && unicli list | 957 commands across 195 sites. JSON when piped. Self-repairing YAML adapters. unicli repair --loop for autonomous fix. See AGENTS.md -->
 
 <h1 align="center">Uni-CLI</h1>
 
@@ -37,7 +37,7 @@ Every command outputs **structured JSON when piped** — zero flags needed. Ever
 
 ## Key Ideas
 
-**Universal** — 167 sites, 28 desktop apps, 8 Electron apps, 23 CLI bridges. One interface: `unicli <site> <command>`.
+**Universal** — 195 sites, 30+ desktop apps, 8 Electron apps, 35 CLI bridges, 30 macOS system commands. One interface: `unicli <site> <command>`.
 
 **Self-repairing** — When a site changes its API, the agent reads the ~20 line YAML adapter, fixes it, retries. No human in the loop. Fixes persist across updates.
 
@@ -69,26 +69,26 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
 ## Coverage
 
 <details open>
-<summary><strong>Web Platforms — 67 sites</strong></summary>
+<summary><strong>Web Platforms — 95 sites</strong></summary>
 
-| Category           | Sites                                                                                                                     |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| **Tech / Dev**     | hackernews, stackoverflow, devto, lobsters, producthunt, hf, github-trending, substack, lesswrong                         |
-| **Social**         | twitter (25 cmds), reddit (16), instagram (19), tiktok (15), facebook (10), bluesky, medium                               |
-| **Chinese Social** | bilibili (13), weibo, zhihu, xiaohongshu (13), douyin (13), jike, douban, weread, tieba, v2ex, linux-do, zsxq, xiaoyuzhou |
-| **Video / Media**  | youtube (5), bilibili, douyin, tiktok                                                                                     |
-| **Finance**        | xueqiu, sinafinance, barchart, yahoo-finance                                                                              |
-| **News**           | bbc, bloomberg (10), reuters, 36kr, google news                                                                           |
-| **Shopping**       | amazon (8), xianyu, coupang, smzdm, jd                                                                                    |
-| **Jobs**           | boss (14), linkedin                                                                                                       |
-| **AI Platforms**   | gemini (5), grok, doubao-web (9), notebooklm (15), yollomi (12), jimeng, yuanbao                                          |
-| **Education**      | chaoxing, arxiv, wikipedia                                                                                                |
-| **Other**          | ones (11), band, xiaoe, pixiv (6), hupu (7), ctrip, sinablog, steam                                                       |
+| Category           | Sites                                                                                                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Tech / Dev**     | hackernews, stackoverflow, devto, lobsters, producthunt, hf, github-trending, substack, lesswrong, npm, pypi, crates-io, cocoapods, homebrew, gitlab, gitee, npm-trends, ollama |
+| **Social**         | twitter (35 cmds), reddit (20), instagram (24), tiktok (15), facebook (10), bluesky (12), medium, threads                                                                       |
+| **Chinese Social** | bilibili (18), weibo, zhihu (20), xiaohongshu (24), douyin (13), jike, douban, weread, tieba, v2ex, linux-do, zsxq, xiaoyuzhou, baidu, toutiao                                  |
+| **Video / Media**  | youtube (5), bilibili, douyin, tiktok, kuaishou, douyu, wechat-channels, twitch                                                                                                 |
+| **Finance**        | xueqiu, sinafinance, barchart, yahoo-finance, binance, futu, coinbase, eastmoney                                                                                                |
+| **News**           | bbc, bloomberg (10), reuters, 36kr, google news, cnn, nytimes, techcrunch, theverge, infoq, ithome                                                                              |
+| **Shopping**       | amazon (8), xianyu, coupang, smzdm, jd, maoyan, ele, dianping, dangdang, pinduoduo, meituan                                                                                     |
+| **Jobs**           | boss (14), linkedin                                                                                                                                                             |
+| **AI Platforms**   | gemini (5), grok, doubao-web (9), notebooklm (15), yollomi (12), jimeng, yuanbao, deepseek, perplexity                                                                          |
+| **Education**      | chaoxing, arxiv, wikipedia                                                                                                                                                      |
+| **Other**          | ones (11), band, xiaoe, pixiv (6), hupu (7), ctrip, sinablog, steam                                                                                                             |
 
 </details>
 
 <details>
-<summary><strong>Desktop Software — 28 apps</strong></summary>
+<summary><strong>Desktop Software — 32 apps</strong></summary>
 
 | Category          | Apps                                                                |
 | ----------------- | ------------------------------------------------------------------- |
@@ -98,14 +98,15 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
 | **Diagram**       | drawio, mermaid                                                     |
 | **Document**      | libreoffice, pandoc                                                 |
 | **Streaming**     | obs (8, WebSocket)                                                  |
-| **Productivity**  | zotero (8)                                                          |
+| **Productivity**  | zotero (8), vscode (3), obsidian (3)                                |
 | **Dev Services**  | wiremock (5), adguardhome (5), novita (3)                           |
+| **Browser**       | chrome (2), zoom (2)                                                |
 | **Other**         | slay-the-spire-ii (6), sketch (3)                                   |
 
 </details>
 
 <details>
-<summary><strong>Electron Apps — 8 apps, 66 commands</strong></summary>
+<summary><strong>Electron Apps — 8 apps, 70 commands</strong></summary>
 
 All via Chrome DevTools Protocol — no extensions, no hacks.
 
@@ -115,7 +116,7 @@ All via Chrome DevTools Protocol — no extensions, no hacks.
 | **Codex**       | ask, send, read, model, extract-diff, new, status, screenshot, dump, history, export           | 9222 |
 | **ChatGPT**     | ask, send, read, model, new, status, screenshot, dump                                          | 9236 |
 | **Notion**      | search, read, write, new, status, sidebar, favorites, export, screenshot                       | 9230 |
-| **Discord**     | servers, channels, read, send, search, members, status                                         | 9232 |
+| **Discord**     | servers, channels, read, send, search, members, status, delete                                 | 9232 |
 | **ChatWise**    | ask, send, read, model, new, status, screenshot, dump                                          | 9228 |
 | **Doubao**      | ask, send, read, new, status, screenshot, dump                                                 | 9225 |
 | **Antigravity** | ask, send, read, model, new, status, screenshot, dump                                          | 9234 |
@@ -123,11 +124,27 @@ All via Chrome DevTools Protocol — no extensions, no hacks.
 </details>
 
 <details>
-<summary><strong>CLI Bridges — 23 tools</strong></summary>
+<summary><strong>CLI Bridges — 35 tools</strong></summary>
 
 Passthrough wrappers that normalize output to JSON:
 
-docker, gh, jq, yt-dlp, vercel, supabase, wrangler, lark, dingtalk, hf, claude-code, codex-cli, opencode, aws, gcloud, az, doctl, netlify, railway, flyctl, pscale, neonctl, slack
+docker, gh, jq, yt-dlp, vercel, supabase, wrangler, lark, dingtalk, hf, claude-code, codex-cli, opencode, aws, gcloud, az, doctl, netlify, railway, flyctl, pscale, neonctl, slack, kimi-cli, gws, deepagents, stripe, firebase, mmx-cli, wecom, mem0, dws, hermes, openclaw, opencode-cli
+
+</details>
+
+<details>
+<summary><strong>macOS System — 30 commands</strong></summary>
+
+| Category          | Commands                                                                                                                                                     |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Audio/Display** | volume, dark-mode, brightness, say                                                                                                                           |
+| **Power/System**  | battery, lock-screen, caffeinate, sleep, uptime, system-info                                                                                                 |
+| **Files/Search**  | spotlight, disk-info, trash, empty-trash, open, finder-tags, finder-recent, finder-selection                                                                 |
+| **Network**       | wifi, wifi-info, bluetooth                                                                                                                                   |
+| **Notifications** | notify, notification, do-not-disturb                                                                                                                         |
+| **Apps**          | apps, apps-list, active-app, open-app, safari-tabs, shortcuts-list, shortcuts-run                                                                            |
+| **PIM**           | calendar-list, calendar-create, calendar-today, contacts-search, mail-status, mail-send, messages-send, reminders-list, reminders-create, reminders-complete |
+| **Media**         | music-now, music-control, photos-search, notes-list, notes-search, screenshot, clipboard, processes                                                          |
 
 </details>
 
@@ -160,6 +177,8 @@ graph TB
     CDP --> OUT["Output Formatter<br/><i>table · json · yaml · csv · md</i>"]
     DAEMON --> OUT
 ```
+
+Remote browser support via `UNICLI_CDP_ENDPOINT` — connect to any CDP WebSocket (Cloudflare Browser Rendering, Browserless, or self-hosted).
 
 ## Write an Adapter
 
@@ -231,7 +250,7 @@ unicli record <url>              # Auto-generate adapter from traffic
 For MCP-only environments:
 
 ```bash
-unicli mcp serve    # All 756 commands become MCP tools
+unicli mcp serve    # All 957 commands become MCP tools
 ```
 
 ## Development
@@ -247,7 +266,7 @@ npm install && npm run verify
 | `npm run build`        | Production build          |
 | `npm run typecheck`    | TypeScript strict         |
 | `npm run lint`         | Oxlint                    |
-| `npm run test`         | Unit tests (775)          |
+| `npm run test`         | Unit tests (788)          |
 | `npm run test:adapter` | Validate all 601 adapters |
 | `npm run verify`       | Full pipeline             |
 
@@ -276,6 +295,6 @@ unicli test <site>               # Validate
 </p>
 
 <p align="center">
-  <sub>v0.209.0 — Vostok · Popovich</sub><br>
-  <sub>167 sites · 756 commands · 35 pipeline steps · 29 filters · 775 tests</sub>
+  <sub>v0.210.0 — Vostok · Komarov</sub><br>
+  <sub>195 sites · 957 commands · 35 pipeline steps · 29 filters · 788 tests</sub>
 </p>
