@@ -141,6 +141,23 @@ export function loadAdaptersFromDir(dir: string): number {
     let siteType: AdapterType = "web-api" as AdapterType;
     let siteMeta: Partial<AdapterManifest> = {};
 
+    // Load site-level metadata from _site.json if present
+    const siteJsonPath = join(siteDir, "_site.json");
+    if (existsSync(siteJsonPath)) {
+      try {
+        const meta = JSON.parse(readFileSync(siteJsonPath, "utf-8"));
+        if (meta.type) siteType = meta.type as AdapterType;
+        if (meta.domain) siteMeta.domain = meta.domain;
+        if (meta.strategy)
+          siteMeta.strategy = meta.strategy as AdapterManifest["strategy"];
+        if (meta.binary) siteMeta.binary = meta.binary;
+        if (meta.detect) siteMeta.detect = meta.detect;
+        if (meta.auth_cookies) siteMeta.authCookies = meta.auth_cookies;
+      } catch {
+        /* ignore malformed _site.json */
+      }
+    }
+
     for (const file of readdirSync(siteDir)) {
       const ext = extname(file);
       const cmdName = basename(file, ext);
@@ -177,6 +194,9 @@ export function loadAdaptersFromDir(dir: string): number {
         if (parsed.passthrough !== undefined)
           siteMeta.passthrough = parsed.passthrough;
         if (parsed.auth_cookies) siteMeta.authCookies = parsed.auth_cookies;
+
+        // Skip underscore-prefixed files (internal/metadata, not commands)
+        if (cmdName.startsWith("_")) continue;
 
         // Parse args from YAML into AdapterArg[]
         let adapterArgs: AdapterArg[] | undefined;
