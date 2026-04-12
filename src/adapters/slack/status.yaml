@@ -1,0 +1,19 @@
+site: slack
+name: status
+description: Check Slack CLI auth and workspace status
+type: bridge
+strategy: public
+binary: slack
+detect: which slack
+
+pipeline:
+  - exec:
+      command: slack
+      args:
+        - auth
+        - info
+        - --json
+      parse: json
+      timeout: 15000
+
+columns: [team, user, url]

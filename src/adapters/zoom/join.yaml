@@ -1,0 +1,24 @@
+# Desktop adapter — join a Zoom meeting via URL scheme
+site: zoom
+name: join
+description: Join a Zoom meeting by meeting ID
+type: desktop
+binary: open
+detect: Darwin
+strategy: public
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: Zoom meeting ID or link
+
+pipeline:
+  - exec:
+      command: open
+      args:
+        - "zoommtg://zoom.us/join?confno=${{ args.id }}"
+      timeout: 5000
+
+columns: [output]

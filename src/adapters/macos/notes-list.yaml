@@ -1,0 +1,30 @@
+# Desktop adapter — list Apple Notes via JXA
+site: macos
+name: notes-list
+description: List recent Apple Notes with folder and modification date
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          var notes = Application('Notes');
+          var items = notes.notes().slice(0, 20);
+          JSON.stringify(items.map(function(n) {
+            return {
+              name: n.name(),
+              body: n.plaintext().substring(0, 200),
+              folder: n.container().name(),
+              modified: n.modificationDate().toISOString()
+            };
+          }));
+      parse: json
+      timeout: 30000
+
+columns: [name, folder, modified]

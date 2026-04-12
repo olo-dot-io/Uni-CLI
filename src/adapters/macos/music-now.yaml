@@ -1,0 +1,34 @@
+# Desktop adapter — Apple Music now playing via JXA
+site: macos
+name: music-now
+description: Get currently playing track from Apple Music
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          var music = Application('Music');
+          if (music.playerState() === 'playing' || music.playerState() === 'paused') {
+            var t = music.currentTrack;
+            JSON.stringify([{
+              name: t.name(),
+              artist: t.artist(),
+              album: t.album(),
+              position: music.playerPosition(),
+              duration: t.duration(),
+              state: music.playerState()
+            }]);
+          } else {
+            JSON.stringify([{state: 'stopped'}]);
+          }
+      parse: json
+      timeout: 10000
+
+columns: [name, artist, album, state]

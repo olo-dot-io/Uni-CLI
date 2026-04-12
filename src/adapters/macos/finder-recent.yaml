@@ -1,0 +1,24 @@
+# Desktop adapter — recently opened files via Spotlight (mdfind)
+site: macos
+name: finder-recent
+description: List files opened in the last 7 days
+type: desktop
+binary: mdfind
+detect: "test $(uname) = Darwin"
+
+pipeline:
+  - exec:
+      command: mdfind
+      args:
+        - "kMDItemLastUsedDate >= $time.today(-7)"
+        - "-onlyin"
+        - "$HOME"
+      parse: lines
+      timeout: 30000
+
+  - limit: 20
+
+  - map:
+      path: "${{ item.line }}"
+
+columns: [path]

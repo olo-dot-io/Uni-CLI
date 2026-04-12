@@ -1,0 +1,25 @@
+# Desktop adapter — list open Chrome tabs via JXA (macOS)
+site: chrome
+name: tabs
+description: List all open tabs in Google Chrome (macOS)
+type: desktop
+detect: Darwin
+strategy: public
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - "var chrome = Application('Google Chrome'); var tabs = []; chrome.windows().forEach(function(w, wi) { w.tabs().forEach(function(t) { tabs.push({window: wi, title: t.title(), url: t.url()}); }); }); JSON.stringify(tabs);"
+      parse: json
+      timeout: 10000
+
+  - map:
+      window: "${{ item.window }}"
+      title: "${{ item.title }}"
+      url: "${{ item.url }}"
+
+columns: [window, title, url]

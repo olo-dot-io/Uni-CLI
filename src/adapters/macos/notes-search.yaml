@@ -1,0 +1,45 @@
+# Desktop adapter — search Apple Notes via JXA (injection-safe)
+site: macos
+name: notes-search
+description: Search Apple Notes by title or content
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search query string
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          ObjC.import('Foundation');
+          var notes = Application('Notes');
+          var q = ObjC.unwrap($.NSProcessInfo.processInfo.environment.objectForKey('UNICLI_QUERY'));
+          var all = notes.notes();
+          var results = [];
+          for (var i = 0; i < all.length && results.length < 20; i++) {
+            var n = all[i];
+            if (n.name().toLowerCase().includes(q.toLowerCase()) || n.plaintext().toLowerCase().includes(q.toLowerCase())) {
+              results.push({
+                name: n.name(),
+                folder: n.container().name(),
+                snippet: n.plaintext().substring(0, 150)
+              });
+            }
+          }
+          JSON.stringify(results);
+      env:
+        UNICLI_QUERY: "${{ args.query }}"
+      parse: json
+      timeout: 30000
+
+columns: [name, folder, snippet]

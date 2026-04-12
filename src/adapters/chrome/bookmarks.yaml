@@ -1,0 +1,26 @@
+# Desktop adapter — export Chrome bookmarks bar entries
+site: chrome
+name: bookmarks
+description: List bookmarks from Chrome's bookmark bar (macOS)
+type: desktop
+detect: Darwin
+strategy: public
+
+pipeline:
+  - exec:
+      command: cat
+      args:
+        - "${{ env.HOME }}/Library/Application Support/Google/Chrome/Default/Bookmarks"
+      parse: json
+      timeout: 5000
+
+  - select: "roots.bookmark_bar.children"
+
+  - map:
+      name: "${{ item.name }}"
+      url: "${{ item.url || '' }}"
+      type: "${{ item.type }}"
+
+  - limit: 50
+
+columns: [name, url, type]

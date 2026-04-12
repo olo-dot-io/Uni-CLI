@@ -1,0 +1,23 @@
+# Desktop adapter — open today's daily note in Obsidian
+site: obsidian
+name: daily
+description: Open today's daily note in an Obsidian vault
+type: desktop
+binary: open
+detect: Darwin
+strategy: public
+
+args:
+  vault:
+    type: str
+    required: true
+    description: Vault name for the daily note
+
+pipeline:
+  - exec:
+      command: open
+      args:
+        - "obsidian://daily?vault=${{ args.vault }}"
+      timeout: 5000
+
+columns: [output]

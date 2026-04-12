@@ -1,0 +1,43 @@
+# Desktop adapter — Apple Music playback control via JXA (injection-safe)
+site: macos
+name: music-control
+description: Control Apple Music playback (play, pause, next, prev, toggle)
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+args:
+  action:
+    type: str
+    required: true
+    positional: true
+    choices: [play, pause, next, prev, toggle]
+    description: Playback action to perform
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          ObjC.import('Foundation');
+          var env = $.NSProcessInfo.processInfo.environment;
+          var action = ObjC.unwrap(env.objectForKey('UNICLI_ACTION')) || '';
+          var music = Application('Music');
+          var result = {action: action, success: true};
+          if (action === 'play') { music.play(); }
+          else if (action === 'pause') { music.pause(); }
+          else if (action === 'next') { music.nextTrack(); }
+          else if (action === 'prev') { music.previousTrack(); }
+          else if (action === 'toggle') { music.playpause(); }
+          else { result.success = false; result.error = 'unknown action'; }
+          result.state = music.playerState();
+          JSON.stringify([result]);
+      env:
+        UNICLI_ACTION: "${{ args.action }}"
+      parse: json
+      timeout: 10000
+
+columns: [action, success, state]

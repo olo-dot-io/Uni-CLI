@@ -1,0 +1,25 @@
+# Desktop adapter — open a file or folder in VS Code
+site: vscode
+name: open
+description: Open a file or folder in VS Code
+type: desktop
+binary: code
+detect: which code
+strategy: public
+
+args:
+  path:
+    type: str
+    required: true
+    positional: true
+    description: File or folder path to open
+
+pipeline:
+  - exec:
+      command: code
+      args:
+        - "${{ args.path }}"
+      parse: text
+      timeout: 10000
+
+columns: [output]

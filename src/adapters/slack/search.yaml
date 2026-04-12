@@ -1,0 +1,28 @@
+site: slack
+name: search
+description: Search Slack messages
+type: bridge
+strategy: public
+binary: slack
+detect: which slack
+
+args:
+  query:
+    positional: true
+    required: true
+    type: str
+    description: Search query
+
+pipeline:
+  - exec:
+      command: slack
+      args:
+        - search
+        - messages
+        - --query
+        - "${{ args.query }}"
+        - --json
+      parse: json
+      timeout: 30000
+
+columns: [channel, user, text, ts]

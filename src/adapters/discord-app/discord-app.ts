@@ -1,7 +1,7 @@
 /**
  * Discord desktop app adapter -- server/channel navigation + messaging.
  *
- * Commands: servers, channels, read, send, search, members, status
+ * Commands: servers, channels, read, send, search, members, delete, status
  */
 
 import { connectElectronApp } from "../_electron/shared.js";
@@ -150,6 +150,104 @@ cli({
       })()
     `);
     return members as unknown[];
+  },
+});
+
+// delete -- Delete a message by ID
+cli({
+  site: "discord-app",
+  name: "delete",
+  description: "Delete a message by its ID in the active Discord channel",
+  strategy: Strategy.PUBLIC,
+  args: [
+    {
+      name: "message_id",
+      required: true,
+      positional: true,
+      description:
+        "The numeric snowflake ID of the message to delete (visible via Developer Mode)",
+    },
+  ],
+  func: async (_page: unknown, kwargs: Record<string, unknown>) => {
+    const messageId = String(kwargs.message_id);
+    if (!/^\d+$/.test(messageId)) {
+      return [
+        {
+          status: "error",
+          message: `Invalid message ID: "${messageId}". A Discord message ID is a numeric snowflake.`,
+        },
+      ];
+    }
+
+    const p = await connectElectronApp("discord-app");
+    await p.wait(0.5);
+
+    const result = (await p.evaluate(`
+      (async () => {
+        try {
+          const messageId = ${JSON.stringify(messageId)};
+          const msgEl = document.querySelector('[id$="-' + messageId + '"]');
+          if (!msgEl) {
+            return { ok: false, message: 'Could not find message with ID ' + messageId };
+          }
+          const listItem = msgEl.closest('[id^="chat-messages-"]') || msgEl;
+
+          // Hover to reveal toolbar
+          listItem.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+          listItem.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+          await new Promise(r => setTimeout(r, 500));
+
+          // Find "More" button in toolbar
+          const toolbar = listItem.querySelector('[class*="toolbar"]') ||
+            document.querySelector('[id^="message-actions-"]');
+          if (!toolbar) {
+            return { ok: false, message: 'Could not find message action toolbar.' };
+          }
+          const buttons = Array.from(toolbar.querySelectorAll('button, [role="button"]'));
+          const moreBtn = buttons.find(btn => {
+            const label = (btn.getAttribute('aria-label') || '').toLowerCase();
+            return label === 'more' || label.includes('more');
+          });
+          if (!moreBtn) {
+            return { ok: false, message: 'Could not find "More" button on toolbar.' };
+          }
+          moreBtn.click();
+          await new Promise(r => setTimeout(r, 500));
+
+          // Find "Delete Message" in context menu
+          const menuItems = Array.from(document.querySelectorAll('[role="menuitem"]'));
+          const deleteItem = menuItems.find(item => {
+            const text = (item.textContent || '').trim().toLowerCase();
+            return text.includes('delete message') || text === 'delete';
+          });
+          if (!deleteItem) {
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            return { ok: false, message: 'No "Delete Message" option found.' };
+          }
+          deleteItem.click();
+          await new Promise(r => setTimeout(r, 500));
+
+          // Confirm deletion
+          const confirmBtn = document.querySelector(
+            '[type="submit"], button[class*="colorRed"], button[class*="danger"]'
+          );
+          if (!confirmBtn) {
+            return { ok: false, message: 'Delete confirmation dialog did not appear.' };
+          }
+          confirmBtn.click();
+          return { ok: true, message: 'Message ' + messageId + ' deleted successfully.' };
+        } catch (e) {
+          return { ok: false, message: String(e) };
+        }
+      })()
+    `)) as { ok: boolean; message: string };
+
+    return [
+      {
+        status: result.ok ? "success" : "failed",
+        message: result.message,
+      },
+    ];
   },
 });
 

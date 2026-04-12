@@ -1,0 +1,40 @@
+# Desktop adapter — list Finder tags on a file via JXA (injection-safe)
+site: macos
+name: finder-tags
+description: List Finder tags on a file or directory
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+args:
+  path:
+    type: str
+    required: true
+    positional: true
+    description: File or directory path to inspect
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          ObjC.import('Foundation');
+          var env = $.NSProcessInfo.processInfo.environment;
+          var path = ObjC.unwrap(env.objectForKey('UNICLI_PATH')) || '';
+          var url = $.NSURL.fileURLWithPath(path);
+          var res = url.resourceValuesForKeysError(['NSURLTagNamesKey'], null);
+          var tags = ObjC.unwrap(res.NSURLTagNamesKey) || [];
+          var tagList = [];
+          for (var i = 0; i < tags.length; i++) {
+            tagList.push(ObjC.unwrap(tags[i]));
+          }
+          JSON.stringify([{path: path, tags: tagList}]);
+      env:
+        UNICLI_PATH: "${{ args.path }}"
+      parse: json
+      timeout: 10000
+
+columns: [path, tags]

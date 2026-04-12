@@ -1,0 +1,17 @@
+# Desktop adapter — start a personal Zoom meeting
+site: zoom
+name: start
+description: Start your personal Zoom meeting
+type: desktop
+binary: open
+detect: Darwin
+strategy: public
+
+pipeline:
+  - exec:
+      command: open
+      args:
+        - "zoommtg://zoom.us/start?confno=personal"
+      timeout: 5000
+
+columns: [output]

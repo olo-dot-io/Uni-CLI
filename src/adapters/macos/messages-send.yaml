@@ -1,0 +1,42 @@
+# Desktop adapter — send iMessage via JXA (injection-safe)
+site: macos
+name: messages-send
+description: Send an iMessage to a contact
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+args:
+  to:
+    type: str
+    required: true
+    description: Recipient phone number or email
+  text:
+    type: str
+    required: true
+    description: Message text to send
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          ObjC.import('Foundation');
+          var env = $.NSProcessInfo.processInfo.environment;
+          var to = ObjC.unwrap(env.objectForKey('UNICLI_MSG_TO')) || '';
+          var text = ObjC.unwrap(env.objectForKey('UNICLI_MSG_TEXT')) || '';
+          var msg = Application('Messages');
+          var svc = msg.services.whose({serviceType: 'iMessage'})[0];
+          var buddy = svc.buddies.whose({handle: to})[0];
+          msg.send(text, {to: buddy});
+          JSON.stringify([{sent: true, to: to}]);
+      env:
+        UNICLI_MSG_TO: "${{ args.to }}"
+        UNICLI_MSG_TEXT: "${{ args.text }}"
+      parse: json
+      timeout: 15000
+
+columns: [sent, to]

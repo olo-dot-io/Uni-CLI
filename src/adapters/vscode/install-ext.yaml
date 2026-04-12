@@ -1,0 +1,26 @@
+# Desktop adapter — install a VS Code extension
+site: vscode
+name: install-ext
+description: Install a VS Code extension by identifier
+type: desktop
+binary: code
+detect: which code
+strategy: public
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: Extension identifier (e.g., ms-python.python)
+
+pipeline:
+  - exec:
+      command: code
+      args:
+        - "--install-extension"
+        - "${{ args.id }}"
+      parse: text
+      timeout: 60000
+
+columns: [output]

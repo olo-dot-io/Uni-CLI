@@ -1,0 +1,35 @@
+site: slack
+name: send
+description: Send a message to a Slack channel
+type: bridge
+strategy: public
+binary: slack
+detect: which slack
+
+args:
+  channel:
+    positional: true
+    required: true
+    type: str
+    description: Channel ID (e.g. C0123456789)
+  text:
+    positional: true
+    required: true
+    type: str
+    description: Message text to send
+
+pipeline:
+  - exec:
+      command: slack
+      args:
+        - chat
+        - send
+        - --channel
+        - "${{ args.channel }}"
+        - --text
+        - "${{ args.text }}"
+        - --json
+      parse: json
+      timeout: 15000
+
+columns: [ok, channel, ts]

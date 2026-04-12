@@ -1,0 +1,26 @@
+# Desktop adapter — open a vault or note in Obsidian via URI scheme
+site: obsidian
+name: open
+description: Open an Obsidian vault or specific note
+type: desktop
+binary: open
+detect: Darwin
+strategy: public
+
+args:
+  vault:
+    type: str
+    required: true
+    description: Vault name to open
+  file:
+    type: str
+    description: Optional file path within the vault
+
+pipeline:
+  - exec:
+      command: open
+      args:
+        - "obsidian://open?vault=${{ args.vault }}&file=${{ args.file || '' }}"
+      timeout: 5000
+
+columns: [output]

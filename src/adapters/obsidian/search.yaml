@@ -1,0 +1,28 @@
+# Desktop adapter — search within an Obsidian vault via URI scheme
+site: obsidian
+name: search
+description: Search for text within an Obsidian vault
+type: desktop
+binary: open
+detect: Darwin
+strategy: public
+
+args:
+  vault:
+    type: str
+    required: true
+    description: Vault name to search in
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search query text
+
+pipeline:
+  - exec:
+      command: open
+      args:
+        - "obsidian://search?vault=${{ args.vault }}&query=${{ args.query }}"
+      timeout: 5000
+
+columns: [output]

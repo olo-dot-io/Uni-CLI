@@ -1,0 +1,23 @@
+# Desktop adapter — list installed VS Code extensions
+site: vscode
+name: extensions
+description: List installed VS Code extensions with versions
+type: desktop
+binary: code
+detect: which code
+strategy: public
+
+pipeline:
+  - exec:
+      command: code
+      args:
+        - "--list-extensions"
+        - "--show-versions"
+      parse: lines
+      timeout: 15000
+
+  - map:
+      extension: "${{ item.line.split('@')[0] }}"
+      version: "${{ item.line.split('@')[1] || '' }}"
+
+columns: [extension, version]
