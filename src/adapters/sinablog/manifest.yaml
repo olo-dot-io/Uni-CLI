@@ -1,7 +1,0 @@
-site: sinablog
-displayName: Sina Blog
-type: web-api
-domain: blog.sina.com.cn
-description: "Sina Blog — Chinese blogging platform"
-strategy: public
-category: social
