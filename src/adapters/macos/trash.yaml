@@ -1,0 +1,32 @@
+# Desktop adapter — list macOS Trash contents via JXA
+site: macos
+name: trash
+description: Get Trash item count and list of items
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          var finder = Application('Finder');
+          var trash = finder.trash;
+          var items = trash.items();
+          var result = [];
+          var max = Math.min(items.length, 50);
+          for (var i = 0; i < max; i++) {
+            result.push({
+              name: items[i].name(),
+              kind: items[i].kind(),
+              size: items[i].size()
+            });
+          }
+          JSON.stringify({count: items.length, items: result});
+      parse: json
+
+columns: [count, items]

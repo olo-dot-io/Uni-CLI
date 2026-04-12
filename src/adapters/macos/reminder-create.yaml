@@ -1,0 +1,75 @@
+# Desktop adapter — create a macOS Reminder via JXA (injection-safe)
+site: macos
+name: reminder-create
+description: Create a new reminder in Reminders.app
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+args:
+  title:
+    type: str
+    required: true
+    positional: true
+    description: Reminder title
+  list:
+    type: str
+    default: ""
+    description: Reminders list name (uses default if empty)
+  due:
+    type: str
+    default: ""
+    description: "Due date (YYYY-MM-DD or YYYY-MM-DD HH:MM)"
+  notes:
+    type: str
+    default: ""
+    description: Additional notes for the reminder
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          ObjC.import('Foundation');
+          var env = $.NSProcessInfo.processInfo.environment;
+          var title = ObjC.unwrap(env.objectForKey('UNICLI_TITLE')) || 'Reminder';
+          var listName = ObjC.unwrap(env.objectForKey('UNICLI_LIST')) || '';
+          var dueStr = ObjC.unwrap(env.objectForKey('UNICLI_DUE')) || '';
+          var notes = ObjC.unwrap(env.objectForKey('UNICLI_NOTES')) || '';
+
+          var reminders = Application('Reminders');
+          var targetList;
+          if (listName) {
+            var lists = reminders.lists.whose({name: listName})();
+            targetList = lists.length > 0 ? lists[0] : reminders.defaultList();
+          } else {
+            targetList = reminders.defaultList();
+          }
+
+          var props = {name: title, body: notes};
+          if (dueStr) {
+            var parts = dueStr.split(/[\s-:T]+/);
+            var due;
+            if (parts.length >= 5) {
+              due = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]), parseInt(parts[3]), parseInt(parts[4]));
+            } else {
+              due = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]), 9, 0);
+            }
+            props.dueDate = due;
+          }
+
+          var reminder = reminders.Reminder(props);
+          targetList.reminders.push(reminder);
+          JSON.stringify([{created: true, title: title, list: targetList.name(), due: dueStr || 'none'}]);
+      env:
+        UNICLI_TITLE: "${{ args.title }}"
+        UNICLI_LIST: "${{ args.list }}"
+        UNICLI_DUE: "${{ args.due }}"
+        UNICLI_NOTES: "${{ args.notes }}"
+      parse: json
+      timeout: 15000
+
+columns: [created, title, list, due]

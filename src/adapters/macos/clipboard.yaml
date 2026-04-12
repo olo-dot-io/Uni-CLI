@@ -1,21 +1,23 @@
-# Desktop adapter — get macOS clipboard contents via pbpaste
+# Desktop adapter — get macOS clipboard contents via JXA
 site: macos
 name: clipboard
 description: Get current clipboard text contents
 type: desktop
-binary: pbpaste
+binary: osascript
 detect: "test $(uname) = Darwin"
 
 pipeline:
   - exec:
-      command: pbpaste
-      args: []
-      parse: text
-      timeout: 5000
-
-  - set:
-      content: "${{ data }}"
-
-  - select: vars
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          var app = Application.currentApplication();
+          app.includeStandardAdditions = true;
+          var clip = app.theClipboard();
+          JSON.stringify([{content: typeof clip === 'string' ? clip : String(clip)}]);
+      parse: json
 
 columns: [content]

@@ -1,0 +1,54 @@
+# Desktop adapter — send email via macOS Mail.app JXA (injection-safe)
+site: macos
+name: mail-send
+description: Send an email using Mail.app
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+args:
+  to:
+    type: str
+    required: true
+    description: Recipient email address
+  subject:
+    type: str
+    required: true
+    description: Email subject line
+  body:
+    type: str
+    required: true
+    description: Email body text
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          ObjC.import('Foundation');
+          var env = $.NSProcessInfo.processInfo.environment;
+          var to = ObjC.unwrap(env.objectForKey('UNICLI_TO')) || '';
+          var subject = ObjC.unwrap(env.objectForKey('UNICLI_SUBJECT')) || '';
+          var body = ObjC.unwrap(env.objectForKey('UNICLI_BODY')) || '';
+
+          var mail = Application('Mail');
+          var msg = mail.OutgoingMessage({
+            subject: subject,
+            content: body,
+            visible: true
+          });
+          mail.outgoingMessages.push(msg);
+          msg.toRecipients.push(mail.Recipient({address: to}));
+          mail.send(msg);
+          JSON.stringify([{sent: true, to: to, subject: subject}]);
+      env:
+        UNICLI_TO: "${{ args.to }}"
+        UNICLI_SUBJECT: "${{ args.subject }}"
+        UNICLI_BODY: "${{ args.body }}"
+      parse: json
+      timeout: 15000
+
+columns: [sent, to, subject]

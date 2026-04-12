@@ -1,0 +1,32 @@
+# Desktop adapter — get macOS hardware and software info via system_profiler
+site: macos
+name: system-info
+description: Get hardware model, processor, memory, and OS version
+type: desktop
+binary: system_profiler
+detect: "test $(uname) = Darwin"
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          var app = Application.currentApplication();
+          app.includeStandardAdditions = true;
+          var raw = app.doShellScript('system_profiler SPHardwareDataType SPSoftwareDataType -json');
+          var data = JSON.parse(raw);
+          var hw = data.SPHardwareDataType[0];
+          var sw = data.SPSoftwareDataType[0];
+          JSON.stringify([{
+            model_name: hw.machine_name || hw.model_name || '',
+            processor: hw.chip_type || hw.cpu_type || '',
+            memory: hw.physical_memory || '',
+            serial_number: hw.serial_number || '',
+            os_version: sw.os_version || ''
+          }]);
+      parse: json
+
+columns: [model_name, processor, memory, os_version]

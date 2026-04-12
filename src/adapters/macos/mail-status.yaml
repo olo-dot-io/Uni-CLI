@@ -1,0 +1,38 @@
+# Desktop adapter — get macOS Mail.app account status via JXA
+site: macos
+name: mail-status
+description: Get Mail.app accounts and unread message counts
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          var mail = Application('Mail');
+          var accounts = mail.accounts();
+          var result = [];
+          for (var i = 0; i < accounts.length; i++) {
+            var acct = accounts[i];
+            var unread = 0;
+            var mailboxes = acct.mailboxes();
+            for (var j = 0; j < mailboxes.length; j++) {
+              unread += mailboxes[j].unreadCount();
+            }
+            result.push({
+              name: acct.name(),
+              email: acct.emailAddresses()[0] || '',
+              type: acct.accountType(),
+              unread: unread
+            });
+          }
+          JSON.stringify(result);
+      parse: json
+      timeout: 15000
+
+columns: [name, email, type, unread]

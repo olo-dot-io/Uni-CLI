@@ -13,7 +13,7 @@ pipeline:
         - "-l"
         - "JavaScript"
         - "-e"
-        - "JSON.stringify(Application('System Events').currentDesktop.getVolumeSettings())"
+        - "var app = Application.currentApplication(); app.includeStandardAdditions = true; JSON.stringify(app.getVolumeSettings())"
       parse: json
 
 columns: [outputVolume, inputVolume, alertVolume, outputMuted]

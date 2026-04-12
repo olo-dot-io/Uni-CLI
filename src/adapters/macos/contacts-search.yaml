@@ -1,0 +1,59 @@
+# Desktop adapter — search macOS Contacts via JXA (injection-safe)
+site: macos
+name: contacts-search
+description: Search contacts by name, email, or phone
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search query (name, email, or phone)
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          ObjC.import('Foundation');
+          var env = $.NSProcessInfo.processInfo.environment;
+          var query = (ObjC.unwrap(env.objectForKey('UNICLI_QUERY')) || '').toLowerCase();
+          var contacts = Application('Contacts');
+          var people = contacts.people();
+          var result = [];
+          var max = Math.min(people.length, 500);
+          for (var i = 0; i < max; i++) {
+            var p = people[i];
+            var first = p.firstName() || '';
+            var last = p.lastName() || '';
+            var fullName = (first + ' ' + last).trim();
+            var emails = [];
+            try { emails = p.emails.value(); } catch(e) {}
+            var phones = [];
+            try { phones = p.phones.value(); } catch(e) {}
+            var match = fullName.toLowerCase().indexOf(query) !== -1
+              || emails.some(function(e) { return e.toLowerCase().indexOf(query) !== -1; })
+              || phones.some(function(ph) { return ph.indexOf(query) !== -1; });
+            if (match) {
+              result.push({
+                name: fullName,
+                email: emails[0] || '',
+                phone: phones[0] || '',
+                company: p.organization() || ''
+              });
+            }
+            if (result.length >= 20) break;
+          }
+          JSON.stringify(result);
+      env:
+        UNICLI_QUERY: "${{ args.query }}"
+      parse: json
+      timeout: 30000
+
+columns: [name, email, phone, company]

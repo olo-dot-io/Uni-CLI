@@ -1,0 +1,41 @@
+site: baidu
+name: search
+description: Search Baidu for web results
+domain: www.baidu.com
+strategy: intercept
+browser: true
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search query
+  limit:
+    type: int
+    default: 10
+    description: Number of results
+
+columns: [rank, title, snippet, url]
+
+pipeline:
+  - navigate:
+      url: https://www.baidu.com/s?wd=${{ args.query | urlencode }}
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const items = document.querySelectorAll('#content_left .result, #content_left .c-container');
+        return Array.from(items).slice(0, limit).map((item, i) => {
+          const titleEl = item.querySelector('h3 a, .t a');
+          const snippetEl = item.querySelector('.c-abstract, .content-right_8Zs40, [class*="content"]');
+          return {
+            rank: i + 1,
+            title: clean(titleEl?.textContent),
+            snippet: clean(snippetEl?.textContent).substring(0, 300),
+            url: titleEl?.href || ''
+          };
+        }).filter(r => r.title);
+      })()

@@ -1,0 +1,31 @@
+# Desktop adapter — get macOS disk information via JXA
+site: macos
+name: disk-info
+description: Get disk names, capacity, and free space for all mounted volumes
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          var app = Application('Finder');
+          var disks = app.disks();
+          var result = [];
+          for (var i = 0; i < disks.length; i++) {
+            var d = disks[i];
+            result.push({
+              name: d.name(),
+              capacity: Math.round(d.capacity() / 1073741824 * 100) / 100,
+              freeSpace: Math.round(d.freeSpace() / 1073741824 * 100) / 100
+            });
+          }
+          JSON.stringify(result);
+      parse: json
+
+columns: [name, capacity, freeSpace]

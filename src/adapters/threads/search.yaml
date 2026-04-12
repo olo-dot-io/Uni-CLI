@@ -1,0 +1,47 @@
+site: threads
+name: search
+description: Search Threads for posts matching a query
+domain: threads.net
+strategy: intercept
+browser: true
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search query
+  limit:
+    type: int
+    default: 20
+    description: Number of results
+
+columns: [rank, author, text, likes, url]
+
+pipeline:
+  - navigate:
+      url: https://www.threads.net/search?q=${{ args.query | urlencode }}&serp_type=default
+      settleMs: 4000
+
+  - scroll:
+      times: 2
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const posts = document.querySelectorAll('[data-pressable-container="true"], article, [class*="FeedItem"]');
+        return Array.from(posts).slice(0, limit).map((post, i) => {
+          const authorEl = post.querySelector('a[href*="/@"] span, [class*="username"]');
+          const textEl = post.querySelector('[class*="text"], [class*="caption"], [dir="auto"]');
+          const likeEl = post.querySelector('[class*="like"] span, [aria-label*="like"]');
+          const linkEl = post.querySelector('a[href*="/post/"]');
+          return {
+            rank: i + 1,
+            author: clean(authorEl?.textContent),
+            text: clean(textEl?.textContent).substring(0, 300),
+            likes: clean(likeEl?.textContent) || '0',
+            url: linkEl ? 'https://www.threads.net' + linkEl.getAttribute('href') : ''
+          };
+        }).filter(r => r.text);
+      })()

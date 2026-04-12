@@ -1,0 +1,44 @@
+site: threads
+name: hot
+description: Get trending posts from Threads
+domain: threads.net
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of trending posts to fetch
+
+columns: [rank, author, text, likes, replies, url]
+
+pipeline:
+  - navigate:
+      url: https://www.threads.net/
+      settleMs: 4000
+
+  - scroll:
+      times: 2
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const posts = document.querySelectorAll('[data-pressable-container="true"], article, [class*="FeedItem"]');
+        return Array.from(posts).slice(0, limit).map((post, i) => {
+          const authorEl = post.querySelector('a[href*="/@"] span, [class*="username"]');
+          const textEl = post.querySelector('[class*="text"], [class*="caption"], [dir="auto"]');
+          const likeEl = post.querySelector('[class*="like"] span, [aria-label*="like"]');
+          const replyEl = post.querySelector('[class*="reply"] span, [aria-label*="repl"]');
+          const linkEl = post.querySelector('a[href*="/post/"]');
+          return {
+            rank: i + 1,
+            author: clean(authorEl?.textContent),
+            text: clean(textEl?.textContent).substring(0, 300),
+            likes: clean(likeEl?.textContent) || '0',
+            replies: clean(replyEl?.textContent) || '0',
+            url: linkEl ? 'https://www.threads.net' + linkEl.getAttribute('href') : ''
+          };
+        }).filter(r => r.text);
+      })()

@@ -1,4 +1,4 @@
-# Desktop adapter — send a macOS notification via AppleScript
+# Desktop adapter — send a macOS notification via JXA (injection-safe)
 site: macos
 name: notify
 description: Send a macOS notification with title and optional subtitle
@@ -25,9 +25,22 @@ pipeline:
   - exec:
       command: osascript
       args:
+        - "-l"
+        - "JavaScript"
         - "-e"
-        - 'display notification "${{ args.message }}" with title "${{ args.title }}" subtitle "${{ args.subtitle }}"'
-      parse: text
-      timeout: 10000
+        - |
+          var app = Application.currentApplication();
+          app.includeStandardAdditions = true;
+          var env = $.NSProcessInfo.processInfo.environment;
+          var msg = ObjC.unwrap(env.objectForKey('UNICLI_NOTIFY_MSG')) || 'notification';
+          var title = ObjC.unwrap(env.objectForKey('UNICLI_NOTIFY_TITLE')) || 'Uni-CLI';
+          var sub = ObjC.unwrap(env.objectForKey('UNICLI_NOTIFY_SUB')) || '';
+          app.displayNotification(msg, {withTitle: title, subtitle: sub});
+          JSON.stringify([{sent: true, message: msg, title: title}]);
+      env:
+        UNICLI_NOTIFY_MSG: "${{ args.message }}"
+        UNICLI_NOTIFY_TITLE: "${{ args.title }}"
+        UNICLI_NOTIFY_SUB: "${{ args.subtitle }}"
+      parse: json
 
-columns: []
+columns: [sent, message, title]

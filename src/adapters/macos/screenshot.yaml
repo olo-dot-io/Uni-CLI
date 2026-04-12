@@ -21,26 +21,14 @@ pipeline:
     then:
       - exec:
           command: screencapture
-          args:
-            - "-x"
-            - "-c"
-          parse: text
+          args: ["-x", "-c"]
           timeout: 10000
-      - set:
-          output: clipboard
-          message: Screenshot copied to clipboard
-      - select: vars
+      - evaluate: "JSON.stringify([{output: 'clipboard', message: 'Screenshot copied to clipboard'}])"
     else:
       - exec:
           command: screencapture
-          args:
-            - "-x"
-            - "${{ args.file }}"
-          parse: text
+          args: ["-x", "${{ args.file }}"]
           timeout: 10000
-      - set:
-          output: "${{ args.file }}"
-          message: "Screenshot saved to ${{ args.file }}"
-      - select: vars
+      - evaluate: "JSON.stringify([{output: '${{ args.file }}', message: 'Screenshot saved'}])"
 
 columns: [output, message]

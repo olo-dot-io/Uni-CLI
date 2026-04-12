@@ -1,0 +1,31 @@
+# Desktop adapter — list running macOS applications via JXA
+site: macos
+name: apps
+description: List running applications with name, PID, and bundle ID
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          var se = Application('System Events');
+          var procs = se.applicationProcesses.whose({backgroundOnly: false})();
+          var result = [];
+          for (var i = 0; i < procs.length; i++) {
+            var p = procs[i];
+            result.push({
+              name: p.name(),
+              pid: p.unixId(),
+              bundleId: p.bundleIdentifier() || ''
+            });
+          }
+          JSON.stringify(result);
+      parse: json
+
+columns: [name, pid, bundleId]

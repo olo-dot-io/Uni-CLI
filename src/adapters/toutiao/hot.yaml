@@ -1,0 +1,31 @@
+site: toutiao
+name: hot
+description: Get Toutiao (Jinri Toutiao) hot topics
+type: web-api
+domain: www.toutiao.com
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 30
+    description: Number of hot topics
+
+pipeline:
+  - fetch:
+      url: "https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc"
+      headers:
+        User-Agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+
+  - select: data
+
+  - map:
+      rank: "${{ index + 1 }}"
+      title: "${{ item.Title }}"
+      hot_value: "${{ item.HotValue }}"
+      url: "${{ item.Url }}"
+      label: "${{ item.LabelDesc || '' }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, hot_value, label, url]

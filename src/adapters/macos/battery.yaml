@@ -1,25 +1,26 @@
-# Desktop adapter — get macOS battery status via pmset
+# Desktop adapter — get macOS battery status via JXA + shell
 site: macos
 name: battery
 description: Get battery percentage, charging status, and time remaining
 type: desktop
-binary: pmset
+binary: osascript
 detect: "test $(uname) = Darwin"
 
 pipeline:
   - exec:
-      command: pmset
+      command: osascript
       args:
-        - "-g"
-        - "batt"
-      parse: text
-      timeout: 10000
-
-  - set:
-      percent: "${{ (data.match(/\\t(\\d+)%/) || [])[1] || 'unknown' }}"
-      status: "${{ (data.match(/; (\\w[\\w ]+?);/) || [])[1] || 'unknown' }}"
-      remaining: "${{ (data.match(/(\\d+:\\d+) remaining/) || [])[1] || 'N/A' }}"
-
-  - select: vars
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          var app = Application.currentApplication();
+          app.includeStandardAdditions = true;
+          var raw = app.doShellScript('pmset -g batt');
+          var pct = (raw.match(/\t(\d+)%/) || [])[1] || 'unknown';
+          var st = (raw.match(/; (\w[\w ]+?);/) || [])[1] || 'unknown';
+          var rem = (raw.match(/(\d+:\d+) remaining/) || [])[1] || 'N/A';
+          JSON.stringify([{percent: pct, status: st, remaining: rem}]);
+      parse: json
 
 columns: [percent, status, remaining]

@@ -1,0 +1,37 @@
+site: baidu
+name: hot
+description: Get Baidu hot search trending topics
+domain: top.baidu.com
+strategy: intercept
+browser: true
+
+args:
+  limit:
+    type: int
+    default: 30
+    description: Number of hot topics
+
+columns: [rank, title, hot_value, url]
+
+pipeline:
+  - navigate:
+      url: https://top.baidu.com/board?tab=realtime
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const clean = v => (v || '').replace(/\s+/g, ' ').trim();
+        const items = document.querySelectorAll('.category-wrap_iQLoo .content_1YWBm');
+        return Array.from(items).slice(0, limit).map((item, i) => {
+          const titleEl = item.querySelector('.c-single-text-ellipsis');
+          const hotEl = item.querySelector('.hot-index_1Bl1a');
+          const linkEl = item.closest('a') || item.querySelector('a');
+          return {
+            rank: i + 1,
+            title: clean(titleEl?.textContent),
+            hot_value: clean(hotEl?.textContent) || '0',
+            url: linkEl?.href || ''
+          };
+        }).filter(r => r.title);
+      })()

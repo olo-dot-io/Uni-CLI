@@ -1,0 +1,16 @@
+# Desktop adapter — lock macOS screen via pmset
+site: macos
+name: lock-screen
+description: Lock the screen (put display to sleep)
+type: desktop
+binary: pmset
+detect: "test $(uname) = Darwin"
+
+pipeline:
+  - exec:
+      command: pmset
+      args: ["displaysleepnow"]
+      parse: text
+      timeout: 5000
+
+columns: []

@@ -36,6 +36,26 @@
     linux: "curl -fsSL https://raw.githubusercontent.com/DingTalk-Real-AI/dingtalk-workspace-cli/main/scripts/install.sh | sh"
     default: "npm install -g dingtalk-workspace-cli"
 
+# ── Tier 1 — AI Agent CLIs ──────────────────────────────────────────────
+
+- name: kimi-cli
+  binary: kimi
+  description: "Kimi Code — Moonshot AI coding agent CLI, 8K★"
+  homepage: "https://github.com/MoonshotAI/kimi-cli"
+  tags: [ai, agent, coding, moonshot]
+  json_flag: "--json"
+  install:
+    default: "pip install kimi-cli"
+
+- name: deepagents
+  binary: deepagents
+  description: "DeepAgents — LangChain agent harness CLI, 20K★"
+  homepage: "https://github.com/langchain-ai/deepagents"
+  tags: [ai, agent, langchain, harness]
+  json_flag: "--json"
+  install:
+    default: "pip install deepagents-cli"
+
 # ── Tier 1 — Essential ──────────────────────────────────────────────────
 
 - name: vercel
@@ -74,6 +94,15 @@
   json_flag: "--json"
   install:
     default: "npm install -g firebase-tools"
+
+- name: gws
+  binary: gws
+  description: "Google Workspace — Drive, Gmail, Calendar, Sheets, 100+ agent skills"
+  homepage: "https://github.com/googleworkspace/cli"
+  tags: [google, workspace, gmail, calendar, drive, productivity]
+  json_flag: "--format json"
+  install:
+    default: "npm install -g @googleworkspace/cli"
 
 - name: wrangler
   binary: wrangler

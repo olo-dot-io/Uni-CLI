@@ -1,0 +1,24 @@
+# Desktop adapter — open files, URLs, or apps via macOS open command
+site: macos
+name: open
+description: Open a file, URL, or application using macOS open command
+type: desktop
+binary: open
+detect: "test $(uname) = Darwin"
+
+args:
+  target:
+    type: str
+    required: true
+    positional: true
+    description: File path, URL, or application name to open
+
+pipeline:
+  - exec:
+      command: open
+      args:
+        - "${{ args.target }}"
+      parse: text
+      timeout: 10000
+
+columns: []

@@ -1,0 +1,33 @@
+site: deepseek
+name: chat
+description: Chat with DeepSeek AI (OpenAI-compatible API)
+type: web-api
+domain: api.deepseek.com
+strategy: header
+args:
+  prompt:
+    required: true
+    positional: true
+    description: Chat message
+  model:
+    required: false
+    default: deepseek-chat
+    description: Model name (deepseek-chat, deepseek-reasoner)
+pipeline:
+  - fetch:
+      url: "https://api.deepseek.com/chat/completions"
+      method: POST
+      headers:
+        Content-Type: application/json
+        Authorization: "Bearer ${{ env.DEEPSEEK_API_KEY }}"
+      body:
+        model: "${{ args.model | default('deepseek-chat') }}"
+        messages:
+          - role: user
+            content: "${{ args.prompt }}"
+  - select: choices
+  - map:
+      content: "${{ item.message.content }}"
+      role: "${{ item.message.role }}"
+      finish_reason: "${{ item.finish_reason }}"
+columns: [content]

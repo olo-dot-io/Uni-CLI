@@ -1,0 +1,53 @@
+# Desktop adapter — list macOS Calendar events via JXA
+site: macos
+name: calendar-list
+description: List calendar events for the next N days
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+args:
+  days:
+    type: int
+    default: 1
+    description: Number of days ahead to fetch events
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          var cal = Application('Calendar');
+          var days = parseInt($.NSProcessInfo.processInfo.environment.objectForKey('UNICLI_DAYS').js) || 1;
+          var now = new Date();
+          var end = new Date(now.getTime() + days * 86400000);
+          var calendars = cal.calendars();
+          var result = [];
+          for (var c = 0; c < calendars.length; c++) {
+            var events = calendars[c].events();
+            for (var e = 0; e < events.length; e++) {
+              var ev = events[e];
+              var start = ev.startDate();
+              if (start >= now && start <= end) {
+                result.push({
+                  calendar: calendars[c].name(),
+                  title: ev.summary(),
+                  start: start.toISOString(),
+                  end: ev.endDate().toISOString(),
+                  location: ev.location() || '',
+                  notes: (ev.description() || '').substring(0, 200)
+                });
+              }
+            }
+          }
+          result.sort(function(a, b) { return a.start < b.start ? -1 : 1; });
+          JSON.stringify(result);
+      env:
+        UNICLI_DAYS: "${{ args.days }}"
+      parse: json
+      timeout: 30000
+
+columns: [calendar, title, start, end, location]

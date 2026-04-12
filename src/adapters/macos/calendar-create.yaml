@@ -1,0 +1,81 @@
+# Desktop adapter — create a macOS Calendar event via JXA (injection-safe)
+site: macos
+name: calendar-create
+description: Create a new calendar event with title, date, time, and duration
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+args:
+  title:
+    type: str
+    required: true
+    positional: true
+    description: Event title
+  date:
+    type: str
+    default: "today"
+    description: "Event date (YYYY-MM-DD or 'today')"
+  time:
+    type: str
+    default: "09:00"
+    description: "Event start time (HH:MM)"
+  duration:
+    type: int
+    default: 60
+    description: Event duration in minutes
+  calendar:
+    type: str
+    default: ""
+    description: Calendar name (uses default calendar if empty)
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          ObjC.import('Foundation');
+          var env = $.NSProcessInfo.processInfo.environment;
+          var title = ObjC.unwrap(env.objectForKey('UNICLI_TITLE')) || 'New Event';
+          var dateStr = ObjC.unwrap(env.objectForKey('UNICLI_DATE')) || 'today';
+          var timeStr = ObjC.unwrap(env.objectForKey('UNICLI_TIME')) || '09:00';
+          var duration = parseInt(ObjC.unwrap(env.objectForKey('UNICLI_DURATION'))) || 60;
+          var calName = ObjC.unwrap(env.objectForKey('UNICLI_CALENDAR')) || '';
+
+          var cal = Application('Calendar');
+          var targetCal;
+          if (calName) {
+            var calendars = cal.calendars.whose({name: calName})();
+            targetCal = calendars.length > 0 ? calendars[0] : cal.defaultCalendar();
+          } else {
+            targetCal = cal.calendars()[0];
+          }
+
+          var now = new Date();
+          var dateParts;
+          if (dateStr === 'today') {
+            dateParts = [now.getFullYear(), now.getMonth(), now.getDate()];
+          } else {
+            var dp = dateStr.split('-');
+            dateParts = [parseInt(dp[0]), parseInt(dp[1]) - 1, parseInt(dp[2])];
+          }
+          var tp = timeStr.split(':');
+          var start = new Date(dateParts[0], dateParts[1], dateParts[2], parseInt(tp[0]), parseInt(tp[1]));
+          var end = new Date(start.getTime() + duration * 60000);
+
+          var evt = cal.Event({summary: title, startDate: start, endDate: end});
+          targetCal.events.push(evt);
+          JSON.stringify([{created: true, title: title, start: start.toISOString(), end: end.toISOString(), calendar: targetCal.name()}]);
+      env:
+        UNICLI_TITLE: "${{ args.title }}"
+        UNICLI_DATE: "${{ args.date }}"
+        UNICLI_TIME: "${{ args.time }}"
+        UNICLI_DURATION: "${{ args.duration }}"
+        UNICLI_CALENDAR: "${{ args.calendar }}"
+      parse: json
+      timeout: 15000
+
+columns: [created, title, start, end, calendar]

@@ -1,0 +1,33 @@
+site: perplexity
+name: ask
+description: Ask Perplexity AI a question via API
+type: web-api
+domain: api.perplexity.ai
+strategy: header
+args:
+  question:
+    required: true
+    positional: true
+    description: Question to ask
+  model:
+    required: false
+    default: sonar
+    description: Model name (sonar, sonar-pro, sonar-reasoning)
+pipeline:
+  - fetch:
+      url: "https://api.perplexity.ai/chat/completions"
+      method: POST
+      headers:
+        Content-Type: application/json
+        Authorization: "Bearer ${{ env.PERPLEXITY_API_KEY }}"
+      body:
+        model: "${{ args.model | default('sonar') }}"
+        messages:
+          - role: user
+            content: "${{ args.question }}"
+  - select: choices
+  - map:
+      content: "${{ item.message.content }}"
+      role: "${{ item.message.role }}"
+      finish_reason: "${{ item.finish_reason }}"
+columns: [content]

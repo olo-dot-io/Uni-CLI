@@ -1,0 +1,25 @@
+# Desktop adapter — prevent macOS from sleeping via caffeinate
+site: macos
+name: caffeinate
+description: Keep Mac awake for a specified duration (prevents display sleep)
+type: desktop
+binary: caffeinate
+detect: "test $(uname) = Darwin"
+
+args:
+  duration:
+    type: int
+    default: 3600
+    description: Duration in seconds to stay awake (default 1 hour)
+
+pipeline:
+  - exec:
+      command: caffeinate
+      args:
+        - "-d"
+        - "-t"
+        - "${{ args.duration }}"
+      parse: text
+      timeout: "${{ (args.duration + 10) * 1000 }}"
+
+columns: []

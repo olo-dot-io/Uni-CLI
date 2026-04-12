@@ -1,0 +1,63 @@
+# Desktop adapter — manage macOS Wi-Fi via networksetup
+site: macos
+name: wifi
+description: Get Wi-Fi status or turn Wi-Fi on/off
+type: desktop
+binary: networksetup
+detect: "test $(uname) = Darwin"
+
+args:
+  action:
+    type: str
+    required: true
+    positional: true
+    description: "Action: status, on, or off"
+
+pipeline:
+  - if: "args.action === 'on'"
+    then:
+      - exec:
+          command: networksetup
+          args: ["-setairportpower", "en0", "on"]
+          parse: text
+      - exec:
+          command: osascript
+          args:
+            - "-l"
+            - "JavaScript"
+            - "-e"
+            - "JSON.stringify([{action: 'on', message: 'Wi-Fi turned on'}])"
+          parse: json
+    else:
+      - if: "args.action === 'off'"
+        then:
+          - exec:
+              command: networksetup
+              args: ["-setairportpower", "en0", "off"]
+              parse: text
+          - exec:
+              command: osascript
+              args:
+                - "-l"
+                - "JavaScript"
+                - "-e"
+                - "JSON.stringify([{action: 'off', message: 'Wi-Fi turned off'}])"
+              parse: json
+        else:
+          - exec:
+              command: osascript
+              args:
+                - "-l"
+                - "JavaScript"
+                - "-e"
+                - |
+                  var app = Application.currentApplication();
+                  app.includeStandardAdditions = true;
+                  var info = app.doShellScript('networksetup -getairportnetwork en0 2>/dev/null || echo "Not connected"');
+                  var power = app.doShellScript('networksetup -getairportpower en0 2>/dev/null || echo "unknown"');
+                  var network = (info.match(/Current Wi-Fi Network: (.+)/) || [])[1] || 'Not connected';
+                  var isOn = power.indexOf('On') !== -1;
+                  JSON.stringify([{network: network, power: isOn ? 'on' : 'off'}]);
+              parse: json
+
+columns: [network, power, action, message]
