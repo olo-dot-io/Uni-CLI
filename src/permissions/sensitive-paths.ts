@@ -63,8 +63,8 @@ export const SENSITIVE_PATH_PATTERNS: readonly RegExp[] = [
   // GCP credentials
   /\/\.config\/gcloud\/(application_default_credentials|legacy_credentials)/,
   // Azure CLI session + profile
-  /\/\.azure\/accesstokens\.json$/,
-  /\/\.azure\/azureprofile\.json$/,
+  /\/\.azure\/accesstokens\.json$/i,
+  /\/\.azure\/azureprofile\.json$/i,
   // GitHub CLI host config (contains OAuth token)
   /\/\.config\/gh\/hosts\.yml$/,
   // 1Password CLI session state
