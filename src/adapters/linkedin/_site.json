@@ -6,8 +6,5 @@
   "description": "LinkedIn — professional networking and job search",
   "strategy": "header",
   "category": "social",
-  "auth_cookies": [
-    "li_at",
-    "JSESSIONID"
-  ]
+  "auth_cookies": ["li_at", "JSESSIONID"]
 }

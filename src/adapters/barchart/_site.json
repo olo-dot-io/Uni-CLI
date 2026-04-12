@@ -6,9 +6,5 @@
   "description": "Barchart — financial data, options, and market analytics",
   "strategy": "cookie",
   "category": "finance",
-  "auth_cookies": [
-    "bcFreeUserPage498",
-    "laravel_session",
-    "XSRF-TOKEN"
-  ]
+  "auth_cookies": ["bcFreeUserPage498", "laravel_session", "XSRF-TOKEN"]
 }
