@@ -1,0 +1,33 @@
+# Desktop adapter — send a macOS notification via AppleScript
+site: macos
+name: notify
+description: Send a macOS notification with title and optional subtitle
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+args:
+  message:
+    type: str
+    required: true
+    positional: true
+    description: Notification message text
+  title:
+    type: str
+    default: "Uni-CLI"
+    description: Notification title
+  subtitle:
+    type: str
+    default: ""
+    description: Notification subtitle
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-e"
+        - 'display notification "${{ args.message }}" with title "${{ args.title }}" subtitle "${{ args.subtitle }}"'
+      parse: text
+      timeout: 10000
+
+columns: []

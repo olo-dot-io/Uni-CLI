@@ -1,0 +1,32 @@
+site: slock
+name: servers
+description: List Slock.ai servers (requires login)
+domain: slock.ai
+type: browser
+strategy: intercept
+browser: true
+
+columns: [name, slug, status, members, created]
+
+pipeline:
+  - navigate:
+      url: https://slock.ai
+      settleMs: 3000
+
+  - evaluate: |
+      (async () => {
+        const token = localStorage.getItem('slock_access_token');
+        if (!token) throw new Error('Auth required — login at slock.ai first');
+        const res = await fetch('https://api.slock.ai/api/servers', {
+          headers: { 'Authorization': 'Bearer ' + token },
+        });
+        if (!res.ok) throw new Error('API error: ' + res.status);
+        const servers = await res.json();
+        return (servers || []).map(s => ({
+          name: s.name || '',
+          slug: s.slug || '',
+          status: s.status || '',
+          members: s.member_count || s.members || 0,
+          created: s.created_at ? s.created_at.slice(0, 10) : '',
+        }));
+      })()

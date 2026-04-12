@@ -1,0 +1,39 @@
+site: binance
+name: hot
+description: Top trending coins by 24h trading volume
+domain: data-api.binance.vision
+type: web-api
+strategy: public
+browser: false
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of coins to show
+
+pipeline:
+  - fetch:
+      url: https://data-api.binance.vision/api/v3/ticker/24hr
+  - map:
+      symbol: ${{ item.symbol }}
+      price: ${{ item.lastPrice }}
+      change_pct: ${{ item.priceChangePercent }}%
+      high: ${{ item.highPrice }}
+      low: ${{ item.lowPrice }}
+      volume: ${{ item.quoteVolume }}
+      trades: ${{ item.count }}
+      _sort: ${{ Number(item.quoteVolume) }}
+  - sort: { by: _sort, order: desc }
+  - limit: ${{ args.limit }}
+  - map:
+      rank: ${{ index + 1 }}
+      symbol: ${{ item.symbol }}
+      price: ${{ item.price }}
+      change_pct: ${{ item.change_pct }}
+      high: ${{ item.high }}
+      low: ${{ item.low }}
+      volume: ${{ item.volume }}
+      trades: ${{ item.trades }}
+
+columns: [rank, symbol, price, change_pct, high, low, volume, trades]

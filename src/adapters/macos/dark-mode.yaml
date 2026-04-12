@@ -1,0 +1,19 @@
+# Desktop adapter — get macOS dark mode status via JXA
+site: macos
+name: dark-mode
+description: Get current dark mode status
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - "JSON.stringify({darkMode: Application('System Events').appearancePreferences.darkMode()})"
+      parse: json
+
+columns: [darkMode]

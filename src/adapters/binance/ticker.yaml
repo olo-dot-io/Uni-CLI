@@ -1,0 +1,33 @@
+site: binance
+name: ticker
+description: Price ticker for a trading pair
+domain: data-api.binance.vision
+type: web-api
+strategy: public
+browser: false
+
+args:
+  symbol:
+    type: str
+    required: true
+    positional: true
+    description: "Trading pair symbol (e.g. BTCUSDT, ETHUSDT)"
+
+pipeline:
+  - fetch:
+      url: https://data-api.binance.vision/api/v3/ticker/24hr
+  - filter: "${{ item.symbol === args.symbol.toUpperCase() }}"
+  - map:
+      symbol: ${{ item.symbol }}
+      price: ${{ item.lastPrice }}
+      change: ${{ item.priceChange }}
+      change_pct: ${{ item.priceChangePercent }}%
+      high: ${{ item.highPrice }}
+      low: ${{ item.lowPrice }}
+      open: ${{ item.openPrice }}
+      volume: ${{ item.volume }}
+      quote_volume: ${{ item.quoteVolume }}
+      trades: ${{ item.count }}
+  - limit: 1
+
+columns: [symbol, price, change, change_pct, high, low, open, volume, trades]

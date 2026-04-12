@@ -1,0 +1,36 @@
+# Desktop adapter — macOS text-to-speech via say
+site: macos
+name: say
+description: Speak text aloud using macOS text-to-speech
+type: desktop
+binary: say
+detect: "test $(uname) = Darwin"
+
+args:
+  text:
+    type: str
+    required: true
+    positional: true
+    description: Text to speak
+  voice:
+    type: str
+    default: "Alex"
+    description: Voice name (e.g. Alex, Samantha, Daniel)
+  rate:
+    type: int
+    default: 200
+    description: Speech rate in words per minute
+
+pipeline:
+  - exec:
+      command: say
+      args:
+        - "-v"
+        - "${{ args.voice }}"
+        - "-r"
+        - "${{ args.rate }}"
+        - "${{ args.text }}"
+      parse: text
+      timeout: 60000
+
+columns: []

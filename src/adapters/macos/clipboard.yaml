@@ -1,0 +1,21 @@
+# Desktop adapter — get macOS clipboard contents via pbpaste
+site: macos
+name: clipboard
+description: Get current clipboard text contents
+type: desktop
+binary: pbpaste
+detect: "test $(uname) = Darwin"
+
+pipeline:
+  - exec:
+      command: pbpaste
+      args: []
+      parse: text
+      timeout: 5000
+
+  - set:
+      content: "${{ data }}"
+
+  - select: vars
+
+columns: [content]

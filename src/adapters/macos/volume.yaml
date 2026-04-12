@@ -1,0 +1,19 @@
+# Desktop adapter — get macOS system volume settings via JXA
+site: macos
+name: volume
+description: Get system volume settings (output, input, alert levels and mute status)
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - "JSON.stringify(Application('System Events').currentDesktop.getVolumeSettings())"
+      parse: json
+
+columns: [outputVolume, inputVolume, alertVolume, outputMuted]

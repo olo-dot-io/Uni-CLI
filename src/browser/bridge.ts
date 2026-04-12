@@ -18,6 +18,36 @@ import type {
   NetworkRequest,
 } from "../types.js";
 
+// ── Errors ────────────────────────────────────────────────────────
+
+/**
+ * Structured connection error for AI agent consumption.
+ * Thrown when Chrome/daemon connection fails — always retryable.
+ */
+export class BridgeConnectionError extends Error {
+  readonly retryable = true;
+  readonly suggestion = "Run 'unicli browser start' first, then retry.";
+  readonly alternatives = ["unicli browser start", "unicli daemon restart"];
+
+  constructor(message: string) {
+    super(message);
+    this.name = "BridgeConnectionError";
+  }
+
+  /** JSON output for AI agents */
+  toAgentJSON() {
+    return {
+      error: this.message,
+      retryable: this.retryable,
+      step: -1,
+      action: "browser_connect",
+      suggestion: this.suggestion,
+      alternatives: this.alternatives,
+      exit_code: 69, // SERVICE_UNAVAILABLE
+    };
+  }
+}
+
 // ── Constants ──────────────────────────────────────────────────────
 
 const DAEMON_SPAWN_TIMEOUT = 10_000; // 10s to start daemon
@@ -89,7 +119,7 @@ export class BrowserBridge {
       if (status) return;
     }
 
-    throw new Error(
+    throw new BridgeConnectionError(
       `Daemon failed to start within ${timeout / 1000}s. Check if port ${process.env.UNICLI_DAEMON_PORT ?? "19825"} is available.`,
     );
   }

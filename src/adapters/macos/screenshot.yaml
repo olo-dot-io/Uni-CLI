@@ -1,0 +1,46 @@
+# Desktop adapter — take a macOS screenshot via screencapture
+site: macos
+name: screenshot
+description: Take a screenshot and save to file or clipboard
+type: desktop
+binary: screencapture
+detect: "test $(uname) = Darwin"
+
+args:
+  file:
+    type: str
+    default: "/tmp/screenshot.png"
+    description: Output file path for the screenshot
+  clipboard:
+    type: bool
+    default: false
+    description: Copy screenshot to clipboard instead of saving to file
+
+pipeline:
+  - if: "args.clipboard"
+    then:
+      - exec:
+          command: screencapture
+          args:
+            - "-x"
+            - "-c"
+          parse: text
+          timeout: 10000
+      - set:
+          output: clipboard
+          message: Screenshot copied to clipboard
+      - select: vars
+    else:
+      - exec:
+          command: screencapture
+          args:
+            - "-x"
+            - "${{ args.file }}"
+          parse: text
+          timeout: 10000
+      - set:
+          output: "${{ args.file }}"
+          message: "Screenshot saved to ${{ args.file }}"
+      - select: vars
+
+columns: [output, message]

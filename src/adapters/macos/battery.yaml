@@ -1,0 +1,25 @@
+# Desktop adapter — get macOS battery status via pmset
+site: macos
+name: battery
+description: Get battery percentage, charging status, and time remaining
+type: desktop
+binary: pmset
+detect: "test $(uname) = Darwin"
+
+pipeline:
+  - exec:
+      command: pmset
+      args:
+        - "-g"
+        - "batt"
+      parse: text
+      timeout: 10000
+
+  - set:
+      percent: "${{ (data.match(/\\t(\\d+)%/) || [])[1] || 'unknown' }}"
+      status: "${{ (data.match(/; (\\w[\\w ]+?);/) || [])[1] || 'unknown' }}"
+      remaining: "${{ (data.match(/(\\d+:\\d+) remaining/) || [])[1] || 'N/A' }}"
+
+  - select: vars
+
+columns: [percent, status, remaining]

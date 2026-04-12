@@ -10,6 +10,7 @@ import { loadExternalClis, isInstalled } from "./hub/index.js";
 import { executeExternal } from "./hub/passthrough.js";
 import { format, detectFormat } from "./output/formatter.js";
 import { runPipeline, PipelineError } from "./engine/yaml-runner.js";
+import { BridgeConnectionError } from "./browser/bridge.js";
 import { ExitCode } from "./types.js";
 import { VERSION } from "./constants.js";
 import { registerAuthCommands } from "./commands/auth.js";
@@ -39,6 +40,7 @@ import { registerResearchCommand } from "./commands/research.js";
 import { registerHubCommand } from "./commands/hub.js";
 import { registerExtCommand } from "./commands/ext.js";
 import { registerTestGenCommand } from "./commands/test-gen.js";
+import { registerStatusCommand } from "./commands/status.js";
 import { recordUsage } from "./runtime/usage-ledger.js";
 import { emitHook } from "./hooks.js";
 import { checkForUpdates } from "./engine/update-check.js";
@@ -285,6 +287,7 @@ export async function createCli(): Promise<Command> {
   registerHubCommand(program);
   registerExtCommand(program);
   registerTestGenCommand(program);
+  registerStatusCommand(program);
 
   // Register "test" command — run all commands for a site
   program
@@ -552,11 +555,59 @@ export async function createCli(): Promise<Command> {
             process.exit(exitCode);
           }
 
+          if (err instanceof BridgeConnectionError) {
+            const agentError = err.toAgentJSON();
+            if (fmt === "json" || !process.stdout.isTTY) {
+              console.error(JSON.stringify(agentError, null, 2));
+            } else {
+              console.error(chalk.red(`Error: ${err.message}`));
+              console.error(
+                chalk.yellow(`  suggestion: ${agentError.suggestion}`),
+              );
+              console.error(chalk.dim("  retryable: true"));
+            }
+            recordUsage({
+              site: adapter.name,
+              cmd: cmdName,
+              strategy: adapter.strategy ?? "unknown",
+              tokens: 0,
+              ms: Date.now() - startedAt,
+              bytes: 0,
+              exit: ExitCode.SERVICE_UNAVAILABLE,
+            });
+            process.exit(ExitCode.SERVICE_UNAVAILABLE);
+          }
+
           const message = err instanceof Error ? err.message : String(err);
-          if (fmt === "json") {
-            console.error(JSON.stringify({ error: message }));
+          const isTransient =
+            /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|socket hang up|daemon failed/i.test(
+              message,
+            );
+          const adapterPath = `src/adapters/${adapter.name}/${cmdName}.yaml`;
+          const structuredError = {
+            error: message,
+            retryable: isTransient,
+            adapter_path: adapterPath,
+            step: -1,
+            action: "unknown",
+            suggestion:
+              "Run 'unicli test " +
+              adapter.name +
+              "' to diagnose, or report this error.",
+            alternatives: [] as string[],
+            exit_code: ExitCode.GENERIC_ERROR,
+          };
+          if (fmt === "json" || !process.stdout.isTTY) {
+            console.error(JSON.stringify(structuredError, null, 2));
           } else {
             console.error(chalk.red(`Error: ${message}`));
+            console.error(chalk.dim(`  adapter: ${adapterPath}`));
+            console.error(
+              chalk.yellow(`  suggestion: ${structuredError.suggestion}`),
+            );
+            if (isTransient) {
+              console.error(chalk.dim("  retryable: true"));
+            }
           }
           recordUsage({
             site: adapter.name,

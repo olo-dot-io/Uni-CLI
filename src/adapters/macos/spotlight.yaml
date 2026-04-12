@@ -1,0 +1,43 @@
+# Desktop adapter — search files via macOS Spotlight (mdfind)
+site: macos
+name: spotlight
+description: Search files by name using Spotlight index
+type: desktop
+binary: mdfind
+detect: "test $(uname) = Darwin"
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search query string
+  dir:
+    type: str
+    description: Limit search to a specific directory
+
+pipeline:
+  - if: "args.dir"
+    then:
+      - exec:
+          command: mdfind
+          args:
+            - "-name"
+            - "${{ args.query }}"
+            - "-onlyin"
+            - "${{ args.dir }}"
+          parse: lines
+          timeout: 30000
+    else:
+      - exec:
+          command: mdfind
+          args:
+            - "-name"
+            - "${{ args.query }}"
+          parse: lines
+          timeout: 30000
+
+  - map:
+      path: "${{ item.line }}"
+
+columns: [path]

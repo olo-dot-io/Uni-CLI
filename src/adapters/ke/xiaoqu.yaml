@@ -1,0 +1,73 @@
+site: ke
+name: xiaoqu
+description: Ke.com (Beike) neighborhood/community listings
+domain: ke.com
+type: browser
+strategy: intercept
+browser: true
+
+args:
+  city:
+    type: str
+    default: bj
+    description: "City code (bj=Beijing, sh=Shanghai, gz=Guangzhou, sz=Shenzhen)"
+  district:
+    type: str
+    description: "District pinyin (e.g. chaoyang, haidian)"
+  limit:
+    type: int
+    default: 20
+    description: Number of results
+
+columns: [name, district, avg_price, year, on_sale]
+
+pipeline:
+  - navigate:
+      url: https://${{ args.city }}.ke.com/xiaoqu/${{ args.district || '' }}
+      settleMs: 3000
+
+  - evaluate: |
+      (() => {
+        const href = window.location.href;
+        const text = document.body?.innerText || '';
+        if (href.includes('captcha') || /请拖动|滑块验证|安全验证/.test(text))
+          throw new Error('Captcha triggered — complete verification in browser first');
+        if (/请登录|账号登录|扫码登录/.test(text))
+          throw new Error('Login required — sign in at ke.com first');
+        return true;
+      })()
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const selectors = ['.xiaoquListItem', 'li.xiaoquListItem', '.listContent li'];
+        let cards = [];
+        for (const sel of selectors) {
+          cards = document.querySelectorAll(sel);
+          if (cards.length > 0) break;
+        }
+        const results = [];
+        for (const card of cards) {
+          const titleLink = card.querySelector('.title a');
+          const imgLink = card.querySelector('a.img[title], a[title]');
+          const nameEl = titleLink || imgLink;
+          if (!nameEl) continue;
+          const name = (titleLink ? titleLink.textContent : imgLink.getAttribute('title')) || '';
+          const priceEl = card.querySelector('.totalPrice span');
+          const districtEl = card.querySelector('.positionInfo a, .district a');
+          const infoEl = card.querySelector('.positionInfo, .houseInfo, .xiaoquListItemInfo');
+          const saleEl = card.querySelector('.xiaoquListItemSellCount a, .houseInfo a');
+          const infoText = infoEl ? infoEl.textContent : '';
+          const yearMatch = infoText.match(/(\d{4})年/);
+          const priceText = (priceEl ? priceEl.textContent : '').trim();
+          results.push({
+            name: name.trim(),
+            district: (districtEl ? districtEl.textContent : '').trim(),
+            avg_price: priceText ? priceText + '元/平' : '-',
+            year: yearMatch ? yearMatch[1] : '',
+            on_sale: (saleEl ? saleEl.textContent : '').trim(),
+          });
+          if (results.length >= limit) break;
+        }
+        return results;
+      })()

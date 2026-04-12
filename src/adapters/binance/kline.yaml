@@ -1,0 +1,35 @@
+site: binance
+name: kline
+description: Candlestick (kline) data for a trading pair
+domain: data-api.binance.vision
+type: web-api
+strategy: public
+browser: false
+
+args:
+  symbol:
+    type: str
+    required: true
+    positional: true
+    description: "Trading pair symbol (e.g. BTCUSDT, ETHUSDT)"
+  interval:
+    type: str
+    default: 1d
+    description: "Kline interval (1m, 5m, 15m, 1h, 4h, 1d, 1w, 1M)"
+
+pipeline:
+  - fetch:
+      url: https://data-api.binance.vision/api/v3/klines
+      params:
+        symbol: ${{ args.symbol }}
+        interval: ${{ args.interval }}
+        limit: "20"
+  - map:
+      time: ${{ new Date(item[0]).toISOString().slice(0, 10) }}
+      open: ${{ item[1] }}
+      high: ${{ item[2] }}
+      low: ${{ item[3] }}
+      close: ${{ item[4] }}
+      volume: ${{ item[5] }}
+
+columns: [time, open, high, low, close, volume]

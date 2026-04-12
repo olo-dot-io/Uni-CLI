@@ -1,0 +1,74 @@
+site: ke
+name: ershoufang
+description: Ke.com (Beike) second-hand housing listings
+domain: ke.com
+type: browser
+strategy: intercept
+browser: true
+
+args:
+  city:
+    type: str
+    default: bj
+    description: "City code (bj=Beijing, sh=Shanghai, gz=Guangzhou, sz=Shenzhen)"
+  district:
+    type: str
+    description: "District pinyin (e.g. chaoyang, haidian, tianhe)"
+  limit:
+    type: int
+    default: 20
+    description: Number of results
+
+columns: [title, community, layout, area, direction, total_price, unit_price, url]
+
+pipeline:
+  - navigate:
+      url: https://${{ args.city }}.ke.com/ershoufang/${{ args.district || '' }}
+      settleMs: 3000
+
+  - evaluate: |
+      (() => {
+        const href = window.location.href;
+        const text = document.body?.innerText || '';
+        if (href.includes('captcha') || /请拖动|滑块验证|安全验证/.test(text))
+          throw new Error('Captcha triggered — complete verification in browser first');
+        if (/请登录|账号登录|扫码登录/.test(text))
+          throw new Error('Login required — sign in at ke.com first');
+        return true;
+      })()
+
+  - evaluate: |
+      (async () => {
+        const limit = ${{ args.limit }};
+        const cards = document.querySelectorAll('.sellListContent li.clear');
+        const results = [];
+        for (const card of cards) {
+          const titleEl = card.querySelector('.title a');
+          if (!titleEl) continue;
+          const communityEl = card.querySelector('.positionInfo a');
+          const houseInfoEl = card.querySelector('.houseInfo');
+          const priceEl = card.querySelector('.totalPrice span');
+          const unitPriceEl = card.querySelector('.unitPrice span');
+          const houseText = (houseInfoEl ? houseInfoEl.textContent : '').replace(/\s+/g, ' ').trim();
+          const parts = houseText.split('|').map(s => s.trim());
+          let layout = '', area = '', direction = '';
+          for (const p of parts) {
+            if (/\d室\d厅/.test(p)) layout = p.match(/(\d室\d厅)/)[1];
+            else if (/平米|㎡/.test(p)) area = p;
+            else if (/[东南西北]/.test(p)) direction = p;
+          }
+          if (!layout) { const m = houseText.match(/(\d室\d厅)/); if (m) layout = m[1]; }
+          results.push({
+            title: (titleEl.textContent || '').trim(),
+            community: (communityEl ? communityEl.textContent : '').trim(),
+            layout,
+            area,
+            direction,
+            total_price: ((priceEl ? priceEl.textContent : '').trim() || '') + '万',
+            unit_price: (unitPriceEl ? unitPriceEl.textContent : '').trim(),
+            url: titleEl.href || '',
+          });
+          if (results.length >= limit) break;
+        }
+        return results;
+      })()

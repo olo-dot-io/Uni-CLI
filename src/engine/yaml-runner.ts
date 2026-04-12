@@ -96,6 +96,10 @@ export class PipelineError extends Error {
       statusCode?: number;
       responsePreview?: string;
       suggestion: string;
+      /** true for transient failures (timeout, 429, 5xx), false for permanent (404, auth, config) */
+      retryable?: boolean;
+      /** Fallback commands the agent can try when this command fails */
+      alternatives?: string[];
     },
   ) {
     super(message);
@@ -108,6 +112,8 @@ export class PipelineError extends Error {
       error: this.message,
       adapter: adapterPath,
       ...this.detail,
+      retryable: this.detail.retryable ?? false,
+      alternatives: this.detail.alternatives ?? [],
     };
   }
 }
@@ -263,6 +269,8 @@ export async function runPipeline(
           config: { site: options.site, strategy: options.strategy },
           errorType: "http_error",
           suggestion: `Either start Chrome with "unicli browser start" and login to ${options.site}, or create cookie file at ~/.unicli/cookies/${options.site}.json`,
+          retryable: false,
+          alternatives: [`unicli auth setup ${options.site}`],
         },
       );
     }
@@ -456,16 +464,20 @@ export async function runPipeline(
         }
 
         if (err instanceof PipelineError) throw err;
-        throw new PipelineError(
-          `Step ${i} (${action}) failed: ${err instanceof Error ? err.message : String(err)}`,
-          {
-            step: i,
-            action,
-            config,
-            errorType: "parse_error",
-            suggestion: `Check the ${action} step at index ${i} in the adapter YAML. The expression or configuration may be invalid.`,
-          },
-        );
+        const errMsg = err instanceof Error ? err.message : String(err);
+        const isTransient =
+          /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|socket hang up/i.test(
+            errMsg,
+          );
+        throw new PipelineError(`Step ${i} (${action}) failed: ${errMsg}`, {
+          step: i,
+          action,
+          config,
+          errorType: isTransient ? "timeout" : "parse_error",
+          suggestion: `Check the ${action} step at index ${i} in the adapter YAML. The expression or configuration may be invalid.`,
+          retryable: isTransient,
+          alternatives: [],
+        });
       }
 
       if (ctx.tempDir) tempDir = ctx.tempDir;
@@ -621,6 +633,8 @@ function assertionError(
     errorType: "assertion_failed",
     suggestion:
       "Check the assertion conditions in the adapter YAML. The page state may not match expectations.",
+    retryable: false,
+    alternatives: [],
   });
 }
 
@@ -809,6 +823,11 @@ async function fetchJson(
     } catch {
       /* ignore */
     }
+    const isRetryableStatus =
+      resp.status === 429 ||
+      resp.status === 500 ||
+      resp.status === 502 ||
+      resp.status === 503;
     throw new PipelineError(
       `HTTP ${resp.status} ${resp.statusText} from ${url}`,
       {
@@ -827,6 +846,11 @@ async function fetchJson(
               : resp.status === 429
                 ? "Rate limited. Add a delay between requests or reduce the limit parameter."
                 : `HTTP ${resp.status} error. Check if the API endpoint is still valid.`,
+        retryable: isRetryableStatus,
+        alternatives:
+          resp.status === 401 || resp.status === 403
+            ? ["unicli auth setup <site>"]
+            : [],
       },
     );
   }
@@ -851,6 +875,8 @@ function stepSelect(
         config: path,
         errorType: "selector_miss",
         suggestion: `The path "${resolved}" does not exist in the API response. Inspect the actual response JSON to find the correct path, then update the "select" step in the adapter YAML.`,
+        retryable: false,
+        alternatives: [],
       },
     );
   }
@@ -947,6 +973,15 @@ async function stepFetchText(
         url,
         statusCode: resp.status,
         suggestion: `Check if the URL is still valid: ${url}`,
+        retryable:
+          resp.status === 429 ||
+          resp.status === 500 ||
+          resp.status === 502 ||
+          resp.status === 503,
+        alternatives:
+          resp.status === 401 || resp.status === 403
+            ? ["unicli auth setup <site>"]
+            : [],
       },
     );
   }
@@ -1101,6 +1136,8 @@ async function stepExec(
         },
         errorType: "assertion_failed",
         suggestion: denial.hint,
+        retryable: false,
+        alternatives: [],
       });
     }
   }
@@ -1190,6 +1227,8 @@ async function stepExec(
             config: { command: cmd, args: execArgs },
             errorType: "parse_error",
             suggestion: `Check that the command writes to "${outputFile}". Verify the path is correct.`,
+            retryable: false,
+            alternatives: [],
           },
         );
       }
@@ -1232,12 +1271,17 @@ async function stepExec(
   } catch (err) {
     if (err instanceof PipelineError) throw err;
     const msg = err instanceof Error ? err.message : String(err);
+    const isExecTransient = /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET/i.test(
+      msg,
+    );
     throw new PipelineError(`exec "${cmd}" failed: ${msg}`, {
       step: -1,
       action: "exec",
       config: { command: cmd, args: execArgs },
-      errorType: "parse_error",
+      errorType: isExecTransient ? "timeout" : "parse_error",
       suggestion: `Check that "${cmd}" is installed and accessible. Run: which ${cmd}`,
+      retryable: isExecTransient,
+      alternatives: [],
     });
   }
 }
@@ -1346,6 +1390,8 @@ async function stepIf(
       errorType: "parse_error",
       suggestion:
         "Reduce nesting depth of if/else steps. Maximum is 10 levels.",
+      retryable: false,
+      alternatives: [],
     });
   }
 
@@ -1397,6 +1443,8 @@ async function stepEach(
       config,
       errorType: "parse_error",
       suggestion: "Reduce nesting depth of loop steps. Maximum is 10 levels.",
+      retryable: false,
+      alternatives: [],
     });
   }
 
@@ -1459,6 +1507,8 @@ async function stepParallel(
       errorType: "parse_error",
       suggestion:
         "Reduce nesting depth of parallel steps. Maximum is 10 levels.",
+      retryable: false,
+      alternatives: [],
     });
   }
 
@@ -2050,6 +2100,8 @@ async function stepClick(
       errorType: "expression_error",
       suggestion:
         'Provide either a CSS selector string, {selector: "..."}, or {x: N, y: N} for coordinate click.',
+      retryable: false,
+      alternatives: [],
     },
   );
 }
@@ -2167,6 +2219,8 @@ async function stepIntercept(
         config: { capture: capturePattern, trigger },
         errorType: "timeout",
         suggestion: `No network request matching "${capturePattern}" was observed. Verify the capture pattern matches the target API URL and that the trigger action causes the request.`,
+        retryable: true,
+        alternatives: [],
       },
     );
   }
@@ -2295,6 +2349,8 @@ async function stepTap(
       config,
       errorType: "expression_error",
       suggestion: "Store name must be a valid JavaScript identifier.",
+      retryable: false,
+      alternatives: [],
     });
   }
   if (!/^[a-zA-Z_$][\w$]*$/.test(actionName)) {
@@ -2304,6 +2360,8 @@ async function stepTap(
       config,
       errorType: "expression_error",
       suggestion: "Action name must be a valid JavaScript identifier.",
+      retryable: false,
+      alternatives: [],
     });
   }
   const framework = config.framework ?? "auto";

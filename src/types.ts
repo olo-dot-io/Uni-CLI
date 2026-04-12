@@ -212,6 +212,29 @@ export interface ResolvedCommand {
 /** Output format options */
 export type OutputFormat = "table" | "json" | "yaml" | "csv" | "md";
 
+/** Structured error detail for AI agent consumption */
+export interface PipelineErrorDetail {
+  step: number;
+  action: string;
+  config: unknown;
+  errorType:
+    | "http_error"
+    | "selector_miss"
+    | "empty_result"
+    | "parse_error"
+    | "timeout"
+    | "expression_error"
+    | "assertion_failed";
+  url?: string;
+  statusCode?: number;
+  responsePreview?: string;
+  suggestion: string;
+  /** true for transient failures (timeout, 429, 5xx), false for permanent (404, auth, config) */
+  retryable?: boolean;
+  /** Fallback commands the agent can try when this command fails */
+  alternatives?: string[];
+}
+
 /** Exit codes following sysexits.h */
 export const ExitCode = {
   SUCCESS: 0,
