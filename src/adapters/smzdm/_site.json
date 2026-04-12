@@ -1,0 +1,9 @@
+{
+  "site": "smzdm",
+  "displayName": "SMZDM",
+  "type": "web-api",
+  "domain": "smzdm.com",
+  "description": "SMZDM (Shi Me Zhi De Mai) — deals, reviews, and shopping guides",
+  "strategy": "public",
+  "category": "shopping"
+}

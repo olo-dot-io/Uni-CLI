@@ -1,8 +1,0 @@
-site: linkedin
-displayName: LinkedIn
-type: web-api
-domain: linkedin.com
-description: "LinkedIn — professional networking and job search"
-strategy: header
-category: social
-auth_cookies: [li_at, JSESSIONID]
