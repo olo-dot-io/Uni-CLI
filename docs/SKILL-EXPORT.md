@@ -42,7 +42,7 @@ name: hackernews-top
 description: Hacker News top stories
 when_to_use: When you need the current top items from hackernews.
 command: unicli hackernews top
-source: unicli@0.208.0
+source: unicli@0.210.0
 ---
 
 ## What it does
@@ -72,7 +72,7 @@ It contains:
 
 ```json
 {
-  "source": "unicli@0.208.0",
+  "source": "unicli@0.210.0",
   "generated": "2026-04-08T00:00:00.000Z",
   "total_sites": 134,
   "total_commands": 711,

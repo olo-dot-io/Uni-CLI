@@ -6,7 +6,7 @@ Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for
 ## [0.210.0] — 2026-04-12 — Vostok · Komarov
 
 > The compiler that turns the internet into deterministic programs for AI agents.
-> 195 sites · 956 commands · 30 macOS system adapters · 35 external CLIs · 5 agent skills.
+> 195 sites · 957 commands · 30 macOS system adapters · 35 external CLIs · 5 agent skills.
 
 ### Added
 

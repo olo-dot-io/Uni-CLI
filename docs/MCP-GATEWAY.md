@@ -57,7 +57,7 @@ Pre-flight your tool registration before connecting from an MCP client:
 
 ```bash
 unicli mcp health
-# unicli MCP gateway v0.208.0
+# unicli MCP gateway v0.210.0
 #   sites:    134
 #   commands: 711
 #   tools:    712 (1 core + 711 per-command)
