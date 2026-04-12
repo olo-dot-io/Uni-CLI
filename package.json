@@ -74,7 +74,7 @@
     "turndown": "^7.2.4",
     "undici": "^8.0.2",
     "ws": "^8.18.0",
-    "zod": "^3.24.0"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
