@@ -93,9 +93,9 @@ unicli operate network                # See captured JSON APIs
 
 ## Troubleshooting
 
-| Problem | Fix |
-|---------|-----|
-| Browser not connected | `unicli browser start` |
-| Element not found | `scroll down` then `state` |
-| Stale refs after click | `state` to refresh |
+| Problem                | Fix                                     |
+| ---------------------- | --------------------------------------- |
+| Browser not connected  | `unicli browser start`                  |
+| Element not found      | `scroll down` then `state`              |
+| Stale refs after click | `state` to refresh                      |
 | eval returns undefined | Wrap: `"(function(){ return ...; })()"` |

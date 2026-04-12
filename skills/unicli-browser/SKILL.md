@@ -52,12 +52,12 @@ Cookie files: `~/.unicli/cookies/<site>.json` with format `{ "KEY": "value" }`.
 
 ## Strategies Requiring Browser
 
-| Strategy | How it works |
-|----------|--------------|
-| `cookie` | Injects cookies from file into request headers |
-| `header` | Cookie + auto-extracted CSRF token |
-| `intercept` | Navigate page, capture XHR/fetch responses |
-| `ui` | Interact with page DOM (click, type, scroll) |
+| Strategy    | How it works                                   |
+| ----------- | ---------------------------------------------- |
+| `cookie`    | Injects cookies from file into request headers |
+| `header`    | Cookie + auto-extracted CSRF token             |
+| `intercept` | Navigate page, capture XHR/fetch responses     |
+| `ui`        | Interact with page DOM (click, type, scroll)   |
 
 `public` strategy does NOT need a browser.
 
@@ -75,9 +75,9 @@ UNICLI_DIAGNOSTIC=1 unicli <site> <cmd>          # Enhanced error context
 
 ## Troubleshooting
 
-| Problem | Fix |
-|---------|-----|
-| "Browser not connected" | `unicli browser start` |
-| Exit 69 (unavailable) | `unicli browser start` then retry |
-| Exit 77 (auth) | `unicli auth setup <site>` then retry |
-| CDP connection dropped | `unicli daemon restart` |
+| Problem                 | Fix                                   |
+| ----------------------- | ------------------------------------- |
+| "Browser not connected" | `unicli browser start`                |
+| Exit 69 (unavailable)   | `unicli browser start` then retry     |
+| Exit 77 (auth)          | `unicli auth setup <site>` then retry |
+| CDP connection dropped  | `unicli daemon restart`               |

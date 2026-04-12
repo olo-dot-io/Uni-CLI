@@ -18,7 +18,7 @@ args:
 columns: [rank, title, views, url]
 
 pipeline:
-  - navigate: https://www.youtube.com/${{ args.channel ? args.channel + '/shorts' : 'feed/shorts' }}
+  - navigate: "https://www.youtube.com/${{ args.channel ? args.channel + '/shorts' : 'feed/shorts' }}"
   - wait: 4000
   - evaluate: |
       (async () => {

@@ -10,7 +10,7 @@ pipeline:
       command: osascript
       args:
         - "-e"
-        - "tell application \"System Events\" to keystroke \"q\" using {command down, control down}"
+        - 'tell application "System Events" to keystroke "q" using {command down, control down}'
       parse: text
 
 columns: [result]

@@ -21,7 +21,7 @@ pipeline:
       command: osascript
       args:
         - "-e"
-        - "display notification \"${{ args.message }}\" with title \"${{ args.title }}\""
+        - 'display notification "${{ args.message }}" with title "${{ args.title }}"'
       parse: text
 
 columns: [result]

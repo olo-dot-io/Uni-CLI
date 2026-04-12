@@ -32,13 +32,13 @@ unicli operate network                   # Check for new requests
 
 ### 2. Choose Strategy
 
-| Condition | Strategy | Browser? |
-|-----------|----------|----------|
-| `fetch(url)` returns data | `public` | No |
-| Needs login cookies | `cookie` | Yes |
-| Needs CSRF/Bearer token | `header` | Yes |
-| Complex signed requests | `intercept` | Yes |
-| No API, DOM only | `ui` | Yes |
+| Condition                 | Strategy    | Browser? |
+| ------------------------- | ----------- | -------- |
+| `fetch(url)` returns data | `public`    | No       |
+| Needs login cookies       | `cookie`    | Yes      |
+| Needs CSRF/Bearer token   | `header`    | Yes      |
+| Complex signed requests   | `intercept` | Yes      |
+| No API, DOM only          | `ui`        | Yes      |
 
 ### 3. Write YAML Adapter
 
@@ -54,7 +54,11 @@ args:
   query: { type: str, required: true, positional: true }
   limit: { type: int, default: 20 }
 pipeline:
-  - fetch: { url: "https://api.example.com/search", params: { q: "${{ args.query }}" } }
+  - fetch:
+      {
+        url: "https://api.example.com/search",
+        params: { q: "${{ args.query }}" },
+      }
   - select: data.results
   - map: { title: "${{ item.title }}", url: "${{ item.url }}" }
   - limit: ${{ args.limit }}

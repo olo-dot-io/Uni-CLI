@@ -10,7 +10,7 @@ pipeline:
       command: osascript
       args:
         - "-e"
-        - "tell application \"Finder\" to empty the trash"
+        - 'tell application "Finder" to empty the trash'
       parse: text
 
 columns: [result]

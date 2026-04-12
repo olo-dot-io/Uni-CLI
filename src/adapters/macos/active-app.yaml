@@ -10,7 +10,7 @@ pipeline:
       command: osascript
       args:
         - "-e"
-        - "tell application \"System Events\" to get name of first application process whose frontmost is true"
+        - 'tell application "System Events" to get name of first application process whose frontmost is true'
       parse: text
 
 columns: [result]
