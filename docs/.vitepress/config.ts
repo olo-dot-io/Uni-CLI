@@ -78,6 +78,7 @@ export default defineConfig({
     nav: [
       { text: "Guide", link: "/guide/getting-started" },
       { text: "Reference", link: "/reference/pipeline" },
+      { text: "Agent Install", link: "/AGENT-INSTALL" },
       { text: "GitHub", link: "https://github.com/olo-dot-io/Uni-CLI" },
     ],
     sidebar: {
