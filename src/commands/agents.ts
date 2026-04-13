@@ -417,16 +417,16 @@ function formatCursor(ctx: TemplateContext): string {
 function formatGoose(ctx: TemplateContext): string {
   const lines = [
     "name: unicli",
-    `description: CLI interface to ${ctx.sites} websites and services`,
-    `version: ${ctx.version}`,
-    `install: npm i -g @zenalexa/unicli`,
-    "self_repair: unicli repair <site> <command>",
+    `description: ${JSON.stringify(`CLI interface to ${ctx.sites} websites and services`)}`,
+    `version: ${JSON.stringify(ctx.version)}`,
+    `install: ${JSON.stringify("npm i -g @zenalexa/unicli")}`,
+    `self_repair: ${JSON.stringify("unicli repair <site> <command>")}`,
     "tools:",
   ];
   for (const cmd of ctx.commandList) {
     lines.push(`  - name: unicli_${cmd.site}_${cmd.command}`);
-    lines.push(`    command: unicli ${cmd.site} ${cmd.command}`);
-    lines.push(`    description: ${cmd.description}`);
+    lines.push(`    command: ${JSON.stringify(`unicli ${cmd.site} ${cmd.command}`)}`);
+    lines.push(`    description: ${JSON.stringify(cmd.description)}`);
   }
   return lines.join("\n") + "\n";
 }

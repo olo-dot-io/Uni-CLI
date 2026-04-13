@@ -25,6 +25,7 @@ type PluginEntry = (context: PluginContext) => void;
 // --- Helpers ---
 
 const SAFE_NAME = /^[a-zA-Z0-9_-]+$/;
+const VALID_TYPES = new Set(["web-api", "desktop", "browser", "bridge", "service"]);
 const EXEC_TIMEOUT = 30_000;
 
 function validateName(value: unknown, label: string): string {
@@ -116,6 +117,9 @@ const plugin: PluginEntry = ({ api }) => {
         cliArgs.push("--site", validateName(params.site, "site"));
       }
       if (typeof params.type === "string" && params.type) {
+        if (!VALID_TYPES.has(params.type)) {
+          throw new Error(`Invalid type: must be one of ${[...VALID_TYPES].join(", ")}`);
+        }
         cliArgs.push("--type", params.type);
       }
       return run(cliArgs);
