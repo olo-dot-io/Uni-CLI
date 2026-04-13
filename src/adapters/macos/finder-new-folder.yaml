@@ -1,0 +1,36 @@
+site: macos
+name: finder-new-folder
+description: Create a new directory (with intermediate directories)
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+args:
+  path:
+    type: str
+    required: true
+    positional: true
+    description: Directory path to create
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          const fm = $.NSFileManager.defaultManager;
+          const path = ${{ args.path | json }};
+          const err = Ref();
+          const ok = fm.createDirectoryAtPathWithIntermediateDirectoriesAttributesError(
+            path, true, $(), err
+          );
+          if (!ok) {
+            const msg = err[0] ? ObjC.unwrap(err[0].localizedDescription) : 'unknown error';
+            throw new Error(msg);
+          }
+          JSON.stringify([{ created: path, status: 'ok' }]);
+      parse: json
+
+columns: [created, status]

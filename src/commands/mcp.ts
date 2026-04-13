@@ -1,15 +1,14 @@
 /**
  * MCP gateway CLI — wrapper around src/mcp/server.ts.
  *
- *   unicli mcp serve [--transport stdio|http] [--port 19826] [--lazy]
- *   unicli mcp health                       # list registered tools (no server)
+ *   unicli mcp serve [--transport stdio|http] [--port 19826] [--expanded]
+ *   unicli mcp health                       # pre-flight check (no server)
  *
  * `serve` shells out to the same `src/mcp/server.ts` entry point as
  * `npm run mcp` so the two paths share exactly one implementation.
  *
  * `health` is intentionally fast and offline: it loads adapters into the
- * registry and prints the same tool list the server would build, without
- * binding stdio or HTTP. Useful as a Claude Desktop / Cursor pre-flight.
+ * registry and prints a structured health report. Exit 0 if healthy, 1 if not.
  */
 
 import type { Command } from "commander";
@@ -24,7 +23,7 @@ import { VERSION } from "../constants.js";
 interface ServeOptions {
   transport?: "stdio" | "http";
   port?: string;
-  lazy?: boolean;
+  expanded?: boolean;
 }
 
 interface HealthOptions {
@@ -40,14 +39,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
  * stable relative position from this commands file.
  */
 function resolveServerEntry(): { kind: "ts" | "js"; path: string } {
-  // After build: __dirname is dist/commands → ../mcp/server.js
-  // In dev (tsx): __dirname is src/commands  → ../mcp/server.ts
   const candidateJs = join(__dirname, "..", "mcp", "server.js");
   const candidateTs = join(__dirname, "..", "mcp", "server.ts");
-  // Prefer TS if it exists (dev mode); otherwise JS.
-  // We can't easily statSync here without importing fs, but join + spawn will
-  // surface the error if neither exists. Use TS by default in dev.
-  // The simpler heuristic: if __dirname contains "/dist/", we're built.
   if (__dirname.includes("/dist/")) {
     return { kind: "js", path: candidateJs };
   }
@@ -66,13 +59,14 @@ export function registerMcpCommand(program: Command): void {
     )
     .option("--transport <kind>", "stdio or http", "stdio")
     .option("--port <n>", "Port for http transport", "19826")
-    .option("--lazy", "Register only list_adapters + run_command (compat mode)")
+    .option(
+      "--expanded",
+      "Register one tool per adapter command (full catalog)",
+    )
     .action((opts: ServeOptions) => {
       const entry = resolveServerEntry();
-      const args: string[] = [];
-      if (entry.kind === "ts") args.unshift(entry.path);
-      else args.unshift(entry.path);
-      if (opts.lazy) args.push("--lazy");
+      const args: string[] = [entry.path];
+      if (opts.expanded) args.push("--expanded");
       if (opts.transport) {
         args.push("--transport", opts.transport);
       }
@@ -100,69 +94,62 @@ export function registerMcpCommand(program: Command): void {
 
   mcp
     .command("health")
-    .description("Pre-flight check — list tools the MCP server would expose")
-    .option("--json", "Output as JSON")
+    .description("Pre-flight check — verify adapters load and report tool counts")
+    .option("--json", "Output as JSON (default when piped)")
     .action(async (opts: HealthOptions) => {
-      // Load adapters into the registry the same way the server does
-      loadAllAdapters();
-      await loadTsAdapters();
+      const useJson = opts.json || !process.stdout.isTTY;
 
-      const adapters = getAllAdapters();
-      const commands = listCommands();
-      const tools: Array<{ name: string; description: string }> = [
-        {
-          name: "list_adapters",
-          description: "List all Uni-CLI adapters and their commands",
-        },
-      ];
-      for (const adapter of adapters) {
-        for (const [cmdName, cmd] of Object.entries(adapter.commands)) {
-          const toolName = `unicli_${adapter.name}_${cmdName}`.replace(
-            /[^a-zA-Z0-9_]/g,
-            "_",
-          );
-          tools.push({
-            name: toolName,
-            description:
-              cmd.description?.trim() ||
-              adapter.description?.trim() ||
-              `${cmdName} for ${adapter.name}`,
-          });
+      try {
+        // Load adapters into the registry the same way the server does
+        loadAllAdapters();
+        await loadTsAdapters();
+
+        const adapters = getAllAdapters();
+        const commands = listCommands();
+
+        // Count expanded tools (1 per command + 3 default)
+        let expandedToolCount = 3; // unicli_run, unicli_list, unicli_discover
+        for (const adapter of adapters) {
+          expandedToolCount += Object.keys(adapter.commands).length;
         }
-      }
 
-      if (opts.json) {
+        const health = {
+          status: "ok" as const,
+          adapters: adapters.length,
+          commands: commands.length,
+          tools: { default: 3, expanded: expandedToolCount },
+          version: VERSION,
+        };
+
+        if (useJson) {
+          console.log(JSON.stringify(health, null, 2));
+          return;
+        }
+
+        console.log(chalk.bold(`unicli MCP health v${VERSION}`));
+        console.log(`  status:   ${chalk.green("ok")}`);
+        console.log(`  adapters: ${chalk.green(adapters.length)}`);
+        console.log(`  commands: ${chalk.green(commands.length)}`);
         console.log(
-          JSON.stringify(
-            {
-              version: VERSION,
-              sites: adapters.length,
-              commands: commands.length,
-              tools: tools.length,
-              entries: tools,
-            },
-            null,
-            2,
-          ),
+          `  tools:    ${chalk.green("3")} default, ${chalk.green(expandedToolCount)} expanded`,
         );
-        return;
+        console.log();
+        console.log(chalk.dim("Default tools: unicli_run, unicli_list, unicli_discover"));
+        console.log(chalk.dim("To start: unicli mcp serve [--expanded] [--transport http]"));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (useJson) {
+          console.log(
+            JSON.stringify(
+              { status: "error", error: message, version: VERSION },
+              null,
+              2,
+            ),
+          );
+        } else {
+          console.error(chalk.red(`Health check failed: ${message}`));
+        }
+        process.exit(1);
       }
-
-      console.log(chalk.bold(`unicli MCP gateway v${VERSION}`));
-      console.log(`  sites:    ${chalk.green(adapters.length)}`);
-      console.log(`  commands: ${chalk.green(commands.length)}`);
-      console.log(
-        `  tools:    ${chalk.green(tools.length)} (1 core + ${commands.length} per-command)`,
-      );
-      console.log();
-      console.log(chalk.dim("Sample tools:"));
-      for (const t of tools.slice(0, 8)) {
-        console.log(`  ${chalk.cyan(t.name)}: ${t.description.slice(0, 60)}`);
-      }
-      if (tools.length > 8) {
-        console.log(chalk.dim(`  … and ${tools.length - 8} more`));
-      }
-      console.log();
-      console.log(chalk.dim("To start: unicli mcp serve [--transport http]"));
     });
 }

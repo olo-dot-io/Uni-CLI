@@ -4,14 +4,11 @@
  * MCP (Model Context Protocol) server for Uni-CLI.
  *
  * Two registration modes:
- *   1. **Expanded (default)** — one tool per adapter command
+ *   1. **Smart default** — 3 tools: `unicli_run`, `unicli_list`,
+ *      `unicli_discover`. Keeps the MCP handshake under 200 tokens.
+ *   2. **Expanded (`--expanded`)** — one tool per adapter command
  *      (`unicli_<site>_<command>`) with JSON Schema derived from `args` +
- *      `columns`. This is the production mode the v0.208 plan calls out:
- *      MCP clients see the full Uni-CLI surface area without an extra
- *      list_adapters → run_command roundtrip.
- *   2. **Lazy (`--lazy`)** — only `list_adapters` + `run_command` are
- *      registered. Useful when an MCP client has a hard tool-count limit
- *      or wants the smallest possible handshake.
+ *      `columns`. MCP clients see the full Uni-CLI surface area.
  *
  * Two transports:
  *   - **stdio (default)** — newline-delimited JSON over stdin/stdout
@@ -72,68 +69,137 @@ interface JsonSchemaObject {
   additionalProperties?: boolean;
 }
 
+interface McpToolAnnotations {
+  readOnlyHint?: boolean;
+  destructiveHint?: boolean;
+  openWorldHint?: boolean;
+}
+
 interface McpTool {
   name: string;
   description: string;
   inputSchema: JsonSchemaObject;
   outputSchema?: JsonSchemaObject;
+  _meta?: Record<string, unknown>;
+  annotations?: McpToolAnnotations;
 }
 
 interface McpToolResult {
   content: Array<{ type: "text"; text: string }>;
   isError?: boolean;
+  _meta?: Record<string, unknown>;
 }
 
-// ── Lazy-mode core tools (preserved for `--lazy` flag) ──────────────────────
+// ── Smart default tools (3 tools — the default mode) ────────────────────────
 
-function buildLazyTools(): McpTool[] {
+/**
+ * Approximate token count for a string. Uses the heuristic `words * 1.3`
+ * which closely tracks tiktoken cl100k for English + mixed-case identifiers.
+ */
+function approxTokens(text: string): number {
+  const words = text.split(/\s+/).filter(Boolean).length;
+  return Math.ceil(words * 1.3);
+}
+
+/**
+ * Truncate a description to fit within a token budget. Cuts at word boundary
+ * and appends "…" when truncation occurs.
+ */
+export function truncateDescription(desc: string, maxTokens = 68): string {
+  if (approxTokens(desc) <= maxTokens) return desc;
+  const words = desc.split(/\s+/).filter(Boolean);
+  let result = "";
+  for (const word of words) {
+    const candidate = result ? `${result} ${word}` : word;
+    if (approxTokens(candidate + " …") > maxTokens) break;
+    result = candidate;
+  }
+  return result ? `${result} …` : words[0] + " …";
+}
+
+const MAX_RESULT_SIZE_CHARS = 10_000;
+
+function buildDefaultTools(): McpTool[] {
   return [
     {
-      name: "list_adapters",
+      name: "unicli_run",
       description:
-        "List all available Uni-CLI adapters and their commands. " +
-        "Use this to discover what sites and commands are available before calling run_command.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          site: {
-            type: "string",
-            description: "Filter by site name (optional, partial match)",
-          },
-          type: {
-            type: "string",
-            description:
-              "Filter by adapter type: web-api, desktop, browser, bridge, service",
-            enum: ["web-api", "desktop", "browser", "bridge", "service"],
-          },
-        },
-      },
-    },
-    {
-      name: "run_command",
-      description:
-        "Execute a Uni-CLI adapter command. Equivalent to running `unicli <site> <command>` on the CLI. " +
-        "Returns JSON results. Use list_adapters first to discover available commands.",
+        "Execute any Uni-CLI command. Returns JSON results.",
       inputSchema: {
         type: "object",
         properties: {
           site: {
             type: "string",
             description:
-              "The adapter site name (e.g. hackernews, github, bilibili)",
+              "Site name (e.g. hackernews, github, bilibili)",
           },
           command: {
             type: "string",
-            description: "The command to run (e.g. top, search, hot)",
+            description: "Command to run (e.g. top, search, hot)",
           },
           args: {
             type: "object",
             description:
-              'Command arguments as key-value pairs (e.g. {"query": "ai", "limit": 10})',
+              'Key-value arguments (e.g. {"query": "ai", "limit": 10})',
             additionalProperties: true,
           },
         },
         required: ["site", "command"],
+      },
+    },
+    {
+      name: "unicli_list",
+      description:
+        "List available commands. Filter by site or adapter type.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          site: {
+            type: "string",
+            description: "Filter by site name (partial match)",
+          },
+          type: {
+            type: "string",
+            description:
+              "Filter by adapter type",
+            enum: ["web-api", "desktop", "browser", "bridge", "service"],
+          },
+        },
+      },
+      _meta: {
+        "anthropic/searchHint":
+          "Discover available Uni-CLI sites and commands. List adapters by category.",
+        "anthropic/alwaysLoad": true,
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: false,
+      },
+    },
+    {
+      name: "unicli_discover",
+      description:
+        "Auto-discover CLI capabilities for any URL. Navigates the page, captures API endpoints, generates adapters.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          url: { type: "string", description: "Website URL to explore" },
+          goal: {
+            type: "string",
+            description:
+              "Capability to find (e.g. 'search', 'hot', 'feed')",
+          },
+        },
+        required: ["url"],
+      },
+      _meta: {
+        "anthropic/searchHint":
+          "Auto-discover API endpoints for any website URL. Generate YAML adapters for new sites.",
+        "anthropic/alwaysLoad": true,
+      },
+      annotations: {
+        readOnlyHint: false,
+        openWorldHint: true,
       },
     },
   ];
@@ -206,7 +272,7 @@ function buildInputSchema(cmd: AdapterCommand): JsonSchemaObject {
  * Note: we return a simple nested schema rather than a full JSON Schema
  * (which would need a deeper `items` type for `array`). Most MCP clients
  * only inspect the top-level type; Anthropic's client is permissive. If a
- * strict validator rejects this, it will still fall back to the lazy tool
+ * strict validator rejects this, it will still fall back to the default tool
  * path via `run_command`.
  */
 function buildOutputSchema(cmd: AdapterCommand): JsonSchemaObject {
@@ -262,19 +328,21 @@ const expandedRegistry = new Map<string, ExpandedEntry>();
 
 function buildExpandedTools(): McpTool[] {
   const tools: McpTool[] = [];
-  // Always include list_adapters for discovery + as a smoke test.
-  tools.push(buildLazyTools()[0]);
+  // Always include the 3 default tools for discovery and generic execution.
+  tools.push(...buildDefaultTools());
 
   expandedRegistry.clear();
   // Collision detection: if two (site, command) pairs normalize to the same
   // tool name, the first one wins and the second is silently shadowed. We
   // don't expect this in practice (most adapters use lowercase alphanumeric
   // + hyphen names), but flag it on stderr so it gets noticed.
-  const seen = new Set<string>();
+  // Seed with the 3 default tool names to prevent adapter commands from
+  // overwriting them if they happen to produce an identical normalized name.
+  const seen = new Set<string>(["unicli_run", "unicli_list", "unicli_discover"]);
 
   for (const adapter of getAllAdapters()) {
     for (const [cmdName, cmd] of Object.entries(adapter.commands)) {
-      const description =
+      const rawDesc =
         cmd.description?.trim() ||
         adapter.description?.trim() ||
         `${cmdName} for ${adapter.name}`;
@@ -289,30 +357,19 @@ function buildExpandedTools(): McpTool[] {
       expandedRegistry.set(toolName, { adapter, cmdName, cmd });
       tools.push({
         name: toolName,
-        description: `[${adapter.name}] ${description}`,
+        description: truncateDescription(`[${adapter.name}] ${rawDesc}`),
         inputSchema: buildInputSchema(cmd),
         outputSchema: buildOutputSchema(cmd),
+        _meta: {
+          "anthropic/searchHint": `${adapter.name}: ${rawDesc}`,
+        },
+        annotations: {
+          readOnlyHint: true,
+          openWorldHint: true,
+        },
       });
     }
   }
-  // Add unicli_discover tool — expose explore+synthesize+generate as MCP tool
-  tools.push({
-    name: "unicli_discover",
-    description:
-      "Auto-discover CLI capabilities for any website URL. Navigates the page, captures API endpoints, and optionally generates YAML adapters.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        url: { type: "string", description: "Website URL to explore" },
-        goal: {
-          type: "string",
-          description:
-            "Optional: capability to find (e.g. 'search', 'hot', 'feed')",
-        },
-      },
-      required: ["url"],
-    },
-  });
 
   return tools;
 }
@@ -442,6 +499,22 @@ async function runResolvedCommand(
   }
 }
 
+/**
+ * Annotate a tool result with `_meta.anthropic/maxResultSizeChars` when the
+ * serialized payload exceeds MAX_RESULT_SIZE_CHARS (10 KB). This tells
+ * Claude Code to accept large payloads without truncation.
+ */
+export function annotateIfLarge(result: McpToolResult): McpToolResult {
+  const totalChars = result.content.reduce((sum, c) => sum + c.text.length, 0);
+  if (totalChars > MAX_RESULT_SIZE_CHARS) {
+    return {
+      ...result,
+      _meta: { "anthropic/maxResultSizeChars": 100_000 },
+    };
+  }
+  return result;
+}
+
 async function handleRunCommand(
   params: Record<string, unknown>,
 ): Promise<McpToolResult> {
@@ -498,7 +571,7 @@ async function handleRunCommand(
 /**
  * Expanded-tool dispatcher — parse `unicli_<site>_<command>` back to its
  * components and call the resolver. Returns `undefined` when the tool name
- * is not in expanded form, so the caller can fall through to lazy-tool
+ * is not in expanded form, so the caller can fall through to default-tool
  * handling (list_adapters / run_command).
  */
 async function handleExpandedTool(
@@ -524,20 +597,20 @@ async function handleExpandedTool(
 const PROTOCOL_VERSION = "2024-11-05";
 
 interface ServerOptions {
-  lazy: boolean;
+  expanded: boolean;
   transport: "stdio" | "http";
   port: number;
 }
 
 function parseArgs(argv: string[]): ServerOptions {
   const opts: ServerOptions = {
-    lazy: false,
+    expanded: false,
     transport: "stdio",
     port: 19826,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === "--lazy") opts.lazy = true;
+    if (a === "--expanded") opts.expanded = true;
     else if (a === "--transport") {
       const v = argv[++i];
       if (v === "stdio" || v === "http") opts.transport = v;
@@ -575,6 +648,8 @@ function buildHandler(
         };
 
       case "notifications/initialized":
+        // JSON-RPC notifications must not receive responses.
+        // Returning a sentinel that transports check before serializing.
         return null as unknown as JsonRpcResponse;
 
       case "tools/list":
@@ -599,15 +674,19 @@ function buildHandler(
         const toolArgs = params.arguments ?? {};
 
         switch (params.name) {
+          // Support both old names (list_adapters, run_command) and new
+          // names (unicli_list, unicli_run) for backwards compatibility.
+          case "unicli_list":
           case "list_adapters": {
             const result = handleListAdapters(toolArgs);
-            return { jsonrpc: "2.0", id, result };
+            return { jsonrpc: "2.0", id, result: annotateIfLarge(result) };
           }
+          case "unicli_run":
           case "run_command":
             return handleRunCommand(toolArgs).then((result) => ({
               jsonrpc: "2.0",
               id,
-              result,
+              result: annotateIfLarge(result),
             }));
           case "unicli_discover": {
             const discoverUrl = toolArgs.url as string;
@@ -619,6 +698,19 @@ function buildHandler(
                 error: {
                   code: -32602,
                   message: "Missing required parameter: url",
+                },
+              };
+            }
+            if (
+              !discoverUrl.startsWith("http://") &&
+              !discoverUrl.startsWith("https://")
+            ) {
+              return {
+                jsonrpc: "2.0",
+                id,
+                error: {
+                  code: -32602,
+                  message: "URL must start with http:// or https://",
                 },
               };
             }
@@ -634,15 +726,17 @@ function buildHandler(
                   ({ stdout }) => ({
                     jsonrpc: "2.0" as const,
                     id,
-                    result: { content: [{ type: "text", text: stdout }] },
+                    result: annotateIfLarge({
+                      content: [{ type: "text" as const, text: stdout }],
+                    }),
                   }),
                   (err: unknown) => ({
                     jsonrpc: "2.0" as const,
                     id,
-                    result: {
+                    result: annotateIfLarge({
                       content: [
                         {
-                          type: "text",
+                          type: "text" as const,
                           text: JSON.stringify({
                             error:
                               err instanceof Error ? err.message : String(err),
@@ -650,7 +744,7 @@ function buildHandler(
                         },
                       ],
                       isError: true,
-                    },
+                    }),
                   }),
                 );
               }),
@@ -658,13 +752,13 @@ function buildHandler(
           }
           default:
             return handleExpandedTool(params.name, toolArgs).then((result) => {
-              if (result) return { jsonrpc: "2.0", id, result };
+              if (result) return { jsonrpc: "2.0", id, result: annotateIfLarge(result) };
               return {
                 jsonrpc: "2.0",
                 id,
                 error: {
-                  code: -32601,
-                  message: `Unknown tool: ${params.name}. Use list_adapters to see all available commands.`,
+                  code: -32602,
+                  message: `Unknown tool: ${params.name}. Use unicli_list to see available commands.`,
                 },
               };
             });
@@ -756,17 +850,24 @@ async function startStdio(
 async function startHttp(
   handler: ReturnType<typeof buildHandler>,
   port: number,
-  toolCount: number,
 ): Promise<void> {
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
-    if (req.method === "GET" && (req.url === "/" || req.url === "/mcp")) {
+    if (req.method === "GET" && (req.url === "/" || req.url === "/mcp" || req.url === "/health")) {
       res.writeHead(200, { "Content-Type": "application/json" });
+      const adapterCount = getAllAdapters().length;
+      const commandCount = listCommands().length;
+      // Compute actual expanded tool count: 3 default tools + all adapter commands.
+      let expandedCount = 3; // default tools
+      for (const adapter of getAllAdapters()) {
+        expandedCount += Object.keys(adapter.commands).length;
+      }
       res.end(
         JSON.stringify({
-          server: "unicli",
+          status: "ok",
+          adapters: adapterCount,
+          commands: commandCount,
+          tools: { default: 3, expanded: expandedCount },
           version: VERSION,
-          tools: toolCount,
-          protocol: PROTOCOL_VERSION,
         }),
       );
       return;
@@ -777,9 +878,29 @@ async function startHttp(
       return;
     }
 
+    const MAX_BODY = 1_048_576; // 1 MB
     const chunks: Buffer[] = [];
-    req.on("data", (chunk: Buffer) => chunks.push(chunk));
+    let bodySize = 0;
+    let aborted = false;
+    req.on("data", (chunk: Buffer) => {
+      bodySize += chunk.length;
+      if (bodySize > MAX_BODY) {
+        aborted = true;
+        res.writeHead(413, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: null,
+            error: { code: -32600, message: "Request too large" },
+          }),
+        );
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
     req.on("end", async () => {
+      if (aborted) return;
       const body = Buffer.concat(chunks).toString("utf-8");
       let parsed: JsonRpcRequest;
       try {
@@ -797,8 +918,14 @@ async function startHttp(
       }
       try {
         const response = await handler(parsed);
+        if (!response) {
+          // JSON-RPC notification — no response expected
+          res.writeHead(204);
+          res.end();
+          return;
+        }
         res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify(response ?? null));
+        res.end(JSON.stringify(response));
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         res.writeHead(500, { "Content-Type": "application/json" });
@@ -835,16 +962,17 @@ async function main(): Promise<void> {
   loadAllAdapters();
   await loadTsAdapters();
 
-  const tools = opts.lazy ? buildLazyTools() : buildExpandedTools();
+  const mode = opts.expanded ? "expanded" : "default";
+  const tools = opts.expanded ? buildExpandedTools() : buildDefaultTools();
   const handler = buildHandler(tools);
 
   const adapterCount = getAllAdapters().length;
   const commandCount = listCommands().length;
 
   if (opts.transport === "http") {
-    await startHttp(handler, opts.port, tools.length);
+    await startHttp(handler, opts.port);
     process.stderr.write(
-      `unicli MCP server v${VERSION} — ${adapterCount} sites, ${commandCount} commands (${tools.length} tools registered, mode=${opts.lazy ? "lazy" : "expanded"})\n`,
+      `unicli MCP server v${VERSION} — ${adapterCount} sites, ${commandCount} commands (${tools.length} tools registered, mode=${mode})\n`,
     );
     return;
   }
@@ -852,7 +980,7 @@ async function main(): Promise<void> {
   // stdio (default)
   await startStdio(handler);
   process.stderr.write(
-    `unicli MCP server v${VERSION} — ${adapterCount} sites, ${commandCount} commands (${tools.length} tools registered, mode=${opts.lazy ? "lazy" : "expanded"})\n`,
+    `unicli MCP server v${VERSION} — ${adapterCount} sites, ${commandCount} commands (${tools.length} tools registered, mode=${mode})\n`,
   );
 }
 

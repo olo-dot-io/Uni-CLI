@@ -1,0 +1,18 @@
+{
+  "id": "unicli",
+  "name": "Uni-CLI",
+  "description": "Universal CLI for AI agents — 200 sites, 969 commands. Control any website, desktop app, or local tool with structured JSON output.",
+  "version": "0.211.0",
+  "openclaw": {
+    "install": {
+      "npmSpec": "@zenalexa/openclaw-unicli"
+    }
+  },
+  "mcpServers": {
+    "unicli": {
+      "command": "unicli",
+      "args": ["mcp", "serve"],
+      "env": {}
+    }
+  }
+}

@@ -1,0 +1,23 @@
+site: macos
+name: safari-history
+description: Get recent Safari browsing history via SQLite
+type: desktop
+binary: sqlite3
+detect: "test $(uname) = Darwin"
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of recent history entries to return
+
+pipeline:
+  - exec:
+      command: sqlite3
+      args:
+        - "-json"
+        - "$HOME/Library/Safari/History.db"
+        - "SELECT hi.url, hv.title, datetime(hv.visit_time + 978307200, 'unixepoch', 'localtime') AS visited_at FROM history_visits hv JOIN history_items hi ON hv.history_item = hi.id ORDER BY hv.visit_time DESC LIMIT ${{ args.limit | int | default(20) }};"
+      parse: json
+
+columns: [title, url, visited_at]

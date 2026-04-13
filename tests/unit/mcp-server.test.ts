@@ -52,14 +52,12 @@ function sendRequest(
   });
 }
 
-describe("MCP server", () => {
+describe("MCP server — smart default mode", () => {
   let proc: ChildProcess;
 
   beforeAll(async () => {
-    // The default mode in v0.208 expands every adapter into its own MCP tool.
-    // This file pins the LAZY mode (`--lazy`) so the existing 2-tool contract
-    // is exercised. Expanded mode is covered in `mcp-server-expanded.test.ts`.
-    proc = spawn("npx", ["tsx", SERVER_PATH, "--lazy"], {
+    // Default mode (no flags) registers 3 tools: unicli_run, unicli_list, unicli_discover
+    proc = spawn("npx", ["tsx", SERVER_PATH], {
       stdio: ["pipe", "pipe", "pipe"],
       cwd: join(__dirname, "..", ".."),
     });
@@ -110,7 +108,7 @@ describe("MCP server", () => {
     expect(result.capabilities).toEqual(expect.objectContaining({ tools: {} }));
   });
 
-  it("lists exactly 2 core tools (lazy registration)", async () => {
+  it("lists exactly 3 tools in smart default mode", async () => {
     const response = await sendRequest(proc, {
       jsonrpc: "2.0",
       id: 2,
@@ -119,19 +117,19 @@ describe("MCP server", () => {
     });
 
     const result = response.result as { tools: Array<{ name: string }> };
-    expect(result.tools).toHaveLength(2);
+    expect(result.tools).toHaveLength(3);
 
     const names = result.tools.map((t) => t.name).sort();
-    expect(names).toEqual(["list_adapters", "run_command"]);
+    expect(names).toEqual(["unicli_discover", "unicli_list", "unicli_run"]);
   });
 
-  it("list_adapters returns adapter catalog", { timeout: 15_000 }, async () => {
+  it("unicli_list returns adapter catalog", { timeout: 15_000 }, async () => {
     const response = await sendRequest(proc, {
       jsonrpc: "2.0",
       id: 3,
       method: "tools/call",
       params: {
-        name: "list_adapters",
+        name: "unicli_list",
         arguments: {},
       },
     });
@@ -150,13 +148,13 @@ describe("MCP server", () => {
     expect(data.total_commands).toBeGreaterThan(0);
   });
 
-  it("list_adapters filters by site name", async () => {
+  it("unicli_list filters by site name", async () => {
     const response = await sendRequest(proc, {
       jsonrpc: "2.0",
       id: 4,
       method: "tools/call",
       params: {
-        name: "list_adapters",
+        name: "unicli_list",
         arguments: { site: "hackernews" },
       },
     });
@@ -172,13 +170,13 @@ describe("MCP server", () => {
     expect(data.adapters[0].site).toBe("hackernews");
   });
 
-  it("run_command returns error for unknown command", async () => {
+  it("unicli_run returns error for unknown command", async () => {
     const response = await sendRequest(proc, {
       jsonrpc: "2.0",
       id: 5,
       method: "tools/call",
       params: {
-        name: "run_command",
+        name: "unicli_run",
         arguments: { site: "nonexistent", command: "nope" },
       },
     });
@@ -191,6 +189,44 @@ describe("MCP server", () => {
 
     const data = JSON.parse(result.content[0].text) as { error: string };
     expect(data.error).toContain("Unknown command");
+  });
+
+  it("backwards-compat: list_adapters still works", async () => {
+    const response = await sendRequest(proc, {
+      jsonrpc: "2.0",
+      id: 50,
+      method: "tools/call",
+      params: {
+        name: "list_adapters",
+        arguments: {},
+      },
+    });
+
+    const result = response.result as {
+      content: Array<{ type: string; text: string }>;
+    };
+    const data = JSON.parse(result.content[0].text) as {
+      total_sites: number;
+    };
+    expect(data.total_sites).toBeGreaterThan(0);
+  });
+
+  it("backwards-compat: run_command still works", async () => {
+    const response = await sendRequest(proc, {
+      jsonrpc: "2.0",
+      id: 51,
+      method: "tools/call",
+      params: {
+        name: "run_command",
+        arguments: { site: "nonexistent", command: "nope" },
+      },
+    });
+
+    const result = response.result as {
+      content: Array<{ type: string; text: string }>;
+      isError: boolean;
+    };
+    expect(result.isError).toBe(true);
   });
 
   it("returns error for unknown tool name", async () => {
@@ -206,7 +242,7 @@ describe("MCP server", () => {
 
     expect(response.error).toBeDefined();
     const error = response.error as { code: number; message: string };
-    expect(error.code).toBe(-32601);
+    expect(error.code).toBe(-32602);
     expect(error.message).toContain("Unknown tool");
   });
 
