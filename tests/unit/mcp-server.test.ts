@@ -242,7 +242,7 @@ describe("MCP server — smart default mode", () => {
 
     expect(response.error).toBeDefined();
     const error = response.error as { code: number; message: string };
-    expect(error.code).toBe(-32601);
+    expect(error.code).toBe(-32602);
     expect(error.message).toContain("Unknown tool");
   });
 

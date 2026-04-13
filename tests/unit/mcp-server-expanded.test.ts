@@ -194,7 +194,7 @@ describe("MCP server — expanded mode (--expanded)", () => {
     });
     expect(response.error).toBeDefined();
     const error = response.error as { code: number; message: string };
-    expect(error.code).toBe(-32601);
+    expect(error.code).toBe(-32602);
   });
 
   it("registers tools for commands with hyphens in the filename", async () => {

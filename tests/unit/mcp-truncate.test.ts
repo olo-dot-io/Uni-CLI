@@ -59,7 +59,7 @@ describe("annotateIfLarge", () => {
     };
     const out = annotateIfLarge(result);
     expect(out._meta).toBeDefined();
-    expect(out._meta!["anthropic/maxResultSizeChars"]).toBe(500_000);
+    expect(out._meta!["anthropic/maxResultSizeChars"]).toBe(100_000);
   });
 
   it("annotates large error results with _meta", () => {
@@ -70,7 +70,7 @@ describe("annotateIfLarge", () => {
     };
     const out = annotateIfLarge(result);
     expect(out._meta).toBeDefined();
-    expect(out._meta!["anthropic/maxResultSizeChars"]).toBe(500_000);
+    expect(out._meta!["anthropic/maxResultSizeChars"]).toBe(100_000);
     expect(out.isError).toBe(true);
   });
 });

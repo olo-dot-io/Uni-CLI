@@ -43,7 +43,7 @@ interface TemplateContext {
 function mcpConfigObject(): Record<string, unknown> {
   return {
     command: "npx",
-    args: ["@zenalexa/unicli", "mcp", "serve"],
+    args: ["-y", "@zenalexa/unicli", "mcp", "serve"],
     env: {},
   };
 }
@@ -215,7 +215,7 @@ function formatCodex(ctx: TemplateContext): string {
   lines.push("");
   lines.push("[mcp_servers.unicli]");
   lines.push('command = "npx"');
-  lines.push('args = ["@zenalexa/unicli", "mcp", "serve"]');
+  lines.push('args = ["-y", "@zenalexa/unicli", "mcp", "serve"]');
   lines.push("");
   lines.push("# ---");
   lines.push("");
@@ -301,6 +301,7 @@ function formatHermes(ctx: TemplateContext): string {
   lines.push("  unicli:");
   lines.push('    command: "npx"');
   lines.push("    args:");
+  lines.push('      - "-y"');
   lines.push('      - "@zenalexa/unicli"');
   lines.push('      - "mcp"');
   lines.push('      - "serve"');
@@ -353,7 +354,7 @@ function formatOpencode(ctx: TemplateContext): string {
     mcpServers: {
       unicli: {
         command: "npx",
-        args: ["@zenalexa/unicli", "mcp", "serve"],
+        args: ["-y", "@zenalexa/unicli", "mcp", "serve"],
       },
     },
     // Context comments embedded as description fields

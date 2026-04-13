@@ -17,7 +17,7 @@ pipeline:
       args:
         - "-json"
         - "$HOME/Library/Safari/History.db"
-        - "SELECT hi.url, hv.title, datetime(hv.visit_time + 978307200, 'unixepoch', 'localtime') AS visited_at FROM history_visits hv JOIN history_items hi ON hv.history_item = hi.id ORDER BY hv.visit_time DESC LIMIT ${{ args.limit }};"
+        - "SELECT hi.url, hv.title, datetime(hv.visit_time + 978307200, 'unixepoch', 'localtime') AS visited_at FROM history_visits hv JOIN history_items hi ON hv.history_item = hi.id ORDER BY hv.visit_time DESC LIMIT ${{ args.limit | int | default(20) }};"
       parse: json
 
 columns: [title, url, visited_at]

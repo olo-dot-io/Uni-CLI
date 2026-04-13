@@ -361,7 +361,7 @@ function buildExpandedTools(): McpTool[] {
         inputSchema: buildInputSchema(cmd),
         outputSchema: buildOutputSchema(cmd),
         _meta: {
-          "anthropic/searchHint": `${adapter.name}: ${description}`,
+          "anthropic/searchHint": `${adapter.name}: ${rawDesc}`,
         },
         annotations: {
           readOnlyHint: true,
@@ -648,6 +648,8 @@ function buildHandler(
         };
 
       case "notifications/initialized":
+        // JSON-RPC notifications must not receive responses.
+        // Returning a sentinel that transports check before serializing.
         return null as unknown as JsonRpcResponse;
 
       case "tools/list":
@@ -699,6 +701,19 @@ function buildHandler(
                 },
               };
             }
+            if (
+              !discoverUrl.startsWith("http://") &&
+              !discoverUrl.startsWith("https://")
+            ) {
+              return {
+                jsonrpc: "2.0",
+                id,
+                error: {
+                  code: -32602,
+                  message: "URL must start with http:// or https://",
+                },
+              };
+            }
             return import("node:child_process").then(({ execFile: ef }) =>
               import("node:util").then(({ promisify: prom }) => {
                 const execFileP = prom(ef);
@@ -742,7 +757,7 @@ function buildHandler(
                 jsonrpc: "2.0",
                 id,
                 error: {
-                  code: -32601,
+                  code: -32602,
                   message: `Unknown tool: ${params.name}. Use unicli_list to see available commands.`,
                 },
               };
@@ -903,8 +918,14 @@ async function startHttp(
       }
       try {
         const response = await handler(parsed);
+        if (!response) {
+          // JSON-RPC notification — no response expected
+          res.writeHead(204);
+          res.end();
+          return;
+        }
         res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify(response ?? null));
+        res.end(JSON.stringify(response));
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         res.writeHead(500, { "Content-Type": "application/json" });
