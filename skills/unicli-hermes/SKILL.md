@@ -57,9 +57,24 @@ When a command fails:
 4. Save to `~/.unicli/adapters/<site>/<command>.yaml`
 5. Verify: `unicli repair <site> <command>`
 
-## MCP Server
+## MCP Server (Hermes / agentskills.io)
 
-```bash
-unicli mcp serve                    # 3 default tools (unicli_run, unicli_list, unicli_discover)
-unicli mcp serve --expanded         # All 969 commands as individual tools
+Add to your Hermes agent configuration:
+
+```yaml
+mcp_servers:
+  unicli:
+    command: "npx"
+    args: ["-y", "@zenalexa/unicli", "mcp", "serve"]
+    tools:
+      include: [unicli_run, unicli_list, unicli_discover]
+```
+
+Or run the expanded server to expose all 969 commands as individual tools:
+
+```yaml
+mcp_servers:
+  unicli:
+    command: "npx"
+    args: ["-y", "@zenalexa/unicli", "mcp", "serve", "--expanded"]
 ```
