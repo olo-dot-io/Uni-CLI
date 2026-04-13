@@ -1,13 +1,13 @@
 /**
- * MCP server — expanded mode (default in v0.208).
+ * MCP server — expanded mode (`--expanded` flag).
  *
  * In expanded mode the server registers one tool per adapter command
- * (`unicli_<site>_<command>`) plus `list_adapters` for discovery. This
- * test verifies:
+ * (`unicli_<site>_<command>`) plus the 3 default tools. This test verifies:
  *   - tool count grows with the loaded adapter catalog
  *   - tool names follow the expected normalization
  *   - input schemas are derived from adapter args
  *   - calling an expanded tool by its full name resolves and runs
+ *   - descriptions are truncated to <=68 tokens
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -55,11 +55,11 @@ function sendRequest(
   });
 }
 
-describe("MCP server — expanded mode (default)", () => {
+describe("MCP server — expanded mode (--expanded)", () => {
   let proc: ChildProcess;
 
   beforeAll(async () => {
-    proc = spawn("npx", ["tsx", SERVER_PATH], {
+    proc = spawn("npx", ["tsx", SERVER_PATH, "--expanded"], {
       stdio: ["pipe", "pipe", "pipe"],
       cwd: join(__dirname, "..", ".."),
     });
@@ -86,7 +86,7 @@ describe("MCP server — expanded mode (default)", () => {
     proc.kill();
   });
 
-  it("registers many tools (one per adapter command + list_adapters)", async () => {
+  it("registers many tools (one per adapter command + 3 default)", async () => {
     const response = await sendRequest(proc, {
       jsonrpc: "2.0",
       id: 100,
@@ -95,10 +95,12 @@ describe("MCP server — expanded mode (default)", () => {
     });
 
     const result = response.result as { tools: Array<{ name: string }> };
-    // Lazy mode is exactly 2; expanded must be many more than that
+    // Default mode is exactly 3; expanded must be many more than that
     expect(result.tools.length).toBeGreaterThan(50);
     const names = result.tools.map((t) => t.name);
-    expect(names).toContain("list_adapters");
+    expect(names).toContain("unicli_list");
+    expect(names).toContain("unicli_run");
+    expect(names).toContain("unicli_discover");
   });
 
   it("uses the unicli_<site>_<command> naming convention", async () => {
@@ -159,6 +161,25 @@ describe("MCP server — expanded mode (default)", () => {
     expect(hnSearch).toBeDefined();
     expect(hnSearch!.inputSchema.required).toContain("query");
     expect(hnSearch!.inputSchema.properties.query).toBeDefined();
+  });
+
+  it("tool descriptions are at most 68 tokens (~52 words)", async () => {
+    const response = await sendRequest(proc, {
+      jsonrpc: "2.0",
+      id: 110,
+      method: "tools/list",
+      params: {},
+    });
+    const result = response.result as {
+      tools: Array<{ name: string; description: string }>;
+    };
+    const expanded = result.tools.filter((t) => t.name.startsWith("unicli_"));
+    for (const t of expanded) {
+      const words = t.description.split(/\s+/).filter(Boolean).length;
+      const approxTokens = Math.ceil(words * 1.3);
+      // Allow slight overflow from the ellipsis character
+      expect(approxTokens).toBeLessThanOrEqual(70);
+    }
   });
 
   it("rejects an unknown expanded-form tool with a helpful message", async () => {
