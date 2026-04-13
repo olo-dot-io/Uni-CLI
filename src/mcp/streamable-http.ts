@@ -20,7 +20,7 @@ import {
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
-import { VERSION } from "../constants.js";
+import { VERSION, MCP_PROTOCOL_VERSION } from "../constants.js";
 import { handleOAuthRoute, createOAuthMiddleware } from "./oauth.js";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ const MAX_BODY = 1_048_576; // 1 MB
 const SESSION_TTL_MS = 3_600_000; // 1 hour
 const PRUNE_INTERVAL_MS = 300_000; // 5 minutes
 const HEARTBEAT_MS = 30_000;
-const MCP_PROTOCOL_VERSION = "2025-11-25";
+// MCP_PROTOCOL_VERSION imported from ../constants.js (single source of truth)
 const ALLOWED_ORIGINS = new Set(["http://localhost", "http://127.0.0.1"]);
 const MAX_SESSIONS = 100;
 const MAX_ASYNC_TASKS = 200;
@@ -409,7 +409,15 @@ async function handlePost(
       // Execute the handler in the background
       Promise.resolve(handler(parsed)).then(
         (result: JsonRpcResponse) => {
-          if (task.status === "cancelled") return;
+          if (task.status === "cancelled") {
+            if (!res.writableEnded) {
+              res.write(
+                `event: cancelled\ndata: ${JSON.stringify({ taskId })}\n\n`,
+              );
+              res.end();
+            }
+            return;
+          }
           task.status = "completed";
           task.result = result;
           if (!res.writableEnded) {
@@ -420,7 +428,15 @@ async function handlePost(
           }
         },
         (err: unknown) => {
-          if (task.status === "cancelled") return;
+          if (task.status === "cancelled") {
+            if (!res.writableEnded) {
+              res.write(
+                `event: cancelled\ndata: ${JSON.stringify({ taskId })}\n\n`,
+              );
+              res.end();
+            }
+            return;
+          }
           const msg = err instanceof Error ? err.message : String(err);
           task.status = "failed";
           task.error = msg;
@@ -590,10 +606,13 @@ export async function startStreamableHttp(
     const method = req.method ?? "";
     const pathname = (req.url ?? "/").split("?")[0];
 
-    // CORS preflight
+    // CORS preflight — use same origin validation as responses
     if (method === "OPTIONS") {
+      const origin = req.headers.origin;
+      const allowedOrigin =
+        origin && isOriginAllowed(req) ? origin : "http://localhost";
       res.writeHead(204, {
-        "Access-Control-Allow-Origin": req.headers.origin ?? "*",
+        "Access-Control-Allow-Origin": allowedOrigin,
         "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
         "Access-Control-Allow-Headers":
           "Content-Type, MCP-Session-Id, MCP-Protocol-Version, Authorization, Accept, X-MCP-Async",

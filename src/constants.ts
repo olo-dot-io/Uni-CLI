@@ -21,3 +21,6 @@ export const USER_AGENT = `Uni-CLI/${VERSION_SHORT}`;
 
 /** Package name */
 export const NAME = pkg.name;
+
+/** MCP protocol version — single source of truth for all transports */
+export const MCP_PROTOCOL_VERSION = "2025-11-25";

@@ -8,7 +8,9 @@
      You can fix broken adapters yourself — read the Self-Repair section. -->
 
 <!-- BEGIN COUNTS -->
+
 > 195 sites, 956 commands, 35 pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
+
 <!-- END COUNTS -->
 
 ## For AI Agents
@@ -31,6 +33,7 @@ npm install -g @zenalexa/unicli
 ```
 
 <!-- BEGIN ADAPTERS -->
+
 ## What You Can Do
 
 ### Web (108+ sites)
@@ -60,6 +63,7 @@ audacity (8 cmds), blender (13 cmds), cloudcompare (4 cmds), comfyui (4 cmds), d
 ### Bridge (3 CLIs)
 
 gh (5 cmds), jq (2 cmds), yt-dlp (4 cmds)
+
 <!-- END ADAPTERS -->
 
 ## Authentication

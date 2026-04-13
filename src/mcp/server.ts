@@ -32,7 +32,7 @@ import {
 import { loadAllAdapters, loadTsAdapters } from "../discovery/loader.js";
 import { getAllAdapters, listCommands, resolveCommand } from "../registry.js";
 import { runPipeline } from "../engine/yaml-runner.js";
-import { VERSION } from "../constants.js";
+import { VERSION, MCP_PROTOCOL_VERSION } from "../constants.js";
 // sse-transport.ts is deprecated (spec 2025-03-26). Kept for backwards compatibility.
 // import { startSseServer } from "./sse-transport.js";
 import { startStreamableHttp } from "./streamable-http.js";
@@ -544,7 +544,8 @@ async function handleExpandedTool(
 
 // ── MCP Protocol Handler ────────────────────────────────────────────────────
 
-const PROTOCOL_VERSION = "2025-11-25";
+// Protocol version imported from src/constants.ts (single source of truth)
+const PROTOCOL_VERSION = MCP_PROTOCOL_VERSION;
 
 interface ServerOptions {
   expanded: boolean;
@@ -777,7 +778,7 @@ function buildHandler(
         const elicitParams = req.params as
           | { id: string | number; response: ElicitationResponse }
           | undefined;
-        if (!elicitParams?.id || !elicitParams?.response) {
+        if (elicitParams?.id == null || !elicitParams?.response) {
           return {
             jsonrpc: "2.0",
             id,

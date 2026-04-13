@@ -22,7 +22,7 @@
   },
   "scripts": {
     "dev": "tsx src/main.ts",
-    "build": "tsc && tsx scripts/build-manifest.js && tsx scripts/build-agents.ts",
+    "build": "tsc && tsx scripts/build-manifest.js && tsx scripts/build-agents.ts && npx prettier --write AGENTS.md",
     "build:agents": "tsx scripts/build-agents.ts",
     "test": "vitest run --project unit",
     "test:adapter": "vitest run --project adapter",
