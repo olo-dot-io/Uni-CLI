@@ -24,11 +24,11 @@ Or copy `openclaw.plugin.json` manually to `~/.openclaw/plugins/unicli/openclaw.
 
 ## Tools
 
-| Tool | Description |
-|------|-------------|
-| `unicli_run` | Execute any Uni-CLI command (site + command + args) |
-| `unicli_list` | List available sites and commands, filter by site or type |
-| `unicli_discover` | Auto-discover API endpoints for any URL |
+| Tool              | Description                                               |
+| ----------------- | --------------------------------------------------------- |
+| `unicli_run`      | Execute any Uni-CLI command (site + command + args)       |
+| `unicli_list`     | List available sites and commands, filter by site or type |
+| `unicli_discover` | Auto-discover API endpoints for any URL                   |
 
 ### unicli_run
 

@@ -12,6 +12,8 @@
  * - README.md: Badge counts + footer codename
  * - docs/TASTE.md: Current version line
  * - docs/VERSIONING.md: Release history table (appends new row)
+ * - CHANGELOG.md: Insert new version heading (content added manually)
+ * - docs/ROADMAP.md: Update site/command counts
  *
  * What it does NOT update (read from package.json at runtime):
  * - src/cli.ts — imports VERSION from constants.ts
@@ -147,6 +149,79 @@ for (const rule of rules) {
   }
   console.log(`   ${dryRun ? "→" : "✓"} ${rule.description}`);
   updated++;
+}
+
+// --- CHANGELOG.md: insert version heading if missing ---
+
+const changelogPath = join(ROOT, "CHANGELOG.md");
+if (existsSync(changelogPath)) {
+  const changelog = readFileSync(changelogPath, "utf-8");
+  const versionHeading = `## [${version}]`;
+  if (changelog.includes(versionHeading)) {
+    console.log(`   ✓ CHANGELOG.md — heading for ${version} already exists`);
+  } else {
+    const today = new Date().toISOString().slice(0, 10);
+    const label = codename || "Unreleased";
+    const newHeading = `## [${version}] — ${today} — ${label}\n\n### Added\n\n### Changed\n\n### Fixed\n\n`;
+    // Insert after the first line that starts with "# " (the main title block)
+    const insertIdx = changelog.indexOf("\n\n## ");
+    if (insertIdx >= 0) {
+      const before = changelog.slice(0, insertIdx);
+      const after = changelog.slice(insertIdx);
+      const newChangelog = `${before}\n\n${newHeading}${after.slice(2)}`;
+      if (!dryRun) {
+        writeFileSync(changelogPath, newChangelog);
+      }
+      console.log(
+        `   ${dryRun ? "→" : "✓"} CHANGELOG.md — inserted heading for v${version}`,
+      );
+      updated++;
+    } else {
+      console.log(`   ⚠ SKIP CHANGELOG.md — could not find insertion point`);
+      skipped++;
+    }
+  }
+} else {
+  console.log(`   ⚠ SKIP CHANGELOG.md — file not found`);
+  skipped++;
+}
+
+// --- docs/ROADMAP.md: update site/command counts ---
+
+const roadmapPath = join(ROOT, "docs", "ROADMAP.md");
+if (existsSync(roadmapPath) && siteCount !== "?" && cmdCount !== "?") {
+  let roadmap = readFileSync(roadmapPath, "utf-8");
+  let roadmapUpdated = false;
+
+  // Update the summary line like "198 sites, 1020 commands as of v0.211.2"
+  const summaryPattern = /\d+ sites, \d+ commands as of v[\d.]+/;
+  if (summaryPattern.test(roadmap)) {
+    roadmap = roadmap.replace(
+      summaryPattern,
+      `${siteCount} sites, ${cmdCount} commands as of v${version}`,
+    );
+    roadmapUpdated = true;
+  }
+
+  if (roadmapUpdated) {
+    if (!dryRun) {
+      writeFileSync(roadmapPath, roadmap);
+    }
+    console.log(
+      `   ${dryRun ? "→" : "✓"} docs/ROADMAP.md — updated site/command counts`,
+    );
+    updated++;
+  } else {
+    console.log(
+      `   ✓ docs/ROADMAP.md — no count patterns found, skipping gracefully`,
+    );
+  }
+} else if (!existsSync(roadmapPath)) {
+  console.log(`   ⚠ SKIP docs/ROADMAP.md — file not found`);
+  skipped++;
+} else {
+  console.log(`   ⚠ SKIP docs/ROADMAP.md — manifest counts unavailable`);
+  skipped++;
 }
 
 console.log(

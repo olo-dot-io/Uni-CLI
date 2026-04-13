@@ -22,7 +22,8 @@
   },
   "scripts": {
     "dev": "tsx src/main.ts",
-    "build": "tsc && tsx scripts/build-manifest.js",
+    "build": "tsc && tsx scripts/build-manifest.js && tsx scripts/build-agents.ts",
+    "build:agents": "tsx scripts/build-agents.ts",
     "test": "vitest run --project unit",
     "test:adapter": "vitest run --project adapter",
     "test:all": "vitest run",
@@ -38,6 +39,10 @@
     "doctor": "tsx src/doctor.ts",
     "mcp": "tsx src/mcp/server.ts",
     "release": "npm run build && tsx scripts/release.ts",
+    "release:check": "tsx scripts/release-check.ts",
+    "prepare": "lefthook install",
+    "preversion": "npm run verify",
+    "postversion": "npm run build && tsx scripts/release.ts",
     "bench": "tsx scripts/bench.ts",
     "sync:ref": "bash scripts/sync-ref.sh"
   },
@@ -81,6 +86,7 @@
     "@types/node": "^25.6.0",
     "@types/turndown": "^5.0.6",
     "@types/ws": "^8.5.14",
+    "lefthook": "^2.1.5",
     "oxlint": "^1.0.0",
     "prettier": "^3.5.0",
     "tsx": "^4.19.0",

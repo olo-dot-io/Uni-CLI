@@ -8,6 +8,18 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
+function isLocalhostRedirect(uri: string): boolean {
+  try {
+    const u = new URL(uri);
+    return (
+      (u.hostname === "localhost" || u.hostname === "127.0.0.1") &&
+      u.protocol === "http:"
+    );
+  } catch {
+    return false;
+  }
+}
+
 interface AuthCode {
   clientId: string;
   codeChallenge: string;
@@ -71,15 +83,24 @@ function pruneExpired(): void {
 
 // ── Authorization Endpoint ─────────────────────────────────────────────────
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 const HTML = (cid: string, ch: string, ru: string) =>
   `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Uni-CLI MCP Auth</title>` +
   `<style>body{font-family:system-ui,sans-serif;max-width:420px;margin:80px auto;text-align:center}` +
   `button{padding:12px 32px;font-size:16px;cursor:pointer;border:none;border-radius:6px;` +
   `background:#2563eb;color:#fff}code{background:#f1f5f9;padding:2px 6px;border-radius:3px}</style>` +
-  `</head><body><h2>Authorize MCP Client</h2><p>Client <code>${cid}</code> requests access.</p>` +
-  `<form method="POST" action="/oauth/authorize"><input type="hidden" name="client_id" value="${cid}">` +
-  `<input type="hidden" name="code_challenge" value="${ch}"><input type="hidden" name="redirect_uri" ` +
-  `value="${ru}"><button type="submit">Grant Access</button></form></body></html>`;
+  `</head><body><h2>Authorize MCP Client</h2><p>Client <code>${escapeHtml(cid)}</code> requests access.</p>` +
+  `<form method="POST" action="/oauth/authorize"><input type="hidden" name="client_id" value="${escapeHtml(cid)}">` +
+  `<input type="hidden" name="code_challenge" value="${escapeHtml(ch)}"><input type="hidden" name="redirect_uri" ` +
+  `value="${escapeHtml(ru)}"><button type="submit">Grant Access</button></form></body></html>`;
 
 function handleAuthorizeGet(req: IncomingMessage, res: ServerResponse): void {
   const p = parseQuery(req.url ?? "");
@@ -97,6 +118,12 @@ function handleAuthorizeGet(req: IncomingMessage, res: ServerResponse): void {
       error: "invalid_request",
       error_description: "Only S256 code_challenge_method is supported",
     });
+  if (!isLocalhostRedirect(redirect))
+    return json(res, 400, {
+      error: "invalid_request",
+      error_description:
+        "redirect_uri must be a localhost URL (http://localhost or http://127.0.0.1)",
+    });
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
   res.end(HTML(clientId, challenge, redirect));
 }
@@ -113,6 +140,11 @@ async function handleAuthorizePost(
     return json(res, 400, {
       error: "invalid_request",
       error_description: "Missing required parameters",
+    });
+  if (!isLocalhostRedirect(redirect))
+    return json(res, 400, {
+      error: "invalid_request",
+      error_description: "redirect_uri must be a localhost URL",
     });
   pruneExpired();
   const code = generateHex(32);
@@ -169,6 +201,12 @@ async function handleToken(
     return json(res, 400, {
       error: "invalid_grant",
       error_description: "Client ID mismatch",
+    });
+  const redirectUri = p.get("redirect_uri");
+  if (redirectUri && redirectUri !== entry.redirectUri)
+    return json(res, 400, {
+      error: "invalid_grant",
+      error_description: "redirect_uri mismatch",
     });
   if (sha256Base64url(verifier) !== entry.codeChallenge)
     return json(res, 400, {

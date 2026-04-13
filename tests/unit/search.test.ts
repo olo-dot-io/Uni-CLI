@@ -9,7 +9,11 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { tokenizeQuery, expandToken } from "../../src/discovery/aliases.js";
+import {
+  tokenizeQuery,
+  expandToken,
+  isCJKChar,
+} from "../../src/discovery/aliases.js";
 import {
   search,
   buildIndex,
@@ -48,6 +52,52 @@ describe("tokenizeQuery", () => {
   it("returns empty for empty input", () => {
     expect(tokenizeQuery("")).toEqual([]);
     expect(tokenizeQuery("   ")).toEqual([]);
+  });
+
+  it("normalizes full-width characters to half-width (NFKC)", () => {
+    const tokens = tokenizeQuery("Ｔｗｉｔｔｅｒ");
+    expect(tokens).toContain("Twitter");
+  });
+
+  it("filters English stopwords", () => {
+    const tokens = tokenizeQuery("the search for a video");
+    expect(tokens).not.toContain("the");
+    expect(tokens).not.toContain("for");
+    expect(tokens).not.toContain("a");
+    expect(tokens).toContain("search");
+    expect(tokens).toContain("video");
+  });
+});
+
+// ── CJK Detection Tests ───────────────────────────────────────────────────
+
+describe("isCJKChar", () => {
+  it("detects basic CJK characters", () => {
+    expect(isCJKChar("中")).toBe(true);
+    expect(isCJKChar("国")).toBe(true);
+  });
+
+  it("detects CJK Extension A characters", () => {
+    // U+3400 is CJK Extension A
+    expect(isCJKChar("\u3400")).toBe(true);
+  });
+
+  it("detects CJK Extension B characters (supplementary plane)", () => {
+    // U+2000B — 𠀋 — a CJK Extension B character
+    expect(isCJKChar("\u{2000B}")).toBe(true);
+    expect(isCJKChar("𠀋")).toBe(true);
+  });
+
+  it("detects CJK Compatibility Ideographs", () => {
+    // U+F900 is CJK Compatibility Ideographs
+    expect(isCJKChar("\uF900")).toBe(true);
+  });
+
+  it("rejects non-CJK characters", () => {
+    expect(isCJKChar("A")).toBe(false);
+    expect(isCJKChar("1")).toBe(false);
+    expect(isCJKChar(" ")).toBe(false);
+    expect(isCJKChar("あ")).toBe(false); // Hiragana
   });
 });
 

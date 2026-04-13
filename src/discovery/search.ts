@@ -213,9 +213,44 @@ export function buildIndex(manifest: {
   };
 }
 
+// Minimal English stopwords — same set used in query tokenization
+const DOC_STOPWORDS = new Set([
+  "the",
+  "a",
+  "an",
+  "of",
+  "for",
+  "and",
+  "or",
+  "in",
+  "to",
+  "on",
+  "by",
+  "is",
+  "it",
+  "be",
+  "as",
+  "at",
+  "so",
+  "we",
+  "he",
+  "do",
+  "no",
+  "if",
+  "up",
+  "my",
+]);
+
+// Regex to keep alphanumeric, CJK (all planes), and whitespace.
+// Uses the `u` flag for supplementary plane support.
+const DOC_CLEAN_REGEX =
+  /[^a-z0-9\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u{20000}-\u{2a6df}\u{2a700}-\u{2b73f}\u{2b740}-\u{2b81f}\u{2b820}-\u{2ceaf}\u{2ceb0}-\u{2ebef}\u{30000}-\u{3134f}\u{31350}-\u{323af}\s]/gu;
+
 /**
  * Tokenize a document (site + command + description) into search terms.
  * Produces lowercase terms, splits on hyphens and underscores.
+ * Applies NFKC normalization and stopword filtering for alignment with
+ * the query tokenizer.
  */
 function tokenizeDocument(
   site: string,
@@ -232,12 +267,15 @@ function tokenizeDocument(
   const cmdParts = command.toLowerCase().split(/[-_]/);
   terms.push(command.toLowerCase(), ...cmdParts);
 
-  // Description words (lowercase, filter short words)
-  const descWords = description
+  // NFKC normalize description (full-width → half-width, etc.)
+  const normalizedDesc = description.normalize("NFKC");
+
+  // Description words (lowercase, filter short words and stopwords)
+  const descWords = normalizedDesc
     .toLowerCase()
-    .replace(/[^a-z0-9\u4e00-\u9fff\s]/g, " ")
+    .replace(DOC_CLEAN_REGEX, " ")
     .split(/\s+/)
-    .filter((w) => w.length > 1);
+    .filter((w) => w.length > 1 && !DOC_STOPWORDS.has(w));
   terms.push(...descWords);
 
   // Category as a term

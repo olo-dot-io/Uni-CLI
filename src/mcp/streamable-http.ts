@@ -1,14 +1,15 @@
 /**
- * Streamable HTTP transport for the MCP server (spec 2025-03-26).
+ * Streamable HTTP transport for the MCP server (spec 2025-11-25).
  *
- * Single endpoint: POST /mcp
- *   - JSON-RPC request in body
- *   - Response as application/json or text/event-stream (per Accept header)
- *   - MCP-Session-Id header for session management
- *   - MCP-Protocol-Version header enforced post-initialization
+ * Endpoints:
+ *   GET  /mcp  — server capabilities and supported protocol version
+ *   POST /mcp  — JSON-RPC request (response as JSON or SSE per Accept header)
+ *   DELETE /mcp — terminate session (requires MCP-Session-Id)
+ *   GET /health — server status + active session count
  *
- * DELETE /mcp — terminate session (requires MCP-Session-Id)
- * GET /health  — server status + active session count
+ * Session management via MCP-Session-Id header.
+ * MCP-Protocol-Version header enforced post-initialization.
+ * CORS headers on all responses (not just OPTIONS preflight).
  *
  * Zero external dependencies — Node.js http + crypto only.
  */
@@ -48,6 +49,16 @@ interface Session {
   protocolVersion: string;
 }
 
+interface AsyncTask {
+  id: string;
+  sessionId: string;
+  status: "running" | "completed" | "failed" | "cancelled";
+  progress?: { current: number; total: number; message?: string };
+  result?: JsonRpcResponse;
+  error?: string;
+  created: number;
+}
+
 interface StreamableHttpOptions {
   auth?: boolean;
 }
@@ -58,26 +69,41 @@ const MAX_BODY = 1_048_576; // 1 MB
 const SESSION_TTL_MS = 3_600_000; // 1 hour
 const PRUNE_INTERVAL_MS = 300_000; // 5 minutes
 const HEARTBEAT_MS = 30_000;
-const MCP_PROTOCOL_VERSION = "2025-03-26";
+const MCP_PROTOCOL_VERSION = "2025-11-25";
 const ALLOWED_ORIGINS = new Set(["http://localhost", "http://127.0.0.1"]);
+const MAX_SESSIONS = 100;
+const MAX_ASYNC_TASKS = 200;
 
 // Methods that may produce long-running responses — served as SSE when
 // the client accepts text/event-stream.
 const STREAMING_METHODS = new Set(["tools/call"]);
 
 const sessions = new Map<string, Session>();
+const asyncTasks = new Map<string, AsyncTask>();
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+/** CORS headers injected into every response. Uses validated origin, not wildcard. */
+function corsHeaders(req?: IncomingMessage): Record<string, string> {
+  const origin = req?.headers?.origin;
+  const allowed = origin && isOriginAllowed(req!) ? origin : "http://localhost";
+  return {
+    "Access-Control-Allow-Origin": allowed,
+    "Access-Control-Expose-Headers": "MCP-Session-Id, MCP-Protocol-Version",
+  };
+}
 
 function jsonResponse(
   res: ServerResponse,
   status: number,
   body: Record<string, unknown>,
   extraHeaders?: Record<string, string>,
+  req?: IncomingMessage,
 ): void {
   res.writeHead(status, {
     "Content-Type": "application/json",
     "Cache-Control": "no-store",
+    ...corsHeaders(req),
     ...extraHeaders,
   });
   res.end(JSON.stringify(body));
@@ -106,6 +132,9 @@ function pruneStaleSessions(): void {
   for (const [id, session] of sessions) {
     if (session.lastSeen < cutoff) sessions.delete(id);
   }
+  for (const [id, task] of asyncTasks) {
+    if (task.created < cutoff) asyncTasks.delete(id);
+  }
 }
 
 /**
@@ -130,6 +159,72 @@ function isOriginAllowed(req: IncomingMessage): boolean {
 function clientAcceptsSSE(req: IncomingMessage): boolean {
   const accept = req.headers.accept ?? "";
   return accept.includes("text/event-stream");
+}
+
+// ── Async Task Handlers ───────────────────────────────────────────────────
+
+function handleTaskStatus(
+  parsed: JsonRpcRequest,
+  sessionId: string,
+): JsonRpcResponse {
+  const taskId = (parsed.params as { taskId?: string } | undefined)?.taskId;
+  if (!taskId) {
+    return {
+      jsonrpc: "2.0",
+      id: parsed.id ?? null,
+      error: { code: -32602, message: "Missing required param: taskId" },
+    };
+  }
+  const task = asyncTasks.get(taskId);
+  if (!task || task.sessionId !== sessionId) {
+    return {
+      jsonrpc: "2.0",
+      id: parsed.id ?? null,
+      error: { code: -32602, message: "Task not found" },
+    };
+  }
+  const resultPayload: Record<string, unknown> = {
+    taskId: task.id,
+    status: task.status,
+  };
+  if (task.progress) resultPayload.progress = task.progress;
+  if (task.status === "completed" && task.result) {
+    resultPayload.result = task.result;
+  }
+  if (task.status === "failed" && task.error) {
+    resultPayload.error = task.error;
+  }
+  return { jsonrpc: "2.0", id: parsed.id ?? null, result: resultPayload };
+}
+
+function handleTaskCancel(
+  parsed: JsonRpcRequest,
+  sessionId: string,
+): JsonRpcResponse {
+  const taskId = (parsed.params as { taskId?: string } | undefined)?.taskId;
+  if (!taskId) {
+    return {
+      jsonrpc: "2.0",
+      id: parsed.id ?? null,
+      error: { code: -32602, message: "Missing required param: taskId" },
+    };
+  }
+  const task = asyncTasks.get(taskId);
+  if (!task || task.sessionId !== sessionId) {
+    return {
+      jsonrpc: "2.0",
+      id: parsed.id ?? null,
+      error: { code: -32602, message: "Task not found" },
+    };
+  }
+  if (task.status === "running") {
+    task.status = "cancelled";
+  }
+  return {
+    jsonrpc: "2.0",
+    id: parsed.id ?? null,
+    result: { taskId: task.id, status: task.status },
+  };
 }
 
 // ── POST /mcp Handler ──────────────────────────────────────────────────────
@@ -177,17 +272,78 @@ async function handlePost(
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
   const isInitialize = parsed.method === "initialize";
 
-  // Session validation: post-init requests require a valid session
+  // Session validation: post-init requests require a valid session.
+  // MCP spec: expired/invalid session returns HTTP 404 (not 400).
   if (!isInitialize) {
     if (!sessionId || !sessions.has(sessionId)) {
-      jsonResponse(res, 400, {
+      jsonResponse(res, 404, {
         jsonrpc: "2.0",
         id: parsed.id ?? null,
         error: { code: -32600, message: "Invalid or missing MCP-Session-Id" },
       });
       return;
     }
+
+    // MCP spec 2025-11-25: MCP-Protocol-Version header required post-init.
+    const clientProtocol = req.headers["mcp-protocol-version"] as
+      | string
+      | undefined;
+    if (!clientProtocol) {
+      jsonResponse(res, 400, {
+        jsonrpc: "2.0",
+        id: parsed.id ?? null,
+        error: {
+          code: -32600,
+          message: "Missing MCP-Protocol-Version header",
+        },
+      });
+      return;
+    }
+    if (clientProtocol !== MCP_PROTOCOL_VERSION) {
+      jsonResponse(res, 400, {
+        jsonrpc: "2.0",
+        id: parsed.id ?? null,
+        error: {
+          code: -32600,
+          message: `Unsupported protocol version: ${clientProtocol}`,
+        },
+      });
+      return;
+    }
+
     sessions.get(sessionId)!.lastSeen = Date.now();
+  }
+
+  // Route async task management methods — these are handled internally,
+  // never forwarded to the application handler.
+  if (parsed.method === "tasks/status" && parsed.id != null) {
+    const headers: Record<string, string> = {};
+    if (sessionId) headers["MCP-Session-Id"] = sessionId;
+    jsonResponse(
+      res,
+      200,
+      handleTaskStatus(parsed, sessionId!) as unknown as Record<
+        string,
+        unknown
+      >,
+      headers,
+    );
+    return;
+  }
+
+  if (parsed.method === "tasks/cancel" && parsed.id != null) {
+    const headers: Record<string, string> = {};
+    if (sessionId) headers["MCP-Session-Id"] = sessionId;
+    jsonResponse(
+      res,
+      200,
+      handleTaskCancel(parsed, sessionId!) as unknown as Record<
+        string,
+        unknown
+      >,
+      headers,
+    );
+    return;
   }
 
   // Notification (no id) — respond 204 No Content
@@ -202,7 +358,113 @@ async function handlePost(
     return;
   }
 
-  // Execute the handler
+  // Async task mode: client opts in via X-MCP-Async header for tools/call
+  const wantsAsync =
+    parsed.method === "tools/call" &&
+    req.headers["x-mcp-async"] === "true" &&
+    sessionId;
+
+  if (wantsAsync) {
+    if (asyncTasks.size >= MAX_ASYNC_TASKS) {
+      jsonResponse(
+        res,
+        503,
+        {
+          jsonrpc: "2.0",
+          id: parsed.id ?? null,
+          error: {
+            code: -32603,
+            message: "Server at capacity: too many active tasks",
+          },
+        },
+        undefined,
+        req,
+      );
+      return;
+    }
+    const taskId = randomUUID();
+    const task: AsyncTask = {
+      id: taskId,
+      sessionId: sessionId!,
+      status: "running",
+      created: Date.now(),
+    };
+    asyncTasks.set(taskId, task);
+
+    // If client accepts SSE, keep connection open and stream progress + completion
+    if (clientAcceptsSSE(req)) {
+      res.writeHead(202, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+        "MCP-Session-Id": sessionId!,
+        ...corsHeaders(req),
+      });
+
+      // Send the accepted event immediately
+      res.write(
+        `event: accepted\ndata: ${JSON.stringify({ taskId, status: "running" })}\n\n`,
+      );
+
+      // Execute the handler in the background
+      Promise.resolve(handler(parsed)).then(
+        (result: JsonRpcResponse) => {
+          if (task.status === "cancelled") return;
+          task.status = "completed";
+          task.result = result;
+          if (!res.writableEnded) {
+            res.write(
+              `event: complete\ndata: ${JSON.stringify({ taskId, result })}\n\n`,
+            );
+            res.end();
+          }
+        },
+        (err: unknown) => {
+          if (task.status === "cancelled") return;
+          const msg = err instanceof Error ? err.message : String(err);
+          task.status = "failed";
+          task.error = msg;
+          if (!res.writableEnded) {
+            res.write(
+              `event: error\ndata: ${JSON.stringify({ taskId, error: msg })}\n\n`,
+            );
+            res.end();
+          }
+        },
+      );
+      return;
+    }
+
+    // Non-SSE async: return 202 with task ID immediately, execute in background
+    Promise.resolve(handler(parsed)).then(
+      (result: JsonRpcResponse) => {
+        if (task.status === "cancelled") return;
+        task.status = "completed";
+        task.result = result;
+      },
+      (err: unknown) => {
+        if (task.status === "cancelled") return;
+        const msg = err instanceof Error ? err.message : String(err);
+        task.status = "failed";
+        task.error = msg;
+      },
+    );
+
+    jsonResponse(
+      res,
+      202,
+      {
+        jsonrpc: "2.0",
+        id: parsed.id,
+        result: { _meta: { taskId, status: "running" } },
+      },
+      { "MCP-Session-Id": sessionId!, ...corsHeaders(req) },
+      req,
+    );
+    return;
+  }
+
+  // Execute the handler (synchronous path)
   let response: JsonRpcResponse;
   try {
     response = await handler(parsed);
@@ -225,6 +487,23 @@ async function handlePost(
 
   // For initialize: create session and return MCP-Session-Id
   if (isInitialize) {
+    if (sessions.size >= MAX_SESSIONS) {
+      jsonResponse(
+        res,
+        503,
+        {
+          jsonrpc: "2.0",
+          id: parsed.id ?? null,
+          error: {
+            code: -32603,
+            message: "Server at capacity: too many active sessions",
+          },
+        },
+        undefined,
+        req,
+      );
+      return;
+    }
     const newSessionId = randomUUID();
     sessions.set(newSessionId, {
       created: Date.now(),
@@ -245,6 +524,7 @@ async function handlePost(
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
       "MCP-Session-Id": sessionId!,
+      ...corsHeaders(req),
     });
 
     // Send the response as an SSE event
@@ -273,8 +553,9 @@ async function handlePost(
 
 function handleDelete(req: IncomingMessage, res: ServerResponse): void {
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
+  // MCP spec: expired/invalid session returns HTTP 404 (not 400).
   if (!sessionId || !sessions.has(sessionId)) {
-    jsonResponse(res, 400, {
+    jsonResponse(res, 404, {
       jsonrpc: "2.0",
       id: null,
       error: { code: -32600, message: "Invalid or missing MCP-Session-Id" },
@@ -289,9 +570,9 @@ function handleDelete(req: IncomingMessage, res: ServerResponse): void {
 // ── Public API ─────────────────────────────────────────────────────────────
 
 /**
- * Start the MCP Streamable HTTP transport server (spec 2025-03-26).
+ * Start the MCP Streamable HTTP transport server (spec 2025-11-25).
  *
- * Single endpoint (POST /mcp) handles all JSON-RPC communication.
+ * GET /mcp returns server capabilities. POST /mcp handles JSON-RPC.
  * DELETE /mcp terminates sessions. GET /health returns server info.
  */
 export async function startStreamableHttp(
@@ -313,9 +594,10 @@ export async function startStreamableHttp(
     if (method === "OPTIONS") {
       res.writeHead(204, {
         "Access-Control-Allow-Origin": req.headers.origin ?? "*",
-        "Access-Control-Allow-Methods": "POST, DELETE, OPTIONS",
+        "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
         "Access-Control-Allow-Headers":
-          "Content-Type, MCP-Session-Id, MCP-Protocol-Version, Authorization, Accept",
+          "Content-Type, MCP-Session-Id, MCP-Protocol-Version, Authorization, Accept, X-MCP-Async",
+        "Access-Control-Expose-Headers": "MCP-Session-Id, MCP-Protocol-Version",
         "Access-Control-Max-Age": "86400",
       });
       res.end();
@@ -341,6 +623,16 @@ export async function startStreamableHttp(
     if (pathname === "/mcp") {
       // OAuth middleware — block unauthenticated requests
       if (oauthMiddleware?.(req, res)) return;
+
+      // GET /mcp — return server metadata and supported protocol version.
+      if (method === "GET") {
+        jsonResponse(res, 200, {
+          protocolVersion: MCP_PROTOCOL_VERSION,
+          serverInfo: { name: "unicli", version: VERSION },
+          capabilities: {},
+        });
+        return;
+      }
 
       if (method === "POST") {
         handlePost(req, res, handler).catch(() => {
@@ -369,6 +661,7 @@ export async function startStreamableHttp(
   server.on("close", () => {
     clearInterval(pruneTimer);
     sessions.clear();
+    asyncTasks.clear();
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -381,8 +674,8 @@ export async function startStreamableHttp(
 
   process.stderr.write(
     `unicli MCP server v${VERSION} — Streamable HTTP transport on http://127.0.0.1:${port}\n` +
-      `  MCP endpoint: POST/DELETE http://127.0.0.1:${port}/mcp\n` +
-      `  Health check: GET         http://127.0.0.1:${port}/health\n` +
+      `  MCP endpoint: GET/POST/DELETE http://127.0.0.1:${port}/mcp\n` +
+      `  Health check: GET             http://127.0.0.1:${port}/health\n` +
       `  Protocol:     ${MCP_PROTOCOL_VERSION}\n`,
   );
 }
@@ -390,6 +683,7 @@ export async function startStreamableHttp(
 // Exported for testing
 export const _test = {
   sessions,
+  asyncTasks,
   pruneStaleSessions,
   isOriginAllowed,
   ALLOWED_ORIGINS,

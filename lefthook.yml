@@ -1,0 +1,12 @@
+# Lefthook — lightweight git hooks manager
+# https://github.com/evilmartians/lefthook
+
+pre-commit:
+  parallel: true
+  commands:
+    format-check:
+      glob: "*.{ts,tsx,js,jsx,json,md,yml,yaml,css,html}"
+      run: npx prettier --check {staged_files}
+    lint:
+      glob: "*.{ts,tsx,js,jsx}"
+      run: npx oxlint {staged_files}

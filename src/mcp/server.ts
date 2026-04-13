@@ -44,6 +44,7 @@ import {
   buildToolName,
   truncateDescription,
 } from "./schema.js";
+import { resolveElicitation, type ElicitationResponse } from "./elicitation.js";
 import type { AdapterManifest, AdapterCommand } from "../types.js";
 
 // ── JSON-RPC Types ──────────────────────────────────────────────────────────
@@ -80,8 +81,14 @@ interface McpTool {
   annotations?: McpToolAnnotations;
 }
 
+interface McpStructuredContent {
+  type: "json";
+  data: unknown;
+}
+
 interface McpToolResult {
   content: Array<{ type: "text"; text: string }>;
+  structuredContent?: McpStructuredContent;
   isError?: boolean;
   _meta?: Record<string, unknown>;
 }
@@ -383,21 +390,15 @@ function handleListAdapters(params: Record<string, unknown>): McpToolResult {
     commands: info.commands,
   }));
 
+  const data = {
+    total_sites: result.length,
+    total_commands: commands.length,
+    adapters: result,
+  };
+
   return {
-    content: [
-      {
-        type: "text",
-        text: JSON.stringify(
-          {
-            total_sites: result.length,
-            total_commands: commands.length,
-            adapters: result,
-          },
-          null,
-          2,
-        ),
-      },
-    ],
+    content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+    structuredContent: { type: "json", data },
   };
 }
 
@@ -428,44 +429,31 @@ async function runResolvedCommand(
       const raw = await cmd.func(null as never, mergedArgs);
       results = Array.isArray(raw) ? raw : [raw];
     } else {
+      const errorData = {
+        error: "No pipeline or function defined for this command",
+      };
       return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              error: "No pipeline or function defined for this command",
-            }),
-          },
-        ],
+        content: [{ type: "text", text: JSON.stringify(errorData) }],
+        structuredContent: { type: "json", data: errorData },
         isError: true,
       };
     }
 
+    const data = { count: results.length, results };
     return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({ count: results.length, results }, null, 2),
-        },
-      ],
+      content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+      structuredContent: { type: "json", data },
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    const errorData = {
+      error: message,
+      adapter_path: `src/adapters/${adapter.name}/${cmdName}.yaml`,
+      suggestion: "The adapter may need updating. Check the YAML file.",
+    };
     return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(
-            {
-              error: message,
-              adapter_path: `src/adapters/${adapter.name}/${cmdName}.yaml`,
-              suggestion: "The adapter may need updating. Check the YAML file.",
-            },
-            null,
-            2,
-          ),
-        },
-      ],
+      content: [{ type: "text", text: JSON.stringify(errorData, null, 2) }],
+      structuredContent: { type: "json", data: errorData },
       isError: true,
     };
   }
@@ -495,13 +483,10 @@ async function handleRunCommand(
   const args = (params.args as Record<string, unknown>) ?? {};
 
   if (!site || !command) {
+    const errorData = { error: "site and command are required" };
     return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({ error: "site and command are required" }),
-        },
-      ],
+      content: [{ type: "text", text: JSON.stringify(errorData) }],
+      structuredContent: { type: "json", data: errorData },
       isError: true,
     };
   }
@@ -516,23 +501,16 @@ async function handleRunCommand(
         commands: Object.keys(a.commands),
       }));
 
+    const errorData = {
+      error: `Unknown command: ${site} ${command}`,
+      suggestion:
+        matchingSites.length > 0
+          ? `Did you mean one of these? ${JSON.stringify(matchingSites)}`
+          : "Use list_adapters to see all available commands.",
+    };
     return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(
-            {
-              error: `Unknown command: ${site} ${command}`,
-              suggestion:
-                matchingSites.length > 0
-                  ? `Did you mean one of these? ${JSON.stringify(matchingSites)}`
-                  : "Use list_adapters to see all available commands.",
-            },
-            null,
-            2,
-          ),
-        },
-      ],
+      content: [{ type: "text", text: JSON.stringify(errorData, null, 2) }],
+      structuredContent: { type: "json", data: errorData },
       isError: true,
     };
   }
@@ -566,7 +544,7 @@ async function handleExpandedTool(
 
 // ── MCP Protocol Handler ────────────────────────────────────────────────────
 
-const PROTOCOL_VERSION = "2025-03-26";
+const PROTOCOL_VERSION = "2025-11-25";
 
 interface ServerOptions {
   expanded: boolean;
@@ -619,6 +597,7 @@ function buildHandler(
             protocolVersion: PROTOCOL_VERSION,
             capabilities: {
               tools: { listChanged: false },
+              elicitation: { supported: true },
             },
             serverInfo: {
               name: "unicli",
@@ -684,6 +663,19 @@ function buildHandler(
             return import("../discovery/search.js").then(
               ({ search: searchFn }) => {
                 const results = searchFn(searchQuery, searchLimit);
+                const data = {
+                  query: searchQuery,
+                  count: results.length,
+                  results: results.map((r) => ({
+                    command: `unicli ${r.site} ${r.command}`,
+                    site: r.site,
+                    name: r.command,
+                    description: r.description,
+                    score: r.score,
+                    category: r.category,
+                    usage: r.usage,
+                  })),
+                };
                 return {
                   jsonrpc: "2.0" as const,
                   id,
@@ -691,25 +683,10 @@ function buildHandler(
                     content: [
                       {
                         type: "text" as const,
-                        text: JSON.stringify(
-                          {
-                            query: searchQuery,
-                            count: results.length,
-                            results: results.map((r) => ({
-                              command: `unicli ${r.site} ${r.command}`,
-                              site: r.site,
-                              name: r.command,
-                              description: r.description,
-                              score: r.score,
-                              category: r.category,
-                              usage: r.usage,
-                            })),
-                          },
-                          null,
-                          2,
-                        ),
+                        text: JSON.stringify(data, null, 2),
                       },
                     ],
+                    structuredContent: { type: "json" as const, data },
                   }),
                 };
               },
@@ -794,6 +771,31 @@ function buildHandler(
               };
             });
         }
+      }
+
+      case "elicitation/response": {
+        const elicitParams = req.params as
+          | { id: string | number; response: ElicitationResponse }
+          | undefined;
+        if (!elicitParams?.id || !elicitParams?.response) {
+          return {
+            jsonrpc: "2.0",
+            id,
+            error: {
+              code: -32602,
+              message: "Missing id or response in elicitation/response",
+            },
+          };
+        }
+        const resolved = resolveElicitation(
+          elicitParams.id,
+          elicitParams.response,
+        );
+        return {
+          jsonrpc: "2.0",
+          id,
+          result: { resolved },
+        };
       }
 
       case "ping":

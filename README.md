@@ -44,6 +44,10 @@ unicli ffmpeg compress video.mp4         # Compress video
 
 Every command outputs **structured JSON when piped** — zero flags needed. Every error emits structured JSON to stderr with the adapter path, the failing step, and a fix suggestion. **~80 tokens per call.**
 
+## Why
+
+AI agents are probabilistic. Software is deterministic. The gap between "probably right" and "right" is where systems break — each off-canonical tool call increases the next failure probability by 22.7pp ([Lee 2026](https://arxiv.org/abs/2602.19008)). Uni-CLI closes that gap: 20-line YAML adapters compile intent into deterministic action, with formal error recovery when the internet inevitably changes. Grounded in [Rice's theorem, Lehman's laws, and Shannon's source coding](./docs/THEORY.md).
+
 ```mermaid
 graph LR
     A[AI Agent] -->|"unicli search 'intent'"| B["Uni-CLI"]
@@ -805,13 +809,13 @@ unicli mcp serve
 cat AGENTS.md
 ```
 
-| Platform | Integration |
-| --- | --- |
-| **Claude Code** | Bash tool + MCP server + AGENTS.md |
-| **Codex CLI** | Shell execution + MCP + AGENTS.md (first-class) |
-| **OpenClaw** | Plugin + MCP + ClawHub skill |
-| **Hermes Agent** | MCP + Skills Hub + persistent shell |
-| **OpenCode** | MCP via opencode.jsonc + AGENTS.md |
+| Platform         | Integration                                     |
+| ---------------- | ----------------------------------------------- |
+| **Claude Code**  | Bash tool + MCP server + AGENTS.md              |
+| **Codex CLI**    | Shell execution + MCP + AGENTS.md (first-class) |
+| **OpenClaw**     | Plugin + MCP + ClawHub skill                    |
+| **Hermes Agent** | MCP + Skills Hub + persistent shell             |
+| **OpenCode**     | MCP via opencode.jsonc + AGENTS.md              |
 
 ## Development
 
@@ -820,15 +824,15 @@ git clone https://github.com/olo-dot-io/Uni-CLI.git && cd Uni-CLI
 npm install && npm run verify
 ```
 
-| Command                | Purpose                   |
-| ---------------------- | ------------------------- |
-| `npm run dev`          | Dev run                   |
-| `npm run build`        | Production build          |
-| `npm run typecheck`    | TypeScript strict         |
-| `npm run lint`         | Oxlint                    |
-| `npm run test`         | Unit tests (788)          |
-| `npm run test:adapter` | Validate all adapters     |
-| `npm run verify`       | Full pipeline             |
+| Command                | Purpose               |
+| ---------------------- | --------------------- |
+| `npm run dev`          | Dev run               |
+| `npm run build`        | Production build      |
+| `npm run typecheck`    | TypeScript strict     |
+| `npm run lint`         | Oxlint                |
+| `npm run test`         | Unit tests (788)      |
+| `npm run test:adapter` | Validate all adapters |
+| `npm run verify`       | Full pipeline         |
 
 7 production dependencies: `chalk`, `cli-table3`, `commander`, `js-yaml`, `turndown`, `undici`, `ws`.
 
@@ -871,11 +875,11 @@ npx @zenalexa/unicli mcp serve --transport sse --port 19826
 npx @zenalexa/unicli mcp serve --transport http --auth
 ```
 
-| Platform | One-line Setup |
-|----------|---------------|
-| **Claude Code** | `claude mcp add unicli -- npx @zenalexa/unicli mcp serve` |
-| **Codex CLI** | Add `[mcp_servers.unicli]` to `~/.codex/config.toml` |
-| **Any MCP client** | `npx @zenalexa/unicli mcp serve` (stdio) |
+| Platform           | One-line Setup                                            |
+| ------------------ | --------------------------------------------------------- |
+| **Claude Code**    | `claude mcp add unicli -- npx @zenalexa/unicli mcp serve` |
+| **Codex CLI**      | Add `[mcp_servers.unicli]` to `~/.codex/config.toml`      |
+| **Any MCP client** | `npx @zenalexa/unicli mcp serve` (stdio)                  |
 
 The MCP server exposes 4 meta-tools by default (~200 tokens). `unicli_search` provides bilingual semantic search across all 1020 commands.
 

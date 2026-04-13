@@ -35,9 +35,9 @@ Add to `CLAUDE.md` or `AGENTS.md`:
 `unicli <site> <command>` — 200 sites, 969 commands, piped output auto-switches to JSON.
 
 Examples:
-  unicli hackernews top
-  unicli github trending --language typescript
-  unicli twitter search "AI agents"
+unicli hackernews top
+unicli github trending --language typescript
+unicli twitter search "AI agents"
 ```
 
 ### Option C: Slash Commands
@@ -143,9 +143,9 @@ Add to `opencode.jsonc`:
     "unicli": {
       "type": "local",
       "command": ["npx", "-y", "@zenalexa/unicli", "mcp", "serve"],
-      "enabled": true
-    }
-  }
+      "enabled": true,
+    },
+  },
 }
 ```
 

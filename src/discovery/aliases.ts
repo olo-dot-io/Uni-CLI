@@ -459,6 +459,53 @@ export function expandToken(token: string): string[] {
   return [...new Set(results)];
 }
 
+// ── CJK Detection ──────────────────────────────────────────────────────────
+// Covers all CJK Unified Ideographs blocks including supplementary planes
+// (Extensions A–H) and CJK Compatibility Ideographs. Requires `u` flag for
+// supplementary plane code points (\u{xxxxx}).
+
+const CJK_REGEX =
+  /[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u{20000}-\u{2a6df}\u{2a700}-\u{2b73f}\u{2b740}-\u{2b81f}\u{2b820}-\u{2ceaf}\u{2ceb0}-\u{2ebef}\u{30000}-\u{3134f}\u{31350}-\u{323af}]/u;
+
+/**
+ * Test whether a single character is a CJK ideograph.
+ * Handles supplementary plane characters (Extension B–H).
+ */
+export function isCJKChar(char: string): boolean {
+  return CJK_REGEX.test(char);
+}
+
+// ── Stopwords ──────────────────────────────────────────────────────────────
+// Minimal English stopword set — articles, prepositions, and other
+// high-frequency, low-signal words that appear in descriptions.
+
+const STOPWORDS = new Set([
+  "the",
+  "a",
+  "an",
+  "of",
+  "for",
+  "and",
+  "or",
+  "in",
+  "to",
+  "on",
+  "by",
+  "is",
+  "it",
+  "be",
+  "as",
+  "at",
+  "so",
+  "we",
+  "he",
+  "do",
+  "no",
+  "if",
+  "up",
+  "my",
+]);
+
 /**
  * Tokenize a query string, handling both Chinese and English.
  *
@@ -467,12 +514,15 @@ export function expandToken(token: string): string[] {
  * English/Latin chars form words split by whitespace.
  */
 export function tokenizeQuery(query: string): string[] {
+  // NFKC normalization: full-width → half-width, compatibility decomposition
+  query = query.normalize("NFKC");
+
   const segments: Array<{ text: string; isChinese: boolean }> = [];
   let current = "";
   let inChinese = false;
 
   for (const char of query) {
-    const isCJK = /[\u4e00-\u9fff\u3400-\u4dbf]/.test(char);
+    const isCJK = isCJKChar(char);
     const isDelimiter = /[\s,;.!?，。！？、；：]/.test(char);
 
     if (isDelimiter) {
@@ -525,5 +575,7 @@ export function tokenizeQuery(query: string): string[] {
     }
   }
 
-  return [...new Set(tokens)].filter(Boolean);
+  return [...new Set(tokens)].filter(
+    (t) => t.length > 0 && !STOPWORDS.has(t.toLowerCase()),
+  );
 }

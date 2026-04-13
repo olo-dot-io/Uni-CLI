@@ -101,7 +101,7 @@ describe("MCP server — smart default mode", () => {
     expect(response.id).toBe(1);
 
     const result = response.result as Record<string, unknown>;
-    expect(result.protocolVersion).toBe("2025-03-26");
+    expect(result.protocolVersion).toBe("2025-11-25");
     expect(result.serverInfo).toEqual(
       expect.objectContaining({ name: "unicli" }),
     );

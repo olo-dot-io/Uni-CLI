@@ -94,7 +94,9 @@ export function registerMcpCommand(program: Command): void {
 
   mcp
     .command("health")
-    .description("Pre-flight check — verify adapters load and report tool counts")
+    .description(
+      "Pre-flight check — verify adapters load and report tool counts",
+    )
     .option("--json", "Output as JSON (default when piped)")
     .action(async (opts: HealthOptions) => {
       const useJson = opts.json || !process.stdout.isTTY;
@@ -134,8 +136,14 @@ export function registerMcpCommand(program: Command): void {
           `  tools:    ${chalk.green("3")} default, ${chalk.green(expandedToolCount)} expanded`,
         );
         console.log();
-        console.log(chalk.dim("Default tools: unicli_run, unicli_list, unicli_discover"));
-        console.log(chalk.dim("To start: unicli mcp serve [--expanded] [--transport http]"));
+        console.log(
+          chalk.dim("Default tools: unicli_run, unicli_list, unicli_discover"),
+        );
+        console.log(
+          chalk.dim(
+            "To start: unicli mcp serve [--expanded] [--transport http]",
+          ),
+        );
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         if (useJson) {

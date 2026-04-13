@@ -7,7 +7,9 @@
      Output is JSON when piped. Errors are structured JSON to stderr.
      You can fix broken adapters yourself — read the Self-Repair section. -->
 
-> 198 sites, 1020 commands, 35 pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
+<!-- BEGIN COUNTS -->
+> 195 sites, 956 commands, 35 pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
+<!-- END COUNTS -->
 
 ## For AI Agents
 
@@ -28,57 +30,37 @@ unicli list                          # All commands (JSON when piped)
 npm install -g @zenalexa/unicli
 ```
 
+<!-- BEGIN ADAPTERS -->
 ## What You Can Do
 
-### Web (80+ sites)
+### Web (108+ sites)
 
-**Chinese**: bilibili (14), weibo (10), zhihu (9), douban (12), xueqiu (12),
-linux-do (10), jike (10), zsxq (5), tieba (4), weread (7), v2ex (12),
-xiaohongshu (14), douyin (13), 36kr (5), sspai (2), smzdm (4), taobao (2),
-pinduoduo (2), meituan (2), ctrip (2), netease-music (4), eastmoney (4),
-cnki, jd (4), 1688 (4), weixin (5), sinablog (5)
+**Chinese**: douban (12), hupu (7), jike (10), linux-do (10), tieba (4), v2ex (12), weibo (10), xiaohongshu (22), zhihu (21), bilibili (17), douyin (13), douyu (2), kuaishou (2), 1688 (3), dangdang (2), dianping (2), ele (2), jd (3), maoyan (2), meituan (2), pinduoduo (2), smzdm (3), taobao (2), xianyu (3), sspai (2), weread (7), zsxq (5), baidu (2), ctrip (2), jianyu, jimeng (2), ke (2), maimai, mubu (2), quark (2), sinablog (4), toutiao (2), wechat-channels (2), weixin (4), xiaoe (5), yuanbao (3)
 
-**International**: twitter (27), youtube (5), reddit (20), hackernews (10),
-bluesky (12), medium (5), substack (4), producthunt (5), lobsters (5), devto (5),
-stackoverflow (6), mastodon (4), facebook (12), instagram (21), tiktok (16),
-twitch (4), unsplash (2), pexels (2)
+**International**: band (4), bluesky (12), facebook (12), instagram (26), lobsters (5), mastodon (4), reddit (20), twitter (34), tiktok (16), twitch (4), youtube (8), amazon (8), coupang (3), medium (5), pixiv (6), substack (4), boss (14), linkedin (4), steam (6), adguardhome (5), chrome (2), cursor, dingtalk, discord-app, feishu (4), itch-io (3), lesswrong (15), notion (3), notion-app, obs (8), obsidian (3), ones (11), pexels (2), slack (7), threads (2), unsplash (2), vscode (3), ycombinator, yollomi (12), zoom (2), zotero (8)
 
-**AI / ML**: ollama (4), openrouter (2), hf (4), huggingface-papers (2),
-replicate (3), deepseek, perplexity, grok, gemini (5), minimax (3),
-doubao (3), doubao-web (9), novita (3), notebooklm (15)
+**AI / ML**: deepseek (2), doubao (3), doubao-web (9), gemini (5), grok, hf (4), huggingface-papers (2), minimax (3), notebooklm (15), novita (3), ollama (4), openrouter (2), perplexity, replicate (3)
 
-**Finance**: bloomberg (10), sinafinance (5), xueqiu (12), eastmoney (4),
-yahoo-finance (3), barchart (5)
+**Finance**: barchart (4), binance (3), coinbase (2), eastmoney (4), futu (2), sinafinance (5), xueqiu (12), yahoo-finance (3)
 
-**Developer**: github-trending (3), gitlab (3), gitee (3), npm (4),
-pypi (3), crates-io (3), cocoapods (2), docker-hub (3), npm-trends (2),
-homebrew (2), stackoverflow (6)
+**Developer**: cocoapods (2), crates-io (3), devto (5), docker-hub (3), gitee (3), github-trending (3), gitlab (3), homebrew (2), npm (4), npm-trends (2), producthunt (5), pypi (3), stackoverflow (6)
 
-**News**: bbc (4), cnn (2), nytimes (2), reuters (5), techcrunch (2),
-theverge (2), infoq (2), ithome (2)
+**News**: 36kr (5), bbc (4), bloomberg (10), cnn (2), hackernews (10), infoq (2), ithome (3), nytimes (2), reuters (4), techcrunch (2), theverge (2)
 
-**Reference**: google (4), wikipedia (5), arxiv (3), dictionary (3),
-paperreview (3), spotify (4), ctrip (2), xiaoyuzhou (3), steam (6), imdb (7),
-exchangerate (2), ip-info, qweather (2), web
+**Reference**: arxiv (3), chaoxing (2), cnki, dictionary (3), google (4), imdb (7), paperreview (3), wikipedia (5), apple-podcasts (3), netease-music (4), spotify (4), xiaoyuzhou (3), exchangerate (2), ip-info, qweather (2), web
 
-### macOS (32 cmds)
+### macOS (58 cmds)
 
-reminders-list, reminders-complete, shortcuts-list, shortcuts-run,
-calendar-today, notes-list, contacts-search, spotlight, system-info,
-battery, disk-usage, clipboard, wifi-info, processes, open-app, say,
-screenshot, volume, brightness, apps-list, notification, trash, empty-trash,
-dark-mode, active-app, uptime, sleep, do-not-disturb, bluetooth,
-finder-selection, screen-lock, safari-tabs
+active-app, apps, apps-list, battery, bluetooth, brightness, caffeinate, calendar-create, calendar-list, calendar-today, clipboard, contacts-search, dark-mode, disk-info, disk-usage, do-not-disturb, empty-trash, finder-copy, finder-move, finder-new-folder, finder-recent, finder-selection, finder-tags, lock-screen, mail-send, mail-status, messages-send, music-control, music-now, notes-list, notes-search, notification, notify, open, open-app, photos-search, processes, reminder-create, reminders-complete, reminders-list, safari-history, safari-tabs, safari-url, say, screen-lock, screen-recording, screenshot, shortcuts-list, shortcuts-run, sleep, spotlight, system-info, trash, uptime, volume, wallpaper, wifi, wifi-info
 
-### Desktop (15 apps)
+### Desktop (24 apps)
 
-ffmpeg (11 cmds), imagemagick (6), blender (4), gimp (3), freecad (2),
-inkscape (3), pandoc, libreoffice (2), mermaid, musescore (2), drawio,
-ollama (4), comfyui (4), docker (7), macos (32)
+audacity (8 cmds), blender (13 cmds), cloudcompare (4 cmds), comfyui (4 cmds), docker (7 cmds), drawio, ffmpeg (11 cmds), freecad (15 cmds), gimp (12 cmds), godot (2 cmds), imagemagick (6 cmds), inkscape (3 cmds), kdenlive (3 cmds), krita (4 cmds), libreoffice (2 cmds), mermaid, motion-studio, musescore (5 cmds), pandoc, renderdoc (2 cmds), shotcut (3 cmds), sketch (3 cmds), slay-the-spire-ii (6 cmds), wiremock (5 cmds)
 
 ### Bridge (3 CLIs)
 
-gh (5 cmds), yt-dlp (4), jq (2)
+gh (5 cmds), jq (2 cmds), yt-dlp (4 cmds)
+<!-- END ADAPTERS -->
 
 ## Authentication
 
