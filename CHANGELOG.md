@@ -3,6 +3,38 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
+## [0.211.2] — 2026-04-13 — Vostok · Volynov
+
+> Discovery engine, MCP infrastructure, self-repairing CLI for AI agents.
+> 198 sites · 1020 commands · BM25+TF-IDF bilingual search · MCP 2025-03-26 · 855 tests.
+
+### Added
+
+- **BM25+TF-IDF hybrid bilingual search engine** — `unicli search "推特热门"` finds `twitter trending` (Top-1: 67.76%, Top-5: 81.31%). 200+ Chinese↔English alias entries, mixed-script tokenizer (B站, QQ音乐), 50KB index, <10ms queries
+- **MCP Streamable HTTP transport** — replaces deprecated SSE. Single POST /mcp endpoint, MCP-Session-Id headers, Origin validation, CORS, DELETE session termination (spec 2025-03-26)
+- **MCP OAuth 2.1 PKCE** — authorization code flow with S256 challenge, `--auth` flag on HTTP/Streamable transports
+- **MCP deferred tool loading** — 4 meta-tools at ~200 tokens default, 956 lightweight stubs with searchHint for on-demand discovery (95% token reduction)
+- **`unicli search` CLI command** — bilingual semantic search across all adapters
+- **`unicli_search` MCP tool** — alwaysLoad, bilingual discovery for MCP clients
+- **`unicli_explore` MCP tool** — renamed from `unicli_discover` (backwards-compatible alias kept)
+- **Eval suite** — 214 bilingual queries measuring Top-1/3/5 accuracy across 15 categories
+- **Logo SVG** — dark/light mode adaptive via `<picture>` element
+- **Tool annotations** — `idempotentHint` and `destructiveHint` added per MCP 2025-03-26 spec
+
+### Changed
+
+- **MCP protocol version** — upgraded from 2024-11-05 to 2025-03-26
+- **Schema builder extracted** — `src/mcp/schema.ts` eliminates duplication between server.ts and commands/schema.ts
+- **README rewritten** — compiler tagline, architecture diagram, number badges, agent integration section
+- **AGENTS.md** — search-first instructions, MCP server documentation, version update
+- **Build manifest** — now generates search index (`manifest-search.json`) and compact catalog (`manifest-compact.txt`)
+
+### Security
+
+- Codex cross-audit: 2 independent reviews, all CRITICAL findings addressed
+- Streamable HTTP: Origin validation, body size limits, session management
+- OAuth: single-use auth codes (60s TTL), PKCE S256 only, token expiry (3600s)
+
 ## [0.210.0] — 2026-04-12 — Vostok · Komarov
 
 > The compiler that turns the internet into deterministic programs for AI agents.

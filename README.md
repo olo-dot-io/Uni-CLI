@@ -892,6 +892,6 @@ The MCP server exposes 4 meta-tools by default (~200 tokens). `unicli_search` pr
 </p>
 
 <p align="center">
-  <sub>v0.211.1 — Vostok · Volynov</sub><br>
-  <sub>198 sites · 1020 commands · 35 pipeline steps · BM25 bilingual search · 835 tests</sub>
+  <sub>v0.211.2 — Vostok · Volynov</sub><br>
+  <sub>198 sites · 1020 commands · 35 pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-03-26 · 855 tests</sub>
 </p>

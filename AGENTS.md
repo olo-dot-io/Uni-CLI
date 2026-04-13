@@ -231,4 +231,4 @@ Default tools: `unicli_run` (execute), `unicli_list` (browse), `unicli_search` (
 
 ## Version
 
-0.211.1 — Vostok · Volynov
+0.211.2 — Vostok · Volynov

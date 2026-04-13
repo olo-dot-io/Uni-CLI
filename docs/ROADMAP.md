@@ -1,6 +1,6 @@
 # Uni-CLI Roadmap — Mission Vostok (0.2xx)
 
-> CLI is all agents need. 195 sites, 957 commands as of v0.210.0.
+> CLI is all agents need. 198 sites, 1020 commands as of v0.211.2.
 
 ## Progress
 
@@ -18,7 +18,8 @@
 | 0.207.1 | Vostok · Gagarin    | 122   | 635      | ✅         |
 | 0.208.0 | Vostok · Titov      | 134   | 711      | ✅         |
 | 0.209.0 | Vostok · Popovich   | 167   | 756      | ✅         |
-| 0.210.0 | Vostok · Komarov    | 195   | 957      | ✅ Current |
+| 0.210.0 | Vostok · Komarov    | 195   | 957      | ✅         |
+| 0.211.2 | Vostok · Volynov    | 198   | 1020     | ✅ Current |
 
 ## v0.201.0 ✅ — Engine v2 + Desktop/Bridge
 

@@ -3,7 +3,7 @@
 > Internal design philosophy and naming conventions.
 > This document governs aesthetics, tone, and thematic decisions across the project.
 >
-> **Current version:** v0.210.0 — Vostok · Komarov (Vladimir Komarov, Voskhod 1 commander — first multi-crew spaceflight, October 1964).
+> **Current version:** v0.211.2 — Vostok · Volynov (Boris Volynov, Soyuz 5 — survived ballistic reentry when service module failed to separate, 1969. Connection through adversity).
 
 ## Core Identity
 
@@ -45,7 +45,7 @@ Format: `0.100.1`, `0.200.0`, `1.0.0`, etc.
 - **MINOR** = mission number (100, 200, 300... like Mission Control sequences)
 - **PATCH** = revision within a mission
 
-Current: `0.210.0` — Mission 200, codename **Vostok · Komarov**.
+Current: `0.211.2` — Mission 211, codename **Vostok · Volynov**.
 
 ### Version Codenames — The Full Spectrum
 
