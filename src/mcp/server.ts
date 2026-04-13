@@ -69,11 +69,19 @@ interface JsonSchemaObject {
   additionalProperties?: boolean;
 }
 
+interface McpToolAnnotations {
+  readOnlyHint?: boolean;
+  destructiveHint?: boolean;
+  openWorldHint?: boolean;
+}
+
 interface McpTool {
   name: string;
   description: string;
   inputSchema: JsonSchemaObject;
   outputSchema?: JsonSchemaObject;
+  _meta?: Record<string, unknown>;
+  annotations?: McpToolAnnotations;
 }
 
 interface McpToolResult {
@@ -158,6 +166,15 @@ function buildDefaultTools(): McpTool[] {
           },
         },
       },
+      _meta: {
+        "anthropic/searchHint":
+          "Discover available Uni-CLI sites and commands. List adapters by category.",
+        "anthropic/alwaysLoad": true,
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: false,
+      },
     },
     {
       name: "unicli_discover",
@@ -174,6 +191,15 @@ function buildDefaultTools(): McpTool[] {
           },
         },
         required: ["url"],
+      },
+      _meta: {
+        "anthropic/searchHint":
+          "Auto-discover API endpoints for any website URL. Generate YAML adapters for new sites.",
+        "anthropic/alwaysLoad": true,
+      },
+      annotations: {
+        readOnlyHint: false,
+        openWorldHint: true,
       },
     },
   ];
@@ -334,6 +360,13 @@ function buildExpandedTools(): McpTool[] {
         description: truncateDescription(`[${adapter.name}] ${rawDesc}`),
         inputSchema: buildInputSchema(cmd),
         outputSchema: buildOutputSchema(cmd),
+        _meta: {
+          "anthropic/searchHint": `${adapter.name}: ${description}`,
+        },
+        annotations: {
+          readOnlyHint: true,
+          openWorldHint: true,
+        },
       });
     }
   }
@@ -476,7 +509,7 @@ export function annotateIfLarge(result: McpToolResult): McpToolResult {
   if (totalChars > MAX_RESULT_SIZE_CHARS) {
     return {
       ...result,
-      _meta: { "anthropic/maxResultSizeChars": 500_000 },
+      _meta: { "anthropic/maxResultSizeChars": 100_000 },
     };
   }
   return result;
