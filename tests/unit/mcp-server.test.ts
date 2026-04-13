@@ -56,7 +56,7 @@ describe("MCP server — smart default mode", () => {
   let proc: ChildProcess;
 
   beforeAll(async () => {
-    // Default mode (no flags) registers 3 tools: unicli_run, unicli_list, unicli_discover
+    // Default mode (no flags) registers 4 tools: unicli_run, unicli_list, unicli_search, unicli_explore
     proc = spawn("npx", ["tsx", SERVER_PATH], {
       stdio: ["pipe", "pipe", "pipe"],
       cwd: join(__dirname, "..", ".."),
@@ -108,7 +108,7 @@ describe("MCP server — smart default mode", () => {
     expect(result.capabilities).toEqual(expect.objectContaining({ tools: {} }));
   });
 
-  it("lists exactly 3 tools in smart default mode", async () => {
+  it("lists exactly 4 tools in smart default mode", async () => {
     const response = await sendRequest(proc, {
       jsonrpc: "2.0",
       id: 2,
@@ -117,10 +117,15 @@ describe("MCP server — smart default mode", () => {
     });
 
     const result = response.result as { tools: Array<{ name: string }> };
-    expect(result.tools).toHaveLength(3);
+    expect(result.tools).toHaveLength(4);
 
     const names = result.tools.map((t) => t.name).sort();
-    expect(names).toEqual(["unicli_discover", "unicli_list", "unicli_run"]);
+    expect(names).toEqual([
+      "unicli_explore",
+      "unicli_list",
+      "unicli_run",
+      "unicli_search",
+    ]);
   });
 
   it("unicli_list returns adapter catalog", { timeout: 15_000 }, async () => {

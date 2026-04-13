@@ -2,21 +2,24 @@
 
 <!-- IF YOU ARE AN AI AGENT: Read this file. It tells you everything you need.
      Install: npm install -g @zenalexa/unicli
+     Discover: unicli search "your intent" (bilingual EN/ZH)
      Run: unicli <site> <command> [args]
      Output is JSON when piped. Errors are structured JSON to stderr.
      You can fix broken adapters yourself — read the Self-Repair section. -->
 
-> 195 sites, 957 commands, 35 pipeline steps, 35 external CLI passthroughs, 30 macOS system commands. `npm install -g @zenalexa/unicli`
+> 198 sites, 1020 commands, 35 pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 ## For AI Agents
 
-You are looking at a universal CLI that lets you control websites, desktop apps, and local tools. Every command returns structured JSON when piped. If a command breaks, you can read the 20-line YAML adapter, fix it, and verify — no human needed.
+Universal CLI for websites, desktop apps, and local tools. JSON when piped. Self-repairing YAML adapters.
 
 ```bash
-unicli list                        # All commands (JSON when piped)
-unicli <site> <command> [options]  # Run any command
-unicli repair <site> <command>     # Diagnose a broken adapter
-unicli test [site]                 # Verify adapters work
+unicli search "推特热门"             # Find commands by intent (bilingual)
+unicli search "download video"       # → bilibili download, yt-dlp download, ...
+unicli <site> <command> [options]    # Run any command
+unicli repair <site> <command>       # Diagnose + fix a broken adapter
+unicli test [site]                   # Verify adapters work
+unicli list                          # All commands (JSON when piped)
 ```
 
 ## Install
@@ -215,6 +218,17 @@ Requires Chrome. The engine connects via raw CDP WebSocket — zero extensions n
 
 The engine auto-probes the first three on first run. `intercept` and `ui` require explicit configuration per adapter.
 
+## MCP Server
+
+```bash
+npx @zenalexa/unicli mcp serve              # stdio (default, 4 meta-tools)
+npx @zenalexa/unicli mcp serve --expanded   # all 1020 tools with full schemas
+npx @zenalexa/unicli mcp serve --transport sse --port 19826  # SSE for remote
+npx @zenalexa/unicli mcp serve --auth       # OAuth 2.1 PKCE
+```
+
+Default tools: `unicli_run` (execute), `unicli_list` (browse), `unicli_search` (BM25 bilingual discovery), `unicli_explore` (auto-discover from URL).
+
 ## Version
 
-0.210.0 — Vostok · Komarov
+0.211.1 — Vostok · Volynov

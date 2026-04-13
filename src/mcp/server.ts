@@ -10,11 +10,13 @@
  *      (`unicli_<site>_<command>`) with JSON Schema derived from `args` +
  *      `columns`. MCP clients see the full Uni-CLI surface area.
  *
- * Two transports:
+ * Three transports:
  *   - **stdio (default)** — newline-delimited JSON over stdin/stdout
  *   - **http (`--transport http [--port 19826]`)** — POST /mcp accepts a
- *     single JSON-RPC envelope and returns a single JSON response. No
- *     SSE streaming yet — additive in a future release.
+ *     single JSON-RPC envelope and returns a single JSON response.
+ *   - **sse (`--transport sse [--port 19826]`)** — Streamable HTTP with
+ *     Server-Sent Events. GET /mcp/sse opens the event stream, POST
+ *     /mcp/message?sessionId=xxx delivers JSON-RPC requests.
  *
  * Auth pass-through is automatic: every adapter the CLI loads (including
  * cookie-based ones) is exposed by name; the runtime resolves cookies on
@@ -31,6 +33,15 @@ import { loadAllAdapters, loadTsAdapters } from "../discovery/loader.js";
 import { getAllAdapters, listCommands, resolveCommand } from "../registry.js";
 import { runPipeline } from "../engine/yaml-runner.js";
 import { VERSION } from "../constants.js";
+import { startSseServer } from "./sse-transport.js";
+import { handleOAuthRoute, createOAuthMiddleware } from "./oauth.js";
+import {
+  type JsonSchemaObject,
+  buildInputSchema,
+  buildOutputSchema,
+  buildToolName,
+  truncateDescription,
+} from "./schema.js";
 import type { AdapterManifest, AdapterCommand } from "../types.js";
 
 // ── JSON-RPC Types ──────────────────────────────────────────────────────────
@@ -49,25 +60,7 @@ interface JsonRpcResponse {
   error?: { code: number; message: string; data?: unknown };
 }
 
-// ── MCP Tool Schema ─────────────────────────────────────────────────────────
-
-interface JsonSchemaProperty {
-  type: string;
-  description?: string;
-  default?: unknown;
-  enum?: string[];
-  /** For object-typed properties — allows nested run_command-style payloads. */
-  additionalProperties?: boolean;
-  /** For array-typed properties. */
-  items?: JsonSchemaProperty;
-}
-
-interface JsonSchemaObject {
-  type: "object";
-  properties: Record<string, JsonSchemaProperty>;
-  required?: string[];
-  additionalProperties?: boolean;
-}
+// ── MCP Tool Schema (shared types from ./schema.ts) ─────────────────────────
 
 interface McpToolAnnotations {
   readOnlyHint?: boolean;
@@ -90,32 +83,7 @@ interface McpToolResult {
   _meta?: Record<string, unknown>;
 }
 
-// ── Smart default tools (3 tools — the default mode) ────────────────────────
-
-/**
- * Approximate token count for a string. Uses the heuristic `words * 1.3`
- * which closely tracks tiktoken cl100k for English + mixed-case identifiers.
- */
-function approxTokens(text: string): number {
-  const words = text.split(/\s+/).filter(Boolean).length;
-  return Math.ceil(words * 1.3);
-}
-
-/**
- * Truncate a description to fit within a token budget. Cuts at word boundary
- * and appends "…" when truncation occurs.
- */
-export function truncateDescription(desc: string, maxTokens = 68): string {
-  if (approxTokens(desc) <= maxTokens) return desc;
-  const words = desc.split(/\s+/).filter(Boolean);
-  let result = "";
-  for (const word of words) {
-    const candidate = result ? `${result} ${word}` : word;
-    if (approxTokens(candidate + " …") > maxTokens) break;
-    result = candidate;
-  }
-  return result ? `${result} …` : words[0] + " …";
-}
+// ── Smart default tools (4 meta-tools — the default mode) ─────────────────
 
 const MAX_RESULT_SIZE_CHARS = 10_000;
 
@@ -123,15 +91,13 @@ function buildDefaultTools(): McpTool[] {
   return [
     {
       name: "unicli_run",
-      description:
-        "Execute any Uni-CLI command. Returns JSON results.",
+      description: "Execute any Uni-CLI command. Returns JSON results.",
       inputSchema: {
         type: "object",
         properties: {
           site: {
             type: "string",
-            description:
-              "Site name (e.g. hackernews, github, bilibili)",
+            description: "Site name (e.g. hackernews, github, bilibili)",
           },
           command: {
             type: "string",
@@ -146,11 +112,18 @@ function buildDefaultTools(): McpTool[] {
         },
         required: ["site", "command"],
       },
+      _meta: {
+        "anthropic/searchHint":
+          "Execute CLI commands on 200+ websites and desktop apps. Run adapters by site and command name.",
+      },
+      annotations: {
+        readOnlyHint: false,
+        openWorldHint: true,
+      },
     },
     {
       name: "unicli_list",
-      description:
-        "List available commands. Filter by site or adapter type.",
+      description: "List available commands. Filter by site or adapter type.",
       inputSchema: {
         type: "object",
         properties: {
@@ -160,15 +133,14 @@ function buildDefaultTools(): McpTool[] {
           },
           type: {
             type: "string",
-            description:
-              "Filter by adapter type",
+            description: "Filter by adapter type",
             enum: ["web-api", "desktop", "browser", "bridge", "service"],
           },
         },
       },
       _meta: {
         "anthropic/searchHint":
-          "Discover available Uni-CLI sites and commands. List adapters by category.",
+          "Browse available Uni-CLI sites and commands. Filter by site name or adapter type.",
         "anthropic/alwaysLoad": true,
       },
       annotations: {
@@ -177,17 +149,46 @@ function buildDefaultTools(): McpTool[] {
       },
     },
     {
-      name: "unicli_discover",
+      name: "unicli_search",
       description:
-        "Auto-discover CLI capabilities for any URL. Navigates the page, captures API endpoints, generates adapters.",
+        "Search 200+ sites and 956 commands by intent. Bilingual (EN/ZH). Returns top matches with usage examples.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description:
+              "Natural language intent (e.g. 'download video', '推特热门', 'stock price')",
+          },
+          limit: {
+            type: "integer",
+            description: "Max results (default 5)",
+            default: 5,
+          },
+        },
+        required: ["query"],
+      },
+      _meta: {
+        "anthropic/searchHint":
+          "Find CLI commands by intent. Semantic search across websites, desktop apps, macOS. Bilingual Chinese/English.",
+        "anthropic/alwaysLoad": true,
+      },
+      annotations: {
+        readOnlyHint: true,
+        openWorldHint: false,
+      },
+    },
+    {
+      name: "unicli_explore",
+      description:
+        "Auto-discover API endpoints for any URL. Navigates the page, captures network requests, generates YAML adapters.",
       inputSchema: {
         type: "object" as const,
         properties: {
           url: { type: "string", description: "Website URL to explore" },
           goal: {
             type: "string",
-            description:
-              "Capability to find (e.g. 'search', 'hot', 'feed')",
+            description: "Capability to find (e.g. 'search', 'hot', 'feed')",
           },
         },
         required: ["url"],
@@ -195,7 +196,6 @@ function buildDefaultTools(): McpTool[] {
       _meta: {
         "anthropic/searchHint":
           "Auto-discover API endpoints for any website URL. Generate YAML adapters for new sites.",
-        "anthropic/alwaysLoad": true,
       },
       annotations: {
         readOnlyHint: false,
@@ -206,112 +206,8 @@ function buildDefaultTools(): McpTool[] {
 }
 
 // ── Expanded-mode: one tool per adapter command ─────────────────────────────
-
-/**
- * Map an adapter `arg.type` to a JSON Schema primitive. Defaults to "string"
- * for unknown / missing types — safer than failing the schema build.
- */
-function jsonTypeFor(t: string | undefined): string {
-  switch (t) {
-    case "int":
-      return "integer";
-    case "float":
-      return "number";
-    case "bool":
-      return "boolean";
-    case "str":
-    default:
-      return "string";
-  }
-}
-
-/**
- * Build the input JSON Schema for one adapter command from its `args`.
- */
-function buildInputSchema(cmd: AdapterCommand): JsonSchemaObject {
-  const props: Record<string, JsonSchemaProperty> = {
-    limit: {
-      type: "integer",
-      description: "Cap result count (default 20)",
-      default: 20,
-    },
-  };
-  const required: string[] = [];
-
-  for (const a of cmd.adapterArgs ?? []) {
-    if (a.name === "limit") continue; // already added
-    const prop: JsonSchemaProperty = {
-      type: jsonTypeFor(a.type),
-      description: a.description,
-    };
-    if (a.default !== undefined) prop.default = a.default;
-    if (a.choices) prop.enum = a.choices;
-    props[a.name] = prop;
-    if (a.required) required.push(a.name);
-  }
-
-  const schema: JsonSchemaObject = {
-    type: "object",
-    properties: props,
-    additionalProperties: false,
-  };
-  if (required.length > 0) schema.required = required;
-  return schema;
-}
-
-/**
- * Build the output JSON Schema. We model results as `{ count, results }`
- * mirroring run_command, where each item in `results` follows the
- * `columns` shape (string-typed properties — Uni-CLI columns are
- * format-agnostic and the runtime emits whatever the pipeline produced).
- */
-/**
- * Build an output JSON Schema. We model results as `{count, results}` where
- * `results` is an array of items. `columns` becomes the item's property set.
- *
- * Note: we return a simple nested schema rather than a full JSON Schema
- * (which would need a deeper `items` type for `array`). Most MCP clients
- * only inspect the top-level type; Anthropic's client is permissive. If a
- * strict validator rejects this, it will still fall back to the default tool
- * path via `run_command`.
- */
-function buildOutputSchema(cmd: AdapterCommand): JsonSchemaObject {
-  const itemProps: Record<string, JsonSchemaProperty> = {};
-  for (const col of cmd.columns ?? []) {
-    itemProps[col] = { type: "string", description: `Column: ${col}` };
-  }
-  return {
-    type: "object",
-    properties: {
-      count: { type: "integer", description: "Number of results returned" },
-      results: {
-        type: "array",
-        description: "Result rows",
-        items: {
-          type: "object",
-          ...(Object.keys(itemProps).length > 0
-            ? { properties: itemProps }
-            : {}),
-        } as JsonSchemaProperty,
-      } as JsonSchemaProperty,
-    },
-  };
-}
-
-/**
- * MCP tool name: `unicli_<site>_<command>` with non-alphanumeric chars
- * collapsed to `_`. Anthropic / Claude Desktop accept underscores; some
- * older clients reject hyphens, so we normalize defensively.
- *
- * CRITICAL: normalization is NOT reversible (e.g. both `claude-code_version`
- * and `claude_code-version` would yield the same normalized name). The
- * expanded-mode dispatcher uses a name → {adapter, cmdName} lookup table
- * built at the same time as the tool list, so callers never need to reverse
- * the normalization. See `expandedRegistry` and `buildExpandedTools` below.
- */
-function buildToolName(site: string, command: string): string {
-  return `unicli_${site}_${command}`.replace(/[^a-zA-Z0-9_]/g, "_");
-}
+// Schema builders (buildInputSchema, buildOutputSchema, buildToolName) are
+// imported from ./schema.ts — single source of truth.
 
 /**
  * Reverse-lookup registry for expanded-mode tool calls. Maps the normalized
@@ -326,19 +222,18 @@ interface ExpandedEntry {
 }
 const expandedRegistry = new Map<string, ExpandedEntry>();
 
+/**
+ * Build the expanded tool set: 4 default meta-tools + one full tool per
+ * adapter command. Clients see the complete Uni-CLI surface area.
+ *
+ * Token cost: ~160K for 956 commands. Use only when the client can handle it.
+ */
 function buildExpandedTools(): McpTool[] {
   const tools: McpTool[] = [];
-  // Always include the 3 default tools for discovery and generic execution.
   tools.push(...buildDefaultTools());
 
   expandedRegistry.clear();
-  // Collision detection: if two (site, command) pairs normalize to the same
-  // tool name, the first one wins and the second is silently shadowed. We
-  // don't expect this in practice (most adapters use lowercase alphanumeric
-  // + hyphen names), but flag it on stderr so it gets noticed.
-  // Seed with the 3 default tool names to prevent adapter commands from
-  // overwriting them if they happen to produce an identical normalized name.
-  const seen = new Set<string>(["unicli_run", "unicli_list", "unicli_discover"]);
+  const seen = new Set<string>(DEFAULT_TOOL_NAMES);
 
   for (const adapter of getAllAdapters()) {
     for (const [cmdName, cmd] of Object.entries(adapter.commands)) {
@@ -373,6 +268,72 @@ function buildExpandedTools(): McpTool[] {
 
   return tools;
 }
+
+/**
+ * Build deferred tool set: 4 default meta-tools with full schemas, plus
+ * lightweight stubs for all adapter commands (name + searchHint only,
+ * minimal inputSchema). Clients like Claude Code's ToolSearch can discover
+ * tools by searchHint and then call them — the handler resolves the full
+ * command at call time via the expandedRegistry.
+ *
+ * Token cost: ~8K (vs ~160K for expanded). 95% reduction.
+ */
+function buildDeferredTools(): McpTool[] {
+  const tools: McpTool[] = [];
+  tools.push(...buildDefaultTools());
+
+  expandedRegistry.clear();
+  const seen = new Set<string>(DEFAULT_TOOL_NAMES);
+
+  for (const adapter of getAllAdapters()) {
+    for (const [cmdName, cmd] of Object.entries(adapter.commands)) {
+      const rawDesc =
+        cmd.description?.trim() ||
+        adapter.description?.trim() ||
+        `${cmdName} for ${adapter.name}`;
+      const toolName = buildToolName(adapter.name, cmdName);
+      if (seen.has(toolName)) continue;
+      seen.add(toolName);
+
+      // Register in the lookup table for runtime dispatch
+      expandedRegistry.set(toolName, { adapter, cmdName, cmd });
+
+      // Lightweight stub: name + searchHint + minimal schema.
+      // Full inputSchema is resolved at call time via expandedRegistry.
+      tools.push({
+        name: toolName,
+        description: truncateDescription(`[${adapter.name}] ${rawDesc}`),
+        inputSchema: {
+          type: "object",
+          properties: {
+            _args: {
+              type: "object",
+              description: "Command arguments (pass key-value pairs)",
+              additionalProperties: true,
+            },
+          },
+        },
+        _meta: {
+          "anthropic/searchHint": `${adapter.name}: ${rawDesc}`,
+        },
+        annotations: {
+          readOnlyHint: true,
+          openWorldHint: true,
+        },
+      });
+    }
+  }
+
+  return tools;
+}
+
+const DEFAULT_TOOL_NAMES = new Set([
+  "unicli_run",
+  "unicli_list",
+  "unicli_search",
+  "unicli_explore",
+  "unicli_discover",
+]);
 
 // ── Tool Handlers ───────────────────────────────────────────────────────────
 
@@ -598,8 +559,9 @@ const PROTOCOL_VERSION = "2024-11-05";
 
 interface ServerOptions {
   expanded: boolean;
-  transport: "stdio" | "http";
+  transport: "stdio" | "http" | "sse";
   port: number;
+  auth: boolean;
 }
 
 function parseArgs(argv: string[]): ServerOptions {
@@ -607,13 +569,15 @@ function parseArgs(argv: string[]): ServerOptions {
     expanded: false,
     transport: "stdio",
     port: 19826,
+    auth: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--expanded") opts.expanded = true;
+    else if (a === "--auth") opts.auth = true;
     else if (a === "--transport") {
       const v = argv[++i];
-      if (v === "stdio" || v === "http") opts.transport = v;
+      if (v === "stdio" || v === "http" || v === "sse") opts.transport = v;
     } else if (a === "--port") {
       const v = parseInt(argv[++i], 10);
       if (Number.isFinite(v)) opts.port = v;
@@ -688,7 +652,57 @@ function buildHandler(
               id,
               result: annotateIfLarge(result),
             }));
+          case "unicli_search": {
+            const searchQuery = toolArgs.query as string;
+            const searchLimit = (toolArgs.limit as number) || 5;
+            if (!searchQuery) {
+              return {
+                jsonrpc: "2.0",
+                id,
+                error: {
+                  code: -32602,
+                  message: "Missing required parameter: query",
+                },
+              };
+            }
+            return import("../discovery/search.js").then(
+              ({ search: searchFn }) => {
+                const results = searchFn(searchQuery, searchLimit);
+                return {
+                  jsonrpc: "2.0" as const,
+                  id,
+                  result: annotateIfLarge({
+                    content: [
+                      {
+                        type: "text" as const,
+                        text: JSON.stringify(
+                          {
+                            query: searchQuery,
+                            count: results.length,
+                            results: results.map((r) => ({
+                              command: `unicli ${r.site} ${r.command}`,
+                              site: r.site,
+                              name: r.command,
+                              description: r.description,
+                              score: r.score,
+                              category: r.category,
+                              usage: r.usage,
+                            })),
+                          },
+                          null,
+                          2,
+                        ),
+                      },
+                    ],
+                  }),
+                };
+              },
+            );
+          }
+          case "unicli_explore":
           case "unicli_discover": {
+            // unicli_explore is the canonical name (v0.211.1+).
+            // unicli_discover kept as alias for backwards compatibility.
             const discoverUrl = toolArgs.url as string;
             const discoverGoal = toolArgs.goal as string | undefined;
             if (!discoverUrl) {
@@ -752,7 +766,8 @@ function buildHandler(
           }
           default:
             return handleExpandedTool(params.name, toolArgs).then((result) => {
-              if (result) return { jsonrpc: "2.0", id, result: annotateIfLarge(result) };
+              if (result)
+                return { jsonrpc: "2.0", id, result: annotateIfLarge(result) };
               return {
                 jsonrpc: "2.0",
                 id,
@@ -850,9 +865,19 @@ async function startStdio(
 async function startHttp(
   handler: ReturnType<typeof buildHandler>,
   port: number,
+  authEnabled = false,
 ): Promise<void> {
+  const oauthMiddleware = authEnabled ? createOAuthMiddleware() : null;
+
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
-    if (req.method === "GET" && (req.url === "/" || req.url === "/mcp" || req.url === "/health")) {
+    // OAuth routes (authorize + token) — always public
+    if (authEnabled && handleOAuthRoute(req, res)) return;
+
+    // Health endpoint — always public
+    if (
+      req.method === "GET" &&
+      (req.url === "/" || req.url === "/mcp" || req.url === "/health")
+    ) {
       res.writeHead(200, { "Content-Type": "application/json" });
       const adapterCount = getAllAdapters().length;
       const commandCount = listCommands().length;
@@ -877,6 +902,9 @@ async function startHttp(
       res.end(JSON.stringify({ error: "POST /mcp" }));
       return;
     }
+
+    // OAuth middleware — block unauthenticated requests when --auth is set
+    if (oauthMiddleware?.(req, res)) return;
 
     const MAX_BODY = 1_048_576; // 1 MB
     const chunks: Buffer[] = [];
@@ -962,15 +990,36 @@ async function main(): Promise<void> {
   loadAllAdapters();
   await loadTsAdapters();
 
+  // Three modes:
+  //   default  → 4 meta-tools (~200 tokens)
+  //   expanded → 4 meta-tools + 956 full tool schemas (~160K tokens)
+  //   deferred → 4 meta-tools + 956 lightweight stubs (~8K tokens)
   const mode = opts.expanded ? "expanded" : "default";
   const tools = opts.expanded ? buildExpandedTools() : buildDefaultTools();
+  // Deferred mode is auto-activated for SSE transport (remote clients
+  // benefit most from searchHint-based discovery).
+  // For explicit control, the expanded flag takes precedence.
+  if (opts.transport === "sse" && !opts.expanded) {
+    const deferredTools = buildDeferredTools();
+    tools.length = 0;
+    tools.push(...deferredTools);
+  }
   const handler = buildHandler(tools);
 
   const adapterCount = getAllAdapters().length;
   const commandCount = listCommands().length;
 
   if (opts.transport === "http") {
-    await startHttp(handler, opts.port);
+    await startHttp(handler, opts.port, opts.auth);
+    const authLabel = opts.auth ? ", OAuth enabled" : "";
+    process.stderr.write(
+      `unicli MCP server v${VERSION} — ${adapterCount} sites, ${commandCount} commands (${tools.length} tools registered, mode=${mode}${authLabel})\n`,
+    );
+    return;
+  }
+
+  if (opts.transport === "sse") {
+    await startSseServer(opts.port, handler);
     process.stderr.write(
       `unicli MCP server v${VERSION} — ${adapterCount} sites, ${commandCount} commands (${tools.length} tools registered, mode=${mode})\n`,
     );

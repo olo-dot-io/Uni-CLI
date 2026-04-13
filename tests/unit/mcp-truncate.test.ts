@@ -4,7 +4,8 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { truncateDescription, annotateIfLarge } from "../../src/mcp/server.js";
+import { truncateDescription } from "../../src/mcp/schema.js";
+import { annotateIfLarge } from "../../src/mcp/server.js";
 
 function approxTokens(text: string): number {
   return Math.ceil(text.split(/\s+/).filter(Boolean).length * 1.3);

@@ -1,21 +1,25 @@
-<!-- AGENT: npm install -g @zenalexa/unicli && unicli list | 969 commands across 200 sites. JSON when piped. Self-repairing YAML adapters. unicli repair --loop for autonomous fix. See AGENTS.md -->
+<!-- AGENT: npm install -g @zenalexa/unicli && unicli search "your intent" | 1020 commands across 198 sites. JSON when piped. Self-repairing YAML adapters. Bilingual search (EN/ZH). See AGENTS.md -->
 
 <div align="center">
 
-# Uni-CLI
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="assets/logo-light.svg">
+  <img alt="Uni-CLI" src="assets/logo-light.svg" width="420">
+</picture>
 
-**CLI is all agents need.**
+<br><br>
 
-One command to control any website, desktop app, or local tool — with structured JSON output and self-repairing adapters.
+**The compiler that turns the internet into CLI commands for AI agents.**
 
 <br>
 
-<a href="https://github.com/olo-dot-io/Uni-CLI/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/olo-dot-io/Uni-CLI/ci.yml?style=flat-square&label=CI" alt="CI"></a>
+<img src="https://img.shields.io/badge/198_sites-1020_commands-00d4aa?style=flat-square" alt="coverage">
+<img src="https://img.shields.io/badge/~80_tokens-per_call-E8A838?style=flat-square" alt="tokens">
+<img src="https://img.shields.io/badge/self--repairing-YAML_adapters-8B5CF6?style=flat-square" alt="self-repair">
 <a href="https://www.npmjs.com/package/@zenalexa/unicli"><img src="https://img.shields.io/npm/v/@zenalexa/unicli?style=flat-square&color=cb3837" alt="npm"></a>
-<a href="https://www.npmjs.com/package/@zenalexa/unicli"><img src="https://img.shields.io/npm/dm/@zenalexa/unicli?style=flat-square" alt="downloads"></a>
-<a href="https://nodejs.org"><img src="https://img.shields.io/node/v/@zenalexa/unicli?style=flat-square&color=339933" alt="node"></a>
+<a href="https://github.com/olo-dot-io/Uni-CLI/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/olo-dot-io/Uni-CLI/ci.yml?style=flat-square&label=CI" alt="CI"></a>
 <a href="./LICENSE"><img src="https://img.shields.io/github/license/olo-dot-io/Uni-CLI?style=flat-square" alt="license"></a>
-<img src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript">
 
 <br><br>
 
@@ -28,27 +32,39 @@ npm install -g @zenalexa/unicli
 ---
 
 ```bash
+unicli search "推特热门"                   # Bilingual discovery → twitter trending
 unicli hackernews top --limit 5          # Hacker News front page
 unicli twitter search "AI agents"        # Twitter (authenticated)
 unicli bilibili hot                      # Bilibili trending
 unicli blender render scene.blend        # Render a 3D scene
-unicli cursor ask "explain this code"    # Talk to Cursor IDE
 unicli notion search "meeting notes"     # Search Notion
-unicli obs scene set "Camera 2"         # Switch OBS scene
+unicli macos screenshot                  # macOS screenshot
 unicli ffmpeg compress video.mp4         # Compress video
 ```
 
 Every command outputs **structured JSON when piped** — zero flags needed. Every error emits structured JSON to stderr with the adapter path, the failing step, and a fix suggestion. **~80 tokens per call.**
 
+```mermaid
+graph LR
+    A[AI Agent] -->|"unicli search 'intent'"| B["Uni-CLI"]
+    B --> C["YAML Adapter<br>~20 lines"]
+    C --> D["Web API"]
+    C --> E["Chrome CDP"]
+    C --> F["Subprocess"]
+    B -.->|self-repair| C
+```
+
 ## Key Ideas
 
-**Universal** — 200 sites, 30+ desktop apps, 8 Electron apps, 35 CLI bridges, 51 macOS system commands. One interface: `unicli <site> <command>`.
+**Universal** — 198 sites, 30+ desktop apps, 8 Electron apps, 35 CLI bridges, 51 macOS system commands. One interface: `unicli <site> <command>`.
+
+**Discoverable** — BM25 bilingual search engine. `unicli search "推特热门"` finds `twitter trending`. `unicli search "download video"` finds `bilibili download`. Agents find what they need in one call.
 
 **Self-repairing** — When a site changes its API, the agent reads the ~20 line YAML adapter, fixes it, retries. No human in the loop. Fixes persist across updates.
 
 **Agent-native** — Piped output auto-switches to JSON. Errors are machine-parseable. Exit codes follow `sysexits.h`. The agent doesn't need flags or special handling.
 
-**Cheap** — ~80 tokens per CLI invocation vs 550–1,400 tokens for an MCP tool definition. Two orders of magnitude cheaper in context window cost.
+**Cheap** — ~80 tokens per CLI invocation vs 55,000 tokens for an MCP tool catalog. Three orders of magnitude cheaper in context window cost.
 
 ## Self-Repair
 
@@ -75,7 +91,7 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
 
 <table><tr><td>
 
-**200 sites** · **969 commands** · **877 YAML adapters** · **35 pipeline steps**
+**198 sites** · **1020 commands** · **35 pipeline steps** · **BM25 bilingual search**
 
 </td></tr></table>
 
@@ -826,6 +842,43 @@ unicli dev <path>                # Hot-reload during dev
 unicli test <site>               # Validate
 ```
 
+## Search & Discovery
+
+Agents find commands through bilingual semantic search — no need to memorize site names.
+
+```bash
+unicli search "推特热门"              # → twitter trending
+unicli search "download video"        # → bilibili download, yt-dlp download, twitter download
+unicli search "股票行情"              # → binance ticker, barchart quote, xueqiu quote
+unicli search --category finance      # → all finance commands
+```
+
+The search engine uses BM25 scoring with a ~200-entry bilingual alias table (Chinese↔English). The entire index is 50KB, searches complete in <10ms.
+
+## Agent Integration
+
+```bash
+# CLI direct (any agent with shell access)
+npm install -g @zenalexa/unicli
+
+# MCP server (Claude Code, Codex CLI, Hermes, OpenCode)
+npx @zenalexa/unicli mcp serve
+
+# MCP with SSE transport (remote connections)
+npx @zenalexa/unicli mcp serve --transport sse --port 19826
+
+# MCP with OAuth (enterprise)
+npx @zenalexa/unicli mcp serve --transport http --auth
+```
+
+| Platform | One-line Setup |
+|----------|---------------|
+| **Claude Code** | `claude mcp add unicli -- npx @zenalexa/unicli mcp serve` |
+| **Codex CLI** | Add `[mcp_servers.unicli]` to `~/.codex/config.toml` |
+| **Any MCP client** | `npx @zenalexa/unicli mcp serve` (stdio) |
+
+The MCP server exposes 4 meta-tools by default (~200 tokens). `unicli_search` provides bilingual semantic search across all 1020 commands.
+
 ## License
 
 [Apache-2.0](./LICENSE)
@@ -839,6 +892,6 @@ unicli test <site>               # Validate
 </p>
 
 <p align="center">
-  <sub>v0.210.0 — Vostok · Komarov</sub><br>
-  <sub>200 sites · 969 commands · 35 pipeline steps · 29 filters · 877 YAML adapters · 788 tests</sub>
+  <sub>v0.211.1 — Vostok · Volynov</sub><br>
+  <sub>198 sites · 1020 commands · 35 pipeline steps · BM25 bilingual search · 835 tests</sub>
 </p>

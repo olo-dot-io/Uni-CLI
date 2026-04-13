@@ -1,6 +1,10 @@
 /**
- * Build manifest — generates a JSON manifest of all available adapters.
- * Used for documentation and IDE integration.
+ * Build manifest — generates multiple index files for adapter discovery.
+ *
+ * Outputs:
+ *   1. dist/manifest.json       — Full metadata (existing, enhanced)
+ *   2. dist/manifest-search.json — BM25 inverted index + IDF values
+ *   3. dist/manifest-compact.txt — Compressed catalog for AGENTS.md embedding
  *
  * Scans both YAML files (parsed directly) and TS files (regex extraction
  * of cli() metadata) to produce a complete manifest.
@@ -19,22 +23,19 @@ import yaml from "js-yaml";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ADAPTERS_DIR = join(__dirname, "..", "src", "adapters");
-const OUTPUT = join(__dirname, "..", "dist", "manifest.json");
+const DIST_DIR = join(__dirname, "..", "dist");
 const PKG = JSON.parse(
   readFileSync(join(__dirname, "..", "package.json"), "utf-8"),
 );
 
-const manifest = { version: PKG.version, sites: {} };
+// ── Helpers ─────────────────────────────────────────────────────────────────
 
-// Helper: extract a string property from a cli() call source
 function extractProp(source, prop) {
-  // Match: prop: "value" or prop: 'value'
   const re = new RegExp(`${prop}:\\s*["'\`]([^"'\`]+)["'\`]`);
   const m = source.match(re);
   return m ? m[1] : "";
 }
 
-// Helper: extract Strategy.XXX from source
 function extractStrategy(source) {
   const m = source.match(/strategy:\s*Strategy\.(\w+)/);
   if (m) return m[1].toLowerCase();
@@ -42,8 +43,151 @@ function extractStrategy(source) {
   return m2 ? m2[1] : "public";
 }
 
-// TS files that are utilities, not commands (no cli() call)
 const SKIP_FILES = new Set(["client", "wbi", "innertube", "index"]);
+
+// ── Category mapping (mirrors discovery/aliases.ts SITE_CATEGORIES) ─────────
+
+const CATEGORIES = {
+  social: [
+    "twitter",
+    "weibo",
+    "zhihu",
+    "douban",
+    "jike",
+    "xiaohongshu",
+    "tieba",
+    "v2ex",
+    "linux-do",
+    "reddit",
+    "bluesky",
+    "mastodon",
+    "facebook",
+    "instagram",
+    "band",
+    "lobsters",
+    "hupu",
+  ],
+  video: [
+    "bilibili",
+    "youtube",
+    "douyin",
+    "tiktok",
+    "twitch",
+    "kuaishou",
+    "douyu",
+  ],
+  news: [
+    "hackernews",
+    "bbc",
+    "cnn",
+    "nytimes",
+    "reuters",
+    "36kr",
+    "techcrunch",
+    "theverge",
+    "infoq",
+    "ithome",
+    "bloomberg",
+  ],
+  finance: [
+    "xueqiu",
+    "eastmoney",
+    "sinafinance",
+    "yahoo-finance",
+    "barchart",
+    "binance",
+    "futu",
+    "coinbase",
+  ],
+  shopping: [
+    "amazon",
+    "jd",
+    "taobao",
+    "pinduoduo",
+    "1688",
+    "smzdm",
+    "meituan",
+    "coupang",
+    "xianyu",
+    "dianping",
+    "dangdang",
+    "ele",
+    "maoyan",
+  ],
+  dev: [
+    "github-trending",
+    "gitlab",
+    "gitee",
+    "npm",
+    "pypi",
+    "crates-io",
+    "cocoapods",
+    "docker-hub",
+    "npm-trends",
+    "homebrew",
+    "stackoverflow",
+    "devto",
+    "producthunt",
+  ],
+  ai: [
+    "ollama",
+    "openrouter",
+    "hf",
+    "huggingface-papers",
+    "replicate",
+    "deepseek",
+    "perplexity",
+    "grok",
+    "gemini",
+    "minimax",
+    "doubao",
+    "doubao-web",
+    "novita",
+    "notebooklm",
+  ],
+  reference: [
+    "google",
+    "wikipedia",
+    "arxiv",
+    "dictionary",
+    "cnki",
+    "chaoxing",
+    "imdb",
+    "paperreview",
+  ],
+  audio: ["spotify", "netease-music", "apple-podcasts", "xiaoyuzhou"],
+  content: ["medium", "substack", "sspai", "weread", "zsxq", "pixiv"],
+  jobs: ["boss", "linkedin"],
+  desktop: [
+    "macos",
+    "ffmpeg",
+    "imagemagick",
+    "blender",
+    "gimp",
+    "freecad",
+    "inkscape",
+    "pandoc",
+    "libreoffice",
+    "mermaid",
+    "musescore",
+    "drawio",
+    "docker",
+    "comfyui",
+  ],
+  games: ["steam"],
+  utility: ["exchangerate", "ip-info", "qweather", "web"],
+};
+
+function getCategory(site) {
+  for (const [cat, sites] of Object.entries(CATEGORIES)) {
+    if (sites.includes(site)) return cat;
+  }
+  return "other";
+}
+
+// ── Scan Adapters ───────────────────────────────────────────────────────────
+
+const manifest = { version: PKG.version, sites: {} };
 
 if (existsSync(ADAPTERS_DIR)) {
   for (const site of readdirSync(ADAPTERS_DIR)) {
@@ -58,7 +202,6 @@ if (existsSync(ADAPTERS_DIR)) {
       const cmdName = basename(file, ext);
 
       if (ext === ".yaml" || ext === ".yml") {
-        // Parse YAML adapter
         try {
           const raw = readFileSync(join(siteDir, file), "utf-8");
           const parsed = yaml.load(raw);
@@ -72,22 +215,15 @@ if (existsSync(ADAPTERS_DIR)) {
           // Skip malformed YAML
         }
       } else if (ext === ".ts" && !SKIP_FILES.has(cmdName)) {
-        // Parse TS adapter — extract cli() metadata via regex
         try {
           const source = readFileSync(join(siteDir, file), "utf-8");
-          // Only include files that call cli()
           if (!source.includes("cli(")) continue;
 
           const name = extractProp(source, "name") || cmdName;
           const description = extractProp(source, "description");
           const strategy = extractStrategy(source);
 
-          commands.push({
-            name,
-            description,
-            strategy,
-            type: "web-api",
-          });
+          commands.push({ name, description, strategy, type: "web-api" });
         } catch {
           // Skip unreadable TS files
         }
@@ -95,19 +231,124 @@ if (existsSync(ADAPTERS_DIR)) {
     }
 
     if (commands.length > 0) {
-      // Sort commands by name for stable output
       commands.sort((a, b) => a.name.localeCompare(b.name));
-      manifest.sites[site] = { commands };
+      manifest.sites[site] = {
+        commands,
+        category: getCategory(site),
+      };
     }
   }
 }
 
-writeFileSync(OUTPUT, JSON.stringify(manifest, null, 2));
+// ── Output 1: Full manifest ─────────────────────────────────────────────────
+
+writeFileSync(
+  join(DIST_DIR, "manifest.json"),
+  JSON.stringify(manifest, null, 2),
+);
+
+// ── Output 2: BM25 Search Index ─────────────────────────────────────────────
+// Mirrors the buildIndex() function from src/discovery/search.ts
+// but runs at build time in plain JS (no TypeScript import).
+
+function tokenizeDoc(site, command, description) {
+  const terms = [];
+  const siteParts = site.toLowerCase().split(/[-_]/);
+  terms.push(site.toLowerCase(), ...siteParts);
+
+  const cmdParts = command.toLowerCase().split(/[-_]/);
+  terms.push(command.toLowerCase(), ...cmdParts);
+
+  const descWords = description
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fff\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 1);
+  terms.push(...descWords);
+
+  const category = getCategory(site);
+  if (category !== "other") terms.push(category);
+
+  return terms;
+}
+
+const documents = [];
+for (const [site, info] of Object.entries(manifest.sites)) {
+  for (const cmd of info.commands) {
+    const terms = tokenizeDoc(site, cmd.name, cmd.description);
+    documents.push({
+      id: `${site}/${cmd.name}`,
+      site,
+      command: cmd.name,
+      description: cmd.description,
+      terms,
+    });
+  }
+}
+
+const N = documents.length;
+const avgDl =
+  N > 0 ? documents.reduce((sum, d) => sum + d.terms.length, 0) / N : 0;
+
+// Inverted index
+const postings = {};
+for (let i = 0; i < documents.length; i++) {
+  const seen = new Set();
+  for (const term of documents[i].terms) {
+    if (seen.has(term)) continue;
+    seen.add(term);
+    if (!postings[term]) postings[term] = [];
+    postings[term].push(i);
+  }
+}
+
+// IDF values
+const idf = {};
+for (const [term, docs] of Object.entries(postings)) {
+  const df = docs.length;
+  idf[term] = Math.log((N - df + 0.5) / (df + 0.5) + 1);
+}
+
+const searchIndex = { postings, idf, documents, avgDl, N };
+writeFileSync(
+  join(DIST_DIR, "manifest-search.json"),
+  JSON.stringify(searchIndex),
+);
+
+// ── Output 3: Compact catalog ───────────────────────────────────────────────
+// Format: "category: site(cmd1, cmd2, ...), site2(cmd1, cmd2, ...)"
+// Target: ~2-3K tokens for AGENTS.md embedding
+
+const byCategory = {};
+for (const [site, info] of Object.entries(manifest.sites)) {
+  const cat = info.category || "other";
+  if (!byCategory[cat]) byCategory[cat] = [];
+  const cmds = info.commands.map((c) => c.name).join(", ");
+  byCategory[cat].push(`${site}(${cmds})`);
+}
+
+const compactLines = [];
+for (const [cat, entries] of Object.entries(byCategory)) {
+  compactLines.push(`${cat}: ${entries.join(", ")}`);
+}
+
+writeFileSync(join(DIST_DIR, "manifest-compact.txt"), compactLines.join("\n"));
+
+// ── Summary ─────────────────────────────────────────────────────────────────
+
 const siteCount = Object.keys(manifest.sites).length;
 const cmdCount = Object.values(manifest.sites).reduce(
   (sum, s) => sum + s.commands.length,
   0,
 );
+const indexTerms = Object.keys(postings).length;
+
 console.log(
   `Manifest: ${siteCount} sites, ${cmdCount} commands → dist/manifest.json`,
+);
+console.log(
+  `Search index: ${indexTerms} terms, ${N} documents → dist/manifest-search.json`,
+);
+console.log(
+  `Compact catalog: ${compactLines.length} categories → dist/manifest-compact.txt`,
 );

@@ -86,7 +86,7 @@ describe("MCP server — expanded mode (--expanded)", () => {
     proc.kill();
   });
 
-  it("registers many tools (one per adapter command + 3 default)", async () => {
+  it("registers many tools (one per adapter command + 4 default)", async () => {
     const response = await sendRequest(proc, {
       jsonrpc: "2.0",
       id: 100,
@@ -95,12 +95,13 @@ describe("MCP server — expanded mode (--expanded)", () => {
     });
 
     const result = response.result as { tools: Array<{ name: string }> };
-    // Default mode is exactly 3; expanded must be many more than that
+    // Default mode is exactly 4; expanded must be many more than that
     expect(result.tools.length).toBeGreaterThan(50);
     const names = result.tools.map((t) => t.name);
     expect(names).toContain("unicli_list");
     expect(names).toContain("unicli_run");
-    expect(names).toContain("unicli_discover");
+    expect(names).toContain("unicli_search");
+    expect(names).toContain("unicli_explore");
   });
 
   it("uses the unicli_<site>_<command> naming convention", async () => {

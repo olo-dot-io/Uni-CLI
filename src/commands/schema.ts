@@ -13,90 +13,11 @@ import chalk from "chalk";
 import { getAllAdapters, resolveCommand } from "../registry.js";
 import type { AdapterCommand } from "../types.js";
 import { ExitCode } from "../types.js";
-
-// ── JSON Schema types (mirrors mcp/server.ts) ────────────────────────────
-
-interface JsonSchemaProperty {
-  type: string;
-  description?: string;
-  default?: unknown;
-  enum?: string[];
-  additionalProperties?: boolean;
-  items?: JsonSchemaProperty;
-  properties?: Record<string, JsonSchemaProperty>;
-}
-
-interface JsonSchemaObject {
-  type: "object" | "array";
-  properties?: Record<string, JsonSchemaProperty>;
-  required?: string[];
-  additionalProperties?: boolean;
-  items?: JsonSchemaProperty;
-}
-
-// ── Schema builders (same logic as mcp/server.ts) ────────────────────────
-
-function jsonTypeFor(t: string | undefined): string {
-  switch (t) {
-    case "int":
-      return "integer";
-    case "float":
-      return "number";
-    case "bool":
-      return "boolean";
-    case "str":
-    default:
-      return "string";
-  }
-}
-
-function buildInputSchema(cmd: AdapterCommand): JsonSchemaObject {
-  const props: Record<string, JsonSchemaProperty> = {
-    limit: {
-      type: "integer",
-      description: "Cap result count (default 20)",
-      default: 20,
-    },
-  };
-  const required: string[] = [];
-
-  for (const a of cmd.adapterArgs ?? []) {
-    if (a.name === "limit") continue;
-    const prop: JsonSchemaProperty = {
-      type: jsonTypeFor(a.type),
-      description: a.description,
-    };
-    if (a.default !== undefined) prop.default = a.default;
-    if (a.choices) prop.enum = a.choices;
-    props[a.name] = prop;
-    if (a.required) required.push(a.name);
-  }
-
-  const schema: JsonSchemaObject = {
-    type: "object",
-    properties: props,
-    additionalProperties: false,
-  };
-  if (required.length > 0) schema.required = required;
-  return schema;
-}
-
-function buildOutputSchema(cmd: AdapterCommand): JsonSchemaObject {
-  const itemProps: Record<string, JsonSchemaProperty> = {};
-  for (const col of cmd.columns ?? []) {
-    itemProps[col] = { type: "string", description: `Column: ${col}` };
-  }
-
-  return {
-    type: "array",
-    items: {
-      type: "object",
-      ...(Object.keys(itemProps).length > 0
-        ? { properties: itemProps }
-        : {}),
-    } as JsonSchemaProperty,
-  };
-}
+import {
+  type JsonSchemaObject,
+  buildInputSchema,
+  buildOutputSchema,
+} from "../mcp/schema.js";
 
 // ── Schema output shape ──────────────────────────────────────────────────
 
@@ -118,7 +39,7 @@ function buildCommandSchema(
     command: cmdName,
     description: cmd.description ?? "",
     input: buildInputSchema(cmd),
-    output: buildOutputSchema(cmd),
+    output: buildOutputSchema(cmd, "flat"),
   };
 }
 
@@ -174,27 +95,19 @@ export function registerSchemaCommand(program: Command): void {
             }));
 
           if (matching.length > 0) {
-            console.error(
-              chalk.red(`Unknown command: ${site} ${command}`),
-            );
+            console.error(chalk.red(`Unknown command: ${site} ${command}`));
             console.error(
               chalk.dim(
                 `Available for matching sites: ${JSON.stringify(matching)}`,
               ),
             );
           } else {
-            console.error(
-              chalk.red(`Unknown site: ${site}`),
-            );
+            console.error(chalk.red(`Unknown site: ${site}`));
           }
           process.exit(ExitCode.USAGE_ERROR);
         }
 
-        const schema = buildCommandSchema(
-          site,
-          command,
-          resolved.command,
-        );
+        const schema = buildCommandSchema(site, command, resolved.command);
         console.log(JSON.stringify(schema, null, 2));
       },
     );
