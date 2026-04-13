@@ -685,10 +685,10 @@ function buildHandler(
                   (err: unknown) => ({
                     jsonrpc: "2.0" as const,
                     id,
-                    result: {
+                    result: annotateIfLarge({
                       content: [
                         {
-                          type: "text",
+                          type: "text" as const,
                           text: JSON.stringify({
                             error:
                               err instanceof Error ? err.message : String(err),
@@ -696,7 +696,7 @@ function buildHandler(
                         },
                       ],
                       isError: true,
-                    },
+                    }),
                   }),
                 );
               }),
@@ -804,7 +804,7 @@ async function startHttp(
   port: number,
 ): Promise<void> {
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
-    if (req.method === "GET" && (req.url === "/" || req.url === "/mcp")) {
+    if (req.method === "GET" && (req.url === "/" || req.url === "/mcp" || req.url === "/health")) {
       res.writeHead(200, { "Content-Type": "application/json" });
       const adapterCount = getAllAdapters().length;
       const commandCount = listCommands().length;
@@ -833,9 +833,11 @@ async function startHttp(
     const MAX_BODY = 1_048_576; // 1 MB
     const chunks: Buffer[] = [];
     let bodySize = 0;
+    let aborted = false;
     req.on("data", (chunk: Buffer) => {
       bodySize += chunk.length;
       if (bodySize > MAX_BODY) {
+        aborted = true;
         res.writeHead(413, { "Content-Type": "application/json" });
         res.end(
           JSON.stringify({
@@ -850,6 +852,7 @@ async function startHttp(
       chunks.push(chunk);
     });
     req.on("end", async () => {
+      if (aborted) return;
       const body = Buffer.concat(chunks).toString("utf-8");
       let parsed: JsonRpcRequest;
       try {
