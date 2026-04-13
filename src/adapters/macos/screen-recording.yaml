@@ -1,0 +1,29 @@
+site: macos
+name: screen-recording
+description: Record the screen to a video file using screencapture
+type: desktop
+binary: screencapture
+detect: "test $(uname) = Darwin"
+
+args:
+  file:
+    type: str
+    default: "/tmp/recording.mov"
+    description: Output file path for the recording (must end in .mov or .mp4)
+  duration:
+    type: int
+    default: 10
+    description: Recording duration in seconds
+
+pipeline:
+  - exec:
+      command: bash
+      args:
+        - "-c"
+        - "screencapture -x -v -V ${{ args.duration }} ${{ args.file }} && echo done"
+      parse: text
+      timeout: "${{ (args.duration + 5) * 1000 }}"
+
+  - evaluate: "JSON.stringify([{ file: '${{ args.file }}', duration: ${{ args.duration }}, status: 'recorded' }])"
+
+columns: [file, duration, status]

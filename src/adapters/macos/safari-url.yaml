@@ -1,0 +1,22 @@
+site: macos
+name: safari-url
+description: Get the URL and title of the active Safari tab
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          const app = Application('Safari');
+          const win = app.windows[0];
+          const tab = win.currentTab();
+          JSON.stringify([{ url: tab.url(), title: tab.name() }]);
+      parse: json
+
+columns: [url, title]

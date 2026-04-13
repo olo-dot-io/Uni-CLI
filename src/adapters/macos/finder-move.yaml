@@ -1,0 +1,40 @@
+site: macos
+name: finder-move
+description: Move or rename a file or folder
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+args:
+  source:
+    type: str
+    required: true
+    positional: true
+    description: Source file or folder path
+  destination:
+    type: str
+    required: true
+    positional: true
+    description: Destination path
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          const fm = $.NSFileManager.defaultManager;
+          const src = ${{ args.source | json }};
+          const dst = ${{ args.destination | json }};
+          const err = Ref();
+          const ok = fm.moveItemAtPathToPathError(src, dst, err);
+          if (!ok) {
+            const msg = err[0] ? ObjC.unwrap(err[0].localizedDescription) : 'unknown error';
+            throw new Error(msg);
+          }
+          JSON.stringify([{ moved: src, to: dst, status: 'ok' }]);
+      parse: json
+
+columns: [moved, to, status]

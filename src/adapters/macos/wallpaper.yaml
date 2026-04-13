@@ -1,0 +1,33 @@
+site: macos
+name: wallpaper
+description: Get or set the desktop wallpaper
+type: desktop
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+args:
+  path:
+    type: str
+    positional: true
+    description: Path to image file (omit to get the current wallpaper)
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          const se = Application('System Events');
+          const desktop = se.desktops[0];
+          const newPath = ${{ args.path | default("") | json }};
+          if (newPath) {
+            desktop.picture = newPath;
+            JSON.stringify([{ wallpaper: newPath, action: 'set' }]);
+          } else {
+            JSON.stringify([{ wallpaper: desktop.picture(), action: 'get' }]);
+          }
+      parse: json
+
+columns: [wallpaper, action]
