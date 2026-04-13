@@ -1,0 +1,9 @@
+{
+  "name": "unicli",
+  "displayName": "Uni-CLI",
+  "description": "Universal CLI for AI agents — 200 sites, 969 commands. Control any website, desktop app, or local tool.",
+  "version": "0.211.0",
+  "compatibleVersions": ">=2026.4.0",
+  "capabilities": ["tools"],
+  "entry": "dist/index.js"
+}
