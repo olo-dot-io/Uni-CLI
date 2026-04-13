@@ -1,6 +1,18 @@
 # @zenalexa/openclaw-unicli
 
-OpenClaw plugin that exposes Uni-CLI as agent tools — 200 sites, 969 commands.
+OpenClaw Bundle MCP plugin that exposes Uni-CLI as an MCP server — 200 sites, 969 commands.
+
+## How It Works
+
+This is a Bundle MCP plugin. OpenClaw reads `openclaw.plugin.json`, finds the `mcpServers` block, and launches `unicli mcp serve` as a child process. All three smart-default tools (`unicli_run`, `unicli_list`, `unicli_discover`) are available immediately inside OpenClaw without any extra configuration.
+
+## Requirements
+
+`unicli` must be installed globally before loading this plugin:
+
+```bash
+npm i -g @zenalexa/unicli
+```
 
 ## Install
 
@@ -8,19 +20,7 @@ OpenClaw plugin that exposes Uni-CLI as agent tools — 200 sites, 969 commands.
 openclaw plugins install @zenalexa/openclaw-unicli
 ```
 
-Or add manually to `~/.openclaw/openclaw.json`:
-
-```json
-{
-  "plugins": ["@zenalexa/openclaw-unicli"]
-}
-```
-
-Requires `unicli` installed globally:
-
-```bash
-npm i -g @zenalexa/unicli
-```
+Or copy `openclaw.plugin.json` manually to `~/.openclaw/plugins/unicli/openclaw.plugin.json`.
 
 ## Tools
 
@@ -33,29 +33,19 @@ npm i -g @zenalexa/unicli
 ### unicli_run
 
 ```json
-{
-  "site": "hackernews",
-  "command": "top",
-  "limit": 10
-}
+{ "site": "hackernews", "command": "top", "limit": 10 }
 ```
 
 ### unicli_list
 
 ```json
-{
-  "site": "twitter",
-  "type": "web-api"
-}
+{ "site": "twitter", "type": "web-api" }
 ```
 
 ### unicli_discover
 
 ```json
-{
-  "url": "https://example.com",
-  "goal": "get trending posts"
-}
+{ "url": "https://example.com", "goal": "get trending posts" }
 ```
 
 ## License
