@@ -33,7 +33,9 @@ import { loadAllAdapters, loadTsAdapters } from "../discovery/loader.js";
 import { getAllAdapters, listCommands, resolveCommand } from "../registry.js";
 import { runPipeline } from "../engine/yaml-runner.js";
 import { VERSION } from "../constants.js";
-import { startSseServer } from "./sse-transport.js";
+// sse-transport.ts is deprecated (spec 2025-03-26). Kept for backwards compatibility.
+// import { startSseServer } from "./sse-transport.js";
+import { startStreamableHttp } from "./streamable-http.js";
 import { handleOAuthRoute, createOAuthMiddleware } from "./oauth.js";
 import {
   type JsonSchemaObject,
@@ -65,6 +67,7 @@ interface JsonRpcResponse {
 interface McpToolAnnotations {
   readOnlyHint?: boolean;
   destructiveHint?: boolean;
+  idempotentHint?: boolean;
   openWorldHint?: boolean;
 }
 
@@ -118,6 +121,8 @@ function buildDefaultTools(): McpTool[] {
       },
       annotations: {
         readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
         openWorldHint: true,
       },
     },
@@ -145,6 +150,7 @@ function buildDefaultTools(): McpTool[] {
       },
       annotations: {
         readOnlyHint: true,
+        idempotentHint: true,
         openWorldHint: false,
       },
     },
@@ -175,6 +181,7 @@ function buildDefaultTools(): McpTool[] {
       },
       annotations: {
         readOnlyHint: true,
+        idempotentHint: true,
         openWorldHint: false,
       },
     },
@@ -199,6 +206,8 @@ function buildDefaultTools(): McpTool[] {
       },
       annotations: {
         readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
         openWorldHint: true,
       },
     },
@@ -260,6 +269,7 @@ function buildExpandedTools(): McpTool[] {
         },
         annotations: {
           readOnlyHint: true,
+          idempotentHint: true,
           openWorldHint: true,
         },
       });
@@ -318,6 +328,7 @@ function buildDeferredTools(): McpTool[] {
         },
         annotations: {
           readOnlyHint: true,
+          idempotentHint: true,
           openWorldHint: true,
         },
       });
@@ -555,11 +566,11 @@ async function handleExpandedTool(
 
 // ── MCP Protocol Handler ────────────────────────────────────────────────────
 
-const PROTOCOL_VERSION = "2024-11-05";
+const PROTOCOL_VERSION = "2025-03-26";
 
 interface ServerOptions {
   expanded: boolean;
-  transport: "stdio" | "http" | "sse";
+  transport: "stdio" | "http" | "streamable";
   port: number;
   auth: boolean;
 }
@@ -577,7 +588,12 @@ function parseArgs(argv: string[]): ServerOptions {
     else if (a === "--auth") opts.auth = true;
     else if (a === "--transport") {
       const v = argv[++i];
-      if (v === "stdio" || v === "http" || v === "sse") opts.transport = v;
+      if (v === "stdio" || v === "http" || v === "streamable") {
+        opts.transport = v;
+      } else if (v === "sse") {
+        // Deprecated alias — SSE replaced by Streamable HTTP in spec 2025-03-26
+        opts.transport = "streamable";
+      }
     } else if (a === "--port") {
       const v = parseInt(argv[++i], 10);
       if (Number.isFinite(v)) opts.port = v;
@@ -602,7 +618,7 @@ function buildHandler(
           result: {
             protocolVersion: PROTOCOL_VERSION,
             capabilities: {
-              tools: {},
+              tools: { listChanged: false },
             },
             serverInfo: {
               name: "unicli",
@@ -996,10 +1012,10 @@ async function main(): Promise<void> {
   //   deferred → 4 meta-tools + 956 lightweight stubs (~8K tokens)
   const mode = opts.expanded ? "expanded" : "default";
   const tools = opts.expanded ? buildExpandedTools() : buildDefaultTools();
-  // Deferred mode is auto-activated for SSE transport (remote clients
-  // benefit most from searchHint-based discovery).
+  // Deferred mode is auto-activated for Streamable HTTP transport (remote
+  // clients benefit most from searchHint-based discovery).
   // For explicit control, the expanded flag takes precedence.
-  if (opts.transport === "sse" && !opts.expanded) {
+  if (opts.transport === "streamable" && !opts.expanded) {
     const deferredTools = buildDeferredTools();
     tools.length = 0;
     tools.push(...deferredTools);
@@ -1018,10 +1034,11 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (opts.transport === "sse") {
-    await startSseServer(opts.port, handler);
+  if (opts.transport === "streamable") {
+    await startStreamableHttp(opts.port, handler, { auth: opts.auth });
+    const authLabel = opts.auth ? ", OAuth enabled" : "";
     process.stderr.write(
-      `unicli MCP server v${VERSION} — ${adapterCount} sites, ${commandCount} commands (${tools.length} tools registered, mode=${mode})\n`,
+      `unicli MCP server v${VERSION} — ${adapterCount} sites, ${commandCount} commands (${tools.length} tools, mode=${mode}, transport=streamable${authLabel})\n`,
     );
     return;
   }

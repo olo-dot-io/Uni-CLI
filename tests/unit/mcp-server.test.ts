@@ -101,11 +101,13 @@ describe("MCP server — smart default mode", () => {
     expect(response.id).toBe(1);
 
     const result = response.result as Record<string, unknown>;
-    expect(result.protocolVersion).toBe("2024-11-05");
+    expect(result.protocolVersion).toBe("2025-03-26");
     expect(result.serverInfo).toEqual(
       expect.objectContaining({ name: "unicli" }),
     );
-    expect(result.capabilities).toEqual(expect.objectContaining({ tools: {} }));
+    expect(result.capabilities).toEqual(
+      expect.objectContaining({ tools: { listChanged: false } }),
+    );
   });
 
   it("lists exactly 4 tools in smart default mode", async () => {

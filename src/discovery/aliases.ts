@@ -220,9 +220,19 @@ export const DOMAIN_ALIASES: ReadonlyMap<string, readonly string[]> = new Map([
   ["paper", ["paper", "thesis", "research"]],
   ["research", ["research", "paper", "academic"]],
 
+  // Entertainment
+  ["电影", ["movie", "film", "cinema", "hot", "maoyan"]],
+  ["电视剧", ["drama", "tv", "series"]],
+  ["游戏", ["game", "gaming", "steam"]],
+  ["动漫", ["anime", "manga", "bangumi"]],
+  ["小说", ["novel", "fiction", "read"]],
+  ["movie", ["movie", "film", "hot"]],
+  ["game", ["game", "gaming", "steam"]],
+
   // Weather / Utility
   ["天气", ["weather", "forecast", "temperature"]],
   ["翻译", ["translate", "translation"]],
+  ["汇总", ["summary", "digest", "overview"]],
   ["weather", ["weather", "forecast"]],
 
   // macOS / Desktop
@@ -230,6 +240,7 @@ export const DOMAIN_ALIASES: ReadonlyMap<string, readonly string[]> = new Map([
   ["剪贴板", ["clipboard", "paste", "copy"]],
   ["提醒", ["reminder", "alarm", "notification"]],
   ["日历", ["calendar", "event", "schedule"]],
+  ["定时", ["schedule", "timer", "cron"]],
   ["screenshot", ["screenshot", "capture"]],
   ["clipboard", ["clipboard", "copy", "paste"]],
 ]);
