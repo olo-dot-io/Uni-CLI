@@ -246,7 +246,7 @@ function buildInputSchema(cmd: AdapterCommand): JsonSchemaObject {
  * Note: we return a simple nested schema rather than a full JSON Schema
  * (which would need a deeper `items` type for `array`). Most MCP clients
  * only inspect the top-level type; Anthropic's client is permissive. If a
- * strict validator rejects this, it will still fall back to the lazy tool
+ * strict validator rejects this, it will still fall back to the default tool
  * path via `run_command`.
  */
 function buildOutputSchema(cmd: AdapterCommand): JsonSchemaObject {
@@ -310,7 +310,9 @@ function buildExpandedTools(): McpTool[] {
   // tool name, the first one wins and the second is silently shadowed. We
   // don't expect this in practice (most adapters use lowercase alphanumeric
   // + hyphen names), but flag it on stderr so it gets noticed.
-  const seen = new Set<string>();
+  // Seed with the 3 default tool names to prevent adapter commands from
+  // overwriting them if they happen to produce an identical normalized name.
+  const seen = new Set<string>(["unicli_run", "unicli_list", "unicli_discover"]);
 
   for (const adapter of getAllAdapters()) {
     for (const [cmdName, cmd] of Object.entries(adapter.commands)) {
@@ -469,13 +471,13 @@ async function runResolvedCommand(
  * serialized payload exceeds MAX_RESULT_SIZE_CHARS (10 KB). This tells
  * Claude Code to accept large payloads without truncation.
  */
-function annotateIfLarge(result: McpToolResult): McpToolResult {
+export function annotateIfLarge(result: McpToolResult): McpToolResult {
   const totalChars = result.content.reduce((sum, c) => sum + c.text.length, 0);
   if (totalChars > MAX_RESULT_SIZE_CHARS) {
     return {
       ...result,
       _meta: { "anthropic/maxResultSizeChars": 500_000 },
-    } as McpToolResult;
+    };
   }
   return result;
 }
@@ -536,7 +538,7 @@ async function handleRunCommand(
 /**
  * Expanded-tool dispatcher — parse `unicli_<site>_<command>` back to its
  * components and call the resolver. Returns `undefined` when the tool name
- * is not in expanded form, so the caller can fall through to lazy-tool
+ * is not in expanded form, so the caller can fall through to default-tool
  * handling (list_adapters / run_command).
  */
 async function handleExpandedTool(
@@ -800,19 +802,23 @@ async function startStdio(
 async function startHttp(
   handler: ReturnType<typeof buildHandler>,
   port: number,
-  toolCount: number,
 ): Promise<void> {
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
     if (req.method === "GET" && (req.url === "/" || req.url === "/mcp")) {
       res.writeHead(200, { "Content-Type": "application/json" });
       const adapterCount = getAllAdapters().length;
       const commandCount = listCommands().length;
+      // Compute actual expanded tool count: 3 default tools + all adapter commands.
+      let expandedCount = 3; // default tools
+      for (const adapter of getAllAdapters()) {
+        expandedCount += Object.keys(adapter.commands).length;
+      }
       res.end(
         JSON.stringify({
           status: "ok",
           adapters: adapterCount,
           commands: commandCount,
-          tools: { default: 3, expanded: toolCount },
+          tools: { default: 3, expanded: expandedCount },
           version: VERSION,
         }),
       );
@@ -824,8 +830,25 @@ async function startHttp(
       return;
     }
 
+    const MAX_BODY = 1_048_576; // 1 MB
     const chunks: Buffer[] = [];
-    req.on("data", (chunk: Buffer) => chunks.push(chunk));
+    let bodySize = 0;
+    req.on("data", (chunk: Buffer) => {
+      bodySize += chunk.length;
+      if (bodySize > MAX_BODY) {
+        res.writeHead(413, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: null,
+            error: { code: -32600, message: "Request too large" },
+          }),
+        );
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
     req.on("end", async () => {
       const body = Buffer.concat(chunks).toString("utf-8");
       let parsed: JsonRpcRequest;
@@ -890,7 +913,7 @@ async function main(): Promise<void> {
   const commandCount = listCommands().length;
 
   if (opts.transport === "http") {
-    await startHttp(handler, opts.port, tools.length);
+    await startHttp(handler, opts.port);
     process.stderr.write(
       `unicli MCP server v${VERSION} — ${adapterCount} sites, ${commandCount} commands (${tools.length} tools registered, mode=${mode})\n`,
     );

@@ -1,10 +1,10 @@
 /**
- * Unit tests for truncateDescription — the token-budget helper exported
+ * Unit tests for truncateDescription and annotateIfLarge — helpers exported
  * from src/mcp/server.ts.
  */
 
 import { describe, it, expect } from "vitest";
-import { truncateDescription } from "../../src/mcp/server.js";
+import { truncateDescription, annotateIfLarge } from "../../src/mcp/server.js";
 
 function approxTokens(text: string): number {
   return Math.ceil(text.split(/\s+/).filter(Boolean).length * 1.3);
@@ -38,5 +38,39 @@ describe("truncateDescription", () => {
 
   it("handles empty string", () => {
     expect(truncateDescription("")).toBe("");
+  });
+});
+
+describe("annotateIfLarge", () => {
+  it("passes through small results unchanged (no _meta field)", () => {
+    const result = {
+      content: [{ type: "text" as const, text: "short result" }],
+    };
+    const out = annotateIfLarge(result);
+    expect(out._meta).toBeUndefined();
+    expect(out.content).toStrictEqual(result.content);
+  });
+
+  it("annotates large results with anthropic/maxResultSizeChars", () => {
+    // Build a string larger than 10 KB (10_000 chars)
+    const bigText = "x".repeat(10_001);
+    const result = {
+      content: [{ type: "text" as const, text: bigText }],
+    };
+    const out = annotateIfLarge(result);
+    expect(out._meta).toBeDefined();
+    expect(out._meta!["anthropic/maxResultSizeChars"]).toBe(500_000);
+  });
+
+  it("annotates large error results with _meta", () => {
+    const bigText = "e".repeat(10_001);
+    const result = {
+      content: [{ type: "text" as const, text: bigText }],
+      isError: true as const,
+    };
+    const out = annotateIfLarge(result);
+    expect(out._meta).toBeDefined();
+    expect(out._meta!["anthropic/maxResultSizeChars"]).toBe(500_000);
+    expect(out.isError).toBe(true);
   });
 });
