@@ -44,10 +44,6 @@ unicli ffmpeg compress video.mp4         # Compress video
 
 Every command outputs **structured JSON when piped** — zero flags needed. Every error emits structured JSON to stderr with the adapter path, the failing step, and a fix suggestion. **~80 tokens per call.**
 
-## Why
-
-AI agents are probabilistic. Software is deterministic. The gap between "probably right" and "right" is where systems break — each off-canonical tool call increases the next failure probability by 22.7pp ([Lee 2026](https://arxiv.org/abs/2602.19008)). Uni-CLI closes that gap: 20-line YAML adapters compile intent into deterministic action, with formal error recovery when the internet inevitably changes. Grounded in [Rice's theorem, Lehman's laws, and Shannon's source coding](./docs/THEORY.md).
-
 ```mermaid
 graph LR
     A[AI Agent] -->|"unicli search 'intent'"| B["Uni-CLI"]
@@ -108,28 +104,28 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
 <br>
 <table>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=x.com&sz=32" width="16"> <b>Twitter</b> <sup>35</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=reddit.com&sz=32" width="16"> <b>Reddit</b> <sup>20</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=instagram.com&sz=32" width="16"> <b>Instagram</b> <sup>26</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=tiktok.com&sz=32" width="16"> <b>TikTok</b> <sup>16</sup></td>
+    <td><img src="https://cdn.simpleicons.org/x/000000" width="16"> <b>Twitter</b> <sup>35</sup></td>
+    <td><img src="https://cdn.simpleicons.org/reddit/FF4500" width="16"> <b>Reddit</b> <sup>20</sup></td>
+    <td><img src="https://cdn.simpleicons.org/instagram/E4405F" width="16"> <b>Instagram</b> <sup>26</sup></td>
+    <td><img src="https://cdn.simpleicons.org/tiktok/000000" width="16"> <b>TikTok</b> <sup>16</sup></td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=facebook.com&sz=32" width="16"> <b>Facebook</b> <sup>12</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=bsky.app&sz=32" width="16"> <b>Bluesky</b> <sup>12</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=medium.com&sz=32" width="16"> <b>Medium</b> <sup>5</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=threads.net&sz=32" width="16"> <b>Threads</b> <sup>2</sup></td>
+    <td><img src="https://cdn.simpleicons.org/facebook/0866FF" width="16"> <b>Facebook</b> <sup>12</sup></td>
+    <td><img src="https://cdn.simpleicons.org/bluesky/0085FF" width="16"> <b>Bluesky</b> <sup>12</sup></td>
+    <td><img src="https://cdn.simpleicons.org/medium/000000" width="16"> <b>Medium</b> <sup>5</sup></td>
+    <td><img src="https://cdn.simpleicons.org/threads/000000" width="16"> <b>Threads</b> <sup>2</sup></td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=mastodon.social&sz=32" width="16"> <b>Mastodon</b> <sup>4</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=bilibili.com&sz=32" width="16"> <b>Bilibili</b> <sup>18</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=weibo.com&sz=32" width="16"> <b>Weibo</b> <sup>10</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=zhihu.com&sz=32" width="16"> <b>Zhihu</b> <sup>21</sup></td>
+    <td><img src="https://cdn.simpleicons.org/mastodon/6364FF" width="16"> <b>Mastodon</b> <sup>4</sup></td>
+    <td><img src="https://cdn.simpleicons.org/bilibili/00A1D6" width="16"> <b>Bilibili</b> <sup>18</sup></td>
+    <td><img src="https://cdn.simpleicons.org/sinaweibo/E6162D" width="16"> <b>Weibo</b> <sup>10</sup></td>
+    <td><img src="https://cdn.simpleicons.org/zhihu/0084FF" width="16"> <b>Zhihu</b> <sup>21</sup></td>
   </tr>
   <tr>
     <td><img src="https://www.google.com/s2/favicons?domain=xiaohongshu.com&sz=32" width="16"> <b>Xiaohongshu</b> <sup>24</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=douyin.com&sz=32" width="16"> <b>Douyin</b> <sup>23</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=okjike.com&sz=32" width="16"> <b>Jike</b> <sup>10</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=douban.com&sz=32" width="16"> <b>Douban</b> <sup>12</sup></td>
+    <td><img src="https://cdn.simpleicons.org/douban/007722" width="16"> <b>Douban</b> <sup>12</sup></td>
   </tr>
   <tr>
     <td><img src="https://www.google.com/s2/favicons?domain=v2ex.com&sz=32" width="16"> <b>V2EX</b> <sup>12</sup></td>
@@ -161,33 +157,33 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
 <br>
 <table>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=news.ycombinator.com&sz=32" width="16"> <b>Hacker News</b> <sup>10</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=stackoverflow.com&sz=32" width="16"> <b>Stack Overflow</b> <sup>6</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=dev.to&sz=32" width="16"> <b>DEV</b> <sup>5</sup></td>
+    <td><img src="https://cdn.simpleicons.org/ycombinator/FF6600" width="16"> <b>Hacker News</b> <sup>10</sup></td>
+    <td><img src="https://cdn.simpleicons.org/stackoverflow/F58025" width="16"> <b>Stack Overflow</b> <sup>6</sup></td>
+    <td><img src="https://cdn.simpleicons.org/devdotto/0A0A0A" width="16"> <b>DEV</b> <sup>5</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=lobste.rs&sz=32" width="16"> <b>Lobsters</b> <sup>5</sup></td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=producthunt.com&sz=32" width="16"> <b>Product Hunt</b> <sup>5</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=github.com&sz=32" width="16"> <b>GitHub Trending</b> <sup>3</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=substack.com&sz=32" width="16"> <b>Substack</b> <sup>4</sup></td>
+    <td><img src="https://cdn.simpleicons.org/producthunt/DA552F" width="16"> <b>Product Hunt</b> <sup>5</sup></td>
+    <td><img src="https://cdn.simpleicons.org/github/181717" width="16"> <b>GitHub Trending</b> <sup>3</sup></td>
+    <td><img src="https://cdn.simpleicons.org/substack/FF6719" width="16"> <b>Substack</b> <sup>4</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=lesswrong.com&sz=32" width="16"> <b>LessWrong</b> <sup>15</sup></td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=npmjs.com&sz=32" width="16"> <b>npm</b> <sup>4</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=pypi.org&sz=32" width="16"> <b>PyPI</b> <sup>3</sup></td>
+    <td><img src="https://cdn.simpleicons.org/npm/CB3837" width="16"> <b>npm</b> <sup>4</sup></td>
+    <td><img src="https://cdn.simpleicons.org/pypi/3775A9" width="16"> <b>PyPI</b> <sup>3</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=crates.io&sz=32" width="16"> <b>crates.io</b> <sup>3</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=cocoapods.org&sz=32" width="16"> <b>CocoaPods</b> <sup>2</sup></td>
+    <td><img src="https://cdn.simpleicons.org/cocoapods/EE3322" width="16"> <b>CocoaPods</b> <sup>2</sup></td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=brew.sh&sz=32" width="16"> <b>Homebrew</b> <sup>2</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=gitlab.com&sz=32" width="16"> <b>GitLab</b> <sup>3</sup></td>
+    <td><img src="https://cdn.simpleicons.org/homebrew/FBB040" width="16"> <b>Homebrew</b> <sup>2</sup></td>
+    <td><img src="https://cdn.simpleicons.org/gitlab/FC6D26" width="16"> <b>GitLab</b> <sup>3</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=gitee.com&sz=32" width="16"> <b>Gitee</b> <sup>3</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=npmtrends.com&sz=32" width="16"> <b>npm trends</b> <sup>2</sup></td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=hub.docker.com&sz=32" width="16"> <b>Docker Hub</b> <sup>3</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=ycombinator.com&sz=32" width="16"> <b>Y Combinator</b> <sup>1</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=itch.io&sz=32" width="16"> <b>itch.io</b> <sup>3</sup></td>
+    <td><img src="https://cdn.simpleicons.org/docker/2496ED" width="16"> <b>Docker Hub</b> <sup>3</sup></td>
+    <td><img src="https://cdn.simpleicons.org/ycombinator/FF6600" width="16"> <b>Y Combinator</b> <sup>1</sup></td>
+    <td><img src="https://cdn.simpleicons.org/itchdotio/FA5C5C" width="16"> <b>itch.io</b> <sup>3</sup></td>
     <td></td>
   </tr>
 </table>
@@ -198,14 +194,14 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
 <!-- =========================== -->
 
 <details>
-<summary><strong>AI & ML — 17 sites</strong></summary>
+<summary><strong>AI & ML — 16 sites</strong></summary>
 <br>
 <table>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=gemini.google.com&sz=32" width="16"> <b>Gemini</b> <sup>5</sup></td>
+    <td><img src="https://cdn.simpleicons.org/googlegemini/8E75B2" width="16"> <b>Gemini</b> <sup>5</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=grok.x.ai&sz=32" width="16"> <b>Grok</b> <sup>1</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=deepseek.com&sz=32" width="16"> <b>DeepSeek</b> <sup>2</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=perplexity.ai&sz=32" width="16"> <b>Perplexity</b> <sup>1</sup></td>
+    <td><img src="https://cdn.simpleicons.org/perplexity/1FB8CD" width="16"> <b>Perplexity</b> <sup>1</sup></td>
   </tr>
   <tr>
     <td><img src="https://www.google.com/s2/favicons?domain=doubao.com&sz=32" width="16"> <b>Doubao Web</b> <sup>9</sup></td>
@@ -215,9 +211,9 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
   </tr>
   <tr>
     <td><img src="https://www.google.com/s2/favicons?domain=yuanbao.tencent.com&sz=32" width="16"> <b>Yuanbao</b> <sup>3</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=ollama.com&sz=32" width="16"> <b>Ollama</b> <sup>4</sup></td>
+    <td><img src="https://cdn.simpleicons.org/ollama/000000" width="16"> <b>Ollama</b> <sup>4</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=openrouter.ai&sz=32" width="16"> <b>OpenRouter</b> <sup>2</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=huggingface.co&sz=32" width="16"> <b>Hugging Face</b> <sup>6</sup></td>
+    <td><img src="https://cdn.simpleicons.org/huggingface/FFD21E" width="16"> <b>Hugging Face</b> <sup>6</sup></td>
   </tr>
   <tr>
     <td><img src="https://www.google.com/s2/favicons?domain=replicate.com&sz=32" width="16"> <b>Replicate</b> <sup>3</sup></td>
@@ -237,15 +233,15 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
 <br>
 <table>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=youtube.com&sz=32" width="16"> <b>YouTube</b> <sup>9</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=twitch.tv&sz=32" width="16"> <b>Twitch</b> <sup>4</sup></td>
+    <td><img src="https://cdn.simpleicons.org/youtube/FF0000" width="16"> <b>YouTube</b> <sup>9</sup></td>
+    <td><img src="https://cdn.simpleicons.org/twitch/9146FF" width="16"> <b>Twitch</b> <sup>4</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=kuaishou.com&sz=32" width="16"> <b>Kuaishou</b> <sup>2</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=douyu.com&sz=32" width="16"> <b>Douyu</b> <sup>2</sup></td>
   </tr>
   <tr>
     <td><img src="https://www.google.com/s2/favicons?domain=channels.weixin.qq.com&sz=32" width="16"> <b>WeChat Channels</b> <sup>2</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=podcasts.apple.com&sz=32" width="16"> <b>Apple Podcasts</b> <sup>3</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=spotify.com&sz=32" width="16"> <b>Spotify</b> <sup>4</sup></td>
+    <td><img src="https://cdn.simpleicons.org/applepodcasts/9933CC" width="16"> <b>Apple Podcasts</b> <sup>3</sup></td>
+    <td><img src="https://cdn.simpleicons.org/spotify/1DB954" width="16"> <b>Spotify</b> <sup>4</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=music.163.com&sz=32" width="16"> <b>NetEase Music</b> <sup>4</sup></td>
   </tr>
 </table>
@@ -260,16 +256,16 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
 <br>
 <table>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=bloomberg.com&sz=32" width="16"> <b>Bloomberg</b> <sup>10</sup></td>
+    <td><img src="https://cdn.simpleicons.org/bloomberg/2800D7" width="16"> <b>Bloomberg</b> <sup>10</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=reuters.com&sz=32" width="16"> <b>Reuters</b> <sup>4</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=bbc.com&sz=32" width="16"> <b>BBC</b> <sup>4</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=cnn.com&sz=32" width="16"> <b>CNN</b> <sup>2</sup></td>
+    <td><img src="https://cdn.simpleicons.org/bbc/000000" width="16"> <b>BBC</b> <sup>4</sup></td>
+    <td><img src="https://cdn.simpleicons.org/cnn/CC0000" width="16"> <b>CNN</b> <sup>2</sup></td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=nytimes.com&sz=32" width="16"> <b>NYTimes</b> <sup>2</sup></td>
+    <td><img src="https://cdn.simpleicons.org/newyorktimes/000000" width="16"> <b>NYTimes</b> <sup>2</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=36kr.com&sz=32" width="16"> <b>36Kr</b> <sup>5</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=techcrunch.com&sz=32" width="16"> <b>TechCrunch</b> <sup>2</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=theverge.com&sz=32" width="16"> <b>The Verge</b> <sup>2</sup></td>
+    <td><img src="https://cdn.simpleicons.org/techcrunch/029E74" width="16"> <b>TechCrunch</b> <sup>2</sup></td>
+    <td><img src="https://cdn.simpleicons.org/theverge/000000" width="16"> <b>The Verge</b> <sup>2</sup></td>
   </tr>
   <tr>
     <td><img src="https://www.google.com/s2/favicons?domain=infoq.com&sz=32" width="16"> <b>InfoQ</b> <sup>2</sup></td>
@@ -295,9 +291,9 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
     <td><img src="https://www.google.com/s2/favicons?domain=finance.yahoo.com&sz=32" width="16"> <b>Yahoo Finance</b> <sup>3</sup></td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=binance.com&sz=32" width="16"> <b>Binance</b> <sup>3</sup></td>
+    <td><img src="https://cdn.simpleicons.org/binance/F0B90B" width="16"> <b>Binance</b> <sup>3</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=futunn.com&sz=32" width="16"> <b>Futu</b> <sup>2</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=coinbase.com&sz=32" width="16"> <b>Coinbase</b> <sup>2</sup></td>
+    <td><img src="https://cdn.simpleicons.org/coinbase/0052FF" width="16"> <b>Coinbase</b> <sup>2</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=eastmoney.com&sz=32" width="16"> <b>Eastmoney</b> <sup>4</sup></td>
   </tr>
 </table>
@@ -312,7 +308,7 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
 <br>
 <table>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=amazon.com&sz=32" width="16"> <b>Amazon</b> <sup>8</sup></td>
+    <td><img src="https://cdn.simpleicons.org/amazon/FF9900" width="16"> <b>Amazon</b> <sup>8</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=jd.com&sz=32" width="16"> <b>JD</b> <sup>3</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=taobao.com&sz=32" width="16"> <b>Taobao</b> <sup>2</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=1688.com&sz=32" width="16"> <b>1688</b> <sup>3</sup></td>
@@ -325,7 +321,7 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
   </tr>
   <tr>
     <td><img src="https://www.google.com/s2/favicons?domain=dianping.com&sz=32" width="16"> <b>Dianping</b> <sup>2</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=coupang.com&sz=32" width="16"> <b>Coupang</b> <sup>3</sup></td>
+    <td><img src="https://cdn.simpleicons.org/coupang/BE1216" width="16"> <b>Coupang</b> <sup>3</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=ctrip.com&sz=32" width="16"> <b>Ctrip</b> <sup>2</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=xianyu.com&sz=32" width="16"> <b>Xianyu</b> <sup>3</sup></td>
   </tr>
@@ -348,7 +344,7 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
 <table>
   <tr>
     <td><img src="https://www.google.com/s2/favicons?domain=zhipin.com&sz=32" width="16"> <b>Boss Zhipin</b> <sup>14</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=linkedin.com&sz=32" width="16"> <b>LinkedIn</b> <sup>4</sup></td>
+    <td><img src="https://cdn.simpleicons.org/linkedin/0A66C2" width="16"> <b>LinkedIn</b> <sup>4</sup></td>
     <td></td>
     <td></td>
   </tr>
@@ -360,29 +356,29 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
 <!-- =========================== -->
 
 <details>
-<summary><strong>Education & Reference — 15 sites</strong></summary>
+<summary><strong>Education & Reference — 14 sites</strong></summary>
 <br>
 <table>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=google.com&sz=32" width="16"> <b>Google</b> <sup>4</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=wikipedia.org&sz=32" width="16"> <b>Wikipedia</b> <sup>5</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=arxiv.org&sz=32" width="16"> <b>arXiv</b> <sup>3</sup></td>
+    <td><img src="https://cdn.simpleicons.org/google/4285F4" width="16"> <b>Google</b> <sup>4</sup></td>
+    <td><img src="https://cdn.simpleicons.org/wikipedia/000000" width="16"> <b>Wikipedia</b> <sup>5</sup></td>
+    <td><img src="https://cdn.simpleicons.org/arxiv/B31B1B" width="16"> <b>arXiv</b> <sup>3</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=cnki.net&sz=32" width="16"> <b>CNKI</b> <sup>1</sup></td>
   </tr>
   <tr>
     <td><img src="https://www.google.com/s2/favicons?domain=chaoxing.com&sz=32" width="16"> <b>Chaoxing</b> <sup>2</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=dictionary.com&sz=32" width="16"> <b>Dictionary</b> <sup>3</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=imdb.com&sz=32" width="16"> <b>IMDb</b> <sup>7</sup></td>
+    <td><img src="https://cdn.simpleicons.org/imdb/F5C518" width="16"> <b>IMDb</b> <sup>7</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=paperreview.com&sz=32" width="16"> <b>PaperReview</b> <sup>3</sup></td>
   </tr>
   <tr>
     <td><img src="https://www.google.com/s2/favicons?domain=exchangerate-api.com&sz=32" width="16"> <b>Exchange Rate</b> <sup>2</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=ipinfo.io&sz=32" width="16"> <b>IP Info</b> <sup>1</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=qweather.com&sz=32" width="16"> <b>QWeather</b> <sup>2</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=unsplash.com&sz=32" width="16"> <b>Unsplash</b> <sup>2</sup></td>
+    <td><img src="https://cdn.simpleicons.org/unsplash/000000" width="16"> <b>Unsplash</b> <sup>2</sup></td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=pexels.com&sz=32" width="16"> <b>Pexels</b> <sup>2</sup></td>
+    <td><img src="https://cdn.simpleicons.org/pexels/05A081" width="16"> <b>Pexels</b> <sup>2</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=sspai.com&sz=32" width="16"> <b>Sspai</b> <sup>2</sup></td>
     <td></td>
     <td></td>
@@ -395,14 +391,14 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
 <!-- =========================== -->
 
 <details>
-<summary><strong>Other Web — 16 sites</strong></summary>
+<summary><strong>Other Web — 14 sites</strong></summary>
 <br>
 <table>
   <tr>
     <td><img src="https://www.google.com/s2/favicons?domain=ones.com&sz=32" width="16"> <b>Ones</b> <sup>11</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=pixiv.net&sz=32" width="16"> <b>Pixiv</b> <sup>6</sup></td>
+    <td><img src="https://cdn.simpleicons.org/pixiv/0096FA" width="16"> <b>Pixiv</b> <sup>6</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=hupu.com&sz=32" width="16"> <b>Hupu</b> <sup>7</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=steampowered.com&sz=32" width="16"> <b>Steam</b> <sup>6</sup></td>
+    <td><img src="https://cdn.simpleicons.org/steam/000000" width="16"> <b>Steam</b> <sup>6</sup></td>
   </tr>
   <tr>
     <td><img src="https://www.google.com/s2/favicons?domain=band.us&sz=32" width="16"> <b>Band</b> <sup>4</sup></td>
@@ -418,7 +414,7 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
   </tr>
   <tr>
     <td><img src="https://www.google.com/s2/favicons?domain=jianyu.com&sz=32" width="16"> <b>Jianyu</b> <sup>1</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=weixin.qq.com&sz=32" width="16"> <b>WeChat</b> <sup>4</sup></td>
+    <td><img src="https://cdn.simpleicons.org/wechat/07C160" width="16"> <b>WeChat</b> <sup>4</sup></td>
     <td></td>
     <td></td>
   </tr>
@@ -455,7 +451,7 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
     <td><img src="https://cdn.simpleicons.org/gimp/5C5543" width="16"> <b>GIMP</b> <sup>12</sup></td>
     <td><img src="https://cdn.simpleicons.org/inkscape/000000" width="16"> <b>Inkscape</b> <sup>3</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=imagemagick.org&sz=32" width="16"> <b>ImageMagick</b> <sup>6</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=krita.org&sz=32" width="16"> <b>Krita</b> <sup>4</sup></td>
+    <td><img src="https://cdn.simpleicons.org/krita/3BABFF" width="16"> <b>Krita</b> <sup>4</sup></td>
   </tr>
   <tr>
     <td><img src="https://cdn.simpleicons.org/sketch/F7B500" width="16"> <b>Sketch</b> <sup>3</sup></td>
@@ -473,7 +469,7 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
     <td><img src="https://cdn.simpleicons.org/audacity/0000CC" width="16"> <b>Audacity</b> <sup>8</sup></td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=musescore.org&sz=32" width="16"> <b>MuseScore</b> <sup>5</sup></td>
+    <td><img src="https://cdn.simpleicons.org/musescore/1A70B8" width="16"> <b>MuseScore</b> <sup>5</sup></td>
     <td></td>
     <td></td>
     <td></td>
@@ -483,7 +479,7 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
   </tr>
   <tr>
     <td><img src="https://cdn.simpleicons.org/obsstudio/302E31" width="16"> <b>OBS Studio</b> <sup>8</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=zotero.org&sz=32" width="16"> <b>Zotero</b> <sup>8</sup></td>
+    <td><img src="https://cdn.simpleicons.org/zotero/CC2936" width="16"> <b>Zotero</b> <sup>8</sup></td>
     <td><img src="https://cdn.simpleicons.org/visualstudiocode/007ACC" width="16"> <b>VS Code</b> <sup>3</sup></td>
     <td><img src="https://cdn.simpleicons.org/obsidian/7C3AED" width="16"> <b>Obsidian</b> <sup>3</sup></td>
   </tr>
@@ -506,11 +502,11 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
     <td><img src="https://cdn.simpleicons.org/googlechrome/4285F4" width="16"> <b>Chrome</b> <sup>2</sup></td>
     <td><img src="https://cdn.simpleicons.org/zoom/0B5CFF" width="16"> <b>Zoom</b> <sup>2</sup></td>
     <td><img src="https://www.google.com/s2/favicons?domain=wiremock.org&sz=32" width="16"> <b>WireMock</b> <sup>5</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=adguard.com&sz=32" width="16"> <b>AdGuard Home</b> <sup>5</sup></td>
+    <td><img src="https://cdn.simpleicons.org/adguard/68BC71" width="16"> <b>AdGuard Home</b> <sup>5</sup></td>
   </tr>
   <tr>
     <td><img src="https://www.google.com/s2/favicons?domain=comfyui.com&sz=32" width="16"> <b>ComfyUI</b> <sup>4</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=steampowered.com&sz=32" width="16"> <b>Slay the Spire II</b> <sup>6</sup></td>
+    <td><img src="https://cdn.simpleicons.org/steam/000000" width="16"> <b>Slay the Spire II</b> <sup>6</sup></td>
     <td></td>
     <td></td>
   </tr>
@@ -534,22 +530,22 @@ All via Chrome DevTools Protocol — no extensions, no hacks.
     <td><code>9226</code></td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=openai.com&sz=32" width="16"> <b>Codex</b></td>
+    <td><img src="https://cdn.simpleicons.org/openai/412991" width="16"> <b>Codex</b></td>
     <td>ask, send, read, model, extract-diff, new, status, screenshot, dump, history, export</td>
     <td><code>9222</code></td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=chat.openai.com&sz=32" width="16"> <b>ChatGPT</b></td>
+    <td><img src="https://cdn.simpleicons.org/openai/412991" width="16"> <b>ChatGPT</b></td>
     <td>ask, send, read, model, new, status, screenshot, dump</td>
     <td><code>9236</code></td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=notion.so&sz=32" width="16"> <b>Notion</b></td>
+    <td><img src="https://cdn.simpleicons.org/notion/000000" width="16"> <b>Notion</b></td>
     <td>search, read, write, new, status, sidebar, favorites, export, screenshot</td>
     <td><code>9230</code></td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=discord.com&sz=32" width="16"> <b>Discord</b></td>
+    <td><img src="https://cdn.simpleicons.org/discord/5865F2" width="16"> <b>Discord</b></td>
     <td>servers, channels, read, send, search, members, status, delete</td>
     <td><code>9232</code></td>
   </tr>
@@ -596,9 +592,9 @@ Passthrough wrappers that normalize output to JSON:
   </tr>
   <tr>
     <td><img src="https://www.google.com/s2/favicons?domain=dingtalk.com&sz=32" width="16"> DingTalk</td>
-    <td><img src="https://www.google.com/s2/favicons?domain=huggingface.co&sz=32" width="16"> HF CLI</td>
-    <td><img src="https://www.google.com/s2/favicons?domain=anthropic.com&sz=32" width="16"> Claude Code</td>
-    <td><img src="https://www.google.com/s2/favicons?domain=openai.com&sz=32" width="16"> Codex CLI</td>
+    <td><img src="https://cdn.simpleicons.org/huggingface/FFD21E" width="16"> HF CLI</td>
+    <td><img src="https://cdn.simpleicons.org/anthropic/191919" width="16"> Claude Code</td>
+    <td><img src="https://cdn.simpleicons.org/openai/412991" width="16"> Codex CLI</td>
   </tr>
   <tr>
     <td><img src="https://www.google.com/s2/favicons?domain=opencode.ai&sz=32" width="16"> OpenCode</td>
@@ -609,17 +605,17 @@ Passthrough wrappers that normalize output to JSON:
   <tr>
     <td><img src="https://cdn.simpleicons.org/digitalocean/0080FF" width="16"> DigitalOcean</td>
     <td><img src="https://cdn.simpleicons.org/netlify/00C7B7" width="16"> Netlify</td>
-    <td><img src="https://www.google.com/s2/favicons?domain=railway.app&sz=32" width="16"> Railway</td>
+    <td><img src="https://cdn.simpleicons.org/railway/0B0D0E" width="16"> Railway</td>
     <td><img src="https://www.google.com/s2/favicons?domain=fly.io&sz=32" width="16"> Fly.io</td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=planetscale.com&sz=32" width="16"> PlanetScale</td>
+    <td><img src="https://cdn.simpleicons.org/planetscale/000000" width="16"> PlanetScale</td>
     <td><img src="https://www.google.com/s2/favicons?domain=neon.tech&sz=32" width="16"> Neon</td>
     <td><img src="https://cdn.simpleicons.org/slack/4A154B" width="16"> Slack</td>
     <td><img src="https://www.google.com/s2/favicons?domain=kimi.ai&sz=32" width="16"> Kimi CLI</td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=workspace.google.com&sz=32" width="16"> GWS</td>
+    <td><img src="https://cdn.simpleicons.org/google/4285F4" width="16"> GWS</td>
     <td><img src="https://www.google.com/s2/favicons?domain=deepagents.ai&sz=32" width="16"> DeepAgents</td>
     <td><img src="https://cdn.simpleicons.org/stripe/635BFF" width="16"> Stripe</td>
     <td><img src="https://cdn.simpleicons.org/firebase/DD2C00" width="16"> Firebase</td>
@@ -681,7 +677,7 @@ Passthrough wrappers that normalize output to JSON:
 <!-- =========================== -->
 
 <details>
-<summary><strong>Agent Platforms — 6 integrations</strong></summary>
+<summary><strong>Agent Platforms — 5 integrations</strong></summary>
 <br>
 <table>
   <tr>
@@ -690,8 +686,8 @@ Passthrough wrappers that normalize output to JSON:
     <td><img src="https://www.google.com/s2/favicons?domain=stagehand.dev&sz=32" width="16"> <b>Stagehand</b> <sup>1</sup></td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=github.com&sz=32" width="16"> <b>OpenHarness</b> <sup>2</sup></td>
-    <td><img src="https://www.google.com/s2/favicons?domain=openai.com&sz=32" width="16"> <b>CUA</b> <sup>2</sup></td>
+    <td><img src="https://cdn.simpleicons.org/github/181717" width="16"> <b>OpenHarness</b> <sup>2</sup></td>
+    <td><img src="https://cdn.simpleicons.org/openai/412991" width="16"> <b>CUA</b> <sup>2</sup></td>
     <td></td>
   </tr>
 </table>
