@@ -37,6 +37,12 @@ tmp/
 .tmp/
 *.patch
 
+# Superpowers / plugin skills
+.agents/
+.windsurf/
+skills/
+skills-lock.json
+
 # Extension build
 extension/dist/
 
