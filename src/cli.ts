@@ -41,6 +41,7 @@ import { registerHubCommand } from "./commands/hub.js";
 import { registerExtCommand } from "./commands/ext.js";
 import { registerTestGenCommand } from "./commands/test-gen.js";
 import { registerStatusCommand } from "./commands/status.js";
+import { registerSchemaCommand } from "./commands/schema.js";
 import { recordUsage } from "./runtime/usage-ledger.js";
 import { emitHook } from "./hooks.js";
 import { checkForUpdates } from "./engine/update-check.js";
@@ -288,6 +289,9 @@ export async function createCli(): Promise<Command> {
   registerExtCommand(program);
   registerTestGenCommand(program);
   registerStatusCommand(program);
+
+  // Register schema command — JSON Schema for adapter input/output
+  registerSchemaCommand(program);
 
   // Register "test" command — run all commands for a site
   program
