@@ -33,6 +33,10 @@
     "format:check": "prettier --check .",
     "lint:context": "bash scripts/lint-context.sh",
     "build:manifest": "tsx scripts/build-manifest.js",
+    "changeset": "changeset",
+    "changeset:version": "changeset version",
+    "changeset:status": "changeset status --since=origin/main",
+    "verify:changesets": "tsx scripts/verify-changesets.ts",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "verify": "npm run format:check && npm run typecheck && npm run lint && npm run lint:context && npm run build:manifest && npm run test && npm run build",
     "verify:clean": "npm run clean && npm run verify",
@@ -85,6 +89,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.30.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.6.0",
     "@types/turndown": "^5.0.6",

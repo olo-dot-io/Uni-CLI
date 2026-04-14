@@ -73,3 +73,28 @@ jobs:
 
       - name: Adapter integration tests
         run: npm run test:adapter
+
+  verify-changesets:
+    name: Verify Changesets
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify changeset present for src/ changes
+        env:
+          BASE_REF: origin/${{ github.base_ref }}
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1
+          npm run verify:changesets
