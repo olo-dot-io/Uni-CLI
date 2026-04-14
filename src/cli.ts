@@ -48,6 +48,28 @@ import { emitHook } from "./hooks.js";
 import { checkForUpdates } from "./engine/update-check.js";
 import type { OutputFormat } from "./types.js";
 
+/**
+ * Apply the `--json` deprecation alias.
+ *
+ * Exported so unit tests can exercise the alias logic without booting the
+ * full Commander program. Walks up to the root `Command` so nested
+ * subcommands still read `format: "json"` from `program.opts()`.
+ */
+export function applyJsonAlias(cmd: Command): void {
+  // Walk to the root — Commander stores shared opts on the program itself.
+  let root: Command = cmd;
+  while (root.parent) {
+    root = root.parent;
+  }
+  const opts = root.opts() as { format?: string };
+  if (!opts.format) {
+    root.setOptionValue("format", "json");
+  }
+  process.stderr.write(
+    "[deprecation] --json is deprecated; use -f json (will be removed in v0.213)\n",
+  );
+}
+
 export async function createCli(): Promise<Command> {
   const program = new Command();
 
@@ -64,7 +86,22 @@ export async function createCli(): Promise<Command> {
       "-f, --format <format>",
       "output format: table, json, yaml, csv, md",
     )
+    .option(
+      "--json",
+      "[deprecated] alias for -f json; removed in v0.213",
+      false,
+    )
     .option("-v, --verbose", "show pipeline debug steps");
+
+  // --json alias: rewrite into -f json and warn to stderr so piped callers
+  // keep working without polluting stdout. We handle this in preAction so
+  // subcommand .action()s observe the canonical --format value.
+  program.hook("preAction", (thisCommand) => {
+    const opts = thisCommand.opts() as { json?: boolean; format?: string };
+    if (opts.json) {
+      applyJsonAlias(thisCommand);
+    }
+  });
 
   // Load YAML adapters synchronously, then TS adapters asynchronously
   const yamlCount = loadAllAdapters();
