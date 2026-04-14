@@ -165,7 +165,7 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
     <td>Hot, search, articles, Q&A, collections, topics, columns, user profiles</td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=xiaohongshu.com&sz=32" width="16"> <b>Xiaohongshu</b></td>
+    <td><img src="https://cdn.simpleicons.org/xiaohongshu/FF2442" width="16"> <b>Xiaohongshu</b></td>
     <td>comments, creator-note-detail, creator-notes, creator-notes-summary, creator-profile, creator-stats, download, feed, follow, hashtag, hot, like, note, notifications, profile, publish, save, search, suggest, trending, unfollow, user</td>
     <td>Hot, search, post, download, comments, creator stats, profile, trending</td>
   </tr>
@@ -175,7 +175,7 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
     <td>Profile, videos, collections, publish, stats, hashtags, drafts, location</td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=okjike.com&sz=32" width="16"> <b>Jike</b></td>
+    <td><img src="https://www.google.com/s2/favicons?domain=m.okjike.com&sz=32" width="16"> <b>Jike</b></td>
     <td>comment, create, feed, like, notifications, post, repost, search, topic, user</td>
     <td>Feed, search, post, comment, like, notifications, topics, user profiles</td>
   </tr>
@@ -210,7 +210,7 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
     <td>Knowledge communities: groups, search, topics, dynamics</td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=xiaoyuzhou.fm&sz=32" width="16"> <b>Xiaoyuzhou</b></td>
+    <td><img src="https://icons.duckduckgo.com/ip3/xiaoyuzhoufm.com.ico" width="16"> <b>Xiaoyuzhou</b></td>
     <td>episode, podcast, podcast-episodes</td>
     <td>Podcast episodes and details</td>
   </tr>
@@ -374,7 +374,7 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
     <td>Doubao web: chat, history, meeting summary and transcript</td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=notebooklm.google.com&sz=32" width="16"> <b>NotebookLM</b></td>
+    <td><img src="https://cdn.simpleicons.org/notebooklm/4285F4" width="16"> <b>NotebookLM</b></td>
     <td>current, get, history, list, note-list, notes-get, open, rpc, shared, source-fulltext, source-get, source-guide, source-list, status, summary</td>
     <td>Google NotebookLM: notebooks, sources, notes, summaries</td>
   </tr>
@@ -622,7 +622,7 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
     <td>Taobao hot deals, search</td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=1688.com&sz=32" width="16"> <b>1688</b></td>
+    <td><img src="https://icons.duckduckgo.com/ip3/1688.com.ico" width="16"> <b>1688</b></td>
     <td>item, search, store</td>
     <td>1688 wholesale: product search, item details, store listings</td>
   </tr>
@@ -662,7 +662,7 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
     <td>Ctrip travel: hot, search</td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=xianyu.com&sz=32" width="16"> <b>Xianyu</b></td>
+    <td><img src="https://www.google.com/s2/favicons?domain=goofish.com&sz=32" width="16"> <b>Xianyu</b></td>
     <td>chat, item, search</td>
     <td>Xianyu secondhand: search, item details, chat</td>
   </tr>
@@ -726,7 +726,7 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
     <td>Academic papers: search, details, trending by category</td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=cnki.net&sz=32" width="16"> <b>CNKI</b></td>
+    <td><img src="https://www.google.com/s2/favicons?domain=www.cnki.net&sz=32" width="16"> <b>CNKI</b></td>
     <td>search</td>
     <td>CNKI academic paper search</td>
   </tr>
@@ -838,7 +838,7 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
     <td>Ke.com real estate: secondhand, community listings</td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=maimai.cn&sz=32" width="16"> <b>Maimai</b></td>
+    <td><img src="https://icons.duckduckgo.com/ip3/maimai.cn.ico" width="16"> <b>Maimai</b></td>
     <td>search</td>
     <td>Maimai professional network: search</td>
   </tr>
@@ -848,12 +848,12 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
     <td>Feishu/Lark: calendar, docs, messaging, tasks</td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=slock.it&sz=32" width="16"> <b>Slock</b></td>
+    <td><img src="https://www.google.com/s2/favicons?domain=slock.io&sz=32" width="16"> <b>Slock</b></td>
     <td>servers</td>
     <td>Slock IoT: server management</td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=jianyu.com&sz=32" width="16"> <b>Jianyu</b></td>
+    <td><img src="https://www.google.com/s2/favicons?domain=www.jianyu360.com&sz=32" width="16"> <b>Jianyu</b></td>
     <td>search</td>
     <td>Jianyu: search</td>
   </tr>
@@ -886,7 +886,7 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
     <td>Parametric CAD: assembly, sketch, mesh, measure, render, BOM, macros</td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=cloudcompare.org&sz=32" width="16"> <b>CloudCompare</b></td>
+    <td><img src="https://www.google.com/s2/favicons?domain=danielgm.net&sz=32" width="16"> <b>CloudCompare</b></td>
     <td>compare, convert, info, subsample</td>
     <td>Point cloud processing: compare, convert, info, subsample</td>
   </tr>
@@ -1005,7 +1005,7 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
     <td>Document processing: convert, print</td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=pandoc.org&sz=32" width="16"> <b>Pandoc</b></td>
+    <td><img src="https://cdn.simpleicons.org/pandoc/FB9A99" width="16"> <b>Pandoc</b></td>
     <td>convert</td>
     <td>Universal document converter</td>
   </tr>
@@ -1048,7 +1048,7 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
     <td>DNS ad blocking: rules, stats, status, toggle</td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=comfyorg.com&sz=32" width="16"> <b>ComfyUI</b></td>
+    <td><img src="https://icons.duckduckgo.com/ip3/comfyui.org.ico" width="16"> <b>ComfyUI</b></td>
     <td>generate, history, nodes, status</td>
     <td>Stable Diffusion UI: generate, workflow history, nodes, status</td>
   </tr>
@@ -1138,7 +1138,7 @@ Passthrough wrappers that normalize output to JSON:
     <td>GitHub CLI: issues, PRs, releases, repos, workflow runs</td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=jqlang.github.io&sz=32" width="16"> <b>jq</b></td>
+    <td><img src="https://www.google.com/s2/favicons?domain=jqlang.org&sz=32" width="16"> <b>jq</b></td>
     <td>format, query</td>
     <td>JSON processor: query, format</td>
   </tr>
@@ -1312,7 +1312,7 @@ Passthrough wrappers that normalize output to JSON:
     <td>Hermes agent: sessions, skills listing</td>
   </tr>
   <tr>
-    <td><img src="https://www.google.com/s2/favicons?domain=autoagent.dev&sz=32" width="16"> <b>AutoAgent</b></td>
+    <td><img src="https://www.google.com/s2/favicons?domain=github.com&sz=32" width="16"> <b>AutoAgent</b></td>
     <td>eval-run</td>
     <td>AutoAgent evaluation runner</td>
   </tr>
