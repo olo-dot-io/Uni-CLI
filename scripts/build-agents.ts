@@ -391,8 +391,10 @@ function main(): void {
     );
   }
 
-  // Replace COUNTS section — pipeline step count comes from stats.json
-  // (the SSOT) so it never drifts from the engine source.
+  // Replace COUNTS section. Numbers are emitted as inline STATS markers so
+  // `scripts/count-consistency.ts` can catch drift against stats.json — that
+  // way build-agents.ts is not a blind spot in the SSOT gate. Pipeline step
+  // count comes from stats.json so it never drifts from the engine source.
   let pipelineSteps = 31;
   if (existsSync(STATS_PATH)) {
     try {
@@ -408,7 +410,11 @@ function main(): void {
   }
   const countsRegex = /<!-- BEGIN COUNTS -->\n[\s\S]*?<!-- END COUNTS -->/;
   if (countsRegex.test(updated)) {
-    const countsLine = `> ${siteCount} sites, ${cmdCount} commands, ${pipelineSteps} pipeline steps, BM25 bilingual search. \`npm install -g @zenalexa/unicli\``;
+    const countsLine =
+      `> <!-- STATS:site_count -->${siteCount}<!-- /STATS --> sites, ` +
+      `<!-- STATS:command_count -->${cmdCount}<!-- /STATS --> commands, ` +
+      `<!-- STATS:pipeline_step_count -->${pipelineSteps}<!-- /STATS --> pipeline steps, ` +
+      `BM25 bilingual search. \`npm install -g @zenalexa/unicli\``;
     updated = updated.replace(
       countsRegex,
       `<!-- BEGIN COUNTS -->\n${countsLine}\n<!-- END COUNTS -->`,

@@ -9,7 +9,7 @@
 
 <!-- BEGIN COUNTS -->
 
-> 195 sites, 956 commands, 31 pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> <!-- STATS:site_count -->195<!-- /STATS --> sites, <!-- STATS:command_count -->956<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->31<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 
