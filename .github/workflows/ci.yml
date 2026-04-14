@@ -54,6 +54,9 @@ jobs:
       - name: Build search manifest
         run: npm run build:manifest
 
+      - name: Lint adapters (schema-v2)
+        run: npm run lint:adapters
+
       - name: Unit tests
         run: npm run test
 
