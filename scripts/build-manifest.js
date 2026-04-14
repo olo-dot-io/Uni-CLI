@@ -16,6 +16,7 @@ import {
   writeFileSync,
   existsSync,
   statSync,
+  mkdirSync,
 } from "node:fs";
 import { join, extname, basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,6 +25,8 @@ import yaml from "js-yaml";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ADAPTERS_DIR = join(__dirname, "..", "src", "adapters");
 const DIST_DIR = join(__dirname, "..", "dist");
+
+mkdirSync(DIST_DIR, { recursive: true });
 const PKG = JSON.parse(
   readFileSync(join(__dirname, "..", "package.json"), "utf-8"),
 );

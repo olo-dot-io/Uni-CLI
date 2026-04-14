@@ -10,3 +10,11 @@ pre-commit:
     lint:
       glob: "*.{ts,tsx,js,jsx}"
       run: npx oxlint {staged_files}
+
+# Matches the CI pipeline (clean dist, then full verify). Prevents the class of
+# bugs where stale local build output masks a CI failure. Skippable via
+# LEFTHOOK=0 git push ... when you need to push work-in-progress deliberately.
+pre-push:
+  commands:
+    verify-clean:
+      run: npm run verify:clean

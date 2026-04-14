@@ -134,7 +134,12 @@ function buildIndexFromManifest(): SearchIndex {
   const manifestPath = join(__dirname, "..", "..", "dist", "manifest.json");
 
   if (!existsSync(manifestPath)) {
-    // No manifest either — return empty index
+    // No manifest either — search will silently return zero results.
+    // Emit an actionable hint to stderr so CI/dev failures point to the fix.
+    process.stderr.write(
+      "[unicli search] Missing dist/manifest-search.json and dist/manifest.json. " +
+        "Run: npm run build:manifest\n",
+    );
     return { postings: {}, idf: {}, documents: [], avgDl: 0, N: 0 };
   }
 
