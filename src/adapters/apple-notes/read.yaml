@@ -16,7 +16,7 @@ description: Read a note's plaintext body by title (first match wins)
 type: desktop
 
 # schema-v2 fields
-capabilities: [desktop-ax]
+capabilities: ["desktop-ax.applescript"]
 minimum_capability: desktop-ax.applescript
 trust: user
 confidentiality: private

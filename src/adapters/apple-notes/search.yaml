@@ -15,7 +15,7 @@ description: Full-text search across all notes (titles of matches)
 type: desktop
 
 # schema-v2 fields
-capabilities: [desktop-ax]
+capabilities: ["desktop-ax.applescript"]
 minimum_capability: desktop-ax.applescript
 trust: user
 confidentiality: private

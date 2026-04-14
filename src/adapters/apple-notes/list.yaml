@@ -19,7 +19,7 @@ description: List note titles in a folder (default "Notes")
 type: desktop
 
 # schema-v2 fields
-capabilities: [desktop-ax]
+capabilities: ["desktop-ax.applescript"]
 minimum_capability: desktop-ax.applescript
 trust: user
 confidentiality: private

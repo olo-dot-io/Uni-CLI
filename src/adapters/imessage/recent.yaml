@@ -21,7 +21,7 @@ binary: sqlite3
 detect: "test $(uname) = Darwin"
 
 # schema-v2 fields
-capabilities: [subprocess]
+capabilities: ["subprocess.exec"]
 minimum_capability: subprocess.exec
 trust: user
 confidentiality: private

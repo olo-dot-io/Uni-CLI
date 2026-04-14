@@ -228,7 +228,7 @@ export function loadAdaptersFromDir(dir: string): number {
           minimum_capability: parsed.minimum_capability,
           trust: parsed.trust,
           confidentiality: parsed.confidentiality,
-          quarantine: parsed.quarantine ?? false,
+          quarantine: parsed.quarantine,
         });
         if (!v2Result.ok) {
           const rel = join(site, file);

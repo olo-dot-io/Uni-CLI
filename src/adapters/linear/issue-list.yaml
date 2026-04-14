@@ -22,7 +22,7 @@ domain: api.linear.app
 strategy: public # auth is via Authorization header from env, no cookies
 
 # schema-v2 fields
-capabilities: [http]
+capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: user
 confidentiality: internal
