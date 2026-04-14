@@ -51,6 +51,7 @@ unicli test <site>                              # Validate adapter
 ## Self-Repair
 
 When a command fails:
+
 1. Read the error JSON — it includes the adapter file path
 2. Read the YAML adapter (~20 lines)
 3. Fix the issue (selector changed? API versioned? auth needed?)

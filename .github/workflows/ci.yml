@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    # Nightly conformance at 09:00 UTC (early-morning US, late-afternoon Asia)
+    - cron: "0 9 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -103,3 +107,44 @@ jobs:
         run: |
           git fetch origin ${{ github.base_ref }} --depth=1
           npm run verify:changesets
+
+  conformance:
+    name: Nightly Conformance
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run conformance report
+        id: conformance
+        run: npm run conformance
+
+      - name: Upload conformance artifact
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: conformance-report-${{ github.run_id }}
+          path: conformance-report.json
+          retention-days: 30
+
+      - name: Summarize failures
+        if: failure()
+        run: |
+          echo "## Conformance failures" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          node -e "
+            const r = require('./conformance-report.json');
+            const failed = r.results.filter(x => x.status === 'fail');
+            for (const f of failed) {
+              console.log('- \`' + f.file + '\` — ' + f.errors.join('; '));
+            }
+          " >> $GITHUB_STEP_SUMMARY

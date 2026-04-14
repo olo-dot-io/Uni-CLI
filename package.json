@@ -37,6 +37,7 @@
     "changeset:version": "changeset version",
     "changeset:status": "changeset status --since=origin/main",
     "verify:changesets": "tsx scripts/verify-changesets.ts",
+    "conformance": "tsx scripts/conformance-report.ts",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "verify": "npm run format:check && npm run typecheck && npm run lint && npm run lint:context && npm run build:manifest && npm run test && npm run build",
     "verify:clean": "npm run clean && npm run verify",
