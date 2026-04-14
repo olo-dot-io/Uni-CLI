@@ -1,0 +1,42 @@
+[
+  {
+    "rank": "1",
+    "name": "sindresorhus/awesome",
+    "description": "😎 Awesome lists about all kinds of interesting topics",
+    "language": "",
+    "stars": "455283",
+    "forks": "34226"
+  },
+  {
+    "rank": "2",
+    "name": "freeCodeCamp/freeCodeCamp",
+    "description": "freeCodeCamp.org's open-source codebase and curriculum. Learn math, programming, and computer science for free.",
+    "language": "TypeScript",
+    "stars": "442886",
+    "forks": "44284"
+  },
+  {
+    "rank": "3",
+    "name": "EbookFoundation/free-programming-books",
+    "description": ":books: Freely available programming books",
+    "language": "Python",
+    "stars": "385531",
+    "forks": "66106"
+  },
+  {
+    "rank": "4",
+    "name": "openclaw/openclaw",
+    "description": "Your own personal AI assistant. Any OS. Any Platform. The lobster way. 🦞 ",
+    "language": "TypeScript",
+    "stars": "357275",
+    "forks": "72526"
+  },
+  {
+    "rank": "5",
+    "name": "kamranahmedse/developer-roadmap",
+    "description": "Interactive roadmaps, guides and other educational content to help developers grow in their careers.",
+    "language": "TypeScript",
+    "stars": "352927",
+    "forks": "43917"
+  }
+]
