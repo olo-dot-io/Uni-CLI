@@ -277,12 +277,25 @@ function main(): void {
     }
   }
 
+  // Truncate large category listings to keep AGENTS.md ≤ 8KB (see
+  // scripts/validate-agents-size.ts). Show the top N sites sorted by
+  // command count; agents can run `unicli list --category=<cat>` for the
+  // rest. 8 keeps the most popular names visible without blowing the cap.
+  const MAX_SITES_PER_CATEGORY = 8;
+
   function formatSiteList(
     sites: Array<{ site: string; count: number }>,
   ): string {
-    return sites
+    const sorted = [...sites].sort((a, b) => b.count - a.count);
+    const shown = sorted.slice(0, MAX_SITES_PER_CATEGORY);
+    const hidden = sorted.length - shown.length;
+    const rendered = shown
       .map((s) => (s.count > 1 ? `${s.site} (${s.count})` : s.site))
       .join(", ");
+    if (hidden > 0) {
+      return `${rendered}, +${hidden} more (\`unicli list\`)`;
+    }
+    return rendered;
   }
 
   if (chineseSites.length > 0) {
@@ -320,13 +333,18 @@ function main(): void {
     lines.push("");
   }
 
-  // macOS section
+  // macOS section — show count + a handful of representative commands.
+  // The full list is available via `unicli list --site macos`.
   const macosEntry = byCategory["desktop"]?.find((e) => e.site === "macos");
   if (macosEntry) {
-    const cmds = macosEntry.info.commands.map((c) => c.name).join(", ");
-    lines.push(`### macOS (${macosEntry.info.commands.length} cmds)`);
+    const total = macosEntry.info.commands.length;
+    const preview = macosEntry.info.commands
+      .slice(0, 12)
+      .map((c) => c.name)
+      .join(", ");
+    lines.push(`### macOS (${total} cmds)`);
     lines.push("");
-    lines.push(cmds);
+    lines.push(`${preview}, … (\`unicli list --site macos\`)`);
     lines.push("");
   }
 
@@ -341,13 +359,23 @@ function main(): void {
   if (desktopEntries.length > 0) {
     lines.push(`### Desktop (${desktopEntries.length} apps)`);
     lines.push("");
-    const desktopList = desktopEntries
+    // Sort by command count so the most useful apps lead.
+    const sortedDesktop = [...desktopEntries].sort(
+      (a, b) => b.info.commands.length - a.info.commands.length,
+    );
+    const shown = sortedDesktop.slice(0, MAX_SITES_PER_CATEGORY);
+    const hidden = sortedDesktop.length - shown.length;
+    const desktopList = shown
       .map((e) => {
         const count = e.info.commands.length;
         return count > 1 ? `${e.site} (${count} cmds)` : e.site;
       })
       .join(", ");
-    lines.push(desktopList);
+    lines.push(
+      hidden > 0
+        ? `${desktopList}, +${hidden} more (\`unicli list --category desktop\`)`
+        : desktopList,
+    );
     lines.push("");
   }
 

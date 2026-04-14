@@ -38,7 +38,7 @@ npm install -g @zenalexa/unicli
 
 ## What
 
-Uni-CLI is a universal interface that compiles agent intent into deterministic CLI programs. One binary reaches <!-- STATS:site_count -->197<!-- /STATS --> sites, 30+ desktop apps, 35 CLI bridges, and the local OS — <!-- STATS:command_count -->959<!-- /STATS --> commands in total. Every adapter is a 20-line YAML pipeline, so agents can read, edit, and re-run them without a compiler.
+Uni-CLI is a universal interface that compiles agent intent into deterministic CLI programs. One binary reaches <!-- STATS:site_count -->198<!-- /STATS --> sites, 30+ desktop apps, 35 CLI bridges, and the local OS — <!-- STATS:command_count -->962<!-- /STATS --> commands in total. Every adapter is a 20-line YAML pipeline, so agents can read, edit, and re-run them without a compiler.
 
 Coverage is cross-cutting: web APIs and browser automation, desktop subprocesses (ffmpeg, Blender, LibreOffice), macOS system calls (screenshot, clipboard, Calendar), and Computer Use Agents (Anthropic, OpenAI, Google) — all behind the same `unicli <site> <command>` surface. Output is a table in a terminal and JSON when piped. Errors are structured JSON on stderr with the adapter path, the failing step, and a suggestion — enough directional feedback for an agent to fix the adapter and retry.
 
@@ -141,7 +141,7 @@ Detailed benchmarks (p50/p95 token cost per category, vs GitHub MCP cold-start):
 
 ## Platform coverage
 
-<!-- STATS:site_count -->197<!-- /STATS --> sites · <!-- STATS:command_count -->959<!-- /STATS --> commands — the live list is auto-generated in [`AGENTS.md`](AGENTS.md) and split by domain:
+<!-- STATS:site_count -->198<!-- /STATS --> sites · <!-- STATS:command_count -->962<!-- /STATS --> commands — the live list is auto-generated in [`AGENTS.md`](AGENTS.md) and split by domain:
 
 | Domain                | Highlights                                                              |
 | --------------------- | ----------------------------------------------------------------------- |
@@ -309,5 +309,5 @@ Repo: <https://github.com/olo-dot-io/Uni-CLI> · npm: [`@zenalexa/unicli`](https
 
 <p align="center">
   <sub>v0.211.2 — Vostok · Volynov</sub><br>
-  <sub><!-- STATS:site_count -->197<!-- /STATS --> sites · <!-- STATS:command_count -->959<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->31<!-- /STATS --> pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-11-25 · <!-- STATS:test_count -->1101<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->198<!-- /STATS --> sites · <!-- STATS:command_count -->962<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->31<!-- /STATS --> pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-11-25 · <!-- STATS:test_count -->1101<!-- /STATS --> tests</sub>
 </p>
