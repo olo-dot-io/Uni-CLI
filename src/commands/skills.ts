@@ -31,6 +31,8 @@ import chalk from "chalk";
 import { getAllAdapters } from "../registry.js";
 import { VERSION } from "../constants.js";
 import type { AdapterManifest, AdapterCommand } from "../types.js";
+import { loadSkills, type Skill } from "../protocol/skill.js";
+import { runPipeline } from "../engine/yaml-runner.js";
 
 interface ExportOptions {
   out?: string;
@@ -300,6 +302,25 @@ export function buildCatalog(): {
   };
 }
 
+/**
+ * Trim a Skill down to a JSON-safe projection — we drop the raw frontmatter
+ * to avoid dumping huge YAML blobs into the listing, and we normalize the
+ * path into repo-relative form so the output is reproducible across machines.
+ */
+function projectSkillForJson(skill: Skill): Record<string, unknown> {
+  return {
+    name: skill.name,
+    description: skill.description,
+    version: skill.version,
+    triggers: skill.triggers,
+    depends_on: skill.dependsOn,
+    allowed_tools: skill.allowedTools,
+    source: skill.source,
+    path: skill.path,
+    has_pipeline: Array.isArray(skill.pipeline) && skill.pipeline.length > 0,
+  };
+}
+
 export function registerSkillsCommand(program: Command): void {
   const skills = program
     .command("skills")
@@ -347,6 +368,72 @@ export function registerSkillsCommand(program: Command): void {
           chalk.green(`✓ published ${written} SKILL.md files to ${resolved}`),
         );
       }
+    });
+
+  skills
+    .command("list")
+    .description(
+      "List cross-vendor SKILL.md files discovered in repo/user/XDG dirs",
+    )
+    .option("--json", "Print as JSON")
+    .action((opts: { json?: boolean }) => {
+      const discovered = loadSkills();
+      if (opts.json || !process.stdout.isTTY) {
+        console.log(
+          JSON.stringify(discovered.map(projectSkillForJson), null, 2),
+        );
+        return;
+      }
+      if (discovered.length === 0) {
+        console.log(chalk.dim("No SKILL.md files found."));
+        return;
+      }
+      for (const skill of discovered) {
+        console.log(
+          `${chalk.bold(skill.name)} ${chalk.dim(`(${skill.source})`)}  ${chalk.dim(skill.path)}`,
+        );
+        console.log(`  ${skill.description}`);
+        if (skill.triggers.length > 0) {
+          console.log(chalk.dim(`  triggers: ${skill.triggers.join(", ")}`));
+        }
+      }
+      console.log(chalk.dim(`\n${discovered.length} skill(s) total`));
+    });
+
+  skills
+    .command("invoke <name>")
+    .description(
+      "Invoke a skill: runs its inline pipeline if present, otherwise prints the body",
+    )
+    .option("--json", "Print result as JSON")
+    .action(async (name: string, opts: { json?: boolean }) => {
+      const skill = loadSkills().find((s) => s.name === name);
+      if (!skill) {
+        console.error(chalk.red(`Unknown skill: ${name}`));
+        console.error(chalk.dim("Run `unicli skills list` to see options."));
+        process.exit(1);
+      }
+      if (skill.pipeline && skill.pipeline.length > 0) {
+        try {
+          const results = await runPipeline(skill.pipeline, {}, undefined, {
+            site: `skill:${skill.name}`,
+          });
+          if (opts.json || !process.stdout.isTTY) {
+            console.log(JSON.stringify(results, null, 2));
+          } else {
+            console.log(JSON.stringify(results, null, 2));
+          }
+          return;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.error(
+            JSON.stringify({ error: message, skill: skill.name }, null, 2),
+          );
+          process.exit(1);
+        }
+      }
+      // No pipeline → print the body for the agent to follow as instructions.
+      console.log(skill.body);
     });
 
   skills

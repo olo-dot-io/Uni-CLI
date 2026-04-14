@@ -35,6 +35,7 @@ import { registerRepairCommand } from "./commands/repair.js";
 import { registerSkillsCommand } from "./commands/skills.js";
 import { registerUsageCommands } from "./commands/usage.js";
 import { registerMcpCommand } from "./commands/mcp.js";
+import { registerAcpCommand } from "./commands/acp.js";
 import { registerEvalCommand } from "./commands/eval.js";
 import { registerResearchCommand } from "./commands/research.js";
 import { registerHubCommand } from "./commands/hub.js";
@@ -325,6 +326,9 @@ export async function createCli(): Promise<Command> {
 
   // Register mcp command — MCP gateway server + health check
   registerMcpCommand(program);
+
+  // Register acp command — Agent Client Protocol (avante.nvim, Zed) stdio server
+  registerAcpCommand(program);
 
   // Register eval command — declarative regression suites
   registerEvalCommand(program);
