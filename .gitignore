@@ -22,6 +22,9 @@ Thumbs.db
 # Test coverage
 coverage/
 
+# Test fixture tmp output (stats-consistency)
+tests/fixtures/stats-tmp/
+
 # Logs
 *.log
 npm-debug.log*

@@ -1,15 +1,26 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { inject } from "../../scripts/build-readme.js";
 import { findViolations } from "../../scripts/count-consistency.js";
 import { computeStats } from "../../scripts/count-stats.js";
-import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
-import { join, dirname } from "node:path";
+import {
+  mkdirSync,
+  mkdtempSync,
+  writeFileSync,
+  readFileSync,
+  rmSync,
+  existsSync,
+} from "node:fs";
+import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { tmpdir } from "node:os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..", "..");
 const STATS_PATH = join(ROOT, "stats.json");
+
+// findViolations() resolves paths relative to the repo root, so fixture files
+// must live inside ROOT. We create them under tests/fixtures/stats-tmp/ and
+// track them for cleanup.
+const FIXTURE_ROOT = join(ROOT, "tests", "fixtures", "stats-tmp");
 
 /**
  * stats.json SSOT contract:
@@ -20,6 +31,28 @@ const STATS_PATH = join(ROOT, "stats.json");
  */
 
 describe("stats SSOT", () => {
+  const createdDirs: string[] = [];
+
+  afterEach(() => {
+    for (const dir of createdDirs.splice(0)) {
+      if (existsSync(dir)) {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    }
+  });
+
+  function makeFixtureFile(name: string, contents: string): string {
+    if (!existsSync(FIXTURE_ROOT)) {
+      mkdirSync(FIXTURE_ROOT, { recursive: true });
+    }
+    const tmp = mkdtempSync(join(FIXTURE_ROOT, "case-"));
+    createdDirs.push(tmp);
+    const full = join(tmp, name);
+    writeFileSync(full, contents, "utf-8");
+    // findViolations takes paths relative to ROOT.
+    return relative(ROOT, full);
+  }
+
   it("computeStats returns non-zero counts for this repo", () => {
     const stats = computeStats();
     expect(stats.site_count).toBeGreaterThan(0);
@@ -57,26 +90,49 @@ describe("stats SSOT", () => {
     expect(missing).toEqual(["undefined_key"]);
   });
 
-  it("findViolations detects drift in a doc file", () => {
-    const tmp = mkdtempSync(join(tmpdir(), "unicli-stats-drift-"));
-    try {
-      const docFile = join(tmp, "README.md");
-      writeFileSync(
-        docFile,
-        "We have <!-- STATS:site_count -->999<!-- /STATS --> sites today.\n",
-        "utf-8",
-      );
-      const stats = { site_count: 195 };
-      // findViolations resolves paths relative to the repo root, so we need to
-      // pass an absolute path. It skips anything outside the root silently.
-      // Simulate by writing to a temp file then reading directly.
-      const source = readFileSync(docFile, "utf-8");
-      const { output, changed } = inject(source, stats);
-      expect(changed).toBe(1);
-      expect(output).toContain("<!-- STATS:site_count -->195<!-- /STATS -->");
-    } finally {
-      rmSync(tmp, { recursive: true, force: true });
-    }
+  it("findViolations flags a drifted marker with file/key/expected/actual", () => {
+    const rel = makeFixtureFile(
+      "DRIFT.md",
+      "We have <!-- STATS:site_count -->999<!-- /STATS --> sites today.\n",
+    );
+    const stats = { site_count: 195 };
+    const violations = findViolations(stats, [rel]);
+    expect(violations).toHaveLength(1);
+    expect(violations[0]).toEqual({
+      file: rel,
+      key: "site_count",
+      expected: "195",
+      actual: "999",
+    });
+  });
+
+  it("findViolations flags markers referencing unknown stats keys", () => {
+    const rel = makeFixtureFile(
+      "UNKNOWN.md",
+      "Bogus <!-- STATS:ghost_count -->42<!-- /STATS -->.\n",
+    );
+    const stats = { site_count: 195 };
+    const violations = findViolations(stats, [rel]);
+    expect(violations).toHaveLength(1);
+    expect(violations[0].file).toBe(rel);
+    expect(violations[0].key).toBe("ghost_count");
+    expect(violations[0].expected).toBe("(unknown key in stats.json)");
+    expect(violations[0].actual).toBe("42");
+  });
+
+  it("findViolations returns empty for a fixture with no markers", () => {
+    const rel = makeFixtureFile("PLAIN.md", "Plain prose, no markers.\n");
+    const stats = { site_count: 195 };
+    expect(findViolations(stats, [rel])).toEqual([]);
+  });
+
+  it("findViolations returns empty when markers match stats", () => {
+    const rel = makeFixtureFile(
+      "MATCH.md",
+      "We have <!-- STATS:site_count -->195<!-- /STATS --> sites.\n",
+    );
+    const stats = { site_count: 195 };
+    expect(findViolations(stats, [rel])).toEqual([]);
   });
 
   it("findViolations returns empty when repo docs match stats.json", () => {
