@@ -108,9 +108,10 @@ function assertSchemaV2(adapter: Phase5Adapter): void {
     Array.isArray(adapter.capabilities),
     "capabilities must be an array",
   ).toBe(true);
-  expect(adapter.capabilities?.length, "capabilities must be non-empty").toBeGreaterThan(
-    0,
-  );
+  expect(
+    adapter.capabilities?.length,
+    "capabilities must be non-empty",
+  ).toBeGreaterThan(0);
   expect(typeof adapter.minimum_capability).toBe("string");
   expect((adapter.minimum_capability ?? "").length).toBeGreaterThan(0);
   expect(["public", "user", "system"]).toContain(adapter.trust);
@@ -194,7 +195,9 @@ describe("imessage adapters (subprocess / sqlite3)", () => {
         // subprocess shape).
         const exec = adapter.pipeline[0].exec as Record<string, unknown>;
         expect(exec.command).toBe("sh");
-        const script = Array.isArray(exec.args) ? (exec.args as string[]).join("") : "";
+        const script = Array.isArray(exec.args)
+          ? (exec.args as string[]).join("")
+          : "";
         expect(script).toContain("sqlite3");
         expect(script).toContain("chat.db");
       });
@@ -223,7 +226,9 @@ describe("imessage adapters (subprocess / sqlite3)", () => {
         ? (exec.args as string[]).join("")
         : "";
       // Bash parameter-expansion escape: ${VAR//\'/\'\'}
-      expect(script, `${rel} missing SQL-quote escape`).toMatch(/\/\/\\'\/\\'\\'/);
+      expect(script, `${rel} missing SQL-quote escape`).toMatch(
+        /\/\/\\'\/\\'\\'/,
+      );
     }
   });
 });
