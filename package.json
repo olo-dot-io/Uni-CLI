@@ -26,6 +26,7 @@
     "build:agents": "tsx scripts/build-agents.ts",
     "test": "vitest run --project unit",
     "test:adapter": "vitest run --project adapter",
+    "adapter:health": "tsx scripts/adapter-health-probe.ts",
     "test:all": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint src/",

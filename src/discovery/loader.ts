@@ -104,6 +104,9 @@ interface YamlAdapter {
   args?: Record<string, YamlArg>;
   pipeline?: PipelineStep[];
   columns?: string[];
+  // Adapter health
+  quarantine?: boolean;
+  quarantineReason?: string;
   // Desktop
   execArgs?: string[];
   // Web
@@ -228,6 +231,8 @@ export function loadAdaptersFromDir(dir: string): number {
           wait: parsed.wait,
           extract: parsed.extract,
           execArgs: parsed.execArgs,
+          quarantine: parsed.quarantine === true ? true : undefined,
+          quarantineReason: parsed.quarantineReason,
         };
         count++;
       }

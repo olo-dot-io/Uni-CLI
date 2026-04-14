@@ -90,13 +90,18 @@ export async function createCli(): Promise<Command> {
       const fmt = detectFormat(
         program.opts().format as OutputFormat | undefined,
       );
-      const rows = commands.map((c) => ({
-        site: c.site,
-        command: c.command,
-        description: c.description,
-        type: c.type,
-        auth: c.auth ? "[auth]" : "",
-      }));
+      const rows = commands.map((c) => {
+        const tags: string[] = [];
+        if (c.auth) tags.push("[auth]");
+        if (c.quarantined) tags.push("[quarantined]");
+        return {
+          site: c.site,
+          command: c.command,
+          description: c.description,
+          type: c.type,
+          auth: tags.join(" "),
+        };
+      });
 
       console.log(
         format(rows, ["site", "command", "description", "type", "auth"], fmt),
@@ -321,6 +326,17 @@ export async function createCli(): Promise<Command> {
         console.log(chalk.bold(`\n${adapter.name}`));
 
         for (const [cmdName, cmd] of Object.entries(adapter.commands)) {
+          if (cmd.quarantine) {
+            const reason = cmd.quarantineReason
+              ? `: ${cmd.quarantineReason}`
+              : "";
+            console.log(
+              chalk.yellow(`  ${cmdName}: skip [quarantined]${reason}`),
+            );
+            skipped++;
+            continue;
+          }
+
           if (!cmd.pipeline) {
             console.log(chalk.dim(`  ${cmdName}: skip (TS func)`));
             skipped++;

@@ -51,6 +51,16 @@ export interface AdapterCommand {
   name: string;
   description?: string;
 
+  /**
+   * When true, the adapter is quarantined: skipped by `unicli test` and the
+   * CI conformance suite, and shown with a `[quarantined]` tag in `unicli list`.
+   * Use this to park adapters whose upstream API changed until an agent repairs
+   * them — keeps CI green without hiding the adapter from discovery.
+   */
+  quarantine?: boolean;
+  /** Human-readable reason for quarantine, surfaced in `unicli list`. */
+  quarantineReason?: string;
+
   // Execution — exactly one of these
   pipeline?: PipelineStep[];
   adapterArgs?: AdapterArg[];

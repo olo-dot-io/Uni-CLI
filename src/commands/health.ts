@@ -83,6 +83,21 @@ export function registerHealthCommand(program: Command): void {
 
         for (const adapter of adapters) {
           for (const [cmdName, cmd] of Object.entries(adapter.commands)) {
+            // Skip quarantined adapters — they are intentionally parked
+            // until an agent repairs them; failing-only mode hides them too.
+            if (cmd.quarantine) {
+              results.push({
+                site: adapter.name,
+                command: cmdName,
+                status: "skip",
+                latency: 0,
+                error: cmd.quarantineReason
+                  ? `quarantined: ${cmd.quarantineReason}`
+                  : "quarantined",
+              });
+              continue;
+            }
+
             // Skip TypeScript function commands (no pipeline)
             if (!cmd.pipeline) {
               results.push({

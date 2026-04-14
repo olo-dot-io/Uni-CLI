@@ -49,6 +49,8 @@ export function listCommands(): Array<{
   description: string;
   type: string;
   auth: boolean;
+  quarantined: boolean;
+  quarantineReason?: string;
 }> {
   const result: Array<{
     site: string;
@@ -56,6 +58,8 @@ export function listCommands(): Array<{
     description: string;
     type: string;
     auth: boolean;
+    quarantined: boolean;
+    quarantineReason?: string;
   }> = [];
 
   for (const adapter of adapters.values()) {
@@ -66,6 +70,8 @@ export function listCommands(): Array<{
         description: cmd.description ?? "",
         type: adapter.type,
         auth: adapter.strategy !== "public" && adapter.strategy !== undefined,
+        quarantined: cmd.quarantine === true,
+        quarantineReason: cmd.quarantineReason,
       });
     }
   }
