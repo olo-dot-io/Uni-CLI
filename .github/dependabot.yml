@@ -18,3 +18,9 @@ updates:
     commit-message:
       prefix: "chore(ci):"
     labels: ["ci"]
+    # Security posture: every action is SHA-pinned with a `# vX.Y.Z` comment.
+    # Dependabot preserves that pattern on bumps (updates both SHA and comment).
+    groups:
+      github-actions:
+        patterns:
+          - "*"

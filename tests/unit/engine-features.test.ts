@@ -173,8 +173,15 @@ describe("POST body template resolution", () => {
 });
 
 // --- Exec stdin pipe, env vars, output_file tests ---
+//
+// These scenarios depend on POSIX tools (cat, sh, echo redirection) and
+// /tmp. Windows CI runners ship without cat/sh by default, so we skip the
+// three blocks below there. Coverage on ubuntu-latest + macOS is enough:
+// the subprocess-plumbing logic in src/engine/yaml-runner.ts is
+// platform-agnostic; the skipped blocks verify external tool behavior.
+const skipOnWindows = process.platform === "win32";
 
-describe("exec stdin pipe", () => {
+describe.skipIf(skipOnWindows)("exec stdin pipe", () => {
   it("pipes stdin content to subprocess", async () => {
     const steps = [
       {
@@ -191,7 +198,7 @@ describe("exec stdin pipe", () => {
   });
 });
 
-describe("exec env vars", () => {
+describe.skipIf(skipOnWindows)("exec env vars", () => {
   it("injects env vars into subprocess", async () => {
     const steps = [
       {
@@ -208,7 +215,7 @@ describe("exec env vars", () => {
   });
 });
 
-describe("exec output_file", () => {
+describe.skipIf(skipOnWindows)("exec output_file", () => {
   it("returns file info when output_file exists", async () => {
     // Create a temp file via a command, then check output_file
     const tmpFile = `/tmp/unicli-test-${Date.now()}.txt`;

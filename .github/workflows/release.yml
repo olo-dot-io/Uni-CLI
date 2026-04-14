@@ -1,26 +1,53 @@
 name: Release
+
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to publish (e.g. v0.212.0)"
+        required: true
 
 permissions:
   contents: write
-  id-token: write
+  id-token: write # Required for OIDC trusted publishing to npm
 
 jobs:
   release:
+    name: Publish to npm
     runs-on: ubuntu-latest
+    environment:
+      name: npm-publish
+      url: https://www.npmjs.com/package/@zenalexa/unicli
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           node-version: 22
           registry-url: "https://registry.npmjs.org"
-      - run: npm ci
-      - run: npm run verify
-      - run: npm publish --provenance --access public
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify
+        run: npm run verify
+
+      # OIDC trusted publishing (npm 2026-Q1+):
+      # - When the package's "Trusted Publishers" config on npmjs.com lists
+      #   this exact (org, repo, workflow, environment) tuple, npm verifies
+      #   the GitHub-issued OIDC token and authorizes publish without
+      #   requiring NODE_AUTH_TOKEN.
+      # - Until that one-time setup is done, NODE_AUTH_TOKEN is a fallback.
+      # - --provenance attests dist/ was built by this exact workflow run.
+      - name: Publish to npm with provenance
+        run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - uses: softprops/action-gh-release@v3
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           generate_release_notes: true
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}

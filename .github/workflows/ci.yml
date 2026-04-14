@@ -8,8 +8,8 @@ name: CI
 #   • `adapter-health` (pull_request)      — soft signal, continue-on-error=true.
 #     Reviewers see drift but a flaky fetch never blocks a merge.
 #   • `adapter-health-strict` (push+cron)  — THE spec gate. No continue-on-error,
-#     runs on push to main and nightly at 03:00 UTC with retry=2. A failure here
-#     is a release blocker and pages the maintainer via the normal CI alerts.
+#     runs on push to main and nightly with retry=2. A failure here is a release
+#     blocker and pages the maintainer via the normal CI alerts.
 # ─────────────────────────────────────────────────────────────────────────────
 
 on:
@@ -18,25 +18,31 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: "0 3 * * *" # nightly 03:00 UTC — strict adapter-health sweep
+    # 03:00 UTC — strict adapter-health sweep
+    - cron: "0 3 * * *"
+    # 09:00 UTC — nightly conformance (early-morning US, late-afternoon Asia)
+    - cron: "0 9 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   verify:
-    name: Verify
-    runs-on: ubuntu-latest
+    name: Verify (${{ matrix.os }} / Node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.os }}
 
     strategy:
+      fail-fast: false
       matrix:
         node-version: [20, 22]
+        os: [ubuntu-latest, macos-14, windows-latest]
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -54,10 +60,16 @@ jobs:
         run: npm run lint
 
       - name: Context lint
+        # lint-context.sh uses bash (Git for Windows provides it).
+        # Skip on Windows runners to avoid PATH flakiness in CI.
+        if: runner.os != 'Windows'
         run: npm run lint:context
 
       - name: Build search manifest
         run: npm run build:manifest
+
+      - name: Lint adapters (schema-v2)
+        run: npm run lint:adapters
 
       - name: Unit tests
         run: npm run test
@@ -71,10 +83,10 @@ jobs:
     needs: verify
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
       - name: Use Node.js 22
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           node-version: 22
           cache: npm
@@ -100,10 +112,10 @@ jobs:
     continue-on-error: true
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
       - name: Use Node.js 22
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           node-version: 22
           cache: npm
@@ -126,13 +138,13 @@ jobs:
     # THE Phase 0.1 gate: unquarantined adapter failures MUST fail the build.
     # Runs on push to main and nightly at 03:00 UTC. No continue-on-error.
     # Retry=2 absorbs transient network blips without hiding real regressions.
-    if: github.event_name == 'push' || github.event_name == 'schedule'
+    if: github.event_name == 'push' || (github.event_name == 'schedule' && github.event.schedule == '0 3 * * *')
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
       - name: Use Node.js 22
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           node-version: 22
           cache: npm
@@ -159,3 +171,69 @@ jobs:
             echo "adapter-health-strict: attempt $attempts failed, retrying..." >&2
             sleep 10
           done
+
+  verify-changesets:
+    name: Verify Changesets
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify changeset present for src/ changes
+        env:
+          BASE_REF: origin/${{ github.base_ref }}
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1
+          npm run verify:changesets
+
+  conformance:
+    name: Nightly Conformance
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'schedule' && github.event.schedule == '0 9 * * *') || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run conformance report
+        id: conformance
+        run: npm run conformance
+
+      - name: Upload conformance artifact
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: conformance-report-${{ github.run_id }}
+          path: conformance-report.json
+          retention-days: 30
+
+      - name: Summarize failures
+        if: failure()
+        run: |
+          echo "## Conformance failures" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          node -e "
+            const r = require('./conformance-report.json');
+            const failed = r.results.filter(x => x.status === 'fail');
+            for (const f of failed) {
+              console.log('- \`' + f.file + '\` — ' + f.errors.join('; '));
+            }
+          " >> $GITHUB_STEP_SUMMARY

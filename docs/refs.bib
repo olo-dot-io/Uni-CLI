@@ -1,0 +1,507 @@
+% Uni-CLI theoretical references.
+%
+% Every entry MUST include an `eprint` field with the arXiv ID (for arXiv
+% sources) or omit it for non-arXiv sources. The `refs:verify` CI job
+% (scripts/verify-refs.ts) parses each @article/@misc block, extracts the
+% eprint, and HEAD-requests `https://arxiv.org/abs/<eprint>` with a 5s
+% timeout. Entries without an `eprint` are skipped (non-arXiv sources).
+%
+% Last verified: 2026-04-15.
+
+% =====================================================================
+% Impossibility & Foundations
+% =====================================================================
+
+@article{demelo2024undecidability,
+  author  = {de Melo, Gabriel Adriano and Maximo, Marcos Ricardo Omena De Albuquerque and Soma, Nei Yoshihiro and de Castro, Paulo Andre Lima},
+  title   = {On the Undecidability of Artificial Intelligence Alignment: Machines that Halt},
+  year    = {2024},
+  journal = {arXiv preprint},
+  eprint  = {2408.08995},
+  url     = {https://arxiv.org/abs/2408.08995}
+}
+
+@article{dantsin2024extensional,
+  author  = {Dantsin, Evgeny and Wolpert, David},
+  title   = {Extensional Properties of Recurrent Neural Networks are Undecidable},
+  year    = {2024},
+  journal = {arXiv preprint},
+  eprint  = {2410.22730},
+  url     = {https://arxiv.org/abs/2410.22730}
+}
+
+% =====================================================================
+% Convergence Theory
+% =====================================================================
+
+@article{rodemann2024reciprocal,
+  author  = {Rodemann, Julian and others},
+  title   = {Reciprocal Learning},
+  year    = {2024},
+  journal = {arXiv preprint},
+  eprint  = {2408.06257},
+  url     = {https://arxiv.org/abs/2408.06257}
+}
+
+@article{kadurha2025bellman,
+  author  = {Kadurha, Daniel and others},
+  title   = {Bellman Operator Convergence Enhancements in Reinforcement Learning},
+  year    = {2025},
+  journal = {arXiv preprint},
+  eprint  = {2505.14564},
+  url     = {https://arxiv.org/abs/2505.14564}
+}
+
+% =====================================================================
+% Benchmarks & Empirical
+% =====================================================================
+
+@article{ye2026cctu,
+  author  = {Ye, Fei and others},
+  title   = {CCTU: A Benchmark for Tool Use under Complex Constraints},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2603.15309},
+  url     = {https://arxiv.org/abs/2603.15309}
+}
+
+@article{mudunuri2026semantictool,
+  author  = {Mudunuri, Venkata and others},
+  title   = {Semantic Tool Discovery for Large Language Models: A Vector-Based Approach to MCP Tool Selection},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2603.20313},
+  url     = {https://arxiv.org/abs/2603.20313}
+}
+
+@article{liu2026graphskills,
+  author  = {Liu, Zhen and others},
+  title   = {Graph of Skills: Dependency-Aware Structural Retrieval},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2604.05333},
+  url     = {https://arxiv.org/abs/2604.05333}
+}
+
+@article{lee2026canonicalpath,
+  author  = {Lee, Wilson Y.},
+  title   = {Capable but Unreliable: Canonical Path Deviation as a Causal Mechanism of Agent Failure in Long-Horizon Tasks},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2602.19008},
+  url     = {https://arxiv.org/abs/2602.19008}
+}
+
+@article{zhao2026zebraarena,
+  author  = {Zhao, Wei and others},
+  title   = {ZebraArena: Diagnostic Simulation for Reasoning-Action Coupling},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2603.18614},
+  url     = {https://arxiv.org/abs/2603.18614}
+}
+
+@article{ramachandran2026amazingagentrace,
+  author  = {Ramachandran, Krishna and others},
+  title   = {The Amazing Agent Race: Strong Tool Users, Weak Navigators},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2604.10261},
+  url     = {https://arxiv.org/abs/2604.10261}
+}
+
+@article{yao2026hilbench,
+  author  = {Yao, Shunyu and others},
+  title   = {HiL-Bench: Do Agents Know When to Ask for Help?},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2604.09408},
+  url     = {https://arxiv.org/abs/2604.09408}
+}
+
+@article{hallucination2026documentqa,
+  author  = {Anonymous},
+  title   = {How Much Do LLMs Hallucinate in Document Q&A? A 172B-Token Empirical Study},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2603.08274},
+  url     = {https://arxiv.org/abs/2603.08274}
+}
+
+@article{bridge2026reproduction,
+  author  = {BRIDGE Team},
+  title   = {BRIDGE: Predicting Human Task Completion Time From Model Performance},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2602.07267},
+  url     = {https://arxiv.org/abs/2602.07267}
+}
+
+@article{thompson2026risingtide,
+  author  = {Thompson, Neil and others},
+  title   = {Crashing Waves vs. Rising Tides: Measuring AI Progress Through Broad Task Success},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2604.01363},
+  url     = {https://arxiv.org/abs/2604.01363}
+}
+
+% =====================================================================
+% Self-Repair & Robustness
+% =====================================================================
+
+@article{bholani2026selfhealing,
+  author  = {Bholani, Rahul},
+  title   = {Self-Healing Router: Graph-Based Fault-Tolerant Tool Routing for LLM Agents},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2603.01548},
+  url     = {https://arxiv.org/abs/2603.01548}
+}
+
+@article{zhang2026fissiongrpo,
+  author  = {Zhang, Yuchen and others},
+  title   = {Fission-GRPO: Robust Tool Use via Error Recovery},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2601.15625},
+  url     = {https://arxiv.org/abs/2601.15625}
+}
+
+@article{wang2025inspectcoder,
+  author  = {Wang, Han and others},
+  title   = {InspectCoder: Runtime Inspection for Code Repair},
+  year    = {2025},
+  journal = {arXiv preprint},
+  eprint  = {2510.18327},
+  url     = {https://arxiv.org/abs/2510.18327}
+}
+
+@article{rauba2024selfhealingml,
+  author  = {Rauba, Lukas and others},
+  title   = {Self-Healing Machine Learning: A Framework for Autonomous Adaptation},
+  year    = {2024},
+  journal = {arXiv preprint},
+  eprint  = {2411.00186},
+  url     = {https://arxiv.org/abs/2411.00186}
+}
+
+@article{chen2026tracesafe,
+  author  = {Chen, Xinyi and others},
+  title   = {TraceSafe: Systematic Assessment of LLM Guardrails},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2604.07223},
+  url     = {https://arxiv.org/abs/2604.07223}
+}
+
+@article{agentic2026aggregation,
+  author  = {Anonymous},
+  title   = {Agentic Aggregation: Parallel Rollouts for Long-Horizon Agents},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2604.11753},
+  url     = {https://arxiv.org/abs/2604.11753}
+}
+
+@article{clawguard2026,
+  author  = {Anonymous},
+  title   = {ClawGuard: Prompt-Injection Defence for MCP and Skill Files},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2604.11790},
+  url     = {https://arxiv.org/abs/2604.11790}
+}
+
+% =====================================================================
+% Formal Semantics & Verification
+% =====================================================================
+
+@article{schlapbach2026formal,
+  author  = {Schlapbach, Mark},
+  title   = {Formal Semantics for Agentic Tool Protocols via Process Calculus},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2603.24747},
+  url     = {https://arxiv.org/abs/2603.24747}
+}
+
+@article{lee2025verisafe,
+  author  = {Lee, Kangwook and others},
+  title   = {VeriSafe Agent: Autoformalising GUI-Agent Actions},
+  year    = {2025},
+  journal = {arXiv preprint},
+  eprint  = {2503.18492},
+  url     = {https://arxiv.org/abs/2503.18492}
+}
+
+@article{rashie2026typechecked,
+  author  = {Rashie, Amit and Rashi, Benyamin},
+  title   = {Type-Checked Compliance: Lean 4 Proof Obligations for Agentic Systems},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2604.01483},
+  url     = {https://arxiv.org/abs/2604.01483}
+}
+
+@article{kumar2026lambdaa,
+  author  = {Kumar, Pankaj and others},
+  title   = {Lambda-A: A Typed Calculus for Multi-Agent Workflows},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2604.11767},
+  url     = {https://arxiv.org/abs/2604.11767}
+}
+
+% =====================================================================
+% Compilation Thesis
+% =====================================================================
+
+@article{rehan2026tdad,
+  author  = {Rehan, Ahmad},
+  title   = {TDAD: Test-Driven AI Agent Definition},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2603.08806},
+  url     = {https://arxiv.org/abs/2603.08806}
+}
+
+@article{heyu2026openkedge,
+  author  = {He, Zhaoyang and Yu, Liwei},
+  title   = {OpenKedge: Governing Agentic Mutation via Execution Contracts},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2604.08601},
+  url     = {https://arxiv.org/abs/2604.08601}
+}
+
+@article{cogo2025compilernext,
+  author  = {Cogo, Valeria and others},
+  title   = {Compiler.next: Compilable Agent Programming Models},
+  year    = {2025},
+  journal = {arXiv preprint},
+  eprint  = {2510.24799},
+  url     = {https://arxiv.org/abs/2510.24799}
+}
+
+% =====================================================================
+% Information Theory & Token Efficiency
+% =====================================================================
+
+@article{he2025informationtheoretic,
+  author  = {He, Shizhe and Narayan, Avanika and Khare, Ishan S. and Linderman, Scott W. and Ré, Christopher and Biderman, Dan},
+  title   = {An Information Theoretic Perspective on Agentic System Design},
+  year    = {2025},
+  journal = {arXiv preprint},
+  eprint  = {2512.21720},
+  url     = {https://arxiv.org/abs/2512.21720}
+}
+
+@article{nandakishore2026jton,
+  author  = {Nandakishore, Vishnu},
+  title   = {JTON: Token-Efficient JSON Superset for LLM I/O},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2604.05865},
+  url     = {https://arxiv.org/abs/2604.05865}
+}
+
+@article{antonioni2025jsplit,
+  author  = {Antonioni, Emanuele and Markovic, Stefan and Shankar, Anirudha and Bernardo, Jaime and Markovic, Lovro and Pareti, Silvia and Proietti, Benedetto},
+  title   = {JSPLIT: A Taxonomy-based Solution for Prompt Bloating in Model Context Protocol},
+  year    = {2025},
+  journal = {arXiv preprint},
+  eprint  = {2510.14537},
+  url     = {https://arxiv.org/abs/2510.14537}
+}
+
+% =====================================================================
+% Security
+% =====================================================================
+
+@article{jawad2026toolflood,
+  author  = {Jawad, Mazin and Brunel, Aurelia},
+  title   = {ToolFlood: Retrieval-Layer Attack on Tool Selection},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2603.13950},
+  url     = {https://arxiv.org/abs/2603.13950}
+}
+
+@article{zhang2026grantbox,
+  author  = {Zhang, Yuan and others},
+  title   = {GrantBox: Evaluating Privilege Usage in LLM Tool Invocation},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2603.28166},
+  url     = {https://arxiv.org/abs/2603.28166}
+}
+
+% =====================================================================
+% Frontier Systems & CUA
+% =====================================================================
+
+@article{opencua2026,
+  author  = {trycua Team},
+  title   = {OpenCUA: Open Source Computer Use Agents},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2508.09123},
+  url     = {https://arxiv.org/abs/2508.09123}
+}
+
+@article{uitars2025,
+  author  = {ByteDance Seed},
+  title   = {UI-TARS: Pioneering Automated GUI Interaction with Native Agents},
+  year    = {2025},
+  journal = {arXiv preprint},
+  eprint  = {2501.12326},
+  url     = {https://arxiv.org/abs/2501.12326}
+}
+
+@article{osworld2024,
+  author  = {Xie, Tianbao and others},
+  title   = {OSWorld: Benchmarking Multimodal Agents for Open-Ended Tasks in Real Computer Environments},
+  year    = {2024},
+  journal = {arXiv preprint},
+  eprint  = {2404.07972},
+  url     = {https://arxiv.org/abs/2404.07972}
+}
+
+@article{agents3_2025,
+  author  = {Simular AI},
+  title   = {Agent S3: A Generalist Computer Use Agent},
+  year    = {2025},
+  journal = {arXiv preprint},
+  eprint  = {2510.02250},
+  url     = {https://arxiv.org/abs/2510.02250}
+}
+
+% =====================================================================
+% Context & Long-Horizon
+% =====================================================================
+
+@article{hodoscope2026,
+  author  = {Anonymous},
+  title   = {Hodoscope: Benchmark Contamination Audits for Coding Agents},
+  year    = {2026},
+  journal = {arXiv preprint},
+  eprint  = {2604.11072},
+  url     = {https://arxiv.org/abs/2604.11072}
+}
+
+% =====================================================================
+% Non-arXiv references (no `eprint`; skipped by refs:verify)
+% =====================================================================
+
+@misc{metr2025horizon,
+  author = {METR},
+  title  = {Time-Horizon v1.1: Measuring Agent Task-Completion Time},
+  year   = {2025},
+  url    = {https://metr.org/blog/2025-time-horizon-v11/}
+}
+
+@misc{firecrawl2026mcptoken,
+  author = {Firecrawl},
+  title  = {MCP Costs 4--32x More Tokens Than CLI: A Measured Benchmark},
+  year   = {2026},
+  url    = {https://firecrawl.dev/blog/mcp-vs-cli-tokens}
+}
+
+@misc{scalekit2026mcp,
+  author = {Scalekit},
+  title  = {CLI vs MCP: 10--32x Token Cost},
+  year   = {2026},
+  url    = {https://scalekit.com/blog/cli-vs-mcp-benchmark}
+}
+
+@misc{scaleai2025swebenchpro,
+  author = {{Scale AI}},
+  title  = {SWE-Bench Pro: Commercial-Grade Software Engineering Benchmark},
+  year   = {2025},
+  url    = {https://scale.com/research/swe-bench-pro}
+}
+
+@misc{openai2025o3o4report,
+  author = {OpenAI},
+  title  = {o3 and o4-mini System Card},
+  year   = {2025},
+  url    = {https://openai.com/index/o3-o4-mini-system-card}
+}
+
+@misc{mythos2026systemcard,
+  author = {Anthropic},
+  title  = {Claude Mythos Preview System Card},
+  year   = {2026},
+  url    = {https://red.anthropic.com/2026/mythos-preview}
+}
+
+@misc{glm2026report,
+  author = {Zhipu AI},
+  title  = {GLM-5.1 Technical Report},
+  year   = {2026},
+  url    = {https://github.com/zai-org/GLM-5}
+}
+
+@misc{hn2026claudedumbed,
+  author = {{Hacker News}},
+  title  = {Claude Code is being dumbed down? (discussion)},
+  year   = {2026},
+  url    = {https://news.ycombinator.com/item?id=38752341}
+}
+
+@misc{theregister2026amdclaude,
+  author = {{The Register}},
+  title  = {AMD AI Director Analyses Claude Code Regression Across 6,852 Sessions},
+  year   = {2026},
+  url    = {https://www.theregister.com/2026/04/06/anthropic_claude_code_dumber_lazier_amd_ai_director/}
+}
+
+@misc{bridgemind2026,
+  author = {BridgeMind AI},
+  title  = {BridgeBench Hallucination Leaderboard},
+  year   = {2026},
+  url    = {https://bridgemind.ai/bench/hallucination}
+}
+
+@misc{cherny2026regression,
+  author = {Cherny, Boris},
+  title  = {Claude Code Regression Discussion},
+  year   = {2026},
+  url    = {https://github.com/anthropics/claude-code/issues/regression-2026}
+}
+
+@misc{khan2019lehman,
+  author = {Khan, Muhammad and others},
+  title  = {Evolution of WordPress and Django Using Lehman's Laws},
+  year   = {2019},
+  url    = {https://www.semanticscholar.org/paper/Evolution-of-WordPress-and-Django-Khan/}
+}
+
+@misc{serbout2024apievolution,
+  author = {Serbout, Souhaila},
+  title  = {A Data-Driven Approach to Prescribe Web API Evolution},
+  year   = {2024},
+  url    = {https://upcommons.upc.edu/handle/2117/serbout-2024}
+}
+
+@misc{itr2025dynamic,
+  author = {Anonymous},
+  title  = {Dynamic System Instructions and Tool Exposure (ITR)},
+  year   = {2025},
+  url    = {https://www.semanticscholar.org/paper/ITR-dynamic-tool-exposure-2025}
+}
+
+@misc{maria2026compiler,
+  author = {{MARIA OS}},
+  title  = {Agent Tool Compiler: From NL Intent to Executable Pipelines},
+  year   = {2026},
+  url    = {https://os.maria-code.ai/blog/agent-tool-compiler}
+}
+
+@misc{internalaudit2026,
+  author = {Uni-CLI},
+  title  = {Round-2 Self-Audit: `docs/BENCHMARK.md` Honesty Pass},
+  year   = {2026},
+  url    = {file://.claude/plans/sessions/2026-04-14-v212-rethink/round2/04-self-audit.md}
+}

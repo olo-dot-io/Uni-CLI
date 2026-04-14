@@ -36,8 +36,14 @@
     "format:check": "prettier --check .",
     "lint:context": "bash scripts/lint-context.sh",
     "build:manifest": "tsx scripts/build-manifest.js",
+    "changeset": "changeset",
+    "changeset:version": "changeset version",
+    "changeset:status": "changeset status --since=origin/main",
+    "verify:changesets": "tsx scripts/verify-changesets.ts",
+    "conformance": "tsx scripts/conformance-report.ts",
+    "lint:adapters": "tsx src/main.ts lint src/adapters",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
-    "verify": "npm run format:check && npm run typecheck && npm run lint && npm run lint:context && npm run build:manifest && npm run test && npm run build && npm run stats:check",
+    "verify": "npm run format:check && npm run typecheck && npm run lint && npm run lint:context && npm run build:manifest && npm run lint:adapters && npm run test && npm run build && npm run stats:check",
     "verify:clean": "npm run clean && npm run verify",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
@@ -49,7 +55,8 @@
     "prepare": "lefthook install",
     "preversion": "npm run verify",
     "postversion": "npm run build && tsx scripts/release.ts",
-    "bench": "tsx scripts/bench.ts",
+    "bench": "tsx bench/report.ts",
+    "refs:verify": "tsx scripts/verify-refs.ts",
     "sync:ref": "bash scripts/sync-ref.sh"
   },
   "keywords": [
@@ -88,6 +95,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.30.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.6.0",
     "@types/turndown": "^5.0.6",

@@ -147,7 +147,7 @@ In Uni-CLI's self-repair loop:
 - $X$ is the set of adapter specifications under a fixed schema.
 - $d(S_1, S_2)$ measures behavioural difference between specifications (weighted by test outcomes).
 - $R(S, E) = S'$ takes a specification and structured error feedback, producing a corrected specification.
-- Structured error feedback (adapter_path, step, action, suggestion, diff_candidate) provides _directional_ information. Each repair narrows the gap between current behaviour and correct behaviour, making $R$ a contraction in expectation.
+- Structured error feedback (adapter*path, step, action, suggestion, diff_candidate) provides \_directional* information. Each repair narrows the gap between current behaviour and correct behaviour, making $R$ a contraction in expectation.
 
 **When does self-repair converge?** When the feedback is structured, specific, and directional. Uni-CLI's error envelope provides exactly this:
 
@@ -201,7 +201,7 @@ He et al. treated the compressor LM as a noisy channel and proved that mutual in
 
 ### 5.2 Honest Token Accounting
 
-The 2026-04-15 round-2 self-audit \cite{internalaudit2026} retired the "~80 tokens per CLI call" claim. The honest decomposition is:
+The 2026-04-15 round-2 self-audit \cite{internalaudit2026} retired an earlier fixed-size per-call claim. The honest decomposition is:
 
 | Component                   | Typical tokens     | Notes                                     |
 | --------------------------- | ------------------ | ----------------------------------------- |
@@ -210,7 +210,7 @@ The 2026-04-15 round-2 self-audit \cite{internalaudit2026} retired the "~80 toke
 | Error envelope              | 80–200             | When failing; otherwise zero              |
 | Tool description (MCP mode) | 30–120             | Only if agent uses `unicli mcp serve`     |
 
-The "~80" number in prior docs referred to the invocation string _plus_ an idealised response of ~60 tokens. Real responses at `--limit 5` for list-style commands sit in the 1,100–2,100 token range, measured by the bench harness with GPT-4o (o200k_base) tokenisation. This is still well below MCP tool descriptions + call (320–2,800 tokens \cite{firecrawl2026mcptoken, scalekit2026mcp}), but the correct framing is "CLI is 4–35× cheaper than MCP on equivalent interactions" rather than the more aggressive prior claim.
+The earlier fixed number in prior docs referred to the invocation string plus an idealised response of ~60 tokens. Real responses at `--limit 5` for list-style commands sit in the 1,100–2,100 token range, measured by the bench harness with GPT-4o (o200k_base) tokenisation. This is still well below MCP tool descriptions + call (320–2,800 tokens \cite{firecrawl2026mcptoken, scalekit2026mcp}), but the correct framing is "CLI is 4–35× cheaper than MCP on equivalent interactions" rather than the more aggressive prior claim.
 
 ### 5.3 The Compression Path
 
