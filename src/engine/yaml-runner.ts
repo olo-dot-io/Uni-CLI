@@ -61,7 +61,7 @@ export interface PipelineOptions {
   strategy?: string;
 }
 
-type PipelineContext = {
+export type PipelineContext = {
   data: unknown;
   args: Record<string, unknown>;
   vars: Record<string, unknown>;
@@ -537,7 +537,7 @@ function getBackoffMs(step: PipelineStep, config: unknown): number {
 
 // --- Assert step ---
 
-interface AssertConfig {
+export interface AssertConfig {
   url?: string;
   selector?: string;
   text?: string;
@@ -545,7 +545,7 @@ interface AssertConfig {
   message?: string;
 }
 
-async function stepAssert(
+export async function stepAssert(
   ctx: PipelineContext,
   config: AssertConfig,
   stepIndex: number,
@@ -640,7 +640,7 @@ function assertionError(
 
 // --- Step implementations ---
 
-interface FetchConfig {
+export interface FetchConfig {
   url: string;
   method?: string;
   params?: Record<string, unknown>;
@@ -651,7 +651,7 @@ interface FetchConfig {
   cache?: number; // cache TTL in seconds (0 = no cache, default: no cache)
 }
 
-async function stepFetch(
+export async function stepFetch(
   ctx: PipelineContext,
   config: FetchConfig,
 ): Promise<PipelineContext> {
@@ -859,7 +859,7 @@ async function fetchJson(
   throw new Error("fetchJson: unreachable");
 }
 
-function stepSelect(
+export function stepSelect(
   ctx: PipelineContext,
   path: string,
   stepIndex: number,
@@ -883,7 +883,7 @@ function stepSelect(
   return { ...ctx, data };
 }
 
-function stepMap(
+export function stepMap(
   ctx: PipelineContext,
   template: Record<string, string>,
 ): PipelineContext {
@@ -904,7 +904,10 @@ function stepMap(
   return { ...ctx, data: mapped };
 }
 
-function stepFilter(ctx: PipelineContext, expr: string): PipelineContext {
+export function stepFilter(
+  ctx: PipelineContext,
+  expr: string,
+): PipelineContext {
   if (!Array.isArray(ctx.data)) return ctx;
 
   const items = ctx.data as unknown[];
@@ -916,7 +919,10 @@ function stepFilter(ctx: PipelineContext, expr: string): PipelineContext {
   return { ...ctx, data: filtered };
 }
 
-function stepLimit(ctx: PipelineContext, config: unknown): PipelineContext {
+export function stepLimit(
+  ctx: PipelineContext,
+  config: unknown,
+): PipelineContext {
   if (!Array.isArray(ctx.data)) return ctx;
 
   let n: number;
@@ -932,7 +938,7 @@ function stepLimit(ctx: PipelineContext, config: unknown): PipelineContext {
 
 // --- fetch_text: like fetch but returns raw text (for XML/RSS/HTML) ---
 
-async function stepFetchText(
+export async function stepFetchText(
   ctx: PipelineContext,
   config: FetchConfig,
 ): Promise<PipelineContext> {
@@ -992,11 +998,11 @@ async function stepFetchText(
 
 // --- RSS/XML parser ---
 
-interface RssConfig {
+export interface RssConfig {
   fields?: Record<string, string>;
 }
 
-function stepParseRss(
+export function stepParseRss(
   ctx: PipelineContext,
   config: RssConfig | undefined,
 ): PipelineContext {
@@ -1066,12 +1072,15 @@ function extractXmlTag(xml: string, tag: string): string {
 
 // --- Sort step ---
 
-interface SortConfig {
+export interface SortConfig {
   by: string;
   order?: "asc" | "desc";
 }
 
-function stepSort(ctx: PipelineContext, config: SortConfig): PipelineContext {
+export function stepSort(
+  ctx: PipelineContext,
+  config: SortConfig,
+): PipelineContext {
   if (!Array.isArray(ctx.data)) return ctx;
   const items = [...ctx.data] as Record<string, unknown>[];
   const desc = config.order === "desc";
@@ -1090,7 +1099,7 @@ function stepSort(ctx: PipelineContext, config: SortConfig): PipelineContext {
 
 // --- Exec step for desktop adapters ---
 
-interface ExecConfig {
+export interface ExecConfig {
   command: string;
   args?: string[];
   parse?: "lines" | "json" | "csv" | "text";
@@ -1100,7 +1109,7 @@ interface ExecConfig {
   output_file?: string;
 }
 
-async function stepExec(
+export async function stepExec(
   ctx: PipelineContext,
   config: ExecConfig,
 ): Promise<PipelineContext> {
@@ -1288,7 +1297,7 @@ async function stepExec(
 
 // --- HTML to Markdown ---
 
-function stepHtmlToMd(ctx: PipelineContext): PipelineContext {
+export function stepHtmlToMd(ctx: PipelineContext): PipelineContext {
   const html = String(ctx.data ?? "");
   const turndown = new TurndownService({
     headingStyle: "atx",
@@ -1343,7 +1352,7 @@ function buildScope(ctx: PipelineContext): Record<string, unknown> {
 
 // --- Set step (store pipeline variables) ---
 
-function stepSet(
+export function stepSet(
   ctx: PipelineContext,
   config: Record<string, unknown>,
 ): PipelineContext {
@@ -1358,7 +1367,7 @@ function stepSet(
 
 // --- Append step (accumulate data into vars array) ---
 
-function stepAppend(ctx: PipelineContext, key: string): PipelineContext {
+export function stepAppend(ctx: PipelineContext, key: string): PipelineContext {
   if (typeof key !== "string" || !key) return ctx;
   const existing = ctx.vars[key];
   const arr = Array.isArray(existing)
@@ -1376,7 +1385,7 @@ function stepAppend(ctx: PipelineContext, key: string): PipelineContext {
 
 // --- If/else step (conditional branching) ---
 
-async function stepIf(
+export async function stepIf(
   ctx: PipelineContext,
   config: { if: string; then?: PipelineStep[]; else?: PipelineStep[] },
   stepIndex: number,
@@ -1424,13 +1433,13 @@ async function stepIf(
 
 // --- Each loop step (do-while with max iteration guard) ---
 
-interface EachConfig {
+export interface EachConfig {
   max?: number;
   do: PipelineStep[];
   until?: string;
 }
 
-async function stepEach(
+export async function stepEach(
   ctx: PipelineContext,
   config: EachConfig,
   stepIndex: number,
@@ -1490,7 +1499,7 @@ async function stepEach(
 
 // --- Parallel step (concurrent branch execution with merge strategies) ---
 
-async function stepParallel(
+export async function stepParallel(
   ctx: PipelineContext,
   branches: PipelineStep[],
   merge: string,
@@ -1897,12 +1906,12 @@ function resolveFilterArg(a: string, scope: Record<string, unknown>): unknown {
 
 // --- write_temp: create ephemeral script files for desktop adapters ---
 
-interface WriteTempConfig {
+export interface WriteTempConfig {
   filename: string;
   content: string;
 }
 
-function stepWriteTemp(
+export function stepWriteTemp(
   ctx: PipelineContext,
   config: WriteTempConfig,
 ): PipelineContext {
@@ -1990,7 +1999,7 @@ async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
   }
 }
 
-interface NavigateConfig {
+export interface NavigateConfig {
   url: string;
   settleMs?: number;
   waitUntil?: "load" | "domcontentloaded" | "networkidle" | "commit";
@@ -2024,7 +2033,7 @@ async function waitForNetworkIdle(
   }
 }
 
-async function stepNavigate(
+export async function stepNavigate(
   ctx: PipelineContext,
   config: NavigateConfig,
 ): Promise<PipelineContext> {
@@ -2041,11 +2050,11 @@ async function stepNavigate(
   return { ...ctx, page };
 }
 
-interface EvaluateConfig {
+export interface EvaluateConfig {
   expression: string;
 }
 
-async function stepEvaluate(
+export async function stepEvaluate(
   ctx: PipelineContext,
   config: EvaluateConfig | string,
 ): Promise<PipelineContext> {
@@ -2058,14 +2067,14 @@ async function stepEvaluate(
   return { ...ctx, data: result, page };
 }
 
-interface ClickConfig {
+export interface ClickConfig {
   selector?: string;
   x?: number;
   y?: number;
   quads?: boolean;
 }
 
-async function stepClick(
+export async function stepClick(
   ctx: PipelineContext,
   config: ClickConfig | string,
 ): Promise<PipelineContext> {
@@ -2106,13 +2115,13 @@ async function stepClick(
   );
 }
 
-interface TypeConfig {
+export interface TypeConfig {
   text: string;
   selector?: string;
   submit?: boolean;
 }
 
-async function stepType(
+export async function stepType(
   ctx: PipelineContext,
   config: TypeConfig,
 ): Promise<PipelineContext> {
@@ -2129,13 +2138,13 @@ async function stepType(
   return { ...ctx, page };
 }
 
-interface WaitBrowserConfig {
+export interface WaitBrowserConfig {
   ms?: number;
   selector?: string;
   timeout?: number;
 }
 
-async function stepWaitBrowser(
+export async function stepWaitBrowser(
   ctx: PipelineContext,
   config: WaitBrowserConfig | number,
 ): Promise<PipelineContext> {
@@ -2150,7 +2159,7 @@ async function stepWaitBrowser(
   return { ...ctx, page };
 }
 
-interface InterceptConfig {
+export interface InterceptConfig {
   trigger: string;
   capture: string;
   select?: string;
@@ -2160,7 +2169,7 @@ interface InterceptConfig {
   captureText?: boolean;
 }
 
-async function stepIntercept(
+export async function stepIntercept(
   ctx: PipelineContext,
   config: InterceptConfig,
 ): Promise<PipelineContext> {
@@ -2241,7 +2250,7 @@ async function stepIntercept(
 
 // --- press: keyboard event dispatch ---
 
-async function stepPress(
+export async function stepPress(
   ctx: PipelineContext,
   config: unknown,
 ): Promise<PipelineContext> {
@@ -2262,7 +2271,7 @@ async function stepPress(
 
 // --- scroll: page scrolling ---
 
-async function stepScroll(
+export async function stepScroll(
   ctx: PipelineContext,
   config: unknown,
 ): Promise<PipelineContext> {
@@ -2294,7 +2303,7 @@ async function stepScroll(
 
 // --- snapshot: DOM accessibility tree ---
 
-async function stepSnapshot(
+export async function stepSnapshot(
   ctx: PipelineContext,
   config: unknown,
 ): Promise<PipelineContext> {
@@ -2321,7 +2330,7 @@ async function stepSnapshot(
 
 // --- tap: Vue store action bridge ---
 
-interface TapConfig {
+export interface TapConfig {
   store: string;
   action: string;
   capture: string;
@@ -2331,7 +2340,7 @@ interface TapConfig {
   args?: unknown[];
 }
 
-async function stepTap(
+export async function stepTap(
   ctx: PipelineContext,
   config: TapConfig,
 ): Promise<PipelineContext> {
@@ -2477,7 +2486,7 @@ function getNestedValue(obj: unknown, path: string): unknown {
 // Download step
 // ---------------------------------------------------------------------------
 
-interface DownloadStepConfig {
+export interface DownloadStepConfig {
   url: string;
   dir?: string;
   filename?: string;
@@ -2488,7 +2497,7 @@ interface DownloadStepConfig {
   content?: string;
 }
 
-async function stepDownload(
+export async function stepDownload(
   ctx: PipelineContext,
   config: DownloadStepConfig,
 ): Promise<PipelineContext> {
@@ -2549,7 +2558,7 @@ async function stepDownload(
   }
 }
 
-async function stepWebsocket(
+export async function stepWebsocket(
   ctx: PipelineContext,
   config: WebsocketStepConfig,
 ): Promise<PipelineContext> {
@@ -2571,12 +2580,12 @@ interface FieldDef {
   pattern?: string;
 }
 
-interface ExtractConfig {
+export interface ExtractConfig {
   from: string;
   fields: Record<string, FieldDef>;
 }
 
-async function stepExtract(
+export async function stepExtract(
   ctx: PipelineContext,
   config: ExtractConfig,
 ): Promise<PipelineContext> {
