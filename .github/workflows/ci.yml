@@ -11,12 +11,14 @@ permissions:
 
 jobs:
   verify:
-    name: Verify
-    runs-on: ubuntu-latest
+    name: Verify (${{ matrix.os }} / Node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.os }}
 
     strategy:
+      fail-fast: false
       matrix:
         node-version: [20, 22]
+        os: [ubuntu-latest, macos-14, windows-latest]
 
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
@@ -40,6 +42,9 @@ jobs:
         run: npm run lint
 
       - name: Context lint
+        # lint-context.sh uses bash (Git for Windows provides it).
+        # Skip on Windows runners to avoid PATH flakiness in CI.
+        if: runner.os != 'Windows'
         run: npm run lint:context
 
       - name: Build search manifest
