@@ -6,7 +6,7 @@ Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for
 ## [0.212.0] — 2026-04-15 — Vostok · Shatalov
 
 > The execution layer for agent skills. Deterministic, editable, cross-vendor.
-> 200 sites · 968 commands · 7-transport architecture · CUA · ACP · 1114 tests.
+> 200 sites · 968 commands · 7-transport architecture · CUA · ACP · 1134 tests.
 
 ### Minor Changes
 
