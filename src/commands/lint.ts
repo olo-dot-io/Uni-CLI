@@ -65,6 +65,26 @@ const KNOWN_STEPS = new Set([
   "rate_limit",
   "assert",
   "retry",
+  // CUA (Phase 2 — pluggable VLM backend: anthropic/trycua/opencua/scrapybara)
+  "cua_snapshot",
+  "cua_click",
+  "cua_type",
+  "cua_key",
+  "cua_scroll",
+  "cua_drag",
+  "cua_wait",
+  "cua_assert",
+  "cua_ask",
+  "cua_backend",
+  "cua_launch",
+  // Desktop AX (Phase 2 — macOS Accessibility + AppleScript, stubs on win/linux)
+  "ax_focus",
+  "ax_menu_select",
+  "applescript",
+  "clipboard_read",
+  "clipboard_write",
+  "launch_app",
+  "focus_window",
 ]);
 
 // Step keys that modify other keys rather than being executable themselves.
