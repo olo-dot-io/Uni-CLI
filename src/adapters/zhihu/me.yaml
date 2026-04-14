@@ -20,3 +20,10 @@ pipeline:
       answer_count: ${{ item.answer_count }}
 
 columns: [uid, name, headline, followers, following, voteup, answer_count]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

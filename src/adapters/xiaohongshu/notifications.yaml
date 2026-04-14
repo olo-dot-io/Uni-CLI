@@ -35,3 +35,10 @@ pipeline:
       note: ${{ item.item_info.content }}
       time: ${{ item.time }}
   - limit: ${{ args.limit | default(20) }}
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["cdp-browser.navigate", "cdp-browser.tap"]
+minimum_capability: cdp-browser.tap
+trust: public
+confidentiality: public
+quarantine: false

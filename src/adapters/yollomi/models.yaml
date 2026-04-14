@@ -31,3 +31,10 @@ pipeline:
           { model: 'photo-restoration', credits: 4, type: 'tool', description: 'Restore old photos' },
         ];
       })()
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["cdp-browser.evaluate", "cdp-browser.navigate"]
+minimum_capability: cdp-browser.evaluate
+trust: public
+confidentiality: public
+quarantine: false

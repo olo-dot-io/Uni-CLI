@@ -26,3 +26,10 @@ pipeline:
       height: "${{ item.height }}"
   - limit: "${{ args.limit | default(20) }}"
 columns: [description, author, url, likes]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

@@ -33,3 +33,10 @@ pipeline:
         description: Opinion and analysis
 
 columns: [name, url, description]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: []
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

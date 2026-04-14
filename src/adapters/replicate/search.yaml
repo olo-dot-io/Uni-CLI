@@ -23,3 +23,10 @@ pipeline:
       run_count: "${{ item.run_count }}"
   - limit: "${{ args.limit | default(20) }}"
 columns: [name, owner, description, run_count]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

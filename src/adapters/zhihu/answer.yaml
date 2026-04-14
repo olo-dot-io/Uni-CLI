@@ -27,3 +27,10 @@ pipeline:
       created: ${{ item.created_time || '' }}
 
 columns: [author, question, content, voteup, comments, created]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

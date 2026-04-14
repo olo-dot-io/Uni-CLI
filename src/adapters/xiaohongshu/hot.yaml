@@ -32,3 +32,10 @@ pipeline:
       likes: ${{ item.note_card.interact_info.liked_count }}
       url: https://www.xiaohongshu.com/explore/${{ item.id }}
   - limit: ${{ args.limit | default(20) }}
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["cdp-browser.navigate", "cdp-browser.tap"]
+minimum_capability: cdp-browser.tap
+trust: public
+confidentiality: public
+quarantine: false

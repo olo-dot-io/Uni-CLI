@@ -52,3 +52,17 @@ pipeline:
           };
         }).filter(r => r.title);
       })()
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities:
+  [
+    "cdp-browser.click",
+    "cdp-browser.evaluate",
+    "cdp-browser.navigate",
+    "cdp-browser.press",
+    "cdp-browser.type",
+  ]
+minimum_capability: cdp-browser.evaluate
+trust: public
+confidentiality: public
+quarantine: false

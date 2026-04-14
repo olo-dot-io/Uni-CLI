@@ -39,3 +39,10 @@ args:
     default: 10
 
 columns: [name, artist, popularity, url]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

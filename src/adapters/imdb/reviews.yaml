@@ -33,3 +33,10 @@ pipeline:
       plot: ${{ item.Plot | truncate(300) }}
 
 columns: [title, year, imdb_rating, imdb_votes, metascore, awards]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

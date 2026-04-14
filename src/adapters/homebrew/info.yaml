@@ -13,3 +13,10 @@ pipeline:
   - fetch:
       url: "https://formulae.brew.sh/api/formula/${{ args.formula }}.json"
 columns: [name, desc, homepage, versions]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

@@ -31,3 +31,10 @@ pipeline:
   - limit: ${{ args.limit }}
 
 columns: [rank, title, box_office, box_unit, show_count, audience]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

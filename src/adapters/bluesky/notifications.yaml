@@ -28,3 +28,10 @@ pipeline:
   - limit: ${{ args.limit }}
 
 columns: [reason, author, text, indexed_at, is_read]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

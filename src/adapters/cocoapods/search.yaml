@@ -14,3 +14,10 @@ pipeline:
       url: "https://search.cocoapods.org/api/v1/pods.picky.hash.json?query=${{ args.query }}&amount=20"
   - select: allocations
 columns: [name, version, summary, source]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

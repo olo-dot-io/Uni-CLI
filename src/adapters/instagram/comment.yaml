@@ -52,3 +52,10 @@ pipeline:
         if (!r3.ok) throw new Error('Failed to comment: HTTP ' + r3.status);
         return [{ status: 'Commented', user: username, text: commentText }];
       })()
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["cdp-browser.evaluate", "cdp-browser.navigate"]
+minimum_capability: cdp-browser.evaluate
+trust: public
+confidentiality: public
+quarantine: false

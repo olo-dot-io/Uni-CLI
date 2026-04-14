@@ -29,3 +29,9 @@ pipeline:
         end tell
 
 columns: [stdout]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["desktop-ax.applescript", "desktop-ax.focus"]
+minimum_capability: desktop-ax.applescript
+trust: user
+confidentiality: public

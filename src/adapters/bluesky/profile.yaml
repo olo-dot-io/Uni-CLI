@@ -25,3 +25,10 @@ pipeline:
       description: ${{ item.description }}
 
 columns: [handle, name, followers, following, posts, description]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

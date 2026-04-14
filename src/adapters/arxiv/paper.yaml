@@ -33,3 +33,10 @@ pipeline:
       url: "${{ 'https://arxiv.org/abs/' + item.id.replace(/^https?:\\/\\/arxiv\\.org\\/abs\\//, '').replace(/v\\d+$/, '') }}"
 
 columns: [id, title, authors, published, abstract, url]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
