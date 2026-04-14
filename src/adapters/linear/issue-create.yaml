@@ -1,0 +1,98 @@
+# Linear — create an issue via GraphQL mutation.
+#
+# Auth: API key (no OAuth). Get a personal API key from
+# https://linear.app/settings/api — paste it into the Authorization
+# header as-is (NOT "Bearer <key>"). Linear's expected header:
+#   Authorization: lin_api_xxxxxxxxxxxx
+#
+# Configuration:
+#   export LINEAR_API_KEY=lin_api_xxxxxxxxxxxx
+#
+# Required:
+#   title             the issue title (positional)
+#
+# Recommended:
+#   --team <key>      team key like "ENG" — required by Linear unless
+#                     the workspace has a default team configured.
+#   --description     markdown body (optional)
+#
+# Flow:
+#   1. Resolve team key -> teamId (skip if --team omitted)
+#   2. Create the issue with teamId + title + description
+#   3. Return the created issue's identifier, state, and URL
+site: linear
+name: issue-create
+description: Create a new Linear issue
+type: web-api
+domain: api.linear.app
+strategy: public # auth is via Authorization header from env, no cookies
+
+# schema-v2 fields
+capabilities: [http]
+minimum_capability: http.fetch
+trust: user
+confidentiality: internal
+quarantine: false
+
+args:
+  title:
+    type: str
+    required: true
+    positional: true
+    description: Issue title
+  team:
+    type: str
+    required: false
+    default: ""
+    description: Team key (e.g. "ENG") — required unless workspace has a default
+  description:
+    type: str
+    required: false
+    default: ""
+    description: Markdown issue body
+
+pipeline:
+  # Resolve team key -> teamId (or empty if --team omitted).
+  - fetch:
+      url: https://api.linear.app/graphql
+      method: POST
+      headers:
+        Content-Type: application/json
+        Authorization: "${{ env.LINEAR_API_KEY }}"
+      body:
+        query: |
+          query TeamByKey($key: String!) {
+            teams(filter: { key: { eq: $key } }) {
+              nodes { id key name }
+            }
+          }
+        variables:
+          key: "${{ args.team }}"
+
+  - set:
+      teamId: "${{ item && item.data && item.data.teams && item.data.teams.nodes && item.data.teams.nodes[0] ? item.data.teams.nodes[0].id : '' }}"
+
+  # Create the issue.
+  - fetch:
+      url: https://api.linear.app/graphql
+      method: POST
+      headers:
+        Content-Type: application/json
+        Authorization: "${{ env.LINEAR_API_KEY }}"
+      body:
+        query: |
+          mutation IssueCreate($title: String!, $description: String, $teamId: String!) {
+            issueCreate(input: { title: $title, description: $description, teamId: $teamId }) {
+              success
+              issue { id identifier title url state { name } }
+            }
+          }
+        variables:
+          title: "${{ args.title }}"
+          description: "${{ args.description }}"
+          teamId: "${{ vars.teamId }}"
+
+  # Extract the created issue (wrapping in an array for downstream map).
+  - select: data.issueCreate.issue
+
+columns: [identifier, title, url]

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Static fallback for the Uni-CLI demo. The animated version is generated
+  by scripts/gen-demo.sh (asciinema + svg-term-cli). Re-run that script on
+  a machine with asciinema installed to replace this file with a terminal
+  recording.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0f1115"/>
+      <stop offset="100%" stop-color="#141822"/>
+    </linearGradient>
+  </defs>
+  <rect width="720" height="420" fill="url(#bg)" rx="10"/>
+  <!-- titlebar -->
+  <circle cx="24" cy="22" r="6" fill="#ff5f56"/>
+  <circle cx="44" cy="22" r="6" fill="#ffbd2e"/>
+  <circle cx="64" cy="22" r="6" fill="#27c93f"/>
+  <text x="360" y="26" fill="#6b7280" text-anchor="middle">Uni-CLI — demo</text>
+
+  <!-- body -->
+  <g fill="#e6edf3">
+    <text x="24" y="70"><tspan fill="#22d3ee">$</tspan> unicli list | head -5</text>
+    <text x="24" y="92" fill="#9ca3af">hackernews top      Top stories on HN</text>
+    <text x="24" y="110" fill="#9ca3af">reddit     hot      Hot posts from r/popular</text>
+    <text x="24" y="128" fill="#9ca3af">twitter    search   Full-text search</text>
+    <text x="24" y="146" fill="#9ca3af">bilibili   download Download videos/audio</text>
+    <text x="24" y="164" fill="#9ca3af">macos      screenshot  Capture screen region</text>
+
+    <text x="24" y="200"><tspan fill="#22d3ee">$</tspan> unicli hackernews top --limit 3 --json | jq -r '.[].title'</text>
+    <text x="24" y="222" fill="#a7f3d0">Show HN: I wrote a bilingual CLI for agents</text>
+    <text x="24" y="240" fill="#a7f3d0">Ask HN: What's your 2026 tech stack?</text>
+    <text x="24" y="258" fill="#a7f3d0">OpenAI's GPT-5 benchmarks land</text>
+
+    <text x="24" y="294"><tspan fill="#22d3ee">$</tspan> unicli search "推特热门"</text>
+    <text x="24" y="316" fill="#fbbf24">twitter trending   score=18.4   Fetch the global Twitter trending list</text>
+
+    <text x="24" y="352"><tspan fill="#22d3ee">$</tspan> unicli mcp serve --transport streamable --port 19826</text>
+    <text x="24" y="374" fill="#60a5fa">[mcp] ready — tools=4 · endpoint=http://localhost:19826/mcp</text>
+  </g>
+
+  <text x="696" y="402" fill="#4b5563" text-anchor="end" font-size="11">CLI is all agents need.</text>
+</svg>
