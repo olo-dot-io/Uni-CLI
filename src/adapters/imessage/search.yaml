@@ -1,0 +1,75 @@
+# iMessage — full-text search via SQL LIKE.
+#
+# chat.db doesn't have an FTS index on the message table by default,
+# so we LIKE-scan. For large databases (>100K messages) this can take
+# a few seconds — that's the price of read-only history search.
+#
+# Injection safety:
+#   - `args.text` is passed through env var UNICLI_QUERY and
+#     SQL-escaped by doubling single quotes (identical pattern to
+#     hermes/sessions-search.yaml).
+#   - `args.limit` is integer-forced.
+#   - LIKE wildcards `%` and `_` inside the query are intentionally
+#     left un-escaped — agents can use them for pattern matching.
+#
+# Requires Full Disk Access (System Settings → Privacy & Security).
+site: imessage
+name: search
+description: Full-text LIKE search over all message bodies
+type: desktop
+binary: sqlite3
+detect: "test $(uname) = Darwin"
+
+# schema-v2 fields
+capabilities: [subprocess]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: private
+quarantine: false
+
+args:
+  text:
+    type: str
+    required: true
+    positional: true
+    description: Substring to search for in message bodies
+  limit:
+    type: int
+    required: false
+    default: 50
+    description: Number of results to return
+
+pipeline:
+  - exec:
+      command: sh
+      args:
+        - -c
+        - |
+          db="$HOME/Library/Messages/chat.db"
+          if [ ! -f "$db" ]; then
+            echo "[]"
+            exit 0
+          fi
+          # SQL-escape single quotes
+          q=${UNICLI_QUERY//\'/\'\'}
+          # Force integer on limit
+          lim=${UNICLI_LIMIT//[^0-9]/}
+          : "${lim:=50}"
+          sqlite3 -json "$db" \
+            "SELECT datetime(m.date/1000000000 + 978307200, 'unixepoch', 'localtime') AS ts, \
+                    m.text, \
+                    m.is_from_me, \
+                    h.id AS handle_id \
+             FROM message m \
+             LEFT JOIN handle h ON m.handle_id = h.ROWID \
+             WHERE m.text LIKE '%$q%' \
+             ORDER BY m.date DESC \
+             LIMIT $lim;" \
+            2>/dev/null || echo "[]"
+      env:
+        UNICLI_QUERY: "${{ args.text }}"
+        UNICLI_LIMIT: "${{ args.limit }}"
+      parse: json
+      timeout: 30000
+
+columns: [ts, is_from_me, handle_id, text]
