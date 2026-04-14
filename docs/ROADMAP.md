@@ -1,6 +1,6 @@
 # Uni-CLI Roadmap — Mission Vostok (0.2xx)
 
-> CLI is all agents need. 198 sites, 1020 commands as of v0.211.2.
+> CLI is all agents need. <!-- STATS:site_count -->195<!-- /STATS --> sites, <!-- STATS:command_count -->956<!-- /STATS --> commands as of v0.211.2.
 
 ## Progress
 

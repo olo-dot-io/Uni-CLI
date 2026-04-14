@@ -1,4 +1,4 @@
-<!-- AGENT: npm install -g @zenalexa/unicli && unicli search "your intent" | 1020 commands across 198 sites. JSON when piped. Self-repairing YAML adapters. Bilingual search (EN/ZH). See AGENTS.md -->
+<!-- AGENT: npm install -g @zenalexa/unicli && unicli search "your intent" | hundreds of commands across ~200 sites. JSON when piped. Self-repairing YAML adapters. Bilingual search (EN/ZH). See AGENTS.md for live counts. -->
 
 <div align="center">
 
@@ -14,8 +14,8 @@
 
 <br>
 
-<img src="https://img.shields.io/badge/198_sites-1020_commands-00d4aa?style=flat-square" alt="coverage">
-<img src="https://img.shields.io/badge/~80_tokens-per_call-E8A838?style=flat-square" alt="tokens">
+<img src="https://img.shields.io/badge/coverage-live%20in%20AGENTS.md-00d4aa?style=flat-square" alt="coverage">
+<img src="https://img.shields.io/badge/benchmarks-docs/BENCHMARK.md-E8A838?style=flat-square" alt="benchmark">
 <img src="https://img.shields.io/badge/self--repairing-YAML_adapters-8B5CF6?style=flat-square" alt="self-repair">
 <a href="https://www.npmjs.com/package/@zenalexa/unicli"><img src="https://img.shields.io/npm/v/@zenalexa/unicli?style=flat-square&color=cb3837" alt="npm"></a>
 <a href="https://github.com/olo-dot-io/Uni-CLI/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/olo-dot-io/Uni-CLI/ci.yml?style=flat-square&label=CI" alt="CI"></a>
@@ -56,7 +56,7 @@ graph LR
 
 ## Key Ideas
 
-**Universal** — 198 sites, 30+ desktop apps, 8 Electron apps, 35 CLI bridges, 51 macOS system commands. One interface: `unicli <site> <command>`.
+**Universal** — <!-- STATS:site_count -->195<!-- /STATS --> sites, 30+ desktop apps, 8 Electron apps, 35 CLI bridges, 51 macOS system commands. One interface: `unicli <site> <command>`.
 
 **Discoverable** — BM25 bilingual search engine. `unicli search "推特热门"` finds `twitter trending`. `unicli search "download video"` finds `bilibili download`. Agents find what they need in one call.
 
@@ -91,7 +91,7 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
 
 <table><tr><td>
 
-**198 sites** · **1020 commands** · **35 pipeline steps** · **BM25 bilingual search**
+**<!-- STATS:site_count -->195<!-- /STATS --> sites** · **<!-- STATS:command_count -->956<!-- /STATS --> commands** · **<!-- STATS:pipeline_step_count -->31<!-- /STATS --> pipeline steps** · **BM25 bilingual search**
 
 </td></tr></table>
 
@@ -1532,5 +1532,5 @@ The search engine uses BM25 scoring with a ~200-entry bilingual alias table (Chi
 
 <p align="center">
   <sub>v0.211.2 — Vostok · Volynov</sub><br>
-  <sub>198 sites · 1020 commands · 35 pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-03-26 · 881 tests</sub>
+  <sub><!-- STATS:site_count -->195<!-- /STATS --> sites · <!-- STATS:command_count -->956<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->31<!-- /STATS --> pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-03-26 · <!-- STATS:test_count -->897<!-- /STATS --> tests</sub>
 </p>

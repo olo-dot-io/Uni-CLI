@@ -17,6 +17,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
 const MANIFEST_PATH = join(ROOT, "dist", "manifest.json");
 const AGENTS_PATH = join(ROOT, "AGENTS.md");
+const STATS_PATH = join(ROOT, "stats.json");
 
 // ── Category display configuration ────────────────────────────────────────
 
@@ -390,10 +391,24 @@ function main(): void {
     );
   }
 
-  // Replace COUNTS section
+  // Replace COUNTS section — pipeline step count comes from stats.json
+  // (the SSOT) so it never drifts from the engine source.
+  let pipelineSteps = 31;
+  if (existsSync(STATS_PATH)) {
+    try {
+      const stats = JSON.parse(readFileSync(STATS_PATH, "utf-8")) as {
+        pipeline_step_count?: number;
+      };
+      if (typeof stats.pipeline_step_count === "number") {
+        pipelineSteps = stats.pipeline_step_count;
+      }
+    } catch {
+      /* fall through to default */
+    }
+  }
   const countsRegex = /<!-- BEGIN COUNTS -->\n[\s\S]*?<!-- END COUNTS -->/;
   if (countsRegex.test(updated)) {
-    const countsLine = `> ${siteCount} sites, ${cmdCount} commands, 35 pipeline steps, BM25 bilingual search. \`npm install -g @zenalexa/unicli\``;
+    const countsLine = `> ${siteCount} sites, ${cmdCount} commands, ${pipelineSteps} pipeline steps, BM25 bilingual search. \`npm install -g @zenalexa/unicli\``;
     updated = updated.replace(
       countsRegex,
       `<!-- BEGIN COUNTS -->\n${countsLine}\n<!-- END COUNTS -->`,
