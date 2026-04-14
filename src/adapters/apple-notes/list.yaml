@@ -1,0 +1,52 @@
+# Apple Notes — list note titles in a folder via AppleScript.
+#
+# Transport: desktop-ax `applescript` step (macOS-only). On non-darwin
+# the transport emits a structured service_unavailable envelope with
+# minimum_capability="desktop-ax.applescript" so the self-repair loop
+# can route to a different host.
+#
+# Input caveat: `args.folder` is interpolated directly into an
+# AppleScript string literal. Folder names containing a literal `"`
+# or a backslash will break the script. Keep folder names simple —
+# that matches how Apple Notes itself names folders.
+#
+# Example:
+#   unicli apple-notes list
+#   unicli apple-notes list --folder "Work"
+site: apple-notes
+name: list
+description: List note titles in a folder (default "Notes")
+type: desktop
+
+# schema-v2 fields
+capabilities: [desktop-ax]
+minimum_capability: desktop-ax.applescript
+trust: user
+confidentiality: private
+quarantine: false
+
+args:
+  folder:
+    type: str
+    required: false
+    default: Notes
+    description: Folder name (default "Notes")
+
+pipeline:
+  - applescript:
+      script: |
+        tell application "Notes"
+          try
+            set theFolder to folder "${{ args.folder }}"
+          on error
+            return ""
+          end try
+          set theNotes to notes of theFolder
+          set output to ""
+          repeat with n in theNotes
+            set output to output & (name of n) & linefeed
+          end repeat
+          return output
+        end tell
+
+columns: [stdout]
