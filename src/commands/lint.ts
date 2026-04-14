@@ -20,6 +20,10 @@ import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
 import { join, extname, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ExitCode } from "../types.js";
+import {
+  AdapterTrustSchema,
+  AdapterConfidentialitySchema,
+} from "../core/schema-v2.js";
 
 // ── Known step registry ─────────────────────────────────────────────────
 //
@@ -117,6 +121,11 @@ interface YamlAdapter {
   pipeline?: unknown;
   quarantine?: unknown;
   quarantineReason?: unknown;
+  // schema-v2 required metadata
+  capabilities?: unknown;
+  minimum_capability?: unknown;
+  trust?: unknown;
+  confidentiality?: unknown;
 }
 
 export interface LintIssue {
@@ -284,6 +293,48 @@ export function lintAdapterFile(filePath: string): LintIssue[] {
       "schema",
       `strategy must be one of ${[...VALID_STRATEGIES].join(", ")}, got "${parsed.strategy}"`,
     );
+  }
+
+  // schema-v2: five required metadata fields
+  if (
+    parsed.capabilities !== undefined &&
+    !Array.isArray(parsed.capabilities)
+  ) {
+    add("error", "schema-v2", "capabilities must be an array of strings");
+  } else if (parsed.capabilities === undefined) {
+    add("error", "schema-v2", "missing required field: capabilities");
+  }
+  if (parsed.minimum_capability === undefined) {
+    add("error", "schema-v2", "missing required field: minimum_capability");
+  } else if (typeof parsed.minimum_capability !== "string") {
+    add("error", "schema-v2", "minimum_capability must be a string");
+  }
+  if (parsed.trust === undefined) {
+    add("error", "schema-v2", "missing required field: trust");
+  } else if (
+    typeof parsed.trust !== "string" ||
+    !AdapterTrustSchema.safeParse(parsed.trust).success
+  ) {
+    add(
+      "error",
+      "schema-v2",
+      `trust must be one of public|user|system, got "${String(parsed.trust)}"`,
+    );
+  }
+  if (parsed.confidentiality === undefined) {
+    add("error", "schema-v2", "missing required field: confidentiality");
+  } else if (
+    typeof parsed.confidentiality !== "string" ||
+    !AdapterConfidentialitySchema.safeParse(parsed.confidentiality).success
+  ) {
+    add(
+      "error",
+      "schema-v2",
+      `confidentiality must be one of public|internal|private, got "${String(parsed.confidentiality)}"`,
+    );
+  }
+  if (parsed.quarantine === undefined) {
+    add("error", "schema-v2", "missing required field: quarantine");
   }
 
   // quarantine integrity

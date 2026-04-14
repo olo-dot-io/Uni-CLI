@@ -22,13 +22,14 @@ import type {
 } from "../types.js";
 
 /**
- * Environment flag — when set to `strict`, a failed schema-v2 validation
- * during adapter load aborts with exit code 78 (CONFIG_ERROR). The default
- * is `warn`: print a warning to stderr and keep loading so existing CLI
- * sessions don't catastrophically fail mid-migration. The CI gate and
- * `unicli lint` always run in strict mode by their own contract.
+ * Environment flag — when set to `warn`, a failed schema-v2 validation
+ * during adapter load emits a stderr warning but keeps loading. Default
+ * `strict` aborts with exit code 78 (CONFIG_ERROR) on any violation —
+ * the hard gate guarantees every registered adapter carries all five
+ * required v2 metadata fields. Set `UNICLI_SCHEMA=warn` to relax during
+ * a migration window.
  */
-const SCHEMA_MODE = (process.env.UNICLI_SCHEMA ?? "warn").toLowerCase();
+const SCHEMA_MODE = (process.env.UNICLI_SCHEMA ?? "strict").toLowerCase();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
