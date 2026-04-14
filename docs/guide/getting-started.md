@@ -25,7 +25,7 @@ Fetch the top stories from Hacker News:
 unicli hackernews top
 ```
 
-This outputs a formatted table in your terminal:
+This outputs a formatted markdown table in your terminal:
 
 ```
  # │ Title                                    │ Score │ Comments │ URL
@@ -149,15 +149,19 @@ unicli operate screenshot --path ./page.png
 
 ## Output Formats
 
-Every command supports multiple output formats:
+Every command supports multiple output formats (`-f, --format`):
 
 ```bash
-unicli hackernews top              # table (default in terminal)
-unicli hackernews top --json       # JSON
-unicli hackernews top --yaml       # YAML
-unicli hackernews top --csv        # CSV
-unicli hackernews top --md         # Markdown table
+unicli hackernews top              # md (default in terminal)
+unicli hackernews top -f json      # JSON — canonical machine format
+unicli hackernews top -f yaml      # YAML — readable multi-line
+unicli hackernews top -f csv       # CSV — comma-separated
+unicli hackernews top -f md        # Markdown table
+unicli hackernews top -f compact   # compact — `|` separator, no headers (agent-token-optimized)
 ```
+
+Piped output auto-selects `json`. The legacy `-f table` value emits a
+deprecation warning and falls back to `md`; migrate before v0.213.
 
 ## Exit Codes
 

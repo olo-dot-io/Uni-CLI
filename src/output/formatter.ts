@@ -1,12 +1,20 @@
 /**
- * Output formatter — renders command results in multiple formats.
+ * Output formatter — renders command results in agent-friendly formats.
  *
- * Formats: table (human), json (agent), yaml, csv, md
- * Auto-detects piped output and switches to json for agent consumption.
+ * Supported formats (5): json, yaml, csv, md, compact
+ *
+ *   - json    — canonical machine format; auto-selected when stdout is piped
+ *   - yaml    — readable multi-line, stable key ordering
+ *   - csv     — classic comma-separated with quoted escapes
+ *   - md      — GitHub-flavored markdown tables
+ *   - compact — one row per line, `|` separator, no headers; smallest
+ *               token footprint for downstream agent processing
+ *
+ * `table` was removed in v0.212 — callers passing `-f table` get a
+ * stderr deprecation warning and fall back to `md`. The deprecation
+ * lives one release; downstream callers should migrate before v0.213.
  */
 
-import chalk from "chalk";
-import Table from "cli-table3";
 import type { OutputFormat } from "../types.js";
 
 export function format(
@@ -15,39 +23,34 @@ export function format(
   fmt: OutputFormat,
 ): string {
   if (!data || data.length === 0) {
-    return fmt === "json" ? "[]" : chalk.dim("No results");
+    if (fmt === "json") return "[]";
+    return "";
   }
 
   switch (fmt) {
     case "json":
-      return JSON.stringify(data, null, 2);
+      return toJson(data);
     case "yaml":
       return toYaml(data);
     case "csv":
       return toCsv(data, columns);
     case "md":
       return toMarkdown(data, columns);
+    case "compact":
+      return toCompact(data, columns);
     case "table":
+      process.stderr.write(
+        "[deprecated] `-f table` was removed in v0.212; falling back to `md`. Migrate before v0.213.\n",
+      );
+      return toMarkdown(data, columns);
     default:
-      return toTable(data, columns);
+      // Unknown format — emit JSON as the safe default for agents.
+      return toJson(data);
   }
 }
 
-function toTable(data: unknown[], columns?: string[]): string {
-  const rows = data as Record<string, unknown>[];
-  const cols = columns ?? Object.keys(rows[0] ?? {});
-
-  const table = new Table({
-    head: cols.map((c) => chalk.bold.cyan(c)),
-    style: { head: [], border: [] },
-    wordWrap: true,
-  });
-
-  for (const row of rows) {
-    table.push(cols.map((c) => truncate(String(row[c] ?? ""), 60)));
-  }
-
-  return table.toString();
+function toJson(data: unknown[]): string {
+  return JSON.stringify(data, null, 2);
 }
 
 function toCsv(data: unknown[], columns?: string[]): string {
@@ -83,6 +86,29 @@ function toYaml(data: unknown[]): string {
     .join("\n");
 }
 
+/**
+ * Compact format — minimal, newline-delimited, `|` separator, no headers.
+ *
+ * Designed for agent token efficiency: one row per line, stable column
+ * order, values stringified safely. Pipe and newline characters inside
+ * values are replaced so the output survives shell pipelines without
+ * escaping rules.
+ */
+function toCompact(data: unknown[], columns?: string[]): string {
+  const rows = data as Record<string, unknown>[];
+  const cols = columns ?? Object.keys(rows[0] ?? {});
+  return rows
+    .map((r) => cols.map((c) => compactCell(r[c])).join("|"))
+    .join("\n");
+}
+
+function compactCell(v: unknown): string {
+  if (v === null || v === undefined) return "";
+  return String(v)
+    .replace(/[\r\n]+/g, " ")
+    .replace(/\|/g, "/");
+}
+
 function yamlValue(v: unknown): string {
   if (v === null || v === undefined) return "null";
   if (typeof v === "string")
@@ -97,13 +123,9 @@ function csvEscape(s: string): string {
   return s;
 }
 
-function truncate(s: string, max: number): string {
-  return s.length > max ? s.slice(0, max - 1) + "…" : s;
-}
-
-/** Auto-detect if output should be agent-optimized (piped stdout) */
+/** Auto-detect if output should be agent-optimized (piped stdout). */
 export function detectFormat(explicit?: OutputFormat): OutputFormat {
   if (explicit) return explicit;
   if (!process.stdout.isTTY) return "json";
-  return "table";
+  return "md";
 }

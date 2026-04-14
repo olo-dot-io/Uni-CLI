@@ -84,7 +84,7 @@ export async function createCli(): Promise<Command> {
     .version(VERSION)
     .option(
       "-f, --format <format>",
-      "output format: table, json, yaml, csv, md",
+      "output format: json, yaml, csv, md, compact (table deprecated, falls back to md)",
     )
     .option(
       "--json",
