@@ -52,3 +52,16 @@ pipeline:
       predicate: The Figma export dialog is visible with a Save button
 
 columns: [backend, ok]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities:
+  [
+    "cua.snapshot",
+    "cua.wait",
+    "desktop-ax.focus",
+    "desktop-ax.launch_app",
+    "desktop-ax.menu_select",
+  ]
+minimum_capability: cua.snapshot
+trust: user
+confidentiality: public

@@ -56,3 +56,16 @@ pipeline:
       predicate: The album now shows ${{ args.stars }} filled stars
 
 columns: [backend, stars]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities:
+  [
+    "cua.click",
+    "cua.snapshot",
+    "cua.wait",
+    "desktop-ax.focus",
+    "desktop-ax.launch_app",
+  ]
+minimum_capability: cua.click
+trust: user
+confidentiality: public

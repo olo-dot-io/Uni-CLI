@@ -46,6 +46,7 @@ import { registerSchemaCommand } from "./commands/schema.js";
 import { registerSearchCommand } from "./commands/search.js";
 import { registerLintCommand } from "./commands/lint.js";
 import { registerMigrateCommand } from "./commands/migrate.js";
+import { registerMigrateSchemaCommand } from "./commands/migrate-schema.js";
 import { recordUsage } from "./runtime/usage-ledger.js";
 import { emitHook } from "./hooks.js";
 import { checkForUpdates } from "./engine/update-check.js";
@@ -348,6 +349,9 @@ export async function createCli(): Promise<Command> {
 
   // Register `unicli import opencli-yaml` and friends
   registerMigrateCommand(program);
+
+  // Register migrate commands — schema-v1 → schema-v2 mass migration
+  registerMigrateSchemaCommand(program);
 
   // Register "test" command — run all commands for a site
   program

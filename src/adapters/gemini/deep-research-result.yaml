@@ -107,3 +107,10 @@ pipeline:
 
         return [{ response: 'Deep Research may still be running or preparing export. Please wait and retry later.' }];
       })()
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["cdp-browser.evaluate", "cdp-browser.navigate"]
+minimum_capability: cdp-browser.evaluate
+trust: public
+confidentiality: public
+quarantine: false

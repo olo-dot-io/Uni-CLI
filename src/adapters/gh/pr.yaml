@@ -40,3 +40,10 @@ args:
     description: Maximum number of pull requests to return
 
 columns: [number, title, state, author, createdAt, headRefName]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["subprocess.exec"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: public
+quarantine: false

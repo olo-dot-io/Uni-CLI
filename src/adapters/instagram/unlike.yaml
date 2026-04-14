@@ -46,3 +46,10 @@ pipeline:
         if (!r3.ok) throw new Error('Failed to unlike: HTTP ' + r3.status);
         return [{ status: 'Unliked', user: username, post: caption || '(post #' + (idx+1) + ')' }];
       })()
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["cdp-browser.evaluate", "cdp-browser.navigate"]
+minimum_capability: cdp-browser.evaluate
+trust: public
+confidentiality: public
+quarantine: false

@@ -31,3 +31,10 @@ pipeline:
       url: ${{ 'https://weibo.com/' + (item.user?.id || '') + '/' + (item.mblogid || '') }}
 
 columns: [id, author, text, reposts, comments, likes, source, created, url]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

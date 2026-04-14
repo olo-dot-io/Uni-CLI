@@ -44,3 +44,10 @@ pipeline:
       status: "${{ item.status || 'queued' }}"
 
 columns: [task_id, status]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

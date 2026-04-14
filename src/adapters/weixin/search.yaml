@@ -38,3 +38,10 @@ pipeline:
   - limit: ${{ args.limit }}
 
 columns: [rank, title, source, summary, url]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["cdp-browser.evaluate", "cdp-browser.navigate"]
+minimum_capability: cdp-browser.evaluate
+trust: public
+confidentiality: public
+quarantine: false

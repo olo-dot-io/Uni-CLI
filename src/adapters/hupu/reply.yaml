@@ -38,3 +38,10 @@ pipeline:
         if (data.code !== 200 && data.code !== 0) throw new Error(data.msg || data.message || 'Reply failed');
         return [{ status: 'success', message: 'Reply posted to thread ' + tid }];
       })()
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["cdp-browser.evaluate", "cdp-browser.navigate"]
+minimum_capability: cdp-browser.evaluate
+trust: public
+confidentiality: public
+quarantine: false

@@ -37,3 +37,10 @@ pipeline:
       trades: ${{ item.trades }}
 
 columns: [rank, symbol, price, change_pct, high, low, volume, trades]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

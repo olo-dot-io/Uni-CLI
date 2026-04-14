@@ -34,3 +34,10 @@ pipeline:
       market_capital: ${{ item.market_capital }}
 
 columns: [symbol, name, current, percent, chg, high, low, volume]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

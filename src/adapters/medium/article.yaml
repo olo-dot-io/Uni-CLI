@@ -20,3 +20,10 @@ pipeline:
   - html_to_md: {}
 
 columns: [content]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

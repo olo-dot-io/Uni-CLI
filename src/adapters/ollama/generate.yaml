@@ -31,3 +31,10 @@ pipeline:
       total_duration: "${{ item.total_duration ? Math.round(item.total_duration / 1e9 * 100) / 100 + 's' : '' }}"
 
 columns: [model, response, total_duration]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

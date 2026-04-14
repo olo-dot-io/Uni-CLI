@@ -41,3 +41,10 @@ pipeline:
         await new Promise(r => setTimeout(r, 1500));
         return [{ status: 'Friend request sent', username }];
       })()
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["cdp-browser.evaluate", "cdp-browser.navigate"]
+minimum_capability: cdp-browser.evaluate
+trust: public
+confidentiality: public
+quarantine: false

@@ -22,6 +22,14 @@ function writeFixture(base: string, site: string, file: string, body: string) {
 describe("quarantine flag", () => {
   const tmpBase = mkdtempSync(join(tmpdir(), "unicli-quarantine-"));
 
+  // Schema-v2 footer to keep the strict loader gate happy.
+  const V2_FOOTER = [
+    'capabilities: ["http.fetch"]',
+    "minimum_capability: http.fetch",
+    "trust: public",
+    "confidentiality: public",
+  ];
+
   // Healthy adapter with no flag
   writeFixture(
     tmpBase,
@@ -36,6 +44,8 @@ describe("quarantine flag", () => {
       "pipeline:",
       "  - fetch:",
       "      url: https://example.com/ping.json",
+      ...V2_FOOTER,
+      "quarantine: false",
     ].join("\n") + "\n",
   );
 
@@ -55,6 +65,7 @@ describe("quarantine flag", () => {
       "pipeline:",
       "  - fetch:",
       "      url: https://example.com/gone.json",
+      ...V2_FOOTER,
     ].join("\n") + "\n",
   );
 

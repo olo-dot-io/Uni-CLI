@@ -38,6 +38,16 @@ function writeAdapter(
   return fullPath;
 }
 
+// Schema-v2 metadata that every fixture needs so the v2 gate doesn't
+// light up in tests that don't care about it.
+const V2_FOOTER = [
+  'capabilities: ["http.fetch"]',
+  "minimum_capability: http.fetch",
+  "trust: public",
+  "confidentiality: public",
+  "quarantine: false",
+];
+
 describe("unicli lint — per-file", () => {
   it("passes a minimal valid adapter", () => {
     const file = writeAdapter(
@@ -50,6 +60,7 @@ describe("unicli lint — per-file", () => {
         "pipeline:",
         "  - fetch:",
         "      url: https://example.com/api",
+        ...V2_FOOTER,
       ].join("\n"),
     );
     const issues = lintAdapterFile(file);
@@ -153,6 +164,7 @@ describe("unicli lint — per-file", () => {
         'quarantineReason: "upstream dead"',
         "pipeline:",
         "  - fetch: { url: https://example.com }",
+        ...V2_FOOTER,
       ].join("\n"),
     );
     const issues = lintAdapterFile(file);
@@ -196,6 +208,10 @@ describe("unicli lint — per-file", () => {
         'quarantineReason: "API v1 deprecated 2025-11"',
         "pipeline:",
         "  - fetch: { url: https://example.com/v1 }",
+        'capabilities: ["http.fetch"]',
+        "minimum_capability: http.fetch",
+        "trust: public",
+        "confidentiality: public",
       ].join("\n"),
     );
     const issues = lintAdapterFile(file);

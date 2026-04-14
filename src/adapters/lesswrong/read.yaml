@@ -38,3 +38,10 @@ pipeline:
       tags: "${{ (item.tags || []).map(t => t.name).join(', ') }}"
       content: "${{ (item.htmlBody || '').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim() | truncate(3000) }}"
       url: "https://www.lesswrong.com/posts/${{ item._id }}/${{ item.slug }}"
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

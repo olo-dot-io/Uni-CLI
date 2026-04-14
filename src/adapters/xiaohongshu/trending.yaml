@@ -33,3 +33,10 @@ pipeline:
           url: 'https://www.xiaohongshu.com/search_result?keyword=' + encodeURIComponent(item.title || item.name || item.word || ''),
         }));
       })()
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["cdp-browser.evaluate", "cdp-browser.navigate"]
+minimum_capability: cdp-browser.evaluate
+trust: public
+confidentiality: public
+quarantine: false

@@ -26,3 +26,10 @@ pipeline:
       is_playing: ${{ item.is_playing }}
 
 columns: [track, artist, album, is_playing, progress, duration]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

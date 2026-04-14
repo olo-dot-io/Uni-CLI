@@ -23,3 +23,10 @@ pipeline:
       dns_port: "${{ item.dns_port }}"
 
 columns: [version, protection_enabled, running, dns_port]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

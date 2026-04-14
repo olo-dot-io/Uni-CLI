@@ -35,3 +35,10 @@ pipeline:
         const content = (panel?.textContent || '').replace(/\s+/g, ' ').trim();
         return [{ title, char_count: content.length, content: content.substring(0, 5000) }];
       })()
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["cdp-browser.evaluate", "cdp-browser.navigate"]
+minimum_capability: cdp-browser.evaluate
+trust: public
+confidentiality: public
+quarantine: false

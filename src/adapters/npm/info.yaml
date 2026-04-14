@@ -23,3 +23,10 @@ pipeline:
       homepage: ${{ item.homepage }}
 
 columns: [name, version, description, license, homepage]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
