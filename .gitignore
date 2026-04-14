@@ -29,7 +29,12 @@ npm-debug.log*
 # Local
 ref/
 .unicli/
-.claude/
+# .claude/ is tracked selectively: commands/ ships with the repo
+# (cross-agent-platform workflow surface). plans/ and worktrees/ stay
+# local to each contributor.
+.claude/plans/
+.claude/worktrees/
+.claude/settings.local.json
 .superpowers/
 CLAUDE.md
 .npmrc
@@ -40,7 +45,9 @@ tmp/
 # Superpowers / plugin skills
 .agents/
 .windsurf/
-skills/
+# skills/ at repo root is tracked (cross-vendor SKILL.md standard).
+# Personal/experimental skills staying local should live under
+# .claude/plans/ or be prefixed with an underscore.
 skills-lock.json
 
 # Extension build
