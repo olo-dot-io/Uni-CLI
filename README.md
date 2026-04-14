@@ -56,7 +56,7 @@ graph LR
 
 ## Key Ideas
 
-**Universal** — <!-- STATS:site_count -->195<!-- /STATS --> sites, 30+ desktop apps, 8 Electron apps, 35 CLI bridges, 51 macOS system commands. One interface: `unicli <site> <command>`.
+**Universal** — <!-- STATS:site_count -->197<!-- /STATS --> sites, 30+ desktop apps, 8 Electron apps, 35 CLI bridges, 51 macOS system commands. One interface: `unicli <site> <command>`.
 
 **Discoverable** — BM25 bilingual search engine. `unicli search "推特热门"` finds `twitter trending`. `unicli search "download video"` finds `bilibili download`. Agents find what they need in one call.
 
@@ -91,7 +91,7 @@ Fixes are saved to `~/.unicli/adapters/` and survive `npm update`.
 
 <table><tr><td>
 
-**<!-- STATS:site_count -->195<!-- /STATS --> sites** · **<!-- STATS:command_count -->956<!-- /STATS --> commands** · **<!-- STATS:pipeline_step_count -->31<!-- /STATS --> pipeline steps** · **BM25 bilingual search**
+**<!-- STATS:site_count -->197<!-- /STATS --> sites** · **<!-- STATS:command_count -->959<!-- /STATS --> commands** · **<!-- STATS:pipeline_step_count -->31<!-- /STATS --> pipeline steps** · **BM25 bilingual search**
 
 </td></tr></table>
 
@@ -1532,5 +1532,5 @@ The search engine uses BM25 scoring with a ~200-entry bilingual alias table (Chi
 
 <p align="center">
   <sub>v0.211.2 — Vostok · Volynov</sub><br>
-  <sub><!-- STATS:site_count -->195<!-- /STATS --> sites · <!-- STATS:command_count -->956<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->31<!-- /STATS --> pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-03-26 · <!-- STATS:test_count -->1001<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->197<!-- /STATS --> sites · <!-- STATS:command_count -->959<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->31<!-- /STATS --> pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-03-26 · <!-- STATS:test_count -->1052<!-- /STATS --> tests</sub>
 </p>

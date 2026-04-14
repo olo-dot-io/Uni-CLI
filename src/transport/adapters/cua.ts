@@ -56,12 +56,7 @@ export interface CuaBackend {
   type(text: string): Promise<void>;
   key(key: string): Promise<void>;
   scroll(dx: number, dy: number): Promise<void>;
-  drag(
-    fromX: number,
-    fromY: number,
-    toX: number,
-    toY: number,
-  ): Promise<void>;
+  drag(fromX: number, fromY: number, toX: number, toY: number): Promise<void>;
   wait(ms: number): Promise<void>;
   /**
    * Optional: VLM "ask" primitive — let the model decide a boolean or
@@ -193,9 +188,7 @@ class BackendNotReadyError extends Error {
     readonly verb: string,
     readonly hint: string,
   ) {
-    super(
-      `cua backend "${backend}" cannot execute ${verb} yet — ${hint}`,
-    );
+    super(`cua backend "${backend}" cannot execute ${verb} yet — ${hint}`);
     this.name = "BackendNotReadyError";
   }
 }
@@ -232,7 +225,7 @@ export class AnthropicBackend implements CuaBackend {
     throw new BackendNotReadyError(
       this.name,
       "click",
-      "implement computer_20251124 `action:\"left_click\"` call",
+      'implement computer_20251124 `action:"left_click"` call',
     );
   }
 
@@ -240,19 +233,23 @@ export class AnthropicBackend implements CuaBackend {
     throw new BackendNotReadyError(
       this.name,
       "type",
-      "implement computer_20251124 `action:\"type\"` call",
+      'implement computer_20251124 `action:"type"` call',
     );
   }
 
   async key(): Promise<void> {
-    throw new BackendNotReadyError(this.name, "key", "implement `action:\"key\"`");
+    throw new BackendNotReadyError(
+      this.name,
+      "key",
+      'implement `action:"key"`',
+    );
   }
 
   async scroll(): Promise<void> {
     throw new BackendNotReadyError(
       this.name,
       "scroll",
-      "implement `action:\"scroll\"`",
+      'implement `action:"scroll"`',
     );
   }
 
@@ -260,7 +257,7 @@ export class AnthropicBackend implements CuaBackend {
     throw new BackendNotReadyError(
       this.name,
       "drag",
-      "implement `action:\"left_click_drag\"`",
+      'implement `action:"left_click_drag"`',
     );
   }
 
@@ -336,7 +333,11 @@ export class OpenCuaBackend implements CuaBackend {
     throw new BackendNotReadyError(this.name, "key", "implement vLLM action");
   }
   async scroll(): Promise<void> {
-    throw new BackendNotReadyError(this.name, "scroll", "implement vLLM action");
+    throw new BackendNotReadyError(
+      this.name,
+      "scroll",
+      "implement vLLM action",
+    );
   }
   async drag(): Promise<void> {
     throw new BackendNotReadyError(this.name, "drag", "implement vLLM action");
@@ -552,10 +553,7 @@ export class CuaTransport implements TransportAdapter {
     }
   }
 
-  private envelopeFromBackendError<T>(
-    verb: string,
-    e: unknown,
-  ): Envelope<T> {
+  private envelopeFromBackendError<T>(verb: string, e: unknown): Envelope<T> {
     const msg = e instanceof Error ? e.message : String(e);
     const notReady = e instanceof BackendNotReadyError;
     return err({
@@ -651,7 +649,7 @@ export class CuaTransport implements TransportAdapter {
         step: 0,
         action: "cua_key",
         reason: "cua_key requires params.key (string)",
-        suggestion: "pass a named key, e.g. \"Return\", \"cmd+a\"",
+        suggestion: 'pass a named key, e.g. "Return", "cmd+a"',
         exit_code: exitCodeFor("usage_error"),
       });
     }

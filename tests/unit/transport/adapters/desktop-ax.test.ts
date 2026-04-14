@@ -70,7 +70,7 @@ describe("DesktopAxTransport", () => {
     await t.open(makeCtx());
     const res = await t.action({
       kind: "applescript",
-      params: { script: "tell app \"Finder\" to activate" },
+      params: { script: 'tell app "Finder" to activate' },
     });
     expect(res.ok).toBe(false);
     if (!res.ok) {

@@ -128,7 +128,10 @@ export class DesktopAxTransport implements TransportAdapter {
     }
     return {
       format: "json",
-      data: JSON.stringify({ platform: this.platform, available: this.isDarwin() }),
+      data: JSON.stringify({
+        platform: this.platform,
+        available: this.isDarwin(),
+      }),
     };
   }
 
@@ -206,10 +209,7 @@ export class DesktopAxTransport implements TransportAdapter {
     }
   }
 
-  private missingParam<T>(
-    action: string,
-    paramName: string,
-  ): Envelope<T> {
+  private missingParam<T>(action: string, paramName: string): Envelope<T> {
     return err({
       transport: "desktop-ax",
       step: 0,

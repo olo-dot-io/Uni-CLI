@@ -94,10 +94,7 @@ describe("CUA step handlers", () => {
     const bus = createTransportBus();
     // Deliberately do NOT register CuaTransport.
     await expect(
-      handleCuaSnapshot(
-        { bus, transportCtx: { vars: {}, bus } },
-        {},
-      ),
+      handleCuaSnapshot({ bus, transportCtx: { vars: {}, bus } }, {}),
     ).rejects.toThrow(/no transport/i);
   });
 });
