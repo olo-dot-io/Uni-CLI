@@ -45,6 +45,7 @@ import { registerStatusCommand } from "./commands/status.js";
 import { registerSchemaCommand } from "./commands/schema.js";
 import { registerSearchCommand } from "./commands/search.js";
 import { registerLintCommand } from "./commands/lint.js";
+import { registerMigrateCommand } from "./commands/migrate.js";
 import { recordUsage } from "./runtime/usage-ledger.js";
 import { emitHook } from "./hooks.js";
 import { checkForUpdates } from "./engine/update-check.js";
@@ -344,6 +345,9 @@ export async function createCli(): Promise<Command> {
 
   // Register lint command — schema-v2 static validation
   registerLintCommand(program);
+
+  // Register `unicli import opencli-yaml` and friends
+  registerMigrateCommand(program);
 
   // Register "test" command — run all commands for a site
   program
