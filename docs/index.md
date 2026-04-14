@@ -22,7 +22,7 @@ features:
     details: "Web APIs, desktop apps, cloud CLIs, browser automation, WebSocket services."
   - icon: "\u26A1"
     title: Agent-Native
-    details: "~80 tokens per call. Auto-JSON in pipes. Structured errors for self-repair."
+    details: "Per-call token cost measured in docs/BENCHMARK.md. Auto-JSON in pipes. Structured errors for self-repair."
   - icon: "\U0001F504"
     title: 30 Pipeline Steps
     details: "fetch, select, map, each, parallel, if/else, set, rate_limit — composable YAML."

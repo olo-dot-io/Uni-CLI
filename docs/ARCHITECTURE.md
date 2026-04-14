@@ -15,14 +15,14 @@ We are not a scraper. We are not a product. We are **agent infrastructure** — 
 
 ## Why CLI, Not MCP
 
-| Factor       | CLI (Bash)                 | MCP                                              |
-| ------------ | -------------------------- | ------------------------------------------------ |
-| Context cost | ~80 tokens/call            | 550-1,400 tokens/tool definition                 |
-| Startup      | Zero (process per call)    | Server must be running                           |
-| Composition  | Unix pipes (`\|`, `xargs`) | No native composition                            |
-| Discovery    | `unicli list` (~80 tokens) | All tools registered upfront (72% context eaten) |
-| Universality | Every agent has Bash       | MCP support varies                               |
-| Self-repair  | Agent edits YAML, re-runs  | Agent can't edit MCP server code                 |
+| Factor       | CLI (Bash)                      | MCP                                              |
+| ------------ | ------------------------------- | ------------------------------------------------ |
+| Context cost | Measured in docs/BENCHMARK.md   | 550-1,400 tokens/tool definition                 |
+| Startup      | Zero (process per call)         | Server must be running                           |
+| Composition  | Unix pipes (`\|`, `xargs`)      | No native composition                            |
+| Discovery    | `unicli list` + `unicli search` | All tools registered upfront (72% context eaten) |
+| Universality | Every agent has Bash            | MCP support varies                               |
+| Self-repair  | Agent edits YAML, re-runs       | Agent can't edit MCP server code                 |
 
 MCP is optional for IDE integration. CLI through Bash is the primary execution path.
 

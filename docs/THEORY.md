@@ -83,14 +83,14 @@ For any tool interface connecting an AI agent to external systems, three propert
 
 - **High Coverage + High Performance → Low Accuracy.** Compact tool representations (short descriptions, few tokens) sacrifice the detail needed for correct selection. CCTU (2026) found that no LLM exceeds 20% strict compliance under complex constraints [4] — and this worsens as the tool set grows. ToolFlood (2026) demonstrated 95% attack success at just 1% adversarial tool injection [15], showing that large tool sets are also vulnerable.
 
-- **High Accuracy + High Performance → Low Coverage.** Curated, well-described tool sets with deterministic execution achieve both accuracy and performance, but only for a fixed domain. This is the CLI trade-off: ~80 tokens per call with deterministic execution, but only for pre-built adapters.
+- **High Accuracy + High Performance → Low Coverage.** Curated, well-described tool sets with deterministic execution achieve both accuracy and performance, but only for a fixed domain. This is the CLI trade-off: a tight per-call token envelope (see `docs/BENCHMARK.md`) with deterministic execution, but only for pre-built adapters.
 
 ### 2.3 Where Uni-CLI Sits
 
 Uni-CLI optimizes **Accuracy × Performance**:
 
 - **Accuracy:** Deterministic YAML pipelines eliminate stochastic tool selection errors. Structured error feedback enables convergent self-repair.
-- **Performance:** ~80 tokens per CLI call vs. 4-35× more for equivalent MCP interactions [validated by Firecrawl, Scalekit, OnlyCLI, Apideck benchmarks].
+- **Performance:** Per-call token cost is measured in `docs/BENCHMARK.md` (p50/p95 across categories). Target: beat GitHub MCP 55K cold-start by 30×. External benchmarks (Firecrawl, Scalekit, OnlyCLI, Apideck) report 4–35× savings for CLI vs. equivalent MCP interactions.
 - **Coverage:** Extensible but not universal. Currently 198 sites, 1020 commands. Self-repair extends coverage incrementally.
 
 MCP optimizes **Coverage × Accuracy** (19,800+ servers, rich schemas, but high token cost). Function calling optimizes **Coverage × Performance** (any function, compact, but selection errors increase with scale).
@@ -144,15 +144,15 @@ Static adapters decay. Self-repair is not optional — it is a mathematical nece
 
 **Shannon's Source Coding Theorem (1948):** The optimal compression of a message is bounded by its entropy. No lossless encoding can compress below the source entropy.
 
-He et al. (2025) treated the compressor LM as a noisy channel and proved that mutual information predicts downstream agent performance [24]. Larger compressors convey 5.5× more bits per token. This directly supports CLI as a near-optimal compression: a CLI command encodes the same information as a multi-step API interaction in ~80 tokens.
+He et al. (2025) treated the compressor LM as a noisy channel and proved that mutual information predicts downstream agent performance [24]. Larger compressors convey 5.5× more bits per token. This directly supports CLI as a near-optimal compression: a CLI command encodes the same information as a multi-step API interaction inside a tight per-call envelope — see `docs/BENCHMARK.md` for measured numbers.
 
 ### 4.2 Token Efficiency Evidence
 
-| Interface                      | Tokens per interaction | Source                   |
-| ------------------------------ | ---------------------- | ------------------------ |
-| CLI (Uni-CLI)                  | ~80                    | Measured                 |
-| MCP (tool descriptions + call) | 320-2800               | Firecrawl, Scalekit [25] |
-| Raw function calling           | 150-500                | OnlyCLI benchmark [26]   |
+| Interface                      | Tokens per interaction  | Source                   |
+| ------------------------------ | ----------------------- | ------------------------ |
+| CLI (Uni-CLI)                  | see `docs/BENCHMARK.md` | Measured                 |
+| MCP (tool descriptions + call) | 320-2800                | Firecrawl, Scalekit [25] |
+| Raw function calling           | 150-500                 | OnlyCLI benchmark [26]   |
 
 JTON (Nandakishore, 2026) demonstrates that structured data encoding can reduce JSON token counts by 15-60% [27]. JSPLIT (Antonioni, 2025) provides a taxonomy of MCP prompt bloating and shows that filtering improves task success [28].
 

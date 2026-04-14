@@ -42,7 +42,7 @@ unicli macos screenshot                  # macOS screenshot
 unicli ffmpeg compress video.mp4         # Compress video
 ```
 
-Every command outputs **structured JSON when piped** — zero flags needed. Every error emits structured JSON to stderr with the adapter path, the failing step, and a fix suggestion. **~80 tokens per call.**
+Every command outputs **structured JSON when piped** — zero flags needed. Every error emits structured JSON to stderr with the adapter path, the failing step, and a fix suggestion. Per-call token cost is measured in [`docs/BENCHMARK.md`](docs/BENCHMARK.md) (p50/p95 across categories). Target: beat GitHub MCP 55K cold-start by 30×.
 
 ```mermaid
 graph LR
@@ -64,7 +64,7 @@ graph LR
 
 **Agent-native** — Piped output auto-switches to JSON. Errors are machine-parseable. Exit codes follow `sysexits.h`. The agent doesn't need flags or special handling.
 
-**Cheap** — ~80 tokens per CLI invocation vs 55,000 tokens for an MCP tool catalog. Three orders of magnitude cheaper in context window cost.
+**Cheap** — Per-call token cost is measured in [`docs/BENCHMARK.md`](docs/BENCHMARK.md) (p50/p95 across categories). Target: beat GitHub MCP 55K cold-start by 30×.
 
 ## Self-Repair
 
@@ -1532,5 +1532,5 @@ The search engine uses BM25 scoring with a ~200-entry bilingual alias table (Chi
 
 <p align="center">
   <sub>v0.211.2 — Vostok · Volynov</sub><br>
-  <sub><!-- STATS:site_count -->195<!-- /STATS --> sites · <!-- STATS:command_count -->956<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->31<!-- /STATS --> pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-03-26 · <!-- STATS:test_count -->897<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->195<!-- /STATS --> sites · <!-- STATS:command_count -->956<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->31<!-- /STATS --> pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-03-26 · <!-- STATS:test_count -->898<!-- /STATS --> tests</sub>
 </p>

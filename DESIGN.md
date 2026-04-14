@@ -265,7 +265,7 @@ $ unicli blender render scene.blend
 [Feature Grid — 3 columns]
 Card: Self-Repair (5-level healing loop diagram)
 Card: Universal (web + desktop + cloud + service)
-Card: Agent-Native (~80 tokens per call)
+Card: Agent-Native (per-call token cost measured in docs/BENCHMARK.md)
 
 [Coverage Section — dark grid with site logos/names]
 
