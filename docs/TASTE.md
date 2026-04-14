@@ -5,7 +5,7 @@
 >
 > **Current version:** v0.211.2 — Vostok · Volynov (Boris Volynov, Soyuz 5 — survived ballistic reentry when service module failed to separate, 1969. Connection through adversity).
 >
-> **Current scale:** <!-- STATS:site_count -->195<!-- /STATS --> sites, <!-- STATS:command_count -->956<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->956<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->884<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->72<!-- /STATS --> TS), <!-- STATS:test_count -->1046<!-- /STATS --> tests. Numbers render from `stats.json` via `npm run build`; drift fails `npm run stats:check`.
+> **Current scale:** <!-- STATS:site_count -->197<!-- /STATS --> sites, <!-- STATS:command_count -->959<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->959<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->887<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->72<!-- /STATS --> TS), <!-- STATS:test_count -->1052<!-- /STATS --> tests. Numbers render from `stats.json` via `npm run build`; drift fails `npm run stats:check`.
 
 ## Core Identity
 

@@ -9,7 +9,7 @@
 
 <!-- BEGIN COUNTS -->
 
-> <!-- STATS:site_count -->195<!-- /STATS --> sites, <!-- STATS:command_count -->956<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->31<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> <!-- STATS:site_count -->197<!-- /STATS --> sites, <!-- STATS:command_count -->959<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->31<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 
@@ -40,7 +40,7 @@ npm install -g @zenalexa/unicli
 
 **Chinese**: douban (12), hupu (7), jike (10), linux-do (10), tieba (4), v2ex (12), weibo (10), xiaohongshu (22), zhihu (21), bilibili (17), douyin (13), douyu (2), kuaishou (2), 1688 (3), dangdang (2), dianping (2), ele (2), jd (3), maoyan (2), meituan (2), pinduoduo (2), smzdm (3), taobao (2), xianyu (3), sspai (2), weread (7), zsxq (5), baidu (2), ctrip (2), jianyu, jimeng (2), ke (2), maimai, mubu (2), quark (2), sinablog (4), toutiao (2), wechat-channels (2), weixin (4), xiaoe (5), yuanbao (3)
 
-**International**: band (4), bluesky (12), facebook (12), instagram (26), lobsters (5), mastodon (4), reddit (20), twitter (34), tiktok (16), twitch (4), youtube (8), amazon (8), coupang (3), medium (5), pixiv (6), substack (4), boss (14), linkedin (4), steam (6), adguardhome (5), chrome (2), cursor, dingtalk, discord-app, feishu (4), itch-io (3), lesswrong (15), notion (3), notion-app, obs (8), obsidian (3), ones (11), pexels (2), slack (7), threads (2), unsplash (2), vscode (3), ycombinator, yollomi (12), zoom (2), zotero (8)
+**International**: band (4), bluesky (12), facebook (12), instagram (26), lobsters (5), mastodon (4), reddit (20), twitter (34), tiktok (16), twitch (4), youtube (8), amazon (8), coupang (3), medium (5), pixiv (6), substack (4), boss (14), linkedin (4), steam (6), adguardhome (5), apple-music, chrome (2), cursor, dingtalk, discord-app, feishu (4), figma, itch-io (3), lesswrong (15), notion (3), notion-app, obs (8), obsidian (3), ones (11), pexels (2), slack (7), threads (2), unsplash (2), vscode (3), ycombinator, yollomi (12), zoom (3), zotero (8)
 
 **AI / ML**: deepseek (2), doubao (3), doubao-web (9), gemini (5), grok, hf (4), huggingface-papers (2), minimax (3), notebooklm (15), novita (3), ollama (4), openrouter (2), perplexity, replicate (3)
 

@@ -53,6 +53,17 @@ import {
 } from "./download.js";
 import { executeWebsocket, type WebsocketStepConfig } from "./websocket.js";
 import { getProxyAgent } from "./proxy.js";
+import { createTransportBus } from "../transport/bus.js";
+import { CuaTransport } from "../transport/adapters/cua.js";
+import { DesktopAxTransport } from "../transport/adapters/desktop-ax.js";
+import { DesktopUiaTransport } from "../transport/adapters/desktop-uia.js";
+import { DesktopAtspiTransport } from "../transport/adapters/desktop-atspi.js";
+import type { TransportBus, TransportContext } from "../transport/types.js";
+import { CUA_STEP_HANDLERS, type CuaStepKind } from "./steps/cua.js";
+import {
+  DESKTOP_AX_STEP_HANDLERS,
+  type DesktopAxStepKind,
+} from "./steps/desktop-ax.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -127,6 +138,50 @@ const SIBLING_KEYS = new Set([
   "retry",
   "backoff",
 ]);
+
+/**
+ * Lazily-created transport bus for the cua_* and ax_* step families.
+ *
+ * Shared across a single runPipeline() invocation so the same CuaTransport
+ * (with its chosen backend) and DesktopAxTransport (with its open shell)
+ * are reused across steps. Replaced by dependency injection when the
+ * runner migrates into the transport bus fully in a later phase.
+ */
+let sharedBus: TransportBus | undefined;
+
+function getBus(): TransportBus {
+  if (sharedBus) return sharedBus;
+  const bus = createTransportBus();
+  bus.register(new CuaTransport());
+  bus.register(new DesktopAxTransport());
+  bus.register(new DesktopUiaTransport());
+  bus.register(new DesktopAtspiTransport());
+  sharedBus = bus;
+  return bus;
+}
+
+/** Exposed for tests — reset the shared bus between runs. */
+export function __resetTransportBusForTests(): void {
+  sharedBus = undefined;
+}
+
+function buildTransportCtx(ctx: PipelineContext): TransportContext {
+  return {
+    cwd: process.cwd(),
+    env: process.env as Record<string, string>,
+    cookieHeader: ctx.cookieHeader,
+    vars: ctx.vars,
+    bus: getBus(),
+  };
+}
+
+function isCuaStep(action: string): action is CuaStepKind {
+  return action in CUA_STEP_HANDLERS;
+}
+
+function isDesktopAxStep(action: string): action is DesktopAxStepKind {
+  return action in DESKTOP_AX_STEP_HANDLERS;
+}
 
 function getActionEntry(step: PipelineStep): [string, unknown] {
   const entries = Object.entries(step);
@@ -228,6 +283,35 @@ async function executeStep(
     case "extract":
       return stepExtract(ctx, config as ExtractConfig);
     default: {
+      // CUA family + macOS AX family dispatch through the transport bus.
+      // `action()` never throws — envelopes surface via ctx.vars.lastEnvelope.
+      if (isCuaStep(action)) {
+        const handler = CUA_STEP_HANDLERS[action];
+        const params =
+          config && typeof config === "object" && !Array.isArray(config)
+            ? (config as Record<string, unknown>)
+            : {};
+        const envelope = await handler(
+          { bus: getBus(), transportCtx: buildTransportCtx(ctx) },
+          params,
+        );
+        ctx.vars["lastEnvelope"] = envelope;
+        return { ...ctx, data: envelope.ok ? envelope.data : envelope };
+      }
+      if (isDesktopAxStep(action)) {
+        const handler = DESKTOP_AX_STEP_HANDLERS[action];
+        const params =
+          config && typeof config === "object" && !Array.isArray(config)
+            ? (config as Record<string, unknown>)
+            : {};
+        const envelope = await handler(
+          { bus: getBus(), transportCtx: buildTransportCtx(ctx) },
+          params,
+        );
+        ctx.vars["lastEnvelope"] = envelope;
+        return { ...ctx, data: envelope.ok ? envelope.data : envelope };
+      }
+
       // Check plugin custom step registry before giving up
       const { getCustomStep } = await import("../plugin/step-registry.js");
       const customHandler = getCustomStep(action);

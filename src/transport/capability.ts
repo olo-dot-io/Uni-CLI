@@ -171,6 +171,15 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
       "desktop-atspi",
     ],
   },
+  cua_key: {
+    transports: [
+      "cua",
+      "cdp-browser",
+      "desktop-ax",
+      "desktop-uia",
+      "desktop-atspi",
+    ],
+  },
   cua_scroll: {
     transports: [
       "cua",
@@ -179,6 +188,9 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
       "desktop-uia",
       "desktop-atspi",
     ],
+  },
+  cua_drag: {
+    transports: ["cua", "cdp-browser"],
   },
   cua_wait: {
     transports: [
@@ -200,6 +212,9 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
       "desktop-atspi",
     ],
   },
+  cua_ask: { transports: ["cua"] },
+  cua_backend: { transports: ["cua"] },
+  cua_launch: { transports: ["cua", "subprocess", "desktop-ax"] },
 
   // --- Platform-exclusive OS steps ---
   ax_focus: { transports: ["desktop-ax"], platforms: ["darwin"] },

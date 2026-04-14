@@ -1,0 +1,31 @@
+# Pure AX demo — toggle microphone mute in an in-progress Zoom meeting.
+#
+# No CUA involved. Zoom's "Meeting > Mute/Unmute Audio" menu item is
+# deterministic and driven entirely through the Accessibility API.
+site: zoom
+name: toggle-mute
+description: Toggle mute in the active Zoom meeting via Meeting menu
+type: desktop
+binary: osascript
+detect: Darwin
+strategy: public
+quarantine: true
+quarantineReason: Requires macOS + zoom.us running with an active meeting
+
+pipeline:
+  - ax_focus:
+      app: zoom.us
+
+  - applescript:
+      script: |
+        tell application "System Events"
+          tell process "zoom.us"
+            try
+              click menu item "Mute Audio" of menu "Meeting" of menu bar 1
+            on error
+              click menu item "Unmute Audio" of menu "Meeting" of menu bar 1
+            end try
+          end tell
+        end tell
+
+columns: [stdout]
