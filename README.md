@@ -1532,5 +1532,5 @@ The search engine uses BM25 scoring with a ~200-entry bilingual alias table (Chi
 
 <p align="center">
   <sub>v0.211.2 — Vostok · Volynov</sub><br>
-  <sub><!-- STATS:site_count -->197<!-- /STATS --> sites · <!-- STATS:command_count -->959<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->31<!-- /STATS --> pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-03-26 · <!-- STATS:test_count -->1052<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->197<!-- /STATS --> sites · <!-- STATS:command_count -->959<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->31<!-- /STATS --> pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-03-26 · <!-- STATS:test_count -->1101<!-- /STATS --> tests</sub>
 </p>
