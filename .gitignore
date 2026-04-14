@@ -34,10 +34,13 @@ ref/
 .unicli/
 # .claude/ is tracked selectively: commands/ ships with the repo
 # (cross-agent-platform workflow surface). plans/ and worktrees/ stay
-# local to each contributor.
+# local to each contributor. skills/ is canonical at repo root
+# (cross-vendor SKILL.md standard); .claude/skills may exist locally
+# but is not tracked.
 .claude/plans/
 .claude/worktrees/
 .claude/settings.local.json
+.claude/skills/
 .superpowers/
 CLAUDE.md
 .npmrc
