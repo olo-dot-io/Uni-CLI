@@ -12,6 +12,7 @@ import { join, extname, basename, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import yaml from "js-yaml";
 import { registerAdapter } from "../registry.js";
+import { validateAdapterV2 } from "../core/schema-v2.js";
 import type {
   AdapterManifest,
   AdapterCommand,
@@ -19,6 +20,15 @@ import type {
   AdapterType,
   PipelineStep,
 } from "../types.js";
+
+/**
+ * Environment flag — when set to `strict`, a failed schema-v2 validation
+ * during adapter load aborts with exit code 78 (CONFIG_ERROR). The default
+ * is `warn`: print a warning to stderr and keep loading so existing CLI
+ * sessions don't catastrophically fail mid-migration. The CI gate and
+ * `unicli lint` always run in strict mode by their own contract.
+ */
+const SCHEMA_MODE = (process.env.UNICLI_SCHEMA ?? "warn").toLowerCase();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -119,6 +129,11 @@ interface YamlAdapter {
   wait?: string;
   extract?: string;
   output?: string | Record<string, unknown>;
+  // schema-v2 required metadata
+  capabilities?: string[];
+  minimum_capability?: string;
+  trust?: string;
+  confidentiality?: string;
 }
 
 interface YamlArg {
@@ -200,6 +215,32 @@ export function loadAdaptersFromDir(dir: string): number {
 
         // Skip underscore-prefixed files (internal/metadata, not commands)
         if (cmdName.startsWith("_")) continue;
+
+        // schema-v2 hard gate: every YAML must satisfy the v2 contract
+        // before it's registered. We validate a projected shape (just the
+        // five required fields + name) rather than the full parsed object,
+        // because the legacy fields are intentionally opaque to v2.
+        const v2Result = validateAdapterV2({
+          name: cmdName,
+          description: parsed.description,
+          capabilities: parsed.capabilities,
+          minimum_capability: parsed.minimum_capability,
+          trust: parsed.trust,
+          confidentiality: parsed.confidentiality,
+          quarantine: parsed.quarantine ?? false,
+        });
+        if (!v2Result.ok) {
+          const rel = join(site, file);
+          const msg = `schema-v2 violation in ${rel}: ${v2Result.error}`;
+          if (SCHEMA_MODE === "strict") {
+            console.error(msg);
+            process.exit(78); // sysexits.h EX_CONFIG
+          }
+          if (process.env.UNICLI_DEBUG) {
+            console.error(`Warning: ${msg}`);
+          }
+          // warn mode: continue registering so the CLI stays usable.
+        }
 
         // Parse args from YAML into AdapterArg[]
         let adapterArgs: AdapterArg[] | undefined;
