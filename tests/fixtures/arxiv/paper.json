@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "recorded_at": "2026-04-15T10:51:33.729Z",
+  "args": {},
+  "http_requests": [
+    {
+      "url_pattern": ".*",
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/atom+xml"
+        },
+        "body_text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<feed xmlns=\"http://www.w3.org/2005/Atom\">\n  <entry>\n    <id>http://arxiv.org/abs/2401.0001v1</id>\n    <title>Synthetic arXiv Paper Title</title>\n    <author><name>Alice Author</name></author>\n    <author><name>Bob Author</name></author>\n    <published>2026-04-15T00:00:00Z</published>\n    <summary>This is a synthetic paper abstract for fixture testing.</summary>\n  </entry>\n  <entry>\n    <id>http://arxiv.org/abs/2401.0002v1</id>\n    <title>Second Synthetic Paper</title>\n    <author><name>Carol Author</name></author>\n    <published>2026-04-14T00:00:00Z</published>\n    <summary>Another synthetic abstract.</summary>\n  </entry>\n</feed>"
+      }
+    }
+  ],
+  "expected": {
+    "columns": ["id", "title", "authors", "published", "abstract", "url"],
+    "minItems": 1
+  }
+}

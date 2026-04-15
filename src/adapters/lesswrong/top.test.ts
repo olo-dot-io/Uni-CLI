@@ -1,0 +1,15 @@
+import { describe, it } from "vitest";
+import {
+  runAdapterWithFixture,
+  expectAdapterShape,
+} from "../../../tests/adapter-runner.js";
+
+describe("lesswrong top", () => {
+  it("returns rows with declared columns against fixture", async () => {
+    const { output } = await runAdapterWithFixture("lesswrong", "top");
+    expectAdapterShape(output, {
+      columns: ["rank", "title", "author", "karma", "comments", "url"],
+      minItems: 1,
+    });
+  });
+});
