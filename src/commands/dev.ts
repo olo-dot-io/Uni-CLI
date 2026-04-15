@@ -45,7 +45,7 @@ export function registerDevCommand(program: Command): void {
 
 async function runAdapter(filePath: string, fmt: string): Promise<void> {
   try {
-    const { runPipeline } = await import("../engine/yaml-runner.js");
+    const { runPipeline } = await import("../engine/executor.js");
     const { format, detectFormat } = await import("../output/formatter.js");
 
     const raw = readFileSync(filePath, "utf-8");

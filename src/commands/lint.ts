@@ -24,71 +24,26 @@ import {
   AdapterTrustSchema,
   AdapterConfidentialitySchema,
 } from "../core/schema-v2.js";
+import "../engine/steps/index.js";
+import { listSteps } from "../engine/step-registry.js";
+import { CUA_STEP_HANDLERS } from "../engine/steps/cua.js";
+import { DESKTOP_AX_STEP_HANDLERS } from "../engine/steps/desktop-ax.js";
 
 // ── Known step registry ─────────────────────────────────────────────────
 //
-// Source of truth is the switch in src/engine/yaml-runner.ts. Keep this
-// list in lock-step; see contributing/schema.md for the protocol.
+// Source of truth is the registry in src/engine/step-registry.ts (populated
+// by src/engine/steps/*.ts on import via steps/index.ts). The side-effect
+// import above guarantees the registry is fully populated before lint runs.
+//
+// `rate_limit` is dispatched directly by the executor and does not
+// self-register. CUA and desktop-ax steps route through dispatch tables
+// instead of the registry, so we add their kinds explicitly.
 
-const KNOWN_STEPS = new Set([
-  // API
-  "fetch",
-  "fetch_text",
-  "parse_rss",
-  "html_to_md",
-  // Transform
-  "select",
-  "map",
-  "filter",
-  "sort",
-  "limit",
-  // Desktop
-  "exec",
-  "write_temp",
-  // Browser
-  "navigate",
-  "evaluate",
-  "click",
-  "type",
-  "wait",
-  "intercept",
-  "press",
-  "scroll",
-  "snapshot",
-  "tap",
-  "extract",
-  // Media
-  "download",
-  "websocket",
-  // Control
-  "set",
-  "if",
-  "append",
-  "each",
-  "parallel",
+const KNOWN_STEPS = new Set<string>([
+  ...listSteps(),
   "rate_limit",
-  "assert",
-  "retry",
-  // CUA (Phase 2 — pluggable VLM backend: anthropic/trycua/opencua/scrapybara)
-  "cua_snapshot",
-  "cua_click",
-  "cua_type",
-  "cua_key",
-  "cua_scroll",
-  "cua_drag",
-  "cua_wait",
-  "cua_assert",
-  "cua_ask",
-  "cua_backend",
-  "cua_launch",
-  // Desktop AX (Phase 2 — macOS Accessibility + AppleScript, stubs on win/linux)
-  "ax_focus",
-  "ax_menu_select",
-  "applescript",
-  "clipboard_read",
-  "clipboard_write",
-  "launch_app",
-  "focus_window",
+  ...Object.keys(CUA_STEP_HANDLERS),
+  ...Object.keys(DESKTOP_AX_STEP_HANDLERS),
 ]);
 
 // Step keys that modify other keys rather than being executable themselves.
