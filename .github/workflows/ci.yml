@@ -71,11 +71,11 @@ jobs:
       - name: Lint adapters (schema-v2)
         run: npm run lint:adapters
 
-      - name: Unit tests
-        run: npm run test
-
       - name: Build
         run: npm run build
+
+      - name: Unit tests
+        run: npm run test
 
       - name: Stats consistency gate
         run: npm run stats:check
