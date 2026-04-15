@@ -74,6 +74,17 @@ function main(): void {
   const root = repoRoot();
   process.chdir(root);
 
+  // Tag pushes (release workflow) run on detached HEAD with
+  // GITHUB_REF = refs/tags/v* — there is no PR diff to score, and the
+  // changeset was validated when the PR originally landed. A shallow
+  // checkout here also lacks origin/main so `git rev-parse HEAD~1`
+  // fails. Skip cleanly.
+  const ref = process.env.GITHUB_REF ?? "";
+  if (ref.startsWith("refs/tags/")) {
+    console.log(`verify:changesets — skipped on tag push (${ref})`);
+    process.exit(0);
+  }
+
   const branch = currentBranch();
   if (branch === "main" || branch === "master") {
     console.log("verify:changesets — skipped on default branch");
