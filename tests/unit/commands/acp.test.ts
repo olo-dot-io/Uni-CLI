@@ -57,7 +57,9 @@ describe("unicli acp — CLI subprocess integration", () => {
   let proc: ChildProcess;
 
   beforeAll(async () => {
-    proc = spawn("npx", ["tsx", CLI_PATH, "acp"], {
+    // `npx` → `npx.cmd` on Windows (the actual executable).
+    const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
+    proc = spawn(npxBin, ["tsx", CLI_PATH, "acp"], {
       stdio: ["pipe", "pipe", "pipe"],
       cwd: join(__dirname, "..", "..", ".."),
     });

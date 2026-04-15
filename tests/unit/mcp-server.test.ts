@@ -57,7 +57,11 @@ describe("MCP server — smart default mode", () => {
 
   beforeAll(async () => {
     // Default mode (no flags) registers 4 tools: unicli_run, unicli_list, unicli_search, unicli_explore
-    proc = spawn("npx", ["tsx", SERVER_PATH], {
+    // `spawn("npx", …)` fails with ENOENT on Windows because the real
+    // binary is `npx.cmd`; use the platform-appropriate name so the CI
+    // matrix green-lights Windows too.
+    const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
+    proc = spawn(npxBin, ["tsx", SERVER_PATH], {
       stdio: ["pipe", "pipe", "pipe"],
       cwd: join(__dirname, "..", ".."),
     });
