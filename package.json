@@ -54,7 +54,7 @@
     "mcp": "tsx src/mcp/server.ts",
     "release": "npm run build && tsx scripts/release.ts",
     "release:check": "tsx scripts/release-check.ts",
-    "prepare": "lefthook install",
+    "prepare": "lefthook install 2>/dev/null || true",
     "preversion": "npm run verify",
     "postversion": "npm run build && tsx scripts/release.ts",
     "bench": "tsx bench/report.ts",

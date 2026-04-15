@@ -171,7 +171,15 @@ export function assertSafeRequestUrl(raw: string): void {
     );
   }
   if (process.env.UNICLI_ALLOW_LOCAL === "1") return;
-  const host = u.hostname.toLowerCase();
+  // Node's URL.hostname keeps the IPv6 brackets (`[::1]`) around the
+  // zero-compressed literal; strip them before comparing. This is load-
+  // bearing — a missing strip means `[::1]` and `[fe80::...]` slip past
+  // the check.
+  const hostnameLower = u.hostname.toLowerCase();
+  const host =
+    hostnameLower.startsWith("[") && hostnameLower.endsWith("]")
+      ? hostnameLower.slice(1, -1)
+      : hostnameLower;
   // Literal loopback / unspecified / link-local / cloud metadata
   if (
     host === "localhost" ||
@@ -180,6 +188,10 @@ export function assertSafeRequestUrl(raw: string): void {
     host === "::1" ||
     host === "metadata.google.internal" ||
     host === "metadata" ||
+    // IPv6 link-local (fe80::/10) and unique-local (fc00::/7 → fc/fd prefix)
+    host.startsWith("fe80:") ||
+    host.startsWith("fc") ||
+    host.startsWith("fd") ||
     // IPv4 CIDR check — crude but covers the most common SSRF vectors.
     // Full RFC-6890 enumeration is overkill for adapter fetches; if you
     // need to target those ranges, set UNICLI_ALLOW_LOCAL=1.
