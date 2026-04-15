@@ -17,8 +17,102 @@
     "access": "public"
   },
   "exports": {
-    ".": "./dist/main.js",
-    "./registry": "./dist/registry.js"
+    ".": {
+      "types": "./dist/main.d.ts",
+      "import": "./dist/main.js"
+    },
+    "./registry": {
+      "types": "./dist/registry.d.ts",
+      "import": "./dist/registry.js"
+    },
+    "./registry-v2": {
+      "types": "./dist/core/registry.d.ts",
+      "import": "./dist/core/registry.js"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "import": "./dist/errors.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js"
+    },
+    "./output": {
+      "types": "./dist/output/formatter.d.ts",
+      "import": "./dist/output/formatter.js"
+    },
+    "./engine": {
+      "types": "./dist/engine/executor.d.ts",
+      "import": "./dist/engine/executor.js"
+    },
+    "./engine/registry": {
+      "types": "./dist/engine/step-registry.d.ts",
+      "import": "./dist/engine/step-registry.js"
+    },
+    "./engine/steps": {
+      "types": "./dist/engine/steps/index.d.ts",
+      "import": "./dist/engine/steps/index.js"
+    },
+    "./transport": {
+      "types": "./dist/transport/bus.d.ts",
+      "import": "./dist/transport/bus.js"
+    },
+    "./transport/http": {
+      "types": "./dist/transport/adapters/http.d.ts",
+      "import": "./dist/transport/adapters/http.js"
+    },
+    "./transport/cdp-browser": {
+      "types": "./dist/transport/adapters/cdp-browser.d.ts",
+      "import": "./dist/transport/adapters/cdp-browser.js"
+    },
+    "./transport/subprocess": {
+      "types": "./dist/transport/adapters/subprocess.d.ts",
+      "import": "./dist/transport/adapters/subprocess.js"
+    },
+    "./transport/desktop-ax": {
+      "types": "./dist/transport/adapters/desktop-ax.d.ts",
+      "import": "./dist/transport/adapters/desktop-ax.js"
+    },
+    "./transport/cua": {
+      "types": "./dist/transport/adapters/cua.d.ts",
+      "import": "./dist/transport/adapters/cua.js"
+    },
+    "./browser/cdp": {
+      "types": "./dist/browser/cdp-client.d.ts",
+      "import": "./dist/browser/cdp-client.js"
+    },
+    "./browser/page": {
+      "types": "./dist/browser/page.d.ts",
+      "import": "./dist/browser/page.js"
+    },
+    "./browser/daemon": {
+      "types": "./dist/browser/daemon-client.d.ts",
+      "import": "./dist/browser/daemon-client.js"
+    },
+    "./browser/utils": {
+      "types": "./dist/browser/dom-helpers.d.ts",
+      "import": "./dist/browser/dom-helpers.js"
+    },
+    "./protocol/mcp": {
+      "types": "./dist/mcp/schema.d.ts",
+      "import": "./dist/mcp/schema.js"
+    },
+    "./protocol/acp": {
+      "types": "./dist/protocol/acp.d.ts",
+      "import": "./dist/protocol/acp.js"
+    },
+    "./protocol/skill": {
+      "types": "./dist/protocol/skill.d.ts",
+      "import": "./dist/protocol/skill.js"
+    },
+    "./download": {
+      "types": "./dist/engine/download.d.ts",
+      "import": "./dist/engine/download.js"
+    },
+    "./pipeline": {
+      "types": "./dist/engine/executor.d.ts",
+      "import": "./dist/engine/executor.js"
+    }
   },
   "scripts": {
     "dev": "tsx src/main.ts",
@@ -41,10 +135,11 @@
     "changeset:status": "changeset status --since=origin/main",
     "verify:changesets": "tsx scripts/verify-changesets.ts",
     "conformance": "tsx scripts/conformance-report.ts",
+    "check:exports": "tsx scripts/check-exports-count.ts",
     "lint:adapters": "tsx src/main.ts lint src/adapters",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "validate:agents-size": "tsx scripts/validate-agents-size.ts",
-    "verify": "npm run format:check && npm run typecheck && npm run lint && npm run lint:context && npm run build:manifest && npm run lint:adapters && npm run test && npm run build && npm run validate:agents-size && npm run stats:check && npm run conformance && npm run verify:changesets",
+    "verify": "npm run format:check && npm run typecheck && npm run lint && npm run lint:context && npm run build:manifest && npm run lint:adapters && npm run test && npm run build && npm run validate:agents-size && npm run stats:check && npm run conformance && npm run check:exports && npm run verify:changesets",
     "verify:full": "npm run verify && npm run refs:verify && npm run adapter:health",
     "verify:clean": "npm run clean && npm run verify",
     "docs:dev": "vitepress dev docs",
