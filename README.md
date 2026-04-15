@@ -279,6 +279,14 @@ npm run verify     # typecheck + lint + test + build + stats check
 
 Seven production dependencies: `chalk`, `cli-table3`, `commander`, `js-yaml`, `turndown`, `undici`, `ws`.
 
+## Release cadence
+
+Patches ship every **Friday 09:00 HKT** when substantive commits have landed since the last tag. Quiet weeks are recorded and skipped — silence is success, not failure. Dependabot bumps are grouped into one PR per Monday so they ride along in the Friday cut without flooding the commit log.
+
+<a href="https://github.com/olo-dot-io/Uni-CLI/commits/main"><img src="https://img.shields.io/github/last-commit/olo-dot-io/Uni-CLI?style=flat-square&label=last-commit" alt="last commit"></a>
+
+Full policy — manual overrides, cancellation procedure, escalation rules: [`docs/RELEASE-CADENCE.md`](docs/RELEASE-CADENCE.md).
+
 ## Contributing
 
 The fastest path to a merged PR: write a 20-line YAML adapter for a site you use every day. Per-domain guides live in [`contributing/`](contributing/):
