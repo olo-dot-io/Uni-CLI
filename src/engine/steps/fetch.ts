@@ -225,11 +225,3 @@ async function fetchJson(
 }
 
 registerStep("fetch", stepFetch as StepHandler);
-
-// Backward-compat aliases — the engine/steps barrel previously exported
-// `handle*` symbols by concern. New per-step files keep these aliases so
-// external imports keep working through the v0.213 → v0.214 transition.
-export { stepFetch as handleFetch };
-export { stepFetchText as handleFetchText } from "./fetch-text.js";
-export { stepParseRss as handleParseRss } from "./parse-rss.js";
-export { stepHtmlToMd as handleHtmlToMd } from "./html-to-md.js";

@@ -1,8 +1,7 @@
 /**
  * Step handler barrel — single side-effect import that registers every
  * built-in pipeline step into `step-registry`. The executor imports this
- * file once; per-step modules self-register on load. Named re-exports
- * keep the legacy `handle*` symbol surface alive.
+ * file once; per-step modules self-register on load.
  */
 export { stepSelect } from "./select.js";
 export { stepMap } from "./map.js";
@@ -36,16 +35,3 @@ export { stepDownload, type DownloadStepConfig } from "./download.js";
 export { stepWebsocket } from "./websocket.js";
 export * from "./cua.js";
 export * from "./desktop-ax.js";
-// Backward-compat handle* aliases — concern shims re-export per-step bodies.
-export * from "./transform.js";
-export * from "./browser.js";
-export * from "./control.js";
-export * from "./desktop.js";
-export {
-  handleFetch,
-  handleFetchText,
-  handleParseRss,
-  handleHtmlToMd,
-} from "./fetch.js";
-export { handleDownload } from "./download.js";
-export { handleWebsocket } from "./websocket.js";
