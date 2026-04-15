@@ -17,7 +17,7 @@
 
 import { USER_AGENT } from "../../constants.js";
 import { err, exitCodeFor, ok } from "../../core/envelope.js";
-import { assertSafeRequestUrl } from "../../engine/yaml-runner.js";
+import { assertSafeRequestUrl } from "../../engine/executor.js";
 import type { Envelope } from "../../core/envelope.js";
 import type {
   ActionRequest,

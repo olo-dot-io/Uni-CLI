@@ -31,7 +31,7 @@ import {
 } from "node:http";
 import { loadAllAdapters, loadTsAdapters } from "../discovery/loader.js";
 import { getAllAdapters, listCommands, resolveCommand } from "../registry.js";
-import { runPipeline } from "../engine/yaml-runner.js";
+import { runPipeline } from "../engine/executor.js";
 import { VERSION, MCP_PROTOCOL_VERSION } from "../constants.js";
 // sse-transport.ts is deprecated (spec 2025-03-26). Kept for backwards compatibility.
 // import { startSseServer } from "./sse-transport.js";
