@@ -182,6 +182,20 @@ function isEnvironmentMissing(message: string): string | undefined {
   if (/HTTP 5\d\d/i.test(message)) {
     return "upstream transient (HTTP 5xx)";
   }
+  // Probe-side timeout (default 8 s on CI, configurable via
+  // HEALTH_TIMEOUT_MS). Can't distinguish "adapter endpoint is slow"
+  // from "hosted runner has network variance today" — either way it
+  // is not a categorical regression, and the nightly strict sweep
+  // (longer timeout + retry) is the right place to surface repeated
+  // failures. Treat as env-missing here.
+  if (/timed out after \d+\s*ms/i.test(message)) {
+    return "probe timeout (transient)";
+  }
+  // Bare `fetch failed` with no HTTP status — the host's DNS or TLS
+  // couldn't reach the target. Same ambiguity as timeouts.
+  if (/Step \d+ \(fetch(_text)?\) failed: fetch failed/i.test(message)) {
+    return "probe network unreachable (transient)";
+  }
   // Required binary gate — desktop adapters frequently use `detect:` /
   // `binary:` probes that emit a clear "not installed" message.
   if (/not installed|not found.*install|requires .*cli/i.test(message)) {
