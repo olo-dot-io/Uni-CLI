@@ -3,8 +3,8 @@
  *
  * For each testable adapter (web-api / service YAML with a pipeline,
  * not quarantined), check that a colocated `.test.ts` file exists next
- * to the YAML. Fail the CI gate when coverage drops below the declared
- * threshold.
+ * to the YAML. Fail the CI gate when the absolute count of covered
+ * adapters drops below the configured floor.
  *
  * Opt-out: an adapter may declare `no_test_reason: <issue-url>` to be
  * excluded from the denominator. Use sparingly — every exclusion is a
@@ -14,7 +14,12 @@
  * denominator.
  *
  * Usage:
- *   npx tsx scripts/check-adapter-test-coverage.ts [--threshold N] [--json]
+ *   npx tsx scripts/check-adapter-test-coverage.ts [--min-covered N] [--json]
+ *
+ * The legacy `--threshold N` flag is accepted as an alias. The number is
+ * the **minimum count of adapters with a colocated test** — not a
+ * percentage. The `coverage_pct` field in `--json` output reports the
+ * derived ratio for dashboarding.
  */
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
@@ -106,8 +111,9 @@ function parseArgs(argv: string[]): Args {
   const out: Args = { threshold: 50, json: false, verbose: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === "--threshold") out.threshold = Number(argv[++i]);
-    else if (a === "--json") out.json = true;
+    if (a === "--min-covered" || a === "--threshold") {
+      out.threshold = Number(argv[++i]);
+    } else if (a === "--json") out.json = true;
     else if (a === "--verbose" || a === "-v") out.verbose = true;
   }
   return out;
@@ -144,7 +150,7 @@ if (args.json) {
   };
   console.log(JSON.stringify(report, null, 2));
 } else {
-  console.log(`adapter-test coverage — threshold ${args.threshold}`);
+  console.log(`adapter-test coverage — min-covered ${args.threshold}`);
   console.log(
     `  tested: ${covered.length} / ${testable.length} testable (${rows.length - testable.length} excluded)`,
   );

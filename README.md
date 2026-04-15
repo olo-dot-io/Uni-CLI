@@ -16,7 +16,7 @@
 <a href="https://github.com/olo-dot-io/Uni-CLI/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/olo-dot-io/Uni-CLI/ci.yml?style=flat-square&label=CI" alt="CI"></a>
 <a href="https://github.com/olo-dot-io/Uni-CLI/stargazers"><img src="https://img.shields.io/github/stars/olo-dot-io/Uni-CLI?style=flat-square" alt="stars"></a>
 <a href="./LICENSE"><img src="https://img.shields.io/github/license/olo-dot-io/Uni-CLI?style=flat-square" alt="license"></a>
-<img src="https://img.shields.io/badge/tests-<!-- STATS:test_count -->1148<!-- /STATS -->-44cc11?style=flat-square" alt="tests">
+<img src="https://img.shields.io/badge/tests-<!-- STATS:test_count -->1143<!-- /STATS -->-44cc11?style=flat-square" alt="tests">
 <img src="https://img.shields.io/badge/agent--reach-ally-6a5acd?style=flat-square" alt="agent-reach ally">
 
 <br>
@@ -293,7 +293,7 @@ npm run verify    # typecheck + lint + test + build (7 gates, must pass)
 | `npm run build`        | Production build                                          |
 | `npm run typecheck`    | TypeScript strict                                         |
 | `npm run lint`         | Oxlint                                                    |
-| `npm run test`         | Unit tests (<!-- STATS:test_count -->1148<!-- /STATS -->) |
+| `npm run test`         | Unit tests (<!-- STATS:test_count -->1143<!-- /STATS -->) |
 | `npm run test:adapter` | Validate all adapters                                     |
 | `npm run verify`       | Full pipeline — required before any release               |
 
@@ -337,5 +337,5 @@ Repo: <https://github.com/olo-dot-io/Uni-CLI> · npm: [`@zenalexa/unicli`](https
 
 <p align="center">
   <sub>v0.213.0-beta.1 — Vostok · Gagarin (Pre-release)</sub><br>
-  <sub><!-- STATS:site_count -->200<!-- /STATS --> sites · <!-- STATS:command_count -->968<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->54<!-- /STATS --> pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-11-25 · <!-- STATS:test_count -->1148<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->200<!-- /STATS --> sites · <!-- STATS:command_count -->968<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->54<!-- /STATS --> pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-11-25 · <!-- STATS:test_count -->1143<!-- /STATS --> tests</sub>
 </p>

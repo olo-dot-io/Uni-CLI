@@ -55,7 +55,10 @@ function lintFile(abs: string): Failure | null {
 
   let parsed: unknown;
   try {
-    parsed = yaml.load(raw);
+    // CORE_SCHEMA blocks `!!js/*` tags (matches runtime parsing in
+    // src/discovery/loader.ts), so the lint cannot pass a payload that the
+    // loader would later refuse.
+    parsed = yaml.load(raw, { schema: yaml.CORE_SCHEMA });
   } catch (err) {
     return { file: rel, reason: `yaml parse failed: ${stringifyErr(err)}` };
   }
