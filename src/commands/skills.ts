@@ -32,7 +32,7 @@ import { getAllAdapters } from "../registry.js";
 import { VERSION } from "../constants.js";
 import type { AdapterManifest, AdapterCommand } from "../types.js";
 import { loadSkills, type Skill } from "../protocol/skill.js";
-import { runPipeline } from "../engine/yaml-runner.js";
+import { runPipeline } from "../engine/executor.js";
 
 interface ExportOptions {
   out?: string;

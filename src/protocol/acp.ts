@@ -34,7 +34,7 @@ import { createInterface, type Interface } from "node:readline";
 import { randomUUID } from "node:crypto";
 import { VERSION } from "../constants.js";
 import { getAllAdapters, resolveCommand } from "../registry.js";
-import { runPipeline } from "../engine/yaml-runner.js";
+import { runPipeline } from "../engine/executor.js";
 import type { AdapterManifest, AdapterCommand } from "../types.js";
 
 // ── JSON-RPC types ──────────────────────────────────────────────────────────

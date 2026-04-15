@@ -13,7 +13,7 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import { getAllAdapters } from "../registry.js";
-import { runPipeline, PipelineError } from "../engine/yaml-runner.js";
+import { runPipeline, PipelineError } from "../engine/executor.js";
 import { format, detectFormat } from "../output/formatter.js";
 import { AdapterType, ExitCode } from "../types.js";
 import type { OutputFormat } from "../types.js";

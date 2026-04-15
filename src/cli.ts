@@ -9,7 +9,7 @@ import { getAllAdapters, listCommands } from "./registry.js";
 import { loadExternalClis, isInstalled } from "./hub/index.js";
 import { executeExternal } from "./hub/passthrough.js";
 import { format, detectFormat } from "./output/formatter.js";
-import { runPipeline, PipelineError } from "./engine/yaml-runner.js";
+import { runPipeline, PipelineError } from "./engine/executor.js";
 import { BridgeConnectionError } from "./browser/bridge.js";
 import { ExitCode } from "./types.js";
 import { VERSION } from "./constants.js";
