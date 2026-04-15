@@ -620,7 +620,7 @@ export async function startStreamableHttp(
   port: number,
   handler: Handler,
   options?: StreamableHttpOptions,
-): Promise<void> {
+): Promise<number> {
   const oauthMiddleware = options?.auth ? createOAuthMiddleware() : null;
 
   // Periodic session pruning
@@ -716,12 +716,20 @@ export async function startStreamableHttp(
     });
   });
 
+  // Resolve the actually-bound port so callers that pass `port: 0` (let the
+  // OS pick a free ephemeral port — used by tests to avoid Windows TIME_WAIT
+  // collisions) get the real port back.
+  const addr = server.address();
+  const boundPort = addr && typeof addr === "object" ? addr.port : port;
+
   process.stderr.write(
-    `unicli MCP server v${VERSION} — Streamable HTTP transport on http://127.0.0.1:${port}\n` +
-      `  MCP endpoint: GET/POST/DELETE http://127.0.0.1:${port}/mcp\n` +
-      `  Health check: GET             http://127.0.0.1:${port}/health\n` +
+    `unicli MCP server v${VERSION} — Streamable HTTP transport on http://127.0.0.1:${boundPort}\n` +
+      `  MCP endpoint: GET/POST/DELETE http://127.0.0.1:${boundPort}/mcp\n` +
+      `  Health check: GET             http://127.0.0.1:${boundPort}/health\n` +
       `  Protocol:     ${MCP_PROTOCOL_VERSION}\n`,
   );
+
+  return boundPort;
 }
 
 // Exported for testing
