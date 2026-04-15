@@ -107,7 +107,7 @@ export async function handleCuaLaunch(
   return dispatch(ctx, "cua_launch", params);
 }
 
-/** Kind → handler dispatch table (consumed by the yaml-runner switch). */
+/** Kind → handler dispatch table (consumed by executor.dispatchBusStep in src/engine/executor.ts). */
 export const CUA_STEP_HANDLERS = {
   cua_snapshot: handleCuaSnapshot,
   cua_click: handleCuaClick,

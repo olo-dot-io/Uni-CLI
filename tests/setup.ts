@@ -21,7 +21,7 @@ const ROOT = join(__dirname, "..");
 const MANIFEST = join(ROOT, "dist", "manifest-search.json");
 
 export default function setup(): void {
-  // Unblock the SSRF guard (assertSafeRequestUrl in src/engine/yaml-runner.ts)
+  // Unblock the SSRF guard (assertSafeRequestUrl in src/engine/ssrf.ts)
   // so tests that spin up a loopback HTTP server can still hit 127.0.0.1.
   // Production runs never set this — only the test harness, which owns the
   // localhost it is about to fetch.
