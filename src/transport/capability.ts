@@ -225,7 +225,12 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
   atspi_activate: { transports: ["desktop-atspi"], platforms: ["linux"] },
 
   // --- Clipboard / app lifecycle (cross-transport where possible) ---
-  clipboard_get: {
+  // Naming note: handlers and adapters use `clipboard_read` / `clipboard_write`
+  // throughout (see src/engine/steps/desktop-ax.ts, AX/UIA/AT-SPI adapters,
+  // src/commands/migrate-schema.ts, src/commands/lint.ts). The matrix keys
+  // must match the handler keys verbatim — `bus.require("clipboard_read")`
+  // looks up by name, so a `clipboard_get` alias here would 404 at runtime.
+  clipboard_read: {
     transports: [
       "cdp-browser",
       "subprocess",
@@ -234,7 +239,7 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
       "desktop-atspi",
     ],
   },
-  clipboard_set: {
+  clipboard_write: {
     transports: [
       "cdp-browser",
       "subprocess",

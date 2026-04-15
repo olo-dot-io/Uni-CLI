@@ -179,8 +179,21 @@ export class MockBackend implements CuaBackend {
 
 /**
  * Base class used by every real backend. All verbs throw `BackendNotReadyError`
- * by default; subclasses override what they support. v0.212 ships these as
- * stubs — full implementations land in v0.213+.
+ * by default; subclasses override what they support.
+ *
+ * Honesty note (2026-04-15): v0.212 ships `Anthropic`, `Trycua`, `OpenCua`
+ * and `Scrapybara` as **interface stubs**. They declare the shape the real
+ * backends will take, fail fast with a structured envelope when selected
+ * without their credentials, and let downstream tests pin the Mock
+ * backend for offline determinism. Full network implementations are
+ * tracked in `docs/ROADMAP.md` as v0.213 "Gagarin" targets — see there
+ * for the design of the screen-source ↔ planner composition that real
+ * Anthropic computer-use requires.
+ *
+ * Users who want a real backend today can implement the `CuaBackend`
+ * interface in their own code and inject it via
+ * {@link CuaTransport.setBackend}, or provide a factory through the
+ * `opts.backend` of the transport constructor. That surface is stable.
  */
 class BackendNotReadyError extends Error {
   constructor(
@@ -188,24 +201,45 @@ class BackendNotReadyError extends Error {
     readonly verb: string,
     readonly hint: string,
   ) {
-    super(`cua backend "${backend}" cannot execute ${verb} yet — ${hint}`);
+    super(
+      `cua backend "${backend}" is a v0.212 stub — ${verb} not implemented (${hint})`,
+    );
     this.name = "BackendNotReadyError";
   }
 }
 
 /**
- * Anthropic `computer_20251124` beta tool. Activated when `CUA_BACKEND=anthropic`
- * and `ANTHROPIC_API_KEY` is set. v0.212 stubs the network roundtrip; the
- * full client lives behind the key so agents can plug it in without a code
- * change (just call `anthropicBackend()` with a live SDK instance).
+ * Anthropic `computer_use` tool stub. Selected when `CUA_BACKEND=anthropic`
+ * and `ANTHROPIC_API_KEY` is set.
+ *
+ * IMPORTANT — two-layer architecture: the Anthropic Messages API is a
+ * planner, not a screen capture service. A production Anthropic backend
+ * MUST be composed with a screenshot source (macOS `screencapture`,
+ * trycua sandbox, scrapybara VM) because the model receives screenshots
+ * from the client and returns `tool_use` actions. v0.212 ships this as
+ * a stub; the composition layer lands in v0.213 via a new
+ * `AnthropicPlanner(screenshotSource)` constructor — see
+ * `docs/ROADMAP.md` > v0.213 "Gagarin".
+ *
+ * `tool_version` defaults to `"computer_20260301"` (the successor to
+ * `computer_20251124` in the Sonnet 4.6 rollout); override via env
+ * `ANTHROPIC_CUA_TOOL_VERSION` so operators can follow Anthropic's
+ * release cadence without a code change.
  */
 export class AnthropicBackend implements CuaBackend {
   readonly name: CuaBackendName = "anthropic";
   readonly apiKey: string;
   readonly model: string;
-  constructor(apiKey: string, model: string = "claude-opus-4-6") {
+  readonly toolVersion: string;
+  constructor(
+    apiKey: string,
+    model: string = process.env.ANTHROPIC_CUA_MODEL ?? "claude-sonnet-4-6",
+    toolVersion: string = process.env.ANTHROPIC_CUA_TOOL_VERSION ??
+      "computer_20260301",
+  ) {
     this.apiKey = apiKey;
     this.model = model;
+    this.toolVersion = toolVersion;
   }
 
   async snapshot(): Promise<{
@@ -217,7 +251,7 @@ export class AnthropicBackend implements CuaBackend {
     throw new BackendNotReadyError(
       this.name,
       "snapshot",
-      "implement Anthropic beta messages call with computer_20251124 tool",
+      `the Anthropic Messages API does not capture screens; pair ${this.name} with a screenshot source (screencapture/trycua/scrapybara) — v0.213 Gagarin target`,
     );
   }
 
@@ -225,7 +259,7 @@ export class AnthropicBackend implements CuaBackend {
     throw new BackendNotReadyError(
       this.name,
       "click",
-      'implement computer_20251124 `action:"left_click"` call',
+      `will POST /v1/messages with tool "${this.toolVersion}" action "left_click" in v0.213`,
     );
   }
 
@@ -233,7 +267,7 @@ export class AnthropicBackend implements CuaBackend {
     throw new BackendNotReadyError(
       this.name,
       "type",
-      'implement computer_20251124 `action:"type"` call',
+      `will POST /v1/messages with tool "${this.toolVersion}" action "type" in v0.213`,
     );
   }
 
@@ -241,7 +275,7 @@ export class AnthropicBackend implements CuaBackend {
     throw new BackendNotReadyError(
       this.name,
       "key",
-      'implement `action:"key"`',
+      `will POST /v1/messages with tool "${this.toolVersion}" action "key" in v0.213`,
     );
   }
 
@@ -249,7 +283,7 @@ export class AnthropicBackend implements CuaBackend {
     throw new BackendNotReadyError(
       this.name,
       "scroll",
-      'implement `action:"scroll"`',
+      `will POST /v1/messages with tool "${this.toolVersion}" action "scroll" in v0.213`,
     );
   }
 
@@ -257,7 +291,7 @@ export class AnthropicBackend implements CuaBackend {
     throw new BackendNotReadyError(
       this.name,
       "drag",
-      'implement `action:"left_click_drag"`',
+      `will POST /v1/messages with tool "${this.toolVersion}" action "left_click_drag" in v0.213`,
     );
   }
 
@@ -269,7 +303,7 @@ export class AnthropicBackend implements CuaBackend {
     throw new BackendNotReadyError(
       this.name,
       "ask",
-      "implement messages API with the current screenshot",
+      `will POST /v1/messages without a tool for plain Q&A in v0.213; supply your own backend via CuaTransport.setBackend() today`,
     );
   }
 }

@@ -20,8 +20,9 @@ import { Command } from "commander";
 import chalk from "chalk";
 import yaml from "js-yaml";
 import { readdirSync, readFileSync, writeFileSync, statSync } from "node:fs";
-import { join, extname, resolve, relative, sep } from "node:path";
+import { join, extname, resolve, relative, sep, basename } from "node:path";
 import { ExitCode } from "../types.js";
+import { validateAdapterV2 } from "../core/schema-v2.js";
 
 /**
  * Capability inference map: pipeline step name → capability identifier.
@@ -314,6 +315,44 @@ function buildAppendBlock(fields: {
   return lines.join("\n") + "\n";
 }
 
+/**
+ * Post-migration roundtrip check: re-parse the rewritten text and run it
+ * through the full schema-v2 validator. This catches cases where the naive
+ * append strategy produces syntactically-valid YAML that still violates
+ * schema-v2 (e.g. a pre-existing broken `pipeline` shape now carried into
+ * a "migrated" file). On failure we tag the file for quarantine rather than
+ * blessing an invalid adapter as migrated — the post-v212-rethink audit
+ * identified the missing roundtrip as the loader-hard-gate's weakest point.
+ */
+function verifyRoundtrip(
+  content: string,
+  adapterPath: string,
+): { ok: true } | { ok: false; error: string } {
+  let reparsed: unknown;
+  try {
+    reparsed = yaml.load(content, { schema: yaml.CORE_SCHEMA });
+  } catch (e) {
+    return {
+      ok: false,
+      error: `reparse failed: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
+  if (!reparsed || typeof reparsed !== "object") {
+    return { ok: false, error: "reparsed value is not an object" };
+  }
+  // Schema-v2 requires a `name` field — use the command name derived from
+  // the adapter file path if the YAML omits it, since every file-resident
+  // command borrows its name from basename.
+  const cmdName = basename(adapterPath).replace(/\.(yaml|yml)$/i, "");
+  const candidate: Record<string, unknown> = {
+    name: cmdName,
+    ...(reparsed as Record<string, unknown>),
+  };
+  const result = validateAdapterV2(candidate);
+  if (result.ok) return { ok: true };
+  return { ok: false, error: result.error };
+}
+
 /** Migrate one YAML file. Returns the new file contents plus a status. */
 export function migrateYamlText(
   raw: string,
@@ -403,6 +442,28 @@ export function migrateYamlText(
   // Ensure the original content ends with a newline before appending.
   const base = raw.endsWith("\n") ? raw : raw + "\n";
   const content = base + appendLines.join("\n") + "\n";
+
+  // Roundtrip — if the rewritten file no longer satisfies schema-v2, don't
+  // pretend we migrated it. Quarantine with the reason so the operator can
+  // either hand-fix or revert. This is the guard that keeps "887 YAMLs
+  // migrated" from silently including invalid payloads.
+  const check = verifyRoundtrip(content, adapterPath);
+  if (!check.ok) {
+    const reason = `roundtrip validation failed after migration — ${check.error}`;
+    const quarantineAppend = buildAppendBlock({
+      capabilities: [],
+      minimum_capability: "http.fetch",
+      trust: "public",
+      confidentiality: "public",
+      quarantine: true,
+      quarantineReason: reason,
+    });
+    return {
+      status: "quarantine",
+      content: raw + quarantineAppend,
+      reason,
+    };
+  }
   return { status: "migrated", content };
 }
 

@@ -13,6 +13,16 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import yaml from "js-yaml";
 import { registerAdapter } from "../registry.js";
 import { validateAdapterV2 } from "../core/schema-v2.js";
+
+/**
+ * Upper bound on YAML adapter file size. A legitimate YAML adapter is
+ * under 4 KiB; 256 KiB leaves headroom for generated or commented files
+ * while capping the worst case where a pathological file (billion-laughs
+ * anchor expansion, runaway template, attacker-controlled user dir) could
+ * OOM the loader. Files above this threshold are skipped with a stderr
+ * warning rather than parsed.
+ */
+const MAX_YAML_BYTES = 256 * 1024;
 import type {
   AdapterManifest,
   AdapterCommand,
@@ -183,16 +193,33 @@ export function loadAdaptersFromDir(dir: string): number {
 
       if (ext === ".yaml" || ext === ".yml") {
         let parsed: YamlAdapter;
+        const absPath = join(siteDir, file);
         try {
-          const raw = readFileSync(join(siteDir, file), "utf-8");
-          parsed = yaml.load(raw) as YamlAdapter;
+          // Enforce a file-size upper bound BEFORE reading into memory so a
+          // hostile adapter can't OOM the loader through a gigabyte-sized
+          // YAML. `statSync` is one syscall and avoids touching contents.
+          const fileSize = statSync(absPath).size;
+          if (fileSize > MAX_YAML_BYTES) {
+            console.error(
+              `Warning: Skipping oversized YAML ${absPath} (${fileSize} bytes > ${MAX_YAML_BYTES})`,
+            );
+            continue;
+          }
+          const raw = readFileSync(absPath, "utf-8");
+          // Use CORE_SCHEMA (no JS type tags) + strict schema-style loading.
+          // js-yaml exposes anchor/alias expansion in all schemas, but
+          // CORE_SCHEMA blocks `!!js/function`/`!!js/regexp`/`!!js/undefined`
+          // tags that would let a YAML author execute arbitrary JS on load.
+          // Anchor-expansion bombs (billion-laughs) are defused by the size
+          // cap above — the expanded tree can't exceed the input size by
+          // more than the alias depth, so 256 KiB input → bounded RAM use.
+          parsed = yaml.load(raw, {
+            schema: yaml.CORE_SCHEMA,
+            filename: absPath,
+          }) as YamlAdapter;
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          if (process.env.UNICLI_DEBUG) {
-            console.error(
-              `Warning: Failed to parse ${join(siteDir, file)}: ${msg}`,
-            );
-          }
+          console.error(`Warning: Failed to parse ${absPath}: ${msg}`);
           continue;
         }
 
@@ -218,18 +245,33 @@ export function loadAdaptersFromDir(dir: string): number {
         if (cmdName.startsWith("_")) continue;
 
         // schema-v2 hard gate: every YAML must satisfy the v2 contract
-        // before it's registered. We validate a projected shape (just the
-        // five required fields + name) rather than the full parsed object,
-        // because the legacy fields are intentionally opaque to v2.
-        const v2Result = validateAdapterV2({
+        // before it's registered. We validate the FULL parsed object (not a
+        // five-field projection) so legacy fields like `pipeline`, `url`,
+        // `params` get type-checked too — a `pipeline:"string"` typo is a
+        // runtime crash and must fail the gate, not be silently carried
+        // through. The defaults for `capabilities`, `minimum_capability`,
+        // `trust`, `confidentiality`, `quarantine` are filled via
+        // {@link migrateToV2} for backward compatibility; if the YAML
+        // already has them, they win.
+        const v2Candidate: Record<string, unknown> = {
+          ...(parsed as unknown as Record<string, unknown>),
           name: cmdName,
-          description: parsed.description,
-          capabilities: parsed.capabilities,
-          minimum_capability: parsed.minimum_capability,
-          trust: parsed.trust,
-          confidentiality: parsed.confidentiality,
-          quarantine: parsed.quarantine,
-        });
+          capabilities: Array.isArray(parsed.capabilities)
+            ? parsed.capabilities
+            : [],
+          minimum_capability:
+            typeof parsed.minimum_capability === "string"
+              ? parsed.minimum_capability
+              : "http.fetch",
+          trust: typeof parsed.trust === "string" ? parsed.trust : "public",
+          confidentiality:
+            typeof parsed.confidentiality === "string"
+              ? parsed.confidentiality
+              : "public",
+          quarantine:
+            typeof parsed.quarantine === "boolean" ? parsed.quarantine : false,
+        };
+        const v2Result = validateAdapterV2(v2Candidate);
         if (!v2Result.ok) {
           const rel = join(site, file);
           const msg = `schema-v2 violation in ${rel}: ${v2Result.error}`;
@@ -237,10 +279,12 @@ export function loadAdaptersFromDir(dir: string): number {
             console.error(msg);
             process.exit(78); // sysexits.h EX_CONFIG
           }
-          if (process.env.UNICLI_DEBUG) {
-            console.error(`Warning: ${msg}`);
-          }
-          // warn mode: continue registering so the CLI stays usable.
+          // warn mode: ALWAYS write to stderr — the hard-gate claim in
+          // §1.7 of the FINAL plan (2026-04-14-v212-rethink) is that
+          // operators see every violation, not just those running with
+          // UNICLI_DEBUG=1. Silent warnings are what let the "gate is
+          // theatre" regression slip through the first time.
+          console.error(`Warning: ${msg}`);
         }
 
         // Parse args from YAML into AdapterArg[]

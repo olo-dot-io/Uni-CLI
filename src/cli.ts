@@ -467,7 +467,21 @@ export async function createCli(): Promise<Command> {
         }
       }
 
-      const subCmd = siteCmd.command(cmdStr).description(cmd.description ?? "");
+      // Quarantine gate — a command flagged `quarantine: true` in its YAML
+      // has been proven broken by the adapter-health probe and must not run
+      // until repaired. We still REGISTER it so `unicli <site> list` shows
+      // it (with the reason) and the agent's self-repair loop can target it,
+      // but the action fails fast with sysexit-78 (CONFIG_ERROR) and a
+      // structured envelope pointing at the repair command. Operators who
+      // know what they're doing can bypass with `UNICLI_FORCE_QUARANTINE=1`
+      // for one-off debugging.
+      const isQuarantined = cmd.quarantine === true;
+
+      const descBase = cmd.description ?? "";
+      const description = isQuarantined
+        ? `[quarantined] ${descBase || "disabled by health gate"}${cmd.quarantineReason ? ` — ${cmd.quarantineReason}` : ""}`
+        : descBase;
+      const subCmd = siteCmd.command(cmdStr).description(description);
 
       // Register option arguments
       const registeredOpts = new Set<string>();
@@ -489,6 +503,39 @@ export async function createCli(): Promise<Command> {
 
       subCmd.action(async (...actionArgs: unknown[]) => {
         const startedAt = Date.now();
+
+        // Quarantine short-circuit — emit a structured envelope to stderr
+        // with the repair hint, then exit-78. Bypass flag is intentional:
+        // it lets the same codepath serve both normal users (hard block)
+        // and maintainers running `unicli repair` (force-execute).
+        if (isQuarantined && process.env.UNICLI_FORCE_QUARANTINE !== "1") {
+          const envelope = {
+            ok: false,
+            error: {
+              transport: "http" as const,
+              adapter_path: `${adapter.name}/${cmdName}`,
+              step: 0,
+              action: cmdName,
+              reason: `adapter ${adapter.name}.${cmdName} is quarantined${cmd.quarantineReason ? `: ${cmd.quarantineReason}` : ""}`,
+              suggestion: `run \`unicli repair ${adapter.name} ${cmdName}\` or unset \`quarantine\` in the adapter YAML after fixing; override with UNICLI_FORCE_QUARANTINE=1 for one-off debugging`,
+              minimum_capability: "repair.quarantine",
+              retryable: false,
+              exit_code: ExitCode.CONFIG_ERROR,
+            },
+          };
+          process.stderr.write(JSON.stringify(envelope) + "\n");
+          recordUsage({
+            site: adapter.name,
+            cmd: cmdName,
+            strategy: adapter.strategy ?? "unknown",
+            tokens: 0,
+            ms: Date.now() - startedAt,
+            bytes: 0,
+            exit: ExitCode.CONFIG_ERROR,
+          });
+          process.exit(ExitCode.CONFIG_ERROR);
+        }
+
         // Commander passes positional args first, then opts object, then Command
         const opts = actionArgs[actionArgs.length - 2] as Record<
           string,

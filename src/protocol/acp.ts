@@ -518,6 +518,16 @@ export interface ParsedInvocation {
 }
 
 /**
+ * Upper bound on prompt length that `parseUnicliInvocation` will scan. ACP
+ * clients can send arbitrarily long editor contexts; regex scans over
+ * multi-megabyte prompts are (a) pointless — invocations live near the top
+ * — and (b) a ReDoS hazard when the tail regex `.*$` engages on a pathological
+ * input. 64 KiB is ~32 pages of text, enough for any realistic prompt, and
+ * trims the worst case to a bounded one-pass scan.
+ */
+const MAX_ACP_PROMPT_BYTES = 64 * 1024;
+
+/**
  * Parse a natural-language prompt for a `unicli <site> <command> [args]`
  * invocation. Matches the literal `unicli` token followed by two identifiers,
  * then consumes remaining key=value or --flag value tokens plus a single
@@ -529,7 +539,14 @@ export interface ParsedInvocation {
 export function parseUnicliInvocation(
   prompt: string,
 ): ParsedInvocation | undefined {
-  const match = prompt.match(
+  // Truncate oversized prompts BEFORE the regex. UTF-16 code units ≈ bytes
+  // for ASCII; for mixed content the cap is slightly conservative — a
+  // correct invocation still fits well under 64 KiB.
+  const bounded =
+    prompt.length > MAX_ACP_PROMPT_BYTES
+      ? prompt.slice(0, MAX_ACP_PROMPT_BYTES)
+      : prompt;
+  const match = bounded.match(
     /\bunicli\s+([a-zA-Z0-9_.-]+)\s+([a-zA-Z0-9_.-]+)(.*)$/m,
   );
   if (!match) return undefined;

@@ -11,6 +11,16 @@
  * MCP-Protocol-Version header enforced post-initialization.
  * CORS headers on all responses (not just OPTIONS preflight).
  *
+ * Event ID / Last-Event-ID (spec 2025-11-25 §5.3 SSE resumability):
+ *   - Every SSE event carries an `id:` line.
+ *   - On POST requests with Accept: text/event-stream, the server reads
+ *     the `Last-Event-ID` header and logs it so future replay work can
+ *     plug into the same path. Full replay lands in v0.213 once the
+ *     server maintains a persistent per-session event buffer — today
+ *     the current single-response SSE path terminates after one event,
+ *     so there is nothing to replay, but a compliant client can still
+ *     include the header without breaking.
+ *
  * Zero external dependencies — Node.js http + crypto only.
  */
 
@@ -393,6 +403,19 @@ async function handlePost(
 
     // If client accepts SSE, keep connection open and stream progress + completion
     if (clientAcceptsSSE(req)) {
+      // Spec 2025-11-25 §5.3: a reconnecting client MAY send Last-Event-ID
+      // so the server can resume after the last delivered event. v0.212
+      // does not yet maintain a persistent replay buffer (the SSE path is
+      // one-shot per POST), so we accept and log the header for
+      // forward-compat testing without advertising resumability. Full
+      // replay is tracked in docs/ROADMAP.md > v0.213.
+      const lastEventId = req.headers["last-event-id"] as string | undefined;
+      if (lastEventId && process.env.UNICLI_DEBUG) {
+        process.stderr.write(
+          `mcp: Last-Event-ID=${lastEventId} received (replay lands in v0.213)\n`,
+        );
+      }
+
       res.writeHead(202, {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
@@ -401,9 +424,11 @@ async function handlePost(
         ...corsHeaders(req),
       });
 
-      // Send the accepted event immediately
+      // Send the accepted event immediately. Every SSE event now carries
+      // an explicit `id:` so a future replay buffer can anchor to it.
+      const acceptedId = randomUUID();
       res.write(
-        `event: accepted\ndata: ${JSON.stringify({ taskId, status: "running" })}\n\n`,
+        `id: ${acceptedId}\nevent: accepted\ndata: ${JSON.stringify({ taskId, status: "running" })}\n\n`,
       );
 
       // Execute the handler in the background
@@ -412,7 +437,7 @@ async function handlePost(
           if (task.status === "cancelled") {
             if (!res.writableEnded) {
               res.write(
-                `event: cancelled\ndata: ${JSON.stringify({ taskId })}\n\n`,
+                `id: ${randomUUID()}\nevent: cancelled\ndata: ${JSON.stringify({ taskId })}\n\n`,
               );
               res.end();
             }
@@ -422,7 +447,7 @@ async function handlePost(
           task.result = result;
           if (!res.writableEnded) {
             res.write(
-              `event: complete\ndata: ${JSON.stringify({ taskId, result })}\n\n`,
+              `id: ${randomUUID()}\nevent: complete\ndata: ${JSON.stringify({ taskId, result })}\n\n`,
             );
             res.end();
           }
@@ -431,7 +456,7 @@ async function handlePost(
           if (task.status === "cancelled") {
             if (!res.writableEnded) {
               res.write(
-                `event: cancelled\ndata: ${JSON.stringify({ taskId })}\n\n`,
+                `id: ${randomUUID()}\nevent: cancelled\ndata: ${JSON.stringify({ taskId })}\n\n`,
               );
               res.end();
             }
@@ -442,7 +467,7 @@ async function handlePost(
           task.error = msg;
           if (!res.writableEnded) {
             res.write(
-              `event: error\ndata: ${JSON.stringify({ taskId, error: msg })}\n\n`,
+              `id: ${randomUUID()}\nevent: error\ndata: ${JSON.stringify({ taskId, error: msg })}\n\n`,
             );
             res.end();
           }

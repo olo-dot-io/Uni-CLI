@@ -17,6 +17,7 @@
 
 import { USER_AGENT } from "../../constants.js";
 import { err, exitCodeFor, ok } from "../../core/envelope.js";
+import { assertSafeRequestUrl } from "../../engine/yaml-runner.js";
 import type { Envelope } from "../../core/envelope.js";
 import type {
   ActionRequest,
@@ -169,6 +170,21 @@ export class HttpTransport implements TransportAdapter {
         exit_code: exitCodeFor("usage_error"),
       });
     }
+    try {
+      assertSafeRequestUrl(url);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return err({
+        transport: "http",
+        step: 0,
+        action: "fetch",
+        reason: msg,
+        suggestion:
+          "remove loopback/metadata hosts or set UNICLI_ALLOW_LOCAL=1 for local development",
+        retryable: false,
+        exit_code: exitCodeFor("config_error"),
+      });
+    }
     const method = typeof p.method === "string" ? p.method : "GET";
     const params =
       p.params && typeof p.params === "object"
@@ -261,6 +277,21 @@ export class HttpTransport implements TransportAdapter {
         exit_code: exitCodeFor("usage_error"),
       });
     }
+    try {
+      assertSafeRequestUrl(url);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return err({
+        transport: "http",
+        step: 0,
+        action: "fetch_text",
+        reason: msg,
+        suggestion:
+          "remove loopback/metadata hosts or set UNICLI_ALLOW_LOCAL=1 for local development",
+        retryable: false,
+        exit_code: exitCodeFor("config_error"),
+      });
+    }
     const method = typeof p.method === "string" ? p.method : "GET";
     const extraHeaders =
       p.headers && typeof p.headers === "object"
@@ -317,6 +348,21 @@ export class HttpTransport implements TransportAdapter {
         suggestion: "pass both `url` and `dest` (absolute file path)",
         retryable: false,
         exit_code: exitCodeFor("usage_error"),
+      });
+    }
+    try {
+      assertSafeRequestUrl(url);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return err({
+        transport: "http",
+        step: 0,
+        action: "download",
+        reason: msg,
+        suggestion:
+          "download target must be a public http(s) URL — set UNICLI_ALLOW_LOCAL=1 to override",
+        retryable: false,
+        exit_code: exitCodeFor("config_error"),
       });
     }
     try {

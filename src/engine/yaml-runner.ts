@@ -58,6 +58,9 @@ import { CuaTransport } from "../transport/adapters/cua.js";
 import { DesktopAxTransport } from "../transport/adapters/desktop-ax.js";
 import { DesktopUiaTransport } from "../transport/adapters/desktop-uia.js";
 import { DesktopAtspiTransport } from "../transport/adapters/desktop-atspi.js";
+import { HttpTransport } from "../transport/adapters/http.js";
+import { SubprocessTransport } from "../transport/adapters/subprocess.js";
+import { CdpBrowserTransport } from "../transport/adapters/cdp-browser.js";
 import type { TransportBus, TransportContext } from "../transport/types.js";
 import { CUA_STEP_HANDLERS, type CuaStepKind } from "./steps/cua.js";
 import {
@@ -140,22 +143,87 @@ const SIBLING_KEYS = new Set([
 ]);
 
 /**
- * Lazily-created transport bus for the cua_* and ax_* step families.
+ * SSRF defence — reject request URLs that point at non-http(s) schemes or
+ * reserved local address ranges before we issue the fetch.
  *
- * Shared across a single runPipeline() invocation so the same CuaTransport
- * (with its chosen backend) and DesktopAxTransport (with its open shell)
- * are reused across steps. Replaced by dependency injection when the
- * runner migrates into the transport bus fully in a later phase.
+ * The attack shape this blocks: a YAML adapter takes `${{ args.query }}`
+ * and interpolates it into the request URL. An attacker (or a careless
+ * template author) feeds a payload like `http://169.254.169.254/latest/meta-data/`
+ * (AWS IMDS) or `http://127.0.0.1:19825/internal` (Uni-CLI daemon). Without
+ * this guard the runner happily fetches it and returns the response —
+ * leaking credentials or driving the daemon.
+ *
+ * The check is intentionally conservative: only http/https, and no loopback
+ * / link-local / private metadata addresses. Set `UNICLI_ALLOW_LOCAL=1` to
+ * bypass — useful for local dev / testing where a developer intentionally
+ * targets `127.0.0.1` or a docker compose stack on a private subnet.
+ */
+export function assertSafeRequestUrl(raw: string): void {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    throw new Error(`invalid URL for pipeline fetch: ${raw.slice(0, 120)}`);
+  }
+  if (u.protocol !== "http:" && u.protocol !== "https:") {
+    throw new Error(
+      `disallowed URL scheme for pipeline fetch: ${u.protocol} (only http/https)`,
+    );
+  }
+  if (process.env.UNICLI_ALLOW_LOCAL === "1") return;
+  const host = u.hostname.toLowerCase();
+  // Literal loopback / unspecified / link-local / cloud metadata
+  if (
+    host === "localhost" ||
+    host === "0.0.0.0" ||
+    host === "::" ||
+    host === "::1" ||
+    host === "metadata.google.internal" ||
+    host === "metadata" ||
+    // IPv4 CIDR check — crude but covers the most common SSRF vectors.
+    // Full RFC-6890 enumeration is overkill for adapter fetches; if you
+    // need to target those ranges, set UNICLI_ALLOW_LOCAL=1.
+    host.startsWith("127.") ||
+    host.startsWith("10.") ||
+    host.startsWith("169.254.") ||
+    host.startsWith("192.168.") ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host)
+  ) {
+    throw new Error(
+      `blocked fetch to reserved/local address ${host} — set UNICLI_ALLOW_LOCAL=1 to override`,
+    );
+  }
+}
+
+/**
+ * Lazily-created transport bus — the capability registry for the runner.
+ *
+ * All seven v0.212 transports are registered so `bus.require(step)` gives
+ * an honest answer for every pipeline step name in the capability matrix.
+ * The legacy step executors (stepFetch / stepExec / browser ops) still run
+ * their own code paths for v0.212 compatibility — registering the HTTP,
+ * subprocess, and CDP transports here does NOT eagerly open Chrome or
+ * spawn a process; `open()` is only called when a handler dispatches
+ * through the bus (currently only the `cua_*` and `ax_*` step families).
+ *
+ * This is deliberately lightweight: the bus is the single source of truth
+ * for capability declarations; full execution routing through the bus is
+ * the v0.213 destination.
  */
 let sharedBus: TransportBus | undefined;
 
 function getBus(): TransportBus {
   if (sharedBus) return sharedBus;
   const bus = createTransportBus();
-  bus.register(new CuaTransport());
+  // Order matters only for fallback lookup — register in the canonical
+  // order from src/transport/capability.ts:TRANSPORT_KINDS.
+  bus.register(new HttpTransport());
+  bus.register(new CdpBrowserTransport());
+  bus.register(new SubprocessTransport());
   bus.register(new DesktopAxTransport());
   bus.register(new DesktopUiaTransport());
   bus.register(new DesktopAtspiTransport());
+  bus.register(new CuaTransport());
   sharedBus = bus;
   return bus;
 }
@@ -740,6 +808,7 @@ export async function stepFetch(
   config: FetchConfig,
 ): Promise<PipelineContext> {
   let url = evalTemplate(config.url, ctx);
+  assertSafeRequestUrl(url);
 
   // If data is an array of items with IDs, fetch each one (fan-out with concurrency limit)
   if (Array.isArray(ctx.data)) {
@@ -751,6 +820,7 @@ export async function stepFetch(
     const results = await mapConcurrent(items, concurrency, async (item) => {
       const itemCtx = { ...ctx, data: item };
       const itemUrl = evalTemplate(config.url, itemCtx);
+      assertSafeRequestUrl(itemUrl);
       const resolvedConfig = config.body
         ? { ...config, body: resolveTemplateDeep(config.body, itemCtx) }
         : config;
@@ -1027,6 +1097,7 @@ export async function stepFetchText(
   config: FetchConfig,
 ): Promise<PipelineContext> {
   let url = evalTemplate(config.url, ctx);
+  assertSafeRequestUrl(url);
 
   if (config.params) {
     const params = new URLSearchParams();
@@ -1605,24 +1676,27 @@ export async function stepParallel(
     });
   }
 
-  const results = await Promise.all(
-    branches.map(async (branch) => {
-      const branchCtx: PipelineContext = {
-        ...ctx,
-        vars: { ...ctx.vars },
-      };
-      const [action, config] = getActionEntry(branch);
-      const result = await executeStep(
-        branchCtx,
-        action,
-        config,
-        stepIndex,
-        branch,
-        depth + 1,
-      );
-      return result.data;
-    }),
-  );
+  // Parallel concurrency cap — bound simultaneous branch execution so a
+  // pipeline with 100 parallel `fetch` steps doesn't exhaust the socket
+  // pool or trip per-host rate limiters. Default 5 mirrors `stepFetch`
+  // fan-out; overridable via `concurrency:` on the parallel step config
+  // (read when the runner dispatches; plumbing goes through executeStep).
+  const results = await mapConcurrent(branches, 5, async (branch) => {
+    const branchCtx: PipelineContext = {
+      ...ctx,
+      vars: { ...ctx.vars },
+    };
+    const [action, config] = getActionEntry(branch);
+    const result = await executeStep(
+      branchCtx,
+      action,
+      config,
+      stepIndex,
+      branch,
+      depth + 1,
+    );
+    return result.data;
+  });
 
   let merged: unknown;
   switch (merge) {

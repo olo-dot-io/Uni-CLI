@@ -345,7 +345,22 @@ export class DesktopAxTransport implements TransportAdapter {
   }
 }
 
-/** Escape `"` and `\` inside an AppleScript string literal. */
+/**
+ * Escape an AppleScript string literal. Neutralises four distinct hazards:
+ *   1. `\`   — backslash: must come first so subsequent replacements don't
+ *              double-escape our own injected escapes.
+ *   2. `"`   — quote: would otherwise close the string literal early.
+ *   3. `\r` / `\n` — CR/LF: AppleScript treats these as statement terminators
+ *              inside `-e` arguments. An attacker-controlled `app` name like
+ *              `Calculator"\nos_command("rm -rf /")` can smuggle new
+ *              commands; fold them to spaces so the statement stays on one line.
+ *   4. NUL   — `\0`: osascript aborts parsing at NUL, leaving the tail
+ *              unexecuted — trim to avoid surprising partial-execution bugs.
+ */
 function escapeAs(s: string): string {
-  return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return s
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/[\r\n]/g, " ")
+    .replace(/\u0000/g, "");
 }
