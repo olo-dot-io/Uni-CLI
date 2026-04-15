@@ -84,7 +84,33 @@ To ship outside the Friday window:
 The manual dispatch follows the exact same pipeline: changesets → verify →
 commit → tag → trigger `release.yml`.
 
-## 6. Cancelling a release
+## 6. Workflow auth model
+
+The weekly cron checks out with `token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}`.
+This split matters for downstream automation:
+
+- The default `GITHUB_TOKEN` can push commits and tags, but pushes made with it
+  **do not trigger other workflows**. That is a deliberate GitHub safeguard
+  against infinite loops. Reference:
+  [`github_token` — about the GITHUB_TOKEN](https://docs.github.com/actions/concepts/security/github_token#about-the-github_token).
+- `release.yml` is a `push: tags: ['v*']` listener. So when the weekly cron
+  pushes `vX.Y.Z` using `GITHUB_TOKEN`, `release.yml` **will not auto-fire** —
+  the tag lands but the npm publish never starts.
+- Fix: configure a fine-grained Personal Access Token with `contents: write`
+  and `workflows: write` scope, store it as the `RELEASE_PAT` repo secret, and
+  the cron uses it automatically. Pushes then look like a user push and
+  re-trigger `release.yml`.
+- Fallback (no `RELEASE_PAT` configured): the tag is pushed but silent. Manually
+  re-trigger the publish pipeline with:
+  ```bash
+  gh workflow run release.yml --ref vX.Y.Z
+  ```
+
+Keep `RELEASE_PAT` owned by a maintainer, rotated annually, and scoped to this
+repo only. If it leaks or expires, the workflow still works — it just requires
+the manual `gh workflow run` step until the secret is refreshed.
+
+## 7. Cancelling a release
 
 If the cron fires a release you didn't want, or a post-release regression is
 discovered before the npm publish completes, the procedure is:
@@ -116,7 +142,7 @@ npm deprecate @zenalexa/unicli@X.Y.Z "see vX.Y.Z+1 for fix"
 Then ship `vX.Y.Z+1` with the fix via the normal manual dispatch. Document
 the reason in `CHANGELOG.md` under the new version.
 
-## 7. Drop-dead escalation
+## 8. Drop-dead escalation
 
 If the Friday release is blocked for **two consecutive weeks**, open a
 tracking issue titled `release-cadence: Friday blocked {date}` and assign
