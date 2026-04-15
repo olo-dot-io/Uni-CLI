@@ -8,6 +8,19 @@
  * throws a {@link NoTransportForStepError} carrying an envelope with the
  * repair hint `minimum_capability: "<kind>.<step>"` so agents know which
  * transport to add or fix.
+ *
+ * This module also owns the process-wide shared bus lifecycle
+ * ({@link getBus}) used by the YAML runner and the `buildTransportCtx`
+ * helper that assembles a {@link TransportContext} from a minimal slice
+ * of runner state. Plugins register their own transports against the
+ * same shared bus:
+ *
+ * ```ts
+ * import { getBus, type TransportAdapter } from "@zenalexa/unicli/transport";
+ *
+ * class MyTransport implements TransportAdapter { ... }
+ * getBus().register(new MyTransport());
+ * ```
  */
 
 import { err, type EnvelopeErr } from "../core/envelope.js";
@@ -16,7 +29,34 @@ import {
   stepPlatform,
   stepSupportedBy,
 } from "./capability.js";
-import type { TransportAdapter, TransportBus, TransportKind } from "./types.js";
+import { CuaTransport } from "./adapters/cua.js";
+import { DesktopAxTransport } from "./adapters/desktop-ax.js";
+import { DesktopUiaTransport } from "./adapters/desktop-uia.js";
+import { DesktopAtspiTransport } from "./adapters/desktop-atspi.js";
+import { HttpTransport } from "./adapters/http.js";
+import { SubprocessTransport } from "./adapters/subprocess.js";
+import { CdpBrowserTransport } from "./adapters/cdp-browser.js";
+import type {
+  TransportAdapter,
+  TransportBus,
+  TransportContext,
+  TransportKind,
+} from "./types.js";
+
+// Re-export the full transport type surface so `@zenalexa/unicli/transport`
+// is a one-stop shop for plugin authors building custom TransportAdapters.
+export type {
+  TransportAdapter,
+  TransportBus,
+  TransportContext,
+  TransportKind,
+  Snapshot,
+  SnapshotFormat,
+  ActionRequest,
+  ActionResult,
+  Capability,
+  TransportEvent,
+} from "./types.js";
 
 /**
  * Typed error thrown by {@link TransportBus.require} when no registered
@@ -139,3 +179,65 @@ export function createTransportBus(): TransportBus {
 
 // Re-export for downstream callers that want a single import point.
 export { stepPlatform, stepSupportedBy };
+
+// --- Shared bus lifecycle -------------------------------------------------
+
+let sharedBus: TransportBus | undefined;
+
+/**
+ * Process-wide shared bus used by the YAML runner and available to
+ * plugins for registering additional {@link TransportAdapter}s.
+ *
+ * First call constructs a bus pre-populated with the seven built-in
+ * transports (HTTP, CDP, subprocess, desktop AX/UIA/AT-SPI, CUA).
+ * Subsequent calls return the same instance. Calling `register()` on
+ * the returned bus is the supported plugin extension point:
+ *
+ * ```ts
+ * import { getBus } from "@zenalexa/unicli/transport";
+ * getBus().register(new MyCustomTransport());
+ * ```
+ */
+export function getBus(): TransportBus {
+  if (sharedBus) return sharedBus;
+  const bus = createTransportBus();
+  bus.register(new HttpTransport());
+  bus.register(new CdpBrowserTransport());
+  bus.register(new SubprocessTransport());
+  bus.register(new DesktopAxTransport());
+  bus.register(new DesktopUiaTransport());
+  bus.register(new DesktopAtspiTransport());
+  bus.register(new CuaTransport());
+  sharedBus = bus;
+  return bus;
+}
+
+/**
+ * @internal Test-only hook — resets the shared bus so subsequent
+ * `getBus()` calls construct a fresh instance. Not part of the public
+ * plugin surface; the underscore prefix signals internal use.
+ */
+export function _resetTransportBusForTests(): void {
+  sharedBus = undefined;
+}
+
+/**
+ * Minimal slice of runner state needed to assemble a
+ * {@link TransportContext}. Kept structural so this module stays
+ * independent of `engine/executor` (no reverse dependency).
+ */
+export interface TransportCtxInput {
+  cookieHeader?: string;
+  vars: Record<string, unknown>;
+}
+
+/** Build a {@link TransportContext} for a dispatched step. */
+export function buildTransportCtx(ctx: TransportCtxInput): TransportContext {
+  return {
+    cwd: process.cwd(),
+    env: process.env as Record<string, string>,
+    cookieHeader: ctx.cookieHeader,
+    vars: ctx.vars,
+    bus: getBus(),
+  };
+}

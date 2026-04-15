@@ -5,7 +5,7 @@
  * per-step file under ./steps/. This shim is removed in v0.214.
  */
 // prettier-ignore
-export { runPipeline, PipelineError, assertSafeRequestUrl, type PipelineContext, type PipelineOptions, __resetTransportBusForTests } from "./executor.js";
+export { runPipeline, PipelineError, assertSafeRequestUrl, type PipelineContext, type PipelineOptions, _resetTransportBusForTests } from "./executor.js";
 // prettier-ignore
 export { registerStep, getStep, listSteps, type StepHandler } from "./step-registry.js";
 // prettier-ignore

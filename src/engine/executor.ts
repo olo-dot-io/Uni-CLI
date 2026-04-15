@@ -21,16 +21,16 @@ import {
   type DesktopAxStepKind,
 } from "./steps/desktop-ax.js";
 import { getStep } from "./step-registry.js";
-import { getBus, buildTransportCtx } from "./transport-bus.js";
+import {
+  getBus,
+  buildTransportCtx,
+  _resetTransportBusForTests,
+} from "../transport/bus.js";
 // Side-effect import: every per-step module self-registers on load.
 import "./steps/index.js";
 
 export { assertSafeRequestUrl } from "./ssrf.js";
-export {
-  getBus,
-  buildTransportCtx,
-  __resetTransportBusForTests,
-} from "./transport-bus.js";
+export { getBus, buildTransportCtx, _resetTransportBusForTests };
 
 export interface PipelineOptions {
   site?: string;
