@@ -319,6 +319,7 @@ export function loadAdaptersFromDir(dir: string): number {
           execArgs: parsed.execArgs,
           quarantine: parsed.quarantine === true ? true : undefined,
           quarantineReason: parsed.quarantineReason,
+          minimum_capability: parsed.minimum_capability,
         };
         count++;
       }
