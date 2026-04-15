@@ -41,6 +41,16 @@ jobs:
           node-version: 22
           registry-url: "https://registry.npmjs.org"
 
+      # Node 22.22 ships with npm 10.9 — Trusted Publishers OIDC flow
+      # requires npm 11.5.1+. Force-install latest npm before anything
+      # touches the registry so `npm publish --provenance` exchanges the
+      # GitHub OIDC token for a short-lived npm token instead of falling
+      # through to the empty NODE_AUTH_TOKEN path and failing ENEEDAUTH.
+      - name: Upgrade npm for Trusted Publishers OIDC
+        run: |
+          npm install -g npm@latest
+          npm --version
+
       - name: Install dependencies
         run: npm ci
 
