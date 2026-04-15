@@ -263,8 +263,10 @@ describe("stepParallel — bounded concurrency (not Promise.all)", () => {
     // behaviour by asserting the import and call shape stay intact —
     // a regression to `Promise.all` would trip this immediately.
     const { readFileSync } = await import("node:fs");
+    // stepParallel moved to steps/parallel.ts in v0.213. The structural
+    // guarantee — bounded concurrency via mapConcurrent — must hold there.
     const src = readFileSync(
-      new URL("../../src/engine/yaml-runner.ts", import.meta.url),
+      new URL("../../src/engine/steps/parallel.ts", import.meta.url),
       "utf-8",
     );
     const parallelBody = src.slice(
