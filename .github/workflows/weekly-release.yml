@@ -21,8 +21,9 @@ name: Weekly Release
 
 on:
   schedule:
-    # Friday 09:00 HKT = Friday 01:00 UTC. Picked to land before US weekday
-    # so east-coast contributors see the release Friday morning EST.
+    # 01:00 UTC Friday = 09:00 HKT Friday (release-cadence intent: end of
+    # HK working week). US East Coast sees the tag Thursday 21:00 EDT /
+    # 20:00 EST — i.e. Friday morning for HK, previous evening for US.
     - cron: "0 1 * * 5"
   workflow_dispatch:
     inputs:
@@ -39,10 +40,14 @@ jobs:
     name: Weekly release gate
     runs-on: ubuntu-latest
     permissions:
-      # Need `contents: write` to push the release commit + tag back to main.
-      # `id-token: write` is unused here — the actual npm publish runs in
-      # release.yml (triggered by our tag push) under its own environment.
+      # `contents: write` pushes the release commit + tag back to main.
+      # `id-token: write` is reserved for OIDC trusted-publisher flows
+      # that may run inline here in future revisions. The actual npm
+      # publish still happens in release.yml under its own environment,
+      # but keeping id-token available avoids a silent permission gap
+      # if a publish step is ever moved into this workflow.
       contents: write
+      id-token: write
     outputs:
       release: ${{ steps.detect.outputs.release }}
       version: ${{ steps.detect.outputs.version }}
@@ -91,10 +96,25 @@ jobs:
 
           # Filter out pure dependabot / CI-maintenance noise. Anything else
           # counts as "substantive" — feat, fix, refactor, docs, test, perf, etc.
-          NEW_COMMITS=$(git log "${RANGE}" --pretty=format:"%H %s" \
-            | grep -vE "^[a-f0-9]+ chore\(deps\)" \
-            | grep -vE "^[a-f0-9]+ chore\(ci\)" \
-            || true)
+          #
+          # Signals we skip:
+          #   - bot authors entirely (dependabot[bot], renovate[bot], etc.)
+          #   - merge-commit subjects from bot branches (dependabot/*, renovate/*)
+          #   - conventional prefixes: chore(deps), chore(deps-dev), chore(ci),
+          #     build(deps), build(deps-dev)
+          NEW_COMMITS=$(git log "${RANGE}" --pretty=format:"%H|%an|%s" | awk -F'|' '
+            {
+              if ($2 ~ /\[bot\]$/) next
+              if ($2 ~ /^dependabot/) next
+              if ($2 ~ /^renovate/) next
+              if ($3 ~ /^Merge pull request .* from dependabot\//) next
+              if ($3 ~ /^Merge pull request .* from renovate\//) next
+              if ($3 ~ /^chore\(deps(-dev)?\)/) next
+              if ($3 ~ /^chore\(ci\)/) next
+              if ($3 ~ /^build\(deps(-dev)?\)/) next
+              print $0
+            }
+          ')
 
           if [ "${FORCE}" = "true" ]; then
             echo "Force flag set — releasing regardless of commit filter."
@@ -112,35 +132,41 @@ jobs:
             echo "Found ${COUNT} substantive commits since ${LAST_TAG}."
           fi
 
-      - name: Consume changesets + bump version
+      - name: Consume changesets
         if: steps.detect.outputs.release == 'true'
         run: |
           set -euo pipefail
           # `changeset version` consumes every file in .changeset/, bumps
-          # package.json, and updates CHANGELOG.md. If there are no pending
-          # changesets, it no-ops — we still tag a release if commits exist
-          # but version stays the same, which is a signal to investigate.
+          # package.json, and updates CHANGELOG.md. If no changesets are
+          # queued it no-ops — the next step flags that as a hard failure.
           npx changeset version
-          VERSION=$(node -p 'require("./package.json").version')
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-        id: bump
 
-      - name: Capture bumped version
+      - name: Detect version bump
         if: steps.detect.outputs.release == 'true'
-        id: version
+        id: bump
         run: |
-          VERSION=$(node -p 'require("./package.json").version')
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Bumped to v${VERSION}"
+          set -euo pipefail
+          OLD_VERSION=$(git show HEAD:package.json | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>process.stdout.write(JSON.parse(s).version))')
+          NEW_VERSION=$(node -p 'require("./package.json").version')
+          echo "old_version=${OLD_VERSION}"
+          echo "new_version=${NEW_VERSION}"
+          if [ "${OLD_VERSION}" = "${NEW_VERSION}" ]; then
+            echo "bumped=false" >> "$GITHUB_OUTPUT"
+            echo "::error title=Missing changeset::Substantive commits detected since last tag, but no changesets were queued — package.json version did not change. Add a changeset (npx changeset) and re-run, or investigate why the commits slipped through without one."
+            exit 1
+          fi
+          echo "bumped=true" >> "$GITHUB_OUTPUT"
+          echo "version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Bumped ${OLD_VERSION} -> ${NEW_VERSION}"
 
       - name: Verify
-        if: steps.detect.outputs.release == 'true'
+        if: steps.bump.outputs.bumped == 'true'
         run: npm run verify
 
       - name: Commit + tag + push
-        if: steps.detect.outputs.release == 'true'
+        if: steps.bump.outputs.bumped == 'true'
         env:
-          VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ steps.bump.outputs.version }}
         run: |
           set -euo pipefail
           # Only stage files changeset + verify touched. Stats regen etc.
@@ -148,8 +174,8 @@ jobs:
           # working-tree drift into the release commit.
           git add package.json package-lock.json CHANGELOG.md .changeset/
           if git diff --cached --quiet; then
-            echo "::notice title=Weekly release::No changeset-driven file delta — skipping tag push."
-            exit 0
+            echo "::error title=Weekly release::Version bumped but no staged delta — aborting rather than silently skipping."
+            exit 1
           fi
           git commit -m "release: weekly v${VERSION}"
           git tag -a "v${VERSION}" -m "v${VERSION} — weekly cadence release"
@@ -157,9 +183,9 @@ jobs:
           git push origin "v${VERSION}"
 
       - name: Summarize release
-        if: steps.detect.outputs.release == 'true'
+        if: steps.bump.outputs.bumped == 'true'
         env:
-          VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ steps.bump.outputs.version }}
           COMMIT_COUNT: ${{ steps.detect.outputs.commit_count }}
           LAST_TAG: ${{ steps.detect.outputs.last_tag }}
         run: |
@@ -180,6 +206,8 @@ jobs:
             echo "## Quiet week — no release"
             echo ""
             echo "No substantive commits since \`${LAST_TAG}\`."
-            echo "Only \`chore(deps)\` and \`chore(ci)\` commits detected."
+            echo "Only dependabot / CI-maintenance commits detected"
+            echo "(\`chore(deps)\`, \`chore(deps-dev)\`, \`chore(ci)\`,"
+            echo "\`build(deps)\`, \`build(deps-dev)\`, or bot-authored merges)."
             echo "This is success, not failure."
           } >> "$GITHUB_STEP_SUMMARY"
