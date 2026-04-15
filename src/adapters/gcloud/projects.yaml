@@ -25,3 +25,6 @@ trust: user
 confidentiality: public
 quarantine: true
 quarantineReason: "cloud CLI not authenticated in CI; `gcloud auth login` required on host"
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+schema_version: v2
