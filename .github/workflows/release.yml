@@ -42,13 +42,15 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       # Node 22.22 ships with npm 10.9 — Trusted Publishers OIDC flow
-      # requires npm 11.5.1+. Force-install latest npm before anything
-      # touches the registry so `npm publish --provenance` exchanges the
-      # GitHub OIDC token for a short-lived npm token instead of falling
-      # through to the empty NODE_AUTH_TOKEN path and failing ENEEDAUTH.
-      - name: Upgrade npm for Trusted Publishers OIDC
+      # requires npm 11.5.1+. Use Corepack (bundled with Node 22) to
+      # pin a modern npm; `npm i -g npm@latest` is flaky in CI because
+      # the in-place self-upgrade sometimes loses transitive deps
+      # (`Cannot find module 'promise-retry'` on 2026-04-15).
+      - name: Pin modern npm for Trusted Publishers OIDC
         run: |
-          npm install -g npm@latest
+          corepack enable
+          corepack prepare npm@11.6.0 --activate
+          which npm
           npm --version
 
       - name: Install dependencies
