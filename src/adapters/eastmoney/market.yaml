@@ -30,4 +30,5 @@ capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public
-quarantine: false
+quarantine: true
+quarantineReason: "upstream unreachable from CI egress (2026-04-15)"
