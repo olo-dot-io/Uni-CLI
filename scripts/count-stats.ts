@@ -17,10 +17,15 @@
  *   command_count        — total commands across all sites
  *   test_count           — vitest `it(...)` / `test(...)` invocations under
  *                          tests/ (unit + adapter projects)
- *   pipeline_step_count  — distinct step `case "..."` arms in
- *                          src/engine/yaml-runner.ts
+ *   pipeline_step_count  — top-level step keys in `CAPABILITY_MATRIX`
+ *                          (src/transport/capability.ts). Source of truth
+ *                          for the "N pipeline steps" claim in the docs.
  *   transport_count      — MCP transports shipped (stdio + streamable-http
  *                          + sse + ...); read from src/mcp/ entry files
+ *   app_transport_count  — application-layer transports registered on
+ *                          TransportBus (http, cdp-browser, subprocess,
+ *                          desktop-ax, desktop-uia, desktop-atspi, cua).
+ *                          Derived from `TRANSPORT_KINDS`.
  *   category_count       — categories declared in build-manifest.js
  *   built_at             — ISO timestamp of stats.json generation
  *
@@ -43,7 +48,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
 const ADAPTERS_DIR = join(ROOT, "src", "adapters");
 const TESTS_DIR = join(ROOT, "tests");
-const YAML_RUNNER = join(ROOT, "src", "engine", "yaml-runner.ts");
+const CAPABILITY_MATRIX_FILE = join(ROOT, "src", "transport", "capability.ts");
 const MCP_DIR = join(ROOT, "src", "mcp");
 const BUILD_MANIFEST = join(ROOT, "scripts", "build-manifest.js");
 
@@ -54,8 +59,25 @@ export interface Stats {
   site_count: number;
   command_count: number;
   test_count: number;
+  /**
+   * Distinct pipeline step names declared in the capability matrix
+   * (src/transport/capability.ts). This counts every step the runner
+   * knows about — API, browser, CUA, desktop-ax — not just the root
+   * `executeStep` switch arms, so the number matches the spec promise.
+   */
   pipeline_step_count: number;
+  /**
+   * Transport surfaces the MCP server exposes (stdio, streamable-http,
+   * sse). Distinct from {@link app_transport_count}.
+   */
   transport_count: number;
+  /**
+   * Application-layer transports registered on the TransportBus
+   * (http, cdp-browser, subprocess, desktop-ax, desktop-uia,
+   * desktop-atspi, cua). Derived from `TRANSPORT_KINDS` in
+   * src/transport/capability.ts so it tracks the bus capability surface.
+   */
+  app_transport_count: number;
   category_count: number;
   built_at: string;
 }
@@ -152,41 +174,50 @@ function countTests(): number {
 }
 
 function countPipelineSteps(): number {
-  if (!existsSync(YAML_RUNNER)) return 0;
-  const source = readFileSync(YAML_RUNNER, "utf-8");
-
-  // Isolate the first big switch (the pipeline dispatcher) to avoid
-  // counting `case` arms inside nested helper switches. The dispatcher
-  // lives inside `executeStep` — scan until the matching closing brace
-  // via a simple counter.
-  const anchor = source.indexOf("async function executeStep");
-  if (anchor < 0) return 0;
-  const switchIdx = source.indexOf("switch", anchor);
-  if (switchIdx < 0) return 0;
-  const braceIdx = source.indexOf("{", switchIdx);
-  if (braceIdx < 0) return 0;
-
-  let depth = 0;
-  let end = braceIdx;
-  for (let i = braceIdx; i < source.length; i++) {
-    if (source[i] === "{") depth++;
-    else if (source[i] === "}") {
-      depth--;
-      if (depth === 0) {
-        end = i;
-        break;
-      }
-    }
+  // Source of truth: the capability matrix. Every step the runner can
+  // possibly dispatch — http, cdp-browser, subprocess, desktop-ax,
+  // desktop-uia, desktop-atspi, cua — lives as a top-level key of
+  // `CAPABILITY_MATRIX`. Counting this file rather than the root switch
+  // captures steps that moved into `src/engine/steps/*` modules as part
+  // of the v0.212 rewrite.
+  if (!existsSync(CAPABILITY_MATRIX_FILE)) return 0;
+  const source = readFileSync(CAPABILITY_MATRIX_FILE, "utf-8");
+  const m = source.match(
+    /export const CAPABILITY_MATRIX[^=]*=\s*\{([\s\S]*?)\n\};/,
+  );
+  if (!m) return 0;
+  const body = m[1];
+  // Top-level keys only: `  step_name: {` at two-space indent (the matrix
+  // is an object literal; nested config lives inside `{ transports: [...] }`).
+  const keyRe = /^\s{2}([a-z_][a-z0-9_]*)\s*:\s*\{/gm;
+  const seen = new Set<string>();
+  let km: RegExpExecArray | null;
+  while ((km = keyRe.exec(body)) !== null) {
+    seen.add(km[1]);
   }
+  return seen.size;
+}
 
-  const block = source.slice(braceIdx, end);
-  const steps = new Set<string>();
-  const re = /case\s+"([a-z_][a-z0-9_]*)":/gi;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(block)) !== null) {
-    steps.add(m[1]);
+/**
+ * Application-layer transports registered on the TransportBus. Read from
+ * `TRANSPORT_KINDS` in capability.ts — the canonical 7-transport tuple
+ * that every capability row references.
+ */
+function countAppTransports(): number {
+  if (!existsSync(CAPABILITY_MATRIX_FILE)) return 0;
+  const source = readFileSync(CAPABILITY_MATRIX_FILE, "utf-8");
+  const m = source.match(
+    /export const TRANSPORT_KINDS[^=]*=\s*\[([\s\S]*?)\]\s*as const/,
+  );
+  if (!m) return 0;
+  const body = m[1];
+  const re = /"([a-z-]+)"/g;
+  const seen = new Set<string>();
+  let km: RegExpExecArray | null;
+  while ((km = re.exec(body)) !== null) {
+    seen.add(km[1]);
   }
-  return steps.size;
+  return seen.size;
 }
 
 function countTransports(): number {
@@ -254,6 +285,7 @@ export function computeStats(): Stats {
     test_count: countTests(),
     pipeline_step_count: countPipelineSteps(),
     transport_count: countTransports(),
+    app_transport_count: countAppTransports(),
     category_count: countCategories(),
     built_at: todayUtc(),
   };
@@ -267,7 +299,7 @@ function main(): void {
     `stats.json: ${stats.site_count} sites, ${stats.command_count} commands, ` +
       `${stats.adapter_count_total} adapters (${stats.adapter_count_yaml} YAML + ${stats.adapter_count_ts} TS), ` +
       `${stats.test_count} tests, ${stats.pipeline_step_count} steps, ` +
-      `${stats.transport_count} transports, ${stats.category_count} categories`,
+      `${stats.transport_count} MCP transports, ${stats.app_transport_count} app transports, ${stats.category_count} categories`,
   );
 }
 

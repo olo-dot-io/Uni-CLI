@@ -1,6 +1,6 @@
 {
   "name": "@zenalexa/unicli",
-  "version": "0.212.0",
+  "version": "0.212.1",
   "description": "The universal interface between AI agents and the world's software",
   "type": "module",
   "main": "dist/main.js",
@@ -44,7 +44,8 @@
     "lint:adapters": "tsx src/main.ts lint src/adapters",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "validate:agents-size": "tsx scripts/validate-agents-size.ts",
-    "verify": "npm run format:check && npm run typecheck && npm run lint && npm run lint:context && npm run build:manifest && npm run lint:adapters && npm run test && npm run build && npm run validate:agents-size && npm run stats:check",
+    "verify": "npm run format:check && npm run typecheck && npm run lint && npm run lint:context && npm run build:manifest && npm run lint:adapters && npm run test && npm run build && npm run validate:agents-size && npm run stats:check && npm run conformance && npm run verify:changesets",
+    "verify:full": "npm run verify && npm run refs:verify && npm run adapter:health",
     "verify:clean": "npm run clean && npm run verify",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
