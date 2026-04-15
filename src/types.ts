@@ -61,6 +61,15 @@ export interface AdapterCommand {
   /** Human-readable reason for quarantine, surfaced in `unicli list`. */
   quarantineReason?: string;
 
+  /**
+   * Schema-v2 capability token the dispatcher must support to run this
+   * command (e.g. `http.fetch`, `desktop-ax.applescript`). Shape is
+   * `<transport>.<step>`. Used by the adapter-health probe to gate
+   * platform-specific adapters without invoking them, and by the
+   * future runtime dispatcher for capability-aware routing.
+   */
+  minimum_capability?: string;
+
   // Execution — exactly one of these
   pipeline?: PipelineStep[];
   adapterArgs?: AdapterArg[];

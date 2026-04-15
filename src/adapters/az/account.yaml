@@ -25,4 +25,5 @@ capabilities: ["subprocess.exec"]
 minimum_capability: subprocess.exec
 trust: user
 confidentiality: public
-quarantine: false
+quarantine: true
+quarantineReason: "`az account show` times out in CI without interactive login"

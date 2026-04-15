@@ -69,4 +69,5 @@ capabilities: ["cdp-browser.evaluate", "cdp-browser.navigate"]
 minimum_capability: cdp-browser.evaluate
 trust: public
 confidentiality: public
-quarantine: false
+quarantine: true
+quarantineReason: "timed out after 8s — upstream slow from hosted runners"

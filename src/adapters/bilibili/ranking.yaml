@@ -37,4 +37,5 @@ capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public
-quarantine: false
+quarantine: true
+quarantineReason: "upstream structure drift — `Select data.list` returned nothing (2026-04-15)"

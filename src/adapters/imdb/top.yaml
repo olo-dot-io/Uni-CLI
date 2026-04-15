@@ -35,4 +35,5 @@ capabilities: ["http.fetch", "subprocess.exec"]
 minimum_capability: subprocess.exec
 trust: user
 confidentiality: public
-quarantine: false
+quarantine: true
+quarantineReason: "upstream returns HTML instead of JSON — scraping path needed"

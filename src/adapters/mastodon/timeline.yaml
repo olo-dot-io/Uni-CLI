@@ -37,4 +37,5 @@ capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public
-quarantine: false
+quarantine: true
+quarantineReason: "mastodon.social blocks CI egress; adapter works against user instance"
