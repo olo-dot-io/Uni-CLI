@@ -139,7 +139,13 @@ describe("apple-notes adapters (desktop-ax / AppleScript)", () => {
 
       it("carries every schema-v2 field", () => {
         assertSchemaV2(adapter);
-        expect(adapter.capabilities).toContain("desktop-ax");
+        // Capability tokens follow the `transport.step` shape (see the
+        // migrate-schema capability map). Asserting the prefix keeps the
+        // test aligned with the schema contract while still proving the
+        // adapter declares a desktop-ax capability.
+        expect(
+          adapter.capabilities.some((c) => c.startsWith("desktop-ax.")),
+        ).toBe(true);
         expect(adapter.minimum_capability).toBe("desktop-ax.applescript");
         expect(adapter.trust).toBe("user");
         expect(adapter.confidentiality).toBe("private");
@@ -180,7 +186,11 @@ describe("imessage adapters (subprocess / sqlite3)", () => {
 
       it("carries every schema-v2 field", () => {
         assertSchemaV2(adapter);
-        expect(adapter.capabilities).toContain("subprocess");
+        // Capability tokens follow the `transport.step` shape; assert the
+        // prefix rather than the bare transport name to match the schema.
+        expect(
+          adapter.capabilities.some((c) => c.startsWith("subprocess.")),
+        ).toBe(true);
         expect(adapter.minimum_capability).toBe("subprocess.exec");
         expect(adapter.trust).toBe("user");
         expect(adapter.confidentiality).toBe("private");
@@ -253,7 +263,11 @@ describe("linear adapters (http / GraphQL)", () => {
 
       it("carries every schema-v2 field", () => {
         assertSchemaV2(adapter);
-        expect(adapter.capabilities).toContain("http");
+        // Capability tokens follow the `transport.step` shape; assert the
+        // prefix rather than the bare transport name to match the schema.
+        expect(adapter.capabilities.some((c) => c.startsWith("http."))).toBe(
+          true,
+        );
         expect(adapter.minimum_capability).toBe("http.fetch");
         expect(adapter.trust).toBe("user");
         expect(adapter.confidentiality).toBe("internal");
