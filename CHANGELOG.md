@@ -3,6 +3,33 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
+## [0.213.0-beta.1] — 2026-04-15 — Vostok · Gagarin (Pre-release)
+
+> Pre-release cut of v0.213 — engine rigor, public plugin surface, and release automation are in. Workflow adapters, Chrome extension, `generate --verify`, CUA backend drivers, and the parity harness remain on the runway for 0.213.0 final.
+
+### Added
+
+- **Plugin surface** — `package.json` `exports` expands from 2 to 24 dual-typed subpaths (`./registry`, `./engine`, `./engine/registry`, `./engine/steps`, `./transport`, `./transport/{http,cdp-browser,subprocess,desktop-ax,cua}`, `./browser/{cdp,page,daemon,utils}`, `./protocol/{mcp,acp,skill}`, `./errors`, `./output`, `./download`, `./pipeline`, …). `docs/PLUGIN.md` documents the stability contract; `examples/plugin-example/` ships as a working reference.
+- **Adapter test framework** — colocated `.test.ts` next to every adapter with `runAdapterWithFixture()` + `expectAdapterShape()`. 80 adapters covered with synthetic fixtures; `coverage:adapter-test` CI gate (threshold 50). `test:adapter` now contributes 5514 passing assertions to `verify`.
+- **Weekly release cron** — `.github/workflows/weekly-release.yml` auto-cuts a release every Friday 09:00 HKT when substantive commits landed since the last tag. Dependabot is grouped into a single Monday PR to ride along without flooding history. Policy in `docs/RELEASE-CADENCE.md`.
+- **Bilingual README** — `README.zh-CN.md` full parity translation with English README; language switcher at the top of both; new `assets/icon.svg` mark.
+- **schema_version: v2 marker** — stamped on all 896 YAML adapters. `unicli migrate schema-v2 --write` idempotent. `lint:schema-v2` gate added to `verify`.
+
+### Changed
+
+- **Engine split** — `src/engine/yaml-runner.ts` retired (2810 LOC monolith → 19-LOC deprecation shim). Orchestration moved to `engine/executor.ts` (298 LOC), with per-step files under `engine/steps/` (≤200 LOC each, ≤2200 LOC total) self-registering into `engine/step-registry.ts`. Template helpers isolated in `engine/template.ts`, SSRF guard in `engine/ssrf.ts`. All callers (`cli.ts`, `mcp/server.ts`, `protocol/acp.ts`, commands, transports) migrated to `engine/executor.js`.
+- **Transport bus ownership** — `getBus()` / `buildTransportCtx()` now live in `src/transport/bus.ts` (was `src/engine/transport-bus.ts`, deleted). Consistent with the transport abstraction layer.
+- **Verify ordering** — `build` now runs before `test` in the `verify` chain so `dist/`-backed tests (e.g. `exports.test.ts`) resolve their targets. Caught by pre-push `verify:clean`.
+
+### Fixed
+
+- **Envelope helper visibility** — `err`, `ok`, `EnvelopeExit`, `exitCodeFor` are now exported from the `./errors` public barrel so plugins can construct well-formed error envelopes without reaching into internals.
+- **Weekly-release detection hardening** — explicit filters for `dependabot[bot]`/`renovate` authors, `chore(deps)` / `chore(ci)` / `build(deps)` prefixes, and `Merge pull request from (dependabot|renovate)/` subjects. HARD-FAIL if substantive commits exist but no changeset is queued (no silent stall). PAT fallback documented for downstream workflow re-triggering.
+
+### Known limitations
+
+Five phases defer to v0.213.0 final: skills npm distribution, Chrome extension, `generate --verify`, CUA full backend drivers, workflow adapters (gmail/gcal/drive/spotify/apple-notes/imessage), inbox/shop tentpoles, parity harness. Tracked in the v213 plan files under `.claude/plans/sessions/2026-04-15-v213-gagarin/` (PENDING.md is authoritative).
+
 ## [0.212.1] — 2026-04-16 — Vostok · Shatalov II
 
 > Pre-push security and contract hardening after third-round audit.

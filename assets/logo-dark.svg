@@ -2,7 +2,7 @@
   <!-- Terminal prompt symbol -->
   <g transform="translate(16, 20)">
     <rect x="0" y="0" width="80" height="80" rx="16" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
-    <text x="40" y="56" font-family="SF Mono, Menlo, Consolas, monospace" font-size="40" font-weight="700" fill="#00d4aa" text-anchor="middle" dominant-baseline="middle">&gt;_</text>
+    <text x="40" y="40" font-family="SF Mono, Menlo, Consolas, monospace" font-size="40" font-weight="700" fill="#00d4aa" text-anchor="middle" dominant-baseline="middle">&gt;_</text>
   </g>
   <!-- Wordmark -->
   <text x="112" y="52" font-family="SF Pro Display, Inter, system-ui, sans-serif" font-size="48" font-weight="800" fill="#e2e8f0" letter-spacing="-1">Uni-CLI</text>
