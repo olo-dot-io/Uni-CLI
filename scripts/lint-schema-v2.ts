@@ -90,7 +90,7 @@ function lintFile(abs: string): Failure | null {
     minimum_capability: record.minimum_capability,
     trust: record.trust,
     confidentiality: record.confidentiality,
-    quarantine: record.quarantine ?? false,
+    quarantine: record.quarantine,
   };
 
   try {
