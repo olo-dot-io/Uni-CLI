@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "hand_tuned": true,
+  "recorded_at": "2026-04-15T18:30:00Z",
+  "args": { "id": 1 },
+  "http_requests": [
+    {
+      "url": "https://hacker-news.firebaseio.com/v0/item/1.json",
+      "response": {
+        "status": 200,
+        "headers": { "content-type": "application/json" },
+        "body_json": { "id": 1, "kids": [100, 101, 102], "title": "Story" }
+      }
+    },
+    {
+      "url_pattern": "item/\\d+\\.json$",
+      "response": {
+        "status": 200,
+        "headers": { "content-type": "application/json" },
+        "body_json": {
+          "by": "alice",
+          "text": "synthetic comment text",
+          "time": 1760000000,
+          "kids": [1, 2]
+        }
+      }
+    }
+  ],
+  "expected": {
+    "columns": ["author", "text", "replies", "time"],
+    "minItems": 1
+  }
+}

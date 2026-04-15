@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "recorded_at": "2026-04-15T10:56:35.974Z",
+  "args": {},
+  "http_requests": [
+    {
+      "url_pattern": "hacker-news\\.firebaseio\\.com/v0/beststories\\.json",
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body_json": [1, 2, 3]
+      }
+    },
+    {
+      "url_pattern": ".*",
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body_json": {
+          "by": "alice",
+          "title": "Synthetic Title",
+          "score": 42,
+          "descendants": 5,
+          "id": 1,
+          "kids": [1, 2, 3],
+          "time": 1760000000,
+          "url": "https://example.com/a",
+          "text": "synthetic text body",
+          "points": 42,
+          "num_comments": 7,
+          "hits": [
+            {
+              "title": "hit",
+              "url": "https://example.com/a"
+            }
+          ],
+          "handle": "alice.bsky.social",
+          "displayName": "Alice",
+          "followersCount": 100,
+          "followsCount": 50,
+          "postsCount": 10,
+          "likeCount": 5,
+          "repostCount": 1,
+          "replyCount": 0,
+          "indexedAt": "2026-04-15T00:00:00Z",
+          "description": "Synthetic description",
+          "name": "Synthetic Name",
+          "link": "https://example.com/a",
+          "topic": "Synthetic Topic",
+          "likes": 42,
+          "post": {
+            "author": {
+              "handle": "alice.bsky.social",
+              "displayName": "Alice"
+            },
+            "record": {
+              "text": "synthetic post text"
+            },
+            "likeCount": 5,
+            "repostCount": 1,
+            "replyCount": 0,
+            "indexedAt": "2026-04-15T00:00:00Z"
+          },
+          "target": {
+            "title": "Synthetic target title",
+            "id": 12345,
+            "answer_count": 10
+          },
+          "detail_text": "100 万热度",
+          "owner": {
+            "name": "alice"
+          },
+          "stat": {
+            "view": 1000,
+            "danmaku": 10
+          },
+          "bvid": "BV1abcdefghi",
+          "node": {
+            "title": "Synthetic Node"
+          },
+          "full_name": "acme/widget",
+          "stargazers_count": 42,
+          "forks_count": 7,
+          "language": "TypeScript",
+          "identifier": "ENG-1",
+          "state": {
+            "name": "In Progress"
+          },
+          "project": {
+            "name": "Synthetic Project"
+          },
+          "assignee": {
+            "name": "alice"
+          },
+          "priority": 1,
+          "createdAt": "2026-04-15T00:00:00Z",
+          "listItemCount": 10,
+          "joinedAllTimeCount": 5,
+          "creator": {
+            "handle": "alice.bsky.social"
+          },
+          "record": {
+            "name": "Synthetic Pack",
+            "description": "Synthetic pack description",
+            "text": "synthetic post text"
+          },
+          "karma": 100,
+          "created": 1600000000,
+          "about": "synthetic about",
+          "replies": 3,
+          "data": {
+            "title": "synthetic-title",
+            "author": "alice",
+            "subreddit": "programming",
+            "subreddit_name_prefixed": "r/programming",
+            "score": 42,
+            "num_comments": 7,
+            "url": "https://example.com/a",
+            "permalink": "/r/programming/1",
+            "name": "programming",
+            "display_name": "programming",
+            "subscribers": 1000000,
+            "public_description": "Synthetic subreddit",
+            "link_karma": 100,
+            "comment_karma": 200,
+            "total_karma": 300,
+            "created_utc": 1600000000,
+            "body": "synthetic reddit comment"
+          },
+          "link_karma": 100,
+          "comment_karma": 200,
+          "total_karma": 300,
+          "created_utc": 1600000000,
+          "answer_count": 10,
+          "answers": 10,
+          "view_count": 1000,
+          "subscribers": 1000000
+        }
+      }
+    }
+  ],
+  "expected": {
+    "columns": ["rank", "title", "score", "author", "comments"],
+    "minItems": 1
+  }
+}
