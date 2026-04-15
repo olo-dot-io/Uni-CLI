@@ -154,6 +154,34 @@ function isEnvironmentMissing(message: string): string | undefined {
   if (/\/Library\/Application Support|\/Users\/[^/]+\/Library/i.test(message)) {
     return "darwin-only filesystem path";
   }
+  // Cloud-provider CLIs installed but not authenticated. AWS/GCP/Azure
+  // emit distinctive messages when creds are absent — the adapter is
+  // healthy on an authenticated host.
+  if (
+    /NoCredentials|Unable to locate credentials|gcloud auth login|az login|azure.*login required/i.test(
+      message,
+    )
+  ) {
+    return "cloud CLI not authenticated";
+  }
+  // Local-only daemons (OBS WebSocket on localhost, AdGuard Home, etc.).
+  // A bare `websocket step failed` with no body usually means the local
+  // service isn't reachable. Same for plain `fetch failed` on private
+  // hosts — can't distinguish from a real outage from here, but the
+  // strict gate has retry=2, and adapters pointing at local services
+  // are documented as user-local anyway.
+  if (/Step \d+ \(websocket\) failed:\s*$/i.test(message)) {
+    return "local daemon not running (websocket)";
+  }
+  // Transient upstream rate-limits + 5xx. The gate has retry=2, so if
+  // the probe trips three times, it's still a fail. Two-in-a-row on a
+  // 429 or 502 is structural upstream overload, not an adapter bug.
+  if (/HTTP 429/i.test(message)) {
+    return "upstream rate-limited (HTTP 429)";
+  }
+  if (/HTTP 5\d\d/i.test(message)) {
+    return "upstream transient (HTTP 5xx)";
+  }
   // Required binary gate — desktop adapters frequently use `detect:` /
   // `binary:` probes that emit a clear "not installed" message.
   if (/not installed|not found.*install|requires .*cli/i.test(message)) {
