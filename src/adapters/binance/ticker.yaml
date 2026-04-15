@@ -31,3 +31,10 @@ pipeline:
   - limit: 1
 
 columns: [symbol, price, change, change_pct, high, low, open, volume, trades]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

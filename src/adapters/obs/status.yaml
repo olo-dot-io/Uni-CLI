@@ -28,3 +28,10 @@ pipeline:
       reconnecting: "${{ item.outputReconnecting }}"
 
 columns: [streaming, duration, bytes, reconnecting]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["net.websocket"]
+minimum_capability: net.websocket
+trust: public
+confidentiality: public
+quarantine: false

@@ -31,3 +31,10 @@ execArgs:
   - -crf
   - ${{ args.crf }}
   - ${{ args.output }}
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: []
+minimum_capability: http.fetch
+trust: user
+confidentiality: public
+quarantine: false

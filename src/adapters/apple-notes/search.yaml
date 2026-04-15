@@ -1,0 +1,43 @@
+# Apple Notes — full-text search (titles whose body contains query).
+#
+# AppleScript's `whose body contains` is a case-insensitive substring
+# match on note bodies. Returns newline-separated titles.
+#
+# Transport: desktop-ax (macOS-only). Empty stdout means no matches.
+#
+# Escaping: `${{ args.query }}` is interpolated into an AppleScript
+# string literal; the engine's templater handles quote-escaping. A
+# literal `"` in the query would break the script, so callers should
+# pass reasonable query strings.
+site: apple-notes
+name: search
+description: Full-text search across all notes (titles of matches)
+type: desktop
+
+# schema-v2 fields
+capabilities: ["desktop-ax.applescript"]
+minimum_capability: desktop-ax.applescript
+trust: user
+confidentiality: private
+quarantine: false
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Substring to search for in note bodies
+
+pipeline:
+  - applescript:
+      script: |
+        tell application "Notes"
+          set matches to notes whose body contains "${{ args.query }}"
+          set output to ""
+          repeat with n in matches
+            set output to output & (name of n) & linefeed
+          end repeat
+          return output
+        end tell
+
+columns: [stdout]

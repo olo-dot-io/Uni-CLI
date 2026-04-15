@@ -13,3 +13,10 @@ pipeline:
   - fetch:
       url: "https://ipapi.co/${{ args.ip | default('') }}/json/"
 columns: [ip, city, region, country_name, org, timezone, latitude, longitude]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

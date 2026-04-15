@@ -24,3 +24,10 @@ pipeline:
       official: "${{ item.is_official }}"
   - limit: "${{ args.limit | default(20) }}"
 columns: [name, description, stars, pulls, official]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

@@ -61,3 +61,10 @@ pipeline:
               parse: json
 
 columns: [network, power, action, message]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: []
+minimum_capability: http.fetch
+trust: user
+confidentiality: public
+quarantine: false

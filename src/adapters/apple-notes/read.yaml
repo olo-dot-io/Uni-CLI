@@ -1,0 +1,44 @@
+# Apple Notes — read a single note's body by AppleScript id.
+#
+# The id is an AppleScript reference string like
+# "x-coredata://.../ICNote/p123" returned by `list` is actually only
+# the title today; to read by stable id, use the `name` of a note:
+# `unicli apple-notes read --title "Groceries"` (title-based lookup).
+#
+# Transport: desktop-ax (macOS-only). Empty stdout means the note was
+# not found (AppleScript's `on error` branch).
+#
+# Escaping: `${{ args.title }}` is interpolated into an AppleScript
+# string literal; the engine's templater handles quote-escaping.
+site: apple-notes
+name: read
+description: Read a note's plaintext body by title (first match wins)
+type: desktop
+
+# schema-v2 fields
+capabilities: ["desktop-ax.applescript"]
+minimum_capability: desktop-ax.applescript
+trust: user
+confidentiality: private
+quarantine: false
+
+args:
+  title:
+    type: str
+    required: true
+    positional: true
+    description: Note title (exact match; first match wins)
+
+pipeline:
+  - applescript:
+      script: |
+        tell application "Notes"
+          try
+            set n to first note whose name is "${{ args.title }}"
+            return plaintext of n
+          on error
+            return ""
+          end try
+        end tell
+
+columns: [stdout]

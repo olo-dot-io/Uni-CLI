@@ -1,0 +1,34 @@
+# Normalise line endings across platforms.
+#
+# Without this, Windows clones get CRLF on checkout while macOS/Linux get LF,
+# which makes `prettier --check` (running in the Windows CI job) report
+# "formatting issues" on files that are already formatted correctly. Forcing
+# LF on checkout everywhere removes the divergence.
+#
+# Text files get LF; binary files are left untouched.
+
+* text=auto eol=lf
+
+# Shell scripts + TypeScript + YAML + Markdown — explicit LF.
+*.sh    text eol=lf
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.js    text eol=lf
+*.mjs   text eol=lf
+*.cjs   text eol=lf
+*.json  text eol=lf
+*.jsonc text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.toml  text eol=lf
+
+# Binary — no munging.
+*.png   binary
+*.jpg   binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.pdf   binary
+*.zip   binary
+*.tgz   binary

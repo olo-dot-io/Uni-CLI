@@ -1,0 +1,73 @@
+# iMessage — messages from a specific contact handle (phone/email).
+#
+# chat.db's `handle` table stores phone numbers like "+14155551234" and
+# email addresses. Pass the handle exactly as it appears in Messages.
+#
+# Injection safety:
+#   - `args.name` is passed through env var UNICLI_HANDLE and
+#     SQL-escaped by doubling single quotes (standard SQL escape).
+#   - Bash `${var//pattern/replacement}` expansion handles the escape
+#     without eval — identical pattern to hermes/sessions-search.yaml.
+#   - `args.limit` is integer-forced by stripping non-digits.
+#
+# Requires Full Disk Access (System Settings → Privacy & Security).
+site: imessage
+name: contact
+description: Messages from a specific contact handle (phone/email)
+type: desktop
+binary: sqlite3
+detect: "test $(uname) = Darwin"
+
+# schema-v2 fields
+capabilities: ["subprocess.exec"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: private
+quarantine: false
+
+args:
+  name:
+    type: str
+    required: true
+    positional: true
+    description: Contact handle (phone number or email — exact match)
+  limit:
+    type: int
+    required: false
+    default: 50
+    description: Number of messages to return
+
+pipeline:
+  - exec:
+      command: sh
+      args:
+        - -c
+        - |
+          db="$HOME/Library/Messages/chat.db"
+          if [ ! -f "$db" ]; then
+            echo "[]"
+            exit 0
+          fi
+          # SQL-escape single quotes in handle: ' -> ''
+          h=${UNICLI_HANDLE//\'/\'\'}
+          # Force integer on limit
+          lim=${UNICLI_LIMIT//[^0-9]/}
+          : "${lim:=50}"
+          sqlite3 -json "$db" \
+            "SELECT datetime(m.date/1000000000 + 978307200, 'unixepoch', 'localtime') AS ts, \
+                    m.text, \
+                    m.is_from_me, \
+                    h.id AS handle_id \
+             FROM message m \
+             JOIN handle h ON m.handle_id = h.ROWID \
+             WHERE h.id = '$h' AND m.text IS NOT NULL \
+             ORDER BY m.date DESC \
+             LIMIT $lim;" \
+            2>/dev/null || echo "[]"
+      env:
+        UNICLI_HANDLE: "${{ args.name }}"
+        UNICLI_LIMIT: "${{ args.limit }}"
+      parse: json
+      timeout: 30000
+
+columns: [ts, is_from_me, handle_id, text]

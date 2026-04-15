@@ -18,3 +18,10 @@ pipeline:
       items: "${{ item.meta ? item.meta.numItems : 0 }}"
 
 columns: [tag, type, items]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

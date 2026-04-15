@@ -21,3 +21,10 @@ pipeline:
       amount: "${{ item.f6 }}"
   - limit: "${{ args.limit | default(20) }}"
 columns: [code, name, price, change_pct, volume]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

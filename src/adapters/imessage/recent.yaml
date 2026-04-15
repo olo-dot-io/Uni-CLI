@@ -1,0 +1,66 @@
+# iMessage — recent messages (read-only).
+#
+# Reads `~/Library/Messages/chat.db` via `sqlite3 -json`. Requires Full
+# Disk Access for the terminal running unicli (System Settings →
+# Privacy & Security → Full Disk Access → enable for your terminal).
+#
+# Injection safety:
+#   - `args.limit` is forced to an integer by bash parameter expansion
+#     (`${UNICLI_LIMIT//[^0-9]/}`) before interpolation. A non-numeric
+#     value produces an empty string which the `:-50` default fills.
+#   - No free-text parameters are interpolated into SQL. The `limit`
+#     clause is the only dynamic piece.
+#
+# Cross-platform: `detect: test $(uname) = Darwin` gates on macOS.
+# Non-darwin hosts exit with "adapter not available on this platform".
+site: imessage
+name: recent
+description: Recent iMessages with timestamp and direction (macOS-only, read-only)
+type: desktop
+binary: sqlite3
+detect: "test $(uname) = Darwin"
+
+# schema-v2 fields
+capabilities: ["subprocess.exec"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: private
+quarantine: false
+
+args:
+  limit:
+    type: int
+    required: false
+    default: 50
+    description: Number of recent messages to return
+
+pipeline:
+  - exec:
+      command: sh
+      args:
+        - -c
+        - |
+          db="$HOME/Library/Messages/chat.db"
+          if [ ! -f "$db" ]; then
+            echo "[]"
+            exit 0
+          fi
+          # Force integer on limit (strip non-digits, default 50)
+          lim=${UNICLI_LIMIT//[^0-9]/}
+          : "${lim:=50}"
+          sqlite3 -json "$db" \
+            "SELECT datetime(date/1000000000 + 978307200, 'unixepoch', 'localtime') AS ts, \
+                    text, \
+                    is_from_me, \
+                    handle_id \
+             FROM message \
+             WHERE text IS NOT NULL \
+             ORDER BY date DESC \
+             LIMIT $lim;" \
+            2>/dev/null || echo "[]"
+      env:
+        UNICLI_LIMIT: "${{ args.limit }}"
+      parse: json
+      timeout: 30000
+
+columns: [ts, is_from_me, handle_id, text]

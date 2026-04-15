@@ -1,0 +1,87 @@
+# Linear — list issues via GraphQL (api.linear.app/graphql).
+#
+# Auth: API key (no OAuth). Get a personal API key from
+# https://linear.app/settings/api — paste it into the `Authorization`
+# header as-is (NOT `Bearer <key>`). Linear's spec:
+#   Authorization: lin_api_xxxxxxxxxxxx
+#
+# Configuration:
+#   1. Set env var: export LINEAR_API_KEY=lin_api_xxxx
+#   2. Or save to file: echo '{"api_key":"lin_api_xxxx"}' > ~/.unicli/auth/linear.json
+#      (the template reads LINEAR_API_KEY; file-based auth is a future
+#      enhancement, env works today.)
+#
+# Optional filters:
+#   --project <name>   filter to issues whose project.name matches
+#   --state <name>     filter by workflow state (Todo, In Progress, Done, ...)
+site: linear
+name: issue-list
+description: List Linear issues (optional project/state filter)
+type: web-api
+domain: api.linear.app
+strategy: public # auth is via Authorization header from env, no cookies
+
+# schema-v2 fields
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: user
+confidentiality: internal
+quarantine: false
+
+args:
+  project:
+    type: str
+    required: false
+    description: Filter by project name (exact match)
+  state:
+    type: str
+    required: false
+    description: Filter by workflow state name (e.g. "Todo", "In Progress", "Done")
+  limit:
+    type: int
+    required: false
+    default: 50
+    description: Maximum issues to return
+
+pipeline:
+  - fetch:
+      url: https://api.linear.app/graphql
+      method: POST
+      headers:
+        Content-Type: application/json
+        Authorization: "${{ env.LINEAR_API_KEY }}"
+      body:
+        query: |
+          query Issues($first: Int!) {
+            issues(first: $first) {
+              nodes {
+                id
+                identifier
+                title
+                state { name }
+                project { name }
+                assignee { name }
+                priority
+                url
+                createdAt
+              }
+            }
+          }
+        variables:
+          first: "${{ args.limit | default(50) }}"
+
+  - select: data.issues.nodes
+
+  - filter: "!args.project || (item.project && item.project.name === args.project)"
+
+  - filter: "!args.state || (item.state && item.state.name === args.state)"
+
+  - map:
+      id: "${{ item.identifier }}"
+      title: "${{ item.title }}"
+      state: "${{ item.state ? item.state.name : '' }}"
+      project: "${{ item.project ? item.project.name : '' }}"
+      assignee: "${{ item.assignee ? item.assignee.name : '' }}"
+      url: "${{ item.url }}"
+
+columns: [id, state, project, assignee, title]

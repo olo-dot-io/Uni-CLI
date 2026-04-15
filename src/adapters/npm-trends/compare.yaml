@@ -17,3 +17,10 @@ pipeline:
   - fetch:
       url: "https://api.npmjs.org/downloads/point/${{ args.period | default('last-month') }}/${{ args.packages }}"
 columns: [package, downloads, start, end]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

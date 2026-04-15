@@ -17,6 +17,8 @@ interface ParsedAdapter {
   strategy?: string;
   pipeline?: unknown[];
   args?: Record<string, unknown>;
+  quarantine?: boolean;
+  quarantineReason?: string;
 }
 
 const adapters: { file: string; parsed: ParsedAdapter }[] = [];
@@ -60,9 +62,20 @@ describe("all YAML adapters are valid", () => {
       });
 
       it("has pipeline or execArgs", () => {
+        if (parsed.quarantine === true) {
+          // Quarantined adapters are intentionally broken; they may lack
+          // a pipeline while awaiting repair.
+          return;
+        }
         expect(
           parsed.pipeline || (parsed as Record<string, unknown>).execArgs,
         ).toBeTruthy();
+      });
+
+      it("quarantine flag is boolean when set", () => {
+        if (parsed.quarantine !== undefined) {
+          expect(typeof parsed.quarantine).toBe("boolean");
+        }
       });
     });
   }

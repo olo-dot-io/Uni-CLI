@@ -40,3 +40,10 @@ pipeline:
         const status = d2?.friendship_status?.following ? 'Following' : d2?.friendship_status?.outgoing_request ? 'Request sent' : 'Followed';
         return [{ status, username }];
       })()
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["cdp-browser.evaluate", "cdp-browser.navigate"]
+minimum_capability: cdp-browser.evaluate
+trust: public
+confidentiality: public
+quarantine: false

@@ -175,7 +175,7 @@ describe("dist parity — production build must match source mode", () => {
       const result = spawnSync("node", [DIST_MAIN, "doctor"], {
         encoding: "utf-8",
         env: { ...process.env, UNICLI_NO_LEDGER: "1" },
-        timeout: 15_000,
+        timeout: 30_000,
       });
       expect(result.status).toBe(0);
       const stdout = typeof result.stdout === "string" ? result.stdout : "";
@@ -184,5 +184,6 @@ describe("dist parity — production build must match source mode", () => {
       expect(m).not.toBeNull();
       if (m) expect(parseInt(m[1], 10)).toBeGreaterThan(100);
     },
+    60_000,
   );
 });

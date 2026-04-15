@@ -7,6 +7,17 @@ import { appendFileSync, readFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
+/**
+ * Resolve the base directory for the repair log. Honours `$HOME` when set
+ * (so tests and CI fixtures can redirect it to a temp dir with a single
+ * env override) and falls back to the OS user home. Necessary on Windows,
+ * where `os.homedir()` reads `USERPROFILE` by default — tests that set
+ * `HOME` alone would otherwise diverge from production.
+ */
+function repairBaseDir(): string {
+  return process.env.HOME || homedir();
+}
+
 export interface LogEntry {
   iteration: number;
   metric: number;
@@ -22,7 +33,7 @@ export class RepairLogger {
   private readonly filePath: string;
 
   constructor(site: string) {
-    const dir = join(homedir(), ".unicli", "repair", site);
+    const dir = join(repairBaseDir(), ".unicli", "repair", site);
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
     }

@@ -46,3 +46,10 @@ pipeline:
           { field: 'URL', value: 'https://www.lesswrong.com/users/' + (u.slug || '') },
         ];
       })()
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["cdp-browser.evaluate", "http.fetch"]
+minimum_capability: cdp-browser.evaluate
+trust: public
+confidentiality: public
+quarantine: false

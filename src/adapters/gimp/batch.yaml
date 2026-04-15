@@ -48,3 +48,10 @@ pipeline:
       timeout: 300000
 
 columns: [processed]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["subprocess.exec"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: public
+quarantine: false

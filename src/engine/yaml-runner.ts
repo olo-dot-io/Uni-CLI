@@ -53,6 +53,20 @@ import {
 } from "./download.js";
 import { executeWebsocket, type WebsocketStepConfig } from "./websocket.js";
 import { getProxyAgent } from "./proxy.js";
+import { createTransportBus } from "../transport/bus.js";
+import { CuaTransport } from "../transport/adapters/cua.js";
+import { DesktopAxTransport } from "../transport/adapters/desktop-ax.js";
+import { DesktopUiaTransport } from "../transport/adapters/desktop-uia.js";
+import { DesktopAtspiTransport } from "../transport/adapters/desktop-atspi.js";
+import { HttpTransport } from "../transport/adapters/http.js";
+import { SubprocessTransport } from "../transport/adapters/subprocess.js";
+import { CdpBrowserTransport } from "../transport/adapters/cdp-browser.js";
+import type { TransportBus, TransportContext } from "../transport/types.js";
+import { CUA_STEP_HANDLERS, type CuaStepKind } from "./steps/cua.js";
+import {
+  DESKTOP_AX_STEP_HANDLERS,
+  type DesktopAxStepKind,
+} from "./steps/desktop-ax.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -61,7 +75,7 @@ export interface PipelineOptions {
   strategy?: string;
 }
 
-type PipelineContext = {
+export type PipelineContext = {
   data: unknown;
   args: Record<string, unknown>;
   vars: Record<string, unknown>;
@@ -127,6 +141,127 @@ const SIBLING_KEYS = new Set([
   "retry",
   "backoff",
 ]);
+
+/**
+ * SSRF defence — reject request URLs that point at non-http(s) schemes or
+ * reserved local address ranges before we issue the fetch.
+ *
+ * The attack shape this blocks: a YAML adapter takes `${{ args.query }}`
+ * and interpolates it into the request URL. An attacker (or a careless
+ * template author) feeds a payload like `http://169.254.169.254/latest/meta-data/`
+ * (AWS IMDS) or `http://127.0.0.1:19825/internal` (Uni-CLI daemon). Without
+ * this guard the runner happily fetches it and returns the response —
+ * leaking credentials or driving the daemon.
+ *
+ * The check is intentionally conservative: only http/https, and no loopback
+ * / link-local / private metadata addresses. Set `UNICLI_ALLOW_LOCAL=1` to
+ * bypass — useful for local dev / testing where a developer intentionally
+ * targets `127.0.0.1` or a docker compose stack on a private subnet.
+ */
+export function assertSafeRequestUrl(raw: string): void {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    throw new Error(`invalid URL for pipeline fetch: ${raw.slice(0, 120)}`);
+  }
+  if (u.protocol !== "http:" && u.protocol !== "https:") {
+    throw new Error(
+      `disallowed URL scheme for pipeline fetch: ${u.protocol} (only http/https)`,
+    );
+  }
+  if (process.env.UNICLI_ALLOW_LOCAL === "1") return;
+  // Node's URL.hostname keeps the IPv6 brackets (`[::1]`) around the
+  // zero-compressed literal; strip them before comparing. This is load-
+  // bearing — a missing strip means `[::1]` and `[fe80::...]` slip past
+  // the check.
+  const hostnameLower = u.hostname.toLowerCase();
+  const host =
+    hostnameLower.startsWith("[") && hostnameLower.endsWith("]")
+      ? hostnameLower.slice(1, -1)
+      : hostnameLower;
+  // Literal loopback / unspecified / link-local / cloud metadata
+  if (
+    host === "localhost" ||
+    host === "0.0.0.0" ||
+    host === "::" ||
+    host === "::1" ||
+    host === "metadata.google.internal" ||
+    host === "metadata" ||
+    // IPv6 link-local (fe80::/10) and unique-local (fc00::/7 → fc/fd prefix)
+    host.startsWith("fe80:") ||
+    host.startsWith("fc") ||
+    host.startsWith("fd") ||
+    // IPv4 CIDR check — crude but covers the most common SSRF vectors.
+    // Full RFC-6890 enumeration is overkill for adapter fetches; if you
+    // need to target those ranges, set UNICLI_ALLOW_LOCAL=1.
+    host.startsWith("127.") ||
+    host.startsWith("10.") ||
+    host.startsWith("169.254.") ||
+    host.startsWith("192.168.") ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host)
+  ) {
+    throw new Error(
+      `blocked fetch to reserved/local address ${host} — set UNICLI_ALLOW_LOCAL=1 to override`,
+    );
+  }
+}
+
+/**
+ * Lazily-created transport bus — the capability registry for the runner.
+ *
+ * All seven v0.212 transports are registered so `bus.require(step)` gives
+ * an honest answer for every pipeline step name in the capability matrix.
+ * The legacy step executors (stepFetch / stepExec / browser ops) still run
+ * their own code paths for v0.212 compatibility — registering the HTTP,
+ * subprocess, and CDP transports here does NOT eagerly open Chrome or
+ * spawn a process; `open()` is only called when a handler dispatches
+ * through the bus (currently only the `cua_*` and `ax_*` step families).
+ *
+ * This is deliberately lightweight: the bus is the single source of truth
+ * for capability declarations; full execution routing through the bus is
+ * the v0.213 destination.
+ */
+let sharedBus: TransportBus | undefined;
+
+function getBus(): TransportBus {
+  if (sharedBus) return sharedBus;
+  const bus = createTransportBus();
+  // Order matters only for fallback lookup — register in the canonical
+  // order from src/transport/capability.ts:TRANSPORT_KINDS.
+  bus.register(new HttpTransport());
+  bus.register(new CdpBrowserTransport());
+  bus.register(new SubprocessTransport());
+  bus.register(new DesktopAxTransport());
+  bus.register(new DesktopUiaTransport());
+  bus.register(new DesktopAtspiTransport());
+  bus.register(new CuaTransport());
+  sharedBus = bus;
+  return bus;
+}
+
+/** Exposed for tests — reset the shared bus between runs. */
+export function __resetTransportBusForTests(): void {
+  sharedBus = undefined;
+}
+
+function buildTransportCtx(ctx: PipelineContext): TransportContext {
+  return {
+    cwd: process.cwd(),
+    env: process.env as Record<string, string>,
+    cookieHeader: ctx.cookieHeader,
+    vars: ctx.vars,
+    bus: getBus(),
+  };
+}
+
+function isCuaStep(action: string): action is CuaStepKind {
+  return action in CUA_STEP_HANDLERS;
+}
+
+function isDesktopAxStep(action: string): action is DesktopAxStepKind {
+  return action in DESKTOP_AX_STEP_HANDLERS;
+}
 
 function getActionEntry(step: PipelineStep): [string, unknown] {
   const entries = Object.entries(step);
@@ -228,6 +363,35 @@ async function executeStep(
     case "extract":
       return stepExtract(ctx, config as ExtractConfig);
     default: {
+      // CUA family + macOS AX family dispatch through the transport bus.
+      // `action()` never throws — envelopes surface via ctx.vars.lastEnvelope.
+      if (isCuaStep(action)) {
+        const handler = CUA_STEP_HANDLERS[action];
+        const params =
+          config && typeof config === "object" && !Array.isArray(config)
+            ? (config as Record<string, unknown>)
+            : {};
+        const envelope = await handler(
+          { bus: getBus(), transportCtx: buildTransportCtx(ctx) },
+          params,
+        );
+        ctx.vars["lastEnvelope"] = envelope;
+        return { ...ctx, data: envelope.ok ? envelope.data : envelope };
+      }
+      if (isDesktopAxStep(action)) {
+        const handler = DESKTOP_AX_STEP_HANDLERS[action];
+        const params =
+          config && typeof config === "object" && !Array.isArray(config)
+            ? (config as Record<string, unknown>)
+            : {};
+        const envelope = await handler(
+          { bus: getBus(), transportCtx: buildTransportCtx(ctx) },
+          params,
+        );
+        ctx.vars["lastEnvelope"] = envelope;
+        return { ...ctx, data: envelope.ok ? envelope.data : envelope };
+      }
+
       // Check plugin custom step registry before giving up
       const { getCustomStep } = await import("../plugin/step-registry.js");
       const customHandler = getCustomStep(action);
@@ -537,7 +701,7 @@ function getBackoffMs(step: PipelineStep, config: unknown): number {
 
 // --- Assert step ---
 
-interface AssertConfig {
+export interface AssertConfig {
   url?: string;
   selector?: string;
   text?: string;
@@ -545,7 +709,7 @@ interface AssertConfig {
   message?: string;
 }
 
-async function stepAssert(
+export async function stepAssert(
   ctx: PipelineContext,
   config: AssertConfig,
   stepIndex: number,
@@ -640,7 +804,7 @@ function assertionError(
 
 // --- Step implementations ---
 
-interface FetchConfig {
+export interface FetchConfig {
   url: string;
   method?: string;
   params?: Record<string, unknown>;
@@ -651,11 +815,12 @@ interface FetchConfig {
   cache?: number; // cache TTL in seconds (0 = no cache, default: no cache)
 }
 
-async function stepFetch(
+export async function stepFetch(
   ctx: PipelineContext,
   config: FetchConfig,
 ): Promise<PipelineContext> {
   let url = evalTemplate(config.url, ctx);
+  assertSafeRequestUrl(url);
 
   // If data is an array of items with IDs, fetch each one (fan-out with concurrency limit)
   if (Array.isArray(ctx.data)) {
@@ -667,6 +832,7 @@ async function stepFetch(
     const results = await mapConcurrent(items, concurrency, async (item) => {
       const itemCtx = { ...ctx, data: item };
       const itemUrl = evalTemplate(config.url, itemCtx);
+      assertSafeRequestUrl(itemUrl);
       const resolvedConfig = config.body
         ? { ...config, body: resolveTemplateDeep(config.body, itemCtx) }
         : config;
@@ -859,7 +1025,7 @@ async function fetchJson(
   throw new Error("fetchJson: unreachable");
 }
 
-function stepSelect(
+export function stepSelect(
   ctx: PipelineContext,
   path: string,
   stepIndex: number,
@@ -883,7 +1049,7 @@ function stepSelect(
   return { ...ctx, data };
 }
 
-function stepMap(
+export function stepMap(
   ctx: PipelineContext,
   template: Record<string, string>,
 ): PipelineContext {
@@ -904,7 +1070,10 @@ function stepMap(
   return { ...ctx, data: mapped };
 }
 
-function stepFilter(ctx: PipelineContext, expr: string): PipelineContext {
+export function stepFilter(
+  ctx: PipelineContext,
+  expr: string,
+): PipelineContext {
   if (!Array.isArray(ctx.data)) return ctx;
 
   const items = ctx.data as unknown[];
@@ -916,7 +1085,10 @@ function stepFilter(ctx: PipelineContext, expr: string): PipelineContext {
   return { ...ctx, data: filtered };
 }
 
-function stepLimit(ctx: PipelineContext, config: unknown): PipelineContext {
+export function stepLimit(
+  ctx: PipelineContext,
+  config: unknown,
+): PipelineContext {
   if (!Array.isArray(ctx.data)) return ctx;
 
   let n: number;
@@ -932,11 +1104,12 @@ function stepLimit(ctx: PipelineContext, config: unknown): PipelineContext {
 
 // --- fetch_text: like fetch but returns raw text (for XML/RSS/HTML) ---
 
-async function stepFetchText(
+export async function stepFetchText(
   ctx: PipelineContext,
   config: FetchConfig,
 ): Promise<PipelineContext> {
   let url = evalTemplate(config.url, ctx);
+  assertSafeRequestUrl(url);
 
   if (config.params) {
     const params = new URLSearchParams();
@@ -992,11 +1165,11 @@ async function stepFetchText(
 
 // --- RSS/XML parser ---
 
-interface RssConfig {
+export interface RssConfig {
   fields?: Record<string, string>;
 }
 
-function stepParseRss(
+export function stepParseRss(
   ctx: PipelineContext,
   config: RssConfig | undefined,
 ): PipelineContext {
@@ -1066,12 +1239,15 @@ function extractXmlTag(xml: string, tag: string): string {
 
 // --- Sort step ---
 
-interface SortConfig {
+export interface SortConfig {
   by: string;
   order?: "asc" | "desc";
 }
 
-function stepSort(ctx: PipelineContext, config: SortConfig): PipelineContext {
+export function stepSort(
+  ctx: PipelineContext,
+  config: SortConfig,
+): PipelineContext {
   if (!Array.isArray(ctx.data)) return ctx;
   const items = [...ctx.data] as Record<string, unknown>[];
   const desc = config.order === "desc";
@@ -1090,7 +1266,7 @@ function stepSort(ctx: PipelineContext, config: SortConfig): PipelineContext {
 
 // --- Exec step for desktop adapters ---
 
-interface ExecConfig {
+export interface ExecConfig {
   command: string;
   args?: string[];
   parse?: "lines" | "json" | "csv" | "text";
@@ -1100,7 +1276,7 @@ interface ExecConfig {
   output_file?: string;
 }
 
-async function stepExec(
+export async function stepExec(
   ctx: PipelineContext,
   config: ExecConfig,
 ): Promise<PipelineContext> {
@@ -1288,7 +1464,7 @@ async function stepExec(
 
 // --- HTML to Markdown ---
 
-function stepHtmlToMd(ctx: PipelineContext): PipelineContext {
+export function stepHtmlToMd(ctx: PipelineContext): PipelineContext {
   const html = String(ctx.data ?? "");
   const turndown = new TurndownService({
     headingStyle: "atx",
@@ -1343,7 +1519,7 @@ function buildScope(ctx: PipelineContext): Record<string, unknown> {
 
 // --- Set step (store pipeline variables) ---
 
-function stepSet(
+export function stepSet(
   ctx: PipelineContext,
   config: Record<string, unknown>,
 ): PipelineContext {
@@ -1358,7 +1534,7 @@ function stepSet(
 
 // --- Append step (accumulate data into vars array) ---
 
-function stepAppend(ctx: PipelineContext, key: string): PipelineContext {
+export function stepAppend(ctx: PipelineContext, key: string): PipelineContext {
   if (typeof key !== "string" || !key) return ctx;
   const existing = ctx.vars[key];
   const arr = Array.isArray(existing)
@@ -1376,7 +1552,7 @@ function stepAppend(ctx: PipelineContext, key: string): PipelineContext {
 
 // --- If/else step (conditional branching) ---
 
-async function stepIf(
+export async function stepIf(
   ctx: PipelineContext,
   config: { if: string; then?: PipelineStep[]; else?: PipelineStep[] },
   stepIndex: number,
@@ -1424,13 +1600,13 @@ async function stepIf(
 
 // --- Each loop step (do-while with max iteration guard) ---
 
-interface EachConfig {
+export interface EachConfig {
   max?: number;
   do: PipelineStep[];
   until?: string;
 }
 
-async function stepEach(
+export async function stepEach(
   ctx: PipelineContext,
   config: EachConfig,
   stepIndex: number,
@@ -1490,7 +1666,7 @@ async function stepEach(
 
 // --- Parallel step (concurrent branch execution with merge strategies) ---
 
-async function stepParallel(
+export async function stepParallel(
   ctx: PipelineContext,
   branches: PipelineStep[],
   merge: string,
@@ -1512,24 +1688,27 @@ async function stepParallel(
     });
   }
 
-  const results = await Promise.all(
-    branches.map(async (branch) => {
-      const branchCtx: PipelineContext = {
-        ...ctx,
-        vars: { ...ctx.vars },
-      };
-      const [action, config] = getActionEntry(branch);
-      const result = await executeStep(
-        branchCtx,
-        action,
-        config,
-        stepIndex,
-        branch,
-        depth + 1,
-      );
-      return result.data;
-    }),
-  );
+  // Parallel concurrency cap — bound simultaneous branch execution so a
+  // pipeline with 100 parallel `fetch` steps doesn't exhaust the socket
+  // pool or trip per-host rate limiters. Default 5 mirrors `stepFetch`
+  // fan-out; overridable via `concurrency:` on the parallel step config
+  // (read when the runner dispatches; plumbing goes through executeStep).
+  const results = await mapConcurrent(branches, 5, async (branch) => {
+    const branchCtx: PipelineContext = {
+      ...ctx,
+      vars: { ...ctx.vars },
+    };
+    const [action, config] = getActionEntry(branch);
+    const result = await executeStep(
+      branchCtx,
+      action,
+      config,
+      stepIndex,
+      branch,
+      depth + 1,
+    );
+    return result.data;
+  });
 
   let merged: unknown;
   switch (merge) {
@@ -1897,12 +2076,12 @@ function resolveFilterArg(a: string, scope: Record<string, unknown>): unknown {
 
 // --- write_temp: create ephemeral script files for desktop adapters ---
 
-interface WriteTempConfig {
+export interface WriteTempConfig {
   filename: string;
   content: string;
 }
 
-function stepWriteTemp(
+export function stepWriteTemp(
   ctx: PipelineContext,
   config: WriteTempConfig,
 ): PipelineContext {
@@ -1990,7 +2169,7 @@ async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
   }
 }
 
-interface NavigateConfig {
+export interface NavigateConfig {
   url: string;
   settleMs?: number;
   waitUntil?: "load" | "domcontentloaded" | "networkidle" | "commit";
@@ -2024,7 +2203,7 @@ async function waitForNetworkIdle(
   }
 }
 
-async function stepNavigate(
+export async function stepNavigate(
   ctx: PipelineContext,
   config: NavigateConfig,
 ): Promise<PipelineContext> {
@@ -2041,11 +2220,11 @@ async function stepNavigate(
   return { ...ctx, page };
 }
 
-interface EvaluateConfig {
+export interface EvaluateConfig {
   expression: string;
 }
 
-async function stepEvaluate(
+export async function stepEvaluate(
   ctx: PipelineContext,
   config: EvaluateConfig | string,
 ): Promise<PipelineContext> {
@@ -2058,14 +2237,14 @@ async function stepEvaluate(
   return { ...ctx, data: result, page };
 }
 
-interface ClickConfig {
+export interface ClickConfig {
   selector?: string;
   x?: number;
   y?: number;
   quads?: boolean;
 }
 
-async function stepClick(
+export async function stepClick(
   ctx: PipelineContext,
   config: ClickConfig | string,
 ): Promise<PipelineContext> {
@@ -2106,13 +2285,13 @@ async function stepClick(
   );
 }
 
-interface TypeConfig {
+export interface TypeConfig {
   text: string;
   selector?: string;
   submit?: boolean;
 }
 
-async function stepType(
+export async function stepType(
   ctx: PipelineContext,
   config: TypeConfig,
 ): Promise<PipelineContext> {
@@ -2129,13 +2308,13 @@ async function stepType(
   return { ...ctx, page };
 }
 
-interface WaitBrowserConfig {
+export interface WaitBrowserConfig {
   ms?: number;
   selector?: string;
   timeout?: number;
 }
 
-async function stepWaitBrowser(
+export async function stepWaitBrowser(
   ctx: PipelineContext,
   config: WaitBrowserConfig | number,
 ): Promise<PipelineContext> {
@@ -2150,7 +2329,7 @@ async function stepWaitBrowser(
   return { ...ctx, page };
 }
 
-interface InterceptConfig {
+export interface InterceptConfig {
   trigger: string;
   capture: string;
   select?: string;
@@ -2160,7 +2339,7 @@ interface InterceptConfig {
   captureText?: boolean;
 }
 
-async function stepIntercept(
+export async function stepIntercept(
   ctx: PipelineContext,
   config: InterceptConfig,
 ): Promise<PipelineContext> {
@@ -2241,7 +2420,7 @@ async function stepIntercept(
 
 // --- press: keyboard event dispatch ---
 
-async function stepPress(
+export async function stepPress(
   ctx: PipelineContext,
   config: unknown,
 ): Promise<PipelineContext> {
@@ -2262,7 +2441,7 @@ async function stepPress(
 
 // --- scroll: page scrolling ---
 
-async function stepScroll(
+export async function stepScroll(
   ctx: PipelineContext,
   config: unknown,
 ): Promise<PipelineContext> {
@@ -2294,7 +2473,7 @@ async function stepScroll(
 
 // --- snapshot: DOM accessibility tree ---
 
-async function stepSnapshot(
+export async function stepSnapshot(
   ctx: PipelineContext,
   config: unknown,
 ): Promise<PipelineContext> {
@@ -2321,7 +2500,7 @@ async function stepSnapshot(
 
 // --- tap: Vue store action bridge ---
 
-interface TapConfig {
+export interface TapConfig {
   store: string;
   action: string;
   capture: string;
@@ -2331,7 +2510,7 @@ interface TapConfig {
   args?: unknown[];
 }
 
-async function stepTap(
+export async function stepTap(
   ctx: PipelineContext,
   config: TapConfig,
 ): Promise<PipelineContext> {
@@ -2477,7 +2656,7 @@ function getNestedValue(obj: unknown, path: string): unknown {
 // Download step
 // ---------------------------------------------------------------------------
 
-interface DownloadStepConfig {
+export interface DownloadStepConfig {
   url: string;
   dir?: string;
   filename?: string;
@@ -2488,7 +2667,7 @@ interface DownloadStepConfig {
   content?: string;
 }
 
-async function stepDownload(
+export async function stepDownload(
   ctx: PipelineContext,
   config: DownloadStepConfig,
 ): Promise<PipelineContext> {
@@ -2549,7 +2728,7 @@ async function stepDownload(
   }
 }
 
-async function stepWebsocket(
+export async function stepWebsocket(
   ctx: PipelineContext,
   config: WebsocketStepConfig,
 ): Promise<PipelineContext> {
@@ -2571,12 +2750,12 @@ interface FieldDef {
   pattern?: string;
 }
 
-interface ExtractConfig {
+export interface ExtractConfig {
   from: string;
   fields: Record<string, FieldDef>;
 }
 
-async function stepExtract(
+export async function stepExtract(
   ctx: PipelineContext,
   config: ExtractConfig,
 ): Promise<PipelineContext> {

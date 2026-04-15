@@ -40,3 +40,10 @@ pipeline:
         const url = data.video?.url || data.output?.url || data.url || '';
         return [{ status: url ? 'success' : 'processing', model, video_url: url || 'Video is being generated...' }];
       })()
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["cdp-browser.evaluate", "cdp-browser.navigate"]
+minimum_capability: cdp-browser.evaluate
+trust: public
+confidentiality: public
+quarantine: false

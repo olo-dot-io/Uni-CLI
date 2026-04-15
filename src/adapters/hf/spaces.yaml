@@ -32,3 +32,10 @@ pipeline:
   - limit: ${{ args.limit }}
 
 columns: [id, likes, sdk, url]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

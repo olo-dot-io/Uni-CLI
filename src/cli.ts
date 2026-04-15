@@ -35,6 +35,7 @@ import { registerRepairCommand } from "./commands/repair.js";
 import { registerSkillsCommand } from "./commands/skills.js";
 import { registerUsageCommands } from "./commands/usage.js";
 import { registerMcpCommand } from "./commands/mcp.js";
+import { registerAcpCommand } from "./commands/acp.js";
 import { registerEvalCommand } from "./commands/eval.js";
 import { registerResearchCommand } from "./commands/research.js";
 import { registerHubCommand } from "./commands/hub.js";
@@ -43,10 +44,35 @@ import { registerTestGenCommand } from "./commands/test-gen.js";
 import { registerStatusCommand } from "./commands/status.js";
 import { registerSchemaCommand } from "./commands/schema.js";
 import { registerSearchCommand } from "./commands/search.js";
+import { registerLintCommand } from "./commands/lint.js";
+import { registerMigrateCommand } from "./commands/migrate.js";
+import { registerMigrateSchemaCommand } from "./commands/migrate-schema.js";
 import { recordUsage } from "./runtime/usage-ledger.js";
 import { emitHook } from "./hooks.js";
 import { checkForUpdates } from "./engine/update-check.js";
 import type { OutputFormat } from "./types.js";
+
+/**
+ * Apply the `--json` deprecation alias.
+ *
+ * Exported so unit tests can exercise the alias logic without booting the
+ * full Commander program. Walks up to the root `Command` so nested
+ * subcommands still read `format: "json"` from `program.opts()`.
+ */
+export function applyJsonAlias(cmd: Command): void {
+  // Walk to the root — Commander stores shared opts on the program itself.
+  let root: Command = cmd;
+  while (root.parent) {
+    root = root.parent;
+  }
+  const opts = root.opts() as { format?: string };
+  if (!opts.format) {
+    root.setOptionValue("format", "json");
+  }
+  process.stderr.write(
+    "[deprecation] --json is deprecated; use -f json (will be removed in v0.213)\n",
+  );
+}
 
 export async function createCli(): Promise<Command> {
   const program = new Command();
@@ -62,9 +88,24 @@ export async function createCli(): Promise<Command> {
     .version(VERSION)
     .option(
       "-f, --format <format>",
-      "output format: table, json, yaml, csv, md",
+      "output format: json, yaml, csv, md, compact (table deprecated, falls back to md)",
+    )
+    .option(
+      "--json",
+      "[deprecated] alias for -f json; removed in v0.213",
+      false,
     )
     .option("-v, --verbose", "show pipeline debug steps");
+
+  // --json alias: rewrite into -f json and warn to stderr so piped callers
+  // keep working without polluting stdout. We handle this in preAction so
+  // subcommand .action()s observe the canonical --format value.
+  program.hook("preAction", (thisCommand) => {
+    const opts = thisCommand.opts() as { json?: boolean; format?: string };
+    if (opts.json) {
+      applyJsonAlias(thisCommand);
+    }
+  });
 
   // Load YAML adapters synchronously, then TS adapters asynchronously
   const yamlCount = loadAllAdapters();
@@ -90,13 +131,18 @@ export async function createCli(): Promise<Command> {
       const fmt = detectFormat(
         program.opts().format as OutputFormat | undefined,
       );
-      const rows = commands.map((c) => ({
-        site: c.site,
-        command: c.command,
-        description: c.description,
-        type: c.type,
-        auth: c.auth ? "[auth]" : "",
-      }));
+      const rows = commands.map((c) => {
+        const tags: string[] = [];
+        if (c.auth) tags.push("[auth]");
+        if (c.quarantined) tags.push("[quarantined]");
+        return {
+          site: c.site,
+          command: c.command,
+          description: c.description,
+          type: c.type,
+          auth: tags.join(" "),
+        };
+      });
 
       console.log(
         format(rows, ["site", "command", "description", "type", "auth"], fmt),
@@ -283,6 +329,9 @@ export async function createCli(): Promise<Command> {
   // Register mcp command — MCP gateway server + health check
   registerMcpCommand(program);
 
+  // Register acp command — Agent Client Protocol (avante.nvim, Zed) stdio server
+  registerAcpCommand(program);
+
   // Register eval command — declarative regression suites
   registerEvalCommand(program);
   registerResearchCommand(program);
@@ -294,6 +343,15 @@ export async function createCli(): Promise<Command> {
   // Register schema command — JSON Schema for adapter input/output
   registerSchemaCommand(program);
   registerSearchCommand(program);
+
+  // Register lint command — schema-v2 static validation
+  registerLintCommand(program);
+
+  // Register `unicli import opencli-yaml` and friends
+  registerMigrateCommand(program);
+
+  // Register migrate commands — schema-v1 → schema-v2 mass migration
+  registerMigrateSchemaCommand(program);
 
   // Register "test" command — run all commands for a site
   program
@@ -321,6 +379,17 @@ export async function createCli(): Promise<Command> {
         console.log(chalk.bold(`\n${adapter.name}`));
 
         for (const [cmdName, cmd] of Object.entries(adapter.commands)) {
+          if (cmd.quarantine) {
+            const reason = cmd.quarantineReason
+              ? `: ${cmd.quarantineReason}`
+              : "";
+            console.log(
+              chalk.yellow(`  ${cmdName}: skip [quarantined]${reason}`),
+            );
+            skipped++;
+            continue;
+          }
+
           if (!cmd.pipeline) {
             console.log(chalk.dim(`  ${cmdName}: skip (TS func)`));
             skipped++;
@@ -398,7 +467,21 @@ export async function createCli(): Promise<Command> {
         }
       }
 
-      const subCmd = siteCmd.command(cmdStr).description(cmd.description ?? "");
+      // Quarantine gate — a command flagged `quarantine: true` in its YAML
+      // has been proven broken by the adapter-health probe and must not run
+      // until repaired. We still REGISTER it so `unicli <site> list` shows
+      // it (with the reason) and the agent's self-repair loop can target it,
+      // but the action fails fast with sysexit-78 (CONFIG_ERROR) and a
+      // structured envelope pointing at the repair command. Operators who
+      // know what they're doing can bypass with `UNICLI_FORCE_QUARANTINE=1`
+      // for one-off debugging.
+      const isQuarantined = cmd.quarantine === true;
+
+      const descBase = cmd.description ?? "";
+      const description = isQuarantined
+        ? `[quarantined] ${descBase || "disabled by health gate"}${cmd.quarantineReason ? ` — ${cmd.quarantineReason}` : ""}`
+        : descBase;
+      const subCmd = siteCmd.command(cmdStr).description(description);
 
       // Register option arguments
       const registeredOpts = new Set<string>();
@@ -420,6 +503,39 @@ export async function createCli(): Promise<Command> {
 
       subCmd.action(async (...actionArgs: unknown[]) => {
         const startedAt = Date.now();
+
+        // Quarantine short-circuit — emit a structured envelope to stderr
+        // with the repair hint, then exit-78. Bypass flag is intentional:
+        // it lets the same codepath serve both normal users (hard block)
+        // and maintainers running `unicli repair` (force-execute).
+        if (isQuarantined && process.env.UNICLI_FORCE_QUARANTINE !== "1") {
+          const envelope = {
+            ok: false,
+            error: {
+              transport: "http" as const,
+              adapter_path: `${adapter.name}/${cmdName}`,
+              step: 0,
+              action: cmdName,
+              reason: `adapter ${adapter.name}.${cmdName} is quarantined${cmd.quarantineReason ? `: ${cmd.quarantineReason}` : ""}`,
+              suggestion: `run \`unicli repair ${adapter.name} ${cmdName}\` or unset \`quarantine\` in the adapter YAML after fixing; override with UNICLI_FORCE_QUARANTINE=1 for one-off debugging`,
+              minimum_capability: "repair.quarantine",
+              retryable: false,
+              exit_code: ExitCode.CONFIG_ERROR,
+            },
+          };
+          process.stderr.write(JSON.stringify(envelope) + "\n");
+          recordUsage({
+            site: adapter.name,
+            cmd: cmdName,
+            strategy: adapter.strategy ?? "unknown",
+            tokens: 0,
+            ms: Date.now() - startedAt,
+            bytes: 0,
+            exit: ExitCode.CONFIG_ERROR,
+          });
+          process.exit(ExitCode.CONFIG_ERROR);
+        }
+
         // Commander passes positional args first, then opts object, then Command
         const opts = actionArgs[actionArgs.length - 2] as Record<
           string,

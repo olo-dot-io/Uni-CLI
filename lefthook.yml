@@ -11,6 +11,20 @@ pre-commit:
       glob: "*.{ts,tsx,js,jsx}"
       run: npx oxlint {staged_files}
 
+# Commit message gate. CLAUDE.md Information Security rule forbids
+# internal-process terms leaking into the public git log: "codex review",
+# "subagent", "batch N", "round-N/round-N", "spec drift",
+# "strategic-design", "competitive analysis". Historically these slipped
+# through commit bodies (audit 2026-04-16 caught four). This hook
+# is the flywheel fix — deterministic > memory.
+#
+# Escape hatch for legitimate uses (the word "spec" in a schema or
+# "batch" in a bench harness): LEFTHOOK=0 or rewrite the phrase.
+commit-msg:
+  commands:
+    no-process-leak:
+      run: bash scripts/check-commit-msg.sh {1}
+
 # Matches the CI pipeline (clean dist, then full verify). Prevents the class of
 # bugs where stale local build output masks a CI failure. Skippable via
 # LEFTHOOK=0 git push ... when you need to push work-in-progress deliberately.

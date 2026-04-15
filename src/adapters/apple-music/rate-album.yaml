@@ -1,0 +1,71 @@
+# AX-first demo with CUA fallback — rate the current Apple Music album.
+#
+# Strategy:
+#   1. desktop-ax   → launch and focus Music
+#   2. desktop-ax   → open the "Album" AppleScript menu (cheap & exact)
+#   3. cua          → take a screenshot so the VLM can verify the stars
+#                     UI is visible before we click it
+#   4. cua          → click the star coordinate (caller-provided)
+#
+# Real UI coordinates vary by screen size — callers either pass x/y or
+# let the pipeline use the VLM snapshot to locate the stars themselves.
+site: apple-music
+name: rate-album
+description: Rate the currently-playing Apple Music album via AX menu + CUA click
+type: browser
+strategy: ui
+domain: music.apple.com
+browser: false
+quarantine: true
+quarantineReason: Requires macOS + Apple Music desktop app + a CUA backend
+
+args:
+  stars:
+    type: int
+    default: 5
+    description: Number of stars (1-5)
+  x:
+    type: int
+    default: 600
+    description: Stars UI x-coordinate (pixels)
+  y:
+    type: int
+    default: 400
+    description: Stars UI y-coordinate (pixels)
+
+pipeline:
+  - launch_app:
+      app: Music
+
+  - ax_focus:
+      app: Music
+
+  - cua_wait:
+      ms: 300
+
+  - cua_snapshot: {}
+
+  - cua_ask:
+      question: Is an album currently displayed with a star-rating row visible?
+
+  - cua_click:
+      x: ${{ args.x }}
+      y: ${{ args.y }}
+
+  - cua_assert:
+      predicate: The album now shows ${{ args.stars }} filled stars
+
+columns: [backend, stars]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities:
+  [
+    "cua.click",
+    "cua.snapshot",
+    "cua.wait",
+    "desktop-ax.focus",
+    "desktop-ax.launch_app",
+  ]
+minimum_capability: cua.click
+trust: user
+confidentiality: public

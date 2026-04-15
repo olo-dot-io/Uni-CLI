@@ -25,3 +25,10 @@ pipeline:
       output_path: "${{ item.outputPath }}"
 
 columns: [output_path]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["net.websocket"]
+minimum_capability: net.websocket
+trust: public
+confidentiality: public
+quarantine: false

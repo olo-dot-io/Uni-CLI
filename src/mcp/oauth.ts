@@ -5,7 +5,7 @@
  * Zero external dependencies — uses Node.js crypto + http built-ins.
  */
 
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 function isLocalhostRedirect(uri: string): boolean {
@@ -225,15 +225,52 @@ async function handleToken(
 
 // ── Bearer Validation ──────────────────────────────────────────────────────
 
+/** Upper bound on Bearer token length — Uni-CLI tokens are 64 hex chars. */
+const MAX_TOKEN_LENGTH = 128;
+
+/**
+ * Validate an Authorization: Bearer <token> header.
+ *
+ * Uses a constant-time scan across the token set so that timing between
+ * "not a valid token" and "valid but expired" doesn't leak which prefix
+ * of a token matched. V8's Map.get() is O(1) but its string equality step
+ * still reveals the shared prefix length via CPU-level timing; the explicit
+ * `timingSafeEqual` scan over every resident token neutralises that leak
+ * at the cost of one fixed-size compare per active session — negligible
+ * for the <100 sessions a local MCP server ever holds.
+ *
+ * Eviction: expired tokens are removed lazily when encountered, not on a
+ * timer, because the set is already pruned on issuance and the active set
+ * is bounded by `MAX_SESSIONS` (see streamable-http.ts).
+ */
 function validateBearer(req: IncomingMessage): boolean {
   const h = req.headers.authorization;
   if (!h) return false;
   const parts = h.split(" ");
   if (parts.length !== 2 || parts[0] !== "Bearer") return false;
-  const entry = tokens.get(parts[1]);
-  if (!entry) return false;
-  if (entry.expiresAt <= Date.now()) {
-    tokens.delete(parts[1]);
+  const presented = parts[1];
+  if (presented.length === 0 || presented.length > MAX_TOKEN_LENGTH)
+    return false;
+
+  const presentedBuf = Buffer.from(presented, "utf8");
+  let match: { key: string; entry: Token } | undefined;
+  const now = Date.now();
+  for (const [key, entry] of tokens) {
+    if (entry.expiresAt <= now) continue; // lazy eviction candidate
+    const keyBuf = Buffer.from(key, "utf8");
+    if (keyBuf.length !== presentedBuf.length) continue;
+    if (timingSafeEqual(presentedBuf, keyBuf)) {
+      match = { key, entry };
+      // Intentionally DO NOT break — iterate the remaining entries so the
+      // total compare count does not leak whether the match was early or
+      // late in the set.
+    }
+  }
+  if (!match) return false;
+  // The expiresAt check is redundant with the continue above, kept for
+  // defensive reading.
+  if (match.entry.expiresAt <= now) {
+    tokens.delete(match.key);
     return false;
   }
   return true;

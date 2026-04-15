@@ -15,3 +15,10 @@ pipeline:
       end: ${{ item.end }}
 
 columns: [downloads, start, end]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

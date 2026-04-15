@@ -31,3 +31,10 @@ pipeline:
       role: "${{ item.message.role }}"
       finish_reason: "${{ item.finish_reason }}"
 columns: [content]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

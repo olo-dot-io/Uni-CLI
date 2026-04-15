@@ -30,3 +30,10 @@ pipeline:
   - evaluate: "JSON.stringify([{ file: ${{ args.file | json }}, duration: ${{ args.duration }}, status: 'recorded' }])"
 
 columns: [file, duration, status]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["cdp-browser.evaluate", "subprocess.exec"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: public
+quarantine: false

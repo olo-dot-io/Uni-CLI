@@ -1,0 +1,67 @@
+# CUA+AX demo — export the currently-selected Figma frame.
+#
+# Composes three transports:
+#   1. desktop-ax    → launch & focus the desktop Figma app
+#   2. cua           → VLM confirms the export dialog is visible
+#   3. desktop-ax    → click through the File > Export menu path
+#
+# Quarantined because the Figma desktop app and a VLM backend
+# (ANTHROPIC_API_KEY | TRYCUA_API_KEY | …) are both required.
+site: figma
+name: export-selected
+description: Export the currently-selected Figma frame via CUA + macOS AX
+type: browser
+strategy: ui
+domain: figma.com
+browser: false
+quarantine: true
+quarantineReason: Requires macOS + Figma desktop app + a CUA backend (ANTHROPIC_API_KEY etc.)
+
+args:
+  format:
+    type: str
+    default: PNG
+    choices: [PNG, JPG, SVG, PDF]
+    description: Export format
+
+pipeline:
+  - launch_app:
+      app: Figma
+
+  - ax_focus:
+      app: Figma
+
+  - cua_wait:
+      ms: 500
+
+  - cua_snapshot: {}
+
+  - cua_ask:
+      question: Is a frame currently selected on the Figma canvas?
+
+  - ax_menu_select:
+      app: Figma
+      path:
+        - File
+        - Export ${{ args.format }}
+
+  - cua_wait:
+      ms: 800
+
+  - cua_assert:
+      predicate: The Figma export dialog is visible with a Save button
+
+columns: [backend, ok]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities:
+  [
+    "cua.snapshot",
+    "cua.wait",
+    "desktop-ax.focus",
+    "desktop-ax.launch_app",
+    "desktop-ax.menu_select",
+  ]
+minimum_capability: cua.snapshot
+trust: user
+confidentiality: public

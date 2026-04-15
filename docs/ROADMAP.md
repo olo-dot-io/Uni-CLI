@@ -1,25 +1,27 @@
 # Uni-CLI Roadmap — Mission Vostok (0.2xx)
 
-> CLI is all agents need. 198 sites, 1020 commands as of v0.211.2.
+> CLI is all agents need. <!-- STATS:site_count -->200<!-- /STATS --> sites, <!-- STATS:command_count -->968<!-- /STATS --> commands as of v0.212.1.
 
 ## Progress
 
-| Version | Codename            | Sites | Commands | Status     |
-| ------- | ------------------- | ----- | -------- | ---------- |
-| 0.100.0 | Sputnik             | 6     | 8        | ✅         |
-| 0.200.0 | Vostok · Chaika     | 21    | 74       | ✅         |
-| 0.201.0 | Vostok · Chaika II  | 43    | 141      | ✅         |
-| 0.202.0 | Vostok · Tereshkova | 57    | 203      | ✅         |
-| 0.203.0 | Vostok · Leonov     | 57    | 289      | ✅         |
-| 0.204.0 | Vostok · Nikolayev  | 96    | 582      | ✅         |
-| 0.205.0 | Vostok · Bykovsky   | 114   | 601      | ✅         |
-| 0.206.0 | Vostok · Tereshkova | 122   | 635      | ✅         |
-| 0.207.0 | Vostok · Gagarin    | 122   | 635      | ✅         |
-| 0.207.1 | Vostok · Gagarin    | 122   | 635      | ✅         |
-| 0.208.0 | Vostok · Titov      | 134   | 711      | ✅         |
-| 0.209.0 | Vostok · Popovich   | 167   | 756      | ✅         |
-| 0.210.0 | Vostok · Komarov    | 195   | 957      | ✅         |
-| 0.211.2 | Vostok · Volynov    | 198   | 1020     | ✅ Current |
+| Version | Codename             | Sites | Commands | Status     |
+| ------- | -------------------- | ----- | -------- | ---------- |
+| 0.100.0 | Sputnik              | 6     | 8        | ✅         |
+| 0.200.0 | Vostok · Chaika      | 21    | 74       | ✅         |
+| 0.201.0 | Vostok · Chaika II   | 43    | 141      | ✅         |
+| 0.202.0 | Vostok · Tereshkova  | 57    | 203      | ✅         |
+| 0.203.0 | Vostok · Leonov      | 57    | 289      | ✅         |
+| 0.204.0 | Vostok · Nikolayev   | 96    | 582      | ✅         |
+| 0.205.0 | Vostok · Bykovsky    | 114   | 601      | ✅         |
+| 0.206.0 | Vostok · Tereshkova  | 122   | 635      | ✅         |
+| 0.207.0 | Vostok · Gagarin     | 122   | 635      | ✅         |
+| 0.207.1 | Vostok · Gagarin     | 122   | 635      | ✅         |
+| 0.208.0 | Vostok · Titov       | 134   | 711      | ✅         |
+| 0.209.0 | Vostok · Popovich    | 167   | 756      | ✅         |
+| 0.210.0 | Vostok · Komarov     | 195   | 957      | ✅         |
+| 0.211.2 | Vostok · Volynov     | 198   | 1020     | ✅         |
+| 0.212.0 | Vostok · Shatalov    | 200   | 968      | ✅         |
+| 0.212.1 | Vostok · Shatalov II | 200   | 968      | ✅ Current |
 
 ## v0.201.0 ✅ — Engine v2 + Desktop/Bridge
 
@@ -101,6 +103,57 @@ src/
 ├── browser/              # Chrome Extension bridge (v0.202+)
 └── mcp/                  # MCP server (v0.205)
 ```
+
+## v0.213 — Deferred from v0.212 audit (2026-04-15)
+
+The v0.212 Shatalov release ships with several features documented as stubs
+so the capability surface is visible to agents without pretending the
+bodies work. The v0.213 scope reclaims that honesty:
+
+**CUA real backends**
+
+- `AnthropicPlanner(screenshotSource)` composition — the Anthropic Messages
+  API is a planner, not a screen capture service. A real backend must
+  compose with `desktop-ax.ax_snapshot` (macOS `screencapture`) or a
+  scrapybara/trycua sandbox to supply the screenshot.
+- `computer_20260301` tool identifier is env-configurable via
+  `ANTHROPIC_CUA_TOOL_VERSION` — track Anthropic's release cadence without
+  a code change.
+- trycua / OpenCUA / scrapybara backend bodies.
+
+**Desktop transports**
+
+- `desktop-uia.ts` — Windows UI Automation via napi-rs + `windows::UI::UIAutomation`
+  crate (no ready-made Node binding exists as of 2026-04 — see the research
+  reports in `.claude/plans/sessions/2026-04-14-v212-rethink/`).
+- `desktop-atspi.ts` — Linux AT-SPI2 via D-Bus; `at-spi2-core` through a
+  napi-rs shim. Node-native bindings are also absent.
+- macOS AX tree snapshot via `node-mac-permissions@2.5.0` + napi-rs wrapper
+  for `AXUIElement`.
+
+**MCP Streamable HTTP**
+
+- Full `Last-Event-ID` replay buffer (spec 2025-11-25 §5.3). v0.212 accepts
+  the header and emits `id:` on every SSE event; v0.213 maintains a
+  per-session ring buffer so a reconnecting client gets the events it
+  missed.
+- GET /mcp with `Accept: text/event-stream` as a server-push channel (today
+  the server only streams responses to POST; spec allows bidirectional).
+
+**Workflow adapters** (deferred from Phase 5)
+
+- `gmail`, `gcal`, `drive` OAuth PKCE adapters.
+- `spotify` user-scope adapter.
+- `unicli inbox` unified cross-source feed.
+- `unicli shop track` scheduled-daemon lifecycle.
+
+**Release infrastructure**
+
+- Migrate the canonical publish path to npmjs.com Trusted Publishers;
+  retire the `NPM_TOKEN` fallback in `.github/workflows/release.yml`. The
+  binding tuple is `(olo-dot-io, Uni-CLI, release.yml, npm-publish)` — one-
+  time setup at https://www.npmjs.com/package/@zenalexa/unicli > Settings
+  > Trusted Publishers.
 
 ## Self-Repair Architecture
 

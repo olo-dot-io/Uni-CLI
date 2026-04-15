@@ -1,0 +1,121 @@
+{
+  "generated_at": "2026-04-14T19:26:27.389Z",
+  "node_version": "v22.20.0",
+  "platform": "darwin-arm64",
+  "runs": 50,
+  "mode": "fixture",
+  "cold_start": {
+    "target": "unicli list",
+    "runs": 50,
+    "wall_ms_p50": 1553,
+    "wall_ms_p95": 3292,
+    "response_tokens": 44394,
+    "response_chars": 159816,
+    "sites": 198,
+    "commands": 1020
+  },
+  "adapter_calls": [
+    {
+      "label": "news",
+      "site": "hackernews",
+      "command": "top",
+      "invocation": "unicli hackernews top --limit 5",
+      "invocation_tokens": 9,
+      "mode": "fixture",
+      "runs": 50,
+      "wall_ms_p50": 0.004,
+      "wall_ms_p95": 0.011,
+      "response_chars": 1216,
+      "response_tokens": 338,
+      "response_tokens_p50": 338,
+      "response_tokens_p95": 338
+    },
+    {
+      "label": "social",
+      "site": "reddit",
+      "command": "hot",
+      "invocation": "unicli reddit hot --limit 5",
+      "invocation_tokens": 8,
+      "mode": "fixture",
+      "runs": 50,
+      "wall_ms_p50": 0.003,
+      "wall_ms_p95": 0.004,
+      "response_chars": 1248,
+      "response_tokens": 347,
+      "response_tokens_p50": 347,
+      "response_tokens_p95": 347
+    },
+    {
+      "label": "social-cn",
+      "site": "36kr",
+      "command": "hot",
+      "invocation": "unicli 36kr hot --limit 5",
+      "invocation_tokens": 7,
+      "mode": "fixture",
+      "runs": 50,
+      "wall_ms_p50": 0.002,
+      "wall_ms_p95": 0.003,
+      "response_chars": 1063,
+      "response_tokens": 296,
+      "response_tokens_p50": 296,
+      "response_tokens_p95": 296
+    },
+    {
+      "label": "dev",
+      "site": "github-trending",
+      "command": "daily",
+      "invocation": "unicli github-trending daily --limit 5",
+      "invocation_tokens": 11,
+      "mode": "fixture",
+      "runs": 50,
+      "wall_ms_p50": 0.003,
+      "wall_ms_p95": 0.004,
+      "response_chars": 1196,
+      "response_tokens": 333,
+      "response_tokens_p50": 333,
+      "response_tokens_p95": 333
+    }
+  ],
+  "mcp_comparison": {
+    "baseline": "GitHub MCP 55K cold-start",
+    "baseline_tokens": 55000,
+    "rows": [
+      {
+        "label": "news",
+        "command": "unicli hackernews top --limit 5",
+        "invocation_tokens": 9,
+        "response_tokens": 338,
+        "total_tokens": 347,
+        "reduction_factor_vs_55k": 158.5
+      },
+      {
+        "label": "social",
+        "command": "unicli reddit hot --limit 5",
+        "invocation_tokens": 8,
+        "response_tokens": 347,
+        "total_tokens": 355,
+        "reduction_factor_vs_55k": 154.9
+      },
+      {
+        "label": "social-cn",
+        "command": "unicli 36kr hot --limit 5",
+        "invocation_tokens": 7,
+        "response_tokens": 296,
+        "total_tokens": 303,
+        "reduction_factor_vs_55k": 181.5
+      },
+      {
+        "label": "dev",
+        "command": "unicli github-trending daily --limit 5",
+        "invocation_tokens": 11,
+        "response_tokens": 333,
+        "total_tokens": 344,
+        "reduction_factor_vs_55k": 159.9
+      }
+    ],
+    "target_reduction": 30,
+    "best_reduction": 181.5,
+    "median_reduction": 159.9,
+    "claim_holds": true
+  }
+}

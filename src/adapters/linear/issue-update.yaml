@@ -1,0 +1,100 @@
+# Linear — update an issue's workflow state.
+#
+# Flow:
+#   1. Look up the issue by its identifier ("ENG-42") to get its UUID
+#      and teamId.
+#   2. Look up the target state name in that team's workflow.
+#   3. Apply the update.
+#
+# Auth: API key in Authorization header (see issue-list.yaml for setup).
+site: linear
+name: issue-update
+description: Update a Linear issue's workflow state
+type: web-api
+domain: api.linear.app
+strategy: public # auth is via Authorization header from env, no cookies
+
+# schema-v2 fields
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: user
+confidentiality: internal
+quarantine: false
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: Issue identifier (e.g. "ENG-42")
+  state:
+    type: str
+    required: true
+    description: Workflow state name (e.g. "Done", "In Progress")
+
+pipeline:
+  # Look up issue UUID + teamId by identifier.
+  - fetch:
+      url: https://api.linear.app/graphql
+      method: POST
+      headers:
+        Content-Type: application/json
+        Authorization: "${{ env.LINEAR_API_KEY }}"
+      body:
+        query: |
+          query IssueByIdentifier($id: String!) {
+            issues(filter: { identifier: { eq: $id } }) {
+              nodes { id team { id name } }
+            }
+          }
+        variables:
+          id: "${{ args.id }}"
+
+  - set:
+      issueUuid: "${{ item && item.data && item.data.issues && item.data.issues.nodes && item.data.issues.nodes[0] ? item.data.issues.nodes[0].id : '' }}"
+      teamId: "${{ item && item.data && item.data.issues && item.data.issues.nodes && item.data.issues.nodes[0] ? item.data.issues.nodes[0].team.id : '' }}"
+
+  # Resolve state name -> workflowStateId within that team.
+  - fetch:
+      url: https://api.linear.app/graphql
+      method: POST
+      headers:
+        Content-Type: application/json
+        Authorization: "${{ env.LINEAR_API_KEY }}"
+      body:
+        query: |
+          query StateByName($teamId: ID!, $name: String!) {
+            workflowStates(filter: { team: { id: { eq: $teamId } }, name: { eq: $name } }) {
+              nodes { id name }
+            }
+          }
+        variables:
+          teamId: "${{ vars.teamId }}"
+          name: "${{ args.state }}"
+
+  - set:
+      stateId: "${{ item && item.data && item.data.workflowStates && item.data.workflowStates.nodes && item.data.workflowStates.nodes[0] ? item.data.workflowStates.nodes[0].id : '' }}"
+
+  # Apply the update.
+  - fetch:
+      url: https://api.linear.app/graphql
+      method: POST
+      headers:
+        Content-Type: application/json
+        Authorization: "${{ env.LINEAR_API_KEY }}"
+      body:
+        query: |
+          mutation IssueUpdate($id: String!, $stateId: String!) {
+            issueUpdate(id: $id, input: { stateId: $stateId }) {
+              success
+              issue { id identifier title url state { name } }
+            }
+          }
+        variables:
+          id: "${{ vars.issueUuid }}"
+          stateId: "${{ vars.stateId }}"
+
+  # Return the updated issue.
+  - select: data.issueUpdate.issue
+
+columns: [identifier, title, url]

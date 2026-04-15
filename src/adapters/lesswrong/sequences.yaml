@@ -33,3 +33,10 @@ pipeline:
       rank: "${{ index + 1 }}"
       title: "${{ item.title }}"
       author: "${{ item.user.displayName || 'Unknown' }}"
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

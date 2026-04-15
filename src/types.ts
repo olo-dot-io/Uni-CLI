@@ -51,6 +51,16 @@ export interface AdapterCommand {
   name: string;
   description?: string;
 
+  /**
+   * When true, the adapter is quarantined: skipped by `unicli test` and the
+   * CI conformance suite, and shown with a `[quarantined]` tag in `unicli list`.
+   * Use this to park adapters whose upstream API changed until an agent repairs
+   * them — keeps CI green without hiding the adapter from discovery.
+   */
+  quarantine?: boolean;
+  /** Human-readable reason for quarantine, surfaced in `unicli list`. */
+  quarantineReason?: string;
+
   // Execution — exactly one of these
   pipeline?: PipelineStep[];
   adapterArgs?: AdapterArg[];
@@ -209,8 +219,15 @@ export interface ResolvedCommand {
   args: Record<string, unknown>;
 }
 
-/** Output format options */
-export type OutputFormat = "table" | "json" | "yaml" | "csv" | "md";
+/**
+ * Output format options.
+ *
+ * v0.212: `table` is deprecated — callers passing `-f table` get a
+ * stderr warning and fall back to `md`. The type still lists `table`
+ * during the deprecation window so existing call-sites keep compiling.
+ * `compact` is the new agent-token-optimized format.
+ */
+export type OutputFormat = "table" | "json" | "yaml" | "csv" | "md" | "compact";
 
 /** Structured error detail for AI agent consumption */
 export interface PipelineErrorDetail {

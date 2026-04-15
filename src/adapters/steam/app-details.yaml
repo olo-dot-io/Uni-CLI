@@ -30,3 +30,10 @@ pipeline:
       description: "${{ (item.short_description || '') | truncate(120) }}"
 
 columns: [name, type, developers, price, metacritic, release_date]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

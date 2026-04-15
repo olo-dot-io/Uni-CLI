@@ -26,3 +26,10 @@ pipeline:
       content: ${{ item | truncate(5000) }}
 
 columns: [url, content]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false

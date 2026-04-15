@@ -26,3 +26,10 @@ pipeline:
         const summary = (summaryEl?.textContent || '').replace(/\s+/g, ' ').trim().substring(0, 2000);
         return [{ title, summary: summary || 'No summary available. Open the notebook and generate one.', url: location.href }];
       })()
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["cdp-browser.evaluate", "cdp-browser.navigate"]
+minimum_capability: cdp-browser.evaluate
+trust: public
+confidentiality: public
+quarantine: false

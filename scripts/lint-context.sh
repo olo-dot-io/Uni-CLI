@@ -26,6 +26,23 @@ cd "$(dirname "$0")/.." || exit 1
 
 THRESHOLD="${UNICLI_LINT_THRESHOLD:-60}"
 
+# ── Retired claim guard ────────────────────────────────────────────────────
+# The "~80 tokens per call" figure conflated the invocation string length
+# with the full response payload (measured at 15-25x that). It was retired
+# in v0.212 Phase 0.5 in favour of docs/BENCHMARK.md. Fail fast if it
+# resurfaces in any tracked, shippable surface. The check scans only paths
+# we own publicly; gitignored internal notes (.claude/, ref/) are exempt.
+RETIRED_PATTERN='~80 token\|80 tokens per\|~80_tokens\|80_tokens'
+RETIRED_PATHS=(README.md AGENTS.md DESIGN.md docs src)
+RETIRED_HITS=$(grep -RIn --exclude-dir=node_modules --exclude-dir=dist \
+  "$RETIRED_PATTERN" "${RETIRED_PATHS[@]}" 2>/dev/null || true)
+if [ -n "$RETIRED_HITS" ]; then
+  echo "context-lint: FAIL — retired '~80 tokens per call' claim found:"
+  echo "$RETIRED_HITS"
+  echo "  reference docs/BENCHMARK.md instead (retired 2026-04-15)."
+  exit 1
+fi
+
 if [ "${UNICLI_LINT_DISABLE:-0}" = "1" ]; then
   echo "context-lint: disabled via UNICLI_LINT_DISABLE=1"
   exit 0

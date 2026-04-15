@@ -55,9 +55,14 @@ describe("operate upload", () => {
   });
 
   it("calls setFileInput with correct selector and absolute path", async () => {
-    // Use a path inside the home directory to pass the upload boundary check
+    // Use a path inside the home directory to pass the upload boundary
+    // check. Build the path with `path.join` so the separator matches the
+    // host OS — the previous template literal hard-coded `/` which made
+    // Windows see `C:\Users\x/photo.png` and diverge from the resolved
+    // path under `path.resolve` inside the operate handler.
     const { homedir } = await import("node:os");
-    const testPath = `${homedir()}/photo.png`;
+    const { join } = await import("node:path");
+    const testPath = join(homedir(), "photo.png");
     const program = createProgram();
     await program.parseAsync([
       "node",
@@ -95,6 +100,7 @@ describe("operate upload", () => {
   });
 
   it("resolves relative path to absolute", async () => {
+    const { isAbsolute } = await import("node:path");
     const program = createProgram();
     await program.parseAsync([
       "node",
@@ -105,12 +111,18 @@ describe("operate upload", () => {
       "relative/file.png",
     ]);
 
-    // The path passed to setFileInput should be absolute (resolved)
+    // The path passed to setFileInput should be absolute. Use Node's
+    // `isAbsolute` so Windows (`C:\…`) and POSIX (`/…`) both pass the
+    // same assertion; the test previously hard-coded the POSIX leading
+    // slash and broke on the Windows CI runner.
     const call = mockPage.setFileInput.mock.calls[0];
     expect(call[0]).toBe('[data-unicli-ref="7"]');
-    // Absolute path should not start with "relative/"
-    expect(call[1][0]).toMatch(/^\//);
-    expect(call[1][0]).toContain("relative/file.png");
+    expect(isAbsolute(call[1][0])).toBe(true);
+    // The resolved path must still contain the original segment, using
+    // whichever separator the current platform produces.
+    expect(call[1][0].replace(/\\/g, "/").includes("relative/file.png")).toBe(
+      true,
+    );
   });
 });
 

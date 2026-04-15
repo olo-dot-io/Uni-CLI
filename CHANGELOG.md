@@ -3,6 +3,79 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
+## [0.212.1] — 2026-04-16 — Vostok · Shatalov II
+
+> Pre-push security and contract hardening after third-round audit.
+
+### Security
+
+- **SSRF defence on pipeline fetch** — `stepFetch` / `stepFetchText` / HTTP transport reject `file://`, `data:`, `gopher:` schemes and private/loopback/metadata addresses (`127.0.0.0/8`, `10/8`, `192.168/16`, `172.16–31/12`, `169.254/16`, `localhost`, `metadata.google.internal`). Set `UNICLI_ALLOW_LOCAL=1` to override for local development. Tests inherit `UNICLI_ALLOW_LOCAL=1` via vitest config; production runs never get it.
+- **AppleScript injection hardening** — `escapeAs` now folds `\r` / `\n` to spaces and strips NUL bytes so a user-controlled app name like `Calculator"\nos_command(...)` can no longer smuggle new statements past `osascript -e`.
+- **OAuth Bearer constant-time validation** — `validateBearer` scans every resident token with `crypto.timingSafeEqual` so the timing between "no match" and "expired match" doesn't leak which prefix of a guessed token matched. Token length capped at 128 chars.
+- **Billion-laughs + oversized YAML defense** — `js-yaml.load` switched to `CORE_SCHEMA` (blocks `!!js/*` tags) and file size capped at 256 KiB before parse.
+- **release.yml scope tightening** — `id-token: write` moved from workflow to job level; workflow-level `permissions: {}` forbids broad grants. NPM_TOKEN stays as an explicit fallback when Trusted Publishers is not yet bound.
+
+### Fixed — Contract Drift
+
+- **schema-v2 hard gate validates the full YAML**, not a five-field projection — the legacy `pipeline`, `url`, `params` fields now go through Zod too, so `pipeline: "string"` fails the gate (it would have crashed at runtime before). Warn mode always writes to stderr.
+- **clipboard step names aligned** — the capability matrix referenced `clipboard_get` / `clipboard_set` while every handler, adapter, lint engine, and migrator used `clipboard_read` / `clipboard_write`. Matrix renamed to match, so `bus.require("clipboard_read")` resolves.
+- **Quarantine enforcement** — `unicli <site> <cmd>` for a command flagged `quarantine: true` now emits a structured envelope to stderr and exits-78 (CONFIG_ERROR) with a `unicli repair` hint. Bypass flag `UNICLI_FORCE_QUARANTINE=1` for debugging.
+- **TransportBus registers all 7 transports** — `HttpTransport`, `CdpBrowserTransport`, `SubprocessTransport` previously not registered on the shared bus (capability queries lied). Now every transport is visible to `bus.require`.
+- **AnthropicBackend stub honesty** — error messages now say "v0.213-deferred" explicitly and explain that a production Anthropic backend MUST compose with a screen capture source. `ANTHROPIC_CUA_TOOL_VERSION` env overrides the tool identifier so operators can follow the Sonnet 4.6 rollout.
+
+### Fixed — Robustness
+
+- **migrate-schema roundtrip validation** — every rewritten YAML is re-parsed and run through `validateAdapterV2` before being blessed as migrated; failures are quarantined with a reason.
+- **stepParallel concurrency cap** — replaced unbounded `Promise.all` with `mapConcurrent(5)`.
+- **ACP prompt length bound** — `parseUnicliInvocation` truncates input to 64 KiB before regex scan (ReDoS defence).
+- **MCP SSE event IDs** — every SSE frame now carries an `id:` line; `Last-Event-ID` request header is accepted and logged (full replay lands in v0.213 per `docs/ROADMAP.md`).
+
+### Changed
+
+- **stats.json adds `app_transport_count`** — 7 application-layer transports (TRANSPORT_KINDS) distinct from the 3 MCP server-side transports. `pipeline_step_count` now counts `CAPABILITY_MATRIX` top-level keys (54) rather than `executeStep` switch arms (31) — matches the spec promise of the step catalog.
+- **verify chain expanded** — `npm run verify` now runs `conformance` + `verify:changesets` in addition to the previous 10 gates. Full network probe (`adapter:health`) + bibtex resolve available via `npm run verify:full`.
+- **docs/ROADMAP.md** — added v0.213 deferred items covering Anthropic planner composition, Windows UIA / Linux AT-SPI napi-rs bindings, full Last-Event-ID replay, Gmail/GCal/Drive OAuth adapters.
+
+## [0.212.0] — 2026-04-15 — Vostok · Shatalov
+
+> The execution layer for agent skills. Deterministic, editable, cross-vendor.
+> 200 sites · 968 commands · 7-transport architecture · CUA · ACP · 1134 tests.
+
+### Minor Changes
+
+- e456a01: v0.212.0 "Shatalov" — the execution layer for agent skills.
+
+  Destructive architecture rewrite introducing a unified `TransportAdapter` interface over 7 transports (http, cdp-browser, subprocess, desktop-ax, desktop-uia, desktop-atspi, cua), CUA integration with 4 backends (anthropic/trycua/opencua/scrapybara), ACP JSON-RPC distribution for avante.nvim and OpenCode, Changesets + OIDC npm publishing, Node×OS CI matrix, schema-v2 with `capabilities`/`minimum_capability`/`trust`/`confidentiality`/`quarantine` fields, and the retirement of the ~80-tokens claim in favor of measured p50/p95 benchmarks.
+
+  ### Added
+  - `src/core/` (envelope, schema-v2, registry-v2), `src/transport/` (TransportAdapter + 46×7 capability matrix + bus), `src/protocol/` (acp, skill)
+  - `unicli acp` — Agent Client Protocol JSON-RPC stdio server
+  - `unicli lint` — schema + step validity + cycle detection
+  - `unicli migrate schema-v2` — mass migration tool for existing YAML adapters
+  - `unicli mcp serve` now exposes 3 transports (stdio/http/streamable)
+  - SKILL.md cross-vendor loader discovers skills from `skills/`, `$HOME/.unicli/skills`
+  - `docs/THEORY.md` v2 — softened decidability, Bimodal Agent Capability, Trilemma, Self-Repair Search-Space Contraction
+  - `docs/refs.bib` with 25+ verified arXiv citations + CI bibtex-resolve gate
+  - `docs/BENCHMARK.md` + `bench/` harness with measured p50/p95
+  - `docs/ADAPTER-FORMAT.md` v2 + `docs/MIGRATING-FROM-OPENCLI.md`
+  - `docs/AVANTE.md` integration guide
+  - `contributing/` per-domain guides (adapter, transport, cua, mcp, acp, release, schema, branch-protection)
+  - `.claude/commands/` and `skills/` committed as cross-vendor workflow surface
+  - Changesets workflow + `verify-changesets` CI gate
+  - `adapter-health` (PR-soft) + `adapter-health-strict` (push/nightly) gates
+  - Nightly conformance suite with artifact upload
+
+  ### Changed
+  - Formatter rewritten: `table` dropped; added `compact` format (newline-delimited, token-efficient)
+  - `--json` global flag becomes deprecation alias for `-f json` with stderr warning
+  - stats.json is the single source of truth for counts; CI gate enforces marker consistency across README/AGENTS.md/TASTE.md/ROADMAP.md
+  - All GitHub Actions SHA-pinned (checkout/setup-node/upload-artifact/stale/gh-release)
+  - CI matrix expanded to Node 20/22 × macOS 14 × Windows × Ubuntu
+  - Retired "~80 tokens" claim; published honest measured-in-BENCHMARK.md decomposition
+
+  ### Fixed
+  - Conflict resolved across Phase 0+8: unified verify chain runs format:check → typecheck → lint → lint:context → build:manifest → lint:adapters → test → build → stats:check
+
 ## [0.211.2] — 2026-04-13 — Vostok · Volynov
 
 > Discovery engine, MCP infrastructure, self-repairing CLI for AI agents.
