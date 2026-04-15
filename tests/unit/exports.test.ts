@@ -120,11 +120,33 @@ describe("plugin exports surface", () => {
     expect(typeof mod.NoTransportForStepError).toBe("function");
   });
 
+  it("errors barrel exposes envelope construction helpers", async () => {
+    const entry = exportsMap["./errors"];
+    const importRel = importTargetFor(entry);
+    const url = pathToFileURL(resolve(repoRoot, importRel)).href;
+    const mod = (await import(url)) as Record<string, unknown>;
+    expect(typeof mod.err).toBe("function");
+    expect(typeof mod.ok).toBe("function");
+    expect(typeof mod.exitCodeFor).toBe("function");
+    expect(typeof mod.EnvelopeExit).toBe("object");
+    expect((mod.EnvelopeExit as Record<string, number>).SUCCESS).toBe(0);
+  });
+
   it("transport bus is importable with TransportBus symbol", async () => {
     const entry = exportsMap["./transport"];
     const importRel = importTargetFor(entry);
     const url = pathToFileURL(resolve(repoRoot, importRel)).href;
     const mod = (await import(url)) as Record<string, unknown>;
     expect(mod.createTransportBus ?? mod.TransportBus).toBeDefined();
+  });
+
+  it("transport barrel exposes getBus for plugin TransportAdapter registration", async () => {
+    const entry = exportsMap["./transport"];
+    const importRel = importTargetFor(entry);
+    const url = pathToFileURL(resolve(repoRoot, importRel)).href;
+    const mod = (await import(url)) as Record<string, unknown>;
+    expect(typeof mod.getBus).toBe("function");
+    expect(typeof mod.buildTransportCtx).toBe("function");
+    expect(typeof mod.createTransportBus).toBe("function");
   });
 });

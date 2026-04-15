@@ -176,9 +176,11 @@ without notice:
 
 - **Deep imports into non-exported paths.** `@zenalexa/unicli/dist/engine/runtime.js`
   or any path not listed in `package.json` `exports` is private.
-- **Mutating exported values that are not prefixed with `_`.** Treat
-  `getBus()`, `listSteps()`, etc. as read-only. If you need mutation,
-  register your own adapter via the public API.
+- **Importing symbols prefixed with `_` or tagged `@internal`.** These
+  are test-only or transitional helpers (e.g. `_resetTransportBusForTests`)
+  and can change or disappear in any release, including patch. Calling
+  the public `getBus().register(...)` API is the supported way to extend
+  the transport surface.
 - **Monkeypatching exports.** Rewriting `PipelineError.prototype` or
   overwriting an existing step via a direct `Map.set` on an internal
   registry is unsupported — call `registerStep` instead, which performs
