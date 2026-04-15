@@ -87,5 +87,3 @@ export async function stepDownload(
 }
 
 registerStep("download", stepDownload as StepHandler);
-
-export { stepDownload as handleDownload };

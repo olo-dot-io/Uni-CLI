@@ -17,5 +17,3 @@ export async function stepWebsocket(
 }
 
 registerStep("websocket", stepWebsocket as StepHandler);
-
-export { stepWebsocket as handleWebsocket };
