@@ -5,22 +5,31 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+      time: "01:00"
+      timezone: "Asia/Hong_Kong"
+    # All npm bumps bundled into one PR per week. Grouping is load-bearing:
+    # it lets the Friday weekly-release workflow treat dependabot as a single
+    # `chore(deps)` commit rather than a dozen individual bumps that would
+    # otherwise drown out substantive changes in the release filter.
+    open-pull-requests-limit: 5
+    groups:
+      all-deps:
+        patterns: ["*"]
+    labels: ["deps-only"]
     commit-message:
-      prefix: "chore(deps):"
-    open-pull-requests-limit: 10
-    labels: ["dependencies"]
+      prefix: "chore(deps)"
+      include: "scope"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
-    commit-message:
-      prefix: "chore(ci):"
-    labels: ["ci"]
     # Security posture: every action is SHA-pinned with a `# vX.Y.Z` comment.
     # Dependabot preserves that pattern on bumps (updates both SHA and comment).
     groups:
-      github-actions:
-        patterns:
-          - "*"
+      all-actions:
+        patterns: ["*"]
+    labels: ["deps-only"]
+    commit-message:
+      prefix: "chore(ci)"

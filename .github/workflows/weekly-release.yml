@@ -1,0 +1,185 @@
+name: Weekly Release
+
+# Friday-cadence release gate introduced in v0.213 (Phase 9).
+#
+# Why a cron instead of a manual tag push?
+#   OpenCLI ships ~10 commits/day with near-daily releases. Uni-CLI silences
+#   for weeks between version bumps, then ships a flurry of dependabot noise —
+#   a bad "perceived-active" signal for a project whose whole pitch is
+#   agent-infrastructure velocity. The Friday cron enforces a predictable
+#   cadence and lets dependabot batch into one weekly group (see
+#   .github/dependabot.yml) without triggering a release per bump.
+#
+# What it does:
+#   1. Detect commits since last tag, excluding chore(deps) and chore(ci).
+#   2. If any substantive commits exist → consume changesets, bump version,
+#      verify, commit, tag, push. Tag push triggers release.yml (OIDC publish).
+#   3. If quiet week → record to step summary, exit 0. A quiet week is NOT
+#      a failure.
+#
+# Manual override: workflow_dispatch with optional `force` input.
+
+on:
+  schedule:
+    # Friday 09:00 HKT = Friday 01:00 UTC. Picked to land before US weekday
+    # so east-coast contributors see the release Friday morning EST.
+    - cron: "0 1 * * 5"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Release even if no substantive commits"
+        type: boolean
+        required: false
+        default: false
+
+permissions: {}
+
+jobs:
+  weekly-release:
+    name: Weekly release gate
+    runs-on: ubuntu-latest
+    permissions:
+      # Need `contents: write` to push the release commit + tag back to main.
+      # `id-token: write` is unused here — the actual npm publish runs in
+      # release.yml (triggered by our tag push) under its own environment.
+      contents: write
+    outputs:
+      release: ${{ steps.detect.outputs.release }}
+      version: ${{ steps.detect.outputs.version }}
+      commit_count: ${{ steps.detect.outputs.commit_count }}
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # Full history so `git describe --tags` can find the last tag.
+          fetch-depth: 0
+          # Explicit token so our tag-push re-triggers release.yml. The
+          # default GITHUB_TOKEN does NOT re-trigger workflows on push.
+          # If a repo-scoped PAT is missing, fall back to GITHUB_TOKEN and
+          # document that the first post-cron run needs a manual rerun.
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          # Match release.yml — Node 24 ships npm 11.x for OIDC Trusted Publishers.
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Detect substantive commits
+        id: detect
+        env:
+          FORCE: ${{ github.event.inputs.force }}
+        run: |
+          set -euo pipefail
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "last_tag=${LAST_TAG}" >> "$GITHUB_OUTPUT"
+          echo "Last tag: ${LAST_TAG}"
+
+          if [ "${LAST_TAG}" = "v0.0.0" ]; then
+            RANGE="HEAD"
+          else
+            RANGE="${LAST_TAG}..HEAD"
+          fi
+
+          # Filter out pure dependabot / CI-maintenance noise. Anything else
+          # counts as "substantive" — feat, fix, refactor, docs, test, perf, etc.
+          NEW_COMMITS=$(git log "${RANGE}" --pretty=format:"%H %s" \
+            | grep -vE "^[a-f0-9]+ chore\(deps\)" \
+            | grep -vE "^[a-f0-9]+ chore\(ci\)" \
+            || true)
+
+          if [ "${FORCE}" = "true" ]; then
+            echo "Force flag set — releasing regardless of commit filter."
+            COUNT=$(git log "${RANGE}" --pretty=format:"%H" | wc -l | tr -d ' ')
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "commit_count=${COUNT}" >> "$GITHUB_OUTPUT"
+          elif [ -z "${NEW_COMMITS}" ]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "commit_count=0" >> "$GITHUB_OUTPUT"
+            echo "No substantive commits since ${LAST_TAG} — quiet week."
+          else
+            COUNT=$(printf '%s\n' "${NEW_COMMITS}" | wc -l | tr -d ' ')
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "commit_count=${COUNT}" >> "$GITHUB_OUTPUT"
+            echo "Found ${COUNT} substantive commits since ${LAST_TAG}."
+          fi
+
+      - name: Consume changesets + bump version
+        if: steps.detect.outputs.release == 'true'
+        run: |
+          set -euo pipefail
+          # `changeset version` consumes every file in .changeset/, bumps
+          # package.json, and updates CHANGELOG.md. If there are no pending
+          # changesets, it no-ops — we still tag a release if commits exist
+          # but version stays the same, which is a signal to investigate.
+          npx changeset version
+          VERSION=$(node -p 'require("./package.json").version')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+        id: bump
+
+      - name: Capture bumped version
+        if: steps.detect.outputs.release == 'true'
+        id: version
+        run: |
+          VERSION=$(node -p 'require("./package.json").version')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Bumped to v${VERSION}"
+
+      - name: Verify
+        if: steps.detect.outputs.release == 'true'
+        run: npm run verify
+
+      - name: Commit + tag + push
+        if: steps.detect.outputs.release == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          # Only stage files changeset + verify touched. Stats regen etc.
+          # happens elsewhere; a weekly release should not pull unrelated
+          # working-tree drift into the release commit.
+          git add package.json package-lock.json CHANGELOG.md .changeset/
+          if git diff --cached --quiet; then
+            echo "::notice title=Weekly release::No changeset-driven file delta — skipping tag push."
+            exit 0
+          fi
+          git commit -m "release: weekly v${VERSION}"
+          git tag -a "v${VERSION}" -m "v${VERSION} — weekly cadence release"
+          git push origin main
+          git push origin "v${VERSION}"
+
+      - name: Summarize release
+        if: steps.detect.outputs.release == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          COMMIT_COUNT: ${{ steps.detect.outputs.commit_count }}
+          LAST_TAG: ${{ steps.detect.outputs.last_tag }}
+        run: |
+          {
+            echo "## Weekly release v${VERSION}"
+            echo ""
+            echo "- Tag pushed: \`v${VERSION}\`"
+            echo "- Substantive commits since \`${LAST_TAG}\`: **${COMMIT_COUNT}**"
+            echo "- Publish pipeline: \`release.yml\` (triggered by tag push)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Summarize quiet week
+        if: steps.detect.outputs.release == 'false'
+        env:
+          LAST_TAG: ${{ steps.detect.outputs.last_tag }}
+        run: |
+          {
+            echo "## Quiet week — no release"
+            echo ""
+            echo "No substantive commits since \`${LAST_TAG}\`."
+            echo "Only \`chore(deps)\` and \`chore(ci)\` commits detected."
+            echo "This is success, not failure."
+          } >> "$GITHUB_STEP_SUMMARY"
