@@ -15,8 +15,13 @@ import {
   PipelineError,
   assertSafeRequestUrl,
 } from "../src/engine/executor.js";
-import { createTransportBus } from "../src/transport/bus.js";
+import {
+  createTransportBus,
+  getBus,
+  buildTransportCtx,
+} from "../src/transport/bus.js";
 import { HttpTransport } from "../src/transport/adapters/http.js";
+import { err, ok, EnvelopeExit, exitCodeFor } from "../src/core/envelope.js";
 import * as cdpBrowser from "../src/transport/adapters/cdp-browser.js";
 import * as subprocess from "../src/transport/adapters/subprocess.js";
 import * as desktopAx from "../src/transport/adapters/desktop-ax.js";
@@ -43,6 +48,12 @@ const symbols: Array<[string, unknown]> = [
   ["PipelineError", PipelineError],
   ["assertSafeRequestUrl", assertSafeRequestUrl],
   ["createTransportBus", createTransportBus],
+  ["getBus", getBus],
+  ["buildTransportCtx", buildTransportCtx],
+  ["err", err],
+  ["ok", ok],
+  ["EnvelopeExit", EnvelopeExit],
+  ["exitCodeFor", exitCodeFor],
   ["HttpTransport", HttpTransport],
   ["cdpBrowser", cdpBrowser],
   ["subprocess", subprocess],
