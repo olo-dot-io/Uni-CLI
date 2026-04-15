@@ -2,12 +2,8 @@ import type { PipelineContext } from "../executor.js";
 import type { BrowserPage } from "../../browser/page.js";
 
 /**
- * Lazily acquire a BrowserPage. Connects on first use and caches on ctx.
- *
- * Tries direct CDP first (fastest), then daemon (reuses Chrome login
- * sessions via extension), then auto-launches Chrome with a debug port as
- * the last resort. All imports stay dynamic so non-browser pipelines never
- * pay the load cost.
+ * Lazily acquire a BrowserPage: direct CDP → daemon → auto-launch Chrome.
+ * Imports stay dynamic so non-browser pipelines pay no load cost.
  */
 export async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
   if (ctx.page) return ctx.page;
@@ -21,7 +17,6 @@ export async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
     }
   }
 
-  // 1. Direct CDP first
   try {
     const { BrowserPage: BP } = await import("../../browser/page.js");
     const { injectStealth } = await import("../../browser/stealth.js");
@@ -31,8 +26,6 @@ export async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
   } catch {
     /* CDP not available — try daemon */
   }
-
-  // 2. Daemon fallback
   try {
     const { checkDaemonStatus } = await import("../../browser/discover.js");
     const status = await checkDaemonStatus({ timeout: 300 });
@@ -45,8 +38,6 @@ export async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
   } catch {
     /* daemon not available either */
   }
-
-  // 3. Auto-launch Chrome
   try {
     const { launchChrome } = await import("../../browser/launcher.js");
     const { BrowserPage: BP } = await import("../../browser/page.js");

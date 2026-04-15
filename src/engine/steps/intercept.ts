@@ -25,7 +25,6 @@ export async function stepIntercept(
   const capturePattern = evalTemplate(config.capture, ctx);
   const timeout = config.timeout ?? 10000;
 
-  // Install interceptor: patch fetch + XHR to capture matching responses
   await page.evaluate(
     generateInterceptorJs(capturePattern, {
       regex: config.regex,
@@ -45,7 +44,6 @@ export async function stepIntercept(
     await page.evaluate(trigger.slice(9));
   }
 
-  // Poll for captured response
   const startTime = Date.now();
   let captured: unknown = null;
   while (Date.now() - startTime < timeout) {

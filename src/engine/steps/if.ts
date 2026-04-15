@@ -53,9 +53,7 @@ export async function stepIf(
   return ctx;
 }
 
-// The if-step receives the FULL step object (so it can read .then/.else),
-// not just the .if value. Wrap the registry handler to reconstruct the
-// shape stepIf expects from (ctx, config, stepIndex, fullStep, depth).
+// stepIf needs the full step object to read .then/.else.
 registerStep("if", (async (ctx, config, stepIndex, fullStep, depth) => {
   const ifStep = (fullStep ?? { if: config }) as {
     if: string;

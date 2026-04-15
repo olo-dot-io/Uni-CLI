@@ -16,14 +16,12 @@ export async function stepSnapshot(
           raw?: boolean;
         })
       : {};
-  // Normalize max_depth to maxDepth for BrowserPage.snapshot
-  const normalizedOpts = {
+  const result = await page.snapshot({
     interactive: opts.interactive,
     compact: opts.compact,
     maxDepth: opts.max_depth,
     raw: opts.raw,
-  };
-  const result = await page.snapshot(normalizedOpts);
+  });
   return { ...ctx, data: result, page };
 }
 

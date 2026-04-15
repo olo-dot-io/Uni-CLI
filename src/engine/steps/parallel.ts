@@ -30,10 +30,8 @@ export async function stepParallel(
     });
   }
 
-  // Parallel concurrency cap — bound simultaneous branch execution so a
-  // pipeline with 100 parallel `fetch` steps doesn't exhaust the socket
-  // pool or trip per-host rate limiters. Default 5 mirrors `stepFetch`
-  // fan-out.
+  // Bounded concurrency — 5 mirrors stepFetch fan-out so 100-branch
+  // pipelines don't exhaust the socket pool or trip rate limiters.
   const results = await mapConcurrent(branches, 5, async (branch) => {
     const branchCtx: PipelineContext = {
       ...ctx,
