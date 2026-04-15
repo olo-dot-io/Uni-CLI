@@ -23,3 +23,6 @@ minimum_capability: cdp-browser.evaluate
 trust: public
 confidentiality: public
 quarantine: false
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+schema_version: v2

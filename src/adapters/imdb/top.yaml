@@ -37,3 +37,6 @@ trust: user
 confidentiality: public
 quarantine: true
 quarantineReason: "upstream returns HTML instead of JSON — scraping path needed"
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+schema_version: v2

@@ -36,3 +36,6 @@ trust: public
 confidentiality: public
 quarantine: true
 quarantineReason: "upstream returns HTML (anti-bot page) instead of JSON from CI egress"
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+schema_version: v2
