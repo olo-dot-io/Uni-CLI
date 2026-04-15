@@ -1,0 +1,16 @@
+{
+  "name": "@zenalexa/unicli-plugin-example",
+  "version": "0.0.1",
+  "description": "Minimal Uni-CLI plugin demonstrating registerStep",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "peerDependencies": {
+    "@zenalexa/unicli": "^0.213.0"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2"
+  }
+}
