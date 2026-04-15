@@ -34,4 +34,5 @@ capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public
-quarantine: false
+quarantine: true
+quarantineReason: "HTTP 404 — upstream trending endpoint removed (2026-04-15)"
