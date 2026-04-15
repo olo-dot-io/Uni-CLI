@@ -1,19 +1,12 @@
 /**
- * Control-flow step handlers: set, if, append, each, parallel, assert.
- *
- * Per-concern module extracted as part of the v0.212 engine restructure.
- * The implementations remain in `src/engine/yaml-runner.ts` (the legacy
- * orchestrator); this module is the stable import boundary that future
- * phases will migrate bodies into.
+ * Control-flow step handlers (re-export shim) — kept for backward compat
+ * with code expecting `handleSet`, `handleIf`, etc. Real bodies live in
+ * per-step files now.
  */
 
-export {
-  stepSet as handleSet,
-  stepAppend as handleAppend,
-  stepIf as handleIf,
-  stepEach as handleEach,
-  stepParallel as handleParallel,
-  stepAssert as handleAssert,
-  type AssertConfig,
-  type EachConfig,
-} from "../yaml-runner.js";
+export { stepSet as handleSet } from "./set.js";
+export { stepAppend as handleAppend } from "./append.js";
+export { stepIf as handleIf } from "./if.js";
+export { stepEach as handleEach, type EachConfig } from "./each.js";
+export { stepParallel as handleParallel } from "./parallel.js";
+export { stepAssert as handleAssert, type AssertConfig } from "./assert.js";

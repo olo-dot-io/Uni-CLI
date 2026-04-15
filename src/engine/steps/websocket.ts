@@ -1,10 +1,21 @@
-/**
- * WebSocket step handler.
- *
- * Per-concern module extracted as part of the v0.212 engine restructure.
- * The implementation remains in `src/engine/yaml-runner.ts` (the legacy
- * orchestrator); this module is the stable import boundary that future
- * phases will migrate the body into.
- */
+import { registerStep, type StepHandler } from "../step-registry.js";
+import type { PipelineContext } from "../executor.js";
+import { evalTemplate } from "../template.js";
+import { executeWebsocket, type WebsocketStepConfig } from "../websocket.js";
 
-export { stepWebsocket as handleWebsocket } from "../yaml-runner.js";
+export async function stepWebsocket(
+  ctx: PipelineContext,
+  config: WebsocketStepConfig,
+): Promise<PipelineContext> {
+  const resolvedConfig: WebsocketStepConfig = {
+    ...config,
+    url: evalTemplate(config.url, ctx),
+    send: evalTemplate(config.send, ctx),
+  };
+  const data = await executeWebsocket(resolvedConfig);
+  return { ...ctx, data };
+}
+
+registerStep("websocket", stepWebsocket as StepHandler);
+
+export { stepWebsocket as handleWebsocket };

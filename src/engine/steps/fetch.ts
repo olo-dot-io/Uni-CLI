@@ -1,17 +1,238 @@
-/**
- * Fetch / RSS / HTML → Markdown step handlers.
- *
- * Per-concern module extracted as part of the v0.212 engine restructure.
- * The implementations remain in `src/engine/yaml-runner.ts` (the legacy
- * orchestrator); this module is the stable import boundary that future
- * phases will migrate bodies into.
- */
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { homedir } from "node:os";
+import { createHash } from "node:crypto";
+import { USER_AGENT } from "../../constants.js";
+import { registerStep, type StepHandler } from "../step-registry.js";
+import { type PipelineContext, PipelineError } from "../executor.js";
+import { assertSafeRequestUrl } from "../ssrf.js";
+import { evalTemplate, resolveTemplateDeep } from "../template.js";
+import { formatCookieHeader, loadCookiesWithCDP } from "../cookies.js";
+import { mapConcurrent } from "../download.js";
+import { getProxyAgent } from "../proxy.js";
 
-export {
-  stepFetch as handleFetch,
-  stepFetchText as handleFetchText,
-  stepParseRss as handleParseRss,
-  stepHtmlToMd as handleHtmlToMd,
-  type FetchConfig,
-  type RssConfig,
-} from "../yaml-runner.js";
+export interface FetchConfig {
+  url: string;
+  method?: string;
+  params?: Record<string, unknown>;
+  headers?: Record<string, string>;
+  body?: unknown;
+  retry?: number;
+  backoff?: number;
+  cache?: number;
+}
+
+export async function stepFetch(
+  ctx: PipelineContext,
+  config: FetchConfig,
+): Promise<PipelineContext> {
+  let url = evalTemplate(config.url, ctx);
+  assertSafeRequestUrl(url);
+
+  // If data is an array of items with IDs, fetch each one (fan-out with concurrency limit)
+  if (Array.isArray(ctx.data)) {
+    const items = ctx.data as Array<Record<string, unknown>>;
+    const concurrency = (config as unknown as Record<string, unknown>)
+      .concurrency
+      ? Number((config as unknown as Record<string, unknown>).concurrency)
+      : 5;
+    const results = await mapConcurrent(items, concurrency, async (item) => {
+      const itemCtx = { ...ctx, data: item };
+      const itemUrl = evalTemplate(config.url, itemCtx);
+      assertSafeRequestUrl(itemUrl);
+      const resolvedConfig = config.body
+        ? { ...config, body: resolveTemplateDeep(config.body, itemCtx) }
+        : config;
+      return fetchJson(itemUrl, resolvedConfig, ctx.cookieHeader);
+    });
+    return { ...ctx, data: results };
+  }
+
+  if (config.params) {
+    const params = new URLSearchParams();
+    for (const [k, v] of Object.entries(config.params)) {
+      const val = evalTemplate(String(v), ctx);
+      params.set(k, val);
+    }
+    url += (url.includes("?") ? "&" : "?") + params.toString();
+  }
+
+  const resolvedConfig = config.body
+    ? { ...config, body: resolveTemplateDeep(config.body, ctx) }
+    : config;
+
+  // Strategy fallback: if no cookie and fetch returns 401/403, try with cookies
+  try {
+    const data = await fetchJson(url, resolvedConfig, ctx.cookieHeader);
+    return { ...ctx, data };
+  } catch (err) {
+    if (
+      err instanceof PipelineError &&
+      (err.detail.statusCode === 401 || err.detail.statusCode === 403) &&
+      !ctx.cookieHeader
+    ) {
+      try {
+        const hostname = new URL(url).hostname;
+        const siteName = hostname
+          .replace(/^www\./, "")
+          .split(".")
+          .slice(0, -1)
+          .join("-");
+        const cookies = await loadCookiesWithCDP(siteName);
+        if (cookies) {
+          const fallbackCookie = formatCookieHeader(cookies);
+          const data = await fetchJson(url, resolvedConfig, fallbackCookie);
+          return { ...ctx, data, cookieHeader: fallbackCookie };
+        }
+      } catch {
+        // Cookie fallback also failed — throw original
+      }
+    }
+    throw err;
+  }
+}
+
+// --- Fetch response cache ---
+
+const CACHE_DIR = join(homedir(), ".unicli", "cache");
+
+function fetchCacheKey(url: string, method: string): string {
+  return createHash("sha256")
+    .update(`${method}:${url}`)
+    .digest("hex")
+    .slice(0, 16);
+}
+
+function readFetchCache(
+  url: string,
+  method: string,
+  ttlSeconds: number,
+): unknown | null {
+  const key = fetchCacheKey(url, method);
+  const filePath = join(CACHE_DIR, `${key}.json`);
+  if (!existsSync(filePath)) return null;
+  try {
+    const raw = readFileSync(filePath, "utf-8");
+    const entry = JSON.parse(raw) as { ts: number; data: unknown };
+    if (Date.now() - entry.ts > ttlSeconds * 1000) return null;
+    return entry.data;
+  } catch {
+    return null;
+  }
+}
+
+const MAX_CACHE_ENTRY_BYTES = 10 * 1024 * 1024;
+
+function writeFetchCache(url: string, method: string, data: unknown): void {
+  try {
+    const payload = JSON.stringify({ ts: Date.now(), url, data });
+    if (payload.length > MAX_CACHE_ENTRY_BYTES) return;
+    mkdirSync(CACHE_DIR, { recursive: true });
+    const key = fetchCacheKey(url, method);
+    writeFileSync(join(CACHE_DIR, `${key}.json`), payload);
+  } catch {
+    /* cache write failure is non-fatal */
+  }
+}
+
+async function fetchJson(
+  url: string,
+  config: FetchConfig,
+  cookieHeader?: string,
+): Promise<unknown> {
+  const method = config.method ?? "GET";
+
+  if (config.cache && config.cache > 0) {
+    const cached = readFetchCache(url, method, config.cache);
+    if (cached !== null) return cached;
+  }
+
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    "User-Agent": USER_AGENT,
+    ...config.headers,
+  };
+
+  if (cookieHeader) {
+    headers["Cookie"] = cookieHeader;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dispatcher from undici not in standard RequestInit
+  const init: Record<string, any> = { method, headers };
+  if (config.body && method !== "GET") {
+    headers["Content-Type"] = "application/json";
+    init.body = JSON.stringify(config.body);
+  }
+  const proxyAgent = getProxyAgent();
+  if (proxyAgent) init.dispatcher = proxyAgent;
+
+  const maxAttempts = config.retry ?? 1;
+  const baseDelay = config.backoff ?? 1000;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const resp = await fetch(url, init as RequestInit);
+
+    if (resp.ok) {
+      const data = await resp.json();
+      if (config.cache && config.cache > 0) writeFetchCache(url, method, data);
+      return data;
+    }
+
+    const isRetryable = resp.status === 429 || resp.status >= 500;
+    const isLastAttempt = attempt === maxAttempts;
+
+    if (isRetryable && !isLastAttempt) {
+      await new Promise((r) => setTimeout(r, baseDelay * 2 ** (attempt - 1)));
+      continue;
+    }
+
+    let preview = "";
+    try {
+      preview = (await resp.text()).slice(0, 200);
+    } catch {
+      /* ignore */
+    }
+    const isRetryableStatus =
+      resp.status === 429 ||
+      resp.status === 500 ||
+      resp.status === 502 ||
+      resp.status === 503;
+    throw new PipelineError(
+      `HTTP ${resp.status} ${resp.statusText} from ${url}`,
+      {
+        step: -1,
+        action: "fetch",
+        config: { url, method },
+        errorType: "http_error",
+        url,
+        statusCode: resp.status,
+        responsePreview: preview,
+        suggestion:
+          resp.status === 403
+            ? "The API is blocking requests. The endpoint may require authentication (cookie strategy) or the User-Agent may need updating."
+            : resp.status === 404
+              ? "The API endpoint was not found. The URL path may have changed — check the target site for the current API."
+              : resp.status === 429
+                ? "Rate limited. Add a delay between requests or reduce the limit parameter."
+                : `HTTP ${resp.status} error. Check if the API endpoint is still valid.`,
+        retryable: isRetryableStatus,
+        alternatives:
+          resp.status === 401 || resp.status === 403
+            ? ["unicli auth setup <site>"]
+            : [],
+      },
+    );
+  }
+
+  throw new Error("fetchJson: unreachable");
+}
+
+registerStep("fetch", stepFetch as StepHandler);
+
+// Backward-compat aliases — the engine/steps barrel previously exported
+// `handle*` symbols by concern. New per-step files keep these aliases so
+// external imports keep working through the v0.213 → v0.214 transition.
+export { stepFetch as handleFetch };
+export { stepFetchText as handleFetchText } from "./fetch-text.js";
+export { stepParseRss as handleParseRss } from "./parse-rss.js";
+export { stepHtmlToMd as handleHtmlToMd } from "./html-to-md.js";

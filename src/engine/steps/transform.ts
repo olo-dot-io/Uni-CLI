@@ -1,17 +1,11 @@
 /**
- * Transform step handlers: select, map, filter, sort, limit.
- *
- * Per-concern module extracted as part of the v0.212 engine restructure.
- * The implementations remain in `src/engine/yaml-runner.ts` (the legacy
- * orchestrator); this module is the stable import boundary that future
- * phases will migrate bodies into.
+ * Transform step handlers (re-export shim) — kept for backward compat
+ * with code expecting `handleSelect`, `handleMap`, etc. Real bodies live
+ * in per-step files now.
  */
 
-export {
-  stepSelect as handleSelect,
-  stepMap as handleMap,
-  stepFilter as handleFilter,
-  stepSort as handleSort,
-  stepLimit as handleLimit,
-  type SortConfig,
-} from "../yaml-runner.js";
+export { stepSelect as handleSelect } from "./select.js";
+export { stepMap as handleMap } from "./map.js";
+export { stepFilter as handleFilter } from "./filter.js";
+export { stepSort as handleSort, type SortConfig } from "./sort.js";
+export { stepLimit as handleLimit } from "./limit.js";
