@@ -3,11 +3,11 @@
  * interface.
  *
  * This is the transport for API-level steps: `fetch`, `fetch_text`,
- * `parse_rss`, `html_to_md`, and HTTP-based `download`. The existing
- * `src/engine/yaml-runner.ts` step bodies remain the canonical executor
- * for v0.212 — this wrapper exposes the same primitives through the
- * uniform `action()` / `snapshot()` / `open()` / `close()` contract so
- * the new bus-driven dispatch path works today.
+ * `parse_rss`, `html_to_md`, and HTTP-based `download`. The
+ * `src/engine/steps/*.ts` bodies remain the canonical executor — this
+ * wrapper exposes the same primitives through the uniform
+ * `action()` / `snapshot()` / `open()` / `close()` contract so the
+ * bus-driven dispatch path works.
  *
  * Contract:
  *  - `action()` NEVER throws — all failures become an `err()` envelope
