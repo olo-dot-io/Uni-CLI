@@ -3,7 +3,7 @@
 > Internal design philosophy and naming conventions.
 > This document governs aesthetics, tone, and thematic decisions across the project.
 >
-> **Current version:** v0.211.2 — Vostok · Volynov (Boris Volynov, Soyuz 5 — survived ballistic reentry when service module failed to separate, 1969. Connection through adversity).
+> **Current version:** v0.213.0-beta.1 — Vostok · Gagarin (Pre-release). Yuri Gagarin, Vostok 1 (12 April 1961) — first human spaceflight. The reprise marks the engine split + public plugin surface shipping as the foundation for v0.213.0 full-parity flight.
 >
 > **Current scale:** <!-- STATS:site_count -->200<!-- /STATS --> sites, <!-- STATS:command_count -->968<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->968<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->896<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->72<!-- /STATS --> TS), <!-- STATS:test_count -->1148<!-- /STATS --> tests. Numbers render from `stats.json` via `npm run build`; drift fails `npm run stats:check`.
 
@@ -47,7 +47,7 @@ Format: `0.100.1`, `0.200.0`, `1.0.0`, etc.
 - **MINOR** = mission number (100, 200, 300... like Mission Control sequences)
 - **PATCH** = revision within a mission
 
-Current: `0.211.2` — Mission 211, codename **Vostok · Volynov**.
+Current: `0.213.x` — Mission 210, codename **Gagarin**.
 
 ### Version Codenames — The Full Spectrum
 

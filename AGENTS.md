@@ -154,4 +154,4 @@ unicli lark-cli calendar +agenda   # Direct passthrough
 
 ## Version
 
-0.211.2 — Vostok · Volynov
+0.213.0-beta.1 — Vostok · Gagarin (Pre-release)

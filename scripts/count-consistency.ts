@@ -24,6 +24,7 @@ const STATS_PATH = join(ROOT, "stats.json");
 
 const TARGETS = [
   "README.md",
+  "README.zh-CN.md",
   "AGENTS.md",
   join("docs", "ROADMAP.md"),
   join("docs", "TASTE.md"),

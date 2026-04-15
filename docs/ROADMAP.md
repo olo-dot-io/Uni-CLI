@@ -1,27 +1,28 @@
 # Uni-CLI Roadmap — Mission Vostok (0.2xx)
 
-> CLI is all agents need. <!-- STATS:site_count -->200<!-- /STATS --> sites, <!-- STATS:command_count -->968<!-- /STATS --> commands as of v0.212.1.
+> CLI is all agents need. <!-- STATS:site_count -->200<!-- /STATS --> sites, <!-- STATS:command_count -->968<!-- /STATS --> commands as of v0.213.0-beta.1.
 
 ## Progress
 
-| Version | Codename             | Sites | Commands | Status     |
-| ------- | -------------------- | ----- | -------- | ---------- |
-| 0.100.0 | Sputnik              | 6     | 8        | ✅         |
-| 0.200.0 | Vostok · Chaika      | 21    | 74       | ✅         |
-| 0.201.0 | Vostok · Chaika II   | 43    | 141      | ✅         |
-| 0.202.0 | Vostok · Tereshkova  | 57    | 203      | ✅         |
-| 0.203.0 | Vostok · Leonov      | 57    | 289      | ✅         |
-| 0.204.0 | Vostok · Nikolayev   | 96    | 582      | ✅         |
-| 0.205.0 | Vostok · Bykovsky    | 114   | 601      | ✅         |
-| 0.206.0 | Vostok · Tereshkova  | 122   | 635      | ✅         |
-| 0.207.0 | Vostok · Gagarin     | 122   | 635      | ✅         |
-| 0.207.1 | Vostok · Gagarin     | 122   | 635      | ✅         |
-| 0.208.0 | Vostok · Titov       | 134   | 711      | ✅         |
-| 0.209.0 | Vostok · Popovich    | 167   | 756      | ✅         |
-| 0.210.0 | Vostok · Komarov     | 195   | 957      | ✅         |
-| 0.211.2 | Vostok · Volynov     | 198   | 1020     | ✅         |
-| 0.212.0 | Vostok · Shatalov    | 200   | 968      | ✅         |
-| 0.212.1 | Vostok · Shatalov II | 200   | 968      | ✅ Current |
+| Version        | Codename                       | Sites | Commands | Status     |
+| -------------- | ------------------------------ | ----- | -------- | ---------- |
+| 0.100.0        | Sputnik                        | 6     | 8        | ✅         |
+| 0.200.0        | Vostok · Chaika                | 21    | 74       | ✅         |
+| 0.201.0        | Vostok · Chaika II             | 43    | 141      | ✅         |
+| 0.202.0        | Vostok · Tereshkova            | 57    | 203      | ✅         |
+| 0.203.0        | Vostok · Leonov                | 57    | 289      | ✅         |
+| 0.204.0        | Vostok · Nikolayev             | 96    | 582      | ✅         |
+| 0.205.0        | Vostok · Bykovsky              | 114   | 601      | ✅         |
+| 0.206.0        | Vostok · Tereshkova            | 122   | 635      | ✅         |
+| 0.207.0        | Vostok · Gagarin               | 122   | 635      | ✅         |
+| 0.207.1        | Vostok · Gagarin               | 122   | 635      | ✅         |
+| 0.208.0        | Vostok · Titov                 | 134   | 711      | ✅         |
+| 0.209.0        | Vostok · Popovich              | 167   | 756      | ✅         |
+| 0.210.0        | Vostok · Komarov               | 195   | 957      | ✅         |
+| 0.211.2        | Vostok · Volynov               | 198   | 1020     | ✅         |
+| 0.212.0        | Vostok · Shatalov              | 200   | 968      | ✅         |
+| 0.212.1        | Vostok · Shatalov II           | 200   | 968      | ✅         |
+| 0.213.0-beta.1 | Vostok · Gagarin (Pre-release) | 200   | 968      | ✅ Current |
 
 ## v0.201.0 ✅ — Engine v2 + Desktop/Bridge
 
