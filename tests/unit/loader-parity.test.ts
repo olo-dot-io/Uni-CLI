@@ -150,9 +150,11 @@ describe("dist parity — production build must match source mode", () => {
           encoding: "utf-8",
           env: { ...process.env, UNICLI_NO_LEDGER: "1" },
           timeout: 60_000,
+          // Windows needs shell: true to resolve npx.cmd; POSIX is unaffected.
+          shell: process.platform === "win32",
         },
       );
-      expect(srcResult.status).toBe(0);
+      expect(srcResult.status, srcResult.stderr || "").toBe(0);
       const srcStdout =
         typeof srcResult.stdout === "string" ? srcResult.stdout : "";
       const srcRows = JSON.parse(srcStdout) as Array<{ site: string }>;
