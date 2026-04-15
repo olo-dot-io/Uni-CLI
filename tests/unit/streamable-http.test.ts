@@ -84,11 +84,6 @@ function postInitHeaders(sessionId: string): Record<string, string> {
 describe("Streamable HTTP transport", () => {
   let port: number;
 
-  // Pick a random high port to avoid conflicts
-  function nextPort(): number {
-    return 30_000 + Math.floor(Math.random() * 10_000);
-  }
-
   // Simple echo handler for testing
   const echoHandler = (req: {
     jsonrpc: "2.0";
@@ -200,10 +195,11 @@ describe("Streamable HTTP transport", () => {
   };
 
   async function startServer(handler?: typeof echoHandler): Promise<number> {
-    port = nextPort();
     sessions.clear();
     asyncTasks.clear();
-    await startStreamableHttp(port, handler ?? echoHandler);
+    // port: 0 → OS picks a free ephemeral port. Avoids EADDRINUSE on Windows
+    // CI where prior tests can leave entries in TIME_WAIT for several seconds.
+    port = await startStreamableHttp(0, handler ?? echoHandler);
     return port;
   }
 
