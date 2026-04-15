@@ -1,15 +1,8 @@
 /**
- * macOS native (desktop-ax) pipeline step handlers.
- *
- * Every handler calls `ctx.bus.require(<step>)` — the bus walks the
- * capability matrix, honours the `platforms:["darwin"]` gate on these
- * steps, and returns either the desktop-ax adapter or throws a typed
- * `NoTransportForStepError` whose envelope already carries the
+ * macOS native (desktop-ax) pipeline step handlers — every ax_* action
+ * delegates to the transport bus, honours the `platforms:["darwin"]`
+ * gate, and surfaces `NoTransportForStepError` envelopes with a
  * `minimum_capability` hint for the self-repair loop.
- *
- * The handlers themselves never throw — they let the bus error surface
- * naturally so the runner treats platform-gated + unregistered the same
- * way.
  */
 
 import type { Envelope } from "../../core/envelope.js";

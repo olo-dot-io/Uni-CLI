@@ -30,11 +30,8 @@ export async function stepExec(
   const execArgs = (config.args ?? []).map((a) => evalTemplate(String(a), ctx));
   const timeout = config.timeout ?? 30000;
 
-  // Sensitive-path deny list — scan every arg that looks like a path before
-  // touching subprocess. Cannot be overridden by permission mode. Defends
-  // against prompt-injection that smuggles a credential path into args.
-  // Uses the realpath-aware variant so `ln -s ~/.ssh/id_rsa /tmp/x.txt` is
-  // still blocked.
+  // Sensitive-path deny list — realpath-aware so symlink smuggling is
+  // blocked too. Cannot be overridden by permission mode.
   for (const arg of execArgs) {
     if (typeof arg !== "string" || arg.length === 0) continue;
     if (!arg.startsWith("/") && !arg.startsWith("~/")) continue;

@@ -29,7 +29,7 @@ export async function stepFetch(
   let url = evalTemplate(config.url, ctx);
   assertSafeRequestUrl(url);
 
-  // If data is an array of items with IDs, fetch each one (fan-out with concurrency limit)
+  // Fan-out with concurrency limit when data is an array of items.
   if (Array.isArray(ctx.data)) {
     const items = ctx.data as Array<Record<string, unknown>>;
     const concurrency = (config as unknown as Record<string, unknown>)
@@ -61,7 +61,6 @@ export async function stepFetch(
     ? { ...config, body: resolveTemplateDeep(config.body, ctx) }
     : config;
 
-  // Strategy fallback: if no cookie and fetch returns 401/403, try with cookies
   try {
     const data = await fetchJson(url, resolvedConfig, ctx.cookieHeader);
     return { ...ctx, data };
@@ -91,8 +90,6 @@ export async function stepFetch(
     throw err;
   }
 }
-
-// --- Fetch response cache ---
 
 const CACHE_DIR = join(homedir(), ".unicli", "cache");
 

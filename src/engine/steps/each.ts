@@ -37,8 +37,7 @@ export async function stepEach(
   if (!body || !Array.isArray(body) || body.length === 0) return ctx;
 
   for (let iteration = 0; iteration < maxIterations; iteration++) {
-    // Reset data at start of each iteration to prevent fetch fan-out
-    // from previous iteration's array data. State is carried via ctx.vars.
+    // Reset data each iteration; state carries via ctx.vars.
     ctx = { ...ctx, data: null };
 
     for (const subStep of body) {

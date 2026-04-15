@@ -1,20 +1,8 @@
 /**
- * CUA pipeline step handlers.
- *
- * Unlike legacy steps whose bodies still live in `yaml-runner.ts`, the
- * cua_* family delegates straight to the transport bus via
- * `ctx.bus.require("cua_*")`. The runner's YAML dispatcher calls into
- * these handlers and the bus routes to whichever transport declares the
- * step — today that's only `CuaTransport`, but the indirection means
- * future pure-CDP fallbacks can claim the same step without editing the
- * runner.
- *
- * Every handler follows the same three-line shape:
- *   1. ask the bus for an adapter that supports the step
- *   2. open the adapter with the current context (idempotent)
- *   3. dispatch through `adapter.action({ kind, params })`
- *
- * `action()` never throws — callers always receive an envelope.
+ * CUA pipeline step handlers — every cua_* action delegates to the
+ * transport bus (`bus.require`/`adapter.open`/`adapter.action`). The bus
+ * routes to whichever transport declares the step; `action()` never
+ * throws — callers always receive an envelope.
  */
 
 import type { Envelope } from "../../core/envelope.js";

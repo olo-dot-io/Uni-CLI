@@ -23,7 +23,7 @@ export async function stepTap(
   const timeout = (config.timeout ?? 5) * 1000;
   const storeName = evalTemplate(config.store, ctx);
   const actionName = evalTemplate(config.action, ctx);
-  // Sanitize store/action names to prevent JS injection in page context
+  // Reject non-identifier store/action names — JS injection guard.
   if (!/^[a-zA-Z_$][\w$]*$/.test(storeName)) {
     throw new PipelineError(`Invalid store name: "${storeName}"`, {
       step: -1,
@@ -53,7 +53,6 @@ export async function stepTap(
 
   const tap = generateTapInterceptorJs(capturePattern);
 
-  // Build optional select chain (escape keys to prevent JS injection)
   const selectChain = config.select
     ? config.select
         .split(".")
