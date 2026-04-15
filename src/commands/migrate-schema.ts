@@ -146,9 +146,15 @@ const PRIVATE_SITE_PATTERNS = [
 ];
 
 /**
- * Required v2 fields. If all five are present, skip the file.
+ * Required v2 fields. If all six are present, skip the file.
+ *
+ * `schema_version` was added in v0.213 (Gagarin) so the lint gate can
+ * assert the tag independent of shape-based heuristics. Older YAMLs that
+ * already carry the other five need a top-up pass; the migrator handles
+ * that automatically because it checks each field individually.
  */
 const V2_FIELDS = [
+  "schema_version",
   "capabilities",
   "minimum_capability",
   "trust",
@@ -166,6 +172,7 @@ export interface MigrationResult {
 interface ParsedYaml {
   type?: string;
   pipeline?: unknown[];
+  schema_version?: unknown;
   capabilities?: unknown;
   minimum_capability?: unknown;
   trust?: unknown;
@@ -303,6 +310,7 @@ function buildAppendBlock(fields: {
   const lines: string[] = [
     "",
     "# schema-v2 metadata — injected by `unicli migrate schema-v2`",
+    "schema_version: v2",
     `capabilities: ${JSON.stringify(fields.capabilities)}`,
     `minimum_capability: ${fields.minimum_capability}`,
     `trust: ${fields.trust}`,
@@ -420,6 +428,9 @@ export function migrateYamlText(
     "",
     "# schema-v2 metadata — injected by `unicli migrate schema-v2`",
   ];
+  if (missing.includes("schema_version")) {
+    appendLines.push("schema_version: v2");
+  }
   if (missing.includes("capabilities")) {
     appendLines.push(`capabilities: ${JSON.stringify(capabilities)}`);
   }
@@ -546,12 +557,19 @@ export function registerMigrateSchemaCommand(program: Command): void {
     .command("schema-v2 [path]")
     .description("Mass-migrate v1 YAML adapters to schema v2 (idempotent)")
     .option("--dry-run", "do not write files, just print the plan")
+    .option(
+      "--write",
+      "apply changes to files (default; explicit for scripting clarity)",
+    )
     .option("--json", "emit a structured JSON report")
     .action(
       (
         path: string | undefined,
-        opts: { dryRun?: boolean; json?: boolean },
+        opts: { dryRun?: boolean; write?: boolean; json?: boolean },
       ) => {
+        // --write is an explicit opt-in alias for the default "apply" mode.
+        // If both --dry-run and --write are passed, --dry-run wins (safer).
+        void opts.write;
         const target = resolveTarget(path);
 
         let stat;

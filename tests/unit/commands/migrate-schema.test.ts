@@ -190,6 +190,7 @@ describe("migrateYamlText — idempotency", () => {
       "strategy: public",
       "pipeline:",
       "  - fetch: { url: https://example.com }",
+      "schema_version: v2",
       'capabilities: ["http.fetch"]',
       "minimum_capability: http.fetch",
       "trust: public",
@@ -198,6 +199,91 @@ describe("migrateYamlText — idempotency", () => {
     ].join("\n");
     const result = migrateYamlText(raw, "src/adapters/example/search.yaml");
     expect(result.status).toBe("already_v2");
+  });
+
+  it("tops up schema_version on YAML that has the five legacy fields", () => {
+    const raw = [
+      "site: example",
+      "name: search",
+      "type: web-api",
+      "strategy: public",
+      "pipeline:",
+      "  - fetch: { url: https://example.com }",
+      'capabilities: ["http.fetch"]',
+      "minimum_capability: http.fetch",
+      "trust: public",
+      "confidentiality: public",
+      "quarantine: false",
+    ].join("\n");
+    const result = migrateYamlText(raw, "src/adapters/example/search.yaml");
+    expect(result.status).toBe("migrated");
+    if (result.status !== "migrated") throw new Error("expected migrated");
+    expect(result.content).toContain("schema_version: v2");
+    const parsed = loadBack(result.content);
+    expect(parsed.schema_version).toBe("v2");
+  });
+});
+
+describe("migrateYamlText — schema_version injection by transport tier", () => {
+  it("HTTP tier: web-api with fetch yields http.fetch + public + schema_version v2", () => {
+    const raw = [
+      "site: hackernews",
+      "name: top",
+      "type: web-api",
+      "strategy: public",
+      "pipeline:",
+      "  - fetch: { url: https://hn.algolia.com/api/v1/search }",
+      "  - select: hits",
+      "  - map: { title: '${{ item.title }}' }",
+    ].join("\n");
+    const result = migrateYamlText(raw, "src/adapters/hackernews/top.yaml");
+    if (result.status !== "migrated") throw new Error("expected migrated");
+    const parsed = loadBack(result.content);
+    expect(parsed.schema_version).toBe("v2");
+    expect(parsed.capabilities).toEqual(["http.fetch"]);
+    expect(parsed.minimum_capability).toBe("http.fetch");
+    expect(parsed.trust).toBe("public");
+    expect(parsed.confidentiality).toBe("public");
+  });
+
+  it("browser tier: navigate + intercept yields cdp-browser.* minimum", () => {
+    const raw = [
+      "site: twitter",
+      "name: timeline",
+      "type: browser",
+      "strategy: intercept",
+      "pipeline:",
+      "  - navigate: { url: https://twitter.com/home }",
+      "  - intercept: { pattern: /HomeTimeline/ }",
+    ].join("\n");
+    const result = migrateYamlText(raw, "src/adapters/twitter/timeline.yaml");
+    if (result.status !== "migrated") throw new Error("expected migrated");
+    const parsed = loadBack(result.content);
+    expect(parsed.schema_version).toBe("v2");
+    expect(parsed.capabilities).toEqual(
+      expect.arrayContaining(["cdp-browser.navigate", "cdp-browser.intercept"]),
+    );
+    expect(parsed.minimum_capability).toMatch(/^cdp-browser\./);
+  });
+
+  it("CUA tier: cua_* steps yield cua.* + trust=user", () => {
+    const raw = [
+      "site: screen",
+      "name: ocr",
+      "type: desktop",
+      "pipeline:",
+      "  - cua_snapshot: {}",
+      "  - cua_click: { x: 100, y: 200 }",
+    ].join("\n");
+    const result = migrateYamlText(raw, "src/adapters/screen/ocr.yaml");
+    if (result.status !== "migrated") throw new Error("expected migrated");
+    const parsed = loadBack(result.content);
+    expect(parsed.schema_version).toBe("v2");
+    expect(parsed.capabilities).toEqual(
+      expect.arrayContaining(["cua.snapshot", "cua.click"]),
+    );
+    expect(parsed.minimum_capability).toMatch(/^cua\./);
+    expect(parsed.trust).toBe("user");
   });
 });
 

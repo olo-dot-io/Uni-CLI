@@ -19,6 +19,14 @@ import { z } from "zod";
 export const AdapterTrustSchema = z.enum(["public", "user", "system"]);
 export type AdapterTrust = z.infer<typeof AdapterTrustSchema>;
 
+/**
+ * Schema version tag. Currently fixed at `"v2"`; when a future breaking
+ * migration lands (e.g. v3), we widen the union and keep the loader
+ * backward-compatible during the migration window.
+ */
+export const AdapterSchemaVersionSchema = z.literal("v2");
+export type AdapterSchemaVersion = z.infer<typeof AdapterSchemaVersionSchema>;
+
 /** Confidentiality label enum — mirrors data sensitivity classification. */
 export const AdapterConfidentialitySchema = z.enum([
   "public",
@@ -46,6 +54,11 @@ export const AdapterV2DefaultMinimumCapability = "http.fetch" as const;
 export const AdapterCommandV2Schema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
+  // Optional on the parser so legacy v1 -> v2 migration paths can still
+  // flow through parseAdapterV2 without a value. The schema-v2 lint
+  // (scripts/lint-schema-v2.ts) enforces that every *committed* adapter
+  // YAML carries the tag explicitly.
+  schema_version: AdapterSchemaVersionSchema.optional(),
   capabilities: z.array(z.string()),
   minimum_capability: z.string().min(1),
   trust: AdapterTrustSchema,
@@ -118,6 +131,7 @@ export function migrateToV2(input: unknown): AdapterCommandV2 {
   const src = (input ?? {}) as Record<string, unknown>;
   const merged: Record<string, unknown> = {
     ...src,
+    schema_version: "v2",
     capabilities: Array.isArray(src.capabilities) ? src.capabilities : [],
     minimum_capability:
       typeof src.minimum_capability === "string"

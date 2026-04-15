@@ -98,6 +98,7 @@ describe("migrateToV2 — v1 → v2 defaults", () => {
     const v2 = migrateToV2(v1);
     expect(v2.name).toBe("legacy");
     expect(v2.description).toBe("old");
+    expect(v2.schema_version).toBe("v2");
     expect(v2.capabilities).toEqual([]);
     expect(v2.minimum_capability).toBe(AdapterV2DefaultMinimumCapability);
     expect(v2.trust).toBe("public");
