@@ -38,19 +38,21 @@ jobs:
 
       - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
-          node-version: 22
+          # Node 24 LTS ships npm 11.x out of the box, which is required for
+          # the Trusted Publishers OIDC token-exchange flow (npm 11.5.1+).
+          # Staying on Node 22 pinned us to npm 10.9, which fell back to
+          # the empty NODE_AUTH_TOKEN path and failed ENEEDAUTH.
+          # Earlier attempts to upgrade npm in-place (`npm i -g npm@latest`)
+          # or via Corepack both failed on the runner — the former with a
+          # transient "Cannot find module 'promise-retry'", the latter
+          # because the corepack shim doesn't override the Node toolcache's
+          # bin in PATH. Bumping Node is the least-surprising fix.
+          node-version: 24
           registry-url: "https://registry.npmjs.org"
 
-      # Node 22.22 ships with npm 10.9 — Trusted Publishers OIDC flow
-      # requires npm 11.5.1+. Use Corepack (bundled with Node 22) to
-      # pin a modern npm; `npm i -g npm@latest` is flaky in CI because
-      # the in-place self-upgrade sometimes loses transitive deps
-      # (`Cannot find module 'promise-retry'` on 2026-04-15).
-      - name: Pin modern npm for Trusted Publishers OIDC
+      - name: Report npm + node versions
         run: |
-          corepack enable
-          corepack prepare npm@11.6.0 --activate
-          which npm
+          node --version
           npm --version
 
       - name: Install dependencies
