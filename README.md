@@ -82,7 +82,7 @@ graph TB
 
     CMD --> ADAPT["Adapter layer<br/>887 YAML · 72 TS · 35 bridges"]
 
-    ADAPT --> ENGINE["Pipeline engine — <!-- STATS:pipeline_step_count -->31<!-- /STATS -->+ steps<br/>fetch · navigate · exec · extract · each · if · parallel"]
+    ADAPT --> ENGINE["Pipeline engine — <!-- STATS:pipeline_step_count -->54<!-- /STATS -->+ steps<br/>fetch · navigate · exec · extract · each · if · parallel"]
 
     ENGINE --> T1["HTTP<br/>(web APIs)"]
     ENGINE --> T2["CDP Browser<br/>(raw WebSocket)"]
@@ -309,5 +309,5 @@ Repo: <https://github.com/olo-dot-io/Uni-CLI> · npm: [`@zenalexa/unicli`](https
 
 <p align="center">
   <sub>v0.211.2 — Vostok · Volynov</sub><br>
-  <sub><!-- STATS:site_count -->200<!-- /STATS --> sites · <!-- STATS:command_count -->968<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->31<!-- /STATS --> pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-11-25 · <!-- STATS:test_count -->1134<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->200<!-- /STATS --> sites · <!-- STATS:command_count -->968<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->54<!-- /STATS --> pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-11-25 · <!-- STATS:test_count -->1134<!-- /STATS --> tests</sub>
 </p>
