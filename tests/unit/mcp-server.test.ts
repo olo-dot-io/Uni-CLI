@@ -64,6 +64,10 @@ describe("MCP server — smart default mode", () => {
     proc = spawn(npxBin, ["tsx", SERVER_PATH], {
       stdio: ["pipe", "pipe", "pipe"],
       cwd: join(__dirname, "..", ".."),
+      // Node 16+ rejects spawning `.cmd` / `.bat` files without a shell
+      // for security reasons (CVE-2024-27980). The tsx binary has no
+      // special-char args, so `shell: true` is safe here.
+      shell: process.platform === "win32",
     });
 
     // Wait for server to start (stderr message)

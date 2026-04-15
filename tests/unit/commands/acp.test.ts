@@ -62,6 +62,8 @@ describe("unicli acp — CLI subprocess integration", () => {
     proc = spawn(npxBin, ["tsx", CLI_PATH, "acp"], {
       stdio: ["pipe", "pipe", "pipe"],
       cwd: join(__dirname, "..", "..", ".."),
+      // Node rejects `.cmd` without shell on Windows (CVE-2024-27980).
+      shell: process.platform === "win32",
     });
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(
