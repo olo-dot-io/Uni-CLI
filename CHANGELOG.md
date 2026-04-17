@@ -30,7 +30,7 @@ Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for
 ### Changed
 
 - **887 YAML adapters: duplicate schema-v2 migration banner comments coalesced** — the v0.212 migration injected a banner + 5 metadata fields; the v0.213 migration re-emitted the same banner before the new `schema_version: v2` line, leaving every adapter with two identical comment lines. New one-off `scripts/dedupe-yaml-banner.ts` walks `src/adapters/**/*.yaml`, drops the second banner in exactly the canonical duplicate shape, and is idempotent (dry-runs to 0 after a full pass). Purely cosmetic; adapter lints + 5514 adapter tests stay green.
-- **undici bumped 8.0.2 → 8.1.0** (minor dependency update; no API change for our `EnvHttpProxyAgent` usage).
+- **undici stays at 8.0.2** — the 8.1.0 bump attempted in this patch calls `webidl.util.markAsUncloneable` which does not exist in Node 20, breaking our `"engines": ">=20"` CI matrix. Deferred to v0.214 pending a Node 22+ engine bump.
 - **`AgentError.code` documented enum expanded 11 → 15** — adds `quarantined` (already emitted by the quarantine gate since v0.213.0) and the three T1 ref-locator codes `stale_ref` / `ambiguous` / `ref_not_found`. `code` remains an open string to preserve forward compatibility.
 - **`UNICLI_OUTPUT` env var is now canonical**; bare `OUTPUT` is deprecated and emits a stderr warning. CI systems that set `OUTPUT` for their own purposes (GitHub Actions step outputs, Jenkins outputs) no longer accidentally switch unicli's output format. `OUTPUT` will be removed in v0.214.
 - **`detectFormat` simplified** — the three branches that all returned `"md"` (non-TTY, agent-UA, default) are collapsed into a single final return, now documented in one comment.
