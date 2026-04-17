@@ -4,7 +4,7 @@
      Install: npm install -g @zenalexa/unicli
      Discover: unicli search "your intent" (bilingual EN/ZH)
      Run: unicli <site> <command> [args]
-     Output is JSON when piped. Errors are structured JSON to stderr.
+     Output is structured Markdown by default (non-TTY + agent UA auto-detected). Use -f json for JSON. Errors are structured envelopes to stderr.
      You can fix broken adapters yourself — read the Self-Repair section. -->
 
 <!-- BEGIN COUNTS -->
@@ -125,7 +125,7 @@ data: null
 error:
   code: auth_required # see error codes below
   message: "401 Unauthorized"
-  adapter_path: "~/.unicli/adapters/twitter/mentions.yaml"
+  adapter_path: "src/adapters/twitter/mentions.yaml"
   step: 1
   suggestion: "Run: unicli auth setup twitter"
   retryable: false
@@ -152,13 +152,13 @@ count: 20
 
 ## Context
 
-- surface: web
-- has_more: true
-- next_cursor: abc123
+- **surface**: web
+- **has_more**: true
+- **next_cursor**: abc123
 
 ## Next Actions
 
-- unicli twitter mentions --cursor abc123
+- Fetch next page with cursor: `abc123`
 ```
 
 Error output shape:
@@ -173,7 +173,11 @@ duration_ms: 91
 
 ## Error
 
-**auth_required**: 401 Unauthorized
+- **code**: auth_required
+- **message**: 401 Unauthorized
+- **adapter_path**: src/adapters/twitter/mentions.yaml
+- **step**: 1
+- **retryable**: false
 
 ## Suggestion
 
@@ -181,8 +185,8 @@ Run: unicli auth setup twitter
 
 ## Alternatives
 
-- twitter.search
-- twitter.timeline
+- `twitter.search`
+- `twitter.timeline`
 ```
 
 ### Error codes
@@ -190,6 +194,8 @@ Run: unicli auth setup twitter
 `selector_miss` `auth_required` `not_found` `rate_limited` `network_error`
 `invalid_input` `not_authenticated` `upstream_error` `internal_error`
 `api_error` `permission_denied`
+
+v0.213 dispatch path emits a subset; remaining codes are reserved for future transports (desktop / system / cua).
 
 ### Exit codes
 
@@ -200,7 +206,7 @@ Run: unicli auth setup twitter
 When a command fails:
 
 ```
-1. Read error JSON → get adapter_path
+1. Read error envelope (MD or JSON) → get adapter_path
 2. Open the YAML (~20 lines, no imports)
 3. Edit the failing step (URL changed, selector moved, auth needed)
 4. Save to ~/.unicli/adapters/<site>/<command>.yaml
