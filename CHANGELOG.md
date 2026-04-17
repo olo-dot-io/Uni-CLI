@@ -3,6 +3,18 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
+## [0.213.1] — Unreleased — Vostok · Gagarin Patch
+
+> Patch release closing 25 documented and audited issues against v0.213.0 Gagarin GA.
+> Semver-correct bug-fix + cleanup release; no new feature surface.
+> See `.claude/plans/sessions/2026-04-17-v213.1-patch/findings.md` for the full audit.
+
+### Fixed
+
+### Changed
+
+### Removed
+
 ## [0.213.0] — 2026-04-17 — Vostok · Gagarin
 
 > **GA release.** Engine rigor + Agent-Native output + honest parity numbers.
