@@ -194,11 +194,11 @@ Run: unicli auth setup twitter
 
 ### Error codes
 
-`selector_miss` `auth_required` `not_found` `rate_limited` `network_error`
-`invalid_input` `not_authenticated` `upstream_error` `internal_error`
-`api_error` `permission_denied`
-
-`quarantined` also emitted by dispatch. Remaining codes reserved for future transports.
+net: `network_error` `rate_limited` `upstream_error` `api_error` `not_authenticated`
+input: `invalid_input` `selector_miss` `not_found`
+authz: `auth_required` `permission_denied`
+runtime: `internal_error` `quarantined`
+ref (v0.213.1): `stale_ref` `ambiguous` `ref_not_found`
 
 ### Exit codes
 

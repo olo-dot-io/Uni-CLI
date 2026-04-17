@@ -9,11 +9,17 @@ Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for
 > Semver-correct bug-fix + cleanup release; no new feature surface.
 > See `.claude/plans/sessions/2026-04-17-v213.1-patch/findings.md` for the full audit.
 
+### Added
+
+- **`DEFAULT_SURFACE` + `makeCtx` helpers** exported from `src/output/envelope.ts` — callers building `AgentContext` no longer need to hard-code `surface: "web"` or repeat the 5-field literal. The existing 10 call sites migrate in T3 and T5-T7.
+
 ### Fixed
 
 - **Ref-Locator verification layer** — `BrowserPage.snapshot()` and `DaemonPage.snapshot()` now persist a window-level fingerprint map on `window.__unicli_ref_identity`; click/type steps plus `unicli operate click/type` resolve refs against this map and throw structured `TargetError` ({code: "stale_ref" | "ambiguous" | "ref_not_found"}) when a ref fails to bind uniquely. `executor.ts` re-wraps the TargetError into a `PipelineError` preserving `detail.code` as `errorType`, and `dispatch.ts` passes it through verbatim to the v2 envelope's `AgentError.code`. Ports the diagnostics layer from OpenCLI PR #1016 on top of our existing snapshot primitive. `ref_not_found` is deliberately distinct from the HTTP-404 `not_found` code so agents can tell DOM-level from server-level failures.
 
 ### Changed
+
+- **`AgentError.code` documented enum expanded 11 → 15** — adds `quarantined` (already emitted by the quarantine gate since v0.213.0) and the three T1 ref-locator codes `stale_ref` / `ambiguous` / `ref_not_found`. `code` remains an open string to preserve forward compatibility.
 
 ### Removed
 
