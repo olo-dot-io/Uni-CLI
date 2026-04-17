@@ -28,6 +28,4 @@ trust: public
 confidentiality: public
 quarantine: true
 quarantineReason: "HTTP 404 — upstream trending endpoint removed (2026-04-15)"
-
-# schema-v2 metadata — injected by `unicli migrate schema-v2`
 schema_version: v2

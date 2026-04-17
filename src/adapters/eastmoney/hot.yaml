@@ -29,6 +29,4 @@ trust: public
 confidentiality: public
 quarantine: true
 quarantineReason: "upstream unreachable from CI egress (2026-04-15)"
-
-# schema-v2 metadata — injected by `unicli migrate schema-v2`
 schema_version: v2
