@@ -12,6 +12,7 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { search } from "../discovery/search.js";
 import { format, detectFormat } from "../output/formatter.js";
+import type { AgentContext } from "../output/envelope.js";
 import type { OutputFormat } from "../types.js";
 
 export function registerSearchCommand(program: Command): void {
@@ -24,6 +25,7 @@ export function registerSearchCommand(program: Command): void {
     .option("--category <cat>", "filter by category")
     .action(
       (queryParts: string[], opts: { limit: string; category?: string }) => {
+        const searchStarted = Date.now();
         const query = queryParts.join(" ");
         const limit = parseInt(opts.limit, 10) || 8;
 
@@ -63,8 +65,14 @@ export function registerSearchCommand(program: Command): void {
           usage: r.usage,
         }));
 
+        const ctx: AgentContext = {
+          command: "unicli.search",
+          duration_ms: Date.now() - searchStarted,
+          surface: "web",
+        };
+
         console.log(
-          format(rows, ["command", "description", "score", "usage"], fmt),
+          format(rows, ["command", "description", "score", "usage"], fmt, ctx),
         );
       },
     );

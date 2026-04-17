@@ -70,6 +70,15 @@ describe("makeError", () => {
     expect(env.data).toBeNull();
     expect(env.error).toEqual({ code: "x", message: "y" });
   });
+
+  it("makeEnvelope ignores ctx.error (only used by format())", () => {
+    const env = makeEnvelope(
+      { command: "x.y", duration_ms: 0, error: { code: "e", message: "m" } },
+      [],
+    );
+    expect(env.ok).toBe(true);
+    expect(env.error).toBeNull();
+  });
 });
 
 describe("validateEnvelope", () => {

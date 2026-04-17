@@ -53,6 +53,8 @@ export interface AgentContext {
   surface?: Surface;
   operator?: string;
   pagination?: AgentMeta["pagination"];
+  /** Set on the error path in format() — makeEnvelope ignores this field. */
+  error?: AgentError;
 }
 
 /** Success arm of the discriminated union. */

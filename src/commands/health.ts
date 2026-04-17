@@ -15,6 +15,7 @@ import chalk from "chalk";
 import { getAllAdapters } from "../registry.js";
 import { runPipeline, PipelineError } from "../engine/executor.js";
 import { format, detectFormat } from "../output/formatter.js";
+import type { AgentContext } from "../output/envelope.js";
 import { AdapterType, ExitCode } from "../types.js";
 import type { OutputFormat } from "../types.js";
 
@@ -176,9 +177,16 @@ export function registerHealthCommand(program: Command): void {
           : results;
 
         // Determine output format
+        const healthStarted = Date.now();
         const fmt: OutputFormat = opts.json
           ? "json"
           : detectFormat(program.opts().format as OutputFormat | undefined);
+
+        const healthCtx: AgentContext = {
+          command: "unicli.health",
+          duration_ms: Date.now() - healthStarted,
+          surface: "web",
+        };
 
         if (fmt === "json") {
           console.log(JSON.stringify(display, null, 2));
@@ -199,6 +207,7 @@ export function registerHealthCommand(program: Command): void {
               })),
               ["site", "command", "status", "latency", "error"],
               fmt,
+              healthCtx,
             ),
           );
 

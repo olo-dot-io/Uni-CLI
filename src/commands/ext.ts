@@ -13,6 +13,7 @@ import { execFileSync } from "node:child_process";
 import { listExternalClis, getExternalCli, isInstalled } from "../hub/index.js";
 import { executeExternal } from "../hub/passthrough.js";
 import { format, detectFormat } from "../output/formatter.js";
+import type { AgentContext } from "../output/envelope.js";
 import type { OutputFormat } from "../types.js";
 
 // ── Command Registration ────────────────────────────────────────────────
@@ -30,6 +31,7 @@ export function registerExtCommand(program: Command): void {
     .option("--installed", "show only installed CLIs")
     .option("--tag <tag>", "filter by tag")
     .action((opts: { installed?: boolean; tag?: string }) => {
+      const extListStarted = Date.now();
       let clis = listExternalClis();
 
       if (opts.installed) {
@@ -52,13 +54,14 @@ export function registerExtCommand(program: Command): void {
         tags: (c.tags ?? []).join(", "),
       }));
 
-      if (fmt === "json" || !process.stdout.isTTY) {
-        console.log(JSON.stringify(rows, null, 2));
-        return;
-      }
+      const ctx: AgentContext = {
+        command: "unicli.ext.list",
+        duration_ms: Date.now() - extListStarted,
+        surface: "web",
+      };
 
       console.log(
-        format(rows, ["name", "binary", "description", "installed"], fmt),
+        format(rows, ["name", "binary", "description", "installed"], fmt, ctx),
       );
 
       const installedCount = clis.filter((c) => c.installed).length;

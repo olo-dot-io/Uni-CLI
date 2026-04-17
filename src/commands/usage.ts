@@ -24,6 +24,7 @@ import {
   DEFAULT_LEDGER_PATH,
 } from "../runtime/usage-ledger.js";
 import { format, detectFormat } from "../output/formatter.js";
+import type { AgentContext } from "../output/envelope.js";
 import type { OutputFormat } from "../types.js";
 
 interface ReportOptions {
@@ -101,6 +102,7 @@ export function registerUsageCommands(program: Command): void {
         return;
       }
 
+      const usageStarted = Date.now();
       const fmt: OutputFormat = detectFormat(undefined);
       const tableRows = rows.map((r: UsageAggregate) => ({
         site: r.site,
@@ -111,11 +113,17 @@ export function registerUsageCommands(program: Command): void {
         err: `${(r.errorRate * 100).toFixed(0)}%`,
         bytes: humanBytes(r.totalBytes),
       }));
+      const ctx: AgentContext = {
+        command: "unicli.usage",
+        duration_ms: Date.now() - usageStarted,
+        surface: "web",
+      };
       console.log(
         format(
           tableRows,
           ["site", "cmd", "n", "median", "p95", "err", "bytes"],
           fmt,
+          ctx,
         ),
       );
       console.log(

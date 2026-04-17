@@ -140,7 +140,13 @@ describe("dist parity — production build must match source mode", () => {
       expect(distResult.status).toBe(0);
       const distStdout =
         typeof distResult.stdout === "string" ? distResult.stdout : "";
-      const distRows = JSON.parse(distStdout) as Array<{ site: string }>;
+      // v0.213: format() now wraps json in a v2 AgentEnvelope; unwrap .data
+      const distParsed = JSON.parse(distStdout) as
+        | { ok: true; data: Array<{ site: string }> }
+        | Array<{ site: string }>;
+      const distRows = Array.isArray(distParsed)
+        ? distParsed
+        : (distParsed as { data: Array<{ site: string }> }).data;
       const distSites = new Set(distRows.map((r) => r.site));
 
       const srcResult = spawnSync(
@@ -155,7 +161,13 @@ describe("dist parity — production build must match source mode", () => {
       expect(srcResult.status).toBe(0);
       const srcStdout =
         typeof srcResult.stdout === "string" ? srcResult.stdout : "";
-      const srcRows = JSON.parse(srcStdout) as Array<{ site: string }>;
+      // v0.213: unwrap v2 envelope
+      const srcParsed = JSON.parse(srcStdout) as
+        | { ok: true; data: Array<{ site: string }> }
+        | Array<{ site: string }>;
+      const srcRows = Array.isArray(srcParsed)
+        ? srcParsed
+        : (srcParsed as { data: Array<{ site: string }> }).data;
       const srcSites = new Set(srcRows.map((r) => r.site));
 
       // The critical invariant: dist must not regress to empty. Both modes
