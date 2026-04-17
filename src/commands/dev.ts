@@ -69,7 +69,7 @@ async function runAdapter(filePath: string, fmt: string): Promise<void> {
     );
     console.log(
       format(result, columns, outputFmt, {
-        command: "unicli.dev.watch",
+        command: "dev.watch",
         duration_ms: Date.now() - devStarted,
         surface: "web",
       }),

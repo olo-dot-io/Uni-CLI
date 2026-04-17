@@ -1,7 +1,7 @@
 /**
  * formatter.test.ts — v2 envelope format() + detectFormat + isAgentUA
  *
- * 12 cases covering:
+ * 16 cases covering:
  *   1-3:  json/md/yaml envelope wrap
  *   4-5:  csv/compact unchanged (array-only legacy)
  *   6:    table deprecated → md + stderr warning

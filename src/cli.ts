@@ -146,7 +146,7 @@ export async function createCli(): Promise<Command> {
 
       console.log(
         format(rows, ["site", "command", "description", "type", "auth"], fmt, {
-          command: "unicli.list",
+          command: "core.list",
           duration_ms: Date.now() - listStarted,
           surface: "web",
         }),

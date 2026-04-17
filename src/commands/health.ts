@@ -183,44 +183,40 @@ export function registerHealthCommand(program: Command): void {
           : detectFormat(program.opts().format as OutputFormat | undefined);
 
         const healthCtx: AgentContext = {
-          command: "unicli.health",
+          command: "core.health",
           duration_ms: Date.now() - healthStarted,
           surface: "web",
         };
 
-        if (fmt === "json") {
-          console.log(JSON.stringify(display, null, 2));
-        } else {
-          console.log(
-            format(
-              display.map((r) => ({
-                site: r.site,
-                command: r.command,
-                status:
-                  r.status === "ok"
-                    ? chalk.green("ok")
-                    : r.status === "fail"
-                      ? chalk.red("FAIL")
-                      : chalk.dim("skip"),
-                latency: r.status === "skip" ? "-" : `${r.latency}ms`,
-                error: r.error ?? "",
-              })),
-              ["site", "command", "status", "latency", "error"],
-              fmt,
-              healthCtx,
-            ),
-          );
+        console.log(
+          format(
+            display.map((r) => ({
+              site: r.site,
+              command: r.command,
+              status:
+                r.status === "ok"
+                  ? chalk.green("ok")
+                  : r.status === "fail"
+                    ? chalk.red("FAIL")
+                    : chalk.dim("skip"),
+              latency: r.status === "skip" ? "-" : `${r.latency}ms`,
+              error: r.error ?? "",
+            })),
+            ["site", "command", "status", "latency", "error"],
+            fmt,
+            healthCtx,
+          ),
+        );
 
-          // Summary
-          const ok = results.filter((r) => r.status === "ok").length;
-          const fail = results.filter((r) => r.status === "fail").length;
-          const skip = results.filter((r) => r.status === "skip").length;
-          console.log(
-            chalk.bold(
-              `\nHealth: ${chalk.green(ok + " ok")}, ${chalk.red(fail + " fail")}, ${chalk.dim(skip + " skip")}`,
-            ),
-          );
-        }
+        // Summary
+        const ok = results.filter((r) => r.status === "ok").length;
+        const fail = results.filter((r) => r.status === "fail").length;
+        const skip = results.filter((r) => r.status === "skip").length;
+        console.log(
+          chalk.bold(
+            `\nHealth: ${chalk.green(ok + " ok")}, ${chalk.red(fail + " fail")}, ${chalk.dim(skip + " skip")}`,
+          ),
+        );
 
         const hasFailing = results.some((r) => r.status === "fail");
         process.exit(hasFailing ? ExitCode.GENERIC_ERROR : ExitCode.SUCCESS);

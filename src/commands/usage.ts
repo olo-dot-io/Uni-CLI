@@ -114,7 +114,7 @@ export function registerUsageCommands(program: Command): void {
         bytes: humanBytes(r.totalBytes),
       }));
       const ctx: AgentContext = {
-        command: "unicli.usage",
+        command: "core.usage",
         duration_ms: Date.now() - usageStarted,
         surface: "web",
       };

@@ -55,7 +55,7 @@ export function registerExtCommand(program: Command): void {
       }));
 
       const ctx: AgentContext = {
-        command: "unicli.ext.list",
+        command: "ext.list",
         duration_ms: Date.now() - extListStarted,
         surface: "web",
       };

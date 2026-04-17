@@ -66,7 +66,7 @@ export function registerSearchCommand(program: Command): void {
         }));
 
         const ctx: AgentContext = {
-          command: "unicli.search",
+          command: "core.search",
           duration_ms: Date.now() - searchStarted,
           surface: "web",
         };
