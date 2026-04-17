@@ -6,10 +6,20 @@
  * "unknown" in CI, and the envelope shape is what we test here.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { Command } from "commander";
 import { registerStatusCommand } from "../../../src/commands/status.js";
 import { validateEnvelope } from "../../../src/output/envelope.js";
+
+// Daemon + Chrome probes mocked to deterministic "stopped"/"unknown" so the
+// test doesn't race real network calls under verify:clean concurrency. The
+// envelope-shape assertions below still verify the v2 contract end-to-end.
+vi.mock("../../../src/browser/daemon-client.js", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../../src/browser/daemon-client.js")
+  >("../../../src/browser/daemon-client.js");
+  return { ...actual, fetchDaemonStatus: vi.fn().mockResolvedValue(null) };
+});
 
 function captureStdout(): {
   getStdout: () => string;
