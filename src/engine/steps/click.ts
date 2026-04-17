@@ -2,6 +2,7 @@ import { registerStep, type StepHandler } from "../step-registry.js";
 import { type PipelineContext, PipelineError } from "../executor.js";
 import { evalTemplate } from "../template.js";
 import { acquirePage } from "./browser-helpers.js";
+import { verifyRef } from "../../browser/snapshot-identity.js";
 
 export interface ClickConfig {
   selector?: string;
@@ -18,6 +19,7 @@ export async function stepClick(
 
   if (typeof config === "string") {
     const selector = evalTemplate(config, ctx);
+    await verifyRef(page, selector);
     await page.click(selector);
     return { ...ctx, page };
   }
@@ -29,6 +31,7 @@ export async function stepClick(
 
   if (config.selector) {
     const selector = evalTemplate(config.selector, ctx);
+    await verifyRef(page, selector);
     await page.click(selector);
     return { ...ctx, page };
   }

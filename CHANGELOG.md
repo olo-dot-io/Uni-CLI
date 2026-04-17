@@ -11,6 +11,8 @@ Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for
 
 ### Fixed
 
+- **Ref-Locator verification layer** — snapshot now persists a window-level fingerprint map on `window.__unicli_ref_identity`; click/type steps resolve refs against this map and throw structured `TargetError` ({code: "stale_ref" | "ambiguous" | "not_found"}) when a ref fails to bind uniquely. Ports the diagnostics layer from OpenCLI PR #1016 on top of our existing snapshot primitive.
+
 ### Changed
 
 ### Removed
