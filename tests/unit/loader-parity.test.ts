@@ -43,6 +43,10 @@ const REPO_ROOT = join(__dirname, "..", "..");
 const DIST_MAIN = join(REPO_ROOT, "dist", "main.js");
 const DIST_LOADER = join(REPO_ROOT, "dist", "discovery", "loader.js");
 
+// `loadTsAdapters` dynamically imports every TS adapter — Windows Node 20
+// cold-start blows past the 5s default while tsx resolves the tree.
+const COLD_IMPORT_TIMEOUT_MS = process.platform === "win32" ? 15_000 : 5_000;
+
 describe("loader — built-in directory resolution", () => {
   it("resolves a YAML directory that actually contains YAML files", () => {
     const { yamlDir } = getBuiltinDirs();
@@ -85,19 +89,25 @@ describe("loader — built-in directory resolution", () => {
 });
 
 describe("collectTsFiles — declaration files must never be loaded", () => {
-  it("does not import .d.ts files into the registry", async () => {
-    // We can't call the private `collectTsFiles` from here, but we can
-    // indirectly verify: after `loadTsAdapters` runs, every registered TS
-    // adapter must have commands with real `.func` or `pipeline` properties.
-    // Declaration files produce empty ES modules that don't register.
-    // This test is defense-in-depth for the extname === ".ts" bug.
-    await loadTsAdapters();
-    const adapters = getAllAdapters();
-    // The bug: 81 empty "TS" adapters get loaded from .d.ts files. If the
-    // registry has any site with zero commands, something slipped through.
-    const bogus = adapters.filter((a) => Object.keys(a.commands).length === 0);
-    expect(bogus).toEqual([]);
-  });
+  it(
+    "does not import .d.ts files into the registry",
+    async () => {
+      // We can't call the private `collectTsFiles` from here, but we can
+      // indirectly verify: after `loadTsAdapters` runs, every registered TS
+      // adapter must have commands with real `.func` or `pipeline` properties.
+      // Declaration files produce empty ES modules that don't register.
+      // This test is defense-in-depth for the extname === ".ts" bug.
+      await loadTsAdapters();
+      const adapters = getAllAdapters();
+      // The bug: 81 empty "TS" adapters get loaded from .d.ts files. If the
+      // registry has any site with zero commands, something slipped through.
+      const bogus = adapters.filter(
+        (a) => Object.keys(a.commands).length === 0,
+      );
+      expect(bogus).toEqual([]);
+    },
+    COLD_IMPORT_TIMEOUT_MS,
+  );
 });
 
 describe("loader runs from src directly without crashing", () => {

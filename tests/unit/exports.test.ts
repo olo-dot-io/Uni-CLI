@@ -17,6 +17,10 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "..", "..");
 const pkgPath = resolve(repoRoot, "package.json");
 
+// Windows Node 20 cold-start dynamic-import flakes at the 5s default. Give
+// Windows headroom; keep Linux/macOS tight so real regressions still trip.
+const COLD_IMPORT_TIMEOUT_MS = process.platform === "win32" ? 15_000 : 5_000;
+
 interface PkgExports {
   [subpath: string]: { types?: string; import?: string } | string;
 }
@@ -87,24 +91,32 @@ describe("plugin exports surface", () => {
   // plugin authors consume; those are covered below.
   const importable = subpaths.filter((s) => s !== ".");
 
-  distIt.each(importable)("%s is dynamically importable", async (subpath) => {
-    const entry = exportsMap[subpath];
-    const importRel = importTargetFor(entry);
-    const abs = resolve(repoRoot, importRel);
-    const url = pathToFileURL(abs).href;
-    const mod = await import(url);
-    expect(mod).toBeDefined();
-  });
+  distIt.each(importable)(
+    "%s is dynamically importable",
+    async (subpath) => {
+      const entry = exportsMap[subpath];
+      const importRel = importTargetFor(entry);
+      const abs = resolve(repoRoot, importRel);
+      const url = pathToFileURL(abs).href;
+      const mod = await import(url);
+      expect(mod).toBeDefined();
+    },
+    COLD_IMPORT_TIMEOUT_MS,
+  );
 
-  distIt("engine barrel exposes registerStep, getStep, listSteps", async () => {
-    const entry = exportsMap["./engine/registry"];
-    const importRel = importTargetFor(entry);
-    const url = pathToFileURL(resolve(repoRoot, importRel)).href;
-    const mod = (await import(url)) as Record<string, unknown>;
-    expect(typeof mod.registerStep).toBe("function");
-    expect(typeof mod.getStep).toBe("function");
-    expect(typeof mod.listSteps).toBe("function");
-  });
+  distIt(
+    "engine barrel exposes registerStep, getStep, listSteps",
+    async () => {
+      const entry = exportsMap["./engine/registry"];
+      const importRel = importTargetFor(entry);
+      const url = pathToFileURL(resolve(repoRoot, importRel)).href;
+      const mod = (await import(url)) as Record<string, unknown>;
+      expect(typeof mod.registerStep).toBe("function");
+      expect(typeof mod.getStep).toBe("function");
+      expect(typeof mod.listSteps).toBe("function");
+    },
+    COLD_IMPORT_TIMEOUT_MS,
+  );
 
   distIt(
     "errors barrel exposes PipelineError + NoTransportForStepError",
@@ -116,27 +128,36 @@ describe("plugin exports surface", () => {
       expect(typeof mod.PipelineError).toBe("function");
       expect(typeof mod.NoTransportForStepError).toBe("function");
     },
+    COLD_IMPORT_TIMEOUT_MS,
   );
 
-  distIt("errors barrel exposes envelope construction helpers", async () => {
-    const entry = exportsMap["./errors"];
-    const importRel = importTargetFor(entry);
-    const url = pathToFileURL(resolve(repoRoot, importRel)).href;
-    const mod = (await import(url)) as Record<string, unknown>;
-    expect(typeof mod.err).toBe("function");
-    expect(typeof mod.ok).toBe("function");
-    expect(typeof mod.exitCodeFor).toBe("function");
-    expect(typeof mod.EnvelopeExit).toBe("object");
-    expect((mod.EnvelopeExit as Record<string, number>).SUCCESS).toBe(0);
-  });
+  distIt(
+    "errors barrel exposes envelope construction helpers",
+    async () => {
+      const entry = exportsMap["./errors"];
+      const importRel = importTargetFor(entry);
+      const url = pathToFileURL(resolve(repoRoot, importRel)).href;
+      const mod = (await import(url)) as Record<string, unknown>;
+      expect(typeof mod.err).toBe("function");
+      expect(typeof mod.ok).toBe("function");
+      expect(typeof mod.exitCodeFor).toBe("function");
+      expect(typeof mod.EnvelopeExit).toBe("object");
+      expect((mod.EnvelopeExit as Record<string, number>).SUCCESS).toBe(0);
+    },
+    COLD_IMPORT_TIMEOUT_MS,
+  );
 
-  distIt("transport bus is importable with TransportBus symbol", async () => {
-    const entry = exportsMap["./transport"];
-    const importRel = importTargetFor(entry);
-    const url = pathToFileURL(resolve(repoRoot, importRel)).href;
-    const mod = (await import(url)) as Record<string, unknown>;
-    expect(mod.createTransportBus ?? mod.TransportBus).toBeDefined();
-  });
+  distIt(
+    "transport bus is importable with TransportBus symbol",
+    async () => {
+      const entry = exportsMap["./transport"];
+      const importRel = importTargetFor(entry);
+      const url = pathToFileURL(resolve(repoRoot, importRel)).href;
+      const mod = (await import(url)) as Record<string, unknown>;
+      expect(mod.createTransportBus ?? mod.TransportBus).toBeDefined();
+    },
+    COLD_IMPORT_TIMEOUT_MS,
+  );
 
   distIt(
     "transport barrel exposes getBus for plugin TransportAdapter registration",
@@ -149,5 +170,6 @@ describe("plugin exports surface", () => {
       expect(typeof mod.buildTransportCtx).toBe("function");
       expect(typeof mod.createTransportBus).toBe("function");
     },
+    COLD_IMPORT_TIMEOUT_MS,
   );
 });
