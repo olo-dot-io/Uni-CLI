@@ -82,8 +82,23 @@ jobs:
       # NODE_AUTH_TOKEN is ONLY consumed when the Trusted Publishers OIDC
       # path isn't available; set it via the `npm-publish` environment
       # secret if and only if TP is not configured yet.
+      # Prerelease (e.g. 0.213.0-beta.2) requires --tag: npm otherwise
+      # refuses to publish, because without a non-latest dist-tag the new
+      # version would be `npm install @zenalexa/unicli` → prerelease, which
+      # is hostile to users who didn't opt in. Stable versions publish to
+      # `latest` implicitly.
       - name: Publish to npm with provenance
-        run: npm publish --provenance --access public
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ "$VERSION" == *-* ]]; then
+            # Semver prerelease: extract channel from "0.213.0-beta.2" → "beta"
+            CHANNEL=$(echo "$VERSION" | sed -E 's/^[^-]+-([^.]+).*/\1/')
+            echo "::notice title=npm dist-tag::prerelease $VERSION → --tag $CHANNEL"
+            npm publish --provenance --access public --tag "$CHANNEL"
+          else
+            echo "::notice title=npm dist-tag::stable $VERSION → --tag latest (implicit)"
+            npm publish --provenance --access public
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -91,4 +106,5 @@ jobs:
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
