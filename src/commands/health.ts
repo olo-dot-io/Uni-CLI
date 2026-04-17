@@ -62,11 +62,10 @@ export function registerHealthCommand(program: Command): void {
     .description("Check adapter health — run all pipelines and report status")
     .option("--failing-only", "show only broken adapters")
     .option("--timeout <ms>", "per-command timeout in ms", "10000")
-    .option("--json", "output JSON only")
     .action(
       async (
         site: string | undefined,
-        opts: { failingOnly?: boolean; timeout: string; json?: boolean },
+        opts: { failingOnly?: boolean; timeout: string },
       ) => {
         const healthStarted = Date.now();
         const timeout = parseInt(opts.timeout, 10) || 10000;
@@ -177,10 +176,10 @@ export function registerHealthCommand(program: Command): void {
           ? results.filter((r) => r.status === "fail")
           : results;
 
-        // Determine output format
-        const fmt: OutputFormat = opts.json
-          ? "json"
-          : detectFormat(program.opts().format as OutputFormat | undefined);
+        // Determine output format (use -f json for JSON output)
+        const fmt: OutputFormat = detectFormat(
+          program.opts().format as OutputFormat | undefined,
+        );
 
         const healthCtx: AgentContext = {
           command: "core.health",

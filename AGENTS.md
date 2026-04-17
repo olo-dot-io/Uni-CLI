@@ -80,18 +80,11 @@ Sites requiring auth: bilibili, weibo, zhihu, twitter, xueqiu, zsxq, jike, werea
 
 ## Output Contract
 
-Adapter dispatch, `core.*`, `ext.list`, and `dev.watch` return v2 `AgentEnvelope`. Format auto-selected — pipe or set agent UA env var to get structured Markdown. Admin commands migrate in v0.214.
+Every command returns v2 `AgentEnvelope` on stdout (24 surfaces: adapter dispatch + `core.list/health/usage/search` + `ext.list` + `dev.watch` + 17 admin: `agents auth eval explore generate hub lint mcp migrate migrate-schema operate repair research schema skills status synthesize`). `mcp serve` stays raw (stdio MCP). Format auto-selected — pipe or set an agent UA env var for Markdown.
 
-### Format auto-selection (priority order)
+### Format auto-selection
 
-1. `--format` / `-f` flag (`json | yaml | md | csv | compact`)
-2. `UNICLI_OUTPUT` or `OUTPUT` env var (same values)
-3. Non-TTY stdout — defaults to `md`
-4. Agent UA env vars — if any is set, defaults to `md`
-5. `md` default for all other cases
-
-**Agent UA env vars** (set any to trigger md auto-selection):
-`CLAUDE_CODE`, `CODEX_CLI`, `OPENCODE`, `HERMES_AGENT`, `UNICLI_AGENT`
+Priority: `-f` flag > `UNICLI_OUTPUT` env > non-TTY or agent-UA env (`md`) > `md` default. Values: `json | yaml | md | csv | compact`. Agent-UA env vars: `CLAUDE_CODE`, `CODEX_CLI`, `OPENCODE`, `HERMES_AGENT`, `UNICLI_AGENT`.
 
 ### Envelope shape
 
@@ -134,63 +127,7 @@ error:
 
 ### MD body sections
 
-Success output shape:
-
-```markdown
----
-ok: true
-schema_version: "2"
-command: twitter.mentions
-duration_ms: 412
-count: 20
----
-
-## Data
-
-### 1 · 1912345678901234567
-
-- **author**: alice_dev
-- **text**: Hey @zenalexa love the new self-repair feature!
-- **date**: 2026-04-16
-
-## Context
-
-- **surface**: web
-- **has_more**: true
-- **next_cursor**: abc123
-
-## Next Actions
-
-- Fetch next page with cursor: `abc123`
-```
-
-Error output shape:
-
-```markdown
----
-ok: false
-schema_version: "2"
-command: twitter.mentions
-duration_ms: 91
----
-
-## Error
-
-- **code**: auth_required
-- **message**: 401 Unauthorized
-- **adapter_path**: src/adapters/twitter/mentions.yaml
-- **step**: 1
-- **retryable**: false
-
-## Suggestion
-
-Run: unicli auth setup twitter
-
-## Alternatives
-
-- `twitter.search`
-- `twitter.timeline`
-```
+Success: `## Data` (per-item list) · `## Context` (surface, pagination) · `## Next Actions`. Error: `## Error` (code, message, adapter_path, step, retryable) · `## Suggestion` · `## Alternatives`. YAML frontmatter carries `ok`, `schema_version`, `command`, `duration_ms`, `count`.
 
 ### Error codes
 

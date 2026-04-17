@@ -2,10 +2,10 @@
  * Status command — lightweight system health snapshot for AI agents.
  *
  * Command:
- *   unicli status  — Output structured system health as JSON
+ *   unicli status  — v2 envelope with version/platform/daemon/browser/adapter counts
  *
- * Designed for machine consumption: always outputs JSON, no chalk formatting.
- * Checks version, platform, daemon, browser, adapter counts, and external CLIs.
+ * Designed for machine consumption: envelope `command = status.run`, data holds
+ * the snapshot object. Human-oriented summaries stay on stderr (Scene-6 pattern).
  */
 
 import { Command } from "commander";
@@ -16,6 +16,9 @@ import { VERSION } from "../constants.js";
 import { loadExternalClis, isInstalled } from "../hub/index.js";
 import { fetchDaemonStatus } from "../browser/daemon-client.js";
 import { DAEMON_PORT } from "../browser/protocol.js";
+import { format, detectFormat } from "../output/formatter.js";
+import { makeCtx } from "../output/envelope.js";
+import type { OutputFormat } from "../types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -96,6 +99,12 @@ export function registerStatusCommand(program: Command): void {
     .command("status")
     .description("System health snapshot — version, daemon, browser, adapters")
     .action(async () => {
+      const startedAt = Date.now();
+      const ctx = makeCtx("status.run", startedAt);
+      const fmt = detectFormat(
+        program.opts().format as OutputFormat | undefined,
+      );
+
       // 1. Basic info
       const version = VERSION;
       const platform = process.platform;
@@ -165,6 +174,14 @@ export function registerStatusCommand(program: Command): void {
         },
       };
 
-      console.log(JSON.stringify(output, null, 2));
+      ctx.duration_ms = Date.now() - startedAt;
+      console.log(
+        format(
+          output as unknown as Record<string, unknown>,
+          undefined,
+          fmt,
+          ctx,
+        ),
+      );
     });
 }

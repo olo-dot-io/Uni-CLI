@@ -15,7 +15,6 @@ import {
   isSensitivePathRealpath,
   buildSensitivePathDenial,
 } from "../permissions/sensitive-paths.js";
-import { ExitCode } from "../types.js";
 import type { OutputFormat } from "../types.js";
 import { rankCandidates, type SnapshotRef } from "../browser/observe.js";
 import { verifyRef } from "../browser/snapshot-identity.js";
@@ -82,9 +81,14 @@ async function operateAction(
     console.log(format(data, undefined, fmt, ctx));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    // Callers (e.g. upload sensitive-path) may annotate the thrown Error with
+    // a canonical envelope `code` + remediation `suggestion`; honour both
+    // instead of re-inferring from the message.
+    const tagged = err as Partial<{ code: string; suggestion: string }>;
     ctx.error = {
-      code: errorTypeToCode(err),
+      code: tagged.code ?? errorTypeToCode(err),
       message,
+      ...(tagged.suggestion ? { suggestion: tagged.suggestion } : {}),
       retryable:
         /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|daemon failed/i.test(
           message,
@@ -505,26 +509,33 @@ export function registerOperateCommands(program: Command): void {
     .description("Upload file to file input element by ref number")
     .action((ref: string, filePath: string) =>
       operateAction(program, "upload", async () => {
+        // Ref syntax validation runs first — flows through operateAction's
+        // standard error envelope (exit 1 via mapErrorToExitCode).
         validateRef(ref);
         const selector = `[data-unicli-ref="${ref}"]`;
         const absolutePath = resolve(filePath);
-        // Sensitive-path deny list runs FIRST, before any workspace check.
-        // Cannot be overridden by permission mode (defense against prompt
-        // injection that points the agent at credentials, keys, or tokens).
-        // Uses the symlink-aware variant so `ln -s ~/.ssh/id_rsa /tmp/x.txt`
-        // is still blocked.
+        // Sensitive-path and workspace-boundary denials throw typed errors so
+        // operateAction normalizes them to the v2 envelope contract alongside
+        // every other failure mode (closes the last non-envelope bypass).
         if (isSensitivePathRealpath(absolutePath)) {
           const denial = buildSensitivePathDenial(absolutePath);
-          console.error(JSON.stringify(denial));
-          process.exit(ExitCode.CONFIG_ERROR);
+          const err = new Error(
+            "upload blocked by sensitive-path guard",
+          ) as Error & { code?: string; suggestion?: string };
+          err.code = "permission_denied";
+          err.suggestion = denial.hint;
+          throw err;
         }
         const cwd = process.cwd();
         const home = homedir();
         if (!absolutePath.startsWith(cwd) && !absolutePath.startsWith(home)) {
-          console.error(
-            `Upload blocked: path ${absolutePath} is outside workspace and home directory`,
-          );
-          process.exit(ExitCode.CONFIG_ERROR);
+          const err = new Error(
+            `upload blocked: path ${absolutePath} is outside workspace and home directory`,
+          ) as Error & { code?: string; suggestion?: string };
+          err.code = "permission_denied";
+          err.suggestion =
+            "Copy the file under the current working directory or $HOME before uploading.";
+          throw err;
         }
         const page = await getOperatePage();
         await page.setFileInput(selector, [absolutePath]);
