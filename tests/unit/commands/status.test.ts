@@ -20,6 +20,16 @@ vi.mock("../../../src/browser/daemon-client.js", async () => {
   >("../../../src/browser/daemon-client.js");
   return { ...actual, fetchDaemonStatus: vi.fn().mockResolvedValue(null) };
 });
+vi.mock("../../../src/browser/launcher.js", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../../src/browser/launcher.js")
+  >("../../../src/browser/launcher.js");
+  return {
+    ...actual,
+    isCDPAvailable: vi.fn().mockResolvedValue(false),
+    getCDPPort: vi.fn().mockReturnValue(9222),
+  };
+});
 
 function captureStdout(): {
   getStdout: () => string;
@@ -85,5 +95,8 @@ describe("unicli status — v2 envelope", () => {
     expect(["running", "stopped", "unknown"]).toContain(data.daemon.status);
     expect(typeof data.adapters.total).toBe("number");
     validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
-  }, 15_000);
+    // Timeout generous (60s) because `unicli status` walks all 896 YAML
+    // adapters + probes external CLIs; under verify:clean concurrent test
+    // runs this slows enough to cross a 15s bar intermittently.
+  }, 60_000);
 });
