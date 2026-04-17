@@ -24,6 +24,7 @@ Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for
 - **`detectFormat` simplified** — the three branches that all returned `"md"` (non-TTY, agent-UA, default) are collapsed into a single final return, now documented in one comment.
 - **`isAgentUA` no longer inspects the `USER_AGENT` env var** — that variable isn't set in subprocess contexts (it's an HTTP header name, not a process env var). The 5 canonical agent env vars (`CLAUDE_CODE`, `CODEX_CLI`, `OPENCODE`, `HERMES_AGENT`, `UNICLI_AGENT`) remain.
 - **Error-mapping helpers extracted to `src/output/error-map.ts`** — `errorTypeToCode`, `mapErrorToExitCode`, `errorToAgentFields`, and `REF_LOCATOR_CODES` now live in one reusable module. `src/commands/dispatch.ts` slims by ~60 LOC; the 4-way `err instanceof` ternary (repeated 7 times) collapses to a single `errorToAgentFields` call.
+- **6 admin commands migrated to v2 envelope (batch 1/3)** — `agents`, `auth setup`, `auth check`, `auth list`, `eval`, `explore`, `generate`, `hub` subcommands. All now emit the `{ok, schema_version, command, meta, data, error, content?}` envelope via `format(data, columns, fmt, ctx)`. Human-readable summary lines (chalk-styled) are routed to stderr so parsing stdout as JSON/YAML/MD stays clean. Batch 2/3 (lint/mcp/migrate-schema/migrate/operate/repair) and batch 3/3 (research/schema/skills/status/synthesize + AGENTS.md claim update) follow in T6/T7.
 
 ### Removed
 

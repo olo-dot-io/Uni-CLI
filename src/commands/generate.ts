@@ -27,6 +27,10 @@ import {
   type EndpointEntry,
   type ScoredEndpoint,
 } from "../engine/endpoint-scorer.js";
+import { format, detectFormat } from "../output/formatter.js";
+import { makeCtx } from "../output/envelope.js";
+import { mapErrorToExitCode } from "../output/error-map.js";
+import type { OutputFormat } from "../types.js";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -108,6 +112,10 @@ export function registerGenerateCommand(program: Command): void {
           json?: boolean;
         },
       ) => {
+        const startedAt = Date.now();
+        const ctx = makeCtx("core.generate", startedAt);
+        const rootFmt = program.opts().format as OutputFormat | undefined;
+        const fmt = detectFormat(opts.json ? "json" : rootFmt);
         const timeoutMs = (parseInt(opts.timeout, 10) || 30) * 1000;
         const siteName = opts.site ?? extractSiteName(url);
         const jsonOnly = opts.json ?? false;
@@ -202,11 +210,15 @@ export function registerGenerateCommand(program: Command): void {
           if (allRequests.length === 0) {
             const msg =
               "No API requests captured. Try --interact or a different URL.";
-            if (jsonOnly) {
-              console.error(JSON.stringify({ error: msg }));
-            } else {
-              console.error(chalk.yellow(msg));
-            }
+            ctx.error = {
+              code: "empty_result",
+              message: msg,
+              suggestion:
+                "Retry with --interact, or open the URL manually and re-run.",
+              retryable: true,
+            };
+            ctx.duration_ms = Date.now() - startedAt;
+            console.error(format(null, undefined, fmt, ctx));
             process.exitCode = 1;
             return;
           }
@@ -223,11 +235,15 @@ export function registerGenerateCommand(program: Command): void {
 
           if (usable.length === 0) {
             const msg = "No usable API endpoints found.";
-            if (jsonOnly) {
-              console.error(JSON.stringify({ error: msg }));
-            } else {
-              console.error(chalk.yellow(msg));
-            }
+            ctx.error = {
+              code: "empty_result",
+              message: msg,
+              suggestion:
+                "Re-run with --interact, or widen the exploration window.",
+              retryable: true,
+            };
+            ctx.duration_ms = Date.now() - startedAt;
+            console.error(format(null, undefined, fmt, ctx));
             process.exitCode = 1;
             return;
           }
@@ -279,11 +295,14 @@ export function registerGenerateCommand(program: Command): void {
 
           if (candidates.length === 0) {
             const msg = "No candidates could be generated.";
-            if (jsonOnly) {
-              console.error(JSON.stringify({ error: msg }));
-            } else {
-              console.error(chalk.yellow(msg));
-            }
+            ctx.error = {
+              code: "empty_result",
+              message: msg,
+              suggestion: "Review captured endpoints with: unicli explore",
+              retryable: true,
+            };
+            ctx.duration_ms = Date.now() - startedAt;
+            console.error(format(null, undefined, fmt, ctx));
             process.exitCode = 1;
             return;
           }
@@ -329,41 +348,36 @@ export function registerGenerateCommand(program: Command): void {
           // Read and output the winning YAML
           const yamlContent = readFileSync(winner.file, "utf-8");
 
-          if (jsonOnly) {
-            console.log(
-              JSON.stringify(
-                {
-                  site: siteName,
-                  name: winner.name,
-                  capability: winner.capability,
-                  strategy: winner.strategy,
-                  adapterPath: destPath,
-                  yaml: yamlContent,
-                  allCandidates: candidates.length,
-                },
-                null,
-                2,
-              ),
-            );
-          } else {
-            process.stderr.write(
-              chalk.green(`\n  ✓ Selected: ${winner.name}`) +
-                chalk.dim(` (capability: ${winner.capability ?? "general"})`) +
-                "\n",
-            );
-            process.stderr.write(chalk.dim(`  Installed to: ${destPath}\n\n`));
+          const data = {
+            site: siteName,
+            name: winner.name,
+            capability: winner.capability,
+            strategy: winner.strategy,
+            adapterPath: destPath,
+            yaml: yamlContent,
+            allCandidates: candidates.length,
+          };
 
-            // Print YAML to stdout (for piping)
-            console.log(yamlContent);
-          }
+          ctx.duration_ms = Date.now() - startedAt;
+          console.log(format(data, undefined, fmt, ctx));
+
+          console.error(
+            chalk.green(`\n  ✓ Selected: ${winner.name}`) +
+              chalk.dim(` (capability: ${winner.capability ?? "general"})`),
+          );
+          console.error(chalk.dim(`  Installed to: ${destPath}`));
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          if (jsonOnly) {
-            console.error(JSON.stringify({ error: msg }));
-          } else {
-            console.error(chalk.red(`Generate failed: ${msg}`));
-          }
-          process.exitCode = 1;
+          ctx.error = {
+            code: "internal_error",
+            message: msg,
+            suggestion:
+              "Check browser connectivity with: unicli browser status",
+            retryable: true,
+          };
+          ctx.duration_ms = Date.now() - startedAt;
+          console.error(format(null, undefined, fmt, ctx));
+          process.exitCode = mapErrorToExitCode(err);
         }
       },
     );

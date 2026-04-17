@@ -15,6 +15,10 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { join, basename } from "node:path";
 import { homedir } from "node:os";
 import { execFileSync } from "node:child_process";
+import { format, detectFormat } from "../output/formatter.js";
+import { makeCtx } from "../output/envelope.js";
+import { mapErrorToExitCode } from "../output/error-map.js";
+import type { OutputFormat } from "../types.js";
 
 const HUB_REPO = "olo-dot-io/unicli-hub";
 const HUB_DIR = join(homedir(), ".unicli", "hub");
@@ -70,13 +74,22 @@ export function registerHubCommand(program: Command): void {
   hub
     .command("search <query>")
     .description("Search community adapters")
-    .option("--json", "JSON output")
+    .option("--json", "JSON output (alias for -f json)")
     .action((query: string, opts: { json?: boolean }) => {
+      const startedAt = Date.now();
+      const ctx = makeCtx("hub.search", startedAt);
+      const rootFmt = program.opts().format as OutputFormat | undefined;
+      const fmt = detectFormat(opts.json ? "json" : rootFmt);
+
       const index = loadIndex();
       if (!index) {
-        console.error(
-          chalk.yellow("No hub index. Run `unicli hub update` first."),
-        );
+        ctx.error = {
+          code: "not_found",
+          message: "No hub index found.",
+          suggestion: "Run `unicli hub update` to fetch the community index.",
+          retryable: false,
+        };
+        console.error(format(null, undefined, fmt, ctx));
         process.exitCode = 1;
         return;
       }
@@ -89,20 +102,21 @@ export function registerHubCommand(program: Command): void {
           e.description.toLowerCase().includes(q),
       );
 
-      if (opts.json) {
-        console.log(JSON.stringify(matches, null, 2));
-        return;
-      }
+      ctx.duration_ms = Date.now() - startedAt;
+      console.log(
+        format(
+          matches,
+          ["site", "command", "description", "strategy"],
+          fmt,
+          ctx,
+        ),
+      );
 
       if (matches.length === 0) {
-        console.log(chalk.dim(`No adapters matching "${query}".`));
-        return;
-      }
-
-      console.log(chalk.cyan(`Found ${matches.length} adapter(s):`));
-      for (const m of matches) {
-        console.log(
-          `  ${chalk.green(m.site)}/${m.command} — ${m.description} (${m.strategy})`,
+        console.error(chalk.dim(`\n  No adapters matching "${query}".`));
+      } else {
+        console.error(
+          chalk.dim(`\n  ${matches.length} adapter(s) matching "${query}".`),
         );
       }
     });
@@ -112,27 +126,40 @@ export function registerHubCommand(program: Command): void {
     .command("install <path>")
     .description("Install adapter from hub (site/command)")
     .action(async (adapterPath: string) => {
+      const startedAt = Date.now();
+      const ctx = makeCtx("hub.install", startedAt);
+      const fmt = detectFormat(
+        program.opts().format as OutputFormat | undefined,
+      );
+
       const [site, command] = adapterPath.split("/");
       if (!site || !command) {
-        console.error(chalk.red("Usage: unicli hub install <site>/<command>"));
-        process.exitCode = 1;
+        ctx.error = {
+          code: "invalid_input",
+          message: "Usage: unicli hub install <site>/<command>",
+          suggestion: "Example: unicli hub install reddit/frontpage",
+          retryable: false,
+        };
+        console.error(format(null, undefined, fmt, ctx));
+        process.exitCode = 2;
         return;
       }
 
       // Validate names to prevent path traversal (CWE-22)
       const SAFE_NAME = /^[a-zA-Z0-9_-]+$/;
       if (!SAFE_NAME.test(site) || !SAFE_NAME.test(command)) {
-        console.error(
-          chalk.red(
+        ctx.error = {
+          code: "invalid_input",
+          message:
             "Invalid site/command name. Only alphanumeric, hyphens, and underscores allowed.",
-          ),
-        );
-        process.exitCode = 1;
+          retryable: false,
+        };
+        console.error(format(null, undefined, fmt, ctx));
+        process.exitCode = 2;
         return;
       }
 
       try {
-        // Fetch adapter YAML from GitHub repo
         const apiPath = `/repos/${HUB_REPO}/contents/adapters/${site}/${command}.yaml`;
         const response = ghApiJson(apiPath) as {
           content?: string;
@@ -140,7 +167,13 @@ export function registerHubCommand(program: Command): void {
         };
 
         if (!response.content) {
-          console.error(chalk.red(`Adapter not found: ${site}/${command}`));
+          ctx.error = {
+            code: "not_found",
+            message: `Adapter not found: ${site}/${command}`,
+            suggestion: "Run `unicli hub search <query>` to discover adapters.",
+            retryable: false,
+          };
+          console.error(format(null, undefined, fmt, ctx));
           process.exitCode = 1;
           return;
         }
@@ -149,22 +182,33 @@ export function registerHubCommand(program: Command): void {
           "utf-8",
         );
 
-        // Install to user adapter directory
         const targetDir = join(ADAPTERS_DIR, site);
         mkdirSync(targetDir, { recursive: true });
         const targetPath = join(targetDir, `${command}.yaml`);
         writeFileSync(targetPath, content, "utf-8");
 
-        console.log(
-          chalk.green(`Installed ${site}/${command} → ${targetPath}`),
+        const data = {
+          site,
+          command,
+          path: targetPath,
+          bytes: Buffer.byteLength(content, "utf-8"),
+        };
+        ctx.duration_ms = Date.now() - startedAt;
+        console.log(format(data, undefined, fmt, ctx));
+        console.error(
+          chalk.green(`\n  Installed ${site}/${command} → ${targetPath}`),
         );
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error(chalk.red(`Install failed: ${msg}`));
-        console.error(
-          chalk.dim("Make sure `gh` is installed and authenticated."),
-        );
-        process.exitCode = 1;
+        ctx.error = {
+          code: "internal_error",
+          message: `Install failed: ${msg}`,
+          suggestion: "Make sure `gh` is installed and authenticated.",
+          retryable: true,
+        };
+        ctx.duration_ms = Date.now() - startedAt;
+        console.error(format(null, undefined, fmt, ctx));
+        process.exitCode = mapErrorToExitCode(err);
       }
     });
 
@@ -173,37 +217,56 @@ export function registerHubCommand(program: Command): void {
     .command("publish <site> [command]")
     .description("Submit adapter to community hub")
     .action((site: string, command?: string) => {
+      const startedAt = Date.now();
+      const ctx = makeCtx("hub.publish", startedAt);
+      const fmt = detectFormat(
+        program.opts().format as OutputFormat | undefined,
+      );
+
       const SAFE_NAME = /^[a-zA-Z0-9_-]+$/;
       if (!SAFE_NAME.test(site) || (command && !SAFE_NAME.test(command))) {
-        console.error(
-          chalk.red("Invalid name. Only alphanumeric, hyphens, underscores."),
-        );
+        ctx.error = {
+          code: "invalid_input",
+          message: "Invalid name. Only alphanumeric, hyphens, underscores.",
+          retryable: false,
+        };
+        console.error(format(null, undefined, fmt, ctx));
+        process.exitCode = 2;
+        return;
+      }
+      const siteDir = join("src", "adapters", site);
+      const userDir = join(ADAPTERS_DIR, site);
+      if (!existsSync(siteDir) && !existsSync(userDir)) {
+        ctx.error = {
+          code: "not_found",
+          message: `Adapter directory not found: ${site}`,
+          suggestion: `Create adapters at src/adapters/${site}/ or ${userDir}`,
+          retryable: false,
+        };
+        console.error(format(null, undefined, fmt, ctx));
         process.exitCode = 1;
         return;
       }
-      // Find adapter files
-      const siteDir = join("src", "adapters", site);
-      if (!existsSync(siteDir)) {
-        // Try user override directory
-        const userDir = join(ADAPTERS_DIR, site);
-        if (!existsSync(userDir)) {
-          console.error(chalk.red(`Adapter directory not found: ${site}`));
-          process.exitCode = 1;
-          return;
-        }
-      }
 
-      // For now, just print instructions. Full automation would need gh pr create.
-      console.log(chalk.cyan(`To publish ${site} adapters to the hub:`));
-      console.log("");
-      console.log(`  1. Fork ${HUB_REPO} on GitHub`);
-      console.log(
-        `  2. Copy your adapter YAML to adapters/${site}/${command ?? "*"}.yaml`,
-      );
-      console.log(`  3. Add meta.json with author, description, and strategy`);
-      console.log(`  4. Create a pull request`);
-      console.log("");
-      console.log(chalk.dim(`Or use: gh repo fork ${HUB_REPO} && ...`));
+      const instructions = [
+        `Fork ${HUB_REPO} on GitHub`,
+        `Copy your adapter YAML to adapters/${site}/${command ?? "*"}.yaml`,
+        "Add meta.json with author, description, and strategy",
+        "Create a pull request",
+      ];
+      const data = {
+        site,
+        command: command ?? null,
+        hub_repo: HUB_REPO,
+        instructions,
+      };
+      ctx.duration_ms = Date.now() - startedAt;
+      console.log(format(data, undefined, fmt, ctx));
+
+      console.error(chalk.cyan(`\n  To publish ${site} adapters:`));
+      for (let i = 0; i < instructions.length; i++) {
+        console.error(`    ${i + 1}. ${instructions[i]}`);
+      }
     });
 
   // Update
@@ -211,38 +274,44 @@ export function registerHubCommand(program: Command): void {
     .command("update")
     .description("Pull latest adapter index from hub")
     .action(async () => {
+      const startedAt = Date.now();
+      const ctx = makeCtx("hub.update", startedAt);
+      const fmt = detectFormat(
+        program.opts().format as OutputFormat | undefined,
+      );
+
       ensureHubDir();
 
       try {
-        // Fetch directory listing from GitHub API
         const response = ghApiJson(
           `/repos/${HUB_REPO}/contents/adapters`,
         ) as Array<{ name: string; type: string }>;
 
         if (!Array.isArray(response)) {
-          console.error(chalk.red("Failed to fetch hub index."));
+          ctx.error = {
+            code: "upstream_error",
+            message: "Failed to fetch hub index.",
+            suggestion: "Retry, or check GitHub API status.",
+            retryable: true,
+          };
+          console.error(format(null, undefined, fmt, ctx));
           process.exitCode = 1;
           return;
         }
 
         const entries: HubEntry[] = [];
-
         for (const dir of response) {
           if (dir.type !== "dir") continue;
           const site = dir.name;
-
-          // Fetch commands for this site
           try {
             const files = ghApiJson(
               `/repos/${HUB_REPO}/contents/adapters/${site}`,
             ) as Array<{ name: string }>;
-
             for (const file of files) {
               if (!file.name.endsWith(".yaml")) continue;
-              const cmd = basename(file.name, ".yaml");
               entries.push({
                 site,
-                command: cmd,
+                command: basename(file.name, ".yaml"),
                 description: "",
                 author: "",
                 strategy: "public",
@@ -259,18 +328,32 @@ export function registerHubCommand(program: Command): void {
         };
         writeFileSync(INDEX_PATH, JSON.stringify(index, null, 2), "utf-8");
 
-        console.log(
+        const siteCount = response.filter((d) => d.type === "dir").length;
+        const data = {
+          updated_at: index.updatedAt,
+          adapters: entries.length,
+          sites: siteCount,
+          index_path: INDEX_PATH,
+        };
+        ctx.duration_ms = Date.now() - startedAt;
+        console.log(format(data, undefined, fmt, ctx));
+
+        console.error(
           chalk.green(
-            `Hub index updated: ${entries.length} adapters from ${response.filter((d) => d.type === "dir").length} sites.`,
+            `\n  Hub index updated: ${entries.length} adapters from ${siteCount} sites.`,
           ),
         );
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error(chalk.red(`Update failed: ${msg}`));
-        console.error(
-          chalk.dim("Make sure `gh` is installed and authenticated."),
-        );
-        process.exitCode = 1;
+        ctx.error = {
+          code: "internal_error",
+          message: `Update failed: ${msg}`,
+          suggestion: "Make sure `gh` is installed and authenticated.",
+          retryable: true,
+        };
+        ctx.duration_ms = Date.now() - startedAt;
+        console.error(format(null, undefined, fmt, ctx));
+        process.exitCode = mapErrorToExitCode(err);
       }
     });
 
@@ -279,31 +362,61 @@ export function registerHubCommand(program: Command): void {
     .command("verify <site>")
     .description("Verify installed hub adapters")
     .action((site: string) => {
+      const startedAt = Date.now();
+      const ctx = makeCtx("hub.verify", startedAt);
+      const fmt = detectFormat(
+        program.opts().format as OutputFormat | undefined,
+      );
+
       const SAFE_NAME = /^[a-zA-Z0-9_-]+$/;
       if (!SAFE_NAME.test(site)) {
-        console.error(chalk.red("Invalid site name."));
-        process.exitCode = 1;
+        ctx.error = {
+          code: "invalid_input",
+          message: "Invalid site name.",
+          retryable: false,
+        };
+        console.error(format(null, undefined, fmt, ctx));
+        process.exitCode = 2;
         return;
       }
       const siteDir = join(ADAPTERS_DIR, site);
       if (!existsSync(siteDir)) {
-        console.error(chalk.red(`No hub adapters installed for: ${site}`));
+        ctx.error = {
+          code: "not_found",
+          message: `No hub adapters installed for: ${site}`,
+          suggestion: `Install first: unicli hub install ${site}/<command>`,
+          retryable: false,
+        };
+        console.error(format(null, undefined, fmt, ctx));
         process.exitCode = 1;
         return;
       }
 
-      console.log(chalk.cyan(`Verifying ${site} adapters...`));
+      console.error(chalk.cyan(`Verifying ${site} adapters...`));
 
       try {
-        // Use execFileSync with args — no shell injection
-        const result = execFileSync("unicli", ["eval", "run", site, "--json"], {
+        const raw = execFileSync("unicli", ["eval", "run", site, "--json"], {
           encoding: "utf-8",
           timeout: 60_000,
         }) as string;
-        console.log(result);
+        // Passthrough the child eval envelope to stdout untouched so agents
+        // parsing stdout always see a single v2 envelope.
+        process.stdout.write(raw);
+        // Emit a summary to stderr only.
+        console.error(
+          chalk.dim(`  Verified ${site} via: unicli eval run ${site} --json`),
+        );
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error(chalk.yellow(`Verification: ${msg}`));
+        ctx.error = {
+          code: "internal_error",
+          message: `Verification failed: ${msg}`,
+          suggestion: "Check that `unicli` is on PATH and the adapter loads.",
+          retryable: true,
+        };
+        ctx.duration_ms = Date.now() - startedAt;
+        console.error(format(null, undefined, fmt, ctx));
+        process.exitCode = mapErrorToExitCode(err);
       }
     });
 }
