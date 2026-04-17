@@ -3,6 +3,40 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
+## [0.213.0] — Unreleased — Vostok · Gagarin
+
+> Agent-Native output: v2 envelope + `--md` format land as the default for agents.
+> Non-TTY and recognised agent UAs now receive structured Markdown automatically.
+
+### Breaking
+
+- **`--json` / `--yaml` output shape changed to v2 envelope.** Every command now returns `{ok, schema_version: "2", command, meta, data, error, content?}`. Pre-P-B flat arrays are no longer emitted; parse `data` from the envelope. `csv` and `compact` output formats are unchanged.
+- **Non-TTY default format is now `md`**, not `json`. Set `-f json` (or `UNICLI_OUTPUT=json`) to restore the previous behaviour for scripts that parse stdout.
+- **`table` format deprecated** and now falls back to `md` with a stderr warning.
+- **Command naming unified to `<area>.<action>`** in the envelope `command` field (e.g. `core.list`, `ext.install`, `dev.watch`, plus `<adapter>.<cmd>` for adapter dispatch). Flat command names such as `list` no longer appear in envelopes.
+
+### Added
+
+- **`src/output/envelope.ts`** (184 LOC) — `AgentEnvelope` discriminated union (`AgentEnvelopeOk | AgentEnvelopeErr`), `AgentMeta`, `AgentError`, `AgentContext`, `AgentContent`, factories `makeEnvelope()` / `makeError()`, and `validateEnvelope()` with 9 structural invariants (schema_version, ok/error mutual exclusion, ok/data correlation, `<site>.<command>` regex, duration_ms type, content[].type enum, count/data.length consistency).
+- **`src/output/md.ts`** (313 LOC) — `renderMd(envelope)` produces YAML frontmatter plus `## Data` / `## Context` / `## Next Actions` / `## Error` / `## Suggestion` / `## Alternatives` sections. Handles null/undefined/Date/Buffer/Function/BigInt/circular references, shared-ref DAGs, long strings, throwing `toJSON`, and unserializable values without crashing. Markdown injection sanitised at 27 insertion points.
+- **`--md` output format** with stable byte-for-byte rendering per input (golden-fixture tested).
+- **Agent-UA auto-detection** — `isAgentUA()` reads `CLAUDE_CODE`, `CODEX_CLI`, `OPENCODE`, `HERMES_AGENT`, `UNICLI_AGENT` environment variables and switches output to `md` when any is set.
+- **`UNICLI_OUTPUT` / `OUTPUT` env var override** — `json|yaml|md|csv|compact`, overrides auto-detection; `--format` / `-f` flag has highest priority.
+- **`src/commands/dispatch.ts`** (299 LOC) — adapter-dispatch path extracted from `cli.ts`, including envelope construction and the structured-error path (`AgentError` → `ctx.error` → v2 error envelope to stderr with `errorTypeToCode` + `mapErrorToExitCode` helpers).
+- **20 MD golden fixtures** under `tests/fixtures/md/<site>.<command>.{success,error}.md` covering 10 flagship adapter pairs (twitter.mentions, reddit.frontpage, bilibili.dynamic, hackernews.top, github-trending.daily, arxiv.search, xiaohongshu.feed, zhihu.answers, douban.book-hot, notion.search). Regenerate with `UPDATE_FIXTURES=1 npx vitest run tests/unit/output/fixtures.test.ts`.
+
+### Changed
+
+- **`format(data, columns, fmt, ctx)`** now requires an `AgentContext` argument; TypeScript enforces it at every call site.
+- **`src/cli.ts` slimmed 781 → 490 LOC** by moving adapter dispatch into `src/commands/dispatch.ts`; the complexity gate is green.
+- **7 call sites migrated to the envelope path**: `core.list` in `src/cli.ts`, adapter dispatch in `src/commands/dispatch.ts`, plus `src/commands/{ext,usage,dev,search,health}.ts`.
+- **`detectFormat()` order**: explicit `--format` > `UNICLI_OUTPUT` / `OUTPUT` env > non-TTY (md) > agent-UA (md) > md default.
+
+### Fixed
+
+- **No silent envelope bypass on empty results, chalk-styled rows, `health.json`, `core.usage --json`, or the adapter-dispatch catch path** — every surface that previously emitted raw arrays or `console.log` now goes through `format()`.
+- **Command regex `<area>.<action>`** is the only accepted shape for envelope `command`; legacy dash-case values are rejected by `validateEnvelope`.
+
 ## [0.212.1] — 2026-04-16 — Vostok · Shatalov II
 
 > Pre-push security and contract hardening after third-round audit.
