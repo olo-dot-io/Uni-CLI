@@ -19,6 +19,10 @@ import { fileURLToPath } from "node:url";
 import { loadAllAdapters, loadTsAdapters } from "../discovery/loader.js";
 import { getAllAdapters, listCommands } from "../registry.js";
 import { VERSION } from "../constants.js";
+import { format, detectFormat } from "../output/formatter.js";
+import { makeCtx } from "../output/envelope.js";
+import { errorTypeToCode, mapErrorToExitCode } from "../output/error-map.js";
+import type { OutputFormat } from "../types.js";
 
 interface ServeOptions {
   transport?: "stdio" | "http";
@@ -97,9 +101,12 @@ export function registerMcpCommand(program: Command): void {
     .description(
       "Pre-flight check — verify adapters load and report tool counts",
     )
-    .option("--json", "Output as JSON (default when piped)")
+    .option("--json", "Output as JSON (alias for -f json)")
     .action(async (opts: HealthOptions) => {
-      const useJson = opts.json || !process.stdout.isTTY;
+      const startedAt = Date.now();
+      const ctx = makeCtx("mcp.health", startedAt);
+      const rootFmt = program.opts().format as OutputFormat | undefined;
+      const fmt = detectFormat(opts.json ? "json" : rootFmt);
 
       try {
         // Load adapters into the registry the same way the server does
@@ -115,7 +122,7 @@ export function registerMcpCommand(program: Command): void {
           expandedToolCount += Object.keys(adapter.commands).length;
         }
 
-        const health = {
+        const data = {
           status: "ok" as const,
           adapters: adapters.length,
           commands: commands.length,
@@ -123,41 +130,38 @@ export function registerMcpCommand(program: Command): void {
           version: VERSION,
         };
 
-        if (useJson) {
-          console.log(JSON.stringify(health, null, 2));
-          return;
-        }
+        ctx.duration_ms = Date.now() - startedAt;
+        console.log(format(data, undefined, fmt, ctx));
 
-        console.log(chalk.bold(`unicli MCP health v${VERSION}`));
-        console.log(`  status:   ${chalk.green("ok")}`);
-        console.log(`  adapters: ${chalk.green(adapters.length)}`);
-        console.log(`  commands: ${chalk.green(commands.length)}`);
-        console.log(
-          `  tools:    ${chalk.green("3")} default, ${chalk.green(expandedToolCount)} expanded`,
+        // Human-readable summary → stderr (Scene-6 pattern)
+        console.error(chalk.bold(`\n  unicli MCP health v${VERSION}`));
+        console.error(`    status:   ${chalk.green("ok")}`);
+        console.error(`    adapters: ${chalk.green(adapters.length)}`);
+        console.error(`    commands: ${chalk.green(commands.length)}`);
+        console.error(
+          `    tools:    ${chalk.green("3")} default, ${chalk.green(expandedToolCount)} expanded`,
         );
-        console.log();
-        console.log(
-          chalk.dim("Default tools: unicli_run, unicli_list, unicli_discover"),
-        );
-        console.log(
+        console.error(
           chalk.dim(
-            "To start: unicli mcp serve [--expanded] [--transport http]",
+            "\n  Default tools: unicli_run, unicli_list, unicli_discover",
+          ),
+        );
+        console.error(
+          chalk.dim(
+            "  To start: unicli mcp serve [--expanded] [--transport http]",
           ),
         );
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        if (useJson) {
-          console.log(
-            JSON.stringify(
-              { status: "error", error: message, version: VERSION },
-              null,
-              2,
-            ),
-          );
-        } else {
-          console.error(chalk.red(`Health check failed: ${message}`));
-        }
-        process.exit(1);
+        ctx.error = {
+          code: errorTypeToCode(err),
+          message,
+          suggestion: "Verify adapter files parse: unicli lint",
+          retryable: false,
+        };
+        ctx.duration_ms = Date.now() - startedAt;
+        console.error(format(null, undefined, fmt, ctx));
+        process.exit(mapErrorToExitCode(err));
       }
     });
 }

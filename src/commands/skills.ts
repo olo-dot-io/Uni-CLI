@@ -30,18 +30,24 @@ import { homedir } from "node:os";
 import chalk from "chalk";
 import { getAllAdapters } from "../registry.js";
 import { VERSION } from "../constants.js";
-import type { AdapterManifest, AdapterCommand } from "../types.js";
+import type {
+  AdapterManifest,
+  AdapterCommand,
+  OutputFormat,
+} from "../types.js";
+import { ExitCode } from "../types.js";
 import { loadSkills, type Skill } from "../protocol/skill.js";
 import { runPipeline } from "../engine/executor.js";
+import { format, detectFormat } from "../output/formatter.js";
+import { makeCtx } from "../output/envelope.js";
+import { errorTypeToCode, mapErrorToExitCode } from "../output/error-map.js";
 
 interface ExportOptions {
   out?: string;
-  json?: boolean;
 }
 
 interface PublishOptions {
   to?: string;
-  json?: boolean;
 }
 
 interface CatalogOptions {
@@ -332,18 +338,22 @@ export function registerSkillsCommand(program: Command): void {
       "Generate one SKILL.md per adapter command into an output directory",
     )
     .option("--out <dir>", "Output directory", "skills")
-    .option("--json", "Print summary as JSON")
     .action((opts: ExportOptions) => {
+      const startedAt = Date.now();
+      const ctx = makeCtx("skills.export", startedAt);
+      const fmt = detectFormat(
+        program.opts().format as OutputFormat | undefined,
+      );
+
       const outDir = resolve(opts.out ?? "skills");
       mkdirSync(outDir, { recursive: true });
       const written = exportSkills(outDir);
-      if (opts.json) {
-        console.log(JSON.stringify({ written, out: outDir }, null, 2));
-      } else {
-        console.log(
-          chalk.green(`✓ wrote ${written} SKILL.md files to ${outDir}`),
-        );
-      }
+
+      ctx.duration_ms = Date.now() - startedAt;
+      console.log(format({ written, out: outDir }, undefined, fmt, ctx));
+      console.error(
+        chalk.dim(`\n  wrote ${written} SKILL.md file(s) to ${outDir}`),
+      );
     });
 
   skills
@@ -355,19 +365,23 @@ export function registerSkillsCommand(program: Command): void {
       "--to <dir>",
       "Target directory (default: ~/.claude/skills/uni-cli/)",
     )
-    .option("--json", "Print summary as JSON")
     .action((opts: PublishOptions) => {
+      const startedAt = Date.now();
+      const ctx = makeCtx("skills.publish", startedAt);
+      const fmt = detectFormat(
+        program.opts().format as OutputFormat | undefined,
+      );
+
       const target = opts.to ?? join(homedir(), ".claude", "skills", "uni-cli");
       const resolved = resolve(target.replace(/^~(?=$|\/)/, homedir()));
       mkdirSync(resolved, { recursive: true });
       const written = exportSkills(resolved);
-      if (opts.json) {
-        console.log(JSON.stringify({ written, to: resolved }, null, 2));
-      } else {
-        console.log(
-          chalk.green(`✓ published ${written} SKILL.md files to ${resolved}`),
-        );
-      }
+
+      ctx.duration_ms = Date.now() - startedAt;
+      console.log(format({ written, to: resolved }, undefined, fmt, ctx));
+      console.error(
+        chalk.dim(`\n  published ${written} SKILL.md file(s) to ${resolved}`),
+      );
     });
 
   skills
@@ -375,29 +389,26 @@ export function registerSkillsCommand(program: Command): void {
     .description(
       "List cross-vendor SKILL.md files discovered in repo/user/XDG dirs",
     )
-    .option("--json", "Print as JSON")
-    .action((opts: { json?: boolean }) => {
+    .action(() => {
+      const startedAt = Date.now();
+      const ctx = makeCtx("skills.list", startedAt);
+      const fmt = detectFormat(
+        program.opts().format as OutputFormat | undefined,
+      );
+
       const discovered = loadSkills();
-      if (opts.json || !process.stdout.isTTY) {
-        console.log(
-          JSON.stringify(discovered.map(projectSkillForJson), null, 2),
-        );
-        return;
-      }
+      const rows = discovered.map(projectSkillForJson);
+
+      ctx.duration_ms = Date.now() - startedAt;
+      console.log(
+        format(rows, ["name", "description", "source", "path"], fmt, ctx),
+      );
+
       if (discovered.length === 0) {
-        console.log(chalk.dim("No SKILL.md files found."));
-        return;
+        console.error(chalk.dim("\n  No SKILL.md files found."));
+      } else {
+        console.error(chalk.dim(`\n  ${discovered.length} skill(s) total`));
       }
-      for (const skill of discovered) {
-        console.log(
-          `${chalk.bold(skill.name)} ${chalk.dim(`(${skill.source})`)}  ${chalk.dim(skill.path)}`,
-        );
-        console.log(`  ${skill.description}`);
-        if (skill.triggers.length > 0) {
-          console.log(chalk.dim(`  triggers: ${skill.triggers.join(", ")}`));
-        }
-      }
-      console.log(chalk.dim(`\n${discovered.length} skill(s) total`));
     });
 
   skills
@@ -405,35 +416,63 @@ export function registerSkillsCommand(program: Command): void {
     .description(
       "Invoke a skill: runs its inline pipeline if present, otherwise prints the body",
     )
-    .option("--json", "Print result as JSON")
-    .action(async (name: string, opts: { json?: boolean }) => {
+    .action(async (name: string) => {
+      const startedAt = Date.now();
+      const ctx = makeCtx("skills.invoke", startedAt);
+      const fmt = detectFormat(
+        program.opts().format as OutputFormat | undefined,
+      );
+
       const skill = loadSkills().find((s) => s.name === name);
       if (!skill) {
-        console.error(chalk.red(`Unknown skill: ${name}`));
-        console.error(chalk.dim("Run `unicli skills list` to see options."));
-        process.exit(1);
+        ctx.error = {
+          code: "not_found",
+          message: `Unknown skill: ${name}`,
+          suggestion: "Run `unicli skills list` to see options.",
+          retryable: false,
+        };
+        ctx.duration_ms = Date.now() - startedAt;
+        console.error(format(null, undefined, fmt, ctx));
+        process.exit(ExitCode.USAGE_ERROR);
       }
       if (skill.pipeline && skill.pipeline.length > 0) {
         try {
           const results = await runPipeline(skill.pipeline, {}, undefined, {
             site: `skill:${skill.name}`,
           });
-          if (opts.json || !process.stdout.isTTY) {
-            console.log(JSON.stringify(results, null, 2));
-          } else {
-            console.log(JSON.stringify(results, null, 2));
-          }
+          ctx.duration_ms = Date.now() - startedAt;
+          console.log(
+            format(
+              { skill: skill.name, results } as Record<string, unknown>,
+              undefined,
+              fmt,
+              ctx,
+            ),
+          );
           return;
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
-          console.error(
-            JSON.stringify({ error: message, skill: skill.name }, null, 2),
-          );
-          process.exit(1);
+          ctx.error = {
+            code: errorTypeToCode(err),
+            message,
+            suggestion: `Inspect skill pipeline at ${skill.path}`,
+            retryable: false,
+          };
+          ctx.duration_ms = Date.now() - startedAt;
+          console.error(format(null, undefined, fmt, ctx));
+          process.exit(mapErrorToExitCode(err));
         }
       }
-      // No pipeline → print the body for the agent to follow as instructions.
-      console.log(skill.body);
+      // No pipeline → return the body as envelope data so agents can follow it.
+      ctx.duration_ms = Date.now() - startedAt;
+      console.log(
+        format(
+          { skill: skill.name, body: skill.body } as Record<string, unknown>,
+          undefined,
+          fmt,
+          ctx,
+        ),
+      );
     });
 
   skills
@@ -441,14 +480,34 @@ export function registerSkillsCommand(program: Command): void {
     .description("Build a JSON catalog of every adapter command")
     .option("--out <file>", "Output file", "docs/adapters-catalog.json")
     .action((opts: CatalogOptions) => {
+      const startedAt = Date.now();
+      const ctx = makeCtx("skills.catalog", startedAt);
+      const fmt = detectFormat(
+        program.opts().format as OutputFormat | undefined,
+      );
+
       const out = resolve(opts.out ?? "docs/adapters-catalog.json");
       const dirOf = out.replace(/\/[^/]+$/, "");
       mkdirSync(dirOf, { recursive: true });
       const catalog = buildCatalog();
       writeFileSync(out, JSON.stringify(catalog, null, 2), "utf-8");
+
+      ctx.duration_ms = Date.now() - startedAt;
       console.log(
-        chalk.green(
-          `✓ wrote catalog (${catalog.total_sites} sites, ${catalog.total_commands} commands) to ${out}`,
+        format(
+          {
+            out,
+            total_sites: catalog.total_sites,
+            total_commands: catalog.total_commands,
+          },
+          undefined,
+          fmt,
+          ctx,
+        ),
+      );
+      console.error(
+        chalk.dim(
+          `\n  wrote catalog (${catalog.total_sites} sites, ${catalog.total_commands} commands) to ${out}`,
         ),
       );
     });

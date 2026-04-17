@@ -11,7 +11,7 @@ operator: fetch
 
 ## Data
 
-### 1 · Item
+### 1 · AI agent 和传统 RPA 有什么本质区别？
 
 - **rank**: 1
 - **question**: AI agent 和传统 RPA 有什么本质区别？
@@ -19,7 +19,7 @@ operator: fetch
 - **voteup**: 8934
 - **comments**: 423
 
-### 2 · Item
+### 2 · CLI 工具和 MCP 服务，哪个更适合 AI agent 的工具调用？
 
 - **rank**: 2
 - **question**: CLI 工具和 MCP 服务，哪个更适合 AI agent 的工具调用？

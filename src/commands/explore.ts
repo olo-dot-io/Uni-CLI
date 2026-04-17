@@ -21,6 +21,10 @@ import {
   type EndpointEntry,
   type ScoredEndpoint,
 } from "../engine/endpoint-scorer.js";
+import { format, detectFormat } from "../output/formatter.js";
+import { makeCtx } from "../output/envelope.js";
+import { mapErrorToExitCode } from "../output/error-map.js";
+import type { OutputFormat } from "../types.js";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -69,6 +73,10 @@ export function registerExploreCommand(program: Command): void {
           json?: boolean;
         },
       ) => {
+        const startedAt = Date.now();
+        const ctx = makeCtx("core.explore", startedAt);
+        const rootFmt = program.opts().format as OutputFormat | undefined;
+        const fmt = detectFormat(opts.json ? "json" : rootFmt);
         const timeoutMs = (parseInt(opts.timeout, 10) || 30) * 1000;
         const siteName = opts.site ?? extractSiteName(url);
         const jsonOnly = opts.json ?? false;
@@ -178,15 +186,14 @@ export function registerExploreCommand(program: Command): void {
           }
 
           if (allRequests.length === 0) {
-            if (jsonOnly) {
-              console.log(JSON.stringify({ endpoints: [], auth: null }));
-            } else {
-              console.error(
-                chalk.yellow(
-                  "No API requests captured. Try --interact or interact manually.",
-                ),
-              );
-            }
+            const data = { site: siteName, endpoints: [], auth: null };
+            ctx.duration_ms = Date.now() - startedAt;
+            console.log(format(data, undefined, fmt, ctx));
+            console.error(
+              chalk.yellow(
+                "\n  No API requests captured. Try --interact or interact manually.",
+              ),
+            );
             return;
           }
 
@@ -227,32 +234,32 @@ export function registerExploreCommand(program: Command): void {
           );
 
           // Output
-          if (jsonOnly) {
-            console.log(
-              JSON.stringify(
-                {
-                  site: siteName,
-                  endpointCount: scored.length,
-                  topEndpoints: scored.slice(0, 10),
-                  capabilities,
-                  auth,
-                  outputDir: outDir,
-                },
-                null,
-                2,
-              ),
-            );
-          } else {
+          const data = {
+            site: siteName,
+            endpointCount: scored.length,
+            topEndpoints: scored.slice(0, 10),
+            capabilities,
+            auth,
+            outputDir: outDir,
+          };
+          ctx.duration_ms = Date.now() - startedAt;
+          console.log(format(data, undefined, fmt, ctx));
+
+          if (!jsonOnly) {
             printSummary(siteName, scored, capabilities, auth, outDir);
           }
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          if (jsonOnly) {
-            console.error(JSON.stringify({ error: msg }));
-          } else {
-            console.error(chalk.red(`Explore failed: ${msg}`));
-          }
-          process.exitCode = 1;
+          ctx.error = {
+            code: "internal_error",
+            message: msg,
+            suggestion:
+              "Check browser connectivity with: unicli browser status",
+            retryable: true,
+          };
+          ctx.duration_ms = Date.now() - startedAt;
+          console.error(format(null, undefined, fmt, ctx));
+          process.exitCode = mapErrorToExitCode(err);
         }
       },
     );

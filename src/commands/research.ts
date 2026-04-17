@@ -22,6 +22,11 @@ import {
   readResearchLog,
   type ResearchConfig,
 } from "../engine/research.js";
+import { ExitCode } from "../types.js";
+import type { OutputFormat } from "../types.js";
+import { format, detectFormat } from "../output/formatter.js";
+import { makeCtx } from "../output/envelope.js";
+import { errorTypeToCode, mapErrorToExitCode } from "../output/error-map.js";
 
 // ── Presets ──────────────────────────────────────────────────────────────
 
@@ -93,7 +98,6 @@ export function registerResearchCommand(program: Command): void {
       "preset config (reliability|coverage|freshness|security)",
     )
     .option("--guard <cmd>", "regression guard command")
-    .option("--json", "JSON output")
     .action(
       async (
         site: string,
@@ -103,21 +107,28 @@ export function registerResearchCommand(program: Command): void {
           iterations: string;
           preset?: string;
           guard?: string;
-          json?: boolean;
         },
       ) => {
+        const startedAt = Date.now();
+        const ctx = makeCtx("research.run", startedAt);
+        const fmt = detectFormat(
+          program.opts().format as OutputFormat | undefined,
+        );
+
         // Validate site name to prevent shell injection
         if (!/^[a-zA-Z0-9_-]+$/.test(site)) {
-          console.error(
-            chalk.red(
+          ctx.error = {
+            code: "invalid_input",
+            message:
               "Invalid site name. Only alphanumeric, hyphens, and underscores allowed.",
-            ),
-          );
-          process.exitCode = 1;
-          return;
+            suggestion: "Pass a site name like 'twitter' or 'hackernews'.",
+            retryable: false,
+          };
+          ctx.duration_ms = Date.now() - startedAt;
+          console.error(format(null, undefined, fmt, ctx));
+          process.exit(ExitCode.USAGE_ERROR);
         }
         const maxIterations = parseInt(opts.iterations, 10) || 10;
-        const jsonOnly = opts.json ?? false;
 
         // Build config from preset or explicit options
         let config: ResearchConfig;
@@ -129,13 +140,16 @@ export function registerResearchCommand(program: Command): void {
               presetName,
             )
           ) {
-            console.error(
-              chalk.red(
-                `Unknown preset: ${presetName}. Available: reliability, coverage, freshness, security`,
-              ),
-            );
-            process.exitCode = 1;
-            return;
+            ctx.error = {
+              code: "invalid_input",
+              message: `Unknown preset: ${presetName}`,
+              suggestion:
+                "Use one of: reliability, coverage, freshness, security",
+              retryable: false,
+            };
+            ctx.duration_ms = Date.now() - startedAt;
+            console.error(format(null, undefined, fmt, ctx));
+            process.exit(ExitCode.USAGE_ERROR);
           }
           const preset = buildPresetConfig(presetName, site);
           config = {
@@ -170,27 +184,29 @@ export function registerResearchCommand(program: Command): void {
         // Validate adapter exists
         const adapterDir = join("src", "adapters", site);
         if (!existsSync(adapterDir)) {
-          console.error(
-            chalk.red(`Adapter directory not found: ${adapterDir}`),
-          );
-          process.exitCode = 1;
-          return;
+          ctx.error = {
+            code: "not_found",
+            message: `Adapter directory not found: ${adapterDir}`,
+            suggestion: `Check the site name or run: unicli list`,
+            retryable: false,
+          };
+          ctx.duration_ms = Date.now() - startedAt;
+          console.error(format(null, undefined, fmt, ctx));
+          process.exit(ExitCode.USAGE_ERROR);
         }
 
-        if (!jsonOnly) {
-          console.error(chalk.cyan(`Research: ${site}`));
-          console.error(chalk.dim(`Goal: ${config.goal}`));
-          console.error(chalk.dim(`Iterations: ${maxIterations}`));
-          console.error("");
-        }
+        // Human-oriented header → stderr (Scene-6 pattern)
+        console.error(chalk.cyan(`Research: ${site}`));
+        console.error(chalk.dim(`Goal: ${config.goal}`));
+        console.error(chalk.dim(`Iterations: ${maxIterations}`));
+        console.error("");
 
         try {
           const results = await runResearchLoop(config, {
             onStatus: (msg) => {
-              if (!jsonOnly) console.error(chalk.dim(`  ${msg}`));
+              console.error(chalk.dim(`  ${msg}`));
             },
             onIteration: (result) => {
-              if (jsonOnly) return;
               const icon =
                 result.status === "keep"
                   ? chalk.green("✓")
@@ -211,39 +227,37 @@ export function registerResearchCommand(program: Command): void {
           const finalMetric = results[results.length - 1]?.metric ?? 0;
           const baselineMetric = results[0]?.metric ?? 0;
 
-          if (jsonOnly) {
-            console.log(
-              JSON.stringify(
-                {
-                  site,
-                  iterations: results.length - 1,
-                  kept,
-                  discarded,
-                  baselineMetric,
-                  finalMetric,
-                  improvement: finalMetric - baselineMetric,
-                  results,
-                },
-                null,
-                2,
-              ),
-            );
-          } else {
-            console.error("");
-            console.error(
-              chalk.cyan(
-                `Done: ${kept} kept, ${discarded} discarded, metric ${baselineMetric} → ${finalMetric}`,
-              ),
-            );
-          }
+          const data = {
+            site,
+            iterations: results.length - 1,
+            kept,
+            discarded,
+            baseline_metric: baselineMetric,
+            final_metric: finalMetric,
+            improvement: finalMetric - baselineMetric,
+            results,
+          };
+
+          ctx.duration_ms = Date.now() - startedAt;
+          console.log(format(data, undefined, fmt, ctx));
+
+          console.error("");
+          console.error(
+            chalk.cyan(
+              `Done: ${kept} kept, ${discarded} discarded, metric ${baselineMetric} → ${finalMetric}`,
+            ),
+          );
         } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          if (jsonOnly) {
-            console.error(JSON.stringify({ error: msg }));
-          } else {
-            console.error(chalk.red(`Research failed: ${msg}`));
-          }
-          process.exitCode = 1;
+          const message = err instanceof Error ? err.message : String(err);
+          ctx.error = {
+            code: errorTypeToCode(err),
+            message,
+            suggestion: `Re-run with --preset reliability, or inspect ${join("src", "adapters", site)}`,
+            retryable: false,
+          };
+          ctx.duration_ms = Date.now() - startedAt;
+          console.error(format(null, undefined, fmt, ctx));
+          process.exit(mapErrorToExitCode(err));
         }
       },
     );
@@ -254,32 +268,26 @@ export function registerResearchCommand(program: Command): void {
     .description("Show research improvement history")
     .option("--since <duration>", "time range (e.g. 7d, 24h)", "7d")
     .option("--site <site>", "filter by site")
-    .option("--json", "JSON output")
-    .action((opts: { since: string; site?: string; json?: boolean }) => {
+    .action((opts: { since: string; site?: string }) => {
+      const startedAt = Date.now();
+      const ctx = makeCtx("research.log", startedAt);
+      const fmt = detectFormat(
+        program.opts().format as OutputFormat | undefined,
+      );
+
       const sinceMs = parseSinceDuration(opts.since);
       const log = readResearchLog({ site: opts.site, since: sinceMs });
 
-      if (opts.json) {
-        console.log(JSON.stringify(log, null, 2));
-        return;
-      }
+      ctx.duration_ms = Date.now() - startedAt;
+      console.log(
+        format(log, ["iteration", "status", "metric", "description"], fmt, ctx),
+      );
 
       if (log.length === 0) {
-        console.log(chalk.dim("No research history found."));
-        return;
-      }
-
-      console.log(chalk.cyan(`Research log (since ${opts.since}):`));
-      console.log("");
-      for (const entry of log) {
-        const icon =
-          entry.status === "keep"
-            ? chalk.green("✓")
-            : entry.status === "baseline"
-              ? chalk.blue("◎")
-              : chalk.red("✗");
-        console.log(
-          `  ${icon} #${entry.iteration} ${entry.status.padEnd(12)} metric=${entry.metric} ${chalk.dim(entry.description)}`,
+        console.error(chalk.dim("\n  No research history found."));
+      } else {
+        console.error(
+          chalk.dim(`\n  ${log.length} entry(ies) since ${opts.since}`),
         );
       }
     });
@@ -288,16 +296,28 @@ export function registerResearchCommand(program: Command): void {
   research
     .command("report")
     .description("Aggregate research statistics")
-    .option("--json", "JSON output")
-    .action((opts: { json?: boolean }) => {
+    .action(() => {
+      const startedAt = Date.now();
+      const ctx = makeCtx("research.report", startedAt);
+      const fmt = detectFormat(
+        program.opts().format as OutputFormat | undefined,
+      );
+
       const log = readResearchLog();
 
       if (log.length === 0) {
-        if (opts.json) {
-          console.log(JSON.stringify({ totalIterations: 0 }));
-        } else {
-          console.log(chalk.dim("No research history found."));
-        }
+        const data = {
+          total_iterations: 0,
+          kept: 0,
+          discarded: 0,
+          crashed: 0,
+          success_rate: "0%",
+          total_time_ms: 0,
+          avg_iteration_ms: 0,
+        };
+        ctx.duration_ms = Date.now() - startedAt;
+        console.log(format(data, undefined, fmt, ctx));
+        console.error(chalk.dim("\n  No research history found."));
         return;
       }
 
@@ -306,27 +326,23 @@ export function registerResearchCommand(program: Command): void {
       const crashed = log.filter((r) => r.status === "crash").length;
       const totalMs = log.reduce((sum, r) => sum + r.durationMs, 0);
 
-      const report = {
-        totalIterations: log.length,
+      const data = {
+        total_iterations: log.length,
         kept,
         discarded,
         crashed,
-        successRate:
-          log.length > 0 ? ((kept / log.length) * 100).toFixed(1) + "%" : "0%",
-        totalTimeMs: totalMs,
-        avgIterationMs: Math.round(totalMs / log.length),
+        success_rate: ((kept / log.length) * 100).toFixed(1) + "%",
+        total_time_ms: totalMs,
+        avg_iteration_ms: Math.round(totalMs / log.length),
       };
 
-      if (opts.json) {
-        console.log(JSON.stringify(report, null, 2));
-      } else {
-        console.log(chalk.cyan("Research Report:"));
-        console.log(`  Total iterations: ${report.totalIterations}`);
-        console.log(`  Kept: ${chalk.green(String(kept))}`);
-        console.log(`  Discarded: ${chalk.red(String(discarded))}`);
-        console.log(`  Crashed: ${chalk.yellow(String(crashed))}`);
-        console.log(`  Success rate: ${report.successRate}`);
-        console.log(`  Total time: ${Math.round(totalMs / 1000)}s`);
-      }
+      ctx.duration_ms = Date.now() - startedAt;
+      console.log(format(data, undefined, fmt, ctx));
+
+      console.error(
+        chalk.dim(
+          `\n  ${log.length} total: ${chalk.green(String(kept))} kept, ${chalk.red(String(discarded))} discarded, ${chalk.yellow(String(crashed))} crashed`,
+        ),
+      );
     });
 }

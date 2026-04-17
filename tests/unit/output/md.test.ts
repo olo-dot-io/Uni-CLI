@@ -264,6 +264,98 @@ describe("renderMd", () => {
     expect(out!).toContain("[unserializable]");
   });
 
+  // ── v0.213.1 Task T12 / Fix #19 — pickTitle fallback ──────────────────────
+
+  it("pickTitle falls back to `question` when title/name/id are absent (zhihu.answers shape)", () => {
+    const env = makeEnvelope({ command: "zhihu.answers", duration_ms: 1 }, [
+      {
+        rank: 1,
+        question: "AI agent 和传统 RPA 有什么本质区别？",
+        excerpt: "最核心的区别在于 AI agent 具备语义理解和自适应能力。",
+        voteup: 8934,
+      },
+    ]);
+    const out = renderMd(env);
+    expect(out).toMatch(/^### 1 · AI agent 和传统 RPA 有什么本质区别？$/m);
+    expect(out).not.toMatch(/^### 1 · Item$/m);
+  });
+
+  it("pickTitle priority: title > name > id > question > excerpt > summary > Item", () => {
+    const shapes: Array<{ row: Record<string, unknown>; expected: string }> = [
+      { row: { title: "T", name: "N", id: "I" }, expected: "T" },
+      { row: { name: "N", id: "I", question: "Q" }, expected: "N" },
+      { row: { id: "I", question: "Q" }, expected: "I" },
+      { row: { question: "Q", excerpt: "E" }, expected: "Q" },
+      { row: { excerpt: "E", summary: "S" }, expected: "E" },
+      { row: { summary: "S" }, expected: "S" },
+      { row: { rank: 1 }, expected: "Item" },
+    ];
+    for (const { row, expected } of shapes) {
+      const env = makeEnvelope({ command: "t.p", duration_ms: 1 }, [row]);
+      const out = renderMd(env);
+      const expectedLine = `### 1 · ${expected}`;
+      expect(out.split("\n")).toContain(expectedLine);
+    }
+  });
+
+  // ── v0.213.1 Task T12 / Fix #14 — content[] canonical rendering ───────────
+
+  it("renders envelope.content[] as ## Content section with resource blocks", () => {
+    const env = makeEnvelope(
+      { command: "unsplash.download", duration_ms: 42 },
+      [{ path: "/tmp/pic.jpg", mime: "image/jpeg", bytes: 12345 }],
+      [
+        {
+          type: "resource",
+          uri: "file:///tmp/pic.jpg",
+        },
+        {
+          type: "text",
+          text: "downloaded 1 file, 12345 bytes total",
+        },
+      ],
+    );
+    const out = renderMd(env);
+    expect(out).toContain("## Content");
+    expect(out).toContain("- **resource**: file:///tmp/pic.jpg");
+    expect(out).toContain("- **text**: downloaded 1 file, 12345 bytes total");
+    // Content section renders between ## Data and ## Context (or end)
+    const dataIdx = out.indexOf("## Data");
+    const contentIdx = out.indexOf("## Content");
+    expect(dataIdx).toBeGreaterThan(-1);
+    expect(contentIdx).toBeGreaterThan(dataIdx);
+  });
+
+  it("omits ## Content section when content[] is empty or absent", () => {
+    const noContent = makeEnvelope({ command: "t.nc", duration_ms: 1 }, [
+      { id: "x" },
+    ]);
+    expect(renderMd(noContent)).not.toContain("## Content");
+
+    const emptyContent = makeEnvelope(
+      { command: "t.ec", duration_ms: 1 },
+      [{ id: "x" }],
+      [],
+    );
+    expect(renderMd(emptyContent)).not.toContain("## Content");
+  });
+
+  it("content[] resource without uri renders (empty); image without uri/data renders (empty)", () => {
+    const env = makeEnvelope(
+      { command: "t.ci", duration_ms: 1 },
+      [{ id: "x" }],
+      [
+        { type: "resource" },
+        { type: "image" },
+        { type: "image", data: "ZmFrZQ==" },
+      ],
+    );
+    const out = renderMd(env);
+    expect(out).toContain("- **resource**: (empty)");
+    expect(out).toContain("- **image**: (empty)");
+    expect(out).toContain("- **image**: (inline base64 data)");
+  });
+
   it("adapter_version with embedded newline does not break frontmatter", () => {
     const env = makeEnvelope(
       {

@@ -9,63 +9,17 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import { getAllAdapters } from "../registry.js";
-import { runPipeline, PipelineError } from "../engine/executor.js";
-import { BridgeConnectionError } from "../browser/bridge.js";
+import { runPipeline } from "../engine/executor.js";
 import { format, detectFormat } from "../output/formatter.js";
+import {
+  errorTypeToCode,
+  mapErrorToExitCode,
+  errorToAgentFields,
+} from "../output/error-map.js";
 import { recordUsage } from "../runtime/usage-ledger.js";
 import { ExitCode } from "../types.js";
 import type { OutputFormat } from "../types.js";
 import type { AgentContext, AgentError } from "../output/envelope.js";
-
-/**
- * Map a caught error to an AgentError code string following the self-repair
- * contract. Covers the most common pipeline / network / HTTP failure modes.
- */
-function errorTypeToCode(err: unknown): string {
-  if (err instanceof PipelineError) {
-    const { errorType, statusCode } = err.detail;
-    if (
-      statusCode === 401 ||
-      statusCode === 403 ||
-      (errorType === "http_error" && (statusCode === 401 || statusCode === 403))
-    )
-      return "auth_required";
-    if (statusCode === 404) return "not_found";
-    if (statusCode === 429) return "rate_limited";
-    if (errorType === "selector_miss") return "selector_miss";
-    if (errorType === "empty_result") return "empty_result";
-    if (errorType === "timeout") return "network_error";
-    return "internal_error";
-  }
-  const message = err instanceof Error ? err.message : String(err);
-  if (
-    /ETIMEDOUT|ENOTFOUND|ECONNREFUSED|ECONNRESET|socket hang up/i.test(message)
-  )
-    return "network_error";
-  if (/401|403|auth/i.test(message)) return "auth_required";
-  if (/404/i.test(message)) return "not_found";
-  if (/429|rate.?limit/i.test(message)) return "rate_limited";
-  return "internal_error";
-}
-
-/** Map a caught error to the appropriate sysexits exit code. */
-function mapErrorToExitCode(err: unknown): number {
-  if (err instanceof PipelineError) {
-    const { errorType, statusCode } = err.detail;
-    if (statusCode === 401 || statusCode === 403) return ExitCode.AUTH_REQUIRED;
-    if (errorType === "empty_result") return ExitCode.EMPTY_RESULT;
-    return ExitCode.GENERIC_ERROR;
-  }
-  if (err instanceof BridgeConnectionError) return ExitCode.SERVICE_UNAVAILABLE;
-  const message = err instanceof Error ? err.message : String(err);
-  if (
-    /ETIMEDOUT|ENOTFOUND|ECONNREFUSED|ECONNRESET|socket hang up|daemon failed/i.test(
-      message,
-    )
-  )
-    return ExitCode.TEMP_FAILURE;
-  return ExitCode.GENERIC_ERROR;
-}
 
 /**
  * Register one Commander sub-command per adapter×command.
@@ -251,32 +205,11 @@ export function registerAdapterDispatch(program: Command): void {
           process.exit(exitCode);
         } catch (err) {
           const adapterPath = `src/adapters/${adapter.name}/${cmdName}.yaml`;
+          const fields = errorToAgentFields(err, adapterPath, adapter.name);
           const agentErr: AgentError = {
             code: errorTypeToCode(err),
             message: err instanceof Error ? err.message : String(err),
-            adapter_path:
-              err instanceof PipelineError ? adapterPath : undefined,
-            step: err instanceof PipelineError ? err.detail.step : undefined,
-            suggestion:
-              err instanceof PipelineError
-                ? err.detail.suggestion
-                : err instanceof BridgeConnectionError
-                  ? err.suggestion
-                  : `Run 'unicli test ${adapter.name}' to diagnose, or report this error.`,
-            retryable:
-              err instanceof PipelineError
-                ? (err.detail.retryable ?? false)
-                : err instanceof BridgeConnectionError
-                  ? err.retryable
-                  : /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|socket hang up|daemon failed/i.test(
-                      err instanceof Error ? err.message : String(err),
-                    ),
-            alternatives:
-              err instanceof PipelineError
-                ? (err.detail.alternatives ?? [])
-                : err instanceof BridgeConnectionError
-                  ? err.alternatives
-                  : [],
+            ...fields,
           };
           const errCtx: AgentContext = {
             command: `${adapter.name}.${cmdName}`,

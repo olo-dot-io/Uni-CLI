@@ -250,7 +250,10 @@ export interface PipelineErrorDetail {
     | "parse_error"
     | "timeout"
     | "expression_error"
-    | "assertion_failed";
+    | "assertion_failed"
+    | "stale_ref"
+    | "ambiguous"
+    | "ref_not_found";
   url?: string;
   statusCode?: number;
   responsePreview?: string;

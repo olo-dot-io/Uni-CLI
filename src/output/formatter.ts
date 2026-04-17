@@ -14,7 +14,9 @@
  * at least command name and duration_ms. This is intentional: the compiler
  * enforces that every call site plumbs through command metadata.
  *
- * Non-TTY stdout and agent user-agents both default to "md" (v2 envelope MD).
+ * `detectFormat()` resolves to `md` whenever no explicit format is given
+ * (non-TTY pipes, agent-UA env, and interactive TTY all render to Markdown
+ * for uniform agent-consumable output).
  */
 
 import type { OutputFormat } from "../types.js";
@@ -61,35 +63,53 @@ export function format(
 /**
  * Auto-pick output format.
  *  - explicit param → that format
- *  - env UNICLI_OUTPUT or OUTPUT ∈ {md|json|yaml|csv|compact|table} → that format
- *  - non-TTY stdout OR isAgentUA() → "md"
- *  - TTY human → "md"
+ *  - env `UNICLI_OUTPUT` ∈ {md|json|yaml|csv|compact|table} → that format
+ *  - legacy env `OUTPUT` (deprecated in v0.213.1, removed in v0.214) → that
+ *    format with a one-shot stderr warning
+ *  - otherwise → "md" (uniform agent-consumable default for pipes, agent-UA
+ *    env, and interactive TTY)
  */
 export function detectFormat(explicit?: OutputFormat): OutputFormat {
   if (explicit) return explicit;
-  const envOverride = (
-    process.env.UNICLI_OUTPUT ?? process.env.OUTPUT
-  )?.toLowerCase();
-  if (
-    envOverride &&
-    ["md", "json", "yaml", "csv", "compact", "table"].includes(envOverride)
-  ) {
-    return envOverride as OutputFormat;
+  const envFmt = process.env.UNICLI_OUTPUT?.toLowerCase();
+  if (envFmt && isOutputFormat(envFmt)) return envFmt;
+  if (process.env.OUTPUT !== undefined) {
+    const legacyFmt = process.env.OUTPUT.toLowerCase();
+    if (isOutputFormat(legacyFmt)) {
+      process.stderr.write(
+        "[WARN] OUTPUT env var deprecated in v0.213.1 (use UNICLI_OUTPUT — bare OUTPUT collides with CI). OUTPUT will be removed in v0.214.\n",
+      );
+      return legacyFmt;
+    }
   }
-  if (!process.stdout.isTTY) return "md";
-  if (isAgentUA()) return "md";
+  // Non-TTY pipes, agent-UA env, and interactive TTY all render to Markdown
+  // for uniform agent-consumable output.
   return "md";
 }
 
-/** Detect whether an AI agent / coding tool invoked us. Public for tests. */
+/** Type guard for OutputFormat string values. */
+function isOutputFormat(s: string): s is OutputFormat {
+  return (
+    s === "md" ||
+    s === "json" ||
+    s === "yaml" ||
+    s === "csv" ||
+    s === "compact" ||
+    s === "table"
+  );
+}
+
+/**
+ * Detect whether an AI agent / coding tool invoked us via one of the five
+ * canonical agent-harness env vars. Public for tests.
+ */
 export function isAgentUA(): boolean {
   return Boolean(
     process.env.CLAUDE_CODE ||
     process.env.CODEX_CLI ||
     process.env.OPENCODE ||
     process.env.HERMES_AGENT ||
-    process.env.UNICLI_AGENT ||
-    /Claude-Code|Codex|Agent|LLM/i.test(process.env.USER_AGENT ?? ""),
+    process.env.UNICLI_AGENT,
   );
 }
 

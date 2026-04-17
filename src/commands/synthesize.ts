@@ -13,6 +13,11 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { isUsefulEndpoint } from "../engine/analysis.js";
 import type { ScoredEndpoint } from "../engine/endpoint-scorer.js";
+import { ExitCode } from "../types.js";
+import type { OutputFormat } from "../types.js";
+import { format, detectFormat } from "../output/formatter.js";
+import { makeCtx } from "../output/envelope.js";
+import { errorTypeToCode, mapErrorToExitCode } from "../output/error-map.js";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -38,10 +43,14 @@ export function registerSynthesizeCommand(program: Command): void {
     .command("synthesize <site>")
     .description("Generate YAML adapter candidates from explore results")
     .option("--max <n>", "maximum candidates to generate", "10")
-    .option("--json", "output JSON only (for piping)")
-    .action(async (site: string, opts: { max: string; json?: boolean }) => {
+    .action(async (site: string, opts: { max: string }) => {
+      const startedAt = Date.now();
+      const ctx = makeCtx("core.synthesize", startedAt);
+      const fmt = detectFormat(
+        program.opts().format as OutputFormat | undefined,
+      );
+
       const maxCandidates = parseInt(opts.max, 10) || 10;
-      const jsonOnly = opts.json ?? false;
 
       const exploreDir = join(homedir(), ".unicli", "explore", site);
       const endpointsPath = join(exploreDir, "endpoints.json");
@@ -49,14 +58,15 @@ export function registerSynthesizeCommand(program: Command): void {
 
       // Validate explore data exists
       if (!existsSync(endpointsPath)) {
-        const msg = `No explore data found for "${site}". Run: unicli explore <url> --site ${site}`;
-        if (jsonOnly) {
-          console.error(JSON.stringify({ error: msg }));
-        } else {
-          console.error(chalk.red(msg));
-        }
-        process.exitCode = 1;
-        return;
+        ctx.error = {
+          code: "not_found",
+          message: `No explore data found for "${site}"`,
+          suggestion: `Run: unicli explore <url> --site ${site}`,
+          retryable: false,
+        };
+        ctx.duration_ms = Date.now() - startedAt;
+        console.error(format(null, undefined, fmt, ctx));
+        process.exit(ExitCode.USAGE_ERROR);
       }
 
       try {
@@ -96,23 +106,27 @@ export function registerSynthesizeCommand(program: Command): void {
           .slice(0, maxCandidates);
 
         if (topEndpoints.length === 0) {
-          const msg =
-            "No useful endpoints found. Re-run unicli explore to capture more data.";
-          if (jsonOnly) {
-            console.error(JSON.stringify({ error: msg }));
-          } else {
-            console.error(chalk.yellow(msg));
-          }
+          const data = {
+            site,
+            candidate_count: 0,
+            candidates: [] as CandidateInfo[],
+            candidates_dir: join(exploreDir, "candidates"),
+          };
+          ctx.duration_ms = Date.now() - startedAt;
+          console.log(format(data, undefined, fmt, ctx));
+          console.error(
+            chalk.yellow(
+              "\n  No useful endpoints found. Re-run unicli explore to capture more data.",
+            ),
+          );
           return;
         }
 
-        if (!jsonOnly) {
-          process.stderr.write(
-            chalk.bold(
-              `Synthesizing ${topEndpoints.length} adapter candidates for ${site}...\n\n`,
-            ),
-          );
-        }
+        console.error(
+          chalk.bold(
+            `Synthesizing ${topEndpoints.length} adapter candidates for ${site}...\n`,
+          ),
+        );
 
         // Generate YAML candidates
         const candidatesDir = join(exploreDir, "candidates");
@@ -143,15 +157,12 @@ export function registerSynthesizeCommand(program: Command): void {
             strategy,
           });
 
-          if (!jsonOnly) {
-            process.stderr.write(
-              chalk.green(`  ✓ ${name}`) +
-                chalk.dim(
-                  ` (strategy: ${strategy}${ep.capability ? `, capability: ${ep.capability}` : ""})`,
-                ) +
-                "\n",
-            );
-          }
+          console.error(
+            chalk.green(`  ✓ ${name}`) +
+              chalk.dim(
+                ` (strategy: ${strategy}${ep.capability ? `, capability: ${ep.capability}` : ""})`,
+              ),
+          );
         }
 
         // Write candidates index
@@ -161,41 +172,38 @@ export function registerSynthesizeCommand(program: Command): void {
           "utf-8",
         );
 
-        // Output
-        if (jsonOnly) {
-          console.log(
-            JSON.stringify(
-              {
-                site,
-                candidateCount: candidates.length,
-                candidates,
-                candidatesDir,
-              },
-              null,
-              2,
-            ),
-          );
-        } else {
-          process.stderr.write(
-            chalk.bold(
-              `\n${candidates.length} candidates written to ${candidatesDir}\n`,
-            ),
-          );
-          process.stderr.write(
-            chalk.dim(`Index: ${join(exploreDir, "candidates.json")}\n`),
-          );
-          process.stderr.write(
-            chalk.dim(`Next: unicli generate <url> --site ${site}\n\n`),
-          );
-        }
+        const data = {
+          site,
+          candidate_count: candidates.length,
+          candidates,
+          candidates_dir: candidatesDir,
+        };
+
+        ctx.duration_ms = Date.now() - startedAt;
+        console.log(format(data, undefined, fmt, ctx));
+
+        console.error(
+          chalk.bold(
+            `\n${candidates.length} candidate(s) written to ${candidatesDir}`,
+          ),
+        );
+        console.error(
+          chalk.dim(`Index: ${join(exploreDir, "candidates.json")}`),
+        );
+        console.error(
+          chalk.dim(`Next: unicli generate <url> --site ${site}\n`),
+        );
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        if (jsonOnly) {
-          console.error(JSON.stringify({ error: msg }));
-        } else {
-          console.error(chalk.red(`Synthesize failed: ${msg}`));
-        }
-        process.exitCode = 1;
+        const message = err instanceof Error ? err.message : String(err);
+        ctx.error = {
+          code: errorTypeToCode(err),
+          message,
+          suggestion: `Re-run unicli explore to refresh endpoints.json`,
+          retryable: false,
+        };
+        ctx.duration_ms = Date.now() - startedAt;
+        console.error(format(null, undefined, fmt, ctx));
+        process.exit(mapErrorToExitCode(err));
       }
     });
 }
@@ -213,6 +221,83 @@ function pickStrategy(auth: AuthInfo, _ep: ScoredEndpoint): string {
 
 // ── YAML Generation ───────────────────────────────────────────────────
 
+function parseResponseBody(ep: ScoredEndpoint): unknown {
+  try {
+    return ep.responseBody ? JSON.parse(ep.responseBody) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function getBaseUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    return `${u.protocol}//${u.hostname}`;
+  } catch {
+    return url;
+  }
+}
+
+function getPathname(url: string): string {
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return url;
+  }
+}
+
+function pipelineMapLines(fields: string[]): string[] {
+  if (fields.length === 0) return [];
+  const lines = ["  - map:"];
+  for (const field of fields) {
+    lines.push(`      ${field}: "\${{ item.${field} }}"`);
+  }
+  return lines;
+}
+
+function pipelineSelectLine(selectPath: string): string[] {
+  return selectPath ? [`  - select: "${selectPath}"`] : [];
+}
+
+function buildApiPipeline(
+  ep: ScoredEndpoint,
+  strategy: string,
+  selectPath: string,
+  fields: string[],
+): string[] {
+  return [
+    "type: web-api",
+    `strategy: ${strategy}`,
+    "pipeline:",
+    "  - fetch:",
+    `      url: "${ep.url}"`,
+    ...pipelineSelectLine(selectPath),
+    ...pipelineMapLines(fields),
+    `  - limit: "\${{ args.limit | default(20) }}"`,
+  ];
+}
+
+function buildBrowserPipeline(
+  ep: ScoredEndpoint,
+  selectPath: string,
+  fields: string[],
+): string[] {
+  return [
+    "type: browser",
+    "strategy: intercept",
+    "pipeline:",
+    "  - navigate:",
+    `      url: "${getBaseUrl(ep.url)}"`,
+    "      settleMs: 2000",
+    "  - intercept:",
+    `      pattern: "${getPathname(ep.url)}"`,
+    "      wait: 5000",
+    ...pipelineSelectLine(selectPath),
+    ...pipelineMapLines(fields),
+    `  - limit: "\${{ args.limit | default(20) }}"`,
+  ];
+}
+
 function buildYaml(
   site: string,
   name: string,
@@ -222,118 +307,24 @@ function buildYaml(
   const description = ep.capability
     ? `Auto-generated: ${ep.capability}`
     : `Auto-generated from ${deriveCommandName(ep.url)}`;
-
-  // Detect the select path for nested arrays
-  let parsedBody: unknown;
-  try {
-    parsedBody = ep.responseBody ? JSON.parse(ep.responseBody) : undefined;
-  } catch {
-    parsedBody = undefined;
-  }
-  const selectPath = detectSelectPath(parsedBody);
-
-  // Build field map from detected fields
+  const selectPath = detectSelectPath(parseResponseBody(ep));
   const fields = ep.detectedFields.slice(0, 10);
   const columns = fields.slice(0, 6);
 
-  const lines: string[] = [
+  const header = [
     `site: ${site}`,
     `name: ${name}`,
     `description: "${description}"`,
   ];
+  const body =
+    strategy === "public" || strategy === "cookie" || strategy === "header"
+      ? buildApiPipeline(ep, strategy, selectPath, fields)
+      : buildBrowserPipeline(ep, selectPath, fields);
+  const footer = [
+    columns.length > 0 ? `columns: [${columns.join(", ")}]` : "columns: []",
+  ];
 
-  if (strategy === "public") {
-    // Public API pipeline: fetch + select + map + limit
-    lines.push("type: web-api");
-    lines.push("strategy: public");
-    lines.push("pipeline:");
-    lines.push(`  - fetch:`);
-    lines.push(`      url: "${ep.url}"`);
-
-    if (selectPath) {
-      lines.push(`  - select: "${selectPath}"`);
-    }
-
-    if (fields.length > 0) {
-      lines.push("  - map:");
-      for (const field of fields) {
-        lines.push(`      ${field}: "\${{ item.${field} }}"`);
-      }
-    }
-
-    lines.push(`  - limit: "\${{ args.limit | default(20) }}"`);
-  } else if (strategy === "cookie" || strategy === "header") {
-    // Cookie/header API pipeline: fetch with cookie injection
-    lines.push("type: web-api");
-    lines.push(`strategy: ${strategy}`);
-    lines.push("pipeline:");
-    lines.push(`  - fetch:`);
-    lines.push(`      url: "${ep.url}"`);
-
-    if (selectPath) {
-      lines.push(`  - select: "${selectPath}"`);
-    }
-
-    if (fields.length > 0) {
-      lines.push("  - map:");
-      for (const field of fields) {
-        lines.push(`      ${field}: "\${{ item.${field} }}"`);
-      }
-    }
-
-    lines.push(`  - limit: "\${{ args.limit | default(20) }}"`);
-  } else {
-    // Browser intercept pipeline: navigate + intercept + select + map + limit
-    lines.push("type: browser");
-    lines.push("strategy: intercept");
-    lines.push("pipeline:");
-
-    // Extract base URL from endpoint
-    let baseUrl: string;
-    try {
-      const u = new URL(ep.url);
-      baseUrl = `${u.protocol}//${u.hostname}`;
-    } catch {
-      baseUrl = ep.url;
-    }
-
-    lines.push(`  - navigate:`);
-    lines.push(`      url: "${baseUrl}"`);
-    lines.push(`      settleMs: 2000`);
-
-    // Extract URL pattern for intercept
-    let pattern: string;
-    try {
-      pattern = new URL(ep.url).pathname;
-    } catch {
-      pattern = ep.url;
-    }
-
-    lines.push(`  - intercept:`);
-    lines.push(`      pattern: "${pattern}"`);
-    lines.push(`      wait: 5000`);
-
-    if (selectPath) {
-      lines.push(`  - select: "${selectPath}"`);
-    }
-
-    if (fields.length > 0) {
-      lines.push("  - map:");
-      for (const field of fields) {
-        lines.push(`      ${field}: "\${{ item.${field} }}"`);
-      }
-    }
-
-    lines.push(`  - limit: "\${{ args.limit | default(20) }}"`);
-  }
-
-  if (columns.length > 0) {
-    lines.push(`columns: [${columns.join(", ")}]`);
-  } else {
-    lines.push("columns: []");
-  }
-
-  return lines.join("\n") + "\n";
+  return [...header, ...body, ...footer].join("\n") + "\n";
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────

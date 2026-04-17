@@ -18,6 +18,11 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SERVER_PATH = join(__dirname, "..", "..", "src", "mcp", "server.ts");
 
+// Windows Node 20 spawns `npx tsx` ~3x slower than Linux/macOS; the tools/list
+// JSON-RPC round-trip here then blows past the 5s vitest default. Give the
+// expanded-mode tests Windows headroom; keep other platforms tight.
+const MCP_CALL_TIMEOUT_MS = process.platform === "win32" ? 15_000 : 5_000;
+
 function sendRequest(
   proc: ChildProcess,
   request: Record<string, unknown>,
@@ -91,23 +96,27 @@ describe("MCP server — expanded mode (--expanded)", () => {
     proc.kill();
   });
 
-  it("registers many tools (one per adapter command + 4 default)", async () => {
-    const response = await sendRequest(proc, {
-      jsonrpc: "2.0",
-      id: 100,
-      method: "tools/list",
-      params: {},
-    });
+  it(
+    "registers many tools (one per adapter command + 4 default)",
+    async () => {
+      const response = await sendRequest(proc, {
+        jsonrpc: "2.0",
+        id: 100,
+        method: "tools/list",
+        params: {},
+      });
 
-    const result = response.result as { tools: Array<{ name: string }> };
-    // Default mode is exactly 4; expanded must be many more than that
-    expect(result.tools.length).toBeGreaterThan(50);
-    const names = result.tools.map((t) => t.name);
-    expect(names).toContain("unicli_list");
-    expect(names).toContain("unicli_run");
-    expect(names).toContain("unicli_search");
-    expect(names).toContain("unicli_explore");
-  });
+      const result = response.result as { tools: Array<{ name: string }> };
+      // Default mode is exactly 4; expanded must be many more than that
+      expect(result.tools.length).toBeGreaterThan(50);
+      const names = result.tools.map((t) => t.name);
+      expect(names).toContain("unicli_list");
+      expect(names).toContain("unicli_run");
+      expect(names).toContain("unicli_search");
+      expect(names).toContain("unicli_explore");
+    },
+    MCP_CALL_TIMEOUT_MS,
+  );
 
   it("uses the unicli_<site>_<command> naming convention", async () => {
     const response = await sendRequest(proc, {
@@ -225,22 +234,26 @@ describe("MCP server — expanded mode (--expanded)", () => {
     expect(names.has("unicli_godot_scene_export")).toBe(true);
   });
 
-  it("dispatches a hyphenated command name via the registry lookup", async () => {
-    // Verify the dispatcher resolves a tool and tries to execute it.
-    // hermes adapter is always registered (detect: doesn't gate registration).
-    const response = await sendRequest(proc, {
-      jsonrpc: "2.0",
-      id: 106,
-      method: "tools/call",
-      params: {
-        name: "unicli_hermes_skills_list",
-        arguments: {},
-      },
-    });
-    // The call should NOT return an MCP error object; it returns a result
-    // with either the adapter output or a pipeline error wrapped in text.
-    // What matters: error must be undefined (no "Unknown tool").
-    expect(response.error).toBeUndefined();
-    expect(response.result).toBeDefined();
-  });
+  it(
+    "dispatches a hyphenated command name via the registry lookup",
+    async () => {
+      // Verify the dispatcher resolves a tool and tries to execute it.
+      // hermes adapter is always registered (detect: doesn't gate registration).
+      const response = await sendRequest(proc, {
+        jsonrpc: "2.0",
+        id: 106,
+        method: "tools/call",
+        params: {
+          name: "unicli_hermes_skills_list",
+          arguments: {},
+        },
+      });
+      // The call should NOT return an MCP error object; it returns a result
+      // with either the adapter output or a pipeline error wrapped in text.
+      // What matters: error must be undefined (no "Unknown tool").
+      expect(response.error).toBeUndefined();
+      expect(response.result).toBeDefined();
+    },
+    MCP_CALL_TIMEOUT_MS,
+  );
 });

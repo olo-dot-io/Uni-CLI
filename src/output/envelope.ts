@@ -13,6 +13,13 @@ export type SchemaVersion = "2";
 
 export type Surface = "web" | "desktop" | "system" | "mobile";
 
+/**
+ * Default surface for v0.213.x. Will expand to "desktop" / "system" / "mobile"
+ * when v0.214 Nikolayev lands Computer Use operators. Until then every adapter
+ * execution path runs on a web surface (CDP browser + HTTP).
+ */
+export const DEFAULT_SURFACE: Surface = "web";
+
 /** MCP-style content block carried alongside structured data. */
 export interface AgentContent {
   type: "text" | "image" | "resource";
@@ -34,7 +41,38 @@ export interface AgentMeta {
   };
 }
 
-/** Structured error payload following sysexits.h / self-repair contract. */
+/**
+ * Structured error payload following sysexits.h / self-repair contract.
+ *
+ * `code` is an open string to preserve forward compatibility. The canonical
+ * 15-value enum emitted by the current codebase, grouped by category:
+ *
+ * Transport / network (5):
+ *   - `network_error`      — TCP/TLS/DNS failure, socket closed, timeout at transport layer
+ *   - `rate_limited`       — 429 or upstream quota exhausted
+ *   - `upstream_error`     — 5xx or gateway returned malformed body
+ *   - `api_error`          — 4xx non-auth response from upstream API
+ *   - `not_authenticated`  — request rejected because no/expired credentials were sent
+ *
+ * Input / validation (3):
+ *   - `invalid_input`      — caller-supplied args failed validation
+ *   - `selector_miss`      — CSS/XPath selector didn't match any element
+ *   - `not_found`          — HTTP 404 or upstream "no such resource"
+ *
+ * Authorization (2):
+ *   - `auth_required`      — endpoint needs auth and cookie file is missing
+ *   - `permission_denied`  — authenticated but lacks capability for this resource
+ *
+ * Runtime (2):
+ *   - `internal_error`     — uncaught exception / invariant violation inside unicli
+ *   - `quarantined`        — adapter is gated by `quarantine:` in YAML; fix + repair
+ *
+ * Ref-locator (3, added v0.213.1 per Task T1):
+ *   - `stale_ref`          — snapshot ref exists but the element it mapped to has detached
+ *   - `ambiguous`          — ref resolves to multiple elements (fingerprint non-unique)
+ *   - `ref_not_found`      — snapshot ref does not appear in the fingerprint map at all;
+ *                            deliberately distinct from the HTTP-404 `not_found` code
+ */
 export interface AgentError {
   code: string;
   message: string;
@@ -81,10 +119,49 @@ export interface AgentEnvelopeErr {
 
 export type AgentEnvelope = AgentEnvelopeOk | AgentEnvelopeErr;
 
-/** Build a success envelope from context + payload. */
+/**
+ * Build an {@link AgentContext} with conventional defaults.
+ *
+ * Every caller passes `command` plus a `startedAt` timestamp (typically
+ * `Date.now()` captured before dispatch); most callers accept the
+ * {@link DEFAULT_SURFACE}. `opts` lets specific surfaces (desktop, mcp) or
+ * versioned adapters override the defaults.
+ *
+ * The returned context has `duration_ms = Date.now() - startedAt` evaluated
+ * at call time, so invoke `makeCtx` at envelope-emit time (not at dispatch
+ * entry) — one of the two points where the 10 pre-existing call sites
+ * already built the `AgentContext` literal.
+ */
+export function makeCtx(
+  command: string,
+  startedAt: number,
+  opts?: {
+    surface?: Surface;
+    adapterVersion?: string;
+    operator?: string;
+  },
+): AgentContext {
+  return {
+    command,
+    duration_ms: Date.now() - startedAt,
+    surface: opts?.surface ?? DEFAULT_SURFACE,
+    adapter_version: opts?.adapterVersion,
+    operator: opts?.operator,
+  };
+}
+
+/**
+ * Build a success envelope from context + payload.
+ *
+ * Optional `content` plumbs Anthropic-compatible content blocks (text / image /
+ * resource) alongside the structured `data` payload. Populated via the YAML
+ * adapter opt-in `emit_content: true` (v0.213.1+) so download-step file
+ * metadata surfaces as `{type:"resource", uri:"file://…"}` entries.
+ */
 export function makeEnvelope(
   ctx: AgentContext,
   data: unknown[] | Record<string, unknown>,
+  content?: AgentContent[],
 ): AgentEnvelopeOk {
   const count = Array.isArray(data) ? data.length : undefined;
   return {
@@ -107,6 +184,7 @@ export function makeEnvelope(
     },
     data,
     error: null,
+    ...(content !== undefined && content.length > 0 ? { content } : {}),
   };
 }
 

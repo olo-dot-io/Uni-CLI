@@ -2,6 +2,7 @@ import { registerStep, type StepHandler } from "../step-registry.js";
 import type { PipelineContext } from "../executor.js";
 import { evalTemplate } from "../template.js";
 import { acquirePage } from "./browser-helpers.js";
+import { verifyRef } from "../../browser/snapshot-identity.js";
 
 export interface TypeConfig {
   text: string;
@@ -17,6 +18,7 @@ export async function stepType(
   const text = evalTemplate(config.text, ctx);
   if (config.selector) {
     const selector = evalTemplate(config.selector, ctx);
+    await verifyRef(page, selector);
     await page.type(selector, text);
   } else {
     // No selector — type into currently focused element via CDP

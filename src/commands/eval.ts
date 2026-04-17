@@ -41,6 +41,9 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import yaml from "js-yaml";
 import chalk from "chalk";
+import { format, detectFormat } from "../output/formatter.js";
+import { makeCtx } from "../output/envelope.js";
+import type { OutputFormat } from "../types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -374,6 +377,80 @@ interface CiOptions {
   json?: boolean;
 }
 
+/**
+ * Resolve the target string + --all flag into a concrete list of eval-file
+ * paths. Returns `null` when no target was given and `--all` was not passed
+ * (usage error); otherwise returns the (possibly empty) list.
+ */
+function resolveTargets(
+  target: string | undefined,
+  all: Array<{ path: string; relative: string }>,
+  allFlag: boolean,
+): string[] | null {
+  const filesToRun: string[] = [];
+
+  if (!target) {
+    if (!allFlag) return null;
+    filesToRun.push(...all.map((f) => f.path));
+    return filesToRun;
+  }
+
+  if (allFlag) {
+    const resolvedTarget = resolve(target);
+    const isExistingAbs = target.startsWith("/") || target.startsWith("~/");
+    for (const f of all) {
+      const relativeMatch =
+        f.relative === target ||
+        f.relative.startsWith(`${target.replace(/\/$/, "")}/`);
+      const absoluteMatch =
+        isExistingAbs &&
+        (f.path === resolvedTarget ||
+          f.path.startsWith(`${resolvedTarget.replace(/\/$/, "")}/`));
+      if (relativeMatch || absoluteMatch) filesToRun.push(f.path);
+    }
+    return filesToRun;
+  }
+
+  const candidate = all.find(
+    (f) =>
+      f.relative === target ||
+      f.relative === target.replace(/\.(yaml|yml)$/, ""),
+  );
+  if (candidate) filesToRun.push(candidate.path);
+  else if (existsSync(resolve(target))) filesToRun.push(resolve(target));
+  return filesToRun;
+}
+
+function executeEvalRuns(
+  filesToRun: string[],
+  timeout: number,
+  cliCommand: string,
+): { passedTotal: number; totalTotal: number; fileResults: EvalRunResult[] } {
+  let passedTotal = 0;
+  let totalTotal = 0;
+  const fileResults: EvalRunResult[] = [];
+  for (const path of filesToRun) {
+    let evalFile: EvalFile;
+    try {
+      evalFile = loadEvalFile(path);
+    } catch (err) {
+      console.error(
+        chalk.red(`Failed to load ${path}: ${(err as Error).message}`),
+      );
+      continue;
+    }
+    const result = runEvalFile(evalFile, { timeout, cliCommand });
+    fileResults.push(result);
+    passedTotal += result.passed;
+    totalTotal += result.total;
+    const ratio = `${result.passed}/${result.total}`;
+    const tag =
+      result.passed === result.total ? chalk.green(ratio) : chalk.red(ratio);
+    console.error(`  ${tag}  ${basename(path)}  (${evalFile.adapter})`);
+  }
+  return { passedTotal, totalTotal, fileResults };
+}
+
 export function registerEvalCommand(program: Command): void {
   const evalCmd = program
     .command("eval")
@@ -382,23 +459,20 @@ export function registerEvalCommand(program: Command): void {
   evalCmd
     .command("list")
     .description("List discovered eval files (bundled + ~/.unicli/evals/)")
-    .option("--json", "Output as JSON")
+    .option("--json", "Output as JSON (alias for -f json)")
     .action((opts: ListOptions) => {
+      const startedAt = Date.now();
+      const ctx = makeCtx("eval.list", startedAt);
+      const rootFmt = program.opts().format as OutputFormat | undefined;
+      const fmt = detectFormat(opts.json ? "json" : rootFmt);
+
       const files = discoverEvalFiles();
-      if (opts.json) {
-        console.log(
-          JSON.stringify(
-            files.map((f) => ({ name: f.relative, path: f.path })),
-            null,
-            2,
-          ),
-        );
-        return;
-      }
-      console.log(chalk.bold(`${files.length} eval file(s):`));
-      for (const f of files) {
-        console.log(`  ${chalk.cyan(f.relative)}  ${chalk.dim(f.path)}`);
-      }
+      const rows = files.map((f) => ({ name: f.relative, path: f.path }));
+
+      ctx.duration_ms = Date.now() - startedAt;
+      console.log(format(rows, ["name", "path"], fmt, ctx));
+
+      console.error(chalk.dim(`\n  ${files.length} eval file(s) discovered.`));
     });
 
   evalCmd
@@ -409,128 +483,69 @@ export function registerEvalCommand(program: Command): void {
     .option("--all", "Run all evals in the target directory recursively")
     .option("--timeout <ms>", "Per-case timeout", "30000")
     .option("--cli <command>", "CLI command to test (default: unicli)")
-    .option("--json", "Output as JSON")
+    .option("--json", "Output as JSON (alias for -f json)")
     .action(async (target: string | undefined, opts: RunOptions) => {
+      const startedAt = Date.now();
+      const ctx = makeCtx("eval.run", startedAt);
+      const rootFmt = program.opts().format as OutputFormat | undefined;
+      const fmt = detectFormat(opts.json ? "json" : rootFmt);
       const cliCommand = opts.cli ?? process.env.UNICLI_BIN ?? "unicli";
       const timeout = parseInt(opts.timeout ?? "30000", 10) || 30_000;
 
-      const filesToRun: string[] = [];
       const all = discoverEvalFiles();
+      const filesToRun = resolveTargets(target, all, opts.all ?? false);
 
-      if (!target) {
-        if (!opts.all) {
-          console.error(chalk.red("Specify a target or pass --all."));
-          process.exit(2);
-        }
-        filesToRun.push(...all.map((f) => f.path));
-      } else if (opts.all) {
-        // Treat target as a directory. Two cases:
-        //   1. Relative name like "smoke" or "smoke/" → match f.relative prefix
-        //   2. Absolute or file:// path → resolve and match f.path prefix
-        const resolvedTarget = resolve(target);
-        const isExistingAbs = target.startsWith("/") || target.startsWith("~/");
-        for (const f of all) {
-          const relativeMatch =
-            f.relative === target ||
-            f.relative.startsWith(`${target.replace(/\/$/, "")}/`);
-          const absoluteMatch =
-            isExistingAbs &&
-            (f.path === resolvedTarget ||
-              f.path.startsWith(`${resolvedTarget.replace(/\/$/, "")}/`));
-          if (relativeMatch || absoluteMatch) {
-            filesToRun.push(f.path);
-          }
-        }
-      } else {
-        // Treat target as a file (with or without extension)
-        const candidate = all.find(
-          (f) =>
-            f.relative === target ||
-            f.relative === target.replace(/\.(yaml|yml)$/, ""),
-        );
-        if (candidate) {
-          filesToRun.push(candidate.path);
-        } else if (existsSync(resolve(target))) {
-          filesToRun.push(resolve(target));
-        }
-      }
-
-      if (filesToRun.length === 0) {
-        console.error(
-          chalk.red(`No eval files matched: ${target ?? "(none)"}`),
-        );
+      if (filesToRun === null) {
+        ctx.error = {
+          code: "invalid_input",
+          message: "Specify a target or pass --all.",
+          suggestion: "unicli eval list",
+          retryable: false,
+        };
+        console.error(format(null, undefined, fmt, ctx));
         process.exit(2);
       }
 
-      let passedTotal = 0;
-      let totalTotal = 0;
-      const fileResults: EvalRunResult[] = [];
-      for (const path of filesToRun) {
-        let evalFile: EvalFile;
-        try {
-          evalFile = loadEvalFile(path);
-        } catch (err) {
-          console.error(
-            chalk.red(`Failed to load ${path}: ${(err as Error).message}`),
-          );
-          continue;
-        }
-        const result = runEvalFile(evalFile, { timeout, cliCommand });
-        fileResults.push(result);
-        passedTotal += result.passed;
-        totalTotal += result.total;
-        if (!opts.json) {
-          const ratio = `${result.passed}/${result.total}`;
-          const tag =
-            result.passed === result.total
-              ? chalk.green(ratio)
-              : chalk.red(ratio);
-          console.log(`  ${tag}  ${basename(path)}  (${evalFile.adapter})`);
-          for (const c of result.cases) {
-            const dot = c.passed ? chalk.green("✓") : chalk.red("✗");
-            console.log(`    ${dot} ${c.case.command}`);
-            if (!c.passed) {
-              for (const j of c.judgeResults.filter((j) => !j.passed)) {
-                console.log(
-                  `        ${chalk.red("·")} ${j.judge.type} — ${j.reason ?? "fail"}`,
-                );
-              }
-            }
-          }
-        }
+      if (filesToRun.length === 0) {
+        ctx.error = {
+          code: "not_found",
+          message: `No eval files matched: ${target ?? "(none)"}`,
+          suggestion: "unicli eval list",
+          retryable: false,
+        };
+        console.error(format(null, undefined, fmt, ctx));
+        process.exit(2);
       }
 
-      if (opts.json) {
-        console.log(
-          JSON.stringify(
-            {
-              score: passedTotal,
-              total: totalTotal,
-              files: fileResults.map((r) => ({
-                name: r.file.name,
-                adapter: r.file.adapter,
-                passed: r.passed,
-                total: r.total,
-                cases: r.cases.map((c) => ({
-                  command: c.case.command,
-                  passed: c.passed,
-                  exit: c.exitCode,
-                  failures: c.judgeResults
-                    .filter((j) => !j.passed)
-                    .map((j) => ({ judge: j.judge.type, reason: j.reason })),
-                })),
-              })),
-            },
-            null,
-            2,
-          ),
-        );
-      } else {
-        console.log();
-        console.log(chalk.bold(`SCORE=${passedTotal}/${totalTotal}`));
-      }
+      const { passedTotal, totalTotal, fileResults } = executeEvalRuns(
+        filesToRun,
+        timeout,
+        cliCommand,
+      );
 
-      // Exit non-zero on any failure for CI integration
+      const data = {
+        score: passedTotal,
+        total: totalTotal,
+        files: fileResults.map((r) => ({
+          name: r.file.name,
+          adapter: r.file.adapter,
+          passed: r.passed,
+          total: r.total,
+          cases: r.cases.map((c) => ({
+            command: c.case.command,
+            passed: c.passed,
+            exit: c.exitCode,
+            failures: c.judgeResults
+              .filter((j) => !j.passed)
+              .map((j) => ({ judge: j.judge.type, reason: j.reason })),
+          })),
+        })),
+      };
+
+      ctx.duration_ms = Date.now() - startedAt;
+      console.log(format(data, undefined, fmt, ctx));
+
+      console.error(chalk.bold(`\n  SCORE=${passedTotal}/${totalTotal}`));
       process.exit(passedTotal === totalTotal ? 0 : 1);
     });
 
@@ -538,38 +553,15 @@ export function registerEvalCommand(program: Command): void {
     .command("ci")
     .description("Run evals for adapters touched within a recent git window")
     .option("--since <window>", "Window (e.g. 7d, 24h)", "7d")
-    .option("--json", "Output as JSON")
+    .option("--json", "Output as JSON (alias for -f json)")
     .action((opts: CiOptions) => {
-      // Best-effort: list adapters changed in the window via `git log`. We
-      // intentionally tolerate non-git workspaces by skipping the filter.
-      // `since` is passed as an argv element, not interpolated into a shell
-      // string, so hostile values cannot escape into git or sh.
+      const startedAt = Date.now();
+      const ctx = makeCtx("eval.ci", startedAt);
+      const rootFmt = program.opts().format as OutputFormat | undefined;
+      const fmt = detectFormat(opts.json ? "json" : rootFmt);
+
       const since = opts.since ?? "7d";
-      const touchedAdapters = new Set<string>();
-      // Validate `since` matches a safe shape before passing to git — git
-      // accepts a wide range of time specs, but we restrict to digits + unit
-      // letters to avoid surprising behavior from pathological input.
-      if (/^[0-9]+(d|h|m|s|w)?$|^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(since)) {
-        const git = spawnSync(
-          "git",
-          [
-            "log",
-            `--since=${since}`,
-            "--name-only",
-            "--pretty=format:",
-            "--",
-            "src/adapters",
-          ],
-          { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] },
-        );
-        if (!git.error && git.status === 0) {
-          const out = typeof git.stdout === "string" ? git.stdout : "";
-          for (const line of out.split("\n")) {
-            const m = line.match(/^src\/adapters\/([^/]+)\//);
-            if (m) touchedAdapters.add(m[1]);
-          }
-        }
-      }
+      const touchedAdapters = collectTouchedAdapters(since);
 
       const all = discoverEvalFiles();
       const filtered =
@@ -585,15 +577,14 @@ export function registerEvalCommand(program: Command): void {
           : [];
 
       if (filtered.length === 0) {
-        if (opts.json) {
-          console.log(JSON.stringify({ matched: 0, score: 0, total: 0 }));
-        } else {
-          console.log(
-            chalk.dim(
-              `No evals match adapters touched in the last ${since}. Skipping.`,
-            ),
-          );
-        }
+        const data = { matched: 0, score: 0, total: 0, since };
+        ctx.duration_ms = Date.now() - startedAt;
+        console.log(format(data, undefined, fmt, ctx));
+        console.error(
+          chalk.dim(
+            `\n  No evals match adapters touched in the last ${since}.`,
+          ),
+        );
         process.exit(0);
       }
 
@@ -605,15 +596,44 @@ export function registerEvalCommand(program: Command): void {
         passed += r.passed;
         total += r.total;
       }
-      if (opts.json) {
-        console.log(
-          JSON.stringify({ matched: filtered.length, score: passed, total }),
-        );
-      } else {
-        console.log(chalk.bold(`SCORE=${passed}/${total}`));
-      }
+
+      const data = { matched: filtered.length, score: passed, total, since };
+      ctx.duration_ms = Date.now() - startedAt;
+      console.log(format(data, undefined, fmt, ctx));
+
+      console.error(chalk.bold(`\n  SCORE=${passed}/${total}`));
       process.exit(passed === total ? 0 : 1);
     });
+}
+
+/** Derive the set of adapter directories touched within the given git window. */
+function collectTouchedAdapters(since: string): Set<string> {
+  const touchedAdapters = new Set<string>();
+  // Validate `since` matches a safe shape before passing to git — git accepts
+  // a wide range of time specs, but we restrict to digits + unit letters to
+  // avoid surprising behavior from pathological input.
+  if (!/^[0-9]+(d|h|m|s|w)?$|^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(since)) {
+    return touchedAdapters;
+  }
+  const git = spawnSync(
+    "git",
+    [
+      "log",
+      `--since=${since}`,
+      "--name-only",
+      "--pretty=format:",
+      "--",
+      "src/adapters",
+    ],
+    { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] },
+  );
+  if (git.error || git.status !== 0) return touchedAdapters;
+  const out = typeof git.stdout === "string" ? git.stdout : "";
+  for (const line of out.split("\n")) {
+    const m = line.match(/^src\/adapters\/([^/]+)\//);
+    if (m) touchedAdapters.add(m[1]);
+  }
+  return touchedAdapters;
 }
 
 // Re-export for tests / programmatic use

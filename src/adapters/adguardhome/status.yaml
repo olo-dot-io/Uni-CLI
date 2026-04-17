@@ -31,6 +31,4 @@ trust: public
 confidentiality: public
 quarantine: true
 quarantineReason: "requires local AdGuard Home instance on a private host"
-
-# schema-v2 metadata — injected by `unicli migrate schema-v2`
 schema_version: v2

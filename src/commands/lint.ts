@@ -20,6 +20,7 @@ import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
 import { join, extname, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ExitCode } from "../types.js";
+import type { OutputFormat } from "../types.js";
 import {
   AdapterTrustSchema,
   AdapterConfidentialitySchema,
@@ -28,6 +29,8 @@ import "../engine/steps/index.js";
 import { listSteps } from "../engine/step-registry.js";
 import { CUA_STEP_HANDLERS } from "../engine/steps/cua.js";
 import { DESKTOP_AX_STEP_HANDLERS } from "../engine/steps/desktop-ax.js";
+import { format, detectFormat } from "../output/formatter.js";
+import { makeCtx } from "../output/envelope.js";
 
 // ── Known step registry ─────────────────────────────────────────────────
 //
@@ -396,39 +399,61 @@ export function registerLintCommand(program: Command): void {
   program
     .command("lint [path]")
     .description("Static lint for YAML adapters (schema-v2, known steps)")
-    .option("--json", "emit a structured JSON report")
+    .option("--json", "emit a structured JSON report (alias for -f json)")
     .action((path: string | undefined, opts: { json?: boolean }) => {
+      const startedAt = Date.now();
+      const ctx = makeCtx("lint.run", startedAt);
+      const rootFmt = program.opts().format as OutputFormat | undefined;
+      const fmt = detectFormat(opts.json ? "json" : rootFmt);
+
       const target = resolveTarget(path);
 
       if (!existsSync(target)) {
-        console.error(chalk.red(`lint target not found: ${target}`));
+        ctx.error = {
+          code: "invalid_input",
+          message: `lint target not found: ${target}`,
+          suggestion: "Pass a valid adapter directory or .yaml file path.",
+          retryable: false,
+        };
+        ctx.duration_ms = Date.now() - startedAt;
+        console.error(format(null, undefined, fmt, ctx));
         process.exit(ExitCode.CONFIG_ERROR);
       }
 
       const report = lintPath(target);
 
-      if (opts.json) {
-        console.log(JSON.stringify(report, null, 2));
-      } else {
-        const header = `unicli lint: ${report.scanned} adapters scanned in ${target}`;
-        console.log(chalk.bold(header));
+      const data = {
+        target,
+        scanned: report.scanned,
+        passed: report.passed,
+        failed: report.failed,
+        warnings: report.warnings,
+        issues: report.issues,
+      };
 
-        if (report.issues.length === 0) {
-          console.log(chalk.green(`  ${report.passed} passed`));
-        } else {
-          for (const issue of report.issues) {
-            const badge =
-              issue.severity === "error"
-                ? chalk.red("error")
-                : chalk.yellow("warn");
-            console.log(
-              `  ${badge} [${issue.rule}] ${issue.file}: ${issue.message}`,
-            );
-          }
-          console.log(
-            `\n  ${chalk.green(`${report.passed} passed`)}, ${chalk.red(`${report.failed} failed`)}, ${chalk.yellow(`${report.warnings} warnings`)}`,
+      ctx.duration_ms = Date.now() - startedAt;
+      console.log(format(data, undefined, fmt, ctx));
+
+      // Human-readable summary → stderr (Scene-6 pattern)
+      if (report.issues.length === 0) {
+        console.error(
+          chalk.dim(
+            `\n  ${report.scanned} adapter(s) scanned, ${chalk.green(`${report.passed} passed`)}`,
+          ),
+        );
+      } else {
+        for (const issue of report.issues) {
+          const badge =
+            issue.severity === "error"
+              ? chalk.red("error")
+              : chalk.yellow("warn");
+          console.error(
+            `  ${badge} [${issue.rule}] ${issue.file}: ${issue.message}`,
           );
         }
+        console.error(
+          `\n  ${chalk.green(`${report.passed} passed`)}, ${chalk.red(`${report.failed} failed`)}, ${chalk.yellow(`${report.warnings} warnings`)}`,
+        );
       }
 
       if (report.failed > 0) {

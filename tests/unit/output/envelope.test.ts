@@ -2,7 +2,9 @@ import { describe, it, expect } from "vitest";
 import {
   makeEnvelope,
   makeError,
+  makeCtx,
   validateEnvelope,
+  DEFAULT_SURFACE,
   SCHEMA_VERSION,
   type AgentEnvelope,
   type AgentContext,
@@ -60,6 +62,31 @@ describe("makeEnvelope", () => {
     expect(env.meta.adapter_version).toBe("1.2.3");
     expect(env.meta.surface).toBe("web");
     expect(env.meta.operator).toBe("test-op");
+  });
+
+  // ── v0.213.1 Task T12 / Fix #14 — optional content[] argument ──────────────
+
+  it("omits envelope.content when content arg is undefined or empty", () => {
+    const noArg = makeEnvelope(baseCtx, []);
+    expect(noArg.content).toBeUndefined();
+
+    const empty = makeEnvelope(baseCtx, [], []);
+    expect(empty.content).toBeUndefined();
+  });
+
+  it("populates envelope.content when content arg has blocks", () => {
+    const env = makeEnvelope(
+      baseCtx,
+      [{ id: "x" }],
+      [
+        { type: "resource", uri: "file:///tmp/a.jpg" },
+        { type: "text", text: "downloaded 1 file" },
+      ],
+    );
+    expect(env.content).toEqual([
+      { type: "resource", uri: "file:///tmp/a.jpg" },
+      { type: "text", text: "downloaded 1 file" },
+    ]);
   });
 });
 
@@ -192,5 +219,54 @@ describe("validateEnvelope", () => {
     expect(() => validateEnvelope(env)).toThrow(
       "envelope.meta.count (3) disagrees with data.length (2)",
     );
+  });
+});
+
+describe("DEFAULT_SURFACE", () => {
+  it("is the string 'web' for v0.213.x", () => {
+    expect(DEFAULT_SURFACE).toBe("web");
+  });
+});
+
+describe("makeCtx", () => {
+  it("populates command + surface=DEFAULT_SURFACE and leaves adapter_version/operator undefined when no opts", () => {
+    const startedAt = Date.now() - 5;
+    const ctx = makeCtx("core.list", startedAt);
+    expect(ctx.command).toBe("core.list");
+    expect(ctx.surface).toBe(DEFAULT_SURFACE);
+    expect(ctx.surface).toBe("web");
+    expect(ctx.adapter_version).toBeUndefined();
+    expect(ctx.operator).toBeUndefined();
+    expect(typeof ctx.duration_ms).toBe("number");
+    expect(ctx.duration_ms).toBeGreaterThanOrEqual(0);
+  });
+
+  it("computes duration_ms as Date.now() - startedAt", () => {
+    const before = Date.now();
+    const ctx = makeCtx("core.list", before - 100);
+    expect(ctx.duration_ms).toBeGreaterThanOrEqual(100);
+    // Allow a generous upper bound for slow CI runners.
+    expect(ctx.duration_ms).toBeLessThan(10_000);
+  });
+
+  it("lets opts.surface override DEFAULT_SURFACE", () => {
+    const ctx = makeCtx("foo.bar", Date.now(), { surface: "desktop" });
+    expect(ctx.surface).toBe("desktop");
+  });
+
+  it("propagates opts.adapterVersion and opts.operator", () => {
+    const ctx = makeCtx("foo.bar", Date.now(), {
+      adapterVersion: "3.14.1",
+      operator: "cdp",
+    });
+    expect(ctx.adapter_version).toBe("3.14.1");
+    expect(ctx.operator).toBe("cdp");
+  });
+
+  it("produces a context makeEnvelope accepts directly", () => {
+    const env = makeEnvelope(makeCtx("core.list", Date.now()), []);
+    expect(env.ok).toBe(true);
+    expect(env.meta.surface).toBe("web");
+    expect(env.command).toBe("core.list");
   });
 });

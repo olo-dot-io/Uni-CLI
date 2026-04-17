@@ -1,13 +1,16 @@
 /**
  * formatter.test.ts — v2 envelope format() + detectFormat + isAgentUA
  *
- * 16 cases covering:
+ * Cases covering:
  *   1-3:  json/md/yaml envelope wrap
  *   4-5:  csv/compact unchanged (array-only legacy)
  *   6:    table deprecated → md + stderr warning
  *   7:    error path via ctx.error
  *   8-11: detectFormat env overrides + TTY/non-TTY + CLAUDE_CODE
- *   12:   isAgentUA
+ *   12:   isAgentUA (5 canonical env vars)
+ *   13-16: B1/B2/B4/B5 regression guards
+ *   17:   detectFormat collapsed — TTY + no env + no explicit → md
+ *   18:   OUTPUT deprecation warning path (v0.213.1 rename to UNICLI_OUTPUT)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -170,31 +173,35 @@ it("11. detectFormat explicit json returns json regardless of env", () => {
   expect(detectFormat("json")).toBe("json");
 });
 
-// ── 12. isAgentUA ─────────────────────────────────────────────────────────────
+// ── 12. isAgentUA — 5 canonical agent env vars ───────────────────────────────
 
 describe("12. isAgentUA", () => {
+  const AGENT_ENVS = [
+    "CLAUDE_CODE",
+    "CODEX_CLI",
+    "OPENCODE",
+    "HERMES_AGENT",
+    "UNICLI_AGENT",
+  ] as const;
+
   afterEach(() => {
-    delete process.env.CLAUDE_CODE;
-    delete process.env.CODEX_CLI;
+    for (const key of AGENT_ENVS) delete process.env[key];
     delete process.env.USER_AGENT;
   });
 
-  it("returns true when CLAUDE_CODE is set", () => {
-    process.env.CLAUDE_CODE = "1";
-    expect(isAgentUA()).toBe(true);
-  });
-
-  it("returns true when CODEX_CLI is set", () => {
-    process.env.CODEX_CLI = "1";
-    expect(isAgentUA()).toBe(true);
-  });
-
-  it("returns true when USER_AGENT matches Claude-Code pattern", () => {
-    process.env.USER_AGENT = "Claude-Code/1.0";
-    expect(isAgentUA()).toBe(true);
-  });
+  for (const key of AGENT_ENVS) {
+    it(`returns true when ${key} is set`, () => {
+      process.env[key] = "1";
+      expect(isAgentUA()).toBe(true);
+    });
+  }
 
   it("returns false when no agent env vars are set", () => {
+    expect(isAgentUA()).toBe(false);
+  });
+
+  it("ignores USER_AGENT (removed in v0.213.1 — HTTP header, not env var)", () => {
+    process.env.USER_AGENT = "Claude-Code/1.0";
     expect(isAgentUA()).toBe(false);
   });
 });
@@ -307,4 +314,263 @@ it("16. format json with ctx.error produces v2 error envelope ok=false", () => {
   expect(env.error.code).toBe("network_error");
   expect(env.error.message).toContain("ETIMEDOUT");
   expect(env.error.retryable).toBe(true);
+});
+
+// ── 17. detectFormat collapsed — TTY + no env + no explicit → md ─────────────
+
+describe("17. detectFormat collapses all md branches", () => {
+  afterEach(() => {
+    delete process.env.UNICLI_OUTPUT;
+    delete process.env.OUTPUT;
+    delete process.env.CLAUDE_CODE;
+  });
+
+  it("TTY + no env + no explicit returns md", () => {
+    const stored = process.stdout.isTTY;
+    Object.defineProperty(process.stdout, "isTTY", {
+      value: true,
+      configurable: true,
+    });
+    try {
+      expect(detectFormat(undefined)).toBe("md");
+    } finally {
+      Object.defineProperty(process.stdout, "isTTY", {
+        value: stored,
+        configurable: true,
+      });
+    }
+  });
+
+  it("non-TTY + no env + no explicit returns md", () => {
+    const stored = process.stdout.isTTY;
+    Object.defineProperty(process.stdout, "isTTY", {
+      value: false,
+      configurable: true,
+    });
+    try {
+      expect(detectFormat(undefined)).toBe("md");
+    } finally {
+      Object.defineProperty(process.stdout, "isTTY", {
+        value: stored,
+        configurable: true,
+      });
+    }
+  });
+
+  it("CLAUDE_CODE=1 on TTY returns md", () => {
+    process.env.CLAUDE_CODE = "1";
+    const stored = process.stdout.isTTY;
+    Object.defineProperty(process.stdout, "isTTY", {
+      value: true,
+      configurable: true,
+    });
+    try {
+      expect(detectFormat(undefined)).toBe("md");
+    } finally {
+      Object.defineProperty(process.stdout, "isTTY", {
+        value: stored,
+        configurable: true,
+      });
+    }
+  });
+
+  it("explicit='json' still wins", () => {
+    expect(detectFormat("json")).toBe("json");
+  });
+});
+
+// ── 18a. UNICLI_OUTPUT bare override (T10 gap #17) ───────────────────────────
+//
+// Test 9 above asserts UNICLI_OUTPUT=yaml works, but doesn't prove the case
+// where OUTPUT is unset. Test 18 below asserts UNICLI_OUTPUT wins over OUTPUT,
+// but only for `json`. These two tests close the gap: UNICLI_OUTPUT alone
+// (with OUTPUT affirmatively cleared) triggers no deprecation warning.
+
+describe("18a. detectFormat UNICLI_OUTPUT bare override (no OUTPUT, no flag)", () => {
+  let stderrSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    stderrSpy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+    delete process.env.OUTPUT;
+  });
+
+  afterEach(() => {
+    delete process.env.UNICLI_OUTPUT;
+    delete process.env.OUTPUT;
+    stderrSpy.mockRestore();
+  });
+
+  it("UNICLI_OUTPUT=yaml alone switches default format — no warning", () => {
+    process.env.UNICLI_OUTPUT = "yaml";
+    expect(detectFormat(undefined)).toBe("yaml");
+    // No deprecation warning when only UNICLI_OUTPUT is set.
+    const wroteDeprecation = stderrSpy.mock.calls.some((c) =>
+      /deprecated/i.test(String(c[0] ?? "")),
+    );
+    expect(wroteDeprecation).toBe(false);
+  });
+
+  it("UNICLI_OUTPUT=yaml wins when both UNICLI_OUTPUT and OUTPUT are set (no warning)", () => {
+    process.env.UNICLI_OUTPUT = "yaml";
+    process.env.OUTPUT = "json";
+    expect(detectFormat(undefined)).toBe("yaml");
+    // No warning because UNICLI_OUTPUT short-circuits the OUTPUT branch.
+    const wroteDeprecation = stderrSpy.mock.calls.some((c) =>
+      /deprecated/i.test(String(c[0] ?? "")),
+    );
+    expect(wroteDeprecation).toBe(false);
+  });
+
+  it("UNICLI_OUTPUT=nonsense falls through, OUTPUT still honored with warning", () => {
+    // Guard: invalid UNICLI_OUTPUT shouldn't mask a valid legacy OUTPUT.
+    process.env.UNICLI_OUTPUT = "nonsense";
+    process.env.OUTPUT = "yaml";
+    expect(detectFormat(undefined)).toBe("yaml");
+    const wroteDeprecation = stderrSpy.mock.calls.some((c) =>
+      /deprecated/i.test(String(c[0] ?? "")),
+    );
+    expect(wroteDeprecation).toBe(true);
+  });
+});
+
+// ── 18b. format() error-wins precedence (T10 gap #16) ────────────────────────
+//
+// Contract: when ctx.error is set, format() produces an error envelope and
+// the data argument is ignored — regardless of whether data is null, [], or
+// a populated array/object. Test 16 above covers data=[]. This case protects
+// the "error wins over non-null data" invariant against future refactors.
+
+describe("18b. format() error-wins precedence (ctx.error + non-null data)", () => {
+  it("non-empty array data is discarded when ctx.error is set (json)", () => {
+    const errCtx: AgentContext = {
+      command: "twitter.search",
+      duration_ms: 3,
+      surface: "web",
+      error: {
+        code: "internal_error",
+        message: "boom",
+        adapter_path: "src/adapters/twitter/search.yaml",
+        step: 2,
+        suggestion: "retry later",
+        retryable: true,
+      },
+    };
+    // Non-null data: a populated array that would otherwise become envelope.data.
+    const out = format(
+      [{ id: 1, title: "should not appear" }],
+      undefined,
+      "json",
+      errCtx,
+    );
+    const env = JSON.parse(out);
+    expect(env.ok).toBe(false);
+    expect(env.error.code).toBe("internal_error");
+    // Error envelope forces data:null — non-null input must NOT leak through.
+    expect(env.data).toBeNull();
+    // And the meta count must not reflect the discarded array length.
+    expect(env.meta.count).toBeUndefined();
+  });
+
+  it("object payload is discarded when ctx.error is set (json)", () => {
+    const errCtx: AgentContext = {
+      command: "core.usage",
+      duration_ms: 2,
+      surface: "web",
+      error: { code: "config_error", message: "bad config" },
+    };
+    const out = format(
+      { records: 42, window: "7d" } as Record<string, unknown>,
+      undefined,
+      "json",
+      errCtx,
+    );
+    const env = JSON.parse(out);
+    expect(env.ok).toBe(false);
+    expect(env.error.code).toBe("config_error");
+    expect(env.data).toBeNull();
+  });
+
+  it("error-wins precedence holds across yaml output", () => {
+    const errCtx: AgentContext = {
+      command: "core.health",
+      duration_ms: 1,
+      surface: "web",
+      error: { code: "network_error", message: "ETIMEDOUT" },
+    };
+    const out = format([{ leak: "data" }], undefined, "yaml", errCtx);
+    expect(out).toContain("ok: false");
+    expect(out).toContain("network_error");
+    // The yaml output contains the error envelope — data must be null.
+    expect(out).toContain("data: null");
+  });
+
+  it("error-wins precedence holds across md output", () => {
+    const errCtx: AgentContext = {
+      command: "core.health",
+      duration_ms: 1,
+      surface: "web",
+      error: { code: "auth_required", message: "login first" },
+    };
+    const out = format([{ leak: "row" }], undefined, "md", errCtx);
+    expect(out).toContain("ok: false");
+    expect(out).toContain("## Error");
+    expect(out).toContain("auth_required");
+    // No "## Data" section — the error arm omits it.
+    expect(out).not.toContain("## Data");
+  });
+});
+
+// ── 18. OUTPUT env var deprecation (v0.213.1 rename → UNICLI_OUTPUT) ─────────
+
+describe("18. detectFormat OUTPUT deprecation", () => {
+  let stderrSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    stderrSpy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    delete process.env.UNICLI_OUTPUT;
+    delete process.env.OUTPUT;
+    stderrSpy.mockRestore();
+  });
+
+  it("OUTPUT=json (UNICLI_OUTPUT unset) returns json + emits stderr warning", () => {
+    process.env.OUTPUT = "json";
+    expect(detectFormat(undefined)).toBe("json");
+    expect(stderrSpy).toHaveBeenCalled();
+    const msg = String(stderrSpy.mock.calls[0]?.[0] ?? "");
+    expect(msg).toMatch(/OUTPUT/);
+    expect(msg).toMatch(/deprecated/i);
+    expect(msg).toMatch(/UNICLI_OUTPUT/);
+  });
+
+  it("UNICLI_OUTPUT=json wins over OUTPUT=yaml without warning", () => {
+    process.env.UNICLI_OUTPUT = "json";
+    process.env.OUTPUT = "yaml";
+    expect(detectFormat(undefined)).toBe("json");
+    expect(stderrSpy).not.toHaveBeenCalled();
+  });
+
+  it("OUTPUT=nonsense falls through to md without warning or crash", () => {
+    process.env.OUTPUT = "nonsense";
+    const stored = process.stdout.isTTY;
+    Object.defineProperty(process.stdout, "isTTY", {
+      value: true,
+      configurable: true,
+    });
+    try {
+      expect(detectFormat(undefined)).toBe("md");
+      expect(stderrSpy).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(process.stdout, "isTTY", {
+        value: stored,
+        configurable: true,
+      });
+    }
+  });
 });

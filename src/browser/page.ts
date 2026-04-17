@@ -723,12 +723,12 @@ export class BrowserPage implements IPage {
   /**
    * Generate a DOM snapshot (accessibility-style text tree).
    * Interactive elements are annotated with [N] refs.
+   * Also persists the fingerprint map so subsequent click/type calls
+   * (pipeline or interactive `unicli operate`) can verify refs.
    */
   async snapshot(opts?: SnapshotOptions): Promise<string> {
-    const { generateSnapshotJs } = await import("./snapshot.js");
-    const js = generateSnapshotJs(opts);
-    const result = await this.evaluate(js);
-    return (result as string) ?? "";
+    const { snapshotWithFingerprint } = await import("./snapshot-helpers.js");
+    return snapshotWithFingerprint(this, opts);
   }
 
   /**

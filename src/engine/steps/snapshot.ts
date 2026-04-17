@@ -16,6 +16,8 @@ export async function stepSnapshot(
           raw?: boolean;
         })
       : {};
+  // page.snapshot() persists the fingerprint map so subsequent click/type
+  // steps can verify refs. See src/browser/snapshot-helpers.ts.
   const result = await page.snapshot({
     interactive: opts.interactive,
     compact: opts.compact,
