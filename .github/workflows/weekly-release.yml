@@ -48,11 +48,9 @@ jobs:
       # if a publish step is ever moved into this workflow.
       contents: write
       id-token: write
-    outputs:
-      release: ${{ steps.detect.outputs.release }}
-      version: ${{ steps.bump.outputs.version }}
-      commit_count: ${{ steps.detect.outputs.commit_count }}
-
+    # Job-level outputs removed 2026-04-17: no downstream job consumes them.
+    # If a future workflow needs `release` / `version` / `commit_count`,
+    # re-declare them here and wire from steps.{detect,bump}.outputs.
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:

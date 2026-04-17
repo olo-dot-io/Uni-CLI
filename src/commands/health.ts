@@ -203,11 +203,12 @@ export function registerHealthCommand(program: Command): void {
           ),
         );
 
-        // Summary
+        // Summary — goes to stderr so stdout stays a single v2 envelope for
+        // machine consumers (json/yaml/compact); terminal users still see it.
         const ok = results.filter((r) => r.status === "ok").length;
         const fail = results.filter((r) => r.status === "fail").length;
         const skip = results.filter((r) => r.status === "skip").length;
-        console.log(
+        console.error(
           chalk.bold(
             `\nHealth: ${chalk.green(ok + " ok")}, ${chalk.red(fail + " fail")}, ${chalk.dim(skip + " skip")}`,
           ),

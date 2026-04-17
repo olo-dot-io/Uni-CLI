@@ -21,6 +21,9 @@ import {
   buildTransportCtx,
 } from "../src/transport/bus.js";
 import { HttpTransport } from "../src/transport/adapters/http.js";
+// Transport-layer envelope (re-exported via the `./errors` public subpath).
+// Not to be confused with src/output/envelope.ts — the user-facing v2 Agent
+// envelope reached via the `./output` subpath's formatter.
 import { err, ok, EnvelopeExit, exitCodeFor } from "../src/core/envelope.js";
 import * as cdpBrowser from "../src/transport/adapters/cdp-browser.js";
 import * as subprocess from "../src/transport/adapters/subprocess.js";

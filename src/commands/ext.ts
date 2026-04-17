@@ -65,7 +65,7 @@ export function registerExtCommand(program: Command): void {
       );
 
       const installedCount = clis.filter((c) => c.installed).length;
-      console.log(
+      console.error(
         chalk.dim(
           `\n  ${installedCount}/${clis.length} installed. Run \`unicli ext install <name>\` to add more.`,
         ),
