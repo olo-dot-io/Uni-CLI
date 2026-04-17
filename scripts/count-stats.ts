@@ -15,8 +15,11 @@
  *   site_count           — site directories that registered >=1 command
  *                          (matches the dist/manifest.json emission)
  *   command_count        — total commands across all sites
- *   test_count           — vitest `it(...)` / `test(...)` invocations under
- *                          tests/ (unit + adapter projects)
+ *   test_count           — discovered vitest test cases. Enumerated via
+ *                          `npx vitest list --json` per project, so
+ *                          parametrised (`it.each`) and loop-generated
+ *                          tests are counted exactly. Regex fallback if
+ *                          vitest is unavailable.
  *   pipeline_step_count  — top-level step keys in `CAPABILITY_MATRIX`
  *                          (src/transport/capability.ts). Source of truth
  *                          for the "N pipeline steps" claim in the docs.
@@ -42,6 +45,7 @@ import {
 } from "node:fs";
 import { join, extname, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 import yaml from "js-yaml";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -142,20 +146,24 @@ function countAdapters(): {
   };
 }
 
-function countTests(): number {
-  if (!existsSync(TESTS_DIR)) return 0;
+/**
+ * Regex fallback — sums `it(...)` / `test(...)` literals across every
+ * `.test.ts` file under `tests/` and `src/adapters/`. Used when vitest is
+ * unavailable (e.g. fresh clone before `npm install`). Undercounts
+ * parametrised (`it.each([...])`) and loop-generated tests, so prefer
+ * {@link countTestsViaVitest} whenever vitest is on disk.
+ */
+function countTestsByRegex(): number {
   let count = 0;
-  // Patterns:
-  //   it("..."
-  //   it('...'
-  //   test("..."
-  //   test('...'
   const IT = /\b(?:it|test)\s*\(\s*["'`]/g;
 
   function walk(dir: string) {
+    if (!existsSync(dir)) return;
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const full = join(dir, entry.name);
       if (entry.isDirectory()) {
+        // Skip node_modules / dist inside src/adapters if any.
+        if (entry.name === "node_modules" || entry.name === "dist") continue;
         walk(full);
         continue;
       }
@@ -170,7 +178,88 @@ function countTests(): number {
     }
   }
   walk(TESTS_DIR);
+  walk(ADAPTERS_DIR);
   return count;
+}
+
+/**
+ * Runs `npx vitest list --json --project <name>` for each project declared
+ * in `vitest.config.ts` and sums the enumerated test cases. vitest expands
+ * `it.each([...])` parametrised tests and loop-generated `describe`/`it`
+ * blocks before emitting the list, so the result matches the runtime
+ * counter within vitest's own precision.
+ *
+ * Returns `null` if vitest is unavailable or the spawn fails — caller
+ * falls back to the regex-based counter.
+ */
+function countTestsViaVitest(): number | null {
+  const projects = ["unit", "adapter"];
+  let total = 0;
+  for (const project of projects) {
+    const result = spawnSync(
+      "npx",
+      ["vitest", "list", "--json", `--project=${project}`],
+      {
+        cwd: ROOT,
+        encoding: "utf-8",
+        maxBuffer: 64 * 1024 * 1024,
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+    if (result.status !== 0) return null;
+    try {
+      const arr = JSON.parse(result.stdout) as unknown[];
+      if (!Array.isArray(arr)) return null;
+      total += arr.length;
+    } catch {
+      return null;
+    }
+  }
+  return total;
+}
+
+/**
+ * Test-count strategy:
+ *   1. If `UNICLI_STATS_TEST_STRATEGY=regex`, force the regex counter.
+ *      (Useful in CI sandboxes where vitest cannot spawn.)
+ *   2. Otherwise try `vitest list --json` per project; it expands
+ *      parametrised tests and matches the runtime count.
+ *   3. On vitest failure, fall back to the regex counter with a stderr
+ *      note so the drift is visible.
+ */
+function countTests(): number {
+  if (process.env.UNICLI_STATS_TEST_STRATEGY === "regex") {
+    return countTestsByRegex();
+  }
+  const fromVitest = countTestsViaVitest();
+  if (fromVitest !== null) return fromVitest;
+  console.error(
+    "count-stats: vitest list failed, falling back to regex counter",
+  );
+  return countTestsByRegex();
+}
+
+const OPEN_BRACE = String.fromCharCode(0x7b);
+const CLOSE_BRACE = String.fromCharCode(0x7d);
+
+function extractBalancedObject(
+  source: string,
+  declPrefix: string,
+): string | null {
+  const startIdx = source.indexOf(declPrefix);
+  if (startIdx < 0) return null;
+  const openIdx = source.indexOf(OPEN_BRACE, startIdx);
+  if (openIdx < 0) return null;
+  let depth = 0;
+  for (let i = openIdx; i < source.length; i++) {
+    const ch = source.charCodeAt(i);
+    if (ch === 0x7b) depth++;
+    else if (ch === 0x7d) {
+      depth--;
+      if (depth === 0) return source.slice(openIdx + 1, i);
+    }
+  }
+  return null;
 }
 
 function countPipelineSteps(): number {
@@ -182,14 +271,15 @@ function countPipelineSteps(): number {
   // of the v0.212 rewrite.
   if (!existsSync(CAPABILITY_MATRIX_FILE)) return 0;
   const source = readFileSync(CAPABILITY_MATRIX_FILE, "utf-8");
-  const m = source.match(
-    /export const CAPABILITY_MATRIX[^=]*=\s*\{([\s\S]*?)\n\};/,
+  const body = extractBalancedObject(source, "export const CAPABILITY_MATRIX");
+  if (!body) return 0;
+  // Top-level keys only: two-space-indented "step_name:" followed by an
+  // object-literal open-brace. The matrix is an object; nested config (e.g.
+  // the transports tuple) lives one level deeper.
+  const keyRe = new RegExp(
+    "^ " + "{2}" + "([a-z_][a-z0-9_]*)\\s*:\\s*" + OPEN_BRACE,
+    "gm",
   );
-  if (!m) return 0;
-  const body = m[1];
-  // Top-level keys only: `  step_name: {` at two-space indent (the matrix
-  // is an object literal; nested config lives inside `{ transports: [...] }`).
-  const keyRe = /^\s{2}([a-z_][a-z0-9_]*)\s*:\s*\{/gm;
   const seen = new Set<string>();
   let km: RegExpExecArray | null;
   while ((km = keyRe.exec(body)) !== null) {
