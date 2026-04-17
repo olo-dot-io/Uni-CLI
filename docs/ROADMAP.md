@@ -1,6 +1,6 @@
 # Uni-CLI Roadmap — Mission Vostok (0.2xx)
 
-> CLI is all agents need. <!-- STATS:site_count -->200<!-- /STATS --> sites, <!-- STATS:command_count -->968<!-- /STATS --> commands as of v0.213.0-beta.2.
+> CLI is all agents need. <!-- STATS:site_count -->200<!-- /STATS --> sites, <!-- STATS:command_count -->968<!-- /STATS --> commands as of v0.213.0.
 
 ## Progress
 
@@ -22,7 +22,8 @@
 | 0.211.2        | Vostok · Volynov                 | 198   | 1020     | ✅         |
 | 0.212.0        | Vostok · Shatalov                | 200   | 968      | ✅         |
 | 0.212.1        | Vostok · Shatalov II             | 200   | 968      | ✅         |
-| 0.213.0-beta.2 | Vostok · Gagarin (Pre-release 2) | 200   | 968      | ✅ Current |
+| 0.213.0-beta.2 | Vostok · Gagarin (Pre-release 2) | 200   | 968      | ✅         |
+| 0.213.0        | Vostok · Gagarin                 | 200   | 968      | ✅ Current |
 
 ## v0.201.0 ✅ — Engine v2 + Desktop/Bridge
 

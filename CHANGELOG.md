@@ -3,14 +3,22 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
-## [0.213.0-beta.2] — 2026-04-17 — Vostok · Gagarin (Pre-release 2)
+## [0.213.0] — 2026-04-17 — Vostok · Gagarin
 
-> Agent-Native output: v2 envelope + `-f md` format land as the default for agents.
-> Non-TTY and recognised agent UAs now receive structured Markdown automatically.
+> **GA release.** Engine rigor + Agent-Native output + honest parity numbers.
+> 195 sites · 957 commands · engine split (2810 → 298 LOC executor) · schema-v2 on 896 adapters · v2 envelope with `-f md` default for agents · 1286 unit + 5514 adapter = 6800 tests passing.
 >
-> **Since v0.213.0-beta.1** (engine rigor + 24 plugin exports + weekly release cron + schema-v2 on 896 YAML adapters + 80 adapter tests): this iteration adds the Agent-Native output contract (v2 envelope, `-f md`, `isAgentUA` detection, 7 call sites wired, `dispatch.ts` extraction, 20 golden MD fixtures, quarantine envelope alignment) plus a housekeeping pass (consumed v0.212.1 changeset removed, `migrate-schema` capability map covers `cua_ask` / `cua_assert`).
+> **Since v0.212.1 Shatalov II** the branch accumulated 46 commits across two prereleases:
 >
-> Remaining runway for v0.213.0 final: workflow adapters (gmail/gcal/drive/spotify/apple-notes/imessage), Chrome extension full pipeline, `generate --verify` closed loop, CUA backend drivers, dual JS adapter format, `unicli inbox`, `unicli shop`, and the OpenCLI parity harness.
+> - **beta.1 (engine rigor)**: yaml-runner split into executor + registry + runtime + template + ssrf + 33 step files; 24 plugin export subpaths + `PLUGIN.md` + exports CI gate; weekly release CI cron + dependabot grouping; schema-v2 migration on 896 YAML adapters; 80 colocated adapter tests.
+> - **beta.2 (agent-native output)**: v2 `{ok, schema_version, command, meta, data, error, content?}` envelope, `-f md` default on non-TTY and recognised agent UAs, `isAgentUA()` detector, 7 call sites wired, `src/commands/dispatch.ts` extracted from `cli.ts`, 20 golden MD fixtures across 10 flagship adapter pairs, quarantine envelope aligned.
+> - **GA polish**: `docs/THEORY.md` v2 now cites SkillDroid (arXiv:2604.14872), MolmoWeb, IntentScore, Android Coach, Beyond Chat and Clicks — 46 refs verified against arxiv.org; `PARITY_AUDIT.md` publishes measured per-CLI numbers against `public-clis`; Ref-Backed Locator primitive audited vs OpenCLI PR #1016.
+>
+> **Honest parity numbers.** Measured per-CLI parity against `github.com/public-clis/public-clis` on 2026-04-17: 85.7% on the four core social sites (twitter 95.7%, reddit 87.0%, xiaohongshu 82.8%, bilibili 77.3%); weighted across eight messaging peer CLIs the figure is 73.5%, not 85%. Uni-CLI ships ~45 commands on overlapping sites that no peer offers (twitter trending/spaces/lists/media, bilibili live/later, xiaohongshu creator-suite, reddit rising/frontpage). Telegram (0 adapters), Discord (placeholder only), and Obsidian vault-write are explicit scope-outs deferred to v0.214. Positioning: breadth (195 sites in one binary) + self-repair + editable 20-line YAML adapters, not per-peer command parity.
+>
+> **Ref-Backed Locator (OpenCLI PR #1016) parity.** Snapshot-driven numbered refs, interactive-only filtering, scroll markers, iframe/shadow-DOM crossing all ship since v0.211. The verification-layer diagnostics that PR #1016 added on top — window-level fingerprint map, `stale_ref` / `ambiguous` / `not_found` structured errors with candidate lists — are scoped for v0.213.1 (~2–3 days).
+>
+> **Remaining v0.213 runway → v0.214 Nikolayev**: workflow adapters (gmail/gcal/drive/spotify/apple-notes/imessage), Chrome extension full pipeline, `generate --verify` closed loop, CUA backend drivers, dual JS adapter format, `unicli inbox`, `unicli shop`, and the full 25-adapter OpenCLI parity harness.
 
 ### Breaking
 

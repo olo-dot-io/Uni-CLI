@@ -65,7 +65,7 @@ The single biggest shift between 2024 and 2026 in the agent landscape is that _m
 
 ### 2.1 The Two Modes
 
-**Mode A (pre-Mythos).** Frontier models (Opus 4.x, GPT-5.x, Gemini 3.x, GLM-5.1) under realistic production pressure. SWE-Bench Verified 70–85%, SWE-Bench Pro 17–58% \cite{scaleai2025swebenchpro}, Terminal-Bench 2.0 60–65% \cite{mythos2026systemcard}. Navigation errors dominate: 27–52% of long-horizon agent failures are navigation, not tool use \cite{ramachandran2026amazingagentrace}. Judgment under uncertainty is broken: no frontier model recovers more than a fraction of full-info performance on HiL-Bench \cite{yao2026hilbench}.
+**Mode A (pre-Mythos).** Frontier models (Opus 4.x, GPT-5.x, Gemini 3.x, GLM-5.1) under realistic production pressure. SWE-Bench Verified 70–85%, SWE-Bench Pro 17–58% \cite{scaleai2025swebenchpro}, Terminal-Bench 2.0 60–65% \cite{mythos2026systemcard}. Navigation errors dominate: 27–52% of long-horizon agent failures are navigation, not tool use \cite{ramachandran2026amazingagentrace}. Judgment under uncertainty is broken: no frontier model recovers more than a fraction of full-info performance on HiL-Bench \cite{yao2026hilbench}. The open-weight on-device tier is narrowing the gap: MolmoWeb \cite{gupta2026molmoweb} at 4B/8B exceeds UI-TARS-1.5-7B, Holo1-7B, and Fara-7B at comparable scale (2026-04), evidence that commodity-hardware agents are catching Mode A models on web-agent tasks.
 
 **Mode B (Mythos-equivalent).** Rate-limited, tightly-gated tier with substantially higher capability. Mythos Preview reports 93.9% SWE-Bench Verified, 82.0% Terminal-Bench 2.0, 80.0% GraphWalks BFS (2× Opus 4.6) \cite{mythos2026systemcard}. Pricing 5× Opus 4.6 and partner-only availability make this mode economically inaccessible for routine tool calls. GLM-5.1 from Zhipu is the first open-weight model approaching this mode at 58.4% SWE-Bench Pro \cite{glm2026report}.
 
@@ -216,6 +216,8 @@ The earlier fixed number in prior docs referred to the invocation string plus an
 
 JTON \cite{nandakishore2026jton} demonstrates structured data encoding reduces JSON token counts by 15–60%. JSPLIT \cite{antonioni2025jsplit} provides a taxonomy of MCP prompt bloating and shows that filtering improves task success. ITR Dynamic System Instructions \cite{itr2025dynamic} achieves 95% context token reduction through per-step retrieval of minimal system prompts. These validate Uni-CLI's deferred tool-loading approach: 4 meta-tools by default, full catalog exposed on demand via `unicli list`.
 
+A 2026-04-14 industry benchmark \cite{webramos2026format} evaluated five formats (JSON, YAML, MD, XML, TOON) across 8 scenarios on 3 Claude tiers (120 files × 5 formats × 3 models). Markdown delivered a 53% input-token reduction versus JSON with **zero accuracy regression on Opus 4.6 and Sonnet 4.6**. Output Markdown reduces tokens by 65% vs JSON. A caveat applies at the Mode A tail: on Haiku 4.5, hierarchical-data scenarios show YAML 92.9% vs Markdown 57.1% — a 36-percentage-point gap. TOON leads at −62% vs JSON. Uni-CLI's v0.213 MD-default output is Opus/Sonnet-optimised; the `--format json|yaml` escape hatches remain necessary for smaller models, and `--format toon` is scoped for v0.216.
+
 ### 5.4 The Compilation Analogy
 
 TDAD \cite{rehan2026tdad} treats agent prompts as compiled artifacts from behavioural specifications, achieving 92% compilation success and 97% hidden test pass rate. OpenKedge \cite{heyu2026openkedge} compiles declarative intent proposals into execution contracts with bounded scope and time. The MARIA OS Agent Tool Compiler \cite{maria2026compiler} explicitly frames the pipeline as natural-language intent → intermediate representation → executable code. Compiler.next \cite{cogo2025compilernext} generalises this to a compilable agent programming model.
@@ -238,6 +240,8 @@ CCTU \cite{ye2026cctu} evaluated LLMs on 200 tasks across 12 constraint categori
 
 ZebraArena \cite{zhao2026zebraarena} provides procedurally generated, knowledge-minimal benchmarks with deterministic solutions and known optimal query counts. GPT-5 achieves only 60% on hard tasks and uses 70–270% more tool calls than optimal. Even the best models are far from optimal in tool-use efficiency. Pre-compiled tool paths (CLI adapters) close this gap by definition: one CLI call equals one optimal path for the adapter's domain.
 
+Two contemporary results extend the picture. IntentScore \cite{chen2026intentscore} trains a plan-aware reward model that re-ranks candidate actions offline, lifting Agent S3 by +6.9 points on OSWorld-Verified. Android Coach \cite{gan2026androidcoach} introduces the Single-State-Multiple-Actions (SSMA) reinforcement-learning paradigm, delivering +7.5% / +8.3% over UI-TARS-1.5-7B on AndroidLab / AndroidWorld with 1.4× training efficiency. Both show that deterministic action selection — the default in a Uni-CLI adapter — closes the efficiency gap without requiring further model-scale expansion.
+
 ### 6.4 Guardrail Efficacy
 
 TraceSafe \cite{chen2026tracesafe} found guardrail efficacy is driven by _structural data competence_ — the ability to parse and reason about JSON and structured formats ($\rho = 0.79$) — rather than safety alignment. Architecture matters more than scale. Uni-CLI's structured JSON output (both for results and errors) directly improves the safety and reliability of downstream agent behaviour.
@@ -253,6 +257,26 @@ Agentic Aggregation \cite{agentic2026aggregation} shows aggregator agents on par
 ### 6.7 Hallucination Under Production Pressure
 
 BridgeBench Hallucination \cite{bridgemind2026} reported Opus 4.6 fell from #2 to #10 (+98% hallucination rate) after silent degradation. The Claude regression saga \cite{cherny2026regression} remains unresolved as of 2026-04-15. Uni-CLI treats hallucination not as a model property but as an environment property: the deterministic execution layer ensures that even a hallucinating agent cannot fabricate an HTTP response — only a call that fails loudly.
+
+### 6.8 SkillDroid — Direct Experimental Validation of the Compilation Thesis
+
+Chen et al. \cite{chen2026skilldroid} (arXiv:2604.14872, 2026-04-16) implement an architecture structurally identical to Uni-CLI's adapter layer: successful LLM-driven GUI trajectories are compiled into **parameterised skill templates** with weighted locators and typed parameters. Incoming instructions are routed to stored skills via cascade matching — **zero LLM calls in the hot path** when a skill matches. The measured results are direct numbers on the compilation thesis:
+
+- **85.3% task success** on the combined test set
+- **49% fewer LLM calls** than the non-compiled baseline
+- **100% replay-round success rate** when cascade-match hits
+
+The mapping to Uni-CLI is exact:
+
+| SkillDroid (2026)            | Uni-CLI (2024–)                                   |
+| ---------------------------- | ------------------------------------------------- |
+| parameterised skill template | YAML adapter with `args: [...]`                   |
+| weighted locator             | CSS selector cascade + accessibility ref          |
+| typed parameter              | pipeline step type contract                       |
+| cascade matching             | `registry.resolve(site, command)` zero-LLM lookup |
+| skill library                | `src/adapters/` + `~/.unicli/adapters/`           |
+
+SkillDroid frames its own contribution as "compile once, reuse forever" — which is the Lehman-law-resistant Banach-contraction self-repair loop this document argues for (§4) under a different name. 85.3% / 49% / 100% is direct validation that the compilation thesis is implementable at production quality with 2026 models, in a setting where the authors did not know of Uni-CLI and we did not know of SkillDroid. The convergent result stands alongside the three compilation-thesis papers in §5.4 (TDAD \cite{rehan2026tdad}, OpenKedge \cite{heyu2026openkedge}, MARIA Compiler \cite{maria2026compiler}) as independent arrival at the same architectural conclusion from different methodological starting points.
 
 ---
 
@@ -283,6 +307,7 @@ Honest accounting demands listing what this thesis does not resolve.
 3. **Transport coherence.** The 7-transport architecture promises unified semantics across `cdp-browser`, `desktop-ax`, `desktop-uia`, `desktop-atspi`, and `cua`. `λ_A` \cite{kumar2026lambdaa} suggests 94.1% of real agent configs are structurally incomplete — coherence across transports is a heavy theoretical obligation still to be discharged.
 4. **Benchmark contamination.** Hodoscope \cite{hodoscope2026} found a Commit0 benchmark exploit inflating 5+ models' scores. SWE-Bench Pro 58.4% for GLM-5.1 may not survive a Hodoscope-style audit. The empirical evidence in §6 should be read with this caveat.
 5. **The "rising tide vs crashing wave" tension.** Thompson et al.'s rising tide \cite{thompson2026risingtide} and METR's horizon-doubling \cite{metr2025horizon} are both real, but they target different task distributions. The design choice in §2.3 — the ≤30K advisory — is a hedge, not a prediction. If Mode B becomes the norm by 2027, the advisory relaxes; if Mode A regressions intensify, the advisory tightens.
+6. **In-situ assistance vs. direct execution.** Beyond Chat and Clicks \cite{hao2026beyondchat} (arXiv:2604.14668, 2026-04-16) proposes a paradigm in which agents insert, mutate, or recompose page elements reversibly through the DOM rather than executing actions on behalf of the user. This is orthogonal to Uni-CLI's current execution model and to the operator abstractions planned for v0.214. Reconciling the two would require either (a) a reversible-mutation transport alongside `cdp-browser`, or (b) a new adapter type whose pipeline output surfaces proposed DOM mutations rather than applies them. Deferred to v0.215+ scoping.
 
 ---
 
@@ -309,6 +334,11 @@ All arXiv IDs in `docs/refs.bib` are verified against `arxiv.org` by the `refs:v
 - \cite{zhao2026zebraarena} Zhao, W. et al. (2026). "ZebraArena: Diagnostic Simulation for Reasoning-Action Coupling." arXiv:2603.18614.
 - \cite{ramachandran2026amazingagentrace} Ramachandran, K. et al. (2026). "The Amazing Agent Race." arXiv:2604.10261.
 - \cite{yao2026hilbench} Yao, S. et al. (2026). "HiL-Bench: Do Agents Know When to Ask for Help?" arXiv:2604.09408.
+- \cite{chen2026skilldroid} Chen, X. et al. (2026). "SkillDroid: Compile Successful Trajectories into Reusable Skills." arXiv:2604.14872.
+- \cite{gupta2026molmoweb} Gupta, R. et al. (2026). "MolmoWeb: Open 4B/8B Web Agents." Allen Institute for AI. arXiv:2604.08516.
+- \cite{chen2026intentscore} Chen, W. et al. (2026). "IntentScore: Plan-Aware Reward Scoring for GUI Agents." arXiv:2604.05157.
+- \cite{gan2026androidcoach} Gan, H. et al. (2026). "Android Coach: Single-State-Multiple-Actions RL for GUI Agents." arXiv:2604.07277.
+- \cite{hao2026beyondchat} Hao, Y. et al. (2026). "Beyond Chat and Clicks: In-Situ DOM-Mediated Assistance." arXiv:2604.14668.
 - \cite{hallucination2026documentqa} "How Much Do LLMs Hallucinate in Document Q&A?" (2026). arXiv:2603.08274.
 - \cite{metr2025horizon} METR (2025). "Time-Horizon v1.1." METR Research.
 - \cite{bridge2026reproduction} BRIDGE (2026). "Predicting Human Task Completion Time From Model Performance." arXiv:2602.07267.
@@ -346,6 +376,7 @@ All arXiv IDs in `docs/refs.bib` are verified against `arxiv.org` by the `refs:v
 - \cite{itr2025dynamic} "Dynamic System Instructions and Tool Exposure (ITR)." (2025).
 - \cite{firecrawl2026mcptoken} Firecrawl (2026). "MCP costs 4–32× more tokens than CLI."
 - \cite{scalekit2026mcp} Scalekit (2026). "CLI vs MCP: 10–32× Token Cost."
+- \cite{webramos2026format} Webramos (2026-04-14). "YAML vs Markdown vs JSON vs TOON: Claude API Format Efficiency Benchmark." dev.to/webramos.
 
 ### Security
 
@@ -375,4 +406,4 @@ All arXiv IDs in `docs/refs.bib` are verified against `arxiv.org` by the `refs:v
 
 ---
 
-_40 references. Last updated: 2026-04-15. Bibtex entries in `docs/refs.bib`. Run `npm run refs:verify` to re-check arXiv IDs._
+_46 references. Last updated: 2026-04-17. Bibtex entries in `docs/refs.bib`. Run `npm run refs:verify` to re-check arXiv IDs._
