@@ -68,6 +68,7 @@ export function registerHealthCommand(program: Command): void {
         site: string | undefined,
         opts: { failingOnly?: boolean; timeout: string; json?: boolean },
       ) => {
+        const healthStarted = Date.now();
         const timeout = parseInt(opts.timeout, 10) || 10000;
         const adapters = site
           ? getAllAdapters().filter((a) => a.name === site)
@@ -177,7 +178,6 @@ export function registerHealthCommand(program: Command): void {
           : results;
 
         // Determine output format
-        const healthStarted = Date.now();
         const fmt: OutputFormat = opts.json
           ? "json"
           : detectFormat(program.opts().format as OutputFormat | undefined);
@@ -193,12 +193,7 @@ export function registerHealthCommand(program: Command): void {
             display.map((r) => ({
               site: r.site,
               command: r.command,
-              status:
-                r.status === "ok"
-                  ? chalk.green("ok")
-                  : r.status === "fail"
-                    ? chalk.red("FAIL")
-                    : chalk.dim("skip"),
+              status: r.status,
               latency: r.status === "skip" ? "-" : `${r.latency}ms`,
               error: r.error ?? "",
             })),

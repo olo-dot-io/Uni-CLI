@@ -15,7 +15,57 @@ import { format, detectFormat } from "../output/formatter.js";
 import { recordUsage } from "../runtime/usage-ledger.js";
 import { ExitCode } from "../types.js";
 import type { OutputFormat } from "../types.js";
-import type { AgentContext } from "../output/envelope.js";
+import type { AgentContext, AgentError } from "../output/envelope.js";
+
+/**
+ * Map a caught error to an AgentError code string following the self-repair
+ * contract. Covers the most common pipeline / network / HTTP failure modes.
+ */
+function errorTypeToCode(err: unknown): string {
+  if (err instanceof PipelineError) {
+    const { errorType, statusCode } = err.detail;
+    if (
+      statusCode === 401 ||
+      statusCode === 403 ||
+      (errorType === "http_error" && (statusCode === 401 || statusCode === 403))
+    )
+      return "auth_required";
+    if (statusCode === 404) return "not_found";
+    if (statusCode === 429) return "rate_limited";
+    if (errorType === "selector_miss") return "selector_miss";
+    if (errorType === "empty_result") return "empty_result";
+    if (errorType === "timeout") return "network_error";
+    return "internal_error";
+  }
+  const message = err instanceof Error ? err.message : String(err);
+  if (
+    /ETIMEDOUT|ENOTFOUND|ECONNREFUSED|ECONNRESET|socket hang up/i.test(message)
+  )
+    return "network_error";
+  if (/401|403|auth/i.test(message)) return "auth_required";
+  if (/404/i.test(message)) return "not_found";
+  if (/429|rate.?limit/i.test(message)) return "rate_limited";
+  return "internal_error";
+}
+
+/** Map a caught error to the appropriate sysexits exit code. */
+function mapErrorToExitCode(err: unknown): number {
+  if (err instanceof PipelineError) {
+    const { errorType, statusCode } = err.detail;
+    if (statusCode === 401 || statusCode === 403) return ExitCode.AUTH_REQUIRED;
+    if (errorType === "empty_result") return ExitCode.EMPTY_RESULT;
+    return ExitCode.GENERIC_ERROR;
+  }
+  if (err instanceof BridgeConnectionError) return ExitCode.SERVICE_UNAVAILABLE;
+  const message = err instanceof Error ? err.message : String(err);
+  if (
+    /ETIMEDOUT|ENOTFOUND|ECONNREFUSED|ECONNRESET|socket hang up|daemon failed/i.test(
+      message,
+    )
+  )
+    return ExitCode.TEMP_FAILURE;
+  return ExitCode.GENERIC_ERROR;
+}
 
 /**
  * Register one Commander sub-command per adapter×command.
@@ -173,24 +223,6 @@ export function registerAdapterDispatch(program: Command): void {
             process.exit(ExitCode.CONFIG_ERROR);
           }
 
-          if (results.length === 0) {
-            if (fmt === "json") {
-              console.log("[]");
-            } else {
-              console.log(chalk.dim("No results"));
-            }
-            recordUsage({
-              site: adapter.name,
-              cmd: cmdName,
-              strategy: adapter.strategy ?? "unknown",
-              tokens: 0,
-              ms: Date.now() - startedAt,
-              bytes: 0,
-              exit: ExitCode.EMPTY_RESULT,
-            });
-            process.exit(ExitCode.EMPTY_RESULT);
-          }
-
           const ctx: AgentContext = {
             command: `${adapter.name}.${cmdName}`,
             duration_ms: Date.now() - startedAt,
@@ -199,6 +231,8 @@ export function registerAdapterDispatch(program: Command): void {
           };
           const rendered = format(results, cmd.columns, fmt, ctx);
           console.log(rendered);
+          const exitCode =
+            results.length === 0 ? ExitCode.EMPTY_RESULT : ExitCode.SUCCESS;
           recordUsage({
             site: adapter.name,
             cmd: cmdName,
@@ -206,97 +240,48 @@ export function registerAdapterDispatch(program: Command): void {
             tokens: 0,
             ms: Date.now() - startedAt,
             bytes: Buffer.byteLength(rendered, "utf-8"),
-            exit: ExitCode.SUCCESS,
+            exit: exitCode,
           });
+          process.exit(exitCode);
         } catch (err) {
-          if (err instanceof PipelineError) {
-            const agentError = err.toAgentJSON(
-              `src/adapters/${adapter.name}/${cmdName}.yaml`,
-            );
-            if (fmt === "json" || !process.stdout.isTTY) {
-              console.error(JSON.stringify(agentError, null, 2));
-            } else {
-              console.error(chalk.red(`Error: ${err.message}`));
-              console.error(chalk.dim(`  adapter: ${agentError.adapter}`));
-              console.error(
-                chalk.dim(`  step: ${agentError.step} (${agentError.action})`),
-              );
-              console.error(
-                chalk.yellow(`  suggestion: ${agentError.suggestion}`),
-              );
-            }
-            const exitCode =
-              agentError.statusCode === 403 || agentError.statusCode === 401
-                ? ExitCode.AUTH_REQUIRED
-                : agentError.errorType === "empty_result"
-                  ? ExitCode.EMPTY_RESULT
-                  : ExitCode.GENERIC_ERROR;
-            recordUsage({
-              site: adapter.name,
-              cmd: cmdName,
-              strategy: adapter.strategy ?? "unknown",
-              tokens: 0,
-              ms: Date.now() - startedAt,
-              bytes: 0,
-              exit: exitCode,
-            });
-            process.exit(exitCode);
-          }
-
-          if (err instanceof BridgeConnectionError) {
-            const agentError = err.toAgentJSON();
-            if (fmt === "json" || !process.stdout.isTTY) {
-              console.error(JSON.stringify(agentError, null, 2));
-            } else {
-              console.error(chalk.red(`Error: ${err.message}`));
-              console.error(
-                chalk.yellow(`  suggestion: ${agentError.suggestion}`),
-              );
-              console.error(chalk.dim("  retryable: true"));
-            }
-            recordUsage({
-              site: adapter.name,
-              cmd: cmdName,
-              strategy: adapter.strategy ?? "unknown",
-              tokens: 0,
-              ms: Date.now() - startedAt,
-              bytes: 0,
-              exit: ExitCode.SERVICE_UNAVAILABLE,
-            });
-            process.exit(ExitCode.SERVICE_UNAVAILABLE);
-          }
-
-          const message = err instanceof Error ? err.message : String(err);
-          const isTransient =
-            /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|socket hang up|daemon failed/i.test(
-              message,
-            );
           const adapterPath = `src/adapters/${adapter.name}/${cmdName}.yaml`;
-          const structuredError = {
-            error: message,
-            retryable: isTransient,
-            adapter_path: adapterPath,
-            step: -1,
-            action: "unknown",
+          const agentErr: AgentError = {
+            code: errorTypeToCode(err),
+            message: err instanceof Error ? err.message : String(err),
+            adapter_path:
+              err instanceof PipelineError ? adapterPath : undefined,
+            step: err instanceof PipelineError ? err.detail.step : undefined,
             suggestion:
-              "Run 'unicli test " +
-              adapter.name +
-              "' to diagnose, or report this error.",
-            alternatives: [] as string[],
-            exit_code: ExitCode.GENERIC_ERROR,
+              err instanceof PipelineError
+                ? err.detail.suggestion
+                : err instanceof BridgeConnectionError
+                  ? err.suggestion
+                  : `Run 'unicli test ${adapter.name}' to diagnose, or report this error.`,
+            retryable:
+              err instanceof PipelineError
+                ? (err.detail.retryable ?? false)
+                : err instanceof BridgeConnectionError
+                  ? err.retryable
+                  : /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|socket hang up|daemon failed/i.test(
+                      err instanceof Error ? err.message : String(err),
+                    ),
+            alternatives:
+              err instanceof PipelineError
+                ? (err.detail.alternatives ?? [])
+                : err instanceof BridgeConnectionError
+                  ? err.alternatives
+                  : [],
           };
-          if (fmt === "json" || !process.stdout.isTTY) {
-            console.error(JSON.stringify(structuredError, null, 2));
-          } else {
-            console.error(chalk.red(`Error: ${message}`));
-            console.error(chalk.dim(`  adapter: ${adapterPath}`));
-            console.error(
-              chalk.yellow(`  suggestion: ${structuredError.suggestion}`),
-            );
-            if (isTransient) {
-              console.error(chalk.dim("  retryable: true"));
-            }
-          }
+          const errCtx: AgentContext = {
+            command: `${adapter.name}.${cmdName}`,
+            duration_ms: Date.now() - startedAt,
+            adapter_version: adapter.version,
+            surface: "web",
+            error: agentErr,
+          };
+          const rendered = format([], cmd.columns, fmt, errCtx);
+          process.stderr.write(rendered + "\n");
+          const exitCode = mapErrorToExitCode(err);
           recordUsage({
             site: adapter.name,
             cmd: cmdName,
@@ -304,9 +289,9 @@ export function registerAdapterDispatch(program: Command): void {
             tokens: 0,
             ms: Date.now() - startedAt,
             bytes: 0,
-            exit: ExitCode.GENERIC_ERROR,
+            exit: exitCode,
           });
-          process.exit(ExitCode.GENERIC_ERROR);
+          process.exit(exitCode);
         }
       });
     }

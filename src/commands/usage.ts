@@ -14,7 +14,6 @@
  */
 
 import type { Command } from "commander";
-import chalk from "chalk";
 import {
   loadUsage,
   filterSince,
@@ -54,22 +53,27 @@ export function registerUsageCommands(program: Command): void {
     .option("--ledger <path>", "Override ledger path", DEFAULT_LEDGER_PATH)
     .option("--json", "Output as JSON")
     .action((opts: ReportOptions) => {
+      const usageStarted = Date.now();
+      const fmt: OutputFormat = opts.json
+        ? ("json" as OutputFormat)
+        : detectFormat(undefined);
+
       const records = loadUsage(opts.ledger ?? DEFAULT_LEDGER_PATH);
+
       if (records.length === 0) {
-        if (opts.json) {
-          console.log(JSON.stringify({ records: 0, rows: [] }));
-        } else {
-          console.log(
-            chalk.dim(
-              `No ledger entries yet at ${opts.ledger ?? DEFAULT_LEDGER_PATH}.`,
-            ),
-          );
-          console.log(
-            chalk.dim(
-              "Run any unicli command and the ledger will start populating.",
-            ),
-          );
-        }
+        const ctx: AgentContext = {
+          command: "core.usage",
+          duration_ms: Date.now() - usageStarted,
+          surface: "web",
+        };
+        console.log(
+          format(
+            { records: 0, window: opts.since ?? "all", rows: [] },
+            undefined,
+            fmt,
+            ctx,
+          ),
+        );
         return;
       }
 
@@ -87,23 +91,6 @@ export function registerUsageCommands(program: Command): void {
       const limit = parseInt(opts.limit ?? "20", 10) || 20;
       rows = rows.slice(0, limit);
 
-      if (opts.json) {
-        console.log(
-          JSON.stringify(
-            {
-              records: filtered.length,
-              window: opts.since ?? "all",
-              rows,
-            },
-            null,
-            2,
-          ),
-        );
-        return;
-      }
-
-      const usageStarted = Date.now();
-      const fmt: OutputFormat = detectFormat(undefined);
       const tableRows = rows.map((r: UsageAggregate) => ({
         site: r.site,
         cmd: r.cmd,
@@ -113,6 +100,7 @@ export function registerUsageCommands(program: Command): void {
         err: `${(r.errorRate * 100).toFixed(0)}%`,
         bytes: humanBytes(r.totalBytes),
       }));
+
       const ctx: AgentContext = {
         command: "core.usage",
         duration_ms: Date.now() - usageStarted,
@@ -120,15 +108,14 @@ export function registerUsageCommands(program: Command): void {
       };
       console.log(
         format(
-          tableRows,
+          {
+            records: filtered.length,
+            window: opts.since ?? "all",
+            rows: tableRows,
+          },
           ["site", "cmd", "n", "median", "p95", "err", "bytes"],
           fmt,
           ctx,
-        ),
-      );
-      console.log(
-        chalk.dim(
-          `\n${filtered.length} ledger entries · window: ${opts.since ?? "all"}`,
         ),
       );
     });

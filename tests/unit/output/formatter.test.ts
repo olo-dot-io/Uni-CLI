@@ -198,3 +198,113 @@ describe("12. isAgentUA", () => {
     expect(isAgentUA()).toBe(false);
   });
 });
+
+// ── 13. empty-array regression (B1 guard) ────────────────────────────────────
+
+it("13. format json with empty array produces v2 envelope count=0 (B1 regression)", () => {
+  const out = format([], undefined, "json", ctx);
+  const env = JSON.parse(out);
+  expect(env.ok).toBe(true);
+  expect(env.schema_version).toBe("2");
+  expect(env.meta.count).toBe(0);
+  expect(env.data).toEqual([]);
+  expect(env.error).toBeNull();
+});
+
+// ── 14. health status field has no ANSI escapes in json envelope (B2 guard) ──
+
+it("14. format json with plain status fields contains no ANSI escape codes", () => {
+  const healthCtx: AgentContext = {
+    command: "core.health",
+    duration_ms: 42,
+    surface: "web",
+  };
+  const rows = [
+    { site: "x", command: "search", status: "ok", latency: "12ms", error: "" },
+    {
+      site: "x",
+      command: "feed",
+      status: "fail",
+      latency: "5ms",
+      error: "timeout",
+    },
+    {
+      site: "x",
+      command: "auth",
+      status: "skip",
+      latency: "-",
+      error: "requires browser",
+    },
+  ];
+  const out = format(
+    rows,
+    ["site", "command", "status", "latency", "error"],
+    "json",
+    healthCtx,
+  );
+  // No ANSI escape sequences in the serialized JSON
+  expect(out.indexOf("\u001b[")).toBe(-1);
+  const env = JSON.parse(out);
+  expect(env.data[0].status).toBe("ok");
+  expect(env.data[1].status).toBe("fail");
+  expect(env.data[2].status).toBe("skip");
+});
+
+// ── 15. usage --json wrapped as v2 envelope (B4 guard) ───────────────────────
+
+it("15. format json with records/window/rows object wraps in v2 envelope", () => {
+  const usageCtx: AgentContext = {
+    command: "core.usage",
+    duration_ms: 10,
+    surface: "web",
+  };
+  const payload = {
+    records: 3,
+    window: "7d",
+    rows: [
+      {
+        site: "twitter",
+        cmd: "search",
+        n: 3,
+        median: "120ms",
+        p95: "300ms",
+        err: "0%",
+        bytes: "1.2KB",
+      },
+    ],
+  };
+  const out = format(payload, undefined, "json", usageCtx);
+  const env = JSON.parse(out);
+  expect(env.ok).toBe(true);
+  expect(env.schema_version).toBe("2");
+  expect(env.command).toBe("core.usage");
+  expect(env.data.records).toBe(3);
+  expect(env.data.window).toBe("7d");
+  expect(env.data.rows).toHaveLength(1);
+});
+
+// ── 16. error path produces v2 error envelope (B5 guard) ─────────────────────
+
+it("16. format json with ctx.error produces v2 error envelope ok=false", () => {
+  const errCtx: AgentContext = {
+    command: "twitter.search",
+    duration_ms: 5,
+    surface: "web",
+    error: {
+      code: "network_error",
+      message: "ETIMEDOUT connecting to api.twitter.com",
+      adapter_path: "src/adapters/twitter/search.yaml",
+      step: 0,
+      suggestion: "Check network connectivity and retry.",
+      retryable: true,
+    },
+  };
+  const out = format([], undefined, "json", errCtx);
+  const env = JSON.parse(out);
+  expect(env.ok).toBe(false);
+  expect(env.schema_version).toBe("2");
+  expect(env.data).toBeNull();
+  expect(env.error.code).toBe("network_error");
+  expect(env.error.message).toContain("ETIMEDOUT");
+  expect(env.error.retryable).toBe(true);
+});
