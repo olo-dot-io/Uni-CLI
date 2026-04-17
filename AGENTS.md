@@ -15,13 +15,13 @@
 
 ## For AI Agents
 
-Universal CLI for websites, desktop apps, and local tools. JSON when piped. Self-repairing YAML adapters.
+Universal CLI for websites, desktop apps, and local tools. Markdown when piped (structured envelope). Self-repairing YAML adapters.
 
 ```bash
 unicli search "推特热门"             # Find commands by intent (bilingual)
 unicli <site> <command> [options]    # Run any command
 unicli repair <site> <command>       # Diagnose + fix a broken adapter
-unicli list                          # All commands (JSON when piped)
+unicli list                          # All commands (MD when piped)
 ```
 
 ## Install
