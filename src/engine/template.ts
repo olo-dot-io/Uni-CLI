@@ -263,8 +263,13 @@ export function evalExpression(
 
     let result: unknown;
     try {
+      // 250 ms is comfortably above Windows-CI cold-start cost for the first
+      // VM context (observed up to ~80 ms on Node 20 + windows-latest) and
+      // still well below any reasonable expression-eval budget. The hardened
+      // sandbox (null prototype + frozen built-ins + FORBIDDEN_EXPR pre-check)
+      // is the actual security boundary, not the timeout.
       result = runInNewContext(`(${baseExpr})`, sandbox, {
-        timeout: 50,
+        timeout: 250,
         contextCodeGeneration: { strings: false, wasm: false },
       });
     } catch {

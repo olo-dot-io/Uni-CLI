@@ -84,11 +84,6 @@ function postInitHeaders(sessionId: string): Record<string, string> {
 describe("Streamable HTTP transport", () => {
   let port: number;
 
-  // Pick a random high port to avoid conflicts
-  function nextPort(): number {
-    return 30_000 + Math.floor(Math.random() * 10_000);
-  }
-
   // Simple echo handler for testing
   const echoHandler = (req: {
     jsonrpc: "2.0";
@@ -202,24 +197,10 @@ describe("Streamable HTTP transport", () => {
   async function startServer(handler?: typeof echoHandler): Promise<number> {
     sessions.clear();
     asyncTasks.clear();
-    // Random port + retry on EADDRINUSE: Math.random collides ~5% per test
-    // on busy CI runners (observed across v0.213.0-beta.1 + beta.2 release
-    // runs); 5 attempts drops per-call collision rate to ~3e-7. A proper
-    // listen(0) fix would require startStreamableHttp to expose the bound
-    // port — out of scope for this release.
-    let lastErr: unknown;
-    for (let attempt = 0; attempt < 5; attempt++) {
-      port = nextPort();
-      try {
-        await startStreamableHttp(port, handler ?? echoHandler);
-        return port;
-      } catch (err) {
-        lastErr = err;
-        const code = (err as NodeJS.ErrnoException)?.code;
-        if (code !== "EADDRINUSE") throw err;
-      }
-    }
-    throw lastErr ?? new Error("failed to bind a free port after 5 attempts");
+    // port: 0 → OS picks a free ephemeral port. Avoids EADDRINUSE on Windows
+    // CI where prior tests can leave entries in TIME_WAIT for several seconds.
+    port = await startStreamableHttp(0, handler ?? echoHandler);
+    return port;
   }
 
   afterEach(() => {

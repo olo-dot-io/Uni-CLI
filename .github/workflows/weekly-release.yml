@@ -50,7 +50,7 @@ jobs:
       id-token: write
     outputs:
       release: ${{ steps.detect.outputs.release }}
-      version: ${{ steps.detect.outputs.version }}
+      version: ${{ steps.bump.outputs.version }}
       commit_count: ${{ steps.detect.outputs.commit_count }}
 
     steps:

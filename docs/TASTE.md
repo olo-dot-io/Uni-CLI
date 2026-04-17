@@ -3,9 +3,9 @@
 > Internal design philosophy and naming conventions.
 > This document governs aesthetics, tone, and thematic decisions across the project.
 >
-> **Current version:** v0.211.2 — Vostok · Volynov (Boris Volynov, Soyuz 5 — survived ballistic reentry when service module failed to separate, 1969. Connection through adversity).
+> **Current version:** v0.213.0 — Vostok · Gagarin (Yuri Gagarin, Vostok 1 — first human spaceflight, 12 April 1961. The reprise marks the engine split + public plugin surface + Agent-Native v2 envelope as the foundation for v0.214 Nikolayev).
 >
-> **Current scale:** <!-- STATS:site_count -->200<!-- /STATS --> sites, <!-- STATS:command_count -->968<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->968<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->896<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->72<!-- /STATS --> TS), <!-- STATS:test_count -->1205<!-- /STATS --> tests. Numbers render from `stats.json` via `npm run build`; drift fails `npm run stats:check`.
+> **Current scale:** <!-- STATS:site_count -->200<!-- /STATS --> sites, <!-- STATS:command_count -->968<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->968<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->896<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->72<!-- /STATS --> TS), <!-- STATS:test_count -->1200<!-- /STATS --> tests. Numbers render from `stats.json` via `npm run build`; drift fails `npm run stats:check`.
 
 ## Core Identity
 
