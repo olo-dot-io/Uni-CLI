@@ -21,6 +21,10 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { Command } from "commander";
 import yaml from "js-yaml";
 import chalk from "chalk";
+import { format, detectFormat } from "../output/formatter.js";
+import { makeCtx } from "../output/envelope.js";
+import type { OutputFormat } from "../types.js";
+import { ExitCode } from "../types.js";
 
 /** Known OpenCLI top-level fields and how they map to Uni-CLI fields. */
 export const OPENCLI_FIELD_MAP: Record<string, string> = {
@@ -276,6 +280,12 @@ export function registerMigrateCommand(program: Command): void {
     .option("--json-report", "Also emit a JSON migration report to stderr")
     .action(
       (path: string, opts: { output?: string; jsonReport?: boolean }): void => {
+        const startedAt = Date.now();
+        const ctx = makeCtx("migrate.opencli", startedAt);
+        const fmt = detectFormat(
+          program.opts().format as OutputFormat | undefined,
+        );
+
         let source: OpenCliShape;
         try {
           const text = readFileSync(path, "utf-8");
@@ -288,26 +298,47 @@ export function registerMigrateCommand(program: Command): void {
           source = parsed as OpenCliShape;
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          console.error(chalk.red(`[migrate] cannot read ${path}: ${msg}`));
-          process.exitCode = 2;
-          return;
+          ctx.error = {
+            code: "invalid_input",
+            message: `cannot read ${path}: ${msg}`,
+            suggestion: "Supply a valid OpenCLI YAML mapping file.",
+            retryable: false,
+          };
+          ctx.duration_ms = Date.now() - startedAt;
+          console.error(format(null, undefined, fmt, ctx));
+          process.exit(ExitCode.USAGE_ERROR);
         }
 
         const report = migrateOpenCli(source);
 
         for (const w of report.warnings) {
-          process.stderr.write(`[migrate] warning: ${w}\n`);
+          process.stderr.write(chalk.yellow(`  [migrate] warning: ${w}\n`));
         }
 
         const out = emitUnicliYaml(report.output);
         if (opts.output) {
           writeFileSync(opts.output, out, "utf-8");
-          console.error(chalk.green(`[migrate] wrote ${opts.output}`));
-        } else {
-          process.stdout.write(out);
+        }
+
+        const data = {
+          input_path: path,
+          output_path: opts.output ?? null,
+          yaml: out,
+          warnings: report.warnings,
+          renamed_steps: report.renamed_steps,
+          dropped_fields: report.dropped_fields,
+        };
+
+        ctx.duration_ms = Date.now() - startedAt;
+        console.log(format(data, undefined, fmt, ctx));
+
+        if (opts.output) {
+          console.error(chalk.green(`  [migrate] wrote ${opts.output}`));
         }
 
         if (opts.jsonReport) {
+          // Preserve legacy --json-report side channel (supplementary report on
+          // stderr) — the v2 envelope on stdout is the primary surface.
           process.stderr.write(
             JSON.stringify(
               {

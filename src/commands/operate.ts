@@ -16,10 +16,14 @@ import {
   buildSensitivePathDenial,
 } from "../permissions/sensitive-paths.js";
 import { ExitCode } from "../types.js";
+import type { OutputFormat } from "../types.js";
 import { rankCandidates, type SnapshotRef } from "../browser/observe.js";
 import { verifyRef } from "../browser/snapshot-identity.js";
 import { mkdirSync, appendFileSync } from "node:fs";
 import { join, dirname as pathDirname } from "node:path";
+import { format, detectFormat } from "../output/formatter.js";
+import { makeCtx } from "../output/envelope.js";
+import { errorTypeToCode, mapErrorToExitCode } from "../output/error-map.js";
 
 const OPERATE_WORKSPACE = "operate:default";
 
@@ -42,27 +46,53 @@ async function getOperatePage(): Promise<DaemonPage> {
   return page as DaemonPage;
 }
 
-/** Wrap operate actions for consistent error handling */
+/**
+ * Wrap operate actions in the v2 AgentEnvelope. Every subcommand emits an
+ * envelope — even void-returning interactions (click/type/keys/...) wrap their
+ * ack as `data = {ok: true, ...}`.
+ *
+ * Subcommand name (`snapshot` → `operate.snapshot`) populates envelope.command.
+ */
 async function operateAction(
+  program: Command,
   name: string,
   fn: () => Promise<unknown>,
 ): Promise<void> {
+  const startedAt = Date.now();
+  const ctx = makeCtx(`operate.${name.split(" ").join("_")}`, startedAt);
+  const fmt = detectFormat(program.opts().format as OutputFormat | undefined);
+
   try {
     const result = await fn();
-    if (result !== undefined && result !== null) {
-      if (typeof result === "string") {
-        console.log(result);
-      } else {
-        console.log(JSON.stringify(result, null, 2));
-      }
+    let data: unknown[] | Record<string, unknown>;
+    if (result === undefined || result === null) {
+      data = { ok: true };
+    } else if (typeof result === "string") {
+      // Primitive string result → wrap for envelope contract
+      data = { value: result };
+    } else if (Array.isArray(result)) {
+      data = result;
+    } else if (typeof result === "object") {
+      data = result as Record<string, unknown>;
+    } else {
+      data = { value: String(result) };
     }
+
+    ctx.duration_ms = Date.now() - startedAt;
+    console.log(format(data, undefined, fmt, ctx));
   } catch (err) {
-    console.error(
-      chalk.red(
-        `operate ${name}: ${err instanceof Error ? err.message : String(err)}`,
-      ),
-    );
-    process.exitCode = 1;
+    const message = err instanceof Error ? err.message : String(err);
+    ctx.error = {
+      code: errorTypeToCode(err),
+      message,
+      retryable:
+        /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|daemon failed/i.test(
+          message,
+        ),
+    };
+    ctx.duration_ms = Date.now() - startedAt;
+    console.error(format(null, undefined, fmt, ctx));
+    process.exitCode = mapErrorToExitCode(err);
   }
 }
 
@@ -76,7 +106,7 @@ export function registerOperateCommands(program: Command): void {
     .command("open <url>")
     .description("Navigate to URL in daemon browser")
     .action((url: string) =>
-      operateAction("open", async () => {
+      operateAction(program, "open", async () => {
         const page = await getOperatePage();
         // Start CDP-level network capture before navigation so initial
         // requests are not missed. Only available on BrowserPage (not DaemonPage).
@@ -97,7 +127,7 @@ export function registerOperateCommands(program: Command): void {
     .command("back")
     .description("Navigate back in history")
     .action(() =>
-      operateAction("back", async () => {
+      operateAction(program, "back", async () => {
         const page = await getOperatePage();
         await page.evaluate("history.back()");
         await page.wait(2);
@@ -113,15 +143,16 @@ export function registerOperateCommands(program: Command): void {
     .option("--interactive", "only show interactive elements")
     .option("--compact", "omit decorative nodes")
     .action((opts: { interactive?: boolean; compact?: boolean }) =>
-      operateAction("state", async () => {
+      operateAction(program, "state", async () => {
         const page = await getOperatePage();
         const url = await page.url();
         const snapshot = await page.snapshot({
           interactive: opts.interactive,
           compact: opts.compact,
         });
-        console.log(chalk.dim(`URL: ${url}`));
-        return snapshot;
+        // Human-oriented URL hint → stderr (Scene-6 pattern)
+        console.error(chalk.dim(`URL: ${url}`));
+        return { url, snapshot };
       }),
     );
 
@@ -131,7 +162,7 @@ export function registerOperateCommands(program: Command): void {
     .description("Capture page screenshot")
     .option("--full-page", "capture full scrollable page")
     .action((path: string | undefined, opts: { fullPage?: boolean }) =>
-      operateAction("screenshot", async () => {
+      operateAction(program, "screenshot", async () => {
         const page = await getOperatePage();
         const buf = await page.screenshot({
           fullPage: opts.fullPage,
@@ -150,7 +181,7 @@ export function registerOperateCommands(program: Command): void {
     .command("click <ref>")
     .description("Click element by ref number from state")
     .action((ref: string) =>
-      operateAction("click", async () => {
+      operateAction(program, "click", async () => {
         validateRef(ref);
         const page = await getOperatePage();
         const selector = `[data-unicli-ref="${ref}"]`;
@@ -165,7 +196,7 @@ export function registerOperateCommands(program: Command): void {
     .command("type <ref> <text>")
     .description("Type text into element by ref number")
     .action((ref: string, text: string) =>
-      operateAction("type", async () => {
+      operateAction(program, "type", async () => {
         validateRef(ref);
         const page = await getOperatePage();
         const selector = `[data-unicli-ref="${ref}"]`;
@@ -182,7 +213,7 @@ export function registerOperateCommands(program: Command): void {
     .command("keys <key>")
     .description("Press keyboard key (e.g., Enter, Escape, Control+a)")
     .action((key: string) =>
-      operateAction("keys", async () => {
+      operateAction(program, "keys", async () => {
         const page = await getOperatePage();
         // Support combo keys: "Control+a" → press with modifiers
         if (key.includes("+")) {
@@ -205,7 +236,7 @@ export function registerOperateCommands(program: Command): void {
     .option("--max <n>", "max scroll iterations for auto", "10")
     .action(
       (direction: string | undefined, opts: { auto?: boolean; max: string }) =>
-        operateAction("scroll", async () => {
+        operateAction(program, "scroll", async () => {
           const page = await getOperatePage();
           if (opts.auto) {
             await page.autoScroll({
@@ -230,7 +261,7 @@ export function registerOperateCommands(program: Command): void {
     .command("title")
     .description("Get page title")
     .action(() =>
-      operateAction("get title", async () => {
+      operateAction(program, "get title", async () => {
         const page = await getOperatePage();
         return await page.title();
       }),
@@ -240,7 +271,7 @@ export function registerOperateCommands(program: Command): void {
     .command("url")
     .description("Get current URL")
     .action(() =>
-      operateAction("get url", async () => {
+      operateAction(program, "get url", async () => {
         const page = await getOperatePage();
         return await page.url();
       }),
@@ -250,7 +281,7 @@ export function registerOperateCommands(program: Command): void {
     .command("text <ref>")
     .description("Get text content of element by ref")
     .action((ref: string) =>
-      operateAction("get text", async () => {
+      operateAction(program, "get text", async () => {
         validateRef(ref);
         const page = await getOperatePage();
         return await page.evaluate(
@@ -263,7 +294,7 @@ export function registerOperateCommands(program: Command): void {
     .command("value <ref>")
     .description("Get value of input element by ref")
     .action((ref: string) =>
-      operateAction("get value", async () => {
+      operateAction(program, "get value", async () => {
         validateRef(ref);
         const page = await getOperatePage();
         return await page.evaluate(
@@ -276,7 +307,7 @@ export function registerOperateCommands(program: Command): void {
     .command("html [selector]")
     .description("Get outerHTML of element (or full page)")
     .action((selector: string | undefined) =>
-      operateAction("get html", async () => {
+      operateAction(program, "get html", async () => {
         const page = await getOperatePage();
         if (selector) {
           const selectorStr = JSON.stringify(selector);
@@ -294,7 +325,7 @@ export function registerOperateCommands(program: Command): void {
     .command("attributes <ref>")
     .description("Get all attributes of element by ref")
     .action((ref: string) =>
-      operateAction("get attributes", async () => {
+      operateAction(program, "get attributes", async () => {
         validateRef(ref);
         const page = await getOperatePage();
         return await page.evaluate(
@@ -310,7 +341,7 @@ export function registerOperateCommands(program: Command): void {
     .option("--timeout <ms>", "timeout in ms", "10000")
     .action(
       (type: string, value: string | undefined, opts: { timeout: string }) =>
-        operateAction("wait", async () => {
+        operateAction(program, "wait", async () => {
           const page = await getOperatePage();
           const timeout = parseInt(opts.timeout, 10);
           switch (type) {
@@ -352,7 +383,7 @@ export function registerOperateCommands(program: Command): void {
     .command("eval <js>")
     .description("Execute JavaScript in page context")
     .action((js: string) =>
-      operateAction("eval", async () => {
+      operateAction(program, "eval", async () => {
         const page = await getOperatePage();
         return await page.evaluate(js);
       }),
@@ -364,7 +395,7 @@ export function registerOperateCommands(program: Command): void {
     .description("Show captured network requests")
     .option("--all", "show all requests (no filter)")
     .action((pattern: string | undefined, opts: { all?: boolean }) =>
-      operateAction("network", async () => {
+      operateAction(program, "network", async () => {
         const page = await getOperatePage();
 
         // Normalized entry shape for both CDP and JS-interceptor paths
@@ -452,7 +483,7 @@ export function registerOperateCommands(program: Command): void {
     .command("select <ref> <option>")
     .description("Select option in dropdown by ref")
     .action((ref: string, option: string) =>
-      operateAction("select", async () => {
+      operateAction(program, "select", async () => {
         validateRef(ref);
         const page = await getOperatePage();
         const optionStr = JSON.stringify(option);
@@ -473,7 +504,7 @@ export function registerOperateCommands(program: Command): void {
     .command("upload <ref> <path>")
     .description("Upload file to file input element by ref number")
     .action((ref: string, filePath: string) =>
-      operateAction("upload", async () => {
+      operateAction(program, "upload", async () => {
         validateRef(ref);
         const selector = `[data-unicli-ref="${ref}"]`;
         const absolutePath = resolve(filePath);
@@ -508,7 +539,7 @@ export function registerOperateCommands(program: Command): void {
       "Hover over element by ref number to trigger mouseover effects",
     )
     .action((ref: string) =>
-      operateAction("hover", async () => {
+      operateAction(program, "hover", async () => {
         validateRef(ref);
         const selector = `[data-unicli-ref="${ref}"]`;
         const selectorJson = JSON.stringify(selector);
@@ -537,7 +568,7 @@ export function registerOperateCommands(program: Command): void {
       "Cache file (default ~/.unicli/observe-cache.jsonl)",
     )
     .action((query: string, opts: { topK?: string; cache?: string }) =>
-      operateAction("observe", async () => {
+      operateAction(program, "observe", async () => {
         const page = await getOperatePage();
         // We need refs with tag + text + optional attrs. The existing
         // snapshot generator returns this when raw=true. The runtime
@@ -595,7 +626,7 @@ export function registerOperateCommands(program: Command): void {
     .command("close")
     .description("Close the automation browser window")
     .action(() =>
-      operateAction("close", async () => {
+      operateAction(program, "close", async () => {
         const page = await getOperatePage();
         await page.closeWindow();
         return { ok: true };

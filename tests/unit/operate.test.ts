@@ -30,11 +30,22 @@ const mockPage = {
   readNetworkCapture: vi.fn().mockResolvedValue([]),
 };
 
+class MockBridgeConnectionError extends Error {
+  suggestion = "start daemon";
+  retryable = true;
+  alternatives: string[] = [];
+  constructor(message: string) {
+    super(message);
+    this.name = "BridgeConnectionError";
+  }
+}
+
 vi.mock("../../src/browser/bridge.js", () => ({
   BrowserBridge: vi.fn().mockImplementation(() => ({
     connect: vi.fn().mockResolvedValue(mockPage),
   })),
   DaemonPage: vi.fn(),
+  BridgeConnectionError: MockBridgeConnectionError,
 }));
 
 // Dynamically import after mock is set up
@@ -93,9 +104,10 @@ describe("operate upload", () => {
     ]);
 
     expect(process.exitCode).toBe(1);
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Invalid ref"),
-    );
+    const stderr = consoleSpy.mock.calls
+      .map((c) => String(c[0] ?? ""))
+      .join("\n");
+    expect(stderr).toContain("Invalid ref");
     consoleSpy.mockRestore();
   });
 
@@ -150,9 +162,12 @@ describe("operate hover", () => {
     await program.parseAsync(["node", "test", "operate", "hover", "<script>"]);
 
     expect(process.exitCode).toBe(1);
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Invalid ref"),
-    );
+    // Error envelope goes to stderr. Concatenate recorded calls and assert
+    // the underlying validateRef message surfaces in envelope.error.message.
+    const stderr = consoleSpy.mock.calls
+      .map((c) => String(c[0] ?? ""))
+      .join("\n");
+    expect(stderr).toContain("Invalid ref");
     consoleSpy.mockRestore();
   });
 });
@@ -219,6 +234,22 @@ describe("operate network — CDP-first normalization", () => {
     process.exitCode = undefined;
   });
 
+  /**
+   * operate subcommands now wrap stdout in the v2 AgentEnvelope. Entry rows
+   * live under `envelope.data`. These helpers parse the envelope and yield
+   * the underlying data array so the original assertions stay meaningful
+   * without duplicating envelope plumbing per test.
+   */
+  function parseEnvelopeData(raw: string): unknown[] {
+    // Default detectFormat picks "md" when no -f flag is set, so the test
+    // cases that don't pass -f json get the Markdown envelope. The data
+    // rows are still in the envelope text under ## Data / section headers,
+    // but the clean path is to force JSON — which we do by setting the env
+    // var UNICLI_OUTPUT=json for these tests.
+    const env = JSON.parse(raw) as { data: unknown[] };
+    return env.data;
+  }
+
   it("returns CDP entries with normalized shape when readNetworkCapture has data", async () => {
     mockPage.readNetworkCapture.mockResolvedValueOnce([
       {
@@ -232,11 +263,19 @@ describe("operate network — CDP-first normalization", () => {
     ]);
 
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    const program = createProgram();
-    await program.parseAsync(["node", "test", "operate", "network"]);
+    const prev = process.env.UNICLI_OUTPUT;
+    process.env.UNICLI_OUTPUT = "json";
+    try {
+      const program = createProgram();
+      await program.parseAsync(["node", "test", "operate", "network"]);
+    } finally {
+      process.env.UNICLI_OUTPUT = prev;
+    }
 
     expect(logSpy).toHaveBeenCalled();
-    const output = JSON.parse(logSpy.mock.calls[0][0] as string) as Array<{
+    const output = parseEnvelopeData(
+      logSpy.mock.calls[0][0] as string,
+    ) as Array<{
       url: string;
       method: string;
       status: number;
@@ -256,7 +295,6 @@ describe("operate network — CDP-first normalization", () => {
 
   it("falls back to JS interceptor when CDP capture is empty", async () => {
     mockPage.readNetworkCapture.mockResolvedValueOnce([]);
-    // JS interceptor returns JSON-encoded intercepted data
     mockPage.evaluate.mockResolvedValueOnce(
       JSON.stringify([
         {
@@ -268,11 +306,19 @@ describe("operate network — CDP-first normalization", () => {
     );
 
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    const program = createProgram();
-    await program.parseAsync(["node", "test", "operate", "network"]);
+    const prev = process.env.UNICLI_OUTPUT;
+    process.env.UNICLI_OUTPUT = "json";
+    try {
+      const program = createProgram();
+      await program.parseAsync(["node", "test", "operate", "network"]);
+    } finally {
+      process.env.UNICLI_OUTPUT = prev;
+    }
 
     expect(logSpy).toHaveBeenCalled();
-    const output = JSON.parse(logSpy.mock.calls[0][0] as string) as Array<{
+    const output = parseEnvelopeData(
+      logSpy.mock.calls[0][0] as string,
+    ) as Array<{
       url: string;
       method: string;
     }>;
@@ -303,10 +349,18 @@ describe("operate network — CDP-first normalization", () => {
     ]);
 
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    const program = createProgram();
-    await program.parseAsync(["node", "test", "operate", "network", "users"]);
+    const prev = process.env.UNICLI_OUTPUT;
+    process.env.UNICLI_OUTPUT = "json";
+    try {
+      const program = createProgram();
+      await program.parseAsync(["node", "test", "operate", "network", "users"]);
+    } finally {
+      process.env.UNICLI_OUTPUT = prev;
+    }
 
-    const output = JSON.parse(logSpy.mock.calls[0][0] as string) as unknown[];
+    const output = parseEnvelopeData(
+      logSpy.mock.calls[0][0] as string,
+    ) as unknown[];
     expect(output).toHaveLength(1);
     logSpy.mockRestore();
   });

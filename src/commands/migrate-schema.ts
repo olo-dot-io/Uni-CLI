@@ -22,7 +22,10 @@ import yaml from "js-yaml";
 import { readdirSync, readFileSync, writeFileSync, statSync } from "node:fs";
 import { join, extname, resolve, relative, sep, basename } from "node:path";
 import { ExitCode } from "../types.js";
+import type { OutputFormat } from "../types.js";
 import { validateAdapterV2 } from "../core/schema-v2.js";
+import { format, detectFormat } from "../output/formatter.js";
+import { makeCtx } from "../output/envelope.js";
 
 /**
  * Capability inference map: pipeline step name → capability identifier.
@@ -565,12 +568,17 @@ export function registerMigrateSchemaCommand(program: Command): void {
       "--write",
       "apply changes to files (default; explicit for scripting clarity)",
     )
-    .option("--json", "emit a structured JSON report")
+    .option("--json", "emit a structured JSON report (alias for -f json)")
     .action(
       (
         path: string | undefined,
         opts: { dryRun?: boolean; write?: boolean; json?: boolean },
       ) => {
+        const startedAt = Date.now();
+        const ctx = makeCtx("migrate.schema", startedAt);
+        const rootFmt = program.opts().format as OutputFormat | undefined;
+        const fmt = detectFormat(opts.json ? "json" : rootFmt);
+
         // --write is an explicit opt-in alias for the default "apply" mode.
         // If both --dry-run and --write are passed, --dry-run wins (safer).
         void opts.write;
@@ -580,43 +588,71 @@ export function registerMigrateSchemaCommand(program: Command): void {
         try {
           stat = statSync(target);
         } catch {
-          console.error(chalk.red(`migrate target not found: ${target}`));
+          ctx.error = {
+            code: "invalid_input",
+            message: `migrate target not found: ${target}`,
+            suggestion: "Pass a valid adapter directory or .yaml file path.",
+            retryable: false,
+          };
+          ctx.duration_ms = Date.now() - startedAt;
+          console.error(format(null, undefined, fmt, ctx));
           process.exit(ExitCode.CONFIG_ERROR);
         }
         if (!stat.isDirectory() && !stat.isFile()) {
-          console.error(chalk.red(`migrate target not usable: ${target}`));
+          ctx.error = {
+            code: "invalid_input",
+            message: `migrate target not usable: ${target}`,
+            suggestion:
+              "Pass a regular file or directory (no symlinks / pipes).",
+            retryable: false,
+          };
+          ctx.duration_ms = Date.now() - startedAt;
+          console.error(format(null, undefined, fmt, ctx));
           process.exit(ExitCode.CONFIG_ERROR);
         }
 
         const report = runMigration(target, { dryRun: opts.dryRun });
 
-        if (opts.json) {
-          console.log(JSON.stringify(report, null, 2));
-          return;
-        }
+        const data = {
+          target,
+          mode: opts.dryRun ? ("dry-run" as const) : ("applied" as const),
+          migrated: report.migrated,
+          already_v2: report.already_v2,
+          quarantined: report.quarantined,
+          skipped: report.skipped,
+          counts: {
+            migrated: report.migrated.length,
+            already_v2: report.already_v2.length,
+            quarantined: report.quarantined.length,
+            skipped: report.skipped.length,
+          },
+        };
 
-        console.log(
+        ctx.duration_ms = Date.now() - startedAt;
+        console.log(format(data, undefined, fmt, ctx));
+
+        // Human-readable summary → stderr (Scene-6 pattern)
+        console.error(
           chalk.bold(
-            `unicli migrate schema-v2 — ${opts.dryRun ? "dry run" : "applied"} on ${target}`,
+            `\n  unicli migrate schema-v2 — ${opts.dryRun ? "dry run" : "applied"} on ${target}`,
           ),
         );
-        console.log(
-          `  ${chalk.green(report.migrated.length + " migrated")}` +
+        console.error(
+          `    ${chalk.green(report.migrated.length + " migrated")}` +
             `, ${chalk.dim(report.already_v2.length + " already v2")}` +
             `, ${chalk.yellow(report.quarantined.length + " quarantined")}` +
             `, ${chalk.red(report.skipped.length + " skipped")}`,
         );
-
         if (report.quarantined.length > 0) {
-          console.log(chalk.yellow("\nQuarantined:"));
+          console.error(chalk.yellow("\n  Quarantined:"));
           for (const q of report.quarantined) {
-            console.log(`  - ${q.file}: ${q.reason}`);
+            console.error(`    - ${q.file}: ${q.reason}`);
           }
         }
         if (report.skipped.length > 0) {
-          console.log(chalk.red("\nSkipped:"));
+          console.error(chalk.red("\n  Skipped:"));
           for (const s of report.skipped) {
-            console.log(`  - ${s.file}: ${s.reason}`);
+            console.error(`    - ${s.file}: ${s.reason}`);
           }
         }
       },
