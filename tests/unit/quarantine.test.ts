@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { loadAdaptersFromDir } from "../../src/discovery/loader.js";
 import { listCommands } from "../../src/registry.js";
+import { format, detectFormat } from "../../src/output/formatter.js";
+import type { AgentContext } from "../../src/output/envelope.js";
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -99,4 +101,38 @@ describe("quarantine flag", () => {
       /* ignore */
     }
   }, 0);
+});
+
+describe("quarantine v2 envelope contract", () => {
+  it("format() with quarantine error context produces a v2 error envelope", () => {
+    const site = "qfixture-broken";
+    const cmd = "broken";
+    const errCtx: AgentContext = {
+      command: `${site}.${cmd}`,
+      duration_ms: 1,
+      surface: "web",
+      error: {
+        code: "quarantined",
+        message: `adapter ${site}.${cmd} is quarantined: upstream API returned 451`,
+        adapter_path: `src/adapters/${site}/${cmd}.yaml`,
+        step: 0,
+        suggestion: `run \`unicli repair ${site} ${cmd}\` or unset \`quarantine\` in the adapter YAML after fixing; override with UNICLI_FORCE_QUARANTINE=1 for one-off debugging`,
+        retryable: false,
+        alternatives: [`unicli repair ${site} ${cmd}`],
+      },
+    };
+    const fmt = detectFormat("json");
+    const rendered = format([], undefined, fmt, errCtx);
+    const envelope = JSON.parse(rendered) as Record<string, unknown>;
+
+    expect(envelope.ok).toBe(false);
+    expect(envelope.schema_version).toBe("2");
+    expect(envelope.command).toBe(`${site}.${cmd}`);
+    expect(envelope.data).toBeNull();
+
+    const error = envelope.error as Record<string, unknown>;
+    expect(error.code).toBe("quarantined");
+    expect(typeof error.message).toBe("string");
+    expect((error.message as string).includes("quarantined")).toBe(true);
+  });
 });

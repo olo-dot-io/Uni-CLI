@@ -18,7 +18,11 @@ export function registerDevCommand(program: Command): void {
   program
     .command("dev <path>")
     .description("Develop an adapter with hot-reload")
-    .option("--format <format>", "Output format (table|json|yaml|csv)", "table")
+    .option(
+      "--format <format>",
+      "Output format (table|json|yaml|csv|md|compact)",
+      "md",
+    )
     .action(async (filePath: string, opts: { format: string }) => {
       const absPath = resolve(filePath);
       if (!existsSync(absPath)) {

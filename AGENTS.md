@@ -80,7 +80,7 @@ Sites requiring auth: bilibili, weibo, zhihu, twitter, xueqiu, zsxq, jike, werea
 
 ## Output Contract
 
-Every command returns a v2 `AgentEnvelope`. Format selection is automatic — pipe the output or set an agent UA env var and you get structured Markdown; no flags required.
+Adapter dispatch, `core.*`, `ext.list`, and `dev.watch` return v2 `AgentEnvelope`. Format auto-selected — pipe or set agent UA env var to get structured Markdown. Admin commands migrate in v0.214.
 
 ### Format auto-selection (priority order)
 
@@ -147,8 +147,11 @@ count: 20
 
 ## Data
 
-| id | text | author |
-...
+### 1 · 1912345678901234567
+
+- **author**: alice_dev
+- **text**: Hey @zenalexa love the new self-repair feature!
+- **date**: 2026-04-16
 
 ## Context
 
@@ -195,7 +198,7 @@ Run: unicli auth setup twitter
 `invalid_input` `not_authenticated` `upstream_error` `internal_error`
 `api_error` `permission_denied`
 
-v0.213 dispatch path emits a subset; remaining codes are reserved for future transports (desktop / system / cua).
+`quarantined` also emitted by dispatch. Remaining codes reserved for future transports.
 
 ### Exit codes
 
@@ -270,4 +273,4 @@ unicli lark-cli calendar +agenda   # Direct passthrough
 
 ## Version
 
-0.211.2 — Vostok · Volynov
+0.213.0 — Vostok · Gagarin

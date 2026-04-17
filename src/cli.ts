@@ -69,7 +69,7 @@ export function applyJsonAlias(cmd: Command): void {
     root.setOptionValue("format", "json");
   }
   process.stderr.write(
-    "[deprecation] --json is deprecated; use -f json (will be removed in v0.213)\n",
+    "[deprecation] --json is deprecated; use -f json (will be removed in v0.214)\n",
   );
 }
 
@@ -91,7 +91,7 @@ export async function createCli(): Promise<Command> {
     )
     .option(
       "--json",
-      "[deprecated] alias for -f json; removed in v0.213",
+      "[deprecated] alias for -f json; removed in v0.214",
       false,
     )
     .option("-v, --verbose", "show pipeline debug steps");

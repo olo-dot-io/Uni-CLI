@@ -10,7 +10,7 @@ Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for
 
 ### Breaking
 
-- **`--json` / `--yaml` output shape changed to v2 envelope.** Every command now returns `{ok, schema_version: "2", command, meta, data, error, content?}`. Pre-P-B flat arrays are no longer emitted; parse `data` from the envelope. `csv` and `compact` output formats are unchanged.
+- **`--json` / `--yaml` output shape changed to v2 envelope.** Adapter dispatch plus `core.list`, `core.health`, `core.search`, `core.usage`, `ext.list`, and `dev.watch` now return `{ok, schema_version: "2", command, meta, data, error, content?}`. Pre-P-B flat arrays are no longer emitted from these paths; parse `data` from the envelope. Remaining admin commands (`repair`, `skills`, `hub`, `operate`, `mcp health`, `explore`, `eval`, `lint`, `status`, `schema`) migrate in v0.214. `csv` and `compact` output formats are unchanged.
 - **Non-TTY default format is now `md`**, not `json`. Set `-f json` (or `UNICLI_OUTPUT=json`) to restore the previous behaviour for scripts that parse stdout.
 - **`table` format deprecated** and now falls back to `md` with a stderr warning.
 - **Command naming unified to `<area>.<action>`** in the envelope `command` field (e.g. `core.list`, `ext.install`, `dev.watch`, plus `<adapter>.<cmd>` for adapter dispatch). Flat command names such as `list` no longer appear in envelopes.

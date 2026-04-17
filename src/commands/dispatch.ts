@@ -126,21 +126,27 @@ export function registerAdapterDispatch(program: Command): void {
         const startedAt = Date.now();
 
         if (isQuarantined && process.env.UNICLI_FORCE_QUARANTINE !== "1") {
-          const envelope = {
-            ok: false,
+          const errCtx: AgentContext = {
+            command: `${adapter.name}.${cmdName}`,
+            duration_ms: Date.now() - startedAt,
+            adapter_version: adapter.version,
+            surface: "web",
             error: {
-              transport: "http" as const,
-              adapter_path: `${adapter.name}/${cmdName}`,
+              code: "quarantined",
+              message: `adapter ${adapter.name}.${cmdName} is quarantined${cmd.quarantineReason ? `: ${cmd.quarantineReason}` : ""}`,
+              adapter_path: `src/adapters/${adapter.name}/${cmdName}.yaml`,
               step: 0,
-              action: cmdName,
-              reason: `adapter ${adapter.name}.${cmdName} is quarantined${cmd.quarantineReason ? `: ${cmd.quarantineReason}` : ""}`,
               suggestion: `run \`unicli repair ${adapter.name} ${cmdName}\` or unset \`quarantine\` in the adapter YAML after fixing; override with UNICLI_FORCE_QUARANTINE=1 for one-off debugging`,
-              minimum_capability: "repair.quarantine",
               retryable: false,
-              exit_code: ExitCode.CONFIG_ERROR,
+              alternatives: [`unicli repair ${adapter.name} ${cmdName}`],
             },
           };
-          process.stderr.write(JSON.stringify(envelope) + "\n");
+          const fmt = detectFormat(
+            (program.opts().format ?? cmd.defaultFormat) as
+              | OutputFormat
+              | undefined,
+          );
+          process.stderr.write(format([], cmd.columns, fmt, errCtx) + "\n");
           recordUsage({
             site: adapter.name,
             cmd: cmdName,
