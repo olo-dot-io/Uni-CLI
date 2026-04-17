@@ -171,4 +171,120 @@ describe("renderMd", () => {
     // both items should render the shared object
     expect(out.match(/\{"x":1\}/g)?.length ?? 0).toBe(2);
   });
+
+  // ── 8 new tests from round-2 code review ────────────────────────────────
+
+  it("renders error without suggestion — ## Suggestion section absent", () => {
+    const env = makeError(
+      { command: "gh.issues", duration_ms: 10 },
+      { code: "auth_error", message: "Not authenticated" },
+    );
+    const out = renderMd(env);
+    expect(out).toContain("## Error");
+    expect(out).not.toContain("## Suggestion");
+  });
+
+  it("renders error with empty alternatives array — ## Alternatives absent", () => {
+    const env = makeError(
+      { command: "gh.issues", duration_ms: 10 },
+      { code: "not_found", message: "Repo not found", alternatives: [] },
+    );
+    const out = renderMd(env);
+    expect(out).toContain("## Error");
+    expect(out).not.toContain("## Alternatives");
+  });
+
+  it("renders success with has_more=false + next_cursor — no Next Actions, cursor in Context", () => {
+    const env = makeEnvelope(
+      {
+        command: "gh.list",
+        duration_ms: 20,
+        pagination: { next_cursor: "abc", has_more: false },
+      },
+      [{ id: "1", title: "item" }],
+    );
+    const out = renderMd(env);
+    expect(out).not.toContain("## Next Actions");
+    expect(out).toContain("next_cursor");
+  });
+
+  it("sanitizes leading --- in data string values", () => {
+    const env = makeEnvelope({ command: "t.d", duration_ms: 1 }, [
+      { id: "x", note: "---\nsecret: 42" },
+    ]);
+    const out = renderMd(env);
+    // The note value must not produce a bare line-start `---` (it should be
+    // collapsed to a single line with a space, so "--- secret: 42" or similar).
+    const lines = out.split("\n");
+    // No line outside the frontmatter fences should be exactly `---`
+    const frontmatterFences = lines.reduce<number[]>((acc, line, i) => {
+      if (line === "---") acc.push(i);
+      return acc;
+    }, []);
+    // Exactly two frontmatter fence lines (opening + closing).
+    expect(frontmatterFences).toHaveLength(2);
+  });
+
+  it("sanitizes embedded newlines in titles — no new ## header injected", () => {
+    const env = makeEnvelope({ command: "t.t", duration_ms: 1 }, [
+      { title: "Hello\n## Injected", id: "x" },
+    ]);
+    const out = renderMd(env);
+    // The ### header for the item must remain a single line (no injected ## header).
+    expect(out).not.toMatch(/^## Injected/m);
+    // The item header line should contain the sanitized title on one line.
+    expect(out).toMatch(/^### 1 · Hello/m);
+  });
+
+  it("handles BigInt values — does not throw, output contains value", () => {
+    const env = makeEnvelope({ command: "t.b", duration_ms: 1 }, [
+      { amount: 42n },
+    ]);
+    // Must not throw.
+    let out: string;
+    expect(() => {
+      out = renderMd(env);
+    }).not.toThrow();
+    // Output should contain the BigInt representation.
+    expect(out!).toMatch(/42n|\[unserializable\]/);
+  });
+
+  it("handles objects with throwing toJSON — does not throw, output contains [unserializable]", () => {
+    const bad = {
+      toJSON: () => {
+        throw new Error("boom");
+      },
+    };
+    const env = makeEnvelope({ command: "t.j", duration_ms: 1 }, [{ x: bad }]);
+    // Must not throw.
+    let out: string;
+    expect(() => {
+      out = renderMd(env);
+    }).not.toThrow();
+    expect(out!).toContain("[unserializable]");
+  });
+
+  it("adapter_version with embedded newline does not break frontmatter", () => {
+    const env = makeEnvelope(
+      {
+        command: "t.v",
+        duration_ms: 1,
+        adapter_version: "1.0\n---\ninjected: true",
+      },
+      [],
+    );
+    const out = renderMd(env);
+    const lines = out.split("\n");
+    // Exactly two `---` fences for the frontmatter block (opening + closing).
+    // If the newline were preserved, a third bare `---` would appear.
+    const fenceLines = lines.filter((l) => l === "---");
+    expect(fenceLines).toHaveLength(2);
+    // The adapter_version value must appear on a single line (newlines collapsed).
+    const avLine = lines.find((l) => l.startsWith("adapter_version:"));
+    expect(avLine).toBeDefined();
+    // The collapsed line contains both parts separated by a space, on ONE line.
+    expect(avLine).toContain("1.0");
+    // No standalone `injected: true` line should exist as its own YAML key.
+    expect(lines).not.toContain("injected: true");
+  });
 });

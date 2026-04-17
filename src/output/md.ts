@@ -22,9 +22,24 @@ import type {
 const MAX_STRING_LEN = 500;
 const MAX_INLINE_JSON = 200;
 
-/** Sanitize a string value so embedded `---` at line start doesn't break frontmatter. */
-function sanitize(s: string): string {
+/**
+ * Sanitize for multi-line block contexts (e.g. Suggestion paragraph).
+ * Preserves newlines; only escapes line-start `---` to prevent frontmatter injection.
+ */
+function sanitizeBlock(s: string): string {
   return s.replace(/^---/gm, "\\---");
+}
+
+/**
+ * Sanitize for single-line inline contexts (frontmatter values, bullet
+ * keys/values, titles).  Collapses embedded newlines to a space and escapes
+ * a leading `---` so the value cannot break YAML frontmatter.
+ */
+function sanitizeInline(s: string): string {
+  return s
+    .replace(/[\r\n]+/g, " ")
+    .replace(/^---/, "\\---")
+    .trim();
 }
 
 /** Format a leaf value for a bullet list item. */
@@ -35,46 +50,57 @@ function formatValue(v: unknown): string {
   if (Buffer.isBuffer(v)) return `[Buffer ${v.byteLength} bytes]`;
   if (v instanceof Date) return v.toISOString();
   if (Array.isArray(v)) return `[${v.length} items]`;
-  if (typeof v === "object") {
+  // FIX B3: BigInt explicit early-return — JSON.stringify always throws on BigInt.
+  if (typeof v === "bigint") return `${v.toString()}n`;
+  if (typeof v === "object" && v !== null) {
     // Fast path: no cycles — JSON.stringify handles DAGs (shared refs) naturally.
     // Slow path: cycle detected — redo with a replacer that tracks the current
     // serialization ancestry via the holder object (`this` in the replacer).
+    // FIX B1: outer catch handles objects whose toJSON() throws (unconditional).
     let json: string;
     try {
       json = JSON.stringify(v);
     } catch {
-      // Circular structure detected. Use ancestry-tracking replacer.
-      // `this` in the replacer is the holder object; we maintain a path map
-      // from holder → key so we can reconstruct the ancestry Set on each call.
-      const ancestors: object[] = [];
-      json = JSON.stringify(v, function (this: unknown, _key, val) {
-        if (typeof val === "object" && val !== null) {
-          // Remove any ancestors that are no longer in this holder's chain.
-          const holderIdx = ancestors.indexOf(this as object);
-          if (holderIdx !== -1) {
-            ancestors.splice(holderIdx + 1);
-          } else {
-            ancestors.length = 0;
-          }
-          if (ancestors.includes(val as object)) return "[Circular]";
-          ancestors.push(val as object);
-        }
-        return val;
-      });
+      // Either a circular structure or a throwing toJSON. Try ancestry-tracking
+      // replacer. `this` in the replacer is the holder object; we maintain a path
+      // map from holder → key so we can reconstruct the ancestry Set on each call.
+      try {
+        const ancestors: object[] = [];
+        json =
+          JSON.stringify(v, function (this: unknown, _key, val) {
+            if (typeof val === "object" && val !== null) {
+              // Remove any ancestors that are no longer in this holder's chain.
+              const holderIdx = ancestors.indexOf(this as object);
+              if (holderIdx !== -1) {
+                ancestors.splice(holderIdx + 1);
+              } else {
+                ancestors.length = 0;
+              }
+              if (ancestors.includes(val as object)) return "[Circular]";
+              ancestors.push(val as object);
+            }
+            return val;
+          }) ?? "[unserializable]";
+      } catch {
+        // toJSON throws even inside replacer — give up gracefully.
+        return "[unserializable]";
+      }
     }
+    if (typeof json !== "string") return "[unserializable]";
     if (json.length > MAX_INLINE_JSON) {
       return json.slice(0, MAX_INLINE_JSON) + "… (truncated)";
     }
     return json;
   }
-  const s = String(v);
-  if (typeof v === "string" && s.length > MAX_STRING_LEN) {
-    return (
-      sanitize(s.slice(0, MAX_STRING_LEN)) +
-      `… (truncated, ${s.length} chars total)`
-    );
+  if (typeof v === "string") {
+    const truncated =
+      v.length > MAX_STRING_LEN
+        ? v.slice(0, MAX_STRING_LEN) + `… (truncated, ${v.length} chars total)`
+        : v;
+    // FIX B2: collapse newlines so multiline strings don't break bullet structure.
+    return truncated.replace(/[\r\n]+/g, " ");
   }
-  return sanitize(s);
+  return String(v);
 }
 
 /** Render YAML frontmatter block. */
@@ -82,27 +108,36 @@ function renderFrontmatter(env: AgentEnvelope): string {
   const lines: string[] = ["---"];
   lines.push(`ok: ${env.ok}`);
   lines.push(`schema_version: "${env.schema_version}"`);
-  lines.push(`command: ${env.command}`);
+  // FIX B2: command value is inline — sanitizeInline.
+  lines.push(`command: ${sanitizeInline(env.command)}`);
   lines.push(`duration_ms: ${env.meta.duration_ms}`);
 
   if (env.ok) {
     const meta = env.meta;
     if (meta.count !== undefined) lines.push(`count: ${meta.count}`);
-    if (meta.surface !== undefined) lines.push(`surface: ${meta.surface}`);
+    if (meta.surface !== undefined)
+      lines.push(`surface: ${sanitizeInline(meta.surface)}`);
     if (meta.adapter_version !== undefined)
-      lines.push(`adapter_version: ${meta.adapter_version}`);
-    if (meta.operator !== undefined) lines.push(`operator: ${meta.operator}`);
+      // FIX B2: adapter_version with embedded newline must not break YAML block.
+      lines.push(`adapter_version: ${sanitizeInline(meta.adapter_version)}`);
+    if (meta.operator !== undefined)
+      lines.push(`operator: ${sanitizeInline(meta.operator)}`);
     if (meta.pagination?.next_cursor !== undefined)
-      lines.push(`next_cursor: ${meta.pagination.next_cursor}`);
+      // FIX B2: cursor value is inline.
+      lines.push(
+        `next_cursor: ${sanitizeInline(String(meta.pagination.next_cursor))}`,
+      );
     if (meta.pagination?.has_more !== undefined)
       lines.push(`has_more: ${meta.pagination.has_more}`);
   } else {
     // error envelope: include surface if present, but NOT error fields
     const meta = env.meta;
-    if (meta.surface !== undefined) lines.push(`surface: ${meta.surface}`);
+    if (meta.surface !== undefined)
+      lines.push(`surface: ${sanitizeInline(meta.surface)}`);
     if (meta.adapter_version !== undefined)
-      lines.push(`adapter_version: ${meta.adapter_version}`);
-    if (meta.operator !== undefined) lines.push(`operator: ${meta.operator}`);
+      lines.push(`adapter_version: ${sanitizeInline(meta.adapter_version)}`);
+    if (meta.operator !== undefined)
+      lines.push(`operator: ${sanitizeInline(meta.operator)}`);
   }
 
   lines.push("---");
@@ -115,7 +150,8 @@ function pickTitle(item: unknown): string {
     const obj = item as Record<string, unknown>;
     for (const key of ["title", "name", "id"]) {
       if (obj[key] !== undefined && obj[key] !== null) {
-        return String(obj[key]);
+        // FIX B2: title is placed in a ### header line — must be single-line.
+        return sanitizeInline(String(obj[key]));
       }
     }
   }
@@ -129,7 +165,8 @@ function renderItem(item: unknown, index: number): string {
   if (item !== null && typeof item === "object" && !Array.isArray(item)) {
     const obj = item as Record<string, unknown>;
     for (const key of Object.keys(obj)) {
-      lines.push(`- **${key}**: ${formatValue(obj[key])}`);
+      // FIX B2: key appears inline in a bullet — sanitizeInline.
+      lines.push(`- **${sanitizeInline(key)}**: ${formatValue(obj[key])}`);
     }
   } else {
     lines.push(`- **value**: ${formatValue(item)}`);
@@ -168,13 +205,18 @@ function renderDataSection(data: unknown[] | Record<string, unknown>): string {
 function renderContextSection(meta: AgentMeta): string {
   const bullets: string[] = [];
   if (meta.adapter_version !== undefined)
-    bullets.push(`- **adapter_version**: ${meta.adapter_version}`);
+    // FIX B2: context bullet values are inline.
+    bullets.push(
+      `- **adapter_version**: ${sanitizeInline(meta.adapter_version)}`,
+    );
   if (meta.surface !== undefined)
-    bullets.push(`- **surface**: ${meta.surface}`);
+    bullets.push(`- **surface**: ${sanitizeInline(meta.surface)}`);
   if (meta.operator !== undefined)
-    bullets.push(`- **operator**: ${meta.operator}`);
+    bullets.push(`- **operator**: ${sanitizeInline(meta.operator)}`);
   if (meta.pagination?.next_cursor !== undefined)
-    bullets.push(`- **next_cursor**: ${meta.pagination.next_cursor}`);
+    bullets.push(
+      `- **next_cursor**: ${sanitizeInline(String(meta.pagination.next_cursor))}`,
+    );
   if (meta.pagination?.has_more !== undefined)
     bullets.push(`- **has_more**: ${meta.pagination.has_more}`);
 
@@ -186,7 +228,11 @@ function renderContextSection(meta: AgentMeta): string {
 function renderNextActionsSection(meta: AgentMeta): string {
   if (meta.pagination?.has_more !== true) return "";
   const cursor = meta.pagination?.next_cursor;
-  const cursorStr = cursor !== undefined ? `\`${cursor}\`` : "(no cursor)";
+  // FIX B2: cursor in inline code span — sanitizeInline.
+  const cursorStr =
+    cursor !== undefined
+      ? `\`${sanitizeInline(String(cursor))}\``
+      : "(no cursor)";
   return [
     "## Next Actions",
     "",
@@ -197,10 +243,11 @@ function renderNextActionsSection(meta: AgentMeta): string {
 /** Render ## Error section for error envelopes. */
 function renderErrorSection(err: AgentError): string {
   const lines: string[] = ["## Error", ""];
-  lines.push(`- **code**: ${err.code}`);
+  // FIX B2: error fields are inline bullet values — sanitizeInline.
+  lines.push(`- **code**: ${sanitizeInline(err.code)}`);
   lines.push(`- **message**: ${formatValue(err.message)}`);
   if (err.adapter_path !== undefined)
-    lines.push(`- **adapter_path**: ${err.adapter_path}`);
+    lines.push(`- **adapter_path**: ${sanitizeInline(err.adapter_path)}`);
   if (err.step !== undefined) lines.push(`- **step**: ${err.step}`);
   if (err.retryable !== undefined)
     lines.push(`- **retryable**: ${err.retryable}`);
@@ -210,13 +257,15 @@ function renderErrorSection(err: AgentError): string {
 /** Render ## Suggestion (paragraph, no bullet). */
 function renderSuggestionSection(err: AgentError): string {
   if (!err.suggestion) return "";
-  return ["## Suggestion", "", err.suggestion].join("\n");
+  // FIX B2: Suggestion is a multi-line paragraph — sanitizeBlock preserves newlines.
+  return ["## Suggestion", "", sanitizeBlock(err.suggestion)].join("\n");
 }
 
 /** Render ## Alternatives (inline-code bullets). */
 function renderAlternativesSection(err: AgentError): string {
   if (!err.alternatives || err.alternatives.length === 0) return "";
-  const bullets = err.alternatives.map((a) => `- \`${a}\``);
+  // FIX B2: alternative values appear inside inline code — sanitizeInline.
+  const bullets = err.alternatives.map((a) => `- \`${sanitizeInline(a)}\``);
   return ["## Alternatives", "", ...bullets].join("\n");
 }
 
