@@ -5,10 +5,10 @@ import {
   validateEnvelope,
   SCHEMA_VERSION,
   type AgentEnvelope,
-  type EnvelopeContext,
+  type AgentContext,
 } from "../../../src/output/envelope.js";
 
-const baseCtx: EnvelopeContext = {
+const baseCtx: AgentContext = {
   command: "twitter.search",
   duration_ms: 42,
 };
@@ -28,6 +28,11 @@ describe("makeEnvelope", () => {
     expect(env.meta.count).toBe(2);
   });
 
+  it("returns count=1 for single-element array", () => {
+    const env = makeEnvelope(baseCtx, [{ a: 1 }]);
+    expect(env.meta.count).toBe(1);
+  });
+
   it("returns data as object and meta.count undefined for record payload", () => {
     const env = makeEnvelope(baseCtx, { foo: "bar" });
     expect(env.data).toEqual({ foo: "bar" });
@@ -35,7 +40,7 @@ describe("makeEnvelope", () => {
   });
 
   it("preserves pagination in meta if provided in ctx", () => {
-    const ctx: EnvelopeContext = {
+    const ctx: AgentContext = {
       ...baseCtx,
       pagination: { next_cursor: "abc", has_more: true },
     };
@@ -44,7 +49,7 @@ describe("makeEnvelope", () => {
   });
 
   it("populates all optional meta fields from ctx when provided", () => {
-    const ctx: EnvelopeContext = {
+    const ctx: AgentContext = {
       command: "github.repos",
       duration_ms: 100,
       adapter_version: "1.2.3",
@@ -86,7 +91,7 @@ describe("validateEnvelope", () => {
     const env: AgentEnvelope = {
       ...makeError(baseCtx, { code: "x", message: "y" }),
       error: null,
-    };
+    } as unknown as AgentEnvelope;
     expect(() => validateEnvelope(env)).toThrow("ok=false but error is null");
   });
 
@@ -96,5 +101,87 @@ describe("validateEnvelope", () => {
       schema_version: "1" as typeof SCHEMA_VERSION,
     };
     expect(() => validateEnvelope(env)).toThrow('schema_version must be "2"');
+  });
+
+  it("throws when ok=false but data is not null", () => {
+    const env = {
+      ok: false,
+      schema_version: "2" as const,
+      command: "x.y",
+      meta: { duration_ms: 0 },
+      data: [1],
+      error: { code: "e", message: "m" },
+    } as unknown as AgentEnvelope;
+    expect(() => validateEnvelope(env)).toThrow(
+      "ok=false but data is not null",
+    );
+  });
+
+  it("throws when ok=true but data is null", () => {
+    const env = {
+      ok: true,
+      schema_version: "2" as const,
+      command: "x.y",
+      meta: { duration_ms: 0 },
+      data: null,
+      error: null,
+    } as unknown as AgentEnvelope;
+    expect(() => validateEnvelope(env)).toThrow("ok=true but data is null");
+  });
+
+  it("throws when command is empty string", () => {
+    const env = {
+      ...makeEnvelope(baseCtx, []),
+      command: "",
+    } as unknown as AgentEnvelope;
+    expect(() => validateEnvelope(env)).toThrow(
+      'envelope.command must match "<site>.<command>"',
+    );
+  });
+
+  it("throws when command has invalid format (no dot)", () => {
+    const env = {
+      ...makeEnvelope(baseCtx, []),
+      command: "twitter",
+    };
+    expect(() => validateEnvelope(env)).toThrow(
+      'envelope.command must match "<site>.<command>"',
+    );
+  });
+
+  it("does not throw when command has valid format", () => {
+    const env = makeEnvelope({ ...baseCtx, command: "twitter.search" }, []);
+    expect(() => validateEnvelope(env)).not.toThrow();
+  });
+
+  it("throws when meta.duration_ms is not a number", () => {
+    const env = {
+      ...makeEnvelope(baseCtx, []),
+      meta: {
+        ...makeEnvelope(baseCtx, []).meta,
+        duration_ms: "0" as unknown as number,
+      },
+    };
+    expect(() => validateEnvelope(env)).toThrow("duration_ms must be a number");
+  });
+
+  it("throws when content[].type is invalid", () => {
+    const env: AgentEnvelope = {
+      ...makeEnvelope(baseCtx, []),
+      content: [{ type: "video" as "text" }],
+    };
+    expect(() => validateEnvelope(env)).toThrow(
+      'envelope.content[].type must be text|image|resource, got "video"',
+    );
+  });
+
+  it("throws when meta.count mismatches data.length", () => {
+    const env: AgentEnvelope = {
+      ...makeEnvelope(baseCtx, [1, 2] as unknown as unknown[]),
+      meta: { duration_ms: 42, count: 3 },
+    };
+    expect(() => validateEnvelope(env)).toThrow(
+      "envelope.meta.count (3) disagrees with data.length (2)",
+    );
   });
 });

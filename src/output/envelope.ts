@@ -3,20 +3,26 @@
  *
  * All `--json` / `--yaml` / `--md` output wraps payloads in this envelope.
  * Hard-switch: v0.215 removes any legacy v1 path (DECISION 3 confirmed 2026-04-17).
+ *
+ * NOTE: Names are prefixed "Agent*" to avoid collision with the transport-layer
+ * EnvelopeMeta / EnvelopeError re-exported from src/errors.ts (src/core/envelope.ts).
  */
 
 export const SCHEMA_VERSION = "2" as const;
+export type SchemaVersion = "2";
 
 export type Surface = "web" | "desktop" | "system" | "mobile";
 
-export interface EnvelopeContent {
+/** MCP-style content block carried alongside structured data. */
+export interface AgentContent {
   type: "text" | "image" | "resource";
   text?: string;
   data?: string;
   uri?: string;
 }
 
-export interface EnvelopeMeta {
+/** Timing, pagination, and provenance metadata on every envelope. */
+export interface AgentMeta {
   duration_ms: number;
   count?: number;
   adapter_version?: string;
@@ -28,7 +34,8 @@ export interface EnvelopeMeta {
   };
 }
 
-export interface EnvelopeError {
+/** Structured error payload following sysexits.h / self-repair contract. */
+export interface AgentError {
   code: string;
   message: string;
   adapter_path?: string;
@@ -38,30 +45,45 @@ export interface EnvelopeError {
   alternatives?: string[];
 }
 
-export interface EnvelopeContext {
+/** Caller-supplied context used to build an envelope. */
+export interface AgentContext {
   command: string; // e.g. "twitter.search"
   duration_ms: number;
   adapter_version?: string;
   surface?: Surface;
   operator?: string;
-  pagination?: EnvelopeMeta["pagination"];
+  pagination?: AgentMeta["pagination"];
 }
 
-export interface AgentEnvelope {
-  ok: boolean;
-  schema_version: typeof SCHEMA_VERSION;
+/** Success arm of the discriminated union. */
+export interface AgentEnvelopeOk {
+  ok: true;
+  schema_version: SchemaVersion;
   command: string;
-  meta: EnvelopeMeta;
-  data: unknown[] | Record<string, unknown> | null;
-  error: EnvelopeError | null;
-  content?: EnvelopeContent[];
+  meta: AgentMeta;
+  data: unknown[] | Record<string, unknown>;
+  error: null;
+  content?: AgentContent[];
 }
+
+/** Error arm of the discriminated union. */
+export interface AgentEnvelopeErr {
+  ok: false;
+  schema_version: SchemaVersion;
+  command: string;
+  meta: AgentMeta;
+  data: null;
+  error: AgentError;
+  content?: AgentContent[];
+}
+
+export type AgentEnvelope = AgentEnvelopeOk | AgentEnvelopeErr;
 
 /** Build a success envelope from context + payload. */
 export function makeEnvelope(
-  ctx: EnvelopeContext,
+  ctx: AgentContext,
   data: unknown[] | Record<string, unknown>,
-): AgentEnvelope {
+): AgentEnvelopeOk {
   const count = Array.isArray(data) ? data.length : undefined;
   return {
     ok: true,
@@ -70,10 +92,16 @@ export function makeEnvelope(
     meta: {
       duration_ms: ctx.duration_ms,
       ...(count !== undefined ? { count } : {}),
-      ...(ctx.adapter_version ? { adapter_version: ctx.adapter_version } : {}),
-      ...(ctx.surface ? { surface: ctx.surface } : {}),
-      ...(ctx.operator ? { operator: ctx.operator } : {}),
-      ...(ctx.pagination ? { pagination: ctx.pagination } : {}),
+      ...(ctx.adapter_version !== undefined
+        ? { adapter_version: ctx.adapter_version }
+        : {}),
+      ...(ctx.surface !== undefined ? { surface: ctx.surface } : {}),
+      ...(ctx.operator !== undefined ? { operator: ctx.operator } : {}),
+      ...(ctx.pagination !== undefined &&
+      (ctx.pagination.next_cursor !== undefined ||
+        ctx.pagination.has_more !== undefined)
+        ? { pagination: ctx.pagination }
+        : {}),
     },
     data,
     error: null,
@@ -82,18 +110,20 @@ export function makeEnvelope(
 
 /** Build an error envelope. `data` is forced to null. */
 export function makeError(
-  ctx: EnvelopeContext,
-  err: EnvelopeError,
-): AgentEnvelope {
+  ctx: AgentContext,
+  err: AgentError,
+): AgentEnvelopeErr {
   return {
     ok: false,
     schema_version: SCHEMA_VERSION,
     command: ctx.command,
     meta: {
       duration_ms: ctx.duration_ms,
-      ...(ctx.adapter_version ? { adapter_version: ctx.adapter_version } : {}),
-      ...(ctx.surface ? { surface: ctx.surface } : {}),
-      ...(ctx.operator ? { operator: ctx.operator } : {}),
+      ...(ctx.adapter_version !== undefined
+        ? { adapter_version: ctx.adapter_version }
+        : {}),
+      ...(ctx.surface !== undefined ? { surface: ctx.surface } : {}),
+      ...(ctx.operator !== undefined ? { operator: ctx.operator } : {}),
     },
     data: null,
     error: err,
@@ -120,10 +150,33 @@ export function validateEnvelope(env: AgentEnvelope): void {
   if (env.ok && env.data === null) {
     throw new Error("envelope.ok=true but data is null");
   }
-  if (!env.command || typeof env.command !== "string") {
-    throw new Error("envelope.command must be a non-empty string");
-  }
   if (typeof env.meta.duration_ms !== "number") {
     throw new Error("envelope.meta.duration_ms must be a number");
+  }
+  // command must match "<site>.<command>" (covers non-empty as well)
+  if (!/^[a-z0-9_-]+\.[a-z0-9_-]+$/i.test(env.command)) {
+    throw new Error(
+      `envelope.command must match "<site>.<command>" (alnum + _/-), got "${env.command}"`,
+    );
+  }
+  // content[].type enum
+  if (env.content !== undefined) {
+    for (const c of env.content) {
+      if (!["text", "image", "resource"].includes(c.type)) {
+        throw new Error(
+          `envelope.content[].type must be text|image|resource, got "${c.type}"`,
+        );
+      }
+    }
+  }
+  // meta.count must agree with data.length when both are present
+  if (
+    Array.isArray(env.data) &&
+    env.meta.count !== undefined &&
+    env.meta.count !== env.data.length
+  ) {
+    throw new Error(
+      `envelope.meta.count (${env.meta.count}) disagrees with data.length (${env.data.length})`,
+    );
   }
 }

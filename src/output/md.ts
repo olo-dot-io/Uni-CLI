@@ -6,7 +6,7 @@
  * so callers can start importing and Task 3 can wire formatter.ts.
  */
 
-import type { AgentEnvelope } from "./envelope.js";
+import type { AgentEnvelope } from "./envelope.js"; // AgentEnvelope is the discriminated union
 
 export function renderMd(_envelope: AgentEnvelope): string {
   throw new Error("TODO: Task 2 — implement renderMd()");
