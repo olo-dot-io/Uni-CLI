@@ -28,7 +28,7 @@ function sanitize(s: string): string {
 }
 
 /** Format a leaf value for a bullet list item. */
-function formatValue(v: unknown, seen = new Set<unknown>()): string {
+function formatValue(v: unknown): string {
   if (v === null) return "(null)";
   if (v === undefined) return "(undefined)";
   if (typeof v === "function") return "[Function]";
@@ -36,17 +36,36 @@ function formatValue(v: unknown, seen = new Set<unknown>()): string {
   if (v instanceof Date) return v.toISOString();
   if (Array.isArray(v)) return `[${v.length} items]`;
   if (typeof v === "object") {
-    if (seen.has(v)) return "[Circular]";
-    seen.add(v);
+    // Fast path: no cycles — JSON.stringify handles DAGs (shared refs) naturally.
+    // Slow path: cycle detected — redo with a replacer that tracks the current
+    // serialization ancestry via the holder object (`this` in the replacer).
+    let json: string;
     try {
-      const json = JSON.stringify(v);
-      if (json.length > MAX_INLINE_JSON) {
-        return json.slice(0, MAX_INLINE_JSON) + "… (truncated)";
-      }
-      return json;
-    } finally {
-      seen.delete(v);
+      json = JSON.stringify(v);
+    } catch {
+      // Circular structure detected. Use ancestry-tracking replacer.
+      // `this` in the replacer is the holder object; we maintain a path map
+      // from holder → key so we can reconstruct the ancestry Set on each call.
+      const ancestors: object[] = [];
+      json = JSON.stringify(v, function (this: unknown, _key, val) {
+        if (typeof val === "object" && val !== null) {
+          // Remove any ancestors that are no longer in this holder's chain.
+          const holderIdx = ancestors.indexOf(this as object);
+          if (holderIdx !== -1) {
+            ancestors.splice(holderIdx + 1);
+          } else {
+            ancestors.length = 0;
+          }
+          if (ancestors.includes(val as object)) return "[Circular]";
+          ancestors.push(val as object);
+        }
+        return val;
+      });
     }
+    if (json.length > MAX_INLINE_JSON) {
+      return json.slice(0, MAX_INLINE_JSON) + "… (truncated)";
+    }
+    return json;
   }
   const s = String(v);
   if (typeof v === "string" && s.length > MAX_STRING_LEN) {

@@ -146,4 +146,29 @@ describe("renderMd", () => {
       "
     `);
   });
+
+  it("renders circular reference as [Circular]", () => {
+    type Circ = { id: string; parent?: Circ };
+    const root: Circ = { id: "root" };
+    root.parent = root; // self-cycle
+    const env = makeEnvelope({ command: "t.c", duration_ms: 1 }, [
+      { id: "x", ref: root },
+    ]);
+    // Should not throw
+    const out = renderMd(env);
+    expect(out).toContain("[Circular]");
+    expect(out).not.toContain("Converting circular structure");
+  });
+
+  it("shared (non-cyclic) references render normally, not as [Circular]", () => {
+    const shared = { x: 1 };
+    const env = makeEnvelope({ command: "t.s", duration_ms: 1 }, [
+      { id: "a", ref: shared },
+      { id: "b", ref: shared },
+    ]);
+    const out = renderMd(env);
+    expect(out).not.toContain("[Circular]");
+    // both items should render the shared object
+    expect(out.match(/\{"x":1\}/g)?.length ?? 0).toBe(2);
+  });
 });
