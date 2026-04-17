@@ -379,6 +379,149 @@ describe("17. detectFormat collapses all md branches", () => {
   });
 });
 
+// ── 18a. UNICLI_OUTPUT bare override (T10 gap #17) ───────────────────────────
+//
+// Test 9 above asserts UNICLI_OUTPUT=yaml works, but doesn't prove the case
+// where OUTPUT is unset. Test 18 below asserts UNICLI_OUTPUT wins over OUTPUT,
+// but only for `json`. These two tests close the gap: UNICLI_OUTPUT alone
+// (with OUTPUT affirmatively cleared) triggers no deprecation warning.
+
+describe("18a. detectFormat UNICLI_OUTPUT bare override (no OUTPUT, no flag)", () => {
+  let stderrSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    stderrSpy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+    delete process.env.OUTPUT;
+  });
+
+  afterEach(() => {
+    delete process.env.UNICLI_OUTPUT;
+    delete process.env.OUTPUT;
+    stderrSpy.mockRestore();
+  });
+
+  it("UNICLI_OUTPUT=yaml alone switches default format — no warning", () => {
+    process.env.UNICLI_OUTPUT = "yaml";
+    expect(detectFormat(undefined)).toBe("yaml");
+    // No deprecation warning when only UNICLI_OUTPUT is set.
+    const wroteDeprecation = stderrSpy.mock.calls.some((c) =>
+      /deprecated/i.test(String(c[0] ?? "")),
+    );
+    expect(wroteDeprecation).toBe(false);
+  });
+
+  it("UNICLI_OUTPUT=yaml wins when both UNICLI_OUTPUT and OUTPUT are set (no warning)", () => {
+    process.env.UNICLI_OUTPUT = "yaml";
+    process.env.OUTPUT = "json";
+    expect(detectFormat(undefined)).toBe("yaml");
+    // No warning because UNICLI_OUTPUT short-circuits the OUTPUT branch.
+    const wroteDeprecation = stderrSpy.mock.calls.some((c) =>
+      /deprecated/i.test(String(c[0] ?? "")),
+    );
+    expect(wroteDeprecation).toBe(false);
+  });
+
+  it("UNICLI_OUTPUT=nonsense falls through, OUTPUT still honored with warning", () => {
+    // Guard: invalid UNICLI_OUTPUT shouldn't mask a valid legacy OUTPUT.
+    process.env.UNICLI_OUTPUT = "nonsense";
+    process.env.OUTPUT = "yaml";
+    expect(detectFormat(undefined)).toBe("yaml");
+    const wroteDeprecation = stderrSpy.mock.calls.some((c) =>
+      /deprecated/i.test(String(c[0] ?? "")),
+    );
+    expect(wroteDeprecation).toBe(true);
+  });
+});
+
+// ── 18b. format() error-wins precedence (T10 gap #16) ────────────────────────
+//
+// Contract: when ctx.error is set, format() produces an error envelope and
+// the data argument is ignored — regardless of whether data is null, [], or
+// a populated array/object. Test 16 above covers data=[]. This case protects
+// the "error wins over non-null data" invariant against future refactors.
+
+describe("18b. format() error-wins precedence (ctx.error + non-null data)", () => {
+  it("non-empty array data is discarded when ctx.error is set (json)", () => {
+    const errCtx: AgentContext = {
+      command: "twitter.search",
+      duration_ms: 3,
+      surface: "web",
+      error: {
+        code: "internal_error",
+        message: "boom",
+        adapter_path: "src/adapters/twitter/search.yaml",
+        step: 2,
+        suggestion: "retry later",
+        retryable: true,
+      },
+    };
+    // Non-null data: a populated array that would otherwise become envelope.data.
+    const out = format(
+      [{ id: 1, title: "should not appear" }],
+      undefined,
+      "json",
+      errCtx,
+    );
+    const env = JSON.parse(out);
+    expect(env.ok).toBe(false);
+    expect(env.error.code).toBe("internal_error");
+    // Error envelope forces data:null — non-null input must NOT leak through.
+    expect(env.data).toBeNull();
+    // And the meta count must not reflect the discarded array length.
+    expect(env.meta.count).toBeUndefined();
+  });
+
+  it("object payload is discarded when ctx.error is set (json)", () => {
+    const errCtx: AgentContext = {
+      command: "core.usage",
+      duration_ms: 2,
+      surface: "web",
+      error: { code: "config_error", message: "bad config" },
+    };
+    const out = format(
+      { records: 42, window: "7d" } as Record<string, unknown>,
+      undefined,
+      "json",
+      errCtx,
+    );
+    const env = JSON.parse(out);
+    expect(env.ok).toBe(false);
+    expect(env.error.code).toBe("config_error");
+    expect(env.data).toBeNull();
+  });
+
+  it("error-wins precedence holds across yaml output", () => {
+    const errCtx: AgentContext = {
+      command: "core.health",
+      duration_ms: 1,
+      surface: "web",
+      error: { code: "network_error", message: "ETIMEDOUT" },
+    };
+    const out = format([{ leak: "data" }], undefined, "yaml", errCtx);
+    expect(out).toContain("ok: false");
+    expect(out).toContain("network_error");
+    // The yaml output contains the error envelope — data must be null.
+    expect(out).toContain("data: null");
+  });
+
+  it("error-wins precedence holds across md output", () => {
+    const errCtx: AgentContext = {
+      command: "core.health",
+      duration_ms: 1,
+      surface: "web",
+      error: { code: "auth_required", message: "login first" },
+    };
+    const out = format([{ leak: "row" }], undefined, "md", errCtx);
+    expect(out).toContain("ok: false");
+    expect(out).toContain("## Error");
+    expect(out).toContain("auth_required");
+    // No "## Data" section — the error arm omits it.
+    expect(out).not.toContain("## Data");
+  });
+});
+
 // ── 18. OUTPUT env var deprecation (v0.213.1 rename → UNICLI_OUTPUT) ─────────
 
 describe("18. detectFormat OUTPUT deprecation", () => {
