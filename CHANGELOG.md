@@ -3,10 +3,14 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
-## [0.213.0] — Unreleased — Vostok · Gagarin
+## [0.213.0-beta.2] — 2026-04-17 — Vostok · Gagarin (Pre-release 2)
 
 > Agent-Native output: v2 envelope + `-f md` format land as the default for agents.
 > Non-TTY and recognised agent UAs now receive structured Markdown automatically.
+>
+> **Since v0.213.0-beta.1** (engine rigor + 24 plugin exports + weekly release cron + schema-v2 on 896 YAML adapters + 80 adapter tests): this iteration adds the Agent-Native output contract (v2 envelope, `-f md`, `isAgentUA` detection, 7 call sites wired, `dispatch.ts` extraction, 20 golden MD fixtures, quarantine envelope alignment) plus a housekeeping pass (consumed v0.212.1 changeset removed, `migrate-schema` capability map covers `cua_ask` / `cua_assert`).
+>
+> Remaining runway for v0.213.0 final: workflow adapters (gmail/gcal/drive/spotify/apple-notes/imessage), Chrome extension full pipeline, `generate --verify` closed loop, CUA backend drivers, dual JS adapter format, `unicli inbox`, `unicli shop`, and the OpenCLI parity harness.
 
 ### Breaking
 

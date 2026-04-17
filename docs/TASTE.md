@@ -5,7 +5,7 @@
 >
 > **Current version:** v0.211.2 — Vostok · Volynov (Boris Volynov, Soyuz 5 — survived ballistic reentry when service module failed to separate, 1969. Connection through adversity).
 >
-> **Current scale:** <!-- STATS:site_count -->200<!-- /STATS --> sites, <!-- STATS:command_count -->968<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->968<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->896<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->72<!-- /STATS --> TS), <!-- STATS:test_count -->1204<!-- /STATS --> tests. Numbers render from `stats.json` via `npm run build`; drift fails `npm run stats:check`.
+> **Current scale:** <!-- STATS:site_count -->200<!-- /STATS --> sites, <!-- STATS:command_count -->968<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->968<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->896<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->72<!-- /STATS --> TS), <!-- STATS:test_count -->1205<!-- /STATS --> tests. Numbers render from `stats.json` via `npm run build`; drift fails `npm run stats:check`.
 
 ## Core Identity
 
@@ -47,7 +47,7 @@ Format: `0.100.1`, `0.200.0`, `1.0.0`, etc.
 - **MINOR** = mission number (100, 200, 300... like Mission Control sequences)
 - **PATCH** = revision within a mission
 
-Current: `0.211.2` — Mission 211, codename **Vostok · Volynov**.
+Current: `0.213.x` — Mission 2100, codename **Vostok · Gagarin (Pre-release 2)**.
 
 ### Version Codenames — The Full Spectrum
 

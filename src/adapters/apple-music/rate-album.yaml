@@ -60,6 +60,8 @@ columns: [backend, stars]
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
 capabilities:
   [
+    "cua.ask",
+    "cua.assert",
     "cua.click",
     "cua.snapshot",
     "cua.wait",
