@@ -4,7 +4,7 @@
      Install: npm install -g @zenalexa/unicli
      Discover: unicli search "your intent" (bilingual EN/ZH)
      Run: unicli <site> <command> [args]
-     Output is JSON when piped. Errors are structured JSON to stderr.
+     Output is structured Markdown by default (non-TTY + agent UA auto-detected). Use -f json for JSON. Errors are structured envelopes to stderr.
      You can fix broken adapters yourself — read the Self-Repair section. -->
 
 <!-- BEGIN COUNTS -->
@@ -15,13 +15,13 @@
 
 ## For AI Agents
 
-Universal CLI for websites, desktop apps, and local tools. JSON when piped. Self-repairing YAML adapters.
+Universal CLI for websites, desktop apps, and local tools. Markdown when piped (structured envelope). Self-repairing YAML adapters.
 
 ```bash
 unicli search "推特热门"             # Find commands by intent (bilingual)
 unicli <site> <command> [options]    # Run any command
 unicli repair <site> <command>       # Diagnose + fix a broken adapter
-unicli list                          # All commands (JSON when piped)
+unicli list                          # All commands (MD when piped)
 ```
 
 ## Install
@@ -78,19 +78,138 @@ Cookie file format: `{ "SESSDATA": "value", "bili_jct": "value" }`. Store at `~/
 
 Sites requiring auth: bilibili, weibo, zhihu, twitter, xueqiu, zsxq, jike, weread, douban, linux-do, v2ex (some commands).
 
-## Output Protocol
+## Output Contract
 
-- **Piped** → auto-JSON, zero flags needed
-- **TTY** → human-readable table
-- **Errors** → structured JSON on stderr: `{ adapter_path, step, action, suggestion }`
-- **Exit codes**: 0 ok, 66 empty, 69 unavailable, 75 temp, 77 auth, 78 config
+Adapter dispatch, `core.*`, `ext.list`, and `dev.watch` return v2 `AgentEnvelope`. Format auto-selected — pipe or set agent UA env var to get structured Markdown. Admin commands migrate in v0.214.
+
+### Format auto-selection (priority order)
+
+1. `--format` / `-f` flag (`json | yaml | md | csv | compact`)
+2. `UNICLI_OUTPUT` or `OUTPUT` env var (same values)
+3. Non-TTY stdout — defaults to `md`
+4. Agent UA env vars — if any is set, defaults to `md`
+5. `md` default for all other cases
+
+**Agent UA env vars** (set any to trigger md auto-selection):
+`CLAUDE_CODE`, `CODEX_CLI`, `OPENCODE`, `HERMES_AGENT`, `UNICLI_AGENT`
+
+### Envelope shape
+
+Success:
+
+```yaml
+ok: true
+schema_version: "2"
+command: "twitter.mentions"
+meta:
+  duration_ms: 412
+  count: 20
+  surface: web # web | desktop | system | mobile
+  pagination:
+    has_more: true
+    next_cursor: "abc123"
+data:
+  - { id: "...", text: "...", author: "..." }
+error: null
+```
+
+Error:
+
+```yaml
+ok: false
+schema_version: "2"
+command: "twitter.mentions"
+meta:
+  duration_ms: 91
+data: null
+error:
+  code: auth_required # see error codes below
+  message: "401 Unauthorized"
+  adapter_path: "src/adapters/twitter/mentions.yaml"
+  step: 1
+  suggestion: "Run: unicli auth setup twitter"
+  retryable: false
+  alternatives: ["twitter.search", "twitter.timeline"]
+```
+
+### MD body sections
+
+Success output shape:
+
+```markdown
+---
+ok: true
+schema_version: "2"
+command: twitter.mentions
+duration_ms: 412
+count: 20
+---
+
+## Data
+
+### 1 · 1912345678901234567
+
+- **author**: alice_dev
+- **text**: Hey @zenalexa love the new self-repair feature!
+- **date**: 2026-04-16
+
+## Context
+
+- **surface**: web
+- **has_more**: true
+- **next_cursor**: abc123
+
+## Next Actions
+
+- Fetch next page with cursor: `abc123`
+```
+
+Error output shape:
+
+```markdown
+---
+ok: false
+schema_version: "2"
+command: twitter.mentions
+duration_ms: 91
+---
+
+## Error
+
+- **code**: auth_required
+- **message**: 401 Unauthorized
+- **adapter_path**: src/adapters/twitter/mentions.yaml
+- **step**: 1
+- **retryable**: false
+
+## Suggestion
+
+Run: unicli auth setup twitter
+
+## Alternatives
+
+- `twitter.search`
+- `twitter.timeline`
+```
+
+### Error codes
+
+`selector_miss` `auth_required` `not_found` `rate_limited` `network_error`
+`invalid_input` `not_authenticated` `upstream_error` `internal_error`
+`api_error` `permission_denied`
+
+`quarantined` also emitted by dispatch. Remaining codes reserved for future transports.
+
+### Exit codes
+
+0 ok · 66 empty · 69 unavailable · 75 temp-fail · 77 auth · 78 config
 
 ## Self-Repair Protocol
 
 When a command fails:
 
 ```
-1. Read error JSON → get adapter_path
+1. Read error envelope (MD or JSON) → get adapter_path
 2. Open the YAML (~20 lines, no imports)
 3. Edit the failing step (URL changed, selector moved, auth needed)
 4. Save to ~/.unicli/adapters/<site>/<command>.yaml
@@ -154,4 +273,4 @@ unicli lark-cli calendar +agenda   # Direct passthrough
 
 ## Version
 
-0.213.0-beta.1 — Vostok · Gagarin (Pre-release)
+0.213.0 — Vostok · Gagarin

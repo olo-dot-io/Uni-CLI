@@ -3,32 +3,51 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
-## [0.213.0-beta.1] — 2026-04-15 — Vostok · Gagarin (Pre-release)
+## [0.213.0] — 2026-04-17 — Vostok · Gagarin
 
-> Pre-release cut of v0.213 — engine rigor, public plugin surface, and release automation are in. Workflow adapters, Chrome extension, `generate --verify`, CUA backend drivers, and the parity harness remain on the runway for 0.213.0 final.
+> **GA release.** Engine rigor + Agent-Native output + honest parity numbers.
+> 195 sites · 957 commands · engine split (2810 → 298 LOC executor) · schema-v2 on 896 adapters · v2 envelope with `-f md` default for agents · 1286 unit + 5514 adapter = 6800 tests passing.
+>
+> **Since v0.212.1 Shatalov II** the branch accumulated 46 commits across two prereleases:
+>
+> - **beta.1 (engine rigor)**: yaml-runner split into executor + registry + runtime + template + ssrf + 33 step files; 24 plugin export subpaths + `PLUGIN.md` + exports CI gate; weekly release CI cron + dependabot grouping; schema-v2 migration on 896 YAML adapters; 80 colocated adapter tests.
+> - **beta.2 (agent-native output)**: v2 `{ok, schema_version, command, meta, data, error, content?}` envelope, `-f md` default on non-TTY and recognised agent UAs, `isAgentUA()` detector, 7 call sites wired, `src/commands/dispatch.ts` extracted from `cli.ts`, 20 golden MD fixtures across 10 flagship adapter pairs, quarantine envelope aligned.
+> - **GA polish**: `docs/THEORY.md` v2 now cites SkillDroid (arXiv:2604.14872), MolmoWeb, IntentScore, Android Coach, Beyond Chat and Clicks — 46 refs verified against arxiv.org; `PARITY_AUDIT.md` publishes measured per-CLI numbers against `public-clis`; Ref-Backed Locator primitive audited vs OpenCLI PR #1016.
+>
+> **Honest parity numbers.** Measured per-CLI parity against `github.com/public-clis/public-clis` on 2026-04-17: 85.7% on the four core social sites (twitter 95.7%, reddit 87.0%, xiaohongshu 82.8%, bilibili 77.3%); weighted across eight messaging peer CLIs the figure is 73.5%, not 85%. Uni-CLI ships ~45 commands on overlapping sites that no peer offers (twitter trending/spaces/lists/media, bilibili live/later, xiaohongshu creator-suite, reddit rising/frontpage). Telegram (0 adapters), Discord (placeholder only), and Obsidian vault-write are explicit scope-outs deferred to v0.214. Positioning: breadth (195 sites in one binary) + self-repair + editable 20-line YAML adapters, not per-peer command parity.
+>
+> **Ref-Backed Locator (OpenCLI PR #1016) parity.** Snapshot-driven numbered refs, interactive-only filtering, scroll markers, iframe/shadow-DOM crossing all ship since v0.211. The verification-layer diagnostics that PR #1016 added on top — window-level fingerprint map, `stale_ref` / `ambiguous` / `not_found` structured errors with candidate lists — are scoped for v0.213.1 (~2–3 days).
+>
+> **Remaining v0.213 runway → v0.214 Nikolayev**: workflow adapters (gmail/gcal/drive/spotify/apple-notes/imessage), Chrome extension full pipeline, `generate --verify` closed loop, CUA backend drivers, dual JS adapter format, `unicli inbox`, `unicli shop`, and the full 25-adapter OpenCLI parity harness.
+
+### Breaking
+
+- **`--json` / `--yaml` output shape changed to v2 envelope.** Adapter dispatch plus `core.list`, `core.health`, `core.search`, `core.usage`, `ext.list`, and `dev.watch` now return `{ok, schema_version: "2", command, meta, data, error, content?}`. Pre-P-B flat arrays are no longer emitted from these paths; parse `data` from the envelope. Remaining admin commands (`repair`, `skills`, `hub`, `operate`, `mcp health`, `explore`, `eval`, `lint`, `status`, `schema`) migrate in v0.214. `csv` and `compact` output formats are unchanged.
+- **Non-TTY default format is now `md`**, not `json`. Set `-f json` (or `UNICLI_OUTPUT=json`) to restore the previous behaviour for scripts that parse stdout.
+- **`table` format deprecated** and now falls back to `md` with a stderr warning.
+- **Command naming unified to `<area>.<action>`** in the envelope `command` field (e.g. `core.list`, `ext.install`, `dev.watch`, plus `<adapter>.<cmd>` for adapter dispatch). Flat command names such as `list` no longer appear in envelopes.
 
 ### Added
 
-- **Plugin surface** — `package.json` `exports` expands from 2 to 24 dual-typed subpaths (`./registry`, `./engine`, `./engine/registry`, `./engine/steps`, `./transport`, `./transport/{http,cdp-browser,subprocess,desktop-ax,cua}`, `./browser/{cdp,page,daemon,utils}`, `./protocol/{mcp,acp,skill}`, `./errors`, `./output`, `./download`, `./pipeline`, …). `docs/PLUGIN.md` documents the stability contract; `examples/plugin-example/` ships as a working reference.
-- **Adapter test framework** — colocated `.test.ts` next to every adapter with `runAdapterWithFixture()` + `expectAdapterShape()`. 80 adapters covered with synthetic fixtures; `coverage:adapter-test` CI gate (threshold 50). `test:adapter` now contributes 5514 passing assertions to `verify`.
-- **Weekly release cron** — `.github/workflows/weekly-release.yml` auto-cuts a release every Friday 09:00 HKT when substantive commits landed since the last tag. Dependabot is grouped into a single Monday PR to ride along without flooding history. Policy in `docs/RELEASE-CADENCE.md`.
-- **Bilingual README** — `README.zh-CN.md` full parity translation with English README; language switcher at the top of both; new `assets/icon.svg` mark.
-- **schema_version: v2 marker** — stamped on all 896 YAML adapters. `unicli migrate schema-v2 --write` idempotent. `lint:schema-v2` gate added to `verify`.
+- **`src/output/envelope.ts`** (184 LOC) — `AgentEnvelope` discriminated union (`AgentEnvelopeOk | AgentEnvelopeErr`), `AgentMeta`, `AgentError`, `AgentContext`, `AgentContent`, factories `makeEnvelope()` / `makeError()`, and `validateEnvelope()` with 9 structural invariants (schema_version, ok/error mutual exclusion, ok/data correlation, `<site>.<command>` regex, duration_ms type, content[].type enum, count/data.length consistency).
+- **`src/output/md.ts`** (313 LOC) — `renderMd(envelope)` produces YAML frontmatter plus `## Data` / `## Context` / `## Next Actions` / `## Error` / `## Suggestion` / `## Alternatives` sections. Handles null/undefined/Date/Buffer/Function/BigInt/circular references, shared-ref DAGs, long strings, throwing `toJSON`, and unserializable values without crashing. Markdown injection sanitised at 21 insertion points.
+- **`-f md` output format** (`UNICLI_OUTPUT=md` and agent-UA env vars also trigger it) with stable byte-for-byte rendering per input (golden-fixture tested).
+- **Agent-UA auto-detection** — `isAgentUA()` reads `CLAUDE_CODE`, `CODEX_CLI`, `OPENCODE`, `HERMES_AGENT`, `UNICLI_AGENT` environment variables and switches output to `md` when any is set.
+- **`UNICLI_OUTPUT` / `OUTPUT` env var override** — `json|yaml|md|csv|compact`, overrides auto-detection; `--format` / `-f` flag has highest priority.
+- **`src/commands/dispatch.ts`** (299 LOC) — adapter-dispatch path extracted from `cli.ts`, including envelope construction and the structured-error path (`AgentError` → `ctx.error` → v2 error envelope to stderr with `errorTypeToCode` + `mapErrorToExitCode` helpers).
+- **20 MD golden fixtures** under `tests/fixtures/md/<site>.<command>.{success,error}.md` covering 10 flagship adapter pairs (twitter.mentions, reddit.frontpage, bilibili.dynamic, hackernews.top, github-trending.daily, arxiv.search, xiaohongshu.feed, zhihu.answers, douban.book-hot, notion.search). Regenerate with `UPDATE_FIXTURES=1 npx vitest run tests/unit/output/fixtures.test.ts`.
 
 ### Changed
 
-- **Engine split** — `src/engine/yaml-runner.ts` retired (2810 LOC monolith → 19-LOC deprecation shim). Orchestration moved to `engine/executor.ts` (298 LOC), with per-step files under `engine/steps/` (≤200 LOC each, ≤2200 LOC total) self-registering into `engine/step-registry.ts`. Template helpers isolated in `engine/template.ts`, SSRF guard in `engine/ssrf.ts`. All callers (`cli.ts`, `mcp/server.ts`, `protocol/acp.ts`, commands, transports) migrated to `engine/executor.js`.
-- **Transport bus ownership** — `getBus()` / `buildTransportCtx()` now live in `src/transport/bus.ts` (was `src/engine/transport-bus.ts`, deleted). Consistent with the transport abstraction layer.
-- **Verify ordering** — `build` now runs before `test` in the `verify` chain so `dist/`-backed tests (e.g. `exports.test.ts`) resolve their targets. Caught by pre-push `verify:clean`.
+- **`format(data, columns, fmt, ctx)`** now requires an `AgentContext` argument; TypeScript enforces it at every call site.
+- **`src/cli.ts` slimmed 781 → 490 LOC** by moving adapter dispatch into `src/commands/dispatch.ts`; the complexity gate is green.
+- **7 call sites migrated to the envelope path**: `core.list` in `src/cli.ts`, adapter dispatch in `src/commands/dispatch.ts`, plus `src/commands/{ext,usage,dev,search,health}.ts`.
+- **`detectFormat()` order**: explicit `--format` > `UNICLI_OUTPUT` / `OUTPUT` env > non-TTY (md) > agent-UA (md) > md default.
 
 ### Fixed
 
-- **Envelope helper visibility** — `err`, `ok`, `EnvelopeExit`, `exitCodeFor` are now exported from the `./errors` public barrel so plugins can construct well-formed error envelopes without reaching into internals.
-- **Weekly-release detection hardening** — explicit filters for `dependabot[bot]`/`renovate` authors, `chore(deps)` / `chore(ci)` / `build(deps)` prefixes, and `Merge pull request from (dependabot|renovate)/` subjects. HARD-FAIL if substantive commits exist but no changeset is queued (no silent stall). PAT fallback documented for downstream workflow re-triggering.
-
-### Known limitations
-
-Five phases defer to v0.213.0 final: skills npm distribution, Chrome extension, `generate --verify`, CUA full backend drivers, workflow adapters (gmail/gcal/drive/spotify/apple-notes/imessage), inbox/shop tentpoles, parity harness. Tracked in the v213 plan files under `.claude/plans/sessions/2026-04-15-v213-gagarin/` (PENDING.md is authoritative).
+- **No silent envelope bypass on empty results, chalk-styled rows, `health.json`, `core.usage --json`, or the adapter-dispatch catch path** — every surface that previously emitted raw arrays or `console.log` now goes through `format()`.
+- **Command regex `<area>.<action>`** is the only accepted shape for envelope `command`; legacy dash-case values are rejected by `validateEnvelope`.
 
 ## [0.212.1] — 2026-04-16 — Vostok · Shatalov II
 

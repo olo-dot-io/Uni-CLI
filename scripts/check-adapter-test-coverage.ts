@@ -179,7 +179,8 @@ if (covered.length >= args.threshold) {
   process.exit(0);
 }
 console.error(
-  `\nFAIL: ${covered.length} colocated tests < threshold ${args.threshold}. ` +
+  `\nFAIL: ${covered.length} colocated tests < min-covered ${args.threshold} ` +
+    `(absolute count, not percentage). ` +
     `Run: npx tsx scripts/bootstrap-adapter-tests.ts --all --with-fixtures`,
 );
 process.exit(1);

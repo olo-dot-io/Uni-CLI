@@ -74,6 +74,8 @@ const STEP_CAPABILITY: Record<string, string> = {
   cua_scroll: "cua.scroll",
   cua_drag: "cua.drag",
   cua_wait: "cua.wait",
+  cua_ask: "cua.ask",
+  cua_assert: "cua.assert",
   // Media
   download: "http.download",
   // Service
@@ -120,6 +122,8 @@ const CAPABILITY_PRIORITY = [
   "cua.type",
   "cua.click",
   "cua.drag",
+  "cua.ask",
+  "cua.assert",
   // Subprocess mutates host — just below CUA
   "subprocess.exec",
 ];

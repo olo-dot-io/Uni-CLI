@@ -15,6 +15,7 @@ import chalk from "chalk";
 import { getAllAdapters } from "../registry.js";
 import { runPipeline, PipelineError } from "../engine/executor.js";
 import { format, detectFormat } from "../output/formatter.js";
+import type { AgentContext } from "../output/envelope.js";
 import { AdapterType, ExitCode } from "../types.js";
 import type { OutputFormat } from "../types.js";
 
@@ -67,6 +68,7 @@ export function registerHealthCommand(program: Command): void {
         site: string | undefined,
         opts: { failingOnly?: boolean; timeout: string; json?: boolean },
       ) => {
+        const healthStarted = Date.now();
         const timeout = parseInt(opts.timeout, 10) || 10000;
         const adapters = site
           ? getAllAdapters().filter((a) => a.name === site)
@@ -180,38 +182,37 @@ export function registerHealthCommand(program: Command): void {
           ? "json"
           : detectFormat(program.opts().format as OutputFormat | undefined);
 
-        if (fmt === "json") {
-          console.log(JSON.stringify(display, null, 2));
-        } else {
-          console.log(
-            format(
-              display.map((r) => ({
-                site: r.site,
-                command: r.command,
-                status:
-                  r.status === "ok"
-                    ? chalk.green("ok")
-                    : r.status === "fail"
-                      ? chalk.red("FAIL")
-                      : chalk.dim("skip"),
-                latency: r.status === "skip" ? "-" : `${r.latency}ms`,
-                error: r.error ?? "",
-              })),
-              ["site", "command", "status", "latency", "error"],
-              fmt,
-            ),
-          );
+        const healthCtx: AgentContext = {
+          command: "core.health",
+          duration_ms: Date.now() - healthStarted,
+          surface: "web",
+        };
 
-          // Summary
-          const ok = results.filter((r) => r.status === "ok").length;
-          const fail = results.filter((r) => r.status === "fail").length;
-          const skip = results.filter((r) => r.status === "skip").length;
-          console.log(
-            chalk.bold(
-              `\nHealth: ${chalk.green(ok + " ok")}, ${chalk.red(fail + " fail")}, ${chalk.dim(skip + " skip")}`,
-            ),
-          );
-        }
+        console.log(
+          format(
+            display.map((r) => ({
+              site: r.site,
+              command: r.command,
+              status: r.status,
+              latency: r.status === "skip" ? "-" : `${r.latency}ms`,
+              error: r.error ?? "",
+            })),
+            ["site", "command", "status", "latency", "error"],
+            fmt,
+            healthCtx,
+          ),
+        );
+
+        // Summary — goes to stderr so stdout stays a single v2 envelope for
+        // machine consumers (json/yaml/compact); terminal users still see it.
+        const ok = results.filter((r) => r.status === "ok").length;
+        const fail = results.filter((r) => r.status === "fail").length;
+        const skip = results.filter((r) => r.status === "skip").length;
+        console.error(
+          chalk.bold(
+            `\nHealth: ${chalk.green(ok + " ok")}, ${chalk.red(fail + " fail")}, ${chalk.dim(skip + " skip")}`,
+          ),
+        );
 
         const hasFailing = results.some((r) => r.status === "fail");
         process.exit(hasFailing ? ExitCode.GENERIC_ERROR : ExitCode.SUCCESS);

@@ -6,7 +6,7 @@ import { applyJsonAlias } from "../../src/cli.js";
  * Contract:
  *   - `--json` is a boolean alias for `-f json`
  *   - Invoking it sets format="json" on the root program
- *   - Invoking it emits a single stderr warning mentioning v0.213 removal
+ *   - Invoking it emits a single stderr warning mentioning v0.214 removal
  *   - If the caller also passed `-f <other>` explicitly, we leave it alone
  *     (explicit beats alias) — this keeps the alias conservative
  */
@@ -59,7 +59,7 @@ describe("--json deprecation alias", () => {
     const stderr = cap.stop();
     restore = null;
     expect(stderr).toContain("[deprecation] --json is deprecated");
-    expect(stderr).toContain("v0.213");
+    expect(stderr).toContain("v0.214");
   });
 
   it("preserves an explicit -f <format> value", () => {

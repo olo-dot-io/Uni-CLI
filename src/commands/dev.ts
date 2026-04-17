@@ -18,7 +18,11 @@ export function registerDevCommand(program: Command): void {
   program
     .command("dev <path>")
     .description("Develop an adapter with hot-reload")
-    .option("--format <format>", "Output format (table|json|yaml|csv)", "table")
+    .option(
+      "--format <format>",
+      "Output format (table|json|yaml|csv|md|compact)",
+      "md",
+    )
     .action(async (filePath: string, opts: { format: string }) => {
       const absPath = resolve(filePath);
       if (!existsSync(absPath)) {
@@ -57,6 +61,7 @@ async function runAdapter(filePath: string, fmt: string): Promise<void> {
       return;
     }
 
+    const devStarted = Date.now();
     const result = await runPipeline(pipeline, {}, undefined, {
       site: doc.site as string,
       strategy: doc.strategy as string,
@@ -66,7 +71,13 @@ async function runAdapter(filePath: string, fmt: string): Promise<void> {
     const outputFmt = detectFormat(
       fmt as "table" | "json" | "yaml" | "csv" | "md" | undefined,
     );
-    console.log(format(result, columns, outputFmt));
+    console.log(
+      format(result, columns, outputFmt, {
+        command: "dev.watch",
+        duration_ms: Date.now() - devStarted,
+        surface: "web",
+      }),
+    );
   } catch (err) {
     console.error(chalk.red(err instanceof Error ? err.message : String(err)));
   }
