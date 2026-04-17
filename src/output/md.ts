@@ -17,6 +17,7 @@ import type {
   AgentEnvelopeErr,
   AgentMeta,
   AgentError,
+  AgentContent,
 } from "./envelope.js";
 
 const MAX_STRING_LEN = 500;
@@ -144,11 +145,27 @@ function renderFrontmatter(env: AgentEnvelope): string {
   return lines.join("\n");
 }
 
-/** Pick a display title from an item object. */
+/**
+ * Pick a display title from an item object.
+ *
+ * Priority: `title` → `name` → `id` → `question` → `excerpt` → `summary` → "Item".
+ *
+ * The `question` / `excerpt` / `summary` fallbacks were added in v0.213.1 for
+ * shapes like `zhihu.answers` that carry the post body in `question` + `excerpt`
+ * without a `title` or `name`; before this fallback every row rendered as
+ * `### N · Item`, hiding the row's distinguishing content.
+ */
 function pickTitle(item: unknown): string {
   if (item !== null && typeof item === "object" && !Array.isArray(item)) {
     const obj = item as Record<string, unknown>;
-    for (const key of ["title", "name", "id"]) {
+    for (const key of [
+      "title",
+      "name",
+      "id",
+      "question",
+      "excerpt",
+      "summary",
+    ]) {
       if (obj[key] !== undefined && obj[key] !== null) {
         // FIX B2: title is placed in a ### header line — must be single-line.
         return sanitizeInline(String(obj[key]));
@@ -224,6 +241,41 @@ function renderContextSection(meta: AgentMeta): string {
   return ["## Context", "", ...bullets].join("\n");
 }
 
+/**
+ * Render ## Content section from optional `envelope.content[]`.
+ *
+ * Each block renders as a bullet:
+ *  - `text`      → `- text: "<preview>"`
+ *  - `image`     → `- image: <uri>` (or `(inline base64 data)` when `uri` is absent)
+ *  - `resource`  → `- resource: <uri>` (file:// uris common for download outputs)
+ *
+ * Added in v0.213.1 (Task T12 / Fix #14) — the field shipped in v0.213.0 but
+ * was never populated, so the md renderer ignored it. `emit_content: true` in
+ * a YAML adapter now plumbs download-step file metadata into this section.
+ */
+function renderContentSection(content: AgentContent[] | undefined): string {
+  if (!content || content.length === 0) return "";
+  const bullets: string[] = [];
+  for (const c of content) {
+    if (c.type === "text") {
+      const preview = sanitizeInline(String(c.text ?? ""));
+      bullets.push(`- **text**: ${formatValue(preview)}`);
+    } else if (c.type === "image") {
+      const where = c.uri
+        ? sanitizeInline(c.uri)
+        : c.data
+          ? "(inline base64 data)"
+          : "(empty)";
+      bullets.push(`- **image**: ${where}`);
+    } else {
+      // resource
+      const where = c.uri ? sanitizeInline(c.uri) : "(empty)";
+      bullets.push(`- **resource**: ${where}`);
+    }
+  }
+  return ["## Content", "", ...bullets].join("\n");
+}
+
 /** Render ## Next Actions (only when pagination.has_more === true). */
 function renderNextActionsSection(meta: AgentMeta): string {
   if (meta.pagination?.has_more !== true) return "";
@@ -275,6 +327,9 @@ function renderSuccess(env: AgentEnvelopeOk): string {
   parts.push(renderFrontmatter(env));
   parts.push(renderDataSection(env.data));
 
+  const contentSection = renderContentSection(env.content);
+  if (contentSection) parts.push(contentSection);
+
   const context = renderContextSection(env.meta);
   if (context) parts.push(context);
 
@@ -289,6 +344,9 @@ function renderError(env: AgentEnvelopeErr): string {
   const parts: string[] = [];
   parts.push(renderFrontmatter(env));
   parts.push(renderErrorSection(env.error));
+
+  const contentSection = renderContentSection(env.content);
+  if (contentSection) parts.push(contentSection);
 
   const suggestion = renderSuggestionSection(env.error);
   if (suggestion) parts.push(suggestion);

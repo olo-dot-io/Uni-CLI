@@ -150,10 +150,18 @@ export function makeCtx(
   };
 }
 
-/** Build a success envelope from context + payload. */
+/**
+ * Build a success envelope from context + payload.
+ *
+ * Optional `content` plumbs Anthropic-compatible content blocks (text / image /
+ * resource) alongside the structured `data` payload. Populated via the YAML
+ * adapter opt-in `emit_content: true` (v0.213.1+) so download-step file
+ * metadata surfaces as `{type:"resource", uri:"file://…"}` entries.
+ */
 export function makeEnvelope(
   ctx: AgentContext,
   data: unknown[] | Record<string, unknown>,
+  content?: AgentContent[],
 ): AgentEnvelopeOk {
   const count = Array.isArray(data) ? data.length : undefined;
   return {
@@ -176,6 +184,7 @@ export function makeEnvelope(
     },
     data,
     error: null,
+    ...(content !== undefined && content.length > 0 ? { content } : {}),
   };
 }
 

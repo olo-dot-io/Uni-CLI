@@ -53,20 +53,27 @@ describe("stats SSOT", () => {
     return relative(ROOT, full);
   }
 
-  it("computeStats returns non-zero counts for this repo", () => {
-    const stats = computeStats();
-    expect(stats.site_count).toBeGreaterThan(0);
-    expect(stats.command_count).toBeGreaterThanOrEqual(stats.site_count);
-    expect(stats.adapter_count_yaml).toBeGreaterThan(0);
-    expect(stats.adapter_count_total).toBe(
-      stats.adapter_count_yaml + stats.adapter_count_ts,
-    );
-    expect(stats.pipeline_step_count).toBeGreaterThan(0);
-    expect(stats.test_count).toBeGreaterThan(0);
-    expect(stats.transport_count).toBeGreaterThan(0);
-    expect(stats.category_count).toBeGreaterThan(0);
-    expect(typeof stats.built_at).toBe("string");
-  });
+  // Timeout bumped to 60s: `computeStats()` spawns `vitest list --json` twice
+  // (one per project) via T11's test_count rewrite, which takes ~10-25s on
+  // cold runs of this repo. 5s default was tight from day one.
+  it(
+    "computeStats returns non-zero counts for this repo",
+    { timeout: 60_000 },
+    () => {
+      const stats = computeStats();
+      expect(stats.site_count).toBeGreaterThan(0);
+      expect(stats.command_count).toBeGreaterThanOrEqual(stats.site_count);
+      expect(stats.adapter_count_yaml).toBeGreaterThan(0);
+      expect(stats.adapter_count_total).toBe(
+        stats.adapter_count_yaml + stats.adapter_count_ts,
+      );
+      expect(stats.pipeline_step_count).toBeGreaterThan(0);
+      expect(stats.test_count).toBeGreaterThan(0);
+      expect(stats.transport_count).toBeGreaterThan(0);
+      expect(stats.category_count).toBeGreaterThan(0);
+      expect(typeof stats.built_at).toBe("string");
+    },
+  );
 
   it("inject rewrites a STATS marker to match stats.json", () => {
     const stats: Record<string, unknown> = {

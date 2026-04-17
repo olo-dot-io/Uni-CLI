@@ -63,6 +63,31 @@ describe("makeEnvelope", () => {
     expect(env.meta.surface).toBe("web");
     expect(env.meta.operator).toBe("test-op");
   });
+
+  // ── v0.213.1 Task T12 / Fix #14 — optional content[] argument ──────────────
+
+  it("omits envelope.content when content arg is undefined or empty", () => {
+    const noArg = makeEnvelope(baseCtx, []);
+    expect(noArg.content).toBeUndefined();
+
+    const empty = makeEnvelope(baseCtx, [], []);
+    expect(empty.content).toBeUndefined();
+  });
+
+  it("populates envelope.content when content arg has blocks", () => {
+    const env = makeEnvelope(
+      baseCtx,
+      [{ id: "x" }],
+      [
+        { type: "resource", uri: "file:///tmp/a.jpg" },
+        { type: "text", text: "downloaded 1 file" },
+      ],
+    );
+    expect(env.content).toEqual([
+      { type: "resource", uri: "file:///tmp/a.jpg" },
+      { type: "text", text: "downloaded 1 file" },
+    ]);
+  });
 });
 
 describe("makeError", () => {
