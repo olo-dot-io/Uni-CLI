@@ -4,9 +4,9 @@
  * Ports the diagnostics layer from OpenCLI PR #1016 on top of our existing
  * numbered-ref snapshot primitive. Three failure modes:
  *
- *   stale_ref  — snapshot was consumed, page mutated, ref no longer binds
- *   ambiguous  — the selector resolves to more than one live element
- *   not_found  — the selector resolves to zero live elements
+ *   stale_ref      — snapshot was consumed, page mutated, ref no longer binds
+ *   ambiguous      — the selector resolves to more than one live element
+ *   ref_not_found  — the selector resolves to zero live elements
  *
  * Each error carries a candidate list (from the latest fingerprint map)
  * so the caller can recover without taking a fresh snapshot.
@@ -16,9 +16,13 @@
  * preserves `detail.code` as the PipelineError's `errorType`. `dispatch.ts`
  * then passes that `errorType` through verbatim as the v2 envelope's
  * `AgentError.code` — so the three codes above surface without re-mapping.
+ *
+ * NOTE: the `ref_not_found` code is deliberately distinct from the generic
+ * HTTP-404 `not_found` code emitted by `dispatch.ts`. Ref-locator failures
+ * describe a DOM state; `not_found` describes a server response.
  */
 
-export type TargetErrorCode = "stale_ref" | "ambiguous" | "not_found";
+export type TargetErrorCode = "stale_ref" | "ambiguous" | "ref_not_found";
 
 export interface TargetCandidate {
   ref: string;
@@ -77,7 +81,7 @@ export function notFound(
   candidates?: TargetCandidate[],
 ): TargetError {
   return new TargetError({
-    code: "not_found",
+    code: "ref_not_found",
     ref,
     message: `ref ${ref} resolves to zero live elements. The target may have been removed or re-rendered.`,
     candidates,

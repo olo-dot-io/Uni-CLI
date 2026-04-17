@@ -397,9 +397,8 @@ export class DaemonPage implements IPage {
   }
 
   async snapshot(opts?: SnapshotOptions): Promise<string> {
-    const { generateSnapshotJs } = await import("./snapshot.js");
-    const js = generateSnapshotJs(opts);
-    return (await this.evaluate(js)) as string;
+    const { snapshotWithFingerprint } = await import("./snapshot-helpers.js");
+    return snapshotWithFingerprint(this, opts);
   }
 
   async screenshot(opts?: ScreenshotOptions): Promise<Buffer> {

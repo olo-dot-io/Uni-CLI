@@ -11,7 +11,7 @@ Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for
 
 ### Fixed
 
-- **Ref-Locator verification layer** — snapshot now persists a window-level fingerprint map on `window.__unicli_ref_identity`; click/type steps resolve refs against this map and throw structured `TargetError` ({code: "stale_ref" | "ambiguous" | "not_found"}) when a ref fails to bind uniquely. `executor.ts` re-wraps the TargetError into a `PipelineError` preserving `detail.code` as `errorType`, and `dispatch.ts` passes it through verbatim to the v2 envelope's `AgentError.code`. Ports the diagnostics layer from OpenCLI PR #1016 on top of our existing snapshot primitive. (Limitation: `unicli operate click/type` interactive commands bypass `BrowserPage.snapshot()` and do not yet populate the fingerprint map — pipeline-executed adapters are fully covered.)
+- **Ref-Locator verification layer** — `BrowserPage.snapshot()` and `DaemonPage.snapshot()` now persist a window-level fingerprint map on `window.__unicli_ref_identity`; click/type steps plus `unicli operate click/type` resolve refs against this map and throw structured `TargetError` ({code: "stale_ref" | "ambiguous" | "ref_not_found"}) when a ref fails to bind uniquely. `executor.ts` re-wraps the TargetError into a `PipelineError` preserving `detail.code` as `errorType`, and `dispatch.ts` passes it through verbatim to the v2 envelope's `AgentError.code`. Ports the diagnostics layer from OpenCLI PR #1016 on top of our existing snapshot primitive. `ref_not_found` is deliberately distinct from the HTTP-404 `not_found` code so agents can tell DOM-level from server-level failures.
 
 ### Changed
 

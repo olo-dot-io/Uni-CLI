@@ -3,7 +3,7 @@
  *
  * Asserts that a TargetError thrown from a pipeline step is re-wrapped into a
  * PipelineError whose `errorType` preserves the original `TargetError.detail.code`
- * (stale_ref / ambiguous / not_found). This is the first half of the wire that
+ * (stale_ref / ambiguous / ref_not_found). This is the first half of the wire that
  * dispatch.ts then passes through to the v2 envelope's AgentError.code.
  */
 
@@ -78,7 +78,7 @@ describe("executor integration — TargetError → PipelineError", () => {
     }
   });
 
-  it("not_found preserves code as errorType and is non-retryable", async () => {
+  it("ref_not_found preserves code as errorType and is non-retryable", async () => {
     register(notFound("9"));
     try {
       await runPipeline(
@@ -91,7 +91,7 @@ describe("executor integration — TargetError → PipelineError", () => {
     } catch (err) {
       expect(err).toBeInstanceOf(PipelineError);
       if (!(err instanceof PipelineError)) throw err;
-      expect(err.detail.errorType).toBe("not_found");
+      expect(err.detail.errorType).toBe("ref_not_found");
       expect(err.detail.retryable).toBe(false);
       expect(err.detail.suggestion).toMatch(/not on the page/i);
       expect(err.detail.alternatives).toEqual([]);

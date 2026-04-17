@@ -24,6 +24,9 @@ export async function stepClick(
     return { ...ctx, page };
   }
 
+  // Coordinate-click bypasses ref verification — deliberate fallback for
+  // cases where snapshot refs are unusable (e.g. canvas/WebGL targets,
+  // drag handles, or pixel-precise recordings).
   if (config.x !== undefined && config.y !== undefined) {
     await page.nativeClick(config.x, config.y);
     return { ...ctx, page };

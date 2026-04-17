@@ -253,7 +253,7 @@ export interface PipelineErrorDetail {
     | "assertion_failed"
     | "stale_ref"
     | "ambiguous"
-    | "not_found";
+    | "ref_not_found";
   url?: string;
   statusCode?: number;
   responsePreview?: string;

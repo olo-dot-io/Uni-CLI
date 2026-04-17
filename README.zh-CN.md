@@ -16,7 +16,7 @@
 <a href="https://github.com/olo-dot-io/Uni-CLI/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/olo-dot-io/Uni-CLI/ci.yml?style=flat-square&label=CI" alt="CI"></a>
 <a href="https://github.com/olo-dot-io/Uni-CLI/stargazers"><img src="https://img.shields.io/github/stars/olo-dot-io/Uni-CLI?style=flat-square" alt="stars"></a>
 <a href="./LICENSE"><img src="https://img.shields.io/github/license/olo-dot-io/Uni-CLI?style=flat-square" alt="license"></a>
-<img src="https://img.shields.io/badge/tests-<!-- STATS:test_count -->1224<!-- /STATS -->-44cc11?style=flat-square" alt="tests">
+<img src="https://img.shields.io/badge/tests-<!-- STATS:test_count -->1231<!-- /STATS -->-44cc11?style=flat-square" alt="tests">
 <img src="https://img.shields.io/badge/agent--reach-ally-6a5acd?style=flat-square" alt="agent-reach ally">
 
 <br>
@@ -293,7 +293,7 @@ npm run verify    # 类型检查 + lint + 测试 + 构建（7 个关卡，发布
 | `npm run build`        | 生产构建                                                    |
 | `npm run typecheck`    | TypeScript 严格模式                                         |
 | `npm run lint`         | Oxlint                                                      |
-| `npm run test`         | 单元测试（<!-- STATS:test_count -->1224<!-- /STATS --> 个） |
+| `npm run test`         | 单元测试（<!-- STATS:test_count -->1231<!-- /STATS --> 个） |
 | `npm run test:adapter` | 验证所有适配器                                              |
 | `npm run verify`       | 完整流水线 — 发布前必须通过                                 |
 
@@ -336,5 +336,5 @@ npm run verify    # 类型检查 + lint + 测试 + 构建（7 个关卡，发布
 
 <p align="center">
   <sub>v0.213.0 — Vostok · Gagarin</sub><br>
-  <sub><!-- STATS:site_count -->200<!-- /STATS --> 个站点 · <!-- STATS:command_count -->968<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->54<!-- /STATS --> 个流水线步骤 · BM25+TF-IDF 中英双语搜索 · MCP 2025-11-25 · <!-- STATS:test_count -->1224<!-- /STATS --> 个测试</sub>
+  <sub><!-- STATS:site_count -->200<!-- /STATS --> 个站点 · <!-- STATS:command_count -->968<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->54<!-- /STATS --> 个流水线步骤 · BM25+TF-IDF 中英双语搜索 · MCP 2025-11-25 · <!-- STATS:test_count -->1231<!-- /STATS --> 个测试</sub>
 </p>

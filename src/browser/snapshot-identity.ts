@@ -45,7 +45,7 @@ export const FINGERPRINT_PERSIST_JS = `(() => {
     try {
       const r = el.getBoundingClientRect();
       bbox = [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)];
-    } catch (e) { /* detached node */ }
+    } catch { /* detached node */ }
     const entry = { role: role, taken_at: takenAt };
     if (name) entry.name = name;
     if (bbox) entry.bbox = bbox;
@@ -68,13 +68,29 @@ export async function getSnapshotAge(page: IPage): Promise<number | null> {
 }
 
 /**
- * Extract the numeric ref from a `[data-unicli-ref="<N>"]` selector.
- * Returns null for selectors that don't match this shape (plain CSS
- * selectors bypass verification — backward compat).
+ * Extract the numeric ref from a `[data-unicli-ref=<N>]` selector.
+ * Accepts double-quoted, single-quoted, and unquoted attribute-value
+ * forms, so compound selectors like `button[data-unicli-ref="3"].primary`
+ * and hand-rolled `[data-unicli-ref=3]` both resolve. Returns null for
+ * selectors that don't carry a data-unicli-ref attribute at all (plain
+ * CSS selectors bypass verification — backward compat).
  */
 export function extractRef(selector: string): string | null {
-  const match = /\[data-unicli-ref="([^"]+)"\]/.exec(selector);
-  return match ? match[1] : null;
+  const match = /\[data-unicli-ref=(?:"([^"]+)"|'([^']+)'|([^\]\s]+))\]/.exec(
+    selector,
+  );
+  if (!match) return null;
+  return match[1] ?? match[2] ?? match[3] ?? null;
+}
+
+/**
+ * Canonical single-element selector for a given ref — used by verifyRef's
+ * `countMatches` call so the count reflects ref uniqueness and not the
+ * caller's compound selector (e.g. `button[data-unicli-ref="3"].primary`
+ * may narrow the match count artificially).
+ */
+function canonicalRefSelector(ref: string): string {
+  return `[data-unicli-ref="${ref}"]`;
 }
 
 interface IdentityEntry {
@@ -86,7 +102,7 @@ interface IdentityEntry {
 
 /**
  * Reads the fingerprint entry for a given ref from the live page, or null
- * if no entry exists (stale snapshot).
+ * if no entry exists (stale snapshot) or the global is malformed.
  */
 export async function readFingerprint(
   page: IPage,
@@ -96,7 +112,11 @@ export async function readFingerprint(
   const raw = await page.evaluate(
     `(() => { const m = window.__unicli_ref_identity; return m ? (m[${refJson}] || null) : null; })()`,
   );
-  return raw as IdentityEntry | null;
+  if (raw === null || raw === undefined) return null;
+  if (typeof raw !== "object") return null;
+  const entry = raw as Partial<IdentityEntry>;
+  if (typeof entry.role !== "string") return null;
+  return entry as IdentityEntry;
 }
 
 /**
@@ -116,8 +136,14 @@ export async function countMatches(
 /**
  * Verify that a `[data-unicli-ref="<N>"]`-style selector binds to exactly
  * one live element in the current fingerprint map. Throws TargetError on
- * stale_ref / ambiguous / not_found. Plain CSS selectors bypass
+ * stale_ref / ambiguous / ref_not_found. Plain CSS selectors bypass
  * verification (backward compat for hand-written YAML adapters).
+ *
+ * NOTE: verifyRef is best-effort, not atomic with the subsequent click/type
+ * call. Between the fingerprint read, the match count, and the caller's
+ * action, the DOM may re-render. A pass means the ref was valid at verify
+ * time; callers doing recovery should retry with a fresh snapshot on any
+ * post-click surprise.
  */
 export async function verifyRef(page: IPage, selector: string): Promise<void> {
   const ref = extractRef(selector);
@@ -132,7 +158,9 @@ export async function verifyRef(page: IPage, selector: string): Promise<void> {
       candidates.length ? candidates : undefined,
     );
   }
-  const count = await countMatches(page, selector);
+  // Count via the canonical ref selector so ref uniqueness is verified,
+  // not the caller's compound selector (e.g. `button[data-unicli-ref="3"].primary`).
+  const count = await countMatches(page, canonicalRefSelector(ref));
   if (count === 0) {
     const candidates = await listCandidates(page);
     throw notFound(ref, candidates.length ? candidates : undefined);

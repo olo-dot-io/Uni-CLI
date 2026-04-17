@@ -18,6 +18,18 @@ import type { OutputFormat } from "../types.js";
 import type { AgentContext, AgentError } from "../output/envelope.js";
 
 /**
+ * Ref-locator error codes that pass through to the v2 envelope verbatim
+ * (TargetError.detail.code → PipelineError.detail.errorType → AgentError.code).
+ * Centralised as a Set so adding a 4th code is a one-line change and can't
+ * drift out of sync with target-errors.ts.
+ */
+const REF_LOCATOR_CODES = new Set<string>([
+  "stale_ref",
+  "ambiguous",
+  "ref_not_found",
+]);
+
+/**
  * Map a caught error to an AgentError code string following the self-repair
  * contract. Covers the most common pipeline / network / HTTP failure modes.
  */
@@ -32,12 +44,7 @@ function errorTypeToCode(err: unknown): string {
       return "auth_required";
     if (statusCode === 404) return "not_found";
     if (statusCode === 429) return "rate_limited";
-    if (
-      errorType === "stale_ref" ||
-      errorType === "ambiguous" ||
-      errorType === "not_found"
-    )
-      return errorType;
+    if (REF_LOCATOR_CODES.has(errorType)) return errorType;
     if (errorType === "selector_miss") return "selector_miss";
     if (errorType === "empty_result") return "empty_result";
     if (errorType === "timeout") return "network_error";

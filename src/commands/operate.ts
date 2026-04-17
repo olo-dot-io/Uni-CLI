@@ -17,6 +17,7 @@ import {
 } from "../permissions/sensitive-paths.js";
 import { ExitCode } from "../types.js";
 import { rankCandidates, type SnapshotRef } from "../browser/observe.js";
+import { verifyRef } from "../browser/snapshot-identity.js";
 import { mkdirSync, appendFileSync } from "node:fs";
 import { join, dirname as pathDirname } from "node:path";
 
@@ -152,7 +153,9 @@ export function registerOperateCommands(program: Command): void {
       operateAction("click", async () => {
         validateRef(ref);
         const page = await getOperatePage();
-        await page.click(`[data-unicli-ref="${ref}"]`);
+        const selector = `[data-unicli-ref="${ref}"]`;
+        await verifyRef(page, selector);
+        await page.click(selector);
         return { ok: true, clicked: ref };
       }),
     );
@@ -165,7 +168,9 @@ export function registerOperateCommands(program: Command): void {
       operateAction("type", async () => {
         validateRef(ref);
         const page = await getOperatePage();
-        await page.click(`[data-unicli-ref="${ref}"]`);
+        const selector = `[data-unicli-ref="${ref}"]`;
+        await verifyRef(page, selector);
+        await page.click(selector);
         await page.wait(0.3);
         await page.insertText(text);
         return { ok: true, ref, text };

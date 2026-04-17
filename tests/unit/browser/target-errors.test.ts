@@ -30,10 +30,7 @@ import {
 // ── Mock IPage ─────────────────────────────────────────────────────────────
 
 interface MockState {
-  identity?: Record<
-    string,
-    { role: string; name?: string; taken_at: number }
-  > | null;
+  identity?: Record<string, unknown> | null;
   takenAt?: number | null;
   matches?: Record<string, number>;
 }
@@ -72,11 +69,14 @@ function makeMockPage(state: MockState): {
       ) {
         const m = state.identity;
         if (!m) return [];
-        return Object.keys(m).map((k) => ({
-          ref: k,
-          role: m[k].role,
-          name: m[k].name,
-        }));
+        return Object.keys(m).map((k) => {
+          const entry = m[k] as { role?: string; name?: string } | null;
+          return {
+            ref: k,
+            role: entry?.role ?? "unknown",
+            name: entry?.name,
+          };
+        });
       }
       // countMatches — `document.querySelectorAll("selector").length`
       const countMatch = /document\.querySelectorAll\((.+)\)\.length/.exec(
@@ -126,7 +126,7 @@ describe("TargetError factories", () => {
 
   it("notFound accepts an optional candidate list", () => {
     const err1 = notFound("9");
-    expect(err1.detail.code).toBe("not_found");
+    expect(err1.detail.code).toBe("ref_not_found");
     expect(err1.detail.candidates).toBeUndefined();
     const err2 = notFound("9", [{ ref: "1", role: "link" }]);
     expect(err2.detail.candidates).toHaveLength(1);
@@ -157,6 +157,19 @@ describe("extractRef", () => {
     expect(extractRef('[data-unicli-ref="42"]')).toBe("42");
   });
 
+  it("accepts single-quoted attribute values", () => {
+    expect(extractRef("[data-unicli-ref='12']")).toBe("12");
+  });
+
+  it("accepts unquoted attribute values", () => {
+    expect(extractRef("[data-unicli-ref=7]")).toBe("7");
+  });
+
+  it("extracts ref from compound selectors", () => {
+    expect(extractRef('button[data-unicli-ref="3"].primary')).toBe("3");
+    expect(extractRef('div > [data-unicli-ref="9"]:hover')).toBe("9");
+  });
+
   it("returns null for plain CSS selectors", () => {
     expect(extractRef("button.primary")).toBeNull();
     expect(extractRef("#login")).toBeNull();
@@ -181,6 +194,24 @@ describe("fingerprint map round-trip", () => {
     const state: MockState = { identity: {}, takenAt: 1 };
     const { page } = makeMockPage(state);
     expect(await readFingerprint(page, "99")).toBeNull();
+  });
+
+  it("readFingerprint returns null for malformed global (missing role)", async () => {
+    const state: MockState = {
+      identity: { "1": { taken_at: 1 } }, // no `role` field
+      takenAt: 1,
+    };
+    const { page } = makeMockPage(state);
+    expect(await readFingerprint(page, "1")).toBeNull();
+  });
+
+  it("readFingerprint returns null when entry is a non-object", async () => {
+    const state: MockState = {
+      identity: { "1": "not-an-object" },
+      takenAt: 1,
+    };
+    const { page } = makeMockPage(state);
+    expect(await readFingerprint(page, "1")).toBeNull();
   });
 
   it("getSnapshotAge returns ms delta when taken_at is set", async () => {
@@ -250,7 +281,7 @@ describe("verifyRef", () => {
     }
   });
 
-  it("throws not_found when zero elements match the selector", async () => {
+  it("throws ref_not_found when zero elements match the selector", async () => {
     const state: MockState = {
       identity: {
         "12": { role: "button", name: "Go", taken_at: Date.now() },
@@ -265,7 +296,7 @@ describe("verifyRef", () => {
     } catch (err) {
       expect(isTargetError(err)).toBe(true);
       if (!isTargetError(err)) throw err;
-      expect(err.detail.code).toBe("not_found");
+      expect(err.detail.code).toBe("ref_not_found");
       expect(err.detail.ref).toBe("12");
     }
   });
@@ -304,5 +335,46 @@ describe("verifyRef", () => {
     await expect(
       verifyRef(page, '[data-unicli-ref="12"]'),
     ).resolves.toBeUndefined();
+  });
+
+  it("falls back to stale_ref when the fingerprint global is malformed", async () => {
+    const state: MockState = {
+      identity: { "12": { taken_at: Date.now() } }, // missing `role`
+      takenAt: Date.now(),
+      matches: { '[data-unicli-ref="12"]': 1 },
+    };
+    const { page } = makeMockPage(state);
+    try {
+      await verifyRef(page, '[data-unicli-ref="12"]');
+      expect.unreachable("should have thrown");
+    } catch (err) {
+      expect(isTargetError(err)).toBe(true);
+      if (!isTargetError(err)) throw err;
+      expect(err.detail.code).toBe("stale_ref");
+    }
+  });
+
+  it("counts ref uniqueness via canonical selector (ignores compound narrowing)", async () => {
+    const state: MockState = {
+      identity: {
+        "3": { role: "button", name: "Submit", taken_at: Date.now() },
+        "4": { role: "button", name: "Submit", taken_at: Date.now() },
+      },
+      takenAt: Date.now(),
+      // Compound selector matches 1, but canonical matches 2 → ambiguous.
+      matches: {
+        'button[data-unicli-ref="3"].primary': 1,
+        '[data-unicli-ref="3"]': 2,
+      },
+    };
+    const { page } = makeMockPage(state);
+    try {
+      await verifyRef(page, 'button[data-unicli-ref="3"].primary');
+      expect.unreachable("should have thrown ambiguous");
+    } catch (err) {
+      expect(isTargetError(err)).toBe(true);
+      if (!isTargetError(err)) throw err;
+      expect(err.detail.code).toBe("ambiguous");
+    }
   });
 });
