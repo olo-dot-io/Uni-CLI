@@ -14,6 +14,7 @@
 import { rmSync } from "node:fs";
 import type { PipelineStep } from "../types.js";
 import type { BrowserPage } from "../browser/page.js";
+import { isTargetError } from "../browser/target-errors.js";
 import { formatCookieHeader, loadCookiesWithCDP } from "./cookies.js";
 import { CUA_STEP_HANDLERS, type CuaStepKind } from "./steps/cua.js";
 import {
@@ -63,7 +64,10 @@ export class PipelineError extends Error {
         | "parse_error"
         | "timeout"
         | "expression_error"
-        | "assertion_failed";
+        | "assertion_failed"
+        | "stale_ref"
+        | "ambiguous"
+        | "not_found";
       url?: string;
       statusCode?: number;
       responsePreview?: string;
@@ -256,6 +260,29 @@ export async function runPipeline(
         await rt.maybeRefreshCookies(err, options);
 
         if (err instanceof PipelineError) throw err;
+        if (isTargetError(err)) {
+          const code = err.detail.code;
+          const suggestion =
+            code === "stale_ref"
+              ? `Re-take a snapshot before the ${action} step — the page has changed.`
+              : code === "ambiguous"
+                ? `Ref ${err.detail.ref} matches multiple elements; narrow the ref via a fresh snapshot.`
+                : `Ref ${err.detail.ref} is not on the page; re-take a snapshot.`;
+          const alternatives = (err.detail.candidates ?? [])
+            .slice(0, 5)
+            .map(
+              (c) => `ref:${c.ref} (${c.role}${c.name ? `: ${c.name}` : ""})`,
+            );
+          throw new PipelineError(err.message, {
+            step: i,
+            action,
+            config,
+            errorType: code,
+            suggestion,
+            retryable: code === "stale_ref",
+            alternatives,
+          });
+        }
         const errMsg = err instanceof Error ? err.message : String(err);
         const isTransient =
           /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|socket hang up/i.test(

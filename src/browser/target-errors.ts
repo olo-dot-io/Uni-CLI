@@ -11,10 +11,11 @@
  * Each error carries a candidate list (from the latest fingerprint map)
  * so the caller can recover without taking a fresh snapshot.
  *
- * TargetError is a sibling of PipelineError, not a subclass. Step runners
- * wrap it into PipelineError at the pipeline boundary; the envelope layer
- * reads `err.detail.code` verbatim, so the three codes above become the
- * emitted `AgentError.code` without further mapping.
+ * TargetError is a sibling of PipelineError, not a subclass. When a step
+ * throws a TargetError, `executor.ts` re-wraps it into a PipelineError and
+ * preserves `detail.code` as the PipelineError's `errorType`. `dispatch.ts`
+ * then passes that `errorType` through verbatim as the v2 envelope's
+ * `AgentError.code` — so the three codes above surface without re-mapping.
  */
 
 export type TargetErrorCode = "stale_ref" | "ambiguous" | "not_found";

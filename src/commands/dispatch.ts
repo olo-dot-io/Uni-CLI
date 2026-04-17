@@ -32,6 +32,12 @@ function errorTypeToCode(err: unknown): string {
       return "auth_required";
     if (statusCode === 404) return "not_found";
     if (statusCode === 429) return "rate_limited";
+    if (
+      errorType === "stale_ref" ||
+      errorType === "ambiguous" ||
+      errorType === "not_found"
+    )
+      return errorType;
     if (errorType === "selector_miss") return "selector_miss";
     if (errorType === "empty_result") return "empty_result";
     if (errorType === "timeout") return "network_error";
