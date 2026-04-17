@@ -655,6 +655,7 @@ describe("md golden fixtures", () => {
     it(c.name, () => {
       const actual = renderMd(c.envelope);
       const fixturePath = join(FIXTURES_DIR, `${c.name}.md`);
+      // Regenerate: UPDATE_FIXTURES=1 npx vitest run tests/unit/output/fixtures.test.ts
       if (process.env["UPDATE_FIXTURES"] === "1") {
         if (!existsSync(FIXTURES_DIR))
           mkdirSync(FIXTURES_DIR, { recursive: true });
