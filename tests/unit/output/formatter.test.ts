@@ -1,13 +1,16 @@
 /**
  * formatter.test.ts — v2 envelope format() + detectFormat + isAgentUA
  *
- * 16 cases covering:
+ * Cases covering:
  *   1-3:  json/md/yaml envelope wrap
  *   4-5:  csv/compact unchanged (array-only legacy)
  *   6:    table deprecated → md + stderr warning
  *   7:    error path via ctx.error
  *   8-11: detectFormat env overrides + TTY/non-TTY + CLAUDE_CODE
- *   12:   isAgentUA
+ *   12:   isAgentUA (5 canonical env vars)
+ *   13-16: B1/B2/B4/B5 regression guards
+ *   17:   detectFormat collapsed — TTY + no env + no explicit → md
+ *   18:   OUTPUT deprecation warning path (v0.213.1 rename to UNICLI_OUTPUT)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -170,31 +173,35 @@ it("11. detectFormat explicit json returns json regardless of env", () => {
   expect(detectFormat("json")).toBe("json");
 });
 
-// ── 12. isAgentUA ─────────────────────────────────────────────────────────────
+// ── 12. isAgentUA — 5 canonical agent env vars ───────────────────────────────
 
 describe("12. isAgentUA", () => {
+  const AGENT_ENVS = [
+    "CLAUDE_CODE",
+    "CODEX_CLI",
+    "OPENCODE",
+    "HERMES_AGENT",
+    "UNICLI_AGENT",
+  ] as const;
+
   afterEach(() => {
-    delete process.env.CLAUDE_CODE;
-    delete process.env.CODEX_CLI;
+    for (const key of AGENT_ENVS) delete process.env[key];
     delete process.env.USER_AGENT;
   });
 
-  it("returns true when CLAUDE_CODE is set", () => {
-    process.env.CLAUDE_CODE = "1";
-    expect(isAgentUA()).toBe(true);
-  });
-
-  it("returns true when CODEX_CLI is set", () => {
-    process.env.CODEX_CLI = "1";
-    expect(isAgentUA()).toBe(true);
-  });
-
-  it("returns true when USER_AGENT matches Claude-Code pattern", () => {
-    process.env.USER_AGENT = "Claude-Code/1.0";
-    expect(isAgentUA()).toBe(true);
-  });
+  for (const key of AGENT_ENVS) {
+    it(`returns true when ${key} is set`, () => {
+      process.env[key] = "1";
+      expect(isAgentUA()).toBe(true);
+    });
+  }
 
   it("returns false when no agent env vars are set", () => {
+    expect(isAgentUA()).toBe(false);
+  });
+
+  it("ignores USER_AGENT (removed in v0.213.1 — HTTP header, not env var)", () => {
+    process.env.USER_AGENT = "Claude-Code/1.0";
     expect(isAgentUA()).toBe(false);
   });
 });
@@ -307,4 +314,120 @@ it("16. format json with ctx.error produces v2 error envelope ok=false", () => {
   expect(env.error.code).toBe("network_error");
   expect(env.error.message).toContain("ETIMEDOUT");
   expect(env.error.retryable).toBe(true);
+});
+
+// ── 17. detectFormat collapsed — TTY + no env + no explicit → md ─────────────
+
+describe("17. detectFormat collapses all md branches", () => {
+  afterEach(() => {
+    delete process.env.UNICLI_OUTPUT;
+    delete process.env.OUTPUT;
+    delete process.env.CLAUDE_CODE;
+  });
+
+  it("TTY + no env + no explicit returns md", () => {
+    const stored = process.stdout.isTTY;
+    Object.defineProperty(process.stdout, "isTTY", {
+      value: true,
+      configurable: true,
+    });
+    try {
+      expect(detectFormat(undefined)).toBe("md");
+    } finally {
+      Object.defineProperty(process.stdout, "isTTY", {
+        value: stored,
+        configurable: true,
+      });
+    }
+  });
+
+  it("non-TTY + no env + no explicit returns md", () => {
+    const stored = process.stdout.isTTY;
+    Object.defineProperty(process.stdout, "isTTY", {
+      value: false,
+      configurable: true,
+    });
+    try {
+      expect(detectFormat(undefined)).toBe("md");
+    } finally {
+      Object.defineProperty(process.stdout, "isTTY", {
+        value: stored,
+        configurable: true,
+      });
+    }
+  });
+
+  it("CLAUDE_CODE=1 on TTY returns md", () => {
+    process.env.CLAUDE_CODE = "1";
+    const stored = process.stdout.isTTY;
+    Object.defineProperty(process.stdout, "isTTY", {
+      value: true,
+      configurable: true,
+    });
+    try {
+      expect(detectFormat(undefined)).toBe("md");
+    } finally {
+      Object.defineProperty(process.stdout, "isTTY", {
+        value: stored,
+        configurable: true,
+      });
+    }
+  });
+
+  it("explicit='json' still wins", () => {
+    expect(detectFormat("json")).toBe("json");
+  });
+});
+
+// ── 18. OUTPUT env var deprecation (v0.213.1 rename → UNICLI_OUTPUT) ─────────
+
+describe("18. detectFormat OUTPUT deprecation", () => {
+  let stderrSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    stderrSpy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    delete process.env.UNICLI_OUTPUT;
+    delete process.env.OUTPUT;
+    stderrSpy.mockRestore();
+  });
+
+  it("OUTPUT=json (UNICLI_OUTPUT unset) returns json + emits stderr warning", () => {
+    process.env.OUTPUT = "json";
+    expect(detectFormat(undefined)).toBe("json");
+    expect(stderrSpy).toHaveBeenCalled();
+    const msg = String(stderrSpy.mock.calls[0]?.[0] ?? "");
+    expect(msg).toMatch(/OUTPUT/);
+    expect(msg).toMatch(/deprecated/i);
+    expect(msg).toMatch(/UNICLI_OUTPUT/);
+  });
+
+  it("UNICLI_OUTPUT=json wins over OUTPUT=yaml without warning", () => {
+    process.env.UNICLI_OUTPUT = "json";
+    process.env.OUTPUT = "yaml";
+    expect(detectFormat(undefined)).toBe("json");
+    expect(stderrSpy).not.toHaveBeenCalled();
+  });
+
+  it("OUTPUT=nonsense falls through to md without warning or crash", () => {
+    process.env.OUTPUT = "nonsense";
+    const stored = process.stdout.isTTY;
+    Object.defineProperty(process.stdout, "isTTY", {
+      value: true,
+      configurable: true,
+    });
+    try {
+      expect(detectFormat(undefined)).toBe("md");
+      expect(stderrSpy).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(process.stdout, "isTTY", {
+        value: stored,
+        configurable: true,
+      });
+    }
+  });
 });

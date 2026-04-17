@@ -20,6 +20,9 @@ Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for
 ### Changed
 
 - **`AgentError.code` documented enum expanded 11 → 15** — adds `quarantined` (already emitted by the quarantine gate since v0.213.0) and the three T1 ref-locator codes `stale_ref` / `ambiguous` / `ref_not_found`. `code` remains an open string to preserve forward compatibility.
+- **`UNICLI_OUTPUT` env var is now canonical**; bare `OUTPUT` is deprecated and emits a stderr warning. CI systems that set `OUTPUT` for their own purposes (GitHub Actions step outputs, Jenkins outputs) no longer accidentally switch unicli's output format. `OUTPUT` will be removed in v0.214.
+- **`detectFormat` simplified** — the three branches that all returned `"md"` (non-TTY, agent-UA, default) are collapsed into a single final return, now documented in one comment.
+- **`isAgentUA` no longer inspects the `USER_AGENT` env var** — that variable isn't set in subprocess contexts (it's an HTTP header name, not a process env var). The 5 canonical agent env vars (`CLAUDE_CODE`, `CODEX_CLI`, `OPENCODE`, `HERMES_AGENT`, `UNICLI_AGENT`) remain.
 
 ### Removed
 
