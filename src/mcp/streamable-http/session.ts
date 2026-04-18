@@ -92,10 +92,15 @@ export function corsHeaders(req?: IncomingMessage): Record<string, string> {
   };
 }
 
+/**
+ * Emit a JSON-serializable body with the standard response headers.
+ * Accepts `JsonRpcResponse` or any `Record<string, unknown>` so call sites
+ * can hand over typed responses without `as unknown as Record<…>` casts.
+ */
 export function jsonResponse(
   res: ServerResponse,
   status: number,
-  body: Record<string, unknown>,
+  body: JsonRpcResponse | Record<string, unknown>,
   extraHeaders?: Record<string, string>,
   req?: IncomingMessage,
 ): void {

@@ -338,12 +338,7 @@ function handleTaskMethod(
   if (!fn || parsed.id == null) return false;
   const headers: Record<string, string> = {};
   if (sessionId) headers["MCP-Session-Id"] = sessionId;
-  jsonResponse(
-    res,
-    200,
-    fn(parsed, sessionId!) as unknown as Record<string, unknown>,
-    headers,
-  );
+  jsonResponse(res, 200, fn(parsed, sessionId!), headers);
   return true;
 }
 
@@ -414,7 +409,7 @@ function handleInitialize(
     lastSeen: Date.now(),
     protocolVersion: MCP_PROTOCOL_VERSION,
   });
-  jsonResponse(res, 200, response as unknown as Record<string, unknown>, {
+  jsonResponse(res, 200, response, {
     "MCP-Session-Id": newSessionId,
     "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
   });
@@ -444,12 +439,7 @@ function handleSyncResponse(
   }
   const headers: Record<string, string> = {};
   if (sessionId) headers["MCP-Session-Id"] = sessionId;
-  jsonResponse(
-    res,
-    200,
-    response as unknown as Record<string, unknown>,
-    headers,
-  );
+  jsonResponse(res, 200, response, headers);
 }
 
 async function runHandlerSafe(
