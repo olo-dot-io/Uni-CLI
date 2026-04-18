@@ -1,14 +1,18 @@
 /**
- * Wire-parity — CLI binary ↔ MCP handler envelope equivalence.
+ * Wire-parity — CLI binary ↔ MCP handler row-level equivalence.
  *
- * v0.213.3 P3 (D4 follow-up). `dispatch-parity.test.ts` already proves
- * kernel parity (same `execute()` with different Invocation.surface). This
- * test goes one step further: it spawns the built `dist/main.js` CLI with
- * `--format json` and compares the rendered envelope against what the MCP
- * stdio handler returns for the same args.
+ * v0.213.3 P3 (D4 follow-up; MN2 closeout). `dispatch-parity.test.ts`
+ * already proves kernel parity (same `execute()` with different
+ * Invocation.surface). This test goes one step further: it spawns the
+ * built `dist/main.js` CLI with `--format json` and compares the rendered
+ * envelope against what the MCP stdio handler returns for the same args.
  *
- * Fields that MUST vary per invocation (trace_id, duration_ms) are trimmed
- * before comparison. Everything else is expected to match byte-for-byte.
+ * Asserts deep-equal on `results[0]` modulo `trace_id` / `duration_ms`
+ * (fields that MUST vary per invocation). HN-list volatility (top story
+ * IDs churn in seconds) means the comparison runs on a single row — if
+ * both sides observed the same ordering we get a byte-for-byte diff;
+ * when ordering shifted, the test falls back to shape parity so the suite
+ * does not flake.
  *
  * Needs network (hackernews top → hacker-news.firebaseio.com). Skips
  * gracefully when the network is unavailable or the upstream times out —
@@ -238,14 +242,64 @@ describe("wire parity — CLI (dist/main.js) ↔ MCP handler envelope", () => {
       expect(Array.isArray(mcpResult.rows)).toBe(true);
       expect(mcpResult.rows.length).toBeGreaterThan(0);
 
+      const cliRow0 = cliEnv.data![0] as Record<string, unknown>;
+      const mcpRow0 = mcpResult.rows[0] as Record<string, unknown>;
+
       // Shape parity — each row must have the same keys on both sides.
-      const cliKeys = new Set(
-        Object.keys((cliEnv.data![0] ?? {}) as Record<string, unknown>),
-      );
-      const mcpKeys = new Set(
-        Object.keys((mcpResult.rows[0] ?? {}) as Record<string, unknown>),
-      );
+      const cliKeys = new Set(Object.keys(cliRow0));
+      const mcpKeys = new Set(Object.keys(mcpRow0));
       expect([...cliKeys].sort()).toEqual([...mcpKeys].sort());
+
+      // Deep-equal parity on results[0] modulo non-deterministic fields.
+      // HN's top list shifts by the second — if both calls land on the
+      // same story we get a full byte-for-byte match. Otherwise we look
+      // for ANY common story id between the two result sets and compare
+      // those rows, so the stronger assertion still applies most of the
+      // time. When no overlap exists (rare, tail of the list churns),
+      // we fall back to the shape parity above.
+      const stripVolatile = (o: Record<string, unknown>) => {
+        const out: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(o)) {
+          if (k === "trace_id" || k === "duration_ms") continue;
+          out[k] = v;
+        }
+        return out;
+      };
+
+      const cliStripped = stripVolatile(cliRow0);
+      const mcpStripped = stripVolatile(mcpRow0);
+
+      // Fast path: rows line up 1:1 (same id, same position).
+      if (
+        typeof cliRow0.id === typeof mcpRow0.id &&
+        cliRow0.id === mcpRow0.id
+      ) {
+        expect(cliStripped).toEqual(mcpStripped);
+        return;
+      }
+
+      // Slow path: search mcpResult for a row whose id matches cliRow0.id.
+      if (cliRow0.id !== undefined) {
+        const match = mcpResult.rows.find(
+          (r) =>
+            typeof r === "object" &&
+            r !== null &&
+            (r as Record<string, unknown>).id === cliRow0.id,
+        );
+        if (match) {
+          expect(cliStripped).toEqual(
+            stripVolatile(match as Record<string, unknown>),
+          );
+          return;
+        }
+      }
+
+      // No overlap — lists churned between the two calls. Shape parity
+      // (already asserted above) is the best we can do without a fixture.
+      console.warn(
+        "wire-parity: CLI/MCP result lists do not overlap on id; " +
+          "shape parity asserted but deep-equal skipped (HN list volatility).",
+      );
     },
     NETWORK_TIMEOUT_MS + 15_000,
   );
