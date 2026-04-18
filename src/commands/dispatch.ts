@@ -23,6 +23,7 @@ import { getAllAdapters } from "../registry.js";
 import { resolveArgs } from "../engine/args.js";
 import { buildInvocation, execute } from "../engine/kernel/execute.js";
 import { format, detectFormat } from "../output/formatter.js";
+import { applyProjection, renderPluck } from "../output/projection.js";
 import { recordUsage } from "../runtime/usage-ledger.js";
 import { ExitCode } from "../types.js";
 import type { OutputFormat } from "../types.js";
@@ -142,6 +143,9 @@ export function registerAdapterDispatch(program: Command): void {
         const rootOpts = program.opts() as {
           argsFile?: string;
           dryRun?: boolean;
+          select?: string;
+          fields?: string;
+          pluck?: string;
         };
         let resolved: Awaited<ReturnType<typeof resolveArgs>>;
         try {
@@ -228,12 +232,23 @@ export function registerAdapterDispatch(program: Command): void {
           process.exit(result.exitCode);
         }
 
-        const rendered = format(
-          result.results,
-          cmd.columns,
-          fmt,
-          result.envelope,
-        );
+        // Output-side projection (v0.213.3 P3). Applied BEFORE format() so
+        // every envelope format benefits. --pluck short-circuits the
+        // formatter entirely and emits a plain-text newline-delimited stream.
+        const projection = applyProjection(result.results, {
+          select: rootOpts.select,
+          fields: rootOpts.fields,
+          pluck: rootOpts.pluck,
+        });
+
+        const rendered = projection.pluckMode
+          ? renderPluck(projection.results, rootOpts.pluck!)
+          : format(
+              projection.results,
+              projection.columns ?? cmd.columns,
+              fmt,
+              result.envelope,
+            );
         console.log(rendered);
         recordUsage({
           site: adapter.name,
