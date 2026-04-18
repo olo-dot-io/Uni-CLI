@@ -1,0 +1,7 @@
+# Generated artifacts — regenerate via their source-of-truth scripts.
+# Prettier's table-alignment rewrites cause noisy diffs when the generator
+# doesn't know the column widths it needs to produce.
+docs/codemod/
+dist/
+conformance-report.json
+stats.json

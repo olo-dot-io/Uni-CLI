@@ -56,11 +56,9 @@ const REPO_ROOT = join(__dirname, "..");
 const ADAPTERS_DIR = join(REPO_ROOT, "src", "adapters");
 const CONFLICTS_OUT = join(
   REPO_ROOT,
-  ".claude",
-  "plans",
-  "sessions",
-  "2026-04-18-v213.3-tc0-r2",
-  "conflicts.md",
+  "docs",
+  "codemod",
+  "v0.213.3-conflicts.md",
 );
 
 /* ─────────── types ─────────── */
@@ -433,24 +431,27 @@ would mis-handle. The override table inside the codemod applies the correct
 \`x-unicli-kind:\` + \`x-unicli-accepts:\` pair at runtime — no hand edits needed.
 
 ## Group A — id args that hold URL slugs
+
 \`x-unicli-kind: id\` + \`x-unicli-accepts: [url]\`
 
 | Adapter | Arg | Description | File |
-|---|---|---|---|
+| --- | --- | --- | --- |
 ${groups.A.sort().join("\n")}
 
 ## Group B — url args that also accept bare IDs
+
 \`format: uri\` + \`x-unicli-accepts: [id]\`
 
 | Adapter | Arg | Description | File |
-|---|---|---|---|
+| --- | --- | --- | --- |
 ${groups.B.sort().join("\n")}
 
 ## Group C — path-like args that also accept URLs
+
 \`x-unicli-kind: path\` + \`x-unicli-accepts: [url]\`
 
 | Adapter | Arg | Description | File |
-|---|---|---|---|
+| --- | --- | --- | --- |
 ${groups.C.sort().join("\n")}
 
 **Totals**: A=${groups.A.length} · B=${groups.B.length} · C=${groups.C.length} · grand=${groups.A.length + groups.B.length + groups.C.length}
