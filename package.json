@@ -157,7 +157,9 @@
     "preversion": "npm run verify",
     "postversion": "npm run build && tsx scripts/release.ts",
     "bench": "tsx bench/report.ts",
-    "bench:agent": "tsx bench/agent/report.ts",
+    "bench:quick": "tsx bench/agent/report.ts",
+    "bench:agent": "tsx bench/agent/sdk-runner.ts",
+    "bench:gate": "node scripts/bench/check-ship-gate.js",
     "refs:verify": "tsx scripts/verify-refs.ts",
     "sync:ref": "bash scripts/sync-ref.sh"
   },
@@ -200,14 +202,17 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.114",
     "@changesets/cli": "^2.30.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.6.0",
+    "@types/shell-quote": "^1.7.5",
     "@types/turndown": "^5.0.6",
     "@types/ws": "^8.5.14",
     "lefthook": "^2.1.5",
     "oxlint": "^1.0.0",
     "prettier": "^3.5.0",
+    "shell-quote": "^1.8.3",
     "tsx": "^4.19.0",
     "typescript": "^6.0.2",
     "vitepress": "^1.6.0",
