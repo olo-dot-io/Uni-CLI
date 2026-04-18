@@ -20,8 +20,8 @@ export interface ParsedInvocation {
  * clients can send arbitrarily long editor contexts; regex scans over
  * multi-megabyte prompts are pointless (invocations live near the top) and
  * a ReDoS hazard when the tail regex `.*$` engages on a pathological input.
- * 64 KiB is ~32 pages of text, enough for any realistic prompt, and trims
- * the worst case to a bounded one-pass scan.
+ * 64 KiB is ~32 pages of text, enough for any realistic prompt, and bounds
+ * the worst case to a 64 KiB prompt slice.
  */
 const MAX_ACP_PROMPT_BYTES = 64 * 1024;
 
