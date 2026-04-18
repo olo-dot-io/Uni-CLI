@@ -33,6 +33,36 @@ export interface AdapterArg {
   positional?: boolean;
   choices?: string[];
   description?: string;
+  /**
+   * JSON Schema draft-2020-12 `format:` vocabulary (standard). Validated
+   * fail-closed via ajv's format-assertion vocabulary — a declared `format`
+   * is a hard precondition, not an annotation. See v0.213.3 spec §D5.
+   */
+  format?:
+    | "uri"
+    | "uuid"
+    | "date-time"
+    | "email"
+    | "hostname"
+    | "ipv4"
+    | "ipv6"
+    | "regex";
+  /**
+   * Bespoke `x-unicli-kind:` extension — dispatches to the harden-step
+   * validators that have no standard JSON Schema equivalent.
+   *
+   * - `path`          → filesystem sandbox (no traversal, NUL, or CWD/$HOME escape)
+   * - `adapter-ref`   → `<site>/<command>` shaped token
+   * - `selector`      → CSS/XPath-ish; reject `<script` or unescaped backtick
+   * - `shell-safe`    → reject `$` `` ` `` `;` `|` `&` `>` (command-injection vector)
+   */
+  "x-unicli-kind"?: "path" | "adapter-ref" | "selector" | "shell-safe";
+  /**
+   * Dual-accept fallback — if the primary kind fails validation, try each
+   * listed secondary kind before rejecting. Used by adapters whose `id` arg
+   * legitimately accepts URL slugs (zhihu, twitter) or vice versa.
+   */
+  "x-unicli-accepts"?: Array<"url" | "id">;
 }
 
 export interface OutputSchema {
