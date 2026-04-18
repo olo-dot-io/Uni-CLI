@@ -32,7 +32,7 @@
 
 import { createInterface, type Interface } from "node:readline";
 import { randomUUID } from "node:crypto";
-import { VERSION } from "../constants.js";
+import { ACP_PROTOCOL_VERSION, VERSION } from "../constants.js";
 import { resolveCommand } from "../registry.js";
 import {
   parseUnicliInvocation,
@@ -190,7 +190,7 @@ export class AcpServer {
       jsonrpc: "2.0",
       id,
       result: {
-        protocolVersion: "2026-03-27",
+        protocolVersion: ACP_PROTOCOL_VERSION,
         capabilities: {
           /** This server can execute `unicli <site> <cmd>` invocations. */
           exec: true,

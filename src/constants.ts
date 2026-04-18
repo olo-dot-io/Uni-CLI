@@ -24,3 +24,6 @@ export const NAME = pkg.name;
 
 /** MCP protocol version — single source of truth for all transports */
 export const MCP_PROTOCOL_VERSION = "2025-11-25";
+
+/** ACP protocol version — single source of truth for the ACP server */
+export const ACP_PROTOCOL_VERSION = "2026-03-27";
