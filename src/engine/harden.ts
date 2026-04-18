@@ -13,9 +13,11 @@
  *   4. `x-unicli-kind: "adapter-ref"` → `<site>/<command>` regex
  *   5. `x-unicli-kind: "selector"`    → reject `<script` or unescaped backtick
  *   6. `x-unicli-kind: "shell-safe"`  → reject `$` `` ` `` `;` `|` `&` `>`
- *   7. If a kind check fails, `x-unicli-accepts` lists secondary kinds
+ *   7. `x-unicli-kind: "id"`          → reject URL punctuation (`?` `#`) and
+ *                                        percent-escapes; IDs are bare tokens
+ *   8. If a kind check fails, `x-unicli-accepts` lists secondary kinds
  *      that can salvage the value (dual-accept fallback).
- *   8. No format / kind declared → freeform; only the control-char gate
+ *   9. No format / kind declared → freeform; only the control-char gate
  *      applies (codemod in Phase 4 migrates YAML adapters; unannotated
  *      args stay permissive until then).
  *
@@ -126,6 +128,42 @@ function validateSelectorArg(name: string, value: string): void {
       `selector arg "${name}" contains backtick — selectors never need them: "${value}"`,
       name,
       "remove backticks; use single or double quotes in attribute selectors",
+    );
+  }
+}
+
+/**
+ * Resource id token — reject anything that is a URL fragment rather than a
+ * bare identifier. Agents frequently paste a full URL into an `id` slot; the
+ * adapter then either double-encodes it or 404s. We reject `?`/`#` (query or
+ * fragment) and `%XX` (already URL-encoded). Adapters that legitimately accept
+ * both a bare id AND a URL declare `x-unicli-accepts: [url]` so the URL
+ * salvage path kicks in.
+ */
+function validateIdArg(name: string, value: string): void {
+  if (/[?#]/.test(value)) {
+    throw new InputHardeningError(
+      `id arg "${name}" contains URL punctuation (? or #): "${value}"`,
+      name,
+      "strip query string/fragment — resource ids are bare tokens, not URLs",
+    );
+  }
+  if (/%[0-9a-fA-F]{2}/.test(value)) {
+    throw new InputHardeningError(
+      `id arg "${name}" contains URL-encoded characters (%XX): "${value}"`,
+      name,
+      "strip query string/fragment — resource ids are bare tokens, not URLs",
+    );
+  }
+  // A full URL ("https://…") is not a bare id. Adapters that legitimately
+  // accept both a token and a URL declare `x-unicli-accepts: [url]`; the
+  // caller's try/catch salvage path picks that up without widening this
+  // validator's contract.
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(value)) {
+    throw new InputHardeningError(
+      `id arg "${name}" looks like a URL ("${value}") but kind is "id"`,
+      name,
+      "strip query string/fragment — resource ids are bare tokens, not URLs",
     );
   }
 }
@@ -272,6 +310,9 @@ function validateKind(name: string, value: string, kind: Kind): void {
       return;
     case "shell-safe":
       validateShellSafeArg(name, value);
+      return;
+    case "id":
+      validateIdArg(name, value);
       return;
   }
 }

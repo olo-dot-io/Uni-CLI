@@ -55,8 +55,12 @@ export interface AdapterArg {
    * - `adapter-ref`   → `<site>/<command>` shaped token
    * - `selector`      → CSS/XPath-ish; reject `<script` or unescaped backtick
    * - `shell-safe`    → reject `$` `` ` `` `;` `|` `&` `>` (command-injection vector)
+   * - `id`            → bare resource token (no URL punctuation `?` `#` or
+   *                     `%XX` percent-escapes); pair with `x-unicli-accepts:
+   *                     [url]` on adapters (zhihu, douban, jike…) whose `id`
+   *                     arg also accepts a full URL.
    */
-  "x-unicli-kind"?: "path" | "adapter-ref" | "selector" | "shell-safe";
+  "x-unicli-kind"?: "path" | "adapter-ref" | "selector" | "shell-safe" | "id";
   /**
    * Dual-accept fallback — if the primary kind fails validation, try each
    * listed secondary kind before rejecting. Used by adapters whose `id` arg
