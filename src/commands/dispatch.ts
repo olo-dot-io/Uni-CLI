@@ -23,7 +23,12 @@ import { getAllAdapters } from "../registry.js";
 import { resolveArgs } from "../engine/args.js";
 import { buildInvocation, execute } from "../engine/kernel/execute.js";
 import { format, detectFormat } from "../output/formatter.js";
-import { applyProjection, renderPluck } from "../output/projection.js";
+import {
+  applyProjection,
+  renderPluck,
+  renderPluck0,
+  ProjectionError,
+} from "../output/projection.js";
 import { recordUsage } from "../runtime/usage-ledger.js";
 import { ExitCode } from "../types.js";
 import type { OutputFormat } from "../types.js";
@@ -146,6 +151,7 @@ export function registerAdapterDispatch(program: Command): void {
           select?: string;
           fields?: string;
           pluck?: string;
+          pluck0?: string;
         };
         let resolved: Awaited<ReturnType<typeof resolveArgs>>;
         try {
@@ -233,22 +239,63 @@ export function registerAdapterDispatch(program: Command): void {
         }
 
         // Output-side projection (v0.213.3 P3). Applied BEFORE format() so
-        // every envelope format benefits. --pluck short-circuits the
-        // formatter entirely and emits a plain-text newline-delimited stream.
-        const projection = applyProjection(result.results, {
-          select: rootOpts.select,
-          fields: rootOpts.fields,
-          pluck: rootOpts.pluck,
-        });
+        // every envelope format benefits. --pluck / --pluck0 short-circuit
+        // the formatter entirely and emit a plain-text stream (newline or
+        // NUL delimited).
+        let projection;
+        try {
+          projection = applyProjection(result.results, {
+            select: rootOpts.select,
+            fields: rootOpts.fields,
+            pluck: rootOpts.pluck,
+            pluck0: rootOpts.pluck0,
+          });
+        } catch (err) {
+          if (err instanceof ProjectionError) {
+            process.stderr.write(`[projection] ${err.message}\n`);
+            recordUsage({
+              site: adapter.name,
+              cmd: cmdName,
+              strategy: adapter.strategy ?? "unknown",
+              tokens: 0,
+              ms: result.durationMs,
+              bytes: 0,
+              exit: ExitCode.USAGE_ERROR,
+            });
+            process.exit(ExitCode.USAGE_ERROR);
+          }
+          throw err;
+        }
 
-        const rendered = projection.pluckMode
-          ? renderPluck(projection.results, rootOpts.pluck!)
-          : format(
-              projection.results,
-              projection.columns ?? cmd.columns,
-              fmt,
-              result.envelope,
-            );
+        let rendered: string;
+        let finalExit = result.exitCode;
+        if (projection.pluck0Mode) {
+          rendered = renderPluck0(projection.results, rootOpts.pluck0!);
+        } else if (projection.pluckMode) {
+          rendered = renderPluck(projection.results, rootOpts.pluck!);
+        } else {
+          rendered = format(
+            projection.results,
+            projection.columns ?? cmd.columns,
+            fmt,
+            result.envelope,
+          );
+        }
+
+        // IM2: --select / --pluck / --pluck0 can reduce a non-empty kernel
+        // result to zero rows. Kernel exit code is agnostic to projection
+        // (so MCP / ACP keep their own behavior); the CLI post-projection
+        // sees the final shape and overrides with EMPTY_RESULT (66).
+        if (
+          finalExit === ExitCode.SUCCESS &&
+          (projection.pluck0Mode ||
+            projection.pluckMode ||
+            rootOpts.select !== undefined) &&
+          projection.results.length === 0
+        ) {
+          finalExit = ExitCode.EMPTY_RESULT;
+        }
+
         console.log(rendered);
         recordUsage({
           site: adapter.name,
@@ -257,9 +304,9 @@ export function registerAdapterDispatch(program: Command): void {
           tokens: 0,
           ms: result.durationMs,
           bytes: Buffer.byteLength(rendered, "utf-8"),
-          exit: result.exitCode,
+          exit: finalExit,
         });
-        process.exit(result.exitCode);
+        process.exit(finalExit);
       });
     }
   }

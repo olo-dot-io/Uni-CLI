@@ -88,6 +88,10 @@ export async function createCli(): Promise<Command> {
     .option(
       "--pluck <field>",
       "emit a single field one-per-line (plain text stream, wins over --select/--fields)",
+    )
+    .option(
+      "--pluck0 <field>",
+      "emit a single field NUL-delimited (for `xargs -0`, wins over --pluck)",
     );
 
   // Load YAML adapters synchronously, then TS adapters asynchronously
