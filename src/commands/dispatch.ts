@@ -1,31 +1,32 @@
 /**
  * Dynamic adapter command registration and execution dispatch.
  *
- * Extracted from cli.ts to keep that file below the complexity gate.
- * Owns: per-adapter Commander registration, quarantine gate, pipeline/TS
- * execution, v2 envelope format() wiring, and error handling.
+ * v0.213.3 R2: dispatch.ts is now a thin wrapper that parses Commander
+ * state into a `ResolvedArgs` bag and hands it to the invocation kernel
+ * (`execute()`). The kernel owns schema validation, input hardening,
+ * pipeline execution, and envelope construction — so MCP / ACP / CLI all
+ * produce byte-identical results for the same input.
+ *
+ * Responsibilities kept in this module:
+ *   - Commander sub-command registration (one per adapter × command)
+ *   - Quarantine gate (adapter-health veto before the kernel even runs)
+ *   - `--dry-run` plan printer
+ *   - Rendering the InvocationResult via format() and exiting with the
+ *     kernel-supplied exit code
+ *   - Emitting harden warnings from InvocationResult.warnings to stderr
+ *   - Usage-ledger recording
  */
 
 import { Command } from "commander";
 import chalk from "chalk";
 import { getAllAdapters } from "../registry.js";
-import { runPipeline } from "../engine/executor.js";
 import { resolveArgs } from "../engine/args.js";
-import { hardenArgs, InputHardeningError } from "../engine/harden.js";
+import { buildInvocation, execute } from "../engine/kernel/execute.js";
 import { format, detectFormat } from "../output/formatter.js";
-import {
-  errorTypeToCode,
-  mapErrorToExitCode,
-  errorToAgentFields,
-} from "../output/error-map.js";
-import {
-  defaultSuccessNextActions,
-  defaultErrorNextActions,
-} from "../output/next-actions.js";
 import { recordUsage } from "../runtime/usage-ledger.js";
 import { ExitCode } from "../types.js";
 import type { OutputFormat } from "../types.js";
-import type { AgentContext, AgentError } from "../output/envelope.js";
+import type { AgentContext } from "../output/envelope.js";
 
 /**
  * Register one Commander sub-command per adapter×command.
@@ -157,45 +158,34 @@ export function registerAdapterDispatch(program: Command): void {
         }
 
         const mergedArgs: Record<string, unknown> = { ...resolved.args };
-        if (mergedArgs.limit === undefined) {
+        // Commander registers a `--limit` option on EVERY adapter sub-
+        // command regardless of declaration. With ajv strict mode on the
+        // kernel, we must only forward `limit` when the adapter actually
+        // declares it — otherwise every non-paginating command fails
+        // validation with `additionalProperties`.
+        const declaresLimit = adapterArgs.some((a) => a.name === "limit");
+        if (declaresLimit && mergedArgs.limit === undefined) {
           mergedArgs.limit = parseInt(opts.limit, 10) || 20;
+        } else if (!declaresLimit) {
+          delete mergedArgs.limit;
         }
 
-        // Input hardening — Poehnelt pattern. Agents hallucinate control
-        // chars / path traversals / double-encoded URLs; validate at the
-        // boundary before any adapter step sees the value.
-        let hardenWarnings: string[] = [];
-        try {
-          const result = hardenArgs(mergedArgs, adapterArgs);
-          hardenWarnings = result.warnings;
-        } catch (err) {
-          if (err instanceof InputHardeningError) {
-            const errCtx: AgentContext = {
-              command: `${adapter.name}.${cmdName}`,
-              duration_ms: Date.now() - startedAt,
-              adapter_version: adapter.version,
-              surface: "web",
-              error: {
-                code: "invalid_input",
-                message: err.message,
-                adapter_path: `src/adapters/${adapter.name}/${cmdName}.yaml`,
-                step: 0,
-                suggestion: err.suggestion,
-                retryable: false,
-              },
-              next_actions: defaultErrorNextActions(
-                adapter.name,
-                cmdName,
-                "invalid_input",
-              ),
-            };
-            process.stderr.write(format([], cmd.columns, fmt, errCtx) + "\n");
-            process.exit(ExitCode.USAGE_ERROR);
-          }
-          throw err;
-        }
-        for (const w of hardenWarnings) {
-          process.stderr.write(chalk.yellow(`[harden] ${w}\n`));
+        const inv = buildInvocation("cli", adapter.name, cmdName, {
+          args: mergedArgs,
+          source: resolved.source,
+          stdinRaw: resolved.stdinRaw,
+        });
+
+        // `buildInvocation` only returns null for unknown (site, cmd). We
+        // came from iterating `getAllAdapters()` so that cannot happen, but
+        // TypeScript demands we narrow.
+        if (!inv) {
+          console.error(
+            chalk.red(
+              `internal error: adapter ${adapter.name}.${cmdName} not registered`,
+            ),
+          );
+          process.exit(ExitCode.CONFIG_ERROR);
         }
 
         if (rootOpts.dryRun) {
@@ -205,6 +195,8 @@ export function registerAdapterDispatch(program: Command): void {
             strategy: adapter.strategy ?? null,
             args: mergedArgs,
             args_source: resolved.source,
+            trace_id: inv.trace_id,
+            surface: inv.surface,
             pipeline_steps: cmd.pipeline?.length ?? 0,
             adapter_path: `src/adapters/${adapter.name}/${cmdName}.yaml`,
           };
@@ -212,84 +204,47 @@ export function registerAdapterDispatch(program: Command): void {
           process.exit(ExitCode.SUCCESS);
         }
 
-        try {
-          let results: unknown[];
+        const result = await execute(inv);
 
-          if (cmd.pipeline) {
-            results = await runPipeline(
-              cmd.pipeline,
-              mergedArgs,
-              adapter.base,
-              {
-                site: adapter.name,
-                strategy: adapter.strategy,
-              },
-            );
-          } else if (cmd.func) {
-            const raw = await cmd.func(null as never, mergedArgs);
-            results = Array.isArray(raw) ? raw : [raw];
-          } else {
-            console.error(
-              chalk.red("No pipeline or function defined for this command"),
-            );
-            process.exit(ExitCode.CONFIG_ERROR);
-          }
-
-          const ctx: AgentContext = {
-            command: `${adapter.name}.${cmdName}`,
-            duration_ms: Date.now() - startedAt,
-            adapter_version: adapter.version,
-            surface: "web",
-            next_actions: defaultSuccessNextActions(adapter.name, cmdName),
-          };
-          const rendered = format(results, cmd.columns, fmt, ctx);
-          console.log(rendered);
-          const exitCode =
-            results.length === 0 ? ExitCode.EMPTY_RESULT : ExitCode.SUCCESS;
-          recordUsage({
-            site: adapter.name,
-            cmd: cmdName,
-            strategy: adapter.strategy ?? "unknown",
-            tokens: 0,
-            ms: Date.now() - startedAt,
-            bytes: Buffer.byteLength(rendered, "utf-8"),
-            exit: exitCode,
-          });
-          process.exit(exitCode);
-        } catch (err) {
-          const adapterPath = `src/adapters/${adapter.name}/${cmdName}.yaml`;
-          const fields = errorToAgentFields(err, adapterPath, adapter.name);
-          const agentErr: AgentError = {
-            code: errorTypeToCode(err),
-            message: err instanceof Error ? err.message : String(err),
-            ...fields,
-          };
-          const errCtx: AgentContext = {
-            command: `${adapter.name}.${cmdName}`,
-            duration_ms: Date.now() - startedAt,
-            adapter_version: adapter.version,
-            surface: "web",
-            error: agentErr,
-            next_actions: defaultErrorNextActions(
-              adapter.name,
-              cmdName,
-              agentErr.code,
-            ),
-          };
-          const rendered = format([], cmd.columns, fmt, errCtx);
-          process.stderr.write(rendered + "\n");
-          const exitCode = mapErrorToExitCode(err);
-          recordUsage({
-            site: adapter.name,
-            cmd: cmdName,
-            strategy: adapter.strategy ?? "unknown",
-            tokens: 0,
-            ms: Date.now() - startedAt,
-            bytes: 0,
-            exit: exitCode,
-          });
-          process.exit(exitCode);
+        // Surface harden warnings the same way the pre-R2 path did —
+        // yellow `[harden] …` lines on stderr, above any output envelope.
+        for (const w of result.warnings) {
+          process.stderr.write(chalk.yellow(`[harden] ${w}\n`));
         }
+
+        if (result.error) {
+          process.stderr.write(
+            format([], cmd.columns, fmt, result.envelope) + "\n",
+          );
+          recordUsage({
+            site: adapter.name,
+            cmd: cmdName,
+            strategy: adapter.strategy ?? "unknown",
+            tokens: 0,
+            ms: result.durationMs,
+            bytes: 0,
+            exit: result.exitCode,
+          });
+          process.exit(result.exitCode);
+        }
+
+        const rendered = format(
+          result.results,
+          cmd.columns,
+          fmt,
+          result.envelope,
+        );
+        console.log(rendered);
+        recordUsage({
+          site: adapter.name,
+          cmd: cmdName,
+          strategy: adapter.strategy ?? "unknown",
+          tokens: 0,
+          ms: result.durationMs,
+          bytes: Buffer.byteLength(rendered, "utf-8"),
+          exit: result.exitCode,
+        });
+        process.exit(result.exitCode);
       });
     }
   }
