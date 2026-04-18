@@ -27,9 +27,24 @@ import type { AgentError } from "../../output/envelope.js";
 import { ExitCode } from "../../types.js";
 import type { ResolvedArgs } from "../args.js";
 
-import { compileCommand, getCompiled, setCompiled } from "./compile.js";
+import { getCompiled } from "./compile.js";
 import type { Invocation, InvocationResult } from "./types.js";
 import { newULID } from "./ulid.js";
+
+/**
+ * Raised when execute() is called for a (site, cmd) pair that was not seen
+ * by `compileAll()` at loader boot. Signals a wiring bug (the loader forgot
+ * to prime the cache), not a user error.
+ */
+export class KernelLookupError extends Error {
+  constructor(key: string) {
+    super(
+      `KernelLookupError: compiled command not found: ${key}. ` +
+        "Loader must call compileAll() before execute() — call primeKernelCache() from discovery/loader.ts.",
+    );
+    this.name = "KernelLookupError";
+  }
+}
 
 /**
  * Look up an adapter + command pair and return an Invocation ready for
@@ -62,13 +77,14 @@ export function buildInvocation(
 export async function execute(inv: Invocation): Promise<InvocationResult> {
   const startedAt = Date.now();
   const key = `${inv.adapter.name}.${inv.cmdName}`;
-  const cached = getCompiled(inv.adapter.name, inv.cmdName);
+  const compiled = getCompiled(inv.adapter.name, inv.cmdName);
   const warnings: string[] = [];
 
-  // Lazily compile on cache miss — loader wiring might not have primed the
-  // cache when an individual unit test imports execute() in isolation.
-  const compiled = cached ?? compileCommand(inv.command);
-  if (!cached) setCompiled(key, compiled);
+  // Loader primes the kernel cache via primeKernelCache() after every
+  // registry mutation. A miss here means either a wiring bug or a test
+  // that registers an adapter without calling primeKernelCache() — throw
+  // a clear error instead of silently recompiling.
+  if (!compiled) throw new KernelLookupError(key);
 
   // 1. JSON Schema validation (fail-closed via ajv strict mode).
   const v = compiled.validate(inv.bag.args);

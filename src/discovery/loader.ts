@@ -11,8 +11,9 @@ import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, extname, basename, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import yaml from "js-yaml";
-import { registerAdapter } from "../registry.js";
+import { getAllAdapters, registerAdapter } from "../registry.js";
 import { validateAdapterV2 } from "../core/schema-v2.js";
+import { compileAll } from "../engine/kernel/compile.js";
 
 /**
  * Upper bound on YAML adapter file size. A legitimate YAML adapter is
@@ -391,6 +392,10 @@ export function loadAllAdapters(): number {
   let total = 0;
   total += loadAdaptersFromDir(BUILTIN_YAML_DIR);
   total += loadAdaptersFromDir(USER_DIR);
+  // Prime the kernel cache for every registered adapter so CLI / MCP / ACP
+  // surfaces look up CompiledCommand entries in O(1). Safe to run again
+  // after loadTsAdapters — compileAll clears + refills.
+  primeKernelCache();
   return total;
 }
 
@@ -412,7 +417,20 @@ export async function loadTsAdapters(): Promise<number> {
       }
     }
   }
+  // Re-prime now that TS-registered adapters are in the registry too.
+  primeKernelCache();
   return count;
+}
+
+/**
+ * Eagerly compile every registered adapter command into the invocation
+ * kernel cache. Called at the tail of each loader entry point so subsequent
+ * CLI / MCP / ACP dispatch can do a pure Map lookup with no lazy compile.
+ * Exposed so tests / long-running processes that mutate the registry can
+ * re-prime without re-running the full discovery scan.
+ */
+export function primeKernelCache(): void {
+  compileAll(getAllAdapters());
 }
 
 /**

@@ -24,7 +24,7 @@ import {
 } from "node:fs";
 import type { AdapterArg } from "../types.js";
 
-export type ArgSource = "shell" | "file" | "stdin" | "mixed";
+export type ArgSource = "shell" | "file" | "stdin" | "mixed" | "mcp" | "acp";
 
 export interface ResolvedArgs {
   args: Record<string, unknown>;

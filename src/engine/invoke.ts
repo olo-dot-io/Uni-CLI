@@ -26,4 +26,8 @@ export {
   _resetCompiledCacheForTests,
 } from "./kernel/compile.js";
 
-export { buildInvocation, execute } from "./kernel/execute.js";
+export {
+  buildInvocation,
+  execute,
+  KernelLookupError,
+} from "./kernel/execute.js";
