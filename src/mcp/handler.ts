@@ -326,18 +326,20 @@ function handleElicitationResponse(
 
 export function buildHandler(
   tools: McpTool[],
-): (req: JsonRpcRequest) => JsonRpcResponse | Promise<JsonRpcResponse> {
+): (
+  req: JsonRpcRequest,
+) => JsonRpcResponse | undefined | Promise<JsonRpcResponse | undefined> {
   return function handleRequest(
     req: JsonRpcRequest,
-  ): JsonRpcResponse | Promise<JsonRpcResponse> {
+  ): JsonRpcResponse | undefined | Promise<JsonRpcResponse | undefined> {
     const id = req.id ?? null;
 
     switch (req.method) {
       case "initialize":
         return initializeResponse(id);
       case "notifications/initialized":
-        // Sentinel — transports check for null/undefined and suppress.
-        return null as unknown as JsonRpcResponse;
+        // Notifications have no response — transports already guard `if (response)`.
+        return undefined;
       case "tools/list":
         return { jsonrpc: "2.0", id, result: { tools } };
       case "tools/call":
@@ -357,7 +359,7 @@ export function buildHandler(
             },
           };
         }
-        return null as unknown as JsonRpcResponse;
+        return undefined;
     }
   };
 }

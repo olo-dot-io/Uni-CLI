@@ -152,7 +152,15 @@ async function main(): Promise<void> {
   }
 
   if (opts.transport === "streamable") {
-    await startStreamableHttp(opts.port, handler, { auth: opts.auth });
+    // Streamable HTTP's Handler type still returns JsonRpcResponse (non-optional).
+    // Our handler returns undefined for notifications — which streamable-http
+    // guards against via `if (!response)` checks, but the types don't reflect
+    // that yet. Cast-adapt until streamable-http.ts is refactored to widen.
+    await startStreamableHttp(
+      opts.port,
+      handler as unknown as Parameters<typeof startStreamableHttp>[1],
+      { auth: opts.auth },
+    );
     const authLabel = opts.auth ? ", OAuth enabled" : "";
     process.stderr.write(
       `unicli MCP server v${VERSION} — ${adapterCount} sites, ${commandCount} commands (${tools.length} tools, mode=${mode}, transport=streamable${authLabel})\n`,
