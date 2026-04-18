@@ -366,6 +366,10 @@ export function buildScope(ctx: PipelineContext): Record<string, unknown> {
     // `undefined`, which the template engine serializes as empty string.
     source: ctx.source,
     surface: ctx.surface,
+    // NOTE: trace_id is non-secret but reaches YAML templates via
+    // ${{ trace_id }}. Adapter authors: do NOT use it in hashed
+    // identifiers or headers you expect to stay local — it will appear
+    // in outgoing request bodies / URLs.
     trace_id: ctx.trace_id,
   };
 
