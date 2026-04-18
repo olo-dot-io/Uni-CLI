@@ -100,6 +100,13 @@ export interface AdapterCommand {
    */
   minimum_capability?: string;
 
+  /**
+   * When true, the command accepts `--cursor <next_cursor>` for pagination
+   * and surfaces `meta.pagination.next_cursor` in its envelope. The kernel
+   * uses this flag to add a pagination hint to the success `next_actions`.
+   */
+  paginated?: boolean;
+
   // Execution — exactly one of these
   pipeline?: PipelineStep[];
   adapterArgs?: AdapterArg[];

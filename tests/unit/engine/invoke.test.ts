@@ -6,8 +6,9 @@
  *   - compileAll produces one entry per (adapter, command)
  *   - execute() rejects invalid bag.args with a structured error
  *   - buildInvocation returns null for unknown site/cmd
- *   - Trace IDs are ULIDs (26 chars, Crockford Base32, time-sortable)
+ *   - Trace IDs are ULIDs (26 chars, Crockford Base32, monotonic in same ms)
  *   - validate() rejects additionalProperties (strict mode)
+ *   - Success next_actions carry the literal site/cmd (no placeholders)
  *
  * All tests use real ajv — no mocks of the validation layer.
  */
@@ -18,7 +19,9 @@ import {
   buildInvocation,
   execute,
   getCompiled,
+  newULID,
   _resetCompiledCacheForTests,
+  _resetULIDForTests,
 } from "../../../src/engine/invoke.js";
 import { AdapterType } from "../../../src/types.js";
 import type { AdapterManifest } from "../../../src/types.js";
@@ -46,6 +49,12 @@ function mkAdapter(overrides?: Partial<AdapterManifest>): AdapterManifest {
         adapterArgs: [{ name: "url", type: "str", format: "uri" }],
         func: async () => ({ x: 1 }),
       },
+      paged: {
+        name: "paged",
+        paginated: true,
+        adapterArgs: [],
+        func: async () => ({ ok: true }),
+      },
     },
     ...overrides,
   };
@@ -53,15 +62,17 @@ function mkAdapter(overrides?: Partial<AdapterManifest>): AdapterManifest {
 
 beforeEach(() => {
   _resetCompiledCacheForTests();
+  _resetULIDForTests();
 });
 
 describe("compileAll", () => {
   it("produces one CompiledCommand per (adapter, command) in the registry", () => {
     const a = mkAdapter();
     const cache = compileAll([a]);
-    expect(cache.size).toBe(2);
+    expect(cache.size).toBe(3);
     expect(cache.has("inv-site.hello")).toBe(true);
     expect(cache.has("inv-site.fail")).toBe(true);
+    expect(cache.has("inv-site.paged")).toBe(true);
   });
 
   it("multiple adapters accumulate", () => {
@@ -77,7 +88,7 @@ describe("compileAll", () => {
       },
     });
     const cache = compileAll([a, b]);
-    expect(cache.size).toBe(3);
+    expect(cache.size).toBe(4);
     expect(cache.has("other-site.one")).toBe(true);
   });
 
@@ -183,21 +194,41 @@ describe("buildInvocation", () => {
     // ULID alphabet is Crockford Base32 — excludes I, L, O, U
     expect(inv!.trace_id).toMatch(/^[0-9A-HJKMNP-TV-Z]{26}$/);
   });
+});
 
-  it("successive trace_ids are distinct and monotonically non-decreasing (time-sortable)", async () => {
-    const a = buildInvocation("cli", "inv-site", "hello", {
-      args: { target: "x" },
-      source: "shell",
-    })!;
-    // Defer a tick so clock advances at least 1 ms on most runtimes.
-    await new Promise((r) => setTimeout(r, 2));
-    const b = buildInvocation("cli", "inv-site", "hello", {
-      args: { target: "y" },
-      source: "shell",
-    })!;
-    expect(a.trace_id).not.toBe(b.trace_id);
-    // First 10 chars encode the ms timestamp.
-    expect(b.trace_id.slice(0, 10) >= a.trace_id.slice(0, 10)).toBe(true);
+describe("newULID monotonicity (ulid/spec §Monotonicity)", () => {
+  it("2000 IDs generated in a tight synchronous loop sort strictly ascending", () => {
+    const ids: string[] = [];
+    for (let i = 0; i < 2000; i++) ids.push(newULID());
+    for (let i = 0; i < ids.length - 1; i++) {
+      expect(ids[i] < ids[i + 1]).toBe(true);
+    }
+  });
+
+  it("IDs remain 26 chars and stay in the Crockford alphabet under load", () => {
+    const re = /^[0-9A-HJKMNP-TV-Z]{26}$/;
+    for (let i = 0; i < 500; i++) {
+      const id = newULID();
+      expect(id).toHaveLength(26);
+      expect(id).toMatch(re);
+    }
+  });
+
+  it("distinct calls at a fixed Date.now() mock still sort ascending", () => {
+    const origNow = Date.now;
+    try {
+      const fixed = 1_700_000_000_000;
+      Date.now = () => fixed;
+      const ids = Array.from({ length: 100 }, () => newULID());
+      for (let i = 0; i < ids.length - 1; i++) {
+        expect(ids[i] < ids[i + 1]).toBe(true);
+      }
+      // All share the same 10-char timestamp prefix (same ms).
+      const prefix = ids[0].slice(0, 10);
+      for (const id of ids) expect(id.slice(0, 10)).toBe(prefix);
+    } finally {
+      Date.now = origNow;
+    }
   });
 });
 
@@ -218,11 +249,34 @@ describe("execute (end-to-end)", () => {
     expect(res.results).toEqual([{ greeting: "hi world", limit: undefined }]);
     expect(res.envelope.error).toBeUndefined();
     expect(res.envelope.next_actions?.length ?? 0).toBeGreaterThan(0);
-    // next_actions should have the concrete site/cmd substituted.
+    // next_actions carry the literal site name — no `${site}` placeholder
+    // round-trip (R2 I2 fix).
     const firstCmd = res.envelope.next_actions![0].command;
     expect(firstCmd).toContain("inv-site");
     expect(firstCmd).toContain("hello");
     expect(firstCmd).not.toContain("${site}");
+    expect(firstCmd).not.toContain("${cmd}");
+  });
+
+  it("paginated command surfaces a --cursor next_action", async () => {
+    const inv = buildInvocation("cli", "inv-site", "paged", {
+      args: {},
+      source: "shell",
+    })!;
+    const res = await execute(inv);
+    expect(res.exitCode).toBe(0);
+    const cmds = (res.envelope.next_actions ?? []).map((a) => a.command);
+    expect(cmds.some((c) => c.includes("--cursor"))).toBe(true);
+  });
+
+  it("non-paginated command omits the --cursor next_action", async () => {
+    const inv = buildInvocation("cli", "inv-site", "hello", {
+      args: { target: "x" },
+      source: "shell",
+    })!;
+    const res = await execute(inv);
+    const cmds = (res.envelope.next_actions ?? []).map((a) => a.command);
+    expect(cmds.every((c) => !c.includes("--cursor"))).toBe(true);
   });
 
   it("rejects an invalid bag.args with a structured error matching the schema", async () => {
