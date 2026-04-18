@@ -23,6 +23,13 @@ export default defineConfig({
       },
       {
         test: {
+          name: "integration",
+          include: ["tests/integration/**/*.test.ts"],
+          testTimeout: 30_000,
+        },
+      },
+      {
+        test: {
           name: "adapter",
           include: ["tests/adapter/**/*.test.ts", "src/adapters/**/*.test.ts"],
           testTimeout: 30_000,
