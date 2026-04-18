@@ -6,6 +6,7 @@
 
 import { getAllAdapters } from "../registry.js";
 import { buildInvocation, execute } from "../engine/kernel/execute.js";
+import { coerceLimit } from "../engine/args.js";
 import type { AdapterManifest, AdapterCommand } from "../types.js";
 
 export interface ParsedInvocation {
@@ -127,10 +128,8 @@ export async function runCommand(
     ? { limit: 20, ...args }
     : { ...args };
   if (declaresLimit && args.limit !== undefined) {
-    mergedArgs.limit =
-      typeof args.limit === "number"
-        ? args.limit
-        : parseInt(String(args.limit), 10) || 20;
+    const coerced = coerceLimit(args.limit);
+    if (coerced !== undefined) mergedArgs.limit = coerced;
   }
   const inv = buildInvocation("acp", adapter.name, cmd.name, {
     args: mergedArgs,

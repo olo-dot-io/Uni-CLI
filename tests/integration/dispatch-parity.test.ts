@@ -91,6 +91,9 @@ function normalize(env: AgentContext): Record<string, unknown> {
 describe("CLI ↔ MCP dispatch parity (kernel envelope)", () => {
   for (const [site, cmd, args] of [
     ["parity-hackernews", "top", { limit: 3 }],
+    // limit=0 regression (IM1): MCP used to return 0 while ACP returned 20 —
+    // both surfaces now share coerceLimit() so 0 passes through identically.
+    ["parity-hackernews", "top", { limit: 0 }],
     ["parity-arxiv", "search", { query: "agent tool use", limit: 2 }],
     ["parity-github", "search", { q: "unicli" }],
   ] as Array<[string, string, Record<string, unknown>]>) {

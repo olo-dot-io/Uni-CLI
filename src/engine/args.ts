@@ -175,6 +175,28 @@ export function readArgsFile(path: string): Record<string, unknown> {
 }
 
 /**
+ * Normalize a caller-supplied `limit` into a non-negative integer. Shared by
+ * every surface (CLI/MCP/ACP) so the same input produces the same ArgBag
+ * regardless of transport — the parity tests depend on this.
+ *
+ * Rules: parse as integer; accept finite values ≥ 0 (0 means "no limit" and
+ * is passed through to adapters that honor it); anything else (NaN, negative,
+ * non-numeric string, null) falls back to `fallback`. `undefined` is returned
+ * as-is so callers can distinguish "not provided" from "provided but invalid".
+ */
+export function coerceLimit(value: unknown, fallback = 20): number | undefined {
+  if (value === undefined) return undefined;
+  const n =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number.parseInt(value, 10)
+        : Number.NaN;
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return Math.trunc(n);
+}
+
+/**
  * Coerce a shell-provided string into the type declared on the adapter arg.
  * Mirrors the inline coercion previously buried in dispatch.ts so every
  * resolver path goes through the same rules.

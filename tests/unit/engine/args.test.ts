@@ -9,7 +9,11 @@ import { writeFileSync, unlinkSync, mkdtempSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { resolveArgs, readArgsFile } from "../../../src/engine/args.js";
+import {
+  resolveArgs,
+  readArgsFile,
+  coerceLimit,
+} from "../../../src/engine/args.js";
 import type { AdapterArg } from "../../../src/types.js";
 
 const schema: AdapterArg[] = [
@@ -208,5 +212,38 @@ describe("resolveArgs — schema evolution tolerance", () => {
     });
     expect(r.args.unknown_future_field).toBe("future-value");
     expect(r.args.nested).toEqual({ a: 1 });
+  });
+});
+
+describe("coerceLimit — shared helper for MCP + ACP parity", () => {
+  it("returns undefined when input is undefined (caller distinguishes 'not provided')", () => {
+    expect(coerceLimit(undefined)).toBeUndefined();
+  });
+
+  it("passes through a positive integer", () => {
+    expect(coerceLimit(5)).toBe(5);
+    expect(coerceLimit(100)).toBe(100);
+  });
+
+  it("preserves 0 (adapters may treat it as 'no limit')", () => {
+    expect(coerceLimit(0)).toBe(0);
+  });
+
+  it("parses numeric strings", () => {
+    expect(coerceLimit("42")).toBe(42);
+    expect(coerceLimit("0")).toBe(0);
+  });
+
+  it("falls back on negatives, NaN, non-numeric strings, and non-numbers", () => {
+    expect(coerceLimit(-1)).toBe(20);
+    expect(coerceLimit(Number.NaN)).toBe(20);
+    expect(coerceLimit("abc")).toBe(20);
+    expect(coerceLimit(null)).toBe(20);
+    expect(coerceLimit({})).toBe(20);
+  });
+
+  it("honors a custom fallback", () => {
+    expect(coerceLimit("bad", 50)).toBe(50);
+    expect(coerceLimit(undefined, 50)).toBeUndefined();
   });
 });

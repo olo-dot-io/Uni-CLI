@@ -14,6 +14,7 @@
  */
 
 import { buildInvocation, execute } from "../engine/kernel/execute.js";
+import { coerceLimit } from "../engine/args.js";
 import type { AdapterManifest, AdapterCommand } from "../types.js";
 
 export interface McpStructuredContent {
@@ -64,13 +65,6 @@ function withWarnings(
   };
 }
 
-function coerceLimit(raw: unknown): unknown {
-  if (raw === undefined) return undefined;
-  if (typeof raw === "number") return raw;
-  const n = parseInt(String(raw), 10);
-  return Number.isFinite(n) ? n : 20;
-}
-
 /**
  * Execute a resolved (adapter, command) pair via the invocation kernel and
  * shape the result into the MCP `McpToolResult` envelope. Used by both the
@@ -92,7 +86,8 @@ export async function runResolvedCommand(
     ? { limit: 20, ...args }
     : { ...args };
   if (declaresLimit && args.limit !== undefined) {
-    mergedArgs.limit = coerceLimit(args.limit) ?? 20;
+    const coerced = coerceLimit(args.limit);
+    if (coerced !== undefined) mergedArgs.limit = coerced;
   }
 
   const inv = buildInvocation("mcp", adapter.name, cmdName, {
