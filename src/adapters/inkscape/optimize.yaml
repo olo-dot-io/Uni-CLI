@@ -22,10 +22,12 @@ args:
     required: true
     positional: true
     description: Input SVG file path
+    x-unicli-kind: path
   output:
     type: str
     required: true
     description: Output optimized SVG file path
+    x-unicli-kind: path
 
 columns: []
 

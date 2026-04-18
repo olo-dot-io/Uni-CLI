@@ -13,10 +13,12 @@ args:
     required: true
     positional: true
     description: Path to .blend file
+    x-unicli-kind: path
   output:
     type: str
     required: true
     description: Output PNG image path
+    x-unicli-kind: path
   width:
     type: int
     default: 1920

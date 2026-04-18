@@ -9,6 +9,7 @@ args:
   game_id:
     type: str
     description: Filter by game ID
+    x-unicli-kind: id
   limit:
     type: int
     default: 20

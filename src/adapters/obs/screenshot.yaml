@@ -10,6 +10,7 @@ args:
     required: true
     positional: true
     description: Output file path for screenshot
+    x-unicli-kind: path
   format:
     type: str
     default: png

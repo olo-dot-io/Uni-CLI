@@ -12,6 +12,8 @@ args:
     required: true
     type: str
     description: Subject ID (from URL)
+    x-unicli-kind: id
+    x-unicli-accepts: [url]
 
 pipeline:
   - navigate: https://movie.douban.com/subject/${{ args.id }}

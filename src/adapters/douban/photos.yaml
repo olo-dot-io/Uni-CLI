@@ -11,6 +11,7 @@ args:
     positional: true
     required: true
     description: Movie subject ID
+    x-unicli-kind: id
   type:
     default: R
     description: Photo type (R=stills, S=posters)

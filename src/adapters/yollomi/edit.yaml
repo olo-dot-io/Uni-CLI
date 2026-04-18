@@ -11,6 +11,8 @@ args:
     required: true
     positional: true
     description: Image URL or local path
+    x-unicli-kind: path
+    x-unicli-accepts: [url]
   prompt:
     type: str
     required: true

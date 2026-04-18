@@ -17,6 +17,7 @@ args:
     type: str
     required: true
     description: Output image path (.png recommended)
+    x-unicli-kind: path
 
 pipeline:
   - exec:

@@ -11,6 +11,7 @@ args:
     required: true
     positional: true
     description: Product URL
+    format: uri
 
 columns: [status, title, message]
 

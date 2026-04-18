@@ -13,6 +13,7 @@ args:
     required: true
     positional: true
     description: Input video file path
+    x-unicli-kind: path
   time:
     type: str
     default: "00:00:05"
@@ -21,6 +22,7 @@ args:
     type: str
     default: "thumbnail.jpg"
     description: Output image file path
+    x-unicli-kind: path
 
 pipeline:
   - exec:

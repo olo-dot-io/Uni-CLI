@@ -15,6 +15,7 @@ args:
     positional: true
     type: int
     description: Category ID
+    x-unicli-kind: id
   limit:
     type: int
     default: 20

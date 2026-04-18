@@ -15,6 +15,7 @@ args:
   dir:
     type: str
     description: Limit search to a specific directory
+    x-unicli-kind: path
 
 pipeline:
   - if: "args.dir"

@@ -12,6 +12,7 @@ args:
     required: true
     positional: true
     description: File or directory path to inspect
+    x-unicli-kind: path
 
 pipeline:
   - exec:

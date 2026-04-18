@@ -13,6 +13,7 @@ args:
     required: true
     positional: true
     description: Directory containing images
+    x-unicli-kind: path
   format:
     type: str
     required: true

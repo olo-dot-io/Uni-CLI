@@ -12,10 +12,12 @@ args:
     required: true
     positional: true
     description: Path to source .mscz or .mscx file
+    x-unicli-kind: path
   output:
     type: str
     required: true
     description: "Output file — format from extension: .pdf .png .mp3 .wav .midi .musicxml"
+    x-unicli-kind: path
 
 execArgs:
   - ${{ args.file }}

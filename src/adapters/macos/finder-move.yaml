@@ -16,6 +16,7 @@ args:
     required: true
     positional: true
     description: Destination path
+    x-unicli-kind: path
 
 pipeline:
   - exec:

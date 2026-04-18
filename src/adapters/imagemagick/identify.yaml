@@ -24,6 +24,7 @@ args:
     required: true
     positional: true
     description: Input image file path
+    x-unicli-kind: path
 
 columns: [width, height, format, depth, size, colorspace]
 

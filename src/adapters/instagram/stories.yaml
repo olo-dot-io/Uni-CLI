@@ -11,6 +11,7 @@ args:
     required: true
     positional: true
     description: User ID (numeric)
+    x-unicli-kind: id
 
 pipeline:
   - fetch:

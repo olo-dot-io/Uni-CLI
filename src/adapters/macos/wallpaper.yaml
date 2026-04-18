@@ -10,6 +10,7 @@ args:
     type: str
     positional: true
     description: Path to image file (omit to get the current wallpaper)
+    x-unicli-kind: path
 
 pipeline:
   - exec:

@@ -12,6 +12,7 @@ args:
     required: true
     positional: true
     description: URL pattern to verify
+    format: uri
   method:
     type: str
     default: GET

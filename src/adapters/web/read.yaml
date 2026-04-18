@@ -17,6 +17,7 @@ args:
     required: true
     positional: true
     description: URL of the webpage to read
+    format: uri
 
 columns: []
 

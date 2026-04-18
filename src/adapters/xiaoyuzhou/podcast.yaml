@@ -11,6 +11,8 @@ args:
     required: true
     positional: true
     description: "Podcast ID (from xiaoyuzhoufm.com URL)"
+    x-unicli-kind: id
+    x-unicli-accepts: [url]
 
 pipeline:
   - fetch:

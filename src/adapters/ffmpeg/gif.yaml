@@ -13,10 +13,12 @@ args:
     required: true
     positional: true
     description: Input video file path
+    x-unicli-kind: path
   output:
     type: str
     default: "output.gif"
     description: Output GIF file path
+    x-unicli-kind: path
   start:
     type: str
     default: "0"

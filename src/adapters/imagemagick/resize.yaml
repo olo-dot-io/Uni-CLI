@@ -28,6 +28,7 @@ args:
     type: str
     required: true
     description: Output image file path
+    x-unicli-kind: path
   geometry:
     type: str
     required: true

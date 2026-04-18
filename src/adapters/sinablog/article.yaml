@@ -11,6 +11,7 @@ args:
     required: true
     positional: true
     description: "Blog article path (e.g. s/blog_abc123.html)"
+    x-unicli-kind: path
 
 pipeline:
   - fetch_text:

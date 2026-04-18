@@ -11,6 +11,7 @@ args:
     required: true
     positional: true
     description: Post ID (numeric idstr or mblogid)
+    x-unicli-kind: id
 
 pipeline:
   - fetch:

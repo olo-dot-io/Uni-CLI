@@ -13,6 +13,7 @@ args:
     required: true
     positional: true
     description: Path to .FCStd file
+    x-unicli-kind: path
 
 pipeline:
   - write_temp:

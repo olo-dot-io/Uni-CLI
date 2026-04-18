@@ -13,10 +13,12 @@ args:
     required: true
     positional: true
     description: Input video file path
+    x-unicli-kind: path
   output:
     type: str
     required: true
     description: Output audio file path
+    x-unicli-kind: path
   codec:
     type: str
     default: libmp3lame

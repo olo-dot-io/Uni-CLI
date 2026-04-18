@@ -30,6 +30,7 @@ args:
     required: true
     positional: true
     description: Video URL to fetch metadata for
+    format: uri
 
 columns: [title, uploader, duration, views, upload_date, url]
 

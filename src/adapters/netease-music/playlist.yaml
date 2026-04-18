@@ -10,6 +10,7 @@ args:
     required: true
     positional: true
     description: Playlist ID
+    x-unicli-kind: id
   limit:
     type: int
     default: 30

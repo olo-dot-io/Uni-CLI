@@ -10,6 +10,7 @@ args:
     type: str
     default: "/tmp/recording.mov"
     description: Output file path for the recording (must end in .mov or .mp4)
+    x-unicli-kind: path
   duration:
     type: int
     default: 10

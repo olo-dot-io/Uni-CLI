@@ -13,10 +13,12 @@ args:
     required: true
     positional: true
     description: Input video file path
+    x-unicli-kind: path
   output:
     type: str
     required: true
     description: Output video file path
+    x-unicli-kind: path
   crf:
     type: int
     default: 28

@@ -28,6 +28,7 @@ args:
     required: true
     positional: true
     description: Input document file path
+    x-unicli-kind: path
   outdir:
     type: str
     default: "."

@@ -27,6 +27,7 @@ args:
     required: true
     positional: true
     description: Issue identifier (e.g. "ENG-42")
+    x-unicli-kind: id
   state:
     type: str
     required: true

@@ -33,6 +33,7 @@ args:
     type: str
     default: diagram.png
     description: Output image file path (supports .png, .svg, .pdf)
+    x-unicli-kind: path
   theme:
     type: str
     default: default

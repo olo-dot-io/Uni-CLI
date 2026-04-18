@@ -12,6 +12,7 @@ args:
     required: true
     positional: true
     description: Path to .sketch file
+    x-unicli-kind: path
 
 pipeline:
   - exec:

@@ -45,6 +45,7 @@ args:
     type: str
     required: true
     description: "Departure date (YYYY-MM-DD)"
+    format: date-time
   limit:
     type: int
     default: 10

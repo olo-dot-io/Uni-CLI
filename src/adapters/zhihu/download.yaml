@@ -12,6 +12,7 @@ args:
     required: true
     positional: true
     description: "Zhihu answer or article URL"
+    format: uri
 
 pipeline:
   - fetch_text:

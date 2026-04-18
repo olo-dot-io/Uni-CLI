@@ -17,6 +17,7 @@ args:
     type: str
     required: true
     description: Output directory
+    x-unicli-kind: path
   format:
     type: str
     default: png

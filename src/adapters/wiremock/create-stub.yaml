@@ -17,6 +17,8 @@ args:
     required: true
     positional: true
     description: URL path to match
+    x-unicli-kind: path
+    x-unicli-accepts: [url]
   status:
     type: int
     default: 200

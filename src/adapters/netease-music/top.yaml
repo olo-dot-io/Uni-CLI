@@ -10,6 +10,7 @@ args:
     type: str
     default: "3778678"
     description: "Chart ID (3778678=new, 19723756=soaring, 3779629=original)"
+    x-unicli-kind: id
   limit:
     type: int
     default: 20

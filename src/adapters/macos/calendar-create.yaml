@@ -16,6 +16,7 @@ args:
     type: str
     default: "today"
     description: "Event date (YYYY-MM-DD or 'today')"
+    format: date-time
   time:
     type: str
     default: "09:00"

@@ -12,6 +12,7 @@ args:
     required: true
     positional: true
     description: Path to .kra file
+    x-unicli-kind: path
 
 pipeline:
   - write_temp:

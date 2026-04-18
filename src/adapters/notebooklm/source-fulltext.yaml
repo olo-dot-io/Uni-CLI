@@ -11,6 +11,7 @@ args:
     required: true
     positional: true
     description: Notebook ID
+    x-unicli-kind: id
   index:
     type: int
     default: 0

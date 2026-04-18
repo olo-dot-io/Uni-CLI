@@ -17,6 +17,7 @@ args:
     type: str
     required: true
     description: Output .FCStd file path
+    x-unicli-kind: path
 
 pipeline:
   - write_temp:

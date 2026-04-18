@@ -129,6 +129,9 @@ interface YamlAdapter {
   // Adapter health
   quarantine?: boolean;
   quarantineReason?: string;
+  // v0.213.3 Phase 4 — pagination hint emitted by the kernel's next_actions
+  // when the command surfaces `meta.pagination.next_cursor`.
+  paginated?: boolean;
   // Desktop
   execArgs?: string[];
   // Web
@@ -155,6 +158,12 @@ interface YamlArg {
   positional?: boolean;
   choices?: string[];
   description?: string;
+  // v0.213.3 Phase 4 — schema-driven hardening annotations. Propagate these
+  // untouched to AdapterArg so the kernel's ajv validator sees the declared
+  // format / x-unicli-kind dispatch tokens.
+  format?: AdapterArg["format"];
+  "x-unicli-kind"?: AdapterArg["x-unicli-kind"];
+  "x-unicli-accepts"?: AdapterArg["x-unicli-accepts"];
 }
 
 /** Load all adapters from a directory */
@@ -300,6 +309,9 @@ export function loadAdaptersFromDir(dir: string): number {
               positional: argDef.positional ?? false,
               choices: argDef.choices,
               description: argDef.description,
+              format: argDef.format,
+              "x-unicli-kind": argDef["x-unicli-kind"],
+              "x-unicli-accepts": argDef["x-unicli-accepts"],
             }),
           );
         }
@@ -321,6 +333,7 @@ export function loadAdaptersFromDir(dir: string): number {
           quarantine: parsed.quarantine === true ? true : undefined,
           quarantineReason: parsed.quarantineReason,
           minimum_capability: parsed.minimum_capability,
+          paginated: parsed.paginated === true ? true : undefined,
         };
         count++;
       }

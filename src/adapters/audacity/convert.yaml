@@ -16,6 +16,7 @@ args:
     type: str
     required: true
     description: Output file path (format inferred from extension)
+    x-unicli-kind: path
 
 pipeline:
   - exec:
