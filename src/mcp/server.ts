@@ -9,7 +9,7 @@
  *   - `./dispatch.ts`       — kernel-backed tool-call dispatcher
  *   - `./handler.ts`        — JSON-RPC method dispatch
  *   - `./http-transport.ts` — POST /mcp transport
- *   - `./streamable-http.ts`— Streamable HTTP transport (MCP spec 2025-03-26)
+ *   - `./streamable-http/`  — Streamable HTTP transport (MCP spec 2025-11-25)
  *
  * Three modes:
  *   - default   (~200 tokens)  — 4 meta-tools only
@@ -41,7 +41,7 @@ import {
   type JsonRpcResponse,
 } from "./handler.js";
 import { startHttp } from "./http-transport.js";
-import { startStreamableHttp } from "./streamable-http.js";
+import { startStreamableHttp } from "./streamable-http/index.js";
 
 export { annotateIfLarge } from "./dispatch.js";
 
@@ -152,15 +152,10 @@ async function main(): Promise<void> {
   }
 
   if (opts.transport === "streamable") {
-    // Streamable HTTP's Handler type still returns JsonRpcResponse (non-optional).
-    // Our handler returns undefined for notifications — which streamable-http
-    // guards against via `if (!response)` checks, but the types don't reflect
-    // that yet. Cast-adapt until streamable-http.ts is refactored to widen.
-    await startStreamableHttp(
-      opts.port,
-      handler as unknown as Parameters<typeof startStreamableHttp>[1],
-      { auth: opts.auth },
-    );
+    // v0.213.3 P3: streamable-http.Handler now returns
+    // `Promise<JsonRpcResponse | undefined>`, so the pre-P3 cast-adapt
+    // is gone — the types match the `undefined`-for-notification contract.
+    await startStreamableHttp(opts.port, handler, { auth: opts.auth });
     const authLabel = opts.auth ? ", OAuth enabled" : "";
     process.stderr.write(
       `unicli MCP server v${VERSION} — ${adapterCount} sites, ${commandCount} commands (${tools.length} tools, mode=${mode}, transport=streamable${authLabel})\n`,
