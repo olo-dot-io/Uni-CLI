@@ -251,7 +251,12 @@ export function buildDeferredTools(): McpTool[] {
         adapter.description?.trim() ||
         `${cmdName} for ${adapter.name}`;
       const toolName = buildToolName(adapter.name, cmdName);
-      if (seen.has(toolName)) continue;
+      if (seen.has(toolName)) {
+        process.stderr.write(
+          `unicli MCP: tool name collision: ${toolName} — shadowing ${adapter.name}/${cmdName}\n`,
+        );
+        continue;
+      }
       seen.add(toolName);
 
       // Register in the lookup table for runtime dispatch
