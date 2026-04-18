@@ -32,7 +32,7 @@ describe("set step", () => {
         { select: "items" },
         { map: { id: "${{ item.id }}", endpoint: "${{ vars.endpoint }}" } },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     expect(result).toHaveLength(1);
     const row = result[0] as Record<string, unknown>;
@@ -49,7 +49,7 @@ describe("set step", () => {
         { select: "items" },
         { map: { greeting: "${{ vars.greeting }}" } },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     expect(result).toHaveLength(1);
     expect((result[0] as Record<string, unknown>).greeting).toBe("hello world");
@@ -64,7 +64,7 @@ describe("set step", () => {
         { select: "items" },
         { map: { a: "${{ vars.a }}", b: "${{ vars.b }}", c: "${{ vars.c }}" } },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     expect(result).toHaveLength(1);
     const row = result[0] as Record<string, unknown>;
@@ -81,7 +81,7 @@ describe("set step", () => {
         { select: "items" },
         { map: { count: "${{ vars.count }}", active: "${{ vars.active }}" } },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     expect(result).toHaveLength(1);
     const row = result[0] as Record<string, unknown>;
@@ -92,7 +92,7 @@ describe("set step", () => {
   it("handles empty set as no-op", async () => {
     const result = await runPipeline(
       [{ set: {} }, { fetch: { url: `${baseUrl}/data` } }, { select: "items" }],
-      {},
+      { args: {}, source: "internal" },
     );
     expect(result).toHaveLength(1);
   });
@@ -105,7 +105,7 @@ describe("set step", () => {
         { fetch: { url: `${baseUrl}/data` } },
         { select: "items" },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     expect(result).toHaveLength(1);
   });
@@ -124,7 +124,7 @@ describe("fallback", () => {
         { select: "items" },
         { map: { id: "${{ item.id }}" } },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     expect(result).toHaveLength(1);
     expect((result[0] as Record<string, unknown>).id).toBe("1");
@@ -136,7 +136,7 @@ describe("fallback", () => {
         { fetch: { url: `${baseUrl}/data` } },
         { select: "nonexistent", fallback: ["also_missing", "items"] },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     expect(result).toHaveLength(1);
     expect((result[0] as Record<string, unknown>).id).toBe(1);
@@ -149,7 +149,7 @@ describe("fallback", () => {
           { fetch: { url: `${baseUrl}/data` } },
           { select: "no_path", fallback: ["also_no", "still_no"] },
         ],
-        {},
+        { args: {}, source: "internal" },
       ),
     ).rejects.toThrow();
   });
@@ -165,7 +165,7 @@ describe("fallback", () => {
         },
         { select: "items" },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     expect(result).toHaveLength(1);
   });
@@ -182,7 +182,7 @@ describe("if step", () => {
         },
         { map: { id: "${{ item.id }}" } },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     expect(result).toHaveLength(1);
     expect((result[0] as Record<string, unknown>).id).toBe("1");
@@ -201,7 +201,7 @@ describe("if step", () => {
         { select: "items" },
         { map: { result: "${{ vars.result }}" } },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     expect(result).toHaveLength(1);
     expect((result[0] as Record<string, unknown>).result).toBe("brief");
@@ -217,7 +217,7 @@ describe("if step", () => {
           then: [{ select: "nonexistent_will_error" }],
         },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     expect(result).toHaveLength(1);
   });
@@ -234,7 +234,7 @@ describe("if step", () => {
         { select: "items" },
         { map: { detail: "${{ vars.detail }}" } },
       ],
-      { verbose: true },
+      { args: { verbose: true }, source: "internal" },
     );
     expect(result).toHaveLength(1);
     expect((result[0] as Record<string, unknown>).detail).toBe("yes");
@@ -257,7 +257,7 @@ describe("if step", () => {
         { select: "items" },
         { map: { nested: "${{ vars.nested }}" } },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     expect(result).toHaveLength(1);
     expect((result[0] as Record<string, unknown>).nested).toBe("both_true");

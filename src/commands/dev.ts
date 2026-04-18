@@ -62,10 +62,15 @@ async function runAdapter(filePath: string, fmt: string): Promise<void> {
     }
 
     const devStarted = Date.now();
-    const result = await runPipeline(pipeline, {}, undefined, {
-      site: doc.site as string,
-      strategy: doc.strategy as string,
-    });
+    const result = await runPipeline(
+      pipeline,
+      { args: {}, source: "internal" },
+      undefined,
+      {
+        site: doc.site as string,
+        strategy: doc.strategy as string,
+      },
+    );
 
     const columns = doc.columns as string[] | undefined;
     const outputFmt = detectFormat(

@@ -86,7 +86,10 @@ describe("POST body template resolution", () => {
       },
     ];
 
-    const result = await runPipeline(steps, { q: "typescript" });
+    const result = await runPipeline(steps, {
+      args: { q: "typescript" },
+      source: "internal",
+    });
 
     // The echo server returns what it received — verify the body was resolved
     expect(result).toHaveLength(1);
@@ -117,9 +120,12 @@ describe("POST body template resolution", () => {
     ];
 
     const result = await runPipeline(steps, {
-      lang: "en",
-      tag: "cli",
-      page: "1",
+      args: {
+        lang: "en",
+        tag: "cli",
+        page: "1",
+      },
+      source: "internal",
     });
 
     const echo = result[0] as {
@@ -144,7 +150,7 @@ describe("POST body template resolution", () => {
       },
     ];
 
-    const result = await runPipeline(steps, {});
+    const result = await runPipeline(steps, { args: {}, source: "internal" });
 
     const echo = result[0] as { body: { static: string; count: number } };
     expect(echo.body.static).toBe("hello");
@@ -165,7 +171,10 @@ describe("POST body template resolution", () => {
 
     // For fan-out, we need data to be an array already.
     // We test a simpler case: single POST with template body.
-    const result = await runPipeline(steps, { seed: "42" });
+    const result = await runPipeline(steps, {
+      args: { seed: "42" },
+      source: "internal",
+    });
 
     const echo = result[0] as { body: { seed: string } };
     expect(echo.body.seed).toBe("42");
@@ -193,7 +202,10 @@ describe.skipIf(skipOnWindows)("exec stdin pipe", () => {
         },
       },
     ];
-    const result = await runPipeline(steps, { content: "hello from stdin" });
+    const result = await runPipeline(steps, {
+      args: { content: "hello from stdin" },
+      source: "internal",
+    });
     expect(result[0]).toBe("hello from stdin");
   });
 });
@@ -210,7 +222,10 @@ describe.skipIf(skipOnWindows)("exec env vars", () => {
         },
       },
     ];
-    const result = await runPipeline(steps, { val: "injected_value" });
+    const result = await runPipeline(steps, {
+      args: { val: "injected_value" },
+      source: "internal",
+    });
     expect((result[0] as string).trim()).toBe("injected_value");
   });
 });
@@ -229,7 +244,7 @@ describe.skipIf(skipOnWindows)("exec output_file", () => {
         },
       },
     ];
-    const result = await runPipeline(steps, {});
+    const result = await runPipeline(steps, { args: {}, source: "internal" });
     const first = result[0] as { file: string; size: number };
     expect(first.file).toBe(tmpFile);
     expect(first.size).toBeGreaterThan(0);
@@ -247,7 +262,7 @@ describe("html_to_md step", () => {
       { fetch_text: { url: `${baseUrl}/html` } },
       { html_to_md: {} },
     ];
-    const result = await runPipeline(steps, {});
+    const result = await runPipeline(steps, { args: {}, source: "internal" });
     const md = String(result[0]);
     expect(md).toContain("Title");
     expect(md).toContain("**world**");
@@ -269,7 +284,7 @@ describe("retry with backoff", () => {
         },
       },
     ];
-    const result = await runPipeline(steps, {});
+    const result = await runPipeline(steps, { args: {}, source: "internal" });
     expect((result[0] as Record<string, unknown>).ok).toBe(true);
   });
 });

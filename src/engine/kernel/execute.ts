@@ -160,18 +160,21 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
     throw err;
   }
 
-  // 3. Pipeline / func execution. runPipeline's Phase-3 signature change
-  //    (bag-first) is deferred; here we pass `inv.bag.args`.
+  // 3. Pipeline / func execution. runPipeline requires a ResolvedArgs bag
+  //    as of v0.213.3 P3 (D6); surface + trace_id are plumbed through so
+  //    YAML templates can reference ${{ surface }} / ${{ trace_id }}.
   let results: unknown[] = [];
   try {
     if (inv.command.pipeline) {
       results = await runPipeline(
         inv.command.pipeline,
-        inv.bag.args,
+        inv.bag,
         inv.adapter.base,
         {
           site: inv.adapter.name,
           strategy: inv.adapter.strategy,
+          surface: inv.surface,
+          trace_id: inv.trace_id,
         },
       );
     } else if (inv.command.func) {

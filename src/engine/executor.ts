@@ -27,6 +27,7 @@ import {
   buildTransportCtx,
   _resetTransportBusForTests,
 } from "../transport/bus.js";
+import type { ArgSource, ResolvedArgs } from "./args.js";
 // Side-effect import: every per-step module self-registers on load.
 import "./steps/index.js";
 
@@ -36,6 +37,18 @@ export { getBus, buildTransportCtx, _resetTransportBusForTests };
 export interface PipelineOptions {
   site?: string;
   strategy?: string;
+  /**
+   * Kernel surface that dispatched the pipeline. When provided, becomes
+   * `${{ surface }}` in YAML templates. Undefined for legacy callers
+   * (dev/health/skills) — those set `source: "internal"` on the bag.
+   */
+  surface?: "cli" | "mcp" | "acp" | "bench" | "hub";
+  /**
+   * ULID trace ID from the kernel. Exposed as `${{ trace_id }}` in YAML
+   * templates so adapters can correlate logs across surfaces. Undefined
+   * for callers that do not route through the kernel.
+   */
+  trace_id?: string;
 }
 
 export type PipelineContext = {
@@ -47,6 +60,12 @@ export type PipelineContext = {
   temp?: Record<string, string>;
   tempDir?: string;
   page?: BrowserPage;
+  /** Provenance of `args` — seeded from `ResolvedArgs.source`. */
+  source?: ArgSource;
+  /** Surface that dispatched this pipeline. Mirrors `PipelineOptions.surface`. */
+  surface?: "cli" | "mcp" | "acp" | "bench" | "hub";
+  /** Kernel trace ID. Mirrors `PipelineOptions.trace_id`. */
+  trace_id?: string;
 };
 
 /** Structured pipeline error — designed for AI agent consumption. */
@@ -175,7 +194,7 @@ async function dispatchBusStep(
 
 export async function runPipeline(
   steps: PipelineStep[],
-  args: Record<string, unknown>,
+  bag: ResolvedArgs,
   base?: string,
   options?: PipelineOptions,
 ): Promise<unknown[]> {
@@ -203,7 +222,16 @@ export async function runPipeline(
     cookieHeader = formatCookieHeader(cookies);
   }
 
-  let ctx: PipelineContext = { data: null, args, vars: {}, base, cookieHeader };
+  let ctx: PipelineContext = {
+    data: null,
+    args: bag.args,
+    vars: {},
+    base,
+    cookieHeader,
+    source: bag.source,
+    surface: options?.surface,
+    trace_id: options?.trace_id,
+  };
   let tempDir: string | undefined;
 
   try {

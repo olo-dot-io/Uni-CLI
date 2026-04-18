@@ -209,7 +209,7 @@ describe("assert step", () => {
           },
         },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     expect(result).toHaveLength(1);
   });
@@ -222,7 +222,7 @@ describe("assert step", () => {
           { select: "items" },
           { assert: { condition: "data.length > 100" } },
         ],
-        {},
+        { args: {}, source: "internal" },
       ),
     ).rejects.toThrow(/Condition failed/);
   });
@@ -240,7 +240,7 @@ describe("assert step", () => {
             },
           },
         ],
-        {},
+        { args: {}, source: "internal" },
       ),
     ).rejects.toThrow("Expected empty array");
   });
@@ -253,7 +253,7 @@ describe("assert step", () => {
           { select: "items" },
           { assert: { condition: "false" } },
         ],
-        {},
+        { args: {}, source: "internal" },
       );
       expect.fail("Should have thrown");
     } catch (err) {
@@ -265,19 +265,28 @@ describe("assert step", () => {
 
   it("url assertion throws when no browser page", async () => {
     await expect(
-      runPipeline([{ assert: { url: "https://example.com" } }], {}),
+      runPipeline([{ assert: { url: "https://example.com" } }], {
+        args: {},
+        source: "internal",
+      }),
     ).rejects.toThrow(/browser page/);
   });
 
   it("selector assertion throws when no browser page", async () => {
     await expect(
-      runPipeline([{ assert: { selector: "#main" } }], {}),
+      runPipeline([{ assert: { selector: "#main" } }], {
+        args: {},
+        source: "internal",
+      }),
     ).rejects.toThrow(/browser page/);
   });
 
   it("text assertion throws when no browser page", async () => {
     await expect(
-      runPipeline([{ assert: { text: "hello" } }], {}),
+      runPipeline([{ assert: { text: "hello" } }], {
+        args: {},
+        source: "internal",
+      }),
     ).rejects.toThrow(/browser page/);
   });
 
@@ -289,7 +298,7 @@ describe("assert step", () => {
         { assert: { condition: "data.length > 0" } },
         { map: { id: "${{ item.id }}", name: "${{ item.name }}" } },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     expect(result).toHaveLength(1);
     const row = result[0] as Record<string, unknown>;
@@ -311,7 +320,7 @@ describe("retry step property", () => {
         { fetch: { url: endpoint }, retry: 3, backoff: 10 },
         { select: "items" },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     expect(result).toHaveLength(1);
     expect((result[0] as Record<string, unknown>).ok).toBe(true);
@@ -321,7 +330,7 @@ describe("retry step property", () => {
     await expect(
       runPipeline(
         [{ fetch: { url: `${baseUrl}/fail-always` }, retry: 2, backoff: 10 }],
-        {},
+        { args: {}, source: "internal" },
       ),
     ).rejects.toThrow(/500/);
   });
@@ -331,7 +340,10 @@ describe("retry step property", () => {
     endpointCounts["/fail-then-ok?fail=1-noretry"] = 0;
 
     await expect(
-      runPipeline([{ fetch: { url: `${baseUrl}/fail-always` } }], {}),
+      runPipeline([{ fetch: { url: `${baseUrl}/fail-always` } }], {
+        args: {},
+        source: "internal",
+      }),
     ).rejects.toThrow(/500/);
   });
 
@@ -349,7 +361,7 @@ describe("retry step property", () => {
         },
         { select: "items" },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     expect(result).toHaveLength(1);
   });
@@ -367,7 +379,7 @@ describe("retry step property", () => {
         },
         { select: "items" },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     expect(result).toHaveLength(1);
   });
