@@ -19,10 +19,11 @@ import {
   registerStep,
   unregisterStep,
 } from "../../../src/engine/step-registry.js";
+import type { ArgSource, ResolvedArgs } from "../../../src/engine/args.js";
 
 interface Capture {
   args?: Record<string, unknown>;
-  source?: string;
+  source?: ArgSource;
   surface?: string;
   trace_id?: string;
 }
@@ -48,41 +49,41 @@ afterAll(() => {
 describe("runPipeline — ResolvedArgs bag plumbing", () => {
   it("ctx.args === bag.args (by reference)", async () => {
     const bagArgs = { name: "agent-42", count: 7 };
-    await runPipeline([{ __probe__: {} }], {
-      args: bagArgs,
-      source: "internal",
-    });
+    const bag: ResolvedArgs = { args: bagArgs, source: "internal" };
+    await runPipeline([{ __probe__: {} }], bag);
     expect(captured.args).toBe(bagArgs);
   });
 
   it("ctx.source === bag.source", async () => {
-    await runPipeline([{ __probe__: {} }], { args: {}, source: "mcp" });
+    const bag: ResolvedArgs = { args: {}, source: "mcp" };
+    await runPipeline([{ __probe__: {} }], bag);
     expect(captured.source).toBe("mcp");
   });
 
   it("ctx.surface and ctx.trace_id come from PipelineOptions", async () => {
-    await runPipeline(
-      [{ __probe__: {} }],
-      { args: {}, source: "cli" },
-      undefined,
-      { surface: "cli", trace_id: "01HZXYZABCDE" },
-    );
+    // MN1 — previous revision used `source: "cli"` which is NOT a member
+    // of the ArgSource union. `ResolvedArgs`-typed bag now catches that
+    // drift at compile time.
+    const bag: ResolvedArgs = { args: {}, source: "internal" };
+    await runPipeline([{ __probe__: {} }], bag, undefined, {
+      surface: "cli",
+      trace_id: "01HZXYZABCDE",
+    });
     expect(captured.surface).toBe("cli");
     expect(captured.trace_id).toBe("01HZXYZABCDE");
   });
 
   it("surface/trace_id undefined when caller omits options", async () => {
     captured = {};
-    await runPipeline([{ __probe__: {} }], { args: {}, source: "internal" });
+    const bag: ResolvedArgs = { args: {}, source: "internal" };
+    await runPipeline([{ __probe__: {} }], bag);
     expect(captured.surface).toBeUndefined();
     expect(captured.trace_id).toBeUndefined();
   });
 
   it("new 'internal' ArgSource is accepted", async () => {
-    await runPipeline([{ __probe__: {} }], {
-      args: { probe: true },
-      source: "internal",
-    });
+    const bag: ResolvedArgs = { args: { probe: true }, source: "internal" };
+    await runPipeline([{ __probe__: {} }], bag);
     expect(captured.source).toBe("internal");
     expect(captured.args).toEqual({ probe: true });
   });
