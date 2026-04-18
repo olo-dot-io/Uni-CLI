@@ -1,0 +1,17 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "noEmit": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": [
+    "agent/sdk-runner.ts",
+    "agent/sdk-judges.ts",
+    "agent/sdk-aggregate.ts",
+    "agent/ics.ts",
+    "agent/payload-factory.ts"
+  ],
+  "exclude": ["../node_modules", "../dist"]
+}
