@@ -10,12 +10,18 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { getAllAdapters } from "../registry.js";
 import { runPipeline } from "../engine/executor.js";
+import { resolveArgs } from "../engine/args.js";
+import { hardenArgs, InputHardeningError } from "../engine/harden.js";
 import { format, detectFormat } from "../output/formatter.js";
 import {
   errorTypeToCode,
   mapErrorToExitCode,
   errorToAgentFields,
 } from "../output/error-map.js";
+import {
+  defaultSuccessNextActions,
+  defaultErrorNextActions,
+} from "../output/next-actions.js";
 import { recordUsage } from "../runtime/usage-ledger.js";
 import { ExitCode } from "../types.js";
 import type { OutputFormat } from "../types.js";
@@ -129,35 +135,81 @@ export function registerAdapterDispatch(program: Command): void {
             | undefined,
         );
 
-        // Build merged args from positional + option args
-        const mergedArgs: Record<string, unknown> = {
-          limit: parseInt(opts.limit, 10) || 20,
+        // Unified arg resolver (v0.213.2): precedence is stdin-JSON >
+        // --args-file > shell flags > positional args > adapter defaults.
+        // Externalizes state out of shell quoting (TC0-bounded) into JSON.
+        const rootOpts = program.opts() as {
+          argsFile?: string;
+          dryRun?: boolean;
         };
-
-        let posIdx = 0;
-        for (const arg of adapterArgs) {
-          if (arg.positional && posIdx < positionals.length) {
-            mergedArgs[arg.name] = positionals[posIdx++];
-          }
+        let resolved: Awaited<ReturnType<typeof resolveArgs>>;
+        try {
+          resolved = resolveArgs({
+            opts,
+            positionals,
+            schema: adapterArgs,
+            argsFile: rootOpts.argsFile,
+          });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(chalk.red(msg));
+          process.exit(ExitCode.USAGE_ERROR);
         }
 
-        for (const arg of adapterArgs) {
-          if (!arg.positional && opts[arg.name] !== undefined) {
-            mergedArgs[arg.name] =
-              arg.type === "int"
-                ? parseInt(opts[arg.name], 10)
-                : opts[arg.name];
-          } else if (
-            !arg.positional &&
-            arg.default !== undefined &&
-            mergedArgs[arg.name] === undefined
-          ) {
-            mergedArgs[arg.name] = arg.default;
-          }
-        }
-
-        if (opts.limit) {
+        const mergedArgs: Record<string, unknown> = { ...resolved.args };
+        if (mergedArgs.limit === undefined) {
           mergedArgs.limit = parseInt(opts.limit, 10) || 20;
+        }
+
+        // Input hardening — Poehnelt pattern. Agents hallucinate control
+        // chars / path traversals / double-encoded URLs; validate at the
+        // boundary before any adapter step sees the value.
+        let hardenWarnings: string[] = [];
+        try {
+          const result = hardenArgs(mergedArgs, adapterArgs);
+          hardenWarnings = result.warnings;
+        } catch (err) {
+          if (err instanceof InputHardeningError) {
+            const errCtx: AgentContext = {
+              command: `${adapter.name}.${cmdName}`,
+              duration_ms: Date.now() - startedAt,
+              adapter_version: adapter.version,
+              surface: "web",
+              error: {
+                code: "invalid_input",
+                message: err.message,
+                adapter_path: `src/adapters/${adapter.name}/${cmdName}.yaml`,
+                step: 0,
+                suggestion: err.suggestion,
+                retryable: false,
+              },
+              next_actions: defaultErrorNextActions(
+                adapter.name,
+                cmdName,
+                "invalid_input",
+              ),
+            };
+            process.stderr.write(format([], cmd.columns, fmt, errCtx) + "\n");
+            process.exit(ExitCode.USAGE_ERROR);
+          }
+          throw err;
+        }
+        for (const w of hardenWarnings) {
+          process.stderr.write(chalk.yellow(`[harden] ${w}\n`));
+        }
+
+        if (rootOpts.dryRun) {
+          const plan = {
+            command: `${adapter.name}.${cmdName}`,
+            adapter_type: adapter.type,
+            strategy: adapter.strategy ?? null,
+            args: mergedArgs,
+            args_source: resolved.source,
+            pipeline_steps: cmd.pipeline?.length ?? 0,
+            adapter_path: `src/adapters/${adapter.name}/${cmdName}.yaml`,
+          };
+          console.log(JSON.stringify(plan, null, 2));
+          process.exit(ExitCode.SUCCESS);
         }
 
         try {
@@ -188,6 +240,7 @@ export function registerAdapterDispatch(program: Command): void {
             duration_ms: Date.now() - startedAt,
             adapter_version: adapter.version,
             surface: "web",
+            next_actions: defaultSuccessNextActions(adapter.name, cmdName),
           };
           const rendered = format(results, cmd.columns, fmt, ctx);
           console.log(rendered);
@@ -217,6 +270,11 @@ export function registerAdapterDispatch(program: Command): void {
             adapter_version: adapter.version,
             surface: "web",
             error: agentErr,
+            next_actions: defaultErrorNextActions(
+              adapter.name,
+              cmdName,
+              agentErr.code,
+            ),
           };
           const rendered = format([], cmd.columns, fmt, errCtx);
           process.stderr.write(rendered + "\n");

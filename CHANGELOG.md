@@ -3,6 +3,72 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
+## [0.213.2] — 2026-04-18 — Vostok · Gagarin TC0 Patch
+
+> Agent-invocation reliability release. Externalizes argument state out of
+> shell quoting (a TC0-bounded mod-2 matching problem that Transformers
+> cannot reliably generate) into JSON channels (stdin / `--args-file`).
+> Grounded in arXiv:2411.07602 (RoPE + TC0 bounds), 2502.02393 (CoT lower
+> bounds), 2604.06742 (CLI-Tool-Bench), 2603.20847 (Claude-Code / Codex /
+> Gemini CLI bug study) — see `.claude/plans/sessions/2026-04-18-v213.2-tc0/task_plan.md`.
+
+### Added
+
+- **`--args-file <path>` global flag** — every command accepts a JSON
+  object from file. Reuse + version-controllable payloads without touching
+  the shell. JSON only; YAML/TOML deliberately not supported.
+- **Stdin-JSON auto-detection** — when stdin is non-TTY AND the first byte
+  is `{`, Uni-CLI parses it as the argument bag. Precedence:
+  `stdin > --args-file > shell flags > positional args > defaults`.
+  Externalizes TC0-hostile quote nesting into byte-structured JSON.
+- **`unicli describe [site] [command]`** — runtime schema introspection.
+  Emits JSON Schema draft-2020-12 for args, a realistic example payload,
+  the three invocation-channel templates, and `next_actions` hints.
+  Replaces stale markdown docs as the agent's source of truth
+  (Poehnelt `gws schema` pattern, Google Workspace CLI 2026-03).
+- **`--dry-run` global flag** — resolves the ArgBag and prints the
+  execution plan (`command`, `args`, `args_source`, `pipeline_steps`)
+  without running the pipeline. Safe preview for mutating commands.
+- **HATEOAS `next_actions[]` in v2 envelope** — every success and error
+  response carries typed command templates (`params.<name>.value /
+.default / .enum / .description`) so agents can navigate without
+  re-reading docs. Pattern from joelclaw.com 2026-02.
+- **Input hardening** — control-character rejection for string args,
+  path-traversal sandbox for path-shaped args, URL-punctuation and
+  pre-encoded-id rejection, double-URL-encoding warnings. Fails fast
+  with `invalid_input` + directional `suggestion` (Poehnelt pattern,
+  Google Workspace CLI).
+- **`bench/agent/` harness** — deterministic Invocation Complexity Score
+  (ICS, 0..10) calculator with 5 inputs: quote nest depth, backslash
+  escapes, non-ASCII chars, arg tokens, inline JSON depth. Payload
+  factory generates trivial / moderate / hostile / pathological buckets
+  for 5 representative tasks. `npm run bench:agent` writes a timestamped
+  `bench/agent/results.json`. ASR / SED measurement via Claude SDK lives
+  behind an opt-in flag (costs real API credits).
+- **`skills/unicli-claude-code/SKILL.md`** — formal guide teaching Claude
+  Code to pick the right channel per payload. The decision rule: if the
+  payload contains quotes / emoji / newlines / JSON / is >60 chars,
+  pipe it (stdin-JSON); otherwise shell args are fine.
+
+### Changed
+
+- **`src/commands/dispatch.ts` — unified arg resolution** — the inline
+  Commander-to-args merging is gone; every code path now calls
+  `resolveArgs()` from `src/engine/args.ts`. One place for precedence
+  rules, one place for type coercion.
+- **Error envelope now includes `next_actions`** — `defaultErrorNextActions()`
+  biases hints toward `unicli repair` + stdin-JSON channel switch on
+  `invalid_input` / `selector_miss` / `parse_error`, and toward
+  `unicli auth setup` on `auth_required`.
+
+### Fixed
+
+- **Commander arg drift** — the previous inline merge silently dropped
+  values when the same flag name appeared on the command and its parent,
+  because positional-then-optional ordering was ambiguous. The unified
+  resolver enumerates schema once per arg and applies precedence
+  deterministically.
+
 ## [0.213.1] — 2026-04-18 — Vostok · Gagarin Patch
 
 > Patch release closing 25 documented and audited issues against v0.213.0 Gagarin GA.

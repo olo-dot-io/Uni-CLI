@@ -47,6 +47,7 @@ import { registerLintCommand } from "./commands/lint.js";
 import { registerMigrateCommand } from "./commands/migrate.js";
 import { registerMigrateSchemaCommand } from "./commands/migrate-schema.js";
 import { registerAdapterDispatch } from "./commands/dispatch.js";
+import { registerDescribeCommand } from "./commands/describe.js";
 import { emitHook } from "./hooks.js";
 import { checkForUpdates } from "./engine/update-check.js";
 import type { OutputFormat } from "./types.js";
@@ -67,7 +68,15 @@ export async function createCli(): Promise<Command> {
       "-f, --format <format>",
       "output format: json, yaml, csv, md, compact (table deprecated, falls back to md)",
     )
-    .option("-v, --verbose", "show pipeline debug steps");
+    .option("-v, --verbose", "show pipeline debug steps")
+    .option(
+      "--args-file <path>",
+      "read args as JSON from a file (overrides shell flags; stdin JSON still wins)",
+    )
+    .option(
+      "--dry-run",
+      "resolve args + print execution plan without running the pipeline",
+    );
 
   // Load YAML adapters synchronously, then TS adapters asynchronously
   const yamlCount = loadAllAdapters();
@@ -313,6 +322,9 @@ export async function createCli(): Promise<Command> {
 
   // Register lint command — schema-v2 static validation
   registerLintCommand(program);
+
+  // Register describe command — runtime schema introspection for agents
+  registerDescribeCommand(program);
 
   // Register `unicli import opencli-yaml` and friends
   registerMigrateCommand(program);

@@ -1,0 +1,493 @@
+{
+  "schema_version": "bench-v1",
+  "generated_at": "2026-04-18T05:44:43.411Z",
+  "tasks": 5,
+  "rows": [
+    {
+      "site": "hackernews",
+      "cmd": "top",
+      "bucket": "moderate",
+      "ics_score": 2.2,
+      "ics_breakdown": {
+        "quote_nest_depth": 1,
+        "backslash_escape_count": 0,
+        "nonascii_count": 0,
+        "arg_token_count": 7,
+        "inline_json_depth": 0,
+        "score": 2.2
+      },
+      "invocation_lengths": {
+        "shell": 56,
+        "file": 61,
+        "stdin": 65
+      },
+      "asr_sem": {
+        "shell": null,
+        "file": null,
+        "stdin": null
+      }
+    },
+    {
+      "site": "hackernews",
+      "cmd": "top",
+      "bucket": "hostile",
+      "ics_score": 4.2,
+      "ics_breakdown": {
+        "quote_nest_depth": 1,
+        "backslash_escape_count": 4,
+        "nonascii_count": 0,
+        "arg_token_count": 7,
+        "inline_json_depth": 0,
+        "score": 4.2
+      },
+      "invocation_lengths": {
+        "shell": 84,
+        "file": 61,
+        "stdin": 93
+      },
+      "asr_sem": {
+        "shell": null,
+        "file": null,
+        "stdin": null
+      }
+    },
+    {
+      "site": "hackernews",
+      "cmd": "top",
+      "bucket": "pathological",
+      "ics_score": 7.4,
+      "ics_breakdown": {
+        "quote_nest_depth": 3,
+        "backslash_escape_count": 2,
+        "nonascii_count": 3,
+        "arg_token_count": 10,
+        "inline_json_depth": 0,
+        "score": 7.4
+      },
+      "invocation_lengths": {
+        "shell": 93,
+        "file": 61,
+        "stdin": 104
+      },
+      "asr_sem": {
+        "shell": null,
+        "file": null,
+        "stdin": null
+      }
+    },
+    {
+      "site": "hackernews",
+      "cmd": "top",
+      "bucket": "pathological",
+      "ics_score": 8,
+      "ics_breakdown": {
+        "quote_nest_depth": 3,
+        "backslash_escape_count": 2,
+        "nonascii_count": 4,
+        "arg_token_count": 13,
+        "inline_json_depth": 0,
+        "score": 8
+      },
+      "invocation_lengths": {
+        "shell": 141,
+        "file": 61,
+        "stdin": 190
+      },
+      "asr_sem": {
+        "shell": null,
+        "file": null,
+        "stdin": null
+      }
+    },
+    {
+      "site": "hackernews",
+      "cmd": "search",
+      "bucket": "moderate",
+      "ics_score": 2.2,
+      "ics_breakdown": {
+        "quote_nest_depth": 1,
+        "backslash_escape_count": 0,
+        "nonascii_count": 0,
+        "arg_token_count": 7,
+        "inline_json_depth": 0,
+        "score": 2.2
+      },
+      "invocation_lengths": {
+        "shell": 59,
+        "file": 64,
+        "stdin": 68
+      },
+      "asr_sem": {
+        "shell": null,
+        "file": null,
+        "stdin": null
+      }
+    },
+    {
+      "site": "hackernews",
+      "cmd": "search",
+      "bucket": "hostile",
+      "ics_score": 4.2,
+      "ics_breakdown": {
+        "quote_nest_depth": 1,
+        "backslash_escape_count": 4,
+        "nonascii_count": 0,
+        "arg_token_count": 7,
+        "inline_json_depth": 0,
+        "score": 4.2
+      },
+      "invocation_lengths": {
+        "shell": 87,
+        "file": 64,
+        "stdin": 96
+      },
+      "asr_sem": {
+        "shell": null,
+        "file": null,
+        "stdin": null
+      }
+    },
+    {
+      "site": "hackernews",
+      "cmd": "search",
+      "bucket": "pathological",
+      "ics_score": 7.4,
+      "ics_breakdown": {
+        "quote_nest_depth": 3,
+        "backslash_escape_count": 2,
+        "nonascii_count": 3,
+        "arg_token_count": 10,
+        "inline_json_depth": 0,
+        "score": 7.4
+      },
+      "invocation_lengths": {
+        "shell": 96,
+        "file": 64,
+        "stdin": 107
+      },
+      "asr_sem": {
+        "shell": null,
+        "file": null,
+        "stdin": null
+      }
+    },
+    {
+      "site": "hackernews",
+      "cmd": "search",
+      "bucket": "pathological",
+      "ics_score": 8,
+      "ics_breakdown": {
+        "quote_nest_depth": 3,
+        "backslash_escape_count": 2,
+        "nonascii_count": 4,
+        "arg_token_count": 13,
+        "inline_json_depth": 0,
+        "score": 8
+      },
+      "invocation_lengths": {
+        "shell": 144,
+        "file": 64,
+        "stdin": 193
+      },
+      "asr_sem": {
+        "shell": null,
+        "file": null,
+        "stdin": null
+      }
+    },
+    {
+      "site": "github",
+      "cmd": "search",
+      "bucket": "moderate",
+      "ics_score": 2.2,
+      "ics_breakdown": {
+        "quote_nest_depth": 1,
+        "backslash_escape_count": 0,
+        "nonascii_count": 0,
+        "arg_token_count": 7,
+        "inline_json_depth": 0,
+        "score": 2.2
+      },
+      "invocation_lengths": {
+        "shell": 55,
+        "file": 60,
+        "stdin": 64
+      },
+      "asr_sem": {
+        "shell": null,
+        "file": null,
+        "stdin": null
+      }
+    },
+    {
+      "site": "github",
+      "cmd": "search",
+      "bucket": "hostile",
+      "ics_score": 4.2,
+      "ics_breakdown": {
+        "quote_nest_depth": 1,
+        "backslash_escape_count": 4,
+        "nonascii_count": 0,
+        "arg_token_count": 7,
+        "inline_json_depth": 0,
+        "score": 4.2
+      },
+      "invocation_lengths": {
+        "shell": 83,
+        "file": 60,
+        "stdin": 92
+      },
+      "asr_sem": {
+        "shell": null,
+        "file": null,
+        "stdin": null
+      }
+    },
+    {
+      "site": "github",
+      "cmd": "search",
+      "bucket": "pathological",
+      "ics_score": 7.4,
+      "ics_breakdown": {
+        "quote_nest_depth": 3,
+        "backslash_escape_count": 2,
+        "nonascii_count": 3,
+        "arg_token_count": 10,
+        "inline_json_depth": 0,
+        "score": 7.4
+      },
+      "invocation_lengths": {
+        "shell": 92,
+        "file": 60,
+        "stdin": 103
+      },
+      "asr_sem": {
+        "shell": null,
+        "file": null,
+        "stdin": null
+      }
+    },
+    {
+      "site": "github",
+      "cmd": "search",
+      "bucket": "pathological",
+      "ics_score": 8,
+      "ics_breakdown": {
+        "quote_nest_depth": 3,
+        "backslash_escape_count": 2,
+        "nonascii_count": 4,
+        "arg_token_count": 13,
+        "inline_json_depth": 0,
+        "score": 8
+      },
+      "invocation_lengths": {
+        "shell": 140,
+        "file": 60,
+        "stdin": 189
+      },
+      "asr_sem": {
+        "shell": null,
+        "file": null,
+        "stdin": null
+      }
+    },
+    {
+      "site": "arxiv",
+      "cmd": "search",
+      "bucket": "moderate",
+      "ics_score": 2.2,
+      "ics_breakdown": {
+        "quote_nest_depth": 1,
+        "backslash_escape_count": 0,
+        "nonascii_count": 0,
+        "arg_token_count": 7,
+        "inline_json_depth": 0,
+        "score": 2.2
+      },
+      "invocation_lengths": {
+        "shell": 54,
+        "file": 59,
+        "stdin": 63
+      },
+      "asr_sem": {
+        "shell": null,
+        "file": null,
+        "stdin": null
+      }
+    },
+    {
+      "site": "arxiv",
+      "cmd": "search",
+      "bucket": "hostile",
+      "ics_score": 4.2,
+      "ics_breakdown": {
+        "quote_nest_depth": 1,
+        "backslash_escape_count": 4,
+        "nonascii_count": 0,
+        "arg_token_count": 7,
+        "inline_json_depth": 0,
+        "score": 4.2
+      },
+      "invocation_lengths": {
+        "shell": 82,
+        "file": 59,
+        "stdin": 91
+      },
+      "asr_sem": {
+        "shell": null,
+        "file": null,
+        "stdin": null
+      }
+    },
+    {
+      "site": "arxiv",
+      "cmd": "search",
+      "bucket": "pathological",
+      "ics_score": 7.4,
+      "ics_breakdown": {
+        "quote_nest_depth": 3,
+        "backslash_escape_count": 2,
+        "nonascii_count": 3,
+        "arg_token_count": 10,
+        "inline_json_depth": 0,
+        "score": 7.4
+      },
+      "invocation_lengths": {
+        "shell": 91,
+        "file": 59,
+        "stdin": 102
+      },
+      "asr_sem": {
+        "shell": null,
+        "file": null,
+        "stdin": null
+      }
+    },
+    {
+      "site": "arxiv",
+      "cmd": "search",
+      "bucket": "pathological",
+      "ics_score": 8,
+      "ics_breakdown": {
+        "quote_nest_depth": 3,
+        "backslash_escape_count": 2,
+        "nonascii_count": 4,
+        "arg_token_count": 13,
+        "inline_json_depth": 0,
+        "score": 8
+      },
+      "invocation_lengths": {
+        "shell": 139,
+        "file": 59,
+        "stdin": 188
+      },
+      "asr_sem": {
+        "shell": null,
+        "file": null,
+        "stdin": null
+      }
+    },
+    {
+      "site": "bilibili",
+      "cmd": "popular",
+      "bucket": "moderate",
+      "ics_score": 2.2,
+      "ics_breakdown": {
+        "quote_nest_depth": 1,
+        "backslash_escape_count": 0,
+        "nonascii_count": 0,
+        "arg_token_count": 7,
+        "inline_json_depth": 0,
+        "score": 2.2
+      },
+      "invocation_lengths": {
+        "shell": 58,
+        "file": 63,
+        "stdin": 67
+      },
+      "asr_sem": {
+        "shell": null,
+        "file": null,
+        "stdin": null
+      }
+    },
+    {
+      "site": "bilibili",
+      "cmd": "popular",
+      "bucket": "hostile",
+      "ics_score": 4.2,
+      "ics_breakdown": {
+        "quote_nest_depth": 1,
+        "backslash_escape_count": 4,
+        "nonascii_count": 0,
+        "arg_token_count": 7,
+        "inline_json_depth": 0,
+        "score": 4.2
+      },
+      "invocation_lengths": {
+        "shell": 86,
+        "file": 63,
+        "stdin": 95
+      },
+      "asr_sem": {
+        "shell": null,
+        "file": null,
+        "stdin": null
+      }
+    },
+    {
+      "site": "bilibili",
+      "cmd": "popular",
+      "bucket": "pathological",
+      "ics_score": 7.4,
+      "ics_breakdown": {
+        "quote_nest_depth": 3,
+        "backslash_escape_count": 2,
+        "nonascii_count": 3,
+        "arg_token_count": 10,
+        "inline_json_depth": 0,
+        "score": 7.4
+      },
+      "invocation_lengths": {
+        "shell": 95,
+        "file": 63,
+        "stdin": 106
+      },
+      "asr_sem": {
+        "shell": null,
+        "file": null,
+        "stdin": null
+      }
+    },
+    {
+      "site": "bilibili",
+      "cmd": "popular",
+      "bucket": "pathological",
+      "ics_score": 8,
+      "ics_breakdown": {
+        "quote_nest_depth": 3,
+        "backslash_escape_count": 2,
+        "nonascii_count": 4,
+        "arg_token_count": 13,
+        "inline_json_depth": 0,
+        "score": 8
+      },
+      "invocation_lengths": {
+        "shell": 143,
+        "file": 63,
+        "stdin": 192
+      },
+      "asr_sem": {
+        "shell": null,
+        "file": null,
+        "stdin": null
+      }
+    }
+  ],
+  "ics_histogram": {
+    "trivial": 0,
+    "moderate": 5,
+    "hostile": 5,
+    "pathological": 10
+  }
+}

@@ -28,6 +28,33 @@ export interface AgentContent {
   uri?: string;
 }
 
+/**
+ * HATEOAS action hint — a templated command the agent can run next, with
+ * typed parameter metadata (value / default / enum / description). Lets
+ * the response itself drive navigation without the agent having to
+ * reconstruct command shape from memory. Pattern from joelclaw.com
+ * "CLI Design for AI Agents" (2026-02).
+ */
+export interface AgentNextActionParam {
+  /** Concrete value already filled in from the current response context. */
+  value?: string | number | boolean;
+  /** Default applied when the agent omits the flag entirely. */
+  default?: string | number | boolean;
+  /** Valid closed-set choices the agent must pick from. */
+  enum?: Array<string | number>;
+  /** What this parameter means. */
+  description?: string;
+}
+
+export interface AgentNextAction {
+  /** POSIX-style template (e.g. `unicli repair <site> <cmd>`) or literal command. */
+  command: string;
+  /** One-line description of when/why to run this. */
+  description: string;
+  /** Presence of `params` marks the `command` as a template to be filled. */
+  params?: Record<string, AgentNextActionParam>;
+}
+
 /** Timing, pagination, and provenance metadata on every envelope. */
 export interface AgentMeta {
   duration_ms: number;
@@ -93,6 +120,8 @@ export interface AgentContext {
   pagination?: AgentMeta["pagination"];
   /** Set on the error path in format() — makeEnvelope ignores this field. */
   error?: AgentError;
+  /** Optional HATEOAS hints attached to the resulting envelope. */
+  next_actions?: AgentNextAction[];
 }
 
 /** Success arm of the discriminated union. */
@@ -104,6 +133,7 @@ export interface AgentEnvelopeOk {
   data: unknown[] | Record<string, unknown>;
   error: null;
   content?: AgentContent[];
+  next_actions?: AgentNextAction[];
 }
 
 /** Error arm of the discriminated union. */
@@ -115,6 +145,7 @@ export interface AgentEnvelopeErr {
   data: null;
   error: AgentError;
   content?: AgentContent[];
+  next_actions?: AgentNextAction[];
 }
 
 export type AgentEnvelope = AgentEnvelopeOk | AgentEnvelopeErr;
@@ -185,6 +216,9 @@ export function makeEnvelope(
     data,
     error: null,
     ...(content !== undefined && content.length > 0 ? { content } : {}),
+    ...(ctx.next_actions !== undefined && ctx.next_actions.length > 0
+      ? { next_actions: ctx.next_actions }
+      : {}),
   };
 }
 
@@ -207,6 +241,9 @@ export function makeError(
     },
     data: null,
     error: err,
+    ...(ctx.next_actions !== undefined && ctx.next_actions.length > 0
+      ? { next_actions: ctx.next_actions }
+      : {}),
   };
 }
 
