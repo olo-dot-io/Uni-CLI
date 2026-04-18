@@ -26,7 +26,7 @@
  * fields intact — MCP/ACP surfaces depend on them for `structuredContent`.
  */
 
-import { isAbsolute, resolve as resolvePath, relative } from "node:path";
+import { isAbsolute, resolve as resolvePath, relative, sep } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import type { AdapterArg } from "../types.js";
@@ -81,8 +81,13 @@ function validatePathArg(name: string, value: string): void {
 
   // Rejected if the relative path starts with `..` AND also isn't within
   // the user's home directory (agents often legitimately target ~/.unicli).
+  // Use strict boundary match (dir === base || startsWith(base + sep)) so
+  // `$HOME=/Users/foo` does NOT match `/Users/foobar/...` — raw `startsWith`
+  // would allow a prefix-collision escape on shared machines.
   const homeDir = process.env.HOME ?? process.env.USERPROFILE ?? "";
-  const withinHome = homeDir && abs.startsWith(homeDir);
+  const withinHome = Boolean(
+    homeDir && (abs === homeDir || abs.startsWith(homeDir + sep)),
+  );
   const withinCwd = !rel.startsWith("..") && !isAbsolute(rel);
 
   if (!withinCwd && !withinHome) {

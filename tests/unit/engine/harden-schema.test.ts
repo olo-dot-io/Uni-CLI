@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { hardenArgs, InputHardeningError } from "../../../src/engine/harden.js";
@@ -242,6 +242,65 @@ describe("hardenArgs — x-unicli-accepts fallback", () => {
       else process.env.HOME = origHome;
       rmSync(outside, { recursive: true, force: true });
     }
+  });
+});
+
+describe('hardenArgs — x-unicli-kind: "path" $HOME prefix-collision', () => {
+  it("rejects a sibling path that shares the $HOME prefix but is outside", () => {
+    const schema: AdapterArg[] = [
+      { name: "dst", type: "str", "x-unicli-kind": "path" },
+    ];
+    const origCwd = process.cwd();
+    const origHome = process.env.HOME;
+    // Build two directories that share a textual prefix. `homeDir` is the
+    // shorter one — `collidingDir` extends the same prefix with additional
+    // chars (simulating `/Users/foo` vs `/Users/foobar`). A naive
+    // `abs.startsWith(homeDir)` check would mis-accept `collidingDir`.
+    const base = mkdtempSync(join(tmpdir(), "unicli-harden-prefix-"));
+    const homeDir = base; // e.g. /tmp/unicli-harden-prefix-AAA
+    const collidingDir = base + "bar"; // e.g. /tmp/unicli-harden-prefix-AAAbar
+    // CWD must be an isolated dir that is NOT an ancestor of collidingDir,
+    // so the `relative(cwd, abs)` result starts with ".." and the escape
+    // only hinges on the home-dir boundary check.
+    const cwdDir = mkdtempSync(join(tmpdir(), "unicli-harden-cwd-"));
+    try {
+      mkdirSync(collidingDir, { recursive: true });
+      process.chdir(cwdDir);
+      process.env.HOME = homeDir;
+      const r = trycatch({ dst: collidingDir + "/escape.txt" }, schema);
+      expect(r.ok).toBe(false);
+      if (!r.ok) {
+        expect(r.argName).toBe("dst");
+        expect(r.msg).toMatch(/escapes CWD/);
+      }
+    } finally {
+      process.chdir(origCwd);
+      if (origHome === undefined) delete process.env.HOME;
+      else process.env.HOME = origHome;
+      rmSync(base, { recursive: true, force: true });
+      rmSync(collidingDir, { recursive: true, force: true });
+      rmSync(cwdDir, { recursive: true, force: true });
+    }
+  });
+
+  it("still accepts a path that IS genuinely inside $HOME", () => {
+    const schema: AdapterArg[] = [
+      { name: "dst", type: "str", "x-unicli-kind": "path" },
+    ];
+    const home = process.env.HOME ?? process.env.USERPROFILE ?? "";
+    if (!home) return;
+    const r = trycatch({ dst: `${home}/unicli-test-inside.txt` }, schema);
+    expect(r.ok).toBe(true);
+  });
+
+  it("accepts $HOME itself (boundary: abs === homeDir)", () => {
+    const schema: AdapterArg[] = [
+      { name: "dst", type: "str", "x-unicli-kind": "path" },
+    ];
+    const home = process.env.HOME ?? process.env.USERPROFILE ?? "";
+    if (!home) return;
+    const r = trycatch({ dst: home }, schema);
+    expect(r.ok).toBe(true);
   });
 });
 
