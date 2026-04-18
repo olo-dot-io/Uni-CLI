@@ -192,6 +192,81 @@ describe('hardenArgs — x-unicli-kind: "shell-safe"', () => {
   });
 });
 
+describe('hardenArgs — x-unicli-kind: "id"', () => {
+  const schema: AdapterArg[] = [
+    { name: "id", type: "str", "x-unicli-kind": "id" },
+  ];
+
+  it('accepts "12345"', () => {
+    const r = trycatch({ id: "12345" }, schema);
+    expect(r.ok).toBe(true);
+  });
+
+  it('accepts "user-slug"', () => {
+    const r = trycatch({ id: "user-slug" }, schema);
+    expect(r.ok).toBe(true);
+  });
+
+  it('accepts "abc123"', () => {
+    const r = trycatch({ id: "abc123" }, schema);
+    expect(r.ok).toBe(true);
+  });
+
+  it('rejects "123?foo=bar" (URL punctuation)', () => {
+    const r = trycatch({ id: "123?foo=bar" }, schema);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.argName).toBe("id");
+      expect(r.msg).toMatch(/URL punctuation/);
+      expect(r.suggestion).toMatch(/bare tokens/);
+    }
+  });
+
+  it('rejects "abc#section" (fragment)', () => {
+    const r = trycatch({ id: "abc#section" }, schema);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.msg).toMatch(/URL punctuation/);
+  });
+
+  it('rejects "%7B%7D" (URL-encoded)', () => {
+    const r = trycatch({ id: "%7B%7D" }, schema);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.argName).toBe("id");
+      expect(r.msg).toMatch(/URL-encoded/);
+      expect(r.suggestion).toMatch(/bare tokens/);
+    }
+  });
+
+  it("rejects a control character in an id (always-on gate, before kind dispatch)", () => {
+    const r = trycatch({ id: "user\u0000id" }, schema);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.msg).toMatch(/control characters/);
+  });
+
+  it("x-unicli-accepts: [url] salvages a full URL", () => {
+    const schemaWithAccepts: AdapterArg[] = [
+      {
+        name: "id",
+        type: "str",
+        "x-unicli-kind": "id",
+        "x-unicli-accepts": ["url"],
+      },
+    ];
+    const r = trycatch(
+      { id: "https://zhihu.com/people/user-slug" },
+      schemaWithAccepts,
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  it("without accepts, the same URL is rejected", () => {
+    const r = trycatch({ id: "https://zhihu.com/people/user-slug" }, schema);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.msg).toMatch(/looks like a URL|URL punctuation/);
+  });
+});
+
 describe("hardenArgs — always-on control-char gate", () => {
   it("rejects a control character on a freeform arg (no kind / format)", () => {
     const schema: AdapterArg[] = [{ name: "anything", type: "str" }];
