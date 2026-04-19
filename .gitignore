@@ -80,3 +80,6 @@ extension/dist/
 # VitePress cache
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+
+# Bench agent per-trial emissions (retain locally as debug artifacts)
+bench/agent/emissions-*.jsonl
