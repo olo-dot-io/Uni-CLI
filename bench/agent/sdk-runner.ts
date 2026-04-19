@@ -1,24 +1,30 @@
 /**
- * Claude Agent SDK bench runner — drives real trials against Haiku 4.5.
+ * Multi-model bench runner — drives TC0 trials via the Vercel AI SDK
+ * against any OpenAI-compatible endpoint (OpenRouter by default).
  *
- * Writes bench/agent/results.json with REAL asr_sem numbers (not null).
- * The quick bench (bench/agent/report.ts) is still the CI-cheap variant;
- * this runner is the ship-gate source of truth.
+ * Writes bench/agent/results.json with real per-model + overall asr_sem
+ * numbers. Gate source of truth for v0.213.3 Gagarin TC0 Patch R2.
  *
  * Usage:
- *   export ANTHROPIC_API_KEY=sk-ant-...
- *   export ANTHROPIC_BENCH_AUTOAPPROVE=1
+ *   export BENCH_API_KEY=sk-or-...              # required (OpenRouter key)
+ *   export BENCH_AUTOAPPROVE=1                  # optional, skip confirm
+ *   export BENCH_BASE_URL=https://openrouter.ai/api/v1  # optional
+ *   export BENCH_MODELS=deepseek/deepseek-chat,anthropic/claude-haiku-4-5,openai/gpt-5-mini
+ *   export BENCH_TRIALS_PER_CELL=10
  *   npm run bench:agent
  *   npm run bench:gate
  *
- * Cost budget: 5 tasks × 4 ICS buckets × 3 channels × 10 trials = 600 trials
- * Haiku 4.5 expected cost: ~$3-5 total.
+ * Corpus: 5 tasks × 4 ICS buckets × 3 channels × N trials × M models.
+ * Default 5 × 4 × 3 × 10 × 3 = 1800 trials across 3 models.
+ * Expected cost on OpenRouter: < $1.00 total for the default config.
  */
 
-import { query } from "@anthropic-ai/claude-agent-sdk";
-import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
-import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { generateText, stepCountIs, tool } from "ai";
+import { spawn } from "node:child_process";
+import { appendFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { z } from "zod";
 
 import {
   genAllBuckets,
@@ -31,18 +37,27 @@ import {
   judgeAsrSem,
   type Emission,
 } from "./sdk-judges.js";
-import { aggregate, type TaskDef, type TrialResult } from "./sdk-aggregate.js";
+import { type TaskDef, type TrialResult } from "./sdk-aggregate.js";
+import {
+  DEFAULT_MODELS,
+  estimateCostUsd,
+  PRICING,
+  PRICING_FALLBACK,
+} from "./pricing.js";
+import { buildReport, type ModelRun } from "./sdk-report.js";
 
 // ── Config ────────────────────────────────────────────────────────────────
 
-const MODEL = "claude-haiku-4-5" as const;
-const TRIALS_PER_CELL = parseInt(process.env.UNICLI_BENCH_TRIALS ?? "10", 10);
+const TRIALS_PER_CELL = parseInt(
+  process.env.BENCH_TRIALS_PER_CELL ?? process.env.UNICLI_BENCH_TRIALS ?? "10",
+  10,
+);
 const CHANNELS: readonly Channel[] = ["shell", "file", "stdin"] as const;
+const MAX_RATE_LIMIT_RETRIES = 3;
+const PROVIDER_NAME = "openrouter";
+const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
 const EST_IN_TOK = 500;
 const EST_OUT_TOK = 120;
-const HAIKU_IN_USD = 0.25;
-const HAIKU_OUT_USD = 1.25;
-const MAX_RATE_LIMIT_RETRIES = 3;
 
 export const TASKS: readonly TaskDef[] = [
   {
@@ -83,7 +98,7 @@ function buildPrompt(
   const argsJson = JSON.stringify(payload.args);
   const firstKey = task.expected.keyFields[0];
   const base =
-    `You are invoking the \`unicli\` CLI. Its binary is at ${unicliBin}. Run it via the Bash tool.\n\n` +
+    `You are invoking the \`unicli\` CLI. Its binary is at ${unicliBin}. Run it via the bash tool.\n\n` +
     `Task: retrieve results from ${task.site} ${task.cmd} with these exact arguments (JSON): ${argsJson}\n\n` +
     `You MUST:\n` +
     `1. Emit the command using the ${channel} channel as described below.\n` +
@@ -115,6 +130,66 @@ function buildPrompt(
   );
 }
 
+// ── Shell execution helper (used by the bash tool) ────────────────────────
+
+interface SpawnResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+}
+
+async function spawnAndCapture(command: string): Promise<SpawnResult> {
+  return new Promise((resolvePromise) => {
+    const child = spawn("sh", ["-c", command], {
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, NO_COLOR: "1" },
+    });
+    let stdout = "";
+    let stderr = "";
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+    }, 30_000);
+    child.stdout?.on("data", (d) => (stdout += String(d)));
+    child.stderr?.on("data", (d) => (stderr += String(d)));
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      resolvePromise({ stdout, stderr, exitCode: code ?? -1 });
+    });
+    child.on("error", (err) => {
+      clearTimeout(timer);
+      resolvePromise({
+        stdout,
+        stderr: stderr + String(err?.message ?? err),
+        exitCode: -1,
+      });
+    });
+  });
+}
+
+// ── Provider wiring ───────────────────────────────────────────────────────
+
+interface ProviderCtx {
+  baseURL: string;
+  apiKey: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  chat: (modelId: string) => any;
+}
+
+function buildProvider(): ProviderCtx {
+  const apiKey = process.env.BENCH_API_KEY ?? "";
+  const baseURL = process.env.BENCH_BASE_URL ?? DEFAULT_BASE_URL;
+  const provider = createOpenAICompatible({
+    name: PROVIDER_NAME,
+    apiKey,
+    baseURL,
+  });
+  return {
+    baseURL,
+    apiKey,
+    chat: (modelId: string) => provider.chatModel(modelId),
+  };
+}
+
 // ── Single trial ───────────────────────────────────────────────────────────
 
 interface RunTrialArgs {
@@ -123,65 +198,83 @@ interface RunTrialArgs {
   payload: BenchPayload;
   trialId: number;
   unicliBin: string;
+  modelId: string;
+  provider: ProviderCtx;
   emissionSink?: string;
+}
+
+interface SdkInvokeOut {
+  finalResult?: string;
+  errorMessage?: string;
+  inTok: number;
+  outTok: number;
 }
 
 async function invokeSdk(
   promptText: string,
   emissions: Emission[],
-): Promise<{
-  finalResult?: string;
-  errorMessage?: string;
-  cost: number;
-  inTok: number;
-  outTok: number;
-}> {
-  let finalResult: string | undefined;
-  let errorMessage: string | undefined;
-  let cost = 0;
-  let inTok = 0;
-  let outTok = 0;
+  modelId: string,
+  provider: ProviderCtx,
+): Promise<SdkInvokeOut> {
   try {
-    for await (const msg of query({
+    const { text, usage } = await generateText({
+      model: provider.chat(modelId),
+      system:
+        "You are an agent using unicli via Bash. Call the bash tool to execute commands, then return a brief human-readable summary of the first result.",
       prompt: promptText,
-      options: {
-        model: MODEL,
-        allowedTools: ["Bash"],
-        maxTurns: 4,
-        canUseTool: async (toolName, input) => {
-          emissions.push({ tool: toolName, input });
-          return { behavior: "allow", updatedInput: input };
-        },
+      tools: {
+        bash: tool({
+          description: "Execute a shell command and capture stdout/stderr.",
+          inputSchema: z.object({
+            command: z.string().describe("The shell command to execute."),
+          }),
+          execute: async ({ command }: { command: string }) => {
+            emissions.push({ tool: "Bash", input: { command } });
+            const r = await spawnAndCapture(command);
+            return {
+              stdout: r.stdout.slice(0, 8000),
+              stderr: r.stderr.slice(0, 2000),
+              exit_code: r.exitCode,
+            };
+          },
+        }),
       },
-    })) {
-      const m = msg as SDKMessage;
-      if (m.type === "result") {
-        if (m.subtype === "success") {
-          finalResult = m.result;
-          inTok = m.usage?.input_tokens ?? 0;
-          outTok = m.usage?.output_tokens ?? 0;
-          cost = m.total_cost_usd ?? 0;
-        } else {
-          errorMessage = `result.${m.subtype}`;
-        }
-      }
-    }
+      stopWhen: stepCountIs(4),
+      temperature: 0,
+    });
+    return {
+      finalResult: text,
+      inTok: Number(usage?.inputTokens ?? 0) || 0,
+      outTok: Number(usage?.outputTokens ?? 0) || 0,
+    };
   } catch (err) {
-    errorMessage = (err as Error).message ?? String(err);
+    return {
+      errorMessage: (err as Error).message ?? String(err),
+      inTok: 0,
+      outTok: 0,
+    };
   }
-  return { finalResult, errorMessage, cost, inTok, outTok };
+}
+
+function computeTrialCost(
+  modelId: string,
+  inTok: number,
+  outTok: number,
+): number {
+  const price = PRICING[modelId] ?? PRICING_FALLBACK;
+  return (inTok * price.in) / 1_000_000 + (outTok * price.out) / 1_000_000;
 }
 
 export async function runTrial(args: RunTrialArgs): Promise<TrialResult> {
-  const { task, channel, payload, trialId, unicliBin, emissionSink } = args;
   const started = Date.now();
   const emissions: Emission[] = [];
   const sdk = await invokeSdk(
-    buildPrompt(task, channel, payload, unicliBin),
+    buildPrompt(args.task, args.channel, args.payload, args.unicliBin),
     emissions,
+    args.modelId,
+    args.provider,
   );
-
-  const gen = judgeAsrGen(emissions, channel);
+  const gen = judgeAsrGen(emissions, args.channel);
   let execOk = false;
   let execStdout = "";
   if (gen.ok && gen.command) {
@@ -190,17 +283,18 @@ export async function runTrial(args: RunTrialArgs): Promise<TrialResult> {
     execStdout = r.stdout;
   }
   const semOk = execOk
-    ? judgeAsrSem(sdk.finalResult, execStdout, task.expected)
+    ? judgeAsrSem(sdk.finalResult, execStdout, args.task.expected)
     : false;
-
-  if (emissionSink) {
+  const costUsd = computeTrialCost(args.modelId, sdk.inTok, sdk.outTok);
+  if (args.emissionSink) {
     appendFileSync(
-      emissionSink,
+      args.emissionSink,
       JSON.stringify({
-        task: { site: task.site, cmd: task.cmd },
-        bucket: payload.target,
-        channel,
-        trial_id: trialId,
+        model: args.modelId,
+        task: { site: args.task.site, cmd: args.task.cmd },
+        bucket: args.payload.target,
+        channel: args.channel,
+        trial_id: args.trialId,
         emissions,
         finalResult: sdk.finalResult,
         asr_gen: gen.ok,
@@ -211,17 +305,16 @@ export async function runTrial(args: RunTrialArgs): Promise<TrialResult> {
       }) + "\n",
     );
   }
-
   return {
-    task: { site: task.site, cmd: task.cmd },
-    ics_bucket: payload.target,
-    channel,
-    trial_id: trialId,
+    task: { site: args.task.site, cmd: args.task.cmd },
+    ics_bucket: args.payload.target,
+    channel: args.channel,
+    trial_id: args.trialId,
     asr_gen: gen.ok,
     asr_exec: execOk,
     asr_sem: semOk,
     duration_ms: Date.now() - started,
-    cost_usd: sdk.cost,
+    cost_usd: costUsd,
     input_tokens: sdk.inTok,
     output_tokens: sdk.outTok,
     error: sdk.errorMessage,
@@ -235,12 +328,14 @@ async function runWithRetry(
   let last: TrialResult | undefined;
   while (retries < MAX_RATE_LIMIT_RETRIES) {
     last = await runTrial(args);
-    const rl = /rate[_ ]limit|429|overloaded/i.test(last.error ?? "");
+    const rl = /rate[_ ]limit|429|overloaded|too many requests/i.test(
+      last.error ?? "",
+    );
     if (!rl) return { result: last, retries };
     retries++;
     const backoff = Math.min(30_000, 1000 * 2 ** retries);
     process.stderr.write(
-      `[bench] rate-limit ${args.task.site}/${args.task.cmd}#${args.channel}#${args.trialId}; backoff ${backoff}ms (${retries}/${MAX_RATE_LIMIT_RETRIES})\n`,
+      `[bench] rate-limit ${args.modelId} ${args.task.site}/${args.task.cmd}#${args.channel}#${args.trialId}; backoff ${backoff}ms (${retries}/${MAX_RATE_LIMIT_RETRIES})\n`,
     );
     await new Promise((r) => setTimeout(r, backoff));
   }
@@ -249,23 +344,50 @@ async function runWithRetry(
 
 // ── Pre-flight checks ──────────────────────────────────────────────────────
 
-function estCost(nTrials: number): number {
-  return (
-    (nTrials * EST_IN_TOK * HAIKU_IN_USD) / 1_000_000 +
-    (nTrials * EST_OUT_TOK * HAIKU_OUT_USD) / 1_000_000
-  );
+function parseModels(): string[] {
+  const raw = process.env.BENCH_MODELS ?? DEFAULT_MODELS.join(",");
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
 }
 
-async function confirmProceed(totalTrials: number): Promise<void> {
-  const est = estCost(totalTrials);
+function perModelTrials(): number {
+  return TASKS.length * 4 * CHANNELS.length * TRIALS_PER_CELL;
+}
+
+function printEstimate(models: string[]): { total: number } {
+  const perModel = perModelTrials();
   process.stderr.write(
-    `[bench] ${totalTrials} trials on ${MODEL}\n` +
-      `[bench] estimated cost: $${est.toFixed(2)} — proceed? (set ANTHROPIC_BENCH_AUTOAPPROVE=1 to skip this prompt)\n`,
+    `[bench] estimated cost breakdown (per model, ${perModel} trials each):\n`,
   );
-  if (process.env.ANTHROPIC_BENCH_AUTOAPPROVE === "1") return;
+  let total = 0;
+  for (const m of models) {
+    const cost = estimateCostUsd(m, perModel, EST_IN_TOK, EST_OUT_TOK);
+    total += cost;
+    const pricing = PRICING[m] ?? PRICING_FALLBACK;
+    const note = PRICING[m] ? "" : " (fallback pricing)";
+    process.stderr.write(
+      `[bench]   ${m.padEnd(40)} $${cost.toFixed(3)}  in=$${pricing.in}/M out=$${pricing.out}/M${note}\n`,
+    );
+  }
+  process.stderr.write(
+    `[bench] estimated total cost: $${total.toFixed(2)} across ${models.length} models (${perModel} trials per model, ${perModel * models.length} trials total)\n`,
+  );
+  return { total };
+}
+
+async function confirmProceed(models: string[]): Promise<void> {
+  printEstimate(models);
+  if (
+    process.env.BENCH_AUTOAPPROVE === "1" ||
+    process.env.ANTHROPIC_BENCH_AUTOAPPROVE === "1"
+  ) {
+    return;
+  }
   if (!process.stdin.isTTY) {
     process.stderr.write(
-      "[bench] non-TTY: set ANTHROPIC_BENCH_AUTOAPPROVE=1 to run non-interactively\n",
+      "[bench] non-TTY: set BENCH_AUTOAPPROVE=1 to run non-interactively\n",
     );
     process.exit(78);
   }
@@ -279,12 +401,20 @@ async function confirmProceed(totalTrials: number): Promise<void> {
   }
 }
 
-function assertEnv(): string {
-  if (!process.env.ANTHROPIC_API_KEY) {
+interface EnvCtx {
+  unicliBin: string;
+  models: string[];
+  provider: ProviderCtx;
+}
+
+function assertEnv(): EnvCtx {
+  if (!process.env.BENCH_API_KEY) {
     process.stderr.write(
-      "\n[bench] ANTHROPIC_API_KEY is not set.\n" +
-        "  export ANTHROPIC_API_KEY=sk-ant-...\n" +
-        "  (Get a key at https://console.anthropic.com/)\n\n",
+      "\n[bench] BENCH_API_KEY is not set.\n" +
+        "  export BENCH_API_KEY=<your-key>          # OpenRouter / OpenAI / DeepSeek / Zhipu / Moonshot / Ollama\n" +
+        "  export BENCH_BASE_URL=<endpoint>         # optional, defaults to https://openrouter.ai/api/v1\n" +
+        "  export BENCH_MODELS=a,b,c                # optional, defaults to DeepSeek + Haiku + GPT-5-mini via OpenRouter\n" +
+        "  (Get an OpenRouter key at https://openrouter.ai/keys)\n\n",
     );
     process.exit(77);
   }
@@ -295,7 +425,11 @@ function assertEnv(): string {
     );
     process.exit(78);
   }
-  return unicliBin;
+  return {
+    unicliBin,
+    models: parseModels(),
+    provider: buildProvider(),
+  };
 }
 
 // ── Corpus expansion ───────────────────────────────────────────────────────
@@ -321,96 +455,102 @@ function buildCells(): Cell[] {
   return cells;
 }
 
-// ── main ───────────────────────────────────────────────────────────────────
+// ── Corpus runner (per model) ─────────────────────────────────────────────
 
-async function main(): Promise<void> {
-  const unicliBin = assertEnv();
-  const totalTrials = TASKS.length * 4 * CHANNELS.length * TRIALS_PER_CELL;
-  await confirmProceed(totalTrials);
-
-  const cells = buildCells();
+function sinkPathFor(model: string): string {
   const ts = new Date().toISOString().replace(/[:.]/g, "-");
-  const emissionSink = resolve(
+  const safe = model.replace(/[^a-z0-9._-]/gi, "_");
+  const path = resolve(
     process.cwd(),
-    `bench/agent/emissions-${ts}.jsonl`,
+    `bench/agent/emissions-${safe}-${ts}.jsonl`,
   );
-  mkdirSync(dirname(emissionSink), { recursive: true });
+  mkdirSync(dirname(path), { recursive: true });
+  return path;
+}
 
+async function runCorpus(ctx: EnvCtx, model: string): Promise<ModelRun> {
+  const cells = buildCells();
+  const emissionSink = sinkPathFor(model);
   const results: TrialResult[] = [];
   const started = Date.now();
-  let totalRetries = 0;
-  let actualCost = 0;
-
+  let retries = 0;
+  let cost = 0;
   for (let i = 0; i < cells.length; i++) {
     const c = cells[i];
-    const { result, retries } = await runWithRetry({
+    const r = await runWithRetry({
       task: c.task,
       channel: c.channel,
       payload: c.payload,
       trialId: c.trialId,
-      unicliBin,
+      unicliBin: ctx.unicliBin,
+      modelId: model,
+      provider: ctx.provider,
       emissionSink,
     });
-    results.push(result);
-    totalRetries += retries;
-    actualCost += result.cost_usd;
+    results.push(r.result);
+    retries += r.retries;
+    cost += r.result.cost_usd;
     if ((i + 1) % 10 === 0 || i === cells.length - 1) {
       const pct = (((i + 1) / cells.length) * 100).toFixed(1);
       const min = ((Date.now() - started) / 60_000).toFixed(1);
       process.stderr.write(
-        `[bench] ${i + 1}/${cells.length} (${pct}%)  elapsed=${min}m  cost=$${actualCost.toFixed(3)}  retries=${totalRetries}\n`,
+        `[bench][${model}] ${i + 1}/${cells.length} (${pct}%)  elapsed=${min}m  cost=$${cost.toFixed(3)}  retries=${retries}\n`,
       );
     }
   }
-
-  writeReport({
-    results,
-    totalTrials,
-    totalRetries,
-    actualCost,
-    wallMin: (Date.now() - started) / 60_000,
-    emissionSink,
-  });
+  return { model, results, cost, retries, wallMs: Date.now() - started };
 }
 
-interface ReportArgs {
-  results: TrialResult[];
-  totalTrials: number;
-  totalRetries: number;
-  actualCost: number;
-  wallMin: number;
-  emissionSink: string;
+// ── main / estimate-only ──────────────────────────────────────────────────
+
+function isEstimateOnly(): boolean {
+  return process.argv.slice(2).includes("--estimate-only");
 }
 
-function writeReport(args: ReportArgs): void {
-  const { rows, summary } = aggregate(TASKS, args.results);
-  const out = {
-    schema_version: "bench-v2",
-    generated_at: new Date().toISOString(),
-    model: MODEL,
-    model_version_hash: process.env.ANTHROPIC_MODEL_HASH ?? "",
-    tasks: TASKS.length,
-    trials_per_cell: TRIALS_PER_CELL,
+async function main(): Promise<void> {
+  const ctx = assertEnv();
+  if (ctx.models.length === 0) {
+    process.stderr.write(
+      "[bench] BENCH_MODELS resolved to an empty list; nothing to run\n",
+    );
+    process.exit(78);
+  }
+  if (isEstimateOnly()) {
+    printEstimate(ctx.models);
+    process.stderr.write(
+      "[bench] --estimate-only: no trials executed; exiting cleanly.\n",
+    );
+    return;
+  }
+  await confirmProceed(ctx.models);
+
+  const runs: ModelRun[] = [];
+  for (const model of ctx.models) {
+    process.stderr.write(`\n[bench] === running model: ${model} ===\n`);
+    runs.push(await runCorpus(ctx, model));
+  }
+
+  const outPath = resolve(process.cwd(), "bench/agent/results.json");
+  const { envelope, totals } = buildReport({
+    runs,
+    tasks: TASKS,
+    provider: PROVIDER_NAME,
+    baseUrl: ctx.provider.baseURL,
+    models: ctx.models,
+    trialsPerCell: TRIALS_PER_CELL,
     channels: CHANNELS.length,
     buckets: 4,
-    total_trials: args.results.length,
-    expected_trials: args.totalTrials,
-    total_cost_usd: Math.round(args.actualCost * 1000) / 1000,
-    wall_time_minutes: Math.round(args.wallMin * 1000) / 1000,
-    retries: args.totalRetries,
-    rows,
-    summary,
-    emission_log: args.emissionSink,
-  };
-  const outPath = resolve(process.cwd(), "bench/agent/results.json");
-  mkdirSync(dirname(outPath), { recursive: true });
-  writeFileSync(outPath, JSON.stringify(out, null, 2) + "\n");
+    totalTrialsExpected: perModelTrials() * ctx.models.length,
+    outPath,
+  });
+  const overall = envelope.summary_overall as Record<string, number>;
   process.stderr.write(
     `\n[bench] wrote ${outPath}\n` +
-      `[bench] total cost: $${args.actualCost.toFixed(3)} over ${args.wallMin.toFixed(1)} min, ${args.totalRetries} retries\n` +
-      `[bench] asr_sem @ICS=8 stdin: ${summary.asr_sem_at_ics8_stdin}\n` +
-      `[bench] sed @ICS=8:            ${summary.sed_at_ics8}\n` +
-      `[bench] asr_sem @ICS=2 shell:  ${summary.asr_sem_at_ics2_shell}\n`,
+      `[bench] total cost: $${totals.cost.toFixed(3)} over ${(totals.wallMs / 60_000).toFixed(1)} min, ${totals.retries} retries\n` +
+      `[bench] models passing gate: ${totals.modelsPassingGate}/${ctx.models.length}\n` +
+      `[bench] asr_sem @ICS=8 stdin (avg): ${overall.asr_sem_at_ics8_stdin_avg}\n` +
+      `[bench] sed @ICS=8 (avg):            ${overall.sed_at_ics8_avg}\n` +
+      `[bench] asr_sem @ICS=2 shell (avg):  ${overall.asr_sem_at_ics2_shell_avg}\n`,
   );
 }
 
