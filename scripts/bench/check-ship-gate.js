@@ -2,12 +2,17 @@
 /**
  * Ship-gate enforcer for v0.213.3 Gagarin TC0 Patch R2.
  *
- * Reads bench/agent/results.json and fails (exit 2) unless:
- *   - summary.asr_sem_at_ics8_stdin >= 0.95
- *   - summary.sed_at_ics8           >= 0.30
- *   - summary.asr_sem_at_ics2_shell >= 0.90
- *   - total_trials == tasks * trials_per_cell * 4 * 3 (completeness)
- *   - No row has a null/undefined asr_sem value
+ * Reads bench/agent/results.json (schema bench-v3, multi-model) and fails
+ * (exit 2) unless:
+ *   - summary_overall.asr_sem_at_ics8_stdin_avg >= 0.95
+ *   - summary_overall.sed_at_ics8_avg           >= 0.30
+ *   - summary_overall.asr_sem_at_ics2_shell_avg >= 0.90
+ *   - summary_overall.models_passing_gate       >= 2
+ *   - total_trials matches the expected grid across all models (completeness)
+ *   - No row across any model has a null/undefined asr_sem value
+ *
+ * Legacy bench-v2 (single-model summary) is still accepted so this script
+ * can gate the older runner output without breaking.
  *
  * Exit codes:
  *   0 — all gates pass
@@ -25,6 +30,7 @@ const REQ = Object.freeze({
   asr_sem_at_ics8_stdin: 0.95,
   sed_at_ics8: 0.3,
   asr_sem_at_ics2_shell: 0.9,
+  models_passing_gate: 2,
 });
 
 function loadResults() {
@@ -45,11 +51,13 @@ function loadResults() {
 }
 
 function checkCompleteness(r) {
+  const nModels = Array.isArray(r.models) ? r.models.length : 1;
   const expected =
     (r.tasks ?? 0) *
     (r.trials_per_cell ?? 0) *
     (r.buckets ?? 0) *
-    (r.channels ?? 0);
+    (r.channels ?? 0) *
+    nModels;
   const ok = expected > 0 && r.total_trials === expected;
   return {
     name: "completeness",
@@ -57,17 +65,30 @@ function checkCompleteness(r) {
     required: expected,
     actual: r.total_trials ?? 0,
     msg: ok
-      ? `total_trials=${r.total_trials}`
+      ? `total_trials=${r.total_trials} (${nModels} models)`
       : `expected ${expected} trials, got ${r.total_trials}`,
   };
 }
 
+function collectRows(r) {
+  if (Array.isArray(r.rows)) return r.rows;
+  if (r.by_model && typeof r.by_model === "object") {
+    const all = [];
+    for (const entry of Object.values(r.by_model)) {
+      if (entry && Array.isArray(entry.rows)) all.push(...entry.rows);
+    }
+    return all;
+  }
+  return [];
+}
+
 function checkNoNulls(r) {
-  if (!Array.isArray(r.rows))
-    return { name: "no_nulls", ok: false, msg: "no rows[]" };
+  const rows = collectRows(r);
+  if (rows.length === 0)
+    return { name: "no_nulls", ok: false, msg: "no rows[] or by_model[].rows" };
   const channels = ["shell", "file", "stdin"];
   const offenders = [];
-  for (const row of r.rows) {
+  for (const row of rows) {
     for (const ch of channels) {
       const v = row?.asr_sem?.[ch];
       if (v === null || v === undefined) {
@@ -99,31 +120,66 @@ function checkNumeric(name, actualVal, required) {
   };
 }
 
+function resolveSummary(r) {
+  // bench-v3: summary_overall with avg-suffixed keys
+  if (r.summary_overall) {
+    const so = r.summary_overall;
+    return {
+      asr_sem_at_ics8_stdin:
+        so.asr_sem_at_ics8_stdin_avg ?? so.asr_sem_at_ics8_stdin,
+      sed_at_ics8: so.sed_at_ics8_avg ?? so.sed_at_ics8,
+      asr_sem_at_ics2_shell:
+        so.asr_sem_at_ics2_shell_avg ?? so.asr_sem_at_ics2_shell,
+      models_passing_gate: so.models_passing_gate,
+    };
+  }
+  // bench-v2: flat summary, no per-model gate
+  const s = r.summary ?? {};
+  return {
+    asr_sem_at_ics8_stdin: s.asr_sem_at_ics8_stdin,
+    sed_at_ics8: s.sed_at_ics8,
+    asr_sem_at_ics2_shell: s.asr_sem_at_ics2_shell,
+    models_passing_gate: 1, // legacy single-model result always counts as one
+  };
+}
+
+function modelLabel(r) {
+  if (Array.isArray(r.models) && r.models.length > 0)
+    return r.models.join(", ");
+  return r.model ?? "?";
+}
+
 function main() {
   const r = loadResults();
-  const s = r.summary ?? {};
+  const s = resolveSummary(r);
   const checks = [
     checkCompleteness(r),
     checkNoNulls(r),
     checkNumeric(
-      "asr_sem@ICS=8 stdin",
+      "asr_sem@ICS=8 stdin (avg)",
       s.asr_sem_at_ics8_stdin,
       REQ.asr_sem_at_ics8_stdin,
     ),
-    checkNumeric("sed@ICS=8", s.sed_at_ics8, REQ.sed_at_ics8),
+    checkNumeric("sed@ICS=8 (avg)", s.sed_at_ics8, REQ.sed_at_ics8),
     checkNumeric(
-      "asr_sem@ICS=2 shell",
+      "asr_sem@ICS=2 shell (avg)",
       s.asr_sem_at_ics2_shell,
       REQ.asr_sem_at_ics2_shell,
     ),
+    checkNumeric(
+      "models_passing_gate",
+      s.models_passing_gate,
+      REQ.models_passing_gate,
+    ),
   ];
 
-  process.stdout.write(`\nShip-gate report (bench-v2, ${r.model ?? "?"})\n`);
+  const schema = r.schema_version ?? "bench-v?";
+  process.stdout.write(`\nShip-gate report (${schema}, ${modelLabel(r)})\n`);
   process.stdout.write(`file: ${RESULTS_PATH}\n`);
   process.stdout.write("-".repeat(60) + "\n");
   for (const c of checks) {
     const tag = c.ok ? "PASS" : "FAIL";
-    process.stdout.write(`[${tag}] ${c.name.padEnd(24)} ${c.msg}\n`);
+    process.stdout.write(`[${tag}] ${c.name.padEnd(28)} ${c.msg}\n`);
   }
   process.stdout.write("-".repeat(60) + "\n");
 
