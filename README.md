@@ -316,6 +316,6 @@ Repo: <https://github.com/olo-dot-io/Uni-CLI> · npm: [`@zenalexa/unicli`](https
 </p>
 
 <p align="center">
-  <sub>v0.213.1 — Vostok · Gagarin Patch</sub><br>
+  <sub>v0.213.3 — Vostok · Gagarin TC0 Patch R2</sub><br>
   <sub><!-- STATS:site_count -->200<!-- /STATS --> sites · <!-- STATS:command_count -->968<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->54<!-- /STATS --> pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-11-25 · <!-- STATS:test_count -->7083<!-- /STATS --> tests</sub>
 </p>
