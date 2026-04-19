@@ -11,6 +11,7 @@ args:
     positional: true
     type: int
     description: Topic ID
+    x-unicli-kind: id
   limit:
     type: int
     default: 20

@@ -10,6 +10,7 @@ args:
     required: true
     positional: true
     description: Thread ID
+    x-unicli-kind: id
   limit:
     type: int
     default: 20

@@ -11,6 +11,7 @@ args:
     required: true
     positional: true
     description: ONES account email
+    format: email
   password:
     type: str
     required: true

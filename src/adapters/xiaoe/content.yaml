@@ -11,6 +11,7 @@ args:
     required: true
     positional: true
     description: Lesson page URL
+    format: uri
 
 columns: [title, type, content]
 

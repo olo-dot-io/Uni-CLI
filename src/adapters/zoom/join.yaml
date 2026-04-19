@@ -13,6 +13,7 @@ args:
     required: true
     positional: true
     description: Zoom meeting ID or link
+    x-unicli-kind: id
 
 pipeline:
   - exec:

@@ -11,6 +11,8 @@ args:
     required: true
     positional: true
     description: "Job detail URL or encrypted job ID"
+    format: uri
+    x-unicli-accepts: [id]
 
 columns:
   [title, salary, company, location, experience, degree, description, url]

@@ -17,6 +17,7 @@ args:
     type: str
     required: true
     description: Output .blend file path
+    x-unicli-kind: path
 
 pipeline:
   - exec:

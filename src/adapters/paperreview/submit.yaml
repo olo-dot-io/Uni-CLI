@@ -23,6 +23,8 @@ args:
     required: true
     positional: true
     description: URL or arXiv ID of paper
+    format: uri
+    x-unicli-accepts: [id]
   venue:
     type: str
     required: true

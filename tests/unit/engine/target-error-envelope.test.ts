@@ -38,7 +38,7 @@ describe("executor integration — TargetError → PipelineError", () => {
     try {
       await runPipeline(
         [{ [STEP_NAME]: {} } as never],
-        {},
+        { args: {}, source: "internal" },
         undefined,
         undefined,
       );
@@ -63,7 +63,7 @@ describe("executor integration — TargetError → PipelineError", () => {
     try {
       await runPipeline(
         [{ [STEP_NAME]: {} } as never],
-        {},
+        { args: {}, source: "internal" },
         undefined,
         undefined,
       );
@@ -83,7 +83,7 @@ describe("executor integration — TargetError → PipelineError", () => {
     try {
       await runPipeline(
         [{ [STEP_NAME]: {} } as never],
-        {},
+        { args: {}, source: "internal" },
         undefined,
         undefined,
       );
@@ -108,7 +108,7 @@ describe("executor integration — TargetError → PipelineError", () => {
     try {
       await runPipeline(
         [{ [STEP_NAME]: {} } as never],
-        {},
+        { args: {}, source: "internal" },
         undefined,
         undefined,
       );

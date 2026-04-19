@@ -10,6 +10,7 @@ args:
     type: str
     default: "0"
     description: Directory ID (0 for root)
+    x-unicli-kind: path
   limit:
     type: int
     default: 50

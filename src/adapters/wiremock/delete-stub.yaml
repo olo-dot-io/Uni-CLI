@@ -12,6 +12,7 @@ args:
     required: true
     positional: true
     description: Stub mapping UUID
+    x-unicli-kind: id
   port:
     type: int
     default: 8080

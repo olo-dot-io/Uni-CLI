@@ -141,10 +141,15 @@ export function registerHealthCommand(program: Command): void {
             const start = performance.now();
             try {
               await withTimeout(
-                runPipeline(cmd.pipeline, { limit: 1 }, adapter.base, {
-                  site: adapter.name,
-                  strategy: adapter.strategy as string,
-                }),
+                runPipeline(
+                  cmd.pipeline,
+                  { args: { limit: 1 }, source: "internal" },
+                  adapter.base,
+                  {
+                    site: adapter.name,
+                    strategy: adapter.strategy as string,
+                  },
+                ),
                 timeout,
               );
               results.push({

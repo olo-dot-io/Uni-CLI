@@ -11,8 +11,9 @@ import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, extname, basename, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import yaml from "js-yaml";
-import { registerAdapter } from "../registry.js";
+import { getAllAdapters, registerAdapter } from "../registry.js";
 import { validateAdapterV2 } from "../core/schema-v2.js";
+import { compileAll } from "../engine/kernel/compile.js";
 
 /**
  * Upper bound on YAML adapter file size. A legitimate YAML adapter is
@@ -128,6 +129,9 @@ interface YamlAdapter {
   // Adapter health
   quarantine?: boolean;
   quarantineReason?: string;
+  // v0.213.3 Phase 4 — pagination hint emitted by the kernel's next_actions
+  // when the command surfaces `meta.pagination.next_cursor`.
+  paginated?: boolean;
   // Desktop
   execArgs?: string[];
   // Web
@@ -154,6 +158,12 @@ interface YamlArg {
   positional?: boolean;
   choices?: string[];
   description?: string;
+  // v0.213.3 Phase 4 — schema-driven hardening annotations. Propagate these
+  // untouched to AdapterArg so the kernel's ajv validator sees the declared
+  // format / x-unicli-kind dispatch tokens.
+  format?: AdapterArg["format"];
+  "x-unicli-kind"?: AdapterArg["x-unicli-kind"];
+  "x-unicli-accepts"?: AdapterArg["x-unicli-accepts"];
 }
 
 /** Load all adapters from a directory */
@@ -299,6 +309,9 @@ export function loadAdaptersFromDir(dir: string): number {
               positional: argDef.positional ?? false,
               choices: argDef.choices,
               description: argDef.description,
+              format: argDef.format,
+              "x-unicli-kind": argDef["x-unicli-kind"],
+              "x-unicli-accepts": argDef["x-unicli-accepts"],
             }),
           );
         }
@@ -320,6 +333,7 @@ export function loadAdaptersFromDir(dir: string): number {
           quarantine: parsed.quarantine === true ? true : undefined,
           quarantineReason: parsed.quarantineReason,
           minimum_capability: parsed.minimum_capability,
+          paginated: parsed.paginated === true ? true : undefined,
         };
         count++;
       }
@@ -391,6 +405,10 @@ export function loadAllAdapters(): number {
   let total = 0;
   total += loadAdaptersFromDir(BUILTIN_YAML_DIR);
   total += loadAdaptersFromDir(USER_DIR);
+  // Prime the kernel cache for every registered adapter so CLI / MCP / ACP
+  // surfaces look up CompiledCommand entries in O(1). Safe to run again
+  // after loadTsAdapters — compileAll clears + refills.
+  primeKernelCache();
   return total;
 }
 
@@ -412,7 +430,20 @@ export async function loadTsAdapters(): Promise<number> {
       }
     }
   }
+  // Re-prime now that TS-registered adapters are in the registry too.
+  primeKernelCache();
   return count;
+}
+
+/**
+ * Eagerly compile every registered adapter command into the invocation
+ * kernel cache. Called at the tail of each loader entry point so subsequent
+ * CLI / MCP / ACP dispatch can do a pure Map lookup with no lazy compile.
+ * Exposed so tests / long-running processes that mutate the registry can
+ * re-prime without re-running the full discovery scan.
+ */
+export function primeKernelCache(): void {
+  compileAll(getAllAdapters());
 }
 
 /**

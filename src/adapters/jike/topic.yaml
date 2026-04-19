@@ -12,6 +12,8 @@ args:
     type: str
     required: true
     description: Topic ID (from topic URL)
+    x-unicli-kind: id
+    x-unicli-accepts: [url]
   limit:
     type: int
     default: 20

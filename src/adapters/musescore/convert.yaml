@@ -12,10 +12,12 @@ args:
     required: true
     positional: true
     description: Path to source .mscz or .mscx file
+    x-unicli-kind: path
   output:
     type: str
     required: true
     description: Output file path (format inferred from extension)
+    x-unicli-kind: path
   trim:
     type: int
     default: 0

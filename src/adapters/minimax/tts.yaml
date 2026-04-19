@@ -17,6 +17,7 @@ args:
     required: false
     default: output.mp3
     description: Output file path
+    x-unicli-kind: path
 pipeline:
   - fetch:
       url: "https://api.minimax.chat/v1/t2a_v2"

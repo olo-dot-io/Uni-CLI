@@ -11,6 +11,7 @@ args:
     type: str
     default: "/tmp/screenshot.png"
     description: Output file path for the screenshot
+    x-unicli-kind: path
   clipboard:
     type: bool
     default: false

@@ -3,6 +3,96 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
+## [0.213.3] — 2026-04-19 — Vostok · Gagarin TC0 Patch R2
+
+> Closes six gaps left by v0.213.2 along the agent-invocation path:
+> unified invocation kernel (P1), MCP/ACP/CLI surface parity (P2),
+> output-side TC0 externalization (P3), schema-driven hardening on 71
+> adapters (P4), and a multi-provider agent-bench harness (P5).
+> See `docs/BENCH/v0.213.3.md` for bench posture and the explicit
+> deferral of empirical ASR numbers to v0.213.4 (OpenRouter credit
+> exhausted mid-run; harness is ready, fix landed in commit `d31e72e`).
+
+### Added
+
+- **Invocation kernel** (`src/engine/kernel/{types,ulid,compile,execute}.ts`)
+  with monotonic ULID ids and a `CompiledCommand` cache primed by the
+  loader. `src/engine/invoke.ts` is now a thin re-export shim. CLI / MCP
+  / ACP all route through `buildInvocation()` + `execute()`; the lazy
+  compile fallback is gone.
+- **Schema-driven hardening** in `src/engine/harden.ts` via `ajv` +
+  `ajv-formats` with `format-assertion: true`. Adapter args may declare
+  `format:` (JSON Schema draft-2020-12 formats) and a vendor extension
+  `x-unicli-kind:` of `id` / `path` / `uri` / `email` / `date` to dispatch
+  to a dedicated validator. `validateIdArg` rejects URL-shaped inputs
+  (`?` / `#` / `%XX` encodings, `scheme://`).
+- **Output projection flags** — `--select <jsonpath>` (`jsonpath-plus`),
+  `--fields <a,b,c>`, `--pluck <field>` (newline-sanitized for safety),
+  and `--pluck0 <field>` (NUL-delimited for `xargs -0`). `ProjectionError`
+  on malformed JSONPath emits `USAGE_ERROR` (exit 2); empty result after
+  projection emits `EMPTY_RESULT` (exit 66).
+- **Three-channel transport coverage** — `bench/agent/sdk-runner.ts`
+  drives any OpenAI-compatible provider via Vercel AI SDK +
+  `@ai-sdk/openai-compatible` across `shell` / `file` / `stdin` channels,
+  five tasks, four ICS buckets, with per-trial verdicts (`asr_gen`,
+  `asr_exec`, `asr_sem`), Wilson-95 CIs, per-model + overall ship-gate
+  thresholds, and per-trial USD cost from `bench/agent/pricing.ts`.
+- **`scripts/migrate-add-kind.ts`** — comment-preserving YAML codemod
+  (552 LOC, `yaml` LineCounter) that annotates 243/1355 args across 223
+  YAMLs with `format:` + `x-unicli-kind:`. Idempotent (`--check` exits 0
+  after a full pass). 30 unique override triplets documented in
+  `docs/codemod/v0.213.3-conflicts.md`.
+
+### Changed
+
+- **`runPipeline(pipeline, bag, base, opts)` requires a `ResolvedArgs`
+  bag** — no more optional default. Seven callers + 107 test sites
+  migrated. `ArgSource` extended with `"internal"` / `"mcp"` / `"acp"`;
+  template scope exposes `source` / `surface` / `trace_id` so adapters
+  can branch on origin.
+- **`src/mcp/server.ts` 1061 → 174 LOC** — split into
+  `dispatch.ts` / `tools.ts` / `handler.ts` / `http-transport.ts`.
+  `src/mcp/streamable-http.ts` 745 → 15 LOC shim, with handlers split
+  into `streamable-http/{index,handle-post,session}.ts`. `handlePost`
+  itself shrank 349 → 36 LOC.
+- **`src/acp.ts` 700 → 523 LOC** — extracted `acp-helpers.ts` (195 LOC)
+  and routed through the kernel. `commands/dispatch.ts` 296 → 251 LOC,
+  also a thin kernel wrapper.
+- **`describe.ts` documents schema divergence** — the introspection
+  schema declares `additionalProperties: true` (permissive — agents
+  discover by probing); the kernel validation schema enforces
+  `additionalProperties: false` (strict — drift fails closed at
+  `INPUT_HARDENING_ERROR`, exit 65). The divergence is intentional and
+  the comment block explains the contract.
+
+### Fixed
+
+- **`$HOME` prefix-collision in path sandbox** — `validatePathArg` now
+  ensures the resolved path is contained within `$HOME` rather than
+  string-prefix-matching, so `$HOME-evil` no longer slips through.
+- **Per-call ULID ordering** — IDs generated in the same millisecond
+  are now strictly monotonic via a same-ms spin-counter, so trace order
+  matches generation order in tight loops.
+- **MCP health tool counts** are derived from `DEFAULT_TOOL_NAMES`
+  rather than hard-coded literals; deferred-tool name collisions warn
+  instead of silently shadowing.
+- **`bench/agent/sdk-runner.ts` prompt path** — Run 1 (1800 trials,
+  $0.645) discovered the prompt's example invocations used bare
+  `unicli` (not on `PATH` in the bench env); commit `d31e72e` now
+  interpolates `${unicliBin}` into all four examples and adds an
+  explicit "absolute path required" guard line per channel stanza.
+  Re-run deferred to v0.213.4 due to OpenRouter credit exhaustion.
+
+### Bench posture
+
+The ship-gate (`scripts/bench/check-ship-gate.js`) is a recommended
+pre-release check, not a hard merge blocker for this patch. The TC0
+thesis and the three-channel design are externally validated
+(Merrill & Sabharwal 2023; arXiv:2604.06742; Poehnelt 2026-03;
+openclaw#46370). Implementation correctness is carried by 1569 unit +
+5514 adapter tests at green. Empirical ASR numbers will land in
+v0.213.4 once OpenRouter credit is restored. See `docs/BENCH/v0.213.3.md`.
+
 ## [0.213.2] — 2026-04-18 — Vostok · Gagarin TC0 Patch
 
 > Agent-invocation reliability release. Externalizes argument state out of

@@ -11,6 +11,7 @@ args:
     required: true
     positional: true
     description: Product SKU ID
+    x-unicli-kind: id
 
 pipeline:
   - fetch:

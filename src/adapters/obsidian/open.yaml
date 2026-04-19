@@ -15,6 +15,7 @@ args:
   file:
     type: str
     description: Optional file path within the vault
+    x-unicli-kind: path
 
 pipeline:
   - exec:

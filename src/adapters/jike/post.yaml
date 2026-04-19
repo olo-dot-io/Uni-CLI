@@ -12,6 +12,8 @@ args:
     type: str
     required: true
     description: Post ID (from post URL)
+    x-unicli-kind: id
+    x-unicli-accepts: [url]
 
 pipeline:
   - navigate: https://m.okjike.com/originalPosts/${{ args.id }}

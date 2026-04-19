@@ -10,6 +10,7 @@ args:
     required: true
     positional: true
     description: "IMDB ID e.g. tt0111161"
+    x-unicli-kind: id
   apikey:
     type: str
     default: ""

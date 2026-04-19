@@ -11,6 +11,8 @@ args:
     required: true
     positional: true
     description: User URL token (e.g. zhang-san-12)
+    x-unicli-kind: id
+    x-unicli-accepts: [url]
 
 pipeline:
   - fetch:

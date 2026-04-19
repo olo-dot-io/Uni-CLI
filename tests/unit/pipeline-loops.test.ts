@@ -42,7 +42,7 @@ describe("append step", () => {
         { append: "collected" },
         { map: { count: "${{ vars.collected.length }}" } },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     // ctx.data is still the 2-item array from select, map iterates it
     expect(result).toHaveLength(2);
@@ -60,7 +60,7 @@ describe("append step", () => {
         { select: "page" },
         { append: "pages" },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     // ctx.data is scalar 2, runPipeline wraps to [2]
     expect(result).toEqual([2]);
@@ -74,7 +74,7 @@ describe("append step", () => {
         { append: "fresh_list" },
         { map: { count: "${{ vars.fresh_list.length }}" } },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     expect(result).toHaveLength(2);
     expect((result[0] as Record<string, unknown>).count).toBe("2");
@@ -87,7 +87,7 @@ describe("append step", () => {
         { select: "page" },
         { append: "page_nums" },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     // ctx.data is still scalar 1, runPipeline wraps to [1]
     expect(result).toEqual([1]);
@@ -100,7 +100,7 @@ describe("append step", () => {
         { select: "items" },
         { append: "" },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     expect(result).toHaveLength(2);
   });
@@ -124,7 +124,7 @@ describe("each step", () => {
           },
         },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     // Pages 1 and 2 each have 2 items, page 3 returns empty → loop stops
     // Final ctx.data is the empty array from page 3, wrapped by runPipeline
@@ -149,7 +149,7 @@ describe("each step", () => {
         },
         { map: { total: "${{ vars.all_items.length }}" } },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     // data is [] from page 3, map over empty array produces nothing
     // But all_items accumulated 4 items (2 from page 1 + 2 from page 2)
@@ -174,7 +174,7 @@ describe("each step", () => {
         },
         { map: { counter: "${{ vars.counter }}" } },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     // max=3, until is always false → exactly 3 iterations
     // data is 2-item array from last fetch/select, counter should be 3
@@ -199,7 +199,7 @@ describe("each step", () => {
         },
         { map: { executed: "${{ vars.executed }}" } },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     // until is immediately true → but body runs once first (do-while)
     expect(result).toHaveLength(2);
@@ -219,7 +219,7 @@ describe("each step", () => {
           },
         },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     // Empty body → returns ctx unchanged, data still has 2 items
     expect(result).toHaveLength(2);
@@ -235,7 +235,7 @@ describe("rate_limit step", () => {
         { fetch: { url: `${baseUrl}/?page=1` } },
         { select: "items" },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     const elapsed = Date.now() - start;
     expect(result).toHaveLength(2);
@@ -249,7 +249,7 @@ describe("rate_limit step", () => {
         { fetch: { url: `${baseUrl}/?page=1` } },
         { select: "items" },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     expect(result).toHaveLength(2);
   });
@@ -266,7 +266,7 @@ describe("parallel step", () => {
           ],
         },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     // Each fetch returns { items: [...], page: N }
     // Two results concatenated into a flat array
@@ -286,7 +286,7 @@ describe("parallel step", () => {
           merge: "object",
         },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     // runPipeline wraps non-array data in [data], so result is a 1-element array
     // containing the merged object with keys "0" and "1"
@@ -307,7 +307,7 @@ describe("parallel step", () => {
           merge: "zip",
         },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     // fetch returns single objects (not arrays), so zip falls through
     // to the non-array branch, returning results array
@@ -321,7 +321,7 @@ describe("parallel step", () => {
         { select: "items" },
         { parallel: [] },
       ],
-      {},
+      { args: {}, source: "internal" },
     );
     // Empty parallel is a no-op, data still has 2 items from select
     expect(result).toHaveLength(2);

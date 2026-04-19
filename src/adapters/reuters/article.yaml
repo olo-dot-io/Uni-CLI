@@ -11,6 +11,8 @@ args:
     required: true
     positional: true
     description: "Article URL path (e.g. /world/us/some-article-id)"
+    x-unicli-kind: path
+    x-unicli-accepts: [url]
 
 pipeline:
   - fetch:

@@ -15,6 +15,7 @@ args:
     required: true
     positional: true
     description: Example slug from motion.dev/examples/<id> (e.g. react-command-palette)
+    x-unicli-kind: id
 
 pipeline:
   - fetch_text:

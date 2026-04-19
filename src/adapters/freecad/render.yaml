@@ -17,6 +17,7 @@ args:
     type: str
     required: true
     description: Output PNG image path
+    x-unicli-kind: path
   width:
     type: int
     default: 1920

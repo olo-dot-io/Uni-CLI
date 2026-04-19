@@ -22,6 +22,7 @@ args:
     type: str
     required: false
     description: URL to navigate to before observing
+    format: uri
   top_k:
     type: int
     default: 5

@@ -63,7 +63,7 @@ function sendEvent(res: ServerResponse, event: string, data: string): void {
 function jsonResponse(
   res: ServerResponse,
   status: number,
-  body: Record<string, unknown>,
+  body: JsonRpcResponse | Record<string, unknown>,
 ): void {
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(JSON.stringify(body));
@@ -162,7 +162,7 @@ async function handleMessage(
       res.end();
       return;
     } // JSON-RPC notification
-    jsonResponse(res, 200, response as unknown as Record<string, unknown>);
+    jsonResponse(res, 200, response);
     // Push response to SSE stream (if still open)
     if (!session.res.writableEnded) {
       sendEvent(session.res, "message", JSON.stringify(response));

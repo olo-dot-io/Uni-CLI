@@ -11,6 +11,7 @@ args:
     required: true
     positional: true
     description: Podcast ID (collectionId from search output)
+    x-unicli-kind: id
   limit:
     type: int
     default: 15

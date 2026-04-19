@@ -11,6 +11,8 @@ args:
     required: true
     positional: true
     description: "Group ID or URL path (e.g. '1876150192925481' or group name)"
+    x-unicli-kind: path
+    x-unicli-accepts: [url]
 
 columns: [status, group]
 

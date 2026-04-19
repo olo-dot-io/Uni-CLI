@@ -11,6 +11,7 @@ args:
     required: true
     positional: true
     description: Task UUID
+    x-unicli-kind: id
 
 columns: [title, status, priority, project, assignee, created, description]
 

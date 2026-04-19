@@ -13,6 +13,7 @@ args:
   date:
     type: str
     description: "Date (YYYY-MM-DD), defaults to today"
+    format: date-time
 
 pipeline:
   - fetch:

@@ -11,6 +11,7 @@ args:
     required: true
     positional: true
     description: Meeting/Minutes URL
+    format: uri
 
 columns: [rank, speaker, text, time]
 

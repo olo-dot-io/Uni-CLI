@@ -12,6 +12,7 @@ args:
     required: true
     positional: true
     description: WeChat article URL
+    format: uri
 
 pipeline:
   - navigate:

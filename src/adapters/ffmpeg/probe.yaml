@@ -13,6 +13,7 @@ args:
     required: true
     positional: true
     description: Media file path to inspect
+    x-unicli-kind: path
 
 pipeline:
   - exec:

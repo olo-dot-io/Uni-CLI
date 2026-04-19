@@ -25,10 +25,12 @@ args:
     required: true
     positional: true
     description: Video URL to download
+    format: uri
   output:
     type: str
     default: "%(title)s.%(ext)s"
     description: Output filename template
+    x-unicli-kind: path
   format:
     type: str
     default: "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"

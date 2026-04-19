@@ -76,6 +76,22 @@ export async function createCli(): Promise<Command> {
     .option(
       "--dry-run",
       "resolve args + print execution plan without running the pipeline",
+    )
+    .option(
+      "--select <jsonpath>",
+      "project results via JSONPath (e.g. '$[*].title') before formatting",
+    )
+    .option(
+      "--fields <list>",
+      "comma-separated column list applied to tabular output (overrides adapter columns)",
+    )
+    .option(
+      "--pluck <field>",
+      "emit a single field one-per-line (plain text stream, wins over --select/--fields)",
+    )
+    .option(
+      "--pluck0 <field>",
+      "emit a single field NUL-delimited (for `xargs -0`, wins over --pluck)",
     );
 
   // Load YAML adapters synchronously, then TS adapters asynchronously
@@ -395,7 +411,7 @@ export async function createCli(): Promise<Command> {
 
             const results = await runPipeline(
               cmd.pipeline,
-              { limit: 2 },
+              { args: { limit: 2 }, source: "internal" },
               adapter.base,
               { site: adapter.name, strategy: adapter.strategy },
             );

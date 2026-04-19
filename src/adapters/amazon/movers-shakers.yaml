@@ -10,6 +10,8 @@ args:
     type: str
     default: ""
     description: "Movers & Shakers URL or category path"
+    x-unicli-kind: path
+    x-unicli-accepts: [url]
   limit:
     type: int
     default: 20

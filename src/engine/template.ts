@@ -360,6 +360,17 @@ export function buildScope(ctx: PipelineContext): Record<string, unknown> {
     vars: ctx.vars ?? {},
     base: ctx.base,
     temp: ctx.temp ?? {},
+    // Kernel-plumbed surface metadata (v0.213.3 P3): available to YAML as
+    // ${{ source }} / ${{ surface }} / ${{ trace_id }}. All three are
+    // optional — legacy callers that pass a bare bag with no options get
+    // `undefined`, which the template engine serializes as empty string.
+    source: ctx.source,
+    surface: ctx.surface,
+    // NOTE: trace_id is non-secret but reaches YAML templates via
+    // ${{ trace_id }}. Adapter authors: do NOT use it in hashed
+    // identifiers or headers you expect to stay local — it will appear
+    // in outgoing request bodies / URLs.
+    trace_id: ctx.trace_id,
   };
 
   if (

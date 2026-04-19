@@ -15,6 +15,7 @@ args:
     required: true
     positional: true
     description: Answer or article ID
+    x-unicli-kind: id
   limit:
     type: int
     default: 20

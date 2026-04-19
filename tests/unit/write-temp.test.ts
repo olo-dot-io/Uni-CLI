@@ -26,7 +26,10 @@ describe.skipIf(skipOnWindows)("write_temp step", () => {
       },
     ];
 
-    const result = await runPipeline(steps, { name: "World" });
+    const result = await runPipeline(steps, {
+      args: { name: "World" },
+      source: "internal",
+    });
     expect(result[0]).toBe('print("Hello World")');
   });
 
@@ -47,10 +50,10 @@ describe.skipIf(skipOnWindows)("write_temp step", () => {
       },
     ];
 
-    const result1 = await runPipeline(steps, {});
+    const result1 = await runPipeline(steps, { args: {}, source: "internal" });
     const tempPath1 = (result1[0] as string).trim();
 
-    const result2 = await runPipeline(steps, {});
+    const result2 = await runPipeline(steps, { args: {}, source: "internal" });
     const tempPath2 = (result2[0] as string).trim();
 
     expect(tempPath1).not.toBe(tempPath2);
@@ -73,7 +76,7 @@ describe.skipIf(skipOnWindows)("write_temp step", () => {
       },
     ];
 
-    const result = await runPipeline(steps, {});
+    const result = await runPipeline(steps, { args: {}, source: "internal" });
     const capturedPath = (result[0] as string).trim();
 
     // After pipeline completes, temp file should be cleaned up
@@ -97,7 +100,7 @@ describe.skipIf(skipOnWindows)("write_temp step", () => {
       },
     ];
 
-    const result = await runPipeline(steps, {});
+    const result = await runPipeline(steps, { args: {}, source: "internal" });
     expect(result[0]).toBe("test");
   });
 });

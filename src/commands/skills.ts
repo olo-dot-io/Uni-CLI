@@ -437,9 +437,14 @@ export function registerSkillsCommand(program: Command): void {
       }
       if (skill.pipeline && skill.pipeline.length > 0) {
         try {
-          const results = await runPipeline(skill.pipeline, {}, undefined, {
-            site: `skill:${skill.name}`,
-          });
+          const results = await runPipeline(
+            skill.pipeline,
+            { args: {}, source: "internal" },
+            undefined,
+            {
+              site: `skill:${skill.name}`,
+            },
+          );
           ctx.duration_ms = Date.now() - startedAt;
           console.log(
             format(

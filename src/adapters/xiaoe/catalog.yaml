@@ -11,6 +11,7 @@ args:
     required: true
     positional: true
     description: Course page URL
+    format: uri
 
 columns: [ch, chapter, no, title, type, resource_id, status]
 

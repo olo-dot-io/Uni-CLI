@@ -11,6 +11,8 @@ args:
     required: true
     positional: true
     description: Tweet URL or ID
+    format: uri
+    x-unicli-accepts: [id]
   limit:
     type: int
     default: 20

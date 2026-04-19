@@ -12,6 +12,7 @@ args:
     required: true
     positional: true
     description: Offer/product ID
+    x-unicli-kind: id
 
 pipeline:
   - navigate:

@@ -294,7 +294,11 @@ export async function runAdapterWithFixture(
   globalThis.fetch = vi.fn(mockFetch) as unknown as typeof fetch;
 
   try {
-    const output = await runPipeline(adapter.pipeline, args, adapter.base);
+    const output = await runPipeline(
+      adapter.pipeline,
+      { args: args, source: "internal" },
+      adapter.base,
+    );
     const rows = Array.isArray(output) ? output : [];
     return {
       exitCode: 0,
@@ -408,7 +412,11 @@ export async function recordFixture(
   }) as typeof fetch;
 
   try {
-    await runPipeline(adapter.pipeline, mergedArgs, adapter.base);
+    await runPipeline(
+      adapter.pipeline,
+      { args: mergedArgs, source: "internal" },
+      adapter.base,
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }

@@ -12,6 +12,8 @@ args:
     required: true
     positional: true
     description: File path, URL, or application name to open
+    x-unicli-kind: path
+    x-unicli-accepts: [url]
 
 pipeline:
   - exec:

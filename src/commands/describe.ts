@@ -23,6 +23,9 @@ interface JsonSchemaProperty {
   description?: string;
   default?: unknown;
   enum?: unknown[];
+  format?: AdapterArg["format"];
+  "x-unicli-kind"?: AdapterArg["x-unicli-kind"];
+  "x-unicli-accepts"?: AdapterArg["x-unicli-accepts"];
 }
 
 interface JsonSchema {
@@ -57,6 +60,13 @@ function argsToJsonSchema(args: AdapterArg[]): JsonSchema {
     if (a.description) prop.description = a.description;
     if (a.default !== undefined) prop.default = a.default;
     if (a.choices && a.choices.length > 0) prop.enum = a.choices;
+    // v0.213.3 Phase 4 — surface schema-v2 hardening tokens to agents. The
+    // kernel's ajv validator keys off `format:`; `x-unicli-kind` /
+    // `x-unicli-accepts` are annotations adapters declare and describe
+    // surfaces so agents see the full contract before invocation.
+    if (a.format) prop.format = a.format;
+    if (a["x-unicli-kind"]) prop["x-unicli-kind"] = a["x-unicli-kind"];
+    if (a["x-unicli-accepts"]) prop["x-unicli-accepts"] = a["x-unicli-accepts"];
     properties[a.name] = prop;
     if (a.required) required.push(a.name);
   }
@@ -66,7 +76,13 @@ function argsToJsonSchema(args: AdapterArg[]): JsonSchema {
     type: "object",
     properties,
     required,
-    additionalProperties: true, // agents should be allowed to pass new fields
+    // Intentionally divergent from the kernel's ajv validator, which sets
+    // `additionalProperties: false` to fail closed on unknown payload fields.
+    // The introspection surface is permissive so agents can probe and discover;
+    // the validation surface is strict so accidental drift never reaches an
+    // adapter. Extra fields supplied via this schema will be rejected at
+    // execute() time with `INPUT_HARDENING_ERROR` (exit 65).
+    additionalProperties: true,
   };
 }
 

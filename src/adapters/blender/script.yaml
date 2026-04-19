@@ -16,6 +16,7 @@ args:
   file:
     type: str
     description: Optional .blend file to open before running the script
+    x-unicli-kind: path
 
 pipeline:
   - exec:

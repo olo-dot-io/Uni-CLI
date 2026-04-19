@@ -17,6 +17,7 @@ args:
     type: str
     required: true
     description: Output path (format inferred from extension)
+    x-unicli-kind: path
   quality:
     type: int
     default: 85

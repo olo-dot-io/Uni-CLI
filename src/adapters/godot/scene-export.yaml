@@ -22,6 +22,7 @@ args:
     type: str
     required: true
     description: Output file path
+    x-unicli-kind: path
 
 pipeline:
   - exec:

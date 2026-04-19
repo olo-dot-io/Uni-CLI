@@ -10,6 +10,7 @@ args:
     required: true
     positional: true
     description: "Person name to search (e.g. Tom Hanks)"
+    x-unicli-kind: id
   limit:
     type: int
     default: 5

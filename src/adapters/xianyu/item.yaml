@@ -11,6 +11,7 @@ args:
     required: true
     positional: true
     description: Item ID
+    x-unicli-kind: id
 
 columns: [title, price, condition, seller, description, location, url]
 

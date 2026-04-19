@@ -11,6 +11,7 @@ args:
     required: true
     positional: true
     description: Task ID from generate command
+    x-unicli-kind: id
 
 pipeline:
   - fetch:

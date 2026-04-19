@@ -11,6 +11,7 @@ args:
     required: true
     positional: true
     description: Tweet URL
+    format: uri
   limit:
     type: int
     default: 20

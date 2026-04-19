@@ -11,6 +11,7 @@ args:
     required: true
     positional: true
     description: TikTok video URL
+    format: uri
 
 columns: [status, likes, url]
 

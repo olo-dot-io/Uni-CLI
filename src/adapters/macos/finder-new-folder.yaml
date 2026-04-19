@@ -11,6 +11,7 @@ args:
     required: true
     positional: true
     description: Directory path to create
+    x-unicli-kind: path
 
 pipeline:
   - exec:

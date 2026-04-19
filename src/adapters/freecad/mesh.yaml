@@ -17,6 +17,7 @@ args:
     type: str
     required: true
     description: Output mesh file path (.stl, .obj, .ply)
+    x-unicli-kind: path
   deviation:
     type: float
     default: 0.1

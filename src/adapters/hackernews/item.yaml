@@ -10,6 +10,7 @@ args:
     required: true
     positional: true
     description: Item ID
+    x-unicli-kind: id
 
 pipeline:
   - fetch:

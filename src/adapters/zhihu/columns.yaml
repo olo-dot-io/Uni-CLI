@@ -11,6 +11,8 @@ args:
     required: true
     positional: true
     description: Column ID (URL slug)
+    x-unicli-kind: id
+    x-unicli-accepts: [url]
   limit:
     type: int
     default: 20

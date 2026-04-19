@@ -25,6 +25,7 @@ args:
     required: true
     positional: true
     description: Video URL to extract audio from
+    format: uri
   format:
     type: str
     default: mp3
@@ -34,6 +35,7 @@ args:
     type: str
     default: "%(title)s.%(ext)s"
     description: Output filename template
+    x-unicli-kind: path
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
 capabilities: ["subprocess.exec"]

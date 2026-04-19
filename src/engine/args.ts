@@ -24,7 +24,14 @@ import {
 } from "node:fs";
 import type { AdapterArg } from "../types.js";
 
-export type ArgSource = "shell" | "file" | "stdin" | "mixed";
+export type ArgSource =
+  | "shell"
+  | "file"
+  | "stdin"
+  | "mixed"
+  | "mcp"
+  | "acp"
+  | "internal";
 
 export interface ResolvedArgs {
   args: Record<string, unknown>;
@@ -172,6 +179,28 @@ export function readArgsFile(path: string): Record<string, unknown> {
     throw new Error(`cannot read --args-file ${path}: ${msg}`);
   }
   return parseJsonObject(body, `--args-file ${path}`);
+}
+
+/**
+ * Normalize a caller-supplied `limit` into a non-negative integer. Shared by
+ * every surface (CLI/MCP/ACP) so the same input produces the same ArgBag
+ * regardless of transport — the parity tests depend on this.
+ *
+ * Rules: parse as integer; accept finite values ≥ 0 (0 means "no limit" and
+ * is passed through to adapters that honor it); anything else (NaN, negative,
+ * non-numeric string, null) falls back to `fallback`. `undefined` is returned
+ * as-is so callers can distinguish "not provided" from "provided but invalid".
+ */
+export function coerceLimit(value: unknown, fallback = 20): number | undefined {
+  if (value === undefined) return undefined;
+  const n =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number.parseInt(value, 10)
+        : Number.NaN;
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return Math.trunc(n);
 }
 
 /**

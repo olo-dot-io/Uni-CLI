@@ -11,10 +11,12 @@ args:
     required: true
     positional: true
     description: Illustration ID
+    x-unicli-kind: id
   output:
     type: str
     default: "."
     description: Output directory
+    x-unicli-kind: path
 
 columns: [illust_id, page, url]
 

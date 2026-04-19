@@ -10,6 +10,7 @@ args:
     required: true
     positional: true
     description: Steam user ID (numeric, e.g. 76561198012345678)
+    x-unicli-kind: id
   limit:
     type: int
     default: 20

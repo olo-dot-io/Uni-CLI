@@ -10,6 +10,7 @@ args:
     required: true
     positional: true
     description: Medium article URL
+    format: uri
 
 pipeline:
   - fetch_text:

@@ -10,6 +10,8 @@ args:
     required: true
     positional: true
     description: Reddit post URL or ID (e.g. /r/sub/comments/id/title)
+    format: uri
+    x-unicli-accepts: [id]
   limit:
     type: int
     default: 20

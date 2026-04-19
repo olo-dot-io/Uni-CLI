@@ -13,6 +13,7 @@ args:
     required: true
     positional: true
     description: Input video file path
+    x-unicli-kind: path
   srt:
     type: str
     required: true
@@ -21,6 +22,7 @@ args:
     type: str
     required: true
     description: Output video file path
+    x-unicli-kind: path
 
 pipeline:
   - exec:

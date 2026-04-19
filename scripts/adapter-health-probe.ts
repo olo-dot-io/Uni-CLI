@@ -334,10 +334,15 @@ async function main(): Promise<void> {
       const t0 = Date.now();
       try {
         await withTimeout(
-          runPipeline(cmd.pipeline, { limit: 1 }, adapter.base, {
-            site: adapter.name,
-            strategy: adapter.strategy,
-          }),
+          runPipeline(
+            cmd.pipeline,
+            { args: { limit: 1 }, source: "internal" },
+            adapter.base,
+            {
+              site: adapter.name,
+              strategy: adapter.strategy,
+            },
+          ),
           timeoutMs,
         );
         results.push({

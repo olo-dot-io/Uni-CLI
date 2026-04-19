@@ -12,6 +12,7 @@ args:
     required: true
     positional: true
     description: Path to MuseScore file (.mscx or .mscz)
+    x-unicli-kind: path
 
 pipeline:
   - write_temp:

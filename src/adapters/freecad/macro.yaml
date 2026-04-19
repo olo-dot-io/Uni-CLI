@@ -16,6 +16,7 @@ args:
   file:
     type: str
     description: Optional .FCStd file to open before running the macro
+    x-unicli-kind: path
 
 pipeline:
   - write_temp:

@@ -11,6 +11,7 @@ args:
     required: true
     positional: true
     description: Illustration ID
+    x-unicli-kind: id
 
 columns:
   [
