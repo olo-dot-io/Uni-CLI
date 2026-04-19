@@ -21,6 +21,11 @@ import {
   type Emission,
 } from "../../bench/agent/sdk-judges.js";
 import type { Channel } from "../../bench/agent/payload-factory.js";
+import {
+  estimateCostUsd,
+  PRICING,
+  PRICING_FALLBACK,
+} from "../../bench/agent/pricing.js";
 
 const TASKS = [
   {
@@ -163,5 +168,36 @@ describe("bench/agent aggregate", () => {
     expect(rows).toHaveLength(0);
     expect(summary.asr_sem_at_ics8_stdin).toBe(0);
     expect(summary.sed_at_ics8).toBe(0);
+  });
+});
+
+describe("bench/agent pricing table", () => {
+  it("returns known pricing for the three default OpenRouter models", () => {
+    const models = [
+      "deepseek/deepseek-chat",
+      "anthropic/claude-haiku-4-5",
+      "openai/gpt-5-mini",
+    ];
+    for (const m of models) {
+      expect(PRICING[m]).toBeDefined();
+      expect(PRICING[m].in).toBeGreaterThan(0);
+      expect(PRICING[m].out).toBeGreaterThan(0);
+    }
+  });
+
+  it("estimateCostUsd uses the entry when model is known", () => {
+    // DeepSeek: 600 × 500 in × $0.27/M + 600 × 120 out × $1.10/M
+    //         = 0.081 + 0.0792 = 0.1602
+    const cost = estimateCostUsd("deepseek/deepseek-chat", 600, 500, 120);
+    expect(cost).toBeCloseTo(0.1602, 4);
+  });
+
+  it("estimateCostUsd falls back for unknown models", () => {
+    const cost = estimateCostUsd("totally/unknown-model", 600, 500, 120);
+    // Fallback = in: 1.0, out: 3.0 per 1M →
+    //   600 × 500 × 1.0/M + 600 × 120 × 3.0/M = 0.3 + 0.216 = 0.516
+    expect(cost).toBeCloseTo(0.516, 4);
+    expect(PRICING_FALLBACK.in).toBe(1.0);
+    expect(PRICING_FALLBACK.out).toBe(3.0);
   });
 });
