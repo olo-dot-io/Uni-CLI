@@ -76,7 +76,13 @@ function argsToJsonSchema(args: AdapterArg[]): JsonSchema {
     type: "object",
     properties,
     required,
-    additionalProperties: true, // agents should be allowed to pass new fields
+    // Intentionally divergent from the kernel's ajv validator, which sets
+    // `additionalProperties: false` to fail closed on unknown payload fields.
+    // The introspection surface is permissive so agents can probe and discover;
+    // the validation surface is strict so accidental drift never reaches an
+    // adapter. Extra fields supplied via this schema will be rejected at
+    // execute() time with `INPUT_HARDENING_ERROR` (exit 65).
+    additionalProperties: true,
   };
 }
 
