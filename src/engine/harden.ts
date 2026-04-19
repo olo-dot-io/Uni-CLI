@@ -78,7 +78,12 @@ function validatePathArg(name: string, value: string): void {
   }
 
   const cwd = process.cwd();
-  const abs = isAbsolute(expanded) ? expanded : resolvePath(cwd, expanded);
+  // Always run through resolvePath so mixed `/` and `\` separators normalize
+  // to the platform's canonical form before any prefix comparison. Without
+  // this, a Windows caller passing `${USERPROFILE}/file.txt` (the literal
+  // shape Node emits when interpolating $HOME on win32) leaves a mid-path `/`
+  // that the normalized `homeDir + sep` ("\\") prefix-match cannot see.
+  const abs = resolvePath(cwd, expanded);
   const rel = relative(cwd, abs);
 
   // Rejected if the relative path starts with `..` AND also isn't within
@@ -86,7 +91,8 @@ function validatePathArg(name: string, value: string): void {
   // Use strict boundary match (dir === base || startsWith(base + sep)) so
   // `$HOME=/Users/foo` does NOT match `/Users/foobar/...` — raw `startsWith`
   // would allow a prefix-collision escape on shared machines.
-  const homeDir = process.env.HOME ?? process.env.USERPROFILE ?? "";
+  const homeRaw = process.env.HOME ?? process.env.USERPROFILE ?? "";
+  const homeDir = homeRaw ? resolvePath(homeRaw) : "";
   const withinHome = Boolean(
     homeDir && (abs === homeDir || abs.startsWith(homeDir + sep)),
   );
