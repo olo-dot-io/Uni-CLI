@@ -107,7 +107,8 @@ function buildPrompt(
   if (channel === "shell") {
     return (
       base +
-      `\n- Construct a single \`unicli --format json ${task.site} ${task.cmd} ...\` invocation with the args as --flags.\n` +
+      `\n- Construct a single \`${unicliBin} --format json ${task.site} ${task.cmd} ...\` invocation with the args as --flags.\n` +
+      `- ALWAYS use the absolute binary path ${unicliBin}; bare \`unicli\` is NOT on PATH in this environment.\n` +
       `- String values MUST be shell-quoted correctly.\n` +
       `- Note: \`--format json\` is a GLOBAL flag and must come BEFORE the site/command.\n` +
       `- Parse the JSON stdout. N = .data length. first title = .data[0].${firstKey}.`
@@ -118,14 +119,16 @@ function buildPrompt(
       base +
       `\n- First, write the JSON args to /tmp/unicli-bench-args.json via heredoc:\n` +
       `  cat > /tmp/unicli-bench-args.json <<'JSON'\n  ${argsJson}\n  JSON\n` +
-      `- Then: \`unicli --args-file /tmp/unicli-bench-args.json --format json ${task.site} ${task.cmd}\`.\n` +
+      `- Then: \`${unicliBin} --args-file /tmp/unicli-bench-args.json --format json ${task.site} ${task.cmd}\`.\n` +
+      `- ALWAYS use the absolute binary path ${unicliBin}; bare \`unicli\` is NOT on PATH in this environment.\n` +
       `- Parse JSON stdout. N = .data length. first title = .data[0].${firstKey}.`
     );
   }
   const escaped = argsJson.replace(/'/g, "'\\''");
   return (
     base +
-    `\n- Pipe the JSON on stdin: \`echo '${escaped}' | unicli --format json ${task.site} ${task.cmd}\`.\n` +
+    `\n- Pipe the JSON on stdin: \`echo '${escaped}' | ${unicliBin} --format json ${task.site} ${task.cmd}\`.\n` +
+    `- ALWAYS use the absolute binary path ${unicliBin}; bare \`unicli\` is NOT on PATH in this environment.\n` +
     `- Parse JSON stdout. N = .data length. first title = .data[0].${firstKey}.`
   );
 }
