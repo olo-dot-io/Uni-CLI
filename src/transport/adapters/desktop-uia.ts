@@ -1,7 +1,7 @@
 /**
  * DesktopUiaTransport — Windows UI Automation (UIA) transport stub.
  *
- * v0.212 ships this adapter as a declared-but-unimplemented transport.
+ * v0.214 ships this adapter as a declared-but-unimplemented transport.
  * Registering it with the bus makes capability queries honest (agents
  * can see that `uia_invoke` / `uia_get_pattern` exist on win32) without
  * pretending the bodies work. Every call returns a structured
@@ -44,7 +44,7 @@ const UIA_CAPABILITY: Capability = {
 };
 
 const NOT_IMPLEMENTED_REASON =
-  "Windows UIA transport not implemented in v0.212";
+  "Windows UIA transport is a declared stub in v0.214";
 const CONTRIBUTE_HINT =
   "Contribute a PR — see contributing/transport.md for the UIA backend recipe";
 

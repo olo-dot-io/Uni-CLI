@@ -1,6 +1,6 @@
 {
   "name": "@zenalexa/unicli",
-  "version": "0.213.3",
+  "version": "0.215.0",
   "description": "The universal interface between AI agents and the world's software",
   "type": "module",
   "main": "dist/main.js",
@@ -118,7 +118,7 @@
     "dev": "tsx src/main.ts",
     "build": "tsc && tsx scripts/build-manifest.js && tsx scripts/count-stats.ts && tsx scripts/build-readme.ts && tsx scripts/build-agents.ts && npx prettier --write AGENTS.md",
     "postbuild": "node -e \"require('fs').chmodSync('dist/main.js', 0o755)\"",
-    "stats": "tsx scripts/count-stats.ts && tsx scripts/build-readme.ts",
+    "stats": "tsx scripts/build-manifest.js && tsx scripts/count-stats.ts && tsx scripts/build-readme.ts && tsx scripts/build-agents.ts",
     "stats:check": "tsx scripts/count-consistency.ts",
     "build:agents": "tsx scripts/build-agents.ts",
     "test": "vitest run --project unit",

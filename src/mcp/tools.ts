@@ -53,6 +53,10 @@ export const DEFAULT_TOOL_NAMES: ReadonlySet<string> = new Set([
   "unicli_list",
   "unicli_search",
   "unicli_explore",
+]);
+
+const RESERVED_TOOL_NAMES: ReadonlySet<string> = new Set([
+  ...DEFAULT_TOOL_NAMES,
   "unicli_discover",
 ]);
 
@@ -123,7 +127,7 @@ export function buildDefaultTools(): McpTool[] {
     {
       name: "unicli_search",
       description:
-        "Search 200+ sites and 956 commands by intent. Bilingual (EN/ZH). Returns top matches with usage examples.",
+        "Search the Uni-CLI command catalog by intent. Bilingual (EN/ZH). Returns top matches with usage examples.",
       inputSchema: {
         type: "object",
         properties: {
@@ -184,14 +188,15 @@ export function buildDefaultTools(): McpTool[] {
  * Build the expanded tool set: 4 default meta-tools + one full tool per
  * adapter command. Clients see the complete Uni-CLI surface area.
  *
- * Token cost: ~160K for 956 commands. Use only when the client can handle it.
+ * Token cost scales with the adapter catalog. Use only when the client can
+ * handle a large tool list.
  */
 export function buildExpandedTools(): McpTool[] {
   const tools: McpTool[] = [];
   tools.push(...buildDefaultTools());
 
   expandedRegistry.clear();
-  const seen = new Set<string>(DEFAULT_TOOL_NAMES);
+  const seen = new Set<string>(RESERVED_TOOL_NAMES);
 
   for (const adapter of getAllAdapters()) {
     for (const [cmdName, cmd] of Object.entries(adapter.commands)) {
@@ -242,7 +247,7 @@ export function buildDeferredTools(): McpTool[] {
   tools.push(...buildDefaultTools());
 
   expandedRegistry.clear();
-  const seen = new Set<string>(DEFAULT_TOOL_NAMES);
+  const seen = new Set<string>(RESERVED_TOOL_NAMES);
 
   for (const adapter of getAllAdapters()) {
     for (const [cmdName, cmd] of Object.entries(adapter.commands)) {

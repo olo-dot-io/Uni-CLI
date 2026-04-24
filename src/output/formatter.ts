@@ -64,8 +64,8 @@ export function format(
  * Auto-pick output format.
  *  - explicit param → that format
  *  - env `UNICLI_OUTPUT` ∈ {md|json|yaml|csv|compact|table} → that format
- *  - legacy env `OUTPUT` (deprecated in v0.213.1, removed in v0.214) → that
- *    format with a one-shot stderr warning
+ *  - legacy env `OUTPUT` (deprecated in v0.213.1) → that format with a
+ *    one-shot stderr warning
  *  - otherwise → "md" (uniform agent-consumable default for pipes, agent-UA
  *    env, and interactive TTY)
  */
@@ -77,7 +77,7 @@ export function detectFormat(explicit?: OutputFormat): OutputFormat {
     const legacyFmt = process.env.OUTPUT.toLowerCase();
     if (isOutputFormat(legacyFmt)) {
       process.stderr.write(
-        "[WARN] OUTPUT env var deprecated in v0.213.1 (use UNICLI_OUTPUT — bare OUTPUT collides with CI). OUTPUT will be removed in v0.214.\n",
+        "[WARN] OUTPUT env var deprecated in v0.213.1 (use UNICLI_OUTPUT — bare OUTPUT collides with CI). OUTPUT remains as a compatibility alias for now.\n",
       );
       return legacyFmt;
     }

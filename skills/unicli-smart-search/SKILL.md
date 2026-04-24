@@ -17,7 +17,7 @@ protocol: 2.0
 ## When to Use
 
 Searching for information, checking trending topics, or gathering data across platforms.
-All commands return structured JSON when piped.
+Commands return a v2 AgentEnvelope; pass `-f json` when you need JSON for parsing.
 
 ## Pre-Check
 

@@ -328,9 +328,9 @@ function simpleGlobMatcher(pattern: string): (path: string) => boolean {
     // ? matches single char except /
     .replace(/\?/g, "[^/]")
     // Restore **/ as optional path prefix (zero or more dirs)
-    .replace(/\u0000/g, "(.*/)?")
+    .replaceAll("\u0000", "(.*/)?")
     // Restore trailing ** as .* (any path)
-    .replace(/\u0001/g, ".*");
+    .replaceAll("\u0001", ".*");
   const re = new RegExp(`^${parts}$`);
   return (path: string) => re.test(path);
 }

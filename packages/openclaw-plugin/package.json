@@ -1,7 +1,7 @@
 {
   "name": "@zenalexa/openclaw-unicli",
-  "version": "0.211.0",
-  "description": "Uni-CLI plugin for OpenClaw — 200 sites, 969 commands via MCP",
+  "version": "0.215.0",
+  "description": "Uni-CLI plugin for OpenClaw — 220 sites, 1283 commands via MCP",
   "files": [
     "openclaw.plugin.json",
     "README.md"
@@ -16,6 +16,6 @@
   ],
   "license": "Apache-2.0",
   "peerDependencies": {
-    "@zenalexa/unicli": ">=0.211.0"
+    "@zenalexa/unicli": ">=0.215.0"
   }
 }

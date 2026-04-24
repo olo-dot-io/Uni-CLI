@@ -28,6 +28,7 @@ import {
   type EndpointEntry,
   type ScoredEndpoint,
 } from "../engine/endpoint-scorer.js";
+import { recordEndpointDiscoveries } from "../browser/site-memory.js";
 import { format, detectFormat } from "../output/formatter.js";
 import { makeCtx } from "../output/envelope.js";
 import { mapErrorToExitCode } from "../output/error-map.js";
@@ -233,6 +234,7 @@ export function registerGenerateCommand(program: Command): void {
           // Convert, filter, sort, annotate, and deduplicate
           const entries = convertToEndpointEntries(allRequests);
           const usable = processEndpoints(entries);
+          recordEndpointDiscoveries(siteName, usable.slice(0, 10));
 
           if (usable.length === 0) {
             const msg = "No usable API endpoints found.";

@@ -13,11 +13,7 @@ export type SchemaVersion = "2";
 
 export type Surface = "web" | "desktop" | "system" | "mobile";
 
-/**
- * Default surface for v0.213.x. Will expand to "desktop" / "system" / "mobile"
- * when v0.214 Nikolayev lands Computer Use operators. Until then every adapter
- * execution path runs on a web surface (CDP browser + HTTP).
- */
+/** Default surface when a command does not provide more specific metadata. */
 export const DEFAULT_SURFACE: Surface = "web";
 
 /** MCP-style content block carried alongside structured data. */

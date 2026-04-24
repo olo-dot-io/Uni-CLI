@@ -1,4 +1,4 @@
-<!-- AGENT: npm install -g @zenalexa/unicli && unicli search "your intent" — hundreds of commands across ~200 sites. JSON when piped. Self-repairing YAML adapters. Bilingual EN/ZH search. See AGENTS.md for live counts. -->
+<!-- AGENT: npm install -g @zenalexa/unicli && unicli search "your intent" — 1283 commands across 220 sites. Markdown envelope by default; use -f json for JSON. Self-repairing YAML adapters. Bilingual EN/ZH search. See AGENTS.md for live counts. -->
 
 <div align="center">
 
@@ -19,7 +19,7 @@ The execution layer for agent skills. Deterministic, editable, cross-vendor.
 <a href="https://www.npmjs.com/package/@zenalexa/unicli"><img src="https://img.shields.io/npm/v/@zenalexa/unicli?style=flat-square&color=cb3837" alt="npm"></a>
 <a href="https://github.com/olo-dot-io/Uni-CLI/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/olo-dot-io/Uni-CLI/ci.yml?style=flat-square&label=CI" alt="CI"></a>
 <a href="./LICENSE"><img src="https://img.shields.io/github/license/olo-dot-io/Uni-CLI?style=flat-square" alt="license"></a>
-<img src="https://img.shields.io/badge/tests-<!-- STATS:test_count -->7123<!-- /STATS -->-44cc11?style=flat-square" alt="tests">
+<img src="https://img.shields.io/badge/tests-<!-- STATS:test_count -->7145<!-- /STATS -->-44cc11?style=flat-square" alt="tests">
 <img src="https://img.shields.io/badge/agent--reach-ally-6a5acd?style=flat-square" alt="agent-reach ally">
 
 <br><br>
@@ -38,9 +38,9 @@ npm install -g @zenalexa/unicli
 
 ## What
 
-Uni-CLI is a universal interface that compiles agent intent into deterministic CLI programs. One binary reaches <!-- STATS:site_count -->221<!-- /STATS --> sites, 30+ desktop apps, 35 CLI bridges, and the local OS — <!-- STATS:command_count -->1225<!-- /STATS --> commands in total. Every adapter is a 20-line YAML pipeline, so agents can read, edit, and re-run them without a compiler.
+Uni-CLI is a universal interface that compiles agent intent into deterministic CLI programs. One binary reaches <!-- STATS:site_count -->220<!-- /STATS --> sites, 30+ desktop apps, 35 CLI bridges, and the local OS — <!-- STATS:command_count -->1283<!-- /STATS --> commands in total. Every adapter is a 20-line YAML pipeline, so agents can read, edit, and re-run them without a compiler.
 
-Coverage is cross-cutting: web APIs and browser automation, desktop subprocesses (ffmpeg, Blender, LibreOffice), macOS system calls (screenshot, clipboard, Calendar), and Computer Use Agents (Anthropic, OpenAI, Google) — all behind the same `unicli <site> <command>` surface. Output is a table in a terminal and JSON when piped. Errors are structured JSON on stderr with the adapter path, the failing step, and a suggestion — enough directional feedback for an agent to fix the adapter and retry.
+Coverage is cross-cutting: web APIs and browser automation, desktop subprocesses (ffmpeg, Blender, LibreOffice), macOS system calls (screenshot, clipboard, Calendar), macOS AX, and a pluggable CUA contract with mock/provider stubs — all behind the same `unicli <site> <command>` surface. Output is a v2 AgentEnvelope in Markdown by default; use `-f json` for JSON, `-f yaml` for YAML, or legacy `csv` / `compact` when needed. Errors include the adapter path, the failing step, and a suggestion — enough directional feedback for an agent to fix the adapter and retry.
 
 Self-repair is a first-class capability. When a site changes its API, an agent reads the 20-line YAML, edits the selector or endpoint, saves to `~/.unicli/adapters/`, and retries. Fixes survive `npm update`. No human in the loop.
 
@@ -64,7 +64,7 @@ unicli search "推特热门"                       # → twitter trending (bilin
 
 # 3. Run
 unicli reddit hot --limit 3                   # zero-config web API
-unicli hackernews top --json | jq '.[].title' # pipe + transform
+unicli hackernews top -f json | jq '.data[].title' # pipe + transform
 
 # 4. Wire into an agent
 claude mcp add unicli -- npx @zenalexa/unicli mcp serve   # Claude Code (MCP stdio)
@@ -80,7 +80,7 @@ Full walkthrough with 5 worked examples: [`docs/QUICKSTART.md`](docs/QUICKSTART.
 graph TB
     CMD["unicli &lt;site&gt; &lt;command&gt;"]
 
-    CMD --> ADAPT["Adapter layer<br/>887 YAML · 72 TS · 35 bridges"]
+    CMD --> ADAPT["Adapter layer<br/><!-- STATS:adapter_count_yaml -->896<!-- /STATS --> YAML · <!-- STATS:adapter_count_ts -->77<!-- /STATS --> TS · 35 bridges"]
 
     ADAPT --> ENGINE["Pipeline engine — <!-- STATS:pipeline_step_count -->59<!-- /STATS -->+ steps<br/>fetch · navigate · exec · extract · each · if · parallel"]
 
@@ -88,11 +88,11 @@ graph TB
     ENGINE --> T2["CDP Browser<br/>(raw WebSocket)"]
     ENGINE --> T3["Subprocess<br/>(ffmpeg, yt-dlp, gh)"]
     ENGINE --> T4["Desktop-AX<br/>(macOS AppleScript)"]
-    ENGINE --> T5["Desktop-UIA<br/>(Windows UIAutomation)"]
-    ENGINE --> T6["Desktop-AT-SPI<br/>(Linux accessibility)"]
-    ENGINE --> T7["CUA<br/>(Anthropic · OpenAI · Google)"]
+    ENGINE --> T5["Desktop-UIA<br/>(Windows declared stub)"]
+    ENGINE --> T6["Desktop-AT-SPI<br/>(Linux declared stub)"]
+    ENGINE --> T7["CUA<br/>(contract · mock · provider stubs)"]
 
-    T1 --> OUT["Formatter<br/>table · json · yaml · csv · md"]
+    T1 --> OUT["Formatter<br/>md · json · yaml · csv · compact"]
     T2 --> OUT
     T3 --> OUT
     T4 --> OUT
@@ -109,7 +109,7 @@ When a command breaks:
 
 ```
 unicli <site> <cmd> fails
-  → structured JSON error on stderr
+  → structured error envelope on stderr
     { adapter_path, step, action, suggestion }
   → agent opens the ~20-line YAML
   → agent edits the selector / URL / auth
@@ -127,21 +127,21 @@ Exit codes follow `sysexits.h`: `0` ok, `66` empty, `69` unavailable, `75` tempo
 
 ## Feature matrix
 
-| Capability               | What it means                                                                                        |
-| ------------------------ | ---------------------------------------------------------------------------------------------------- |
-| **CUA backends**         | Anthropic `computer-use`, OpenAI Operator, Google CUA, and direct CDP — 4 transports behind one flag |
-| **MCP transports**       | stdio · Streamable HTTP (spec 2025-11-25) · SSE · OAuth 2.1 PKCE                                     |
-| **ACP ready**            | `unicli acp` speaks JSON-RPC 2.0 for avante.nvim, Zed, Gemini CLI                                    |
-| **Cross-vendor skills**  | Skills in `skills/` work in Claude Code, OpenCode, Codex, Cursor, Cline                              |
-| **Self-repair envelope** | Every error ships `adapter_path` + `step` + `suggestion` (Banach-convergent)                         |
-| **Bilingual search**     | BM25 + TF-IDF, 50KB index, <10ms queries, 200-entry ZH↔EN alias table                                |
-| **Browser operator**     | Extension-backed browser daemon with shared or isolated workspaces, background mode, bind/sessions   |
+| Capability               | What it means                                                                                                           |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| **CUA contract**         | Stable screenshot/action interface with mock backend and explicit provider stubs; not marketed as real computer-use yet |
+| **MCP transports**       | stdio · Streamable HTTP (spec 2025-11-25) · SSE · OAuth 2.1 PKCE                                                        |
+| **ACP ready**            | `unicli acp` speaks JSON-RPC 2.0 for avante.nvim, Zed, Gemini CLI                                                       |
+| **Cross-vendor skills**  | Skills in `skills/` work in Claude Code, OpenCode, Codex, Cursor, Cline                                                 |
+| **Self-repair envelope** | Every error ships `adapter_path` + `step` + `suggestion` (Banach-convergent)                                            |
+| **Bilingual search**     | BM25 + TF-IDF, 50KB index, <10ms queries, 200-entry ZH↔EN alias table                                                   |
+| **Browser operator**     | Extension-backed browser daemon with shared or isolated workspaces, background mode, bind/sessions                      |
 
 Detailed benchmarks (p50/p95 token cost per category, vs GitHub MCP cold-start): [`docs/BENCHMARK.md`](docs/BENCHMARK.md).
 
 ## Platform coverage
 
-<!-- STATS:site_count -->221<!-- /STATS --> sites · <!-- STATS:command_count -->1225<!-- /STATS --> commands — the live list is auto-generated in [`AGENTS.md`](AGENTS.md) and split by domain:
+<!-- STATS:site_count -->220<!-- /STATS --> sites · <!-- STATS:command_count -->1283<!-- /STATS --> commands — the live list is auto-generated in [`AGENTS.md`](AGENTS.md) and split by domain:
 
 | Domain                | Highlights                                                              |
 | --------------------- | ----------------------------------------------------------------------- |
@@ -286,11 +286,11 @@ npm run verify     # typecheck + lint + test + build + stats check
 | `npm run build`        | Production build                                          |
 | `npm run typecheck`    | TypeScript strict                                         |
 | `npm run lint`         | Oxlint                                                    |
-| `npm run test`         | Unit tests (<!-- STATS:test_count -->7123<!-- /STATS -->) |
+| `npm run test`         | Unit tests (<!-- STATS:test_count -->7145<!-- /STATS -->) |
 | `npm run test:adapter` | Validate all adapters                                     |
 | `npm run verify`       | Full pipeline (7 gates)                                   |
 
-Seven production dependencies: `chalk`, `cli-table3`, `commander`, `js-yaml`, `turndown`, `undici`, `ws`.
+Eleven production dependencies: `ajv`, `ajv-formats`, `chalk`, `cli-table3`, `commander`, `js-yaml`, `jsonpath-plus`, `turndown`, `undici`, `ws`, `zod`.
 
 ## Release cadence
 
@@ -329,6 +329,6 @@ Repo: <https://github.com/olo-dot-io/Uni-CLI> · npm: [`@zenalexa/unicli`](https
 </p>
 
 <p align="center">
-  <sub>v0.213.3 — Vostok · Gagarin TC0 Patch R2</sub><br>
-  <sub><!-- STATS:site_count -->221<!-- /STATS --> sites · <!-- STATS:command_count -->1225<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-11-25 · <!-- STATS:test_count -->7123<!-- /STATS --> tests</sub>
+  <sub>v0.215.0 — Closed Adapter Loop</sub><br>
+  <sub><!-- STATS:site_count -->220<!-- /STATS --> sites · <!-- STATS:command_count -->1283<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-11-25 · <!-- STATS:test_count -->7145<!-- /STATS --> tests</sub>
 </p>

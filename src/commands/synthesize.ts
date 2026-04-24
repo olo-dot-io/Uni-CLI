@@ -13,6 +13,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { isUsefulEndpoint } from "../engine/analysis.js";
 import type { ScoredEndpoint } from "../engine/endpoint-scorer.js";
+import { readSiteMemory } from "../browser/site-memory.js";
 import { ExitCode } from "../types.js";
 import type { OutputFormat } from "../types.js";
 import { format, detectFormat } from "../output/formatter.js";
@@ -36,6 +37,35 @@ interface CandidateInfo {
   strategy: string;
 }
 
+function memoryEndpointsToScored(site: string): ScoredEndpoint[] {
+  const memory = readSiteMemory(site);
+  return Object.entries(memory.endpoints).map(([key, endpoint]) => {
+    const response =
+      endpoint.response && typeof endpoint.response === "object"
+        ? (endpoint.response as Record<string, unknown>)
+        : {};
+    const fields = Array.isArray(response.fields)
+      ? response.fields.filter(
+          (field): field is string => typeof field === "string",
+        )
+      : [];
+    const sample = response.sample;
+    return {
+      url: endpoint.url,
+      method: endpoint.method,
+      status: typeof response.status === "number" ? response.status : 200,
+      contentType:
+        typeof response.contentType === "string"
+          ? response.contentType
+          : "application/json",
+      responseBody: sample === undefined ? undefined : JSON.stringify(sample),
+      size: typeof response.size === "number" ? response.size : 0,
+      detectedFields: fields,
+      capability: key,
+    };
+  });
+}
+
 // ── Command Registration ──────────────────────────────────────────────
 
 export function registerSynthesizeCommand(program: Command): void {
@@ -56,8 +86,12 @@ export function registerSynthesizeCommand(program: Command): void {
       const endpointsPath = join(exploreDir, "endpoints.json");
       const authPath = join(exploreDir, "auth.json");
 
-      // Validate explore data exists
-      if (!existsSync(endpointsPath)) {
+      const memoryEndpoints = existsSync(endpointsPath)
+        ? []
+        : memoryEndpointsToScored(site);
+
+      // Validate explore data or reusable site memory exists
+      if (!existsSync(endpointsPath) && memoryEndpoints.length === 0) {
         ctx.error = {
           code: "not_found",
           message: `No explore data found for "${site}"`,
@@ -71,9 +105,9 @@ export function registerSynthesizeCommand(program: Command): void {
 
       try {
         // Read explore data
-        const endpoints: ScoredEndpoint[] = JSON.parse(
-          readFileSync(endpointsPath, "utf-8"),
-        );
+        const endpoints: ScoredEndpoint[] = existsSync(endpointsPath)
+          ? JSON.parse(readFileSync(endpointsPath, "utf-8"))
+          : memoryEndpoints;
 
         let auth: AuthInfo = {
           strategy: "public",

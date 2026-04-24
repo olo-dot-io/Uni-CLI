@@ -3,9 +3,9 @@
 > Internal design philosophy and naming conventions.
 > This document governs aesthetics, tone, and thematic decisions across the project.
 >
-> **Current version:** v0.213.3 — Vostok · Gagarin TC0 Patch R2 (the second R-patch on the Gagarin GA train: invocation kernel + surface unification + output-side TC0 externalization + schema-driven hardening + multi-provider agent-bench harness).
+> **Current version:** v0.215.0 — Closed Adapter Loop (browser adapter authoring, site memory, fixture verification, and network evidence replay).
 >
-> **Current scale:** <!-- STATS:site_count -->221<!-- /STATS --> sites, <!-- STATS:command_count -->1225<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->969<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->896<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->73<!-- /STATS --> TS), <!-- STATS:test_count -->7123<!-- /STATS --> tests. Numbers render from `stats.json` via `npm run build`; drift fails `npm run stats:check`.
+> **Current scale:** <!-- STATS:site_count -->220<!-- /STATS --> sites, <!-- STATS:command_count -->1283<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->973<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->896<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->77<!-- /STATS --> TS), <!-- STATS:test_count -->7145<!-- /STATS --> tests. Numbers render from `stats.json` via `npm run build`; drift fails `npm run stats:check`.
 
 ## Core Identity
 
@@ -47,7 +47,7 @@ Format: `0.100.1`, `0.200.0`, `1.0.0`, etc.
 - **MINOR** = mission number (100, 200, 300... like Mission Control sequences)
 - **PATCH** = revision within a mission
 
-Current: `0.213.x` — Mission 2100, codename **Vostok · Gagarin Patch**.
+Current: `0.215.0` — Closed Adapter Loop.
 
 ### Version Codenames — The Full Spectrum
 

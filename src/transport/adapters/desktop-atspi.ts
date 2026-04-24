@@ -1,7 +1,7 @@
 /**
  * DesktopAtspiTransport — Linux AT-SPI transport stub.
  *
- * v0.212 ships this adapter as a declared-but-unimplemented transport.
+ * v0.214 ships this adapter as a declared-but-unimplemented transport.
  * Registering it with the bus makes capability queries honest (agents
  * can see that `atspi_activate` exists on linux) without pretending the
  * bodies work. Every call returns a structured `service_unavailable`
@@ -43,7 +43,7 @@ const ATSPI_CAPABILITY: Capability = {
 };
 
 const NOT_IMPLEMENTED_REASON =
-  "Linux AT-SPI transport not implemented in v0.212";
+  "Linux AT-SPI transport is a declared stub in v0.214";
 const CONTRIBUTE_HINT =
   "Contribute a PR — see contributing/transport.md for the AT-SPI backend recipe";
 

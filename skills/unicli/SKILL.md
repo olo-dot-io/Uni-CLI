@@ -4,7 +4,7 @@ description: >
   Use Uni-CLI to interact with 200+ websites, desktop apps, and system tools.
   Trigger when: user asks to check a website, fetch data, control a desktop app,
   or interact with social media, news, finance, or AI platforms.
-version: 0.211.0
+version: 0.214.0
 triggers:
   - "unicli"
   - "website"
@@ -16,7 +16,7 @@ triggers:
 
 # Uni-CLI Agent Skill
 
-Universal CLI for AI agents — 200 sites, 969 commands.
+Universal CLI for AI agents — 220 sites, 1283 commands.
 
 ## Install
 
@@ -27,7 +27,7 @@ npm install -g @zenalexa/unicli
 ## Quick Reference
 
 ```bash
-unicli <site> <command> [--limit N] [--json]   # Run any command
+unicli <site> <command> [--limit N] [-f json]  # Run any command
 unicli list [--site <name>]                     # Discover commands
 unicli schema <site> <command>                  # Get input/output schema
 unicli repair <site> <command>                  # Fix broken adapter
@@ -44,9 +44,9 @@ unicli test <site>                              # Validate adapter
 
 ## Output
 
-- Piped (non-TTY): automatic JSON
-- Terminal: human-readable table
-- Errors: structured JSON to stderr with `adapter_path`, `step`, `suggestion`
+- Default: v2 AgentEnvelope rendered as Markdown
+- JSON: pass `-f json` or set `UNICLI_OUTPUT=json`
+- Errors: structured envelope to stderr with `adapter_path`, `step`, `suggestion`
 
 ## Self-Repair
 
@@ -61,6 +61,6 @@ When a command fails:
 ## MCP Server
 
 ```bash
-unicli mcp serve                    # 3 default tools (unicli_run, unicli_list, unicli_discover)
-unicli mcp serve --expanded         # All 969 commands as individual tools
+unicli mcp serve                    # 4 default tools (run, list, search, explore)
+unicli mcp serve --expanded         # All 1283 commands as individual tools
 ```

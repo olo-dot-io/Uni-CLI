@@ -10,6 +10,17 @@
 import { runInNewContext } from "node:vm";
 import type { PipelineContext } from "./executor.js";
 
+const FILENAME_UNSAFE_CHARS = '<>:"/\\|?*';
+
+function replaceUnsafeFilenameChars(value: string): string {
+  let out = "";
+  for (const ch of value) {
+    out +=
+      ch.charCodeAt(0) <= 31 || FILENAME_UNSAFE_CHARS.includes(ch) ? "_" : ch;
+  }
+  return out;
+}
+
 /**
  * Built-in pipe filters — used in template expressions like:
  *   ${{ item.tags | join(', ') }}
@@ -58,8 +69,7 @@ export const PIPE_FILTERS: Record<string, (...args: unknown[]) => unknown> = {
       .replace(/^-+|-+$/g, "");
   },
   sanitize: (val: unknown) =>
-    String(val ?? "")
-      .replace(/[<>:"/\\|?*\x00-\x1f]/g, "_")
+    replaceUnsafeFilenameChars(String(val ?? ""))
       .replace(/^\.+/, "")
       .trim() || "download",
   ext: (val: unknown) => {

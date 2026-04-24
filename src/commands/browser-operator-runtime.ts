@@ -25,7 +25,7 @@ export interface BrowserOperatorRootOptions {
   background?: boolean;
 }
 
-interface NormalizedNetworkEntry {
+export interface NormalizedNetworkEntry {
   url: string;
   method: string;
   status: number;

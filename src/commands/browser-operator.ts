@@ -15,13 +15,13 @@ import {
   getOperatorPage,
   operatorAction,
   readFrames,
-  readNetworkEntries,
   resolveAllowedUploadPath,
   resolveWorkspace,
   validateRef,
   withBrowserOperatorEnv,
 } from "./browser-operator-runtime.js";
 import { sendCommand } from "../browser/daemon-client.js";
+import { registerBrowserAuthoringSubcommands } from "./browser-authoring-operator.js";
 
 export { withBrowserOperatorEnv };
 
@@ -323,36 +323,7 @@ export function registerBrowserOperatorSubcommands(
       }),
     );
 
-  root
-    .command("network [pattern]")
-    .description("Show captured network requests")
-    .option("--all", "show all requests (no filter)")
-    .option("--raw", "include response bodies when available")
-    .action(
-      (pattern: string | undefined, opts: { all?: boolean; raw?: boolean }) =>
-        operatorAction(program, root, namespace, "network", async () => {
-          const page = await getOperatorPage(root, namespace);
-          const { raw, normalized } = await readNetworkEntries(page);
-          const filtered =
-            pattern && !opts.all
-              ? normalized.filter((entry) => entry.url.includes(pattern))
-              : normalized;
-          if (!opts.raw) {
-            return filtered.map(({ body: _body, ...entry }) => entry);
-          }
-
-          if (raw.length === normalized.length) {
-            return raw.filter((entry) => {
-              if (!pattern || opts.all) return true;
-              return String((entry as { url?: string }).url ?? "").includes(
-                pattern,
-              );
-            });
-          }
-
-          return filtered;
-        }),
-    );
+  registerBrowserAuthoringSubcommands(root, program, namespace);
 
   root
     .command("select <ref> <option>")

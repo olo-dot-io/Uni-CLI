@@ -221,7 +221,7 @@ function logLastEventId(req: IncomingMessage): void {
   const lastEventId = req.headers["last-event-id"] as string | undefined;
   if (lastEventId && process.env.UNICLI_DEBUG) {
     process.stderr.write(
-      `mcp: Last-Event-ID=${lastEventId} received (replay lands in v0.213)\n`,
+      `mcp: Last-Event-ID=${lastEventId} received (replay not enabled yet)\n`,
     );
   }
 }

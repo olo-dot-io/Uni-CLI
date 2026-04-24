@@ -25,16 +25,16 @@ unicli doctor                         # System health check
 
 All commands support `--format` / `-f`:
 
-| Format  | Use Case                                  |
-| ------- | ----------------------------------------- |
-| `table` | Human-readable (default in TTY)           |
-| `json`  | AI agent consumption (default when piped) |
-| `yaml`  | Config-friendly                           |
-| `csv`   | Spreadsheet import                        |
-| `md`    | Documentation                             |
+| Format    | Use Case                            |
+| --------- | ----------------------------------- |
+| `md`      | Default v2 AgentEnvelope for agents |
+| `json`    | Machine parsing / jq                |
+| `yaml`    | Config-friendly envelope            |
+| `csv`     | Spreadsheet import                  |
+| `compact` | Pipe-friendly row stream            |
 
 ```bash
-unicli hackernews top -f json | jq '.[0].title'
+unicli hackernews top -f json | jq '.data[0].title'
 unicli hackernews top -f csv > stories.csv
 ```
 

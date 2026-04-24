@@ -209,7 +209,7 @@ export function renderSkillMarkdown(skill: SkillFile): string {
 function escapeYamlValue(v: string): string {
   // Single line — strip newlines defensively
   const oneLine = v.replace(/\r?\n/g, " ").trim();
-  if (/[:#&*!|>'"%@`,\[\]{}]/.test(oneLine) || /^\s|\s$/.test(oneLine)) {
+  if (/[:#&*!|>'"%@`,[\]{}]/.test(oneLine) || /^\s|\s$/.test(oneLine)) {
     return `"${oneLine.replace(/"/g, '\\"')}"`;
   }
   return oneLine;

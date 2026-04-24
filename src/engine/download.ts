@@ -40,6 +40,16 @@ export interface DownloadResult {
 /** Video platform pattern — URLs that require yt-dlp. */
 const VIDEO_PLATFORMS =
   /youtube\.com|youtu\.be|bilibili\.com|vimeo\.com|dailymotion\.com|tiktok\.com|douyin\.com|twitter\.com\/.*\/video/i;
+const FILENAME_UNSAFE_CHARS = '<>:"/\\|?*';
+
+function replaceUnsafeFilenameChars(value: string): string {
+  let out = "";
+  for (const ch of value) {
+    out +=
+      ch.charCodeAt(0) <= 31 || FILENAME_UNSAFE_CHARS.includes(ch) ? "_" : ch;
+  }
+  return out;
+}
 
 /** Return true when a URL should be handled by yt-dlp rather than fetch(). */
 export function requiresYtdlp(url: string): boolean {
@@ -49,10 +59,7 @@ export function requiresYtdlp(url: string): boolean {
 /** Replace filesystem-unsafe characters and strip leading dots. */
 export function sanitizeFilename(name: string): string {
   return (
-    name
-      .replace(/[<>:"/\\|?*\x00-\x1f]/g, "_")
-      .replace(/^\.+/, "")
-      .trim() || "download"
+    replaceUnsafeFilenameChars(name).replace(/^\.+/, "").trim() || "download"
   );
 }
 
@@ -208,7 +215,8 @@ export async function mapConcurrent<T, R>(
 ): Promise<R[]> {
   if (items.length === 0) return [];
 
-  const results: R[] = new Array(items.length);
+  const results: R[] = [];
+  results.length = items.length;
   let nextIndex = 0;
 
   async function worker(): Promise<void> {

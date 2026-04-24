@@ -1,6 +1,17 @@
-import { homedir } from "node:os";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Command } from "commander";
+import {
+  networkCachePath,
+  saveNetworkCache,
+} from "../../../src/browser/network-cache.js";
+import { writeFixture } from "../../../src/browser/verify-fixture.js";
+import { primeKernelCache } from "../../../src/discovery/loader.js";
+import { registerAdapter } from "../../../src/registry.js";
+import { AdapterType, Strategy } from "../../../src/types.js";
+import type { AdapterManifest } from "../../../src/types.js";
 
 const mockPage = {
   goto: vi.fn().mockResolvedValue(undefined),
@@ -112,14 +123,30 @@ function createProgram(): Command {
 }
 
 describe("unicli browser operator surface", () => {
+  let tmpHome: string | null = null;
+  let origHome: string | undefined;
+
   beforeEach(() => {
     vi.clearAllMocks();
     process.exitCode = undefined;
+    origHome = process.env.HOME;
   });
 
   afterEach(() => {
     delete process.env.UNICLI_OUTPUT;
+    if (tmpHome) {
+      rmSync(tmpHome, { recursive: true, force: true });
+      tmpHome = null;
+    }
+    if (origHome === undefined) delete process.env.HOME;
+    else process.env.HOME = origHome;
   });
+
+  function useTempHome(): string {
+    tmpHome = mkdtempSync(join(tmpdir(), "unicli-browser-cmd-"));
+    process.env.HOME = tmpHome;
+    return tmpHome;
+  }
 
   it("browser open exposes the operator surface under browser", async () => {
     process.env.UNICLI_OUTPUT = "json";
@@ -262,6 +289,247 @@ describe("unicli browser operator surface", () => {
       matchDomain: "example.com",
       matchPathPrefix: "/feed",
     });
+  });
+
+  it("browser analyze reports deterministic pattern and anti-bot evidence", async () => {
+    mockPage.readNetworkCapture.mockResolvedValueOnce([
+      {
+        url: "https://example.com/api/private-feed",
+        method: "GET",
+        status: 403,
+        contentType: "text/html",
+        size: 32,
+        responseBody: "Cloudflare Ray ID",
+      },
+    ]);
+    mockPage.evaluate.mockImplementation(async (js: string) => {
+      if (js.includes("document.cookie")) return ["__cf_bm"];
+      if (js.includes("__INITIAL_STATE__")) {
+        return {
+          __INITIAL_STATE__: false,
+          __NUXT__: false,
+          __NEXT_DATA__: false,
+          __APOLLO_STATE__: false,
+        };
+      }
+      return undefined;
+    });
+
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "analyze", "https://example.com"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      command: string;
+      data: { pattern: { pattern: string }; anti_bot: { vendor: string } };
+    };
+    expect(env.command).toBe("browser.analyze");
+    expect(env.data.pattern.pattern).toBe("D");
+    expect(env.data.anti_bot.vendor).toBe("cloudflare");
+  });
+
+  it("browser network persists cache and filters by response body shape", async () => {
+    const home = useTempHome();
+    mockPage.readNetworkCapture.mockResolvedValueOnce([
+      {
+        url: "https://example.com/api/feed",
+        method: "GET",
+        status: 200,
+        contentType: "application/json",
+        size: 48,
+        responseBody: JSON.stringify({ data: [{ id: "1", title: "First" }] }),
+      },
+      {
+        url: "https://example.com/api/ping",
+        method: "GET",
+        status: 200,
+        contentType: "application/json",
+        size: 12,
+        responseBody: JSON.stringify({ ok: true }),
+      },
+    ]);
+
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "network", "--filter", "id,title"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: Array<{ key: string; url: string; body?: unknown }>;
+    };
+    expect(env.data).toHaveLength(1);
+    expect(env.data[0].key).toMatch(/^get-feed-/);
+    expect(env.data[0].body).toBeUndefined();
+    expect(
+      existsSync(
+        networkCachePath("browser:default", join(home, ".unicli", "cache")),
+      ),
+    ).toBe(true);
+  });
+
+  it("browser network detail reads from persisted cache without a live capture", async () => {
+    const home = useTempHome();
+    saveNetworkCache(
+      "browser:default",
+      [
+        {
+          key: "get-feed-deadbeef",
+          url: "https://example.com/api/feed",
+          method: "GET",
+          status: 200,
+          contentType: "application/json",
+          bodySize: 64,
+          body: { data: [{ id: "1" }] },
+        },
+      ],
+      join(home, ".unicli", "cache"),
+    );
+
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        ["browser", "network", "--detail", "get-feed-deadbeef"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: { key: string; body: unknown };
+    };
+    expect(env.data.key).toBe("get-feed-deadbeef");
+    expect(env.data.body).toEqual({ data: [{ id: "1" }] });
+  });
+
+  it("browser init creates a schema-v2 YAML adapter skeleton", async () => {
+    const home = useTempHome();
+
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "init", "example/search"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const adapterPath = join(
+      home,
+      ".unicli",
+      "adapters",
+      "example",
+      "search.yaml",
+    );
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      command: string;
+      data: { adapterPath: string };
+    };
+    expect(env.command).toBe("browser.init");
+    expect(env.data.adapterPath).toBe(adapterPath);
+    expect(readFileSync(adapterPath, "utf-8")).toContain("site: example");
+    expect(readFileSync(adapterPath, "utf-8")).toContain(
+      "minimum_capability: http.fetch",
+    );
+  });
+
+  it("browser verify --strict-memory fails when site memory was not written", async () => {
+    useTempHome();
+
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        ["browser", "verify", "example/search", "--strict-memory"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStderr().trim()) as {
+      ok: boolean;
+      command: string;
+      error: { code: string; message: string };
+    };
+    expect(env.ok).toBe(false);
+    expect(env.command).toBe("browser.verify");
+    expect(env.error.code).toBe("not_found");
+    expect(env.error.message).toContain("endpoints.json");
+  });
+
+  it("browser verify runs adapters with args from the fixture", async () => {
+    const home = useTempHome();
+    const fixtureAdapter: AdapterManifest = {
+      name: "browser-verify-fixture",
+      type: AdapterType.WEB_API,
+      strategy: Strategy.PUBLIC,
+      commands: {
+        search: {
+          name: "search",
+          adapterArgs: [
+            { name: "query", type: "str", required: true, positional: true },
+            { name: "limit", type: "int", default: 20 },
+          ],
+          func: async (_page, args) => [
+            { query: args.query, limit: args.limit },
+          ],
+        },
+      },
+    };
+    registerAdapter(fixtureAdapter);
+    primeKernelCache();
+    writeFixture(
+      "browser-verify-fixture",
+      "search",
+      {
+        args: { query: "ai", limit: 3 },
+        expect: {
+          rowCount: { min: 1 },
+          columns: ["query", "limit"],
+          types: { query: "string", limit: "number" },
+          notEmpty: ["query"],
+        },
+      },
+      home,
+    );
+
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        ["browser", "verify", "browser-verify-fixture/search"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: { rowCount: number; fixtureFailures: unknown[] };
+    };
+    expect(process.exitCode).toBe(0);
+    expect(env.data.rowCount).toBe(1);
+    expect(env.data.fixtureFailures).toEqual([]);
   });
 
   it("browser upload rejects paths that only share the home prefix", async () => {

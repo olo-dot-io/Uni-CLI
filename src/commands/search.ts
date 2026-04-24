@@ -54,7 +54,7 @@ export function registerSearchCommand(program: Command): void {
         }
 
         const fmt = detectFormat(
-          program.parent?.opts().format as OutputFormat | undefined,
+          program.opts().format as OutputFormat | undefined,
         );
 
         const rows = results.map((r) => ({

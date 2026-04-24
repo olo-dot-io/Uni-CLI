@@ -22,6 +22,7 @@ import { VERSION } from "../constants.js";
 import { format, detectFormat } from "../output/formatter.js";
 import { makeCtx } from "../output/envelope.js";
 import { errorTypeToCode, mapErrorToExitCode } from "../output/error-map.js";
+import { buildDefaultTools } from "../mcp/tools.js";
 import type { OutputFormat } from "../types.js";
 
 interface ServeOptions {
@@ -116,41 +117,38 @@ export function registerMcpCommand(program: Command): void {
         const adapters = getAllAdapters();
         const commands = listCommands();
 
-        // Count expanded tools (1 per command + 3 default)
-        let expandedToolCount = 3; // unicli_run, unicli_list, unicli_discover
-        for (const adapter of adapters) {
-          expandedToolCount += Object.keys(adapter.commands).length;
-        }
+        const defaultToolNames = buildDefaultTools().map((tool) => tool.name);
+        const defaultToolCount = defaultToolNames.length;
+        const expandedToolCount = commands.length + defaultToolCount;
 
         const data = {
           status: "ok" as const,
           adapters: adapters.length,
           commands: commands.length,
-          tools: { default: 3, expanded: expandedToolCount },
+          tools: { default: defaultToolCount, expanded: expandedToolCount },
           version: VERSION,
         };
 
         ctx.duration_ms = Date.now() - startedAt;
         console.log(format(data, undefined, fmt, ctx));
 
-        // Human-readable summary → stderr (Scene-6 pattern)
-        console.error(chalk.bold(`\n  unicli MCP health v${VERSION}`));
-        console.error(`    status:   ${chalk.green("ok")}`);
-        console.error(`    adapters: ${chalk.green(adapters.length)}`);
-        console.error(`    commands: ${chalk.green(commands.length)}`);
-        console.error(
-          `    tools:    ${chalk.green("3")} default, ${chalk.green(expandedToolCount)} expanded`,
-        );
-        console.error(
-          chalk.dim(
-            "\n  Default tools: unicli_run, unicli_list, unicli_discover",
-          ),
-        );
-        console.error(
-          chalk.dim(
-            "  To start: unicli mcp serve [--expanded] [--transport http]",
-          ),
-        );
+        if (fmt === "md" && process.stdout.isTTY) {
+          console.error(chalk.bold(`\n  unicli MCP health v${VERSION}`));
+          console.error(`    status:   ${chalk.green("ok")}`);
+          console.error(`    adapters: ${chalk.green(adapters.length)}`);
+          console.error(`    commands: ${chalk.green(commands.length)}`);
+          console.error(
+            `    tools:    ${chalk.green(String(defaultToolCount))} default, ${chalk.green(expandedToolCount)} expanded`,
+          );
+          console.error(
+            chalk.dim(`\n  Default tools: ${defaultToolNames.join(", ")}`),
+          );
+          console.error(
+            chalk.dim(
+              "  To start: unicli mcp serve [--expanded] [--transport http]",
+            ),
+          );
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         ctx.error = {

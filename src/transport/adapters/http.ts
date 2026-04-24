@@ -151,7 +151,7 @@ export class HttpTransport implements TransportAdapter {
     const headers: Record<string, string> = {
       "User-Agent": USER_AGENT,
       ...(accept ? { Accept: accept } : {}),
-      ...(extra ?? {}),
+      ...extra,
     };
     if (this.ctx?.cookieHeader) headers["Cookie"] = this.ctx.cookieHeader;
     return headers;

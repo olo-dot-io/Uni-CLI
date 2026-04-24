@@ -26,7 +26,7 @@ export function stepWriteTemp(
   writeFileSync(filePath, content, "utf-8");
 
   const key = filename.replace(/[^a-zA-Z0-9]/g, "_");
-  const temp = { ...(ctx.temp ?? {}), [key]: filePath };
+  const temp = { ...ctx.temp, [key]: filePath };
 
   return { ...ctx, temp, tempDir: td };
 }

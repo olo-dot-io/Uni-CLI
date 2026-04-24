@@ -3,6 +3,37 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
+## [0.215.0] — 2026-04-24 — Closed Adapter Loop
+
+### Added
+
+- **Browser adapter authoring loop** — `unicli browser analyze`, `browser init`,
+  and `browser verify` now cover the OpenCLI-style authoring path with
+  structured v2 envelopes, schema-v2 adapter skeletons, fixture generation,
+  fixture validation, and `--strict-memory` gates.
+- **Reusable site memory** under `~/.unicli/sites/<site>/`: endpoint
+  discoveries, field maps, notes, and verify fixtures are now written by
+  `explore` / `generate` and consumed by `synthesize` / `browser verify`.
+- **Network evidence replay** — `browser network` now persists captured
+  responses with stable keys and supports `--filter`, `--detail`, `--ttl`,
+  and `--max-body` for repeatable adapter investigation.
+
+### Changed
+
+- `browser verify` runs adapters through the shared invocation kernel using
+  fixture-provided args, preserves fixture args on update, and fails with the
+  adapter's structured error when execution fails.
+- Browser authoring commands are split into focused modules so the top-level
+  browser command file stays within the project file-size budget.
+
+### Fixed
+
+- Site analysis now classifies single authenticated API failures as Pattern D,
+  records multi-vendor anti-bot evidence instead of keeping only the first
+  match, and emits Pattern E for websocket / event-stream surfaces.
+- Fixture verification no longer produces a misleading success envelope when
+  the adapter execution itself failed.
+
 ## [0.213.3] — 2026-04-19 — Vostok · Gagarin TC0 Patch R2
 
 > Closes six gaps left by v0.213.2 along the agent-invocation path:

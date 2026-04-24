@@ -10,6 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { registerSynthesizeCommand } from "../../../src/commands/synthesize.js";
 import { validateEnvelope } from "../../../src/output/envelope.js";
+import { writeEndpointMemory } from "../../../src/browser/site-memory.js";
 
 function captureStdout(): {
   getStdout: () => string;
@@ -102,5 +103,42 @@ describe("unicli synthesize — v2 envelope", () => {
     const e = env.error as { code: string } | undefined;
     expect(e?.code).toBe("not_found");
     validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
+  });
+
+  it("falls back to reusable site memory when explore data is missing", async () => {
+    writeEndpointMemory(
+      "example",
+      "feed",
+      {
+        url: "https://example.com/api/feed",
+        method: "GET",
+        response: {
+          status: 200,
+          contentType: "application/json",
+          size: 42,
+          fields: ["id", "title"],
+          sample: { data: [{ id: "1", title: "First" }] },
+        },
+      },
+      { baseDir: tmpHome, verifiedAt: "2026-04-24" },
+    );
+
+    const cap = captureStdout();
+    try {
+      const program = newProgram();
+      await program.parseAsync(["-f", "json", "synthesize", "example"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = parseEnv(cap.getStdout()) as {
+      ok: boolean;
+      data: { candidate_count: number; candidates: Array<{ name: string }> };
+    };
+    expect(env.ok).toBe(true);
+    expect(env.data.candidate_count).toBe(1);
+    expect(env.data.candidates[0].name).toBe("feed");
   });
 });

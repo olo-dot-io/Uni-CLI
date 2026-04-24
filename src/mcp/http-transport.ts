@@ -20,7 +20,7 @@ import {
 import { getAllAdapters, listCommands } from "../registry.js";
 import { handleOAuthRoute, createOAuthMiddleware } from "./oauth.js";
 import { VERSION } from "../constants.js";
-import { DEFAULT_TOOL_NAMES } from "./tools.js";
+import { buildDefaultTools } from "./tools.js";
 import type { JsonRpcRequest, buildHandler } from "./handler.js";
 
 const MAX_BODY = 1_048_576; // 1 MB
@@ -33,11 +33,8 @@ function writeJson(res: ServerResponse, code: number, payload: unknown): void {
 function serveHealth(res: ServerResponse): void {
   const adapterCount = getAllAdapters().length;
   const commandCount = listCommands().length;
-  const defaultToolCount = DEFAULT_TOOL_NAMES.size;
-  let expandedCount = defaultToolCount;
-  for (const adapter of getAllAdapters()) {
-    expandedCount += Object.keys(adapter.commands).length;
-  }
+  const defaultToolCount = buildDefaultTools().length;
+  const expandedCount = commandCount + defaultToolCount;
   writeJson(res, 200, {
     status: "ok",
     adapters: adapterCount,

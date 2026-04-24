@@ -6,7 +6,7 @@ description: >
   newlines, or inline JSON — shell-quoted invocations hit TC0 circuit
   limits and drop to <50% success above ICS=4. Also covers --describe
   introspection and next_actions-driven navigation.
-version: 0.213.2
+version: 0.214.0
 triggers:
   - "unicli"
   - "ics"
@@ -165,6 +165,6 @@ echo '{"url": "https://…"}' | unicli youtube transcript             # 3. run
 
 ## Version contract
 
-- v0.213.2+ required for stdin-JSON auto-detect and `--describe`
+- v0.214.0+ required for stdin-JSON auto-detect, `--describe`, and consistent MCP tool discovery metadata
 - v0.213.1 or earlier agents should fall back to `unicli schema <site> <cmd>`
   and explicit `--` flag args

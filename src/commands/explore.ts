@@ -22,6 +22,7 @@ import {
   type EndpointEntry,
   type ScoredEndpoint,
 } from "../engine/endpoint-scorer.js";
+import { recordEndpointDiscoveries } from "../browser/site-memory.js";
 import { format, detectFormat } from "../output/formatter.js";
 import { makeCtx } from "../output/envelope.js";
 import { mapErrorToExitCode } from "../output/error-map.js";
@@ -233,6 +234,7 @@ export function registerExploreCommand(program: Command): void {
             JSON.stringify(auth, null, 2),
             "utf-8",
           );
+          recordEndpointDiscoveries(siteName, scored.slice(0, 10));
 
           // Output
           const data = {

@@ -3,8 +3,8 @@
  *
  * Unlike the other transports, CUA has no single protocol — it wraps a
  * pluggable "backend" that implements the primitive perception/action
- * verbs against a real computer-use model or emulator. v0.212 ships four
- * backends selected by `CUA_BACKEND`:
+ * verbs against a real computer-use model or emulator. v0.214 ships the
+ * backend contract and provider selection behind `CUA_BACKEND`:
  *
  *   - `anthropic`   Anthropic `computer_20251124` beta tool, `ANTHROPIC_API_KEY`
  *   - `trycua`      trycua/cua compute-server v0.1.9+, `TRYCUA_API_KEY`
@@ -12,10 +12,10 @@
  *   - `scrapybara`  Scrapybara Computer API, `SCRAPYBARA_API_KEY`
  *   - `mock`        in-memory stub used by tests and when no key is present
  *
- * The real network paths to each provider are stubbed in v0.212 — they are
- * gated behind the corresponding env keys and throw a structured
- * `config_error` envelope if selected without credentials. The MockBackend
- * is always available so the offline test suite runs without secrets.
+ * Provider network paths are explicit stubs in v0.214. They are gated
+ * behind the corresponding env keys and fail through the same structured
+ * envelope path as every other transport. The MockBackend is always
+ * available so the offline test suite runs without secrets.
  *
  * Design contract:
  *  - `action()` NEVER throws
@@ -181,14 +181,13 @@ export class MockBackend implements CuaBackend {
  * Base class used by every real backend. All verbs throw `BackendNotReadyError`
  * by default; subclasses override what they support.
  *
- * Honesty note (2026-04-15): v0.212 ships `Anthropic`, `Trycua`, `OpenCua`
- * and `Scrapybara` as **interface stubs**. They declare the shape the real
+ * Honesty note (2026-04-24): v0.214 ships `Anthropic`, `Trycua`, `OpenCua`
+ * and `Scrapybara` as **provider stubs**. They declare the shape the real
  * backends will take, fail fast with a structured envelope when selected
  * without their credentials, and let downstream tests pin the Mock
- * backend for offline determinism. Full network implementations are
- * tracked in `docs/ROADMAP.md` as v0.213 "Gagarin" targets — see there
- * for the design of the screen-source ↔ planner composition that real
- * Anthropic computer-use requires.
+ * backend for offline determinism. Full network implementations remain
+ * out of scope for this file until a real provider backend lands with a
+ * screen-source/planner composition.
  *
  * Users who want a real backend today can implement the `CuaBackend`
  * interface in their own code and inject it via
@@ -202,7 +201,7 @@ class BackendNotReadyError extends Error {
     readonly hint: string,
   ) {
     super(
-      `cua backend "${backend}" is a v0.212 stub — ${verb} not implemented (${hint})`,
+      `cua backend "${backend}" is a provider stub — ${verb} not implemented (${hint})`,
     );
     this.name = "BackendNotReadyError";
   }
@@ -216,10 +215,9 @@ class BackendNotReadyError extends Error {
  * planner, not a screen capture service. A production Anthropic backend
  * MUST be composed with a screenshot source (macOS `screencapture`,
  * trycua sandbox, scrapybara VM) because the model receives screenshots
- * from the client and returns `tool_use` actions. v0.212 ships this as
- * a stub; the composition layer lands in v0.213 via a new
- * `AnthropicPlanner(screenshotSource)` constructor — see
- * `docs/ROADMAP.md` > v0.213 "Gagarin".
+ * from the client and returns `tool_use` actions. The shipped backend is
+ * intentionally a stub until a concrete screenshot-source/planner
+ * composition is implemented.
  *
  * `tool_version` defaults to `"computer_20260301"` (the successor to
  * `computer_20251124` in the Sonnet 4.6 rollout); override via env
@@ -251,7 +249,7 @@ export class AnthropicBackend implements CuaBackend {
     throw new BackendNotReadyError(
       this.name,
       "snapshot",
-      `the Anthropic Messages API does not capture screens; pair ${this.name} with a screenshot source (screencapture/trycua/scrapybara) — v0.213 Gagarin target`,
+      `the Anthropic Messages API does not capture screens; pair ${this.name} with a screenshot source (screencapture/trycua/scrapybara) before enabling this backend`,
     );
   }
 
@@ -259,7 +257,7 @@ export class AnthropicBackend implements CuaBackend {
     throw new BackendNotReadyError(
       this.name,
       "click",
-      `will POST /v1/messages with tool "${this.toolVersion}" action "left_click" in v0.213`,
+      `stubbed until this backend owns a real /v1/messages action bridge for "${this.toolVersion}" left_click`,
     );
   }
 
@@ -267,7 +265,7 @@ export class AnthropicBackend implements CuaBackend {
     throw new BackendNotReadyError(
       this.name,
       "type",
-      `will POST /v1/messages with tool "${this.toolVersion}" action "type" in v0.213`,
+      `stubbed until this backend owns a real /v1/messages action bridge for "${this.toolVersion}" type`,
     );
   }
 
@@ -275,7 +273,7 @@ export class AnthropicBackend implements CuaBackend {
     throw new BackendNotReadyError(
       this.name,
       "key",
-      `will POST /v1/messages with tool "${this.toolVersion}" action "key" in v0.213`,
+      `stubbed until this backend owns a real /v1/messages action bridge for "${this.toolVersion}" key`,
     );
   }
 
@@ -283,7 +281,7 @@ export class AnthropicBackend implements CuaBackend {
     throw new BackendNotReadyError(
       this.name,
       "scroll",
-      `will POST /v1/messages with tool "${this.toolVersion}" action "scroll" in v0.213`,
+      `stubbed until this backend owns a real /v1/messages action bridge for "${this.toolVersion}" scroll`,
     );
   }
 
@@ -291,7 +289,7 @@ export class AnthropicBackend implements CuaBackend {
     throw new BackendNotReadyError(
       this.name,
       "drag",
-      `will POST /v1/messages with tool "${this.toolVersion}" action "left_click_drag" in v0.213`,
+      `stubbed until this backend owns a real /v1/messages action bridge for "${this.toolVersion}" left_click_drag`,
     );
   }
 
@@ -303,7 +301,7 @@ export class AnthropicBackend implements CuaBackend {
     throw new BackendNotReadyError(
       this.name,
       "ask",
-      `will POST /v1/messages without a tool for plain Q&A in v0.213; supply your own backend via CuaTransport.setBackend() today`,
+      "stubbed until this backend owns a real /v1/messages Q&A bridge; supply your own backend via CuaTransport.setBackend() today",
     );
   }
 }

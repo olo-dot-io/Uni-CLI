@@ -7,6 +7,7 @@
 import { describe, it, expect } from "vitest";
 import { Command } from "commander";
 import { registerMcpCommand } from "../../../src/commands/mcp.js";
+import { buildDefaultTools } from "../../../src/mcp/tools.js";
 import { validateEnvelope } from "../../../src/output/envelope.js";
 
 function captureStdout(): {
@@ -55,6 +56,7 @@ describe("unicli mcp — v2 envelope", () => {
     }
 
     const out = cap.getStdout().trim();
+    expect(cap.getStderr().trim()).toBe("");
     expect(out.length).toBeGreaterThan(0);
     const env = JSON.parse(out) as Record<string, unknown>;
     expect(env.ok).toBe(true);
@@ -70,8 +72,9 @@ describe("unicli mcp — v2 envelope", () => {
     expect(data.status).toBe("ok");
     expect(typeof data.adapters).toBe("number");
     expect(typeof data.commands).toBe("number");
-    expect(data.tools.default).toBe(3);
-    expect(data.tools.expanded).toBeGreaterThanOrEqual(3);
+    const defaultToolCount = buildDefaultTools().length;
+    expect(data.tools.default).toBe(defaultToolCount);
+    expect(data.tools.expanded).toBe(data.commands + defaultToolCount);
     expect(typeof data.version).toBe("string");
     validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
   });

@@ -55,8 +55,10 @@ const TESTS_DIR = join(ROOT, "tests");
 const CAPABILITY_MATRIX_FILE = join(ROOT, "src", "transport", "capability.ts");
 const MCP_DIR = join(ROOT, "src", "mcp");
 const BUILD_MANIFEST = join(ROOT, "scripts", "build-manifest.js");
+const DIST_MANIFEST = join(ROOT, "dist", "manifest.json");
 const ELECTRON_DESKTOP_BASE_COMMAND_COUNT = 7;
 const ELECTRON_DESKTOP_MEDIA_COMMAND_COUNT = 6;
+const AI_CHAT_BASE_COMMAND_COUNT = 6;
 
 export interface Stats {
   adapter_count_yaml: number;
@@ -118,6 +120,19 @@ function countAdapters(): {
     return dynamicCommandCount;
   }
 
+  function countAIChatRegistrations(source: string): number {
+    let dynamicCommandCount = 0;
+    const re =
+      /registerAIChatCommands\(\s*["'`][^"'`]+["'`]\s*,\s*(\{[\s\S]*?\})\s*\)/g;
+    for (const match of source.matchAll(re)) {
+      const options = match[1] ?? "";
+      dynamicCommandCount += AI_CHAT_BASE_COMMAND_COUNT;
+      if (/\bmodelSelector\s*:/.test(options)) dynamicCommandCount++;
+      if (/\bnewChatSelector\s*:/.test(options)) dynamicCommandCount++;
+    }
+    return dynamicCommandCount;
+  }
+
   for (const site of readdirSync(ADAPTERS_DIR)) {
     if (site.startsWith("_") || site.startsWith(".")) continue;
     const siteDir = join(ADAPTERS_DIR, site);
@@ -145,13 +160,20 @@ function countAdapters(): {
           const source = readFileSync(join(siteDir, file), "utf-8");
           const hasStaticCli = source.includes("cli(");
           const dynamicCommandCount = countElectronDesktopRegistrations(source);
-          if (!hasStaticCli && dynamicCommandCount === 0) continue;
+          const aiChatCommandCount = countAIChatRegistrations(source);
+          if (
+            !hasStaticCli &&
+            dynamicCommandCount === 0 &&
+            aiChatCommandCount === 0
+          ) {
+            continue;
+          }
           tsCount++;
           if (hasStaticCli) {
             commandCount++;
             siteHasCommand = true;
           }
-          commandCount += dynamicCommandCount;
+          commandCount += dynamicCommandCount + aiChatCommandCount;
         } catch {
           // unreadable — skip
         }
@@ -168,6 +190,25 @@ function countAdapters(): {
     sites: countedSites.size,
     commands: commandCount,
   };
+}
+
+function countManifestCatalog(): { sites: number; commands: number } | null {
+  if (!existsSync(DIST_MANIFEST)) return null;
+  try {
+    const manifest = JSON.parse(readFileSync(DIST_MANIFEST, "utf-8")) as {
+      sites?: Record<string, { commands?: unknown[] }>;
+    };
+    const sites = manifest.sites ?? {};
+    return {
+      sites: Object.keys(sites).length,
+      commands: Object.values(sites).reduce(
+        (sum, site) => sum + (site.commands?.length ?? 0),
+        0,
+      ),
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -264,7 +305,6 @@ function countTests(): number {
 }
 
 const OPEN_BRACE = String.fromCharCode(0x7b);
-const CLOSE_BRACE = String.fromCharCode(0x7d);
 
 function extractBalancedObject(
   source: string,
@@ -390,12 +430,13 @@ function todayUtc(): string {
 
 export function computeStats(): Stats {
   const adapters = countAdapters();
+  const catalog = countManifestCatalog();
   return {
     adapter_count_yaml: adapters.yaml,
     adapter_count_ts: adapters.ts,
     adapter_count_total: adapters.yaml + adapters.ts,
-    site_count: adapters.sites,
-    command_count: adapters.commands,
+    site_count: catalog?.sites ?? adapters.sites,
+    command_count: catalog?.commands ?? adapters.commands,
     test_count: countTests(),
     pipeline_step_count: countPipelineSteps(),
     transport_count: countTransports(),

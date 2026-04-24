@@ -26,6 +26,7 @@ import {
   registerBrowserOperatorSubcommands,
   withBrowserOperatorEnv,
 } from "./browser-operator.js";
+import { registerBrowserAdapterAuthoringSubcommands } from "./browser-adapter-authoring.js";
 import { resolveBrowserWorkspace } from "../browser/workspace.js";
 
 export function registerBrowserCommands(program: Command): void {
@@ -361,6 +362,7 @@ export function registerBrowserCommands(program: Command): void {
       },
     );
 
+  registerBrowserAdapterAuthoringSubcommands(browser, program);
   registerBrowserOperatorSubcommands(browser, program, "browser");
 }
 
