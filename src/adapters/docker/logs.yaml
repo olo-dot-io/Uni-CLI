@@ -4,7 +4,7 @@ description: Fetch logs from a Docker container
 type: bridge
 strategy: public
 binary: docker
-detect: which docker
+detect: "which docker >/dev/null 2>&1 && docker info >/dev/null 2>&1"
 
 pipeline:
   - exec:

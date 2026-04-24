@@ -16,10 +16,36 @@ export interface ExecConfig {
   command: string;
   args?: string[];
   parse?: "lines" | "json" | "csv" | "text";
-  timeout?: number;
+  timeout?: number | string;
   stdin?: string;
   env?: Record<string, string>;
   output_file?: string;
+}
+
+function resolveTimeout(
+  ctx: PipelineContext,
+  timeout: number | string | undefined,
+): number {
+  if (timeout === undefined) return 30000;
+  if (typeof timeout === "number") return timeout;
+
+  const resolved = evalTemplate(timeout, ctx).trim();
+  const numeric = Number(resolved);
+  if (Number.isFinite(numeric) && numeric >= 0) return numeric;
+
+  throw new PipelineError(
+    `exec timeout must resolve to a number: ${resolved}`,
+    {
+      step: -1,
+      action: "exec",
+      config: { timeout },
+      errorType: "parse_error",
+      suggestion:
+        "Use a numeric timeout in milliseconds, or a template that evaluates to one.",
+      retryable: false,
+      alternatives: [],
+    },
+  );
 }
 
 export async function stepExec(
@@ -28,7 +54,7 @@ export async function stepExec(
 ): Promise<PipelineContext> {
   const cmd = evalTemplate(config.command, ctx);
   const execArgs = (config.args ?? []).map((a) => evalTemplate(String(a), ctx));
-  const timeout = config.timeout ?? 30000;
+  const timeout = resolveTimeout(ctx, config.timeout);
 
   // Sensitive-path deny list — realpath-aware so symlink smuggling is
   // blocked too. Cannot be overridden by permission mode.

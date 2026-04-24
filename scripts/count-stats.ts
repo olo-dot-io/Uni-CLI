@@ -55,6 +55,8 @@ const TESTS_DIR = join(ROOT, "tests");
 const CAPABILITY_MATRIX_FILE = join(ROOT, "src", "transport", "capability.ts");
 const MCP_DIR = join(ROOT, "src", "mcp");
 const BUILD_MANIFEST = join(ROOT, "scripts", "build-manifest.js");
+const ELECTRON_DESKTOP_BASE_COMMAND_COUNT = 7;
+const ELECTRON_DESKTOP_MEDIA_COMMAND_COUNT = 6;
 
 export interface Stats {
   adapter_count_yaml: number;
@@ -97,8 +99,24 @@ function countAdapters(): {
   }
   let yamlCount = 0;
   let tsCount = 0;
-  let siteCount = 0;
   let commandCount = 0;
+  const countedSites = new Set<string>();
+  const dynamicSites = new Set<string>();
+
+  function countElectronDesktopRegistrations(source: string): number {
+    let dynamicCommandCount = 0;
+    const re =
+      /registerElectronDesktopCommands\(\s*["'`]([^"'`]+)["'`]\s*(?:,\s*(\{[\s\S]*?\})\s*)?\)/g;
+    for (const match of source.matchAll(re)) {
+      dynamicSites.add(match[1]);
+      const options = match[2] ?? "";
+      const hasMedia = /\bmedia\s*:/.test(options);
+      dynamicCommandCount +=
+        ELECTRON_DESKTOP_BASE_COMMAND_COUNT +
+        (hasMedia ? ELECTRON_DESKTOP_MEDIA_COMMAND_COUNT : 0);
+    }
+    return dynamicCommandCount;
+  }
 
   for (const site of readdirSync(ADAPTERS_DIR)) {
     if (site.startsWith("_") || site.startsWith(".")) continue;
@@ -125,23 +143,29 @@ function countAdapters(): {
         if (file.endsWith(".test.ts")) continue;
         try {
           const source = readFileSync(join(siteDir, file), "utf-8");
-          if (!source.includes("cli(")) continue;
+          const hasStaticCli = source.includes("cli(");
+          const dynamicCommandCount = countElectronDesktopRegistrations(source);
+          if (!hasStaticCli && dynamicCommandCount === 0) continue;
           tsCount++;
-          commandCount++;
-          siteHasCommand = true;
+          if (hasStaticCli) {
+            commandCount++;
+            siteHasCommand = true;
+          }
+          commandCount += dynamicCommandCount;
         } catch {
           // unreadable — skip
         }
       }
     }
 
-    if (siteHasCommand) siteCount++;
+    if (siteHasCommand) countedSites.add(site);
   }
+  for (const site of dynamicSites) countedSites.add(site);
 
   return {
     yaml: yamlCount,
     ts: tsCount,
-    sites: siteCount,
+    sites: countedSites.size,
     commands: commandCount,
   };
 }

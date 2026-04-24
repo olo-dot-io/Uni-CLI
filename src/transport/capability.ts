@@ -224,6 +224,7 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
   ax_focused_read: { transports: ["desktop-ax"], platforms: ["darwin"] },
   ax_set_value: { transports: ["desktop-ax"], platforms: ["darwin"] },
   ax_press: { transports: ["desktop-ax"], platforms: ["darwin"] },
+  ax_background_click: { transports: ["desktop-ax"], platforms: ["darwin"] },
   uia_invoke: { transports: ["desktop-uia"], platforms: ["win32"] },
   uia_get_pattern: { transports: ["desktop-uia"], platforms: ["win32"] },
   atspi_activate: { transports: ["desktop-atspi"], platforms: ["linux"] },

@@ -46,6 +46,80 @@ function extractStrategy(source) {
   return m2 ? m2[1] : "public";
 }
 
+const ELECTRON_DESKTOP_BASE_COMMANDS = [
+  [
+    "open-app",
+    "Open desktop Electron app with CDP enabled. 打开桌面版 Electron app 并启用 CDP 控制",
+  ],
+  [
+    "status-app",
+    "Inspect desktop Electron app title, URL, visible controls, and text. 查看桌面版状态和内容",
+  ],
+  [
+    "dump",
+    "Dump visible DOM text from desktop Electron app. 读取桌面版可见文本内容",
+  ],
+  [
+    "snapshot-app",
+    "List visible clickable text, buttons, inputs, and regions in desktop Electron app. 枚举桌面版可交互控件",
+  ],
+  [
+    "click-text",
+    "Click visible text, aria-label, title, or button content in desktop Electron app. 按文本点击桌面版控件",
+  ],
+  [
+    "type-text",
+    "Type text into the focused field or a text-matched target in desktop Electron app. 向桌面版输入文本",
+  ],
+  [
+    "press",
+    "Press a key in desktop Electron app, with optional modifiers. 向桌面版发送按键",
+  ],
+];
+
+const ELECTRON_DESKTOP_MEDIA_COMMANDS = [
+  [
+    "play-liked",
+    "Open liked songs and play the liked playlist in desktop Electron music app. 打开我喜欢的音乐并播放",
+  ],
+  ["play", "Start playback in desktop Electron music app. 播放音乐"],
+  ["pause", "Pause playback in desktop Electron music app. 暂停音乐"],
+  ["toggle", "Toggle playback in desktop Electron music app. 切换播放暂停"],
+  ["next", "Skip to next track in desktop Electron music app. 下一首"],
+  ["prev", "Skip to previous track in desktop Electron music app. 上一首"],
+];
+
+function extractElectronDesktopRegistrations(source) {
+  const out = [];
+  const re =
+    /registerElectronDesktopCommands\(\s*["'`]([^"'`]+)["'`]\s*(?:,\s*(\{[\s\S]*?\})\s*)?\)/g;
+  for (const match of source.matchAll(re)) {
+    const site = match[1];
+    const options = match[2] ?? "";
+    const displayName =
+      options.match(/displayName:\s*["'`]([^"'`]+)["'`]/)?.[1] ?? site;
+    const hasMedia = /\bmedia\s*:/.test(options);
+    const commands = ELECTRON_DESKTOP_BASE_COMMANDS.map(([name, desc]) => ({
+      name,
+      description: `${desc} ${displayName}`,
+      strategy: "public",
+      type: "web-api",
+    }));
+    if (hasMedia) {
+      commands.push(
+        ...ELECTRON_DESKTOP_MEDIA_COMMANDS.map(([name, desc]) => ({
+          name,
+          description: `${desc} ${displayName}`,
+          strategy: "public",
+          type: "web-api",
+        })),
+      );
+    }
+    out.push({ site, commands });
+  }
+  return out;
+}
+
 const SKIP_FILES = new Set(["client", "wbi", "innertube", "index"]);
 
 // ── Category mapping (mirrors discovery/aliases.ts SITE_CATEGORIES) ─────────
@@ -69,6 +143,15 @@ const CATEGORIES = {
     "band",
     "lobsters",
     "hupu",
+    "slack",
+    "discord-app",
+    "signal",
+    "whatsapp",
+    "teams",
+    "dingtalk",
+    "lark",
+    "wechat-work",
+    "zoom-app",
   ],
   video: [
     "bilibili",
@@ -131,6 +214,17 @@ const CATEGORIES = {
     "stackoverflow",
     "devto",
     "producthunt",
+    "cursor",
+    "codex",
+    "codex-cli",
+    "claude-code",
+    "opencode",
+    "vscode",
+    "postman",
+    "insomnia",
+    "github-desktop",
+    "gitkraken",
+    "docker-desktop",
   ],
   ai: [
     "ollama",
@@ -145,8 +239,15 @@ const CATEGORIES = {
     "minimax",
     "doubao",
     "doubao-web",
+    "doubao-app",
     "novita",
     "notebooklm",
+    "chatgpt",
+    "chatwise",
+    "antigravity",
+    "claude",
+    "lm-studio",
+    "yuanbao",
   ],
   reference: [
     "google",
@@ -160,6 +261,16 @@ const CATEGORIES = {
   ],
   audio: ["spotify", "netease-music", "apple-podcasts", "xiaoyuzhou"],
   content: ["medium", "substack", "sspai", "weread", "zsxq", "pixiv"],
+  productivity: [
+    "notion",
+    "notion-app",
+    "obsidian",
+    "logseq",
+    "typora",
+    "evernote-app",
+    "mubu",
+    "apple-notes",
+  ],
   jobs: ["boss", "linkedin"],
   desktop: [
     "macos",
@@ -176,9 +287,18 @@ const CATEGORIES = {
     "drawio",
     "docker",
     "comfyui",
+    "figma",
   ],
   games: ["steam"],
-  utility: ["exchangerate", "ip-info", "qweather", "web"],
+  utility: [
+    "exchangerate",
+    "ip-info",
+    "qweather",
+    "web",
+    "bitwarden",
+    "linear",
+    "todoist",
+  ],
 };
 
 function getCategory(site) {
@@ -191,6 +311,7 @@ function getCategory(site) {
 // ── Scan Adapters ───────────────────────────────────────────────────────────
 
 const manifest = { version: PKG.version, sites: {} };
+const extraCommandsBySite = new Map();
 
 if (existsSync(ADAPTERS_DIR)) {
   for (const site of readdirSync(ADAPTERS_DIR)) {
@@ -220,6 +341,11 @@ if (existsSync(ADAPTERS_DIR)) {
       } else if (ext === ".ts" && !SKIP_FILES.has(cmdName)) {
         try {
           const source = readFileSync(join(siteDir, file), "utf-8");
+          for (const reg of extractElectronDesktopRegistrations(source)) {
+            const existing = extraCommandsBySite.get(reg.site) ?? [];
+            existing.push(...reg.commands);
+            extraCommandsBySite.set(reg.site, existing);
+          }
           if (!source.includes("cli(")) continue;
 
           const name = extractProp(source, "name") || cmdName;
@@ -241,6 +367,22 @@ if (existsSync(ADAPTERS_DIR)) {
       };
     }
   }
+}
+
+for (const [site, extraCommands] of extraCommandsBySite) {
+  const current = manifest.sites[site] ?? {
+    commands: [],
+    category: getCategory(site),
+  };
+  const seen = new Set(current.commands.map((cmd) => cmd.name));
+  for (const cmd of extraCommands) {
+    if (!seen.has(cmd.name)) {
+      current.commands.push(cmd);
+      seen.add(cmd.name);
+    }
+  }
+  current.commands.sort((a, b) => a.name.localeCompare(b.name));
+  manifest.sites[site] = current;
 }
 
 // ── Output 1: Full manifest ─────────────────────────────────────────────────

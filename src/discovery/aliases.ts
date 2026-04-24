@@ -29,8 +29,17 @@ export const SITE_ALIASES: ReadonlyMap<string, string> = new Map([
   ["b站", "bilibili"],
   ["哔哩哔哩", "bilibili"],
   ["微信", "weixin"],
-  ["飞书", "feishu"],
+  ["飞书", "lark"],
   ["钉钉", "dingtalk"],
+  ["企业微信", "wechat-work"],
+  ["网易云", "netease-music"],
+  ["网易云音乐", "netease-music"],
+  ["飞书桌面", "lark"],
+  ["钉钉桌面", "dingtalk"],
+  ["企微", "wechat-work"],
+  ["企业微信桌面", "wechat-work"],
+  ["微信工作台", "wechat-work"],
+  ["腾讯会议", "zoom-app"],
 
   // Chinese finance
   ["雪球", "xueqiu"],
@@ -59,6 +68,15 @@ export const SITE_ALIASES: ReadonlyMap<string, string> = new Map([
   // Chinese tech
   ["掘金", "juejin"],
   ["码云", "gitee"],
+  ["VSCode", "vscode"],
+  ["vscode", "vscode"],
+  ["Cursor", "cursor"],
+  ["cursor", "cursor"],
+  ["Figma", "figma"],
+  ["figma", "figma"],
+  ["Postman", "postman"],
+  ["postman", "postman"],
+  ["Docker Desktop", "docker-desktop"],
 
   // International social — common abbreviations
   ["twitter", "twitter"],
@@ -75,9 +93,19 @@ export const SITE_ALIASES: ReadonlyMap<string, string> = new Map([
   // AI platforms
   ["deepseek", "deepseek"],
   ["豆包", "doubao"],
+  ["豆包桌面", "doubao-app"],
+  ["ChatGPT桌面", "chatgpt"],
+  ["Claude桌面", "claude"],
+  ["Claude", "claude"],
+  ["LM Studio", "lm-studio"],
   ["通义千问", "qwen"],
 
   // Desktop
+  ["Notion", "notion"],
+  ["notion", "notion"],
+  ["Obsidian", "obsidian"],
+  ["obsidian", "obsidian"],
+  ["印象笔记", "evernote-app"],
   ["photoshop", "gimp"],
   ["ps", "gimp"],
 ]);
@@ -109,6 +137,7 @@ export const ACTION_ALIASES: ReadonlyMap<string, readonly string[]> = new Map([
   ["阅读", ["read", "view"]],
   ["读", ["read", "get"]],
   ["获取", ["get", "fetch", "read"]],
+  ["打开", ["open", "launch"]],
   ["get", ["get", "fetch", "read"]],
   ["fetch", ["fetch", "get"]],
 
@@ -148,6 +177,9 @@ export const ACTION_ALIASES: ReadonlyMap<string, readonly string[]> = new Map([
   // Play / Media intent
   ["播放", ["play", "stream"]],
   ["收听", ["play", "listen"]],
+  ["我喜欢", ["play-liked", "liked", "favorite", "music"]],
+  ["喜欢的音乐", ["play-liked", "liked", "favorite", "music"]],
+  ["红心", ["play-liked", "liked", "favorite", "music"]],
   ["play", ["play", "stream"]],
 
   // Delete / Remove intent
@@ -267,6 +299,15 @@ export const SITE_CATEGORIES: ReadonlyMap<string, string> = new Map([
   ["band", "social"],
   ["lobsters", "social"],
   ["hupu", "social"],
+  ["slack", "social"],
+  ["discord-app", "social"],
+  ["signal", "social"],
+  ["whatsapp", "social"],
+  ["teams", "social"],
+  ["dingtalk", "social"],
+  ["lark", "social"],
+  ["wechat-work", "social"],
+  ["zoom-app", "social"],
 
   // Video / Streaming
   ["bilibili", "video"],
@@ -329,6 +370,17 @@ export const SITE_CATEGORIES: ReadonlyMap<string, string> = new Map([
   ["stackoverflow", "dev"],
   ["devto", "dev"],
   ["producthunt", "dev"],
+  ["cursor", "dev"],
+  ["codex", "dev"],
+  ["codex-cli", "dev"],
+  ["claude-code", "dev"],
+  ["opencode", "dev"],
+  ["vscode", "dev"],
+  ["postman", "dev"],
+  ["insomnia", "dev"],
+  ["github-desktop", "dev"],
+  ["gitkraken", "dev"],
+  ["docker-desktop", "dev"],
 
   // AI
   ["ollama", "ai"],
@@ -343,8 +395,15 @@ export const SITE_CATEGORIES: ReadonlyMap<string, string> = new Map([
   ["minimax", "ai"],
   ["doubao", "ai"],
   ["doubao-web", "ai"],
+  ["doubao-app", "ai"],
   ["novita", "ai"],
   ["notebooklm", "ai"],
+  ["chatgpt", "ai"],
+  ["chatwise", "ai"],
+  ["antigravity", "ai"],
+  ["claude", "ai"],
+  ["lm-studio", "ai"],
+  ["yuanbao", "ai"],
 
   // Reference / Education
   ["google", "reference"],
@@ -370,6 +429,16 @@ export const SITE_CATEGORIES: ReadonlyMap<string, string> = new Map([
   ["zsxq", "content"],
   ["pixiv", "content"],
 
+  // Productivity
+  ["notion", "productivity"],
+  ["notion-app", "productivity"],
+  ["obsidian", "productivity"],
+  ["logseq", "productivity"],
+  ["typora", "productivity"],
+  ["evernote-app", "productivity"],
+  ["mubu", "productivity"],
+  ["apple-notes", "productivity"],
+
   // Jobs
   ["boss", "jobs"],
   ["linkedin", "jobs"],
@@ -389,6 +458,7 @@ export const SITE_CATEGORIES: ReadonlyMap<string, string> = new Map([
   ["drawio", "desktop"],
   ["docker", "desktop"],
   ["comfyui", "desktop"],
+  ["figma", "desktop"],
 
   // Games
   ["steam", "games"],
@@ -398,6 +468,9 @@ export const SITE_CATEGORIES: ReadonlyMap<string, string> = new Map([
   ["ip-info", "utility"],
   ["qweather", "utility"],
   ["web", "utility"],
+  ["bitwarden", "utility"],
+  ["linear", "utility"],
+  ["todoist", "utility"],
 ]);
 
 // ── Category Aliases ────────────────────────────────────────────────────────
@@ -429,6 +502,9 @@ export const CATEGORY_ALIASES: ReadonlyMap<string, string> = new Map([
   ["招聘", "jobs"],
   ["桌面", "desktop"],
   ["系统", "desktop"],
+  ["效率", "productivity"],
+  ["生产力", "productivity"],
+  ["笔记", "productivity"],
   ["游戏", "games"],
   ["工具", "utility"],
 ]);

@@ -18,9 +18,9 @@ pipeline:
       args:
         - "-d"
         - "-t"
-        - "${{ args.duration }}"
+        - "${{ args.duration | default(3600) }}"
       parse: text
-      timeout: "${{ (args.duration + 10) * 1000 }}"
+      timeout: "${{ ((args.duration || 3600) + 10) * 1000 }}"
 
 columns: []
 

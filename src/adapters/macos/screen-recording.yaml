@@ -26,9 +26,9 @@ pipeline:
         - "${{ args.duration | default(10) }}"
         - "${{ args.file | default('/tmp/recording.mov') }}"
       parse: text
-      timeout: "${{ (args.duration + 5) * 1000 }}"
+      timeout: "${{ ((args.duration || 10) + 5) * 1000 }}"
 
-  - evaluate: "JSON.stringify([{ file: ${{ args.file | json }}, duration: ${{ args.duration }}, status: 'recorded' }])"
+  - evaluate: "JSON.stringify([{ file: ${{ (args.file || '/tmp/recording.mov') | json }}, duration: ${{ args.duration || 10 }}, status: 'recorded' }])"
 
 columns: [file, duration, status]
 

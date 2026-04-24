@@ -228,6 +228,24 @@ describe.skipIf(skipOnWindows)("exec env vars", () => {
     });
     expect((result[0] as string).trim()).toBe("injected_value");
   });
+
+  it("resolves template expressions in subprocess timeout", async () => {
+    const steps = [
+      {
+        exec: {
+          command: "sh",
+          args: ["-c", "printf template-timeout"],
+          timeout: "${{ (args.duration + 5) * 1000 }}",
+          parse: "text",
+        },
+      },
+    ];
+    const result = await runPipeline(steps, {
+      args: { duration: 1 },
+      source: "internal",
+    });
+    expect(result[0]).toBe("template-timeout");
+  });
 });
 
 describe.skipIf(skipOnWindows)("exec output_file", () => {

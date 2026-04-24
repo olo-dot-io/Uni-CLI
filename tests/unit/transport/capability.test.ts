@@ -74,6 +74,7 @@ describe("stepSupportedBy", () => {
     expect(stepSupportedBy("ax_focused_read")).toEqual(["desktop-ax"]);
     expect(stepSupportedBy("ax_set_value")).toEqual(["desktop-ax"]);
     expect(stepSupportedBy("ax_press")).toEqual(["desktop-ax"]);
+    expect(stepSupportedBy("ax_background_click")).toEqual(["desktop-ax"]);
   });
 
   it("uia_invoke is desktop-uia-only", () => {
@@ -115,6 +116,7 @@ describe("stepPlatform", () => {
     expect(stepPlatform("ax_focused_read")).toEqual(["darwin"]);
     expect(stepPlatform("ax_set_value")).toEqual(["darwin"]);
     expect(stepPlatform("ax_press")).toEqual(["darwin"]);
+    expect(stepPlatform("ax_background_click")).toEqual(["darwin"]);
   });
 
   it("uia_invoke is win32-gated", () => {

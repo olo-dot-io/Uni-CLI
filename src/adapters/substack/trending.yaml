@@ -32,5 +32,6 @@ capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public
-quarantine: false
+quarantine: true
+quarantineReason: "HTTP 404 — upstream `/api/v1/trending` endpoint retired (2026-04-24), needs new Discover scrape/API"
 schema_version: v2

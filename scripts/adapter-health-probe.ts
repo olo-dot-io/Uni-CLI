@@ -101,6 +101,39 @@ function platformCapabilityMismatch(
   return undefined;
 }
 
+const MACOS_MANUAL_HEALTH_COMMANDS = new Set([
+  "caffeinate",
+  "calendar-create",
+  "empty-trash",
+  "finder-copy",
+  "finder-move",
+  "finder-new-folder",
+  "lock-screen",
+  "mail-send",
+  "messages-send",
+  "music-control",
+  "notification",
+  "notify",
+  "open",
+  "open-app",
+  "reminder-create",
+  "reminders-complete",
+  "say",
+  "screen-lock",
+  "screen-recording",
+  "screenshot",
+  "shortcuts-run",
+  "sleep",
+  "wallpaper",
+]);
+
+function manualHealthReason(site: string, command: string): string | undefined {
+  if (site === "macos" && MACOS_MANUAL_HEALTH_COMMANDS.has(command)) {
+    return "manual health: host-mutating macOS command";
+  }
+  return undefined;
+}
+
 /**
  * Post-hoc classifier that decides whether a pipeline error is a genuine
  * adapter regression or a host-environment limitation. The latter are
@@ -130,6 +163,15 @@ function isEnvironmentMissing(message: string): string | undefined {
   // users flip `UNICLI_ALLOW_LOCAL=1` when they actually need these.
   if (/blocked fetch to reserved\/local address/i.test(message)) {
     return "loopback/private target (SSRF guard)";
+  }
+  // Docker CLI is installed on many developer machines while the daemon
+  // is stopped. That is a host-state issue, not an adapter regression.
+  if (
+    /failed to connect to the docker API|Cannot connect to the Docker daemon/i.test(
+      message,
+    )
+  ) {
+    return "local daemon not running (docker)";
   }
   // Missing auth cookies — users running the adapter for real will have
   // run `unicli auth setup <site>` first; CI never does, so every
@@ -163,6 +205,20 @@ function isEnvironmentMissing(message: string): string | undefined {
     )
   ) {
     return "cloud CLI not authenticated";
+  }
+  if (
+    /Access token not provided|SUPABASE_ACCESS_TOKEN|supabase login/i.test(
+      message,
+    )
+  ) {
+    return "cloud CLI not authenticated";
+  }
+  if (
+    /unable to open database .*\/Library\/Safari\/History\.db|Full Disk Access|Operation not permitted/i.test(
+      message,
+    )
+  ) {
+    return "darwin protected app data";
   }
   // Local-only daemons (OBS WebSocket on localhost, AdGuard Home, etc.).
   // A bare `websocket step failed` with no body usually means the local
@@ -268,6 +324,18 @@ async function main(): Promise<void> {
           command: cmdName,
           status: "skip",
           reason: "requires browser",
+          latency_ms: 0,
+        });
+        continue;
+      }
+
+      const manualReason = manualHealthReason(adapter.name, cmdName);
+      if (manualReason) {
+        results.push({
+          site: adapter.name,
+          command: cmdName,
+          status: "skip",
+          reason: manualReason,
           latency_ms: 0,
         });
         continue;

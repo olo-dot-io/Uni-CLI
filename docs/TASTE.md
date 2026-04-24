@@ -5,7 +5,7 @@
 >
 > **Current version:** v0.213.3 — Vostok · Gagarin TC0 Patch R2 (the second R-patch on the Gagarin GA train: invocation kernel + surface unification + output-side TC0 externalization + schema-driven hardening + multi-provider agent-bench harness).
 >
-> **Current scale:** <!-- STATS:site_count -->200<!-- /STATS --> sites, <!-- STATS:command_count -->968<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->968<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->896<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->72<!-- /STATS --> TS), <!-- STATS:test_count -->7113<!-- /STATS --> tests. Numbers render from `stats.json` via `npm run build`; drift fails `npm run stats:check`.
+> **Current scale:** <!-- STATS:site_count -->221<!-- /STATS --> sites, <!-- STATS:command_count -->1225<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->969<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->896<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->73<!-- /STATS --> TS), <!-- STATS:test_count -->7123<!-- /STATS --> tests. Numbers render from `stats.json` via `npm run build`; drift fails `npm run stats:check`.
 
 ## Core Identity
 

@@ -20,7 +20,9 @@
 import { spawn } from "node:child_process";
 
 import { err, exitCodeFor, ok } from "../../core/envelope.js";
+import { resolveAppControlPolicy } from "../../electron-apps.js";
 import type { Envelope } from "../../core/envelope.js";
+import { runAxBackgroundClick } from "./desktop-ax-background-click.js";
 import {
   buildAxFocusedReadScript,
   buildAxPressScript,
@@ -55,6 +57,7 @@ const AX_STEPS = [
   "ax_focused_read",
   "ax_set_value",
   "ax_press",
+  "ax_background_click",
   "clipboard_read",
   "clipboard_write",
   "launch_app",
@@ -346,6 +349,8 @@ export class DesktopAxTransport implements TransportAdapter {
         return this.doAxSetValue<T>(req.params);
       case "ax_press":
         return this.doAxPress<T>(req.params);
+      case "ax_background_click":
+        return this.doAxBackgroundClick<T>(req.params);
       case "clipboard_read":
         return this.doClipboardRead<T>();
       case "clipboard_write":
@@ -407,15 +412,23 @@ export class DesktopAxTransport implements TransportAdapter {
     if (!path || path.length === 0)
       return this.missingParam("ax_menu_select", "path");
 
-    const warmupError = await this.maybeWarmupElectronAx<T>(
-      "ax_menu_select",
-      target,
-      { strict: true, waitMs: 500 },
+    const policy = resolveAppControlPolicy(
+      target.bundleId ?? target.processName,
     );
-    if (warmupError) return warmupError;
+    const shouldWarmup =
+      params.ensureElectronAx === true ||
+      (target.ensureElectronAx &&
+        (policy.inspectionOrder[0] === "cdp-dom" ||
+          policy.backgroundClick.enabled));
+    if (shouldWarmup) {
+      const warmupError = await this.maybeWarmupElectronAx<T>(
+        "ax_menu_select",
+        target,
+        { strict: true, waitMs: 500 },
+      );
+      if (warmupError) return warmupError;
+    }
 
-    // Build an AppleScript that walks the menu bar by name.
-    // e.g. path = ["File", "Export", "Export as PNG"]
     const items = path.map((s) => `"${escapeAs(s)}"`).join(", ");
     const script = [
       `tell application "System Events"`,
@@ -542,6 +555,12 @@ export class DesktopAxTransport implements TransportAdapter {
       target,
       buildAxPressScript(target, query),
     );
+  }
+
+  private async doAxBackgroundClick<T>(
+    params: Record<string, unknown>,
+  ): Promise<Envelope<T>> {
+    return runAxBackgroundClick<T>(this.shell, params);
   }
 
   private async doClipboardRead<T>(): Promise<Envelope<T>> {
@@ -671,18 +690,7 @@ export class DesktopAxTransport implements TransportAdapter {
   }
 }
 
-/**
- * Escape an AppleScript string literal. Neutralises four distinct hazards:
- *   1. `\`   — backslash: must come first so subsequent replacements don't
- *              double-escape our own injected escapes.
- *   2. `"`   — quote: would otherwise close the string literal early.
- *   3. `\r` / `\n` — CR/LF: AppleScript treats these as statement terminators
- *              inside `-e` arguments. An attacker-controlled `app` name like
- *              `Calculator"\nos_command("rm -rf /")` can smuggle new
- *              commands; fold them to spaces so the statement stays on one line.
- *   4. NUL   — `\0`: osascript aborts parsing at NUL, leaving the tail
- *              unexecuted — trim to avoid surprising partial-execution bugs.
- */
+/** Escape an AppleScript string literal used inside `osascript -e`. */
 function escapeAs(s: string): string {
   return s
     .replace(/\\/g, "\\\\")

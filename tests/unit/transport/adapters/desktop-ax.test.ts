@@ -7,10 +7,27 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   DesktopAxTransport,
   type AxShell,
 } from "../../../../src/transport/adapters/desktop-ax.js";
+import {
+  buildAxBackgroundClickScript,
+  buildAxPressScript,
+  buildAxSetValueScript,
+  buildAxSnapshotScript,
+  buildElectronAxWarmupScript,
+  readAxElementQuery,
+  resolveAxTarget,
+} from "../../../../src/transport/adapters/desktop-ax-swift.js";
+import {
+  findElectronApp,
+  resolveAppControlPolicy,
+} from "../../../../src/electron-apps.js";
 import { createTransportBus } from "../../../../src/transport/bus.js";
 import type { TransportContext } from "../../../../src/transport/types.js";
 
@@ -82,6 +99,117 @@ class FakeShell implements AxShell {
 }
 
 describe("DesktopAxTransport", () => {
+  it("resolves natural app aliases for NetEase desktop control", () => {
+    expect(findElectronApp("netease music app")?.bundleId).toBe(
+      "com.netease.163music",
+    );
+    expect(findElectronApp("网易云")?.processName).toBe("NeteaseMusic");
+  });
+
+  it("declares NetEase as a CDP-first app when AX exposes an empty tree", () => {
+    const policy = resolveAppControlPolicy("网易云");
+    expect(policy.inspectionOrder).toEqual([
+      "cdp-dom",
+      "desktop-ax",
+      "background-click",
+      "cua",
+    ]);
+    expect(policy.axEmptyTreeFallback).toBe("cdp-dom");
+    expect(policy.backgroundClick.enabled).toBe(true);
+    expect(policy.backgroundClick.flagsWhenBackgrounded).toBe("command");
+  });
+
+  it("generates Swift AX scripts without untyped empty sets or conditional AX casts", () => {
+    const target = resolveAxTarget({ app: "netease-music" });
+    expect(target).not.toBeNull();
+    const query = readAxElementQuery({ role: "AXButton" }, false);
+    const scripts = [
+      buildAxSnapshotScript(target!, {
+        maxDepth: 1,
+        scope: "focusedWindow",
+      }),
+      buildAxSetValueScript(target!, {
+        ...query,
+        attribute: "AXValue",
+        value: "hello",
+      }),
+      buildAxPressScript(target!, { ...query, actionName: "AXPress" }),
+      buildAxBackgroundClickScript(target!, {
+        x: 120,
+        y: 80,
+        coordinateSpace: "window",
+        button: 0,
+        clickCount: 1,
+      }),
+    ];
+
+    for (const script of scripts) {
+      expect(script).not.toContain("Set([])");
+      expect(script).not.toContain("as? AXUIElement");
+    }
+  });
+
+  it("generates background-click Swift with postToPid field writes and command flag", () => {
+    const target = resolveAxTarget({ app: "netease music app" });
+    expect(target).not.toBeNull();
+    const script = buildAxBackgroundClickScript(target!, {
+      x: 120,
+      y: 80,
+      coordinateSpace: "window",
+      button: 0,
+      clickCount: 1,
+    });
+
+    expect(script).toContain("postToPid");
+    expect(script).toContain("CGEventSetWindowLocation");
+    expect(script).toContain("CGEventField(rawValue: 3)");
+    expect(script).toContain("CGEventField(rawValue: 7)");
+    expect(script).toContain("CGEventField(rawValue: 91)");
+    expect(script).toContain("CGEventField(rawValue: 92)");
+    expect(script).toContain("CGEventFlags.maskCommand");
+    expect(script).not.toContain("activateIgnoringOtherApps");
+    expect(script).not.toContain("kAXFrontmostAttribute");
+  });
+
+  it("typechecks generated Swift AX scripts when swiftc is available", () => {
+    if (process.platform !== "darwin") return;
+    try {
+      execFileSync("swiftc", ["--version"], { stdio: "pipe" });
+    } catch {
+      return;
+    }
+
+    const target = resolveAxTarget({ app: "netease music app" });
+    expect(target).not.toBeNull();
+    const query = readAxElementQuery({ role: "AXButton" }, false);
+    const scripts = {
+      warmup: buildElectronAxWarmupScript(target!, 0),
+      snapshot: buildAxSnapshotScript(target!, {
+        maxDepth: 1,
+        scope: "focusedWindow",
+      }),
+      set: buildAxSetValueScript(target!, {
+        ...query,
+        attribute: "AXValue",
+        value: "hello",
+      }),
+      press: buildAxPressScript(target!, { ...query, actionName: "AXPress" }),
+      backgroundClick: buildAxBackgroundClickScript(target!, {
+        x: 120,
+        y: 80,
+        coordinateSpace: "window",
+        button: 0,
+        clickCount: 1,
+      }),
+    };
+    const dir = mkdtempSync(join(tmpdir(), "unicli-ax-"));
+    for (const [name, script] of Object.entries(scripts)) {
+      const path = join(dir, `${name}.swift`);
+      writeFileSync(path, script, "utf-8");
+      execFileSync("swiftc", ["-typecheck", path], { stdio: "pipe" });
+    }
+  }, 30_000);
+
   it("declares kind = desktop-ax and darwin platform gate", () => {
     const t = new DesktopAxTransport({
       shell: new FakeShell(),
@@ -93,6 +221,7 @@ describe("DesktopAxTransport", () => {
     expect(t.capability.steps).toContain("ax_menu_select");
     expect(t.capability.steps).toContain("ax_snapshot");
     expect(t.capability.steps).toContain("ax_set_value");
+    expect(t.capability.steps).toContain("ax_background_click");
   });
 
   it("returns service_unavailable envelope on linux", async () => {
@@ -402,6 +531,40 @@ describe("DesktopAxTransport", () => {
       expect(res.error.reason).toMatch(/no matching accessibility element/i);
       expect(res.error.suggestion).toMatch(/focus the target control/i);
     }
+  });
+
+  it("ax_background_click posts a background click through Swift", async () => {
+    const shell = new FakeShell();
+    shell.respondMatch(
+      "swift",
+      `let commandMode = "background_click"`,
+      JSON.stringify({
+        found: true,
+        posted: true,
+        pid: 48133,
+        windowNumber: 42,
+        commandFlagApplied: true,
+      }),
+    );
+    const t = new DesktopAxTransport({ shell, platform: "darwin" });
+    await t.open(makeCtx());
+    const res = await t.action<{ posted: boolean; windowNumber: number }>({
+      kind: "ax_background_click",
+      params: {
+        app: "netease music app",
+        x: 120,
+        y: 80,
+        coordinateSpace: "window",
+      },
+    });
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.data.posted).toBe(true);
+      expect(res.data.windowNumber).toBe(42);
+    }
+    const script = shell.calls.at(-1)?.args[1] ?? "";
+    expect(script).toContain(`let commandMode = "background_click"`);
+    expect(script).toContain("postToPid");
   });
 
   it("applescript with an Electron target fails clearly when Accessibility is missing", async () => {

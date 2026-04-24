@@ -1,4 +1,8 @@
 import { findElectronApp } from "../../electron-apps.js";
+export {
+  buildAxBackgroundClickScript,
+  type AxBackgroundClickScriptOptions,
+} from "./desktop-ax-background-click-swift.js";
 
 export interface ResolvedAxTarget {
   appName: string;
@@ -206,6 +210,10 @@ export function swiftStringArray(values: readonly string[]): string {
   return `[${values.map(swiftStringLiteral).join(", ")}]`;
 }
 
+function swiftStringSet(values: readonly string[]): string {
+  return `Set<String>(${swiftStringArray(values)})`;
+}
+
 export function resolveAxTarget(
   params: Record<string, unknown>,
 ): ResolvedAxTarget | null {
@@ -332,11 +340,11 @@ function buildAxElementCommandScript(
     `let commandMode = ${swiftStringLiteral(mode)}`,
     `let queryFocused = ${opts.focused ? "true" : "false"}`,
     `let queryMaxDepth = ${normalizeInt(opts.maxDepth, 8)}`,
-    `let queryRoles = Set(${swiftStringArray(opts.roles)})`,
-    `let querySubroles = Set(${swiftStringArray(opts.subroles)})`,
-    `let queryTitles = Set(${swiftStringArray(opts.titles)})`,
-    `let queryDescriptions = Set(${swiftStringArray(opts.descriptions)})`,
-    `let queryIdentifiers = Set(${swiftStringArray(opts.identifiers)})`,
+    `let queryRoles = ${swiftStringSet(opts.roles)}`,
+    `let querySubroles = ${swiftStringSet(opts.subroles)}`,
+    `let queryTitles = ${swiftStringSet(opts.titles)}`,
+    `let queryDescriptions = ${swiftStringSet(opts.descriptions)}`,
+    `let queryIdentifiers = ${swiftStringSet(opts.identifiers)}`,
     `let queryTitlePrefix = ${opts.titlePrefix ? "true" : "false"}`,
     `let queryDescriptionPrefix = ${opts.descriptionPrefix ? "true" : "false"}`,
     `let writeAttribute = ${swiftStringLiteral(attribute)}`,
@@ -488,7 +496,14 @@ function swiftAxHelpers(): string {
     `}`,
     ``,
     `func children(_ el: AXUIElement) -> [AXUIElement] {`,
-    `  (attr(el, kAXChildrenAttribute as String) as? [AnyObject] ?? []).compactMap { $0 as? AXUIElement }`,
+    `  (attr(el, kAXChildrenAttribute as String) as? [AnyObject] ?? []).compactMap { axElement($0) }`,
+    `}`,
+    ``,
+    `func axElement(_ raw: AnyObject?) -> AXUIElement? {`,
+    `  guard let raw else { return nil }`,
+    `  let value = raw as CFTypeRef`,
+    `  guard CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }`,
+    `  return (raw as! AXUIElement)`,
     `}`,
     ``,
     `func actionNames(_ el: AXUIElement) -> [String] {`,
@@ -498,13 +513,12 @@ function swiftAxHelpers(): string {
     `}`,
     ``,
     `func focusedWindow(in app: AXUIElement) -> AXUIElement? {`,
-    `  if let window = attr(app, kAXFocusedWindowAttribute as String) as? AXUIElement { return window }`,
-    `  return nil`,
+    `  return axElement(attr(app, kAXFocusedWindowAttribute as String))`,
     `}`,
     ``,
     `func focusedElement(in app: AXUIElement) -> AXUIElement? {`,
-    `  if let focused = attr(app, kAXFocusedUIElementAttribute as String) as? AXUIElement { return focused }`,
-    `  if let window = focusedWindow(in: app), let focused = attr(window, kAXFocusedUIElementAttribute as String) as? AXUIElement {`,
+    `  if let focused = axElement(attr(app, kAXFocusedUIElementAttribute as String)) { return focused }`,
+    `  if let window = focusedWindow(in: app), let focused = axElement(attr(window, kAXFocusedUIElementAttribute as String)) {`,
     `    return focused`,
     `  }`,
     `  return nil`,

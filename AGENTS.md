@@ -9,7 +9,7 @@
 
 <!-- BEGIN COUNTS -->
 
-> <!-- STATS:site_count -->200<!-- /STATS --> sites, <!-- STATS:command_count -->968<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->58<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> <!-- STATS:site_count -->221<!-- /STATS --> sites, <!-- STATS:command_count -->1225<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 
@@ -34,29 +34,29 @@ npm install -g @zenalexa/unicli
 
 ## What You Can Do
 
-### Web (108+ sites)
+### Web (138+ sites)
 
-**Chinese**: xiaohongshu (22), zhihu (21), bilibili (17), douyin (13), douban (12), v2ex (12), jike (10), linux-do (10), +33 more (`unicli list`)
+**Chinese**: xiaohongshu (22), zhihu (21), bilibili (17), douyin (13), douban (12), v2ex (12), jike (10), linux-do (10), +31 more (`unicli list`)
 
-**International**: twitter (34), instagram (26), reddit (20), tiktok (16), lesswrong (15), boss (14), bluesky (12), facebook (12), +38 more (`unicli list`)
+**International**: twitter (34), instagram (26), reddit (20), tiktok (16), lesswrong (15), slack (14), boss (14), bluesky (12), +36 more (`unicli list`)
 
-**AI / ML**: notebooklm (15), doubao-web (9), gemini (5), hf (4), ollama (4), doubao (3), minimax (3), novita (3), +6 more (`unicli list`)
+**AI / ML**: notebooklm (15), doubao-web (9), perplexity (8), antigravity (7), chatgpt (7), chatwise (7), claude (7), doubao-app (7), +13 more (`unicli list`)
 
 **Finance**: xueqiu (12), sinafinance (5), barchart (4), eastmoney (4), binance (3), yahoo-finance (3), coinbase (2), futu (2)
 
-**Developer**: stackoverflow (6), devto (5), producthunt (5), npm (4), crates-io (3), docker-hub (3), gitee (3), github-trending (3), +5 more (`unicli list`)
+**Developer**: vscode (10), codex (8), cursor (8), docker-desktop (7), github-desktop (7), gitkraken (7), insomnia (7), postman (7), +16 more (`unicli list`)
 
 **News**: bloomberg (10), hackernews (10), 36kr (5), bbc (4), reuters (4), ithome (3), cnn (2), infoq (2), +3 more (`unicli list`)
 
-**Reference**: imdb (7), wikipedia (5), google (4), netease-music (4), spotify (4), arxiv (3), dictionary (3), paperreview (3), +8 more (`unicli list`)
+**Reference**: netease-music (17), spotify (17), linear (10), imdb (7), bitwarden (7), todoist (7), wikipedia (5), google (4), +11 more (`unicli list`)
 
 ### macOS (58 cmds)
 
 active-app, apps, apps-list, battery, bluetooth, brightness, caffeinate, calendar-create, calendar-list, calendar-today, clipboard, contacts-search, … (`unicli list --site macos`)
 
-### Desktop (24 apps)
+### Desktop (25 apps)
 
-freecad (15 cmds), blender (13 cmds), gimp (12 cmds), ffmpeg (11 cmds), audacity (8 cmds), docker (7 cmds), imagemagick (6 cmds), slay-the-spire-ii (6 cmds), +16 more (`unicli list --category desktop`)
+freecad (15 cmds), blender (13 cmds), gimp (12 cmds), ffmpeg (11 cmds), audacity (8 cmds), figma (8 cmds), docker (7 cmds), imagemagick (6 cmds), +17 more (`unicli list --category desktop`)
 
 ### Bridge (3 CLIs)
 

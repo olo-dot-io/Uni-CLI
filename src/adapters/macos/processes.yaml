@@ -3,12 +3,12 @@ name: processes
 description: List top processes by CPU usage
 type: desktop
 binary: ps
-detect: which ps
+detect: "test $(uname) = Darwin"
 
 pipeline:
   - exec:
-      command: ps
-      args: ["aux", "--sort=-%cpu"]
+      command: sh
+      args: ["-c", "ps -axo pid,pcpu,pmem,comm | sort -k2 -nr | head -20"]
       parse: text
 
 columns: [result]

@@ -19,7 +19,7 @@ The execution layer for agent skills. Deterministic, editable, cross-vendor.
 <a href="https://www.npmjs.com/package/@zenalexa/unicli"><img src="https://img.shields.io/npm/v/@zenalexa/unicli?style=flat-square&color=cb3837" alt="npm"></a>
 <a href="https://github.com/olo-dot-io/Uni-CLI/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/olo-dot-io/Uni-CLI/ci.yml?style=flat-square&label=CI" alt="CI"></a>
 <a href="./LICENSE"><img src="https://img.shields.io/github/license/olo-dot-io/Uni-CLI?style=flat-square" alt="license"></a>
-<img src="https://img.shields.io/badge/tests-<!-- STATS:test_count -->7113<!-- /STATS -->-44cc11?style=flat-square" alt="tests">
+<img src="https://img.shields.io/badge/tests-<!-- STATS:test_count -->7123<!-- /STATS -->-44cc11?style=flat-square" alt="tests">
 <img src="https://img.shields.io/badge/agent--reach-ally-6a5acd?style=flat-square" alt="agent-reach ally">
 
 <br><br>
@@ -38,7 +38,7 @@ npm install -g @zenalexa/unicli
 
 ## What
 
-Uni-CLI is a universal interface that compiles agent intent into deterministic CLI programs. One binary reaches <!-- STATS:site_count -->200<!-- /STATS --> sites, 30+ desktop apps, 35 CLI bridges, and the local OS — <!-- STATS:command_count -->968<!-- /STATS --> commands in total. Every adapter is a 20-line YAML pipeline, so agents can read, edit, and re-run them without a compiler.
+Uni-CLI is a universal interface that compiles agent intent into deterministic CLI programs. One binary reaches <!-- STATS:site_count -->221<!-- /STATS --> sites, 30+ desktop apps, 35 CLI bridges, and the local OS — <!-- STATS:command_count -->1225<!-- /STATS --> commands in total. Every adapter is a 20-line YAML pipeline, so agents can read, edit, and re-run them without a compiler.
 
 Coverage is cross-cutting: web APIs and browser automation, desktop subprocesses (ffmpeg, Blender, LibreOffice), macOS system calls (screenshot, clipboard, Calendar), and Computer Use Agents (Anthropic, OpenAI, Google) — all behind the same `unicli <site> <command>` surface. Output is a table in a terminal and JSON when piped. Errors are structured JSON on stderr with the adapter path, the failing step, and a suggestion — enough directional feedback for an agent to fix the adapter and retry.
 
@@ -82,7 +82,7 @@ graph TB
 
     CMD --> ADAPT["Adapter layer<br/>887 YAML · 72 TS · 35 bridges"]
 
-    ADAPT --> ENGINE["Pipeline engine — <!-- STATS:pipeline_step_count -->58<!-- /STATS -->+ steps<br/>fetch · navigate · exec · extract · each · if · parallel"]
+    ADAPT --> ENGINE["Pipeline engine — <!-- STATS:pipeline_step_count -->59<!-- /STATS -->+ steps<br/>fetch · navigate · exec · extract · each · if · parallel"]
 
     ENGINE --> T1["HTTP<br/>(web APIs)"]
     ENGINE --> T2["CDP Browser<br/>(raw WebSocket)"]
@@ -141,7 +141,7 @@ Detailed benchmarks (p50/p95 token cost per category, vs GitHub MCP cold-start):
 
 ## Platform coverage
 
-<!-- STATS:site_count -->200<!-- /STATS --> sites · <!-- STATS:command_count -->968<!-- /STATS --> commands — the live list is auto-generated in [`AGENTS.md`](AGENTS.md) and split by domain:
+<!-- STATS:site_count -->221<!-- /STATS --> sites · <!-- STATS:command_count -->1225<!-- /STATS --> commands — the live list is auto-generated in [`AGENTS.md`](AGENTS.md) and split by domain:
 
 | Domain                | Highlights                                                              |
 | --------------------- | ----------------------------------------------------------------------- |
@@ -286,7 +286,7 @@ npm run verify     # typecheck + lint + test + build + stats check
 | `npm run build`        | Production build                                          |
 | `npm run typecheck`    | TypeScript strict                                         |
 | `npm run lint`         | Oxlint                                                    |
-| `npm run test`         | Unit tests (<!-- STATS:test_count -->7113<!-- /STATS -->) |
+| `npm run test`         | Unit tests (<!-- STATS:test_count -->7123<!-- /STATS -->) |
 | `npm run test:adapter` | Validate all adapters                                     |
 | `npm run verify`       | Full pipeline (7 gates)                                   |
 
@@ -330,5 +330,5 @@ Repo: <https://github.com/olo-dot-io/Uni-CLI> · npm: [`@zenalexa/unicli`](https
 
 <p align="center">
   <sub>v0.213.3 — Vostok · Gagarin TC0 Patch R2</sub><br>
-  <sub><!-- STATS:site_count -->200<!-- /STATS --> sites · <!-- STATS:command_count -->968<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->58<!-- /STATS --> pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-11-25 · <!-- STATS:test_count -->7113<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->221<!-- /STATS --> sites · <!-- STATS:command_count -->1225<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-11-25 · <!-- STATS:test_count -->7123<!-- /STATS --> tests</sub>
 </p>

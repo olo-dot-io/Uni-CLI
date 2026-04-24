@@ -3,7 +3,7 @@ name: volumes
 description: List Docker volumes
 type: desktop
 binary: docker
-detect: which docker
+detect: "which docker >/dev/null 2>&1 && docker info >/dev/null 2>&1"
 
 pipeline:
   - exec:

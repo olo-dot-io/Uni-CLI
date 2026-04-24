@@ -24,6 +24,7 @@ import { compileAll } from "../engine/kernel/compile.js";
  * warning rather than parsed.
  */
 const MAX_YAML_BYTES = 256 * 1024;
+let tsAdapterLoadGeneration = 0;
 import type {
   AdapterManifest,
   AdapterCommand,
@@ -414,6 +415,7 @@ export function loadAllAdapters(): number {
 
 /** Load TS/JS adapters that self-register via cli() */
 export async function loadTsAdapters(): Promise<number> {
+  tsAdapterLoadGeneration++;
   const files = [
     ...collectTsFiles(BUILTIN_TS_DIR),
     ...collectTsFiles(USER_DIR),
@@ -421,7 +423,9 @@ export async function loadTsAdapters(): Promise<number> {
   let count = 0;
   for (const file of files) {
     try {
-      await import(pathToFileURL(file).href);
+      await import(
+        `${pathToFileURL(file).href}?unicli_ts_load=${tsAdapterLoadGeneration}`
+      );
       count++;
     } catch (err) {
       if (process.env.UNICLI_DEBUG) {
