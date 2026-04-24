@@ -1,6 +1,6 @@
 # Uni-CLI — Per-Call Token Benchmark
 
-> Honest measurement of the context cost of calling `unicli <site> <cmd>`.
+> Honest measurement of the context cost of calling `unicli SITE CMD`.
 > Numbers in the "Results" section below are produced by `npm run bench`
 > and are reproducible in CI (fixture mode) and on a dev machine (live mode).
 
@@ -111,7 +111,7 @@ flag that drops null fields and single-line-JSON-formats the output.
 | MCP (tool defs + one call) | 320-2,800               | Firecrawl, Scalekit (2025)   |
 | Raw function calling       | 150-500                 | OnlyCLI benchmark (2025)     |
 | GitHub MCP server boot     | 55,000                  | 93-tool catalog registration |
-| Uni-CLI `<site> <cmd>`     | **see `Results` above** | `bench/` harness             |
+| Uni-CLI `SITE CMD`         | **see `Results` above** | `bench/` harness             |
 
 ## Reproducibility
 

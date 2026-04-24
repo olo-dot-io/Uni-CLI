@@ -42,7 +42,7 @@ These diagnostics appear in the structured error output, giving the next level (
 
 ### Level 2: Agent-Assisted
 
-This is Uni-CLI's core differentiator. When a command fails, the error is emitted as structured JSON to stderr:
+This is Uni-CLI's core differentiator. When a command fails, the error is emitted as a structured envelope:
 
 ```json
 {
@@ -114,7 +114,7 @@ Every error includes enough context for an agent to act without asking a human:
 | Error Type       | Meaning                          | Typical Fix                      |
 | ---------------- | -------------------------------- | -------------------------------- |
 | `selector_miss`  | CSS selector or JSON path missed | Update selector in YAML          |
-| `auth_expired`   | Cookie/token no longer valid     | `unicli auth setup <site>`       |
+| `auth_expired`   | Cookie/token no longer valid     | `unicli auth setup SITE`         |
 | `network_error`  | Connection failed                | Check network, retry later       |
 | `rate_limited`   | Too many requests                | Wait, add `rate_limit` step      |
 | `schema_change`  | Response shape changed           | Update `select` and `map` steps  |

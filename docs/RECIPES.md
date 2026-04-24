@@ -1,14 +1,12 @@
-# Recipes — Phase 5 workflow adapters
+# Recipes
 
 Worked examples showing how agents chain Uni-CLI commands to solve real
-end-user tasks. Every recipe here uses only adapters shipped in v0.212
-Phase 5: `apple-notes`, `imessage`, and `linear`.
+end-user tasks.
 
 All examples assume:
 
-- Uni-CLI >= 0.212 is on `$PATH` (`npm install -g @zenalexa/unicli`)
-- Stdout is piped or `-f json` is passed — Uni-CLI auto-detects non-TTY
-  and emits JSON without a flag
+- Uni-CLI is on `$PATH` (`npm install -g @zenalexa/unicli`)
+- Commands that feed `jq` or shell scripts pass `-f json` explicitly
 
 ## 1. Triage your morning inbox — list iMessages + Notes in one JSON blob
 
@@ -104,7 +102,7 @@ Authentication required` — the adapter surfaces this as a structured
   Otherwise Linear returns a GraphQL error telling you which field is
   missing; Uni-CLI emits that verbatim in `stderr`.
 - Linear's Authorization header is the API key itself, **not** `Bearer
-<key>`. If you see `403 Forbidden`, double-check you didn't prepend
+KEY`. If you see `403 Forbidden`, double-check you didn't prepend
   `Bearer`.
 
 ## 3. Close a Linear issue from a note you just wrote

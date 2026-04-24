@@ -31,9 +31,9 @@ MCP is optional for IDE integration. CLI through Bash is the primary execution p
 This is why Uni-CLI exists. Not the adapter count. Not the CLI UX. **The ability for agents to fix their own tools.**
 
 ```
-Agent calls: unicli <site> <command>
+Agent calls: unicli SITE COMMAND
   │
-  ├─ Success → structured JSON to stdout → done
+  ├─ Success → structured envelope to stdout → done
   │
   └─ Failure → structured error JSON to stderr:
        {
@@ -49,13 +49,13 @@ Agent calls: unicli <site> <command>
        │
        Agent edits YAML (fix URL, selector, params, strategy)
        │
-       Agent saves to ~/.unicli/adapters/<site>/<command>.yaml
+       Agent saves to ~/.unicli/adapters/SITE/COMMAND.yaml
        │
-       Agent retries: unicli <site> <command>
+       Agent retries: unicli SITE COMMAND
        │
-       Agent verifies: unicli test <site>
+       Agent verifies: unicli test SITE
        │
-       Fixed. No human needed. Fix persists across npm updates.
+       Fixed. Local override persists across npm updates.
 ```
 
 ### Why Self-Healing Requires All Five
@@ -105,7 +105,7 @@ YAML adapters declare a pipeline of steps:
 pipeline:
   - fetch: { url: "..." } # HTTP GET/POST → JSON
   - fetch_text: { url: "..." } # HTTP → raw text (XML/RSS/HTML)
-  - parse_rss: ~ # Extract <item> blocks from XML
+  - parse_rss: ~ # Extract item blocks from XML
   - select: "data.items" # Navigate into nested object
   - map: { title: "${{ ... }}" } # Transform each item
   - filter: "item.score > 10" # Keep matching items
@@ -121,9 +121,9 @@ Pipe filters: `${{ item.tags | join(', ') }}`, `${{ args.q | urlencode }}`
 
 ```
 Discovery order (later overrides earlier):
-  1. src/adapters/<site>/           ← built-in (ships with npm)
-  2. ~/.unicli/adapters/<site>/     ← user/agent fixes (persistent)
-  3. .unicli/adapters/<site>/       ← project-local (future)
+  1. src/adapters/SITE/           ← built-in (ships with npm)
+  2. ~/.unicli/adapters/SITE/     ← user/agent fixes (persistent)
+  3. .unicli/adapters/SITE/       ← project-local (future)
 ```
 
 When an agent fixes an adapter, the fix goes to `~/.unicli/adapters/`. This means:

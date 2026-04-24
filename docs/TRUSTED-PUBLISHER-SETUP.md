@@ -60,7 +60,7 @@ organisation — re-bind.
 
 ## Validation
 
-After binding, push a throwaway `v*` tag (or re-push `v0.212.1`) and
+After binding, push a throwaway `v*` tag (or re-run a current release tag) and
 watch `.github/workflows/release.yml` run. The "Report publish auth
 mode" step prints one of:
 

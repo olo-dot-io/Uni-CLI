@@ -1,40 +1,21 @@
 # SKILL.md Export
 
-> One Anthropic-spec SKILL.md per adapter command, generated from the same metadata the CLI already loads.
-
-## What it does
-
-`unicli skills export` walks every adapter loaded by Uni-CLI (built-in, user, plugin) and emits one `.md` file per command into an output directory. Each file has YAML frontmatter that complies with Anthropic's [SKILL.md spec](https://docs.anthropic.com/en/docs/build-with-claude/agent-skills) and a 2-paragraph body documenting how to call it.
-
-## Why
-
-The SKILL.md spec is the de-facto interop layer between agent harnesses (Claude Code, Codex, Cursor, Cline, Windsurf, …). Tools that expose SKILL.md files plug into all of them. Without an exporter, every Uni-CLI adapter would need a hand-written counterpart in `~/.claude/skills/` — about 700 files at v0.208. The exporter makes that one command.
+`unicli skills export` emits one SKILL.md-compatible file per adapter command.
+Use it when an agent runtime can ingest local skill files more cheaply than it
+can call discovery on every task.
 
 ## Commands
 
 ```bash
-# Generate skill files into ./skills/
 unicli skills export
-
-# Custom output directory
 unicli skills export --out /tmp/unicli-skills
-
-# Publish into a Claude skills directory (default ~/.claude/skills/uni-cli/)
 unicli skills publish
-
-# Publish to a custom location
 unicli skills publish --to ~/.cursor/skills/uni-cli/
-
-# Build the machine-readable single source of truth at docs/adapters-catalog.json
 unicli skills catalog
-
-# Custom catalog path
 unicli skills catalog --out /tmp/catalog.json
 ```
 
-## Output shape
-
-For each adapter command, one file at `<out>/<site>/<command>.md`:
+## Generated Skill Shape
 
 ````markdown
 ---
@@ -42,40 +23,34 @@ name: hackernews-top
 description: Hacker News top stories
 when_to_use: When you need the current top items from hackernews.
 command: unicli hackernews top
-source: unicli@0.210.0
+source: unicli@0.215.1
 ---
 
 ## What it does
 
-Hacker News top stories. Returns columns: `rank`, `title`, `score`, `author`, `comments`.
+Hacker News top stories. Returns columns: `rank`, `title`, `score`, `author`,
+`comments`.
 
 ## How to call it
 
 ```bash
-unicli hackernews top [--limit 20]
+unicli hackernews top --limit 20
 ```
 ````
 
-Add `--format json` for piped output (auto-detected when stdout is not a TTY) and `--limit N` to cap result count. All Uni-CLI commands return structured JSON errors on stderr with the failing pipeline step and a repair suggestion.
+Use `-f json` when the caller needs JSON. Errors use the normal v2 envelope and
+include the failing adapter path, step, and suggestion.
 
-````
+## Catalog Shape
 
-## The catalog
-
-`docs/adapters-catalog.json` is the canonical machine-readable view of every adapter command. Build it with:
-
-```bash
-unicli skills catalog
-````
-
-It contains:
+`unicli skills catalog` writes `docs/adapters-catalog.json` or a custom output
+path:
 
 ```json
 {
-  "source": "unicli@0.210.0",
-  "generated": "2026-04-08T00:00:00.000Z",
-  "total_sites": 134,
-  "total_commands": 711,
+  "source": "unicli@0.215.1",
+  "total_sites": 220,
+  "total_commands": 1283,
   "adapters": [
     {
       "site": "hackernews",
@@ -84,18 +59,8 @@ It contains:
       "commands": [
         {
           "name": "top",
-          "description": "Hacker News top stories",
-          "when_to_use": "When you need the current top items from hackernews.",
           "command": "unicli hackernews top",
-          "columns": ["rank", "title", "score", "author", "comments"],
-          "args": [
-            {
-              "name": "limit",
-              "type": "int",
-              "required": false,
-              "positional": false
-            }
-          ]
+          "columns": ["rank", "title", "score", "author", "comments"]
         }
       ]
     }
@@ -103,4 +68,5 @@ It contains:
 }
 ```
 
-Agents can ingest the catalog once and route directly without making per-call discovery requests.
+Agents can ingest the catalog once and route directly without repeated
+discovery calls.

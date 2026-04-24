@@ -87,7 +87,7 @@ Empirical signal of within-release instability:
 A self-repair loop that assumes Mode B capability to patch a broken YAML adapter will fail on a Mode A agent that received the same structured error envelope. The repair function $R$ must be robust to both modes. Concretely:
 
 - Error envelopes must name the file path, line/step number, and propose a diff candidate — not rely on the agent to infer any of these.
-- Each repair cycle must be locally verifiable by running `unicli test <site>/<command>` (structural, not LLM) before proposing the next patch.
+- Each repair cycle must be locally verifiable by running `unicli test SITE/COMMAND` (structural, not LLM) before proposing the next patch.
 - If three repair cycles fail to pass `V`, the system escalates to quarantine and human review, rather than burning budget on an agent that cannot see the problem.
 
 This design holds under Mode A and is slightly wasteful under Mode B — an acceptable trade.

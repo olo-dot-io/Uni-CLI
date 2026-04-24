@@ -11,7 +11,7 @@ npm install -g @zenalexa/unicli
 Verify installation:
 
 ```bash
-unicli list          # 200 sites, 969 commands
+unicli list          # 220 sites, 1283 commands
 unicli mcp health    # MCP server health check
 ```
 
@@ -32,7 +32,7 @@ Add to `CLAUDE.md` or `AGENTS.md`:
 ```markdown
 ## Uni-CLI
 
-`unicli <site> <command>` — 200 sites, 969 commands, piped output auto-switches to JSON.
+`unicli SITE COMMAND` — 220 sites, 1283 commands, Markdown envelope by default; use `-f json` for JSON.
 
 Examples:
 unicli hackernews top
@@ -167,6 +167,6 @@ unicli agents generate --for opencode   # OpenCode config
 
 ```bash
 unicli mcp health       # Check MCP server health
-unicli list             # Verify 200 sites, 969 commands loaded
+unicli list             # Verify 220 sites, 1283 commands loaded
 unicli test hackernews  # Quick smoke test
 ```

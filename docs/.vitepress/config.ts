@@ -50,7 +50,7 @@ function escapeMustacheInFence(md: any) {
 
 export default defineConfig({
   title: "Uni-CLI",
-  description: "The last CLI an AI agent will ever need",
+  description: "One CLI surface for agents to operate software",
   markdown: {
     config: (md) => {
       escapeMustacheInFence(md);
@@ -106,7 +106,7 @@ export default defineConfig({
       { icon: "github", link: "https://github.com/olo-dot-io/Uni-CLI" },
     ],
     footer: {
-      message: "Released under the AGPL-3.0 License",
+      message: "Released under the Apache-2.0 License",
       copyright: "Copyright \u00a9 2024-2026 OLo",
     },
   },

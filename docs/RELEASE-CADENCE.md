@@ -1,12 +1,7 @@
 # Release Cadence
 
-> Introduced in v0.213 (Gagarin). See `.github/workflows/weekly-release.yml`.
-
 Uni-CLI ships on a **weekly Friday cadence**. The goal is a predictable public
-heartbeat that keeps pace with the agent-infrastructure space — OpenCLI ships
-near-daily, and long silences between our version bumps misrepresent how much
-is actually landing on `main`. Weekly releases make the activity visible
-without bouncing contributors through a bump-per-commit firehose.
+heartbeat without bouncing contributors through a bump-per-commit firehose.
 
 ## 1. Cadence promise
 
@@ -34,17 +29,16 @@ The intended flow is:
 | Mon–Thu      | Review, merge (or close) PRs                                     |
 | Friday 01:00 | Weekly release workflow fires; merged deps ride along in the tag |
 
-Ungrouped per-dependency PRs were explicitly replaced with grouping in v0.213.
-Preserving individual bumps defeats the purpose: it re-floods the commit log
-and drowns out substantive work.
+Ungrouped per-dependency PRs defeat the purpose: they re-flood the commit log
+and drown out substantive work.
 
 ## 3. Versioning
 
 The project uses [semver](https://semver.org) with this split:
 
-- **Patch** (`0.213.X`) — bug fixes, adapter additions, doc touch-ups, small
+- **Patch** (`0.X.Y`) — bug fixes, adapter additions, doc touch-ups, small
   features. The default for every weekly cadence release.
-- **Minor** (`0.214.0`) — major surface changes: new transport, new command
+- **Minor** (`0.X.0`) — major surface changes: new transport, new command
   class, codename bump, breaking behavior behind a flag. Not cut by the weekly
   cron; handled by an explicit release commit and tag.
 - **Major** (`1.0.0`) — reserved. Requires an RFC-style design doc and an
@@ -124,7 +118,7 @@ discovered before the npm publish completes, the procedure is:
    ```
 2. Revert the release commit:
    ```bash
-   git revert <release-commit-sha> --no-edit
+   git revert RELEASE_COMMIT_SHA --no-edit
    git push origin main
    ```
 3. Cancel the in-flight `release.yml` run from the Actions UI.
@@ -159,5 +153,6 @@ cadence is designed to produce.
 
 ---
 
-Questions on cadence or release mechanics: see [`contributing/release.md`](../contributing/release.md)
+Questions on cadence or release mechanics: see
+[`contributing/release.md`](https://github.com/olo-dot-io/Uni-CLI/blob/main/contributing/release.md)
 for the hands-on procedure; this doc covers policy only.

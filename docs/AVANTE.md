@@ -59,7 +59,7 @@ stdout.
 ## Example prompts
 
 ACP prompts are plain strings. The Uni-CLI ACP server looks for a
-`unicli <site> <command>` invocation anywhere in the prompt and executes
+`unicli SITE COMMAND` invocation anywhere in the prompt and executes
 it; everything else is ignored. Typical prompts:
 
 ```text
@@ -122,9 +122,9 @@ session/list       → { sessions: [...] }
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | avante.nvim reports "no response from provider"           | Run `unicli acp` by hand in a terminal and send `{"jsonrpc":"2.0","id":1,"method":"initialize"}\n` on stdin — you should see a JSON response within a second. If nothing appears, run `npm install -g @zenalexa/unicli` again. |
 | Server exits immediately                                  | Check stderr in your Neovim log; the most common cause is a missing Node.js 20+ runtime. `node --version` should print ≥ 20.                                                                                                   |
-| Commands return `Unknown command`                         | The prompt format is `unicli <site> <command>` — make sure both tokens appear and match the registry. `unicli list --site <name>` shows the exact commands available.                                                          |
-| Auth-gated commands (Twitter, Xiaohongshu, Bilibili) fail | Run `unicli auth setup <site>` once in a terminal. Cookies persist in `~/.unicli/cookies/<site>.json` and every invocation (CLI, MCP, ACP) reads the same file.                                                                |
-| You want to see which method was dispatched               | Restart with `args = { "acp", "--debug" }`. Every request logs `[acp] → <method>` on stderr.                                                                                                                                   |
+| Commands return `Unknown command`                         | The prompt format is `unicli SITE COMMAND` — make sure both tokens appear and match the registry. `unicli list --site SITE` shows the exact commands available.                                                                |
+| Auth-gated commands (Twitter, Xiaohongshu, Bilibili) fail | Run `unicli auth setup SITE` once in a terminal. Cookies persist in `~/.unicli/cookies/SITE.json` and every invocation (CLI, MCP, ACP) reads the same file.                                                                    |
+| You want to see which method was dispatched               | Restart with `args = { "acp", "--debug" }`. Every request logs `[acp] METHOD` on stderr.                                                                                                                                       |
 
 ## Design notes
 
@@ -137,5 +137,5 @@ session/list       → { sessions: [...] }
   (`sendUserMessage`, `newSession`) for forward compatibility.
 - No authentication is performed at the ACP layer. Cookie-backed
   adapters resolve credentials from `~/.unicli/cookies` on each
-  pipeline execution, identical to the behaviour of `unicli <site>
-<command>` in a terminal.
+  pipeline execution, identical to the behaviour of `unicli SITE
+COMMAND` in a terminal.

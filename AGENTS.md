@@ -136,7 +136,7 @@ net: `network_error` `rate_limited` `upstream_error` `api_error` `not_authentica
 input: `invalid_input` `selector_miss` `not_found`
 authz: `auth_required` `permission_denied`
 runtime: `internal_error` `quarantined`
-ref (v0.213.1): `stale_ref` `ambiguous` `ref_not_found`
+ref: `stale_ref` `ambiguous` `ref_not_found`
 
 ### Exit codes
 
@@ -178,7 +178,7 @@ Full reference: [`docs/ADAPTER-FORMAT.md`](docs/ADAPTER-FORMAT.md).
 
 ## Pipeline Steps
 
-31 steps across 5 families — api (fetch, fetch_text, parse_rss, html_to_md), transform (select, map, filter, sort, limit), control (set, if, each, parallel, rate_limit, assert, retry, append), browser (navigate, evaluate, click, type, press, scroll, intercept, snapshot, tap, extract, wait), other (exec, write_temp, download, websocket). See [`docs/ADAPTER-FORMAT.md`](docs/ADAPTER-FORMAT.md) for the full table with examples.
+59 registered pipeline steps across api, transform, control, browser, subprocess, and CUA-oriented families. Common steps include fetch, fetch_text, parse_rss, html_to_md, select, map, filter, sort, limit, set, if, each, parallel, rate_limit, assert, retry, append, navigate, evaluate, click, type, press, scroll, intercept, snapshot, tap, extract, wait, exec, write_temp, download, and websocket. See [`docs/ADAPTER-FORMAT.md`](docs/ADAPTER-FORMAT.md) for examples.
 
 ## MCP Server
 

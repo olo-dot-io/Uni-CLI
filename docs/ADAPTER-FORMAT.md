@@ -62,7 +62,7 @@ columns: [id, title]
 
 | Field                | Required    | Type                                                                                                 | Notes                                                                                                      |
 | -------------------- | ----------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `site`               | yes         | string                                                                                               | Adapter site/service key, kebab-case. Used as `unicli <site> <cmd>`.                                       |
+| `site`               | yes         | string                                                                                               | Adapter site/service key, kebab-case. Used as `unicli SITE CMD`.                                           |
 | `name`               | yes         | string                                                                                               | Command name; unique per site.                                                                             |
 | `description`        | recommended | string                                                                                               | One-line description for `unicli list` and for agents.                                                     |
 | `type`               | optional    | `web-api` \| `browser` \| `bridge` \| `desktop` \| `service`                                         | Omit for implicit `web-api`. Historical; the `transport` field is the v2 source of truth.                  |
@@ -88,12 +88,12 @@ args:
 ```
 
 Types: `string`, `int`, `float`, `bool`, `string[]`. Positional args populate
-`${{ args.<name> }}` in pipeline templates. Named flags become
-`--<name> <value>` on the command line.
+`${{ args.NAME }}` in pipeline templates. Named flags become
+`--NAME VALUE` on the command line.
 
 ### Pipeline steps
 
-All 31+ pipeline steps are documented in `docs/reference/pipeline-steps.md`.
+Pipeline steps are documented in `docs/reference/pipeline.md`.
 The most common ones:
 
 | Step         | Transport                      | Purpose                                                |
@@ -184,8 +184,8 @@ Omitting these is a build error under `npm run lint:adapters`.
 
 ## Schema-v2 required fields
 
-Five fields were added in v0.212 for CI safety, capability routing, and
-honest provenance:
+Schema v2 requires five metadata fields for CI safety, capability routing,
+and honest provenance:
 
 | Field                | Why it exists                                                                                               | Default when absent                                                                                                     |
 | -------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -216,7 +216,7 @@ only as a short-lived alias for the auth hint.
 | _(new)_ `cua`     | `cua`                                            | none                                             |
 
 The `unicli migrate` tool handles the split. For a hand-written adapter,
-set both fields explicitly — the alias will be dropped in v0.213.
+set both fields explicitly and do not rely on legacy alias inference.
 
 ---
 
@@ -409,17 +409,17 @@ command could have been expressed as intercept.
 
 ## Troubleshooting
 
-| Symptom                                                   | Likely cause                                                                | Fix                                                                                                             |
-| --------------------------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `Unknown step: ...` at load time                          | Step name typo or step not registered                                       | Check `src/engine/steps/` for supported names.                                                                  |
-| `Adapter schema v2 violation: missing minimum_capability` | Pre-v2 YAML not migrated                                                    | Run `unicli migrate schema-v2 src/adapters/<site>/<cmd>.yaml`.                                                  |
-| `Forbidden: step X not in capabilities`                   | Pipeline uses a step not declared in `capabilities`                         | Add the step name to `capabilities`, or drop the step.                                                          |
-| `Strategy 'legacy-xyz' unknown`                           | Typo or dropped strategy                                                    | Consult the Strategy migration table; `legacy-xyz` is probably replaced by a named transport.                   |
-| `HTTP 403 Forbidden` on cookie strategy                   | Cookie file stale                                                           | `unicli auth setup <site>` to re-authenticate; run `unicli repair <site>/<cmd>` for directed patch suggestions. |
-| `Interception timed out after 8000ms`                     | Selector/URL pattern changed upstream                                       | Inspect page network panel, update the `pattern` in `intercept` step, re-run.                                   |
-| `cua_backend: anthropic not configured`                   | `ANTHROPIC_API_KEY` unset or CUA backend sidecar not running                | `unicli daemon status` to check; `export ANTHROPIC_API_KEY=...`.                                                |
-| `quarantine: true` but command still tries to run         | You called the command directly; quarantine only affects CI + `unicli test` | Remove `quarantine` once repaired, or run `unicli repair <site>/<cmd>` to auto-patch + lift the flag.           |
-| `trust: user` adapter refuses to run                      | CI safety gate rejects user-trust adapters when `UNICLI_TRUST_FLOOR=public` | Set `trust: public` and get the file reviewed, or run with `UNICLI_TRUST_FLOOR=user` locally.                   |
+| Symptom                                                   | Likely cause                                                                | Fix                                                                                                       |
+| --------------------------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `Unknown step: ...` at load time                          | Step name typo or step not registered                                       | Check `src/engine/steps/` for supported names.                                                            |
+| `Adapter schema v2 violation: missing minimum_capability` | Pre-v2 YAML not migrated                                                    | Run `unicli migrate schema-v2 src/adapters/SITE/CMD.yaml`.                                                |
+| `Forbidden: step X not in capabilities`                   | Pipeline uses a step not declared in `capabilities`                         | Add the step name to `capabilities`, or drop the step.                                                    |
+| `Strategy 'legacy-xyz' unknown`                           | Typo or dropped strategy                                                    | Consult the Strategy migration table; `legacy-xyz` is probably replaced by a named transport.             |
+| `HTTP 403 Forbidden` on cookie strategy                   | Cookie file stale                                                           | `unicli auth setup SITE` to re-authenticate; run `unicli repair SITE/CMD` for directed patch suggestions. |
+| `Interception timed out after 8000ms`                     | Selector/URL pattern changed upstream                                       | Inspect page network panel, update the `pattern` in `intercept` step, re-run.                             |
+| `cua_backend: anthropic not configured`                   | `ANTHROPIC_API_KEY` unset or CUA backend sidecar not running                | `unicli daemon status` to check; `export ANTHROPIC_API_KEY=...`.                                          |
+| `quarantine: true` but command still tries to run         | You called the command directly; quarantine only affects CI + `unicli test` | Remove `quarantine` once repaired, or run `unicli repair SITE/CMD` to auto-patch + lift the flag.         |
+| `trust: user` adapter refuses to run                      | CI safety gate rejects user-trust adapters when `UNICLI_TRUST_FLOOR=public` | Set `trust: public` and get the file reviewed, or run with `UNICLI_TRUST_FLOOR=user` locally.             |
 
 For anything not on this list, `unicli doctor` prints the relevant
 diagnostics. If that does not resolve the issue, open an issue with the
@@ -430,10 +430,8 @@ full stderr envelope — the `adapter_path` / `step` / `action` /
 
 ## See also
 
-- `docs/reference/pipeline-steps.md` — full step catalog with schemas.
-- `docs/THEORY.md` — why YAML is the default (Rice-restricted composition).
-- `docs/MIGRATING-FROM-OPENCLI.md` — importing OpenCLI adapters.
+- `docs/reference/pipeline.md` — full step catalog with examples.
 - `src/core/schema-v2.ts` — the authoritative Zod schema.
-- `src/adapters/` — 884 YAML adapters to read as working examples.
+- `src/adapters/` — committed adapters to read as working examples.
 
-_Document version: v2 (2026-04-15). Last updated alongside schema-v2._
+_Document version: v2. Last updated 2026-04-25._

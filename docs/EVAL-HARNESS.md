@@ -8,7 +8,9 @@
 
 ## Why
 
-v0.207 shipped the eval _primitive_ (`src/engine/repair/eval.ts`) — a generic judge engine consumed by the self-repair loop. v0.208 ships the _content_: a starter catalog so the self-repair loop has measurable baselines. Without baselines, claimed improvements are noise. Eval files are also the simplest possible regression test: an adapter that suddenly returns `[]` or 403 fails its eval immediately.
+Adapter repair needs measurable baselines. Eval files are the simplest
+regression test: an adapter that suddenly returns `[]`, 403, or malformed data
+fails its eval immediately.
 
 ## Commands
 

@@ -1,14 +1,9 @@
 name: Weekly Release
 
-# Friday-cadence release gate introduced in v0.213 (Phase 9).
-#
 # Why a cron instead of a manual tag push?
-#   OpenCLI ships ~10 commits/day with near-daily releases. Uni-CLI silences
-#   for weeks between version bumps, then ships a flurry of dependabot noise —
-#   a bad "perceived-active" signal for a project whose whole pitch is
-#   agent-infrastructure velocity. The Friday cron enforces a predictable
-#   cadence and lets dependabot batch into one weekly group (see
-#   .github/dependabot.yml) without triggering a release per bump.
+#   The Friday cron enforces a predictable cadence and lets dependabot batch
+#   into one weekly group (see .github/dependabot.yml) without triggering a
+#   release per bump.
 #
 # What it does:
 #   1. Detect commits since last tag, excluding chore(deps) and chore(ci).

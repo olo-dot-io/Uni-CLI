@@ -1,143 +1,64 @@
 # Getting Started
 
-Uni-CLI turns any website, desktop app, or cloud service into a CLI command. Install it, run a command, and get structured output — ready for AI agents or human eyes.
+Uni-CLI turns websites, desktop apps, services, and local tools into commands
+that agents can search, run, and repair.
 
-## Installation
+## Install
 
 ```bash
 npm install -g @zenalexa/unicli
+unicli --version
+# 0.215.1
 ```
 
 Requires Node.js 20 or later.
 
-Verify the installation:
+## Find A Command
 
 ```bash
-unicli --version
-# 0.205.0
+unicli search "hacker news frontpage"
+unicli search "小红书 搜索"
+unicli list --site hackernews
 ```
 
-## Your First Command
-
-Fetch the top stories from Hacker News:
+## Run A Command
 
 ```bash
-unicli hackernews top
+unicli hackernews top --limit 5
 ```
 
-This outputs a formatted markdown table in your terminal:
-
-```
- # │ Title                                    │ Score │ Comments │ URL
-───┼──────────────────────────────────────────┼───────┼──────────┼────────────────────
- 1 │ Show HN: I built a CLI for AI agents     │  342  │    127   │ https://example.com
- 2 │ SQLite is all you need                    │  289  │     94   │ https://example.com
-```
-
-## JSON Output
-
-When piped, Uni-CLI automatically switches to JSON — no flags needed:
+Use JSON when a script needs it:
 
 ```bash
-unicli hackernews top | jq '.[0]'
+unicli hackernews top --limit 5 -f json | jq '.[0]'
 ```
 
-```json
-{
-  "title": "Show HN: I built a CLI for AI agents",
-  "score": 342,
-  "comments": 127,
-  "url": "https://example.com"
-}
-```
-
-You can also force JSON with the `--json` flag:
+Supported formats:
 
 ```bash
-unicli hackernews top --json
-```
-
-## Discovering Commands
-
-List all available commands:
-
-```bash
-unicli list
-```
-
-List commands for a specific site:
-
-```bash
-unicli list hackernews
-```
-
-Search across all adapters:
-
-```bash
-unicli list --search "trending"
+unicli hackernews top -f md
+unicli hackernews top -f json
+unicli hackernews top -f yaml
+unicli hackernews top -f csv
+unicli hackernews top -f compact
 ```
 
 ## Authentication
 
-Some sites require cookies from your browser. Uni-CLI can extract them directly from Chrome via CDP (Chrome DevTools Protocol).
-
-### Step 1: Start the browser daemon
-
-```bash
-unicli browser start
-```
-
-This connects to your running Chrome instance (or launches one) with remote debugging enabled.
-
-### Step 2: Set up auth for a site
+Some adapters need local cookies:
 
 ```bash
 unicli auth setup bilibili
-```
-
-This opens the login page in Chrome. Sign in normally, then Uni-CLI extracts and stores the session cookies.
-
-### Step 3: Verify authentication
-
-```bash
 unicli auth check bilibili
-```
-
-### Step 4: Use authenticated commands
-
-```bash
 unicli bilibili feed
-unicli bilibili favorites
 ```
 
-Cookies are stored in `~/.unicli/cookies/<site>.json` and automatically injected into requests.
+Cookies live at `~/.unicli/cookies/SITE.json`. Auth failures return exit
+code `77` and a structured error with the next command to run.
 
 ## Browser Automation
 
-For sites that require full browser interaction (not just cookies), Uni-CLI drives Chrome directly via CDP.
-
-Start the browser daemon:
-
-```bash
-unicli browser start
-```
-
-Check status:
-
-```bash
-unicli browser status
-```
-
-Browser-type adapters automatically connect to the daemon:
-
-```bash
-unicli chatgpt ask "What is the meaning of life?"
-unicli notion search "meeting notes"
-```
-
-## Direct Browser Control
-
-The `operate` command gives you low-level browser control — useful for automation scripts:
+Browser adapters use Chrome/CDP when HTTP is not enough.
 
 ```bash
 unicli operate goto "https://example.com"
@@ -147,40 +68,42 @@ unicli operate type --ref 7 --text "hello"
 unicli operate screenshot --path ./page.png
 ```
 
-## Output Formats
+## Protocol Servers
 
-Every command supports multiple output formats (`-f, --format`):
+MCP:
 
 ```bash
-unicli hackernews top              # md (default in terminal)
-unicli hackernews top -f json      # JSON — canonical machine format
-unicli hackernews top -f yaml      # YAML — readable multi-line
-unicli hackernews top -f csv       # CSV — comma-separated
-unicli hackernews top -f md        # Markdown table
-unicli hackernews top -f compact   # compact — `|` separator, no headers (agent-token-optimized)
+npx @zenalexa/unicli mcp serve
+npx @zenalexa/unicli mcp serve --transport streamable --port 19826
 ```
 
-Piped output auto-selects `json`. The legacy `-f table` value emits a
-deprecation warning and falls back to `md`; migrate before v0.213.
+ACP:
+
+```bash
+unicli acp
+```
+
+ACP is an editor compatibility gateway. For coding-agent runtime routing:
+
+```bash
+unicli agents matrix
+unicli agents recommend codex
+```
 
 ## Exit Codes
 
-Uni-CLI uses `sysexits.h`-compatible exit codes so agents can programmatically handle failures:
-
-| Code | Meaning             | Agent Action             |
-| ---- | ------------------- | ------------------------ |
-| 0    | Success             | Use the data             |
-| 1    | Generic error       | Read stderr JSON         |
-| 2    | Usage error         | Fix the command syntax   |
-| 66   | Empty result        | Try different parameters |
-| 69   | Service unavailable | Retry later              |
-| 75   | Temporary failure   | Retry with backoff       |
-| 77   | Auth required       | Run `unicli auth setup`  |
-| 78   | Config error        | Check adapter YAML       |
+| Code | Meaning             | Agent action                             |
+| ---- | ------------------- | ---------------------------------------- |
+| 0    | Success             | Use the data                             |
+| 66   | Empty result        | Try different parameters                 |
+| 69   | Service unavailable | Retry later                              |
+| 75   | Temporary failure   | Retry with backoff                       |
+| 77   | Auth required       | Run `unicli auth setup SITE`             |
+| 78   | Config error        | Read the error envelope and adapter YAML |
 
 ## Next Steps
 
-- [Adapters](/guide/adapters) — Learn about the 5 adapter types and write your own
-- [Self-Repair](/guide/self-repair) — How agents fix broken adapters automatically
-- [Pipeline Steps](/reference/pipeline) — All 30 pipeline steps with YAML examples
-- [Exit Codes](/reference/exit-codes) — Complete exit code reference
+- [Adapters](/guide/adapters)
+- [Self-Repair](/guide/self-repair)
+- [Pipeline Steps](/reference/pipeline)
+- [Exit Codes](/reference/exit-codes)

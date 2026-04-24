@@ -322,11 +322,11 @@ TypeScript adapters use the `cli()` helper from the registry. They have full acc
 
 ## File Locations
 
-| Location                              | Purpose                           |
-| ------------------------------------- | --------------------------------- |
-| `src/adapters/<site>/`                | Built-in adapters (ship with npm) |
-| `~/.unicli/adapters/<site>/`          | User-local overrides              |
-| `~/.unicli/adapters/<site>/<cmd>.yml` | Single command override           |
+| Location                          | Purpose                           |
+| --------------------------------- | --------------------------------- |
+| `src/adapters/SITE/`              | Built-in adapters (ship with npm) |
+| `~/.unicli/adapters/SITE/`        | User-local overrides              |
+| `~/.unicli/adapters/SITE/CMD.yml` | Single command override           |
 
 User-local adapters take precedence over built-in ones. This is how self-repair works — an agent edits the YAML in `~/.unicli/adapters/`, and the fix survives `npm update`.
 

@@ -75,8 +75,8 @@ Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for
 > unified invocation kernel (P1), MCP/ACP/CLI surface parity (P2),
 > output-side TC0 externalization (P3), schema-driven hardening on 71
 > adapters (P4), and a multi-provider agent-bench harness (P5).
-> See `docs/BENCH/v0.213.3.md` for bench posture and the explicit
-> deferral of empirical ASR numbers to v0.213.4 (OpenRouter credit
+> Bench posture was recorded in the v0.213.3 git history; empirical ASR
+> numbers were deferred to v0.213.4 (OpenRouter credit
 > exhausted mid-run; harness is ready, fix landed in commit `d31e72e`).
 
 ### Added
@@ -106,8 +106,8 @@ Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for
 - **`scripts/migrate-add-kind.ts`** — comment-preserving YAML codemod
   (552 LOC, `yaml` LineCounter) that annotates 243/1355 args across 223
   YAMLs with `format:` + `x-unicli-kind:`. Idempotent (`--check` exits 0
-  after a full pass). 30 unique override triplets documented in
-  `docs/codemod/v0.213.3-conflicts.md`.
+  after a full pass). 30 unique override triplets were documented in the
+  generated codemod report for that release.
 
 ### Changed
 
@@ -157,7 +157,7 @@ thesis and the three-channel design are externally validated
 (Merrill & Sabharwal 2023; arXiv:2604.06742; Poehnelt 2026-03;
 openclaw#46370). Implementation correctness is carried by 1569 unit +
 5514 adapter tests at green. Empirical ASR numbers will land in
-v0.213.4 once OpenRouter credit is restored. See `docs/BENCH/v0.213.3.md`.
+v0.213.4 once OpenRouter credit is restored.
 
 ## [0.213.2] — 2026-04-18 — Vostok · Gagarin TC0 Patch
 
@@ -369,7 +369,7 @@ v0.213.4 once OpenRouter credit is restored. See `docs/BENCH/v0.213.3.md`.
   - `docs/THEORY.md` v2 — softened decidability, Bimodal Agent Capability, Trilemma, Self-Repair Search-Space Contraction
   - `docs/refs.bib` with 25+ verified arXiv citations + CI bibtex-resolve gate
   - `docs/BENCHMARK.md` + `bench/` harness with measured p50/p95
-  - `docs/ADAPTER-FORMAT.md` v2 + `docs/MIGRATING-FROM-OPENCLI.md`
+  - `docs/ADAPTER-FORMAT.md` v2 and adapter migration tooling
   - `docs/AVANTE.md` integration guide
   - `contributing/` per-domain guides (adapter, transport, cua, mcp, acp, release, schema, branch-protection)
   - `.claude/commands/` and `skills/` committed as cross-vendor workflow surface

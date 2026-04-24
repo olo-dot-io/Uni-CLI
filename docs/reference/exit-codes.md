@@ -12,12 +12,12 @@ Uni-CLI uses exit codes from `sysexits.h` — the UNIX standard for machine-pars
 | 66   | `EMPTY_RESULT`        | No data returned        | Try different parameters or query |
 | 69   | `SERVICE_UNAVAILABLE` | Target site is down     | Retry later                       |
 | 75   | `TEMP_FAILURE`        | Temporary failure       | Retry with exponential backoff    |
-| 77   | `AUTH_REQUIRED`       | Authentication needed   | Run `unicli auth setup <site>`    |
+| 77   | `AUTH_REQUIRED`       | Authentication needed   | Run `unicli auth setup SITE`      |
 | 78   | `CONFIG_ERROR`        | Adapter misconfigured   | Read and fix the YAML adapter     |
 
 ## Code 0 — Success
 
-The command completed and produced output. Data is on stdout (JSON when piped, table in terminal).
+The command completed and produced output. Data is on stdout in the selected envelope format.
 
 ```bash
 unicli hackernews top
@@ -26,7 +26,7 @@ echo $?    # 0
 
 ## Code 1 — Generic Error
 
-An error that does not fit other categories. Check stderr for a structured JSON error:
+An error that does not fit other categories. Check stderr for a structured error envelope:
 
 ```bash
 unicli example broken 2>/tmp/err.json
@@ -54,7 +54,7 @@ unicli hackernews
 echo $?    # 2
 ```
 
-Agent action: fix the command syntax. Run `unicli list <site>` to see available commands and arguments.
+Agent action: fix the command syntax. Run `unicli list SITE` to see available commands and arguments.
 
 ## Code 66 — Empty Result
 

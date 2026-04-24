@@ -1,8 +1,7 @@
 # Plugin Author Guide
 
-> First published in **v0.213 Gagarin**. This document is the stability
-> contract for `@zenalexa/unicli` subpath imports and describes the
-> supported ways to extend Uni-CLI from a third-party package.
+This document is the stability contract for `@zenalexa/unicli` subpath imports
+and describes the supported ways to extend Uni-CLI from a third-party package.
 
 Plugins let you register custom pipeline steps, transports, and adapters
 without forking the project. The surface is a small, versioned set of
@@ -30,7 +29,7 @@ quickly we may break the API.
 | `@zenalexa/unicli/transport/http`        | `src/transport/adapters/http.ts`        | Stable       |
 | `@zenalexa/unicli/protocol/mcp`          | `src/mcp/schema.ts`                     | Stable       |
 | `@zenalexa/unicli/protocol/acp`          | `src/protocol/acp.ts`                   | Stable       |
-| `@zenalexa/unicli/pipeline`              | alias of `engine` (OpenCLI parity)      | Stable       |
+| `@zenalexa/unicli/pipeline`              | alias of `engine`                       | Stable       |
 | `@zenalexa/unicli/download`              | `src/engine/download.ts`                | Stable       |
 | `@zenalexa/unicli/engine/steps`          | `src/engine/steps/index.ts`             | Beta         |
 | `@zenalexa/unicli/transport/cua`         | `src/transport/adapters/cua.ts`         | Beta         |
@@ -134,8 +133,7 @@ await runPipeline([{ fetch: { url: "https://example.com" } }, { reverse: {} }]);
 ```
 
 A first-class `--plugin` CLI flag is tracked for a future minor release.
-Until then, preload-import is the supported pattern and matches how
-community OpenCLI plugins bootstrap today.
+Until then, preload-import is the supported pattern.
 
 ---
 

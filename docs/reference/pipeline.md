@@ -326,12 +326,12 @@ Capture network requests made by the page. Uni-CLI intercepts both `fetch()` and
 
 Trigger types:
 
-| Trigger            | Action                              |
-| ------------------ | ----------------------------------- |
-| `navigate:<url>`   | Navigate to URL and capture         |
-| `scroll:down`      | Scroll down to trigger lazy loading |
-| `click:<selector>` | Click element to trigger request    |
-| `wait:<ms>`        | Wait passively for the request      |
+| Trigger          | Action                              |
+| ---------------- | ----------------------------------- |
+| `navigate:URL`   | Navigate to URL and capture         |
+| `scroll:down`    | Scroll down to trigger lazy loading |
+| `click:SELECTOR` | Click element to trigger request    |
+| `wait:MS`        | Wait passively for the request      |
 
 ### press
 

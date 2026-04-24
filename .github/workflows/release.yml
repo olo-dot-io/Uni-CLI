@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to publish (e.g. v0.212.0)"
+        description: "Tag to publish (e.g. v0.215.1)"
         required: true
 
 # IMPORTANT: permissions are declared at the JOB level, not workflow level.
@@ -82,7 +82,7 @@ jobs:
       # NODE_AUTH_TOKEN is ONLY consumed when the Trusted Publishers OIDC
       # path isn't available; set it via the `npm-publish` environment
       # secret if and only if TP is not configured yet.
-      # Prerelease (e.g. 0.213.0-beta.2) requires --tag: npm otherwise
+      # Prerelease (e.g. 0.216.0-beta.2) requires --tag: npm otherwise
       # refuses to publish, because without a non-latest dist-tag the new
       # version would be `npm install @zenalexa/unicli` → prerelease, which
       # is hostile to users who didn't opt in. Stable versions publish to
@@ -91,7 +91,7 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').version")
           if [[ "$VERSION" == *-* ]]; then
-            # Semver prerelease: extract channel from "0.213.0-beta.2" → "beta"
+            # Semver prerelease: extract channel from "0.216.0-beta.2" → "beta"
             CHANNEL=$(echo "$VERSION" | sed -E 's/^[^-]+-([^.]+).*/\1/')
             echo "::notice title=npm dist-tag::prerelease $VERSION → --tag $CHANNEL"
             npm publish --provenance --access public --tag "$CHANNEL"
