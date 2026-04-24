@@ -1,8 +1,8 @@
 ---
 name: unicli-operate
 description: >
-  Direct browser automation with unicli operate subcommands. Navigate, inspect,
-  interact, and extract data from any website step by step via Chrome CDP.
+  Compatibility guide for `unicli operate`. Prefer `unicli browser`, which now
+  exposes the same operator surface plus daemon/session diagnostics.
 version: 1.0.0
 triggers:
   - "operate browser"
@@ -16,8 +16,20 @@ protocol: 2.0
 
 ## When to Use
 
-Step-by-step browser interaction: navigate, click, fill forms, extract data, screenshot.
-For browser lifecycle (start/stop/auth), see `unicli-browser`.
+Prefer `unicli browser` for new work:
+
+```bash
+unicli browser open <url>
+unicli browser state
+unicli browser click <ref>
+unicli browser type <ref> <text>
+unicli browser find --css <selector>
+unicli browser extract
+unicli browser tabs
+unicli browser frames
+```
+
+`unicli operate ...` still works, but it is now the compatibility path over the same implementation.
 
 ## Core Workflow
 

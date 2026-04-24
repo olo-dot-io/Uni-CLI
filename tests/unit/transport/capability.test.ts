@@ -69,6 +69,13 @@ describe("stepSupportedBy", () => {
     expect(stepSupportedBy("applescript")).toEqual(["desktop-ax"]);
   });
 
+  it("new direct AX actions stay desktop-ax-only", () => {
+    expect(stepSupportedBy("ax_snapshot")).toEqual(["desktop-ax"]);
+    expect(stepSupportedBy("ax_focused_read")).toEqual(["desktop-ax"]);
+    expect(stepSupportedBy("ax_set_value")).toEqual(["desktop-ax"]);
+    expect(stepSupportedBy("ax_press")).toEqual(["desktop-ax"]);
+  });
+
   it("uia_invoke is desktop-uia-only", () => {
     expect(stepSupportedBy("uia_invoke")).toEqual(["desktop-uia"]);
   });
@@ -101,6 +108,13 @@ describe("stepPlatform", () => {
 
   it("ax_focus is darwin-gated", () => {
     expect(stepPlatform("ax_focus")).toEqual(["darwin"]);
+  });
+
+  it("direct AX actions are darwin-gated", () => {
+    expect(stepPlatform("ax_snapshot")).toEqual(["darwin"]);
+    expect(stepPlatform("ax_focused_read")).toEqual(["darwin"]);
+    expect(stepPlatform("ax_set_value")).toEqual(["darwin"]);
+    expect(stepPlatform("ax_press")).toEqual(["darwin"]);
   });
 
   it("uia_invoke is win32-gated", () => {

@@ -41,6 +41,7 @@ export interface DaemonCommand {
   tabId?: number;
   code?: string;
   workspace?: string;
+  windowFocused?: boolean;
   url?: string;
   domain?: string;
   matchDomain?: string;
@@ -80,8 +81,11 @@ export interface DaemonStatus {
 export interface BrowserSessionInfo {
   workspace: string;
   windowId: number;
-  tabCount: number;
-  idle: boolean;
+  tabCount?: number;
+  idle?: boolean;
+  owned?: boolean;
+  preferredTabId?: number | null;
+  idleMsRemaining?: number;
 }
 
 /** Extension→daemon hello message */

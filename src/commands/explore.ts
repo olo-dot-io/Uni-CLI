@@ -12,6 +12,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { BrowserBridge } from "../browser/bridge.js";
+import { createOneShotWorkspace } from "../browser/workspace.js";
 import {
   generateInterceptorJs,
   generateReadInterceptedJs,
@@ -95,7 +96,7 @@ export function registerExploreCommand(program: Command): void {
           const bridge = new BrowserBridge();
           const page = await bridge.connect({
             timeout: 30_000,
-            workspace: "explore:default",
+            workspace: createOneShotWorkspace("explore"),
           });
 
           // Inject interceptor before navigation to capture all requests

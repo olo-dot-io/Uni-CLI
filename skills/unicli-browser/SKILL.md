@@ -1,8 +1,8 @@
 ---
 name: unicli-browser
 description: >
-  Control Chrome browser for web automation via unicli. Navigate, click, type,
-  screenshot, and extract data using the daemon browser bridge.
+  Control browser automation sessions via unicli. The browser command now owns
+  lifecycle, interaction, introspection, and daemon diagnostics.
 version: 1.0.0
 triggers:
   - "browser automation"
@@ -15,17 +15,19 @@ protocol: 2.0
 
 ## When to Use
 
-Launch and manage Chrome for unicli's browser-dependent adapters (cookie, header,
-intercept, ui strategies), or when using `unicli operate` for direct page interaction.
+Use `unicli browser` for both browser lifecycle and direct page interaction.
+`unicli operate` still exists, but it is now a compatibility alias over the same implementation.
 
 ## Quick Start
 
 ```bash
 unicli browser start          # Launch Chrome with CDP
-unicli browser status         # Check daemon connection
-unicli operate open <url>     # Navigate to a page
-unicli operate state          # DOM accessibility tree with [ref] numbers
-unicli operate screenshot     # Visual capture to file
+unicli browser status         # Check CDP + daemon/session status
+unicli browser open <url>     # Navigate to a page
+unicli browser state          # DOM accessibility tree with [ref] numbers
+unicli browser screenshot     # Visual capture to file
+unicli browser find --css ... # Structured DOM query + ref allocation
+unicli browser extract        # Chunked long-form text extraction
 ```
 
 ## Browser Lifecycle
@@ -63,8 +65,22 @@ Cookie files: `~/.unicli/cookies/<site>.json` with format `{ "KEY": "value" }`.
 
 ## Architecture
 
-CLI -> daemon-client -> HTTP/WS -> daemon (port 19825) -> CDP WebSocket -> Chrome.
-Raw CDP via `ws` package. No Puppeteer, no Playwright, no extensions.
+There are two browser paths:
+
+1. `browser start` / `browser cookies` use local Chrome + CDP directly.
+2. `browser open/state/click/...` use:
+   CLI -> daemon-client -> HTTP/WS -> daemon -> Browser Bridge extension -> Chrome tabs
+
+That means extension state, daemon port, workspace, focus/background mode, and tab binding are all part of the real runtime story.
+
+Useful controls:
+
+```bash
+unicli browser --daemon-port 19826 sessions
+unicli browser --workspace profile-a bind --match-domain example.com
+unicli browser --isolated open https://example.com
+unicli browser --background open https://example.com
+```
 
 ## Diagnostics
 

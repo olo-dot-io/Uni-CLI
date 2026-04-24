@@ -37,7 +37,7 @@ export interface CapabilityRow {
 }
 
 /**
- * The 46-step matrix. Keep row ordering loose; tests assert membership
+ * The step matrix. Keep row ordering loose; tests assert membership
  * semantically.
  */
 export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
@@ -220,6 +220,10 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
   ax_focus: { transports: ["desktop-ax"], platforms: ["darwin"] },
   ax_menu_select: { transports: ["desktop-ax"], platforms: ["darwin"] },
   applescript: { transports: ["desktop-ax"], platforms: ["darwin"] },
+  ax_snapshot: { transports: ["desktop-ax"], platforms: ["darwin"] },
+  ax_focused_read: { transports: ["desktop-ax"], platforms: ["darwin"] },
+  ax_set_value: { transports: ["desktop-ax"], platforms: ["darwin"] },
+  ax_press: { transports: ["desktop-ax"], platforms: ["darwin"] },
   uia_invoke: { transports: ["desktop-uia"], platforms: ["win32"] },
   uia_get_pattern: { transports: ["desktop-uia"], platforms: ["win32"] },
   atspi_activate: { transports: ["desktop-atspi"], platforms: ["linux"] },

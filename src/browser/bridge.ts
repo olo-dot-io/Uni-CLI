@@ -414,14 +414,16 @@ export class DaemonPage implements IPage {
     return Buffer.from(data, "base64");
   }
 
-  async startNetworkCapture(pattern?: string): Promise<void> {
+  async startNetworkCapture(pattern?: string): Promise<boolean> {
     try {
       await sendCommand(
         "network-capture-start",
         this.cmdOpts(pattern ? { pattern } : {}),
       );
+      return true;
     } catch {
       // Daemon/extension may not support this action yet — degrade gracefully
+      return false;
     }
   }
 

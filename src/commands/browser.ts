@@ -16,11 +16,24 @@ import {
   getCDPPort,
 } from "../browser/launcher.js";
 import { CDPClient, getRemoteEndpoint } from "../browser/cdp-client.js";
+import {
+  bindCurrentTab,
+  fetchDaemonStatus,
+  listSessions,
+} from "../browser/daemon-client.js";
+import {
+  applyBrowserOperatorRootOptions,
+  registerBrowserOperatorSubcommands,
+  withBrowserOperatorEnv,
+} from "./browser-operator.js";
+import { resolveBrowserWorkspace } from "../browser/workspace.js";
 
 export function registerBrowserCommands(program: Command): void {
   const browser = program
     .command("browser")
-    .description("Manage Chrome browser connection for browser adapters");
+    .description("Manage and operate browser automation sessions");
+
+  applyBrowserOperatorRootOptions(browser);
 
   // unicli browser start
   browser
@@ -97,6 +110,40 @@ export function registerBrowserCommands(program: Command): void {
 
       console.log(chalk.green(`Chrome CDP connected on port ${String(port)}`));
       await printTargetSummary(port);
+
+      await withBrowserOperatorEnv(browser, async () => {
+        const daemon = await fetchDaemonStatus({ timeout: 1000 });
+        if (!daemon) {
+          console.log(chalk.dim("Daemon: not running"));
+          return;
+        }
+        console.log(
+          chalk.dim(
+            `Daemon: port ${String(daemon.port)}, extension ${
+              daemon.extensionConnected ? "connected" : "not connected"
+            }`,
+          ),
+        );
+        const sessions = await listSessions();
+        if (sessions.length > 0) {
+          console.log(chalk.dim(`Sessions: ${String(sessions.length)}`));
+          for (const session of sessions.slice(0, 5)) {
+            const idle =
+              typeof session.idleMsRemaining === "number"
+                ? `, idle ${String(Math.ceil(session.idleMsRemaining / 1000))}s`
+                : "";
+            const tabs =
+              typeof session.tabCount === "number"
+                ? `, tabs ${String(session.tabCount)}`
+                : "";
+            console.log(
+              chalk.dim(
+                `  • ${session.workspace} -> window ${String(session.windowId)}${tabs}${idle}`,
+              ),
+            );
+          }
+        }
+      });
     });
 
   // unicli browser remote
@@ -255,6 +302,66 @@ export function registerBrowserCommands(program: Command): void {
         process.exitCode = 1;
       }
     });
+
+  browser
+    .command("sessions")
+    .description("Show live browser daemon sessions for the selected profile")
+    .action(async () => {
+      await withBrowserOperatorEnv(browser, async () => {
+        const sessions = await listSessions();
+        if (sessions.length === 0) {
+          console.log(
+            chalk.yellow("No browser sessions are currently active."),
+          );
+          return;
+        }
+
+        console.log(chalk.bold("Browser Sessions"));
+        for (const session of sessions) {
+          const tabs =
+            typeof session.tabCount === "number"
+              ? ` tabs=${String(session.tabCount)}`
+              : "";
+          const idle =
+            typeof session.idleMsRemaining === "number"
+              ? ` idle=${String(Math.ceil(session.idleMsRemaining / 1000))}s`
+              : "";
+          console.log(
+            `  ${session.workspace} -> window ${String(session.windowId)}${tabs}${idle}`,
+          );
+        }
+      });
+    });
+
+  browser
+    .command("bind")
+    .description(
+      "Bind the current visible browser tab into the selected workspace",
+    )
+    .option("--match-domain <domain>", "Require hostname/domain match")
+    .option("--match-path-prefix <prefix>", "Require pathname prefix match")
+    .action(
+      async (opts: { matchDomain?: string; matchPathPrefix?: string }) => {
+        await withBrowserOperatorEnv(browser, async () => {
+          const workspace = resolveBrowserWorkspace("browser", {
+            workspace: (browser.opts() as { workspace?: string }).workspace,
+            isolated: (browser.opts() as { isolated?: boolean }).isolated,
+            sharedSession: (browser.opts() as { sharedSession?: boolean })
+              .sharedSession,
+          });
+          const result = await bindCurrentTab(workspace, {
+            matchDomain: opts.matchDomain,
+            matchPathPrefix: opts.matchPathPrefix,
+          });
+          console.log(
+            chalk.green(`Bound workspace ${workspace} to the current tab.`),
+          );
+          console.log(chalk.dim(JSON.stringify(result, null, 2)));
+        });
+      },
+    );
+
+  registerBrowserOperatorSubcommands(browser, program, "browser");
 }
 
 /**

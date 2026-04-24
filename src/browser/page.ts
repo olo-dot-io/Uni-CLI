@@ -609,8 +609,8 @@ export class BrowserPage implements IPage {
    *
    * Captured entries are read and drained via readNetworkCapture().
    */
-  async startNetworkCapture(pattern?: string): Promise<void> {
-    if (this._networkCaptureEnabled) return;
+  async startNetworkCapture(pattern?: string): Promise<boolean> {
+    if (this._networkCaptureEnabled) return true;
 
     // Enable Network domain if not already
     if (!this._networkEnabled) {
@@ -708,6 +708,8 @@ export class BrowserPage implements IPage {
           // Body may be unavailable (e.g., redirects, streaming)
         });
     });
+
+    return true;
   }
 
   /**

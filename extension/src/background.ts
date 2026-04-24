@@ -16,12 +16,37 @@ import {
   type Command,
   type Result,
 } from "./protocol.js";
+import {
+  readNetworkCapture,
+  registerNetworkCaptureListeners,
+  startNetworkCapture,
+} from "./network-capture.js";
 
 // ── State ───────────────────────────────────────────────────────────
 
 let ws: WebSocket | null = null;
 let reconnectAttempts = 0;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+function websocketOpenState(): number {
+  return typeof WebSocket.OPEN === "number" ? WebSocket.OPEN : 1;
+}
+
+function websocketConnectingState(): number {
+  return typeof WebSocket.CONNECTING === "number" ? WebSocket.CONNECTING : 0;
+}
+
+function createWebSocket(url: string): WebSocket {
+  try {
+    return new WebSocket(url);
+  } catch (err) {
+    try {
+      return (WebSocket as unknown as (target: string) => WebSocket)(url);
+    } catch {
+      throw err;
+    }
+  }
+}
 
 interface AutomationSession {
   windowId: number;
@@ -43,7 +68,7 @@ function forwardLog(level: string, ...args: unknown[]): void {
   const msg = args
     .map((a) => (typeof a === "string" ? a : JSON.stringify(a)))
     .join(" ");
-  if (ws?.readyState === WebSocket.OPEN) {
+  if (ws?.readyState === websocketOpenState()) {
     ws.send(JSON.stringify({ type: "log", level, msg, ts: Date.now() }));
   }
 }
@@ -65,8 +90,8 @@ console.error = (...args: unknown[]) => {
 
 async function connect(): Promise<void> {
   if (
-    ws?.readyState === WebSocket.OPEN ||
-    ws?.readyState === WebSocket.CONNECTING
+    ws?.readyState === websocketOpenState() ||
+    ws?.readyState === websocketConnectingState()
   )
     return;
 
@@ -81,7 +106,7 @@ async function connect(): Promise<void> {
   }
 
   try {
-    ws = new WebSocket(DAEMON_WS_URL);
+    ws = createWebSocket(DAEMON_WS_URL);
   } catch {
     scheduleReconnect();
     return;
@@ -139,6 +164,7 @@ function scheduleReconnect(): void {
 async function getAutomationWindow(
   workspace: string,
   initialUrl?: string,
+  windowFocused = false,
 ): Promise<{ windowId: number; tabId: number }> {
   const existing = automationSessions.get(workspace);
   if (existing) {
@@ -164,7 +190,7 @@ async function getAutomationWindow(
     width: 1280,
     height: 900,
     type: "normal",
-    focused: false,
+    focused: windowFocused,
     url: initialUrl ?? "about:blank",
   });
 
@@ -187,10 +213,40 @@ async function closeSession(workspace: string): Promise<void> {
   if (!session) return;
   automationSessions.delete(workspace);
   if (session.idleTimer) clearTimeout(session.idleTimer);
+  if (!session.owned) return;
   try {
     await chrome.windows.remove(session.windowId);
   } catch {
     /* already closed */
+  }
+}
+
+function hostMatchesDomain(hostname: string, domain: string): boolean {
+  const host = hostname.toLowerCase();
+  const expected = domain
+    .trim()
+    .toLowerCase()
+    .replace(/^\.+|\.+$/g, "");
+  if (!expected) return true;
+  return host === expected || host.endsWith(`.${expected}`);
+}
+
+function matchesBindCriteria(tab: chrome.tabs.Tab, cmd: Command): boolean {
+  if (!tab.id || !tab.url) return false;
+  if (!/^https?:/i.test(tab.url)) return false;
+  if (!cmd.matchDomain && !cmd.matchPathPrefix) return true;
+
+  try {
+    const url = new URL(tab.url);
+    if (cmd.matchDomain && !hostMatchesDomain(url.hostname, cmd.matchDomain)) {
+      return false;
+    }
+    if (cmd.matchPathPrefix && !url.pathname.startsWith(cmd.matchPathPrefix)) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -199,10 +255,13 @@ async function closeSession(workspace: string): Promise<void> {
 async function handleCommand(cmd: Command): Promise<Result> {
   const workspace = cmd.workspace ?? "default";
   try {
-    const { tabId } = await getAutomationWindow(workspace, cmd.url);
-
     switch (cmd.action) {
       case "exec": {
+        const { tabId } = await getAutomationWindow(
+          workspace,
+          undefined,
+          cmd.windowFocused === true,
+        );
         const result = await chrome.debugger.sendCommand(
           { tabId },
           "Runtime.evaluate",
@@ -217,6 +276,11 @@ async function handleCommand(cmd: Command): Promise<Result> {
       }
 
       case "navigate": {
+        const { tabId } = await getAutomationWindow(
+          workspace,
+          cmd.url,
+          cmd.windowFocused === true,
+        );
         await chrome.tabs.update(tabId, { url: cmd.url });
         // Wait for page load
         await new Promise<void>((resolve) => {
@@ -250,6 +314,11 @@ async function handleCommand(cmd: Command): Promise<Result> {
       }
 
       case "cookies": {
+        await getAutomationWindow(
+          workspace,
+          undefined,
+          cmd.windowFocused === true,
+        );
         const domain = cmd.domain ?? "";
         const cookies = await chrome.cookies.getAll({ domain });
         const obj: Record<string, string> = {};
@@ -258,6 +327,11 @@ async function handleCommand(cmd: Command): Promise<Result> {
       }
 
       case "screenshot": {
+        const { tabId } = await getAutomationWindow(
+          workspace,
+          undefined,
+          cmd.windowFocused === true,
+        );
         const result = await chrome.debugger.sendCommand(
           { tabId },
           "Page.captureScreenshot",
@@ -276,17 +350,29 @@ async function handleCommand(cmd: Command): Promise<Result> {
       }
 
       case "sessions": {
-        const sessions = Array.from(automationSessions.entries()).map(
-          ([ws, s]) => ({
-            workspace: ws,
-            windowId: s.windowId,
-            idle: Date.now() > s.idleDeadlineAt,
+        const now = Date.now();
+        const sessions = await Promise.all(
+          Array.from(automationSessions.entries()).map(async ([ws, s]) => {
+            const tabs = await chrome.tabs.query({ windowId: s.windowId });
+            return {
+              workspace: ws,
+              windowId: s.windowId,
+              tabCount: tabs.length,
+              owned: s.owned,
+              preferredTabId: s.preferredTabId,
+              idleMsRemaining: Math.max(0, s.idleDeadlineAt - now),
+            };
           }),
         );
         return { id: cmd.id, ok: true, data: { sessions } };
       }
 
       case "set-file-input": {
+        const { tabId } = await getAutomationWindow(
+          workspace,
+          undefined,
+          cmd.windowFocused === true,
+        );
         // Resolve node and set files
         const doc = await chrome.debugger.sendCommand(
           { tabId },
@@ -308,6 +394,11 @@ async function handleCommand(cmd: Command): Promise<Result> {
       }
 
       case "insert-text": {
+        const { tabId } = await getAutomationWindow(
+          workspace,
+          undefined,
+          cmd.windowFocused === true,
+        );
         await chrome.debugger.sendCommand({ tabId }, "Input.insertText", {
           text: cmd.text,
         });
@@ -315,6 +406,11 @@ async function handleCommand(cmd: Command): Promise<Result> {
       }
 
       case "cdp": {
+        const { tabId } = await getAutomationWindow(
+          workspace,
+          undefined,
+          cmd.windowFocused === true,
+        );
         if (!cmd.cdpMethod) {
           return { id: cmd.id, ok: false, error: "Missing cdpMethod" };
         }
@@ -327,23 +423,75 @@ async function handleCommand(cmd: Command): Promise<Result> {
       }
 
       case "bind-current": {
-        // Bind the currently focused tab to this workspace
-        const [activeTab] = await chrome.tabs.query({
+        const activeTabs = await chrome.tabs.query({
           active: true,
-          currentWindow: true,
+          lastFocusedWindow: true,
         });
+        const fallbackTabs = await chrome.tabs.query({
+          lastFocusedWindow: true,
+        });
+        const allTabs = await chrome.tabs.query({});
+        const activeTab =
+          activeTabs.find((tab) => matchesBindCriteria(tab, cmd)) ??
+          fallbackTabs.find((tab) => matchesBindCriteria(tab, cmd)) ??
+          allTabs.find((tab) => matchesBindCriteria(tab, cmd));
         if (!activeTab?.id) {
-          return { id: cmd.id, ok: false, error: "No active tab" };
+          return {
+            id: cmd.id,
+            ok: false,
+            error:
+              cmd.matchDomain || cmd.matchPathPrefix
+                ? `No visible tab matched ${cmd.matchDomain ?? "domain"}${cmd.matchPathPrefix ? ` ${cmd.matchPathPrefix}` : ""}`
+                : "No active debuggable tab",
+          };
         }
         const session = automationSessions.get(workspace);
         if (session) {
           session.preferredTabId = activeTab.id;
+          session.windowId = activeTab.windowId;
+          session.owned = false;
+          session.idleDeadlineAt = Date.now() + WINDOW_IDLE_TIMEOUT;
+        } else {
+          automationSessions.set(workspace, {
+            windowId: activeTab.windowId,
+            idleTimer: setTimeout(
+              () => closeSession(workspace),
+              WINDOW_IDLE_TIMEOUT,
+            ),
+            idleDeadlineAt: Date.now() + WINDOW_IDLE_TIMEOUT,
+            owned: false,
+            preferredTabId: activeTab.id,
+          });
         }
         return {
           id: cmd.id,
           ok: true,
-          data: { tabId: activeTab.id, url: activeTab.url },
+          data: {
+            tabId: activeTab.id,
+            url: activeTab.url,
+            title: activeTab.title,
+            workspace,
+          },
         };
+      }
+
+      case "network-capture-start": {
+        const { tabId } = await getAutomationWindow(
+          workspace,
+          undefined,
+          cmd.windowFocused === true,
+        );
+        await startNetworkCapture(tabId, cmd.pattern);
+        return { id: cmd.id, ok: true, data: { started: true } };
+      }
+
+      case "network-capture-read": {
+        const { tabId } = await getAutomationWindow(
+          workspace,
+          undefined,
+          cmd.windowFocused === true,
+        );
+        return { id: cmd.id, ok: true, data: readNetworkCapture(tabId) };
       }
 
       default:
@@ -365,6 +513,7 @@ async function handleCommand(cmd: Command): Promise<Result> {
 // ── Lifecycle ───────────────────────────────────────────────────────
 
 function initialize(): void {
+  registerNetworkCaptureListeners();
   connect();
   chrome.alarms.create("keepalive", {
     periodInMinutes: KEEPALIVE_ALARM_PERIOD,

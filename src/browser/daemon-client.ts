@@ -90,6 +90,13 @@ export async function sendCommand(
   params: Omit<DaemonCommand, "id" | "action"> = {},
 ): Promise<unknown> {
   const timeout = (params.timeout ?? DEFAULT_COMMAND_TIMEOUT / 1000) * 1000;
+  const focusEnv = process.env.UNICLI_WINDOW_FOCUSED;
+  const windowFocused =
+    focusEnv === "1" || focusEnv === "true"
+      ? true
+      : focusEnv === "0" || focusEnv === "false"
+        ? false
+        : undefined;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     const id = generateId(); // Fresh ID per attempt
@@ -100,7 +107,12 @@ export async function sendCommand(
           "Content-Type": "application/json",
           "X-Unicli": "1",
         },
-        body: JSON.stringify({ id, action, ...params }),
+        body: JSON.stringify({
+          id,
+          action,
+          ...params,
+          ...(windowFocused !== undefined ? { windowFocused } : {}),
+        }),
         signal: AbortSignal.timeout(timeout),
       });
 

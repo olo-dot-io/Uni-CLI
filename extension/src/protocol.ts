@@ -34,6 +34,7 @@ export interface Command {
   tabId?: number;
   code?: string;
   workspace?: string;
+  windowFocused?: boolean;
   url?: string;
   domain?: string;
   matchDomain?: string;

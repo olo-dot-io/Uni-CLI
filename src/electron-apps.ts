@@ -69,6 +69,13 @@ const BUILTIN_APPS: Record<string, ElectronAppEntry> = {
     bundleId: "dev.antigravity.app",
     displayName: "Antigravity",
   },
+  "netease-music": {
+    port: 9238,
+    processName: "NeteaseMusic",
+    executableNames: ["NeteaseMusic", "网易云音乐"],
+    bundleId: "com.netease.163music",
+    displayName: "NeteaseMusic",
+  },
 };
 
 let _apps: Record<string, ElectronAppEntry> | null = null;
@@ -108,6 +115,30 @@ export function getElectronApps(): Record<string, ElectronAppEntry> {
  */
 export function getElectronApp(site: string): ElectronAppEntry | null {
   return getElectronApps()[site] ?? null;
+}
+
+/**
+ * Look up an Electron app by any common identifier:
+ * site key, process name, display name, executable name, or bundle ID.
+ */
+export function findElectronApp(target: string): ElectronAppEntry | null {
+  const needle = target.trim().toLowerCase();
+  if (!needle) return null;
+
+  const direct = getElectronApp(needle);
+  if (direct) return direct;
+
+  for (const [site, entry] of Object.entries(getElectronApps())) {
+    if (site.toLowerCase() === needle) return entry;
+    if (entry.processName.toLowerCase() === needle) return entry;
+    if (entry.displayName?.toLowerCase() === needle) return entry;
+    if (entry.bundleId?.toLowerCase() === needle) return entry;
+    if (entry.executableNames?.some((name) => name.toLowerCase() === needle)) {
+      return entry;
+    }
+  }
+
+  return null;
 }
 
 /**

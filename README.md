@@ -19,7 +19,7 @@ The execution layer for agent skills. Deterministic, editable, cross-vendor.
 <a href="https://www.npmjs.com/package/@zenalexa/unicli"><img src="https://img.shields.io/npm/v/@zenalexa/unicli?style=flat-square&color=cb3837" alt="npm"></a>
 <a href="https://github.com/olo-dot-io/Uni-CLI/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/olo-dot-io/Uni-CLI/ci.yml?style=flat-square&label=CI" alt="CI"></a>
 <a href="./LICENSE"><img src="https://img.shields.io/github/license/olo-dot-io/Uni-CLI?style=flat-square" alt="license"></a>
-<img src="https://img.shields.io/badge/tests-<!-- STATS:test_count -->7083<!-- /STATS -->-44cc11?style=flat-square" alt="tests">
+<img src="https://img.shields.io/badge/tests-<!-- STATS:test_count -->7113<!-- /STATS -->-44cc11?style=flat-square" alt="tests">
 <img src="https://img.shields.io/badge/agent--reach-ally-6a5acd?style=flat-square" alt="agent-reach ally">
 
 <br><br>
@@ -82,7 +82,7 @@ graph TB
 
     CMD --> ADAPT["Adapter layer<br/>887 YAML · 72 TS · 35 bridges"]
 
-    ADAPT --> ENGINE["Pipeline engine — <!-- STATS:pipeline_step_count -->54<!-- /STATS -->+ steps<br/>fetch · navigate · exec · extract · each · if · parallel"]
+    ADAPT --> ENGINE["Pipeline engine — <!-- STATS:pipeline_step_count -->58<!-- /STATS -->+ steps<br/>fetch · navigate · exec · extract · each · if · parallel"]
 
     ENGINE --> T1["HTTP<br/>(web APIs)"]
     ENGINE --> T2["CDP Browser<br/>(raw WebSocket)"]
@@ -135,7 +135,7 @@ Exit codes follow `sysexits.h`: `0` ok, `66` empty, `69` unavailable, `75` tempo
 | **Cross-vendor skills**  | Skills in `skills/` work in Claude Code, OpenCode, Codex, Cursor, Cline                              |
 | **Self-repair envelope** | Every error ships `adapter_path` + `step` + `suggestion` (Banach-convergent)                         |
 | **Bilingual search**     | BM25 + TF-IDF, 50KB index, <10ms queries, 200-entry ZH↔EN alias table                                |
-| **Browser daemon**       | Persistent Chrome via CDP, reuses your login sessions, 13-layer stealth                              |
+| **Browser operator**     | Extension-backed browser daemon with shared or isolated workspaces, background mode, bind/sessions   |
 
 Detailed benchmarks (p50/p95 token cost per category, vs GitHub MCP cold-start): [`docs/BENCHMARK.md`](docs/BENCHMARK.md).
 
@@ -195,7 +195,20 @@ unicli auth check twitter    # Validate cookie file
 unicli auth list             # All configured sites
 ```
 
-The browser daemon (`unicli browser start`) reuses your signed-in Chrome session via CDP — no cookie export, no extension install. Auto-exits after 4h idle.
+The browser operator has two layers:
+
+- `unicli browser start` manages a local Chrome/CDP launch path for cookie extraction and direct CDP use.
+- `unicli browser ...` / `unicli daemon ...` route through the local browser daemon plus Browser Bridge extension, with explicit workspace reuse, `--daemon-port` multi-profile routing, background/focus controls, and live session diagnostics.
+
+For agent-style interactive browsing, prefer:
+
+```bash
+unicli browser open https://example.com
+unicli browser state
+unicli browser find --css "button, a"
+unicli browser network --raw
+unicli browser extract
+```
 
 ## Write an adapter
 
@@ -273,7 +286,7 @@ npm run verify     # typecheck + lint + test + build + stats check
 | `npm run build`        | Production build                                          |
 | `npm run typecheck`    | TypeScript strict                                         |
 | `npm run lint`         | Oxlint                                                    |
-| `npm run test`         | Unit tests (<!-- STATS:test_count -->7083<!-- /STATS -->) |
+| `npm run test`         | Unit tests (<!-- STATS:test_count -->7113<!-- /STATS -->) |
 | `npm run test:adapter` | Validate all adapters                                     |
 | `npm run verify`       | Full pipeline (7 gates)                                   |
 
@@ -317,5 +330,5 @@ Repo: <https://github.com/olo-dot-io/Uni-CLI> · npm: [`@zenalexa/unicli`](https
 
 <p align="center">
   <sub>v0.213.3 — Vostok · Gagarin TC0 Patch R2</sub><br>
-  <sub><!-- STATS:site_count -->200<!-- /STATS --> sites · <!-- STATS:command_count -->968<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->54<!-- /STATS --> pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-11-25 · <!-- STATS:test_count -->7083<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->200<!-- /STATS --> sites · <!-- STATS:command_count -->968<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->58<!-- /STATS --> pipeline steps · BM25+TF-IDF bilingual search · MCP 2025-11-25 · <!-- STATS:test_count -->7113<!-- /STATS --> tests</sub>
 </p>

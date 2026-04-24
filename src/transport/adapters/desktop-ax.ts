@@ -21,6 +21,21 @@ import { spawn } from "node:child_process";
 
 import { err, exitCodeFor, ok } from "../../core/envelope.js";
 import type { Envelope } from "../../core/envelope.js";
+import {
+  buildAxFocusedReadScript,
+  buildAxPressScript,
+  buildAxSetValueScript,
+  buildAxSnapshotScript,
+  buildElectronAxWarmupScript,
+  hasAxElementMatcher,
+  type AxPressScriptOptions,
+  type AxSetValueScriptOptions,
+  type AxWarmupResult,
+  type ResolvedAxTarget,
+  readAxElementQuery,
+  readPositiveInt,
+  resolveAxTarget,
+} from "./desktop-ax-swift.js";
 import type {
   ActionRequest,
   ActionResult,
@@ -36,6 +51,10 @@ const AX_STEPS = [
   "ax_focus",
   "ax_menu_select",
   "applescript",
+  "ax_snapshot",
+  "ax_focused_read",
+  "ax_set_value",
+  "ax_press",
   "clipboard_read",
   "clipboard_write",
   "launch_app",
@@ -101,6 +120,26 @@ export interface DesktopAxTransportOptions {
   platform?: NodeJS.Platform;
 }
 
+interface AxElementCommandResult {
+  found: boolean;
+  matched?: boolean;
+  mode?: string;
+  scope?: string;
+  bundleId?: string | null;
+  localizedName?: string | null;
+  attribute?: string;
+  action?: string;
+  result?: number;
+  element?: Record<string, unknown>;
+}
+
+interface CachedAxSession {
+  result: AxWarmupResult;
+  expiresAt: number;
+}
+
+const AX_SESSION_TTL_MS = 30_000;
+
 export class DesktopAxTransport implements TransportAdapter {
   readonly kind: TransportKind = "desktop-ax";
   readonly capability: Capability = AX_CAPABILITY;
@@ -108,6 +147,8 @@ export class DesktopAxTransport implements TransportAdapter {
   private readonly shell: AxShell;
   private readonly platform: NodeJS.Platform;
   private lastClip: string | undefined;
+  private lastAxSnapshot: Record<string, unknown> | undefined;
+  private readonly warmSessions = new Map<string, CachedAxSession>();
 
   constructor(opts: DesktopAxTransportOptions = {}) {
     this.shell = opts.shell ?? defaultShell;
@@ -121,10 +162,14 @@ export class DesktopAxTransport implements TransportAdapter {
 
   async snapshot(opts?: { format?: SnapshotFormat }): Promise<Snapshot> {
     const format = opts?.format ?? "os-ax";
-    // AX tree capture is out of scope for v0.212 — return the last clipboard
-    // or the platform gate info so callers always get a uniform shape.
     if (format === "text") {
       return { format: "text", data: this.lastClip ?? "" };
+    }
+    if (this.lastAxSnapshot) {
+      return {
+        format: "json",
+        data: JSON.stringify(this.lastAxSnapshot),
+      };
     }
     return {
       format: "json",
@@ -172,12 +217,115 @@ export class DesktopAxTransport implements TransportAdapter {
 
   async close(): Promise<void> {
     this.lastClip = undefined;
+    this.lastAxSnapshot = undefined;
+    this.warmSessions.clear();
   }
 
   // ── internals ────────────────────────────────────────────────────────
 
   private isDarwin(): boolean {
     return this.platform === "darwin";
+  }
+
+  private missingTargetParam<T>(action: string): Envelope<T> {
+    return err({
+      transport: "desktop-ax",
+      step: 0,
+      action,
+      reason: "missing target app (`app`, `bundleId`, or `processName`)",
+      suggestion:
+        "pass params.app, or supply params.bundleId / params.processName for localized Electron apps",
+      exit_code: exitCodeFor("usage_error"),
+    });
+  }
+
+  private warmSessionKey(target: ResolvedAxTarget): string {
+    return target.bundleId || target.processName;
+  }
+
+  private getWarmSession(target: ResolvedAxTarget): AxWarmupResult | null {
+    const key = this.warmSessionKey(target);
+    const cached = this.warmSessions.get(key);
+    if (!cached) return null;
+    if (cached.expiresAt <= Date.now()) {
+      this.warmSessions.delete(key);
+      return null;
+    }
+    return cached.result;
+  }
+
+  private rememberWarmSession(
+    target: ResolvedAxTarget,
+    result: AxWarmupResult,
+  ): void {
+    this.warmSessions.set(this.warmSessionKey(target), {
+      result,
+      expiresAt: Date.now() + AX_SESSION_TTL_MS,
+    });
+  }
+
+  private async maybeWarmupElectronAx<T>(
+    action: string,
+    target: ResolvedAxTarget | null,
+    opts: { strict?: boolean; waitMs?: number } = {},
+  ): Promise<Envelope<T> | null> {
+    if (!target?.ensureElectronAx) return null;
+    const cached = this.getWarmSession(target);
+    if (cached?.found && cached.trusted) return null;
+
+    try {
+      const result = await this.runElectronAxWarmup(target, opts.waitMs ?? 0);
+      if (result.found && result.trusted) {
+        this.rememberWarmSession(target, result);
+      }
+      if (result.found && result.trusted) return null;
+      if (!opts.strict) return null;
+
+      if (!result.trusted) {
+        return err({
+          transport: "desktop-ax",
+          step: 0,
+          action,
+          reason:
+            `Electron/Chromium AX warmup requires macOS Accessibility access ` +
+            `before driving ${target.appName}`,
+          suggestion:
+            "grant Accessibility to the host app (Terminal, Codex, Claude Code, etc.) in " +
+            "System Settings → Privacy & Security → Accessibility, then retry",
+          exit_code: exitCodeFor("service_unavailable"),
+        });
+      }
+
+      return err({
+        transport: "desktop-ax",
+        step: 0,
+        action,
+        reason: `target app is not running: ${target.appName}`,
+        suggestion: target.bundleId
+          ? `launch the app first, or run open -b ${target.bundleId}`
+          : `launch the app first, or run open -a "${target.appName}"`,
+        exit_code: exitCodeFor("service_unavailable"),
+      });
+    } catch (e) {
+      if (!opts.strict) return null;
+      return this.envelopeFromShellError(action, e);
+    }
+  }
+
+  private async runElectronAxWarmup(
+    target: ResolvedAxTarget,
+    waitMs: number,
+  ): Promise<AxWarmupResult> {
+    const { stdout } = await this.shell.run(
+      "swift",
+      ["-e", buildElectronAxWarmupScript(target, waitMs)],
+      { timeoutMs: Math.max(10_000, waitMs + 6_000) },
+    );
+    const raw = stdout.trim();
+    if (!raw) {
+      throw new Error("swift AX warmup produced no output");
+    }
+    return JSON.parse(raw) as AxWarmupResult;
   }
 
   private async dispatch<T>(req: ActionRequest): Promise<Envelope<T>> {
@@ -190,6 +338,14 @@ export class DesktopAxTransport implements TransportAdapter {
         return this.doMenuSelect<T>(req.params);
       case "applescript":
         return this.doApplescript<T>(req.params);
+      case "ax_snapshot":
+        return this.doAxSnapshot<T>(req.params);
+      case "ax_focused_read":
+        return this.doAxFocusedRead<T>(req.params);
+      case "ax_set_value":
+        return this.doAxSetValue<T>(req.params);
+      case "ax_press":
+        return this.doAxPress<T>(req.params);
       case "clipboard_read":
         return this.doClipboardRead<T>();
       case "clipboard_write":
@@ -223,12 +379,16 @@ export class DesktopAxTransport implements TransportAdapter {
   private async doAxFocus<T>(
     params: Record<string, unknown>,
   ): Promise<Envelope<T>> {
-    const app = typeof params.app === "string" ? params.app : undefined;
-    if (!app) return this.missingParam("ax_focus", "app");
-    const script = `tell application "${escapeAs(app)}" to activate`;
+    const target = resolveAxTarget(params);
+    if (!target) return this.missingTargetParam("ax_focus");
+    const script = `tell ${target.activationRef} to activate`;
     try {
       await this.shell.run("osascript", ["-e", script]);
-      return ok({ app } as unknown as T);
+      await this.maybeWarmupElectronAx("ax_focus", target, { waitMs: 500 });
+      return ok({
+        app: target.appName,
+        bundleId: target.bundleId ?? null,
+      } as unknown as T);
     } catch (e) {
       return this.envelopeFromShellError("ax_focus", e);
     }
@@ -237,22 +397,29 @@ export class DesktopAxTransport implements TransportAdapter {
   private async doMenuSelect<T>(
     params: Record<string, unknown>,
   ): Promise<Envelope<T>> {
-    const app = typeof params.app === "string" ? params.app : undefined;
+    const target = resolveAxTarget(params);
     const path = Array.isArray(params.path)
       ? (params.path as unknown[]).map(String)
       : typeof params.path === "string"
         ? params.path.split(/\s*>\s*|\s*→\s*/).filter(Boolean)
         : undefined;
-    if (!app) return this.missingParam("ax_menu_select", "app");
+    if (!target) return this.missingTargetParam("ax_menu_select");
     if (!path || path.length === 0)
       return this.missingParam("ax_menu_select", "path");
+
+    const warmupError = await this.maybeWarmupElectronAx<T>(
+      "ax_menu_select",
+      target,
+      { strict: true, waitMs: 500 },
+    );
+    if (warmupError) return warmupError;
 
     // Build an AppleScript that walks the menu bar by name.
     // e.g. path = ["File", "Export", "Export as PNG"]
     const items = path.map((s) => `"${escapeAs(s)}"`).join(", ");
     const script = [
       `tell application "System Events"`,
-      `  tell process "${escapeAs(app)}"`,
+      `  tell process "${escapeAs(target.uiProcessName)}"`,
       `    set menuPath to {${items}}`,
       `    set theMenuBar to menu bar 1`,
       `    set currentItem to menu bar item (item 1 of menuPath) of theMenuBar`,
@@ -266,7 +433,11 @@ export class DesktopAxTransport implements TransportAdapter {
     ].join("\n");
     try {
       await this.shell.run("osascript", ["-e", script]);
-      return ok({ app, path } as unknown as T);
+      return ok({
+        app: target.appName,
+        processName: target.uiProcessName,
+        path,
+      } as unknown as T);
     } catch (e) {
       return this.envelopeFromShellError("ax_menu_select", e);
     }
@@ -282,12 +453,95 @@ export class DesktopAxTransport implements TransportAdapter {
           ? params.source
           : undefined;
     if (!script) return this.missingParam("applescript", "script");
+
+    const target = resolveAxTarget(params);
+    const warmupError = await this.maybeWarmupElectronAx<T>(
+      "applescript",
+      target,
+      { strict: true, waitMs: 500 },
+    );
+    if (warmupError) return warmupError;
+
     try {
       const { stdout } = await this.shell.run("osascript", ["-e", script]);
       return ok({ stdout: stdout.trimEnd() } as unknown as T);
     } catch (e) {
       return this.envelopeFromShellError("applescript", e);
     }
+  }
+
+  private async doAxSnapshot<T>(
+    params: Record<string, unknown>,
+  ): Promise<Envelope<T>> {
+    const target = resolveAxTarget(params);
+    if (!target) return this.missingTargetParam("ax_snapshot");
+    const maxDepth = readPositiveInt(params.maxDepth, 3);
+    const scope =
+      params.scope === "focusedElement" ? "focusedElement" : "focusedWindow";
+    return this.runSwiftAxAction<T>(
+      "ax_snapshot",
+      target,
+      buildAxSnapshotScript(target, { maxDepth, scope }),
+    );
+  }
+
+  private async doAxFocusedRead<T>(
+    params: Record<string, unknown>,
+  ): Promise<Envelope<T>> {
+    const target = resolveAxTarget(params);
+    if (!target) return this.missingTargetParam("ax_focused_read");
+    return this.runSwiftAxAction<T>(
+      "ax_focused_read",
+      target,
+      buildAxFocusedReadScript(target, readAxElementQuery(params, true)),
+    );
+  }
+
+  private async doAxSetValue<T>(
+    params: Record<string, unknown>,
+  ): Promise<Envelope<T>> {
+    const target = resolveAxTarget(params);
+    if (!target) return this.missingTargetParam("ax_set_value");
+    const value =
+      typeof params.value === "string"
+        ? params.value
+        : typeof params.text === "string"
+          ? params.text
+          : undefined;
+    if (value === undefined) return this.missingParam("ax_set_value", "value");
+    const query: AxSetValueScriptOptions = {
+      ...readAxElementQuery(params, true),
+      attribute:
+        typeof params.attribute === "string" && params.attribute.trim()
+          ? params.attribute.trim()
+          : "AXValue",
+      value,
+    };
+    return this.runSwiftAxAction<T>(
+      "ax_set_value",
+      target,
+      buildAxSetValueScript(target, query),
+    );
+  }
+
+  private async doAxPress<T>(
+    params: Record<string, unknown>,
+  ): Promise<Envelope<T>> {
+    const target = resolveAxTarget(params);
+    if (!target) return this.missingTargetParam("ax_press");
+    const hasMatcher = hasAxElementMatcher(params);
+    const query: AxPressScriptOptions = {
+      ...readAxElementQuery(params, !hasMatcher),
+      actionName:
+        typeof params.action === "string" && params.action.trim()
+          ? params.action.trim()
+          : "AXPress",
+    };
+    return this.runSwiftAxAction<T>(
+      "ax_press",
+      target,
+      buildAxPressScript(target, query),
+    );
   }
 
   private async doClipboardRead<T>(): Promise<Envelope<T>> {
@@ -317,13 +571,85 @@ export class DesktopAxTransport implements TransportAdapter {
   private async doLaunchApp<T>(
     params: Record<string, unknown>,
   ): Promise<Envelope<T>> {
-    const app = typeof params.app === "string" ? params.app : undefined;
-    if (!app) return this.missingParam("launch_app", "app");
+    const target = resolveAxTarget(params);
+    if (!target) return this.missingTargetParam("launch_app");
     try {
-      await this.shell.run("open", ["-a", app]);
-      return ok({ app } as unknown as T);
+      await this.shell.run("open", [...target.openArgs]);
+      await this.maybeWarmupElectronAx("launch_app", target, { waitMs: 2_000 });
+      return ok({
+        app: target.appName,
+        bundleId: target.bundleId ?? null,
+      } as unknown as T);
     } catch (e) {
       return this.envelopeFromShellError("launch_app", e);
+    }
+  }
+
+  private async runSwiftAxAction<T>(
+    action: string,
+    target: ResolvedAxTarget,
+    script: string,
+  ): Promise<Envelope<T>> {
+    const warmupError = await this.maybeWarmupElectronAx<T>(action, target, {
+      strict: true,
+      waitMs: 500,
+    });
+    if (warmupError) return warmupError;
+
+    try {
+      const { stdout } = await this.shell.run("swift", ["-e", script], {
+        timeoutMs: 10_000,
+      });
+      const raw = stdout.trim();
+      if (!raw) {
+        throw new Error("swift AX action produced no output");
+      }
+      const result = JSON.parse(raw) as AxElementCommandResult;
+
+      if (!result.found) {
+        this.warmSessions.delete(this.warmSessionKey(target));
+        return err({
+          transport: "desktop-ax",
+          step: 0,
+          action,
+          reason: `target app is not running: ${target.appName}`,
+          suggestion: target.bundleId
+            ? `launch the app first, or run open -b ${target.bundleId}`
+            : `launch the app first, or run open -a "${target.appName}"`,
+          exit_code: exitCodeFor("service_unavailable"),
+        });
+      }
+
+      if (result.matched === false) {
+        return err({
+          transport: "desktop-ax",
+          step: 0,
+          action,
+          reason: `no matching accessibility element found in ${target.appName}`,
+          suggestion:
+            "focus the target control first, or pass role/title/description filters that match the target element",
+          exit_code: exitCodeFor("service_unavailable"),
+        });
+      }
+
+      if (typeof result.result === "number" && result.result !== 0) {
+        return err({
+          transport: "desktop-ax",
+          step: 0,
+          action,
+          reason: `${action} failed with AXError code ${result.result}`,
+          suggestion:
+            "verify the target element exposes the requested AX attribute/action and that the app is Accessibility-enabled",
+          exit_code: exitCodeFor("service_unavailable"),
+        });
+      }
+
+      if (result.element) {
+        this.lastAxSnapshot = result.element;
+      }
+      return ok(result as unknown as T);
+    } catch (e) {
+      return this.envelopeFromShellError(action, e);
     }
   }
 
@@ -362,5 +688,5 @@ function escapeAs(s: string): string {
     .replace(/\\/g, "\\\\")
     .replace(/"/g, '\\"')
     .replace(/[\r\n]/g, " ")
-    .replace(/\u0000/g, "");
+    .replaceAll("\0", "");
 }
