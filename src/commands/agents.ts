@@ -23,6 +23,7 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { registerAgentBackendCommands } from "./agents-backends.js";
 import { getAllAdapters, listCommands } from "../registry.js";
 import { VERSION } from "../constants.js";
 import { format, detectFormat } from "../output/formatter.js";
@@ -461,7 +462,9 @@ const formatters: Record<Platform, (ctx: TemplateContext) => string> = {
 export function registerAgentsCommand(program: Command): void {
   const agents = program
     .command("agents")
-    .description("AGENTS.md generation and management");
+    .description("AGENTS.md generation and coding-agent backend policy");
+
+  registerAgentBackendCommands(agents, program);
 
   agents
     .command("generate")

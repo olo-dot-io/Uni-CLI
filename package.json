@@ -1,6 +1,6 @@
 {
   "name": "@zenalexa/unicli",
-  "version": "0.215.0",
+  "version": "0.215.1",
   "description": "The universal interface between AI agents and the world's software",
   "type": "module",
   "main": "dist/main.js",
@@ -100,6 +100,10 @@
     "./protocol/acp": {
       "types": "./dist/protocol/acp.d.ts",
       "import": "./dist/protocol/acp.js"
+    },
+    "./agents/backends": {
+      "types": "./dist/agents/backends.d.ts",
+      "import": "./dist/agents/backends.js"
     },
     "./protocol/skill": {
       "types": "./dist/protocol/skill.d.ts",

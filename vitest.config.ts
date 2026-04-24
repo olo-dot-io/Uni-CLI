@@ -8,6 +8,11 @@ export default defineConfig({
     // in CI, brushing against the 10 s default and causing flaky failures
     // on Dependabot PRs despite identical code. 30 s leaves headroom.
     hookTimeout: 30_000,
+    // Several unit suites spawn `node dist/main.js` and `npx tsx` child
+    // processes. Letting Vitest fan out across every core can make those
+    // subprocesses compete hard enough to hit their own 30s timeout even
+    // though the product path is healthy.
+    maxWorkers: 2,
     // Localhost fetches are legal inside the test harness — the test owns
     // the server it's about to hit. Production code never has this env var
     // set, so the SSRF guard stays active by default everywhere else.

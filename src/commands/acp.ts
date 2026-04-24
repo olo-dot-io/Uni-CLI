@@ -20,6 +20,30 @@ interface AcpOptions {
   debug?: boolean;
 }
 
+export async function serveAcp(opts: AcpOptions = {}): Promise<void> {
+  // Load adapters before entering the serve loop — ACP clients expect
+  // `initialize` to respond with a fully-populated catalog.
+  loadAllAdapters();
+  await loadTsAdapters();
+
+  const adapters = getAllAdapters().length;
+  const commands = listCommands().length;
+
+  process.stderr.write(
+    `unicli ACP server v${VERSION} — ${adapters} sites, ${commands} commands (stdio)\n`,
+  );
+
+  const server = new AcpServer({ debug: opts.debug === true });
+  try {
+    await server.startStdio();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    process.stderr.write(`acp: fatal: ${message}\n`);
+    process.exit(1);
+  }
+  process.exit(0);
+}
+
 export function registerAcpCommand(program: Command): void {
   program
     .command("acp")
@@ -28,26 +52,6 @@ export function registerAcpCommand(program: Command): void {
     )
     .option("--debug", "Log method dispatch to stderr")
     .action(async (opts: AcpOptions) => {
-      // Load adapters before entering the serve loop — ACP clients expect
-      // `initialize` to respond with a fully-populated catalog.
-      loadAllAdapters();
-      await loadTsAdapters();
-
-      const adapters = getAllAdapters().length;
-      const commands = listCommands().length;
-
-      process.stderr.write(
-        `unicli ACP server v${VERSION} — ${adapters} sites, ${commands} commands (stdio)\n`,
-      );
-
-      const server = new AcpServer({ debug: opts.debug === true });
-      try {
-        await server.startStdio();
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        process.stderr.write(`acp: fatal: ${message}\n`);
-        process.exit(1);
-      }
-      process.exit(0);
+      await serveAcp(opts);
     });
 }

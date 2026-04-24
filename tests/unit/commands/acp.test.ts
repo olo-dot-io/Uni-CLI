@@ -6,12 +6,28 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { spawn, type ChildProcess } from "node:child_process";
+import { existsSync } from "node:fs";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const CLI_PATH = join(__dirname, "..", "..", "..", "src", "main.ts");
+const ROOT = join(__dirname, "..", "..", "..");
+const CLI_PATH = join(ROOT, "src", "main.ts");
+const DIST_CLI_PATH = join(ROOT, "dist", "main.js");
+const TSX_BIN = join(
+  ROOT,
+  "node_modules",
+  ".bin",
+  process.platform === "win32" ? "tsx.cmd" : "tsx",
+);
+
+function cliArgs(args: string[]): { command: string; args: string[] } {
+  if (existsSync(DIST_CLI_PATH)) {
+    return { command: process.execPath, args: [DIST_CLI_PATH, ...args] };
+  }
+  return { command: TSX_BIN, args: [CLI_PATH, ...args] };
+}
 
 /**
  * Send a single JSON-RPC frame to the subprocess and wait for the
@@ -57,13 +73,13 @@ describe("unicli acp — CLI subprocess integration", () => {
   let proc: ChildProcess;
 
   beforeAll(async () => {
-    // `npx` → `npx.cmd` on Windows (the actual executable).
-    const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
-    proc = spawn(npxBin, ["tsx", CLI_PATH, "acp"], {
+    const invocation = cliArgs(["acp"]);
+    proc = spawn(invocation.command, invocation.args, {
       stdio: ["pipe", "pipe", "pipe"],
-      cwd: join(__dirname, "..", "..", ".."),
+      cwd: ROOT,
       // Node rejects `.cmd` without shell on Windows (CVE-2024-27980).
-      shell: process.platform === "win32",
+      shell:
+        process.platform === "win32" && invocation.command.endsWith(".cmd"),
     });
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(
@@ -104,6 +120,34 @@ describe("unicli acp — CLI subprocess integration", () => {
       expect.objectContaining({ exec: true, mcp: true, search: true }),
     );
   });
+
+  it("leaves acp --help on the commander path", () => {
+    const invocation = cliArgs(["acp", "--help"]);
+    const result = spawnSync(invocation.command, invocation.args, {
+      cwd: ROOT,
+      encoding: "utf8",
+      shell:
+        process.platform === "win32" && invocation.command.endsWith(".cmd"),
+      timeout: 45_000,
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("Serve the Agent Client Protocol");
+  }, 45_000);
+
+  it("rejects unknown acp flags instead of entering stdio serve mode", () => {
+    const invocation = cliArgs(["acp", "--bad-flag"]);
+    const result = spawnSync(invocation.command, invocation.args, {
+      cwd: ROOT,
+      encoding: "utf8",
+      shell:
+        process.platform === "win32" && invocation.command.endsWith(".cmd"),
+      timeout: 45_000,
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("unknown option '--bad-flag'");
+  }, 45_000);
 
   it("returns error envelope for an unknown method", async () => {
     const response = await sendRequest(proc, {

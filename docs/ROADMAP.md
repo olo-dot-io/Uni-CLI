@@ -1,6 +1,6 @@
 # Uni-CLI Roadmap — Mission Vostok (0.2xx)
 
-> CLI is all agents need. <!-- STATS:site_count -->220<!-- /STATS --> sites, <!-- STATS:command_count -->1283<!-- /STATS --> commands as of v0.215.0
+> CLI is all agents need. <!-- STATS:site_count -->220<!-- /STATS --> sites, <!-- STATS:command_count -->1283<!-- /STATS --> commands as of v0.215.1
 
 ## Progress
 
@@ -28,7 +28,8 @@
 | 0.213.2        | Vostok · Gagarin TC0 Patch       | 200   | 968      | ✅         |
 | 0.213.3        | Vostok · Gagarin TC0 Patch R2    | 200   | 968      | ✅         |
 | 0.214.0        | Software Capability Bus          | 220   | 1283     | ✅         |
-| 0.215.0        | Closed Adapter Loop              | 220   | 1283     | ✅ Current |
+| 0.215.0        | Closed Adapter Loop              | 220   | 1283     | ✅         |
+| 0.215.1        | Agent Backend Matrix             | 220   | 1283     | ✅ Current |
 
 ## v0.201.0 ✅ — Engine v2 + Desktop/Bridge
 

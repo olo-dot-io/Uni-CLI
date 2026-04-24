@@ -38,6 +38,91 @@
 
 # ── Tier 1 — AI Agent CLIs ──────────────────────────────────────────────
 
+- name: claude-code
+  binary: claude
+  description: "Claude Code — Anthropic coding agent CLI"
+  homepage: "https://www.anthropic.com/claude-code"
+  tags: [ai, agent, coding, claude, mcp]
+  json_flag: "--output-format stream-json"
+  install:
+    default: "npm install -g @anthropic-ai/claude-code"
+
+- name: codex-cli
+  binary: codex
+  description: "Codex CLI — OpenAI coding agent CLI"
+  homepage: "https://github.com/openai/codex"
+  tags: [ai, agent, coding, openai, codex, mcp]
+  json_flag: "--json"
+  install:
+    default: "npm install -g @openai/codex"
+
+- name: opencode-cli
+  binary: opencode
+  description: "OpenCode — coding agent CLI with ACP and native TUI surfaces"
+  homepage: "https://opencode.ai"
+  tags: [ai, agent, coding, opencode, acp, mcp]
+  json_flag: "--json"
+  install:
+    default: "npm install -g opencode-ai"
+
+- name: openclaw
+  binary: openclaw
+  description: "OpenClaw — multi-channel AI gateway"
+  homepage: "https://openclaw.ai"
+  tags: [ai, gateway, openclaw, acp]
+  install:
+    default: "npm install -g openclaw"
+
+- name: acpx
+  binary: acpx
+  description: "acpx — ACP bridge and workflow runner for coding agents"
+  homepage: "https://github.com/openclaw/acpx"
+  tags: [ai, agent, coding, openclaw, acp, bridge]
+  json_flag: "--json"
+  install:
+    default: "npm install -g acpx"
+
+- name: hermes-agent
+  binary: hermes
+  description: "Hermes Agent — local skills and session-oriented agent CLI"
+  homepage: "https://github.com/NousResearch/hermes-agent"
+  tags: [ai, agent, coding, hermes, skills]
+  json_flag: "--json"
+  install:
+    default: "curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash"
+
+- name: cursor-agent
+  binary: cursor-agent
+  description: "Cursor Agent — Cursor coding agent CLI"
+  homepage: "https://cursor.com"
+  tags: [ai, agent, coding, cursor, acp]
+
+- name: gemini-cli
+  binary: gemini
+  description: "Gemini CLI — Google open-source terminal coding agent"
+  homepage: "https://github.com/google-gemini/gemini-cli"
+  tags: [ai, agent, coding, google, gemini, mcp]
+  install:
+    default: "npm install -g @google/gemini-cli"
+
+- name: qwen-code
+  binary: qwen
+  description: "Qwen Code — open-source terminal coding agent"
+  homepage: "https://github.com/QwenLM/qwen-code"
+  tags: [ai, agent, coding, qwen, alibaba]
+  install:
+    default: "npm install -g @qwen-code/qwen-code"
+
+- name: kiro-cli
+  binary: kiro-cli
+  description: "Kiro CLI — Amazon Q successor terminal coding agent"
+  homepage: "https://kiro.dev/docs/cli"
+  tags: [ai, agent, coding, aws, kiro, mcp]
+  install:
+    mac: "curl -fsSL https://cli.kiro.dev/install | bash"
+    linux: "curl -fsSL https://cli.kiro.dev/install | bash"
+    default: "curl -fsSL https://cli.kiro.dev/install | bash"
+
 - name: kimi-cli
   binary: kimi
   description: "Kimi Code — Moonshot AI coding agent CLI, 8K★"
@@ -55,6 +140,96 @@
   json_flag: "--json"
   install:
     default: "pip install deepagents-cli"
+
+- name: aider
+  binary: aider
+  description: "Aider — mature AI pair-programming CLI"
+  homepage: "https://github.com/Aider-AI/aider"
+  tags: [ai, agent, coding, aider, git]
+  install:
+    default: "pipx install aider-chat"
+
+- name: goose
+  binary: goose
+  description: "Goose — open-source extensible coding agent"
+  homepage: "https://github.com/aaif-goose/goose"
+  tags: [ai, agent, coding, goose, mcp]
+
+- name: amp
+  binary: amp
+  description: "Amp — Sourcegraph frontier coding agent"
+  homepage: "https://ampcode.com"
+  tags: [ai, agent, coding, sourcegraph, amp]
+  install:
+    default: "npm install -g @sourcegraph/amp"
+
+- name: github-copilot-cli
+  binary: copilot
+  description: "GitHub Copilot CLI — Copilot from the terminal"
+  homepage: "https://github.com/features/copilot"
+  tags: [ai, agent, coding, github, copilot]
+  install:
+    default: "npm install -g @github/copilot"
+
+- name: auggie
+  binary: auggie
+  description: "Auggie CLI — Augment Code agentic terminal"
+  homepage: "https://augmentcode.com"
+  tags: [ai, agent, coding, augment, auggie]
+  install:
+    default: "npm install -g @augmentcode/auggie"
+
+- name: crush
+  binary: crush
+  description: "Charm Crush — open-source terminal coding agent"
+  homepage: "https://github.com/charmbracelet/crush"
+  tags: [ai, agent, coding, charm, crush]
+
+- name: openhands
+  binary: openhands
+  description: "OpenHands — AI-driven development agent and sandbox"
+  homepage: "https://github.com/OpenHands/OpenHands"
+  tags: [ai, agent, coding, openhands, sandbox]
+  install:
+    default: "pipx install openhands-ai"
+
+- name: mini-swe-agent
+  binary: mini
+  description: "mini-SWE-agent — small reproducible software-engineering agent"
+  homepage: "https://github.com/SWE-agent/mini-swe-agent"
+  tags: [ai, agent, coding, swe, benchmark]
+  install:
+    default: "pipx install mini-swe-agent"
+
+- name: swe-agent
+  binary: sweagent
+  description: "SWE-agent — reproducible software-engineering agent harness"
+  homepage: "https://github.com/SWE-agent/SWE-agent"
+  tags: [ai, agent, coding, swe, benchmark]
+
+- name: agentapi
+  binary: agentapi
+  description: "AgentAPI — HTTP/SSE control plane for native coding-agent CLIs"
+  homepage: "https://github.com/coder/agentapi"
+  tags: [ai, agent, coding, bridge, http]
+
+- name: droid-cli
+  binary: droid
+  description: "Droid CLI — Factory AI terminal coding agent"
+  homepage: "https://factory.ai"
+  tags: [ai, agent, coding, factory, droid]
+
+- name: forgecode
+  binary: forge
+  description: "ForgeCode — terminal AI pair-programming agent"
+  homepage: "https://antinomy.ai/"
+  tags: [ai, agent, coding, forgecode]
+
+- name: rovo-dev
+  binary: rovo
+  description: "Rovo Dev CLI — Atlassian team coding agent"
+  homepage: "https://www.atlassian.com/software/rovo"
+  tags: [ai, agent, coding, atlassian, rovo]
 
 # ── Tier 1 — Essential ──────────────────────────────────────────────────
 

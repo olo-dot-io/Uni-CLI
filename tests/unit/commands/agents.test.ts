@@ -159,4 +159,93 @@ describe("unicli agents generate — v2 envelope", () => {
     expect(typeof data.generated).toBe("string");
     expect(data.generated.length).toBeGreaterThan(0);
   });
+
+  it("agents matrix emits the anti-consensus backend matrix", async () => {
+    const cap = captureStdout();
+    try {
+      const program = newProgram();
+      await program.parseAsync(["-f", "json", "agents", "matrix"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as Record<string, unknown>;
+    expect(env.ok).toBe(true);
+    expect(env.command).toBe("agents.matrix");
+    validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
+
+    const data = env.data as Array<{
+      id: string;
+      primary_route: string;
+      primary_protocol: string;
+      protocols: string[];
+      policy: string;
+      tier: string;
+      external_cli_name?: string;
+    }>;
+    expect(data.map((entry) => entry.id)).toEqual(
+      expect.arrayContaining([
+        "claude-code",
+        "codex",
+        "cursor",
+        "kimi-cli",
+        "kiro-cli",
+        "gemini-cli",
+        "qwen-code",
+        "aider",
+        "goose",
+        "mini-swe-agent",
+        "agentapi",
+        "cline",
+        "roo-code",
+        "windsurf",
+        "continue",
+      ]),
+    );
+    expect(data.length).toBeGreaterThanOrEqual(29);
+    expect(data.find((entry) => entry.id === "cursor")?.primary_route).toBe(
+      "native_cli",
+    );
+    expect(data.find((entry) => entry.id === "agentapi")?.tier).toBe("bridge");
+    expect(data.find((entry) => entry.id === "acpx")?.primary_protocol).toBe(
+      "acp",
+    );
+    expect(data.find((entry) => entry.id === "codex")?.external_cli_name).toBe(
+      "codex-cli",
+    );
+    expect(
+      data.some((entry) => entry.policy.includes("ACP is compatibility")),
+    ).toBe(true);
+  });
+
+  it("agents recommend emits one backend recommendation", async () => {
+    const cap = captureStdout();
+    try {
+      const program = newProgram();
+      await program.parseAsync(
+        ["-f", "json", "agents", "recommend", "claudecode"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as Record<string, unknown>;
+    expect(env.ok).toBe(true);
+    expect(env.command).toBe("agents.recommend");
+    validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
+
+    const data = env.data as {
+      backend: { id: string };
+      route: string;
+      fallbacks: string[];
+      rationale: string;
+    };
+    expect(data.backend.id).toBe("claude-code");
+    expect(data.route).toBe("json_stream");
+    expect(data.fallbacks).toContain("acp");
+    expect(data.rationale).toContain("native session");
+  });
 });

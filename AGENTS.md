@@ -3,6 +3,7 @@
 <!-- IF YOU ARE AN AI AGENT: Read this file. It tells you everything you need.
      Install: npm install -g @zenalexa/unicli
      Discover: unicli search "your intent" (bilingual EN/ZH)
+     Agent routing: unicli agents matrix && unicli agents recommend <agent>
      Run: unicli <site> <command> [args]
      Output is structured Markdown by default (non-TTY + agent UA auto-detected). Use -f json for JSON. Errors are structured envelopes to stderr.
      You can fix broken adapters yourself — read the Self-Repair section. -->
@@ -80,7 +81,7 @@ Sites requiring auth: bilibili, weibo, zhihu, twitter, xueqiu, zsxq, jike, werea
 
 ## Output Contract
 
-Every command returns v2 `AgentEnvelope` on stdout (24 surfaces: adapter dispatch + `core.list/health/usage/search` + `ext.list` + `dev.watch` + 17 admin: `agents auth eval explore generate hub lint mcp migrate migrate-schema operate repair research schema skills status synthesize`). `mcp serve` stays raw (stdio MCP). Format auto-selected — pipe or set an agent UA env var for Markdown.
+Commands return v2 `AgentEnvelope` on stdout across adapter, core, ext/dev, and admin surfaces (`agents matrix/recommend/generate`, `auth`, `mcp`, `repair`, etc.). `mcp serve` and `acp` stay raw stdio protocol servers. Format auto-selected — pipe or set an agent UA env var for Markdown.
 
 ### Format auto-selection
 
@@ -193,21 +194,22 @@ Default tools: `unicli_run`, `unicli_list`, `unicli_search`, `unicli_explore`. A
 ## ACP (avante.nvim / Zed)
 
 ```bash
-unicli acp          # JSON-RPC 2.0 over stdio
+unicli acp          # ACP compatibility over stdio
 ```
 
-See [`docs/AVANTE.md`](docs/AVANTE.md).
+ACP is an editor compatibility gateway, not the core runtime. Prefer `unicli agents recommend <agent>` for Claude Code, Codex, Cursor, OpenCode, Gemini, Qwen, Kiro, Aider, Goose, Cline, Roo, AgentAPI, etc.
 
 ## External CLI Passthrough
 
-35 registered external CLIs. If installed on your system, they're available as top-level commands:
+58 registered external CLIs. If installed on your system, they're available as top-level commands:
 
 ```bash
 unicli ext list                    # Show all external CLIs + install status
+unicli ext list --tag agent        # Show coding-agent CLIs
 unicli ext install <name>          # Install an external CLI
 unicli lark-cli calendar +agenda   # Direct passthrough
 ```
 
 ## Version
 
-0.215.0 — Closed Adapter Loop
+0.215.1 — Agent Backend Matrix

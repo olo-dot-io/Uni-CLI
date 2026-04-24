@@ -3,9 +3,9 @@
 > Internal design philosophy and naming conventions.
 > This document governs aesthetics, tone, and thematic decisions across the project.
 >
-> **Current version:** v0.215.0 — Closed Adapter Loop (browser adapter authoring, site memory, fixture verification, and network evidence replay).
+> **Current version:** v0.215.1 — Agent Backend Matrix (coding-agent route matrix and ACP-as-compatibility policy).
 >
-> **Current scale:** <!-- STATS:site_count -->220<!-- /STATS --> sites, <!-- STATS:command_count -->1283<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->973<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->896<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->77<!-- /STATS --> TS), <!-- STATS:test_count -->7145<!-- /STATS --> tests. Numbers render from `stats.json` via `npm run build`; drift fails `npm run stats:check`.
+> **Current scale:** <!-- STATS:site_count -->220<!-- /STATS --> sites, <!-- STATS:command_count -->1283<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->973<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->896<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->77<!-- /STATS --> TS), <!-- STATS:test_count -->7160<!-- /STATS --> tests. Numbers render from `stats.json` via `npm run build`; drift fails `npm run stats:check`.
 
 ## Core Identity
 
@@ -47,7 +47,7 @@ Format: `0.100.1`, `0.200.0`, `1.0.0`, etc.
 - **MINOR** = mission number (100, 200, 300... like Mission Control sequences)
 - **PATCH** = revision within a mission
 
-Current: `0.215.0` — Closed Adapter Loop.
+Current: `0.215.1` — Agent Backend Matrix.
 
 ### Version Codenames — The Full Spectrum
 

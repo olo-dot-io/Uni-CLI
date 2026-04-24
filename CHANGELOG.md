@@ -3,6 +3,41 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
+## [0.215.1] — 2026-04-24 — Agent Backend Matrix
+
+### Added
+
+- **Coding-agent backend matrix** — `unicli agents matrix` and
+  `unicli agents recommend <agent>` now expose a structured v2 policy
+  matrix for core, SOTA, bridge, watchlist, and editor-owned coding agents:
+  Claude Code, Codex, Hermes, Cursor, Kimi CLI, OpenCode, Gemini CLI, Qwen
+  Code, Kiro CLI, Aider, Goose, Amp, GitHub Copilot CLI, Auggie, Crush,
+  OpenHands, mini-SWE-agent, SWE-agent, acpx/OpenClaw, AgentAPI, MiniMax CLI,
+  Blackbox CLI, Droid, ForgeCode, Rovo Dev, Cline, Roo Code, Windsurf, and
+  Continue.
+- **Agent CLI hub entries** — external CLI discovery now includes verified
+  agent-facing binaries and install hints for Claude Code, Codex, OpenCode,
+  acpx, Hermes, Cursor Agent, Gemini CLI, Qwen Code, Kiro CLI, Kimi CLI,
+  Aider, Goose, Amp, Copilot, Auggie, Crush, OpenHands, mini-SWE-agent,
+  SWE-agent, AgentAPI, Droid, ForgeCode, and Rovo. Blackbox remains
+  watchlist-only because the public npm package exposes a generic `cli` bin.
+- **Reusable package export** — `@zenalexa/unicli/agents/backends` exports
+  the backend matrix and recommendation helpers for other coding-agent
+  integrations.
+
+### Changed
+
+- ACP is now documented as an editor compatibility gateway rather than
+  Uni-CLI's core runtime path. Recommendations prefer direct CLI, JSON
+  stream, MCP, or explicit API/CLI routes first for lower latency and native
+  session semantics.
+- Backend recommendations now expose `primary_protocol` and
+  `external_cli_name`, so callers can distinguish route names like `acpx` or
+  `api_cli` from the underlying protocol and install the matching external
+  CLI registry entry.
+- README, AGENTS.md, roadmap, and release metadata now present v0.215.1 as
+  the current agent-backend release line.
+
 ## [0.215.0] — 2026-04-24 — Closed Adapter Loop
 
 ### Added
