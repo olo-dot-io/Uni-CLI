@@ -11,7 +11,7 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { readdirSync, existsSync } from "node:fs";
 import { join, basename } from "node:path";
-import { getAllAdapters } from "../registry.js";
+import { commandStrategy, getAllAdapters } from "../registry.js";
 import {
   loadCookies,
   validateCookies,
@@ -53,6 +53,13 @@ export function registerAuthCommands(program: Command): void {
       const dir = getCookieDir();
       const filePath = join(dir, `${site}.json`);
       const required = adapter.authCookies ?? [];
+      const commandAuthStrategy = Object.values(adapter.commands)
+        .map((cmd) => commandStrategy(adapter, cmd))
+        .find((strategy) => strategy && strategy !== "public");
+      const siteStrategy =
+        adapter.strategy && adapter.strategy !== "public"
+          ? adapter.strategy
+          : (commandAuthStrategy ?? adapter.strategy ?? "public");
       const template: Record<string, string> = {};
       for (const key of required.length > 0 ? required : ["COOKIE_NAME"]) {
         template[key] = "PASTE_VALUE_HERE";
@@ -62,7 +69,7 @@ export function registerAuthCommands(program: Command): void {
         site,
         cookie_dir: dir,
         cookie_file: filePath,
-        strategy: adapter.strategy ?? "public",
+        strategy: siteStrategy,
         required_cookies: required,
         template,
       };

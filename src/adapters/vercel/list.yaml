@@ -12,7 +12,8 @@ pipeline:
       command: vercel
       args:
         - list
-        - --json
+        - --format
+        - json
       parse: json
       timeout: 30000
 

@@ -42,6 +42,42 @@ export function resolveCommand(
   return { adapter, command };
 }
 
+export function commandStrategy(
+  adapter: AdapterManifest,
+  command: AdapterCommand,
+): Strategy | undefined {
+  return command.strategy ?? adapter.strategy;
+}
+
+export function commandRequiresAuth(
+  adapter: AdapterManifest,
+  command: AdapterCommand,
+): boolean {
+  const strategy = commandStrategy(adapter, command);
+  return strategy !== undefined && strategy !== Strategy.PUBLIC;
+}
+
+export function commandUsesBrowser(
+  adapter: AdapterManifest,
+  command: AdapterCommand,
+): boolean {
+  if (command.browser !== undefined) return command.browser;
+  const strategy = commandStrategy(adapter, command);
+  if (command.strategy !== undefined) {
+    return (
+      adapter.type === AdapterType.BROWSER ||
+      strategy === Strategy.INTERCEPT ||
+      strategy === Strategy.UI
+    );
+  }
+  if (adapter.browser !== undefined) return adapter.browser;
+  return (
+    adapter.type === AdapterType.BROWSER ||
+    strategy === Strategy.INTERCEPT ||
+    strategy === Strategy.UI
+  );
+}
+
 /** List all available commands across all adapters */
 export function listCommands(): Array<{
   site: string;
@@ -69,7 +105,7 @@ export function listCommands(): Array<{
         command: name,
         description: cmd.description ?? "",
         type: adapter.type,
-        auth: adapter.strategy !== "public" && adapter.strategy !== undefined,
+        auth: commandRequiresAuth(adapter, cmd),
         quarantined: cmd.quarantine === true,
         quarantineReason: cmd.quarantineReason,
       });
@@ -107,11 +143,18 @@ export function cli(config: CliRegistration): void {
       commands: {},
     };
     adapters.set(config.site, adapter);
+  } else {
+    if (config.domain) adapter.domain = config.domain;
+    if (config.strategy) adapter.strategy = config.strategy;
+    if (config.browser !== undefined) adapter.browser = config.browser;
   }
 
   adapter!.commands[config.name] = {
     name: config.name,
     description: config.description,
+    adapterArgs: config.args,
+    strategy: config.strategy,
+    browser: config.browser,
     columns: config.columns,
     func: config.func as AdapterCommand["func"],
   };

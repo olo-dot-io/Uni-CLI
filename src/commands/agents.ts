@@ -24,7 +24,12 @@ import chalk from "chalk";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { registerAgentBackendCommands } from "./agents-backends.js";
-import { getAllAdapters, listCommands } from "../registry.js";
+import {
+  commandRequiresAuth,
+  commandStrategy,
+  getAllAdapters,
+  listCommands,
+} from "../registry.js";
 import { VERSION } from "../constants.js";
 import { format, detectFormat } from "../output/formatter.js";
 import { makeCtx } from "../output/envelope.js";
@@ -76,7 +81,18 @@ function genericSitesByCategory(adapters: AdapterManifest[]): string[] {
     const sorted = adaptersInCat.sort((a, b) => a.name.localeCompare(b.name));
     for (const adapter of sorted) {
       const cmdNames = Object.keys(adapter.commands).sort().join(", ");
-      const auth = adapter.strategy ?? "public";
+      const strategies = Array.from(
+        new Set(
+          Object.values(adapter.commands).map(
+            (cmd) => commandStrategy(adapter, cmd) ?? "public",
+          ),
+        ),
+      ).sort();
+      const auth = Object.values(adapter.commands).some((cmd) =>
+        commandRequiresAuth(adapter, cmd),
+      )
+        ? strategies.join(",")
+        : "public";
       const desc = adapter.description ?? "";
       lines.push(`| ${adapter.name} | ${cmdNames} | ${auth} | ${desc} |`);
     }

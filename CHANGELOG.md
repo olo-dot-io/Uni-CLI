@@ -3,6 +3,52 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
 
+## [Unreleased] — Next major development — Vostok · Astronaut TBD
+
+> Development line only. Do not run release automation, create a tag, publish
+> npm, or create a GitHub Release until the maintainer explicitly says release.
+> The release codename must replace `Astronaut TBD` before tagging.
+
+### Added
+
+- **Browser-backed social adapters** — Reddit listing/search commands now run
+  through maintained TypeScript browser adapters instead of stale public JSON
+  endpoints, and Linux.do search has a browser/API-backed implementation with
+  structured rate-limit handling.
+- **Command-level execution metadata** — TypeScript adapters can now declare
+  per-command `strategy`, `browser`, and auth requirements, so discovery,
+  health probes, dispatch, describe, auth, and skill generation all see the
+  same execution contract.
+- **GitHub repository search adapter** — `gh search-repos` covers repository
+  research through the GitHub CLI bridge.
+- **Release codename gates** — release propagation, release checks, weekly
+  release automation, and publish automation now require an explicit
+  `Program · Astronaut` label before a version can be tagged or published.
+
+### Changed
+
+- Browser-function commands now receive a real page from the shared execution
+  kernel and close it best-effort after command completion.
+- Browser daemon compatibility now honors `OPENCLI_DAEMON_PORT` and accepts the
+  OpenCLI response shapes used by the reference daemon.
+- Adapter health probing now reads command-level browser/auth metadata before
+  deciding what is runnable, skipped, or auth-gated.
+
+### Fixed
+
+- Auth and rate-limit failures now map to structured `auth_required` /
+  retryable `rate_limited` envelopes consistently across adapter surfaces.
+- `vercel list` now uses the current Vercel CLI JSON flag.
+- Generated stats and public docs now reflect 220 sites, 1283 commands, 966
+  adapters, and 7103 tests after the adapter cleanup.
+
+### Removed
+
+- Removed stale Reddit public JSON YAML adapters and fixtures that no longer
+  represented the live site.
+- Removed the dead Meituan hot adapter after the upstream endpoint returned
+  unrecoverable 404 responses and no reliable reference path remained.
+
 ## [0.215.1] — 2026-04-24 — Agent Backend Matrix
 
 ### Added

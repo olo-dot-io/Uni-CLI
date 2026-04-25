@@ -1,14 +1,15 @@
 /**
- * Release check — validates version consistency across all release files.
+ * Release check — validates version consistency across release files.
  *
  * Checks:
- * 1. All 7 files contain the current version string
+ * 1. Tracked release files contain the current version string
  * 2. CHANGELOG.md has a heading for the current version
  * 3. Build manifest exists at dist/manifest.json
+ * 4. With --strict-codename, release surfaces contain Program · Astronaut
  *
  * Exit 0 if all checks pass, exit 1 with details if not.
  *
- * Usage: npx tsx scripts/release-check.ts
+ * Usage: npx tsx scripts/release-check.ts [--strict-codename]
  */
 
 import { readFileSync, existsSync } from "node:fs";
@@ -20,6 +21,10 @@ const ROOT = join(__dirname, "..");
 
 const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf-8"));
 const version: string = pkg.version;
+const args = process.argv.slice(2);
+const strictCodename =
+  args.includes("--strict-codename") ||
+  process.env.RELEASE_REQUIRE_CODENAME === "1";
 
 interface CheckResult {
   name: string;
@@ -29,13 +34,25 @@ interface CheckResult {
 
 const results: CheckResult[] = [];
 
-// --- Check 1: Version string present in all 7 files ---
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function hasFinalCodename(value: string): boolean {
+  return (
+    /—\s+\S.+\s·\s\S.+/.test(value) &&
+    !/\b(?:tbd|todo|unreleased|next)\b/i.test(value)
+  );
+}
+
+// --- Check 1: Version string present in tracked release files ---
 
 const versionFiles = [
   { file: "package.json", pattern: `"version": "${version}"` },
-  { file: "CLAUDE.md", pattern: `Version: ${version}` },
+  { file: "package-lock.json", pattern: `"version": "${version}"` },
   { file: "AGENTS.md", pattern: version },
   { file: "README.md", pattern: version },
+  { file: "README.zh-CN.md", pattern: version },
   { file: "CHANGELOG.md", pattern: `[${version}]` },
   { file: "docs/TASTE.md", pattern: version },
   { file: "docs/ROADMAP.md", pattern: `v${version}` },
@@ -67,7 +84,12 @@ for (const { file, pattern } of versionFiles) {
 const changelogPath = join(ROOT, "CHANGELOG.md");
 if (existsSync(changelogPath)) {
   const changelog = readFileSync(changelogPath, "utf-8");
-  const hasHeading = changelog.includes(`## [${version}]`);
+  const headingPattern = new RegExp(
+    `^## \\[${escapeRegExp(version)}\\].*$`,
+    "m",
+  );
+  const heading = changelog.match(headingPattern)?.[0] ?? "";
+  const hasHeading = heading.length > 0;
   results.push({
     name: "CHANGELOG.md version heading",
     pass: hasHeading,
@@ -75,6 +97,15 @@ if (existsSync(changelogPath)) {
       ? `Found heading for v${version}`
       : `No "## [${version}]" heading found in CHANGELOG.md`,
   });
+  if (strictCodename) {
+    results.push({
+      name: "CHANGELOG.md release codename",
+      pass: hasFinalCodename(heading),
+      detail: hasFinalCodename(heading)
+        ? `Found final codename in "${heading}"`
+        : `Heading must include a final Program · Astronaut codename: "${heading || "missing"}"`,
+    });
+  }
 } else {
   results.push({
     name: "CHANGELOG.md version heading",
@@ -95,12 +126,40 @@ results.push({
     : "dist/manifest.json not found — run `npm run build` first",
 });
 
+// --- Check 4: Strict codename on public release surfaces ---
+
+if (strictCodename) {
+  const codenameFiles = ["README.md", "README.zh-CN.md", "docs/TASTE.md"];
+  for (const file of codenameFiles) {
+    const filePath = join(ROOT, file);
+    if (!existsSync(filePath)) {
+      results.push({
+        name: `${file} release codename`,
+        pass: false,
+        detail: `File not found: ${file}`,
+      });
+      continue;
+    }
+    const content = readFileSync(filePath, "utf-8");
+    const pass = content.includes(version) && hasFinalCodename(content);
+    results.push({
+      name: `${file} release codename`,
+      pass,
+      detail: pass
+        ? `Found final codename for v${version}`
+        : `Missing final Program · Astronaut codename for v${version}`,
+    });
+  }
+}
+
 // --- Report ---
 
 const failures = results.filter((r) => !r.pass);
 const passes = results.filter((r) => r.pass);
 
-console.log(`\n🔍 Release Check — v${version}\n`);
+console.log(
+  `\n🔍 Release Check — v${version}${strictCodename ? " (strict codename)" : ""}\n`,
+);
 
 for (const r of passes) {
   console.log(`   ✓ ${r.name}`);

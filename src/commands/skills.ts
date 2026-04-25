@@ -28,7 +28,12 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { homedir } from "node:os";
 import chalk from "chalk";
-import { getAllAdapters } from "../registry.js";
+import {
+  commandRequiresAuth,
+  commandStrategy,
+  commandUsesBrowser,
+  getAllAdapters,
+} from "../registry.js";
 import { VERSION } from "../constants.js";
 import type {
   AdapterManifest,
@@ -108,9 +113,10 @@ export function buildSkillForCommand(
       ? `Returns columns: \`${cmd.columns.join("`, `")}\`.`
       : "Returns JSON results.";
 
+  const strategy = commandStrategy(adapter, cmd);
   const authNote =
-    adapter.strategy && adapter.strategy !== "public"
-      ? `\n\n**Auth required.** Run \`unicli auth setup ${adapter.name}\` once before invoking — the strategy is \`${adapter.strategy}\`.`
+    strategy && strategy !== "public"
+      ? `\n\n**Auth required.** Run \`unicli auth setup ${adapter.name}\` once before invoking — the strategy is \`${strategy}\`.`
       : "";
 
   const body = `## What it does
@@ -256,6 +262,9 @@ export function buildCatalog(): {
       description: string;
       when_to_use: string;
       command: string;
+      auth: boolean;
+      strategy?: string;
+      browser: boolean;
       columns?: string[];
       args?: Array<{
         name: string;
@@ -278,6 +287,9 @@ export function buildCatalog(): {
         description: skill.description,
         when_to_use: skill.whenToUse,
         command: skill.command,
+        auth: commandRequiresAuth(adapter, cmd),
+        strategy: commandStrategy(adapter, cmd),
+        browser: commandUsesBrowser(adapter, cmd),
         columns: cmd.columns,
         args: cmd.adapterArgs?.map((a) => ({
           name: a.name,
@@ -293,7 +305,9 @@ export function buildCatalog(): {
       type: adapter.type,
       description: adapter.description,
       domain: adapter.domain,
-      auth: adapter.strategy !== undefined && adapter.strategy !== "public",
+      auth: Object.values(adapter.commands).some((cmd) =>
+        commandRequiresAuth(adapter, cmd),
+      ),
       strategy: adapter.strategy,
       commands,
     };

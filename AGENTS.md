@@ -61,7 +61,7 @@ freecad (15 cmds), blender (13 cmds), gimp (12 cmds), ffmpeg (11 cmds), audacity
 
 ### Bridge (3 CLIs)
 
-gh (5 cmds), jq (2 cmds), yt-dlp (4 cmds)
+gh (6 cmds), jq (2 cmds), yt-dlp (4 cmds)
 
 <!-- END ADAPTERS -->
 

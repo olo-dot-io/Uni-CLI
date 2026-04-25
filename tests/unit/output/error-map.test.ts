@@ -50,6 +50,21 @@ describe("errorTypeToCode — PipelineError branches", () => {
     expect(errorTypeToCode(err)).toBe("auth_required");
   });
 
+  it("maps missing cookie PipelineError to auth_required", () => {
+    const err = new PipelineError(
+      'No cookies found for "zhihu". Run: unicli auth setup zhihu',
+      {
+        step: -1,
+        action: "auth",
+        config: { site: "zhihu", strategy: "cookie" },
+        errorType: "http_error",
+        suggestion: "Run unicli auth setup zhihu",
+      },
+    );
+    expect(errorTypeToCode(err)).toBe("auth_required");
+    expect(mapErrorToExitCode(err)).toBe(ExitCode.AUTH_REQUIRED);
+  });
+
   it("maps statusCode 404 to not_found", () => {
     const err = makePipelineError({ statusCode: 404 });
     expect(errorTypeToCode(err)).toBe("not_found");
@@ -125,6 +140,15 @@ describe("errorTypeToCode — generic Error message matching", () => {
 
   it("maps rate-limit text to rate_limited", () => {
     expect(errorTypeToCode(new Error("429 rate-limited"))).toBe("rate_limited");
+  });
+
+  it("marks generic rate-limit errors as retryable", () => {
+    const fields = errorToAgentFields(
+      new Error("linux-do request failed: HTTP 429"),
+      "src/adapters/linux-do/search.yaml",
+      "linux-do",
+    );
+    expect(fields.retryable).toBe(true);
   });
 
   it("falls back to internal_error for unknown Error", () => {

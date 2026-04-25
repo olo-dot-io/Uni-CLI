@@ -230,8 +230,7 @@ export class DaemonPage implements IPage {
   }
 
   async evaluate(script: string): Promise<unknown> {
-    const result = await sendCommand("exec", this.cmdOpts({ code: script }));
-    return (result as { data?: unknown })?.data;
+    return sendCommand("exec", this.cmdOpts({ code: script }));
   }
 
   async wait(seconds: number): Promise<void> {
@@ -410,7 +409,7 @@ export class DaemonPage implements IPage {
         fullPage: opts?.fullPage,
       }),
     );
-    const data = (result as { data?: string })?.data ?? "";
+    const data = String(result ?? "");
     return Buffer.from(data, "base64");
   }
 

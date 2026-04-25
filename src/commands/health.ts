@@ -12,11 +12,15 @@
 
 import { Command } from "commander";
 import chalk from "chalk";
-import { getAllAdapters } from "../registry.js";
+import {
+  commandStrategy,
+  commandUsesBrowser,
+  getAllAdapters,
+} from "../registry.js";
 import { runPipeline, PipelineError } from "../engine/executor.js";
 import { format, detectFormat } from "../output/formatter.js";
 import type { AgentContext } from "../output/envelope.js";
-import { AdapterType, ExitCode } from "../types.js";
+import { ExitCode } from "../types.js";
 import type { OutputFormat } from "../types.js";
 
 interface HealthResult {
@@ -45,15 +49,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
       },
     );
   });
-}
-
-/** Check if a command requires browser interaction */
-function requiresBrowser(adapterType: AdapterType, strategy?: string): boolean {
-  return (
-    adapterType === AdapterType.BROWSER ||
-    strategy === "intercept" ||
-    strategy === "ui"
-  );
 }
 
 export function registerHealthCommand(program: Command): void {
@@ -112,7 +107,7 @@ export function registerHealthCommand(program: Command): void {
             }
 
             // Skip browser-only commands
-            if (requiresBrowser(adapter.type, adapter.strategy as string)) {
+            if (commandUsesBrowser(adapter, cmd)) {
               results.push({
                 site: adapter.name,
                 command: cmdName,
@@ -147,7 +142,7 @@ export function registerHealthCommand(program: Command): void {
                   adapter.base,
                   {
                     site: adapter.name,
-                    strategy: adapter.strategy as string,
+                    strategy: commandStrategy(adapter, cmd),
                   },
                 ),
                 timeout,

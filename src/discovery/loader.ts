@@ -167,6 +167,131 @@ interface YamlArg {
   "x-unicli-accepts"?: AdapterArg["x-unicli-accepts"];
 }
 
+function extractBalancedLiteral(
+  source: string,
+  openIndex: number,
+): string | null {
+  let depth = 0;
+  let quote: string | null = null;
+  let escaped = false;
+  for (let i = openIndex; i < source.length; i++) {
+    const ch = source[i];
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === "\\") {
+        escaped = true;
+      } else if (ch === quote) {
+        quote = null;
+      }
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") {
+      quote = ch;
+      continue;
+    }
+    if (ch === "{") depth++;
+    if (ch === "}") {
+      depth--;
+      if (depth === 0) return source.slice(openIndex + 1, i);
+    }
+  }
+  return null;
+}
+
+function objectStringProp(body: string, prop: string): string | undefined {
+  const re = new RegExp(`${prop}\\s*:\\s*["'\`]([^"'\`]+)["'\`]`);
+  return re.exec(body)?.[1];
+}
+
+function objectStrategyProp(body: string): AdapterCommand["strategy"] {
+  const literal = objectStringProp(body, "strategy");
+  if (literal) return literal as AdapterCommand["strategy"];
+  const enumMatch = /\bstrategy\s*:\s*Strategy\.([A-Z_]+)/.exec(body);
+  return enumMatch?.[1]?.toLowerCase() as AdapterCommand["strategy"];
+}
+
+function objectBoolProp(body: string, prop: string): boolean | undefined {
+  const match = new RegExp(`${prop}\\s*:\\s*(true|false)`).exec(body);
+  return match ? match[1] === "true" : undefined;
+}
+
+function objectStringArrayProp(
+  body: string,
+  prop: string,
+): string[] | undefined {
+  const match = new RegExp(`${prop}\\s*:\\s*\\[([\\s\\S]*?)\\]`).exec(body);
+  if (!match) return undefined;
+  return Array.from(match[1].matchAll(/["'`]([^"'`]+)["'`]/g)).map((m) => m[1]);
+}
+
+function objectArgsProp(body: string): AdapterArg[] | undefined {
+  const match = /\bargs\s*:\s*\[([\s\S]*?)\]\s*,\s*columns\b/.exec(body);
+  if (!match) return undefined;
+  const names = Array.from(
+    match[1].matchAll(/\bname\s*:\s*["'`]([^"'`]+)["'`]/g),
+  ).map((m) => m[1]);
+  return names.length > 0
+    ? names.map((name) => ({ name, type: "str" }))
+    : undefined;
+}
+
+function findNextCliCall(source: string, from: number): number {
+  let index = from;
+  while (true) {
+    const candidate = source.indexOf("cli(", index);
+    if (candidate < 0) return -1;
+    const prev = candidate > 0 ? source[candidate - 1] : "";
+    if (!/[A-Za-z0-9_$-]/.test(prev)) return candidate;
+    index = candidate + 4;
+  }
+}
+
+function extractTsCommandStubs(
+  site: string,
+  siteDir: string,
+): {
+  commands: Record<string, AdapterCommand>;
+  meta: Partial<AdapterManifest>;
+} {
+  const commands: Record<string, AdapterCommand> = {};
+  const meta: Partial<AdapterManifest> = {};
+  for (const file of readdirSync(siteDir)) {
+    if (!file.endsWith(".ts")) continue;
+    if (file.endsWith(".d.ts") || file.endsWith(".test.ts")) continue;
+    const source = readFileSync(join(siteDir, file), "utf-8");
+    let index = 0;
+    while (true) {
+      const callIndex = findNextCliCall(source, index);
+      if (callIndex < 0) break;
+      const openIndex = source.indexOf("{", callIndex);
+      if (openIndex < 0) break;
+      const body = extractBalancedLiteral(source, openIndex);
+      index = openIndex + Math.max(body?.length ?? 1, 1);
+      if (!body) continue;
+      const commandSite = objectStringProp(body, "site") ?? site;
+      if (commandSite !== site) continue;
+      const name = objectStringProp(body, "name");
+      if (!name) continue;
+      const strategy = objectStrategyProp(body);
+      const browser = objectBoolProp(body, "browser");
+      const domain = objectStringProp(body, "domain");
+      if (domain) meta.domain = domain;
+      if (strategy) meta.strategy = strategy;
+      if (browser !== undefined) meta.browser = browser;
+      commands[name] = {
+        name,
+        description: objectStringProp(body, "description"),
+        strategy,
+        browser,
+        adapterArgs: objectArgsProp(body),
+        columns: objectStringArrayProp(body, "columns"),
+      };
+    }
+  }
+  return { commands, meta };
+}
+
 /** Load all adapters from a directory */
 export function loadAdaptersFromDir(dir: string): number {
   if (!existsSync(dir)) return 0;
@@ -322,6 +447,8 @@ export function loadAdaptersFromDir(dir: string): number {
           description: parsed.description,
           pipeline: parsed.pipeline,
           adapterArgs,
+          strategy: parsed.strategy as AdapterCommand["strategy"],
+          browser: parsed.browser,
           columns: parsed.columns,
           method: parsed.method as AdapterCommand["method"],
           path: parsed.path,
@@ -339,6 +466,13 @@ export function loadAdaptersFromDir(dir: string): number {
         count++;
       }
     }
+
+    const tsStubs = extractTsCommandStubs(site, siteDir);
+    for (const [name, command] of Object.entries(tsStubs.commands)) {
+      commands[name] = command;
+      count++;
+    }
+    siteMeta = { ...siteMeta, ...tsStubs.meta };
 
     if (Object.keys(commands).length > 0) {
       registerAdapter({

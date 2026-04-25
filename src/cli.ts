@@ -5,7 +5,12 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import { loadAllAdapters, loadTsAdapters } from "./discovery/loader.js";
-import { getAllAdapters, listCommands } from "./registry.js";
+import {
+  commandStrategy,
+  commandUsesBrowser,
+  getAllAdapters,
+  listCommands,
+} from "./registry.js";
 import { loadExternalClis, isInstalled } from "./hub/index.js";
 import { executeExternal } from "./hub/passthrough.js";
 import { format, detectFormat } from "./output/formatter.js";
@@ -391,6 +396,12 @@ export async function createCli(): Promise<Command> {
             continue;
           }
 
+          if (commandUsesBrowser(adapter, cmd)) {
+            console.log(chalk.dim(`  ${cmdName}: skip (requires browser)`));
+            skipped++;
+            continue;
+          }
+
           // Skip commands that require positional args (can't test without input)
           const requiredArgs = (cmd.adapterArgs ?? []).filter(
             (a) => a.required && a.positional,
@@ -413,7 +424,7 @@ export async function createCli(): Promise<Command> {
               cmd.pipeline,
               { args: { limit: 2 }, source: "internal" },
               adapter.base,
-              { site: adapter.name, strategy: adapter.strategy },
+              { site: adapter.name, strategy: commandStrategy(adapter, cmd) },
             );
             clearTimeout(timer);
 

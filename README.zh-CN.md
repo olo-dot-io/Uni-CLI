@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->220<!-- /STATS --> 个站点 · <!-- STATS:command_count -->1283<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> 个 pipeline step · <!-- STATS:test_count -->7160<!-- /STATS --> 个测试</sub>
+  <sub><!-- STATS:site_count -->220<!-- /STATS --> 个站点 · <!-- STATS:command_count -->1283<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> 个 pipeline step · <!-- STATS:test_count -->7103<!-- /STATS --> 个测试</sub>
 </p>
 
 <p align="center">

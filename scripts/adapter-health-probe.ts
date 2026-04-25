@@ -25,9 +25,12 @@
 
 import { execSync } from "node:child_process";
 import { loadAllAdapters, loadTsAdapters } from "../src/discovery/loader.js";
-import { getAllAdapters } from "../src/registry.js";
+import {
+  commandStrategy,
+  commandUsesBrowser,
+  getAllAdapters,
+} from "../src/registry.js";
 import { runPipeline } from "../src/engine/yaml-runner.js";
-import { AdapterType } from "../src/types.js";
 
 interface ProbeResult {
   site: string;
@@ -35,14 +38,6 @@ interface ProbeResult {
   status: "ok" | "fail" | "skip";
   reason?: string;
   latency_ms: number;
-}
-
-function needsBrowser(type: AdapterType, strategy?: string): boolean {
-  return (
-    type === AdapterType.BROWSER ||
-    strategy === "intercept" ||
-    strategy === "ui"
-  );
 }
 
 /**
@@ -318,7 +313,7 @@ async function main(): Promise<void> {
         continue;
       }
 
-      if (needsBrowser(adapter.type, adapter.strategy as string)) {
+      if (commandUsesBrowser(adapter, cmd)) {
         results.push({
           site: adapter.name,
           command: cmdName,
@@ -408,7 +403,7 @@ async function main(): Promise<void> {
             adapter.base,
             {
               site: adapter.name,
-              strategy: adapter.strategy,
+              strategy: commandStrategy(adapter, cmd),
             },
           ),
           timeoutMs,

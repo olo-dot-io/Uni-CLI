@@ -48,7 +48,46 @@ Changesets (`.changeset/*.md`) drive the version math. Contributors add one
 per PR that touches `src/`; the weekly workflow calls `npx changeset version`
 to consume them and compute the bump.
 
-## 4. What counts as substantive
+## 4. Development lines are not releases
+
+When the maintainer says a change belongs to the next major/minor line but is
+still in development, do only the development bookkeeping:
+
+- Add or update the `[Unreleased]` section in `CHANGELOG.md`.
+- Add a `.changeset/*.md` entry with the intended bump.
+- Keep `package.json` at the current published version.
+- Do **not** run `npm run release`, `npm version`, `npx changeset version`, tag,
+  publish npm, or create a GitHub Release.
+
+The release codename may remain `Astronaut TBD` only in `[Unreleased]`. Before
+tagging, it must become a final `Program · Astronaut` label.
+
+## 5. Release codename gate
+
+Every release must carry a spaceflight label with an explicit astronaut or
+cosmonaut slot:
+
+```text
+Program · Astronaut
+```
+
+Examples: `Vostok · Gagarin`, `Mercury · Glenn`.
+
+This is enforced in automation:
+
+- `scripts/release.ts` exits `78` unless `--codename` or
+  `RELEASE_CODENAME` provides the final label.
+- `npm run release:check -- --strict-codename` verifies the changelog heading,
+  README footers, and taste guide.
+- `.github/workflows/weekly-release.yml` refuses to tag unless the manual input
+  `codename` or repo variable `RELEASE_CODENAME` is set.
+- `.github/workflows/release.yml` refuses to publish npm or create the GitHub
+  Release if the tagged commit lacks final codename metadata.
+
+Placeholders such as `TBD`, `Unreleased`, `Next`, and `TODO` are valid only in
+development notes. They block release.
+
+## 6. What counts as substantive
 
 The detection filter in the weekly workflow considers a commit substantive
 when its conventional-commit prefix is **NOT** one of:
@@ -65,12 +104,13 @@ If your PR truly should not trigger a release (e.g. a README typo nobody
 cares about), land it under `chore(ci)` or `chore(deps)`. In practice this
 almost never matters — the cost of a patch bump for a docs fix is zero.
 
-## 5. Manual override
+## 7. Manual override
 
 To ship outside the Friday window:
 
 1. From the GitHub Actions UI → **Weekly Release** → **Run workflow**.
-2. (Optional) Set `force: true` to release even if the filter shows no
+2. Set `codename` to the final `Program · Astronaut` label.
+3. (Optional) Set `force: true` to release even if the filter shows no
    substantive commits — useful when dependabot work was material enough
    to warrant a version bump on its own (a security patch, a breaking
    dependency).
@@ -78,7 +118,7 @@ To ship outside the Friday window:
 The manual dispatch follows the exact same pipeline: changesets → verify →
 commit → tag → trigger `release.yml`.
 
-## 6. Workflow auth model
+## 8. Workflow auth model
 
 The weekly cron checks out with `token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}`.
 This split matters for downstream automation:
@@ -104,7 +144,7 @@ Keep `RELEASE_PAT` owned by a maintainer, rotated annually, and scoped to this
 repo only. If it leaks or expires, the workflow still works — it just requires
 the manual `gh workflow run` step until the secret is refreshed.
 
-## 7. Cancelling a release
+## 9. Cancelling a release
 
 If the cron fires a release you didn't want, or a post-release regression is
 discovered before the npm publish completes, the procedure is:
@@ -136,7 +176,7 @@ npm deprecate @zenalexa/unicli@X.Y.Z "see vX.Y.Z+1 for fix"
 Then ship `vX.Y.Z+1` with the fix via the normal manual dispatch. Document
 the reason in `CHANGELOG.md` under the new version.
 
-## 8. Drop-dead escalation
+## 10. Drop-dead escalation
 
 If the Friday release is blocked for **two consecutive weeks**, open a
 tracking issue titled `release-cadence: Friday blocked {date}` and assign
