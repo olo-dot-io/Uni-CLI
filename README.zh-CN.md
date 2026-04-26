@@ -273,9 +273,7 @@ columns: [title, url]
 - [快速开始](docs/QUICKSTART.md)
 - [Adapter 格式](docs/ADAPTER-FORMAT.md)
 - [Pipeline 参考](docs/reference/pipeline.md)
-- [架构](docs/ARCHITECTURE.md)
-- [ACP / avante.nvim](docs/AVANTE.md)
-- [Benchmark](docs/BENCHMARK.md)
+- [Exit codes](docs/reference/exit-codes.md)
 
 ## 边界和诚实说明
 

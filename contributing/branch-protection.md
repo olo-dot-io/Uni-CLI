@@ -6,18 +6,19 @@ workflow YAML — it lives on the repo's admin settings. This doc
 documents the required rules and ships a shell script
 (`scripts/setup-branch-protection.sh`) that applies them via `gh api`.
 
-## Required status checks (8 + 1 nightly)
+## Required status checks (9 + 1 nightly)
 
 | #   | Check                                    | Source                                |
 | --- | ---------------------------------------- | ------------------------------------- |
-| 1   | `Verify (ubuntu-latest / Node 22)`       | `.github/workflows/ci.yml` verify job |
-| 2   | `Verify (ubuntu-latest / Node 20)`       | same, matrix cell                     |
-| 3   | `Verify (macos-14 / Node 22)`            | same, matrix cell                     |
-| 4   | `Verify (macos-14 / Node 20)`            | same, matrix cell                     |
-| 5   | `Verify (windows-latest / Node 22)`      | same, matrix cell                     |
-| 6   | `Adapter Tests`                          | `.github/workflows/ci.yml`            |
-| 7   | `Verify Changesets`                      | `.github/workflows/ci.yml`            |
-| 8   | `unicli-lint` _(runs inside Verify job)_ | `npm run lint:adapters`               |
+| 1   | `PR Title`                               | `.github/workflows/ci.yml`            |
+| 2   | `Verify (ubuntu-latest / Node 22)`       | `.github/workflows/ci.yml` verify job |
+| 3   | `Verify (ubuntu-latest / Node 20)`       | same, matrix cell                     |
+| 4   | `Verify (macos-14 / Node 22)`            | same, matrix cell                     |
+| 5   | `Verify (macos-14 / Node 20)`            | same, matrix cell                     |
+| 6   | `Verify (windows-latest / Node 22)`      | same, matrix cell                     |
+| 7   | `Adapter Tests`                          | `.github/workflows/ci.yml`            |
+| 8   | `Verify Changesets`                      | `.github/workflows/ci.yml`            |
+| 9   | `unicli-lint` _(runs inside Verify job)_ | `npm run lint:adapters`               |
 
 Nightly-only (not required for merge, but monitored):
 
@@ -91,6 +92,8 @@ exist — first entry opens the log).
   shipping to users.
 - `verify-changesets` — release hygiene; every user-facing change
   has a note.
+- `PR Title` — merge commit subjects come from PR titles, so titles
+  must follow the same conventional-commit contract as local commits.
 - Matrix (Node × OS) — catches platform-specific regressions early.
 - Nightly conformance — catches adapter drift across 880+ YAML files
   without blocking individual PRs.

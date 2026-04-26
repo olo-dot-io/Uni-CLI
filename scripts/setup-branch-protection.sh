@@ -19,6 +19,7 @@ BRANCH="${BRANCH:-main}"
 # Status-check names must match the `name:` attribute (or the job name
 # fallback) surfaced in GitHub Checks.
 REQUIRED_CHECKS=(
+  "PR Title"
   "Verify (ubuntu-latest / Node 22)"
   "Verify (ubuntu-latest / Node 20)"
   "Verify (macos-14 / Node 22)"

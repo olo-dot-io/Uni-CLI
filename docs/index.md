@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "Uni-CLI"
   text: "One CLI surface for agents to operate software."
-  tagline: "220 sites · 1283 commands · 59 pipeline steps · structured envelopes"
+  tagline: "223 sites · 1304 commands · 59 pipeline steps · structured envelopes"
   actions:
     - theme: brand
       text: Get Started

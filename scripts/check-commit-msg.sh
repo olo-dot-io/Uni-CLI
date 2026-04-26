@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
 #
-# check-commit-msg.sh — reject commit messages that leak internal
-# process terminology into the public git log.
+# check-commit-msg.sh — reject non-standard commit messages and messages
+# that leak internal process terminology into the public git log.
 #
 # Enforced by the lefthook `commit-msg` hook. CLAUDE.md Information
 # Security rule forbids these terms in pushed commits because they
 # document the agent workflow, not the code change.
 #
-# Patterns (case-insensitive):
+# Subject contract:
+#   type(scope): summary
+#
+# Allowed types:
+#   feat, fix, docs, test, refactor, perf, build, ci, chore, release, revert
+#
+# Forbidden patterns (case-insensitive):
 #   - "codex" as a standalone word
 #   - "subagent"
 #   - "batch N" / "batch N/M"
@@ -19,8 +25,9 @@
 # Usage:
 #   bash scripts/check-commit-msg.sh <path-to-commit-message>
 #
-# Skip with `LEFTHOOK=0 git commit` for legitimate false positives
-# (e.g. editing this file itself).
+# Skip with `LEFTHOOK=0 git commit` only for legitimate false positives
+# (e.g. editing this file itself). PR titles are checked in CI and have
+# no escape hatch.
 
 set -euo pipefail
 
@@ -32,6 +39,20 @@ fi
 
 # Read the message, strip comment lines (git's `#` prefix).
 msg=$(grep -vE '^\s*#' "$msg_file" || true)
+subject=$(printf '%s\n' "$msg" | sed -n '/[^[:space:]]/{p;q;}')
+
+conventional_re='^(feat|fix|docs|test|refactor|perf|build|ci|chore|release|revert)(\([A-Za-z0-9._-]+\))?!?: .+'
+if ! printf '%s\n' "$subject" | grep -Eq "$conventional_re"; then
+  printf >&2 '\ncommit-msg: rejected — subject must be a conventional commit:\n\n'
+  printf >&2 '  received: %s\n\n' "${subject:-<empty>}"
+  printf >&2 '  expected: type(scope): summary\n'
+  printf >&2 '  allowed types: feat, fix, docs, test, refactor, perf, build, ci, chore, release, revert\n\n'
+  printf >&2 '  examples:\n'
+  printf >&2 '    feat(office): add Word font adapter\n'
+  printf >&2 '    fix(windows): normalize site memory paths\n'
+  printf >&2 '    docs: define documentation maintenance policy\n\n'
+  exit 1
+fi
 
 # Each entry: "pattern|human description"
 violations=()
