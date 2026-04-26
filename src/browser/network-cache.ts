@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { userHome } from "../engine/user-home.js";
 
 export const DEFAULT_NETWORK_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_STORED_BODY_CHARS = 1_000_000;
@@ -46,7 +46,7 @@ export type LoadNetworkCacheResult =
   | { status: "expired"; file: NetworkCacheFile; ageMs: number };
 
 function defaultCacheDir(): string {
-  return join(homedir(), ".unicli", "cache");
+  return join(userHome(), ".unicli", "cache");
 }
 
 export function networkCachePath(

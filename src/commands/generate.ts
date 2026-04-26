@@ -16,7 +16,6 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { homedir } from "node:os";
 import { BrowserBridge } from "../browser/bridge.js";
 import { createOneShotWorkspace } from "../browser/workspace.js";
 import {
@@ -32,6 +31,7 @@ import { recordEndpointDiscoveries } from "../browser/site-memory.js";
 import { format, detectFormat } from "../output/formatter.js";
 import { makeCtx } from "../output/envelope.js";
 import { mapErrorToExitCode } from "../output/error-map.js";
+import { userHome } from "../engine/user-home.js";
 import type { OutputFormat } from "../types.js";
 
 // ── Types ─────────────────────────────────────────────────────────────
@@ -266,7 +266,7 @@ export function registerGenerateCommand(program: Command): void {
 
           // Build candidates inline (same logic as synthesize command)
           const candidates: CandidateInfo[] = [];
-          const exploreDir = join(homedir(), ".unicli", "explore", siteName);
+          const exploreDir = join(userHome(), ".unicli", "explore", siteName);
           const candidatesDir = join(exploreDir, "candidates");
           mkdirSync(candidatesDir, { recursive: true });
 
@@ -320,7 +320,7 @@ export function registerGenerateCommand(program: Command): void {
           const winner = selectBest(candidates, opts.goal);
 
           // Copy winning YAML to adapters directory
-          const adapterDir = join(homedir(), ".unicli", "adapters", siteName);
+          const adapterDir = join(userHome(), ".unicli", "adapters", siteName);
           mkdirSync(adapterDir, { recursive: true });
           const destPath = join(adapterDir, `${winner.name}.yaml`);
           copyFileSync(winner.file, destPath);

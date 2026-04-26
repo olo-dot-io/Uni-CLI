@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { userHome } from "../engine/user-home.js";
 
 export interface EndpointMemory {
   url: string;
@@ -41,7 +41,7 @@ export interface DiscoveredEndpoint {
 
 export function siteMemoryPaths(
   site: string,
-  baseDir = homedir(),
+  baseDir = userHome(),
 ): {
   dir: string;
   endpoints: string;

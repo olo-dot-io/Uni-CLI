@@ -1,4 +1,3 @@
-import { homedir } from "node:os";
 import { isAbsolute, relative, resolve } from "node:path";
 import { Command } from "commander";
 import { BrowserBridge, type DaemonPage } from "../browser/bridge.js";
@@ -15,6 +14,7 @@ import type { OutputFormat } from "../types.js";
 import { detectFormat, format } from "../output/formatter.js";
 import { makeCtx } from "../output/envelope.js";
 import { errorTypeToCode, mapErrorToExitCode } from "../output/error-map.js";
+import { userHome } from "../engine/user-home.js";
 
 export interface BrowserOperatorRootOptions {
   workspace?: string;
@@ -379,7 +379,7 @@ export function resolveAllowedUploadPath(filePath: string): string {
   }
 
   const cwd = process.cwd();
-  const home = homedir();
+  const home = userHome();
   if (
     !isSameOrDescendantPath(cwd, absolutePath) &&
     !isSameOrDescendantPath(home, absolutePath)
