@@ -3,6 +3,15 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 
+## [0.216.2] — 2026-04-27 — Apollo · Aldrin
+
+### Fixed
+
+- CI no longer requires the ignored local `ref/opencli/cli-manifest.json`
+  checkout for unit tests. The full parity benchmark still runs locally when
+  the synced reference is present, while signal coverage remains validated in
+  GitHub Actions.
+
 ## [0.216.1] — 2026-04-27 — Apollo · Armstrong
 
 ### Changed

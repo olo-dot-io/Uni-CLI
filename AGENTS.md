@@ -212,4 +212,4 @@ unicli lark-cli calendar +agenda   # Direct passthrough
 
 ## Version
 
-0.216.1 — Apollo · Armstrong
+0.216.2 — Apollo · Aldrin
