@@ -28,6 +28,20 @@ permissions:
   contents: read
 
 jobs:
+  pr-title:
+    name: PR Title
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Check conventional PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          printf '%s\n' "$PR_TITLE" > "$RUNNER_TEMP/pr-title.txt"
+          bash scripts/check-commit-msg.sh "$RUNNER_TEMP/pr-title.txt"
+
   verify:
     name: Verify (${{ matrix.os }} / Node ${{ matrix.node-version }})
     runs-on: ${{ matrix.os }}

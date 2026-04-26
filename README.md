@@ -273,9 +273,7 @@ Reference docs:
 - [Quickstart](docs/QUICKSTART.md)
 - [Adapter format](docs/ADAPTER-FORMAT.md)
 - [Pipeline reference](docs/reference/pipeline.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [ACP / avante.nvim](docs/AVANTE.md)
-- [Benchmarks](docs/BENCHMARK.md)
+- [Exit codes](docs/reference/exit-codes.md)
 
 ## Trust And Limits
 
