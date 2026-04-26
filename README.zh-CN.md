@@ -270,7 +270,9 @@ columns: [title, url]
 
 文档入口：
 
-- [快速开始](docs/QUICKSTART.md)
+- [独立文档站](https://olo-dot-io.github.io/Uni-CLI/)
+- [快速开始](docs/guide/getting-started.md)
+- [Agent 集成](docs/guide/integrations.md)
 - [Adapter 格式](docs/ADAPTER-FORMAT.md)
 - [Pipeline 参考](docs/reference/pipeline.md)
 - [Exit codes](docs/reference/exit-codes.md)

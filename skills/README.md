@@ -32,5 +32,5 @@ SKILL.md standard: Claude Code, Codex, Hermes, Cline, OpenCode, etc.
 5. `npm run lint:context` scores it against the agent-lint rubric;
    threshold is 60/100.
 
-See `contributing/mcp.md` and the global skills protocol guide for
-structure details.
+See `docs/guide/integrations.md`, `contributing/mcp.md`, and the global
+skills protocol guide for structure details.

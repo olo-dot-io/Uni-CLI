@@ -26,6 +26,7 @@ REQUIRED_CHECKS=(
   "Verify (macos-14 / Node 20)"
   "Verify (windows-latest / Node 22)"
   "Adapter Tests"
+  "Docs Build"
   "Verify Changesets"
 )
 

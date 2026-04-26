@@ -25,7 +25,7 @@
 .vp-doc h3,
 .vp-doc h4 {
   font-family: "Geist Mono", ui-monospace, monospace;
-  letter-spacing: -0.5px;
+  letter-spacing: 0;
 }
 
 /* Body text — Geist Sans */
@@ -43,7 +43,7 @@
 /* Hero title */
 .VPHero .name {
   font-family: "Geist Mono", ui-monospace, monospace !important;
-  letter-spacing: -2px;
+  letter-spacing: 0;
 }
 
 /* Feature cards — sharp corners */

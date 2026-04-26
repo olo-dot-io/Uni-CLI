@@ -40,6 +40,23 @@ run, inspect, repair, or extend the tool, it probably does not belong in README.
 
 No scrolling animation. No Mermaid hero diagram. No theory section.
 
+## Docs Site Shape
+
+The VitePress site is the public product surface. Keep it organized by user
+need:
+
+| Section     | Purpose                                      | Examples                        |
+| ----------- | -------------------------------------------- | ------------------------------- |
+| Start       | First successful command and agent setup     | Getting Started, Integrations   |
+| Guides      | Task-oriented workflows                      | Adapters, Self-Repair, Recipes  |
+| Reference   | Exact contracts and generated/owned surfaces | Pipeline, Exit Codes, Release   |
+| Explanation | Why the system is shaped this way            | Architecture, Benchmark, Theory |
+
+Do not add a new top-level doc when a paragraph in an existing page would
+serve the reader. If a page mixes task steps, contract details, and rationale,
+split or move the smallest section needed instead of duplicating the whole
+page.
+
 ## Naming
 
 | Context               | Form               |

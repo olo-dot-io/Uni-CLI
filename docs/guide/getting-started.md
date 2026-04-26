@@ -8,10 +8,18 @@ that agents can search, run, and repair.
 ```bash
 npm install -g @zenalexa/unicli
 unicli --version
-# 0.215.1
 ```
 
 Requires Node.js 20 or later.
+
+Every command follows the same shape:
+
+```bash
+unicli SITE COMMAND [args] [-f json|md|yaml|csv|compact]
+```
+
+Non-TTY and agent runs default to structured Markdown. Use `-f json` when a
+script needs JSON.
 
 ## Find A Command
 
@@ -22,6 +30,8 @@ unicli list --site hackernews
 ```
 
 ## Run A Command
+
+Run the selected command:
 
 ```bash
 unicli hackernews top --limit 5
@@ -55,6 +65,24 @@ unicli bilibili feed
 
 Cookies live at `~/.unicli/cookies/SITE.json`. Auth failures return exit
 code `77` and a structured error with the next command to run.
+
+## Repair A Broken Command
+
+When a command fails, read the structured error. It includes the adapter path
+and pipeline step that need attention.
+
+```bash
+unicli repair SITE COMMAND
+```
+
+Typical loop:
+
+```text
+1. Read error.adapter_path and error.step.
+2. Patch the YAML adapter.
+3. Save a local override under ~/.unicli/adapters/SITE/COMMAND.yaml.
+4. Re-run unicli repair SITE COMMAND.
+```
 
 ## Browser Automation
 
@@ -104,6 +132,7 @@ unicli agents recommend codex
 ## Next Steps
 
 - [Adapters](/guide/adapters)
+- [Integrations](/guide/integrations)
 - [Self-Repair](/guide/self-repair)
 - [Pipeline Steps](/reference/pipeline)
 - [Exit Codes](/reference/exit-codes)

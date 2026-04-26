@@ -143,7 +143,8 @@ unicli linear issue-update "$ID" --state "Done" -f json
 - `issue-update` makes three HTTP calls (fetch issue → resolve state →
   apply update). If any step returns an empty result, the final
   mutation silently does nothing. Use `-f json` to inspect the
-  intermediate pipeline via `unicli dev` — see `docs/QUICKSTART.md`.
+  intermediate pipeline via `unicli dev` — see
+  `docs/guide/getting-started.md`.
 - State names are case-sensitive and team-scoped. "Done" in one team
   might be "Shipped" in another; list states per team with
   `unicli linear issue-list --state Done --limit 1` to confirm a
@@ -207,5 +208,5 @@ Exit codes follow `sysexits.h`:
 | 77   | Auth required (`LINEAR_API_KEY` unset)   |
 | 78   | Config error (malformed adapter)         |
 
-See `docs/AGENT-INSTALL.md` for how agents detect and handle each
+See `docs/reference/exit-codes.md` for how agents detect and handle each
 exit code.

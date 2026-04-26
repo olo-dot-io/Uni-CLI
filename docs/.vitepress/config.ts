@@ -1,5 +1,9 @@
 import { defineConfig } from "vitepress";
 
+const siteBase =
+  process.env.UNICLI_DOCS_BASE ??
+  (process.env.GITHUB_REPOSITORY === "olo-dot-io/Uni-CLI" ? "/Uni-CLI/" : "/");
+
 /**
  * markdown-it plugin: escape {{ }} in fenced code block output.
  *
@@ -51,6 +55,9 @@ function escapeMustacheInFence(md: any) {
 export default defineConfig({
   title: "Uni-CLI",
   description: "One CLI surface for agents to operate software",
+  base: siteBase,
+  cleanUrls: true,
+  lastUpdated: true,
   markdown: {
     config: (md) => {
       escapeMustacheInFence(md);
@@ -75,20 +82,73 @@ export default defineConfig({
     ],
   ],
   themeConfig: {
+    siteTitle: "Uni-CLI",
     nav: [
-      { text: "Guide", link: "/guide/getting-started" },
-      { text: "Reference", link: "/reference/pipeline" },
-      { text: "Agent Install", link: "/AGENT-INSTALL" },
+      { text: "Start", link: "/guide/getting-started" },
+      { text: "Guides", link: "/guide/" },
+      { text: "Reference", link: "/reference/" },
+      { text: "Architecture", link: "/ARCHITECTURE" },
       { text: "GitHub", link: "https://github.com/olo-dot-io/Uni-CLI" },
     ],
+    search: {
+      provider: "local",
+    },
     sidebar: {
-      "/guide/": [
+      "/": [
         {
-          text: "Guide",
+          text: "Start",
           items: [
+            { text: "Overview", link: "/" },
             { text: "Getting Started", link: "/guide/getting-started" },
+            { text: "Integrations", link: "/guide/integrations" },
+            { text: "Recipes", link: "/RECIPES" },
+          ],
+        },
+        {
+          text: "Guides",
+          items: [
             { text: "Adapters", link: "/guide/adapters" },
             { text: "Self-Repair", link: "/guide/self-repair" },
+          ],
+        },
+        {
+          text: "Reference",
+          items: [
+            { text: "Adapter Format", link: "/ADAPTER-FORMAT" },
+            { text: "Pipeline Steps", link: "/reference/pipeline" },
+            { text: "Exit Codes", link: "/reference/exit-codes" },
+            { text: "Maintenance Tools", link: "/reference/maintenance" },
+            { text: "Plugin Authoring", link: "/PLUGIN" },
+            { text: "Release", link: "/reference/release" },
+          ],
+        },
+        {
+          text: "Explanation",
+          items: [
+            { text: "Architecture", link: "/ARCHITECTURE" },
+            { text: "Benchmarks", link: "/BENCHMARK" },
+            { text: "Theory", link: "/THEORY" },
+            { text: "Taste Guide", link: "/TASTE" },
+            { text: "Roadmap", link: "/ROADMAP" },
+          ],
+        },
+      ],
+      "/guide/": [
+        {
+          text: "Start",
+          items: [
+            { text: "Guide Index", link: "/guide/" },
+            { text: "Getting Started", link: "/guide/getting-started" },
+            { text: "Integrations", link: "/guide/integrations" },
+            { text: "Recipes", link: "/RECIPES" },
+          ],
+        },
+        {
+          text: "Build",
+          items: [
+            { text: "Adapters", link: "/guide/adapters" },
+            { text: "Self-Repair", link: "/guide/self-repair" },
+            { text: "Adapter Format", link: "/ADAPTER-FORMAT" },
           ],
         },
       ],
@@ -96,11 +156,24 @@ export default defineConfig({
         {
           text: "Reference",
           items: [
+            { text: "Reference Index", link: "/reference/" },
+            { text: "Adapter Format", link: "/ADAPTER-FORMAT" },
             { text: "Pipeline Steps", link: "/reference/pipeline" },
             { text: "Exit Codes", link: "/reference/exit-codes" },
+            { text: "Maintenance Tools", link: "/reference/maintenance" },
+            { text: "Plugin Authoring", link: "/PLUGIN" },
+            { text: "Release", link: "/reference/release" },
           ],
         },
       ],
+    },
+    editLink: {
+      pattern: "https://github.com/olo-dot-io/Uni-CLI/edit/main/docs/:path",
+      text: "Edit this page on GitHub",
+    },
+    docFooter: {
+      prev: "Previous",
+      next: "Next",
     },
     socialLinks: [
       { icon: "github", link: "https://github.com/olo-dot-io/Uni-CLI" },

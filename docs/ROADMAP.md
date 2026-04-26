@@ -15,6 +15,7 @@ This file tracks current engineering direction. Historical release notes live in
 | ACP gateway          | Supported as an editor compatibility path, not the primary runtime abstraction.                                             |
 | Self-repair loop     | Errors carry adapter path, step, retryability, suggestion, and alternatives.                                                |
 | Agent backend matrix | Native CLI, JSON stream, MCP, ACP, HTTP API, OpenAI-compatible, and bridge routes are modeled explicitly.                   |
+| Docs site            | VitePress landing page, guide/reference split, local search, and GitHub Pages deployment workflow are available.            |
 
 ## Next Priorities
 
@@ -34,7 +35,7 @@ This file tracks current engineering direction. Historical release notes live in
 
 4. **Docs as product surface**
    - README stays install-first and capability-first.
-   - Public docs should explain commands, contracts, and repair paths.
+   - Public docs should explain commands, contracts, repair paths, and integration routes.
    - Long research notes, release archaeology, and naming lore stay out of the public entry path.
 
 ## Non-Goals

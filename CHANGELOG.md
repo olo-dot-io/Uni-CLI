@@ -416,7 +416,7 @@ v0.213.4 once OpenRouter credit is restored.
   - `docs/refs.bib` with 25+ verified arXiv citations + CI bibtex-resolve gate
   - `docs/BENCHMARK.md` + `bench/` harness with measured p50/p95
   - `docs/ADAPTER-FORMAT.md` v2 and adapter migration tooling
-  - `docs/AVANTE.md` integration guide
+  - `docs/guide/integrations.md` integration guide
   - `contributing/` per-domain guides (adapter, transport, cua, mcp, acp, release, schema, branch-protection)
   - `.claude/commands/` and `skills/` committed as cross-vendor workflow surface
   - Changesets workflow + `verify-changesets` CI gate
@@ -547,7 +547,7 @@ v0.213.4 once OpenRouter credit is restored.
 - **8 strategic adapters (deliverable F)** — `hermes`, `openharness`, `motion-studio`, `stagehand`, `godot`, `renderdoc`, `autoagent`, `cua`. +14 commands total.
 - **AgentLint integration (deliverable E)** — `scripts/lint-context.sh` runs Agent Lint against the workspace and gates `npm run verify` on context quality. Default threshold 60/100, override with `UNICLI_LINT_THRESHOLD`. Disable with `UNICLI_LINT_DISABLE=1`.
 - **`scripts/sync-ref.sh`** — generic sync of local reference repositories.
-- **Documentation (deliverable H)** — 4 new docs: `docs/SKILL-EXPORT.md`, `docs/MCP-GATEWAY.md`, `docs/EVAL-HARNESS.md`, `docs/CONTEXT-LINT.md`.
+- **Documentation (deliverable H)** — maintenance and integration docs now live in `docs/reference/maintenance.md` and `docs/guide/integrations.md`.
 
 ### Security
 
@@ -984,4 +984,4 @@ Pre-existing: github-trending (1), ollama (1), blender (1), ffmpeg (1)
 - Issue templates: bug report, feature request, adapter request
 - CI workflow: Node.js 20/22 matrix on Ubuntu
 - Aerospace theme system: [docs/TASTE.md](./docs/TASTE.md)
-- Full spaceflight codename registry: [docs/VERSION_CODENAMES.md](./docs/VERSION_CODENAMES.md)
+- Full release label rules: [docs/reference/release.md](./docs/reference/release.md)

@@ -1,5 +1,9 @@
 # Release Process
 
+Policy, cadence, versioning, codenames, and npm Trusted Publishers live in
+[`docs/reference/release.md`](../docs/reference/release.md). This file is the
+hands-on contributor procedure.
+
 Uni-CLI uses [Changesets](https://github.com/changesets/changesets) to manage
 per-PR version notes and npm OIDC Trusted Publishing to push artifacts.
 This document describes how to ship a release from a clean main.

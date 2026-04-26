@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 120" fill="none">
+  <g transform="translate(16, 20)">
+    <rect x="0" y="0" width="80" height="80" rx="16" fill="#1a1a2e"/>
+    <text x="40" y="40" font-family="SF Mono, Menlo, Consolas, monospace" font-size="40" font-weight="700" fill="#00d4aa" text-anchor="middle" dominant-baseline="middle">&gt;_</text>
+  </g>
+  <text x="112" y="52" font-family="SF Pro Display, Inter, system-ui, sans-serif" font-size="48" font-weight="800" fill="#1a1a2e" letter-spacing="0">Uni-CLI</text>
+  <text x="112" y="82" font-family="SF Pro Text, Inter, system-ui, sans-serif" font-size="15" fill="#64748b" letter-spacing="0">The universal CLI for AI agents</text>
+  <g stroke="#00d4aa" stroke-width="1.5" opacity="0.4" fill="none">
+    <path d="M 88 40 Q 98 20, 112 28"/>
+    <path d="M 88 60 Q 100 70, 112 68"/>
+    <path d="M 76 16 Q 86 4, 100 8"/>
+  </g>
+</svg>

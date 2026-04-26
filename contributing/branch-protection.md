@@ -6,7 +6,7 @@ workflow YAML — it lives on the repo's admin settings. This doc
 documents the required rules and ships a shell script
 (`scripts/setup-branch-protection.sh`) that applies them via `gh api`.
 
-## Required status checks (9 + 1 nightly)
+## Required status checks (10 + 1 nightly)
 
 | #   | Check                                    | Source                                |
 | --- | ---------------------------------------- | ------------------------------------- |
@@ -17,8 +17,9 @@ documents the required rules and ships a shell script
 | 5   | `Verify (macos-14 / Node 20)`            | same, matrix cell                     |
 | 6   | `Verify (windows-latest / Node 22)`      | same, matrix cell                     |
 | 7   | `Adapter Tests`                          | `.github/workflows/ci.yml`            |
-| 8   | `Verify Changesets`                      | `.github/workflows/ci.yml`            |
-| 9   | `unicli-lint` _(runs inside Verify job)_ | `npm run lint:adapters`               |
+| 8   | `Docs Build`                             | `.github/workflows/ci.yml`            |
+| 9   | `Verify Changesets`                      | `.github/workflows/ci.yml`            |
+| 10  | `unicli-lint` _(runs inside Verify job)_ | `npm run lint:adapters`               |
 
 Nightly-only (not required for merge, but monitored):
 
@@ -92,6 +93,8 @@ exist — first entry opens the log).
   shipping to users.
 - `verify-changesets` — release hygiene; every user-facing change
   has a note.
+- `Docs Build` — VitePress routes, sidebars, and Markdown must build before
+  docs-site changes merge.
 - `PR Title` — merge commit subjects come from PR titles, so titles
   must follow the same conventional-commit contract as local commits.
 - Matrix (Node × OS) — catches platform-specific regressions early.
