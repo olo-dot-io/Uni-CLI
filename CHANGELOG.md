@@ -3,6 +3,24 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 
+## [0.216.1] — 2026-04-27 — Apollo · Armstrong
+
+### Changed
+
+- Package-manager-neutral release scripts: aggregate `verify`, `docs:*`,
+  `release`, `preversion`, and `postversion` scripts now call `npm run`
+  subcommands, while still working when invoked through `pnpm`.
+- Build now calls the local `prettier` binary directly instead of requiring a
+  `pnpm` executable on npm-based CI runners.
+
+### Fixed
+
+- GitHub release/docs/verify workflows no longer fail before real validation
+  on runners that install dependencies with `npm ci` but do not have `pnpm`
+  preinstalled.
+- Public LLM/docs markdown assets were regenerated so published docs match the
+  current 235-site / 1448-command release surface.
+
 ## [Unreleased] — Next major development — Vostok · Astronaut TBD
 
 > Development line only. Do not run release automation, create a tag, publish

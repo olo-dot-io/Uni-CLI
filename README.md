@@ -306,5 +306,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>0.216.0 — OpenCLI Parity Harness</sub>
+  <sub>v0.216.1 — Apollo · Armstrong</sub>
 </p>

@@ -1,6 +1,6 @@
 # Uni-CLI Copy Rules
 
-> Current version: v0.216.0 — OpenCLI Parity Harness.
+> Current version: v0.216.1 — Apollo · Armstrong.
 >
 > Current scale: <!-- STATS:site_count -->235<!-- /STATS --> sites, <!-- STATS:command_count -->1448<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->1039<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->917<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->122<!-- /STATS --> TS), <!-- STATS:test_count -->7394<!-- /STATS --> tests.
 

@@ -10,6 +10,7 @@
  * What it updates:
  * - contributing/COPY.md: Current version line
  * - README.md / README.zh-CN.md: Footer version + codename
+ * - AGENTS.md: command-contract version footer
  * - CHANGELOG.md: Insert new version heading (content added manually)
  * - docs/ROADMAP.md: Current version line
  *
@@ -138,6 +139,12 @@ const rules: Rule[] = [
     pattern: /<sub>v?[\d.]+(?:\s+—\s+[^<]+)?<\/sub>/,
     replacement: `<sub>v${version} — ${codename}</sub>`,
     description: "README.zh-CN.md footer codename",
+  },
+  {
+    file: "AGENTS.md",
+    pattern: /^## Version\n\n[\d.]+(?:\s+—\s+[^\n]+)?/m,
+    replacement: `## Version\n\n${version} — ${codename}`,
+    description: "AGENTS.md version",
   },
 ];
 
