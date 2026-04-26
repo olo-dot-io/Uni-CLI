@@ -80,7 +80,8 @@ function escapeMustacheInFence(md: any) {
 
 export default defineConfig({
   title: "Uni-CLI",
-  description: "Agent-native CLI infrastructure for operating real software",
+  description:
+    "The universal interface between AI agents and the world's software",
   base: siteBase,
   srcExclude: ["public/markdown/**/*.md", "demo/README.md"],
   cleanUrls: true,
@@ -105,7 +106,7 @@ export default defineConfig({
       {
         property: "og:description",
         content:
-          "Agent-native CLI infrastructure for discovering, running, and repairing software operations across web, desktop apps, local tools, and external CLIs.",
+          "A shell-native command layer for agents to discover, execute, verify, and repair real workflows across websites, desktop apps, local tools, and external CLIs.",
       },
     ],
     ["meta", { property: "og:url", content: publicSiteUrl }],

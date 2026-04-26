@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: "Uni-CLI"
-  text: "The native command surface for agents."
-  tagline: "Search by intent, run typed commands, get structured envelopes, and repair broken tools without leaving the shell."
+  text: "The universal interface between AI agents and the world's software."
+  tagline: "A shell-native command layer for real operations: discover by intent, execute typed adapters, return structured AgentEnvelopes, and repair broken automation in place."
   image:
     src: /mascot-otter.png
     alt: Uni-CLI otter mascot holding a terminal tablet

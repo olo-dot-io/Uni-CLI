@@ -152,7 +152,8 @@
     "verify:clean": "npm run clean && npm run verify",
     "docs:prepare": "tsx scripts/generate-docs-agent-assets.ts",
     "docs:dev": "npm run docs:prepare && vitepress dev docs",
-    "docs:build": "npm run docs:prepare && node -e \"require('node:fs').rmSync('docs/.vitepress/dist',{recursive:true,force:true})\" && vitepress build docs",
+    "docs:check-public": "tsx scripts/check-public-docs.ts",
+    "docs:build": "npm run docs:prepare && node -e \"require('node:fs').rmSync('docs/.vitepress/dist',{recursive:true,force:true})\" && vitepress build docs && npm run docs:check-public",
     "docs:preview": "vitepress preview docs",
     "doctor": "tsx src/doctor.ts",
     "mcp": "tsx src/mcp/server.ts",
@@ -209,6 +210,7 @@
   "devDependencies": {
     "@ai-sdk/openai-compatible": "^2.0.41",
     "@changesets/cli": "^2.30.0",
+    "@chenglou/pretext": "^0.0.6",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.6.0",
     "@types/shell-quote": "^1.7.5",
