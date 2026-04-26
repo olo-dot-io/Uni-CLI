@@ -268,9 +268,11 @@ args:
 columns: [title, url]
 ```
 
-Reference docs:
+Docs:
 
-- [Quickstart](docs/QUICKSTART.md)
+- [Documentation site](https://olo-dot-io.github.io/Uni-CLI/)
+- [Getting started](docs/guide/getting-started.md)
+- [Integrations](docs/guide/integrations.md)
 - [Adapter format](docs/ADAPTER-FORMAT.md)
 - [Pipeline reference](docs/reference/pipeline.md)
 - [Exit codes](docs/reference/exit-codes.md)

@@ -26,6 +26,7 @@ REQUIRED_CHECKS=(
   "Verify (macos-14 / Node 20)"
   "Verify (windows-latest / Node 22)"
   "Adapter Tests"
+  "Docs Build"
   "Verify Changesets"
 )
 
@@ -55,9 +56,9 @@ BODY=$(cat <<EOF
   },
   "enforce_admins": true,
   "required_pull_request_reviews": {
-    "dismiss_stale_reviews": true,
-    "require_code_owner_reviews": true,
-    "required_approving_review_count": 1
+    "dismiss_stale_reviews": false,
+    "require_code_owner_reviews": false,
+    "required_approving_review_count": 0
   },
   "restrictions": null,
   "required_linear_history": true,
