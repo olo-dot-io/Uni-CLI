@@ -1,37 +1,43 @@
----
-layout: home
+<!-- Generated from docs/index.md. Do not edit this copy directly. -->
 
-hero:
-  name: "Uni-CLI"
-  text: "AI agents, one CLI."
-  tagline: "Search every generated surface by intent. Run typed commands. Get structured results and repairable errors."
-  image:
-    src: /mascot-otter.png
-    alt: Uni-CLI otter mascot holding a terminal tablet
-  actions:
-    - theme: brand
-      text: Get Started
-      link: /guide/getting-started
-    - theme: alt
-      text: Browse Sites
-      link: /reference/sites
+# Overview
 
-features:
-  - title: Search By Intent
-    details: "Bilingual BM25 maps natural language to runnable commands without making the agent guess a site API."
-  - title: Operate Real Surfaces
-    details: "The same CLI spans web APIs, browser automation, macOS apps, desktop tools, and external CLIs."
-  - title: Return Agent Envelopes
-    details: "Markdown, JSON, YAML, CSV, and compact output share the same v2 success/error contract."
-  - title: Repair In Place
-    details: "Failures include adapter path, pipeline step, retryability, suggestions, and alternatives."
-  - title: Plug Into Agents
-    details: "Native CLI, MCP, ACP, JSON stream, and route matrix entry points fit different runtimes."
-  - title: Stay Small
-    details: "YAML adapters compose typed pipeline steps and avoid heavy per-site SDK dependencies."
----
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
+- Section: Start
 
-<SiteStats />
+## AI agents, one CLI.
+
+Search every generated surface by intent. Run typed commands. Get structured results and repairable errors.
+
+## Primary Actions
+
+- [Get Started](/guide/getting-started)
+- [Browse Sites](/reference/sites)
+
+## Capabilities
+
+- **Search By Intent.** Bilingual BM25 maps natural language to runnable commands without making the agent guess a site API.
+- **Operate Real Surfaces.** The same CLI spans web APIs, browser automation, macOS apps, desktop tools, and external CLIs.
+- **Return Agent Envelopes.** Markdown, JSON, YAML, CSV, and compact output share the same v2 success/error contract.
+- **Repair In Place.** Failures include adapter path, pipeline step, retryability, suggestions, and alternatives.
+- **Plug Into Agents.** Native CLI, MCP, ACP, JSON stream, and route matrix entry points fit different runtimes.
+- **Stay Small.** YAML adapters compose typed pipeline steps and avoid heavy per-site SDK dependencies.
+
+## Catalog Snapshot
+
+- Sites: 223
+- Commands: 1304
+- Surface families: 5
+- Agent envelope: v2
+
+| Surface | Sites |
+| --- | ---: |
+| bridge | 24 |
+| browser | 10 |
+| desktop | 32 |
+| service | 8 |
+| web-api | 149 |
 
 ## First Command
 

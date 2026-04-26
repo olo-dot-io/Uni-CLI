@@ -1,0 +1,313 @@
+{
+  "source": "docs/.vitepress/site-map.ts",
+  "pages": [
+    {
+      "title": "Overview",
+      "routePath": "/",
+      "markdownPath": "/markdown/index.md",
+      "sourcePath": "docs/index.md",
+      "section": "Start",
+      "parent": null,
+      "breadcrumbs": []
+    },
+    {
+      "title": "Getting Started",
+      "routePath": "/guide/getting-started",
+      "markdownPath": "/markdown/guide/getting-started.md",
+      "sourcePath": "docs/guide/getting-started.md",
+      "section": "Start",
+      "parent": {
+        "text": "Start",
+        "link": "/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Start",
+          "link": "/"
+        }
+      ]
+    },
+    {
+      "title": "Integrations",
+      "routePath": "/guide/integrations",
+      "markdownPath": "/markdown/guide/integrations.md",
+      "sourcePath": "docs/guide/integrations.md",
+      "section": "Start",
+      "parent": {
+        "text": "Start",
+        "link": "/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Start",
+          "link": "/"
+        }
+      ]
+    },
+    {
+      "title": "Recipes",
+      "routePath": "/RECIPES",
+      "markdownPath": "/markdown/RECIPES.md",
+      "sourcePath": "docs/RECIPES.md",
+      "section": "Start",
+      "parent": {
+        "text": "Start",
+        "link": "/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Start",
+          "link": "/"
+        }
+      ]
+    },
+    {
+      "title": "Guide Index",
+      "routePath": "/guide/",
+      "markdownPath": "/markdown/guide.md",
+      "sourcePath": "docs/guide/index.md",
+      "section": "Guides",
+      "parent": null,
+      "breadcrumbs": []
+    },
+    {
+      "title": "Adapters",
+      "routePath": "/guide/adapters",
+      "markdownPath": "/markdown/guide/adapters.md",
+      "sourcePath": "docs/guide/adapters.md",
+      "section": "Guides",
+      "parent": {
+        "text": "Guides",
+        "link": "/guide/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Guides",
+          "link": "/guide/"
+        }
+      ]
+    },
+    {
+      "title": "Self-Repair",
+      "routePath": "/guide/self-repair",
+      "markdownPath": "/markdown/guide/self-repair.md",
+      "sourcePath": "docs/guide/self-repair.md",
+      "section": "Guides",
+      "parent": {
+        "text": "Guides",
+        "link": "/guide/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Guides",
+          "link": "/guide/"
+        }
+      ]
+    },
+    {
+      "title": "Reference Index",
+      "routePath": "/reference/",
+      "markdownPath": "/markdown/reference.md",
+      "sourcePath": "docs/reference/index.md",
+      "section": "Reference",
+      "parent": null,
+      "breadcrumbs": []
+    },
+    {
+      "title": "Sites Catalog",
+      "routePath": "/reference/sites",
+      "markdownPath": "/markdown/reference/sites.md",
+      "sourcePath": "docs/reference/sites.md",
+      "section": "Reference",
+      "parent": {
+        "text": "Reference",
+        "link": "/reference/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Reference",
+          "link": "/reference/"
+        }
+      ]
+    },
+    {
+      "title": "Adapter Format",
+      "routePath": "/ADAPTER-FORMAT",
+      "markdownPath": "/markdown/ADAPTER-FORMAT.md",
+      "sourcePath": "docs/ADAPTER-FORMAT.md",
+      "section": "Reference",
+      "parent": {
+        "text": "Reference",
+        "link": "/reference/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Reference",
+          "link": "/reference/"
+        }
+      ]
+    },
+    {
+      "title": "Pipeline Steps",
+      "routePath": "/reference/pipeline",
+      "markdownPath": "/markdown/reference/pipeline.md",
+      "sourcePath": "docs/reference/pipeline.md",
+      "section": "Reference",
+      "parent": {
+        "text": "Reference",
+        "link": "/reference/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Reference",
+          "link": "/reference/"
+        }
+      ]
+    },
+    {
+      "title": "Exit Codes",
+      "routePath": "/reference/exit-codes",
+      "markdownPath": "/markdown/reference/exit-codes.md",
+      "sourcePath": "docs/reference/exit-codes.md",
+      "section": "Reference",
+      "parent": {
+        "text": "Reference",
+        "link": "/reference/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Reference",
+          "link": "/reference/"
+        }
+      ]
+    },
+    {
+      "title": "Maintenance Tools",
+      "routePath": "/reference/maintenance",
+      "markdownPath": "/markdown/reference/maintenance.md",
+      "sourcePath": "docs/reference/maintenance.md",
+      "section": "Reference",
+      "parent": {
+        "text": "Reference",
+        "link": "/reference/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Reference",
+          "link": "/reference/"
+        }
+      ]
+    },
+    {
+      "title": "Plugin Authoring",
+      "routePath": "/PLUGIN",
+      "markdownPath": "/markdown/PLUGIN.md",
+      "sourcePath": "docs/PLUGIN.md",
+      "section": "Reference",
+      "parent": {
+        "text": "Reference",
+        "link": "/reference/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Reference",
+          "link": "/reference/"
+        }
+      ]
+    },
+    {
+      "title": "Release",
+      "routePath": "/reference/release",
+      "markdownPath": "/markdown/reference/release.md",
+      "sourcePath": "docs/reference/release.md",
+      "section": "Reference",
+      "parent": {
+        "text": "Reference",
+        "link": "/reference/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Reference",
+          "link": "/reference/"
+        }
+      ]
+    },
+    {
+      "title": "Architecture",
+      "routePath": "/ARCHITECTURE",
+      "markdownPath": "/markdown/ARCHITECTURE.md",
+      "sourcePath": "docs/ARCHITECTURE.md",
+      "section": "Explanation",
+      "parent": null,
+      "breadcrumbs": []
+    },
+    {
+      "title": "Benchmarks",
+      "routePath": "/BENCHMARK",
+      "markdownPath": "/markdown/BENCHMARK.md",
+      "sourcePath": "docs/BENCHMARK.md",
+      "section": "Explanation",
+      "parent": {
+        "text": "Explanation",
+        "link": "/ARCHITECTURE"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Explanation",
+          "link": "/ARCHITECTURE"
+        }
+      ]
+    },
+    {
+      "title": "Theory",
+      "routePath": "/THEORY",
+      "markdownPath": "/markdown/THEORY.md",
+      "sourcePath": "docs/THEORY.md",
+      "section": "Explanation",
+      "parent": {
+        "text": "Explanation",
+        "link": "/ARCHITECTURE"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Explanation",
+          "link": "/ARCHITECTURE"
+        }
+      ]
+    },
+    {
+      "title": "Taste Guide",
+      "routePath": "/TASTE",
+      "markdownPath": "/markdown/TASTE.md",
+      "sourcePath": "docs/TASTE.md",
+      "section": "Explanation",
+      "parent": {
+        "text": "Explanation",
+        "link": "/ARCHITECTURE"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Explanation",
+          "link": "/ARCHITECTURE"
+        }
+      ]
+    },
+    {
+      "title": "Roadmap",
+      "routePath": "/ROADMAP",
+      "markdownPath": "/markdown/ROADMAP.md",
+      "sourcePath": "docs/ROADMAP.md",
+      "section": "Explanation",
+      "parent": {
+        "text": "Explanation",
+        "link": "/ARCHITECTURE"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Explanation",
+          "link": "/ARCHITECTURE"
+        }
+      ]
+    }
+  ]
+}
