@@ -86,6 +86,7 @@ export default defineConfig({
   cleanUrls: true,
   lastUpdated: true,
   markdown: {
+    math: true,
     config: (md) => {
       escapeMustacheInFence(md);
     },
@@ -133,9 +134,7 @@ export default defineConfig({
     search: {
       provider: "local",
     },
-    sidebar: {
-      "/": sidebarGroups,
-    },
+    sidebar: sidebarGroups,
     editLink: {
       pattern: "https://github.com/olo-dot-io/Uni-CLI/edit/main/docs/:path",
       text: "Edit this page on GitHub",

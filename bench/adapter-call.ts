@@ -88,6 +88,37 @@ function invocationString(call: AdapterCall): string {
   return `unicli ${call.site} ${call.command} ${call.args.join(" ")}`.trim();
 }
 
+export function normalizeFixtureBody(call: AdapterCall, body: string): string {
+  const parsed = JSON.parse(body) as unknown;
+
+  if (
+    parsed &&
+    typeof parsed === "object" &&
+    "ok" in parsed &&
+    "schema_version" in parsed &&
+    "data" in parsed
+  ) {
+    return body;
+  }
+
+  const count = Array.isArray(parsed) ? parsed.length : undefined;
+  return `${JSON.stringify(
+    {
+      ok: true,
+      schema_version: "2",
+      command: `${call.site}.${call.command}`,
+      meta: {
+        duration_ms: 0,
+        ...(count !== undefined ? { count } : {}),
+      },
+      data: parsed,
+      error: null,
+    },
+    null,
+    2,
+  )}\n`;
+}
+
 function liveRun(
   call: AdapterCall,
   runs: number,
@@ -118,7 +149,7 @@ function liveRun(
 
 function fixtureRun(call: AdapterCall, runs: number): AdapterCallResult {
   const fixturePath = join(FIXTURES_DIR, call.fixture);
-  const body = readFileSync(fixturePath, "utf-8");
+  const body = normalizeFixtureBody(call, readFileSync(fixturePath, "utf-8"));
   const wallMs: number[] = [];
   const tokenSamples: number[] = [];
 

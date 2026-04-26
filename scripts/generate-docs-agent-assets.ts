@@ -45,9 +45,20 @@ type SiteIndex = {
   }[];
 };
 
+type Stats = {
+  adapter_count_total?: number;
+  adapter_count_yaml?: number;
+  adapter_count_ts?: number;
+  pipeline_step_count?: number;
+  test_count?: number;
+};
+
 const docsRoot = resolve("docs");
 const markdownRoot = resolve("docs/public/markdown");
 const pageIndexPath = resolve("docs/page-index.json");
+const llmsTxtPath = resolve("docs/public/llms.txt");
+const llmsFullTxtPath = resolve("docs/public/llms-full.txt");
+const publicSiteBase = "https://olo-dot-io.github.io/Uni-CLI";
 
 function sourcePathForRoute(routePath: string): string {
   if (routePath === "/") {
@@ -158,6 +169,15 @@ function readSiteIndex(): SiteIndex {
   return JSON.parse(
     readFileSync(resolve("docs/site-index.json"), "utf-8"),
   ) as SiteIndex;
+}
+
+function readStats(): Stats {
+  const statsPath = resolve("stats.json");
+  if (!existsSync(statsPath)) {
+    return {};
+  }
+
+  return JSON.parse(readFileSync(statsPath, "utf-8")) as Stats;
 }
 
 function toProjectPath(filePath: string): string {
@@ -275,25 +295,127 @@ function buildMarkdownCopy(
   );
 }
 
-function writeGeneratedMarkdown(
-  page: PageIndexEntry,
-  sourceMarkdown: string,
-  siteIndex: SiteIndex,
-) {
+function writeGeneratedMarkdown(page: PageIndexEntry, markdown: string) {
   const outputPath = resolve(
     "docs/public",
     page.markdownPath.replace(/^\//, ""),
   );
   mkdirSync(dirname(outputPath), { recursive: true });
-  writeFileSync(
-    outputPath,
-    buildMarkdownCopy(page, sourceMarkdown, siteIndex),
-    "utf-8",
+  writeFileSync(outputPath, markdown, "utf-8");
+}
+
+function absoluteUrl(path: string): string {
+  return `${publicSiteBase}${path}`;
+}
+
+function pageDescription(page: PageIndexEntry): string {
+  if (page.routePath === "/") {
+    return "overview, install path, capability map, and agent entry points";
+  }
+
+  return `${page.section.toLowerCase()} page for ${page.title.toLowerCase()}`;
+}
+
+function groupedPages(pages: PageIndexEntry[]): Map<string, PageIndexEntry[]> {
+  const groups = new Map<string, PageIndexEntry[]>();
+  for (const page of pages) {
+    const group = groups.get(page.section) ?? [];
+    group.push(page);
+    groups.set(page.section, group);
+  }
+  return groups;
+}
+
+function renderLlmsTxt(
+  pages: PageIndexEntry[],
+  siteIndex: SiteIndex,
+  stats: Stats,
+): string {
+  const lines = [
+    "# Uni-CLI",
+    "",
+    "Uni-CLI is the CLI-native command surface for AI agents to discover, run, and repair operations across websites, desktop apps, local tools, external CLIs, and agent backends.",
+    "",
+    "## Catalog Snapshot",
+    "",
+    `- Sites: ${siteIndex.total_sites}`,
+    `- Commands: ${siteIndex.total_commands}`,
+    `- Adapters: ${stats.adapter_count_total ?? "see docs"} (${stats.adapter_count_yaml ?? "?"} YAML + ${stats.adapter_count_ts ?? "?"} TypeScript)`,
+    `- Pipeline steps: ${stats.pipeline_step_count ?? "see docs"}`,
+    `- Tests: ${stats.test_count ?? "see repo"}`,
+    "",
+    "## Agent Contract",
+    "",
+    '- Start with `unicli search "your intent"`, then run `unicli <site> <command> [args]`.',
+    "- Prefer `-f json` for scripts and `-f md` for agent-readable prose.",
+    "- On failure, read the v2 error envelope, open `error.adapter_path`, patch the YAML, then run `unicli repair <site> <command>`.",
+    "- MCP and ACP are compatibility gateways; the native contract is a shell command plus a structured AgentEnvelope.",
+    "",
+    "## Markdown Companions",
+    "",
+    "Every public page below has a clean Markdown companion. Fetch Markdown first; fetch rendered HTML only when visual layout matters.",
+    "",
+  ];
+
+  for (const [section, entries] of groupedPages(pages)) {
+    lines.push(`## ${section}`, "");
+    for (const page of entries) {
+      lines.push(
+        `- [${page.title}](${absoluteUrl(page.routePath)}) — ${pageDescription(page)}. Markdown: ${absoluteUrl(page.markdownPath)}`,
+      );
+    }
+    lines.push("");
+  }
+
+  lines.push(
+    "## Full Context",
+    "",
+    `- [llms-full.txt](${absoluteUrl("/llms-full.txt")}) — concatenated public docs in Markdown for agents that can afford the context.`,
+    "",
   );
+
+  return lines.join("\n");
+}
+
+function renderLlmsFullTxt(
+  renderedPages: { page: PageIndexEntry; markdown: string }[],
+  siteIndex: SiteIndex,
+  stats: Stats,
+): string {
+  const lines = [
+    "# Uni-CLI Full Documentation",
+    "",
+    "This file is generated from the same VitePress site map as the public docs. It intentionally excludes internal repo-only guides.",
+    "",
+    "## Snapshot",
+    "",
+    `- Sites: ${siteIndex.total_sites}`,
+    `- Commands: ${siteIndex.total_commands}`,
+    `- Adapters: ${stats.adapter_count_total ?? "see repo"}`,
+    `- Pipeline steps: ${stats.pipeline_step_count ?? "see repo"}`,
+    "",
+  ];
+
+  for (const { page, markdown } of renderedPages) {
+    lines.push(
+      "---",
+      "",
+      `# Page: ${page.title}`,
+      "",
+      `Canonical: ${absoluteUrl(page.routePath)}`,
+      `Markdown: ${absoluteUrl(page.markdownPath)}`,
+      "",
+      markdown.trim(),
+      "",
+    );
+  }
+
+  return lines.join("\n");
 }
 
 function main() {
   const siteIndex = readSiteIndex();
+  const stats = readStats();
   const pages = flatDocPages().map<PageIndexEntry>((page) => {
     const routePath = normalizeDocPath(page.link);
     const markdownPath = markdownPathForRoute(routePath);
@@ -313,12 +435,15 @@ function main() {
 
   rmSync(markdownRoot, { recursive: true, force: true });
 
+  const renderedPages: { page: PageIndexEntry; markdown: string }[] = [];
   for (const page of pages) {
-    writeGeneratedMarkdown(
+    const markdown = buildMarkdownCopy(
       page,
       readFileSync(page.sourcePath, "utf-8"),
       siteIndex,
     );
+    writeGeneratedMarkdown(page, markdown);
+    renderedPages.push({ page, markdown });
   }
 
   mkdirSync(dirname(pageIndexPath), { recursive: true });
@@ -341,6 +466,14 @@ function main() {
       "public",
       "markdown",
     )}\n`,
+  );
+
+  mkdirSync(dirname(llmsTxtPath), { recursive: true });
+  writeFileSync(llmsTxtPath, renderLlmsTxt(pages, siteIndex, stats), "utf-8");
+  writeFileSync(
+    llmsFullTxtPath,
+    renderLlmsFullTxt(renderedPages, siteIndex, stats),
+    "utf-8",
   );
 }
 

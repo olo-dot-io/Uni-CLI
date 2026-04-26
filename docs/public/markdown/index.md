@@ -6,9 +6,9 @@
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
 - Section: Start
 
-## AI agents, one CLI.
+## The native command surface for agents.
 
-Search every generated surface by intent. Run typed commands. Get structured results and repairable errors.
+Search by intent, run typed commands, get structured envelopes, and repair broken tools without leaving the shell.
 
 ## Primary Actions
 
@@ -17,11 +17,11 @@ Search every generated surface by intent. Run typed commands. Get structured res
 
 ## Capabilities
 
-- **Search By Intent.** Bilingual BM25 maps natural language to runnable commands without making the agent guess a site API.
+- **Search By Intent.** Bilingual BM25 maps natural language to runnable commands across 223 sites and 1304 commands.
 - **Operate Real Surfaces.** The same CLI spans web APIs, browser automation, macOS apps, desktop tools, and external CLIs.
 - **Return Agent Envelopes.** Markdown, JSON, YAML, CSV, and compact output share the same v2 success/error contract.
 - **Repair In Place.** Failures include adapter path, pipeline step, retryability, suggestions, and alternatives.
-- **Plug Into Agents.** Native CLI, MCP, ACP, JSON stream, and route matrix entry points fit different runtimes.
+- **Plug Into Agents.** CLI-first execution stays native to coding agents; MCP, ACP, and JSON streams are compatibility surfaces.
 - **Stay Small.** YAML adapters compose typed pipeline steps and avoid heavy per-site SDK dependencies.
 
 ## Catalog Snapshot
@@ -38,6 +38,14 @@ Search every generated surface by intent. Run typed commands. Get structured res
 | desktop | 32 |
 | service | 8 |
 | web-api | 149 |
+
+## Positioning
+
+Uni-CLI is built for agents that already have a shell. MCP compatibility is
+available, but the primary path is faster and smaller: discover with
+`unicli search`, inspect with `unicli describe`, execute with
+`unicli <site> <command>`, and repair through the adapter path in the error
+envelope.
 
 ## First Command
 

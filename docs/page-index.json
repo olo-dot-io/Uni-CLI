@@ -276,23 +276,6 @@
       ]
     },
     {
-      "title": "Taste Guide",
-      "routePath": "/TASTE",
-      "markdownPath": "/markdown/TASTE.md",
-      "sourcePath": "docs/TASTE.md",
-      "section": "Explanation",
-      "parent": {
-        "text": "Explanation",
-        "link": "/ARCHITECTURE"
-      },
-      "breadcrumbs": [
-        {
-          "text": "Explanation",
-          "link": "/ARCHITECTURE"
-        }
-      ]
-    },
-    {
       "title": "Roadmap",
       "routePath": "/ROADMAP",
       "markdownPath": "/markdown/ROADMAP.md",

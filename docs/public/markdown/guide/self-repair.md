@@ -7,15 +7,19 @@
 - Section: Guides
 - Parent: Guides (/guide/)
 
-The web breaks constantly. Selectors change, APIs version, auth tokens rotate. Uni-CLI is designed to break gracefully and heal — with or without human intervention.
+The web breaks constantly. Selectors change, APIs version, auth tokens rotate,
+desktop permission channels disappear, and CLIs change flags. Uni-CLI is
+designed to fail as data, not as an opaque log line.
 
 ## The Problem
 
 Traditional scrapers and API wrappers fail silently or catastrophically when the target changes. The fix cycle is slow: notice failure, read logs, find the change, edit code, test, deploy.
 
-Uni-CLI compresses this cycle by making adapters readable (~20 lines of YAML), errors structured (machine-parseable JSON), and fixes persistent (survive updates).
+Uni-CLI compresses this cycle by making adapters readable, errors structured
+as v2 `AgentEnvelope` objects, and fixes persistent through the
+`~/.unicli/adapters/` overlay.
 
-## Five Levels of Healing
+## Repair Levels
 
 ### Level 0: Auto-Retry
 
@@ -39,13 +43,16 @@ Exit code `75` (temporary failure) signals the agent to retry the entire command
 
 ### Level 1: Auto-Fix
 
-When a pipeline step fails, the engine analyzes the failure type and suggests fixes:
+When a pipeline step fails, the engine preserves enough failure context for the
+next actor:
 
-- **Selector miss**: A CSS selector matched nothing. The engine scans the DOM for similar selectors and suggests alternatives.
-- **Empty result**: The API returned data but the `select` path found nothing. The engine shows the actual response structure.
-- **Schema change**: Expected fields are missing. The engine diffs the expected vs actual shape.
+- **Selector miss**: a CSS selector or JSON path matched nothing.
+- **Empty result**: the upstream returned data but the adapter projected none of it.
+- **Schema change**: expected fields are missing or renamed.
+- **Auth/permission failure**: cookies, local app automation, or platform permissions are unavailable.
 
-These diagnostics appear in the structured error output, giving the next level (agent-assisted) a head start.
+These diagnostics appear in the structured error output, giving the next level
+(agent-assisted repair) a bounded starting point.
 
 ### Level 2: Agent-Assisted
 
@@ -53,13 +60,20 @@ This is Uni-CLI's core differentiator. When a command fails, the error is emitte
 
 ```json
 {
-  "error": "selector_miss",
-  "adapter_path": "/Users/you/.unicli/adapters/bilibili/feed.yml",
-  "step": 3,
-  "action": "select",
-  "config": "data.items",
-  "actual_keys": ["data.result.feeds"],
-  "suggestion": "Try: select: data.result.feeds"
+  "ok": false,
+  "schema_version": "2",
+  "command": "bilibili.feed",
+  "meta": { "duration_ms": 82 },
+  "data": null,
+  "error": {
+    "code": "selector_miss",
+    "message": "select path returned no rows",
+    "adapter_path": "/Users/you/.unicli/adapters/bilibili/feed.yml",
+    "step": 3,
+    "suggestion": "Try: select: data.result.feeds",
+    "retryable": false,
+    "alternatives": ["bilibili.search"]
+  }
 }
 ```
 
@@ -69,7 +83,7 @@ An AI agent reads this error, opens the 20-line YAML at `adapter_path`, applies 
 unicli bilibili feed
   → fails with structured error JSON
   → agent reads error: selector_miss at step 3
-  → agent reads ~/.unicli/adapters/bilibili/feed.yml (20 lines)
+  → agent reads ~/.unicli/adapters/bilibili/feed.yml
   → agent changes "data.items" to "data.result.feeds"
   → agent runs: unicli bilibili feed
   → success
@@ -106,27 +120,30 @@ For entirely new sites with no existing adapter, agents can generate one from sc
 
 Every error includes enough context for an agent to act without asking a human:
 
-| Field          | Type   | Description                                                        |
-| -------------- | ------ | ------------------------------------------------------------------ |
-| `error`        | string | Error type: `selector_miss`, `auth_expired`, `network_error`, etc. |
-| `adapter_path` | string | Absolute path to the YAML file                                     |
-| `step`         | number | Pipeline step index (0-based)                                      |
-| `action`       | string | Step action name (`fetch`, `select`, etc.)                         |
-| `config`       | any    | The step configuration that failed                                 |
-| `suggestion`   | string | Human/agent-readable fix suggestion                                |
-| `actual_keys`  | array  | Available keys when a `select` path misses                         |
+| Field                | Type    | Description                                                   |
+| -------------------- | ------- | ------------------------------------------------------------- |
+| `ok`                 | boolean | `false` for failures                                          |
+| `schema_version`     | string  | Envelope schema, currently `"2"`                              |
+| `command`            | string  | Fully qualified command, such as `bilibili.feed`              |
+| `error.code`         | string  | Stable error code, such as `selector_miss` or `auth_required` |
+| `error.message`      | string  | Human-readable failure detail                                 |
+| `error.adapter_path` | string  | Adapter file to inspect                                       |
+| `error.step`         | number  | Pipeline step index when known                                |
+| `error.suggestion`   | string  | Actionable next step                                          |
+| `error.retryable`    | boolean | Whether retrying the same command may help                    |
+| `error.alternatives` | array   | Nearby commands to try                                        |
 
 ## Error Types
 
-| Error Type       | Meaning                          | Typical Fix                      |
-| ---------------- | -------------------------------- | -------------------------------- |
-| `selector_miss`  | CSS selector or JSON path missed | Update selector in YAML          |
-| `auth_expired`   | Cookie/token no longer valid     | `unicli auth setup SITE`         |
-| `network_error`  | Connection failed                | Check network, retry later       |
-| `rate_limited`   | Too many requests                | Wait, add `rate_limit` step      |
-| `schema_change`  | Response shape changed           | Update `select` and `map` steps  |
-| `binary_missing` | Desktop CLI not installed        | Install the binary               |
-| `parse_error`    | Response is not valid JSON/HTML  | Check URL, add `fetch_text` step |
+| Error code                            | Meaning                                 | Typical fix                                 |
+| ------------------------------------- | --------------------------------------- | ------------------------------------------- |
+| `selector_miss`                       | CSS selector or JSON path missed        | Update selector in YAML                     |
+| `auth_required` / `not_authenticated` | Cookie/token missing or expired         | `unicli auth setup SITE`                    |
+| `network_error`                       | Connection failed                       | Check network, retry later                  |
+| `rate_limited`                        | Too many requests                       | Wait, add `rate_limit` or lower `limit`     |
+| `unavailable`                         | Required local runtime is missing       | Install or grant permission                 |
+| `invalid_input`                       | Argument failed validation              | Fix args or adapter schema                  |
+| `internal_error`                      | Runtime bug or unhandled upstream shape | Run `unicli repair` and inspect the adapter |
 
 ## Repair Workflow
 
@@ -147,13 +164,13 @@ unicli test
 
 - The exact step that failed
 - The current YAML configuration
-- The actual response from the server
+- The actual response shape when available
 - A suggested fix
 
 ## Design Principles
 
 1. **Errors are data, not strings.** JSON to stderr, parseable by any agent.
-2. **Adapters are small.** ~20 lines of YAML. An agent can read the entire adapter in a single context window.
+2. **Adapters are small.** YAML-first adapters are short enough for an agent to inspect directly.
 3. **Fixes are local.** `~/.unicli/adapters/` overrides survive updates. No fork needed.
 4. **Exit codes are semantic.** `sysexits.h` codes tell agents _what kind_ of failure occurred.
 5. **Suggestions are actionable.** "Try: select: data.result.feeds" — not "something went wrong."

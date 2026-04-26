@@ -1,7 +1,7 @@
 /**
  * count-consistency — Fail the build when a public doc drifts from stats.json.
  *
- * Scans README.md, AGENTS.md, docs/ROADMAP.md, docs/TASTE.md for
+ * Scans README.md, AGENTS.md, docs/ROADMAP.md, internal/TASTE.md for
  * `<!-- STATS:<key> -->...<!-- /STATS -->` markers and asserts the rendered
  * value matches `stats.json[<key>]`. CLAUDE.md is .gitignored and internal —
  * its numbers are intentionally out of scope.
@@ -27,7 +27,7 @@ const TARGETS = [
   "README.zh-CN.md",
   "AGENTS.md",
   join("docs", "ROADMAP.md"),
-  join("docs", "TASTE.md"),
+  join("internal", "TASTE.md"),
 ];
 
 const MARKER = /<!--\s*STATS:([a-z_]+)\s*-->([\s\S]*?)<!--\s*\/STATS\s*-->/g;

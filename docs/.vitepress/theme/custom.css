@@ -28,6 +28,10 @@
   letter-spacing: 0;
 }
 
+.VPNavBarExtra.extra {
+  display: none !important;
+}
+
 /* Headings: Geist Mono */
 .vp-doc h1,
 .vp-doc h2,

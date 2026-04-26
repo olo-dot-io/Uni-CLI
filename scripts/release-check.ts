@@ -54,7 +54,7 @@ const versionFiles = [
   { file: "README.md", pattern: version },
   { file: "README.zh-CN.md", pattern: version },
   { file: "CHANGELOG.md", pattern: `[${version}]` },
-  { file: "docs/TASTE.md", pattern: version },
+  { file: "internal/TASTE.md", pattern: version },
   { file: "docs/ROADMAP.md", pattern: `v${version}` },
 ];
 
@@ -129,7 +129,7 @@ results.push({
 // --- Check 4: Strict codename on public release surfaces ---
 
 if (strictCodename) {
-  const codenameFiles = ["README.md", "README.zh-CN.md", "docs/TASTE.md"];
+  const codenameFiles = ["README.md", "README.zh-CN.md", "internal/TASTE.md"];
   for (const file of codenameFiles) {
     const filePath = join(ROOT, file);
     if (!existsSync(filePath)) {

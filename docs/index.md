@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: "Uni-CLI"
-  text: "AI agents, one CLI."
-  tagline: "Search every generated surface by intent. Run typed commands. Get structured results and repairable errors."
+  text: "The native command surface for agents."
+  tagline: "Search by intent, run typed commands, get structured envelopes, and repair broken tools without leaving the shell."
   image:
     src: /mascot-otter.png
     alt: Uni-CLI otter mascot holding a terminal tablet
@@ -18,7 +18,7 @@ hero:
 
 features:
   - title: Search By Intent
-    details: "Bilingual BM25 maps natural language to runnable commands without making the agent guess a site API."
+    details: "Bilingual BM25 maps natural language to runnable commands across 223 sites and 1304 commands."
   - title: Operate Real Surfaces
     details: "The same CLI spans web APIs, browser automation, macOS apps, desktop tools, and external CLIs."
   - title: Return Agent Envelopes
@@ -26,12 +26,20 @@ features:
   - title: Repair In Place
     details: "Failures include adapter path, pipeline step, retryability, suggestions, and alternatives."
   - title: Plug Into Agents
-    details: "Native CLI, MCP, ACP, JSON stream, and route matrix entry points fit different runtimes."
+    details: "CLI-first execution stays native to coding agents; MCP, ACP, and JSON streams are compatibility surfaces."
   - title: Stay Small
     details: "YAML adapters compose typed pipeline steps and avoid heavy per-site SDK dependencies."
 ---
 
 <SiteStats />
+
+## Positioning
+
+Uni-CLI is built for agents that already have a shell. MCP compatibility is
+available, but the primary path is faster and smaller: discover with
+`unicli search`, inspect with `unicli describe`, execute with
+`unicli <site> <command>`, and repair through the adapter path in the error
+envelope.
 
 ## First Command
 

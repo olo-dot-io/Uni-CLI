@@ -20,7 +20,7 @@ import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { estimateTokens } from "./tokens.js";
-import { CALL_SUITE } from "./adapter-call.js";
+import { CALL_SUITE, normalizeFixtureBody } from "./adapter-call.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = join(HERE, "fixtures");
@@ -51,7 +51,10 @@ export function runMcpComparison(): McpComparisonResult {
   for (const call of CALL_SUITE) {
     const invocation =
       `unicli ${call.site} ${call.command} ${call.args.join(" ")}`.trim();
-    const body = readFileSync(join(FIXTURES_DIR, call.fixture), "utf-8");
+    const body = normalizeFixtureBody(
+      call,
+      readFileSync(join(FIXTURES_DIR, call.fixture), "utf-8"),
+    );
     const invTokens = estimateTokens(invocation).tokens;
     const respTokens = estimateTokens(body).tokens;
     const total = invTokens + respTokens;
