@@ -1,5 +1,5 @@
 import { defineConfig } from "vitepress";
-import { sidebarGroups, topNav } from "./site-map.js";
+import { localizedSiteMaps, sidebarGroups, topNav } from "./site-map.js";
 
 function normalizeSiteBase(siteBase: string): string {
   const trimmedBase = siteBase.trim();
@@ -29,6 +29,81 @@ const siteBase = configuredSiteBase
     : "/";
 const siteOrigin = "https://olo-dot-io.github.io";
 const publicSiteUrl = `${siteOrigin}${siteBase}`;
+const zhDescription = "AI 智能体与真实软件之间的通用接口";
+
+const socialLinks = [
+  { icon: "github", link: "https://github.com/olo-dot-io/Uni-CLI" },
+] as const;
+
+const rootThemeConfig = {
+  siteTitle: "Uni-CLI",
+  nav: topNav,
+  search: {
+    provider: "local",
+    options: {
+      locales: {
+        zh: {
+          translations: {
+            button: {
+              buttonText: "搜索",
+              buttonAriaLabel: "搜索文档",
+            },
+            modal: {
+              noResultsText: "没有找到结果",
+              resetButtonTitle: "清空搜索",
+              footer: {
+                selectText: "选择",
+                navigateText: "切换",
+                closeText: "关闭",
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+  sidebar: sidebarGroups,
+  editLink: {
+    pattern: "https://github.com/olo-dot-io/Uni-CLI/edit/main/docs/:path",
+    text: "Edit this page on GitHub",
+  },
+  docFooter: {
+    prev: "Previous",
+    next: "Next",
+  },
+  socialLinks,
+  footer: {
+    message: "Released under the Apache-2.0 License",
+    copyright: "Copyright \u00a9 2026 OLo",
+  },
+};
+
+const zhThemeConfig = {
+  ...rootThemeConfig,
+  nav: localizedSiteMaps.zh.topNav,
+  sidebar: localizedSiteMaps.zh.sidebarGroups,
+  editLink: {
+    pattern: "https://github.com/olo-dot-io/Uni-CLI/edit/main/docs/:path",
+    text: "在 GitHub 上编辑本页",
+  },
+  docFooter: {
+    prev: "上一页",
+    next: "下一页",
+  },
+  outline: {
+    label: "本页目录",
+  },
+  langMenuLabel: "切换语言",
+  returnToTopLabel: "回到顶部",
+  sidebarMenuLabel: "菜单",
+  darkModeSwitchLabel: "外观",
+  lightModeSwitchTitle: "切换到浅色模式",
+  darkModeSwitchTitle: "切换到深色模式",
+  footer: {
+    message: "基于 Apache-2.0 许可证发布",
+    copyright: "Copyright \u00a9 2026 OLo",
+  },
+};
 
 /**
  * markdown-it plugin: escape {{ }} in fenced code block output.
@@ -80,6 +155,7 @@ function escapeMustacheInFence(md: any) {
 
 export default defineConfig({
   title: "Uni-CLI",
+  lang: localizedSiteMaps.root.lang,
   description:
     "The universal interface between AI agents and the world's software",
   base: siteBase,
@@ -129,27 +205,25 @@ export default defineConfig({
       },
     ],
   ],
-  themeConfig: {
-    siteTitle: "Uni-CLI",
-    nav: topNav,
-    search: {
-      provider: "local",
+  themeConfig: rootThemeConfig,
+  locales: {
+    root: {
+      label: localizedSiteMaps.root.label,
+      lang: localizedSiteMaps.root.lang,
+      link: localizedSiteMaps.root.link,
+      themeConfig: rootThemeConfig,
     },
-    sidebar: sidebarGroups,
-    editLink: {
-      pattern: "https://github.com/olo-dot-io/Uni-CLI/edit/main/docs/:path",
-      text: "Edit this page on GitHub",
-    },
-    docFooter: {
-      prev: "Previous",
-      next: "Next",
-    },
-    socialLinks: [
-      { icon: "github", link: "https://github.com/olo-dot-io/Uni-CLI" },
-    ],
-    footer: {
-      message: "Released under the Apache-2.0 License",
-      copyright: "Copyright \u00a9 2026 OLo",
+    zh: {
+      label: localizedSiteMaps.zh.label,
+      lang: localizedSiteMaps.zh.lang,
+      link: localizedSiteMaps.zh.link,
+      title: "Uni-CLI",
+      description: zhDescription,
+      head: [
+        ["meta", { property: "og:locale", content: "zh_CN" }],
+        ["meta", { property: "og:description", content: zhDescription }],
+      ],
+      themeConfig: zhThemeConfig,
     },
   },
 });

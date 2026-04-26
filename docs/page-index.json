@@ -3,8 +3,10 @@
   "pages": [
     {
       "title": "Overview",
+      "locale": "root",
       "routePath": "/",
       "markdownPath": "/markdown/index.md",
+      "sourceLink": "/",
       "sourcePath": "docs/index.md",
       "section": "Start",
       "parent": null,
@@ -12,8 +14,10 @@
     },
     {
       "title": "Getting Started",
+      "locale": "root",
       "routePath": "/guide/getting-started",
       "markdownPath": "/markdown/guide/getting-started.md",
+      "sourceLink": "/guide/getting-started",
       "sourcePath": "docs/guide/getting-started.md",
       "section": "Start",
       "parent": {
@@ -29,8 +33,10 @@
     },
     {
       "title": "Integrations",
+      "locale": "root",
       "routePath": "/guide/integrations",
       "markdownPath": "/markdown/guide/integrations.md",
+      "sourceLink": "/guide/integrations",
       "sourcePath": "docs/guide/integrations.md",
       "section": "Start",
       "parent": {
@@ -46,8 +52,10 @@
     },
     {
       "title": "Recipes",
+      "locale": "root",
       "routePath": "/RECIPES",
       "markdownPath": "/markdown/RECIPES.md",
+      "sourceLink": "/RECIPES",
       "sourcePath": "docs/RECIPES.md",
       "section": "Start",
       "parent": {
@@ -63,8 +71,10 @@
     },
     {
       "title": "Guide Index",
+      "locale": "root",
       "routePath": "/guide/",
       "markdownPath": "/markdown/guide.md",
+      "sourceLink": "/guide/",
       "sourcePath": "docs/guide/index.md",
       "section": "Guides",
       "parent": null,
@@ -72,8 +82,10 @@
     },
     {
       "title": "Adapters",
+      "locale": "root",
       "routePath": "/guide/adapters",
       "markdownPath": "/markdown/guide/adapters.md",
+      "sourceLink": "/guide/adapters",
       "sourcePath": "docs/guide/adapters.md",
       "section": "Guides",
       "parent": {
@@ -89,8 +101,10 @@
     },
     {
       "title": "Self-Repair",
+      "locale": "root",
       "routePath": "/guide/self-repair",
       "markdownPath": "/markdown/guide/self-repair.md",
+      "sourceLink": "/guide/self-repair",
       "sourcePath": "docs/guide/self-repair.md",
       "section": "Guides",
       "parent": {
@@ -106,8 +120,10 @@
     },
     {
       "title": "Reference Index",
+      "locale": "root",
       "routePath": "/reference/",
       "markdownPath": "/markdown/reference.md",
+      "sourceLink": "/reference/",
       "sourcePath": "docs/reference/index.md",
       "section": "Reference",
       "parent": null,
@@ -115,8 +131,10 @@
     },
     {
       "title": "Sites Catalog",
+      "locale": "root",
       "routePath": "/reference/sites",
       "markdownPath": "/markdown/reference/sites.md",
+      "sourceLink": "/reference/sites",
       "sourcePath": "docs/reference/sites.md",
       "section": "Reference",
       "parent": {
@@ -132,8 +150,10 @@
     },
     {
       "title": "Adapter Format",
+      "locale": "root",
       "routePath": "/ADAPTER-FORMAT",
       "markdownPath": "/markdown/ADAPTER-FORMAT.md",
+      "sourceLink": "/ADAPTER-FORMAT",
       "sourcePath": "docs/ADAPTER-FORMAT.md",
       "section": "Reference",
       "parent": {
@@ -149,8 +169,10 @@
     },
     {
       "title": "Pipeline Steps",
+      "locale": "root",
       "routePath": "/reference/pipeline",
       "markdownPath": "/markdown/reference/pipeline.md",
+      "sourceLink": "/reference/pipeline",
       "sourcePath": "docs/reference/pipeline.md",
       "section": "Reference",
       "parent": {
@@ -166,8 +188,10 @@
     },
     {
       "title": "Exit Codes",
+      "locale": "root",
       "routePath": "/reference/exit-codes",
       "markdownPath": "/markdown/reference/exit-codes.md",
+      "sourceLink": "/reference/exit-codes",
       "sourcePath": "docs/reference/exit-codes.md",
       "section": "Reference",
       "parent": {
@@ -183,8 +207,10 @@
     },
     {
       "title": "Maintenance Tools",
+      "locale": "root",
       "routePath": "/reference/maintenance",
       "markdownPath": "/markdown/reference/maintenance.md",
+      "sourceLink": "/reference/maintenance",
       "sourcePath": "docs/reference/maintenance.md",
       "section": "Reference",
       "parent": {
@@ -200,8 +226,10 @@
     },
     {
       "title": "Plugin Authoring",
+      "locale": "root",
       "routePath": "/PLUGIN",
       "markdownPath": "/markdown/PLUGIN.md",
+      "sourceLink": "/PLUGIN",
       "sourcePath": "docs/PLUGIN.md",
       "section": "Reference",
       "parent": {
@@ -217,8 +245,10 @@
     },
     {
       "title": "Release",
+      "locale": "root",
       "routePath": "/reference/release",
       "markdownPath": "/markdown/reference/release.md",
+      "sourceLink": "/reference/release",
       "sourcePath": "docs/reference/release.md",
       "section": "Reference",
       "parent": {
@@ -234,8 +264,10 @@
     },
     {
       "title": "Architecture",
+      "locale": "root",
       "routePath": "/ARCHITECTURE",
       "markdownPath": "/markdown/ARCHITECTURE.md",
+      "sourceLink": "/ARCHITECTURE",
       "sourcePath": "docs/ARCHITECTURE.md",
       "section": "Explanation",
       "parent": null,
@@ -243,8 +275,10 @@
     },
     {
       "title": "Benchmarks",
+      "locale": "root",
       "routePath": "/BENCHMARK",
       "markdownPath": "/markdown/BENCHMARK.md",
+      "sourceLink": "/BENCHMARK",
       "sourcePath": "docs/BENCHMARK.md",
       "section": "Explanation",
       "parent": {
@@ -260,8 +294,10 @@
     },
     {
       "title": "Theory",
+      "locale": "root",
       "routePath": "/THEORY",
       "markdownPath": "/markdown/THEORY.md",
+      "sourceLink": "/THEORY",
       "sourcePath": "docs/THEORY.md",
       "section": "Explanation",
       "parent": {
@@ -277,8 +313,10 @@
     },
     {
       "title": "Roadmap",
+      "locale": "root",
       "routePath": "/ROADMAP",
       "markdownPath": "/markdown/ROADMAP.md",
+      "sourceLink": "/ROADMAP",
       "sourcePath": "docs/ROADMAP.md",
       "section": "Explanation",
       "parent": {
@@ -289,6 +327,335 @@
         {
           "text": "Explanation",
           "link": "/ARCHITECTURE"
+        }
+      ]
+    },
+    {
+      "title": "概览",
+      "locale": "zh",
+      "routePath": "/zh/",
+      "markdownPath": "/markdown/zh/index.md",
+      "sourceLink": "/",
+      "sourcePath": "docs/zh/index.md",
+      "section": "开始",
+      "parent": null,
+      "breadcrumbs": []
+    },
+    {
+      "title": "快速开始",
+      "locale": "zh",
+      "routePath": "/zh/guide/getting-started",
+      "markdownPath": "/markdown/zh/guide/getting-started.md",
+      "sourceLink": "/guide/getting-started",
+      "sourcePath": "docs/zh/guide/getting-started.md",
+      "section": "开始",
+      "parent": {
+        "text": "开始",
+        "link": "/zh/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "开始",
+          "link": "/zh/"
+        }
+      ]
+    },
+    {
+      "title": "集成方式",
+      "locale": "zh",
+      "routePath": "/zh/guide/integrations",
+      "markdownPath": "/markdown/zh/guide/integrations.md",
+      "sourceLink": "/guide/integrations",
+      "sourcePath": "docs/zh/guide/integrations.md",
+      "section": "开始",
+      "parent": {
+        "text": "开始",
+        "link": "/zh/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "开始",
+          "link": "/zh/"
+        }
+      ]
+    },
+    {
+      "title": "常用配方",
+      "locale": "zh",
+      "routePath": "/zh/RECIPES",
+      "markdownPath": "/markdown/zh/RECIPES.md",
+      "sourceLink": "/RECIPES",
+      "sourcePath": "docs/zh/RECIPES.md",
+      "section": "开始",
+      "parent": {
+        "text": "开始",
+        "link": "/zh/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "开始",
+          "link": "/zh/"
+        }
+      ]
+    },
+    {
+      "title": "指南索引",
+      "locale": "zh",
+      "routePath": "/zh/guide/",
+      "markdownPath": "/markdown/zh/guide.md",
+      "sourceLink": "/guide/",
+      "sourcePath": "docs/zh/guide/index.md",
+      "section": "指南",
+      "parent": null,
+      "breadcrumbs": []
+    },
+    {
+      "title": "适配器",
+      "locale": "zh",
+      "routePath": "/zh/guide/adapters",
+      "markdownPath": "/markdown/zh/guide/adapters.md",
+      "sourceLink": "/guide/adapters",
+      "sourcePath": "docs/zh/guide/adapters.md",
+      "section": "指南",
+      "parent": {
+        "text": "指南",
+        "link": "/zh/guide/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "指南",
+          "link": "/zh/guide/"
+        }
+      ]
+    },
+    {
+      "title": "自修复",
+      "locale": "zh",
+      "routePath": "/zh/guide/self-repair",
+      "markdownPath": "/markdown/zh/guide/self-repair.md",
+      "sourceLink": "/guide/self-repair",
+      "sourcePath": "docs/zh/guide/self-repair.md",
+      "section": "指南",
+      "parent": {
+        "text": "指南",
+        "link": "/zh/guide/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "指南",
+          "link": "/zh/guide/"
+        }
+      ]
+    },
+    {
+      "title": "参考索引",
+      "locale": "zh",
+      "routePath": "/zh/reference/",
+      "markdownPath": "/markdown/zh/reference.md",
+      "sourceLink": "/reference/",
+      "sourcePath": "docs/zh/reference/index.md",
+      "section": "参考",
+      "parent": null,
+      "breadcrumbs": []
+    },
+    {
+      "title": "站点目录",
+      "locale": "zh",
+      "routePath": "/zh/reference/sites",
+      "markdownPath": "/markdown/zh/reference/sites.md",
+      "sourceLink": "/reference/sites",
+      "sourcePath": "docs/zh/reference/sites.md",
+      "section": "参考",
+      "parent": {
+        "text": "参考",
+        "link": "/zh/reference/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "参考",
+          "link": "/zh/reference/"
+        }
+      ]
+    },
+    {
+      "title": "适配器格式",
+      "locale": "zh",
+      "routePath": "/zh/ADAPTER-FORMAT",
+      "markdownPath": "/markdown/zh/ADAPTER-FORMAT.md",
+      "sourceLink": "/ADAPTER-FORMAT",
+      "sourcePath": "docs/zh/ADAPTER-FORMAT.md",
+      "section": "参考",
+      "parent": {
+        "text": "参考",
+        "link": "/zh/reference/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "参考",
+          "link": "/zh/reference/"
+        }
+      ]
+    },
+    {
+      "title": "管线步骤",
+      "locale": "zh",
+      "routePath": "/zh/reference/pipeline",
+      "markdownPath": "/markdown/zh/reference/pipeline.md",
+      "sourceLink": "/reference/pipeline",
+      "sourcePath": "docs/zh/reference/pipeline.md",
+      "section": "参考",
+      "parent": {
+        "text": "参考",
+        "link": "/zh/reference/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "参考",
+          "link": "/zh/reference/"
+        }
+      ]
+    },
+    {
+      "title": "退出码",
+      "locale": "zh",
+      "routePath": "/zh/reference/exit-codes",
+      "markdownPath": "/markdown/zh/reference/exit-codes.md",
+      "sourceLink": "/reference/exit-codes",
+      "sourcePath": "docs/zh/reference/exit-codes.md",
+      "section": "参考",
+      "parent": {
+        "text": "参考",
+        "link": "/zh/reference/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "参考",
+          "link": "/zh/reference/"
+        }
+      ]
+    },
+    {
+      "title": "维护工具",
+      "locale": "zh",
+      "routePath": "/zh/reference/maintenance",
+      "markdownPath": "/markdown/zh/reference/maintenance.md",
+      "sourceLink": "/reference/maintenance",
+      "sourcePath": "docs/zh/reference/maintenance.md",
+      "section": "参考",
+      "parent": {
+        "text": "参考",
+        "link": "/zh/reference/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "参考",
+          "link": "/zh/reference/"
+        }
+      ]
+    },
+    {
+      "title": "插件开发",
+      "locale": "zh",
+      "routePath": "/zh/PLUGIN",
+      "markdownPath": "/markdown/zh/PLUGIN.md",
+      "sourceLink": "/PLUGIN",
+      "sourcePath": "docs/zh/PLUGIN.md",
+      "section": "参考",
+      "parent": {
+        "text": "参考",
+        "link": "/zh/reference/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "参考",
+          "link": "/zh/reference/"
+        }
+      ]
+    },
+    {
+      "title": "发布",
+      "locale": "zh",
+      "routePath": "/zh/reference/release",
+      "markdownPath": "/markdown/zh/reference/release.md",
+      "sourceLink": "/reference/release",
+      "sourcePath": "docs/zh/reference/release.md",
+      "section": "参考",
+      "parent": {
+        "text": "参考",
+        "link": "/zh/reference/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "参考",
+          "link": "/zh/reference/"
+        }
+      ]
+    },
+    {
+      "title": "架构",
+      "locale": "zh",
+      "routePath": "/zh/ARCHITECTURE",
+      "markdownPath": "/markdown/zh/ARCHITECTURE.md",
+      "sourceLink": "/ARCHITECTURE",
+      "sourcePath": "docs/zh/ARCHITECTURE.md",
+      "section": "解释",
+      "parent": null,
+      "breadcrumbs": []
+    },
+    {
+      "title": "基准",
+      "locale": "zh",
+      "routePath": "/zh/BENCHMARK",
+      "markdownPath": "/markdown/zh/BENCHMARK.md",
+      "sourceLink": "/BENCHMARK",
+      "sourcePath": "docs/zh/BENCHMARK.md",
+      "section": "解释",
+      "parent": {
+        "text": "解释",
+        "link": "/zh/ARCHITECTURE"
+      },
+      "breadcrumbs": [
+        {
+          "text": "解释",
+          "link": "/zh/ARCHITECTURE"
+        }
+      ]
+    },
+    {
+      "title": "理论",
+      "locale": "zh",
+      "routePath": "/zh/THEORY",
+      "markdownPath": "/markdown/zh/THEORY.md",
+      "sourceLink": "/THEORY",
+      "sourcePath": "docs/zh/THEORY.md",
+      "section": "解释",
+      "parent": {
+        "text": "解释",
+        "link": "/zh/ARCHITECTURE"
+      },
+      "breadcrumbs": [
+        {
+          "text": "解释",
+          "link": "/zh/ARCHITECTURE"
+        }
+      ]
+    },
+    {
+      "title": "路线图",
+      "locale": "zh",
+      "routePath": "/zh/ROADMAP",
+      "markdownPath": "/markdown/zh/ROADMAP.md",
+      "sourceLink": "/ROADMAP",
+      "sourcePath": "docs/zh/ROADMAP.md",
+      "section": "解释",
+      "parent": {
+        "text": "解释",
+        "link": "/zh/ARCHITECTURE"
+      },
+      "breadcrumbs": [
+        {
+          "text": "解释",
+          "link": "/zh/ARCHITECTURE"
         }
       ]
     }

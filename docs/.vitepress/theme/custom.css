@@ -10,6 +10,12 @@
   --uni-paper: #f2dfc5;
   --uni-ink: #171311;
   --uni-charcoal: #11100f;
+  --uni-sans:
+    "Geist", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --uni-mono:
+    "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Noto Sans Mono CJK SC", monospace;
 }
 
 .dark {
@@ -24,7 +30,7 @@
 }
 
 .VPNavBarTitle .title {
-  font-family: "Geist Mono", ui-monospace, monospace;
+  font-family: var(--uni-mono);
   letter-spacing: 0;
 }
 
@@ -35,7 +41,8 @@
 }
 
 .VPNavBarAppearance.appearance,
-.VPNavBarSocialLinks.social-links {
+.VPNavBarSocialLinks.social-links,
+.VPNavBarTranslations.translations {
   display: flex !important;
   flex-shrink: 0;
   align-items: center;
@@ -48,6 +55,7 @@
 @media (max-width: 1279px) {
   .VPNavBar .menu + .appearance::before,
   .VPNavBar .translations + .appearance::before,
+  .VPNavBar .menu + .translations::before,
   .VPNavBar .appearance + .social-links::before {
     display: none;
   }
@@ -69,6 +77,10 @@
     flex-grow: 0;
     padding-left: 0;
   }
+
+  .VPNavBarTranslations.translations {
+    min-width: 0;
+  }
 }
 
 /* Headings: Geist Mono */
@@ -76,7 +88,7 @@
 .vp-doc h2,
 .vp-doc h3,
 .vp-doc h4 {
-  font-family: "Geist Mono", ui-monospace, monospace;
+  font-family: var(--uni-mono);
   letter-spacing: 0;
 }
 
@@ -84,7 +96,7 @@
 .vp-doc p,
 .vp-doc li,
 .vp-doc td {
-  font-family: "Geist", system-ui, sans-serif;
+  font-family: var(--uni-sans);
 }
 
 .pretext-typography .vp-doc p,
@@ -112,12 +124,12 @@
 
 /* Code blocks: Geist Mono */
 .vp-doc [class*="language-"] code {
-  font-family: "Geist Mono", ui-monospace, monospace;
+  font-family: var(--uni-mono);
 }
 
 /* Hero title */
 .VPHero .name {
-  font-family: "Geist Mono", ui-monospace, monospace !important;
+  font-family: var(--uni-mono) !important;
   letter-spacing: 0;
 }
 
@@ -169,7 +181,7 @@
   min-height: 28px;
   align-items: center;
   color: var(--vp-c-brand-1);
-  font-family: "Geist Mono", ui-monospace, monospace;
+  font-family: var(--uni-mono);
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0;
@@ -251,7 +263,7 @@
 .uni-eyebrow {
   margin: 0 0 10px;
   color: var(--uni-clay);
-  font-family: "Geist Mono", ui-monospace, monospace;
+  font-family: var(--uni-mono);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0;

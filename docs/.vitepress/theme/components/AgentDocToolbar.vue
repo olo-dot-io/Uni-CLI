@@ -5,8 +5,10 @@ import pageIndex from "../../../page-index.json";
 
 type PageIndexEntry = {
   title: string;
+  locale: "root" | "zh";
   routePath: string;
   markdownPath: string;
+  sourceLink: string;
   section: string;
   parent: { text: string; link: string } | null;
   breadcrumbs: { text: string; link: string }[];
@@ -62,6 +64,27 @@ const currentPage = computed(() => {
 const markdownHref = computed(() =>
   currentPage.value ? withBase(currentPage.value.markdownPath) : "",
 );
+const toolbarCopy = computed(() =>
+  currentPage.value?.locale === "zh"
+    ? {
+        aria: "页面层级和智能体操作",
+        markdownActions: "Markdown 操作",
+        backTo: "返回",
+        copied: "已复制",
+        copyFailed: "复制失败",
+        copyMarkdown: "复制 Markdown",
+        openMarkdown: "打开 .md",
+      }
+    : {
+        aria: "Page hierarchy and agent actions",
+        markdownActions: "Markdown actions",
+        backTo: "Back to",
+        copied: "Copied",
+        copyFailed: "Copy failed",
+        copyMarkdown: "Copy Markdown",
+        openMarkdown: "Open .md",
+      },
+);
 
 async function copyMarkdown() {
   const page = currentPage.value;
@@ -92,7 +115,7 @@ async function copyMarkdown() {
   <nav
     v-if="currentPage"
     class="agent-doc-toolbar"
-    aria-label="Page hierarchy and agent actions"
+    :aria-label="toolbarCopy.aria"
   >
     <div class="agent-doc-path">
       <a
@@ -100,7 +123,7 @@ async function copyMarkdown() {
         class="agent-back-link"
         :href="withBase(currentPage.parent.link)"
       >
-        Back to {{ currentPage.parent.text }}
+        {{ toolbarCopy.backTo }} {{ currentPage.parent.text }}
       </a>
       <span v-else class="agent-section-label">{{ currentPage.section }}</span>
 
@@ -112,14 +135,14 @@ async function copyMarkdown() {
       </ol>
     </div>
 
-    <div class="agent-doc-actions" aria-label="Markdown actions">
+    <div class="agent-doc-actions" :aria-label="toolbarCopy.markdownActions">
       <button type="button" class="agent-copy-button" @click="copyMarkdown">
         {{
           copyState === "copied"
-            ? "Copied"
+            ? toolbarCopy.copied
             : copyState === "error"
-              ? "Copy failed"
-              : "Copy Markdown"
+              ? toolbarCopy.copyFailed
+              : toolbarCopy.copyMarkdown
         }}
       </button>
       <a
@@ -128,7 +151,7 @@ async function copyMarkdown() {
         target="_self"
         type="text/markdown"
       >
-        Open .md
+        {{ toolbarCopy.openMarkdown }}
       </a>
     </div>
   </nav>
