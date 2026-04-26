@@ -178,7 +178,7 @@ args:
     positional: true
 pipeline:
   - exec:
-      cmd: "ffprobe"
+      command: "ffprobe"
       args:
         [
           "-v",
@@ -189,7 +189,7 @@ pipeline:
           "-show_streams",
           "${{ args.file }}",
         ]
-      json: true
+      parse: json
   - map:
       format: "${{ item.format.format_long_name }}"
       duration: "${{ item.format.duration }}"
@@ -224,7 +224,7 @@ pipeline:
           (gimp-image-scale-full image ${{ args.width }} 0 INTERPOLATION-CUBIC)
           (gimp-file-overwrite RUN-NONINTERACTIVE image drawable "${{ args.file }}" "${{ args.file }}"))
   - exec:
-      cmd: "gimp"
+      command: "gimp"
       args:
         [
           "-i",
@@ -247,7 +247,7 @@ autoInstall: "brew install gh"
 detect: "gh --version"
 pipeline:
   - exec:
-      cmd: "gh"
+      command: "gh"
       args:
         [
           "repo",
@@ -257,7 +257,7 @@ pipeline:
           "--limit",
           "20",
         ]
-      json: true
+      parse: json
   - map:
       name: "${{ item.name }}"
       description: "${{ item.description }}"

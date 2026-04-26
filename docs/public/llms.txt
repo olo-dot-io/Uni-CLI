@@ -1,34 +1,57 @@
 # Uni-CLI
 
-Uni-CLI is the universal command surface for AI agents. It exposes websites,
-desktop apps, local tools, external CLIs, and agent backends through searchable
-commands and a shared v2 AgentEnvelope output contract.
+Uni-CLI is the CLI-native command surface for AI agents to discover, run, and repair operations across websites, desktop apps, local tools, external CLIs, and agent backends.
 
-## Start Here
+## Catalog Snapshot
 
-- Overview: https://olo-dot-io.github.io/Uni-CLI/
-- Getting started: https://olo-dot-io.github.io/Uni-CLI/guide/getting-started
-- Sites catalog: https://olo-dot-io.github.io/Uni-CLI/reference/sites
-- Agent integrations: https://olo-dot-io.github.io/Uni-CLI/guide/integrations
-- Adapter authoring: https://olo-dot-io.github.io/Uni-CLI/guide/adapters
-- Self-repair loop: https://olo-dot-io.github.io/Uni-CLI/guide/self-repair
+- Sites: 223
+- Commands: 1304
+- Adapters: 987 (907 YAML + 80 TypeScript)
+- Pipeline steps: 59
+- Tests: 7311
+
+## Agent Contract
+
+- Start with `unicli search "your intent"`, then run `unicli <site> <command> [args]`.
+- Prefer `-f json` for scripts and `-f md` for agent-readable prose.
+- On failure, read the v2 error envelope, open `error.adapter_path`, patch the YAML, then run `unicli repair <site> <command>`.
+- MCP and ACP are compatibility gateways; the native contract is a shell command plus a structured AgentEnvelope.
+
+## Markdown Companions
+
+Every public page below has a clean Markdown companion. Fetch Markdown first; fetch rendered HTML only when visual layout matters.
+
+## Start
+
+- [Overview](https://olo-dot-io.github.io/Uni-CLI/) — overview, install path, capability map, and agent entry points. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
+- [Getting Started](https://olo-dot-io.github.io/Uni-CLI/guide/getting-started) — start page for getting started. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/getting-started.md
+- [Integrations](https://olo-dot-io.github.io/Uni-CLI/guide/integrations) — start page for integrations. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/integrations.md
+- [Recipes](https://olo-dot-io.github.io/Uni-CLI/RECIPES) — start page for recipes. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/RECIPES.md
+
+## Guides
+
+- [Guide Index](https://olo-dot-io.github.io/Uni-CLI/guide/) — guides page for guide index. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide.md
+- [Adapters](https://olo-dot-io.github.io/Uni-CLI/guide/adapters) — guides page for adapters. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/adapters.md
+- [Self-Repair](https://olo-dot-io.github.io/Uni-CLI/guide/self-repair) — guides page for self-repair. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/self-repair.md
 
 ## Reference
 
-- Adapter format: https://olo-dot-io.github.io/Uni-CLI/ADAPTER-FORMAT
-- Pipeline steps: https://olo-dot-io.github.io/Uni-CLI/reference/pipeline
-- Exit codes: https://olo-dot-io.github.io/Uni-CLI/reference/exit-codes
-- Maintenance tools: https://olo-dot-io.github.io/Uni-CLI/reference/maintenance
-- Release process: https://olo-dot-io.github.io/Uni-CLI/reference/release
+- [Reference Index](https://olo-dot-io.github.io/Uni-CLI/reference/) — reference page for reference index. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference.md
+- [Sites Catalog](https://olo-dot-io.github.io/Uni-CLI/reference/sites) — reference page for sites catalog. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/sites.md
+- [Adapter Format](https://olo-dot-io.github.io/Uni-CLI/ADAPTER-FORMAT) — reference page for adapter format. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ADAPTER-FORMAT.md
+- [Pipeline Steps](https://olo-dot-io.github.io/Uni-CLI/reference/pipeline) — reference page for pipeline steps. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/pipeline.md
+- [Exit Codes](https://olo-dot-io.github.io/Uni-CLI/reference/exit-codes) — reference page for exit codes. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/exit-codes.md
+- [Maintenance Tools](https://olo-dot-io.github.io/Uni-CLI/reference/maintenance) — reference page for maintenance tools. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/maintenance.md
+- [Plugin Authoring](https://olo-dot-io.github.io/Uni-CLI/PLUGIN) — reference page for plugin authoring. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/PLUGIN.md
+- [Release](https://olo-dot-io.github.io/Uni-CLI/reference/release) — reference page for release. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/release.md
 
-## Command Shape
+## Explanation
 
-```bash
-npm install -g @zenalexa/unicli
-unicli search "your intent"
-unicli <site> <command> [args] [-f json|md|yaml|csv|compact]
-```
+- [Architecture](https://olo-dot-io.github.io/Uni-CLI/ARCHITECTURE) — explanation page for architecture. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ARCHITECTURE.md
+- [Benchmarks](https://olo-dot-io.github.io/Uni-CLI/BENCHMARK) — explanation page for benchmarks. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/BENCHMARK.md
+- [Theory](https://olo-dot-io.github.io/Uni-CLI/THEORY) — explanation page for theory. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/THEORY.md
+- [Roadmap](https://olo-dot-io.github.io/Uni-CLI/ROADMAP) — explanation page for roadmap. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 
-Use `unicli search` before guessing a site command. Use `-f json` for scripts
-and machine-oriented consumers. If a command fails, inspect the structured
-error envelope, edit the adapter path, and run `unicli repair <site> <command>`.
+## Full Context
+
+- [llms-full.txt](https://olo-dot-io.github.io/Uni-CLI/llms-full.txt) — concatenated public docs in Markdown for agents that can afford the context.

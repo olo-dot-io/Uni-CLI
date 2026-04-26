@@ -28,6 +28,12 @@
   letter-spacing: 0;
 }
 
+/* VitePress duplicates appearance/social links inside a second-level overflow flyout.
+   Keep the first-level controls visible and hide only that duplicate flyout. */
+.VPNavBarExtra.extra:has(> .button[aria-label="extra navigation"]) {
+  display: none !important;
+}
+
 /* Headings: Geist Mono */
 .vp-doc h1,
 .vp-doc h2,

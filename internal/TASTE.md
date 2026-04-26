@@ -1,12 +1,13 @@
-# Uni-CLI Taste Guide
+# Uni-CLI Internal Taste Guide
 
 > Current version: v0.215.1.
 >
 > Current scale: <!-- STATS:site_count -->223<!-- /STATS --> sites, <!-- STATS:command_count -->1304<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->987<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->907<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->80<!-- /STATS --> TS), <!-- STATS:test_count -->7311<!-- /STATS --> tests.
 
-This is the public style bar for docs and user-facing copy. Internal planning,
-research notes, and release lore can exist elsewhere, but they should not leak
-into the main product entry path.
+This is the internal style bar for docs and user-facing copy. It is not part of
+the public docs site. Public pages should expose install, command, output, and
+repair facts; internal planning, research notes, and release lore stay out of
+the product entry path.
 
 ## Product Sentence
 

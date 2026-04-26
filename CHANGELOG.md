@@ -1,7 +1,7 @@
 # Changelog
 
 All notable changes to Uni-CLI are documented here.
-Version format: `MAJOR.MINOR.PATCH` — see [docs/TASTE.md](./docs/TASTE.md) for the codename system.
+Version format: `MAJOR.MINOR.PATCH` — see [internal/TASTE.md](./internal/TASTE.md) for the codename system.
 
 ## [Unreleased] — Next major development — Vostok · Astronaut TBD
 
@@ -983,5 +983,5 @@ Pre-existing: github-trending (1), ollama (1), blender (1), ffmpeg (1)
 - CODE_OF_CONDUCT.md, GOVERNANCE.md, CODEOWNERS
 - Issue templates: bug report, feature request, adapter request
 - CI workflow: Node.js 20/22 matrix on Ubuntu
-- Aerospace theme system: [docs/TASTE.md](./docs/TASTE.md)
+- Aerospace theme system: [internal/TASTE.md](./internal/TASTE.md)
 - Full release label rules: [docs/reference/release.md](./docs/reference/release.md)

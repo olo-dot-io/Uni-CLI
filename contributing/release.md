@@ -41,7 +41,7 @@ git add -A && git commit -m "chore(release): vX.Y.Z"
 ```
 
 The seven other files that must update atomically
-(`AGENTS.md`, `README.md`, `docs/ROADMAP.md`, `docs/TASTE.md`, plus codename
+(`AGENTS.md`, `README.md`, `docs/ROADMAP.md`, `internal/TASTE.md`, plus codename
 series) are handled by `scripts/release.ts` — run `npm run release` after
 merging the version PR, or fold it into a single release PR.
 

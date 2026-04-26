@@ -1,0 +1,4142 @@
+# Uni-CLI Full Documentation
+
+This file is generated from the same VitePress site map as the public docs. It intentionally excludes internal repo-only guides.
+
+## Snapshot
+
+- Sites: 223
+- Commands: 1304
+- Adapters: 987
+- Pipeline steps: 59
+
+---
+
+# Page: Overview
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
+
+<!-- Generated from docs/index.md. Do not edit this copy directly. -->
+
+# Overview
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
+- Section: Start
+
+## The native command surface for agents.
+
+Search by intent, run typed commands, get structured envelopes, and repair broken tools without leaving the shell.
+
+## Primary Actions
+
+- [Get Started](/guide/getting-started)
+- [Browse Sites](/reference/sites)
+
+## Capabilities
+
+- **Search By Intent.** Bilingual BM25 maps natural language to runnable commands across 223 sites and 1304 commands.
+- **Operate Real Surfaces.** The same CLI spans web APIs, browser automation, macOS apps, desktop tools, and external CLIs.
+- **Return Agent Envelopes.** Markdown, JSON, YAML, CSV, and compact output share the same v2 success/error contract.
+- **Repair In Place.** Failures include adapter path, pipeline step, retryability, suggestions, and alternatives.
+- **Plug Into Agents.** CLI-first execution stays native to coding agents; MCP, ACP, and JSON streams are compatibility surfaces.
+- **Stay Small.** YAML adapters compose typed pipeline steps and avoid heavy per-site SDK dependencies.
+
+## Catalog Snapshot
+
+- Sites: 223
+- Commands: 1304
+- Surface families: 5
+- Agent envelope: v2
+
+| Surface | Sites |
+| --- | ---: |
+| bridge | 24 |
+| browser | 10 |
+| desktop | 32 |
+| service | 8 |
+| web-api | 149 |
+
+## Positioning
+
+Uni-CLI is built for agents that already have a shell. MCP compatibility is
+available, but the primary path is faster and smaller: discover with
+`unicli search`, inspect with `unicli describe`, execute with
+`unicli <site> <command>`, and repair through the adapter path in the error
+envelope.
+
+## First Command
+
+```bash
+npm install -g @zenalexa/unicli
+unicli search "hacker news frontpage"
+unicli hackernews top --limit 5
+```
+
+## Choose The Right Entry Point
+
+| Need                 | Start here                                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Install and run      | [Getting Started](/guide/getting-started)                                                                     |
+| See supported sites  | [Sites Catalog](/reference/sites)                                                                             |
+| Wire into an agent   | [Integrations](/guide/integrations)                                                                           |
+| Add or repair a tool | [Adapters](/guide/adapters) and [Self-Repair](/guide/self-repair)                                             |
+| Check exact behavior | [Adapter Format](/ADAPTER-FORMAT), [Pipeline Steps](/reference/pipeline), [Exit Codes](/reference/exit-codes) |
+| Understand the shape | [Architecture](/ARCHITECTURE), [Benchmarks](/BENCHMARK), [Roadmap](/ROADMAP)                                  |
+
+## Agent Index
+
+The website also publishes an agent-readable index at [`/llms.txt`](/llms.txt).
+It points agents to the install path, command catalog, adapter format, and
+repair loop without making them crawl the whole site first.
+
+---
+
+# Page: Getting Started
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/guide/getting-started
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/getting-started.md
+
+<!-- Generated from docs/guide/getting-started.md. Do not edit this copy directly. -->
+
+# Getting Started
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/guide/getting-started
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/getting-started.md
+- Section: Start
+- Parent: Start (/)
+
+Uni-CLI turns websites, desktop apps, services, and local tools into commands
+that agents can search, run, and repair.
+
+## Install
+
+```bash
+npm install -g @zenalexa/unicli
+unicli --version
+```
+
+Requires Node.js 20 or later.
+
+Every command follows the same shape:
+
+```bash
+unicli SITE COMMAND [args] [-f json|md|yaml|csv|compact]
+```
+
+Markdown is the default output format. Use `-f json` when a script or other
+machine-oriented consumer needs JSON.
+
+## Find A Command
+
+```bash
+unicli search "hacker news frontpage"
+unicli search "小红书 搜索"
+unicli list --site hackernews
+```
+
+## Run A Command
+
+Run the selected command:
+
+```bash
+unicli hackernews top --limit 5
+```
+
+Use JSON when a script needs it:
+
+```bash
+unicli hackernews top --limit 5 -f json | jq '.[0]'
+```
+
+Supported formats:
+
+```bash
+unicli hackernews top -f md
+unicli hackernews top -f json
+unicli hackernews top -f yaml
+unicli hackernews top -f csv
+unicli hackernews top -f compact
+```
+
+## Authentication
+
+Some adapters need local cookies:
+
+```bash
+unicli auth setup bilibili
+unicli auth check bilibili
+unicli bilibili feed
+```
+
+Cookies live at `~/.unicli/cookies/SITE.json`. Auth failures return exit
+code `77` and a structured error with the next command to run.
+
+## Repair A Broken Command
+
+When a command fails, read the structured error. It includes the adapter path
+and pipeline step that need attention.
+
+```bash
+unicli repair SITE COMMAND
+```
+
+Typical loop:
+
+```text
+1. Read error.adapter_path and error.step.
+2. Patch the YAML adapter.
+3. Save a local override under ~/.unicli/adapters/SITE/COMMAND.yaml.
+4. Re-run unicli repair SITE COMMAND.
+```
+
+## Browser Automation
+
+Browser adapters use Chrome/CDP when HTTP is not enough.
+
+```bash
+unicli operate goto "https://example.com"
+unicli operate snapshot
+unicli operate click --ref 42
+unicli operate type --ref 7 --text "hello"
+unicli operate screenshot --path ./page.png
+```
+
+## Protocol Servers
+
+MCP:
+
+```bash
+npx @zenalexa/unicli mcp serve
+npx @zenalexa/unicli mcp serve --transport streamable --port 19826
+```
+
+ACP:
+
+```bash
+unicli acp
+```
+
+ACP is an editor compatibility gateway. For coding-agent runtime routing:
+
+```bash
+unicli agents matrix
+unicli agents recommend codex
+```
+
+## Exit Codes
+
+| Code | Meaning             | Agent action                             |
+| ---- | ------------------- | ---------------------------------------- |
+| 0    | Success             | Use the data                             |
+| 66   | Empty result        | Try different parameters                 |
+| 69   | Service unavailable | Retry later                              |
+| 75   | Temporary failure   | Retry with backoff                       |
+| 77   | Auth required       | Run `unicli auth setup SITE`             |
+| 78   | Config error        | Read the error envelope and adapter YAML |
+
+## Next Steps
+
+- [Adapters](/guide/adapters)
+- [Integrations](/guide/integrations)
+- [Self-Repair](/guide/self-repair)
+- [Pipeline Steps](/reference/pipeline)
+- [Exit Codes](/reference/exit-codes)
+
+---
+
+# Page: Integrations
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/guide/integrations
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/integrations.md
+
+<!-- Generated from docs/guide/integrations.md. Do not edit this copy directly. -->
+
+# Integrations
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/guide/integrations
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/integrations.md
+- Section: Start
+- Parent: Start (/)
+
+Uni-CLI is designed to be called directly from a shell. Agent clients that need
+a protocol server can use the same catalog over MCP or ACP without changing
+adapter behavior.
+
+## Choose A Path
+
+| Client need                         | Use                      |
+| ----------------------------------- | ------------------------ |
+| Any agent can run shell commands    | Native `unicli` CLI      |
+| Tool-calling clients that speak MCP | `unicli mcp serve`       |
+| Editor clients that speak ACP       | `unicli acp`             |
+| Platform-specific setup             | `unicli agents generate` |
+
+Prefer the native CLI when the agent has shell access. It keeps discovery lazy,
+outputs compact, and preserves Unix composition.
+
+## Native CLI
+
+```bash
+unicli search "hacker news frontpage"
+unicli hackernews top --limit 5 -f json
+```
+
+Add this short contract to `AGENTS.md`, `CLAUDE.md`, or the equivalent agent
+context file:
+
+```markdown
+Use `unicli search "intent"` before choosing a command. Run commands as
+`unicli SITE COMMAND [args]`. Prefer `-f json` for scripts and structured
+Markdown for human-readable agent output.
+```
+
+## MCP
+
+Start a stdio server:
+
+```bash
+npx @zenalexa/unicli mcp serve
+```
+
+Start a Streamable HTTP server:
+
+```bash
+npx @zenalexa/unicli mcp serve --transport streamable --port 19826
+```
+
+SSE compatibility:
+
+```bash
+npx @zenalexa/unicli mcp serve --transport sse --port 19826
+```
+
+Remote deployments can enable OAuth 2.1 PKCE:
+
+```bash
+npx @zenalexa/unicli mcp serve --transport streamable --port 19826 --auth
+```
+
+Default MCP tools:
+
+| Tool             | Purpose                                     |
+| ---------------- | ------------------------------------------- |
+| `unicli_search`  | Search commands by natural-language intent. |
+| `unicli_run`     | Run a selected site command.                |
+| `unicli_list`    | List sites and commands.                    |
+| `unicli_explore` | Inspect a page before authoring an adapter. |
+
+Claude-style stdio config:
+
+```json
+{
+  "mcpServers": {
+    "unicli": {
+      "command": "npx",
+      "args": ["@zenalexa/unicli", "mcp", "serve"]
+    }
+  }
+}
+```
+
+Codex CLI config:
+
+```toml
+[mcp_servers.unicli]
+command = "npx"
+args = ["@zenalexa/unicli", "mcp", "serve"]
+```
+
+## ACP
+
+ACP is an editor compatibility path for clients such as avante.nvim and Zed.
+Use MCP when the client needs structured tool calls; use ACP when the client
+expects prompt/session frames.
+
+```bash
+unicli acp
+```
+
+Minimal avante.nvim provider:
+
+```lua
+require("avante").setup({
+  providers = {
+    {
+      name = "unicli",
+      command = "unicli",
+      args = { "acp" },
+      type = "acp",
+    },
+  },
+})
+```
+
+ACP prompts should include an explicit command:
+
+```text
+Show the top 10 HN posts:
+unicli hackernews top --limit 10
+```
+
+## Agent Platform Recipes
+
+Generate config where possible instead of hand-writing it:
+
+```bash
+unicli agents matrix
+unicli agents recommend codex
+unicli agents generate --for claude
+unicli agents generate --for codex
+unicli agents generate --for opencode
+```
+
+Manual examples:
+
+```bash
+# Claude Code MCP
+claude mcp add unicli -- npx @zenalexa/unicli mcp serve
+```
+
+```jsonc
+// OpenCode
+{
+  "mcp": {
+    "unicli": {
+      "type": "local",
+      "command": ["npx", "-y", "@zenalexa/unicli", "mcp", "serve"],
+      "enabled": true,
+    },
+  },
+}
+```
+
+```yaml
+# Hermes Agent
+mcp_servers:
+  unicli:
+    command: "npx"
+    args: ["-y", "@zenalexa/unicli", "mcp", "serve"]
+```
+
+## Auth
+
+All integration paths use the same local credentials as the CLI:
+
+```bash
+unicli auth setup SITE
+unicli auth check SITE
+```
+
+Cookie path:
+
+```text
+~/.unicli/cookies/SITE.json
+```
+
+## Verify
+
+```bash
+unicli list
+unicli search "hacker news frontpage"
+unicli hackernews top --limit 5
+```
+
+---
+
+# Page: Recipes
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/RECIPES
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/RECIPES.md
+
+<!-- Generated from docs/RECIPES.md. Do not edit this copy directly. -->
+
+# Recipes
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/RECIPES
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/RECIPES.md
+- Section: Start
+- Parent: Start (/)
+
+Worked examples showing how agents chain Uni-CLI commands to solve real
+end-user tasks.
+
+All examples assume:
+
+- Uni-CLI is on `$PATH` (`npm install -g @zenalexa/unicli`)
+- Commands that feed `jq` or shell scripts pass `-f json` explicitly
+
+## 1. Triage your morning inbox — list iMessages + Notes in one JSON blob
+
+**Use-case.** An agent needs a single structured view of "what the user
+might be behind on" across iMessage and Apple Notes before drafting a
+stand-up update.
+
+### Command sequence
+
+```bash
+# Recent messages from the last hour (take the top 10 for brevity)
+unicli imessage recent --limit 10 -f json > /tmp/recent-msgs.json
+
+# Your "Work" notes folder (titles only — body fetch is a separate call)
+unicli apple-notes list --folder "Work" -f json > /tmp/work-notes.json
+
+# Merge client-side (bash):
+jq -n --slurpfile m /tmp/recent-msgs.json \
+      --slurpfile n /tmp/work-notes.json \
+      '{messages: $m[0], notes: $n[0]}'
+```
+
+### Expected output
+
+```json
+{
+  "messages": [
+    {
+      "ts": "2026-04-15 08:42:11",
+      "is_from_me": 0,
+      "handle_id": "+14155550123",
+      "text": "Standup at 10?"
+    }
+  ],
+  "notes": [
+    { "stdout": "Roadmap Q2\nFollow-ups from design review\nOKR draft" }
+  ]
+}
+```
+
+### Troubleshooting
+
+- `imessage recent` returns `[]` on non-macOS hosts. The adapter gates
+  on `uname = Darwin` and exits cleanly.
+- If you see `OSError: Operation not permitted`, grant your terminal
+  Full Disk Access under **System Settings → Privacy & Security → Full
+  Disk Access**.
+- `apple-notes list` returns an empty `stdout` when the folder does not
+  exist. AppleScript does not distinguish "empty folder" from "missing
+  folder" — confirm with `unicli apple-notes list` (default "Notes"
+  folder) first.
+
+## 2. Auto-file a Linear bug from a user iMessage
+
+**Use-case.** The agent scans recent iMessage for the phrase "bug:" and
+opens a Linear issue so nothing slips through.
+
+### Command sequence
+
+```bash
+# Step 1 — search iMessage for the phrase
+unicli imessage search "bug:" --limit 5 -f json > /tmp/bug-msgs.json
+
+# Step 2 — extract the first message body (agent logic in jq)
+TITLE=$(jq -r '.[0].text' /tmp/bug-msgs.json | head -c 120)
+
+# Step 3 — file the Linear issue
+export LINEAR_API_KEY=lin_api_xxxxxxxxxxxx
+unicli linear issue-create "$TITLE" \
+  --team ENG \
+  --description "Auto-filed from iMessage on $(date -Iseconds)" \
+  -f json
+```
+
+### Expected output
+
+```json
+[
+  {
+    "identifier": "ENG-742",
+    "title": "bug: settings page 500s when language=zh-hk",
+    "url": "https://linear.app/my-team/issue/ENG-742"
+  }
+]
+```
+
+### Troubleshooting
+
+- If `LINEAR_API_KEY` is unset, the Linear API returns `401
+Authentication required` — the adapter surfaces this as a structured
+  error with `exit_code: 77` (AUTH_REQUIRED).
+- Omitting `--team` works if your workspace has a default team.
+  Otherwise Linear returns a GraphQL error telling you which field is
+  missing; Uni-CLI emits that verbatim in `stderr`.
+- Linear's Authorization header is the API key itself, **not** `Bearer
+KEY`. If you see `403 Forbidden`, double-check you didn't prepend
+  `Bearer`.
+
+## 3. Close a Linear issue from a note you just wrote
+
+**Use-case.** You finish a task, write a "done: ENG-123" note, and want
+the Linear state flipped to Done without leaving the terminal.
+
+### Command sequence
+
+```bash
+# Step 1 — search notes for the completion marker
+unicli apple-notes search "done: ENG-" -f json > /tmp/done-notes.json
+
+# Step 2 — extract the Linear identifier from the first match (agent
+# logic). Here we assume the note body is a single line "done: ENG-123".
+ID=$(jq -r '.[0].stdout' /tmp/done-notes.json \
+     | grep -oE 'ENG-[0-9]+' | head -1)
+
+# Step 3 — flip the state
+export LINEAR_API_KEY=lin_api_xxxxxxxxxxxx
+unicli linear issue-update "$ID" --state "Done" -f json
+```
+
+### Expected output
+
+```json
+[
+  {
+    "identifier": "ENG-123",
+    "title": "Ship Phase 5 adapters",
+    "url": "https://linear.app/my-team/issue/ENG-123"
+  }
+]
+```
+
+### Troubleshooting
+
+- `issue-update` makes three HTTP calls (fetch issue → resolve state →
+  apply update). If any step returns an empty result, the final
+  mutation silently does nothing. Use `-f json` to inspect the
+  intermediate pipeline via `unicli dev` — see
+  `docs/guide/getting-started.md`.
+- State names are case-sensitive and team-scoped. "Done" in one team
+  might be "Shipped" in another; list states per team with
+  `unicli linear issue-list --state Done --limit 1` to confirm a
+  working name.
+
+## 4. Stand-up digest — what changed since yesterday?
+
+**Use-case.** Generate a one-page summary for your daily stand-up
+combining: yesterday's Linear Done issues + any iMessage threads
+mentioning them.
+
+### Command sequence
+
+```bash
+export LINEAR_API_KEY=lin_api_xxxxxxxxxxxx
+
+# Step 1 — Linear issues in "Done" state, top 10
+unicli linear issue-list --state "Done" --limit 10 -f json > /tmp/done-issues.json
+
+# Step 2 — for each issue, search iMessage for its identifier
+for ID in $(jq -r '.[].id' /tmp/done-issues.json); do
+  echo "=== $ID ==="
+  unicli imessage search "$ID" --limit 3 -f json
+done > /tmp/digest.json
+
+# Step 3 — hand the blob to your LLM of choice, which can now cite
+# specific messages that corroborate each shipped issue.
+```
+
+### Expected output
+
+Mixed `=== ENG-42 ===` headers followed by JSON arrays of messages
+mentioning `ENG-42`. Consumers typically pipe this to an LLM that
+summarises in 3-5 bullets.
+
+### Troubleshooting
+
+- `issue-list` returns only issues you have access to — API key scope
+  matters. A read-only key will not list other users' private projects.
+- iMessage `search` is `LIKE` over the full `chat.db`. For large
+  databases (>100K messages) a query takes 1-3 seconds. Avoid running
+  it in a tight loop with >50 iterations.
+
+## Common flags
+
+All Phase 5 adapters support:
+
+| Flag             | What it does                                      |
+| ---------------- | ------------------------------------------------- |
+| `-f json`        | Machine output (auto-on when stdout is not a TTY) |
+| `-f yaml` / `md` | Human-readable alternatives                       |
+| `--limit N`      | Caps row count where applicable                   |
+
+Exit codes follow `sysexits.h`:
+
+| Code | Meaning                                  |
+| ---- | ---------------------------------------- |
+| 0    | Success                                  |
+| 66   | Empty result (not an error)              |
+| 69   | Service unavailable (non-darwin, no key) |
+| 77   | Auth required (`LINEAR_API_KEY` unset)   |
+| 78   | Config error (malformed adapter)         |
+
+See `docs/reference/exit-codes.md` for how agents detect and handle each
+exit code.
+
+---
+
+# Page: Guide Index
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/guide/
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide.md
+
+<!-- Generated from docs/guide/index.md. Do not edit this copy directly. -->
+
+# Guide Index
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/guide/
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide.md
+- Section: Guides
+
+Use these pages when you are trying to accomplish a task.
+
+| Task                    | Page                                 |
+| ----------------------- | ------------------------------------ |
+| Install and run Uni-CLI | [Getting Started](/guide/getting-started) |
+| Connect an agent client | [Integrations](/guide/integrations)       |
+| Create an adapter       | [Adapters](/guide/adapters)               |
+| Repair a broken command | [Self-Repair](/guide/self-repair)         |
+| Combine commands        | [Recipes](/RECIPES)                  |
+
+Reference pages stay under [Reference](/reference/) and should describe
+contracts rather than walk through a workflow.
+
+---
+
+# Page: Adapters
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/guide/adapters
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/adapters.md
+
+<!-- Generated from docs/guide/adapters.md. Do not edit this copy directly. -->
+
+# Adapters
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/guide/adapters
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/adapters.md
+- Section: Guides
+- Parent: Guides (/guide/)
+
+An adapter maps one site or tool to a set of CLI commands. Uni-CLI supports five adapter types, each optimized for a different integration surface.
+
+## Adapter Types
+
+| Type      | Surface              | Auth                    | Example Sites                |
+| --------- | -------------------- | ----------------------- | ---------------------------- |
+| `web-api` | HTTP APIs            | None, cookie, or header | hackernews, reddit, bilibili |
+| `browser` | Full browser control | Chrome session          | chatgpt, notion, discord     |
+| `desktop` | Local subprocess     | None                    | ffmpeg, imagemagick, blender |
+| `bridge`  | Existing CLIs        | Passthrough             | gh, docker, vercel, yt-dlp   |
+| `service` | WebSocket / HTTP     | API key or none         | ollama, obs-studio, comfyui  |
+
+## YAML Format
+
+Most adapters are ~20 lines of YAML. No imports, no build step, no runtime dependencies.
+
+```yaml
+site: example
+name: command-name
+type: web-api
+strategy: public
+pipeline:
+  - fetch: { url: "https://api.example.com/data" }
+  - select: "items"
+  - map: { title: "${{ item.title }}", score: "${{ item.score }}" }
+columns: [title, score]
+```
+
+## web-api — HTTP APIs
+
+The most common type. Fetches data from REST APIs, transforms the response with pipeline steps.
+
+### Public API (no auth)
+
+```yaml
+site: hackernews
+name: top
+description: Top stories from Hacker News
+type: web-api
+strategy: public
+pipeline:
+  - fetch:
+      url: "https://hacker-news.firebaseio.com/v0/topstories.json"
+  - limit: 30
+  - each:
+      parallel: 10
+      pipeline:
+        - fetch:
+            url: "https://hacker-news.firebaseio.com/v0/item/${{ item }}.json"
+  - map:
+      title: "${{ item.title }}"
+      score: "${{ item.score }}"
+      by: "${{ item.by }}"
+      url: "${{ item.url }}"
+columns: [title, score, by, url]
+```
+
+### Cookie-authenticated API
+
+```yaml
+site: bilibili
+name: feed
+description: Personal feed (requires login)
+type: web-api
+strategy: cookie
+pipeline:
+  - fetch:
+      url: "https://api.bilibili.com/x/web-interface/wbi/index/top/feed/rcmd"
+      params:
+        ps: 20
+  - select: "data.item"
+  - map:
+      title: "${{ item.title }}"
+      author: "${{ item.owner.name }}"
+      view: "${{ item.stat.view }}"
+      url: "https://www.bilibili.com/video/${{ item.bvid }}"
+columns: [title, author, view, url]
+```
+
+### Header-authenticated API (cookie + CSRF)
+
+```yaml
+site: twitter
+name: timeline
+description: Home timeline
+type: web-api
+strategy: header
+pipeline:
+  - fetch:
+      url: "https://api.x.com/graphql/timeline"
+      method: POST
+      body:
+        variables:
+          count: 20
+  - select: "data.home.timeline_items"
+  - map:
+      text: "${{ item.content.text }}"
+      author: "${{ item.core.user.screen_name }}"
+      likes: "${{ item.engagement.likes }}"
+columns: [author, text, likes]
+```
+
+## browser — Full Browser Automation
+
+For sites with no public API or heavy anti-bot protection. Drives Chrome via CDP.
+
+### Intercept mode (capture network requests)
+
+```yaml
+site: xiaohongshu
+name: trending
+description: Trending posts
+type: browser
+strategy: intercept
+pipeline:
+  - navigate:
+      url: "https://www.xiaohongshu.com/explore"
+      waitUntil: networkidle
+  - intercept:
+      pattern: "**/api/sns/web/v1/homefeed"
+      trigger: "scroll:down"
+      timeout: 10000
+  - select: "data.items"
+  - map:
+      title: "${{ item.note_card.title }}"
+      likes: "${{ item.note_card.interact_info.liked_count }}"
+columns: [title, likes]
+```
+
+### UI mode (interact with page elements)
+
+```yaml
+site: chatgpt
+name: ask
+description: Send a prompt to ChatGPT
+type: browser
+strategy: ui
+args:
+  - name: prompt
+    required: true
+    positional: true
+pipeline:
+  - navigate:
+      url: "https://chatgpt.com"
+  - wait: "#prompt-textarea"
+  - click: "#prompt-textarea"
+  - type:
+      selector: "#prompt-textarea"
+      text: "${{ args.prompt }}"
+  - press: Enter
+  - wait: 5000
+  - snapshot: { interactive: false }
+```
+
+## desktop — Local Software
+
+Runs local executables via subprocess. No network, no browser.
+
+```yaml
+site: ffmpeg
+name: info
+description: Show media file information
+type: desktop
+binary: ffmpeg
+detect: "ffmpeg -version"
+args:
+  - name: file
+    required: true
+    positional: true
+pipeline:
+  - exec:
+      command: "ffprobe"
+      args:
+        [
+          "-v",
+          "quiet",
+          "-print_format",
+          "json",
+          "-show_format",
+          "-show_streams",
+          "${{ args.file }}",
+        ]
+      parse: json
+  - map:
+      format: "${{ item.format.format_long_name }}"
+      duration: "${{ item.format.duration }}"
+      size: "${{ item.format.size }}"
+      streams: "${{ item.streams.length }}"
+columns: [format, duration, size, streams]
+```
+
+### Using write_temp for scripts
+
+For tools that accept script files (GIMP Script-Fu, Blender Python):
+
+```yaml
+site: gimp
+name: resize
+description: Resize an image
+type: desktop
+binary: gimp
+args:
+  - name: file
+    required: true
+    positional: true
+  - name: width
+    required: true
+    type: int
+pipeline:
+  - write_temp:
+      ext: ".scm"
+      content: |
+        (let* ((image (car (gimp-file-load RUN-NONINTERACTIVE "${{ args.file }}" "${{ args.file }}")))
+               (drawable (car (gimp-image-get-active-drawable image))))
+          (gimp-image-scale-full image ${{ args.width }} 0 INTERPOLATION-CUBIC)
+          (gimp-file-overwrite RUN-NONINTERACTIVE image drawable "${{ args.file }}" "${{ args.file }}"))
+  - exec:
+      command: "gimp"
+      args:
+        [
+          "-i",
+          "-b",
+          '(gimp-script-fu-console-run 0 "${{ steps.write_temp.path }}")',
+        ]
+```
+
+## bridge — CLI Passthrough
+
+Wraps an existing CLI tool, parsing its output into structured data.
+
+```yaml
+site: gh
+name: repos
+description: List GitHub repositories
+type: bridge
+binary: gh
+autoInstall: "brew install gh"
+detect: "gh --version"
+pipeline:
+  - exec:
+      command: "gh"
+      args:
+        [
+          "repo",
+          "list",
+          "--json",
+          "name,description,stargazerCount,updatedAt",
+          "--limit",
+          "20",
+        ]
+      parse: json
+  - map:
+      name: "${{ item.name }}"
+      description: "${{ item.description }}"
+      stars: "${{ item.stargazerCount }}"
+      updated: "${{ item.updatedAt }}"
+columns: [name, stars, description, updated]
+```
+
+Bridge adapters can declare `autoInstall` — Uni-CLI will suggest the install command if the binary is missing.
+
+## service — WebSocket and HTTP Services
+
+For persistent connections to local or remote services.
+
+```yaml
+site: obs-studio
+name: scene
+description: Get current OBS scene
+type: service
+health: "http://localhost:4455"
+pipeline:
+  - websocket:
+      url: "ws://localhost:4455"
+      auth: obs
+      send:
+        op: 6
+        d:
+          requestType: GetCurrentProgramScene
+          requestId: "1"
+      receive:
+        match: { "d.requestId": "1" }
+  - select: "d.responseData"
+  - map:
+      scene: "${{ item.sceneName }}"
+      uuid: "${{ item.sceneUuid }}"
+columns: [scene, uuid]
+```
+
+## TypeScript Adapters
+
+For complex logic that exceeds what YAML can express, use TypeScript:
+
+```typescript
+import { cli, Strategy } from "../../registry.js";
+
+cli({
+  site: "example",
+  name: "search",
+  description: "Search with pagination",
+  strategy: Strategy.COOKIE,
+  args: [
+    { name: "query", required: true, positional: true },
+    { name: "page", type: "int", default: 1 },
+  ],
+  func: async (page, kwargs) => {
+    const resp = await fetch(
+      `https://api.example.com/search?q=${kwargs.query}&p=${kwargs.page}`,
+    );
+    const data = await resp.json();
+    return data.results.map((r: Record<string, unknown>) => ({
+      title: r.title,
+      url: r.url,
+    }));
+  },
+});
+```
+
+TypeScript adapters use the `cli()` helper from the registry. They have full access to the `IPage` interface for browser automation.
+
+## File Locations
+
+| Location                          | Purpose                           |
+| --------------------------------- | --------------------------------- |
+| `src/adapters/SITE/`              | Built-in adapters (ship with npm) |
+| `~/.unicli/adapters/SITE/`        | User-local overrides              |
+| `~/.unicli/adapters/SITE/CMD.yml` | Single command override           |
+
+User-local adapters take precedence over built-in ones. This is how self-repair works — an agent edits the YAML in `~/.unicli/adapters/`, and the fix survives `npm update`.
+
+## Arguments
+
+Adapters declare arguments in the `args` field:
+
+```yaml
+args:
+  - name: query
+    required: true
+    positional: true # unicli site cmd "my query"
+    description: Search term
+  - name: limit
+    type: int
+    default: 20
+    description: Max results
+  - name: sort
+    choices: [hot, new, top]
+    default: hot
+```
+
+| Field         | Type     | Description                      |
+| ------------- | -------- | -------------------------------- |
+| `name`        | string   | Argument name (becomes `--name`) |
+| `type`        | string   | `str`, `int`, `float`, or `bool` |
+| `required`    | boolean  | Fail if missing                  |
+| `positional`  | boolean  | Can be passed without `--name`   |
+| `default`     | any      | Default value                    |
+| `choices`     | string[] | Allowed values                   |
+| `description` | string   | Help text                        |
+
+---
+
+# Page: Self-Repair
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/guide/self-repair
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/self-repair.md
+
+<!-- Generated from docs/guide/self-repair.md. Do not edit this copy directly. -->
+
+# Self-Repair
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/guide/self-repair
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/self-repair.md
+- Section: Guides
+- Parent: Guides (/guide/)
+
+The web breaks constantly. Selectors change, APIs version, auth tokens rotate,
+desktop permission channels disappear, and CLIs change flags. Uni-CLI is
+designed to fail as data, not as an opaque log line.
+
+## The Problem
+
+Traditional scrapers and API wrappers fail silently or catastrophically when the target changes. The fix cycle is slow: notice failure, read logs, find the change, edit code, test, deploy.
+
+Uni-CLI compresses this cycle by making adapters readable, errors structured
+as v2 `AgentEnvelope` objects, and fixes persistent through the
+`~/.unicli/adapters/` overlay.
+
+## Repair Levels
+
+### Level 0: Auto-Retry
+
+Transient failures (network timeouts, rate limits, 5xx errors) are retried automatically with exponential backoff.
+
+```
+Request failed (503) → wait 1s → retry → wait 2s → retry → wait 4s → retry → give up
+```
+
+Configuration is per-step in the pipeline:
+
+```yaml
+pipeline:
+  - fetch:
+      url: "https://api.example.com/data"
+      retry: 3
+      backoff: exponential
+```
+
+Exit code `75` (temporary failure) signals the agent to retry the entire command later.
+
+### Level 1: Auto-Fix
+
+When a pipeline step fails, the engine preserves enough failure context for the
+next actor:
+
+- **Selector miss**: a CSS selector or JSON path matched nothing.
+- **Empty result**: the upstream returned data but the adapter projected none of it.
+- **Schema change**: expected fields are missing or renamed.
+- **Auth/permission failure**: cookies, local app automation, or platform permissions are unavailable.
+
+These diagnostics appear in the structured error output, giving the next level
+(agent-assisted repair) a bounded starting point.
+
+### Level 2: Agent-Assisted
+
+This is Uni-CLI's core differentiator. When a command fails, the error is emitted as a structured envelope:
+
+```json
+{
+  "ok": false,
+  "schema_version": "2",
+  "command": "bilibili.feed",
+  "meta": { "duration_ms": 82 },
+  "data": null,
+  "error": {
+    "code": "selector_miss",
+    "message": "select path returned no rows",
+    "adapter_path": "/Users/you/.unicli/adapters/bilibili/feed.yml",
+    "step": 3,
+    "suggestion": "Try: select: data.result.feeds",
+    "retryable": false,
+    "alternatives": ["bilibili.search"]
+  }
+}
+```
+
+An AI agent reads this error, opens the 20-line YAML at `adapter_path`, applies the fix, and retries:
+
+```
+unicli bilibili feed
+  → fails with structured error JSON
+  → agent reads error: selector_miss at step 3
+  → agent reads ~/.unicli/adapters/bilibili/feed.yml
+  → agent changes "data.items" to "data.result.feeds"
+  → agent runs: unicli bilibili feed
+  → success
+```
+
+The fix persists in `~/.unicli/adapters/` and survives `npm update` because user-local adapters override built-in ones.
+
+### Level 3: Community Fix
+
+When many agents encounter the same failure, the fix propagates through the adapter registry:
+
+1. Agent fixes a broken adapter locally
+2. Agent submits the fix (PR or registry update)
+3. Other users receive the fix via `npm update` or adapter sync
+
+The `unicli repair` command helps diagnose issues:
+
+```bash
+unicli repair bilibili feed
+```
+
+This runs the adapter, catches the failure, and prints a detailed diagnostic report with the suggested fix.
+
+### Level 4: AI Generation
+
+For entirely new sites with no existing adapter, agents can generate one from scratch:
+
+1. **Record**: `unicli record https://example.com` opens Chrome, records your interactions, and captures network requests.
+2. **Generate**: The recording is translated into a YAML adapter draft.
+3. **Test**: `unicli test example` verifies the generated adapter works.
+4. **Iterate**: The agent refines the YAML based on test output.
+
+## Structured Errors
+
+Every error includes enough context for an agent to act without asking a human:
+
+| Field                | Type    | Description                                                   |
+| -------------------- | ------- | ------------------------------------------------------------- |
+| `ok`                 | boolean | `false` for failures                                          |
+| `schema_version`     | string  | Envelope schema, currently `"2"`                              |
+| `command`            | string  | Fully qualified command, such as `bilibili.feed`              |
+| `error.code`         | string  | Stable error code, such as `selector_miss` or `auth_required` |
+| `error.message`      | string  | Human-readable failure detail                                 |
+| `error.adapter_path` | string  | Adapter file to inspect                                       |
+| `error.step`         | number  | Pipeline step index when known                                |
+| `error.suggestion`   | string  | Actionable next step                                          |
+| `error.retryable`    | boolean | Whether retrying the same command may help                    |
+| `error.alternatives` | array   | Nearby commands to try                                        |
+
+## Error Types
+
+| Error code                            | Meaning                                 | Typical fix                                 |
+| ------------------------------------- | --------------------------------------- | ------------------------------------------- |
+| `selector_miss`                       | CSS selector or JSON path missed        | Update selector in YAML                     |
+| `auth_required` / `not_authenticated` | Cookie/token missing or expired         | `unicli auth setup SITE`                    |
+| `network_error`                       | Connection failed                       | Check network, retry later                  |
+| `rate_limited`                        | Too many requests                       | Wait, add `rate_limit` or lower `limit`     |
+| `unavailable`                         | Required local runtime is missing       | Install or grant permission                 |
+| `invalid_input`                       | Argument failed validation              | Fix args or adapter schema                  |
+| `internal_error`                      | Runtime bug or unhandled upstream shape | Run `unicli repair` and inspect the adapter |
+
+## Repair Workflow
+
+The `unicli repair` command automates diagnosis:
+
+```bash
+# Diagnose a specific command
+unicli repair bilibili feed
+
+# Test all commands for a site
+unicli test bilibili
+
+# Test all adapters
+unicli test
+```
+
+`unicli repair` runs the command, catches the failure, and outputs a structured diagnostic that includes:
+
+- The exact step that failed
+- The current YAML configuration
+- The actual response shape when available
+- A suggested fix
+
+## Design Principles
+
+1. **Errors are data, not strings.** JSON to stderr, parseable by any agent.
+2. **Adapters are small.** YAML-first adapters are short enough for an agent to inspect directly.
+3. **Fixes are local.** `~/.unicli/adapters/` overrides survive updates. No fork needed.
+4. **Exit codes are semantic.** `sysexits.h` codes tell agents _what kind_ of failure occurred.
+5. **Suggestions are actionable.** "Try: select: data.result.feeds" — not "something went wrong."
+
+---
+
+# Page: Reference Index
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/reference/
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference.md
+
+<!-- Generated from docs/reference/index.md. Do not edit this copy directly. -->
+
+# Reference Index
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/reference/
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference.md
+- Section: Reference
+
+Use these pages when you need exact behavior, fields, commands, or release
+rules.
+
+| Contract              | Page                               |
+| --------------------- | ---------------------------------- |
+| Adapter schema        | [Adapter Format](/ADAPTER-FORMAT)  |
+| Supported sites       | [Sites Catalog](/reference/sites)           |
+| Pipeline step catalog | [Pipeline Steps](/reference/pipeline)       |
+| Process exit behavior | [Exit Codes](/reference/exit-codes)         |
+| Maintenance commands  | [Maintenance Tools](/reference/maintenance) |
+| Plugin public API     | [Plugin Authoring](/PLUGIN)        |
+| Release mechanics     | [Release](/reference/release)               |
+
+The reference section should stay terse and scan-friendly. Put task walkthroughs
+in [Guides](/guide/) and broader rationale in the explanation pages.
+
+---
+
+# Page: Sites Catalog
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/reference/sites
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/sites.md
+
+<!-- Generated from docs/reference/sites.md. Do not edit this copy directly. -->
+
+# Sites Catalog
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/reference/sites
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/sites.md
+- Section: Reference
+- Parent: Reference (/reference/)
+
+Uni-CLI publishes the same generated adapter manifest to the docs site that the
+CLI uses for discovery. This page is the human-readable catalog: filter by
+surface, search by site or command, and inspect representative commands before
+running `unicli search`.
+
+## Generated Site Catalog
+
+This catalog is generated from the adapter manifest: 223 sites, 1304 commands.
+
+| Site | Surface | Commands | Auth | Example commands |
+| --- | --- | ---: | --- | --- |
+| 1688 | web-api | 3 | yes | unicli 1688 item<br>unicli 1688 search<br>unicli 1688 store |
+| 36kr | web-api | 5 | no | unicli 36kr article<br>unicli 36kr hot<br>unicli 36kr latest |
+| adguardhome | service | 5 | no | unicli adguardhome add-rule<br>unicli adguardhome rules<br>unicli adguardhome stats |
+| amazon | web-api | 8 | yes | unicli amazon bestsellers<br>unicli amazon discussion<br>unicli amazon movers-shakers |
+| apple-music | browser | 1 | yes | unicli apple-music rate-album |
+| apple-notes | desktop | 3 | no | unicli apple-notes list<br>unicli apple-notes read<br>unicli apple-notes search |
+| apple-podcasts | web-api | 3 | no | unicli apple-podcasts episodes<br>unicli apple-podcasts search<br>unicli apple-podcasts top |
+| arxiv | web-api | 3 | no | unicli arxiv paper<br>unicli arxiv search<br>unicli arxiv trending |
+| audacity | desktop | 8 | no | unicli audacity convert<br>unicli audacity effects<br>unicli audacity info |
+| autoagent | bridge | 1 | no | unicli autoagent eval-run |
+| aws | bridge | 1 | no | unicli aws s3-ls |
+| az | bridge | 1 | no | unicli az account |
+| baidu | web-api | 2 | yes | unicli baidu hot<br>unicli baidu search |
+| band | web-api | 4 | yes | unicli band bands<br>unicli band mentions<br>unicli band post |
+| barchart | web-api | 4 | yes | unicli barchart flow<br>unicli barchart greeks<br>unicli barchart options |
+| bbc | web-api | 4 | no | unicli bbc news<br>unicli bbc technology<br>unicli bbc top |
+| bilibili | web-api | 17 | yes | unicli bilibili coin<br>unicli bilibili dynamic<br>unicli bilibili favorites |
+| binance | web-api | 3 | no | unicli binance hot<br>unicli binance kline<br>unicli binance ticker |
+| blender | desktop | 13 | no | unicli blender animation<br>unicli blender camera<br>unicli blender convert |
+| bloomberg | web-api | 10 | no | unicli bloomberg businessweek<br>unicli bloomberg economics<br>unicli bloomberg feeds |
+| bluesky | web-api | 12 | yes | unicli bluesky feeds<br>unicli bluesky followers<br>unicli bluesky following |
+| boss | web-api | 14 | yes | unicli boss batchgreet<br>unicli boss chatlist<br>unicli boss chatmsg |
+| chaoxing | web-api | 2 | yes | unicli chaoxing assignments<br>unicli chaoxing exams |
+| chrome | desktop | 2 | no | unicli chrome bookmarks<br>unicli chrome tabs |
+| claude-code | bridge | 1 | no | unicli claude-code version |
+| cloudcompare | desktop | 4 | no | unicli cloudcompare compare<br>unicli cloudcompare convert<br>unicli cloudcompare info |
+| cnki | web-api | 1 | no | unicli cnki search |
+| cnn | web-api | 2 | no | unicli cnn technology<br>unicli cnn top |
+| cocoapods | web-api | 2 | no | unicli cocoapods info<br>unicli cocoapods search |
+| codex | web-api | 15 | no | unicli codex extract-diff<br>unicli codex ask<br>unicli codex send |
+| codex-cli | bridge | 1 | no | unicli codex-cli version |
+| coinbase | web-api | 2 | no | unicli coinbase prices<br>unicli coinbase rates |
+| comfyui | service | 4 | no | unicli comfyui generate<br>unicli comfyui history<br>unicli comfyui nodes |
+| coupang | web-api | 3 | yes | unicli coupang add-to-cart<br>unicli coupang hot<br>unicli coupang search |
+| crates-io | web-api | 3 | no | unicli crates-io info<br>unicli crates-io search<br>unicli crates-io versions |
+| ctrip | web-api | 2 | no | unicli ctrip hot<br>unicli ctrip search |
+| cua | bridge | 2 | no | unicli cua bench-list<br>unicli cua bench-run |
+| cursor | web-api | 18 | no | unicli cursor composer<br>unicli cursor extract-code<br>unicli cursor export |
+| dangdang | web-api | 2 | yes | unicli dangdang hot<br>unicli dangdang search |
+| deepseek | web-api | 2 | yes | unicli deepseek chat<br>unicli deepseek models |
+| devto | web-api | 5 | no | unicli devto latest<br>unicli devto search<br>unicli devto tag |
+| dianping | web-api | 2 | yes | unicli dianping hot<br>unicli dianping search |
+| dictionary | web-api | 3 | no | unicli dictionary examples<br>unicli dictionary search<br>unicli dictionary synonyms |
+| dingtalk | bridge | 8 | no | unicli dingtalk version<br>unicli dingtalk open-app<br>unicli dingtalk status-app |
+| discord-app | web-api | 15 | no | unicli discord-app servers<br>unicli discord-app channels<br>unicli discord-app read |
+| docker | desktop | 7 | no | unicli docker build<br>unicli docker images<br>unicli docker logs |
+| docker-hub | web-api | 3 | no | unicli docker-hub info<br>unicli docker-hub search<br>unicli docker-hub tags |
+| doctl | bridge | 1 | no | unicli doctl droplets |
+| douban | web-api | 12 | yes | unicli douban book-hot<br>unicli douban download<br>unicli douban group-hot |
+| doubao | web-api | 3 | yes | unicli doubao ask<br>unicli doubao new<br>unicli doubao status |
+| doubao-web | web-api | 9 | yes | unicli doubao-web ask<br>unicli doubao-web detail<br>unicli doubao-web history |
+| douyin | web-api | 13 | yes | unicli douyin activities<br>unicli douyin collections<br>unicli douyin delete |
+| douyu | web-api | 2 | yes | unicli douyu hot<br>unicli douyu search |
+| drawio | desktop | 1 | no | unicli drawio export |
+| eastmoney | web-api | 4 | no | unicli eastmoney fund<br>unicli eastmoney hot<br>unicli eastmoney market |
+| ele | web-api | 2 | yes | unicli ele hot<br>unicli ele search |
+| excel | desktop | 7 | no | unicli excel insert-image<br>unicli excel insert-link<br>unicli excel list |
+| exchangerate | web-api | 2 | no | unicli exchangerate convert<br>unicli exchangerate list |
+| facebook | web-api | 12 | yes | unicli facebook add-friend<br>unicli facebook events<br>unicli facebook feed |
+| feishu | bridge | 4 | no | unicli feishu calendar<br>unicli feishu docs<br>unicli feishu send |
+| ffmpeg | desktop | 11 | no | unicli ffmpeg compress<br>unicli ffmpeg concat<br>unicli ffmpeg convert |
+| figma | browser | 8 | yes | unicli figma export-selected<br>unicli figma open-app<br>unicli figma status-app |
+| flyctl | bridge | 1 | no | unicli flyctl apps |
+| freecad | desktop | 15 | no | unicli freecad assembly<br>unicli freecad bom<br>unicli freecad boolean |
+| futu | web-api | 2 | yes | unicli futu hot<br>unicli futu quote |
+| gcloud | bridge | 1 | no | unicli gcloud projects |
+| gemini | web-api | 5 | yes | unicli gemini ask<br>unicli gemini deep-research-result<br>unicli gemini deep-research |
+| gh | bridge | 6 | no | unicli gh issue<br>unicli gh pr<br>unicli gh release |
+| gimp | desktop | 12 | no | unicli gimp adjust<br>unicli gimp batch<br>unicli gimp convert |
+| gitee | web-api | 3 | no | unicli gitee repos<br>unicli gitee search<br>unicli gitee trending |
+| github-trending | web-api | 3 | no | unicli github-trending daily<br>unicli github-trending developers<br>unicli github-trending weekly |
+| gitlab | web-api | 3 | no | unicli gitlab projects<br>unicli gitlab search<br>unicli gitlab trending |
+| godot | desktop | 2 | no | unicli godot project-run<br>unicli godot scene-export |
+| google | web-api | 4 | no | unicli google news<br>unicli google search<br>unicli google suggest |
+| grok | web-api | 1 | yes | unicli grok ask |
+| hackernews | web-api | 10 | no | unicli hackernews ask<br>unicli hackernews best<br>unicli hackernews comments |
+| hermes | desktop | 3 | no | unicli hermes sessions-search<br>unicli hermes skills-list<br>unicli hermes skills-read |
+| hf | web-api | 4 | no | unicli hf datasets<br>unicli hf models<br>unicli hf spaces |
+| homebrew | web-api | 2 | no | unicli homebrew info<br>unicli homebrew search |
+| huggingface-papers | web-api | 2 | no | unicli huggingface-papers daily<br>unicli huggingface-papers search |
+| hupu | web-api | 7 | yes | unicli hupu detail<br>unicli hupu hot<br>unicli hupu like |
+| imagemagick | desktop | 6 | no | unicli imagemagick compare<br>unicli imagemagick composite<br>unicli imagemagick convert |
+| imdb | web-api | 7 | no | unicli imdb box-office<br>unicli imdb person<br>unicli imdb reviews |
+| imessage | desktop | 3 | no | unicli imessage contact<br>unicli imessage recent<br>unicli imessage search |
+| infoq | web-api | 2 | no | unicli infoq articles<br>unicli infoq latest |
+| inkscape | desktop | 3 | no | unicli inkscape convert<br>unicli inkscape export<br>unicli inkscape optimize |
+| instagram | web-api | 26 | yes | unicli instagram activity<br>unicli instagram comment<br>unicli instagram explore |
+| ip-info | web-api | 1 | no | unicli ip-info lookup |
+| itch-io | web-api | 3 | no | unicli itch-io popular<br>unicli itch-io search<br>unicli itch-io top |
+| ithome | web-api | 3 | no | unicli ithome hot<br>unicli ithome latest<br>unicli ithome news |
+| jd | web-api | 3 | yes | unicli jd hot<br>unicli jd item<br>unicli jd search |
+| jianyu | browser | 1 | yes | unicli jianyu search |
+| jike | browser | 10 | yes | unicli jike feed<br>unicli jike notifications<br>unicli jike post |
+| jimeng | web-api | 2 | yes | unicli jimeng generate<br>unicli jimeng history |
+| jq | bridge | 2 | no | unicli jq format<br>unicli jq query |
+| kdenlive | desktop | 3 | no | unicli kdenlive effects<br>unicli kdenlive info<br>unicli kdenlive render |
+| ke | browser | 2 | yes | unicli ke ershoufang<br>unicli ke xiaoqu |
+| krita | desktop | 4 | no | unicli krita batch<br>unicli krita convert<br>unicli krita export |
+| kuaishou | web-api | 2 | yes | unicli kuaishou hot<br>unicli kuaishou search |
+| lark | bridge | 8 | no | unicli lark version<br>unicli lark open-app<br>unicli lark status-app |
+| lesswrong | web-api | 15 | no | unicli lesswrong comments<br>unicli lesswrong curated<br>unicli lesswrong frontpage |
+| libreoffice | desktop | 2 | no | unicli libreoffice convert<br>unicli libreoffice print |
+| linear | web-api | 10 | no | unicli linear issue-create<br>unicli linear issue-list<br>unicli linear issue-update |
+| linkedin | web-api | 4 | yes | unicli linkedin jobs<br>unicli linkedin profile<br>unicli linkedin search |
+| linux-do | web-api | 10 | yes | unicli linux-do categories<br>unicli linux-do category<br>unicli linux-do feed |
+| lobsters | web-api | 5 | no | unicli lobsters active<br>unicli lobsters hot<br>unicli lobsters newest |
+| macos | desktop | 58 | no | unicli macos active-app<br>unicli macos apps-list<br>unicli macos apps |
+| maimai | browser | 1 | yes | unicli maimai search |
+| maoyan | web-api | 2 | yes | unicli maoyan hot<br>unicli maoyan search |
+| mastodon | web-api | 4 | no | unicli mastodon search<br>unicli mastodon timeline<br>unicli mastodon trending |
+| medium | web-api | 5 | no | unicli medium article<br>unicli medium feed<br>unicli medium search |
+| meituan | web-api | 1 | yes | unicli meituan search |
+| mermaid | desktop | 1 | no | unicli mermaid render |
+| minimax | web-api | 3 | yes | unicli minimax chat<br>unicli minimax models<br>unicli minimax tts |
+| motion-studio | web-api | 1 | no | unicli motion-studio component-get |
+| mubu | web-api | 2 | yes | unicli mubu list<br>unicli mubu search |
+| musescore | desktop | 5 | no | unicli musescore convert<br>unicli musescore export<br>unicli musescore info |
+| neonctl | bridge | 1 | no | unicli neonctl projects |
+| netease-music | web-api | 17 | no | unicli netease-music hot<br>unicli netease-music playlist<br>unicli netease-music search |
+| netlify | bridge | 1 | no | unicli netlify sites |
+| notebooklm | web-api | 15 | yes | unicli notebooklm current<br>unicli notebooklm get<br>unicli notebooklm history |
+| notion | web-api | 18 | yes | unicli notion databases<br>unicli notion pages<br>unicli notion search |
+| novita | service | 3 | no | unicli novita generate<br>unicli novita models<br>unicli novita status |
+| npm | web-api | 4 | no | unicli npm downloads<br>unicli npm info<br>unicli npm search |
+| npm-trends | web-api | 2 | no | unicli npm-trends compare<br>unicli npm-trends trending |
+| nytimes | web-api | 2 | no | unicli nytimes search<br>unicli nytimes top |
+| obs | service | 8 | no | unicli obs record-start<br>unicli obs record-stop<br>unicli obs scenes |
+| obsidian | desktop | 10 | no | unicli obsidian daily<br>unicli obsidian open<br>unicli obsidian search |
+| ollama | service | 4 | no | unicli ollama generate<br>unicli ollama list<br>unicli ollama models |
+| ones | web-api | 11 | yes | unicli ones enrich-tasks<br>unicli ones login<br>unicli ones logout |
+| opencode | bridge | 1 | no | unicli opencode version |
+| openharness | desktop | 2 | no | unicli openharness memory-read<br>unicli openharness skills-list |
+| openrouter | web-api | 2 | no | unicli openrouter models<br>unicli openrouter search |
+| pandoc | desktop | 1 | no | unicli pandoc convert |
+| paperreview | web-api | 3 | no | unicli paperreview feedback<br>unicli paperreview review<br>unicli paperreview submit |
+| perplexity | web-api | 8 | yes | unicli perplexity ask<br>unicli perplexity open-app<br>unicli perplexity status-app |
+| pexels | web-api | 2 | yes | unicli pexels curated<br>unicli pexels search |
+| pinduoduo | web-api | 2 | yes | unicli pinduoduo hot<br>unicli pinduoduo search |
+| pixiv | web-api | 6 | yes | unicli pixiv detail<br>unicli pixiv download<br>unicli pixiv illusts |
+| powerpoint | desktop | 7 | no | unicli powerpoint add-slide<br>unicli powerpoint insert-image<br>unicli powerpoint insert-link |
+| producthunt | web-api | 5 | no | unicli producthunt browse<br>unicli producthunt hot<br>unicli producthunt posts |
+| pscale | bridge | 1 | no | unicli pscale databases |
+| pypi | web-api | 3 | no | unicli pypi info<br>unicli pypi search<br>unicli pypi versions |
+| quark | web-api | 2 | yes | unicli quark ls<br>unicli quark search |
+| qweather | web-api | 2 | no | unicli qweather forecast<br>unicli qweather now |
+| railway | bridge | 1 | no | unicli railway deploy |
+| reddit | web-api | 20 | yes | unicli reddit comment<br>unicli reddit comments<br>unicli reddit read |
+| renderdoc | desktop | 2 | no | unicli renderdoc capture-list<br>unicli renderdoc frame-export |
+| replicate | web-api | 3 | yes | unicli replicate run<br>unicli replicate search<br>unicli replicate trending |
+| reuters | web-api | 4 | no | unicli reuters article<br>unicli reuters latest<br>unicli reuters search |
+| shotcut | desktop | 3 | no | unicli shotcut effects<br>unicli shotcut info<br>unicli shotcut render |
+| sinablog | browser | 4 | no | unicli sinablog article<br>unicli sinablog hot<br>unicli sinablog search |
+| sinafinance | web-api | 5 | no | unicli sinafinance market<br>unicli sinafinance news<br>unicli sinafinance rolling-news |
+| sketch | desktop | 3 | no | unicli sketch artboards<br>unicli sketch export<br>unicli sketch symbols |
+| slack | web-api | 14 | yes | unicli slack channels<br>unicli slack messages<br>unicli slack post |
+| slay-the-spire-ii | service | 6 | no | unicli slay-the-spire-ii deck<br>unicli slay-the-spire-ii end-turn<br>unicli slay-the-spire-ii map |
+| slock | browser | 1 | yes | unicli slock servers |
+| smzdm | web-api | 3 | yes | unicli smzdm article<br>unicli smzdm hot<br>unicli smzdm search |
+| spotify | web-api | 17 | yes | unicli spotify now-playing<br>unicli spotify playlists<br>unicli spotify search |
+| sspai | web-api | 2 | no | unicli sspai hot<br>unicli sspai latest |
+| stackoverflow | web-api | 6 | no | unicli stackoverflow bounties<br>unicli stackoverflow hot<br>unicli stackoverflow question |
+| stagehand | bridge | 1 | no | unicli stagehand wrap-observe |
+| steam | web-api | 6 | no | unicli steam app-details<br>unicli steam new-releases<br>unicli steam search |
+| substack | web-api | 4 | no | unicli substack feed<br>unicli substack publication<br>unicli substack search |
+| supabase | bridge | 1 | no | unicli supabase projects |
+| taobao | browser | 2 | yes | unicli taobao hot<br>unicli taobao search |
+| techcrunch | web-api | 2 | no | unicli techcrunch latest<br>unicli techcrunch search |
+| theverge | web-api | 2 | no | unicli theverge latest<br>unicli theverge search |
+| threads | web-api | 2 | yes | unicli threads hot<br>unicli threads search |
+| tieba | web-api | 4 | no | unicli tieba hot<br>unicli tieba posts<br>unicli tieba read |
+| tiktok | web-api | 16 | yes | unicli tiktok comment<br>unicli tiktok explore<br>unicli tiktok follow |
+| toutiao | web-api | 2 | yes | unicli toutiao hot<br>unicli toutiao search |
+| twitch | web-api | 4 | yes | unicli twitch games<br>unicli twitch search<br>unicli twitch streams |
+| twitter | web-api | 34 | yes | unicli twitter lists<br>unicli twitter media<br>unicli twitter mentions |
+| unsplash | web-api | 2 | no | unicli unsplash random<br>unicli unsplash search |
+| v2ex | web-api | 12 | yes | unicli v2ex daily<br>unicli v2ex hot<br>unicli v2ex latest |
+| vercel | bridge | 1 | no | unicli vercel list |
+| vscode | desktop | 10 | no | unicli vscode extensions<br>unicli vscode install-ext<br>unicli vscode open |
+| web | web-api | 1 | no | unicli web read |
+| wechat-channels | web-api | 2 | yes | unicli wechat-channels hot<br>unicli wechat-channels search |
+| weibo | web-api | 10 | yes | unicli weibo comments<br>unicli weibo feed<br>unicli weibo hot |
+| weixin | browser | 4 | yes | unicli weixin article<br>unicli weixin download<br>unicli weixin hot |
+| weread | web-api | 7 | yes | unicli weread book<br>unicli weread highlights<br>unicli weread notebooks |
+| wikipedia | web-api | 5 | no | unicli wikipedia random<br>unicli wikipedia search<br>unicli wikipedia summary |
+| wiremock | service | 5 | no | unicli wiremock create-stub<br>unicli wiremock delete-stub<br>unicli wiremock reset |
+| word | desktop | 7 | no | unicli word insert-image<br>unicli word insert-link<br>unicli word insert-text |
+| wrangler | bridge | 1 | no | unicli wrangler list |
+| xianyu | web-api | 3 | yes | unicli xianyu chat<br>unicli xianyu item<br>unicli xianyu search |
+| xiaoe | web-api | 5 | yes | unicli xiaoe catalog<br>unicli xiaoe content<br>unicli xiaoe courses |
+| xiaohongshu | web-api | 22 | yes | unicli xiaohongshu feed<br>unicli xiaohongshu follow<br>unicli xiaohongshu hashtag |
+| xiaoyuzhou | web-api | 3 | no | unicli xiaoyuzhou episode<br>unicli xiaoyuzhou podcast-episodes<br>unicli xiaoyuzhou podcast |
+| xueqiu | web-api | 12 | yes | unicli xueqiu comments<br>unicli xueqiu earnings-date<br>unicli xueqiu feed |
+| yahoo-finance | web-api | 3 | no | unicli yahoo-finance quote<br>unicli yahoo-finance search<br>unicli yahoo-finance trending |
+| ycombinator | web-api | 1 | no | unicli ycombinator launches |
+| yollomi | web-api | 12 | yes | unicli yollomi background<br>unicli yollomi edit<br>unicli yollomi face-swap |
+| youtube | web-api | 8 | yes | unicli youtube playlist<br>unicli youtube shorts<br>unicli youtube trending |
+| yt-dlp | bridge | 4 | no | unicli yt-dlp download<br>unicli yt-dlp extract-audio<br>unicli yt-dlp info |
+| yuanbao | web-api | 3 | yes | unicli yuanbao ask<br>unicli yuanbao new<br>unicli yuanbao shared |
+| zhihu | web-api | 21 | yes | unicli zhihu answer<br>unicli zhihu answers<br>unicli zhihu article |
+| zoom | desktop | 3 | no | unicli zoom join<br>unicli zoom start<br>unicli zoom toggle-mute |
+| zotero | service | 8 | no | unicli zotero add-note<br>unicli zotero add-tag<br>unicli zotero collections |
+| zsxq | web-api | 5 | yes | unicli zsxq dynamics<br>unicli zsxq groups<br>unicli zsxq search |
+| antigravity | web-api | 14 | no | unicli antigravity ask<br>unicli antigravity send<br>unicli antigravity read |
+| chatgpt | web-api | 14 | no | unicli chatgpt ask<br>unicli chatgpt send<br>unicli chatgpt read |
+| chatwise | web-api | 14 | no | unicli chatwise ask<br>unicli chatwise send<br>unicli chatwise read |
+| doubao-app | web-api | 13 | no | unicli doubao-app ask<br>unicli doubao-app send<br>unicli doubao-app read |
+| logseq | web-api | 7 | no | unicli logseq open-app<br>unicli logseq status-app<br>unicli logseq dump |
+| typora | web-api | 7 | no | unicli typora open-app<br>unicli typora status-app<br>unicli typora dump |
+| postman | web-api | 7 | no | unicli postman open-app<br>unicli postman status-app<br>unicli postman dump |
+| insomnia | web-api | 7 | no | unicli insomnia open-app<br>unicli insomnia status-app<br>unicli insomnia dump |
+| bitwarden | web-api | 7 | no | unicli bitwarden open-app<br>unicli bitwarden status-app<br>unicli bitwarden dump |
+| signal | web-api | 7 | no | unicli signal open-app<br>unicli signal status-app<br>unicli signal dump |
+| whatsapp | web-api | 7 | no | unicli whatsapp open-app<br>unicli whatsapp status-app<br>unicli whatsapp dump |
+| teams | web-api | 7 | no | unicli teams open-app<br>unicli teams status-app<br>unicli teams dump |
+| todoist | web-api | 7 | no | unicli todoist open-app<br>unicli todoist status-app<br>unicli todoist dump |
+| github-desktop | web-api | 7 | no | unicli github-desktop open-app<br>unicli github-desktop status-app<br>unicli github-desktop dump |
+| gitkraken | web-api | 7 | no | unicli gitkraken open-app<br>unicli gitkraken status-app<br>unicli gitkraken dump |
+| docker-desktop | web-api | 7 | no | unicli docker-desktop open-app<br>unicli docker-desktop status-app<br>unicli docker-desktop dump |
+| lm-studio | web-api | 7 | no | unicli lm-studio open-app<br>unicli lm-studio status-app<br>unicli lm-studio dump |
+| claude | web-api | 7 | no | unicli claude open-app<br>unicli claude status-app<br>unicli claude dump |
+| wechat-work | web-api | 7 | no | unicli wechat-work open-app<br>unicli wechat-work status-app<br>unicli wechat-work dump |
+| zoom-app | web-api | 7 | no | unicli zoom-app open-app<br>unicli zoom-app status-app<br>unicli zoom-app dump |
+| evernote-app | web-api | 7 | no | unicli evernote-app open-app<br>unicli evernote-app status-app<br>unicli evernote-app dump |
+
+---
+
+# Page: Adapter Format
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/ADAPTER-FORMAT
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ADAPTER-FORMAT.md
+
+<!-- Generated from docs/ADAPTER-FORMAT.md. Do not edit this copy directly. -->
+
+# Adapter Format
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/ADAPTER-FORMAT
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ADAPTER-FORMAT.md
+- Section: Reference
+- Parent: Reference (/reference/)
+
+> The canonical reference for writing Uni-CLI adapters. 90% of adapters
+> are YAML; the TypeScript escape hatch covers the remaining 10% where
+> pipeline primitives are insufficient.
+
+## Principles
+
+1. **YAML first.** If the command is expressible as a finite pipeline over
+   typed steps, write YAML. The system validates, migrates, and self-repairs
+   YAML in ways it cannot do for arbitrary TypeScript.
+2. **Agent-editable.** Keep adapters under ~50 lines of YAML whenever
+   possible. Agents read and patch these files during self-repair.
+3. **Deterministic.** The pipeline must be reproducible given the same
+   inputs and upstream state. No wall-clock randomness, no hidden
+   subprocess state.
+4. **Minimum capability.** Declare the smallest transport surface the
+   command needs (`http.fetch`, not `cua.anything`). Dispatchers use this
+   to route calls safely.
+
+## Table of Contents
+
+1. [YAML schema (default path)](#yaml-schema-default-path)
+2. [TypeScript escape hatch](#typescript-escape-hatch)
+3. [Schema-v2 required fields](#schema-v2-required-fields)
+4. [Strategy → transport migration](#strategy-transport-migration)
+5. [Full examples](#full-examples)
+6. [Troubleshooting](#troubleshooting)
+
+---
+
+## YAML schema (default path)
+
+A minimum viable YAML adapter:
+
+```yaml
+site: example
+name: top
+description: "List top items from example.com"
+type: web-api
+transport: http
+strategy: public
+capabilities: [fetch, map, limit]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+
+pipeline:
+  - fetch:
+      url: "https://example.com/api/top"
+  - select: "data.items"
+  - map:
+      id: "${{ item.id }}"
+      title: "${{ item.title }}"
+  - limit: 20
+
+columns: [id, title]
+```
+
+### All fields
+
+| Field                | Required    | Type                                                                                                 | Notes                                                                                                      |
+| -------------------- | ----------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `site`               | yes         | string                                                                                               | Adapter site/service key, kebab-case. Used as `unicli SITE CMD`.                                           |
+| `name`               | yes         | string                                                                                               | Command name; unique per site.                                                                             |
+| `description`        | recommended | string                                                                                               | One-line description for `unicli list` and for agents.                                                     |
+| `type`               | optional    | `web-api` \| `browser` \| `bridge` \| `desktop` \| `service`                                         | Omit for implicit `web-api`. Historical; the `transport` field is the v2 source of truth.                  |
+| `transport`          | yes (v2)    | `http` \| `cdp-browser` \| `subprocess` \| `desktop-ax` \| `desktop-uia` \| `desktop-atspi` \| `cua` | The runtime dispatcher key.                                                                                |
+| `strategy`           | optional    | `public` \| `cookie` \| `header` \| `intercept` \| `ui`                                              | Kept for 1 release as alias; see migration table below.                                                    |
+| `capabilities`       | yes (v2)    | `string[]`                                                                                           | List of pipeline step names this command may invoke (e.g. `[fetch, map, limit]`).                          |
+| `minimum_capability` | yes (v2)    | string                                                                                               | Single dispatcher capability required (e.g. `http.fetch`, `cdp-browser.navigate`).                         |
+| `trust`              | yes (v2)    | `public` \| `user` \| `system`                                                                       | Provenance trust level. Default for committed YAML: `public`.                                              |
+| `confidentiality`    | yes (v2)    | `public` \| `internal` \| `private`                                                                  | Data sensitivity. Default: `public`. Auth-required adapters: `internal` or `private`.                      |
+| `quarantine`         | yes (v2)    | boolean                                                                                              | If `true`, command is skipped by `unicli test` and marked `[quarantined]` in `unicli list` until repaired. |
+| `args`               | optional    | list                                                                                                 | Named + positional command arguments.                                                                      |
+| `pipeline`           | yes         | list of step objects                                                                                 | Ordered sequence of pipeline steps.                                                                        |
+| `columns`            | recommended | `string[]`                                                                                           | Default column order for the `md` / `csv` formatters.                                                      |
+| `rate_limit`         | optional    | object                                                                                               | Per-domain token bucket config; see `src/engine/steps/rate-limit.ts`.                                      |
+
+### Args
+
+```yaml
+args:
+  - { name: query, type: string, required: true, positional: true }
+  - { name: limit, type: int, default: 20 }
+  - { name: sort, type: string, default: "hot" }
+```
+
+Types: `string`, `int`, `float`, `bool`, `string[]`. Positional args populate
+`${{ args.NAME }}` in pipeline templates. Named flags become
+`--NAME VALUE` on the command line.
+
+### Pipeline steps
+
+Pipeline steps are documented in `docs/reference/pipeline.md`.
+The most common ones:
+
+| Step         | Transport                      | Purpose                                                |
+| ------------ | ------------------------------ | ------------------------------------------------------ |
+| `fetch`      | http                           | HTTP request with retry, cookie injection, JSON parse. |
+| `fetch_text` | http                           | HTTP request returning raw text (RSS, HTML).           |
+| `select`     | pure                           | JSONPath-style navigation into the response.           |
+| `map`        | pure                           | Transform each item via template with `${{ item.x }}`. |
+| `filter`     | pure                           | Keep items matching a predicate.                       |
+| `sort`       | pure                           | Sort by field.                                         |
+| `limit`      | pure                           | Cap result count.                                      |
+| `navigate`   | cdp-browser                    | Navigate a Chrome page via CDP.                        |
+| `intercept`  | cdp-browser                    | Capture matching XHR/fetch responses.                  |
+| `exec`       | subprocess                     | Run a subprocess with stdin/env/timeout.               |
+| `snapshot`   | cdp-browser + desktop-ax + cua | DOM/AX tree snapshot with `ref` numbers.               |
+| `cua_click`  | cua                            | Coordinate-level click via CUA backend.                |
+
+Each step has a typed schema; unknown fields are rejected at load time.
+
+---
+
+## TypeScript escape hatch
+
+Use TS when:
+
+- The command needs control flow that YAML pipelines cannot express
+  (multi-phase retries with domain-specific backoff, cursor-based pagination
+  with server-computed tokens, stateful protocols like OAuth dance).
+- The adapter wraps a library that is easier to call than to shell out.
+- You need a typed response shape exported for downstream consumers.
+
+Do not use TS because "it's faster to write" — YAML is the shared
+vocabulary the self-repair loop and `unicli migrate` understand.
+
+```typescript
+// src/adapters/example/complex.ts
+import { cli, Strategy } from "../../registry.js";
+
+cli({
+  site: "example",
+  name: "complex",
+  description: "Paginated search with server-computed cursors",
+  strategy: Strategy.COOKIE,
+  args: [
+    { name: "query", required: true, positional: true },
+    { name: "max_pages", type: "int", default: 5 },
+  ],
+  func: async (page, kwargs) => {
+    const results: unknown[] = [];
+    let cursor: string | undefined;
+    for (let i = 0; i < kwargs.max_pages; i++) {
+      const res = await fetch(`https://example.com/search`, {
+        method: "POST",
+        body: JSON.stringify({ q: kwargs.query, cursor }),
+      });
+      const json = await res.json();
+      results.push(...json.hits);
+      cursor = json.next_cursor;
+      if (!cursor) break;
+    }
+    return results;
+  },
+});
+```
+
+### Required schema-v2 metadata for TS adapters
+
+Because TS adapters cannot be statically analysed, the `cli({...})` call
+must still carry the v2 metadata fields so they appear in manifests and
+the CI lint:
+
+```typescript
+cli({
+  site: "example",
+  name: "complex",
+  capabilities: ["fetch"],
+  minimum_capability: "http.fetch",
+  trust: "public",
+  confidentiality: "public",
+  quarantine: false,
+  // ...
+});
+```
+
+Omitting these is a build error under `npm run lint:adapters`.
+
+---
+
+## Schema-v2 required fields
+
+Schema v2 requires five metadata fields for CI safety, capability routing,
+and honest provenance:
+
+| Field                | Why it exists                                                                                               | Default when absent                                                                                                     |
+| -------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `capabilities`       | Declares the step surface. Used by dispatchers and by `unicli lint` to ensure only declared steps are used. | Inferred from pipeline by `unicli migrate schema-v2`.                                                                   |
+| `minimum_capability` | Smallest transport the dispatcher must support.                                                             | `http.fetch` for legacy YAML (safe baseline).                                                                           |
+| `trust`              | Provenance — is this adapter first-party, community, or user-supplied?                                      | `public` for committed YAML.                                                                                            |
+| `confidentiality`    | Data-sensitivity label. Drives dispatcher routing when `--confidentiality` flag is set.                     | `public` unless `strategy` is `cookie` \| `header` \| `intercept` \| `ui` (in which case the migrator sets `internal`). |
+| `quarantine`         | Skip this command in CI until repaired. Set by `unicli repair` when the command has failed three times.     | `false`.                                                                                                                |
+
+Migration is automated: `unicli migrate schema-v2` reads all committed
+YAML, fills defaults deterministically, and writes back. The migration
+tool is idempotent — re-running it on a migrated file is a no-op.
+
+## Strategy → transport migration
+
+The old `strategy` field mapped to a mix of transport and auth concerns.
+In v2, the concerns split: `transport` routes the call, `strategy` stays
+only as a short-lived alias for the auth hint.
+
+| Old `strategy`    | New `transport`                                  | New auth hint (kept in `strategy` for 1 release) |
+| ----------------- | ------------------------------------------------ | ------------------------------------------------ |
+| `public`          | `http`                                           | `public`                                         |
+| `cookie`          | `http`                                           | `cookie`                                         |
+| `header`          | `http`                                           | `header`                                         |
+| `intercept`       | `cdp-browser`                                    | `intercept`                                      |
+| `ui`              | `cdp-browser`                                    | `ui`                                             |
+| _(new)_ `desktop` | `desktop-ax` \| `desktop-uia` \| `desktop-atspi` | none                                             |
+| _(new)_ `cua`     | `cua`                                            | none                                             |
+
+The `unicli migrate` tool handles the split. For a hand-written adapter,
+set both fields explicitly and do not rely on legacy alias inference.
+
+---
+
+## Full examples
+
+### 1. YAML, simplest case (web-api, public)
+
+```yaml
+# src/adapters/hackernews/top.yaml
+site: hackernews
+name: top
+description: "Hacker News front page — top stories right now"
+type: web-api
+transport: http
+strategy: public
+capabilities: [fetch, select, map, limit]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+
+args:
+  - { name: limit, type: int, default: 30 }
+
+pipeline:
+  - fetch:
+      url: "https://hacker-news.firebaseio.com/v0/topstories.json"
+  - limit: "${{ args.limit }}"
+  - parallel:
+      max: 10
+      map:
+        - fetch:
+            url: "https://hacker-news.firebaseio.com/v0/item/${{ item }}.json"
+  - map:
+      rank: "${{ index + 1 }}"
+      title: "${{ item.title }}"
+      score: "${{ item.score }}"
+      author: "${{ item.by }}"
+      comments: "${{ item.descendants }}"
+      url: "${{ item.url }}"
+
+columns: [rank, title, score, author, comments, url]
+```
+
+### 2. TypeScript escape hatch (OAuth dance)
+
+```typescript
+// src/adapters/notion/search.ts
+import { cli } from "../../registry.js";
+
+cli({
+  site: "notion",
+  name: "search",
+  description: "Search Notion workspace (requires OAuth)",
+  capabilities: ["fetch"],
+  minimum_capability: "http.fetch",
+  trust: "public",
+  confidentiality: "private", // accesses user workspace
+  quarantine: false,
+  args: [{ name: "query", required: true, positional: true }],
+  func: async (_page, { query }) => {
+    const token = await ensureNotionOAuthToken();
+    const res = await fetch("https://api.notion.com/v1/search", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "Notion-Version": "2022-06-28",
+      },
+      body: JSON.stringify({ query, page_size: 20 }),
+    });
+    const json = (await res.json()) as { results: unknown[] };
+    return json.results;
+  },
+});
+```
+
+### 3. YAML with intercept (browser capture)
+
+```yaml
+# src/adapters/twitter/timeline.yaml
+site: twitter
+name: timeline
+description: "Home timeline via XHR intercept"
+type: browser
+transport: cdp-browser
+strategy: intercept
+capabilities: [navigate, intercept, select, map, limit]
+minimum_capability: cdp-browser.intercept
+trust: public
+confidentiality: private # user's timeline
+quarantine: false
+
+args:
+  - { name: limit, type: int, default: 20 }
+
+pipeline:
+  - navigate:
+      url: "https://twitter.com/home"
+  - intercept:
+      pattern: "/graphql/.*/HomeTimeline"
+      wait: 8000
+  - select: "data.home.home_timeline_urt.instructions[0].entries"
+  - filter: "${{ item.entryId startsWith 'tweet-' }}"
+  - map:
+      id: "${{ item.content.itemContent.tweet_results.result.rest_id }}"
+      text: "${{ item.content.itemContent.tweet_results.result.legacy.full_text }}"
+      author: "${{ item.content.itemContent.tweet_results.result.core.user_results.result.legacy.screen_name }}"
+  - limit: "${{ args.limit }}"
+
+columns: [id, author, text]
+```
+
+### 4. YAML, quarantined (example of the CI gate)
+
+```yaml
+# src/adapters/example/broken.yaml
+site: example
+name: broken
+description: "Endpoint retired 2026-03-01; pending repair"
+type: web-api
+transport: http
+strategy: public
+capabilities: [fetch, map]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: true
+quarantineReason: "HTTP 404 since upstream deprecated /v1/feed; needs /v2 port"
+
+pipeline:
+  - fetch:
+      url: "https://example.com/api/v1/feed"
+  - map:
+      id: "${{ item.id }}"
+      title: "${{ item.title }}"
+
+columns: [id, title]
+```
+
+Quarantined commands show up in `unicli list` with a `[quarantined]` tag,
+are skipped by `unicli test`, and emit an informative error envelope
+when invoked directly. The `quarantineReason` is free-form text shown in
+`unicli doctor`.
+
+### 5. YAML, CUA pipeline (computer-use agent transport)
+
+```yaml
+# src/adapters/figma/click-through.yaml
+site: figma
+name: click-through
+description: "Click a canvas element by natural-language description"
+type: browser
+transport: cua
+strategy: ui
+capabilities: [cua_snapshot, cua_click, cua_wait, cua_ask, assert]
+minimum_capability: cua.snapshot
+trust: public
+confidentiality: internal
+quarantine: false
+
+args:
+  - { name: target, type: string, required: true, positional: true }
+  - { name: backend, type: string, default: "anthropic" }
+
+pipeline:
+  - cua_backend:
+      name: "${{ args.backend }}"
+  - cua_snapshot: {}
+  - cua_ask:
+      prompt: "Find the UI element matching: ${{ args.target }}"
+      returns: { ref: string }
+  - cua_click:
+      ref: "${{ vars.ref }}"
+  - cua_wait:
+      for: "idle"
+      timeout: 3000
+  - assert:
+      url_contains: "/edited"
+
+columns: [ok, url]
+```
+
+CUA commands are expensive (per-call cost scales with the backend's
+screenshot + LLM inference tokens). Do not default to CUA when a
+`cdp-browser` adapter is feasible; the dispatcher will warn if a CUA
+command could have been expressed as intercept.
+
+---
+
+## Troubleshooting
+
+| Symptom                                                   | Likely cause                                                                | Fix                                                                                                       |
+| --------------------------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `Unknown step: ...` at load time                          | Step name typo or step not registered                                       | Check `src/engine/steps/` for supported names.                                                            |
+| `Adapter schema v2 violation: missing minimum_capability` | Pre-v2 YAML not migrated                                                    | Run `unicli migrate schema-v2 src/adapters/SITE/CMD.yaml`.                                                |
+| `Forbidden: step X not in capabilities`                   | Pipeline uses a step not declared in `capabilities`                         | Add the step name to `capabilities`, or drop the step.                                                    |
+| `Strategy 'legacy-xyz' unknown`                           | Typo or dropped strategy                                                    | Consult the Strategy migration table; `legacy-xyz` is probably replaced by a named transport.             |
+| `HTTP 403 Forbidden` on cookie strategy                   | Cookie file stale                                                           | `unicli auth setup SITE` to re-authenticate; run `unicli repair SITE/CMD` for directed patch suggestions. |
+| `Interception timed out after 8000ms`                     | Selector/URL pattern changed upstream                                       | Inspect page network panel, update the `pattern` in `intercept` step, re-run.                             |
+| `cua_backend: anthropic not configured`                   | `ANTHROPIC_API_KEY` unset or CUA backend sidecar not running                | `unicli daemon status` to check; `export ANTHROPIC_API_KEY=...`.                                          |
+| `quarantine: true` but command still tries to run         | You called the command directly; quarantine only affects CI + `unicli test` | Remove `quarantine` once repaired, or run `unicli repair SITE/CMD` to auto-patch + lift the flag.         |
+| `trust: user` adapter refuses to run                      | CI safety gate rejects user-trust adapters when `UNICLI_TRUST_FLOOR=public` | Set `trust: public` and get the file reviewed, or run with `UNICLI_TRUST_FLOOR=user` locally.             |
+
+For anything not on this list, `unicli doctor` prints the relevant
+diagnostics. If that does not resolve the issue, open an issue with the
+full stderr envelope — the `adapter_path` / `step` / `action` /
+`suggestion` fields are what we need to help.
+
+---
+
+## See also
+
+- `docs/reference/pipeline.md` — full step catalog with examples.
+- `src/core/schema-v2.ts` — the authoritative Zod schema.
+- `src/adapters/` — committed adapters to read as working examples.
+
+_Document version: v2. Last updated 2026-04-25._
+
+---
+
+# Page: Pipeline Steps
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/reference/pipeline
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/pipeline.md
+
+<!-- Generated from docs/reference/pipeline.md. Do not edit this copy directly. -->
+
+# Pipeline Steps
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/reference/pipeline
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/pipeline.md
+- Section: Reference
+- Parent: Reference (/reference/)
+
+Uni-CLI adapters execute a sequence of pipeline steps. Each step performs one action — fetch data, transform it, interact with a browser, or control execution flow. There are 30 steps grouped into 7 categories.
+
+## Overview
+
+| Category  | Steps                                                                          | Count |
+| --------- | ------------------------------------------------------------------------------ | ----- |
+| API       | fetch, fetch_text, parse_rss, html_to_md                                       | 4     |
+| Transform | select, map, filter, sort, limit                                               | 5     |
+| Desktop   | exec, write_temp                                                               | 2     |
+| Browser   | navigate, evaluate, click, type, wait, intercept, press, scroll, snapshot, tap | 10    |
+| Media     | download                                                                       | 1     |
+| Service   | websocket                                                                      | 1     |
+| Control   | set, if, append, each, parallel, rate_limit                                    | 6     |
+
+---
+
+## API Steps
+
+### fetch
+
+HTTP request that returns parsed JSON. Supports GET, POST, PUT, DELETE, PATCH with automatic cookie injection, retry, and backoff.
+
+```yaml
+- fetch:
+    url: "https://api.example.com/v1/posts"
+    method: GET # default
+    params:
+      page: 1
+      limit: 20
+    headers:
+      Accept: "application/json"
+    retry: 3 # max retries
+    backoff: exponential # linear | exponential
+```
+
+POST with a JSON body:
+
+```yaml
+- fetch:
+    url: "https://api.example.com/v1/search"
+    method: POST
+    body:
+      query: "${{ args.query }}"
+      filters:
+        type: "article"
+```
+
+Template expressions (`${{ ... }}`) are evaluated at runtime. They can reference `args`, `item`, `data`, and `steps`.
+
+### fetch_text
+
+HTTP request that returns raw text instead of parsed JSON. Useful for HTML pages, RSS feeds, plain text APIs.
+
+```yaml
+- fetch_text:
+    url: "https://example.com/feed.xml"
+```
+
+The response body is stored as a string in `ctx.data`.
+
+### parse_rss
+
+Parses RSS or Atom XML feed into an array of items. Typically follows a `fetch_text` step.
+
+```yaml
+- fetch_text:
+    url: "https://example.com/feed.xml"
+- parse_rss:
+    fields: [title, link, pubDate, description]
+```
+
+Each item gets normalized fields: `title`, `link`, `pubDate`, `description`, `content`.
+
+### html_to_md
+
+Converts HTML content in `ctx.data` to Markdown using Turndown. Useful after `fetch_text` on web pages.
+
+```yaml
+- fetch_text:
+    url: "https://example.com/article/123"
+- html_to_md:
+```
+
+No configuration needed. The entire `ctx.data` string is converted.
+
+---
+
+## Transform Steps
+
+### select
+
+Navigate into a JSON path. Replaces `ctx.data` with the value at the given path.
+
+```yaml
+- select: "data.items"
+```
+
+Supports dot notation for nested objects:
+
+```yaml
+- select: "response.data.articles[0].content"
+```
+
+### map
+
+Transform each item in an array. The result is a new array with only the mapped fields.
+
+```yaml
+- map:
+    title: "${{ item.title }}"
+    author: "${{ item.user.name }}"
+    score: "${{ item.votes }}"
+    url: "https://example.com/post/${{ item.id }}"
+```
+
+Template expressions inside `map` have access to `item` (current element), `index`, `data` (full array), and `args`.
+
+### filter
+
+Keep items that match a condition. The expression is evaluated for each item.
+
+```yaml
+- filter: "item.score > 100"
+```
+
+Supports standard comparison operators:
+
+```yaml
+- filter: "item.type == 'article' && item.published == true"
+```
+
+### sort
+
+Sort an array by a field. Ascending by default.
+
+```yaml
+- sort:
+    by: "score"
+    order: desc # asc | desc
+```
+
+### limit
+
+Cap the number of results. Accepts a number directly or as a config object.
+
+```yaml
+- limit: 20
+```
+
+Or with offset:
+
+```yaml
+- limit:
+    count: 20
+    offset: 10
+```
+
+---
+
+## Desktop Steps
+
+### exec
+
+Run a subprocess command. Captures stdout and optionally parses it as JSON.
+
+```yaml
+- exec:
+    command: "ffprobe"
+    args:
+      [
+        "-v",
+        "quiet",
+        "-print_format",
+        "json",
+        "-show_format",
+        "${{ args.file }}",
+      ]
+    parse: json # parse stdout as JSON
+```
+
+With environment variables:
+
+```yaml
+- exec:
+    command: "blender"
+    args: ["--background", "--python", "${{ steps.write_temp.path }}"]
+    env:
+      BLENDER_USER_SCRIPTS: "/path/to/scripts"
+```
+
+With stdin:
+
+```yaml
+- exec:
+    command: "jq"
+    args: [".data.items"]
+    stdin: "${{ data }}"
+```
+
+With file output (read result from a file instead of stdout):
+
+```yaml
+- exec:
+    command: "magick"
+    args: ["convert", "${{ args.input }}", "-resize", "800x", "/tmp/out.png"]
+    output_file: "/tmp/out.png"
+```
+
+### write_temp
+
+Create a temporary file with the given content. Returns the file path in `steps.write_temp.path`.
+
+```yaml
+- write_temp:
+    ext: ".py"
+    content: |
+      import bpy
+      bpy.ops.render.render(write_still=True)
+      print("done")
+- exec:
+    command: "blender"
+    args: ["--background", "--python", "${{ steps.write_temp.path }}"]
+```
+
+Useful for tools that accept script files (Blender Python, GIMP Script-Fu, Inkscape actions).
+
+---
+
+## Browser Steps
+
+All browser steps require a running Chrome instance (via `unicli browser start` or the daemon).
+
+### navigate
+
+Navigate Chrome to a URL. Waits for the page to load.
+
+```yaml
+- navigate:
+    url: "https://example.com/page"
+    waitUntil: networkidle # load | domcontentloaded | networkidle
+    settleMs: 2000 # additional wait after load event
+```
+
+Short form:
+
+```yaml
+- navigate: "https://example.com/page"
+```
+
+### evaluate
+
+Execute JavaScript in the page context. Returns the evaluation result.
+
+```yaml
+- evaluate: "document.title"
+```
+
+Multi-line scripts:
+
+```yaml
+- evaluate:
+    expression: |
+      const items = document.querySelectorAll('.post');
+      return Array.from(items).map(el => ({
+        title: el.querySelector('h2').textContent,
+        url: el.querySelector('a').href
+      }));
+```
+
+### click
+
+Click an element by CSS selector.
+
+```yaml
+- click: "#submit-button"
+```
+
+With options:
+
+```yaml
+- click:
+    selector: ".menu-item:nth-child(3)"
+```
+
+### type
+
+Type text into an input element.
+
+```yaml
+- type:
+    selector: "#search-input"
+    text: "${{ args.query }}"
+    submit: true # press Enter after typing
+```
+
+### wait
+
+Wait for a condition before continuing. Accepts a time (milliseconds) or a CSS selector.
+
+```yaml
+# Wait 3 seconds
+- wait: 3000
+
+# Wait for an element to appear
+- wait: "#results-container"
+
+# Wait with timeout
+- wait:
+    selector: ".loaded"
+    timeout: 10000
+```
+
+### intercept
+
+Capture network requests made by the page. Uni-CLI intercepts both `fetch()` and `XMLHttpRequest` calls using a stealthy dual interceptor that avoids detection.
+
+```yaml
+- intercept:
+    pattern: "**/api/v1/feed"
+    trigger: "scroll:down" # action that triggers the request
+    timeout: 10000 # max wait for matching request
+    select: "data.items" # extract from response JSON
+```
+
+Trigger types:
+
+| Trigger          | Action                              |
+| ---------------- | ----------------------------------- |
+| `navigate:URL`   | Navigate to URL and capture         |
+| `scroll:down`    | Scroll down to trigger lazy loading |
+| `click:SELECTOR` | Click element to trigger request    |
+| `wait:MS`        | Wait passively for the request      |
+
+### press
+
+Press a keyboard key with optional modifiers.
+
+```yaml
+- press: "Enter"
+```
+
+With modifiers:
+
+```yaml
+- press:
+    key: "a"
+    modifiers: ["Meta"] # Cmd+A on macOS
+```
+
+### scroll
+
+Scroll the page in a direction, to a specific element, or auto-scroll to load all content.
+
+```yaml
+# Scroll direction
+- scroll: "down" # down | up | bottom | top
+
+# Auto-scroll (load all lazy content)
+- scroll:
+    auto: true
+    maxScrolls: 20
+    delay: 500
+```
+
+### snapshot
+
+Generate a DOM accessibility tree snapshot. Returns a text representation of the page structure with interactive element references.
+
+```yaml
+- snapshot:
+    interactive: true # include ref numbers for interactive elements
+    compact: true # minimal output
+```
+
+The snapshot output includes `[ref=N]` markers on interactive elements. These refs can be used with the `operate` command for precise interaction.
+
+### tap
+
+Vue Store Action Bridge. Triggers a Pinia or Vuex store action and captures the resulting network request.
+
+```yaml
+- tap:
+    store: "useMainStore" # Pinia store name
+    action: "fetchPosts" # action to call
+    args: [{ page: 1 }] # action arguments
+    capture: "**/api/posts" # network pattern to capture
+    select: "data.list" # extract from response
+```
+
+This is useful for Vue-based SPAs where the data loading is triggered by store actions rather than direct API calls.
+
+---
+
+## Media Steps
+
+### download
+
+Download files via HTTP or yt-dlp. Supports batch downloads, skip-existing, and progress tracking.
+
+```yaml
+- download:
+    url: "${{ item.video_url }}"
+    dir: "~/Downloads/videos"
+    filename: "${{ item.title }}"
+    skip_existing: true
+```
+
+Batch download from an array:
+
+```yaml
+- download:
+    field: "url" # field containing the URL in each item
+    dir: "~/Downloads/images"
+    type: image
+```
+
+yt-dlp integration (auto-detected for video platforms):
+
+```yaml
+- download:
+    url: "${{ item.url }}"
+    dir: "~/Downloads"
+    type: video # uses yt-dlp when available
+```
+
+Each item in the result gets a `_download` field with status, path, size, and duration.
+
+---
+
+## Service Steps
+
+### websocket
+
+Connect to a WebSocket server, send a message, and wait for a matching response. Supports OBS WebSocket authentication.
+
+```yaml
+- websocket:
+    url: "ws://localhost:4455"
+    auth: obs # OBS WebSocket auth handshake
+    send:
+      op: 6
+      d:
+        requestType: "GetSceneList"
+        requestId: "1"
+    receive:
+      match: { "d.requestId": "1" }
+      timeout: 5000
+```
+
+Without auth:
+
+```yaml
+- websocket:
+    url: "ws://localhost:8080/events"
+    send: { type: "subscribe", channel: "updates" }
+    receive:
+      match: { type: "data" }
+```
+
+---
+
+## Control Steps
+
+### set
+
+Set a variable in the pipeline context. Useful for computed values or constants.
+
+```yaml
+- set:
+    base_url: "https://api.example.com"
+    page_size: 20
+```
+
+Variables are accessible via `${{ vars.base_url }}` in subsequent steps.
+
+### if
+
+Conditional branching. Execute different pipeline branches based on a condition.
+
+```yaml
+- if: "args.format == 'video'"
+  then:
+    - fetch:
+        url: "https://api.example.com/videos"
+    - select: "data.videos"
+  else:
+    - fetch:
+        url: "https://api.example.com/articles"
+    - select: "data.articles"
+```
+
+### append
+
+Append the current `ctx.data` to an accumulator. Useful in loops for collecting results.
+
+```yaml
+- append: "results"
+```
+
+The accumulated data is available at `${{ vars.results }}`.
+
+### each
+
+Iterate over an array, executing a sub-pipeline for each item. Supports parallel execution.
+
+```yaml
+- each:
+    parallel: 5 # max concurrent
+    pipeline:
+      - fetch:
+          url: "https://api.example.com/item/${{ item.id }}"
+      - select: "data"
+```
+
+Sequential (default):
+
+```yaml
+- each:
+    pipeline:
+      - fetch:
+          url: "https://api.example.com/item/${{ item }}"
+```
+
+### parallel
+
+Execute multiple pipeline branches concurrently and merge results.
+
+```yaml
+- parallel:
+    - pipeline:
+        - fetch: { url: "https://api.example.com/hot" }
+        - select: "data.items"
+    - pipeline:
+        - fetch: { url: "https://api.example.com/new" }
+        - select: "data.items"
+  merge: concat # concat | zip | object
+```
+
+### rate_limit
+
+Pause execution to respect rate limits. Blocks until a token is available.
+
+```yaml
+- rate_limit:
+    domain: "api.example.com"
+    rpm: 30 # requests per minute (default: 60)
+```
+
+Place this step before `fetch` calls to rate-limited APIs. The rate limiter is shared across all adapters for the same domain.
+
+---
+
+## Template Expressions
+
+All step configurations support template expressions with the syntax `${{ expression }}`.
+
+### Available Variables
+
+| Variable | Description                               | Available In         |
+| -------- | ----------------------------------------- | -------------------- |
+| `args`   | Command-line arguments                    | All steps            |
+| `data`   | Current pipeline data                     | All steps            |
+| `item`   | Current item (in `map`, `filter`, `each`) | Iteration steps      |
+| `index`  | Current iteration index                   | `map`, `each`        |
+| `steps`  | Results from named steps                  | After the named step |
+| `vars`   | Variables set with `set`                  | After `set`          |
+| `env`    | Environment variables                     | All steps            |
+
+### Filters
+
+Template expressions support pipe filters:
+
+```yaml
+- map:
+    title: "${{ item.title | truncate:50 }}"
+    date: "${{ item.created_at | date:'YYYY-MM-DD' }}"
+    slug: "${{ item.title | slugify }}"
+```
+
+---
+
+# Page: Exit Codes
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/reference/exit-codes
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/exit-codes.md
+
+<!-- Generated from docs/reference/exit-codes.md. Do not edit this copy directly. -->
+
+# Exit Codes
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/reference/exit-codes
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/exit-codes.md
+- Section: Reference
+- Parent: Reference (/reference/)
+
+Uni-CLI uses exit codes from `sysexits.h` — the UNIX standard for machine-parseable process exit status. Every exit code tells an AI agent exactly what kind of failure occurred and what to do next.
+
+## Code Reference
+
+| Code | Constant              | Meaning                 | Agent Response                    |
+| ---- | --------------------- | ----------------------- | --------------------------------- |
+| 0    | `SUCCESS`             | Command succeeded       | Use the data from stdout          |
+| 1    | `GENERIC_ERROR`       | Unclassified error      | Read stderr JSON for details      |
+| 2    | `USAGE_ERROR`         | Bad arguments or syntax | Fix the command invocation        |
+| 66   | `EMPTY_RESULT`        | No data returned        | Try different parameters or query |
+| 69   | `SERVICE_UNAVAILABLE` | Target site is down     | Retry later                       |
+| 75   | `TEMP_FAILURE`        | Temporary failure       | Retry with exponential backoff    |
+| 77   | `AUTH_REQUIRED`       | Authentication needed   | Run `unicli auth setup SITE`      |
+| 78   | `CONFIG_ERROR`        | Adapter misconfigured   | Read and fix the YAML adapter     |
+
+## Code 0 — Success
+
+The command completed and produced output. Data is on stdout in the selected envelope format.
+
+```bash
+unicli hackernews top
+echo $?    # 0
+```
+
+## Code 1 — Generic Error
+
+An error that does not fit other categories. Check stderr for a structured error envelope:
+
+```bash
+unicli example broken 2>/tmp/err.json
+echo $?    # 1
+cat /tmp/err.json
+```
+
+```json
+{
+  "error": "unexpected_response",
+  "adapter_path": "/path/to/adapter.yml",
+  "step": 0,
+  "action": "fetch",
+  "message": "Expected JSON, got HTML"
+}
+```
+
+## Code 2 — Usage Error
+
+The command was invoked incorrectly — missing required arguments, unknown flags, or invalid syntax.
+
+```bash
+unicli hackernews
+# Error: missing command. Available: top, new, ask, show, jobs, ...
+echo $?    # 2
+```
+
+Agent action: fix the command syntax. Run `unicli list SITE` to see available commands and arguments.
+
+## Code 66 — Empty Result
+
+The command executed successfully against the API, but the result set is empty. This is not an error — the query simply matched nothing.
+
+```bash
+unicli reddit search --subreddit "tinysub" --query "xyzzy"
+echo $?    # 66
+```
+
+Agent action: try broader search terms, different parameters, or a different time range. The adapter and API are working correctly.
+
+## Code 69 — Service Unavailable
+
+The target service is unreachable. The site may be down, blocked, or experiencing an outage.
+
+```bash
+unicli example fetch-data
+echo $?    # 69
+```
+
+Agent action: retry after a delay. If the failure persists, check if the site is globally down or if the network is restricted.
+
+## Code 75 — Temporary Failure
+
+A transient error — rate limiting, temporary server error, or network glitch. The built-in retry mechanism has already attempted retries and exhausted them.
+
+```bash
+unicli twitter timeline
+echo $?    # 75
+```
+
+Agent action: wait and retry the entire command. Consider adding a `rate_limit` step to the adapter if rate limiting is the recurring cause.
+
+## Code 77 — Auth Required
+
+The command requires authentication, but no valid credentials are available. Either cookies have not been set up, or they have expired.
+
+```bash
+unicli bilibili feed
+echo $?    # 77
+```
+
+Agent action:
+
+```bash
+unicli auth setup bilibili    # Interactive: opens Chrome login
+unicli auth check bilibili    # Verify cookies are valid
+unicli bilibili feed          # Retry
+```
+
+## Code 78 — Config Error
+
+The adapter YAML is invalid or misconfigured. This typically means a selector changed, a URL is wrong, or the pipeline has a structural error.
+
+```bash
+unicli example broken-adapter
+echo $?    # 78
+```
+
+Agent action: read the adapter YAML at the path in the stderr error JSON, fix the configuration, and retry. See the [Self-Repair guide](/guide/self-repair) for the full workflow.
+
+## Programmatic Handling
+
+### Shell Script
+
+```bash
+unicli bilibili feed --json
+case $? in
+  0)  echo "Success" ;;
+  66) echo "No results" ;;
+  77) unicli auth setup bilibili ;;
+  75) sleep 10 && unicli bilibili feed --json ;;
+  *)  echo "Unexpected error" ;;
+esac
+```
+
+### AI Agent (pseudocode)
+
+```
+result = run("unicli bilibili feed --json")
+
+if result.exit_code == 0:
+    return parse_json(result.stdout)
+
+if result.exit_code == 77:
+    run("unicli auth setup bilibili")
+    return retry()
+
+if result.exit_code == 78:
+    error = parse_json(result.stderr)
+    adapter = read_file(error.adapter_path)
+    fix = apply_suggestion(adapter, error.suggestion)
+    write_file(error.adapter_path, fix)
+    return retry()
+
+if result.exit_code in [69, 75]:
+    wait(exponential_backoff)
+    return retry()
+```
+
+## Source Definition
+
+Exit codes are defined in `src/types.ts`:
+
+```typescript
+export const ExitCode = {
+  SUCCESS: 0,
+  GENERIC_ERROR: 1,
+  USAGE_ERROR: 2,
+  EMPTY_RESULT: 66,
+  SERVICE_UNAVAILABLE: 69,
+  TEMP_FAILURE: 75,
+  AUTH_REQUIRED: 77,
+  CONFIG_ERROR: 78,
+} as const;
+```
+
+These values follow the BSD `sysexits.h` convention, ensuring compatibility with UNIX toolchains and CI/CD systems that interpret exit codes programmatically.
+
+---
+
+# Page: Maintenance Tools
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/reference/maintenance
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/maintenance.md
+
+<!-- Generated from docs/reference/maintenance.md. Do not edit this copy directly. -->
+
+# Maintenance Tools
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/reference/maintenance
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/maintenance.md
+- Section: Reference
+- Parent: Reference (/reference/)
+
+This page groups the small maintenance surfaces that used to be split across
+separate docs pages. Use it when verifying agent context quality, adapter
+regressions, or generated skill exports.
+
+## Context Lint
+
+`npm run lint:context` runs `scripts/lint-context.sh` against agent-facing
+context such as `AGENTS.md`, local skills, workflows, and docs. It catches
+stale paths, missing verification instructions, and weak operational context
+before an agent relies on it.
+
+Resolution order:
+
+1. `agent-lint` on `PATH`.
+2. A vendored local build, when present.
+3. Soft skip with a warning. The script does not fetch from the network.
+
+Commands:
+
+```bash
+npm run lint:context
+UNICLI_LINT_THRESHOLD=80 npm run lint:context
+UNICLI_LINT_DISABLE=1 npm run verify
+```
+
+Threshold checks require `jq`. Without it, the script prints the raw output and
+exits 0.
+
+## Eval Harness
+
+`unicli eval` runs YAML-defined regression suites against adapters and reports
+`SCORE=N/M`. User-local evals live under `~/.unicli/evals/`.
+
+Commands:
+
+```bash
+unicli eval list
+unicli eval run smoke/hackernews
+unicli eval run --all smoke/
+unicli eval ci --since 7d
+unicli eval run smoke/hackernews --json
+```
+
+Eval file shape:
+
+```yaml
+name: hackernews-smoke
+adapter: hackernews
+description: Hacker News public-API smoke test
+cases:
+  - command: top
+    args:
+      limit: 5
+    judges:
+      - { type: arrayMinLength, min: 5 }
+      - { type: nonEmpty }
+```
+
+Judges:
+
+| Type             | Fields                        | Passes when                                |
+| ---------------- | ----------------------------- | ------------------------------------------ |
+| `exitCode`       | `equals: 0`                   | The CLI exit code matches.                 |
+| `nonEmpty`       | none                          | Raw output is non-whitespace.              |
+| `matchesPattern` | `pattern: "regex"`            | Raw output matches the regex.              |
+| `contains`       | `field?: "json.path", value:` | The resolved value contains the substring. |
+| `arrayMinLength` | `path?: "json.path", min:`    | The resolved value is an array of `min`+.  |
+
+Field paths use dotted syntax with array subscripts:
+
+```text
+data.items[0].title
+results[3].author
+```
+
+## Skill Export
+
+`unicli skills export` emits one `SKILL.md`-compatible file per adapter
+command. Use it when an agent runtime can ingest local skills more cheaply than
+it can call discovery for every task.
+
+Commands:
+
+```bash
+unicli skills export
+unicli skills export --out /tmp/unicli-skills
+unicli skills publish
+unicli skills publish --to ~/.cursor/skills/uni-cli/
+unicli skills catalog
+unicli skills catalog --out /tmp/catalog.json
+```
+
+Generated skill shape:
+
+````markdown
+---
+name: hackernews-top
+description: Hacker News top stories
+when_to_use: When you need the current top items from hackernews.
+command: unicli hackernews top
+source: unicli
+---
+
+## What it does
+
+Hacker News top stories.
+
+## How to call it
+
+```bash
+unicli hackernews top --limit 20
+```
+````
+
+Use `-f json` when the caller needs JSON. Errors use the normal v2 envelope and
+include the failing adapter path, step, and suggestion.
+
+`unicli skills catalog` writes `docs/adapters-catalog.json` or a custom output
+path. Agents can ingest the catalog once and route directly without repeated
+discovery calls.
+
+---
+
+# Page: Plugin Authoring
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/PLUGIN
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/PLUGIN.md
+
+<!-- Generated from docs/PLUGIN.md. Do not edit this copy directly. -->
+
+# Plugin Authoring
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/PLUGIN
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/PLUGIN.md
+- Section: Reference
+- Parent: Reference (/reference/)
+
+This document is the stability contract for `@zenalexa/unicli` subpath imports
+and describes the supported ways to extend Uni-CLI from a third-party package.
+
+Plugins let you register custom pipeline steps, transports, and adapters
+without forking the project. The surface is a small, versioned set of
+subpath imports — pick the ones you need, import them, and avoid the
+internals.
+
+---
+
+## 1. Stability contract
+
+Uni-CLI exposes 24 subpaths from `package.json` `exports`. Each subpath is
+labelled **Stable**, **Beta**, or **Experimental**. The label governs how
+quickly we may break the API.
+
+| Subpath                                  | Source                                  | Status       |
+| ---------------------------------------- | --------------------------------------- | ------------ |
+| `@zenalexa/unicli`                       | `src/main.ts`                           | Stable       |
+| `@zenalexa/unicli/registry`              | `src/registry.ts`                       | Stable       |
+| `@zenalexa/unicli/errors`                | `src/errors.ts`                         | Stable       |
+| `@zenalexa/unicli/types`                 | `src/types.ts`                          | Stable       |
+| `@zenalexa/unicli/output`                | `src/output/formatter.ts`               | Stable       |
+| `@zenalexa/unicli/engine`                | `src/engine/executor.ts`                | Stable       |
+| `@zenalexa/unicli/engine/registry`       | `src/engine/step-registry.ts`           | Stable       |
+| `@zenalexa/unicli/transport`             | `src/transport/bus.ts`                  | Stable       |
+| `@zenalexa/unicli/transport/http`        | `src/transport/adapters/http.ts`        | Stable       |
+| `@zenalexa/unicli/protocol/mcp`          | `src/mcp/schema.ts`                     | Stable       |
+| `@zenalexa/unicli/protocol/acp`          | `src/protocol/acp.ts`                   | Stable       |
+| `@zenalexa/unicli/pipeline`              | alias of `engine`                       | Stable       |
+| `@zenalexa/unicli/download`              | `src/engine/download.ts`                | Stable       |
+| `@zenalexa/unicli/engine/steps`          | `src/engine/steps/index.ts`             | Beta         |
+| `@zenalexa/unicli/transport/cua`         | `src/transport/adapters/cua.ts`         | Beta         |
+| `@zenalexa/unicli/transport/desktop-ax`  | `src/transport/adapters/desktop-ax.ts`  | Beta         |
+| `@zenalexa/unicli/transport/subprocess`  | `src/transport/adapters/subprocess.ts`  | Beta         |
+| `@zenalexa/unicli/transport/cdp-browser` | `src/transport/adapters/cdp-browser.ts` | Beta         |
+| `@zenalexa/unicli/protocol/skill`        | `src/protocol/skill.ts`                 | Beta         |
+| `@zenalexa/unicli/registry-v2`           | `src/core/registry.ts`                  | Experimental |
+| `@zenalexa/unicli/browser/cdp`           | `src/browser/cdp-client.ts`             | Experimental |
+| `@zenalexa/unicli/browser/page`          | `src/browser/page.ts`                   | Experimental |
+| `@zenalexa/unicli/browser/daemon`        | `src/browser/daemon-client.ts`          | Experimental |
+| `@zenalexa/unicli/browser/utils`         | `src/browser/dom-helpers.ts`            | Experimental |
+
+**Stable** — Breaking changes require a major bump and a deprecation
+warning for at least one full release prior.
+
+**Beta** — Shape of the module is likely right, but concrete types, field
+names, and handler signatures can shift in any minor release. Safe to
+depend on; pin to an exact minor to avoid surprise upgrades.
+
+**Experimental** — Internals we export so the plugin ecosystem can
+prototype. May break in any release (including patch). Use at your own
+risk and prefer stable alternatives where they exist.
+
+---
+
+## 2. Versioning policy
+
+Uni-CLI follows Semantic Versioning (`MAJOR.MINOR.PATCH`). Applied to
+exports:
+
+- **Stable subpath, breaking change** → requires a `MAJOR` bump, a
+  deprecation warning emitted at least one `MINOR` prior, and a changelog
+  entry under "Breaking changes".
+- **Beta subpath, breaking change** → allowed in any `MINOR`. A changelog
+  entry is still required.
+- **Experimental subpath, breaking change** → allowed in any release,
+  including `PATCH`. No changelog entry required (but encouraged).
+- **Adding a new subpath** → `MINOR` bump, never `PATCH`.
+- **Removing a subpath** → only during a `MAJOR` bump with a deprecation
+  window.
+
+The CI gate `scripts/check-exports-count.ts` enforces a floor of 20
+subpaths so we never silently amputate the plugin surface.
+
+---
+
+## 3. Writing a plugin
+
+The simplest plugin registers a custom pipeline step and ships as an ESM
+side-effect import. Consumers add one import to their YAML runner host
+(or to a wrapper script) and the step becomes callable.
+
+```ts
+// my-plugin/src/index.ts
+import { registerStep } from "@zenalexa/unicli/engine/registry";
+
+registerStep("reverse", async (ctx, _config) => {
+  return {
+    ...ctx,
+    data: Array.isArray(ctx.data) ? [...ctx.data].reverse() : ctx.data,
+  };
+});
+```
+
+Then in any YAML adapter:
+
+```yaml
+site: example
+name: demo
+type: web-api
+strategy: public
+pipeline:
+  - fetch: { url: "https://example.com/api/items" }
+  - select: { path: "data" }
+  - reverse: {}
+columns: [title]
+```
+
+See `examples/plugin-example/` in the repository for a complete working
+template including `package.json`, `tsconfig.json`, and a README.
+
+---
+
+## 4. Loading plugins
+
+Uni-CLI does not auto-discover third-party plugins. You load them via
+Node's preload flag:
+
+```bash
+node --import @zenalexa/my-plugin $(which unicli) example demo
+```
+
+Or for a script-only host, pure ESM side-effect import works:
+
+```ts
+import "@zenalexa/my-plugin";
+import { runPipeline } from "@zenalexa/unicli/engine";
+
+await runPipeline([{ fetch: { url: "https://example.com" } }, { reverse: {} }]);
+```
+
+A first-class `--plugin` CLI flag is tracked for a future minor release.
+Until then, preload-import is the supported pattern.
+
+---
+
+## 5. Allowed operations per subpath
+
+One-line summary of what a plugin can legitimately do with each subpath.
+
+- `registry` — register v1 adapters via `cli({...})`.
+- `registry-v2` — register v2 adapters via the schema-typed API (experimental).
+- `errors` — catch `PipelineError`, `NoTransportForStepError`; construct envelope errors.
+- `types` — reuse `PipelineStep`, `AdapterType`, `Strategy`, `ExitCode` etc. in plugin types.
+- `output` — format plugin-produced rows via the shared `formatter` (table/json/yaml/csv/md).
+- `engine` — call `runPipeline` from external hosts; catch `PipelineError`.
+- `engine/registry` — `registerStep`, `getStep`, `listSteps`; this is the primary extension point.
+- `engine/steps` — reference built-in step handlers (beta — handler signatures may move).
+- `transport` — register custom `TransportAdapter` instances on the shared bus.
+- `transport/http` — compose on top of the HTTP transport (retries, cookies, CSRF).
+- `transport/cdp-browser` — access CDP-backed browser transport for custom steps.
+- `transport/subprocess` — spawn helper binaries under the subprocess transport.
+- `transport/desktop-ax` — drive native UI via the macOS AX / Windows UIA bridge.
+- `transport/cua` — access the Computer-Use Agent transport surface.
+- `browser/cdp` — low-level raw CDP client (experimental — prefer `browser/page`).
+- `browser/page` — high-level `BrowserPage` API (navigate, click, evaluate, snapshot).
+- `browser/daemon` — talk to the standalone daemon HTTP+WS server.
+- `browser/utils` — shared DOM helpers for snapshot normalisation and ref resolution.
+- `protocol/mcp` — MCP schema builders (`buildInputSchema`, `buildToolName`, etc.).
+- `protocol/acp` — embed an ACP server that reuses the Uni-CLI pipeline runner.
+- `protocol/skill` — load and validate SKILL.md packs.
+- `download` — enqueue downloads through the shared `download` step runtime.
+- `pipeline` — alias of `engine`; prefer whichever name reads better in your codebase.
+
+---
+
+## 6. Forbidden
+
+These are not supported. A plugin that relies on any of them will break
+without notice:
+
+- **Deep imports into non-exported paths.** `@zenalexa/unicli/dist/engine/runtime.js`
+  or any path not listed in `package.json` `exports` is private.
+- **Importing symbols prefixed with `_` or tagged `@internal`.** These
+  are test-only or transitional helpers (e.g. `_resetTransportBusForTests`)
+  and can change or disappear in any release, including patch. Calling
+  the public `getBus().register(...)` API is the supported way to extend
+  the transport surface.
+- **Monkeypatching exports.** Rewriting `PipelineError.prototype` or
+  overwriting an existing step via a direct `Map.set` on an internal
+  registry is unsupported — call `registerStep` instead, which performs
+  the right validation.
+- **Depending on internal types that leak through public modules.** If a
+  type is only visible because TypeScript structurally surfaces it, treat
+  it as private. Import only from named, documented type exports.
+- **Side effects beyond registration.** A plugin must not open sockets,
+  spawn processes, or write files at import time. Register handlers; let
+  the host CLI invoke them.
+
+If you need something in the Forbidden list, open an issue describing the
+use case. Most requests resolve with a new stable export, not a private
+hook.
+
+---
+
+# Page: Release
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/reference/release
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/release.md
+
+<!-- Generated from docs/reference/release.md. Do not edit this copy directly. -->
+
+# Release
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/reference/release
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/release.md
+- Section: Reference
+- Parent: Reference (/reference/)
+
+This page is the canonical release policy and operator reference for Uni-CLI.
+It replaces the old split between cadence, versioning, codenames, and trusted
+publisher setup.
+
+## Cadence
+
+Uni-CLI ships on a weekly Friday cadence when substantive commits have landed
+on `main` since the previous tag.
+
+| Schedule         | Workflow                                    | Behavior                                                      |
+| ---------------- | ------------------------------------------- | ------------------------------------------------------------- |
+| Friday 01:00 UTC | `.github/workflows/weekly-release.yml`      | Consume changesets, bump version, verify, commit, tag, push.  |
+| Manual           | `workflow_dispatch` on `weekly-release.yml` | Same pipeline, with optional `force` and required `codename`. |
+
+Quiet weeks are recorded in the workflow summary and exit `0`. They do not
+create a tag or npm publish.
+
+## Versioning
+
+Uni-CLI follows semver while the package is in the `0.x` line.
+
+| Change                                                            | Version bump |
+| ----------------------------------------------------------------- | ------------ |
+| Adapter fixes, docs, tests, small command additions               | Patch        |
+| New transport, new protocol surface, broad output behavior change | Minor        |
+| Stable 1.0 compatibility contract or breaking public behavior     | Major        |
+
+Development work for the next large line stays under `[Unreleased]` in
+`CHANGELOG.md` plus a `.changeset/*.md` file. Do not bump `package.json`, run
+`changeset version`, tag, publish, or create a GitHub Release until the
+maintainer explicitly says to release.
+
+## Changesets
+
+Every PR that touches production source should add one changeset:
+
+```bash
+npm run changeset
+```
+
+The weekly release workflow runs:
+
+```bash
+npx changeset version
+npm run verify
+```
+
+The repository also verifies that source changes did not slip through without
+a changeset:
+
+```bash
+npm run verify:changesets
+```
+
+## Release Labels
+
+Every tagged release must carry a final spaceflight label:
+
+```text
+Program · Astronaut
+```
+
+Examples: `Vostok · Gagarin`, `Mercury · Glenn`.
+
+Current program map:
+
+| Version range | Program |
+| ------------- | ------- |
+| `0.1xx`       | Sputnik |
+| `0.2xx`       | Vostok  |
+| `0.3xx`       | Mercury |
+| `0.4xx`       | Gemini  |
+
+Rules:
+
+- Development notes may say `Astronaut TBD`.
+- Release headings, README footers, tags, and GitHub Releases must never use
+  `TBD`, `TODO`, `Unreleased`, or `Next`.
+- The release label must be chosen before `npm run release`, `npm version`,
+  tagging, npm publish, or GitHub Release creation.
+- Use the exact middle-dot separator: `Program · Astronaut`.
+
+Automation enforces this:
+
+```bash
+RELEASE_CODENAME="Vostok · Gagarin" npm run release
+npm run release:check -- --strict-codename
+```
+
+## Substantive Commits
+
+The weekly workflow ignores bot-only dependency and CI maintenance commits:
+
+- `chore(deps)`
+- `chore(deps-dev)`
+- `chore(ci)`
+- `build(deps)`
+- `build(deps-dev)`
+
+Everything else counts as substantive: `feat`, `fix`, `refactor`, `perf`,
+`docs`, `test`, `build`, `style`, `revert`, and untyped commits. The filter is
+intentionally generous because silently skipping real work is worse than
+shipping an occasional docs-only patch.
+
+## Publishing
+
+The release workflow publishes `@zenalexa/unicli` from
+`.github/workflows/release.yml` when a `v*` tag is pushed.
+
+Release authority is scoped to the publish job:
+
+- `contents: write` creates the GitHub Release.
+- `id-token: write` enables npm Trusted Publishers and provenance.
+- The job runs in the `npm-publish` environment.
+
+Stable versions publish to `latest`. Prereleases publish to the channel named
+by the semver prerelease prefix, for example `0.216.0-beta.2` publishes with
+`--tag beta`.
+
+## Trusted Publishers
+
+npm Trusted Publishers should be configured with this exact tuple:
+
+| Field                           | Value         |
+| ------------------------------- | ------------- |
+| GitHub organization or username | `olo-dot-io`  |
+| Repository name                 | `Uni-CLI`     |
+| Workflow filename               | `release.yml` |
+| Environment name                | `npm-publish` |
+
+The package owner configures this once at:
+
+```text
+https://www.npmjs.com/package/@zenalexa/unicli
+```
+
+After two successful OIDC publishes, delete the fallback `NPM_TOKEN` from the
+`npm-publish` GitHub environment. A broken binding should then fail fast with a
+401 instead of silently falling back to a long-lived token.
+
+## Manual Release
+
+To ship outside the Friday window:
+
+1. Open GitHub Actions.
+2. Run **Weekly Release**.
+3. Set `codename` to the final `Program · Astronaut` label.
+4. Set `force: true` only when the release should happen even if the commit
+   filter found no substantive changes.
+
+The manual dispatch follows the same path as the scheduled workflow:
+changesets, verify, commit, tag, publish.
+
+## Cancel A Release
+
+Before npm publish completes:
+
+```bash
+git tag -d vX.Y.Z
+git push origin --delete vX.Y.Z
+git revert RELEASE_COMMIT_SHA --no-edit
+git push origin main
+```
+
+Then cancel the in-flight `release.yml` run from the Actions UI.
+
+After npm publish completes, prefer deprecation over unpublish:
+
+```bash
+npm deprecate @zenalexa/unicli@X.Y.Z "see vX.Y.Z+1 for fix"
+```
+
+Then ship `vX.Y.Z+1` with the fix and document the reason in `CHANGELOG.md`.
+
+## Escalation
+
+If the Friday release is blocked for two consecutive weeks, open a tracking
+issue titled:
+
+```text
+release-cadence: Friday blocked YYYY-MM-DD
+```
+
+Assign the maintainer and include the failing workflow link.
+
+Common causes:
+
+- `npm run verify` failing on `main`
+- changeset corruption
+- npm Trusted Publishers binding drift
+- GitHub Actions outage across the release window
+
+---
+
+# Page: Architecture
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/ARCHITECTURE
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ARCHITECTURE.md
+
+<!-- Generated from docs/ARCHITECTURE.md. Do not edit this copy directly. -->
+
+# Architecture
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/ARCHITECTURE
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ARCHITECTURE.md
+- Section: Explanation
+
+> Uni-CLI is the CLI-native bridge between agents and software. MCP is a
+> compatibility transport; the command line is the primary execution contract.
+
+## Current Shape
+
+Uni-CLI exposes one searchable command surface across:
+
+- **Web APIs**: public, cookie, and header-authenticated HTTP adapters.
+- **Browser automation**: Chrome/CDP, UI, intercept, snapshot, and operate flows.
+- **Desktop/local tools**: subprocess-backed apps such as ffmpeg, Blender,
+  ImageMagick, LibreOffice, and Office adapters.
+- **Services**: local or remote HTTP/WebSocket services such as Ollama, ComfyUI,
+  and OBS.
+- **Bridge CLIs**: passthrough adapters for existing tools such as `gh`, `jq`,
+  `docker`, `yt-dlp`, and cloud CLIs.
+
+The generated catalog is the source of truth: **223 sites**, **1304 commands**,
+**987 adapters**, **59 pipeline steps**, and **7311 tests** in v0.215.1.
+
+## Why CLI-First
+
+Coding agents already have a shell. Uni-CLI uses that native substrate instead
+of requiring every integration to be registered as a live protocol server.
+
+| Dimension      | Uni-CLI                                           | MCP-only tool servers                   |
+| -------------- | ------------------------------------------------- | --------------------------------------- |
+| Discovery      | `unicli search`, `unicli list`, `unicli describe` | Server-specific tool registration       |
+| Execution      | One process call, structured stdout/stderr        | Persistent client/server session        |
+| Composition    | Shell pipes, files, `jq`, `xargs`, scripts        | Agent-orchestrated tool chaining        |
+| Failure repair | Error envelope points to adapter YAML             | Server implementation is usually opaque |
+| Context cost   | 357-415 response tokens for benchmarked calls     | Often pays schema/snapshot overhead     |
+| Compatibility  | CLI, MCP, ACP, JSON stream                        | MCP clients only                        |
+
+This is not anti-MCP as a transport. Uni-CLI ships `unicli mcp serve` because
+some clients need it. The architectural choice is that MCP wraps Uni-CLI; it
+does not define Uni-CLI.
+
+## Differentiation
+
+The current ecosystem separates into recognizable categories:
+
+| Category             | Examples                               | Strength                              | Limit                                  |
+| -------------------- | -------------------------------------- | ------------------------------------- | -------------------------------------- |
+| Browser agents       | browser-use, Stagehand, Playwright MCP | Flexible UI navigation                | Higher token and latency cost per step |
+| Data extraction APIs | Firecrawl, scraping MCP servers        | Fast read/extract/crawl               | Not a general write/control surface    |
+| Tool gateways        | Composio, MCP server registries        | Auth and SaaS breadth                 | Central gateway and schema overhead    |
+| CLI-native execution | Uni-CLI                                | Fast, composable, repairable hot path | Requires shell/filesystem access       |
+
+Uni-CLI's thesis is compile-then-run: use browser/CUA when discovery is needed,
+then encode the stable path as a typed adapter. The next call is a deterministic
+command, not another exploratory agent trajectory.
+
+## Self-Repair Loop
+
+Every adapter call returns a v2 `AgentEnvelope`. Failure envelopes contain the
+fields an agent needs to act without guessing:
+
+```json
+{
+  "ok": false,
+  "schema_version": "2",
+  "command": "twitter.timeline",
+  "meta": { "duration_ms": 91 },
+  "data": null,
+  "error": {
+    "code": "auth_required",
+    "message": "401 Unauthorized",
+    "adapter_path": "src/adapters/twitter/timeline.yaml",
+    "step": 1,
+    "suggestion": "Run: unicli auth setup twitter",
+    "retryable": false,
+    "alternatives": ["twitter.search"]
+  }
+}
+```
+
+The repair loop is deliberately small:
+
+1. Run `unicli <site> <command> -f json`.
+2. On failure, read `error.adapter_path`.
+3. Patch the YAML or TypeScript adapter.
+4. Verify with `unicli repair <site> <command>` or `unicli test <site>`.
+5. Persist local overrides under `~/.unicli/adapters/` when the fix is local.
+
+The important part is not that the model is smart. The important part is that
+the search space is constrained to one adapter file, one failing step, one
+semantic exit code, and one reproducible verification command.
+
+## Runtime Layers
+
+```text
+Agent intent
+  |
+  v
+unicli search / describe / schema
+  |
+  v
+Adapter registry and manifest
+  |
+  v
+Pipeline engine
+  |
+  +-- http.fetch
+  +-- cdp-browser.*
+  +-- subprocess.exec
+  +-- desktop-ax / desktop-uia / desktop-atspi
+  +-- cua.*
+  |
+  v
+AgentEnvelope v2
+```
+
+## Adapter Types
+
+| Type      | Runtime                          | Typical use                                |
+| --------- | -------------------------------- | ------------------------------------------ |
+| `web-api` | HTTP fetch and transforms        | Public or authenticated APIs               |
+| `browser` | Chrome/CDP operation             | Login-gated, dynamic, or intercepted sites |
+| `desktop` | Local subprocess / OS automation | Apps and local binaries                    |
+| `service` | HTTP/WebSocket                   | Local services and daemons                 |
+| `bridge`  | Existing CLI passthrough         | Tools with mature CLIs                     |
+
+YAML is preferred because agents can read and patch it cheaply. TypeScript is
+kept as an escape hatch for cases where finite pipeline primitives are not
+enough.
+
+## Measured Bar
+
+`docs/BENCHMARK.md` is the public measurement contract. The current fixture
+bench shows adapter responses at **357-415 tokens** for representative
+`--limit 5` calls and a **133.8x median reduction** against a 55K-token GitHub
+MCP catalog baseline. `unicli list` is intentionally large because it is the
+whole catalog; agents should use `unicli search` and `unicli describe` before
+asking for the full registry.
+
+## Direction
+
+The long-term path is:
+
+1. Operate a new surface once with browser/CUA or an external tool.
+2. Record the reliable API, DOM, or subprocess path.
+3. Compile it into a small adapter.
+4. Run the adapter directly on future calls.
+5. Let failure envelopes drive repair when upstream software drifts.
+
+That is the practical route to replacing protocol-heavy agent tooling in
+coding-agent workflows: keep compatibility surfaces, but make the fastest,
+smallest, most repairable interface the default.
+
+---
+
+# Page: Benchmarks
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/BENCHMARK
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/BENCHMARK.md
+
+<!-- Generated from docs/BENCHMARK.md. Do not edit this copy directly. -->
+
+# Benchmarks
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/BENCHMARK
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/BENCHMARK.md
+- Section: Explanation
+- Parent: Explanation (/ARCHITECTURE)
+
+> Honest measurement of the context cost of calling `unicli SITE CMD`.
+> Numbers in the "Results" section below are produced by `npm run bench`
+> and are reproducible in CI (fixture mode) and on a dev machine (live mode).
+
+## Why This File Exists
+
+Public docs previously cited a single low, round token-per-call figure.
+That number conflated the length of the invocation string (roughly ten
+tokens) with the size of the rendered response body, which depends on
+`--limit`, output format, and the specific command. The v0.215.1 fixture
+bench measures the current v2 AgentEnvelope response body at 357-415 tokens
+for representative `--limit 5` list-style calls. `unicli list` is much larger
+because it intentionally emits the full 223-site / 1304-command catalog.
+
+This file replaces the retired claim. It ships real numbers or says `TODO:`
+-- nothing in between.
+
+## How We Measure
+
+1. Build the CLI (`npm run build`) so `dist/main.js` is current.
+2. Run each `(site, command)` pair at fixed inputs (default args, `--limit 5`
+   unless noted). Capture stdout as JSON.
+3. Tokenise the piped `stdout` via an `o200k_base` heuristic approximator
+   (`bench/tokens.ts`). The heuristic matches real `tiktoken`
+   counts within roughly 6-8% on English and compact JSON; rounding to
+   10s of tokens is honest at this precision.
+4. Record p50 and p95 across the configured number of iterations
+   (`BENCH_RUNS`, default 50) of in-process tokenisation in fixture mode,
+   or subprocess wall-clock in live mode.
+5. Also capture the invocation-string token count (what the agent actually
+   emits) for each call so the ratio `response_tokens / invocation_tokens`
+   is visible.
+
+The harness lives under `bench/` and is wired into `npm run bench`. It
+has two modes:
+
+| Mode    | Command                               | Network | Use                                                         |
+| ------- | ------------------------------------- | ------- | ----------------------------------------------------------- |
+| live    | `npm run bench`                       | yes     | Dev-machine sanity check, refreshes fixtures.               |
+| fixture | `BENCH_FIXTURES_ONLY=1 npm run bench` | no      | CI and reproducible reports. Reads `bench/fixtures/*.json`. |
+
+Fixture files are committed under `bench/fixtures/` alongside the scripts.
+Legacy fixture payloads are normalized into the current v2 AgentEnvelope shape
+before token counting, so the benchmark tracks the current public output
+contract even when source fixtures predate the envelope migration.
+
+## Results
+
+<!-- BENCH:begin -->
+
+> Generated 2026-04-26T10:22:10.589Z on Node v22.22.2 / darwin-arm64.
+> Mode: **fixture** (50 iterations per case).
+> Reproduce with `npm run bench` (local live mode) or `BENCH_FIXTURES_ONLY=1 npm run bench` (CI-deterministic fixture mode).
+
+### Cold start: `unicli list`
+
+| metric          | value  |
+| --------------- | ------ |
+| wall p50        | 726 ms |
+| wall p95        | 761 ms |
+| response tokens | 66272  |
+| response chars  | 238579 |
+| sites listed    | 223    |
+| commands listed | 1304   |
+
+### Adapter call: p50/p95 response tokens
+
+| category  | command                                  | invocation tokens | response p50 tokens | response p95 tokens | wall p50 ms | wall p95 ms | mode    |
+| --------- | ---------------------------------------- | ----------------: | ------------------: | ------------------: | ----------: | ----------: | ------- |
+| news      | `unicli hackernews top --limit 5`        |                 9 |                 404 |                 404 |       0.003 |       0.006 | fixture |
+| social    | `unicli reddit hot --limit 5`            |                 8 |                 415 |                 415 |       0.004 |       0.017 | fixture |
+| social-cn | `unicli 36kr hot --limit 5`              |                 7 |                 357 |                 357 |       0.003 |       0.003 | fixture |
+| dev       | `unicli github-trending daily --limit 5` |                11 |                 400 |                 400 |       0.004 |       0.005 | fixture |
+
+### MCP catalog comparison
+
+Baseline: **55,000-token** GitHub MCP cold-start. Target reduction vs. baseline: **30x**.
+
+| category  | total tokens | reduction factor vs. 55K |
+| --------- | -----------: | -----------------------: |
+| news      |          413 |               **133.2x** |
+| social    |          423 |                 **130x** |
+| social-cn |          364 |               **151.1x** |
+| dev       |          411 |               **133.8x** |
+
+Median reduction across the suite: **133.8x**. Best: **151.1x**.
+Claim "beat GitHub MCP 55K cold-start by 30x on p50" holds: **YES**.
+
+<!-- BENCH:end -->
+
+## Target
+
+**Beat the GitHub MCP server's 55,000-token cold-start load by at least 30x
+on p50 response size for bread-and-butter commands.** That is the bar we
+measure ourselves against -- not a hand-picked best-case number.
+
+The `mcp-catalog` bench (`bench/mcp-catalog.ts`) reports a `claim_holds:
+true/false` verdict alongside the median reduction factor. If the claim
+does not hold, the Results section above says so explicitly and we do not
+hide the number. The honest outcome at `--limit 5` for list-style commands
+is that total tokens per call (invocation + response) sit in the 300-600
+range, giving a raw reduction factor around 130-151x against the 55K
+baseline in the current fixture suite. This comfortably clears 30x on p50.
+For commands that produce
+larger payloads (paginated feeds, long transcripts) we ship a `--compact`
+flag that drops null fields and single-line-JSON-formats the output.
+
+## External Reference Points
+
+| Interface                  | Tokens per interaction  | Source                       |
+| -------------------------- | ----------------------- | ---------------------------- |
+| MCP (tool defs + one call) | 320-2,800               | Firecrawl, Scalekit (2025)   |
+| Raw function calling       | 150-500                 | OnlyCLI benchmark (2025)     |
+| GitHub MCP server boot     | 55,000                  | 93-tool catalog registration |
+| Uni-CLI `SITE CMD`         | **see `Results` above** | `bench/` harness             |
+
+## Reproducibility
+
+The `bench/` directory is self-contained:
+
+- `bench/tokens.ts` — token estimator (no native deps).
+- `bench/cold-start.ts` — `unicli list` cold-start runner.
+- `bench/adapter-call.ts` — per-command p50/p95 runner (live or fixture mode).
+- `bench/mcp-catalog.ts` — 55K comparison vs committed fixtures.
+- `bench/report.ts` — orchestrator, writes `bench/results.json` and patches
+  this file between `<!-- BENCH:begin -->` and `<!-- BENCH:end -->`.
+- `bench/fixtures/` — captured JSON responses (rerun `npm run bench` in
+  live mode to refresh; commit the diff if upstream shape changes).
+
+`npm run bench` is **not** part of `npm run verify` because it prefers
+network. CI runs it only in fixture mode, on an explicit
+`workflow_dispatch` or the nightly schedule.
+
+---
+
+_Last reviewed: 2026-04-26._
+
+---
+
+# Page: Theory
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/THEORY
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/THEORY.md
+
+<!-- Generated from docs/THEORY.md. Do not edit this copy directly. -->
+
+# Theory
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/THEORY
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/THEORY.md
+- Section: Explanation
+- Parent: Explanation (/ARCHITECTURE)
+
+> **AI agents are probabilistic. Software is deterministic. The gap between "probably right" and "right" is where systems break. Uni-CLI is the deterministic compilation layer that bridges this gap.**
+
+This document grounds every design decision in Uni-CLI in computer science theory. Each section links a foundational result to a concrete engineering choice. Citations use `\cite{key}` markers resolved against `docs/refs.bib`; the `refs:verify` CI job checks every arXiv ID against `arxiv.org` on each push.
+
+## Table of Contents
+
+1. [Core Thesis](#core-thesis)
+2. [Part I: Decidable Subsets and the Softened Restriction](#part-i-decidable-subsets-and-the-softened-restriction)
+3. [Part II: Bimodal Agent Capability](#part-ii-bimodal-agent-capability)
+4. [Part III: The Agent Tool Trilemma](#part-iii-the-agent-tool-trilemma)
+5. [Part IV: Self-Repair as Search-Space Contraction](#part-iv-self-repair-as-search-space-contraction)
+6. [Part V: Information-Theoretic Optimality](#part-v-information-theoretic-optimality)
+7. [Part VI: Empirical Evidence](#part-vi-empirical-evidence)
+8. [Part VII: Formal Verification](#part-vii-formal-verification)
+9. [Part VIII: Open Problems](#part-viii-open-problems)
+10. [References](#references)
+
+---
+
+## Core Thesis
+
+An AI agent produces probabilistic predictions of intent. Software systems require deterministic execution. This mismatch creates a reliability gap that grows with system complexity and with every stochastic step interposed between the agent and the outcome.
+
+**Definition (Deterministic Compilation Layer).** A function $D: I \times C \to A$ that maps an agent's intent $I$ and execution context $C$ to a deterministic action $A$. The compilation is _correct_ when $A$ achieves $I$ with probability $1$, given that $C$ is accurate.
+
+In Uni-CLI, this compilation takes the form of YAML adapter pipelines: a roughly 20-line declarative specification that compiles a natural-language intent ("get trending topics from Twitter") into a deterministic sequence of HTTP requests, DOM interactions, and data transformations. The TypeScript escape hatch (about 10% of adapters) exists for cases where pipeline primitives are insufficient; the remaining 90% are pure YAML over a fixed-step grammar.
+
+**Definition (Self-Repairing Adapter).** A triple $(S, R, V)$ where $S$ is the adapter specification, $R: S \times E \to S'$ is a repair function that takes a specification and structured error feedback $E$ to produce a corrected specification, and $V: S \to \{\mathrm{pass}, \mathrm{fail}\}$ is a verification function. The system is _self-repairing_ when the sequence $S_0, S_1 = R(S_0, E_0), S_2 = R(S_1, E_1), \ldots$ converges to a fixed point $S^*$ where $V(S^*) = \mathrm{pass}$.
+
+This document argues that such a compilation layer is both theoretically necessary and empirically achievable with today's models, provided we restrict the adapter language, structure the error feedback, and honestly account for the bimodal distribution of agent capability at release time.
+
+---
+
+## Part I: Decidable Subsets and the Softened Restriction
+
+### 1.1 Rice's Theorem and the Restriction Principle
+
+**Rice's Theorem (1953)** states that for any non-trivial semantic property of programs, no algorithm decides whether an arbitrary program has that property. Dantsin and Wolpert generalised this result to recurrent neural networks \cite{dantsin2024extensional}: every non-trivial extensional property of an RNN is undecidable. The theorem applies directly to LLM-driven tool invocation: determining whether an arbitrary natural-language intent maps to the correct sequence of tool calls is undecidable in general.
+
+Earlier versions of this document claimed a stronger result — that adapter semantics are "decidable" because YAML pipelines are finite. That claim is tighter than the literature supports and has been softened here. The honest statement is:
+
+> **Softened Restriction Principle.** Adapter semantics are _verifiable_ up to the semantics of each primitive step, not decidable in the Rice sense. YAML pipelines form a finite composition over a fixed set of typed primitives; correctness of the composition reduces to correctness of each primitive. Primitive correctness is enforced by human authorship, automated tests, and schema validation, not by decision procedure.
+
+de Melo et al. proved the weaker but usable result: while verifying arbitrary AI alignment is undecidable, there exists an _enumerable_ set of provably aligned AI systems — those built from finite compositions of provably correct operations \cite{demelo2024undecidability}. Uni-CLI's pipeline is one such enumerable set. The `λ_A` typed agent calculus \cite{kumar2026lambdaa} formalises this observation, showing that 94.1% of 835 real-world agent configurations fail structural well-formedness checks — suggesting that typed, finite pipelines are an empirically scarce but theoretically tractable design point.
+
+**Design rule — Decidable composition over undecidable primitives.** Every adapter is a finite pipeline of typed steps (`fetch`, `select`, `map`, `filter`, `navigate`, ...). The composition is checked by the schema validator. Each primitive has a finite behavioural contract enforced by tests. No Turing-complete constructs (arbitrary code execution, unbounded recursion) exist inside YAML; the TS escape hatch opts out of decidability by design, and is flagged as such in the registry.
+
+### 1.2 Gödel's Incompleteness and the Incomplete Catalog
+
+**Gödel's First Incompleteness Theorem (1931)** states that any consistent formal system strong enough to express arithmetic contains true statements unprovable within the system. Translated to tool catalogs: no catalog can be simultaneously complete (covering every intent) and consistent (every description exactly matches behaviour). There will always be intents outside the catalog and descriptions that drift from implementation.
+
+**Design rule — Self-repair compensates for incompleteness.** Since no catalog can be complete, the system must extend itself. Self-repair is the mechanism by which agents patch gaps at runtime (see Part IV).
+
+### 1.3 Brooks' No Silver Bullet
+
+Brooks (1986) distinguished _accidental_ complexity (artifacts of our tools) from _essential_ complexity (inherent in the domain). LLMs are excellent at accidental complexity — parsing APIs, reading documentation, generating boilerplate. They are poor at essential complexity under load: authentication flows, rate limiting, data validation, idempotency. CLI adapters encode the essential complexity as deterministic pipelines that the LLM does not need to reason about at call time.
+
+---
+
+## Part II: Bimodal Agent Capability
+
+The single biggest shift between 2024 and 2026 in the agent landscape is that _model identity is no longer a stable predictor of capability_. The same Opus 4.6 endpoint that scores 80.8% on SWE-Bench Verified on the benchmark harness scores dramatically lower in production when silent quantisation, batching pressure, or adaptive-thinking budget cuts are in effect. Any reliability analysis built on the assumption of monotonic capability progress is fragile. Uni-CLI instead assumes a **bimodal capability distribution**.
+
+### 2.1 The Two Modes
+
+**Mode A (pre-Mythos).** Frontier models (Opus 4.x, GPT-5.x, Gemini 3.x, GLM-5.1) under realistic production pressure. SWE-Bench Verified 70–85%, SWE-Bench Pro 17–58% \cite{scaleai2025swebenchpro}, Terminal-Bench 2.0 60–65% \cite{mythos2026systemcard}. Navigation errors dominate: 27–52% of long-horizon agent failures are navigation, not tool use \cite{ramachandran2026amazingagentrace}. Judgment under uncertainty is broken: no frontier model recovers more than a fraction of full-info performance on HiL-Bench \cite{yao2026hilbench}. The open-weight on-device tier is narrowing the gap: MolmoWeb \cite{gupta2026molmoweb} at 4B/8B exceeds UI-TARS-1.5-7B, Holo1-7B, and Fara-7B at comparable scale (2026-04), evidence that commodity-hardware agents are catching Mode A models on web-agent tasks.
+
+**Mode B (Mythos-equivalent).** Rate-limited, tightly-gated tier with substantially higher capability. Mythos Preview reports 93.9% SWE-Bench Verified, 82.0% Terminal-Bench 2.0, 80.0% GraphWalks BFS (2× Opus 4.6) \cite{mythos2026systemcard}. Pricing 5× Opus 4.6 and partner-only availability make this mode economically inaccessible for routine tool calls. GLM-5.1 from Zhipu is the first open-weight model approaching this mode at 58.4% SWE-Bench Pro \cite{glm2026report}.
+
+### 2.2 Why Bimodal, Not Monotonic
+
+The METR horizon-doubling curve \cite{metr2025horizon} is real and independently reproduced by BRIDGE \cite{bridge2026reproduction} with a ~6-month doubling time. The counter-hypothesis from Thompson et al. \cite{thompson2026risingtide} using 17,000+ O*NET worker evaluations shows broad-based rising task success (50% at 3-4h tasks in 2024 Q2 → 65% in 2025 Q3) rather than cliffs. Both curves are *aggregate\* — neither addresses within-release stability.
+
+Empirical signal of within-release instability:
+
+- 1,085-point HN thread "Claude Code is being dumbed down?" (2026-02) \cite{hn2026claudedumbed}
+- The Register / AMD AI director quantitative analysis: stop-hook violations 0→10/day, file reads 6.6→2, across 6,852 sessions and 234,760 tool calls \cite{theregister2026amdclaude}
+- Document-Q&A fabrication triples from 32K → 128K context, exceeds 10% at 200K across all models \cite{hallucination2026documentqa}
+- Reasoning models hallucinate _more_ than their base counterparts: o3 PersonQA 33%, o4-mini 48% \cite{openai2025o3o4report}
+
+**Design implication — the 30K context advisory.** Uni-CLI commands are designed to fit within a ≤30K-token advisory budget for the calling agent's effective context: per-call response p50 under 2K tokens (see `docs/BENCHMARK.md`), manifest lazy-loaded (not eagerly registered), tool descriptions truncated to one paragraph. This is not a hard limit on any particular frontier model; it is the honest accounting that says "if the agent is in Mode A and degraded, Uni-CLI keeps the budget tight enough to still function." The advisory tracks the context-rot curve \cite{hallucination2026documentqa} where fabrication triples above 128K.
+
+### 2.3 Consequence for Self-Repair
+
+A self-repair loop that assumes Mode B capability to patch a broken YAML adapter will fail on a Mode A agent that received the same structured error envelope. The repair function $R$ must be robust to both modes. Concretely:
+
+- Error envelopes must name the file path, line/step number, and propose a diff candidate — not rely on the agent to infer any of these.
+- Each repair cycle must be locally verifiable by running `unicli test SITE/COMMAND` (structural, not LLM) before proposing the next patch.
+- If three repair cycles fail to pass `V`, the system escalates to quarantine and human review, rather than burning budget on an agent that cannot see the problem.
+
+This design holds under Mode A and is slightly wasteful under Mode B — an acceptable trade.
+
+---
+
+## Part III: The Agent Tool Trilemma
+
+> **Original contribution.** No prior work formalises this trade-off. The closest analogs are CAP (distributed systems) and the accuracy–diversity dilemma (recommender systems); neither addresses the specific constraints of agent tool interfaces.
+
+### 3.1 The Three Properties
+
+For any tool interface connecting an AI agent to external systems:
+
+1. **Coverage ($C$):** fraction of user intents the interface can execute. $C=1$ handles any request.
+2. **Accuracy ($A$):** probability that a selected tool call achieves the user's intent. $A=1$ never makes wrong calls.
+3. **Performance ($P$):** inverse of resource consumption (tokens, latency, API calls) per interaction. $P=1$ uses theoretical minimum resources.
+
+### 3.2 The Impossibility
+
+**Claim (Agent Tool Trilemma).** Any tool interface optimises at most two of $\{C, A, P\}$ simultaneously.
+
+**Argument sketch.**
+
+- **High $C$ + High $A$ → Low $P$.** Exposing many tools requires either sending all tool descriptions to the agent (high token cost) or a retrieval step (embedding + scoring infrastructure). Semantic Tool Discovery achieves 99.6% token reduction but requires dedicated embedding infrastructure \cite{mudunuri2026semantictool}. Graph of Skills cuts tokens 37.8% but adds PageRank computation \cite{liu2026graphskills}.
+- **High $C$ + High $P$ → Low $A$.** Compact representations (short descriptions, few tokens) sacrifice detail needed for correct selection. CCTU found no LLM exceeds 20% strict compliance under complex constraints \cite{ye2026cctu}, and this worsens as the tool set grows. ToolFlood demonstrated 95% attack success at 1% adversarial tool injection \cite{jawad2026toolflood}.
+- **High $A$ + High $P$ → Low $C$.** Curated, well-described tool sets with deterministic execution achieve both accuracy and performance — but only for a fixed domain. This is the CLI trade-off.
+
+### 3.3 Where Uni-CLI Sits
+
+Uni-CLI optimises **Accuracy × Performance**.
+
+- **Accuracy.** Deterministic YAML pipelines eliminate stochastic tool selection errors within an adapter. Structured error feedback enables convergent self-repair. Pipelines are literal canonical paths in the sense of Lee et al. \cite{lee2026canonicalpath}, who causally demonstrated that each off-canonical call raises the next deviation probability by 22.7 percentage points.
+- **Performance.** Per-call token cost is measured in `docs/BENCHMARK.md` with p50/p95 across categories, measured on a harness wired into `npm run bench`. Target: beat GitHub MCP 55K-token cold-start by 30× on p50 response for bread-and-butter commands. External benchmarks (Firecrawl, Scalekit, OnlyCLI, Apideck) report 4–35× savings \cite{firecrawl2026mcptoken, scalekit2026mcp}.
+- **Coverage.** Extensible but not universal. Currently 223 sites, 1304 commands, and 987 adapters. Self-repair and the `unicli init`, `unicli import`, `unicli record`, and `unicli generate` tools extend coverage incrementally.
+
+MCP optimises **Coverage × Accuracy** (19,800+ servers, rich schemas, high token cost). Raw function calling optimises **Coverage × Performance** (any function, compact descriptions, selection errors grow with scale).
+
+### 3.4 Transport Composition Does Not Break the Trilemma
+
+The v0.212 transport abstraction (7 transports: http, cdp-browser, subprocess, desktop-ax, desktop-uia, desktop-atspi, cua) might appear to increase coverage without cost. It does not: each transport adds a capability surface that the pipeline runner must enforce (see `src/core/schema-v2.ts` `capabilities`/`minimum_capability` fields), and every new step increases the adapter author's surface to make errors. The trilemma is preserved; the design choice is which two axes to optimise for each transport class. `http` maximises $A \times P$. `cua` maximises $C \times A$ at 10–50× the cost of `http`. Users (and schedulers) see the cost envelope per call.
+
+---
+
+## Part IV: Self-Repair as Search-Space Contraction
+
+### 4.1 Banach's Fixed-Point Theorem
+
+**Banach's Fixed-Point Theorem (1922).** If $(X, d)$ is a complete metric space and $T: X \to X$ is a contraction (i.e. $d(T(x), T(y)) \le q \cdot d(x, y)$ for some $q < 1$), then $T$ has a unique fixed point and the sequence $x_0, T(x_0), T^2(x_0), \ldots$ converges to it.
+
+Rodemann et al. \cite{rodemann2024reciprocal} proved that active learning, bandits, and self-training converge at linear rates when the adaptation function satisfies the Banach contraction property. Kadurha et al. \cite{kadurha2025bellman} applied the same framework to RL Bellman operators.
+
+### 4.2 Self-Repair as Contraction
+
+In Uni-CLI's self-repair loop:
+
+- $X$ is the set of adapter specifications under a fixed schema.
+- $d(S_1, S_2)$ measures behavioural difference between specifications (weighted by test outcomes).
+- $R(S, E) = S'$ takes a specification and structured error feedback, producing a corrected specification.
+- Structured error feedback (`adapter_path`, step, action, suggestion, `diff_candidate`) provides _directional_ information. Each repair narrows the gap between current behaviour and correct behaviour, making $R$ a contraction in expectation.
+
+**When does self-repair converge?** When the feedback is structured, specific, and directional. Uni-CLI's error envelope provides exactly this:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "adapter_path": "~/.unicli/adapters/twitter/timeline.yaml",
+    "step": 2,
+    "action": "fetch",
+    "transport": "http",
+    "message": "HTTP 403 Forbidden",
+    "suggestion": "Cookie may be expired. Re-authenticate via `unicli auth setup twitter`.",
+    "diff_candidate": null,
+    "minimum_capability": null
+  }
+}
+```
+
+Without these fields the contraction property fails. A bare `"HTTP 403"` from curl forces the agent to search the entire specification space for candidate fixes; the envelope above restricts search to the cookie-re-auth neighbourhood.
+
+### 4.3 Closest Academic Analogs
+
+The Self-Healing Router \cite{bholani2026selfhealing} provides the closest formal analog: Dijkstra-based deterministic routing that matches ReAct's correctness with 93% fewer LLM calls. When a tool path fails, the failed edge is reweighted to infinity and the path is recomputed — a contraction in the routing graph. Fission-GRPO \cite{zhang2026fissiongrpo} trains tool-use agents for error recovery with explicit reward decomposition on recovery steps; InspectCoder \cite{wang2025inspectcoder} extends this to runtime debugging; Self-Healing ML \cite{rauba2024selfhealingml} formalises the outer loop at model level rather than adapter level.
+
+### 4.4 Lehman's Laws and Continuous Adaptation
+
+**Lehman's First Law (1974).** A system used in a real-world environment must be continually adapted or it becomes progressively less satisfactory.
+
+Web APIs change constantly. Khan et al. validated six of eight Lehman laws for web frameworks \cite{khan2019lehman}. Serbout \cite{serbout2024apievolution} proposed usage-driven API evolution tracking that mirrors the pattern.
+
+Static adapters decay. Self-repair is not optional — it is a mathematical necessity imposed by Lehman's laws on top of the API-drift problem. The self-repair architecture converts a maintenance burden (manually updating adapters when APIs change) into an automated feedback loop with bounded cost per cycle.
+
+### 4.5 When the Contraction Fails
+
+Three failure modes, each with a designed response:
+
+1. **Non-directional feedback.** If the upstream API returns only an opaque error (e.g. Cloudflare challenge page), the envelope degrades gracefully — `suggestion` is empty or templated, and the agent is told so. The system does not claim convergence it cannot deliver.
+2. **Repair oscillation.** Two consecutive repairs that undo each other indicate the model is in Mode A and thrashing. Cycle detection in `unicli repair` triggers quarantine after 3 unsuccessful repair passes.
+3. **Spec drift.** The upstream changed semantics, not syntax. No structural patch converges; the adapter is quarantined with a human-review flag and remains runnable but marked `[quarantined]` in `unicli list`.
+
+---
+
+## Part V: Information-Theoretic Optimality
+
+### 5.1 Shannon's Source Coding Theorem
+
+**Shannon's Source Coding Theorem (1948).** The optimal compression of a message is bounded by its entropy. No lossless encoding compresses below the source entropy.
+
+He et al. treated the compressor LM as a noisy channel and proved that mutual information predicts downstream agent performance \cite{he2025informationtheoretic}. Larger compressors convey 5.5× more bits per token. This directly supports the CLI claim: a CLI command encodes the same information as a multi-step API interaction, within a tight per-call envelope. See `docs/BENCHMARK.md` for measured numbers.
+
+### 5.2 Honest Token Accounting
+
+The 2026-04-15 round-2 self-audit \cite{internalaudit2026} retired an earlier fixed-size per-call claim. The honest decomposition is:
+
+| Component                   | Typical tokens     | Notes                                     |
+| --------------------------- | ------------------ | ----------------------------------------- |
+| Invocation string           | 6–20               | `unicli reddit hot --limit 5` ≈ 10 tokens |
+| Response body (p50)         | see `BENCHMARK.md` | Depends on command and `--limit`          |
+| Error envelope              | 80–200             | When failing; otherwise zero              |
+| Tool description (MCP mode) | 30–120             | Only if agent uses `unicli mcp serve`     |
+
+The earlier fixed number in prior docs referred to the invocation string plus an idealised response of ~60 tokens. Real responses at `--limit 5` for list-style commands sit in the 1,100–2,100 token range, measured by the bench harness with GPT-4o (o200k_base) tokenisation. This is still well below MCP tool descriptions + call (320–2,800 tokens \cite{firecrawl2026mcptoken, scalekit2026mcp}), but the correct framing is "CLI is 4–35× cheaper than MCP on equivalent interactions" rather than the more aggressive prior claim.
+
+### 5.3 The Compression Path
+
+JTON \cite{nandakishore2026jton} demonstrates structured data encoding reduces JSON token counts by 15–60%. JSPLIT \cite{antonioni2025jsplit} provides a taxonomy of MCP prompt bloating and shows that filtering improves task success. ITR Dynamic System Instructions \cite{itr2025dynamic} achieves 95% context token reduction through per-step retrieval of minimal system prompts. These validate Uni-CLI's deferred tool-loading approach: 4 meta-tools by default, full catalog exposed on demand via `unicli list`.
+
+A 2026-04-14 industry benchmark \cite{webramos2026format} evaluated five formats (JSON, YAML, MD, XML, TOON) across 8 scenarios on 3 Claude tiers (120 files × 5 formats × 3 models). Markdown delivered a 53% input-token reduction versus JSON with **zero accuracy regression on Opus 4.6 and Sonnet 4.6**. Output Markdown reduces tokens by 65% vs JSON. A caveat applies at the Mode A tail: on Haiku 4.5, hierarchical-data scenarios show YAML 92.9% vs Markdown 57.1% — a 36-percentage-point gap. TOON leads at −62% vs JSON. Uni-CLI's v0.213 MD-default output is Opus/Sonnet-optimised; the `--format json|yaml` escape hatches remain necessary for smaller models, and `--format toon` is scoped for v0.216.
+
+### 5.4 The Compilation Analogy
+
+TDAD \cite{rehan2026tdad} treats agent prompts as compiled artifacts from behavioural specifications, achieving 92% compilation success and 97% hidden test pass rate. OpenKedge \cite{heyu2026openkedge} compiles declarative intent proposals into execution contracts with bounded scope and time. The MARIA OS Agent Tool Compiler \cite{maria2026compiler} explicitly frames the pipeline as natural-language intent → intermediate representation → executable code. Compiler.next \cite{cogo2025compilernext} generalises this to a compilable agent programming model.
+
+These independent formalisations confirm that the compilation metaphor is not merely illustrative — it describes a concrete, implementable transformation from probabilistic intent to deterministic action.
+
+---
+
+## Part VI: Empirical Evidence
+
+### 6.1 Canonical Path Deviation
+
+Lee et al. \cite{lee2026canonicalpath} causally demonstrated that agent failures are primarily reliability failures from stochastic drift off canonical tool paths. Each off-canonical call raises the next-deviation probability by 22.7pp. Mid-trajectory monitoring and restart lifts success by +8.8pp. Uni-CLI's YAML pipelines are literal canonical paths; there is no stochastic tool selection within an adapter, which eliminates the cascading deviation problem at the primitive level.
+
+### 6.2 Constraint Compliance
+
+CCTU \cite{ye2026cctu} evaluated LLMs on 200 tasks across 12 constraint categories. No model exceeds 20% strict compliance; models violate constraints in over 50% of cases. Self-refinement after feedback remains weak. Essential constraints (rate limiting, authentication, data formats) must be enforced by the execution layer — not left to the model. Uni-CLI's typed pipeline steps do this deterministically.
+
+### 6.3 Tool Use Efficiency
+
+ZebraArena \cite{zhao2026zebraarena} provides procedurally generated, knowledge-minimal benchmarks with deterministic solutions and known optimal query counts. GPT-5 achieves only 60% on hard tasks and uses 70–270% more tool calls than optimal. Even the best models are far from optimal in tool-use efficiency. Pre-compiled tool paths (CLI adapters) close this gap by definition: one CLI call equals one optimal path for the adapter's domain.
+
+Two contemporary results extend the picture. IntentScore \cite{chen2026intentscore} trains a plan-aware reward model that re-ranks candidate actions offline, lifting Agent S3 by +6.9 points on OSWorld-Verified. Android Coach \cite{gan2026androidcoach} introduces the Single-State-Multiple-Actions (SSMA) reinforcement-learning paradigm, delivering +7.5% / +8.3% over UI-TARS-1.5-7B on AndroidLab / AndroidWorld with 1.4× training efficiency. Both show that deterministic action selection — the default in a Uni-CLI adapter — closes the efficiency gap without requiring further model-scale expansion.
+
+### 6.4 Guardrail Efficacy
+
+TraceSafe \cite{chen2026tracesafe} found guardrail efficacy is driven by _structural data competence_ — the ability to parse and reason about JSON and structured formats ($\rho = 0.79$) — rather than safety alignment. Architecture matters more than scale. Uni-CLI's structured JSON output (both for results and errors) directly improves the safety and reliability of downstream agent behaviour.
+
+### 6.5 Tool-Call Boundary Safety
+
+ClawGuard \cite{clawguard2026} documents MCP/skill-file prompt-injection attacks affecting five SOTA models. Uni-CLI's `assert` step ships a built-in preset for tool-call boundary enforcement (user-confirmed rule set) as a first-class deterministic alternative to alignment-based defence.
+
+### 6.6 Long-Horizon Aggregation
+
+Agentic Aggregation \cite{agentic2026aggregation} shows aggregator agents on parallel rollouts beat single-context long-horizon execution by 5–10%. Uni-CLI's `parallel` pipeline step exposes rollout-merge strategies beyond `merge_first`/`merge_all` to take advantage of this finding at the adapter level rather than the agent level.
+
+### 6.7 Hallucination Under Production Pressure
+
+BridgeBench Hallucination \cite{bridgemind2026} reported Opus 4.6 fell from #2 to #10 (+98% hallucination rate) after silent degradation. The Claude regression saga \cite{cherny2026regression} remains unresolved as of 2026-04-15. Uni-CLI treats hallucination not as a model property but as an environment property: the deterministic execution layer ensures that even a hallucinating agent cannot fabricate an HTTP response — only a call that fails loudly.
+
+### 6.8 SkillDroid — Direct Experimental Validation of the Compilation Thesis
+
+Chen et al. \cite{chen2026skilldroid} (arXiv:2604.14872, 2026-04-16) implement an architecture structurally identical to Uni-CLI's adapter layer: successful LLM-driven GUI trajectories are compiled into **parameterised skill templates** with weighted locators and typed parameters. Incoming instructions are routed to stored skills via cascade matching — **zero LLM calls in the hot path** when a skill matches. The measured results are direct numbers on the compilation thesis:
+
+- **85.3% task success** on the combined test set
+- **49% fewer LLM calls** than the non-compiled baseline
+- **100% replay-round success rate** when cascade-match hits
+
+The mapping to Uni-CLI is exact:
+
+| SkillDroid (2026)            | Uni-CLI (2024–)                                   |
+| ---------------------------- | ------------------------------------------------- |
+| parameterised skill template | YAML adapter with `args: [...]`                   |
+| weighted locator             | CSS selector cascade + accessibility ref          |
+| typed parameter              | pipeline step type contract                       |
+| cascade matching             | `registry.resolve(site, command)` zero-LLM lookup |
+| skill library                | `src/adapters/` + `~/.unicli/adapters/`           |
+
+SkillDroid frames its own contribution as "compile once, reuse forever" — which is the Lehman-law-resistant Banach-contraction self-repair loop this document argues for (§4) under a different name. 85.3% / 49% / 100% is direct validation that the compilation thesis is implementable at production quality with 2026 models, in a setting where the authors did not know of Uni-CLI and we did not know of SkillDroid. The convergent result stands alongside the three compilation-thesis papers in §5.4 (TDAD \cite{rehan2026tdad}, OpenKedge \cite{heyu2026openkedge}, MARIA Compiler \cite{maria2026compiler}) as independent arrival at the same architectural conclusion from different methodological starting points.
+
+---
+
+## Part VII: Formal Verification
+
+### 7.1 Process Calculus for Tool Protocols
+
+Schlapbach \cite{schlapbach2026formal} provided the first process calculus formalisation of tool protocols (including MCP). Key finding: MCP and schema-guided dialogue are structurally bisimilar in the forward direction (client → server), but **MCP is lossy in the reverse mapping** (server → client). The paper proposes MCP+ with type-system extensions to address this. Uni-CLI's envelope (§4.2) is one concrete answer: a typed, directional feedback channel from adapter → agent that preserves the repair information MCP drops.
+
+### 7.2 Verification Over Probabilistic Agents
+
+VeriSafe \cite{lee2025verisafe} achieves 94–98% verification accuracy for GUI agent actions through autoformalisation of user intent into verifiable specifications. This confirms that a deterministic verification layer over probabilistic agents produces reliable systems.
+
+Type-Checked Compliance \cite{rashie2026typechecked} treats every agent action as a mathematical conjecture; execution is permitted if and only if Lean 4 proves compliance. This is the theoretical extreme of the deterministic compilation thesis: compile agent actions to formal proofs before execution. Uni-CLI sits a pragmatic notch below — the proof obligation is a successful `unicli test` rather than a Lean 4 term — but the architecture is aligned with this trajectory.
+
+### 7.3 Security Implications
+
+ToolFlood \cite{jawad2026toolflood} demonstrated adversarial tools achieve 95% attack success at just 1% injection rate in embedding-based tool retrieval. GrantBox \cite{zhang2026grantbox} showed 84.8% attack success under prompt injection in tool privilege evaluation. These results highlight a security advantage of curated CLI adapters over open tool registries: a fixed, auditable set of adapters has a smaller attack surface than a dynamic, embedding-based tool discovery system. Schema-v2 introduces `trust` (`first-party` | `community` | `user`) and `confidentiality` (`public` | `auth` | `sensitive`) fields per adapter; quarantine applies to anything that fails a three-cycle self-repair or is flagged by audit.
+
+---
+
+## Part VIII: Open Problems
+
+Honest accounting demands listing what this thesis does not resolve.
+
+1. **Primitive verification.** The softened Restriction (§1.1) reduces correctness of a pipeline to correctness of each step. We enforce step correctness by tests and review — not by proof. Moving a subset of steps to formally verified implementations (e.g. the `fetch` step under a typed HTTP lens) is future work.
+2. **Bimodal repair verification.** The self-repair loop (§4) converges when feedback is directional; in Mode A (§2) directionality drops. We do not yet have a closed-form relationship between envelope richness and expected repair cycles as a function of agent capability mode.
+3. **Transport coherence.** The 7-transport architecture promises unified semantics across `cdp-browser`, `desktop-ax`, `desktop-uia`, `desktop-atspi`, and `cua`. `λ_A` \cite{kumar2026lambdaa} suggests 94.1% of real agent configs are structurally incomplete — coherence across transports is a heavy theoretical obligation still to be discharged.
+4. **Benchmark contamination.** Hodoscope \cite{hodoscope2026} found a Commit0 benchmark exploit inflating 5+ models' scores. SWE-Bench Pro 58.4% for GLM-5.1 may not survive a Hodoscope-style audit. The empirical evidence in §6 should be read with this caveat.
+5. **The "rising tide vs crashing wave" tension.** Thompson et al.'s rising tide \cite{thompson2026risingtide} and METR's horizon-doubling \cite{metr2025horizon} are both real, but they target different task distributions. The design choice in §2.3 — the ≤30K advisory — is a hedge, not a prediction. If Mode B becomes the norm by 2027, the advisory relaxes; if Mode A regressions intensify, the advisory tightens.
+6. **In-situ assistance vs. direct execution.** Beyond Chat and Clicks \cite{hao2026beyondchat} (arXiv:2604.14668, 2026-04-16) proposes a paradigm in which agents insert, mutate, or recompose page elements reversibly through the DOM rather than executing actions on behalf of the user. This is orthogonal to Uni-CLI's current execution model and to the operator abstractions already used for browser/CUA flows. Reconciling the two would require either (a) a reversible-mutation transport alongside `cdp-browser`, or (b) a new adapter type whose pipeline output surfaces proposed DOM mutations rather than applies them. Deferred to future scoping.
+
+---
+
+## References
+
+All arXiv IDs in `docs/refs.bib` are verified against `arxiv.org` by the `refs:verify` CI job on every push.
+
+### Impossibility and Foundations
+
+- \cite{demelo2024undecidability} de Melo, G. et al. (2024). "On the Undecidability of AI Alignment." arXiv:2408.08995.
+- \cite{dantsin2024extensional} Dantsin, E. & Wolpert, D. (2024). "Extensional Properties of RNNs are Undecidable." arXiv:2410.22730.
+
+### Convergence Theory
+
+- \cite{rodemann2024reciprocal} Rodemann, T. et al. (2024). "Reciprocal Learning." arXiv:2408.06257.
+- \cite{kadurha2025bellman} Kadurha, D. et al. (2025). "Bellman Operator Convergence Enhancements." arXiv:2505.14564.
+
+### Benchmarks and Empirical
+
+- \cite{ye2026cctu} Ye, F. et al. (2026). "CCTU: Benchmark for Tool Use under Complex Constraints." arXiv:2603.15309.
+- \cite{mudunuri2026semantictool} Mudunuri, V. et al. (2026). "Semantic Tool Discovery for MCP Tool Selection." arXiv:2603.20313.
+- \cite{liu2026graphskills} Liu, Z. et al. (2026). "Graph of Skills: Dependency-Aware Structural Retrieval." arXiv:2604.05333.
+- \cite{lee2026canonicalpath} Lee, S. (2026). "Capable but Unreliable: Canonical Path Deviation." arXiv:2602.19008.
+- \cite{zhao2026zebraarena} Zhao, W. et al. (2026). "ZebraArena: Diagnostic Simulation for Reasoning-Action Coupling." arXiv:2603.18614.
+- \cite{ramachandran2026amazingagentrace} Ramachandran, K. et al. (2026). "The Amazing Agent Race." arXiv:2604.10261.
+- \cite{yao2026hilbench} Yao, S. et al. (2026). "HiL-Bench: Do Agents Know When to Ask for Help?" arXiv:2604.09408.
+- \cite{chen2026skilldroid} Chen, X. et al. (2026). "SkillDroid: Compile Successful Trajectories into Reusable Skills." arXiv:2604.14872.
+- \cite{gupta2026molmoweb} Gupta, R. et al. (2026). "MolmoWeb: Open 4B/8B Web Agents." Allen Institute for AI. arXiv:2604.08516.
+- \cite{chen2026intentscore} Chen, W. et al. (2026). "IntentScore: Plan-Aware Reward Scoring for GUI Agents." arXiv:2604.05157.
+- \cite{gan2026androidcoach} Gan, H. et al. (2026). "Android Coach: Single-State-Multiple-Actions RL for GUI Agents." arXiv:2604.07277.
+- \cite{hao2026beyondchat} Hao, Y. et al. (2026). "Beyond Chat and Clicks: In-Situ DOM-Mediated Assistance." arXiv:2604.14668.
+- \cite{hallucination2026documentqa} "How Much Do LLMs Hallucinate in Document Q&A?" (2026). arXiv:2603.08274.
+- \cite{metr2025horizon} METR (2025). "Time-Horizon v1.1." METR Research.
+- \cite{bridge2026reproduction} BRIDGE (2026). "Predicting Human Task Completion Time From Model Performance." arXiv:2602.07267.
+- \cite{thompson2026risingtide} Thompson, N. et al. (2026). "Crashing Waves vs. Rising Tides." arXiv:2604.01363.
+
+### Self-Repair and Robustness
+
+- \cite{bholani2026selfhealing} Bholani, R. (2026). "Self-Healing Router: Graph-Based Fault-Tolerant Tool Routing." arXiv:2603.01548.
+- \cite{zhang2026fissiongrpo} Zhang, Y. et al. (2026). "Fission-GRPO: Robust Tool Use via Error Recovery." arXiv:2601.15625.
+- \cite{wang2025inspectcoder} Wang, H. et al. (2025). "InspectCoder." arXiv:2510.18327.
+- \cite{rauba2024selfhealingml} Rauba, L. et al. (2024). "Self-Healing Machine Learning." arXiv:2411.00186.
+- \cite{chen2026tracesafe} Chen, X. et al. (2026). "TraceSafe: Systematic Assessment of LLM Guardrails." arXiv:2604.07223.
+- \cite{agentic2026aggregation} "Agentic Aggregation." (2026). arXiv:2604.11753.
+- \cite{clawguard2026} "ClawGuard: Prompt-Injection Defence for MCP and Skill Files." (2026). arXiv:2604.11790.
+
+### Formal Semantics and Verification
+
+- \cite{schlapbach2026formal} Schlapbach, M. (2026). "Formal Semantics for Agentic Tool Protocols." arXiv:2603.24747.
+- \cite{lee2025verisafe} Lee, K. et al. (2025). "VeriSafe Agent." arXiv:2503.18492.
+- \cite{rashie2026typechecked} Rashie, A. & Rashi, B. (2026). "Type-Checked Compliance: Lean 4 for Agentic Systems." arXiv:2604.01483.
+- \cite{kumar2026lambdaa} Kumar, P. et al. (2026). "λ_A: A Typed Agent Calculus." arXiv:2604.11767.
+
+### Compilation Thesis
+
+- \cite{rehan2026tdad} Rehan, A. (2026). "TDAD: Test-Driven AI Agent Definition." arXiv:2603.08806.
+- \cite{heyu2026openkedge} He, Z. & Yu, L. (2026). "OpenKedge: Governing Agentic Mutation." arXiv:2604.08601.
+- \cite{maria2026compiler} MARIA OS (2026). "Agent Tool Compiler." os.maria-code.ai.
+- \cite{cogo2025compilernext} Cogo, V. et al. (2025). "Compiler.next." arXiv:2510.24799.
+
+### Information Theory and Token Efficiency
+
+- \cite{he2025informationtheoretic} He, Z. et al. (2025). "An Information Theoretic Perspective on Agentic System Design." arXiv:2512.21720.
+- \cite{nandakishore2026jton} Nandakishore, V. (2026). "JTON: Token-Efficient JSON Superset." arXiv:2604.05865.
+- \cite{antonioni2025jsplit} Antonioni, L. et al. (2025). "JSPLIT: Taxonomy for MCP Prompt Bloating." arXiv:2510.14537.
+- \cite{itr2025dynamic} "Dynamic System Instructions and Tool Exposure (ITR)." (2025).
+- \cite{firecrawl2026mcptoken} Firecrawl (2026). "MCP costs 4–32× more tokens than CLI."
+- \cite{scalekit2026mcp} Scalekit (2026). "CLI vs MCP: 10–32× Token Cost."
+- \cite{webramos2026format} Webramos (2026-04-14). "YAML vs Markdown vs JSON vs TOON: Claude API Format Efficiency Benchmark." dev.to/webramos.
+
+### Security
+
+- \cite{jawad2026toolflood} Jawad, M. & Brunel, A. (2026). "ToolFlood: Retrieval-Layer Attack on Tool Selection." arXiv:2603.13950.
+- \cite{zhang2026grantbox} Zhang, Y. et al. (2026). "GrantBox: Evaluating Privilege Usage." arXiv:2603.28166.
+
+### Evolution and Lehman's Laws
+
+- \cite{khan2019lehman} Khan, M. et al. (2019). "Evolution of WordPress and Django Using Lehman's Laws." Semantic Scholar.
+- \cite{serbout2024apievolution} Serbout, S. (2024). "A Data-Driven Approach to Prescribe Web API Evolution." UPC Thesis.
+
+### Model Landscape (2026)
+
+- \cite{mythos2026systemcard} Anthropic (2026). "Claude Mythos Preview System Card." red.anthropic.com.
+- \cite{glm2026report} Zhipu (2026). "GLM-5.1 Technical Report."
+- \cite{scaleai2025swebenchpro} Scale AI (2025). "SWE-Bench Pro."
+- \cite{openai2025o3o4report} OpenAI (2025). "o3 and o4-mini Technical Report."
+- \cite{hn2026claudedumbed} HN Submission #38752341 (2026-02-11). "Claude Code is being dumbed down?"
+- \cite{theregister2026amdclaude} The Register (2026-04-06). "AMD AI Director Analyses Claude Code Regression."
+- \cite{bridgemind2026} BridgeMind AI (2026-04-13). "BridgeBench Hallucination Leaderboard."
+- \cite{cherny2026regression} Cherny, B. (2026). "Claude Code Regression Postmortem Discussion." GitHub Issue.
+- \cite{hodoscope2026} Hodoscope (2026). "Commit0 Benchmark Exploit." arXiv:2604.11072.
+
+### Internal
+
+- \cite{internalaudit2026} Uni-CLI Round-2 Audit (2026-04-15). "`docs/BENCHMARK.md` honesty pass." `.claude/plans/sessions/2026-04-14-v212-rethink/round2/04-self-audit.md`.
+
+---
+
+_46 references. Last updated: 2026-04-17. Bibtex entries in `docs/refs.bib`. Run `npm run refs:verify` to re-check arXiv IDs._
+
+---
+
+# Page: Roadmap
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/ROADMAP
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
+
+<!-- Generated from docs/ROADMAP.md. Do not edit this copy directly. -->
+
+# Roadmap
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/ROADMAP
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
+- Section: Explanation
+- Parent: Explanation (/ARCHITECTURE)
+
+> Current: v0.215.1. <!-- STATS:site_count -->223<!-- /STATS --> sites, <!-- STATS:command_count -->1304<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps.
+
+This file tracks current engineering direction. Historical release notes live in
+`CHANGELOG.md`; they do not belong in the roadmap.
+
+## Shipped
+
+| Area                 | Status                                                                                                                      |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Adapter catalog      | Web, browser, desktop, macOS, bridge, and external CLI surfaces are discoverable through `unicli list` and `unicli search`. |
+| v2 output envelope   | Normal command surfaces return structured success and error envelopes.                                                      |
+| MCP server           | Stdio, Streamable HTTP, SSE, and optional OAuth 2.1 PKCE entry points are available.                                        |
+| ACP gateway          | Supported as an editor compatibility path, not the primary runtime abstraction.                                             |
+| Self-repair loop     | Errors carry adapter path, step, retryability, suggestion, and alternatives.                                                |
+| Agent backend matrix | Native CLI, JSON stream, MCP, ACP, HTTP API, OpenAI-compatible, and bridge routes are modeled explicitly.                   |
+| Docs site            | VitePress landing page, guide/reference split, local search, and GitHub Pages deployment workflow are available.            |
+
+## Next Priorities
+
+1. **Adapter authoring loop**
+   - Keep browser `analyze`, `init`, `verify`, fixtures, field maps, and site memory as first-class authoring artifacts.
+   - Store reusable site notes under `~/.unicli/sites/SITE/`.
+   - Make repair output directly reusable by coding agents without extra prose.
+
+2. **Browser network detail**
+   - Preserve request/response detail, cache hits, filters, and timing in browser capture commands.
+   - Make captured network evidence usable as adapter fixtures.
+
+3. **Backend honesty**
+   - Keep ACP as compatibility.
+   - Prefer native CLI, JSON stream, and MCP when a backend exposes them.
+   - Do not mark CUA as live unless a configured backend performs real actions.
+
+4. **Docs as product surface**
+   - README stays install-first and capability-first.
+   - Public docs should explain commands, contracts, repair paths, and integration routes.
+   - Long research notes, release archaeology, and naming lore stay out of the public entry path.
+
+## Non-Goals
+
+- No winner-take-all backend policy.
+- No hidden success when an adapter failed.
+- No theory-first README.
+- No new protocol shim unless it reduces latency, preserves session semantics, or unlocks a real client.
+
+## Verify
+
+```bash
+npm run build
+npm run release:check
+npm run verify
+```

@@ -63,7 +63,6 @@ export const sidebarGroups: SiteGroup[] = [
       { text: "Architecture", link: "/ARCHITECTURE" },
       { text: "Benchmarks", link: "/BENCHMARK" },
       { text: "Theory", link: "/THEORY" },
-      { text: "Taste Guide", link: "/TASTE" },
       { text: "Roadmap", link: "/ROADMAP" },
     ],
   },

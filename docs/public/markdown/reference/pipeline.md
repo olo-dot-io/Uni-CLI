@@ -174,7 +174,7 @@ Run a subprocess command. Captures stdout and optionally parses it as JSON.
 
 ```yaml
 - exec:
-    cmd: "ffprobe"
+    command: "ffprobe"
     args:
       [
         "-v",
@@ -184,14 +184,14 @@ Run a subprocess command. Captures stdout and optionally parses it as JSON.
         "-show_format",
         "${{ args.file }}",
       ]
-    json: true # parse stdout as JSON
+    parse: json # parse stdout as JSON
 ```
 
 With environment variables:
 
 ```yaml
 - exec:
-    cmd: "blender"
+    command: "blender"
     args: ["--background", "--python", "${{ steps.write_temp.path }}"]
     env:
       BLENDER_USER_SCRIPTS: "/path/to/scripts"
@@ -201,7 +201,7 @@ With stdin:
 
 ```yaml
 - exec:
-    cmd: "jq"
+    command: "jq"
     args: [".data.items"]
     stdin: "${{ data }}"
 ```
@@ -210,9 +210,9 @@ With file output (read result from a file instead of stdout):
 
 ```yaml
 - exec:
-    cmd: "imagemagick"
+    command: "magick"
     args: ["convert", "${{ args.input }}", "-resize", "800x", "/tmp/out.png"]
-    file_output: "/tmp/out.png"
+    output_file: "/tmp/out.png"
 ```
 
 ### write_temp
@@ -227,7 +227,7 @@ Create a temporary file with the given content. Returns the file path in `steps.
       bpy.ops.render.render(write_still=True)
       print("done")
 - exec:
-    cmd: "blender"
+    command: "blender"
     args: ["--background", "--python", "${{ steps.write_temp.path }}"]
 ```
 

@@ -122,7 +122,7 @@ Uni-CLI optimises **Accuracy × Performance**.
 
 - **Accuracy.** Deterministic YAML pipelines eliminate stochastic tool selection errors within an adapter. Structured error feedback enables convergent self-repair. Pipelines are literal canonical paths in the sense of Lee et al. \cite{lee2026canonicalpath}, who causally demonstrated that each off-canonical call raises the next deviation probability by 22.7 percentage points.
 - **Performance.** Per-call token cost is measured in `docs/BENCHMARK.md` with p50/p95 across categories, measured on a harness wired into `npm run bench`. Target: beat GitHub MCP 55K-token cold-start by 30× on p50 response for bread-and-butter commands. External benchmarks (Firecrawl, Scalekit, OnlyCLI, Apideck) report 4–35× savings \cite{firecrawl2026mcptoken, scalekit2026mcp}.
-- **Coverage.** Extensible but not universal. Currently 195 sites, 956 commands. Self-repair and the `unicli init` + `unicli import opencli-yaml` tools extend coverage incrementally.
+- **Coverage.** Extensible but not universal. Currently 223 sites, 1304 commands, and 987 adapters. Self-repair and the `unicli init`, `unicli import`, `unicli record`, and `unicli generate` tools extend coverage incrementally.
 
 MCP optimises **Coverage × Accuracy** (19,800+ servers, rich schemas, high token cost). Raw function calling optimises **Coverage × Performance** (any function, compact descriptions, selection errors grow with scale).
 
@@ -147,7 +147,7 @@ In Uni-CLI's self-repair loop:
 - $X$ is the set of adapter specifications under a fixed schema.
 - $d(S_1, S_2)$ measures behavioural difference between specifications (weighted by test outcomes).
 - $R(S, E) = S'$ takes a specification and structured error feedback, producing a corrected specification.
-- Structured error feedback (adapter*path, step, action, suggestion, diff_candidate) provides \_directional* information. Each repair narrows the gap between current behaviour and correct behaviour, making $R$ a contraction in expectation.
+- Structured error feedback (`adapter_path`, step, action, suggestion, `diff_candidate`) provides _directional_ information. Each repair narrows the gap between current behaviour and correct behaviour, making $R$ a contraction in expectation.
 
 **When does self-repair converge?** When the feedback is structured, specific, and directional. Uni-CLI's error envelope provides exactly this:
 
@@ -307,7 +307,7 @@ Honest accounting demands listing what this thesis does not resolve.
 3. **Transport coherence.** The 7-transport architecture promises unified semantics across `cdp-browser`, `desktop-ax`, `desktop-uia`, `desktop-atspi`, and `cua`. `λ_A` \cite{kumar2026lambdaa} suggests 94.1% of real agent configs are structurally incomplete — coherence across transports is a heavy theoretical obligation still to be discharged.
 4. **Benchmark contamination.** Hodoscope \cite{hodoscope2026} found a Commit0 benchmark exploit inflating 5+ models' scores. SWE-Bench Pro 58.4% for GLM-5.1 may not survive a Hodoscope-style audit. The empirical evidence in §6 should be read with this caveat.
 5. **The "rising tide vs crashing wave" tension.** Thompson et al.'s rising tide \cite{thompson2026risingtide} and METR's horizon-doubling \cite{metr2025horizon} are both real, but they target different task distributions. The design choice in §2.3 — the ≤30K advisory — is a hedge, not a prediction. If Mode B becomes the norm by 2027, the advisory relaxes; if Mode A regressions intensify, the advisory tightens.
-6. **In-situ assistance vs. direct execution.** Beyond Chat and Clicks \cite{hao2026beyondchat} (arXiv:2604.14668, 2026-04-16) proposes a paradigm in which agents insert, mutate, or recompose page elements reversibly through the DOM rather than executing actions on behalf of the user. This is orthogonal to Uni-CLI's current execution model and to the operator abstractions planned for v0.214. Reconciling the two would require either (a) a reversible-mutation transport alongside `cdp-browser`, or (b) a new adapter type whose pipeline output surfaces proposed DOM mutations rather than applies them. Deferred to v0.215+ scoping.
+6. **In-situ assistance vs. direct execution.** Beyond Chat and Clicks \cite{hao2026beyondchat} (arXiv:2604.14668, 2026-04-16) proposes a paradigm in which agents insert, mutate, or recompose page elements reversibly through the DOM rather than executing actions on behalf of the user. This is orthogonal to Uni-CLI's current execution model and to the operator abstractions already used for browser/CUA flows. Reconciling the two would require either (a) a reversible-mutation transport alongside `cdp-browser`, or (b) a new adapter type whose pipeline output surfaces proposed DOM mutations rather than applies them. Deferred to future scoping.
 
 ---
 

@@ -31,6 +31,25 @@ export interface ColdStartResult {
   commands: number;
 }
 
+type ListRow = { site?: string };
+
+function listRowsFromJson(value: unknown): ListRow[] {
+  if (Array.isArray(value)) {
+    return value as ListRow[];
+  }
+
+  if (
+    value &&
+    typeof value === "object" &&
+    "data" in value &&
+    Array.isArray((value as { data?: unknown }).data)
+  ) {
+    return (value as { data: ListRow[] }).data;
+  }
+
+  return [];
+}
+
 export function runColdStart(runs: number = 50): ColdStartResult {
   if (!existsSync(CLI_ENTRY)) {
     throw new Error(
@@ -65,10 +84,9 @@ export function runColdStart(runs: number = 50): ColdStartResult {
     lastJson = [];
   }
 
-  const rowCount = Array.isArray(lastJson) ? lastJson.length : 0;
-  const sites = new Set(
-    (lastJson as { site?: string }[]).map((r) => r.site).filter(Boolean),
-  ).size;
+  const rows = listRowsFromJson(lastJson);
+  const rowCount = rows.length;
+  const sites = new Set(rows.map((r) => r.site).filter(Boolean)).size;
 
   wallMs.sort((a, b) => a - b);
   const tokenEst = estimateTokens(lastStdout);

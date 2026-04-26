@@ -23,7 +23,7 @@ const TARGETS = [
   "README.zh-CN.md",
   "AGENTS.md",
   join("docs", "ROADMAP.md"),
-  join("docs", "TASTE.md"),
+  join("internal", "TASTE.md"),
 ];
 
 const MARKER = /<!--\s*STATS:([a-z_]+)\s*-->[\s\S]*?<!--\s*\/STATS\s*-->/g;

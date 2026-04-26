@@ -16,9 +16,10 @@
 Public docs previously cited a single low, round token-per-call figure.
 That number conflated the length of the invocation string (roughly ten
 tokens) with the size of the rendered response body, which depends on
-`--limit`, output format, and the specific command. The 2026-04-15 round-2
-audit measured actual responses at 1,100-2,100 tokens for common calls --
-well over an order of magnitude above the retired claim.
+`--limit`, output format, and the specific command. The v0.215.1 fixture
+bench measures the current v2 AgentEnvelope response body at 357-415 tokens
+for representative `--limit 5` list-style calls. `unicli list` is much larger
+because it intentionally emits the full 223-site / 1304-command catalog.
 
 This file replaces the retired claim. It ships real numbers or says `TODO:`
 -- nothing in between.
@@ -48,36 +49,37 @@ has two modes:
 | fixture | `BENCH_FIXTURES_ONLY=1 npm run bench` | no      | CI and reproducible reports. Reads `bench/fixtures/*.json`. |
 
 Fixture files are committed under `bench/fixtures/` alongside the scripts.
-They were captured on 2026-04-15 from live endpoints and are replaced
-when upstream responses meaningfully change (schema shift, new fields).
+Legacy fixture payloads are normalized into the current v2 AgentEnvelope shape
+before token counting, so the benchmark tracks the current public output
+contract even when source fixtures predate the envelope migration.
 
 ## Results
 
 <!-- BENCH:begin -->
 
-> Generated 2026-04-14T19:26:27.389Z on Node v22.20.0 / darwin-arm64.
+> Generated 2026-04-26T10:22:10.589Z on Node v22.22.2 / darwin-arm64.
 > Mode: **fixture** (50 iterations per case).
 > Reproduce with `npm run bench` (local live mode) or `BENCH_FIXTURES_ONLY=1 npm run bench` (CI-deterministic fixture mode).
 
 ### Cold start: `unicli list`
 
-| metric          | value   |
-| --------------- | ------- |
-| wall p50        | 1553 ms |
-| wall p95        | 3292 ms |
-| response tokens | 44394   |
-| response chars  | 159816  |
-| sites listed    | 198     |
-| commands listed | 1020    |
+| metric          | value  |
+| --------------- | ------ |
+| wall p50        | 726 ms |
+| wall p95        | 761 ms |
+| response tokens | 66272  |
+| response chars  | 238579 |
+| sites listed    | 223    |
+| commands listed | 1304   |
 
 ### Adapter call: p50/p95 response tokens
 
 | category  | command                                  | invocation tokens | response p50 tokens | response p95 tokens | wall p50 ms | wall p95 ms | mode    |
 | --------- | ---------------------------------------- | ----------------: | ------------------: | ------------------: | ----------: | ----------: | ------- |
-| news      | `unicli hackernews top --limit 5`        |                 9 |                 338 |                 338 |       0.004 |       0.011 | fixture |
-| social    | `unicli reddit hot --limit 5`            |                 8 |                 347 |                 347 |       0.003 |       0.004 | fixture |
-| social-cn | `unicli 36kr hot --limit 5`              |                 7 |                 296 |                 296 |       0.002 |       0.003 | fixture |
-| dev       | `unicli github-trending daily --limit 5` |                11 |                 333 |                 333 |       0.003 |       0.004 | fixture |
+| news      | `unicli hackernews top --limit 5`        |                 9 |                 404 |                 404 |       0.003 |       0.006 | fixture |
+| social    | `unicli reddit hot --limit 5`            |                 8 |                 415 |                 415 |       0.004 |       0.017 | fixture |
+| social-cn | `unicli 36kr hot --limit 5`              |                 7 |                 357 |                 357 |       0.003 |       0.003 | fixture |
+| dev       | `unicli github-trending daily --limit 5` |                11 |                 400 |                 400 |       0.004 |       0.005 | fixture |
 
 ### MCP catalog comparison
 
@@ -85,12 +87,12 @@ Baseline: **55,000-token** GitHub MCP cold-start. Target reduction vs. baseline:
 
 | category  | total tokens | reduction factor vs. 55K |
 | --------- | -----------: | -----------------------: |
-| news      |          347 |               **158.5x** |
-| social    |          355 |               **154.9x** |
-| social-cn |          303 |               **181.5x** |
-| dev       |          344 |               **159.9x** |
+| news      |          413 |               **133.2x** |
+| social    |          423 |                 **130x** |
+| social-cn |          364 |               **151.1x** |
+| dev       |          411 |               **133.8x** |
 
-Median reduction across the suite: **159.9x**. Best: **181.5x**.
+Median reduction across the suite: **133.8x**. Best: **151.1x**.
 Claim "beat GitHub MCP 55K cold-start by 30x on p50" holds: **YES**.
 
 <!-- BENCH:end -->
@@ -106,8 +108,9 @@ true/false` verdict alongside the median reduction factor. If the claim
 does not hold, the Results section above says so explicitly and we do not
 hide the number. The honest outcome at `--limit 5` for list-style commands
 is that total tokens per call (invocation + response) sit in the 300-600
-range, giving a raw reduction factor around 100-180x against the 55K
-baseline. This comfortably clears 30x on p50. For commands that produce
+range, giving a raw reduction factor around 130-151x against the 55K
+baseline in the current fixture suite. This comfortably clears 30x on p50.
+For commands that produce
 larger payloads (paginated feeds, long transcripts) we ship a `--compact`
 flag that drops null fields and single-line-JSON-formats the output.
 
@@ -139,4 +142,4 @@ network. CI runs it only in fixture mode, on an explicit
 
 ---
 
-_Last reviewed: 2026-04-15._
+_Last reviewed: 2026-04-26._
