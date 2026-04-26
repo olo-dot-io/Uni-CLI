@@ -6,9 +6,9 @@
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
 - Section: Start
 
-## The native command surface for agents.
+## The universal interface between AI agents and the world's software.
 
-Search by intent, run typed commands, get structured envelopes, and repair broken tools without leaving the shell.
+A shell-native command layer for real operations: discover by intent, execute typed adapters, return structured AgentEnvelopes, and repair broken automation in place.
 
 ## Primary Actions
 
