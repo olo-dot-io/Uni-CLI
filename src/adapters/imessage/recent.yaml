@@ -48,7 +48,7 @@ pipeline:
           # Force integer on limit (strip non-digits, default 50)
           lim=${UNICLI_LIMIT//[^0-9]/}
           : "${lim:=50}"
-          sqlite3 -json "$db" \
+          out=$(sqlite3 -json "$db" \
             "SELECT datetime(date/1000000000 + 978307200, 'unixepoch', 'localtime') AS ts, \
                     text, \
                     is_from_me, \
@@ -57,7 +57,12 @@ pipeline:
              WHERE text IS NOT NULL \
              ORDER BY date DESC \
              LIMIT $lim;" \
-            2>/dev/null || echo "[]"
+            2>/dev/null) || { echo "[]"; exit 0; }
+          if [ -z "$out" ]; then
+            echo "[]"
+          else
+            printf '%s\n' "$out"
+          fi
       env:
         UNICLI_LIMIT: "${{ args.limit }}"
       parse: json

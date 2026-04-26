@@ -29,8 +29,8 @@ Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributin
 
 - Browser-function commands now receive a real page from the shared execution
   kernel and close it best-effort after command completion.
-- Browser daemon compatibility now honors `OPENCLI_DAEMON_PORT` and accepts the
-  OpenCLI response shapes used by the reference daemon.
+- Browser daemon compatibility now honors the legacy daemon port environment
+  and accepts the compatibility response shapes used by the reference daemon.
 - Adapter health probing now reads command-level browser/auth metadata before
   deciding what is runnable, skipped, or auth-gated.
 
@@ -48,6 +48,38 @@ Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributin
   represented the live site.
 - Removed the dead Meituan hot adapter after the upstream endpoint returned
   unrecoverable 404 responses and no reliable reference path remained.
+
+## [0.216.0] — 2026-04-27 — OpenCLI Parity Harness
+
+### Added
+
+- **OpenCLI parity benchmark** — `pnpm bench:opencli-parity` compares the
+  synced `ref/opencli/cli-manifest.json` against Uni-CLI's generated manifest,
+  reports site/command gaps, and can fail CI with `--fail-on-gaps`.
+- **Latest OpenCLI signal watchlist** — public OpenCLI PR/issue movements for
+  Google Scholar, Instagram, Doubao, browser upload, daemon ports,
+  debugger-detach retry, plugin daemon docs, bind-current, browser network
+  detail, and DeepSeek file upload are now checked as quantitative signals.
+- **Google Scholar coverage** — `google-scholar search` now deduplicates result
+  cards, and `google-scholar cite` / `profile` add first-class scholarly lookup
+  flows.
+- **DeepSeek file uploads** — `deepseek ask --file <path>` uploads one or more
+  local files before sending the prompt.
+
+### Changed
+
+- Plugin author documentation now records the supported plugin-side browser
+  daemon spawn pattern, `UNICLI_DAEMON_PORT`, and the public daemon subpath.
+- Build now uses `pnpm exec prettier` instead of `npx prettier`, avoiding npm
+  config warnings during the generated-doc pass.
+- Cold-start benchmarking now allows full manifest stdout and fails loudly on
+  parse errors instead of silently returning zero counts.
+
+### Fixed
+
+- Browser daemon commands now retry transient CDP debugger-detach failures.
+- CLI fast-path execution now lets stdout flush naturally, avoiding truncated
+  JSON for large manifest-producing commands.
 
 ## [0.215.1] — 2026-04-24 — Agent Backend Matrix
 
@@ -89,7 +121,7 @@ Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributin
 ### Added
 
 - **Browser adapter authoring loop** — `unicli browser analyze`, `browser init`,
-  and `browser verify` now cover the OpenCLI-style authoring path with
+  and `browser verify` now cover the legacy-style authoring path with
   structured v2 envelopes, schema-v2 adapter skeletons, fixture generation,
   fixture validation, and `--strict-memory` gates.
 - **Reusable site memory** under `~/.unicli/sites/<site>/`: endpoint
@@ -286,7 +318,7 @@ v0.213.4 once OpenRouter credit is restored.
 - **`zhihu.answers` MD rendering** — `pickTitle` in `src/output/md.ts` now falls back to `question` → `excerpt` → `summary` before the generic `"Item"` label, so answer listings render meaningful `### N · <question>` headings. Adapter shapes that carry post bodies in `question` + `excerpt` (zhihu.answers) or `summary` (certain arxiv paths) now surface that content as the row title. `zhihu.answers.success.md` fixture regenerated; 2 unit tests in `tests/unit/output/md.test.ts` pin the new priority order (`title > name > id > question > excerpt > summary > "Item"`).
 - **`content[]` canonical populated case battle-tested** — the optional `AgentEnvelope.content[]` field first shipped in v0.213.0 was never exercised end-to-end. `src/output/md.ts` now renders a `## Content` section (text / image / resource blocks) when the field is populated; `makeEnvelope()` gained an optional `content` argument threading `AgentContent[]` through the envelope. New golden fixture `tests/fixtures/md/unsplash.search.success-with-content.md` plus 3 unit tests in `md.test.ts` + 2 in `envelope.test.ts` pin the shape for the download-step use case (`{type:"resource", uri:"file://…"}`). YAML-adapter opt-in via `emit_content: true` is documented on `makeEnvelope`; the runner-side plumbing to auto-populate from `download` step output ships in v0.214.
 - **`stats-consistency.test.ts` timeout bumped 5s → 60s** — `computeStats()` spawns `vitest list --json` twice (one per project) after T11's rewrite, which takes ~10-25s on cold runs of this repo. The 5s default was tight from day one and timed out under `npm run verify` on slower machines. 7 sibling tests were already fast and unchanged.
-- **Ref-Locator verification layer** — `BrowserPage.snapshot()` and `DaemonPage.snapshot()` now persist a window-level fingerprint map on `window.__unicli_ref_identity`; click/type steps plus `unicli operate click/type` resolve refs against this map and throw structured `TargetError` ({code: "stale_ref" | "ambiguous" | "ref_not_found"}) when a ref fails to bind uniquely. `executor.ts` re-wraps the TargetError into a `PipelineError` preserving `detail.code` as `errorType`, and `dispatch.ts` passes it through verbatim to the v2 envelope's `AgentError.code`. Ports the diagnostics layer from OpenCLI PR #1016 on top of our existing snapshot primitive. `ref_not_found` is deliberately distinct from the HTTP-404 `not_found` code so agents can tell DOM-level from server-level failures.
+- **Ref-Locator verification layer** — `BrowserPage.snapshot()` and `DaemonPage.snapshot()` now persist a window-level fingerprint map on `window.__unicli_ref_identity`; click/type steps plus `unicli operate click/type` resolve refs against this map and throw structured `TargetError` ({code: "stale_ref" | "ambiguous" | "ref_not_found"}) when a ref fails to bind uniquely. `executor.ts` re-wraps the TargetError into a `PipelineError` preserving `detail.code` as `errorType`, and `dispatch.ts` passes it through verbatim to the v2 envelope's `AgentError.code`. Adds diagnostics on top of our existing snapshot primitive. `ref_not_found` is deliberately distinct from the HTTP-404 `not_found` code so agents can tell DOM-level from server-level failures.
 - **`streamable-http` test port flake fixed** — `tests/unit/streamable-http.test.ts` now calls `server.listen(0)` and reads the OS-assigned port via `address().port`, retiring the 5-attempt `Math.random()` retry loop added in v0.213.0-beta.2. Zero collision risk on busy CI runners.
 - **Windows cold-start test timeouts bumped** — `tests/unit/{exports,loader-parity,mcp-server-expanded}.test.ts` now give Windows Node 20 runners 15s instead of 5s for dynamic-import cold-start cases. Linux/macOS timing unchanged.
 - **`dist/main.js` execute bit set via postbuild hook** — when `npm run build` runs, `dist/main.js` is now chmod'd to 755 so it's immediately executable when extracted from the tarball. Previously mode 644; npm auto-chmods on install but manual tarball consumers had to `chmod +x` themselves. Uses `node -e "require('fs').chmodSync(...)"` so Windows builds are untouched gracefully.
@@ -324,13 +356,13 @@ v0.213.4 once OpenRouter credit is restored.
 >
 > - **beta.1 (engine rigor)**: yaml-runner split into executor + registry + runtime + template + ssrf + 33 step files; 24 plugin export subpaths + `PLUGIN.md` + exports CI gate; weekly release CI cron + dependabot grouping; schema-v2 migration on 896 YAML adapters; 80 colocated adapter tests.
 > - **beta.2 (agent-native output)**: v2 `{ok, schema_version, command, meta, data, error, content?}` envelope, `-f md` default on non-TTY and recognised agent UAs, `isAgentUA()` detector, 7 call sites wired, `src/commands/dispatch.ts` extracted from `cli.ts`, 20 golden MD fixtures across 10 flagship adapter pairs, quarantine envelope aligned.
-> - **GA polish**: `docs/THEORY.md` v2 now cites SkillDroid (arXiv:2604.14872), MolmoWeb, IntentScore, Android Coach, Beyond Chat and Clicks — 46 refs verified against arxiv.org; `PARITY_AUDIT.md` publishes measured per-CLI numbers against `public-clis`; Ref-Backed Locator primitive audited vs OpenCLI PR #1016.
+> - **GA polish**: `docs/THEORY.md` v2 now cites SkillDroid (arXiv:2604.14872), MolmoWeb, IntentScore, Android Coach, Beyond Chat and Clicks — 46 refs verified against arxiv.org; `PARITY_AUDIT.md` publishes measured per-CLI numbers against `public-clis`; Ref-Backed Locator primitive audited against the reference diagnostics set.
 >
 > **Honest parity numbers.** Measured per-CLI parity against `github.com/public-clis/public-clis` on 2026-04-17: 85.7% on the four core social sites (twitter 95.7%, reddit 87.0%, xiaohongshu 82.8%, bilibili 77.3%); weighted across eight messaging peer CLIs the figure is 73.5%, not 85%. Uni-CLI ships ~45 commands on overlapping sites that no peer offers (twitter trending/spaces/lists/media, bilibili live/later, xiaohongshu creator-suite, reddit rising/frontpage). Telegram (0 adapters), Discord (placeholder only), and Obsidian vault-write are explicit scope-outs deferred to v0.214. Positioning: breadth (195 sites in one binary) + self-repair + editable 20-line YAML adapters, not per-peer command parity.
 >
-> **Ref-Backed Locator (OpenCLI PR #1016) parity.** Snapshot-driven numbered refs, interactive-only filtering, scroll markers, iframe/shadow-DOM crossing all ship since v0.211. The verification-layer diagnostics that PR #1016 added on top — window-level fingerprint map, `stale_ref` / `ambiguous` / `not_found` structured errors with candidate lists — are scoped for v0.213.1 (~2–3 days).
+> **Ref-Backed Locator diagnostics.** Snapshot-driven numbered refs, interactive-only filtering, scroll markers, iframe/shadow-DOM crossing all ship since v0.211. The verification-layer diagnostics on top — window-level fingerprint map, `stale_ref` / `ambiguous` / `not_found` structured errors with candidate lists — are scoped for v0.213.1 (~2–3 days).
 >
-> **Remaining v0.213 runway → v0.214 Nikolayev**: workflow adapters (gmail/gcal/drive/spotify/apple-notes/imessage), Chrome extension full pipeline, `generate --verify` closed loop, CUA backend drivers, dual JS adapter format, `unicli inbox`, `unicli shop`, and the full 25-adapter OpenCLI parity harness.
+> **Remaining v0.213 runway → v0.214 Nikolayev**: workflow adapters (gmail/gcal/drive/spotify/apple-notes/imessage), Chrome extension full pipeline, `generate --verify` closed loop, CUA backend drivers, dual JS adapter format, `unicli inbox`, `unicli shop`, and the full 25-adapter compatibility harness.
 
 ### Breaking
 

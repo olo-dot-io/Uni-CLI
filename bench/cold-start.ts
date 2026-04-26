@@ -19,6 +19,7 @@ import { estimateTokens, percentile } from "./tokens.js";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, "..");
 const CLI_ENTRY = join(REPO_ROOT, "dist", "main.js");
+const MAX_STDOUT_BYTES = 8 * 1024 * 1024;
 
 export interface ColdStartResult {
   target: "unicli list";
@@ -67,6 +68,7 @@ export function runColdStart(runs: number = 50): ColdStartResult {
       encoding: "utf-8",
       env: { ...process.env, NO_COLOR: "1" },
       timeout: 15_000,
+      maxBuffer: MAX_STDOUT_BYTES,
     });
     const t1 = performance.now();
     if (res.status !== 0) {
@@ -80,8 +82,9 @@ export function runColdStart(runs: number = 50): ColdStartResult {
 
   try {
     lastJson = JSON.parse(lastStdout);
-  } catch {
-    lastJson = [];
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`cold-start list output was not valid JSON: ${message}`);
   }
 
   const rows = listRowsFromJson(lastJson);

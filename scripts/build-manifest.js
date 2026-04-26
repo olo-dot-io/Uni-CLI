@@ -223,6 +223,34 @@ function getCategory(site) {
   return "other";
 }
 
+function serializeArgs(args) {
+  if (!args || typeof args !== "object" || Array.isArray(args)) return [];
+  return Object.entries(args).map(([name, raw]) => {
+    const def = raw && typeof raw === "object" ? raw : {};
+    const arg = {
+      name,
+      type: def.type ?? "str",
+      required: def.required === true,
+      positional: def.positional === true,
+    };
+    if (def.default !== undefined) arg.default = def.default;
+    if (Array.isArray(def.choices)) arg.choices = def.choices;
+    if (def.description) arg.description = def.description;
+    if (def.format) arg.format = def.format;
+    if (def["x-unicli-kind"]) arg["x-unicli-kind"] = def["x-unicli-kind"];
+    if (def["x-unicli-accepts"]) {
+      arg["x-unicli-accepts"] = def["x-unicli-accepts"];
+    }
+    return arg;
+  });
+}
+
+function serializeColumns(columns) {
+  return Array.isArray(columns)
+    ? columns.filter((column) => typeof column === "string")
+    : [];
+}
+
 // ── Scan Adapters ───────────────────────────────────────────────────────────
 
 const manifest = { version: PKG.version, sites: {} };
@@ -255,6 +283,14 @@ if (existsSync(ADAPTERS_DIR)) {
             description: parsed.description || "",
             strategy: parsed.strategy || "public",
             type: parsed.type || "web-api",
+            browser: parsed.browser === true,
+            quarantined: parsed.quarantine === true,
+            args: serializeArgs(parsed.args),
+            columns: serializeColumns(parsed.columns),
+            pipeline_steps: Array.isArray(parsed.pipeline)
+              ? parsed.pipeline.length
+              : 0,
+            adapter_path: `src/adapters/${site}/${file}`,
           });
         } catch {
           // Skip malformed YAML

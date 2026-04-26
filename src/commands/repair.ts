@@ -15,6 +15,15 @@ import { makeCtx } from "../output/envelope.js";
 import { errorTypeToCode, mapErrorToExitCode } from "../output/error-map.js";
 import type { OutputFormat } from "../types.js";
 
+type RepairOptions = {
+  max?: string;
+  timeout?: string;
+  eval?: string;
+  loop?: boolean;
+  dryRun?: boolean;
+  "dry-run"?: boolean;
+};
+
 export function registerRepairCommand(program: Command): void {
   program
     .command("repair <site> [command]")
@@ -28,12 +37,13 @@ export function registerRepairCommand(program: Command): void {
       async (
         site: string,
         command: string | undefined,
-        opts: Record<string, string>,
+        opts: RepairOptions,
       ) => {
         const startedAt = Date.now();
         const ctx = makeCtx("repair.run", startedAt);
+        const programOpts = program.opts();
         const fmt = detectFormat(
-          program.opts().format as OutputFormat | undefined,
+          programOpts.format as OutputFormat | undefined,
         );
 
         // Declared outside try/catch because the success-path process.exit()
@@ -43,10 +53,16 @@ export function registerRepairCommand(program: Command): void {
 
         try {
           const config = buildDefaultConfig(site, command);
-          config.maxIterations = parseInt(opts.max, 10) || 20;
-          config.timeout = (parseInt(opts.timeout, 10) || 90) * 1000;
+          config.maxIterations = parseInt(opts.max ?? "", 10) || 20;
+          config.timeout = (parseInt(opts.timeout ?? "", 10) || 90) * 1000;
 
-          if (opts["dry-run"] !== undefined || opts.dryRun !== undefined) {
+          const isDryRun =
+            opts["dry-run"] !== undefined ||
+            opts.dryRun !== undefined ||
+            programOpts["dry-run"] !== undefined ||
+            programOpts.dryRun !== undefined;
+
+          if (isDryRun) {
             const data = {
               mode: "dry-run" as const,
               site,

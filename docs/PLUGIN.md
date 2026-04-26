@@ -137,7 +137,38 @@ Until then, preload-import is the supported pattern.
 
 ---
 
-## 5. Allowed operations per subpath
+## 5. Plugin-side browser daemon spawn pattern
+
+Browser-aware plugins should reuse the Uni-CLI daemon contract instead of
+opening their own ad hoc Chrome bridge. The supported pattern is:
+
+1. Allocate a daemon port per profile or workspace.
+2. Start the browser daemon from the plugin host process or dashboard.
+3. Export `UNICLI_DAEMON_PORT=<port>` before invoking Uni-CLI commands.
+4. Use `@zenalexa/unicli/browser/daemon` for `fetchDaemonStatus`,
+   `sendCommand`, `listSessions`, or `bindCurrentTab` when the plugin needs
+   direct daemon access.
+
+CLI users can route a single command to a non-default daemon with:
+
+```bash
+unicli browser --daemon-port 19826 status
+unicli browser --daemon-port 19826 upload 12 ./fixture.png
+```
+
+Plugins that still need OpenCLI compatibility may set `OPENCLI_DAEMON_PORT`;
+Uni-CLI will honor it when `UNICLI_DAEMON_PORT` is not set. New plugins
+should prefer the Uni-CLI environment variable and the `X-Unicli` daemon
+header.
+
+The daemon protocol is intentionally isolated from plugin loading: plugins
+may spawn and supervise the daemon, but they must not open sockets or launch
+Chrome during module import. Perform those actions from an explicit command,
+dashboard action, or worker process.
+
+---
+
+## 6. Allowed operations per subpath
 
 One-line summary of what a plugin can legitimately do with each subpath.
 
@@ -167,7 +198,7 @@ One-line summary of what a plugin can legitimately do with each subpath.
 
 ---
 
-## 6. Forbidden
+## 7. Forbidden
 
 These are not supported. A plugin that relies on any of them will break
 without notice:

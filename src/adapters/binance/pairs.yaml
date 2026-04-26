@@ -1,0 +1,38 @@
+site: binance
+name: pairs
+description: Binance active spot trading pairs and base/quote assets / 币安现货交易对
+domain: data-api.binance.vision
+type: web-api
+strategy: public
+browser: false
+
+args:
+  quote:
+    type: str
+    default: USDT
+    description: Quote asset filter, or empty string for all pairs
+  limit:
+    type: int
+    default: 50
+    description: Number of pairs
+
+pipeline:
+  - fetch:
+      url: https://data-api.binance.vision/api/v3/exchangeInfo
+  - select: symbols
+  - filter: item.status === "TRADING" && (!args.quote || item.quoteAsset === args.quote.toUpperCase())
+  - map:
+      symbol: ${{ item.symbol }}
+      base: ${{ item.baseAsset }}
+      quote: ${{ item.quoteAsset }}
+      order_types: ${{ item.orderTypes.join(",") }}
+  - limit: ${{ args.limit }}
+
+columns: [symbol, base, quote, order_types]
+
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

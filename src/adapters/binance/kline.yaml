@@ -1,6 +1,6 @@
 site: binance
 name: kline
-description: Candlestick (kline) data for a trading pair
+description: Binance candlestick kline data for a trading pair / 币安K线蜡烛图
 domain: data-api.binance.vision
 type: web-api
 strategy: public

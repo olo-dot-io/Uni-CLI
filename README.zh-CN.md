@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->223<!-- /STATS --> 个站点 · <!-- STATS:command_count -->1304<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> 个 pipeline step · <!-- STATS:test_count -->7321<!-- /STATS --> 个测试</sub>
+  <sub><!-- STATS:site_count -->235<!-- /STATS --> 个站点 · <!-- STATS:command_count -->1448<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> 个 pipeline step · <!-- STATS:test_count -->7394<!-- /STATS --> 个测试</sub>
 </p>
 
 <p align="center">
@@ -306,5 +306,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>0.215.1</sub>
+  <sub>0.216.0 — OpenCLI Parity Harness</sub>
 </p>

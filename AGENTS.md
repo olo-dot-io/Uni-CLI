@@ -10,7 +10,7 @@
 
 <!-- BEGIN COUNTS -->
 
-> <!-- STATS:site_count -->223<!-- /STATS --> sites, <!-- STATS:command_count -->1304<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> <!-- STATS:site_count -->235<!-- /STATS --> sites, <!-- STATS:command_count -->1448<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 
@@ -37,19 +37,19 @@ npm install -g @zenalexa/unicli
 
 ### Web (138+ sites)
 
-**Chinese**: xiaohongshu (22), zhihu (21), bilibili (17), douyin (13), douban (12), v2ex (12), jike (10), linux-do (10), +31 more (`unicli list`)
+**Chinese**: zhihu (24), xiaohongshu (22), bilibili (20), douyin (13), douban (12), v2ex (12), linux-do (11), jike (10), +31 more (`unicli list`)
 
-**International**: twitter (34), instagram (26), reddit (20), tiktok (16), discord-app (15), lesswrong (15), slack (14), boss (14), +36 more (`unicli list`)
+**International**: twitter (38), instagram (26), reddit (20), tiktok (16), youtube (16), nowcoder (16), discord-app (15), lesswrong (15), +48 more (`unicli list`)
 
-**AI / ML**: notebooklm (15), antigravity (14), chatgpt (14), chatwise (14), doubao-app (13), doubao-web (9), perplexity (8), claude (7), +13 more (`unicli list`)
+**AI / ML**: antigravity (16), chatwise (16), chatgpt (15), notebooklm (15), doubao-app (13), doubao (9), doubao-web (9), perplexity (8), +13 more (`unicli list`)
 
-**Finance**: xueqiu (12), sinafinance (5), barchart (4), eastmoney (4), binance (3), yahoo-finance (3), coinbase (2), futu (2)
+**Finance**: eastmoney (18), xueqiu (14), binance (13), sinafinance (5), barchart (4), yahoo-finance (3), coinbase (2), futu (2)
 
-**Developer**: cursor (18), codex (15), vscode (10), docker-desktop (7), github-desktop (7), gitkraken (7), insomnia (7), postman (7), +16 more (`unicli list`)
+**Developer**: cursor (18), codex (17), vscode (10), docker-desktop (7), github-desktop (7), gitkraken (7), insomnia (7), postman (7), +16 more (`unicli list`)
 
 **News**: bloomberg (10), hackernews (10), 36kr (5), bbc (4), reuters (4), ithome (3), cnn (2), infoq (2), +3 more (`unicli list`)
 
-**Reference**: netease-music (17), spotify (17), linear (10), imdb (7), bitwarden (7), todoist (7), wikipedia (5), google (4), +11 more (`unicli list`)
+**Reference**: spotify (23), netease-music (17), linear (10), imdb (7), bitwarden (7), todoist (7), wikipedia (5), xiaoyuzhou (5), +11 more (`unicli list`)
 
 ### macOS (58 cmds)
 
@@ -212,4 +212,4 @@ unicli lark-cli calendar +agenda   # Direct passthrough
 
 ## Version
 
-0.215.1 — Agent Backend Matrix
+0.216.0 — OpenCLI Parity Harness

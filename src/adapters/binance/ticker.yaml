@@ -1,6 +1,6 @@
 site: binance
 name: ticker
-description: Price ticker for a trading pair
+description: Binance 24h price ticker for a trading pair / 币安24小时行情
 domain: data-api.binance.vision
 type: web-api
 strategy: public
@@ -16,7 +16,7 @@ args:
 pipeline:
   - fetch:
       url: https://data-api.binance.vision/api/v3/ticker/24hr
-  - filter: "${{ item.symbol === args.symbol.toUpperCase() }}"
+  - filter: item.symbol === args.symbol.toUpperCase()
   - map:
       symbol: ${{ item.symbol }}
       price: ${{ item.lastPrice }}

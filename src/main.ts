@@ -12,7 +12,10 @@ if (acpFastPath) {
   const { serveAcp } = await import("./commands/acp.js");
   await serveAcp({ debug: args.includes("--debug") });
 } else {
-  const { createCli } = await import("./cli.js");
-  const program = await createCli();
-  program.parse(process.argv);
+  const { tryRunFastPath } = await import("./fast-path.js");
+  if (!tryRunFastPath(process.argv)) {
+    const { createCli } = await import("./cli.js");
+    const program = await createCli();
+    program.parse(process.argv);
+  }
 }

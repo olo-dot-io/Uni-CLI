@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->223<!-- /STATS --> sites · <!-- STATS:command_count -->1304<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7321<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->235<!-- /STATS --> sites · <!-- STATS:command_count -->1448<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7394<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -306,5 +306,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>0.215.1</sub>
+  <sub>0.216.0 — OpenCLI Parity Harness</sub>
 </p>
