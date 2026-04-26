@@ -26,6 +26,8 @@ const siteBase = configuredSiteBase
   : process.env.GITHUB_REPOSITORY === "olo-dot-io/Uni-CLI"
     ? "/Uni-CLI/"
     : "/";
+const siteOrigin = "https://olo-dot-io.github.io";
+const publicSiteUrl = `${siteOrigin}${siteBase}`;
 
 /**
  * markdown-it plugin: escape {{ }} in fenced code block output.
@@ -87,6 +89,25 @@ export default defineConfig({
     },
   },
   head: [
+    [
+      "link",
+      { rel: "icon", type: "image/png", href: `${siteBase}favicon.png` },
+    ],
+    ["link", { rel: "manifest", href: `${siteBase}site.webmanifest` }],
+    ["meta", { name: "theme-color", content: "#11100f" }],
+    ["meta", { property: "og:type", content: "website" }],
+    ["meta", { property: "og:title", content: "Uni-CLI" }],
+    [
+      "meta",
+      {
+        property: "og:description",
+        content:
+          "The universal command surface for AI agents to operate web, desktop, local tools, and external CLIs.",
+      },
+    ],
+    ["meta", { property: "og:url", content: publicSiteUrl }],
+    ["meta", { property: "og:image", content: `${publicSiteUrl}icon-512.png` }],
+    ["meta", { name: "twitter:card", content: "summary_large_image" }],
     ["link", { rel: "preconnect", href: "https://fonts.googleapis.com" }],
     [
       "link",
@@ -108,10 +129,10 @@ export default defineConfig({
     siteTitle: "Uni-CLI",
     nav: [
       { text: "Start", link: "/guide/getting-started" },
+      { text: "Sites", link: "/reference/sites" },
       { text: "Guides", link: "/guide/" },
       { text: "Reference", link: "/reference/" },
       { text: "Architecture", link: "/ARCHITECTURE" },
-      { text: "GitHub", link: "https://github.com/olo-dot-io/Uni-CLI" },
     ],
     search: {
       provider: "local",
@@ -124,6 +145,7 @@ export default defineConfig({
             { text: "Overview", link: "/" },
             { text: "Getting Started", link: "/guide/getting-started" },
             { text: "Integrations", link: "/guide/integrations" },
+            { text: "Sites Catalog", link: "/reference/sites" },
             { text: "Recipes", link: "/RECIPES" },
           ],
         },
@@ -138,6 +160,7 @@ export default defineConfig({
           text: "Reference",
           items: [
             { text: "Adapter Format", link: "/ADAPTER-FORMAT" },
+            { text: "Sites Catalog", link: "/reference/sites" },
             { text: "Pipeline Steps", link: "/reference/pipeline" },
             { text: "Exit Codes", link: "/reference/exit-codes" },
             { text: "Maintenance Tools", link: "/reference/maintenance" },
@@ -163,6 +186,7 @@ export default defineConfig({
             { text: "Guide Index", link: "/guide/" },
             { text: "Getting Started", link: "/guide/getting-started" },
             { text: "Integrations", link: "/guide/integrations" },
+            { text: "Sites Catalog", link: "/reference/sites" },
             { text: "Recipes", link: "/RECIPES" },
           ],
         },
@@ -181,6 +205,7 @@ export default defineConfig({
           items: [
             { text: "Reference Index", link: "/reference/" },
             { text: "Adapter Format", link: "/ADAPTER-FORMAT" },
+            { text: "Sites Catalog", link: "/reference/sites" },
             { text: "Pipeline Steps", link: "/reference/pipeline" },
             { text: "Exit Codes", link: "/reference/exit-codes" },
             { text: "Maintenance Tools", link: "/reference/maintenance" },
@@ -203,7 +228,7 @@ export default defineConfig({
     ],
     footer: {
       message: "Released under the Apache-2.0 License",
-      copyright: "Copyright \u00a9 2024-2026 OLo",
+      copyright: "Copyright \u00a9 2026 OLo",
     },
   },
 });

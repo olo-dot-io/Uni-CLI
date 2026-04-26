@@ -5,3 +5,4 @@ docs/codemod/
 dist/
 conformance-report.json
 stats.json
+docs/public/llms.txt

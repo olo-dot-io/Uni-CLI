@@ -1,0 +1,21 @@
+{
+  "name": "Uni-CLI",
+  "short_name": "Uni-CLI",
+  "description": "The universal command surface for AI agents.",
+  "start_url": "/Uni-CLI/",
+  "display": "standalone",
+  "background_color": "#11100f",
+  "theme_color": "#11100f",
+  "icons": [
+    {
+      "src": "/Uni-CLI/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/Uni-CLI/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
