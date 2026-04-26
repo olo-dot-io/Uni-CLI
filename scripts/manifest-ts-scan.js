@@ -116,6 +116,41 @@ function getObjectString(obj, prop) {
   return literalText(getObjectProperty(obj, prop));
 }
 
+function getObjectBoolean(obj, prop) {
+  const node = getObjectProperty(obj, prop);
+  if (!node) return undefined;
+  if (node.kind === ts.SyntaxKind.TrueKeyword) return true;
+  if (node.kind === ts.SyntaxKind.FalseKeyword) return false;
+  return undefined;
+}
+
+function literalValue(node) {
+  if (!node) return undefined;
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+    return node.text;
+  }
+  if (ts.isNumericLiteral(node)) return Number(node.text);
+  if (node.kind === ts.SyntaxKind.TrueKeyword) return true;
+  if (node.kind === ts.SyntaxKind.FalseKeyword) return false;
+  if (ts.isArrayLiteralExpression(node)) {
+    const values = [];
+    for (const element of node.elements) {
+      const value = literalValue(element);
+      if (value === undefined) return undefined;
+      values.push(value);
+    }
+    return values;
+  }
+  return undefined;
+}
+
+function getStringArray(obj, prop) {
+  const value = literalValue(getObjectProperty(obj, prop));
+  if (!Array.isArray(value)) return undefined;
+  const strings = value.filter((item) => typeof item === "string");
+  return strings.length === value.length ? strings : undefined;
+}
+
 function getObjectStrategy(obj) {
   const node = getObjectProperty(obj, "strategy");
   if (!node) return "public";
@@ -126,6 +161,42 @@ function getObjectStrategy(obj) {
     return node.name.text.toLowerCase();
   }
   return "public";
+}
+
+function getObjectArgs(obj) {
+  const node = getObjectProperty(obj, "args");
+  if (!node || !ts.isArrayLiteralExpression(node)) return undefined;
+
+  const args = [];
+  for (const element of node.elements) {
+    if (!ts.isObjectLiteralExpression(element)) return undefined;
+    const name = getObjectString(element, "name");
+    if (!name) return undefined;
+
+    const arg = { name };
+    const type = getObjectString(element, "type");
+    if (type) arg.type = type;
+    const defaultValue = literalValue(getObjectProperty(element, "default"));
+    if (defaultValue !== undefined) arg.default = defaultValue;
+    const required = getObjectBoolean(element, "required");
+    if (required !== undefined) arg.required = required;
+    const positional = getObjectBoolean(element, "positional");
+    if (positional !== undefined) arg.positional = positional;
+    const choices = getStringArray(element, "choices");
+    if (choices) arg.choices = choices;
+    const description = getObjectString(element, "description");
+    if (description) arg.description = description;
+    const format = getObjectString(element, "format");
+    if (format) arg.format = format;
+    const kind = getObjectString(element, "x-unicli-kind");
+    if (kind) arg["x-unicli-kind"] = kind;
+    const accepts = getStringArray(element, "x-unicli-accepts");
+    if (accepts) arg["x-unicli-accepts"] = accepts;
+
+    args.push(arg);
+  }
+
+  return args;
 }
 
 function hasObjectProperty(obj, prop) {
@@ -187,6 +258,11 @@ export function extractTsRegistrations(source, fallbackSite, fallbackCommand) {
               description: getObjectString(first, "description"),
               strategy: getObjectStrategy(first),
               type: "web-api",
+              browser: getObjectBoolean(first, "browser"),
+              columns: getStringArray(first, "columns"),
+              args: getObjectArgs(first),
+              pipeline_steps: 0,
+              adapter_path: `src/adapters/${fallbackSite}/${fallbackCommand}.ts`,
             },
           ],
         });

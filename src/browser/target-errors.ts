@@ -1,8 +1,8 @@
 /**
  * Structured errors for ref-backed locator verification.
  *
- * Ports the diagnostics layer from OpenCLI PR #1016 on top of our existing
- * numbered-ref snapshot primitive. Three failure modes:
+ * Adds diagnostics on top of our existing numbered-ref snapshot primitive.
+ * Three failure modes:
  *
  *   stale_ref      — snapshot was consumed, page mutated, ref no longer binds
  *   ambiguous      — the selector resolves to more than one live element

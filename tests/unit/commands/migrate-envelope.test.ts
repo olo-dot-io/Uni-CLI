@@ -1,7 +1,7 @@
 /**
- * `unicli import opencli-yaml` v2 envelope wrapper tests.
+ * `unicli import legacy-yaml` v2 envelope wrapper tests.
  *
- * Existing `migrate.test.ts` covers the pure `migrateOpenCli` function. This
+ * Existing `migrate.test.ts` covers the pure `migrateLegacyYaml` function. This
  * file focuses on the command-level envelope emission introduced by T6.
  */
 
@@ -38,7 +38,7 @@ function captureStdout(): {
   };
 }
 
-describe("unicli import opencli-yaml — v2 envelope", () => {
+describe("unicli import legacy-yaml — v2 envelope", () => {
   let dir: string;
 
   beforeEach(() => {
@@ -77,7 +77,7 @@ steps:
     try {
       const program = newProgram();
       await program.parseAsync(
-        ["-f", "json", "import", "opencli-yaml", srcPath],
+        ["-f", "json", "import", "legacy-yaml", srcPath],
         { from: "user" },
       );
     } finally {
@@ -87,7 +87,7 @@ steps:
     const env = JSON.parse(cap.getStdout().trim()) as Record<string, unknown>;
     expect(env.ok).toBe(true);
     expect(env.schema_version).toBe("2");
-    expect(env.command).toBe("migrate.opencli");
+    expect(env.command).toBe("migrate.legacy");
     const data = env.data as {
       input_path: string;
       output_path: string | null;
@@ -113,7 +113,7 @@ steps:
       const program = newProgram();
       try {
         await program.parseAsync(
-          ["-f", "json", "import", "opencli-yaml", join(dir, "__missing.yaml")],
+          ["-f", "json", "import", "legacy-yaml", join(dir, "__missing.yaml")],
           { from: "user" },
         );
       } catch (err) {
@@ -132,7 +132,7 @@ steps:
       unknown
     >;
     expect(parsed.ok).toBe(false);
-    expect(parsed.command).toBe("migrate.opencli");
+    expect(parsed.command).toBe("migrate.legacy");
     const e = parsed.error as { code: string } | undefined;
     expect(e?.code).toBe("invalid_input");
   });

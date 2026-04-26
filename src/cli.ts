@@ -347,7 +347,7 @@ export async function createCli(): Promise<Command> {
   // Register describe command — runtime schema introspection for agents
   registerDescribeCommand(program);
 
-  // Register `unicli import opencli-yaml` and friends
+  // Register adapter import helpers
   registerMigrateCommand(program);
 
   // Register migrate commands — schema-v1 → schema-v2 mass migration

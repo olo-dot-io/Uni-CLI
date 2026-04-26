@@ -1,6 +1,6 @@
 site: binance
 name: hot
-description: Top trending coins by 24h trading volume
+description: Binance top trending coins by 24h trading volume / 币安热门成交量
 domain: data-api.binance.vision
 type: web-api
 strategy: public

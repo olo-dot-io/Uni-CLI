@@ -1,0 +1,211 @@
+# External CLI Harness Registry — app/tool-specific passthrough CLIs.
+#
+# Loaded after external-clis.yaml.  Kept separate so the core registry
+# remains stable while app-level harness coverage can expand quickly.
+
+# ── Application and specialist harnesses ────────────────────────────────
+
+- name: 1password-cli
+  binary: op
+  description: "1Password CLI — vault items, secrets, documents, and service accounts"
+  homepage: "https://developer.1password.com/docs/cli"
+  tags: [passwords, secrets, security]
+  json_flag: "--format json"
+  install:
+    mac: "brew install 1password-cli"
+    linux: "https://developer.1password.com/docs/cli/get-started/"
+    default: "https://developer.1password.com/docs/cli/get-started/"
+
+- name: android-cli
+  binary: adb
+  description: "Android platform tools — devices, packages, logs, files, and shell automation"
+  homepage: "https://developer.android.com/tools/adb"
+  tags: [android, mobile, device, automation]
+  install:
+    mac: "brew install android-platform-tools"
+    default: "https://developer.android.com/tools/releases/platform-tools"
+
+- name: anygen
+  binary: anygen
+  description: "AnyGen — generation workflow harness for local creative automation"
+  tags: [generation, creative, automation]
+
+- name: chromadb
+  binary: chroma
+  description: "ChromaDB — local vector database server and collection tooling"
+  homepage: "https://docs.trychroma.com"
+  tags: [vector-db, embeddings, rag]
+  install:
+    default: "pip install chromadb"
+
+- name: cloudanalyzer
+  binary: cloudanalyzer
+  description: "CloudAnalyzer — cloud inventory and cost/security analysis harness"
+  tags: [cloud, analysis, security, cost]
+
+- name: contentful
+  binary: contentful
+  description: "Contentful CLI — spaces, content types, entries, migrations, and releases"
+  homepage: "https://www.contentful.com/developers/docs/tutorials/cli/"
+  tags: [cms, content, headless]
+  json_flag: "--json"
+  install:
+    default: "npm install -g contentful-cli"
+
+- name: dify-workflow
+  binary: dify-workflow
+  description: "Dify workflow CLI — workflow export, import, testing, and deployment automation"
+  homepage: "https://docs.dify.ai"
+  tags: [ai, workflow, dify]
+
+- name: elevenlabs
+  binary: elevenlabs
+  description: "ElevenLabs CLI — text-to-speech, voices, dubbing, and audio generation"
+  homepage: "https://elevenlabs.io/docs"
+  tags: [audio, tts, generation]
+
+- name: eth2-quickstart
+  binary: eth2-quickstart
+  description: "Ethereum validator quickstart tooling"
+  homepage: "https://github.com/ethereum/staking-deposit-cli"
+  tags: [ethereum, validator, blockchain]
+
+- name: exa
+  binary: exa
+  description: "Exa search CLI — neural web search and answer retrieval"
+  homepage: "https://exa.ai"
+  tags: [search, web, research]
+
+- name: generate-veo-video
+  binary: generate-veo-video
+  description: "Veo video generation harness"
+  tags: [video, generation, ai]
+
+- name: intelwatch
+  binary: intelwatch
+  description: "IntelWatch — local monitoring and telemetry harness"
+  tags: [monitoring, telemetry, local]
+
+- name: iterm2
+  binary: iterm2
+  description: "iTerm2 automation harness — windows, tabs, sessions, text, and tmux workflows"
+  homepage: "https://iterm2.com/python-api"
+  tags: [terminal, macos, automation]
+
+- name: lldb
+  binary: lldb
+  description: "LLDB debugger — breakpoints, processes, frames, variables, and expressions"
+  homepage: "https://lldb.llvm.org"
+  tags: [debugger, native, development]
+  install:
+    mac: "xcode-select --install"
+    linux: "apt install lldb"
+    default: "https://lldb.llvm.org/resources/build.html"
+
+- name: n8n
+  binary: n8n
+  description: "n8n workflow automation — import, export, execute, and manage workflows"
+  homepage: "https://docs.n8n.io"
+  tags: [workflow, automation, integrations]
+  install:
+    default: "npm install -g n8n"
+
+- name: nsight-graphics
+  binary: nsys
+  description: "NVIDIA Nsight tooling — capture, inspect, and export graphics/performance sessions"
+  homepage: "https://developer.nvidia.com/nsight-graphics"
+  tags: [nvidia, graphics, profiling]
+
+- name: obs-studio
+  binary: obs
+  description: "OBS Studio automation — scenes, sources, recording, streaming, and screenshots"
+  homepage: "https://obsproject.com"
+  tags: [video, streaming, recording]
+  install:
+    mac: "brew install --cask obs"
+    default: "https://obsproject.com/download"
+
+- name: openscreen
+  binary: openscreen
+  description: "OpenScreen casting and presentation automation harness"
+  tags: [screen, casting, presentation]
+
+- name: pm2
+  binary: pm2
+  description: "PM2 process manager — start, stop, logs, reload, and process status"
+  homepage: "https://pm2.keymetrics.io"
+  tags: [node, process-manager, ops]
+  json_flag: "--json"
+  install:
+    default: "npm install -g pm2"
+
+- name: py4csr
+  binary: py4csr
+  description: "py4csr research workflow harness"
+  tags: [research, python, workflow]
+
+- name: qgis
+  binary: qgis
+  description: "QGIS desktop and processing automation"
+  homepage: "https://qgis.org"
+  tags: [gis, maps, geospatial]
+  install:
+    mac: "brew install --cask qgis"
+    default: "https://qgis.org/download/"
+
+- name: rms
+  binary: rms
+  description: "RMS automation harness"
+  tags: [automation, workflow]
+
+- name: safari
+  binary: safari
+  description: "Safari browser automation harness"
+  homepage: "https://support.apple.com/guide/safari"
+  tags: [browser, macos, automation]
+
+- name: sanity
+  binary: sanity
+  description: "Sanity CLI — datasets, schemas, content, deploys, and studio workflows"
+  homepage: "https://www.sanity.io/docs/cli"
+  tags: [cms, content, headless]
+  install:
+    default: "npm install -g sanity"
+
+- name: seaclip
+  binary: seaclip
+  description: "SeaClip media understanding harness"
+  tags: [vision, media, ai]
+
+- name: shopify
+  binary: shopify
+  description: "Shopify CLI — apps, themes, stores, extensions, and deploy workflows"
+  homepage: "https://shopify.dev/docs/api/shopify-cli"
+  tags: [commerce, shopify, apps]
+  json_flag: "--json"
+  install:
+    default: "npm install -g @shopify/cli"
+
+- name: suno
+  binary: suno
+  description: "Suno music generation harness"
+  tags: [music, audio, generation]
+
+- name: unimol_tools
+  binary: unimol_tools
+  description: "Uni-Mol molecular modeling toolkit"
+  homepage: "https://github.com/deepmodeling/Uni-Mol"
+  tags: [chemistry, molecular, ai]
+  install:
+    default: "pip install unimol-tools"
+
+- name: unrealinsights
+  binary: UnrealInsights
+  description: "Unreal Insights profiling and trace analysis"
+  homepage: "https://dev.epicgames.com/documentation/unreal-engine/unreal-insights-in-unreal-engine"
+  tags: [unreal, profiling, game-dev]
+
+- name: videocaptioner
+  binary: videocaptioner
+  description: "Video captioning workflow harness"
+  tags: [video, captions, transcription]

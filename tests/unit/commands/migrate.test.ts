@@ -1,10 +1,10 @@
 /**
- * Tests for the OpenCLI -> Uni-CLI YAML migration.
+ * Tests for the legacy YAML -> Uni-CLI YAML migration.
  *
- * Each fixture represents a common OpenCLI adapter shape. We round-trip
- * it through `migrateOpenCli` and assert:
+ * Each fixture represents a common legacy adapter shape. We round-trip
+ * it through `migrateLegacyYaml` and assert:
  *  1. Known fields are mapped to Uni-CLI v2 equivalents.
- *  2. Unknown fields are preserved under `_opencli_extra`.
+ *  2. Unknown fields are preserved under `_legacy_extra`.
  *  3. Pipeline step renames are reported in the warnings.
  *  4. Schema-v2 metadata (transport, capabilities, trust, etc.) is filled in.
  */
@@ -12,7 +12,7 @@
 import { describe, it, expect } from "vitest";
 import yaml from "js-yaml";
 import {
-  migrateOpenCli,
+  migrateLegacyYaml,
   emitUnicliYaml,
 } from "../../../src/commands/migrate.js";
 
@@ -24,7 +24,7 @@ function parseFixture(src: string): Record<string, unknown> {
   return parsed as Record<string, unknown>;
 }
 
-describe("migrate opencli-yaml", () => {
+describe("migrate legacy-yaml", () => {
   it("search-style adapter: maps auth -> strategy and renames extract -> map", () => {
     const fixture = parseFixture(`
 site: hackernews
@@ -44,7 +44,7 @@ steps:
   - slice: 20
 output_columns: [title, url]
 `);
-    const report = migrateOpenCli(fixture);
+    const report = migrateLegacyYaml(fixture);
     const out = report.output;
 
     expect(out.site).toBe("hackernews");
@@ -94,12 +94,12 @@ steps:
       command: yt-dlp
       args: ["https://bilibili.com/video/{{ bvid }}"]
       timeout: 300000
-unknown_opencli_field: "preserved"
+unknown_legacy_field: "preserved"
 throttle:
   per_domain: 2
   burst: 5
 `);
-    const report = migrateOpenCli(fixture);
+    const report = migrateLegacyYaml(fixture);
     const out = report.output;
 
     expect(out.site).toBe("bilibili");
@@ -114,12 +114,12 @@ throttle:
 
     expect(out.rate_limit).toEqual({ per_domain: 2, burst: 5 });
 
-    expect(report.dropped_fields).toContain("unknown_opencli_field");
-    expect(out._opencli_extra).toEqual({
-      unknown_opencli_field: "preserved",
+    expect(report.dropped_fields).toContain("unknown_legacy_field");
+    expect(out._legacy_extra).toEqual({
+      unknown_legacy_field: "preserved",
     });
     expect(
-      report.warnings.some((w) => w.includes("unknown_opencli_field")),
+      report.warnings.some((w) => w.includes("unknown_legacy_field")),
     ).toBe(true);
   });
 
@@ -140,7 +140,7 @@ steps:
   - drop: "{{ item.entryId not startsWith 'tweet-' }}"
   - take: 20
 `);
-    const report = migrateOpenCli(fixture);
+    const report = migrateLegacyYaml(fixture);
     const out = report.output;
 
     expect(out.strategy).toBe("intercept");
@@ -175,7 +175,7 @@ steps:
   - http: { url: "https://example.com/api" }
   - extract: { id: "{{ item.id }}" }
 `);
-    const report = migrateOpenCli(fixture);
+    const report = migrateLegacyYaml(fixture);
     const first = emitUnicliYaml(report.output);
     const second = emitUnicliYaml(report.output);
     expect(first).toBe(second);

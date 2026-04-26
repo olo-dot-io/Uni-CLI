@@ -1,0 +1,32 @@
+site: binance
+name: price
+description: Binance latest price for a trading pair / 币安最新价格
+domain: data-api.binance.vision
+type: web-api
+strategy: public
+browser: false
+
+args:
+  symbol:
+    type: str
+    required: true
+    positional: true
+    description: "Trading pair symbol (e.g. BTCUSDT, ETHUSDT)"
+
+pipeline:
+  - fetch:
+      url: https://data-api.binance.vision/api/v3/ticker/price
+  - filter: item.symbol === args.symbol.toUpperCase()
+  - map:
+      symbol: ${{ item.symbol }}
+      price: ${{ item.price }}
+  - limit: 1
+
+columns: [symbol, price]
+
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

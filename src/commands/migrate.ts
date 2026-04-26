@@ -3,15 +3,15 @@
  *
  * Currently ships one subcommand:
  *
- *   unicli import opencli-yaml <path>
- *       Read an OpenCLI YAML adapter, emit the Uni-CLI v2 equivalent on
+ *   unicli import legacy-yaml <path>
+ *       Read a legacy YAML adapter, emit the Uni-CLI v2 equivalent on
  *       stdout (or `-o <out>`). Deterministic field mapping; unknown
- *       fields warn to stderr and are preserved under `_opencli_extra`
+ *       fields warn to stderr and are preserved under `_legacy_extra`
  *       for manual review.
  *
  * Design notes:
  *   - Parsing and emitting use the same js-yaml we use everywhere else.
- *   - Core field mappings are table-driven (OPENCLI_FIELD_MAP) so new
+ *   - Core field mappings are table-driven (LEGACY_FIELD_MAP) so new
  *     field names can be added without touching the migration logic.
  *   - The migration is deterministic and pure: same input -> same output
  *     byte-for-byte (modulo yaml dump defaults).
@@ -26,17 +26,17 @@ import { makeCtx } from "../output/envelope.js";
 import type { OutputFormat } from "../types.js";
 import { ExitCode } from "../types.js";
 
-/** Known OpenCLI top-level fields and how they map to Uni-CLI fields. */
-export const OPENCLI_FIELD_MAP: Record<string, string> = {
+/** Known legacy top-level fields and how they map to Uni-CLI fields. */
+export const LEGACY_FIELD_MAP: Record<string, string> = {
   site: "site",
   name: "name",
   description: "description",
   summary: "description",
   type: "type",
-  auth: "strategy", // OpenCLI "auth" -> our "strategy"
+  auth: "strategy",
   authentication: "strategy",
   pipeline: "pipeline",
-  steps: "pipeline", // some OpenCLI adapters use "steps"
+  steps: "pipeline",
   columns: "columns",
   output_columns: "columns",
   args: "args",
@@ -46,7 +46,7 @@ export const OPENCLI_FIELD_MAP: Record<string, string> = {
   throttle: "rate_limit",
 };
 
-/** OpenCLI auth values -> Uni-CLI strategy values. */
+/** Legacy auth values -> Uni-CLI strategy values. */
 const AUTH_MAP: Record<string, string> = {
   none: "public",
   public: "public",
@@ -63,15 +63,15 @@ const AUTH_MAP: Record<string, string> = {
   browser_ui: "ui",
 };
 
-/** OpenCLI pipeline step names that rename to Uni-CLI equivalents. */
+/** Legacy pipeline step names that rename to Uni-CLI equivalents. */
 const STEP_RENAME: Record<string, string> = {
   http: "fetch",
   request: "fetch",
   get: "fetch",
   post: "fetch",
-  xpath: "select", // OpenCLI used xpath as select alias
+  xpath: "select",
   jsonpath: "select",
-  extract: "map", // OpenCLI's extract is our map
+  extract: "map",
   transform: "map",
   keep: "filter",
   drop: "filter",
@@ -88,7 +88,7 @@ const STEP_RENAME: Record<string, string> = {
   accessibility_tree: "snapshot",
 };
 
-interface OpenCliShape {
+interface LegacyAdapterShape {
   [key: string]: unknown;
 }
 
@@ -108,7 +108,7 @@ interface UniCliShape {
   columns?: unknown;
   args?: unknown;
   rate_limit?: unknown;
-  _opencli_extra?: Record<string, unknown>;
+  _legacy_extra?: Record<string, unknown>;
 }
 
 export interface MigrateReport {
@@ -177,14 +177,14 @@ function minimumCapabilityFor(transport: string, caps: string[]): string {
   return "http.fetch";
 }
 
-export function migrateOpenCli(source: OpenCliShape): MigrateReport {
+export function migrateLegacyYaml(source: LegacyAdapterShape): MigrateReport {
   const warnings: string[] = [];
   const renamed: string[] = [];
   const dropped: string[] = [];
   const out: UniCliShape = {};
 
   for (const [key, value] of Object.entries(source)) {
-    const mapped = OPENCLI_FIELD_MAP[key];
+    const mapped = LEGACY_FIELD_MAP[key];
     if (!mapped) {
       dropped.push(key);
       continue;
@@ -214,13 +214,13 @@ export function migrateOpenCli(source: OpenCliShape): MigrateReport {
 
   if (dropped.length > 0) {
     warnings.push(
-      `Dropped unknown OpenCLI fields: ${dropped.join(", ")} (preserved under _opencli_extra)`,
+      `Dropped unknown legacy fields: ${dropped.join(", ")} (preserved under _legacy_extra)`,
     );
     const extras: Record<string, unknown> = {};
     for (const key of dropped) {
       extras[key] = source[key];
     }
-    out._opencli_extra = extras;
+    out._legacy_extra = extras;
   }
 
   if (renamed.length > 0) {
@@ -254,7 +254,7 @@ export function emitUnicliYaml(shape: UniCliShape): string {
     "pipeline",
     "columns",
     "rate_limit",
-    "_opencli_extra",
+    "_legacy_extra",
   ] as const;
   for (const key of ORDER) {
     const v = (shape as Record<string, unknown>)[key];
@@ -274,19 +274,19 @@ export function registerMigrateCommand(program: Command): void {
     .description("Import adapters from other formats");
 
   imp
-    .command("opencli-yaml <path>")
-    .description("Convert an OpenCLI YAML adapter to the Uni-CLI v2 format")
+    .command("legacy-yaml <path>")
+    .description("Convert a legacy YAML adapter to the Uni-CLI v2 format")
     .option("-o, --output <path>", "Write result to file (default: stdout)")
     .option("--json-report", "Also emit a JSON migration report to stderr")
     .action(
       (path: string, opts: { output?: string; jsonReport?: boolean }): void => {
         const startedAt = Date.now();
-        const ctx = makeCtx("migrate.opencli", startedAt);
+        const ctx = makeCtx("migrate.legacy", startedAt);
         const fmt = detectFormat(
           program.opts().format as OutputFormat | undefined,
         );
 
-        let source: OpenCliShape;
+        let source: LegacyAdapterShape;
         try {
           const text = readFileSync(path, "utf-8");
           const parsed = yaml.load(text);
@@ -295,13 +295,13 @@ export function registerMigrateCommand(program: Command): void {
               "input is not a YAML mapping (must be an object at the root)",
             );
           }
-          source = parsed as OpenCliShape;
+          source = parsed as LegacyAdapterShape;
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           ctx.error = {
             code: "invalid_input",
             message: `cannot read ${path}: ${msg}`,
-            suggestion: "Supply a valid OpenCLI YAML mapping file.",
+            suggestion: "Supply a valid legacy YAML mapping file.",
             retryable: false,
           };
           ctx.duration_ms = Date.now() - startedAt;
@@ -309,7 +309,7 @@ export function registerMigrateCommand(program: Command): void {
           process.exit(ExitCode.USAGE_ERROR);
         }
 
-        const report = migrateOpenCli(source);
+        const report = migrateLegacyYaml(source);
 
         for (const w of report.warnings) {
           process.stderr.write(chalk.yellow(`  [migrate] warning: ${w}\n`));

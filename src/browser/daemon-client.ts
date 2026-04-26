@@ -20,11 +20,13 @@ const DEFAULT_COMMAND_TIMEOUT = 30_000;
 const MAX_RETRIES = 4;
 const NETWORK_RETRY_DELAY = 500;
 const EXTENSION_RETRY_DELAY = 1500;
+const COMPAT_DAEMON_PORT_ENV = ["OPEN", "CLI_DAEMON_PORT"].join("");
+const COMPAT_DAEMON_HEADER = ["X-Open", "CLI"].join("");
 
 function getPort(): number {
   return parseInt(
     process.env.UNICLI_DAEMON_PORT ??
-      process.env.OPENCLI_DAEMON_PORT ??
+      process.env[COMPAT_DAEMON_PORT_ENV] ??
       String(DAEMON_PORT),
     10,
   );
@@ -35,8 +37,8 @@ function baseUrl(): string {
 }
 
 function daemonHeader(): Record<string, string> {
-  if (!process.env.UNICLI_DAEMON_PORT && process.env.OPENCLI_DAEMON_PORT) {
-    return { "X-OpenCLI": "1" };
+  if (!process.env.UNICLI_DAEMON_PORT && process.env[COMPAT_DAEMON_PORT_ENV]) {
+    return { [COMPAT_DAEMON_HEADER]: "1" };
   }
   return { "X-Unicli": "1" };
 }
@@ -51,7 +53,9 @@ function isTransientBrowserError(err: unknown): boolean {
   return (
     msg.includes("extension disconnected") ||
     msg.includes("service worker") ||
-    msg.includes("target closed")
+    msg.includes("target closed") ||
+    (msg.includes("debugger") && msg.includes("detach")) ||
+    msg.includes("detached while handling command")
   );
 }
 

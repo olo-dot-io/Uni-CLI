@@ -55,7 +55,7 @@ pipeline:
           # Force integer on limit
           lim=${UNICLI_LIMIT//[^0-9]/}
           : "${lim:=50}"
-          sqlite3 -json "$db" \
+          out=$(sqlite3 -json "$db" \
             "SELECT datetime(m.date/1000000000 + 978307200, 'unixepoch', 'localtime') AS ts, \
                     m.text, \
                     m.is_from_me, \
@@ -65,7 +65,12 @@ pipeline:
              WHERE m.text LIKE '%$q%' \
              ORDER BY m.date DESC \
              LIMIT $lim;" \
-            2>/dev/null || echo "[]"
+            2>/dev/null) || { echo "[]"; exit 0; }
+          if [ -z "$out" ]; then
+            echo "[]"
+          else
+            printf '%s\n' "$out"
+          fi
       env:
         UNICLI_QUERY: "${{ args.text }}"
         UNICLI_LIMIT: "${{ args.limit }}"

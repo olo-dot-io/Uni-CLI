@@ -1,0 +1,30 @@
+site: binance
+name: prices
+description: Binance latest prices for trading pairs / 币安全市场最新价格
+domain: data-api.binance.vision
+type: web-api
+strategy: public
+browser: false
+
+args:
+  limit:
+    type: int
+    default: 50
+    description: Number of trading pairs
+
+pipeline:
+  - fetch:
+      url: https://data-api.binance.vision/api/v3/ticker/price
+  - map:
+      symbol: ${{ item.symbol }}
+      price: ${{ item.price }}
+  - limit: ${{ args.limit }}
+
+columns: [symbol, price]
+
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2
