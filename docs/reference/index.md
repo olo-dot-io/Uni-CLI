@@ -6,6 +6,7 @@ rules.
 | Contract              | Page                               |
 | --------------------- | ---------------------------------- |
 | Adapter schema        | [Adapter Format](/ADAPTER-FORMAT)  |
+| Supported sites       | [Sites Catalog](./sites)           |
 | Pipeline step catalog | [Pipeline Steps](./pipeline)       |
 | Process exit behavior | [Exit Codes](./exit-codes)         |
 | Maintenance commands  | [Maintenance Tools](./maintenance) |

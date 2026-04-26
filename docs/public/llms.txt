@@ -1,0 +1,34 @@
+# Uni-CLI
+
+Uni-CLI is the universal command surface for AI agents. It exposes websites,
+desktop apps, local tools, external CLIs, and agent backends through searchable
+commands and a shared v2 AgentEnvelope output contract.
+
+## Start Here
+
+- Overview: https://olo-dot-io.github.io/Uni-CLI/
+- Getting started: https://olo-dot-io.github.io/Uni-CLI/guide/getting-started
+- Sites catalog: https://olo-dot-io.github.io/Uni-CLI/reference/sites
+- Agent integrations: https://olo-dot-io.github.io/Uni-CLI/guide/integrations
+- Adapter authoring: https://olo-dot-io.github.io/Uni-CLI/guide/adapters
+- Self-repair loop: https://olo-dot-io.github.io/Uni-CLI/guide/self-repair
+
+## Reference
+
+- Adapter format: https://olo-dot-io.github.io/Uni-CLI/ADAPTER-FORMAT
+- Pipeline steps: https://olo-dot-io.github.io/Uni-CLI/reference/pipeline
+- Exit codes: https://olo-dot-io.github.io/Uni-CLI/reference/exit-codes
+- Maintenance tools: https://olo-dot-io.github.io/Uni-CLI/reference/maintenance
+- Release process: https://olo-dot-io.github.io/Uni-CLI/reference/release
+
+## Command Shape
+
+```bash
+npm install -g @zenalexa/unicli
+unicli search "your intent"
+unicli <site> <command> [args] [-f json|md|yaml|csv|compact]
+```
+
+Use `unicli search` before guessing a site command. Use `-f json` for scripts
+and machine-oriented consumers. If a command fails, inspect the structured
+error envelope, edit the adapter path, and run `unicli repair <site> <command>`.

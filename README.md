@@ -1,15 +1,19 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="assets/logo-light.svg">
-    <img src="assets/logo-light.svg" alt="Uni-CLI" width="360">
-  </picture>
+  <img src="assets/mascot-otter.png" alt="Uni-CLI otter mascot" width="180">
 </p>
 
 <h1 align="center">Uni-CLI</h1>
 
 <p align="center">
   <strong>One CLI surface for agents to operate websites, desktop apps, local tools, and other CLIs.</strong>
+</p>
+
+<p align="center">
+  <a href="https://olo-dot-io.github.io/Uni-CLI/">Docs</a>
+  ·
+  <a href="https://olo-dot-io.github.io/Uni-CLI/reference/sites">Sites catalog</a>
+  ·
+  <a href="https://olo-dot-io.github.io/Uni-CLI/llms.txt">llms.txt</a>
 </p>
 
 <p align="center">
@@ -187,6 +191,9 @@ unicli list --site macos
 unicli ext list
 unicli ext list --tag agent
 ```
+
+Browse the same generated catalog on the docs site:
+<https://olo-dot-io.github.io/Uni-CLI/reference/sites>
 
 ## Output Contract
 

@@ -1,15 +1,19 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="assets/logo-light.svg">
-    <img src="assets/logo-light.svg" alt="Uni-CLI" width="360">
-  </picture>
+  <img src="assets/mascot-otter.png" alt="Uni-CLI 水獭 mascot" width="180">
 </p>
 
 <h1 align="center">Uni-CLI</h1>
 
 <p align="center">
   <strong>给 Agent 用的一层统一 CLI：网站、桌面 App、本地工具、外部 CLI，都变成可搜索、可执行、可修复的命令。</strong>
+</p>
+
+<p align="center">
+  <a href="https://olo-dot-io.github.io/Uni-CLI/">文档站</a>
+  ·
+  <a href="https://olo-dot-io.github.io/Uni-CLI/reference/sites">站点目录</a>
+  ·
+  <a href="https://olo-dot-io.github.io/Uni-CLI/llms.txt">llms.txt</a>
 </p>
 
 <p align="center">
@@ -187,6 +191,9 @@ unicli list --site macos
 unicli ext list
 unicli ext list --tag agent
 ```
+
+同一份生成目录也发布在文档站：
+<https://olo-dot-io.github.io/Uni-CLI/reference/sites>
 
 ## 输出契约
 

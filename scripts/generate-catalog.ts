@@ -8,17 +8,74 @@
  * by the docs site.
  *
  * Usage:
- *   tsx scripts/generate-catalog.ts                     # writes default path
- *   tsx scripts/generate-catalog.ts docs/catalog.json   # custom path
+ *   tsx scripts/generate-catalog.ts
+ *   tsx scripts/generate-catalog.ts docs/catalog.json
+ *   tsx scripts/generate-catalog.ts docs/catalog.json docs/site-index.json
  */
 
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { basename, dirname, extname, join, resolve } from "node:path";
 import { loadAllAdapters, loadTsAdapters } from "../src/discovery/loader.js";
 import { buildCatalog } from "../src/commands/skills.js";
 
+type CatalogCommand = {
+  name: string;
+  description?: string;
+  when_to_use?: string;
+  command: string;
+};
+
+type CatalogAdapter = {
+  site: string;
+  type: string;
+  domain?: string;
+  auth?: boolean;
+  strategy?: string;
+  commands: CatalogCommand[];
+};
+
+function buildDocsSiteIndex(catalog: {
+  generated: string;
+  total_sites: number;
+  total_commands: number;
+  adapters: CatalogAdapter[];
+}) {
+  return {
+    generated: catalog.generated,
+    total_sites: catalog.total_sites,
+    total_commands: catalog.total_commands,
+    sites: catalog.adapters.map((adapter) => ({
+      site: adapter.site,
+      type: adapter.type,
+      domain: adapter.domain,
+      auth: adapter.auth ?? false,
+      strategy: adapter.strategy,
+      command_count: adapter.commands.length,
+      commands: adapter.commands.map((command) => ({
+        name: command.name,
+        description: command.description ?? command.when_to_use ?? command.name,
+        command: command.command,
+      })),
+    })),
+  };
+}
+
+function defaultSiteIndexPath(catalogOut: string, hasCatalogArg: boolean) {
+  if (!hasCatalogArg) {
+    return "docs/site-index.json";
+  }
+
+  const extension = extname(catalogOut) || ".json";
+  const name = basename(catalogOut, extension);
+  return join(dirname(catalogOut), `${name}.site-index${extension}`);
+}
+
 async function main(): Promise<void> {
-  const out = resolve(process.argv[2] ?? "docs/adapters-catalog.json");
+  const catalogArg = process.argv[2];
+  const out = resolve(catalogArg ?? "docs/adapters-catalog.json");
+  const siteIndexOut = resolve(
+    process.argv[3] ?? defaultSiteIndexPath(out, Boolean(catalogArg)),
+  );
 
   // Load both YAML + TS adapters into the registry.
   loadAllAdapters();
@@ -26,11 +83,18 @@ async function main(): Promise<void> {
 
   const catalog = buildCatalog();
   mkdirSync(dirname(out), { recursive: true });
+  mkdirSync(dirname(siteIndexOut), { recursive: true });
   writeFileSync(out, JSON.stringify(catalog, null, 2), "utf-8");
+  writeFileSync(
+    siteIndexOut,
+    JSON.stringify(buildDocsSiteIndex(catalog), null, 2),
+    "utf-8",
+  );
 
   process.stdout.write(
     `wrote catalog: ${catalog.total_sites} sites, ${catalog.total_commands} commands → ${out}\n`,
   );
+  process.stdout.write(`wrote docs site index → ${siteIndexOut}\n`);
 }
 
 main().catch((err) => {
