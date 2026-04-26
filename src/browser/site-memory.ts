@@ -39,6 +39,10 @@ export interface DiscoveredEndpoint {
   capability?: string;
 }
 
+function compatPath(path: string): string {
+  return path.replace(/\\/g, "/");
+}
+
 export function siteMemoryPaths(
   site: string,
   baseDir = userHome(),
@@ -50,14 +54,14 @@ export function siteMemoryPaths(
   fixturesDir: string;
   verifyDir: string;
 } {
-  const dir = join(baseDir, ".unicli", "sites", site);
+  const dir = compatPath(join(baseDir, ".unicli", "sites", site));
   return {
     dir,
-    endpoints: join(dir, "endpoints.json"),
-    fieldMap: join(dir, "field-map.json"),
-    notes: join(dir, "notes.md"),
-    fixturesDir: join(dir, "fixtures"),
-    verifyDir: join(dir, "verify"),
+    endpoints: compatPath(join(dir, "endpoints.json")),
+    fieldMap: compatPath(join(dir, "field-map.json")),
+    notes: compatPath(join(dir, "notes.md")),
+    fixturesDir: compatPath(join(dir, "fixtures")),
+    verifyDir: compatPath(join(dir, "verify")),
   };
 }
 
