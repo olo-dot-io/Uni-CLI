@@ -76,6 +76,112 @@
   border-radius: 8px !important;
 }
 
+.agent-doc-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  margin: 0 0 38px;
+  padding: 14px 0 18px;
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+
+.VPHome .agent-doc-toolbar {
+  max-width: 1120px;
+  margin: 0 auto 28px;
+  padding: 20px 24px 16px;
+}
+
+.agent-doc-path,
+.agent-doc-actions {
+  min-width: 0;
+}
+
+.agent-back-link,
+.agent-section-label {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  color: var(--vp-c-brand-1);
+  font-family: "Geist Mono", ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-decoration: none;
+}
+
+.agent-section-label {
+  color: var(--uni-clay);
+}
+
+.agent-breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 0;
+  color: var(--vp-c-text-3);
+  font-size: 13px;
+  list-style: none;
+}
+
+.agent-breadcrumbs li {
+  min-width: 0;
+  margin: 0;
+}
+
+.agent-breadcrumbs li:not(:last-child)::after {
+  margin-left: 6px;
+  color: var(--vp-c-text-3);
+  content: "/";
+}
+
+.agent-breadcrumbs a {
+  color: var(--vp-c-text-2);
+  text-decoration: none;
+}
+
+.agent-breadcrumbs [aria-current="page"] {
+  overflow: hidden;
+  max-width: 420px;
+  color: var(--vp-c-text-1);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-doc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.agent-copy-button,
+.agent-markdown-link {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid rgba(242, 223, 197, 0.16);
+  border-radius: 8px;
+  background: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  text-decoration: none !important;
+}
+
+.agent-copy-button:hover,
+.agent-markdown-link:hover,
+.agent-copy-button:focus-visible,
+.agent-markdown-link:focus-visible {
+  border-color: var(--vp-c-brand-1);
+  color: var(--vp-c-brand-1);
+  outline: none;
+}
+
 .uni-eyebrow {
   margin: 0 0 10px;
   color: var(--uni-clay);
@@ -439,6 +545,29 @@
   .VPFeature {
     min-width: 0 !important;
     max-width: calc(100vw - 48px) !important;
+  }
+
+  .agent-doc-toolbar {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .VPHome .agent-doc-toolbar {
+    padding: 16px 24px 10px;
+  }
+
+  .agent-doc-actions {
+    justify-content: flex-start;
+  }
+
+  .agent-copy-button,
+  .agent-markdown-link {
+    flex: 1 1 148px;
+  }
+
+  .agent-breadcrumbs [aria-current="page"] {
+    max-width: calc(100vw - 48px);
   }
 
   .vp-doc p,

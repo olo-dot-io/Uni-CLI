@@ -1,4 +1,5 @@
 import { defineConfig } from "vitepress";
+import { sidebarGroups, topNav } from "./site-map.js";
 
 function normalizeSiteBase(siteBase: string): string {
   const trimmedBase = siteBase.trim();
@@ -81,6 +82,7 @@ export default defineConfig({
   title: "Uni-CLI",
   description: "One CLI surface for agents to operate software",
   base: siteBase,
+  srcExclude: ["public/markdown/**/*.md"],
   cleanUrls: true,
   lastUpdated: true,
   markdown: {
@@ -127,93 +129,12 @@ export default defineConfig({
   ],
   themeConfig: {
     siteTitle: "Uni-CLI",
-    nav: [
-      { text: "Start", link: "/guide/getting-started" },
-      { text: "Sites", link: "/reference/sites" },
-      { text: "Guides", link: "/guide/" },
-      { text: "Reference", link: "/reference/" },
-      { text: "Architecture", link: "/ARCHITECTURE" },
-    ],
+    nav: topNav,
     search: {
       provider: "local",
     },
     sidebar: {
-      "/": [
-        {
-          text: "Start",
-          items: [
-            { text: "Overview", link: "/" },
-            { text: "Getting Started", link: "/guide/getting-started" },
-            { text: "Integrations", link: "/guide/integrations" },
-            { text: "Sites Catalog", link: "/reference/sites" },
-            { text: "Recipes", link: "/RECIPES" },
-          ],
-        },
-        {
-          text: "Guides",
-          items: [
-            { text: "Adapters", link: "/guide/adapters" },
-            { text: "Self-Repair", link: "/guide/self-repair" },
-          ],
-        },
-        {
-          text: "Reference",
-          items: [
-            { text: "Adapter Format", link: "/ADAPTER-FORMAT" },
-            { text: "Sites Catalog", link: "/reference/sites" },
-            { text: "Pipeline Steps", link: "/reference/pipeline" },
-            { text: "Exit Codes", link: "/reference/exit-codes" },
-            { text: "Maintenance Tools", link: "/reference/maintenance" },
-            { text: "Plugin Authoring", link: "/PLUGIN" },
-            { text: "Release", link: "/reference/release" },
-          ],
-        },
-        {
-          text: "Explanation",
-          items: [
-            { text: "Architecture", link: "/ARCHITECTURE" },
-            { text: "Benchmarks", link: "/BENCHMARK" },
-            { text: "Theory", link: "/THEORY" },
-            { text: "Taste Guide", link: "/TASTE" },
-            { text: "Roadmap", link: "/ROADMAP" },
-          ],
-        },
-      ],
-      "/guide/": [
-        {
-          text: "Start",
-          items: [
-            { text: "Guide Index", link: "/guide/" },
-            { text: "Getting Started", link: "/guide/getting-started" },
-            { text: "Integrations", link: "/guide/integrations" },
-            { text: "Sites Catalog", link: "/reference/sites" },
-            { text: "Recipes", link: "/RECIPES" },
-          ],
-        },
-        {
-          text: "Build",
-          items: [
-            { text: "Adapters", link: "/guide/adapters" },
-            { text: "Self-Repair", link: "/guide/self-repair" },
-            { text: "Adapter Format", link: "/ADAPTER-FORMAT" },
-          ],
-        },
-      ],
-      "/reference/": [
-        {
-          text: "Reference",
-          items: [
-            { text: "Reference Index", link: "/reference/" },
-            { text: "Adapter Format", link: "/ADAPTER-FORMAT" },
-            { text: "Sites Catalog", link: "/reference/sites" },
-            { text: "Pipeline Steps", link: "/reference/pipeline" },
-            { text: "Exit Codes", link: "/reference/exit-codes" },
-            { text: "Maintenance Tools", link: "/reference/maintenance" },
-            { text: "Plugin Authoring", link: "/PLUGIN" },
-            { text: "Release", link: "/reference/release" },
-          ],
-        },
-      ],
+      "/": sidebarGroups,
     },
     editLink: {
       pattern: "https://github.com/olo-dot-io/Uni-CLI/edit/main/docs/:path",

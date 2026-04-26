@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "docs/**"
+      - "scripts/generate-docs-agent-assets.ts"
       - ".github/workflows/docs.yml"
       - "package.json"
       - "package-lock.json"
