@@ -1,7 +1,7 @@
 # Changelog
 
 All notable changes to Uni-CLI are documented here.
-Version format: `MAJOR.MINOR.PATCH` — see [internal/TASTE.md](./internal/TASTE.md) for the codename system.
+Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 
 ## [Unreleased] — Next major development — Vostok · Astronaut TBD
 
@@ -293,7 +293,7 @@ v0.213.4 once OpenRouter credit is restored.
 - **`scripts/release.ts` replacement patterns refreshed** — 4 of 6 patterns were stale after v0.213.0's documentation restructure, causing `npm run release` to silently SKIP updates. Patterns for CLAUDE.md (.gitignored), the retired `## Available Sites` / `N sites, M commands` AGENTS.md headers, and the retired `N_Sites-M_Commands` README badge are deleted; site/command/pipeline/test counts are now authoritative in `scripts/build-readme.ts` via `<!-- STATS:key -->` markers. README footer codename regex updated to match the current `<sub>vX.Y.Z — Codename</sub>` shape. `docs/ROADMAP.md` summary version pattern narrowed to `as of vX.Y.Z` so STATS marker interleaving no longer blocks the match. `npx tsx scripts/release.ts --dry-run` now emits 0 SKIP warnings.
 - **Test coverage closed on 3 v0.213.0 gaps** — CLI-level quarantine dispatch via subprocess spawn (`tests/unit/cli/quarantine-cli.test.ts` asserts the full `process.exit` path — exit code 78, stderr-routed v2 envelope with `error.code: "quarantined"`, plus a `UNICLI_FORCE_QUARANTINE=1` bypass guard); `format()` error-wins precedence when both `ctx.error` and non-null `data` are passed (non-empty array, object payload, and yaml/md output all verified to discard the data and emit `data: null`); `UNICLI_OUTPUT` env bare override detection when `OUTPUT` is explicitly unset, plus the UNICLI_OUTPUT-wins-when-both-set path asserts no deprecation warning leaks.
 - **`stats.json.test_count` now matches runtime vitest count** — the regex-based counter in `scripts/count-stats.ts` missed `it.each([...])` parametrised cases and loop-generated tests (1314 claimed vs 6921 actual across unit + adapter projects). Rewritten to enumerate via `npx vitest list --json --project=<name>` per project, so parametrised and dynamic tests are counted exactly. Regex fallback (`UNICLI_STATS_TEST_STRATEGY=regex` or when vitest spawn fails) still ships for sandboxed environments. Accuracy now within 0% of `npm run test` + `npm run test:adapter` runtime output.
-- **`stats.json` regenerated** — `test_count` 1314 → 6921 now propagates through the `<!-- STATS:test_count -->` markers in README / AGENTS / ROADMAP / TASTE. `site_count` stays at 200, which matches `dist/manifest.json` truth: the 5 extra directories under `src/adapters/` are the `_electron` shared-infra module (prefixed with `_`, never a site) plus 4 AI-chat adapters (`antigravity`, `chatgpt`, `chatwise`, `doubao-app`) that register via `registerAIChatCommands()` rather than direct `cli()` calls. Those 4 surface at runtime (203 runtime sites) but are intentionally excluded from the manifest/stats site count until the registration pathway is unified in v0.214.
+- **`stats.json` regenerated** — `test_count` 1314 → 6921 now propagates through the `<!-- STATS:test_count -->` markers in README / AGENTS / ROADMAP / copy rules. `site_count` stays at 200, which matches `dist/manifest.json` truth: the 5 extra directories under `src/adapters/` are the `_electron` shared-infra module (prefixed with `_`, never a site) plus 4 AI-chat adapters (`antigravity`, `chatgpt`, `chatwise`, `doubao-app`) that register via `registerAIChatCommands()` rather than direct `cli()` calls. Those 4 surface at runtime (203 runtime sites) but are intentionally excluded from the manifest/stats site count until the registration pathway is unified in v0.214.
 
 ### Changed
 
@@ -426,7 +426,7 @@ v0.213.4 once OpenRouter credit is restored.
   ### Changed
   - Formatter rewritten: `table` dropped; added `compact` format (newline-delimited, token-efficient)
   - `--json` global flag becomes deprecation alias for `-f json` with stderr warning
-  - stats.json is the single source of truth for counts; CI gate enforces marker consistency across README/AGENTS.md/TASTE.md/ROADMAP.md
+  - stats.json is the single source of truth for counts; CI gate enforces marker consistency across README/AGENTS.md/COPY.md/ROADMAP.md
   - All GitHub Actions SHA-pinned (checkout/setup-node/upload-artifact/stale/gh-release)
   - CI matrix expanded to Node 20/22 × macOS 14 × Windows × Ubuntu
   - Retired "~80 tokens" claim; published honest measured-in-BENCHMARK.md decomposition
@@ -546,7 +546,6 @@ v0.213.4 once OpenRouter credit is restored.
 - **`unicli operate observe <query>` (deliverable I)** — Preview verb. Snapshots the page, ranks interactive elements against the natural-language query (token overlap, exact label, role/aria bonuses), returns `{action, ref, selector, confidence, reason}` candidates. Caches every observation to `~/.unicli/observe-cache.jsonl` for self-healing audits.
 - **8 strategic adapters (deliverable F)** — `hermes`, `openharness`, `motion-studio`, `stagehand`, `godot`, `renderdoc`, `autoagent`, `cua`. +14 commands total.
 - **AgentLint integration (deliverable E)** — `scripts/lint-context.sh` runs Agent Lint against the workspace and gates `npm run verify` on context quality. Default threshold 60/100, override with `UNICLI_LINT_THRESHOLD`. Disable with `UNICLI_LINT_DISABLE=1`.
-- **`scripts/sync-ref.sh`** — generic sync of local reference repositories.
 - **Documentation (deliverable H)** — maintenance and integration docs now live in `docs/reference/maintenance.md` and `docs/guide/integrations.md`.
 
 ### Security
@@ -587,7 +586,7 @@ A 4-reviewer parallel audit (plumbing / runtime / security / release-wiring) ove
 
 10. **`eval run --all` absolute-path branch was broken.** `f.path.includes(\`/${target}/\`)`produced`//tmp/evals/smoke/`for absolute targets and never matched. **Fix:** two-branch logic: relative names match`f.relative`prefix, absolute paths match`f.path`prefix after`resolve()`.
 
-11. **Version residue** in `AGENTS.md`, `docs/ROADMAP.md`, `docs/TASTE.md` — still said `0.207.1 — Vostok · Gagarin`. Updated.
+11. **Version residue** in `AGENTS.md`, `docs/ROADMAP.md`, `contributing/COPY.md` — still said `0.207.1 — Vostok · Gagarin`. Updated.
 
 12. **Missing `docs/adapters-catalog.json`** — the CHANGELOG promised a canonical machine-readable manifest but the generator was never run. Ran `tsx scripts/generate-catalog.ts` → 134 sites / 711 commands / 467KB JSON. Committed.
 
@@ -860,7 +859,6 @@ A 4-reviewer parallel audit (plumbing / runtime / security / release-wiring) ove
 
 ### Infrastructure
 
-- Reference repos synced to `/ref/` (gitignored, `npm run sync:ref`)
 - `authCookies` field in adapter manifests for declaring required cookies
 - `Strategy` re-exported from registry.ts for TS adapter pattern
 - Manifest builder now includes TS adapter metadata (regex extraction from source)
@@ -983,5 +981,5 @@ Pre-existing: github-trending (1), ollama (1), blender (1), ffmpeg (1)
 - CODE_OF_CONDUCT.md, GOVERNANCE.md, CODEOWNERS
 - Issue templates: bug report, feature request, adapter request
 - CI workflow: Node.js 20/22 matrix on Ubuntu
-- Aerospace theme system: [internal/TASTE.md](./internal/TASTE.md)
+- Aerospace theme system: [contributing/COPY.md](./contributing/COPY.md)
 - Full release label rules: [docs/reference/release.md](./docs/reference/release.md)

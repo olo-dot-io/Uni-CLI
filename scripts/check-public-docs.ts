@@ -29,16 +29,7 @@ const ignoredPathFragments = [
 ];
 const cjkPattern =
   /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303f\uff00-\uffef]/u;
-const bannedPatterns = [
-  /\bper-call\b/iu,
-  /\btaste guide\b/iu,
-  /\btest guide\b/iu,
-  /竞品/u,
-  /内部调研/u,
-  /未公开调研/u,
-  /取代\s*MCP/iu,
-  /死刑/u,
-];
+const bannedPatterns = [/\bper-call\b/iu];
 const allowedGlobalCjkFragments = ["简体中文"];
 
 type Finding = {

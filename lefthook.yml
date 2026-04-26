@@ -11,10 +11,8 @@ pre-commit:
       glob: "*.{ts,tsx,js,jsx}"
       run: npx oxlint {staged_files}
 
-# Commit message gate. Subjects must be conventional commits, and CLAUDE.md
-# Information Security rule forbids internal-process terms leaking into the
-# public git log: "codex review", "subagent", "batch N", "round-N/round-N",
-# "spec drift", "strategic-design", "competitive analysis".
+# Commit message gate. Subjects must be conventional commits, and commit logs
+# must describe the product change instead of the work session that produced it.
 #
 # Escape hatch for legitimate local false positives (the word "spec" in a
 # schema or "batch" in a bench harness): LEFTHOOK=0 or rewrite the phrase.

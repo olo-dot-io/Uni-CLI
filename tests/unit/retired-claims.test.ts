@@ -15,9 +15,8 @@ import { fileURLToPath } from "node:url";
  * lint-context.sh enforces the same rule in CI; keeping a vitest copy
  * means local `npm run test` catches it too.
  *
- * Gitignored internal plans (.claude/**), vendored refs (ref/**), and the
- * docs/BENCHMARK.md file itself (which documents the retirement) are
- * exempt.
+ * Gitignored local-only paths (.claude/**, ref/**) and the docs/BENCHMARK.md
+ * file itself (which documents the retirement) are exempt.
  */
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

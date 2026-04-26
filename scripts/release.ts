@@ -8,7 +8,7 @@
  *        RELEASE_CODENAME="Program · Astronaut" npx tsx scripts/release.ts
  *
  * What it updates:
- * - internal/TASTE.md: Current version line
+ * - contributing/COPY.md: Current version line
  * - README.md / README.zh-CN.md: Footer version + codename
  * - CHANGELOG.md: Insert new version heading (content added manually)
  * - docs/ROADMAP.md: Current version line
@@ -111,15 +111,15 @@ interface Rule {
 //   - AGENTS.md "N sites, M commands."          → counts live in STATS markers.
 //   - README.md "N_Sites-M_Commands" badge URL  → badge removed; counts via STATS.
 // Site/command/pipeline/test counts in README.md, AGENTS.md, docs/ROADMAP.md, and
-// internal/TASTE.md are owned by scripts/build-readme.ts which rewrites every
+// contributing/COPY.md are owned by scripts/build-readme.ts which rewrites every
 // `<!-- STATS:key -->...<!-- /STATS -->` block from stats.json each `npm run build`.
 
 const rules: Rule[] = [
   {
-    file: "internal/TASTE.md",
+    file: "contributing/COPY.md",
     pattern: /^> Current version: v[\d.]+(?:\s+—\s+[^.]+)?\./m,
     replacement: `> Current version: v${version} — ${codename}.`,
-    description: "internal TASTE.md current version",
+    description: "COPY.md current version",
   },
   {
     file: "docs/ROADMAP.md",

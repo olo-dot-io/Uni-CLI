@@ -43,7 +43,7 @@ This file tracks current engineering direction. Historical release notes live in
 4. **Docs as product surface**
    - README stays install-first and capability-first.
    - Public docs should explain commands, contracts, repair paths, and integration routes.
-   - Long research notes, release archaeology, and naming lore stay out of the public entry path.
+   - Keep the public entry path short, current, and directly useful.
 
 ## Non-Goals
 
