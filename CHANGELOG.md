@@ -3,6 +3,17 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 
+## [0.216.3] — 2026-04-27 — Apollo · Collins
+
+### Fixed
+
+- Fast-path discovery now falls back to the full CLI when the generated
+  manifest is absent, preserving fresh-checkout behavior.
+- Fast-path `list` output keeps `[quarantined]` tags alongside `[auth]`, so
+  agents do not lose adapter health warnings.
+- `uiverse preview` now uses `path.dirname()` for output parent directories,
+  avoiding Windows path and slashless relative-path edge cases.
+
 ## [0.216.2] — 2026-04-27 — Apollo · Aldrin
 
 ### Fixed

@@ -336,6 +336,13 @@ function readManifest(): Manifest {
   return JSON.parse(readFileSync(manifestPath(), "utf8")) as Manifest;
 }
 
+function isMissingManifestError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.includes("Missing dist/manifest.json")
+  );
+}
+
 function emit(
   io: Io,
   data: unknown[] | Record<string, unknown>,
@@ -386,12 +393,15 @@ function handleList(parsed: ParsedArgv, io: Io): boolean {
     .flatMap(([site, info]) =>
       info.commands.map((command) => {
         const strategy = command.strategy ?? "public";
+        const tags: string[] = [];
+        if (strategy !== "public") tags.push("[auth]");
+        if (command.quarantined === true) tags.push("[quarantined]");
         return {
           site,
           command: command.name,
           description: command.description ?? "",
           type: command.type ?? "web-api",
-          auth: strategy !== "public" ? "[auth]" : "",
+          auth: tags.join(" "),
         };
       }),
     )
@@ -722,16 +732,21 @@ export function tryRunFastPath(
   io: Io = DEFAULT_IO,
 ): boolean {
   const parsed = parseArgv(argv);
-  switch (parsed.command) {
-    case "list":
-      return handleList(parsed, io);
-    case "search":
-      return handleSearch(parsed, io);
-    case "describe":
-      return handleDescribe(parsed, io);
-    case "repair":
-      return handleRepair(parsed, io);
-    default:
-      return handleAdapterDryRun(parsed, io) || handleSiteHelp(parsed, io);
+  try {
+    switch (parsed.command) {
+      case "list":
+        return handleList(parsed, io);
+      case "search":
+        return handleSearch(parsed, io);
+      case "describe":
+        return handleDescribe(parsed, io);
+      case "repair":
+        return handleRepair(parsed, io);
+      default:
+        return handleAdapterDryRun(parsed, io) || handleSiteHelp(parsed, io);
+    }
+  } catch (error) {
+    if (isMissingManifestError(error)) return false;
+    throw error;
   }
 }

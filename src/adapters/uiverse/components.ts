@@ -1,5 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { cli, Strategy } from "../../registry.js";
 import type { IPage } from "../../types.js";
@@ -141,7 +141,7 @@ cli({
         "unicli-uiverse",
         `${str(detail.username)}-${str(detail.slug)}.png`,
       );
-    await mkdir(output.split("/").slice(0, -1).join("/"), { recursive: true });
+    await mkdir(dirname(output), { recursive: true });
     await writeFile(output, buffer);
     return {
       username: detail.username,

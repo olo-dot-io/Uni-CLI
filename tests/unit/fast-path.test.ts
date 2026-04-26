@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { tryRunFastPath } from "../../src/fast-path.js";
 
 function makeIo(): {
@@ -38,6 +38,51 @@ describe("CLI fast path", () => {
     expect(env.command).toBe("core.list");
     expect(env.data.length).toBeGreaterThan(0);
     expect(env.data.every((row) => row.site.includes("twitter"))).toBe(true);
+  });
+
+  it("preserves quarantine tags in list output", () => {
+    const { stdout, io } = makeIo();
+
+    const handled = tryRunFastPath(
+      ["node", "unicli", "-f", "json", "list", "--site", "36kr"],
+      io,
+    );
+
+    expect(handled).toBe(true);
+    const env = JSON.parse(stdout.join("")) as {
+      data: Array<{ command: string; auth: string }>;
+    };
+    expect(env.data).toContainEqual(
+      expect.objectContaining({
+        command: "latest",
+        auth: expect.stringContaining("[quarantined]"),
+      }),
+    );
+  });
+
+  it("falls through when the generated manifest is absent", async () => {
+    const actualFs = await vi.importActual<typeof import("node:fs")>("node:fs");
+    vi.resetModules();
+    vi.doMock("node:fs", () => ({
+      ...actualFs,
+      existsSync: () => false,
+    }));
+
+    const { tryRunFastPath: tryRunMissingManifestFastPath } =
+      await import("../../src/fast-path.js");
+    const { stdout, stderr, io } = makeIo();
+
+    const handled = tryRunMissingManifestFastPath(
+      ["node", "unicli", "-f", "json", "list"],
+      io,
+    );
+
+    vi.doUnmock("node:fs");
+    vi.resetModules();
+
+    expect(handled).toBe(false);
+    expect(stdout).toEqual([]);
+    expect(stderr).toEqual([]);
   });
 
   it("serves search from the search index", () => {
