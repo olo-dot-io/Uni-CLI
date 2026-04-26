@@ -8,7 +8,7 @@ updates:
       time: "01:00"
       timezone: "Asia/Hong_Kong"
     # All npm bumps bundled into one PR per week. Grouping is load-bearing:
-    # it lets the Friday weekly-release workflow treat dependabot as a single
+    # it lets the release candidate gate treat dependabot as a single
     # `chore(deps)` commit rather than a dozen individual bumps that would
     # otherwise drown out substantive changes in the release filter.
     open-pull-requests-limit: 5

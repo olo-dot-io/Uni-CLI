@@ -1,25 +1,13 @@
-name: Weekly Release
+name: Release Candidate
 
-# Why a cron instead of a manual tag push?
-#   The Friday cron enforces a predictable cadence and lets dependabot batch
-#   into one weekly group (see .github/dependabot.yml) without triggering a
-#   release per bump.
-#
 # What it does:
 #   1. Detect commits since last tag, excluding chore(deps) and chore(ci).
 #   2. If any substantive commits exist → consume changesets, bump version,
 #      verify, commit, tag, push. Tag push triggers release.yml (OIDC publish).
-#   3. If quiet week → record to step summary, exit 0. A quiet week is NOT
-#      a failure.
 #
-# Manual override: workflow_dispatch with optional `force` input.
+# Release authority is manual. There is no promised calendar cadence.
 
 on:
-  schedule:
-    # 01:00 UTC Friday = 09:00 HKT Friday (release-cadence intent: end of
-    # HK working week). US East Coast sees the tag Thursday 21:00 EDT /
-    # 20:00 EST — i.e. Friday morning for HK, previous evening for US.
-    - cron: "0 1 * * 5"
   workflow_dispatch:
     inputs:
       force:
@@ -35,8 +23,8 @@ on:
 permissions: {}
 
 jobs:
-  weekly-release:
-    name: Weekly release gate
+  release-candidate:
+    name: Release candidate gate
     runs-on: ubuntu-latest
     permissions:
       # `contents: write` pushes the release commit + tag back to main.
@@ -58,7 +46,7 @@ jobs:
           # Explicit token so our tag-push re-triggers release.yml. The
           # default GITHUB_TOKEN does NOT re-trigger workflows on push.
           # If a repo-scoped PAT is missing, fall back to GITHUB_TOKEN and
-          # document that the first post-cron run needs a manual rerun.
+          # document that the release publish workflow may need a manual rerun.
           token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
@@ -121,7 +109,7 @@ jobs:
           elif [ -z "${NEW_COMMITS}" ]; then
             echo "release=false" >> "$GITHUB_OUTPUT"
             echo "commit_count=0" >> "$GITHUB_OUTPUT"
-            echo "No substantive commits since ${LAST_TAG} — quiet week."
+            echo "No substantive commits since ${LAST_TAG}."
           else
             COUNT=$(printf '%s\n' "${NEW_COMMITS}" | wc -l | tr -d ' ')
             echo "release=true" >> "$GITHUB_OUTPUT"
@@ -186,11 +174,11 @@ jobs:
         run: |
           set -euo pipefail
           # Only stage files changeset + verify touched. Stats regen etc.
-          # happens elsewhere; a weekly release should not pull unrelated
+          # happens elsewhere; a release candidate should not pull unrelated
           # working-tree drift into the release commit.
-          git add package.json package-lock.json CHANGELOG.md README.md README.zh-CN.md AGENTS.md docs/TASTE.md docs/ROADMAP.md stats.json .changeset/
+          git add package.json package-lock.json CHANGELOG.md README.md README.zh-CN.md AGENTS.md internal/TASTE.md docs/ROADMAP.md stats.json .changeset/
           if git diff --cached --quiet; then
-            echo "::error title=Weekly release::Version bumped but no staged delta — aborting rather than silently skipping."
+            echo "::error title=Release candidate::Version bumped but no staged delta — aborting rather than silently skipping."
             exit 1
           fi
           git commit -m "release: v${VERSION} — ${CODENAME}"
@@ -206,7 +194,7 @@ jobs:
           LAST_TAG: ${{ steps.detect.outputs.last_tag }}
         run: |
           {
-            echo "## Weekly release v${VERSION}"
+            echo "## Release candidate v${VERSION}"
             echo ""
             echo "- Codename: \`${{ steps.metadata.outputs.codename }}\`"
             echo "- Tag pushed: \`v${VERSION}\`"
@@ -214,13 +202,13 @@ jobs:
             echo "- Publish pipeline: \`release.yml\` (triggered by tag push)"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Summarize quiet week
+      - name: Summarize no release
         if: steps.detect.outputs.release == 'false'
         env:
           LAST_TAG: ${{ steps.detect.outputs.last_tag }}
         run: |
           {
-            echo "## Quiet week — no release"
+            echo "## No release"
             echo ""
             echo "No substantive commits since \`${LAST_TAG}\`."
             echo "Only dependabot / CI-maintenance commits detected"

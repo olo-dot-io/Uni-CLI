@@ -4,12 +4,12 @@ on:
   push:
     branches: [main]
     paths:
-      - "docs/refs.bib"
+      - "internal/refs.bib"
       - "scripts/verify-refs.ts"
       - ".github/workflows/verify-refs.yml"
   pull_request:
     paths:
-      - "docs/refs.bib"
+      - "internal/refs.bib"
       - "scripts/verify-refs.ts"
       - ".github/workflows/verify-refs.yml"
   schedule:
@@ -19,7 +19,7 @@ on:
 
 jobs:
   verify-refs:
-    name: Resolve arXiv IDs in docs/refs.bib
+    name: Resolve arXiv IDs in internal/refs.bib
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

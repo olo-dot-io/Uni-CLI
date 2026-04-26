@@ -1,7 +1,8 @@
 # Uni-CLI Architecture
 
-> Uni-CLI is the CLI-native bridge between agents and software. MCP is a
-> compatibility transport; the command line is the primary execution contract.
+> Uni-CLI is the CLI-native bridge between agents and software. The primary
+> contract is a command invocation plus a structured `AgentEnvelope`; protocol
+> servers are compatibility surfaces over the same catalog.
 
 ## Current Shape
 
@@ -9,48 +10,52 @@ Uni-CLI exposes one searchable command surface across:
 
 - **Web APIs**: public, cookie, and header-authenticated HTTP adapters.
 - **Browser automation**: Chrome/CDP, UI, intercept, snapshot, and operate flows.
-- **Desktop/local tools**: subprocess-backed apps such as ffmpeg, Blender,
-  ImageMagick, LibreOffice, and Office adapters.
-- **Services**: local or remote HTTP/WebSocket services such as Ollama, ComfyUI,
-  and OBS.
-- **Bridge CLIs**: passthrough adapters for existing tools such as `gh`, `jq`,
-  `docker`, `yt-dlp`, and cloud CLIs.
+- **Desktop/local tools**: subprocess-backed apps, macOS automation, media tools,
+  design tools, Office adapters, and local developer utilities.
+- **Services**: local or remote HTTP/WebSocket services.
+- **Bridge CLIs**: passthrough adapters for mature command-line tools.
+- **Agent backends**: routing and setup helpers for agent runtimes that can call
+  shell commands or protocol servers.
 
 The generated catalog is the source of truth: **223 sites**, **1304 commands**,
 **987 adapters**, **59 pipeline steps**, and **7311 tests** in v0.215.1.
 
-## Why CLI-First
+## Execution Contract
 
-Coding agents already have a shell. Uni-CLI uses that native substrate instead
-of requiring every integration to be registered as a live protocol server.
+Coding agents already have a shell. Uni-CLI uses that native substrate first and
+keeps every other transport as an adapter over the same registry.
 
-| Dimension      | Uni-CLI                                           | MCP-only tool servers                   |
-| -------------- | ------------------------------------------------- | --------------------------------------- |
-| Discovery      | `unicli search`, `unicli list`, `unicli describe` | Server-specific tool registration       |
-| Execution      | One process call, structured stdout/stderr        | Persistent client/server session        |
-| Composition    | Shell pipes, files, `jq`, `xargs`, scripts        | Agent-orchestrated tool chaining        |
-| Failure repair | Error envelope points to adapter YAML             | Server implementation is usually opaque |
-| Context cost   | 357-415 response tokens for benchmarked calls     | Often pays schema/snapshot overhead     |
-| Compatibility  | CLI, MCP, ACP, JSON stream                        | MCP clients only                        |
+| Layer             | Contract                                                      |
+| ----------------- | ------------------------------------------------------------- |
+| Discovery         | `unicli search`, `unicli list`, `unicli describe`             |
+| Execution         | `unicli <site> <command> [args]`                              |
+| Output            | v2 `AgentEnvelope` in Markdown, JSON, YAML, CSV, or compact   |
+| Repair            | Error envelope with adapter path, failing step, and next move |
+| Composition       | Shell pipes, files, scripts, JSON streams, and protocol wraps |
+| Compatibility     | MCP, ACP, HTTP API, and generated agent configuration         |
+| Extension surface | YAML adapters first; TypeScript only where the pipeline ends  |
 
-This is not anti-MCP as a transport. Uni-CLI ships `unicli mcp serve` because
-some clients need it. The architectural choice is that MCP wraps Uni-CLI; it
-does not define Uni-CLI.
+The architectural rule is simple: a protocol server may wrap Uni-CLI, but it
+does not define Uni-CLI. The stable primitive is still a command that an agent
+can search, execute, inspect, and repair.
 
-## Differentiation
+## Capability Model
 
-The current ecosystem separates into recognizable categories:
+Adapters declare the smallest capability they need. Dispatchers can then route a
+command without guessing.
 
-| Category             | Examples                               | Strength                              | Limit                                  |
-| -------------------- | -------------------------------------- | ------------------------------------- | -------------------------------------- |
-| Browser agents       | browser-use, Stagehand, Playwright MCP | Flexible UI navigation                | Higher token and latency cost per step |
-| Data extraction APIs | Firecrawl, scraping MCP servers        | Fast read/extract/crawl               | Not a general write/control surface    |
-| Tool gateways        | Composio, MCP server registries        | Auth and SaaS breadth                 | Central gateway and schema overhead    |
-| CLI-native execution | Uni-CLI                                | Fast, composable, repairable hot path | Requires shell/filesystem access       |
+| Capability family | Typical use                                                   |
+| ----------------- | ------------------------------------------------------------- |
+| `http.fetch`      | Public APIs, authenticated APIs, feeds, search endpoints      |
+| `cdp-browser`     | Login-gated pages, dynamic sites, DOM extraction, intercepts  |
+| `subprocess`      | Local CLIs, media tools, desktop applications, file workflows |
+| `desktop-*`       | Native desktop automation surfaces                            |
+| `cua`             | Last-mile UI control when no narrower interface exists        |
+| `bridge`          | Reuse of existing installed tools                             |
 
-Uni-CLI's thesis is compile-then-run: use browser/CUA when discovery is needed,
-then encode the stable path as a typed adapter. The next call is a deterministic
-command, not another exploratory agent trajectory.
+This lets Uni-CLI be broad without turning every operation into a full browser
+or remote protocol session. The fast path stays narrow; broader paths exist when
+the task really needs them.
 
 ## Self-Repair Loop
 
@@ -84,33 +89,9 @@ The repair loop is deliberately small:
 4. Verify with `unicli repair <site> <command>` or `unicli test <site>`.
 5. Persist local overrides under `~/.unicli/adapters/` when the fix is local.
 
-The important part is not that the model is smart. The important part is that
-the search space is constrained to one adapter file, one failing step, one
-semantic exit code, and one reproducible verification command.
-
-## Runtime Layers
-
-```text
-Agent intent
-  |
-  v
-unicli search / describe / schema
-  |
-  v
-Adapter registry and manifest
-  |
-  v
-Pipeline engine
-  |
-  +-- http.fetch
-  +-- cdp-browser.*
-  +-- subprocess.exec
-  +-- desktop-ax / desktop-uia / desktop-atspi
-  +-- cua.*
-  |
-  v
-AgentEnvelope v2
-```
+The important part is not model cleverness. The important part is that the
+search space is constrained to one adapter file, one failing step, one semantic
+exit code, and one reproducible verification command.
 
 ## Adapter Types
 
@@ -129,22 +110,22 @@ enough.
 ## Measured Bar
 
 `docs/BENCHMARK.md` is the public measurement contract. The current fixture
-bench shows adapter responses at **357-415 tokens** for representative
-`--limit 5` calls and a **133.8x median reduction** against a 55K-token GitHub
-MCP catalog baseline. `unicli list` is intentionally large because it is the
-whole catalog; agents should use `unicli search` and `unicli describe` before
-asking for the full registry.
+bench shows representative `--limit 5` adapter responses at **357-415
+tokens**, with total invocation-plus-response budgets at **364-423 tokens**.
+The full catalog command is intentionally much larger because it emits all
+223 sites and 1304 commands; agents should search and describe before asking
+for the full registry.
 
 ## Direction
 
 The long-term path is:
 
-1. Operate a new surface once with browser/CUA or an external tool.
-2. Record the reliable API, DOM, or subprocess path.
+1. Operate a new surface once with the narrowest available transport.
+2. Record the reliable API, DOM, subprocess, or desktop path.
 3. Compile it into a small adapter.
 4. Run the adapter directly on future calls.
 5. Let failure envelopes drive repair when upstream software drifts.
 
-That is the practical route to replacing protocol-heavy agent tooling in
-coding-agent workflows: keep compatibility surfaces, but make the fastest,
-smallest, most repairable interface the default.
+That is the practical route to making CLI-native execution the default layer for
+agent work: keep compatibility surfaces, but make the fastest, smallest, most
+repairable interface the first-class path.

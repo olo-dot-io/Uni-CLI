@@ -7,22 +7,25 @@
 - Section: Reference
 - Parent: Reference (/reference/)
 
-This page is the canonical release policy and operator reference for Uni-CLI.
-It replaces the old split between cadence, versioning, codenames, and trusted
-publisher setup.
+This page is the public release policy and operator reference for Uni-CLI.
+Releases are maintainer-gated. There is no promised calendar cadence: the version
+line depends on community feedback, development substance, verification results,
+and the maintainer's call on whether the next shipment is patch, minor, major,
+or no release yet.
 
-## Cadence
+## Authority
 
-Uni-CLI ships on a weekly Friday cadence when substantive commits have landed
-on `main` since the previous tag.
+Only the maintainer decides when a release is cut. Automation prepares and
+verifies a candidate; it does not decide that a release should exist.
 
-| Schedule         | Workflow                                    | Behavior                                                      |
-| ---------------- | ------------------------------------------- | ------------------------------------------------------------- |
-| Friday 01:00 UTC | `.github/workflows/weekly-release.yml`      | Consume changesets, bump version, verify, commit, tag, push.  |
-| Manual           | `workflow_dispatch` on `weekly-release.yml` | Same pipeline, with optional `force` and required `codename`. |
+| Path              | Workflow                                      | Behavior                                                         |
+| ----------------- | --------------------------------------------- | ---------------------------------------------------------------- |
+| Candidate prepare | `.github/workflows/release-candidate.yml`     | Consume changesets, verify, apply release metadata, tag, push.   |
+| npm publish       | `.github/workflows/release.yml` on `v*` tags  | Publish the already-tagged version with provenance.              |
+| Manual dispatch   | `workflow_dispatch` with `force` + `codename` | Maintainer-triggered release even when the commit filter is dry. |
 
-Quiet weeks are recorded in the workflow summary and exit `0`. They do not
-create a tag or npm publish.
+If the maintainer has not explicitly asked to release, development stays under
+`[Unreleased]` in `CHANGELOG.md` plus `.changeset/*.md` files.
 
 ## Versioning
 
@@ -34,10 +37,8 @@ Uni-CLI follows semver while the package is in the `0.x` line.
 | New transport, new protocol surface, broad output behavior change | Minor        |
 | Stable 1.0 compatibility contract or breaking public behavior     | Major        |
 
-Development work for the next large line stays under `[Unreleased]` in
-`CHANGELOG.md` plus a `.changeset/*.md` file. Do not bump `package.json`, run
-`changeset version`, tag, publish, or create a GitHub Release until the
-maintainer explicitly says to release.
+Do not bump `package.json`, run `changeset version`, tag, publish, or create a
+GitHub Release until the maintainer explicitly says to release.
 
 ## Changesets
 
@@ -47,15 +48,15 @@ Every PR that touches production source should add one changeset:
 npm run changeset
 ```
 
-The weekly release workflow runs:
+The release candidate workflow runs:
 
 ```bash
 npx changeset version
 npm run verify
 ```
 
-The repository also verifies that source changes did not slip through without
-a changeset:
+The repository also verifies that source changes did not slip through without a
+changeset:
 
 ```bash
 npm run verify:changesets
@@ -98,7 +99,7 @@ npm run release:check -- --strict-codename
 
 ## Substantive Commits
 
-The weekly workflow ignores bot-only dependency and CI maintenance commits:
+Release automation filters out bot-only dependency and CI maintenance commits:
 
 - `chore(deps)`
 - `chore(deps-dev)`
@@ -109,11 +110,11 @@ The weekly workflow ignores bot-only dependency and CI maintenance commits:
 Everything else counts as substantive: `feat`, `fix`, `refactor`, `perf`,
 `docs`, `test`, `build`, `style`, `revert`, and untyped commits. The filter is
 intentionally generous because silently skipping real work is worse than
-shipping an occasional docs-only patch.
+requiring a maintainer decision.
 
 ## Publishing
 
-The release workflow publishes `@zenalexa/unicli` from
+The publish workflow publishes `@zenalexa/unicli` from
 `.github/workflows/release.yml` when a `v*` tag is pushed.
 
 Release authority is scoped to the publish job:
@@ -122,8 +123,8 @@ Release authority is scoped to the publish job:
 - `id-token: write` enables npm Trusted Publishers and provenance.
 - The job runs in the `npm-publish` environment.
 
-Stable versions publish to `latest`. Prereleases publish to the channel named
-by the semver prerelease prefix, for example `0.216.0-beta.2` publishes with
+Stable versions publish to `latest`. Prereleases publish to the channel named by
+the semver prerelease prefix, for example `0.216.0-beta.2` publishes with
 `--tag beta`.
 
 ## Trusted Publishers
@@ -149,16 +150,17 @@ After two successful OIDC publishes, delete the fallback `NPM_TOKEN` from the
 
 ## Manual Release
 
-To ship outside the Friday window:
+To ship a release:
 
-1. Open GitHub Actions.
-2. Run **Weekly Release**.
-3. Set `codename` to the final `Program · Astronaut` label.
-4. Set `force: true` only when the release should happen even if the commit
+1. Confirm the intended version bump and release label.
+2. Open GitHub Actions.
+3. Run **Release Candidate**.
+4. Set `codename` to the final `Program · Astronaut` label.
+5. Set `force: true` only when the release should happen even if the commit
    filter found no substantive changes.
 
-The manual dispatch follows the same path as the scheduled workflow:
-changesets, verify, commit, tag, publish.
+The dispatch path consumes changesets, verifies, commits release metadata, tags,
+and lets `release.yml` publish from the tag.
 
 ## Cancel A Release
 
@@ -183,18 +185,13 @@ Then ship `vX.Y.Z+1` with the fix and document the reason in `CHANGELOG.md`.
 
 ## Escalation
 
-If the Friday release is blocked for two consecutive weeks, open a tracking
-issue titled:
+Open a tracking issue when release automation blocks a maintainer-approved
+release candidate.
 
-```text
-release-cadence: Friday blocked YYYY-MM-DD
-```
+Include:
 
-Assign the maintainer and include the failing workflow link.
-
-Common causes:
-
-- `npm run verify` failing on `main`
-- changeset corruption
-- npm Trusted Publishers binding drift
-- GitHub Actions outage across the release window
+- failing workflow link;
+- intended version and release label;
+- exact verify command that failed;
+- whether the blocker is changesets, tests, npm Trusted Publishers, or GitHub
+  Actions availability.

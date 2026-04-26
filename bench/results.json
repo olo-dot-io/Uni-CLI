@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-26T10:22:10.589Z",
+  "generated_at": "2026-04-26T11:25:43.871Z",
   "node_version": "v22.22.2",
   "platform": "darwin-arm64",
   "runs": 50,
@@ -7,8 +7,8 @@
   "cold_start": {
     "target": "unicli list",
     "runs": 50,
-    "wall_ms_p50": 726,
-    "wall_ms_p95": 761,
+    "wall_ms_p50": 740,
+    "wall_ms_p95": 2720,
     "response_tokens": 66272,
     "response_chars": 238579,
     "sites": 223,
@@ -24,7 +24,7 @@
       "mode": "fixture",
       "runs": 50,
       "wall_ms_p50": 0.003,
-      "wall_ms_p95": 0.006,
+      "wall_ms_p95": 0.015,
       "response_chars": 1453,
       "response_tokens": 404,
       "response_tokens_p50": 404,
@@ -39,7 +39,7 @@
       "mode": "fixture",
       "runs": 50,
       "wall_ms_p50": 0.004,
-      "wall_ms_p95": 0.017,
+      "wall_ms_p95": 0.023,
       "response_chars": 1491,
       "response_tokens": 415,
       "response_tokens_p50": 415,
@@ -69,53 +69,11 @@
       "mode": "fixture",
       "runs": 50,
       "wall_ms_p50": 0.004,
-      "wall_ms_p95": 0.005,
+      "wall_ms_p95": 0.004,
       "response_chars": 1440,
       "response_tokens": 400,
       "response_tokens_p50": 400,
       "response_tokens_p95": 400
     }
-  ],
-  "mcp_comparison": {
-    "baseline": "GitHub MCP 55K cold-start",
-    "baseline_tokens": 55000,
-    "rows": [
-      {
-        "label": "news",
-        "command": "unicli hackernews top --limit 5",
-        "invocation_tokens": 9,
-        "response_tokens": 404,
-        "total_tokens": 413,
-        "reduction_factor_vs_55k": 133.2
-      },
-      {
-        "label": "social",
-        "command": "unicli reddit hot --limit 5",
-        "invocation_tokens": 8,
-        "response_tokens": 415,
-        "total_tokens": 423,
-        "reduction_factor_vs_55k": 130
-      },
-      {
-        "label": "social-cn",
-        "command": "unicli 36kr hot --limit 5",
-        "invocation_tokens": 7,
-        "response_tokens": 357,
-        "total_tokens": 364,
-        "reduction_factor_vs_55k": 151.1
-      },
-      {
-        "label": "dev",
-        "command": "unicli github-trending daily --limit 5",
-        "invocation_tokens": 11,
-        "response_tokens": 400,
-        "total_tokens": 411,
-        "reduction_factor_vs_55k": 133.8
-      }
-    ],
-    "target_reduction": 30,
-    "best_reduction": 151.1,
-    "median_reduction": 133.8,
-    "claim_holds": true
-  }
+  ]
 }

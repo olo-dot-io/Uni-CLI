@@ -1,6 +1,6 @@
 # Release Process
 
-Policy, cadence, versioning, codenames, and npm Trusted Publishers live in
+Policy, versioning, codenames, and npm Trusted Publishers live in
 [`docs/reference/release.md`](../docs/reference/release.md). This file is the
 hands-on contributor procedure.
 

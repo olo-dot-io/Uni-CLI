@@ -1,7 +1,7 @@
 /**
  * report.ts — top-level bench runner.
  *
- * Runs cold-start, adapter-call, and mcp-catalog benches, writes
+ * Runs cold-start and adapter-call benches, writes
  * `bench/results.json`, and injects a markdown table into
  * `docs/BENCHMARK.md` between the `<!-- BENCH:begin -->` and
  * `<!-- BENCH:end -->` markers.
@@ -17,7 +17,6 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runColdStart } from "./cold-start.js";
 import { runSuite, type AdapterCallResult } from "./adapter-call.js";
-import { runMcpComparison, type McpComparisonResult } from "./mcp-catalog.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, "..");
@@ -35,7 +34,19 @@ interface Report {
   mode: "live" | "fixture";
   cold_start: ReturnType<typeof runColdStart>;
   adapter_calls: AdapterCallResult[];
-  mcp_comparison: McpComparisonResult;
+}
+
+function median(values: number[]): number {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  const mid = Math.floor(values.length / 2);
+  if (values.length % 2 === 1) {
+    return values[mid] ?? 0;
+  }
+
+  return ((values[mid - 1] ?? 0) + (values[mid] ?? 0)) / 2;
 }
 
 function renderMarkdown(report: Report): string {
@@ -76,33 +87,28 @@ function renderMarkdown(report: Report): string {
       `| ${r.label} | \`${r.invocation}\` | ${r.invocation_tokens} | ${r.response_tokens_p50} | ${r.response_tokens_p95} | ${r.wall_ms_p50} | ${r.wall_ms_p95} | ${r.mode} |`,
     );
   }
+  const totals = report.adapter_calls
+    .map((r) => r.invocation_tokens + r.response_tokens_p50)
+    .sort((a, b) => a - b);
+  const minTotal = totals[0] ?? 0;
+  const maxTotal = totals[totals.length - 1] ?? 0;
+  const medianTotal = median(totals);
+  const responseTokens = report.adapter_calls
+    .map((r) => r.response_tokens_p50)
+    .sort((a, b) => a - b);
+  const minResponse = responseTokens[0] ?? 0;
+  const maxResponse = responseTokens[responseTokens.length - 1] ?? 0;
   lines.push("");
-  lines.push("### MCP catalog comparison");
+  lines.push("### Public call budget");
   lines.push("");
+  lines.push("| metric | value |");
+  lines.push("| ------ | ----- |");
+  lines.push(`| Smallest total call budget | ${minTotal} tokens |`);
+  lines.push(`| Largest total call budget | ${maxTotal} tokens |`);
+  lines.push(`| Median total call budget | ${medianTotal} tokens |`);
   lines.push(
-    `Baseline: **${report.mcp_comparison.baseline_tokens.toLocaleString()}-token** GitHub MCP cold-start. Target reduction vs. baseline: **${report.mcp_comparison.target_reduction}x**.`,
+    `| Representative response token span | ${minResponse}-${maxResponse} tokens |`,
   );
-  lines.push("");
-  lines.push("| category | total tokens | reduction factor vs. 55K |");
-  lines.push("| -------- | -----------: | -----------------------: |");
-  for (const r of report.mcp_comparison.rows) {
-    lines.push(
-      `| ${r.label} | ${r.total_tokens} | **${r.reduction_factor_vs_55k}x** |`,
-    );
-  }
-  lines.push("");
-  lines.push(
-    `Median reduction across the suite: **${report.mcp_comparison.median_reduction}x**. Best: **${report.mcp_comparison.best_reduction}x**.`,
-  );
-  lines.push(
-    `Claim "beat GitHub MCP 55K cold-start by 30x on p50" holds: **${report.mcp_comparison.claim_holds ? "YES" : "NO"}**.`,
-  );
-  if (!report.mcp_comparison.claim_holds) {
-    lines.push("");
-    lines.push(
-      `> Honesty note: median reduction is ${report.mcp_comparison.median_reduction}x, below the 30x target. The claim in THEORY.md §3.3 and previous BENCHMARK.md drafts is not supported by the current response sizes at \`--limit 5\`. We report the measured number and keep the target as aspirational.`,
-    );
-  }
   lines.push("");
   lines.push(END_MARKER);
   return lines.join("\n");
@@ -146,12 +152,6 @@ async function main(): Promise<void> {
     );
   }
 
-  console.log(`[bench] mcp-catalog...`);
-  const mcp = runMcpComparison();
-  console.log(
-    `[bench]   median reduction=${mcp.median_reduction}x best=${mcp.best_reduction}x target=${mcp.target_reduction}x claim_holds=${mcp.claim_holds}`,
-  );
-
   const report: Report = {
     generated_at: new Date().toISOString(),
     node_version: process.version,
@@ -160,7 +160,6 @@ async function main(): Promise<void> {
     mode,
     cold_start: cold,
     adapter_calls: adapterCalls,
-    mcp_comparison: mcp,
   };
 
   writeFileSync(RESULTS_PATH, `${JSON.stringify(report, null, 2)}\n`);
