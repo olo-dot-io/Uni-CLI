@@ -1,8 +1,8 @@
 /**
  * stats.json — Single Source of Truth for every count surfaced in docs.
  *
- * Produces `<repo-root>/stats.json`. Public docs (README.md, AGENTS.md,
- * docs/ROADMAP.md, internal/TASTE.md) must reference these numbers via
+ * Produces `<repo-root>/stats.json`. Tracked release surfaces (README.md,
+ * AGENTS.md, docs/ROADMAP.md, internal/TASTE.md) must reference these numbers via
  * `<!-- STATS:key -->NNN<!-- /STATS -->` markers — inject at build time
  * via `scripts/build-readme.ts` and `scripts/build-agents.ts`.
  *

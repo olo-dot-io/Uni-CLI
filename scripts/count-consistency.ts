@@ -1,5 +1,5 @@
 /**
- * count-consistency — Fail the build when a public doc drifts from stats.json.
+ * count-consistency — Fail the build when a tracked release surface drifts from stats.json.
  *
  * Scans README.md, AGENTS.md, docs/ROADMAP.md, internal/TASTE.md for
  * `<!-- STATS:<key> -->...<!-- /STATS -->` markers and asserts the rendered

@@ -126,7 +126,7 @@ results.push({
     : "dist/manifest.json not found — run `npm run build` first",
 });
 
-// --- Check 4: Strict codename on public release surfaces ---
+// --- Check 4: Strict codename on tracked release surfaces ---
 
 if (strictCodename) {
   const codenameFiles = ["README.md", "README.zh-CN.md", "internal/TASTE.md"];
