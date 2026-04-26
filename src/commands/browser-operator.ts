@@ -1,8 +1,8 @@
 import { appendFileSync, mkdirSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname as pathDirname, join } from "node:path";
 import { Command } from "commander";
 import chalk from "chalk";
+import { userHome } from "../engine/user-home.js";
 import {
   FINGERPRINT_PERSIST_JS,
   verifyRef,
@@ -410,7 +410,7 @@ export function registerBrowserOperatorSubcommands(
         const candidates = rankCandidates(refs, query, topK);
 
         const cachePath =
-          opts.cache ?? join(homedir(), ".unicli", "observe-cache.jsonl");
+          opts.cache ?? join(userHome(), ".unicli", "observe-cache.jsonl");
         try {
           mkdirSync(pathDirname(cachePath), { recursive: true });
           appendFileSync(

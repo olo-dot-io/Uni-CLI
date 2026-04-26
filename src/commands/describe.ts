@@ -14,9 +14,21 @@
  */
 
 import { Command } from "commander";
-import { getAdapter, getAllAdapters, resolveCommand } from "../registry.js";
+import {
+  commandRequiresAuth,
+  commandStrategy,
+  commandUsesBrowser,
+  getAdapter,
+  getAllAdapters,
+  resolveCommand,
+} from "../registry.js";
 import { ExitCode } from "../types.js";
-import type { AdapterArg, AdapterCommand, OutputSchema } from "../types.js";
+import type {
+  AdapterArg,
+  AdapterCommand,
+  AdapterManifest,
+  OutputSchema,
+} from "../types.js";
 
 interface JsonSchemaProperty {
   type: string;
@@ -179,12 +191,21 @@ export function describeCommand(
   site: string,
   cmdName: string,
   cmd: AdapterCommand,
+  adapter?: AdapterManifest,
 ): Record<string, unknown> {
   const args = cmd.adapterArgs ?? [];
+  const metadata = adapter
+    ? {
+        strategy: commandStrategy(adapter, cmd) ?? "public",
+        auth: commandRequiresAuth(adapter, cmd),
+        browser: commandUsesBrowser(adapter, cmd),
+      }
+    : {};
   return {
     command: `unicli ${site} ${cmdName}`,
     description: cmd.description ?? "",
     quarantined: cmd.quarantine === true,
+    ...metadata,
     args_schema: argsToJsonSchema(args),
     example_stdin: buildExample(args),
     output_schema: serializeOutputSchema(cmd.output),
@@ -226,6 +247,9 @@ export function describe(
       name,
       description: cmd.description ?? "",
       quarantined: cmd.quarantine === true,
+      strategy: commandStrategy(adapter, cmd) ?? "public",
+      auth: commandRequiresAuth(adapter, cmd),
+      browser: commandUsesBrowser(adapter, cmd),
       args: (cmd.adapterArgs ?? []).map((a) => ({
         name: a.name,
         type: a.type ?? "str",
@@ -254,7 +278,7 @@ export function describe(
   }
 
   return {
-    payload: describeCommand(site, cmdName, resolved.command),
+    payload: describeCommand(site, cmdName, resolved.command, resolved.adapter),
     exit: ExitCode.SUCCESS,
   };
 }

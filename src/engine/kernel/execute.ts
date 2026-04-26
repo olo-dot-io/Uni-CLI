@@ -22,7 +22,7 @@ import {
   errorToAgentFields,
   mapErrorToExitCode,
 } from "../../output/error-map.js";
-import { resolveCommand } from "../../registry.js";
+import { commandStrategy, resolveCommand } from "../../registry.js";
 import type { AgentError } from "../../output/envelope.js";
 import { ExitCode } from "../../types.js";
 import type { ResolvedArgs } from "../args.js";
@@ -79,6 +79,7 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
   const key = `${inv.adapter.name}.${inv.cmdName}`;
   const compiled = getCompiled(inv.adapter.name, inv.cmdName);
   const warnings: string[] = [];
+  const strategy = commandStrategy(inv.adapter, inv.command);
 
   // Loader primes the kernel cache via primeKernelCache() after every
   // registry mutation. A miss here means either a wiring bug or a test
@@ -172,14 +173,37 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
         inv.adapter.base,
         {
           site: inv.adapter.name,
-          strategy: inv.adapter.strategy,
+          strategy,
           surface: inv.surface,
           trace_id: inv.trace_id,
         },
       );
     } else if (inv.command.func) {
-      const raw = await inv.command.func(null as never, inv.bag.args);
-      results = Array.isArray(raw) ? raw : [raw];
+      let page: unknown = null;
+      try {
+        if (inv.command.browser === true) {
+          const { acquirePage } = await import("../steps/browser-helpers.js");
+          page = await acquirePage({
+            data: null,
+            args: inv.bag.args,
+            vars: {},
+            base: inv.adapter.base,
+            source: inv.bag.source,
+            surface: inv.surface,
+            trace_id: inv.trace_id,
+          });
+        }
+        const raw = await inv.command.func(page as never, inv.bag.args);
+        results = Array.isArray(raw) ? raw : [raw];
+      } finally {
+        if (page && typeof page === "object" && "close" in page) {
+          await Promise.resolve(
+            (page as { close: () => unknown }).close(),
+          ).catch(() => {
+            /* best effort */
+          });
+        }
+      }
     } else {
       const agentErr: AgentError = {
         code: "internal_error",

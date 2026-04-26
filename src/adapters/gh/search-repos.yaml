@@ -1,0 +1,62 @@
+site: gh
+name: search-repos
+description: Search GitHub repositories
+type: bridge
+strategy: public
+binary: gh
+detect: which gh
+
+pipeline:
+  - exec:
+      command: gh
+      args:
+        - search
+        - repos
+        - ${{ args.query }}
+        - --limit
+        - ${{ args.limit }}
+        - --json
+        - fullName,description,stargazersCount,forksCount,language,url,updatedAt
+        - --sort
+        - ${{ args.sort }}
+        - --order
+        - ${{ args.order }}
+        - --language
+        - ${{ args.language }}
+      parse: json
+      timeout: 30000
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: GitHub repository search query
+  limit:
+    type: int
+    default: 20
+    description: Maximum number of repositories to return
+  sort:
+    type: str
+    default: stars
+    choices: [stars, forks, updated, help-wanted-issues]
+    description: Sort returned repositories
+  order:
+    type: str
+    default: desc
+    choices: [asc, desc]
+    description: Sort direction
+  language:
+    type: str
+    default: ""
+    description: Optional language filter
+
+columns:
+  [fullName, description, stargazersCount, forksCount, language, url, updatedAt]
+
+capabilities: ["subprocess.exec"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: public
+quarantine: false
+schema_version: v2

@@ -1,0 +1,29 @@
+site: excel
+name: status
+description: Check Microsoft Excel running state without enumerating workbooks
+type: desktop
+strategy: public
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-l"
+        - "JavaScript"
+        - "-e"
+        - |
+          var app = Application('Microsoft Excel');
+          JSON.stringify([{ app: 'Microsoft Excel', bundle_id: app.id(), running: app.running() }]);
+      parse: json
+      timeout: 10000
+
+columns: [app, bundle_id, running]
+
+capabilities: ["subprocess.exec"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: private
+quarantine: false
+schema_version: v2

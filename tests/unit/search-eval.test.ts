@@ -408,7 +408,12 @@ const EVAL_CASES: EvalCase[] = [
   { query: "paperreview review", site: "paperreview", command: "review" },
   { query: "paperreview feedback", site: "paperreview", command: "feedback" },
 
-  // ═══ Desktop & macOS (50 cases) ═══
+  // ═══ Desktop & macOS (55 cases) ═══
+  { query: "换 Word 字体", site: "word", command: "set-font" },
+  { query: "Excel 插入图片", site: "excel", command: "insert-image" },
+  { query: "PPT 插入链接", site: "powerpoint", command: "insert-link" },
+  { query: "Word 插入图片", site: "word", command: "insert-image" },
+  { query: "PowerPoint 修改字体", site: "powerpoint", command: "set-font" },
   { query: "ffmpeg compress video", site: "ffmpeg", command: "compress" },
   { query: "视频压缩", site: "ffmpeg", command: "compress" },
   { query: "ffmpeg转换格式", site: "ffmpeg", command: "convert" },

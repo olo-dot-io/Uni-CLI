@@ -10,9 +10,9 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { homedir } from "node:os";
 import { isUsefulEndpoint } from "../engine/analysis.js";
 import type { ScoredEndpoint } from "../engine/endpoint-scorer.js";
+import { userHome } from "../engine/user-home.js";
 import { readSiteMemory } from "../browser/site-memory.js";
 import { ExitCode } from "../types.js";
 import type { OutputFormat } from "../types.js";
@@ -82,7 +82,7 @@ export function registerSynthesizeCommand(program: Command): void {
 
       const maxCandidates = parseInt(opts.max, 10) || 10;
 
-      const exploreDir = join(homedir(), ".unicli", "explore", site);
+      const exploreDir = join(userHome(), ".unicli", "explore", site);
       const endpointsPath = join(exploreDir, "endpoints.json");
       const authPath = join(exploreDir, "auth.json");
 

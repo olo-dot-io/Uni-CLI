@@ -1,0 +1,82 @@
+site: word
+name: insert-link
+description: Insert a native hyperlink field into the active Microsoft Word document
+type: desktop
+strategy: public
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+args:
+  url:
+    type: str
+    required: true
+    positional: true
+    description: Link URL or file URL to insert
+  text:
+    type: str
+    required: false
+    default: ""
+    description: Display text; defaults to the URL
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-e"
+        - |
+          on replace_text(theText, searchString, replacementString)
+            set AppleScript's text item delimiters to searchString
+            set parts to text items of (theText as text)
+            set AppleScript's text item delimiters to replacementString
+            set outText to parts as text
+            set AppleScript's text item delimiters to ""
+            return outText
+          end replace_text
+
+          on json_string(valueText)
+            set s to valueText as text
+            set s to my replace_text(s, "\\", "\\\\")
+            set s to my replace_text(s, "\"", "\\\"")
+            set s to my replace_text(s, return, "\\n")
+            set s to my replace_text(s, linefeed, "\\n")
+            set s to my replace_text(s, tab, "\\t")
+            return "\"" & s & "\""
+          end json_string
+
+          set linkUrl to system attribute "UNICLI_URL"
+          set linkText to system attribute "UNICLI_TEXT"
+          if linkText is "" then set linkText to linkUrl
+
+          try
+            with timeout of 10 seconds
+              tell application "Microsoft Word"
+                activate
+                if (count documents) is 0 then make new document
+                set d to active document
+                set docRange to text object of d
+                set endPos to (end of content of docRange) - 1
+                if endPos < 0 then set endPos to 0
+                set insertionRange to create range d start endPos end endPos
+                set fieldCode to "HYPERLINK " & quote & linkUrl & quote
+                set linkField to create new field text range insertionRange field text fieldCode preserve formatting false
+                set content of result range of linkField to linkText
+                return "[{\"app\":\"Microsoft Word\",\"name\":" & my json_string(name of d as text) & ",\"url\":" & my json_string(linkUrl) & ",\"text\":" & my json_string(linkText) & "}]"
+              end tell
+            end timeout
+          on error errMsg number errNum
+            return "[{\"ok\":false,\"code\":\"office_automation_unavailable\",\"message\":" & my json_string(errMsg) & ",\"number\":" & errNum & "}]"
+          end try
+      env:
+        UNICLI_URL: "${{ args.url }}"
+        UNICLI_TEXT: "${{ args.text }}"
+      parse: json
+      timeout: 15000
+
+columns: [app, name, url, text]
+
+capabilities: ["subprocess.exec"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: private
+quarantine: false
+schema_version: v2

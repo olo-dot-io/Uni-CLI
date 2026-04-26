@@ -19,7 +19,7 @@
 
 import { Command } from "commander";
 import chalk from "chalk";
-import { getAllAdapters } from "../registry.js";
+import { commandStrategy, getAllAdapters } from "../registry.js";
 import { resolveArgs } from "../engine/args.js";
 import { buildInvocation, execute } from "../engine/kernel/execute.js";
 import { format, detectFormat } from "../output/formatter.js";
@@ -48,6 +48,7 @@ export function registerAdapterDispatch(program: Command): void {
       );
 
     for (const [cmdName, cmd] of Object.entries(adapter.commands)) {
+      const strategy = commandStrategy(adapter, cmd);
       let cmdStr = cmdName;
 
       // Register positional arguments from adapter definition
@@ -117,7 +118,7 @@ export function registerAdapterDispatch(program: Command): void {
           recordUsage({
             site: adapter.name,
             cmd: cmdName,
-            strategy: adapter.strategy ?? "unknown",
+            strategy: strategy ?? "unknown",
             tokens: 0,
             ms: Date.now() - startedAt,
             bytes: 0,
@@ -202,7 +203,7 @@ export function registerAdapterDispatch(program: Command): void {
           const plan = {
             command: `${adapter.name}.${cmdName}`,
             adapter_type: adapter.type,
-            strategy: adapter.strategy ?? null,
+            strategy: strategy ?? null,
             args: mergedArgs,
             args_source: resolved.source,
             trace_id: inv.trace_id,
@@ -229,7 +230,7 @@ export function registerAdapterDispatch(program: Command): void {
           recordUsage({
             site: adapter.name,
             cmd: cmdName,
-            strategy: adapter.strategy ?? "unknown",
+            strategy: strategy ?? "unknown",
             tokens: 0,
             ms: result.durationMs,
             bytes: 0,
@@ -256,7 +257,7 @@ export function registerAdapterDispatch(program: Command): void {
             recordUsage({
               site: adapter.name,
               cmd: cmdName,
-              strategy: adapter.strategy ?? "unknown",
+              strategy: strategy ?? "unknown",
               tokens: 0,
               ms: result.durationMs,
               bytes: 0,
@@ -300,7 +301,7 @@ export function registerAdapterDispatch(program: Command): void {
         recordUsage({
           site: adapter.name,
           cmd: cmdName,
-          strategy: adapter.strategy ?? "unknown",
+          strategy: strategy ?? "unknown",
           tokens: 0,
           ms: result.durationMs,
           bytes: Buffer.byteLength(rendered, "utf-8"),

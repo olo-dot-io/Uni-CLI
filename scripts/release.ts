@@ -4,13 +4,14 @@
  * Reads version from package.json and updates ALL documentation references.
  * Run after `npm version X.Y.Z` to propagate the new version everywhere.
  *
- * Usage: npx tsx scripts/release.ts [--codename "Name"] [--dry-run]
+ * Usage: npx tsx scripts/release.ts --codename "Program · Astronaut" [--dry-run]
+ *        RELEASE_CODENAME="Program · Astronaut" npx tsx scripts/release.ts
  *
  * What it updates:
  * - docs/TASTE.md: Current version line
- * - README.md: Footer codename (only when --codename is passed)
+ * - README.md / README.zh-CN.md: Footer version + codename
  * - CHANGELOG.md: Insert new version heading (content added manually)
- * - docs/ROADMAP.md: Update `as of vX.Y.Z` summary version
+ * - docs/ROADMAP.md: Current version line
  *
  * What it does NOT update (handled elsewhere):
  * - README.md / AGENTS.md / docs/ROADMAP.md site/command/pipeline/test counts
@@ -34,13 +35,49 @@ const ROOT = join(__dirname, "..");
 
 const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf-8"));
 const version: string = pkg.version;
-const versionShort = version.split(".").slice(0, 2).join(".");
 
 // Parse CLI args
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
-const codenameIdx = args.indexOf("--codename");
-const codename = codenameIdx >= 0 ? args[codenameIdx + 1] : undefined;
+
+function readArgValue(name: string): string | undefined {
+  const idx = args.indexOf(name);
+  if (idx >= 0) return args[idx + 1];
+  const prefix = `${name}=`;
+  return args.find((arg) => arg.startsWith(prefix))?.slice(prefix.length);
+}
+
+function failConfig(message: string): never {
+  console.error(`\n✗ Release metadata error: ${message}`);
+  console.error('  Use: npm run release -- --codename "Vostok · Gagarin"');
+  console.error(
+    '  Or:  RELEASE_CODENAME="Vostok · Gagarin" npm version VERSION --no-git-tag-version',
+  );
+  process.exit(78);
+}
+
+function validateCodename(label: string): string | undefined {
+  if (label.length === 0) return "missing required --codename";
+  if (/\b(?:tbd|todo|unreleased|next)\b/i.test(label)) {
+    return "codename must be final; placeholders like TBD/Unreleased are blocked";
+  }
+  if (!/^\S.+\s·\s\S.+$/.test(label)) {
+    return 'codename must use the exact "Program · Astronaut" shape';
+  }
+  return undefined;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const codename = (
+  readArgValue("--codename") ??
+  process.env.RELEASE_CODENAME ??
+  ""
+).trim();
+const codenameError = validateCodename(codename);
+if (codenameError) failConfig(codenameError);
 
 // Read manifest for site/command counts
 const manifestPath = join(ROOT, "dist", "manifest.json");
@@ -80,51 +117,54 @@ interface Rule {
 const rules: Rule[] = [
   {
     file: "docs/TASTE.md",
-    pattern: /^Current: .+$/m,
-    replacement: codename
-      ? `Current: \`${versionShort}.x\` — Mission ${version.split(".")[1].replace(/\d$/, "00")}, codename **${codename}**.`
-      : `Current: \`${versionShort}.x\` — Mission ${version.split(".")[1].replace(/\d$/, "00")}.`,
+    pattern: /^> Current version: v[\d.]+(?:\s+—\s+[^.]+)?\./m,
+    replacement: `> Current version: v${version} — ${codename}.`,
     description: "TASTE.md current version",
   },
-];
-
-// README footer — only update if codename provided.
-// Current format (2026-04, v0.213+): `<sub>v0.213.0 — Vostok · Gagarin</sub>`
-// Older format had `<strong>` + trailing site/command counts; both now collapsed
-// into a simple em-dash-separated line (counts moved to the second <sub> with STATS markers).
-if (codename) {
-  rules.push({
+  {
+    file: "docs/ROADMAP.md",
+    pattern: /^> Current: v[\d.]+(?:\s+—\s+[^.]+)?\./m,
+    replacement: `> Current: v${version} — ${codename}.`,
+    description: "ROADMAP.md current version",
+  },
+  {
     file: "README.md",
-    pattern: /<sub>v[\d.]+\s+—\s+[^<]+<\/sub>/,
+    pattern: /<sub>v?[\d.]+(?:\s+—\s+[^<]+)?<\/sub>/,
     replacement: `<sub>v${version} — ${codename}</sub>`,
     description: "README.md footer codename",
-  });
-}
+  },
+  {
+    file: "README.zh-CN.md",
+    pattern: /<sub>v?[\d.]+(?:\s+—\s+[^<]+)?<\/sub>/,
+    replacement: `<sub>v${version} — ${codename}</sub>`,
+    description: "README.zh-CN.md footer codename",
+  },
+];
 
 // --- Apply rules ---
 
 console.log(`\n📦 Uni-CLI Release Propagation`);
 console.log(`   Version: ${version}`);
 console.log(`   Sites: ${siteCount} | Commands: ${cmdCount}`);
-if (codename) console.log(`   Codename: ${codename}`);
+console.log(`   Codename: ${codename}`);
 if (dryRun) console.log(`   Mode: DRY RUN (no writes)\n`);
 else console.log();
 
 let updated = 0;
-let skipped = 0;
+let failed = 0;
 
 for (const rule of rules) {
   const filePath = join(ROOT, rule.file);
   if (!existsSync(filePath)) {
-    console.log(`   ⚠ SKIP ${rule.file} — file not found`);
-    skipped++;
+    console.log(`   ✗ FAIL ${rule.file} — file not found`);
+    failed++;
     continue;
   }
 
   const content = readFileSync(filePath, "utf-8");
   if (!rule.pattern.test(content)) {
-    console.log(`   ⚠ SKIP ${rule.description} — pattern not found`);
-    skipped++;
+    console.log(`   ✗ FAIL ${rule.description} — pattern not found`);
+    failed++;
     continue;
   }
 
@@ -146,19 +186,37 @@ for (const rule of rules) {
 const changelogPath = join(ROOT, "CHANGELOG.md");
 if (existsSync(changelogPath)) {
   const changelog = readFileSync(changelogPath, "utf-8");
-  const versionHeading = `## [${version}]`;
-  if (changelog.includes(versionHeading)) {
-    console.log(`   ✓ CHANGELOG.md — heading for ${version} already exists`);
+  const escapedVersion = escapeRegExp(version);
+  const versionHeadingPattern = new RegExp(
+    `^## (?:\\[${escapedVersion}\\]|${escapedVersion}|@zenalexa/unicli@${escapedVersion})(?:\\s+—.*)?$`,
+    "m",
+  );
+  const today = new Date().toISOString().slice(0, 10);
+  const newHeading = `## [${version}] — ${today} — ${codename}`;
+
+  if (versionHeadingPattern.test(changelog)) {
+    const newChangelog = changelog.replace(versionHeadingPattern, newHeading);
+    if (newChangelog === changelog) {
+      console.log(
+        `   ✓ CHANGELOG.md — heading for ${version} already up to date`,
+      );
+    } else {
+      if (!dryRun) {
+        writeFileSync(changelogPath, newChangelog);
+      }
+      console.log(
+        `   ${dryRun ? "→" : "✓"} CHANGELOG.md — updated heading for v${version}`,
+      );
+      updated++;
+    }
   } else {
-    const today = new Date().toISOString().slice(0, 10);
-    const label = codename || "Unreleased";
-    const newHeading = `## [${version}] — ${today} — ${label}\n\n### Added\n\n### Changed\n\n### Fixed\n\n`;
+    const newBlock = `${newHeading}\n\n### Added\n\n### Changed\n\n### Fixed\n\n`;
     // Insert after the first line that starts with "# " (the main title block)
     const insertIdx = changelog.indexOf("\n\n## ");
     if (insertIdx >= 0) {
       const before = changelog.slice(0, insertIdx);
       const after = changelog.slice(insertIdx);
-      const newChangelog = `${before}\n\n${newHeading}${after.slice(2)}`;
+      const newChangelog = `${before}\n\n${newBlock}${after.slice(2)}`;
       if (!dryRun) {
         writeFileSync(changelogPath, newChangelog);
       }
@@ -167,60 +225,28 @@ if (existsSync(changelogPath)) {
       );
       updated++;
     } else {
-      console.log(`   ⚠ SKIP CHANGELOG.md — could not find insertion point`);
-      skipped++;
+      console.log(`   ✗ FAIL CHANGELOG.md — could not find insertion point`);
+      failed++;
     }
   }
 } else {
-  console.log(`   ⚠ SKIP CHANGELOG.md — file not found`);
-  skipped++;
-}
-
-// --- docs/ROADMAP.md: update site/command counts ---
-
-const roadmapPath = join(ROOT, "docs", "ROADMAP.md");
-if (existsSync(roadmapPath) && siteCount !== "?" && cmdCount !== "?") {
-  let roadmap = readFileSync(roadmapPath, "utf-8");
-  let roadmapUpdated = false;
-
-  // Bump the trailing "as of vX.Y.Z" version on the summary line. The site and
-  // command counts on the same line live inside <!-- STATS:*_count --> markers
-  // and are rewritten by scripts/build-readme.ts on every build — we only need
-  // to chase the version suffix here.
-  const summaryVersionPattern = /as of v[\d.]+/;
-  if (summaryVersionPattern.test(roadmap)) {
-    roadmap = roadmap.replace(summaryVersionPattern, `as of v${version}`);
-    roadmapUpdated = true;
-  }
-
-  if (roadmapUpdated) {
-    if (!dryRun) {
-      writeFileSync(roadmapPath, roadmap);
-    }
-    console.log(
-      `   ${dryRun ? "→" : "✓"} docs/ROADMAP.md — updated site/command counts`,
-    );
-    updated++;
-  } else {
-    console.log(
-      `   ✓ docs/ROADMAP.md — no count patterns found, skipping gracefully`,
-    );
-  }
-} else if (!existsSync(roadmapPath)) {
-  console.log(`   ⚠ SKIP docs/ROADMAP.md — file not found`);
-  skipped++;
-} else {
-  console.log(`   ⚠ SKIP docs/ROADMAP.md — manifest counts unavailable`);
-  skipped++;
+  console.log(`   ✗ FAIL CHANGELOG.md — file not found`);
+  failed++;
 }
 
 console.log(
-  `\n   ${updated} updated, ${skipped} skipped${dryRun ? " (dry run)" : ""}`,
+  `\n   ${updated} updated, ${failed} failed${dryRun ? " (dry run)" : ""}`,
 );
+
+if (failed > 0) {
+  process.exit(1);
+}
 
 if (!dryRun && updated > 0) {
   console.log(`\n   Next steps:`);
   console.log(`   1. Review changes: git diff`);
-  console.log(`   2. Commit: git commit -am "chore: release v${version}"`);
+  console.log(
+    `   2. Commit: git commit -am "release: v${version} — ${codename}"`,
+  );
   console.log(`   3. Push: git push origin main`);
 }

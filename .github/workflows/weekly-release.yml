@@ -27,6 +27,10 @@ on:
         type: boolean
         required: false
         default: false
+      codename:
+        description: "Required release label, e.g. Vostok · Gagarin"
+        type: string
+        required: false
 
 permissions: {}
 
@@ -152,26 +156,45 @@ jobs:
           echo "version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
           echo "Bumped ${OLD_VERSION} -> ${NEW_VERSION}"
 
+      - name: Apply release metadata
+        if: steps.bump.outputs.bumped == 'true'
+        id: metadata
+        env:
+          INPUT_CODENAME: ${{ github.event.inputs.codename }}
+          REPO_CODENAME: ${{ vars.RELEASE_CODENAME }}
+        run: |
+          set -euo pipefail
+          CODENAME="${INPUT_CODENAME:-${REPO_CODENAME:-}}"
+          if [ -z "${CODENAME}" ]; then
+            echo "::error title=Missing release codename::Set workflow_dispatch input codename or repo variable RELEASE_CODENAME. Required shape: Program · Astronaut."
+            exit 78
+          fi
+          npx tsx scripts/release.ts --codename "${CODENAME}"
+          echo "codename=${CODENAME}" >> "$GITHUB_OUTPUT"
+
       - name: Verify
         if: steps.bump.outputs.bumped == 'true'
-        run: npm run verify
+        run: |
+          npm run verify
+          RELEASE_REQUIRE_CODENAME=1 npm run release:check
 
       - name: Commit + tag + push
         if: steps.bump.outputs.bumped == 'true'
         env:
           VERSION: ${{ steps.bump.outputs.version }}
+          CODENAME: ${{ steps.metadata.outputs.codename }}
         run: |
           set -euo pipefail
           # Only stage files changeset + verify touched. Stats regen etc.
           # happens elsewhere; a weekly release should not pull unrelated
           # working-tree drift into the release commit.
-          git add package.json package-lock.json CHANGELOG.md .changeset/
+          git add package.json package-lock.json CHANGELOG.md README.md README.zh-CN.md AGENTS.md docs/TASTE.md docs/ROADMAP.md stats.json .changeset/
           if git diff --cached --quiet; then
             echo "::error title=Weekly release::Version bumped but no staged delta — aborting rather than silently skipping."
             exit 1
           fi
-          git commit -m "release: weekly v${VERSION}"
-          git tag -a "v${VERSION}" -m "v${VERSION} — weekly cadence release"
+          git commit -m "release: v${VERSION} — ${CODENAME}"
+          git tag -a "v${VERSION}" -m "v${VERSION} — ${CODENAME}"
           git push origin main
           git push origin "v${VERSION}"
 
@@ -185,6 +208,7 @@ jobs:
           {
             echo "## Weekly release v${VERSION}"
             echo ""
+            echo "- Codename: \`${{ steps.metadata.outputs.codename }}\`"
             echo "- Tag pushed: \`v${VERSION}\`"
             echo "- Substantive commits since \`${LAST_TAG}\`: **${COMMIT_COUNT}**"
             echo "- Publish pipeline: \`release.yml\` (triggered by tag push)"

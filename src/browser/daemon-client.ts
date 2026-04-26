@@ -22,11 +22,23 @@ const NETWORK_RETRY_DELAY = 500;
 const EXTENSION_RETRY_DELAY = 1500;
 
 function getPort(): number {
-  return parseInt(process.env.UNICLI_DAEMON_PORT ?? String(DAEMON_PORT), 10);
+  return parseInt(
+    process.env.UNICLI_DAEMON_PORT ??
+      process.env.OPENCLI_DAEMON_PORT ??
+      String(DAEMON_PORT),
+    10,
+  );
 }
 
 function baseUrl(): string {
   return `http://${DAEMON_HOST}:${getPort()}`;
+}
+
+function daemonHeader(): Record<string, string> {
+  if (!process.env.UNICLI_DAEMON_PORT && process.env.OPENCLI_DAEMON_PORT) {
+    return { "X-OpenCLI": "1" };
+  }
+  return { "X-Unicli": "1" };
 }
 
 function generateId(): string {
@@ -49,7 +61,7 @@ export async function fetchDaemonStatus(opts?: {
   const timeout = opts?.timeout ?? 2000;
   try {
     const resp = await fetch(`${baseUrl()}/status`, {
-      headers: { "X-Unicli": "1" },
+      headers: daemonHeader(),
       signal: AbortSignal.timeout(timeout),
     });
     if (!resp.ok) return null;
@@ -66,7 +78,7 @@ export async function requestDaemonShutdown(opts?: {
   try {
     const resp = await fetch(`${baseUrl()}/shutdown`, {
       method: "POST",
-      headers: { "X-Unicli": "1" },
+      headers: daemonHeader(),
       signal: AbortSignal.timeout(timeout),
     });
     return resp.ok;
@@ -105,7 +117,7 @@ export async function sendCommand(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Unicli": "1",
+          ...daemonHeader(),
         },
         body: JSON.stringify({
           id,

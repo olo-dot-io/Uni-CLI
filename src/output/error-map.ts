@@ -27,6 +27,16 @@ export const REF_LOCATOR_CODES = new Set<string>([
   "ref_not_found",
 ]);
 
+function isAuthMessage(message: string): boolean {
+  return /401|403|auth|No cookies found|auth setup/i.test(message);
+}
+
+function isRetryableMessage(message: string): boolean {
+  return /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|socket hang up|daemon failed|429|rate.?limit/i.test(
+    message,
+  );
+}
+
 /**
  * Map a caught error to an AgentError code string following the self-repair
  * contract. Covers the most common pipeline / network / HTTP failure modes.
@@ -37,7 +47,10 @@ export function errorTypeToCode(err: unknown): string {
     if (
       statusCode === 401 ||
       statusCode === 403 ||
-      (errorType === "http_error" && (statusCode === 401 || statusCode === 403))
+      (errorType === "http_error" &&
+        (statusCode === 401 ||
+          statusCode === 403 ||
+          isAuthMessage(err.message)))
     )
       return "auth_required";
     if (statusCode === 404) return "not_found";
@@ -53,7 +66,7 @@ export function errorTypeToCode(err: unknown): string {
     /ETIMEDOUT|ENOTFOUND|ECONNREFUSED|ECONNRESET|socket hang up/i.test(message)
   )
     return "network_error";
-  if (/401|403|auth/i.test(message)) return "auth_required";
+  if (isAuthMessage(message)) return "auth_required";
   if (/404/i.test(message)) return "not_found";
   if (/429|rate.?limit/i.test(message)) return "rate_limited";
   return "internal_error";
@@ -63,7 +76,12 @@ export function errorTypeToCode(err: unknown): string {
 export function mapErrorToExitCode(err: unknown): number {
   if (err instanceof PipelineError) {
     const { errorType, statusCode } = err.detail;
-    if (statusCode === 401 || statusCode === 403) return ExitCode.AUTH_REQUIRED;
+    if (
+      statusCode === 401 ||
+      statusCode === 403 ||
+      (errorType === "http_error" && isAuthMessage(err.message))
+    )
+      return ExitCode.AUTH_REQUIRED;
     if (errorType === "empty_result") return ExitCode.EMPTY_RESULT;
     return ExitCode.GENERIC_ERROR;
   }
@@ -105,7 +123,8 @@ export function errorToAgentFields(
       adapter_path: adapterPath,
       step: err.detail.step,
       suggestion: err.detail.suggestion,
-      retryable: err.detail.retryable ?? false,
+      retryable:
+        err.detail.retryable ?? errorTypeToCode(err) === "rate_limited",
       alternatives: err.detail.alternatives ?? [],
     };
   }
@@ -123,10 +142,7 @@ export function errorToAgentFields(
     adapter_path: undefined,
     step: undefined,
     suggestion: `Run 'unicli test ${siteName}' to diagnose, or report this error.`,
-    retryable:
-      /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|socket hang up|daemon failed/i.test(
-        message,
-      ),
+    retryable: isRetryableMessage(message),
     alternatives: [],
   };
 }

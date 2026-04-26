@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { userHome } from "../engine/user-home.js";
 import { siteMemoryPaths } from "./site-memory.js";
 import { fixturePath } from "./verify-fixture.js";
 
@@ -42,7 +42,7 @@ export function parseAdapterTarget(target: string): AdapterTarget {
 function userAdapterPath(
   site: string,
   command: string,
-  baseDir = homedir(),
+  baseDir = userHome(),
 ): string {
   return join(baseDir, ".unicli", "adapters", site, `${command}.yaml`);
 }
@@ -97,7 +97,7 @@ export function createAdapterSkeleton(
 export function missingStrictMemoryFiles(
   site: string,
   command: string,
-  baseDir = homedir(),
+  baseDir = userHome(),
 ): string[] {
   const paths = siteMemoryPaths(site, baseDir);
   return [

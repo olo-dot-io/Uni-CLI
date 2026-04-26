@@ -10,7 +10,6 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { homedir } from "node:os";
 import { BrowserBridge } from "../browser/bridge.js";
 import { createOneShotWorkspace } from "../browser/workspace.js";
 import {
@@ -26,6 +25,7 @@ import { recordEndpointDiscoveries } from "../browser/site-memory.js";
 import { format, detectFormat } from "../output/formatter.js";
 import { makeCtx } from "../output/envelope.js";
 import { mapErrorToExitCode } from "../output/error-map.js";
+import { userHome } from "../engine/user-home.js";
 import type { OutputFormat } from "../types.js";
 
 // ── Types ─────────────────────────────────────────────────────────────
@@ -216,7 +216,7 @@ export function registerExploreCommand(program: Command): void {
           const capabilities = groupByCapability(scored);
 
           // Write results to disk
-          const outDir = join(homedir(), ".unicli", "explore", siteName);
+          const outDir = join(userHome(), ".unicli", "explore", siteName);
           mkdirSync(outDir, { recursive: true });
 
           writeFileSync(

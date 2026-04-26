@@ -1,6 +1,6 @@
 # Uni-CLI Roadmap
 
-> Current: v0.215.1. <!-- STATS:site_count -->220<!-- /STATS --> sites, <!-- STATS:command_count -->1283<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps.
+> Current: v0.215.1. <!-- STATS:site_count -->223<!-- /STATS --> sites, <!-- STATS:command_count -->1304<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction. Historical release notes live in
 `CHANGELOG.md`; they do not belong in the roadmap.

@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { userHome } from "../engine/user-home.js";
 
 export type FixtureExpect = {
   rowCount?: { min?: number; max?: number };
@@ -37,7 +37,7 @@ export type ValidationFailure = {
 export function fixturePath(
   site: string,
   command: string,
-  baseDir = homedir(),
+  baseDir = userHome(),
 ): string {
   return join(baseDir, ".unicli", "sites", site, "verify", `${command}.json`);
 }

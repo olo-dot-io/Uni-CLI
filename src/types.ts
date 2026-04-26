@@ -114,6 +114,8 @@ export interface AdapterCommand {
   // Execution — exactly one of these
   pipeline?: PipelineStep[];
   adapterArgs?: AdapterArg[];
+  strategy?: Strategy;
+  browser?: boolean;
   func?: (page: IPage, kwargs: Record<string, unknown>) => Promise<unknown>;
 
   // For web-api type
