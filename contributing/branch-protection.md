@@ -36,10 +36,11 @@ not block a merge.
 ## Other required settings
 
 - **Require pull request before merging**: yes
-  - Approving reviews required: 1
-  - Dismiss stale reviews when new commits pushed: yes
-  - Require review from Code Owners: yes (CODEOWNERS at
-    `.github/CODEOWNERS`)
+  - Approving reviews required: 0
+  - Dismiss stale reviews when new commits pushed: no
+  - Require review from Code Owners: no. This repository currently has a
+    single maintainer/CODEOWNER, so requiring CODEOWNER review would block
+    maintainer-authored PRs from using the normal merge button.
 - **Require branches to be up to date before merging**: yes
 - **Require signed commits**: no (we do not enforce GPG today)
 - **Require linear history**: yes (no merge commits; squash or
