@@ -25,7 +25,7 @@ machine-oriented consumer needs JSON.
 
 ```bash
 unicli search "hacker news frontpage"
-unicli search "小红书 搜索"
+unicli search "github trending"
 unicli list --site hackernews
 ```
 

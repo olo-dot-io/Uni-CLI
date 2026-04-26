@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-26T08:16:04.836Z",
+  "generated": "2026-04-26T12:30:47.039Z",
   "total_sites": 223,
   "total_commands": 1304,
   "sites": [
@@ -1023,37 +1023,37 @@
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Codex desktop Electron app via CDP DOM. 读取Codex桌面版可见文本。",
+          "description": "Dump visible text from the Codex desktop Electron app via CDP DOM.",
           "command": "unicli codex dump"
         },
         {
           "name": "open-app",
-          "description": "Open Codex desktop Electron app with CDP enabled for AI control. 打开Codex桌面版并启用 CDP 控制。",
+          "description": "Open Codex desktop Electron app with CDP enabled for AI control.",
           "command": "unicli codex open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Codex desktop app page, title, URL, visible controls, and text summary. 查看Codex桌面版当前状态和可见内容。",
+          "description": "Inspect current Codex desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli codex status-app"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Codex. 枚举Codex桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Codex.",
           "command": "unicli codex snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Codex. 按文本点击Codex桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Codex.",
           "command": "unicli codex click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Codex. 向Codex桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Codex.",
           "command": "unicli codex type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Codex, with optional comma-separated modifiers. 在Codex桌面版发送按键。",
+          "description": "Press a key in Codex, with optional comma-separated modifiers.",
           "command": "unicli codex press"
         }
       ]
@@ -1274,37 +1274,37 @@
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Cursor desktop Electron app via CDP DOM. 读取Cursor桌面版可见文本。",
+          "description": "Dump visible text from the Cursor desktop Electron app via CDP DOM.",
           "command": "unicli cursor dump"
         },
         {
           "name": "open-app",
-          "description": "Open Cursor desktop Electron app with CDP enabled for AI control. 打开Cursor桌面版并启用 CDP 控制。",
+          "description": "Open Cursor desktop Electron app with CDP enabled for AI control.",
           "command": "unicli cursor open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Cursor desktop app page, title, URL, visible controls, and text summary. 查看Cursor桌面版当前状态和可见内容。",
+          "description": "Inspect current Cursor desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli cursor status-app"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Cursor. 枚举Cursor桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Cursor.",
           "command": "unicli cursor snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Cursor. 按文本点击Cursor桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Cursor.",
           "command": "unicli cursor click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Cursor. 向Cursor桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Cursor.",
           "command": "unicli cursor type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Cursor, with optional comma-separated modifiers. 在Cursor桌面版发送按键。",
+          "description": "Press a key in Cursor, with optional comma-separated modifiers.",
           "command": "unicli cursor press"
         }
       ]
@@ -1443,37 +1443,37 @@
         },
         {
           "name": "open-app",
-          "description": "Open DingTalk desktop Electron app with CDP enabled for AI control. 打开DingTalk桌面版并启用 CDP 控制。",
+          "description": "Open DingTalk desktop Electron app with CDP enabled for AI control.",
           "command": "unicli dingtalk open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current DingTalk desktop app page, title, URL, visible controls, and text summary. 查看DingTalk桌面版当前状态和可见内容。",
+          "description": "Inspect current DingTalk desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli dingtalk status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the DingTalk desktop Electron app via CDP DOM. 读取DingTalk桌面版可见文本。",
+          "description": "Dump visible text from the DingTalk desktop Electron app via CDP DOM.",
           "command": "unicli dingtalk dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in DingTalk. 枚举DingTalk桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in DingTalk.",
           "command": "unicli dingtalk snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in DingTalk. 按文本点击DingTalk桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in DingTalk.",
           "command": "unicli dingtalk click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in DingTalk. 向DingTalk桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in DingTalk.",
           "command": "unicli dingtalk type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in DingTalk, with optional comma-separated modifiers. 在DingTalk桌面版发送按键。",
+          "description": "Press a key in DingTalk, with optional comma-separated modifiers.",
           "command": "unicli dingtalk press"
         }
       ]
@@ -1527,37 +1527,37 @@
         },
         {
           "name": "open-app",
-          "description": "Open Discord desktop Electron app with CDP enabled for AI control. 打开Discord桌面版并启用 CDP 控制。",
+          "description": "Open Discord desktop Electron app with CDP enabled for AI control.",
           "command": "unicli discord-app open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Discord desktop app page, title, URL, visible controls, and text summary. 查看Discord桌面版当前状态和可见内容。",
+          "description": "Inspect current Discord desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli discord-app status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Discord desktop Electron app via CDP DOM. 读取Discord桌面版可见文本。",
+          "description": "Dump visible text from the Discord desktop Electron app via CDP DOM.",
           "command": "unicli discord-app dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Discord. 枚举Discord桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Discord.",
           "command": "unicli discord-app snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Discord. 按文本点击Discord桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Discord.",
           "command": "unicli discord-app click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Discord. 向Discord桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Discord.",
           "command": "unicli discord-app type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Discord, with optional comma-separated modifiers. 在Discord桌面版发送按键。",
+          "description": "Press a key in Discord, with optional comma-separated modifiers.",
           "command": "unicli discord-app press"
         }
       ]
@@ -2196,37 +2196,37 @@
         },
         {
           "name": "open-app",
-          "description": "Open Figma desktop Electron app with CDP enabled for AI control. 打开Figma桌面版并启用 CDP 控制。",
+          "description": "Open Figma desktop Electron app with CDP enabled for AI control.",
           "command": "unicli figma open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Figma desktop app page, title, URL, visible controls, and text summary. 查看Figma桌面版当前状态和可见内容。",
+          "description": "Inspect current Figma desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli figma status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Figma desktop Electron app via CDP DOM. 读取Figma桌面版可见文本。",
+          "description": "Dump visible text from the Figma desktop Electron app via CDP DOM.",
           "command": "unicli figma dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Figma. 枚举Figma桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Figma.",
           "command": "unicli figma snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Figma. 按文本点击Figma桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Figma.",
           "command": "unicli figma click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Figma. 向Figma桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Figma.",
           "command": "unicli figma type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Figma, with optional comma-separated modifiers. 在Figma桌面版发送按键。",
+          "description": "Press a key in Figma, with optional comma-separated modifiers.",
           "command": "unicli figma press"
         }
       ]
@@ -2716,7 +2716,7 @@
         },
         {
           "name": "skills-list",
-          "description": "List skills installed in the local Hermes agent (~/.hermes/skills/)",
+          "description": "List skills installed in the local Hermes agent (~/.hermes/skills)",
           "command": "unicli hermes skills-list"
         },
         {
@@ -3192,7 +3192,7 @@
         },
         {
           "name": "news",
-          "description": "IT Home (IT之家) latest tech news via RSS",
+          "description": "IT Home (IT) latest tech news via RSS",
           "command": "unicli ithome news"
         }
       ]
@@ -3441,37 +3441,37 @@
         },
         {
           "name": "open-app",
-          "description": "Open Lark desktop Electron app with CDP enabled for AI control. 打开Lark桌面版并启用 CDP 控制。",
+          "description": "Open Lark desktop Electron app with CDP enabled for AI control.",
           "command": "unicli lark open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Lark desktop app page, title, URL, visible controls, and text summary. 查看Lark桌面版当前状态和可见内容。",
+          "description": "Inspect current Lark desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli lark status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Lark desktop Electron app via CDP DOM. 读取Lark桌面版可见文本。",
+          "description": "Dump visible text from the Lark desktop Electron app via CDP DOM.",
           "command": "unicli lark dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Lark. 枚举Lark桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Lark.",
           "command": "unicli lark snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Lark. 按文本点击Lark桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Lark.",
           "command": "unicli lark click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Lark. 向Lark桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Lark.",
           "command": "unicli lark type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Lark, with optional comma-separated modifiers. 在Lark桌面版发送按键。",
+          "description": "Press a key in Lark, with optional comma-separated modifiers.",
           "command": "unicli lark press"
         }
       ]
@@ -3605,37 +3605,37 @@
         },
         {
           "name": "open-app",
-          "description": "Open Linear desktop Electron app with CDP enabled for AI control. 打开Linear桌面版并启用 CDP 控制。",
+          "description": "Open Linear desktop Electron app with CDP enabled for AI control.",
           "command": "unicli linear open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Linear desktop app page, title, URL, visible controls, and text summary. 查看Linear桌面版当前状态和可见内容。",
+          "description": "Inspect current Linear desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli linear status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Linear desktop Electron app via CDP DOM. 读取Linear桌面版可见文本。",
+          "description": "Dump visible text from the Linear desktop Electron app via CDP DOM.",
           "command": "unicli linear dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Linear. 枚举Linear桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Linear.",
           "command": "unicli linear snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Linear. 按文本点击Linear桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Linear.",
           "command": "unicli linear click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Linear. 向Linear桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Linear.",
           "command": "unicli linear type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Linear, with optional comma-separated modifiers. 在Linear桌面版发送按键。",
+          "description": "Press a key in Linear, with optional comma-separated modifiers.",
           "command": "unicli linear press"
         }
       ]
@@ -4329,67 +4329,67 @@
         },
         {
           "name": "open-app",
-          "description": "Open NetEase Cloud Music desktop Electron app with CDP enabled for AI control. 打开NetEase Cloud Music桌面版并启用 CDP 控制。",
+          "description": "Open NetEase Cloud Music desktop Electron app with CDP enabled for AI control.",
           "command": "unicli netease-music open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current NetEase Cloud Music desktop app page, title, URL, visible controls, and text summary. 查看NetEase Cloud Music桌面版当前状态和可见内容。",
+          "description": "Inspect current NetEase Cloud Music desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli netease-music status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the NetEase Cloud Music desktop Electron app via CDP DOM. 读取NetEase Cloud Music桌面版可见文本。",
+          "description": "Dump visible text from the NetEase Cloud Music desktop Electron app via CDP DOM.",
           "command": "unicli netease-music dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in NetEase Cloud Music. 枚举NetEase Cloud Music桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in NetEase Cloud Music.",
           "command": "unicli netease-music snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in NetEase Cloud Music. 按文本点击NetEase Cloud Music桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in NetEase Cloud Music.",
           "command": "unicli netease-music click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in NetEase Cloud Music. 向NetEase Cloud Music桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in NetEase Cloud Music.",
           "command": "unicli netease-music type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in NetEase Cloud Music, with optional comma-separated modifiers. 在NetEase Cloud Music桌面版发送按键。",
+          "description": "Press a key in NetEase Cloud Music, with optional comma-separated modifiers.",
           "command": "unicli netease-music press"
         },
         {
           "name": "play-liked",
-          "description": "Open NetEase Cloud Music liked songs and play the liked playlist. 打开NetEase Cloud Music我喜欢的音乐/喜欢的歌曲并播放。",
+          "description": "Open NetEase Cloud Music liked songs and play the liked playlist.",
           "command": "unicli netease-music play-liked"
         },
         {
           "name": "play",
-          "description": "play playback in the NetEase Cloud Music desktop app. 控制NetEase Cloud Music桌面版播放：play。",
+          "description": "play playback in the NetEase Cloud Music desktop app.",
           "command": "unicli netease-music play"
         },
         {
           "name": "pause",
-          "description": "pause playback in the NetEase Cloud Music desktop app. 控制NetEase Cloud Music桌面版播放：pause。",
+          "description": "pause playback in the NetEase Cloud Music desktop app.",
           "command": "unicli netease-music pause"
         },
         {
           "name": "toggle",
-          "description": "toggle playback in the NetEase Cloud Music desktop app. 控制NetEase Cloud Music桌面版播放：toggle。",
+          "description": "toggle playback in the NetEase Cloud Music desktop app.",
           "command": "unicli netease-music toggle"
         },
         {
           "name": "next",
-          "description": "next playback in the NetEase Cloud Music desktop app. 控制NetEase Cloud Music桌面版播放：next。",
+          "description": "next playback in the NetEase Cloud Music desktop app.",
           "command": "unicli netease-music next"
         },
         {
           "name": "prev",
-          "description": "prev playback in the NetEase Cloud Music desktop app. 控制NetEase Cloud Music桌面版播放：prev。",
+          "description": "prev playback in the NetEase Cloud Music desktop app.",
           "command": "unicli netease-music prev"
         }
       ]
@@ -4518,37 +4518,37 @@
         },
         {
           "name": "open-app",
-          "description": "Open Notion desktop Electron app with CDP enabled for AI control. 打开Notion桌面版并启用 CDP 控制。",
+          "description": "Open Notion desktop Electron app with CDP enabled for AI control.",
           "command": "unicli notion open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Notion desktop app page, title, URL, visible controls, and text summary. 查看Notion桌面版当前状态和可见内容。",
+          "description": "Inspect current Notion desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli notion status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Notion desktop Electron app via CDP DOM. 读取Notion桌面版可见文本。",
+          "description": "Dump visible text from the Notion desktop Electron app via CDP DOM.",
           "command": "unicli notion dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Notion. 枚举Notion桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Notion.",
           "command": "unicli notion snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Notion. 按文本点击Notion桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Notion.",
           "command": "unicli notion click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Notion. 向Notion桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Notion.",
           "command": "unicli notion type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Notion, with optional comma-separated modifiers. 在Notion桌面版发送按键。",
+          "description": "Press a key in Notion, with optional comma-separated modifiers.",
           "command": "unicli notion press"
         },
         {
@@ -4759,37 +4759,37 @@
         },
         {
           "name": "open-app",
-          "description": "Open Obsidian desktop Electron app with CDP enabled for AI control. 打开Obsidian桌面版并启用 CDP 控制。",
+          "description": "Open Obsidian desktop Electron app with CDP enabled for AI control.",
           "command": "unicli obsidian open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Obsidian desktop app page, title, URL, visible controls, and text summary. 查看Obsidian桌面版当前状态和可见内容。",
+          "description": "Inspect current Obsidian desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli obsidian status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Obsidian desktop Electron app via CDP DOM. 读取Obsidian桌面版可见文本。",
+          "description": "Dump visible text from the Obsidian desktop Electron app via CDP DOM.",
           "command": "unicli obsidian dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Obsidian. 枚举Obsidian桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Obsidian.",
           "command": "unicli obsidian snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Obsidian. 按文本点击Obsidian桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Obsidian.",
           "command": "unicli obsidian click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Obsidian. 向Obsidian桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Obsidian.",
           "command": "unicli obsidian type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Obsidian, with optional comma-separated modifiers. 在Obsidian桌面版发送按键。",
+          "description": "Press a key in Obsidian, with optional comma-separated modifiers.",
           "command": "unicli obsidian press"
         }
       ]
@@ -4911,12 +4911,12 @@
       "commands": [
         {
           "name": "memory-read",
-          "description": "Read OpenHarness MEMORY.md and per-topic memory files (~/.openharness/memory/)",
+          "description": "Read OpenHarness MEMORY.md and per-topic memory files (~/.openharness/memory)",
           "command": "unicli openharness memory-read"
         },
         {
           "name": "skills-list",
-          "description": "List skills installed in the local OpenHarness (~/.openharness/skills/)",
+          "description": "List skills installed in the local OpenHarness (~/.openharness/skills)",
           "command": "unicli openharness skills-list"
         }
       ]
@@ -4994,37 +4994,37 @@
         },
         {
           "name": "open-app",
-          "description": "Open Perplexity desktop Electron app with CDP enabled for AI control. 打开Perplexity桌面版并启用 CDP 控制。",
+          "description": "Open Perplexity desktop Electron app with CDP enabled for AI control.",
           "command": "unicli perplexity open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Perplexity desktop app page, title, URL, visible controls, and text summary. 查看Perplexity桌面版当前状态和可见内容。",
+          "description": "Inspect current Perplexity desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli perplexity status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Perplexity desktop Electron app via CDP DOM. 读取Perplexity桌面版可见文本。",
+          "description": "Dump visible text from the Perplexity desktop Electron app via CDP DOM.",
           "command": "unicli perplexity dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Perplexity. 枚举Perplexity桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Perplexity.",
           "command": "unicli perplexity snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Perplexity. 按文本点击Perplexity桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Perplexity.",
           "command": "unicli perplexity click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Perplexity. 向Perplexity桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Perplexity.",
           "command": "unicli perplexity type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Perplexity, with optional comma-separated modifiers. 在Perplexity桌面版发送按键。",
+          "description": "Press a key in Perplexity, with optional comma-separated modifiers.",
           "command": "unicli perplexity press"
         }
       ]
@@ -5262,7 +5262,7 @@
         },
         {
           "name": "now",
-          "description": "Current weather from QWeather (和风天气, free tier)",
+          "description": "Current weather from QWeather (free tier)",
           "command": "unicli qweather now"
         }
       ]
@@ -5356,7 +5356,7 @@
         },
         {
           "name": "popular",
-          "description": "Reddit popular posts (/r/popular)",
+          "description": "Reddit popular posts (r/popular)",
           "command": "unicli reddit popular"
         },
         {
@@ -5621,37 +5621,37 @@
         },
         {
           "name": "open-app",
-          "description": "Open Slack desktop Electron app with CDP enabled for AI control. 打开Slack桌面版并启用 CDP 控制。",
+          "description": "Open Slack desktop Electron app with CDP enabled for AI control.",
           "command": "unicli slack open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Slack desktop app page, title, URL, visible controls, and text summary. 查看Slack桌面版当前状态和可见内容。",
+          "description": "Inspect current Slack desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli slack status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Slack desktop Electron app via CDP DOM. 读取Slack桌面版可见文本。",
+          "description": "Dump visible text from the Slack desktop Electron app via CDP DOM.",
           "command": "unicli slack dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Slack. 枚举Slack桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Slack.",
           "command": "unicli slack snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Slack. 按文本点击Slack桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Slack.",
           "command": "unicli slack click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Slack. 向Slack桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Slack.",
           "command": "unicli slack type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Slack, with optional comma-separated modifiers. 在Slack桌面版发送按键。",
+          "description": "Press a key in Slack, with optional comma-separated modifiers.",
           "command": "unicli slack press"
         }
       ]
@@ -5765,67 +5765,67 @@
         },
         {
           "name": "open-app",
-          "description": "Open Spotify desktop Electron app with CDP enabled for AI control. 打开Spotify桌面版并启用 CDP 控制。",
+          "description": "Open Spotify desktop Electron app with CDP enabled for AI control.",
           "command": "unicli spotify open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Spotify desktop app page, title, URL, visible controls, and text summary. 查看Spotify桌面版当前状态和可见内容。",
+          "description": "Inspect current Spotify desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli spotify status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Spotify desktop Electron app via CDP DOM. 读取Spotify桌面版可见文本。",
+          "description": "Dump visible text from the Spotify desktop Electron app via CDP DOM.",
           "command": "unicli spotify dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Spotify. 枚举Spotify桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Spotify.",
           "command": "unicli spotify snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Spotify. 按文本点击Spotify桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Spotify.",
           "command": "unicli spotify click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Spotify. 向Spotify桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Spotify.",
           "command": "unicli spotify type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Spotify, with optional comma-separated modifiers. 在Spotify桌面版发送按键。",
+          "description": "Press a key in Spotify, with optional comma-separated modifiers.",
           "command": "unicli spotify press"
         },
         {
           "name": "play-liked",
-          "description": "Open Spotify liked songs and play the liked playlist. 打开Spotify我喜欢的音乐/喜欢的歌曲并播放。",
+          "description": "Open Spotify liked songs and play the liked playlist.",
           "command": "unicli spotify play-liked"
         },
         {
           "name": "play",
-          "description": "play playback in the Spotify desktop app. 控制Spotify桌面版播放：play。",
+          "description": "play playback in the Spotify desktop app.",
           "command": "unicli spotify play"
         },
         {
           "name": "pause",
-          "description": "pause playback in the Spotify desktop app. 控制Spotify桌面版播放：pause。",
+          "description": "pause playback in the Spotify desktop app.",
           "command": "unicli spotify pause"
         },
         {
           "name": "toggle",
-          "description": "toggle playback in the Spotify desktop app. 控制Spotify桌面版播放：toggle。",
+          "description": "toggle playback in the Spotify desktop app.",
           "command": "unicli spotify toggle"
         },
         {
           "name": "next",
-          "description": "next playback in the Spotify desktop app. 控制Spotify桌面版播放：next。",
+          "description": "next playback in the Spotify desktop app.",
           "command": "unicli spotify next"
         },
         {
           "name": "prev",
-          "description": "prev playback in the Spotify desktop app. 控制Spotify桌面版播放：prev。",
+          "description": "prev playback in the Spotify desktop app.",
           "command": "unicli spotify prev"
         }
       ]
@@ -5840,12 +5840,12 @@
       "commands": [
         {
           "name": "hot",
-          "description": "Hot/trending articles on Sspai (少数派)",
+          "description": "Hot/trending articles on Sspai",
           "command": "unicli sspai hot"
         },
         {
           "name": "latest",
-          "description": "Latest articles on Sspai (少数派)",
+          "description": "Latest articles on Sspai",
           "command": "unicli sspai latest"
         }
       ]
@@ -5899,7 +5899,7 @@
       "commands": [
         {
           "name": "wrap-observe",
-          "description": "Run Stagehand's observe() verb against an open page (subprocess wrapper)",
+          "description": "Run Stagehand's observe verb against an open page (subprocess wrapper)",
           "command": "unicli stagehand wrap-observe"
         }
       ]
@@ -6546,37 +6546,37 @@
         },
         {
           "name": "open-app",
-          "description": "Open Visual Studio Code desktop Electron app with CDP enabled for AI control. 打开Visual Studio Code桌面版并启用 CDP 控制。",
+          "description": "Open Visual Studio Code desktop Electron app with CDP enabled for AI control.",
           "command": "unicli vscode open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Visual Studio Code desktop app page, title, URL, visible controls, and text summary. 查看Visual Studio Code桌面版当前状态和可见内容。",
+          "description": "Inspect current Visual Studio Code desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli vscode status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Visual Studio Code desktop Electron app via CDP DOM. 读取Visual Studio Code桌面版可见文本。",
+          "description": "Dump visible text from the Visual Studio Code desktop Electron app via CDP DOM.",
           "command": "unicli vscode dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Visual Studio Code. 枚举Visual Studio Code桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Visual Studio Code.",
           "command": "unicli vscode snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Visual Studio Code. 按文本点击Visual Studio Code桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Visual Studio Code.",
           "command": "unicli vscode click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Visual Studio Code. 向Visual Studio Code桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Visual Studio Code.",
           "command": "unicli vscode type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Visual Studio Code, with optional comma-separated modifiers. 在Visual Studio Code桌面版发送按键。",
+          "description": "Press a key in Visual Studio Code, with optional comma-separated modifiers.",
           "command": "unicli vscode press"
         }
       ]
@@ -7569,7 +7569,7 @@
         },
         {
           "name": "groups",
-          "description": "Zsxq (知识星球) joined groups",
+          "description": "Zsxq joined groups",
           "command": "unicli zsxq groups"
         },
         {
@@ -7584,7 +7584,7 @@
         },
         {
           "name": "topics",
-          "description": "Zsxq (知识星球) group topics/posts",
+          "description": "Zsxq group topics/posts",
           "command": "unicli zsxq topics"
         }
       ]
@@ -7633,37 +7633,37 @@
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Antigravity desktop Electron app via CDP DOM. 读取Antigravity桌面版可见文本。",
+          "description": "Dump visible text from the Antigravity desktop Electron app via CDP DOM.",
           "command": "unicli antigravity dump"
         },
         {
           "name": "open-app",
-          "description": "Open Antigravity desktop Electron app with CDP enabled for AI control. 打开Antigravity桌面版并启用 CDP 控制。",
+          "description": "Open Antigravity desktop Electron app with CDP enabled for AI control.",
           "command": "unicli antigravity open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Antigravity desktop app page, title, URL, visible controls, and text summary. 查看Antigravity桌面版当前状态和可见内容。",
+          "description": "Inspect current Antigravity desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli antigravity status-app"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Antigravity. 枚举Antigravity桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Antigravity.",
           "command": "unicli antigravity snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Antigravity. 按文本点击Antigravity桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Antigravity.",
           "command": "unicli antigravity click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Antigravity. 向Antigravity桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Antigravity.",
           "command": "unicli antigravity type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Antigravity, with optional comma-separated modifiers. 在Antigravity桌面版发送按键。",
+          "description": "Press a key in Antigravity, with optional comma-separated modifiers.",
           "command": "unicli antigravity press"
         }
       ]
@@ -7712,37 +7712,37 @@
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the ChatGPT desktop Electron app via CDP DOM. 读取ChatGPT桌面版可见文本。",
+          "description": "Dump visible text from the ChatGPT desktop Electron app via CDP DOM.",
           "command": "unicli chatgpt dump"
         },
         {
           "name": "open-app",
-          "description": "Open ChatGPT desktop Electron app with CDP enabled for AI control. 打开ChatGPT桌面版并启用 CDP 控制。",
+          "description": "Open ChatGPT desktop Electron app with CDP enabled for AI control.",
           "command": "unicli chatgpt open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current ChatGPT desktop app page, title, URL, visible controls, and text summary. 查看ChatGPT桌面版当前状态和可见内容。",
+          "description": "Inspect current ChatGPT desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli chatgpt status-app"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in ChatGPT. 枚举ChatGPT桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in ChatGPT.",
           "command": "unicli chatgpt snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in ChatGPT. 按文本点击ChatGPT桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in ChatGPT.",
           "command": "unicli chatgpt click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in ChatGPT. 向ChatGPT桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in ChatGPT.",
           "command": "unicli chatgpt type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in ChatGPT, with optional comma-separated modifiers. 在ChatGPT桌面版发送按键。",
+          "description": "Press a key in ChatGPT, with optional comma-separated modifiers.",
           "command": "unicli chatgpt press"
         }
       ]
@@ -7791,37 +7791,37 @@
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the ChatWise desktop Electron app via CDP DOM. 读取ChatWise桌面版可见文本。",
+          "description": "Dump visible text from the ChatWise desktop Electron app via CDP DOM.",
           "command": "unicli chatwise dump"
         },
         {
           "name": "open-app",
-          "description": "Open ChatWise desktop Electron app with CDP enabled for AI control. 打开ChatWise桌面版并启用 CDP 控制。",
+          "description": "Open ChatWise desktop Electron app with CDP enabled for AI control.",
           "command": "unicli chatwise open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current ChatWise desktop app page, title, URL, visible controls, and text summary. 查看ChatWise桌面版当前状态和可见内容。",
+          "description": "Inspect current ChatWise desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli chatwise status-app"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in ChatWise. 枚举ChatWise桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in ChatWise.",
           "command": "unicli chatwise snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in ChatWise. 按文本点击ChatWise桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in ChatWise.",
           "command": "unicli chatwise click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in ChatWise. 向ChatWise桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in ChatWise.",
           "command": "unicli chatwise type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in ChatWise, with optional comma-separated modifiers. 在ChatWise桌面版发送按键。",
+          "description": "Press a key in ChatWise, with optional comma-separated modifiers.",
           "command": "unicli chatwise press"
         }
       ]
@@ -7865,37 +7865,37 @@
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Doubao desktop Electron app via CDP DOM. 读取Doubao桌面版可见文本。",
+          "description": "Dump visible text from the Doubao desktop Electron app via CDP DOM.",
           "command": "unicli doubao-app dump"
         },
         {
           "name": "open-app",
-          "description": "Open Doubao desktop Electron app with CDP enabled for AI control. 打开Doubao桌面版并启用 CDP 控制。",
+          "description": "Open Doubao desktop Electron app with CDP enabled for AI control.",
           "command": "unicli doubao-app open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Doubao desktop app page, title, URL, visible controls, and text summary. 查看Doubao桌面版当前状态和可见内容。",
+          "description": "Inspect current Doubao desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli doubao-app status-app"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Doubao. 枚举Doubao桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Doubao.",
           "command": "unicli doubao-app snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Doubao. 按文本点击Doubao桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Doubao.",
           "command": "unicli doubao-app click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Doubao. 向Doubao桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Doubao.",
           "command": "unicli doubao-app type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Doubao, with optional comma-separated modifiers. 在Doubao桌面版发送按键。",
+          "description": "Press a key in Doubao, with optional comma-separated modifiers.",
           "command": "unicli doubao-app press"
         }
       ]
@@ -7909,37 +7909,37 @@
       "commands": [
         {
           "name": "open-app",
-          "description": "Open Logseq desktop Electron app with CDP enabled for AI control. 打开Logseq桌面版并启用 CDP 控制。",
+          "description": "Open Logseq desktop Electron app with CDP enabled for AI control.",
           "command": "unicli logseq open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Logseq desktop app page, title, URL, visible controls, and text summary. 查看Logseq桌面版当前状态和可见内容。",
+          "description": "Inspect current Logseq desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli logseq status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Logseq desktop Electron app via CDP DOM. 读取Logseq桌面版可见文本。",
+          "description": "Dump visible text from the Logseq desktop Electron app via CDP DOM.",
           "command": "unicli logseq dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Logseq. 枚举Logseq桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Logseq.",
           "command": "unicli logseq snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Logseq. 按文本点击Logseq桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Logseq.",
           "command": "unicli logseq click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Logseq. 向Logseq桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Logseq.",
           "command": "unicli logseq type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Logseq, with optional comma-separated modifiers. 在Logseq桌面版发送按键。",
+          "description": "Press a key in Logseq, with optional comma-separated modifiers.",
           "command": "unicli logseq press"
         }
       ]
@@ -7953,37 +7953,37 @@
       "commands": [
         {
           "name": "open-app",
-          "description": "Open Typora desktop Electron app with CDP enabled for AI control. 打开Typora桌面版并启用 CDP 控制。",
+          "description": "Open Typora desktop Electron app with CDP enabled for AI control.",
           "command": "unicli typora open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Typora desktop app page, title, URL, visible controls, and text summary. 查看Typora桌面版当前状态和可见内容。",
+          "description": "Inspect current Typora desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli typora status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Typora desktop Electron app via CDP DOM. 读取Typora桌面版可见文本。",
+          "description": "Dump visible text from the Typora desktop Electron app via CDP DOM.",
           "command": "unicli typora dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Typora. 枚举Typora桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Typora.",
           "command": "unicli typora snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Typora. 按文本点击Typora桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Typora.",
           "command": "unicli typora click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Typora. 向Typora桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Typora.",
           "command": "unicli typora type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Typora, with optional comma-separated modifiers. 在Typora桌面版发送按键。",
+          "description": "Press a key in Typora, with optional comma-separated modifiers.",
           "command": "unicli typora press"
         }
       ]
@@ -7997,37 +7997,37 @@
       "commands": [
         {
           "name": "open-app",
-          "description": "Open Postman desktop Electron app with CDP enabled for AI control. 打开Postman桌面版并启用 CDP 控制。",
+          "description": "Open Postman desktop Electron app with CDP enabled for AI control.",
           "command": "unicli postman open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Postman desktop app page, title, URL, visible controls, and text summary. 查看Postman桌面版当前状态和可见内容。",
+          "description": "Inspect current Postman desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli postman status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Postman desktop Electron app via CDP DOM. 读取Postman桌面版可见文本。",
+          "description": "Dump visible text from the Postman desktop Electron app via CDP DOM.",
           "command": "unicli postman dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Postman. 枚举Postman桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Postman.",
           "command": "unicli postman snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Postman. 按文本点击Postman桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Postman.",
           "command": "unicli postman click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Postman. 向Postman桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Postman.",
           "command": "unicli postman type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Postman, with optional comma-separated modifiers. 在Postman桌面版发送按键。",
+          "description": "Press a key in Postman, with optional comma-separated modifiers.",
           "command": "unicli postman press"
         }
       ]
@@ -8041,37 +8041,37 @@
       "commands": [
         {
           "name": "open-app",
-          "description": "Open Insomnia desktop Electron app with CDP enabled for AI control. 打开Insomnia桌面版并启用 CDP 控制。",
+          "description": "Open Insomnia desktop Electron app with CDP enabled for AI control.",
           "command": "unicli insomnia open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Insomnia desktop app page, title, URL, visible controls, and text summary. 查看Insomnia桌面版当前状态和可见内容。",
+          "description": "Inspect current Insomnia desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli insomnia status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Insomnia desktop Electron app via CDP DOM. 读取Insomnia桌面版可见文本。",
+          "description": "Dump visible text from the Insomnia desktop Electron app via CDP DOM.",
           "command": "unicli insomnia dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Insomnia. 枚举Insomnia桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Insomnia.",
           "command": "unicli insomnia snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Insomnia. 按文本点击Insomnia桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Insomnia.",
           "command": "unicli insomnia click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Insomnia. 向Insomnia桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Insomnia.",
           "command": "unicli insomnia type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Insomnia, with optional comma-separated modifiers. 在Insomnia桌面版发送按键。",
+          "description": "Press a key in Insomnia, with optional comma-separated modifiers.",
           "command": "unicli insomnia press"
         }
       ]
@@ -8085,37 +8085,37 @@
       "commands": [
         {
           "name": "open-app",
-          "description": "Open Bitwarden desktop Electron app with CDP enabled for AI control. 打开Bitwarden桌面版并启用 CDP 控制。",
+          "description": "Open Bitwarden desktop Electron app with CDP enabled for AI control.",
           "command": "unicli bitwarden open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Bitwarden desktop app page, title, URL, visible controls, and text summary. 查看Bitwarden桌面版当前状态和可见内容。",
+          "description": "Inspect current Bitwarden desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli bitwarden status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Bitwarden desktop Electron app via CDP DOM. 读取Bitwarden桌面版可见文本。",
+          "description": "Dump visible text from the Bitwarden desktop Electron app via CDP DOM.",
           "command": "unicli bitwarden dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Bitwarden. 枚举Bitwarden桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Bitwarden.",
           "command": "unicli bitwarden snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Bitwarden. 按文本点击Bitwarden桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Bitwarden.",
           "command": "unicli bitwarden click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Bitwarden. 向Bitwarden桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Bitwarden.",
           "command": "unicli bitwarden type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Bitwarden, with optional comma-separated modifiers. 在Bitwarden桌面版发送按键。",
+          "description": "Press a key in Bitwarden, with optional comma-separated modifiers.",
           "command": "unicli bitwarden press"
         }
       ]
@@ -8129,37 +8129,37 @@
       "commands": [
         {
           "name": "open-app",
-          "description": "Open Signal desktop Electron app with CDP enabled for AI control. 打开Signal桌面版并启用 CDP 控制。",
+          "description": "Open Signal desktop Electron app with CDP enabled for AI control.",
           "command": "unicli signal open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Signal desktop app page, title, URL, visible controls, and text summary. 查看Signal桌面版当前状态和可见内容。",
+          "description": "Inspect current Signal desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli signal status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Signal desktop Electron app via CDP DOM. 读取Signal桌面版可见文本。",
+          "description": "Dump visible text from the Signal desktop Electron app via CDP DOM.",
           "command": "unicli signal dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Signal. 枚举Signal桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Signal.",
           "command": "unicli signal snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Signal. 按文本点击Signal桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Signal.",
           "command": "unicli signal click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Signal. 向Signal桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Signal.",
           "command": "unicli signal type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Signal, with optional comma-separated modifiers. 在Signal桌面版发送按键。",
+          "description": "Press a key in Signal, with optional comma-separated modifiers.",
           "command": "unicli signal press"
         }
       ]
@@ -8173,37 +8173,37 @@
       "commands": [
         {
           "name": "open-app",
-          "description": "Open WhatsApp desktop Electron app with CDP enabled for AI control. 打开WhatsApp桌面版并启用 CDP 控制。",
+          "description": "Open WhatsApp desktop Electron app with CDP enabled for AI control.",
           "command": "unicli whatsapp open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current WhatsApp desktop app page, title, URL, visible controls, and text summary. 查看WhatsApp桌面版当前状态和可见内容。",
+          "description": "Inspect current WhatsApp desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli whatsapp status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the WhatsApp desktop Electron app via CDP DOM. 读取WhatsApp桌面版可见文本。",
+          "description": "Dump visible text from the WhatsApp desktop Electron app via CDP DOM.",
           "command": "unicli whatsapp dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in WhatsApp. 枚举WhatsApp桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in WhatsApp.",
           "command": "unicli whatsapp snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in WhatsApp. 按文本点击WhatsApp桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in WhatsApp.",
           "command": "unicli whatsapp click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in WhatsApp. 向WhatsApp桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in WhatsApp.",
           "command": "unicli whatsapp type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in WhatsApp, with optional comma-separated modifiers. 在WhatsApp桌面版发送按键。",
+          "description": "Press a key in WhatsApp, with optional comma-separated modifiers.",
           "command": "unicli whatsapp press"
         }
       ]
@@ -8217,37 +8217,37 @@
       "commands": [
         {
           "name": "open-app",
-          "description": "Open Microsoft Teams desktop Electron app with CDP enabled for AI control. 打开Microsoft Teams桌面版并启用 CDP 控制。",
+          "description": "Open Microsoft Teams desktop Electron app with CDP enabled for AI control.",
           "command": "unicli teams open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Microsoft Teams desktop app page, title, URL, visible controls, and text summary. 查看Microsoft Teams桌面版当前状态和可见内容。",
+          "description": "Inspect current Microsoft Teams desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli teams status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Microsoft Teams desktop Electron app via CDP DOM. 读取Microsoft Teams桌面版可见文本。",
+          "description": "Dump visible text from the Microsoft Teams desktop Electron app via CDP DOM.",
           "command": "unicli teams dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Microsoft Teams. 枚举Microsoft Teams桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Microsoft Teams.",
           "command": "unicli teams snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Microsoft Teams. 按文本点击Microsoft Teams桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Microsoft Teams.",
           "command": "unicli teams click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Microsoft Teams. 向Microsoft Teams桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Microsoft Teams.",
           "command": "unicli teams type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Microsoft Teams, with optional comma-separated modifiers. 在Microsoft Teams桌面版发送按键。",
+          "description": "Press a key in Microsoft Teams, with optional comma-separated modifiers.",
           "command": "unicli teams press"
         }
       ]
@@ -8261,37 +8261,37 @@
       "commands": [
         {
           "name": "open-app",
-          "description": "Open Todoist desktop Electron app with CDP enabled for AI control. 打开Todoist桌面版并启用 CDP 控制。",
+          "description": "Open Todoist desktop Electron app with CDP enabled for AI control.",
           "command": "unicli todoist open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Todoist desktop app page, title, URL, visible controls, and text summary. 查看Todoist桌面版当前状态和可见内容。",
+          "description": "Inspect current Todoist desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli todoist status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Todoist desktop Electron app via CDP DOM. 读取Todoist桌面版可见文本。",
+          "description": "Dump visible text from the Todoist desktop Electron app via CDP DOM.",
           "command": "unicli todoist dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Todoist. 枚举Todoist桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Todoist.",
           "command": "unicli todoist snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Todoist. 按文本点击Todoist桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Todoist.",
           "command": "unicli todoist click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Todoist. 向Todoist桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Todoist.",
           "command": "unicli todoist type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Todoist, with optional comma-separated modifiers. 在Todoist桌面版发送按键。",
+          "description": "Press a key in Todoist, with optional comma-separated modifiers.",
           "command": "unicli todoist press"
         }
       ]
@@ -8305,37 +8305,37 @@
       "commands": [
         {
           "name": "open-app",
-          "description": "Open GitHub Desktop desktop Electron app with CDP enabled for AI control. 打开GitHub Desktop桌面版并启用 CDP 控制。",
+          "description": "Open GitHub Desktop desktop Electron app with CDP enabled for AI control.",
           "command": "unicli github-desktop open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current GitHub Desktop desktop app page, title, URL, visible controls, and text summary. 查看GitHub Desktop桌面版当前状态和可见内容。",
+          "description": "Inspect current GitHub Desktop desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli github-desktop status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the GitHub Desktop desktop Electron app via CDP DOM. 读取GitHub Desktop桌面版可见文本。",
+          "description": "Dump visible text from the GitHub Desktop desktop Electron app via CDP DOM.",
           "command": "unicli github-desktop dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in GitHub Desktop. 枚举GitHub Desktop桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in GitHub Desktop.",
           "command": "unicli github-desktop snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in GitHub Desktop. 按文本点击GitHub Desktop桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in GitHub Desktop.",
           "command": "unicli github-desktop click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in GitHub Desktop. 向GitHub Desktop桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in GitHub Desktop.",
           "command": "unicli github-desktop type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in GitHub Desktop, with optional comma-separated modifiers. 在GitHub Desktop桌面版发送按键。",
+          "description": "Press a key in GitHub Desktop, with optional comma-separated modifiers.",
           "command": "unicli github-desktop press"
         }
       ]
@@ -8349,37 +8349,37 @@
       "commands": [
         {
           "name": "open-app",
-          "description": "Open GitKraken desktop Electron app with CDP enabled for AI control. 打开GitKraken桌面版并启用 CDP 控制。",
+          "description": "Open GitKraken desktop Electron app with CDP enabled for AI control.",
           "command": "unicli gitkraken open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current GitKraken desktop app page, title, URL, visible controls, and text summary. 查看GitKraken桌面版当前状态和可见内容。",
+          "description": "Inspect current GitKraken desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli gitkraken status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the GitKraken desktop Electron app via CDP DOM. 读取GitKraken桌面版可见文本。",
+          "description": "Dump visible text from the GitKraken desktop Electron app via CDP DOM.",
           "command": "unicli gitkraken dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in GitKraken. 枚举GitKraken桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in GitKraken.",
           "command": "unicli gitkraken snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in GitKraken. 按文本点击GitKraken桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in GitKraken.",
           "command": "unicli gitkraken click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in GitKraken. 向GitKraken桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in GitKraken.",
           "command": "unicli gitkraken type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in GitKraken, with optional comma-separated modifiers. 在GitKraken桌面版发送按键。",
+          "description": "Press a key in GitKraken, with optional comma-separated modifiers.",
           "command": "unicli gitkraken press"
         }
       ]
@@ -8393,37 +8393,37 @@
       "commands": [
         {
           "name": "open-app",
-          "description": "Open Docker Desktop desktop Electron app with CDP enabled for AI control. 打开Docker Desktop桌面版并启用 CDP 控制。",
+          "description": "Open Docker Desktop desktop Electron app with CDP enabled for AI control.",
           "command": "unicli docker-desktop open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Docker Desktop desktop app page, title, URL, visible controls, and text summary. 查看Docker Desktop桌面版当前状态和可见内容。",
+          "description": "Inspect current Docker Desktop desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli docker-desktop status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Docker Desktop desktop Electron app via CDP DOM. 读取Docker Desktop桌面版可见文本。",
+          "description": "Dump visible text from the Docker Desktop desktop Electron app via CDP DOM.",
           "command": "unicli docker-desktop dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Docker Desktop. 枚举Docker Desktop桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Docker Desktop.",
           "command": "unicli docker-desktop snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Docker Desktop. 按文本点击Docker Desktop桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Docker Desktop.",
           "command": "unicli docker-desktop click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Docker Desktop. 向Docker Desktop桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Docker Desktop.",
           "command": "unicli docker-desktop type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Docker Desktop, with optional comma-separated modifiers. 在Docker Desktop桌面版发送按键。",
+          "description": "Press a key in Docker Desktop, with optional comma-separated modifiers.",
           "command": "unicli docker-desktop press"
         }
       ]
@@ -8437,37 +8437,37 @@
       "commands": [
         {
           "name": "open-app",
-          "description": "Open LM Studio desktop Electron app with CDP enabled for AI control. 打开LM Studio桌面版并启用 CDP 控制。",
+          "description": "Open LM Studio desktop Electron app with CDP enabled for AI control.",
           "command": "unicli lm-studio open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current LM Studio desktop app page, title, URL, visible controls, and text summary. 查看LM Studio桌面版当前状态和可见内容。",
+          "description": "Inspect current LM Studio desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli lm-studio status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the LM Studio desktop Electron app via CDP DOM. 读取LM Studio桌面版可见文本。",
+          "description": "Dump visible text from the LM Studio desktop Electron app via CDP DOM.",
           "command": "unicli lm-studio dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in LM Studio. 枚举LM Studio桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in LM Studio.",
           "command": "unicli lm-studio snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in LM Studio. 按文本点击LM Studio桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in LM Studio.",
           "command": "unicli lm-studio click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in LM Studio. 向LM Studio桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in LM Studio.",
           "command": "unicli lm-studio type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in LM Studio, with optional comma-separated modifiers. 在LM Studio桌面版发送按键。",
+          "description": "Press a key in LM Studio, with optional comma-separated modifiers.",
           "command": "unicli lm-studio press"
         }
       ]
@@ -8481,37 +8481,37 @@
       "commands": [
         {
           "name": "open-app",
-          "description": "Open Claude desktop Electron app with CDP enabled for AI control. 打开Claude桌面版并启用 CDP 控制。",
+          "description": "Open Claude desktop Electron app with CDP enabled for AI control.",
           "command": "unicli claude open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Claude desktop app page, title, URL, visible controls, and text summary. 查看Claude桌面版当前状态和可见内容。",
+          "description": "Inspect current Claude desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli claude status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Claude desktop Electron app via CDP DOM. 读取Claude桌面版可见文本。",
+          "description": "Dump visible text from the Claude desktop Electron app via CDP DOM.",
           "command": "unicli claude dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Claude. 枚举Claude桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Claude.",
           "command": "unicli claude snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Claude. 按文本点击Claude桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Claude.",
           "command": "unicli claude click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Claude. 向Claude桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Claude.",
           "command": "unicli claude type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Claude, with optional comma-separated modifiers. 在Claude桌面版发送按键。",
+          "description": "Press a key in Claude, with optional comma-separated modifiers.",
           "command": "unicli claude press"
         }
       ]
@@ -8525,37 +8525,37 @@
       "commands": [
         {
           "name": "open-app",
-          "description": "Open WeCom desktop Electron app with CDP enabled for AI control. 打开WeCom桌面版并启用 CDP 控制。",
+          "description": "Open WeCom desktop Electron app with CDP enabled for AI control.",
           "command": "unicli wechat-work open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current WeCom desktop app page, title, URL, visible controls, and text summary. 查看WeCom桌面版当前状态和可见内容。",
+          "description": "Inspect current WeCom desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli wechat-work status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the WeCom desktop Electron app via CDP DOM. 读取WeCom桌面版可见文本。",
+          "description": "Dump visible text from the WeCom desktop Electron app via CDP DOM.",
           "command": "unicli wechat-work dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in WeCom. 枚举WeCom桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in WeCom.",
           "command": "unicli wechat-work snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in WeCom. 按文本点击WeCom桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in WeCom.",
           "command": "unicli wechat-work click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in WeCom. 向WeCom桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in WeCom.",
           "command": "unicli wechat-work type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in WeCom, with optional comma-separated modifiers. 在WeCom桌面版发送按键。",
+          "description": "Press a key in WeCom, with optional comma-separated modifiers.",
           "command": "unicli wechat-work press"
         }
       ]
@@ -8569,37 +8569,37 @@
       "commands": [
         {
           "name": "open-app",
-          "description": "Open Zoom desktop Electron app with CDP enabled for AI control. 打开Zoom桌面版并启用 CDP 控制。",
+          "description": "Open Zoom desktop Electron app with CDP enabled for AI control.",
           "command": "unicli zoom-app open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Zoom desktop app page, title, URL, visible controls, and text summary. 查看Zoom桌面版当前状态和可见内容。",
+          "description": "Inspect current Zoom desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli zoom-app status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Zoom desktop Electron app via CDP DOM. 读取Zoom桌面版可见文本。",
+          "description": "Dump visible text from the Zoom desktop Electron app via CDP DOM.",
           "command": "unicli zoom-app dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Zoom. 枚举Zoom桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Zoom.",
           "command": "unicli zoom-app snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Zoom. 按文本点击Zoom桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Zoom.",
           "command": "unicli zoom-app click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Zoom. 向Zoom桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Zoom.",
           "command": "unicli zoom-app type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Zoom, with optional comma-separated modifiers. 在Zoom桌面版发送按键。",
+          "description": "Press a key in Zoom, with optional comma-separated modifiers.",
           "command": "unicli zoom-app press"
         }
       ]
@@ -8613,37 +8613,37 @@
       "commands": [
         {
           "name": "open-app",
-          "description": "Open Evernote desktop Electron app with CDP enabled for AI control. 打开Evernote桌面版并启用 CDP 控制。",
+          "description": "Open Evernote desktop Electron app with CDP enabled for AI control.",
           "command": "unicli evernote-app open-app"
         },
         {
           "name": "status-app",
-          "description": "Inspect current Evernote desktop app page, title, URL, visible controls, and text summary. 查看Evernote桌面版当前状态和可见内容。",
+          "description": "Inspect current Evernote desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli evernote-app status-app"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the Evernote desktop Electron app via CDP DOM. 读取Evernote桌面版可见文本。",
+          "description": "Dump visible text from the Evernote desktop Electron app via CDP DOM.",
           "command": "unicli evernote-app dump"
         },
         {
           "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Evernote. 枚举Evernote桌面版可交互内容。",
+          "description": "List visible clickable text, buttons, inputs, and regions in Evernote.",
           "command": "unicli evernote-app snapshot-app"
         },
         {
           "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Evernote. 按文本点击Evernote桌面版控件。",
+          "description": "Click visible text, aria-label, title, or button content in Evernote.",
           "command": "unicli evernote-app click-text"
         },
         {
           "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Evernote. 向Evernote桌面版输入文本。",
+          "description": "Type text into the focused field or a text-matched target in Evernote.",
           "command": "unicli evernote-app type-text"
         },
         {
           "name": "press",
-          "description": "Press a key in Evernote, with optional comma-separated modifiers. 在Evernote桌面版发送按键。",
+          "description": "Press a key in Evernote, with optional comma-separated modifiers.",
           "command": "unicli evernote-app press"
         }
       ]

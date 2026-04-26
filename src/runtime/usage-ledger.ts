@@ -1,13 +1,12 @@
 /**
- * Per-call cost ledger — append-only JSONL at ~/.unicli/usage.jsonl.
+ * Command budget ledger — append-only JSONL at ~/.unicli/usage.jsonl.
  *
  * Why this exists:
- *   AutoCLI's 12× perf advantage means TS-based hubs need to *show* their
- *   numbers to defend. AutoHarness ships per-call cost attribution as a
- *   first-class feature. The ledger lets users (and the harness flywheel)
- *   spot slow adapters, broken auth, and regressions without instrumenting
- *   anything per-adapter — every call already passes through `cli.ts`, and
- *   `recordUsage` is invoked once at the end of execution.
+ *   Agent-native infrastructure needs observable cost and latency numbers.
+ *   The ledger lets users spot slow adapters, broken auth, and regressions
+ *   without instrumenting anything per-adapter — every command already passes
+ *   through `cli.ts`, and `recordUsage` is invoked once at the end of
+ *   execution.
  *
  * Format (one JSON object per line, no schema migrations — additive only):
  *   {

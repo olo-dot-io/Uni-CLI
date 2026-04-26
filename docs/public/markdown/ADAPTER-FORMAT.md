@@ -407,8 +407,8 @@ pipeline:
 columns: [ok, url]
 ```
 
-CUA commands are expensive (per-call cost scales with the backend's
-screenshot + LLM inference tokens). Do not default to CUA when a
+CUA commands are expensive because screenshot and LLM inference cost scales
+with backend complexity. Do not default to CUA when a
 `cdp-browser` adapter is feasible; the dispatcher will warn if a CUA
 command could have been expressed as intercept.
 

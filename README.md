@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->223<!-- /STATS --> sites · <!-- STATS:command_count -->1304<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7311<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->223<!-- /STATS --> sites · <!-- STATS:command_count -->1304<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7317<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -146,7 +146,7 @@ Uni-CLI turns software surfaces into commands that agents can discover, run, and
 Use search first, then run the smallest matching command.
 
 ```bash
-unicli search "推特热门" --limit 5
+unicli search "twitter trending" --limit 5
 unicli twitter search "coding agents" -f json
 unicli repair twitter search
 ```

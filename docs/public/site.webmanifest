@@ -1,7 +1,7 @@
 {
   "name": "Uni-CLI",
   "short_name": "Uni-CLI",
-  "description": "The universal command surface for AI agents.",
+  "description": "Agent-native CLI infrastructure for operating real software.",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#11100f",

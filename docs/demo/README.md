@@ -35,7 +35,7 @@ In ~35 seconds, `scripts/demo-session.sh` shows:
 1. `unicli list | head -5` — discovery
 2. `unicli hackernews top --limit 3` — zero-config web API
 3. `unicli hackernews top --limit 5 --json | jq '...'` — piping + JSON
-4. `unicli search "推特热门"` — bilingual search
+4. `unicli search "twitter trending"` — intent search
 5. `unicli mcp serve --transport streamable --port 19826` — MCP exposure
 
 That sequence is the minimum surface an agent touches on first use.

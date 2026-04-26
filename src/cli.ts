@@ -320,7 +320,7 @@ export async function createCli(): Promise<Command> {
   // Register skills command — export adapter SKILL.md files for agent registries
   registerSkillsCommand(program);
 
-  // Register usage command — read the per-call cost ledger
+  // Register usage command — read the command budget ledger
   registerUsageCommands(program);
 
   // Register mcp command — MCP gateway server + health check
