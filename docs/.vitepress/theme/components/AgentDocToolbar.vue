@@ -122,7 +122,14 @@ async function copyMarkdown() {
               : "Copy Markdown"
         }}
       </button>
-      <a class="agent-markdown-link" :href="markdownHref">Open .md</a>
+      <a
+        class="agent-markdown-link"
+        :href="markdownHref"
+        target="_self"
+        type="text/markdown"
+      >
+        Open .md
+      </a>
     </div>
   </nav>
 </template>

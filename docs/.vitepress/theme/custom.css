@@ -34,6 +34,43 @@
   display: none !important;
 }
 
+.VPNavBarAppearance.appearance,
+.VPNavBarSocialLinks.social-links {
+  display: flex !important;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.VPNavBarSocialLinks.social-links {
+  margin-right: 0;
+}
+
+@media (max-width: 1279px) {
+  .VPNavBar .menu + .appearance::before,
+  .VPNavBar .translations + .appearance::before,
+  .VPNavBar .appearance + .social-links::before {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 959px) {
+  .VPNavBarMenu.menu {
+    display: none !important;
+  }
+
+  .VPNavBarHamburger.hamburger {
+    display: flex !important;
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .VPNavBarSearch.search {
+    flex-grow: 0;
+    padding-left: 0;
+  }
+}
+
 /* Headings: Geist Mono */
 .vp-doc h1,
 .vp-doc h2,
