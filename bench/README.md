@@ -6,8 +6,7 @@ Run `npm run bench` from the repo root. The harness:
 2. Runs four adapter calls (news, social, social-cn, dev categories)
    against live endpoints, with fallback to committed fixtures if live
    fails.
-3. Compares total tokens per call against the 55,000-token GitHub MCP
-   cold-start baseline and reports the reduction factor.
+3. Reports invocation tokens, response tokens, and total call budgets.
 4. Writes `bench/results.json` and patches `docs/BENCHMARK.md` between
    the `<!-- BENCH:begin -->` and `<!-- BENCH:end -->` markers.
 
@@ -50,7 +49,6 @@ verify pipeline.
 - `tokens.ts` — o200k_base heuristic tokeniser (no native deps).
 - `cold-start.ts` — cold-start runner for `unicli list`.
 - `adapter-call.ts` — per-command p50/p95 runner.
-- `mcp-catalog.ts` — 55K MCP comparison.
 - `report.ts` — orchestrator, writes `results.json` and patches `docs/BENCHMARK.md`.
 - `fixtures/*.json` — committed response captures.
 - `results.json` — last run's full report (gitignored if you want; the

@@ -28,9 +28,9 @@
   letter-spacing: 0;
 }
 
-/* VitePress duplicates appearance/social links inside a second-level overflow flyout.
-   Keep the first-level controls visible and hide only that duplicate flyout. */
-.VPNavBarExtra.extra:has(> .button[aria-label="extra navigation"]) {
+/* VitePress duplicates appearance/social links inside an overflow flyout.
+   Uni-CLI keeps those controls first-level and hides the duplicate menu. */
+.VPNavBarExtra.extra {
   display: none !important;
 }
 

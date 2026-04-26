@@ -1,5 +1,5 @@
 /**
- * verify-refs.ts — resolve every arXiv ID in `docs/refs.bib` against
+ * verify-refs.ts — resolve every arXiv ID in `internal/refs.bib` against
  * `https://arxiv.org/abs/<id>` and fail the CI job on 404s.
  *
  * Run: npm run refs:verify
@@ -30,7 +30,7 @@ interface Result {
 }
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const REFS_BIB = join(HERE, "..", "docs", "refs.bib");
+const REFS_BIB = join(HERE, "..", "internal", "refs.bib");
 const TIMEOUT_MS = 5_000;
 const CONCURRENCY = 8;
 
@@ -84,7 +84,7 @@ async function runWithLimit<T, R>(
   limit: number,
   worker: (item: T) => Promise<R>,
 ): Promise<R[]> {
-  const results: R[] = new Array(items.length);
+  const results: R[] = [];
   let cursor = 0;
   const runners: Promise<void>[] = [];
   for (let i = 0; i < Math.min(limit, items.length); i++) {
