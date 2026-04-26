@@ -2,9 +2,9 @@
 /**
  * Guardrails for the public docs surface.
  *
- * The public site is English-only today and must not regress to stale internal
- * phrasing. This scans generated agent assets plus the VitePress output that
- * GitHub Pages deploys.
+ * The root public site is English, while localized docs live under explicit
+ * locale paths. This scans generated agent assets plus the VitePress output
+ * that GitHub Pages deploys.
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
@@ -29,7 +29,17 @@ const ignoredPathFragments = [
 ];
 const cjkPattern =
   /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303f\uff00-\uffef]/u;
-const bannedPatterns = [/\bper-call\b/iu];
+const bannedPatterns = [
+  /\bper-call\b/iu,
+  /\btaste guide\b/iu,
+  /\btest guide\b/iu,
+  /竞品/u,
+  /内部调研/u,
+  /未公开调研/u,
+  /取代\s*MCP/iu,
+  /死刑/u,
+];
+const allowedGlobalCjkFragments = ["简体中文"];
 
 type Finding = {
   file: string;
@@ -50,6 +60,37 @@ function shouldScan(filePath: string): boolean {
   }
 
   return textExtensions.has(extname(filePath));
+}
+
+function allowsLocalizedCjk(filePath: string): boolean {
+  const normalized = `/${toPosix(relative(process.cwd(), filePath))}`;
+  return (
+    normalized.includes("/docs/.vitepress/dist/markdown/zh/") ||
+    normalized.includes("/docs/.vitepress/dist/zh/") ||
+    normalized.includes("/docs/public/markdown/zh/") ||
+    normalized.includes("/docs/public/zh/")
+  );
+}
+
+function stripAllowedGlobalCjk(line: string): string {
+  return allowedGlobalCjkFragments.reduce(
+    (current, fragment) => current.replaceAll(fragment, ""),
+    line,
+  );
+}
+
+function preserveLineBreaks(text: string): string {
+  return text.match(/\r\n|\r|\n/gu)?.join("") ?? "";
+}
+
+function textForScan(filePath: string, text: string): string {
+  if (extname(filePath) !== ".html") {
+    return text;
+  }
+
+  return text
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/giu, preserveLineBreaks)
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/giu, preserveLineBreaks);
 }
 
 function collectFiles(target: string, files: string[] = []): string[] {
@@ -74,12 +115,15 @@ function collectFiles(target: string, files: string[] = []): string[] {
 }
 
 function scanFile(filePath: string): Finding[] {
-  const text = readFileSync(filePath, "utf-8");
+  const text = textForScan(filePath, readFileSync(filePath, "utf-8"));
   const lines = text.split(/\r?\n/);
   const findings: Finding[] = [];
 
   lines.forEach((lineText, index) => {
-    if (cjkPattern.test(lineText)) {
+    if (
+      !allowsLocalizedCjk(filePath) &&
+      cjkPattern.test(stripAllowedGlobalCjk(lineText))
+    ) {
       findings.push({
         file: toPosix(relative(process.cwd(), filePath)),
         line: index + 1,

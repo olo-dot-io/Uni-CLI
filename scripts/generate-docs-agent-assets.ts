@@ -12,12 +12,19 @@ import {
 } from "node:fs";
 import { dirname, join, posix, relative, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
-import { flatDocPages, normalizeDocPath } from "../docs/.vitepress/site-map.js";
+import {
+  flatDocPages,
+  normalizeDocPath,
+  supportedLocales,
+  type LocaleKey,
+} from "../docs/.vitepress/site-map.js";
 
 type PageIndexEntry = {
   title: string;
+  locale: LocaleKey;
   routePath: string;
   markdownPath: string;
+  sourceLink: string;
   sourcePath: string;
   section: string;
   parent: { text: string; link: string } | null;
@@ -60,32 +67,27 @@ const llmsTxtPath = resolve("docs/public/llms.txt");
 const llmsFullTxtPath = resolve("docs/public/llms-full.txt");
 const publicSiteBase = "https://olo-dot-io.github.io/Uni-CLI";
 
-function sourcePathForRoute(routePath: string): string {
+function sourcePathForRoute(routePath: string, locale: LocaleKey): string {
+  const localeRoot = locale === "root" ? docsRoot : resolve(docsRoot, locale);
+
   if (routePath === "/") {
-    return resolve(docsRoot, "index.md");
+    return resolve(localeRoot, "index.md");
   }
 
   const relativeRoute = routePath.replace(/^\/+/, "").replace(/\/$/, "");
   const candidates = [
-    resolve(docsRoot, `${relativeRoute}.md`),
-    resolve(docsRoot, relativeRoute, "index.md"),
+    resolve(localeRoot, `${relativeRoute}.md`),
+    resolve(localeRoot, relativeRoute, "index.md"),
   ];
   const sourcePath = candidates.find((candidate) => existsSync(candidate));
 
   if (!sourcePath) {
-    throw new Error(`No markdown source found for route ${routePath}`);
+    throw new Error(
+      `No markdown source found for ${locale} route ${routePath}`,
+    );
   }
 
   return sourcePath;
-}
-
-function markdownPathForRoute(routePath: string): string {
-  if (routePath === "/") {
-    return "/markdown/index.md";
-  }
-
-  const relativeRoute = routePath.replace(/^\/+/, "").replace(/\/$/, "");
-  return `/markdown/${relativeRoute}.md`;
 }
 
 function splitFrontmatter(markdown: string): {
@@ -131,7 +133,10 @@ function rewriteRelativeLinks(markdown: string, routePath: string): string {
   );
 }
 
-function markdownFromHomeFrontmatter(frontmatter: Frontmatter): string {
+function markdownFromHomeFrontmatter(
+  frontmatter: Frontmatter,
+  locale: LocaleKey,
+): string {
   const lines: string[] = [];
 
   if (frontmatter.hero?.text) {
@@ -143,7 +148,7 @@ function markdownFromHomeFrontmatter(frontmatter: Frontmatter): string {
   }
 
   if (frontmatter.hero?.actions?.length) {
-    lines.push("", "## Primary Actions", "");
+    lines.push("", locale === "zh" ? "## 主要入口" : "## Primary Actions", "");
 
     for (const action of frontmatter.hero.actions) {
       if (action.text && action.link) {
@@ -153,7 +158,7 @@ function markdownFromHomeFrontmatter(frontmatter: Frontmatter): string {
   }
 
   if (frontmatter.features?.length) {
-    lines.push("", "## Capabilities", "");
+    lines.push("", locale === "zh" ? "## 核心能力" : "## Capabilities", "");
 
     for (const feature of frontmatter.features) {
       if (feature.title && feature.details) {
@@ -213,13 +218,55 @@ function renderSiteStats(siteIndex: SiteIndex): string {
   ].join("\n");
 }
 
-function renderSiteCatalog(siteIndex: SiteIndex): string {
+function renderSiteStatsZh(siteIndex: SiteIndex): string {
+  const surfaceCounts = siteIndex.sites.reduce<Record<string, number>>(
+    (counts, site) => {
+      counts[site.type] = (counts[site.type] ?? 0) + 1;
+      return counts;
+    },
+    {},
+  );
+
   return [
-    "## Generated Site Catalog",
+    "## 目录快照",
     "",
-    `This catalog is generated from the adapter manifest: ${siteIndex.total_sites} sites, ${siteIndex.total_commands} commands.`,
+    `- 站点：${siteIndex.total_sites}`,
+    `- 命令：${siteIndex.total_commands}`,
+    `- 接口类型：${Object.keys(surfaceCounts).length}`,
+    `- AgentEnvelope：v2`,
     "",
-    "| Site | Surface | Commands | Auth | Example commands |",
+    "| 接口类型 | 站点数 |",
+    "| --- | ---: |",
+    ...Object.entries(surfaceCounts)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([surface, count]) => `| ${surface} | ${count} |`),
+  ].join("\n");
+}
+
+function renderSiteCatalog(siteIndex: SiteIndex, locale: LocaleKey): string {
+  const copy =
+    locale === "zh"
+      ? {
+          title: "## 生成的站点目录",
+          intro: `这个目录来自适配器 manifest：${siteIndex.total_sites} 个站点，${siteIndex.total_commands} 条命令。`,
+          headers: "| 站点 | 接口类型 | 命令数 | 认证 | 示例命令 |",
+          authYes: "是",
+          authNo: "否",
+        }
+      : {
+          title: "## Generated Site Catalog",
+          intro: `This catalog is generated from the adapter manifest: ${siteIndex.total_sites} sites, ${siteIndex.total_commands} commands.`,
+          headers: "| Site | Surface | Commands | Auth | Example commands |",
+          authYes: "yes",
+          authNo: "no",
+        };
+
+  return [
+    copy.title,
+    "",
+    copy.intro,
+    "",
+    copy.headers,
     "| --- | --- | ---: | --- | --- |",
     ...siteIndex.sites
       .map((site) => {
@@ -232,7 +279,7 @@ function renderSiteCatalog(siteIndex: SiteIndex): string {
           escapeTableCell(site.site),
           escapeTableCell(site.type),
           site.command_count,
-          site.auth ? "yes" : "no",
+          site.auth ? copy.authYes : copy.authNo,
           escapeTableCell(commands),
         ].join(" | ");
       })
@@ -240,10 +287,19 @@ function renderSiteCatalog(siteIndex: SiteIndex): string {
   ].join("\n");
 }
 
-function renderKnownComponents(markdown: string, siteIndex: SiteIndex): string {
+function renderKnownComponents(
+  markdown: string,
+  siteIndex: SiteIndex,
+  locale: LocaleKey,
+): string {
   return markdown
-    .replace(/^<SiteStats\s*\/>$/gm, renderSiteStats(siteIndex))
-    .replace(/^<SiteCatalog\s*\/>$/gm, renderSiteCatalog(siteIndex));
+    .replace(
+      /^<SiteStats\s*\/>$/gm,
+      locale === "zh"
+        ? renderSiteStatsZh(siteIndex)
+        : renderSiteStats(siteIndex),
+    )
+    .replace(/^<SiteCatalog\s*\/>$/gm, renderSiteCatalog(siteIndex, locale));
 }
 
 function buildMarkdownCopy(
@@ -252,26 +308,31 @@ function buildMarkdownCopy(
   siteIndex: SiteIndex,
 ): string {
   const { frontmatter, body: sourceBody } = splitFrontmatter(sourceMarkdown);
+  const isZh = page.locale === "zh";
   const metadata = [
-    `- Canonical: https://olo-dot-io.github.io/Uni-CLI${page.routePath}`,
+    `- ${isZh ? "规范页" : "Canonical"}: https://olo-dot-io.github.io/Uni-CLI${page.routePath}`,
     `- Markdown: https://olo-dot-io.github.io/Uni-CLI${page.markdownPath}`,
-    `- Section: ${page.section}`,
+    `- ${isZh ? "栏目" : "Section"}: ${page.section}`,
   ];
   const bodyParts =
-    page.routePath === "/"
+    page.sourceLink === "/"
       ? [
-          markdownFromHomeFrontmatter(frontmatter),
+          markdownFromHomeFrontmatter(frontmatter, page.locale),
           removeFirstHeading(sourceBody.trim()),
         ]
       : [removeFirstHeading(sourceBody.trim())];
   const body = bodyParts.filter(Boolean).join("\n\n");
 
   if (page.parent) {
-    metadata.push(`- Parent: ${page.parent.text} (${page.parent.link})`);
+    metadata.push(
+      `- ${isZh ? "上级" : "Parent"}: ${page.parent.text} (${page.parent.link})`,
+    );
   }
 
   const markdown = [
-    `<!-- Generated from ${page.sourcePath}. Do not edit this copy directly. -->`,
+    isZh
+      ? `<!-- 由 ${page.sourcePath} 生成。不要直接编辑此副本。 -->`
+      : `<!-- Generated from ${page.sourcePath}. Do not edit this copy directly. -->`,
     "",
     `# ${page.title}`,
     "",
@@ -290,7 +351,7 @@ function buildMarkdownCopy(
     .join("\n");
 
   return rewriteRelativeLinks(
-    renderKnownComponents(markdown, siteIndex),
+    renderKnownComponents(markdown, siteIndex, page.locale),
     page.routePath,
   );
 }
@@ -357,7 +418,9 @@ function renderLlmsTxt(
     "",
   ];
 
-  for (const [section, entries] of groupedPages(pages)) {
+  for (const [section, entries] of groupedPages(
+    pages.filter((page) => page.locale === "root"),
+  )) {
     lines.push(`## ${section}`, "");
     for (const page of entries) {
       lines.push(
@@ -396,7 +459,9 @@ function renderLlmsFullTxt(
     "",
   ];
 
-  for (const { page, markdown } of renderedPages) {
+  for (const { page, markdown } of renderedPages.filter(
+    (entry) => entry.page.locale === "root",
+  )) {
     lines.push(
       "---",
       "",
@@ -416,22 +481,27 @@ function renderLlmsFullTxt(
 function main() {
   const siteIndex = readSiteIndex();
   const stats = readStats();
-  const pages = flatDocPages().map<PageIndexEntry>((page) => {
-    const routePath = normalizeDocPath(page.link);
-    const markdownPath = markdownPathForRoute(routePath);
-    const breadcrumbs = page.parent ? [page.parent] : [];
-    const sourcePath = sourcePathForRoute(routePath);
+  const pages = supportedLocales.flatMap((locale) =>
+    flatDocPages(locale).map<PageIndexEntry>((page) => {
+      const routePath = normalizeDocPath(page.link);
+      const markdownPath = page.markdownPath;
+      const sourceLink = page.sourceLink;
+      const breadcrumbs = page.parent ? [page.parent] : [];
+      const sourcePath = sourcePathForRoute(sourceLink, locale);
 
-    return {
-      title: page.text,
-      routePath,
-      markdownPath,
-      sourcePath: toProjectPath(sourcePath),
-      section: page.section,
-      parent: page.parent,
-      breadcrumbs,
-    };
-  });
+      return {
+        title: page.text,
+        locale,
+        routePath,
+        markdownPath,
+        sourceLink,
+        sourcePath: toProjectPath(sourcePath),
+        section: page.section,
+        parent: page.parent,
+        breadcrumbs,
+      };
+    }),
+  );
 
   rmSync(markdownRoot, { recursive: true, force: true });
 

@@ -2,7 +2,7 @@
 
 > Current version: v0.215.1.
 >
-> Current scale: <!-- STATS:site_count -->223<!-- /STATS --> sites, <!-- STATS:command_count -->1304<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->987<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->907<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->80<!-- /STATS --> TS), <!-- STATS:test_count -->7317<!-- /STATS --> tests.
+> Current scale: <!-- STATS:site_count -->223<!-- /STATS --> sites, <!-- STATS:command_count -->1304<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->987<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->907<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->80<!-- /STATS --> TS), <!-- STATS:test_count -->7321<!-- /STATS --> tests.
 
 This is the internal style bar for docs and user-facing copy. It is not part of
 the public docs site. Public pages should expose install, command, output, and
