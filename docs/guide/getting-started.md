@@ -18,8 +18,8 @@ Every command follows the same shape:
 unicli SITE COMMAND [args] [-f json|md|yaml|csv|compact]
 ```
 
-Non-TTY and agent runs default to structured Markdown. Use `-f json` when a
-script needs JSON.
+Markdown is the default output format. Use `-f json` when a script or other
+machine-oriented consumer needs JSON.
 
 ## Find A Command
 

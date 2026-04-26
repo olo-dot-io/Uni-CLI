@@ -1,8 +1,31 @@
 import { defineConfig } from "vitepress";
 
-const siteBase =
-  process.env.UNICLI_DOCS_BASE ??
-  (process.env.GITHUB_REPOSITORY === "olo-dot-io/Uni-CLI" ? "/Uni-CLI/" : "/");
+function normalizeSiteBase(siteBase: string): string {
+  const trimmedBase = siteBase.trim();
+
+  if (!trimmedBase) {
+    throw new Error("UNICLI_DOCS_BASE must not be empty when set.");
+  }
+
+  if (
+    /^[a-zA-Z][a-zA-Z\d+-.]*:/.test(trimmedBase) ||
+    trimmedBase.startsWith("//")
+  ) {
+    throw new Error(
+      `UNICLI_DOCS_BASE must be a base path like "/" or "/Uni-CLI/", received "${siteBase}".`,
+    );
+  }
+
+  const normalizedBase = `/${trimmedBase.replace(/^\/+|\/+$/g, "")}/`;
+  return normalizedBase === "//" ? "/" : normalizedBase;
+}
+
+const configuredSiteBase = process.env.UNICLI_DOCS_BASE;
+const siteBase = configuredSiteBase
+  ? normalizeSiteBase(configuredSiteBase)
+  : process.env.GITHUB_REPOSITORY === "olo-dot-io/Uni-CLI"
+    ? "/Uni-CLI/"
+    : "/";
 
 /**
  * markdown-it plugin: escape {{ }} in fenced code block output.
