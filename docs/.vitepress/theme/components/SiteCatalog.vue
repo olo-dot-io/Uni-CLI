@@ -21,7 +21,30 @@ type Adapter = {
   commands: Command[];
 };
 
-const adapters = siteIndex.sites as Adapter[];
+type IndexedAdapter = Adapter & {
+  searchHaystack: string;
+};
+
+const adapters = (siteIndex.sites as Adapter[]).map<IndexedAdapter>(
+  (adapter) => ({
+    ...adapter,
+    searchHaystack: [
+      adapter.site,
+      adapter.domain,
+      adapter.type,
+      adapter.strategy,
+      ...adapter.commands.flatMap((command) => [
+        command.name,
+        command.description,
+        command.when_to_use,
+        command.command,
+      ]),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase(),
+  }),
+);
 const query = ref("");
 const selectedType = ref("all");
 
@@ -52,27 +75,7 @@ const filteredAdapters = computed(() => {
       (adapter) =>
         selectedType.value === "all" || adapter.type === selectedType.value,
     )
-    .filter((adapter) => {
-      if (!needle) {
-        return true;
-      }
-
-      const commandText = adapter.commands
-        .map((command) =>
-          [command.name, command.description, command.when_to_use].join(" "),
-        )
-        .join(" ");
-      return [
-        adapter.site,
-        adapter.domain,
-        adapter.type,
-        adapter.strategy,
-        commandText,
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(needle);
-    });
+    .filter((adapter) => !needle || adapter.searchHaystack.includes(needle));
 });
 
 function sampleCommands(adapter: Adapter): Command[] {

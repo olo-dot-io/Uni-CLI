@@ -8,12 +8,13 @@
  * by the docs site.
  *
  * Usage:
- *   tsx scripts/generate-catalog.ts                     # writes default path
- *   tsx scripts/generate-catalog.ts docs/catalog.json   # custom path
+ *   tsx scripts/generate-catalog.ts
+ *   tsx scripts/generate-catalog.ts docs/catalog.json
+ *   tsx scripts/generate-catalog.ts docs/catalog.json docs/site-index.json
  */
 
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { basename, dirname, extname, join, resolve } from "node:path";
 import { loadAllAdapters, loadTsAdapters } from "../src/discovery/loader.js";
 import { buildCatalog } from "../src/commands/skills.js";
 
@@ -59,9 +60,22 @@ function buildDocsSiteIndex(catalog: {
   };
 }
 
+function defaultSiteIndexPath(catalogOut: string, hasCatalogArg: boolean) {
+  if (!hasCatalogArg) {
+    return "docs/site-index.json";
+  }
+
+  const extension = extname(catalogOut) || ".json";
+  const name = basename(catalogOut, extension);
+  return join(dirname(catalogOut), `${name}.site-index${extension}`);
+}
+
 async function main(): Promise<void> {
-  const out = resolve(process.argv[2] ?? "docs/adapters-catalog.json");
-  const siteIndexOut = resolve("docs/site-index.json");
+  const catalogArg = process.argv[2];
+  const out = resolve(catalogArg ?? "docs/adapters-catalog.json");
+  const siteIndexOut = resolve(
+    process.argv[3] ?? defaultSiteIndexPath(out, Boolean(catalogArg)),
+  );
 
   // Load both YAML + TS adapters into the registry.
   loadAllAdapters();
@@ -69,6 +83,7 @@ async function main(): Promise<void> {
 
   const catalog = buildCatalog();
   mkdirSync(dirname(out), { recursive: true });
+  mkdirSync(dirname(siteIndexOut), { recursive: true });
   writeFileSync(out, JSON.stringify(catalog, null, 2), "utf-8");
   writeFileSync(
     siteIndexOut,
