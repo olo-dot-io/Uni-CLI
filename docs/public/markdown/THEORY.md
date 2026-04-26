@@ -11,9 +11,8 @@
 > is the layer that compiles an agent's intent into a small, typed, repairable
 > command.
 
-This page is a public explanation of Uni-CLI's design. It avoids product-by-
-product comparisons; external projects are studied internally, while public
-claims here are tied to Uni-CLI's own code, catalog, and benchmark harness.
+This page explains Uni-CLI's design. Claims here are tied to Uni-CLI's own code,
+catalog, and benchmark harness.
 
 ## Core Thesis
 

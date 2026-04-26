@@ -13,7 +13,7 @@ and describes the supported ways to extend Uni-CLI from a third-party package.
 Plugins let you register custom pipeline steps, transports, and adapters
 without forking the project. The surface is a small, versioned set of
 subpath imports — pick the ones you need, import them, and avoid the
-internals.
+non-exported implementation details.
 
 ---
 
@@ -57,9 +57,9 @@ warning for at least one full release prior.
 names, and handler signatures can shift in any minor release. Safe to
 depend on; pin to an exact minor to avoid surprise upgrades.
 
-**Experimental** — Internals we export so the plugin ecosystem can
-prototype. May break in any release (including patch). Use at your own
-risk and prefer stable alternatives where they exist.
+**Experimental** — Low-level modules we export so the plugin ecosystem can
+prototype. May break in any release, including patch releases. Use at your
+own risk and prefer stable alternatives where they exist.
 
 ---
 
@@ -181,16 +181,16 @@ without notice:
 
 - **Deep imports into non-exported paths.** `@zenalexa/unicli/dist/engine/runtime.js`
   or any path not listed in `package.json` `exports` is private.
-- **Importing symbols prefixed with `_` or tagged `@internal`.** These
-  are test-only or transitional helpers (e.g. `_resetTransportBusForTests`)
-  and can change or disappear in any release, including patch. Calling
+- **Importing symbols prefixed with `_`.** These are test-only or transitional
+  helpers (e.g. `_resetTransportBusForTests`) and can change or disappear in
+  any release, including patch releases. Calling
   the public `getBus().register(...)` API is the supported way to extend
   the transport surface.
 - **Monkeypatching exports.** Rewriting `PipelineError.prototype` or
-  overwriting an existing step via a direct `Map.set` on an internal
+  overwriting an existing step via a direct `Map.set` on a non-exported
   registry is unsupported — call `registerStep` instead, which performs
   the right validation.
-- **Depending on internal types that leak through public modules.** If a
+- **Depending on non-exported types that leak through public modules.** If a
   type is only visible because TypeScript structurally surfaces it, treat
   it as private. Import only from named, documented type exports.
 - **Side effects beyond registration.** A plugin must not open sockets,

@@ -1,6 +1,6 @@
 # Uni-CLI Full Documentation
 
-This file is generated from the same VitePress site map as the public docs. It intentionally excludes internal repo-only guides.
+This file is generated from the same VitePress site map as the public docs.
 
 ## Snapshot
 
@@ -2935,7 +2935,7 @@ and describes the supported ways to extend Uni-CLI from a third-party package.
 Plugins let you register custom pipeline steps, transports, and adapters
 without forking the project. The surface is a small, versioned set of
 subpath imports — pick the ones you need, import them, and avoid the
-internals.
+non-exported implementation details.
 
 ---
 
@@ -2979,9 +2979,9 @@ warning for at least one full release prior.
 names, and handler signatures can shift in any minor release. Safe to
 depend on; pin to an exact minor to avoid surprise upgrades.
 
-**Experimental** — Internals we export so the plugin ecosystem can
-prototype. May break in any release (including patch). Use at your own
-risk and prefer stable alternatives where they exist.
+**Experimental** — Low-level modules we export so the plugin ecosystem can
+prototype. May break in any release, including patch releases. Use at your
+own risk and prefer stable alternatives where they exist.
 
 ---
 
@@ -3103,16 +3103,16 @@ without notice:
 
 - **Deep imports into non-exported paths.** `@zenalexa/unicli/dist/engine/runtime.js`
   or any path not listed in `package.json` `exports` is private.
-- **Importing symbols prefixed with `_` or tagged `@internal`.** These
-  are test-only or transitional helpers (e.g. `_resetTransportBusForTests`)
-  and can change or disappear in any release, including patch. Calling
+- **Importing symbols prefixed with `_`.** These are test-only or transitional
+  helpers (e.g. `_resetTransportBusForTests`) and can change or disappear in
+  any release, including patch releases. Calling
   the public `getBus().register(...)` API is the supported way to extend
   the transport surface.
 - **Monkeypatching exports.** Rewriting `PipelineError.prototype` or
-  overwriting an existing step via a direct `Map.set` on an internal
+  overwriting an existing step via a direct `Map.set` on a non-exported
   registry is unsupported — call `registerStep` instead, which performs
   the right validation.
-- **Depending on internal types that leak through public modules.** If a
+- **Depending on non-exported types that leak through public modules.** If a
   type is only visible because TypeScript structurally surfaces it, treat
   it as private. Import only from named, documented type exports.
 - **Side effects beyond registration.** A plugin must not open sockets,
@@ -3625,9 +3625,8 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/THEORY.md
 > is the layer that compiles an agent's intent into a small, typed, repairable
 > command.
 
-This page is a public explanation of Uni-CLI's design. It avoids product-by-
-product comparisons; external projects are studied internally, while public
-claims here are tied to Uni-CLI's own code, catalog, and benchmark harness.
+This page explains Uni-CLI's design. Claims here are tied to Uni-CLI's own code,
+catalog, and benchmark harness.
 
 ## Core Thesis
 
@@ -3808,7 +3807,7 @@ This file tracks current engineering direction. Historical release notes live in
 4. **Docs as product surface**
    - README stays install-first and capability-first.
    - Public docs should explain commands, contracts, repair paths, and integration routes.
-   - Long research notes, release archaeology, and naming lore stay out of the public entry path.
+   - Keep the public entry path short, current, and directly useful.
 
 ## Non-Goals
 

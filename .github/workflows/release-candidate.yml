@@ -176,7 +176,7 @@ jobs:
           # Only stage files changeset + verify touched. Stats regen etc.
           # happens elsewhere; a release candidate should not pull unrelated
           # working-tree drift into the release commit.
-          git add package.json package-lock.json CHANGELOG.md README.md README.zh-CN.md AGENTS.md internal/TASTE.md docs/ROADMAP.md stats.json .changeset/
+          git add package.json package-lock.json CHANGELOG.md README.md README.zh-CN.md AGENTS.md contributing/COPY.md docs/ROADMAP.md stats.json .changeset/
           if git diff --cached --quiet; then
             echo "::error title=Release candidate::Version bumped but no staged delta — aborting rather than silently skipping."
             exit 1

@@ -448,7 +448,7 @@ function renderLlmsFullTxt(
   const lines = [
     "# Uni-CLI Full Documentation",
     "",
-    "This file is generated from the same VitePress site map as the public docs. It intentionally excludes internal repo-only guides.",
+    "This file is generated from the same VitePress site map as the public docs.",
     "",
     "## Snapshot",
     "",
