@@ -79,14 +79,18 @@ function stripAllowedGlobalCjk(line: string): string {
   );
 }
 
+function preserveLineBreaks(text: string): string {
+  return text.match(/\r\n|\r|\n/gu)?.join("") ?? "";
+}
+
 function textForScan(filePath: string, text: string): string {
   if (extname(filePath) !== ".html") {
     return text;
   }
 
   return text
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/giu, "")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/giu, "");
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/giu, preserveLineBreaks)
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/giu, preserveLineBreaks);
 }
 
 function collectFiles(target: string, files: string[] = []): string[] {
