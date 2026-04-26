@@ -1,0 +1,97 @@
+site: word
+name: set-font
+description: Apply a font to the active Microsoft Word document or matching text
+type: desktop
+strategy: public
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+args:
+  font:
+    type: str
+    required: true
+    positional: true
+    description: Font family to apply
+  size:
+    type: str
+    required: false
+    default: ""
+    description: Optional font size in points
+  text:
+    type: str
+    required: false
+    default: ""
+    description: Optional text to match; defaults to the whole document
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-e"
+        - |
+          on replace_text(theText, searchString, replacementString)
+            set AppleScript's text item delimiters to searchString
+            set parts to text items of (theText as text)
+            set AppleScript's text item delimiters to replacementString
+            set outText to parts as text
+            set AppleScript's text item delimiters to ""
+            return outText
+          end replace_text
+
+          on json_string(valueText)
+            set s to valueText as text
+            set s to my replace_text(s, "\\", "\\\\")
+            set s to my replace_text(s, "\"", "\\\"")
+            set s to my replace_text(s, return, "\\n")
+            set s to my replace_text(s, linefeed, "\\n")
+            set s to my replace_text(s, tab, "\\t")
+            return "\"" & s & "\""
+          end json_string
+
+          set fontName to system attribute "UNICLI_FONT"
+          set sizeText to system attribute "UNICLI_SIZE"
+          set targetText to system attribute "UNICLI_TEXT"
+
+          try
+            with timeout of 10 seconds
+              tell application "Microsoft Word"
+                if (count documents) is 0 then return "[]"
+                set d to active document
+                set targetRange to text object of d
+                if targetText is not "" then
+                  set bodyText to content of targetRange as text
+                  if bodyText does not contain targetText then error "Target text not found in active Word document"
+                  set AppleScript's text item delimiters to targetText
+                  set parts to text items of bodyText
+                  set startPos to length of item 1 of parts
+                  set endPos to startPos + (length of targetText)
+                  set AppleScript's text item delimiters to ""
+                  set targetRange to create range d start startPos end endPos
+                end if
+                set f to font object of targetRange
+                set name of f to fontName
+                try
+                  set east asian name of f to fontName
+                end try
+                if sizeText is not "" then set font size of f to (sizeText as real)
+                return "[{\"app\":\"Microsoft Word\",\"name\":" & my json_string(name of d as text) & ",\"font\":" & my json_string(fontName) & ",\"size\":" & my json_string(sizeText) & ",\"target_chars\":" & (length of targetText) & "}]"
+              end tell
+            end timeout
+          on error errMsg number errNum
+            return "[{\"ok\":false,\"code\":\"office_automation_unavailable\",\"message\":" & my json_string(errMsg) & ",\"number\":" & errNum & "}]"
+          end try
+      env:
+        UNICLI_FONT: "${{ args.font }}"
+        UNICLI_SIZE: "${{ args.size }}"
+        UNICLI_TEXT: "${{ args.text }}"
+      parse: json
+      timeout: 15000
+
+columns: [app, name, font, size, target_chars]
+
+capabilities: ["subprocess.exec"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: private
+quarantine: false
+schema_version: v2

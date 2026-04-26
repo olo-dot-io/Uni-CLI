@@ -1,0 +1,72 @@
+site: word
+name: insert-text
+description: Append text to the active Microsoft Word document, creating one if needed
+type: desktop
+strategy: public
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+args:
+  text:
+    type: str
+    required: true
+    positional: true
+    description: Text to append to the active document
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-e"
+        - |
+          on replace_text(theText, searchString, replacementString)
+            set AppleScript's text item delimiters to searchString
+            set parts to text items of (theText as text)
+            set AppleScript's text item delimiters to replacementString
+            set outText to parts as text
+            set AppleScript's text item delimiters to ""
+            return outText
+          end replace_text
+
+          on json_string(valueText)
+            set s to valueText as text
+            set s to my replace_text(s, "\\", "\\\\")
+            set s to my replace_text(s, "\"", "\\\"")
+            set s to my replace_text(s, return, "\\n")
+            set s to my replace_text(s, linefeed, "\\n")
+            set s to my replace_text(s, tab, "\\t")
+            return "\"" & s & "\""
+          end json_string
+
+          set insertText to system attribute "UNICLI_TEXT"
+          try
+            with timeout of 20 seconds
+              tell application "Microsoft Word"
+                activate
+                if (count documents) is 0 then make new document
+                set d to active document
+                set docName to name of d as text
+                set docRange to text object of d
+                set endPos to (end of content of docRange) - 1
+                if endPos < 0 then set endPos to 0
+                set insertionRange to create range d start endPos end endPos
+                set content of insertionRange to insertText
+                return "[{\"app\":\"Microsoft Word\",\"name\":" & my json_string(docName) & ",\"inserted_chars\":" & (length of insertText) & "}]"
+              end tell
+            end timeout
+          on error errMsg number errNum
+            return "[{\"ok\":false,\"code\":\"office_automation_unavailable\",\"message\":" & my json_string(errMsg) & ",\"number\":" & errNum & "}]"
+          end try
+      env:
+        UNICLI_TEXT: "${{ args.text }}"
+      parse: json
+      timeout: 30000
+
+columns: [app, name, inserted_chars]
+
+capabilities: ["subprocess.exec"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: private
+quarantine: false
+schema_version: v2

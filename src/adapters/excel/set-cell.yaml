@@ -1,0 +1,77 @@
+site: excel
+name: set-cell
+description: Set a cell value in the active Microsoft Excel workbook
+type: desktop
+strategy: public
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+args:
+  value:
+    type: str
+    required: true
+    positional: true
+    description: Value to write
+  cell:
+    type: str
+    required: false
+    default: A1
+    description: Cell address on the active sheet
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-e"
+        - |
+          on replace_text(theText, searchString, replacementString)
+            set AppleScript's text item delimiters to searchString
+            set parts to text items of (theText as text)
+            set AppleScript's text item delimiters to replacementString
+            set outText to parts as text
+            set AppleScript's text item delimiters to ""
+            return outText
+          end replace_text
+
+          on json_string(valueText)
+            set s to valueText as text
+            set s to my replace_text(s, "\\", "\\\\")
+            set s to my replace_text(s, "\"", "\\\"")
+            set s to my replace_text(s, return, "\\n")
+            set s to my replace_text(s, linefeed, "\\n")
+            set s to my replace_text(s, tab, "\\t")
+            return "\"" & s & "\""
+          end json_string
+
+          set cellRef to system attribute "UNICLI_CELL"
+          if cellRef is "" then set cellRef to "A1"
+          set cellValue to system attribute "UNICLI_VALUE"
+
+          try
+            with timeout of 20 seconds
+              tell application "Microsoft Excel"
+                activate
+                if (count workbooks) is 0 then make new workbook
+                set wb to active workbook
+                set sh to active sheet
+                set value of range cellRef of sh to cellValue
+                return "[{\"workbook\":" & my json_string(name of wb as text) & ",\"sheet\":" & my json_string(name of sh as text) & ",\"cell\":" & my json_string(cellRef) & ",\"value\":" & my json_string(cellValue) & "}]"
+              end tell
+            end timeout
+          on error errMsg number errNum
+            return "[{\"ok\":false,\"code\":\"office_automation_unavailable\",\"message\":" & my json_string(errMsg) & ",\"number\":" & errNum & "}]"
+          end try
+      env:
+        UNICLI_CELL: "${{ args.cell }}"
+        UNICLI_VALUE: "${{ args.value }}"
+      parse: json
+      timeout: 30000
+
+columns: [workbook, sheet, cell, value]
+
+capabilities: ["subprocess.exec"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: private
+quarantine: false
+schema_version: v2

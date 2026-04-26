@@ -1,0 +1,58 @@
+site: powerpoint
+name: list
+description: List open Microsoft PowerPoint presentations
+type: desktop
+strategy: public
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-e"
+        - |
+          on replace_text(theText, searchString, replacementString)
+            set AppleScript's text item delimiters to searchString
+            set parts to text items of (theText as text)
+            set AppleScript's text item delimiters to replacementString
+            set outText to parts as text
+            set AppleScript's text item delimiters to ""
+            return outText
+          end replace_text
+
+          on json_string(valueText)
+            set s to valueText as text
+            set s to my replace_text(s, "\\", "\\\\")
+            set s to my replace_text(s, "\"", "\\\"")
+            set s to my replace_text(s, return, "\\n")
+            set s to my replace_text(s, linefeed, "\\n")
+            set s to my replace_text(s, tab, "\\t")
+            return "\"" & s & "\""
+          end json_string
+
+          if not application "Microsoft PowerPoint" is running then return "[]"
+
+          tell application "System Events"
+            tell process "Microsoft PowerPoint"
+              set windowCount to count windows
+              set outText to "["
+              repeat with i from 1 to windowCount
+                set presName to name of window i as text
+                if i > 1 then set outText to outText & ","
+                set outText to outText & "{\"index\":" & i & ",\"name\":" & my json_string(presName) & ",\"path\":\"\",\"slides\":0,\"source\":\"window\"}"
+              end repeat
+            end tell
+            return outText & "]"
+          end tell
+      parse: json
+      timeout: 30000
+
+columns: [index, name, path, slides, source]
+
+capabilities: ["subprocess.exec"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: private
+quarantine: false
+schema_version: v2

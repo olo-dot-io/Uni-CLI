@@ -1,0 +1,71 @@
+site: powerpoint
+name: insert-image
+description: Insert a local image into the active Microsoft PowerPoint slide
+type: desktop
+strategy: public
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+args:
+  path:
+    type: str
+    required: true
+    positional: true
+    description: Local image path to embed
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-e"
+        - |
+          on replace_text(theText, searchString, replacementString)
+            set AppleScript's text item delimiters to searchString
+            set parts to text items of (theText as text)
+            set AppleScript's text item delimiters to replacementString
+            set outText to parts as text
+            set AppleScript's text item delimiters to ""
+            return outText
+          end replace_text
+
+          on json_string(valueText)
+            set s to valueText as text
+            set s to my replace_text(s, "\\", "\\\\")
+            set s to my replace_text(s, "\"", "\\\"")
+            set s to my replace_text(s, return, "\\n")
+            set s to my replace_text(s, linefeed, "\\n")
+            set s to my replace_text(s, tab, "\\t")
+            return "\"" & s & "\""
+          end json_string
+
+          set imagePath to system attribute "UNICLI_IMAGE_PATH"
+
+          try
+            do shell script "test -f " & quoted form of imagePath
+            with timeout of 10 seconds
+              tell application "Microsoft PowerPoint"
+                activate
+                if (count presentations) is 0 then make new presentation
+                set p to active presentation
+                if (count slides of p) is 0 then make new slide at end of p with properties {layout:slide layout text slide}
+                set s to slide (count slides of p) of p
+                make new picture at s with properties {file name:imagePath, link to file:false, save with document:true, left position:72, top:144, width:360, height:240}
+                return "[{\"presentation\":" & my json_string(name of p as text) & ",\"slide_index\":" & (slide index of s) & ",\"path\":" & my json_string(imagePath) & ",\"embedded\":true,\"pictures\":" & (count pictures of s) & "}]"
+              end tell
+            end timeout
+          on error errMsg number errNum
+            return "[{\"ok\":false,\"code\":\"office_automation_unavailable\",\"message\":" & my json_string(errMsg) & ",\"number\":" & errNum & "}]"
+          end try
+      env:
+        UNICLI_IMAGE_PATH: "${{ args.path }}"
+      parse: json
+      timeout: 15000
+
+columns: [presentation, slide_index, path, embedded, pictures]
+
+capabilities: ["subprocess.exec"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: private
+quarantine: false
+schema_version: v2

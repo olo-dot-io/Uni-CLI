@@ -10,7 +10,7 @@
 
 <!-- BEGIN COUNTS -->
 
-> <!-- STATS:site_count -->220<!-- /STATS --> sites, <!-- STATS:command_count -->1283<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> <!-- STATS:site_count -->223<!-- /STATS --> sites, <!-- STATS:command_count -->1304<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 
@@ -55,9 +55,9 @@ npm install -g @zenalexa/unicli
 
 active-app, apps, apps-list, battery, bluetooth, brightness, caffeinate, calendar-create, calendar-list, calendar-today, clipboard, contacts-search, … (`unicli list --site macos`)
 
-### Desktop (25 apps)
+### Desktop (28 apps)
 
-freecad (15 cmds), blender (13 cmds), gimp (12 cmds), ffmpeg (11 cmds), audacity (8 cmds), figma (8 cmds), docker (7 cmds), imagemagick (6 cmds), +17 more (`unicli list --category desktop`)
+freecad (15 cmds), blender (13 cmds), gimp (12 cmds), ffmpeg (11 cmds), audacity (8 cmds), figma (8 cmds), docker (7 cmds), excel (7 cmds), +20 more (`unicli list --category desktop`)
 
 ### Bridge (3 CLIs)
 

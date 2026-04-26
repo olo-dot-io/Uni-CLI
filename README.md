@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->220<!-- /STATS --> sites · <!-- STATS:command_count -->1283<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7103<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->223<!-- /STATS --> sites · <!-- STATS:command_count -->1304<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7311<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">

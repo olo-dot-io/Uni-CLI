@@ -1,0 +1,73 @@
+site: powerpoint
+name: slides
+description: List slide text snippets from the active Microsoft PowerPoint presentation
+type: desktop
+strategy: public
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-e"
+        - |
+          on replace_text(theText, searchString, replacementString)
+            set AppleScript's text item delimiters to searchString
+            set parts to text items of (theText as text)
+            set AppleScript's text item delimiters to replacementString
+            set outText to parts as text
+            set AppleScript's text item delimiters to ""
+            return outText
+          end replace_text
+
+          on json_string(valueText)
+            set s to valueText as text
+            set s to my replace_text(s, "\\", "\\\\")
+            set s to my replace_text(s, "\"", "\\\"")
+            set s to my replace_text(s, return, "\\n")
+            set s to my replace_text(s, linefeed, "\\n")
+            set s to my replace_text(s, tab, "\\t")
+            return "\"" & s & "\""
+          end json_string
+
+          if not application "Microsoft PowerPoint" is running then return "[]"
+
+          try
+            with timeout of 10 seconds
+              tell application "Microsoft PowerPoint"
+                if (count presentations) is 0 then return "[]"
+                set p to active presentation
+                set outText to "["
+                repeat with i from 1 to count slides of p
+                  set s to slide i of p
+                  set snippet to ""
+                  repeat with j from 1 to count shapes of s
+                    set shp to shape j of s
+                    try
+                      if (has text frame of shp) is true then
+                        set tf to text frame of shp
+                        if (has text of tf) is true then set snippet to snippet & (content of text range of tf as text) & linefeed
+                      end if
+                    end try
+                  end repeat
+                  if i > 1 then set outText to outText & ","
+                  set outText to outText & "{\"index\":" & i & ",\"name\":" & my json_string(name of s as text) & ",\"text\":" & my json_string(snippet) & "}"
+                end repeat
+                return outText & "]"
+              end tell
+            end timeout
+          on error errMsg number errNum
+            return "[{\"ok\":false,\"code\":\"office_automation_unavailable\",\"message\":" & my json_string(errMsg) & ",\"number\":" & errNum & "}]"
+          end try
+      parse: json
+      timeout: 30000
+
+columns: [index, name, text]
+
+capabilities: ["subprocess.exec"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: private
+quarantine: false
+schema_version: v2

@@ -1,0 +1,80 @@
+site: excel
+name: insert-image
+description: Set a local image as the active Microsoft Excel worksheet background
+type: desktop
+strategy: public
+binary: osascript
+detect: "test $(uname) = Darwin"
+
+args:
+  path:
+    type: str
+    required: true
+    positional: true
+    description: Local image path to embed
+  cell:
+    type: str
+    required: false
+    default: A1
+    description: Reference cell reported as the requested anchor
+
+pipeline:
+  - exec:
+      command: osascript
+      args:
+        - "-e"
+        - |
+          on replace_text(theText, searchString, replacementString)
+            set AppleScript's text item delimiters to searchString
+            set parts to text items of (theText as text)
+            set AppleScript's text item delimiters to replacementString
+            set outText to parts as text
+            set AppleScript's text item delimiters to ""
+            return outText
+          end replace_text
+
+          on json_string(valueText)
+            set s to valueText as text
+            set s to my replace_text(s, "\\", "\\\\")
+            set s to my replace_text(s, "\"", "\\\"")
+            set s to my replace_text(s, return, "\\n")
+            set s to my replace_text(s, linefeed, "\\n")
+            set s to my replace_text(s, tab, "\\t")
+            return "\"" & s & "\""
+          end json_string
+
+          set imagePath to system attribute "UNICLI_IMAGE_PATH"
+          set cellRef to system attribute "UNICLI_CELL"
+          if cellRef is "" then set cellRef to "A1"
+
+          try
+            do shell script "test -f " & quoted form of imagePath
+            with timeout of 10 seconds
+              tell application "Microsoft Excel"
+                activate
+                if (count workbooks) is 0 then make new workbook
+                set wb to active workbook
+                set sh to active sheet
+                set background picture sh picture file name imagePath
+                set workbookName to name of wb as text
+                set sheetName to name of sh as text
+              end tell
+            end timeout
+            return "[{\"app\":\"Microsoft Excel\",\"workbook\":" & my json_string(workbookName) & ",\"sheet\":" & my json_string(sheetName) & ",\"cell\":" & my json_string(cellRef) & ",\"path\":" & my json_string(imagePath) & ",\"embedded\":true,\"placement\":\"sheet_background\"}]"
+          on error errMsg number errNum
+            return "[{\"ok\":false,\"code\":\"office_automation_unavailable\",\"message\":" & my json_string(errMsg) & ",\"number\":" & errNum & "}]"
+          end try
+      env:
+        UNICLI_IMAGE_PATH: "${{ args.path }}"
+        UNICLI_CELL: "${{ args.cell }}"
+      parse: json
+      timeout: 15000
+
+columns: [app, workbook, sheet, cell, path, embedded, placement]
+
+capabilities: ["subprocess.exec"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: private
+quarantine: false
+schema_version: v2
