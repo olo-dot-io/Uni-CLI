@@ -34,9 +34,9 @@ pause
 unicli hackernews top --limit 5 --json 2>/dev/null | jq -r '[.[].score] | add' || echo "(demo mode)"
 pause 2
 
-say 'unicli search "推特热门"'
+say 'unicli search "twitter trending"'
 pause
-unicli search "推特热门" 2>/dev/null | head -5 || echo "(demo mode)"
+unicli search "twitter trending" 2>/dev/null | head -5 || echo "(demo mode)"
 pause 2
 
 say 'unicli mcp serve --transport streamable --port 19826 &'

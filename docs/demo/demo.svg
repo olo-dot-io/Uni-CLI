@@ -33,7 +33,7 @@
     <text x="24" y="240" fill="#a7f3d0">Ask HN: What's your 2026 tech stack?</text>
     <text x="24" y="258" fill="#a7f3d0">OpenAI's GPT-5 benchmarks land</text>
 
-    <text x="24" y="294"><tspan fill="#22d3ee">$</tspan> unicli search "推特热门"</text>
+    <text x="24" y="294"><tspan fill="#22d3ee">$</tspan> unicli search "twitter trending"</text>
     <text x="24" y="316" fill="#fbbf24">twitter trending   score=18.4   Fetch the global Twitter trending list</text>
 
     <text x="24" y="352"><tspan fill="#22d3ee">$</tspan> unicli mcp serve --transport streamable --port 19826</text>

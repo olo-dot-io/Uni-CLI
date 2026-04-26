@@ -17,6 +17,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { loadAllAdapters, loadTsAdapters } from "../src/discovery/loader.js";
 import { buildCatalog } from "../src/commands/skills.js";
+import { publicEnglishDescription } from "./public-docs-text.js";
 
 type CatalogCommand = {
   name: string;
@@ -53,7 +54,10 @@ function buildDocsSiteIndex(catalog: {
       command_count: adapter.commands.length,
       commands: adapter.commands.map((command) => ({
         name: command.name,
-        description: command.description ?? command.when_to_use ?? command.name,
+        description: publicEnglishDescription(
+          command.description ?? command.when_to_use,
+          command.name,
+        ),
         command: command.command,
       })),
     })),

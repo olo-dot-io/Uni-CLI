@@ -131,7 +131,7 @@ machine-oriented consumer needs JSON.
 
 ```bash
 unicli search "hacker news frontpage"
-unicli search "小红书 搜索"
+unicli search "github trending"
 unicli list --site hackernews
 ```
 
@@ -1954,8 +1954,8 @@ pipeline:
 columns: [ok, url]
 ```
 
-CUA commands are expensive (per-call cost scales with the backend's
-screenshot + LLM inference tokens). Do not default to CUA when a
+CUA commands are expensive because screenshot and LLM inference cost scales
+with backend complexity. Do not default to CUA when a
 `cdp-browser` adapter is feasible; the dispatcher will warn if a CUA
 command could have been expressed as intercept.
 
@@ -3489,15 +3489,15 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/BENCHMARK.md
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Honest measurement of the context cost of calling `unicli SITE CMD`.
+> Honest measurement of the context budget behind `unicli SITE CMD`.
 > Numbers in the "Results" section below are produced by `npm run bench`
 > and are reproducible in CI fixture mode and on a dev machine in live mode.
 
 ## Why This File Exists
 
-Agent interfaces should publish real cost numbers. Uni-CLI measures both the
-command invocation and the response body so public claims stay tied to the
-current code, fixtures, and output contract.
+Agent-native infrastructure should publish real cost numbers. Uni-CLI measures
+both the command invocation and the response body so public claims stay tied to
+the current code, fixtures, and output contract.
 
 The v0.215.1 fixture bench measures current v2 `AgentEnvelope` response bodies
 at **357-415 tokens** for representative `--limit 5` list-style calls. Total

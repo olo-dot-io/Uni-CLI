@@ -2,7 +2,7 @@
 
 <!-- IF YOU ARE AN AI AGENT: Read this file. It tells you everything you need.
      Install: npm install -g @zenalexa/unicli
-     Discover: unicli search "your intent" (bilingual EN/ZH)
+     Discover: unicli search "your intent"
      Agent routing: unicli agents matrix && unicli agents recommend <agent>
      Run: unicli <site> <command> [args]
      Output is structured Markdown by default (non-TTY + agent UA auto-detected). Use -f json for JSON. Errors are structured envelopes to stderr.
@@ -19,7 +19,7 @@
 Universal CLI for websites, desktop apps, and local tools. Markdown when piped (structured envelope). Self-repairing YAML adapters.
 
 ```bash
-unicli search "推特热门"             # Find commands by intent (bilingual)
+unicli search "twitter trending"    # Find commands by intent
 unicli <site> <command> [options]    # Run any command
 unicli repair <site> <command>       # Diagnose + fix a broken adapter
 unicli list                          # All commands (MD when piped)

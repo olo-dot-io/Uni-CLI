@@ -215,7 +215,7 @@ export class AcpServer {
   ): AcpRpcResponse {
     // ACP requires an authenticate method even when the server has no real
     // auth. We accept any payload and return success — cookie-backed adapters
-    // resolve creds per-call through ~/.unicli/cookies.
+    // resolve credentials for each command through ~/.unicli/cookies.
     return {
       jsonrpc: "2.0",
       id,

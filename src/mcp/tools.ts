@@ -134,7 +134,7 @@ export function buildDefaultTools(): McpTool[] {
           query: {
             type: "string",
             description:
-              "Natural language intent (e.g. 'download video', '推特热门', 'stock price')",
+              "Natural language intent (e.g. 'download video', 'twitter trending', 'stock price')",
           },
           limit: {
             type: "integer",

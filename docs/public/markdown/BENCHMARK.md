@@ -7,15 +7,15 @@
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Honest measurement of the context cost of calling `unicli SITE CMD`.
+> Honest measurement of the context budget behind `unicli SITE CMD`.
 > Numbers in the "Results" section below are produced by `npm run bench`
 > and are reproducible in CI fixture mode and on a dev machine in live mode.
 
 ## Why This File Exists
 
-Agent interfaces should publish real cost numbers. Uni-CLI measures both the
-command invocation and the response body so public claims stay tied to the
-current code, fixtures, and output contract.
+Agent-native infrastructure should publish real cost numbers. Uni-CLI measures
+both the command invocation and the response body so public claims stay tied to
+the current code, fixtures, and output contract.
 
 The v0.215.1 fixture bench measures current v2 `AgentEnvelope` response bodies
 at **357-415 tokens** for representative `--limit 5` list-style calls. Total

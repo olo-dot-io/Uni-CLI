@@ -1,10 +1,10 @@
 /**
- * Search command — bilingual semantic search across all adapters.
+ * Search command — intent search across all adapters.
  *
  * Usage:
- *   unicli search "推特热门"           → finds twitter/trending
+ *   unicli search "twitter trending"  → finds twitter/trending
  *   unicli search "download video"     → finds bilibili/download, youtube/download, ...
- *   unicli search "股票行情"           → finds xueqiu/stock, eastmoney/stock, ...
+ *   unicli search "stock price"       → finds xueqiu/stock, eastmoney/stock, ...
  *   unicli search --category finance   → lists all finance commands
  */
 
@@ -19,7 +19,7 @@ export function registerSearchCommand(program: Command): void {
   program
     .command("search [query...]")
     .description(
-      "Search commands by intent (bilingual). Example: unicli search 推特热门",
+      "Search commands by intent. Example: unicli search twitter trending",
     )
     .option("-n, --limit <n>", "max results", "8")
     .option("--category <cat>", "filter by category")
