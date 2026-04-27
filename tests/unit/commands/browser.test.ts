@@ -380,6 +380,50 @@ describe("unicli browser operator surface", () => {
     ).toBe(true);
   });
 
+  it("browser network keeps text/javascript API responses when body matches filter", async () => {
+    useTempHome();
+    mockPage.readNetworkCapture.mockResolvedValueOnce([
+      {
+        url: "https://example.com/api/bootstrap",
+        method: "GET",
+        status: 200,
+        contentType: "text/javascript; charset=utf-8",
+        size: 64,
+        responseBody: JSON.stringify({
+          data: [{ id: "1", title: "From JS MIME" }],
+        }),
+      },
+      {
+        url: "https://example.com/static/app.js",
+        method: "GET",
+        status: 200,
+        contentType: "text/javascript",
+        size: 12,
+        responseBody: "console.log('asset')",
+      },
+    ]);
+
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "network", "--filter", "data"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: Array<{ url: string; contentType: string }>;
+    };
+    expect(env.data).toHaveLength(1);
+    expect(env.data[0]).toMatchObject({
+      url: "https://example.com/api/bootstrap",
+      contentType: "text/javascript; charset=utf-8",
+    });
+  });
+
   it("browser network detail reads from persisted cache without a live capture", async () => {
     const home = useTempHome();
     saveNetworkCache(

@@ -3,6 +3,7 @@ import {
   PIPE_FILTERS,
   evalExpression,
   buildScope,
+  stepParseRss,
 } from "../../src/engine/yaml-runner.js";
 
 // ---------- Existing filters (regression) ----------
@@ -61,6 +62,14 @@ describe("existing pipe filters (regression)", () => {
     expect(PIPE_FILTERS.strip_html("<p>Hello <b>world</b></p>")).toBe(
       "Hello world",
     );
+  });
+
+  it("strip_html: decodes nested entities and normalizes whitespace", () => {
+    expect(
+      PIPE_FILTERS.strip_html(
+        "<p>Alpha&amp;amp;nbsp;<b>Beta</b>&amp;hellip;</p>\n",
+      ),
+    ).toBe("Alpha Beta...");
   });
 
   it("truncate: truncates long strings", () => {
@@ -388,5 +397,34 @@ describe("RSS parser", () => {
       /<title><!\[CDATA\[([\s\S]*?)\]\]><\/title>/,
     );
     expect(cdataMatch?.[1]).toBe("CDATA Title");
+  });
+
+  it("normalizes CDATA links, nested entities, and url alias", () => {
+    const ctx = stepParseRss(
+      {
+        data: `
+          <rss><channel>
+            <item>
+              <title><![CDATA[36Kr &amp;amp; AI]]></title>
+              <link><![CDATA[https://example.com/a?x=1&amp;y=2]]></link>
+              <description><![CDATA[<p>Alpha&amp;amp;nbsp;<b>Beta</b></p>]]></description>
+              <pubDate>Mon, 01 Jan 2024 00:00:00 GMT</pubDate>
+            </item>
+          </channel></rss>
+        `,
+      },
+      undefined,
+    );
+
+    expect(ctx.data).toEqual([
+      {
+        title: "36Kr & AI",
+        description: "<p>Alpha <b>Beta</b></p>",
+        link: "https://example.com/a?x=1&y=2",
+        url: "https://example.com/a?x=1&y=2",
+        pubDate: "Mon, 01 Jan 2024 00:00:00 GMT",
+        guid: "",
+      },
+    ]);
   });
 });
