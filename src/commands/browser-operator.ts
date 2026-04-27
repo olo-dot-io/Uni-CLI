@@ -26,8 +26,18 @@ import {
   captureBrowserEvidencePacket,
   installBrowserEvidenceHooks,
 } from "../engine/browser/evidence.js";
+import {
+  isBrowserActionEvidenceEnabled,
+  withBrowserActionEvidence,
+} from "../engine/browser/action-evidence.js";
 
 export { withBrowserOperatorEnv };
+
+interface BrowserProgramOptions {
+  record?: boolean;
+  yes?: boolean;
+  permissionProfile?: string;
+}
 
 export function applyBrowserOperatorRootOptions(command: Command): void {
   command
@@ -49,6 +59,38 @@ export function applyBrowserOperatorRootOptions(command: Command): void {
       "--background",
       "Prefer background operation and avoid focus-stealing where possible",
     );
+}
+
+async function withRecordedBrowserAction<T>(
+  program: Command,
+  root: Command,
+  namespace: "browser" | "operate",
+  action: string,
+  page: Awaited<ReturnType<typeof getOperatorPage>>,
+  args: Record<string, unknown>,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const programOpts = program.opts() as BrowserProgramOptions;
+  const enabled = isBrowserActionEvidenceEnabled(
+    programOpts.record === true ? true : undefined,
+  );
+  if (enabled) {
+    await ensureNetworkCapture(page);
+  }
+  return await withBrowserActionEvidence(
+    page,
+    {
+      command: `${namespace}.${action.split(" ").join("_")}`,
+      namespace,
+      action,
+      workspace: resolveWorkspace(root, namespace),
+      args,
+      enabled,
+      approved: programOpts.yes === true,
+      permissionProfile: programOpts.permissionProfile,
+    },
+    fn,
+  );
 }
 
 export function registerBrowserOperatorSubcommands(
@@ -94,13 +136,26 @@ export function registerBrowserOperatorSubcommands(
     .action((opts: { interactive?: boolean; compact?: boolean }) =>
       operatorAction(program, root, namespace, "state", async () => {
         const page = await getOperatorPage(root, namespace);
-        const url = await page.url();
-        const snapshot = await page.snapshot({
-          interactive: opts.interactive,
-          compact: opts.compact,
-        });
-        console.error(chalk.dim(`URL: ${url}`));
-        return { url, snapshot };
+        return await withRecordedBrowserAction(
+          program,
+          root,
+          namespace,
+          "state",
+          page,
+          {
+            interactive: opts.interactive === true,
+            compact: opts.compact === true,
+          },
+          async () => {
+            const url = await page.url();
+            const snapshot = await page.snapshot({
+              interactive: opts.interactive,
+              compact: opts.compact,
+            });
+            console.error(chalk.dim(`URL: ${url}`));
+            return { url, snapshot };
+          },
+        );
       }),
     );
 
@@ -156,9 +211,19 @@ export function registerBrowserOperatorSubcommands(
         validateRef(ref);
         const page = await getOperatorPage(root, namespace);
         const selector = `[data-unicli-ref="${ref}"]`;
-        await verifyRef(page, selector);
-        await page.click(selector);
-        return { ok: true, clicked: ref };
+        return await withRecordedBrowserAction(
+          program,
+          root,
+          namespace,
+          "click",
+          page,
+          { ref },
+          async () => {
+            await verifyRef(page, selector);
+            await page.click(selector);
+            return { ok: true, clicked: ref };
+          },
+        );
       }),
     );
 
@@ -170,11 +235,21 @@ export function registerBrowserOperatorSubcommands(
         validateRef(ref);
         const page = await getOperatorPage(root, namespace);
         const selector = `[data-unicli-ref="${ref}"]`;
-        await verifyRef(page, selector);
-        await page.click(selector);
-        await page.wait(0.3);
-        await page.insertText(text);
-        return { ok: true, ref, text };
+        return await withRecordedBrowserAction(
+          program,
+          root,
+          namespace,
+          "type",
+          page,
+          { ref, text },
+          async () => {
+            await verifyRef(page, selector);
+            await page.click(selector);
+            await page.wait(0.3);
+            await page.insertText(text);
+            return { ok: true, ref, text };
+          },
+        );
       }),
     );
 
@@ -311,35 +386,45 @@ export function registerBrowserOperatorSubcommands(
         operatorAction(program, root, namespace, "wait", async () => {
           const page = await getOperatorPage(root, namespace);
           const timeout = parseInt(opts.timeout, 10);
-          switch (type) {
-            case "time":
-              await page.wait(parseInt(value ?? "1000", 10) / 1000);
-              break;
-            case "selector":
-              if (!value) throw new Error("selector value required");
-              await page.waitForSelector(value, timeout);
-              break;
-            case "text": {
-              if (!value) throw new Error("text value required");
-              const deadline = Date.now() + timeout;
-              const valueStr = JSON.stringify(value);
-              while (Date.now() < deadline) {
-                const found = await page.evaluate(
-                  `document.body.innerText.includes(${valueStr})`,
-                );
-                if (found) return { ok: true, found: true };
-                await new Promise((resolve) => setTimeout(resolve, 200));
+          return await withRecordedBrowserAction(
+            program,
+            root,
+            namespace,
+            "wait",
+            page,
+            { type, value: value ?? null, timeout },
+            async () => {
+              switch (type) {
+                case "time":
+                  await page.wait(parseInt(value ?? "1000", 10) / 1000);
+                  break;
+                case "selector":
+                  if (!value) throw new Error("selector value required");
+                  await page.waitForSelector(value, timeout);
+                  break;
+                case "text": {
+                  if (!value) throw new Error("text value required");
+                  const deadline = Date.now() + timeout;
+                  const valueStr = JSON.stringify(value);
+                  while (Date.now() < deadline) {
+                    const found = await page.evaluate(
+                      `document.body.innerText.includes(${valueStr})`,
+                    );
+                    if (found) return { ok: true, found: true };
+                    await new Promise((resolve) => setTimeout(resolve, 200));
+                  }
+                  throw new Error(
+                    `Text "${value}" not found within ${String(timeout)}ms`,
+                  );
+                }
+                default:
+                  throw new Error(
+                    `Unknown wait type: ${type}. Use: time, selector, text`,
+                  );
               }
-              throw new Error(
-                `Text "${value}" not found within ${String(timeout)}ms`,
-              );
-            }
-            default:
-              throw new Error(
-                `Unknown wait type: ${type}. Use: time, selector, text`,
-              );
-          }
-          return { ok: true };
+              return { ok: true };
+            },
+          );
         }),
     );
 

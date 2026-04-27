@@ -1,4 +1,10 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+} from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,6 +18,10 @@ import { primeKernelCache } from "../../../src/discovery/loader.js";
 import { registerAdapter } from "../../../src/registry.js";
 import { AdapterType, Strategy } from "../../../src/types.js";
 import type { AdapterManifest } from "../../../src/types.js";
+import {
+  createRunStore,
+  readRunEvents,
+} from "../../../src/engine/session/store.js";
 
 const mockPage = {
   goto: vi.fn().mockResolvedValue(undefined),
@@ -48,6 +58,42 @@ const mockPage = {
     },
   }),
 };
+
+function resetMockPage(): void {
+  mockPage.goto.mockReset().mockResolvedValue(undefined);
+  mockPage.evaluate.mockReset().mockResolvedValue(undefined);
+  mockPage.click.mockReset().mockResolvedValue(undefined);
+  mockPage.setFileInput.mockReset().mockResolvedValue(undefined);
+  mockPage.title.mockReset().mockResolvedValue("Test Page");
+  mockPage.url.mockReset().mockResolvedValue("https://example.com");
+  mockPage.snapshot.mockReset().mockResolvedValue("snapshot");
+  mockPage.screenshot.mockReset().mockResolvedValue(Buffer.from("img"));
+  mockPage.wait.mockReset().mockResolvedValue(undefined);
+  mockPage.waitForSelector.mockReset().mockResolvedValue(undefined);
+  mockPage.press.mockReset().mockResolvedValue(undefined);
+  mockPage.insertText.mockReset().mockResolvedValue(undefined);
+  mockPage.scroll.mockReset().mockResolvedValue(undefined);
+  mockPage.autoScroll.mockReset().mockResolvedValue(undefined);
+  mockPage.networkRequests.mockReset().mockResolvedValue([]);
+  mockPage.closeWindow.mockReset().mockResolvedValue(undefined);
+  mockPage.addInitScript.mockReset().mockResolvedValue(undefined);
+  mockPage.startNetworkCapture.mockReset().mockResolvedValue(undefined);
+  mockPage.readNetworkCapture.mockReset().mockResolvedValue([]);
+  mockPage.sendCDP.mockReset().mockResolvedValue({
+    frameTree: {
+      frame: { id: "root", url: "https://example.com" },
+      childFrames: [
+        {
+          frame: {
+            id: "frame-1",
+            parentId: "root",
+            url: "https://x.example/embed",
+          },
+        },
+      ],
+    },
+  });
+}
 
 const daemonClientMocks = vi.hoisted(() => ({
   sendCommand: vi.fn(),
@@ -126,15 +172,24 @@ function createProgram(): Command {
 describe("unicli browser operator surface", () => {
   let tmpHome: string | null = null;
   let origHome: string | undefined;
+  let origRecordRun: string | undefined;
+  let origRunRoot: string | undefined;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    resetMockPage();
     process.exitCode = undefined;
     origHome = process.env.HOME;
+    origRecordRun = process.env.UNICLI_RECORD_RUN;
+    origRunRoot = process.env.UNICLI_RUN_ROOT;
   });
 
   afterEach(() => {
     delete process.env.UNICLI_OUTPUT;
+    if (origRecordRun === undefined) delete process.env.UNICLI_RECORD_RUN;
+    else process.env.UNICLI_RECORD_RUN = origRecordRun;
+    if (origRunRoot === undefined) delete process.env.UNICLI_RUN_ROOT;
+    else process.env.UNICLI_RUN_ROOT = origRunRoot;
     if (tmpHome) {
       rmSync(tmpHome, { recursive: true, force: true });
       tmpHome = null;
@@ -148,6 +203,96 @@ describe("unicli browser operator surface", () => {
     process.env.HOME = tmpHome;
     return tmpHome;
   }
+
+  it("browser click records internal pre/post evidence when run recording is enabled", async () => {
+    const home = useTempHome();
+    const runRoot = join(home, "runs");
+    process.env.UNICLI_OUTPUT = "json";
+    process.env.UNICLI_RECORD_RUN = "1";
+    process.env.UNICLI_RUN_ROOT = runRoot;
+    mockPage.snapshot.mockResolvedValue("[1]<button>Save</button>");
+    mockPage.evaluate.mockImplementation(async (script: string) => {
+      if (script.includes("__unicli_ref_identity")) {
+        return { role: "button", name: "Save", taken_at: Date.now() };
+      }
+      if (script.includes("document.querySelectorAll")) return 1;
+      if (script.includes("__unicli_console_summary")) {
+        return JSON.stringify({
+          count: 0,
+          error_count: 0,
+          warn_count: 0,
+          observed_since: "2026-04-28T01:00:00.000Z",
+        });
+      }
+      return undefined;
+    });
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "click", "1"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      command: string;
+      data: Record<string, unknown>;
+    };
+    expect(env.command).toBe("browser.click");
+    expect(env.data).toEqual({ ok: true, clicked: "1" });
+    const [runId] = readdirSync(runRoot);
+    const events = await readRunEvents(
+      createRunStore({ rootDir: runRoot }),
+      runId,
+    );
+    expect(events.map((event) => event.name)).toEqual([
+      "run.started",
+      "tool.call.started",
+      "permission.evaluated",
+      "evidence.captured",
+      "evidence.captured",
+      "tool.call.completed",
+      "run.completed",
+    ]);
+    const evidenceEvents = events.filter(
+      (event) => event.name === "evidence.captured",
+    );
+    expect(evidenceEvents[0]).toMatchObject({
+      visibility: "internal",
+      data: {
+        evidence_type: "browser-operator",
+        action: "click",
+        phase: "before",
+        outcome: "pending",
+        workspace: "browser:default",
+      },
+      internal: {
+        action: "click.before",
+        evidence_type: "browser-operator",
+        workspace: "browser:default",
+      },
+    });
+    expect(evidenceEvents[1]).toMatchObject({
+      visibility: "internal",
+      data: {
+        evidence_type: "browser-operator",
+        action: "click",
+        phase: "after",
+        outcome: "success",
+        workspace: "browser:default",
+      },
+      internal: {
+        action: "click.after",
+        evidence_type: "browser-operator",
+        workspace: "browser:default",
+      },
+    });
+    expect(evidenceEvents[0]?.data).not.toHaveProperty("snapshot");
+    expect(evidenceEvents[0]?.data).not.toHaveProperty("text");
+  });
 
   it("browser open exposes the operator surface under browser", async () => {
     process.env.UNICLI_OUTPUT = "json";
