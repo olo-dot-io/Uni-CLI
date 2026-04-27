@@ -301,4 +301,87 @@ describe("execute (end-to-end)", () => {
     expect(res.envelope.duration_ms).toBeGreaterThanOrEqual(0);
     expect(res.envelope.command).toBe("inv-site.hello");
   });
+
+  it("enforces locked permission profile inside the shared kernel", async () => {
+    const permissionAdapter = mkAdapter({
+      name: "permission-fixture",
+      commands: {
+        send: {
+          name: "send",
+          description: "Send a message",
+          adapterArgs: [{ name: "text", type: "str", required: true }],
+          func: async () => ({ sent: true }),
+        },
+      },
+    });
+    registerAdapter(permissionAdapter);
+    compileAll([permissionAdapter]);
+
+    const inv = buildInvocation(
+      "cli",
+      "permission-fixture",
+      "send",
+      {
+        args: { text: "hello" },
+        source: "shell",
+      },
+      { permissionProfile: "locked" },
+    )!;
+    const res = await execute(inv);
+    expect(res.exitCode).toBe(77);
+    expect(res.error).toMatchObject({
+      code: "permission_denied",
+      adapter_path: "src/adapters/permission-fixture/send.yaml",
+    });
+  });
+
+  it("rejects invalid permission profile names in the shared kernel", async () => {
+    const inv = buildInvocation(
+      "cli",
+      "inv-site",
+      "hello",
+      {
+        args: { target: "z" },
+        source: "shell",
+      },
+      { permissionProfile: "lokced" },
+    )!;
+    const res = await execute(inv);
+    expect(res.exitCode).toBe(2);
+    expect(res.error).toMatchObject({
+      code: "invalid_input",
+    });
+    expect(res.error?.message).toContain("invalid permission profile");
+  });
+
+  it("uses target surface for successful desktop command envelopes", async () => {
+    const desktopAdapter = mkAdapter({
+      name: "desktop-fixture",
+      type: AdapterType.DESKTOP,
+      commands: {
+        mutate: {
+          name: "mutate",
+          description: "Apply a local document mutation",
+          adapterArgs: [],
+          func: async () => ({ ok: true }),
+        },
+      },
+    });
+    registerAdapter(desktopAdapter);
+    compileAll([desktopAdapter]);
+
+    const inv = buildInvocation(
+      "cli",
+      "desktop-fixture",
+      "mutate",
+      {
+        args: {},
+        source: "shell",
+      },
+      { permissionProfile: "locked", approved: true },
+    )!;
+    const res = await execute(inv);
+    expect(res.exitCode).toBe(0);
+    expect(res.envelope.surface).toBe("desktop");
+  });
 });

@@ -282,6 +282,11 @@ function extractTsCommandStubs(
       commands[name] = {
         name,
         description: objectStringProp(body, "description"),
+        adapter_path: objectStringProp(body, "adapter_path"),
+        target_surface: objectStringProp(
+          body,
+          "target_surface",
+        ) as AdapterCommand["target_surface"],
         strategy,
         browser,
         adapterArgs: objectArgsProp(body),

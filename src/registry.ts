@@ -7,7 +7,12 @@
  */
 
 import { AdapterType, Strategy } from "./types.js";
-import type { AdapterManifest, AdapterCommand, AdapterArg } from "./types.js";
+import type {
+  AdapterManifest,
+  AdapterCommand,
+  AdapterArg,
+  TargetSurface,
+} from "./types.js";
 
 export { Strategy };
 
@@ -126,6 +131,8 @@ export interface CliRegistration {
   domain?: string;
   strategy?: Strategy;
   browser?: boolean;
+  adapter_path?: string;
+  target_surface?: TargetSurface;
   args?: AdapterArg[];
   columns?: string[];
   func: (page: unknown, kwargs: Record<string, unknown>) => Promise<unknown>;
@@ -152,6 +159,8 @@ export function cli(config: CliRegistration): void {
   adapter!.commands[config.name] = {
     name: config.name,
     description: config.description,
+    adapter_path: config.adapter_path,
+    target_surface: config.target_surface,
     adapterArgs: config.args,
     strategy: config.strategy,
     browser: config.browser,

@@ -3444,6 +3444,30 @@ The architectural rule is simple: a protocol server may wrap Uni-CLI, but it
 does not define Uni-CLI. The stable primitive is still a command that an agent
 can search, execute, inspect, and repair.
 
+## Operating Kernel
+
+The target architecture is an agent control kernel for websites, desktop apps,
+local tools, and files. The kernel stays small and auditable:
+
+1. **Command registry**: one manifest with names, arguments, capability needs,
+   output shape, auth, and inferred operation policy.
+2. **Invocation kernel**: one path that validates args, applies permissions,
+   runs the adapter, records evidence, and returns an `AgentEnvelope`.
+3. **Transport bus**: adapters choose HTTP, CDP, accessibility, subprocess,
+   service, or CUA without changing the user-facing command contract.
+4. **Permission profile**: commands stay open by default, while users can opt
+   into `confirm` or `locked` profiles for high-impact writes.
+5. **Repair and evaluation loop**: failures point to one adapter and one step;
+   health checks and fixtures prove the repair.
+
+MCP, ACP, HTTP, and agent-specific setup files are generated surfaces over this
+kernel. They should improve reach, not fork command semantics.
+
+The manifest is therefore a runtime contract, not just documentation. Generated
+commands must preserve the same argument schema in `search`, `describe`,
+`--dry-run`, MCP, ACP, and direct CLI execution. Drift between generated TypeScript
+registrations and fast-path discovery is treated as a correctness bug.
+
 ## Capability Model
 
 Adapters declare the smallest capability they need. Dispatchers can then route a
@@ -3455,12 +3479,96 @@ command without guessing.
 | `cdp-browser`     | Login-gated pages, dynamic sites, DOM extraction, intercepts  |
 | `subprocess`      | Local CLIs, media tools, desktop applications, file workflows |
 | `desktop-*`       | Native desktop automation surfaces                            |
+| `a11y`            | Accessibility tree inspection and semantic UI actions         |
 | `cua`             | Last-mile UI control when no narrower interface exists        |
 | `bridge`          | Reuse of existing installed tools                             |
 
 This lets Uni-CLI be broad without turning every operation into a full browser
 or remote protocol session. The fast path stays narrow; broader paths exist when
 the task really needs them.
+
+For difficult desktop targets, especially Electron applications with incomplete
+accessibility trees, dispatch should escalate in this order:
+
+1. Stable API, local CLI, or file format.
+2. CDP or application debug protocol.
+3. Accessibility tree with text/role matching.
+4. Background click/type primitives when the target can be identified.
+5. CUA screenshot planning plus action verification.
+
+CUA is a real capability only when a configured backend can see, act, and verify
+state. A declaration without an action bridge must stay unavailable rather than
+silently pretending to control the app.
+
+## Operation Policy
+
+Read commands can be broad. Write commands need stricter contracts because they
+can send mail, message people, change documents, or operate accounts.
+
+The default posture is **open**. Uni-CLI should not make every adapter private by
+default or block writes just because an adapter can mutate state. The operation
+policy is a user-selectable runtime layer:
+
+| Profile   | Behavior                                                                          |
+| --------- | --------------------------------------------------------------------------------- |
+| `open`    | Default. Run commands without approval gates; still expose inferred risk.         |
+| `confirm` | Require explicit approval for high-impact sends/posts/service/destructive writes. |
+| `locked`  | Require explicit approval for medium and high-impact writes.                      |
+
+The kernel infers operation shape from the command contract and surfaces it in
+`describe` and `--dry-run`:
+
+- `effect`: `read`, `send_message`, `publish_content`, `account_state`,
+  `remote_transform`, `remote_resource`, `service_state`, `local_app`,
+  `local_file`, or `destructive`.
+- `risk`: `low`, `medium`, or `high`.
+- `approval_required`: whether the active user profile blocks execution until
+  `--yes` or `UNICLI_APPROVE=1` is supplied.
+
+This keeps capability broad and easy to turn on, while still giving teams a way
+to tighten execution policy without rewriting adapter metadata.
+
+## Continuous Intelligence
+
+The surrounding agent-runtime field is moving quickly. Uni-CLI keeps external
+research out of the source-of-truth path for code, but uses it to update
+directional bets.
+
+Current trend inputs point to:
+
+- Agent loops moving closer to native tool execution instead of protocol-only
+  wrappers.
+- Parallel/background agents with isolated worktrees and review loops.
+- Editor-agent systems pushing parallel agents, subagents, worktrees, and async
+  execution as core product direction.
+- Computer-use backends becoming a fallback capability, not the ideal primary
+  transport.
+- Editor and desktop products adding async collaboration, persistent context,
+  and history-aware agents.
+
+These inputs reinforce the same local architecture: command-first, manifest
+truth, repairable adapters, explicit permissions, and transport plurality.
+
+## Industry Position
+
+Uni-CLI sits below agent applications and above websites, desktop apps, and local
+tools. It is not trying to be an IDE, a chat product, a model host, or a single
+agent loop. It is the execution substrate those products should be able to call.
+
+Use:
+
+- Native CLI and shell channels as the primary agent interface.
+- YAML adapters for durable website/app operations.
+- CDP, accessibility, subprocess, and app APIs before CUA.
+- CUA only when it can see, act, and verify.
+- MCP/ACP/HTTP as compatibility surfaces generated from the same catalog.
+
+Do not use:
+
+- ACP or MCP as the core semantic model.
+- CUA as the first transport when API/CDP/a11y/subprocess exists.
+- Static privacy labels as the only safety mechanism.
+- Thick SDKs that hide the adapter path, failing step, and repair evidence.
 
 ## Self-Repair Loop
 
@@ -3852,24 +3960,79 @@ This file tracks current engineering direction. Historical release notes live in
 
 ## Next Priorities
 
-1. **Adapter authoring loop**
+1. **Manifest/runtime parity**
+   - Treat generated TypeScript registrations as first-class manifest inputs.
+   - Keep argument schemas identical across `search`, `describe`, `--dry-run`,
+     direct CLI, MCP, ACP, and generated agent configs.
+   - Add regression tests when a generated command family gets new arguments.
+
+2. **User-selectable operation policy**
+   - Keep adapters open by default.
+   - Infer command effect/risk at `describe`, `--dry-run`, and execution time.
+   - Let users choose `open`, `confirm`, or `locked` via CLI flag or
+     environment variable.
+   - Use `--yes` / `UNICLI_APPROVE=1` as the explicit approval path for stricter
+     profiles.
+
+3. **Transport bus**
+   - Make HTTP, CDP, accessibility, subprocess, service, and CUA dispatch share
+     one invocation kernel and one evidence model.
+   - Keep ACP/MCP/HTTP as wrappers over the same catalog rather than separate
+     behavior definitions.
+   - Surface unavailable transports as structured errors with install/setup
+     suggestions.
+
+4. **Desktop and CUA stack**
+   - Build repeatable control paths for WeChat, WeCom, DingTalk, Lark, Mail,
+     Notes, Word, PowerPoint, Excel, and common Electron apps.
+   - Prefer app APIs, CDP, and accessibility before CUA.
+   - For partial accessibility shells, add screenshot planning, background
+     action primitives, and post-action verification before marking commands
+     live.
+
+5. **Agent loop alignment**
+   - Support parallel/background agent workflows with isolated worktrees, compact
+     command discovery, and reviewable evidence.
+   - Keep Uni-CLI command execution independent from any single agent loop or
+     editor protocol.
+   - Feed adapter failures back into repair tasks that can be run by coding
+     agents.
+
+6. **Continuous trend intake**
+   - Periodically review agent-loop, computer-use, editor-agent, and desktop
+     automation trends through a private research process.
+   - Convert durable insights into architecture or roadmap updates, not prompt
+     lore.
+   - Keep source-specific attribution internal and keep public docs at the
+     capability level.
+   - Keep code decisions grounded in local tests, diffs, and runtime evidence.
+
+7. **Industry positioning**
+   - Stay below IDE/chat products as the command/control substrate.
+   - Compete on breadth, latency, repairability, local execution, and structured
+     evidence.
+   - Avoid becoming a model wrapper, prompt memory product, or protocol-only
+     bridge.
+
+8. **Adapter authoring loop**
    - Keep browser `analyze`, `init`, `verify`, fixtures, field maps, and site memory as first-class authoring artifacts.
    - Store reusable site notes under `~/.unicli/sites/SITE/`.
    - Make repair output directly reusable by coding agents without extra prose.
 
-2. **Browser network detail**
+9. **Browser network detail**
    - Preserve request/response detail, cache hits, filters, and timing in browser capture commands.
    - Make captured network evidence usable as adapter fixtures.
 
-3. **Backend honesty**
-   - Keep ACP as compatibility.
-   - Prefer native CLI, JSON stream, and MCP when a backend exposes them.
-   - Do not mark CUA as live unless a configured backend performs real actions.
+10. **Backend honesty**
+    - Keep ACP as compatibility.
+    - Prefer native CLI, JSON stream, and MCP when a backend exposes them.
+    - Do not mark CUA as live unless a configured backend performs real actions.
 
-4. **Docs as product surface**
-   - README stays install-first and capability-first.
-   - Public docs should explain commands, contracts, repair paths, and integration routes.
-   - Keep the public entry path short, current, and directly useful.
+11. **Docs as product surface**
+    - README stays install-first and capability-first.
+    - Public docs should explain commands, contracts, repair paths, and integration
+      routes.
+    - Keep the public entry path short, current, and directly useful.
 
 ## Non-Goals
 

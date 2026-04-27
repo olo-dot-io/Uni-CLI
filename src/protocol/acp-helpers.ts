@@ -5,7 +5,8 @@
  */
 
 import { getAllAdapters } from "../registry.js";
-import { buildInvocation, execute } from "../engine/kernel/execute.js";
+import { buildInvocation } from "../engine/kernel/execute.js";
+import { executeWithRunRecording } from "../engine/session/run-loop.js";
 import { coerceLimit } from "../engine/args.js";
 import type { AdapterManifest, AdapterCommand } from "../types.js";
 
@@ -113,8 +114,8 @@ export function parseUnicliInvocation(
 
 /**
  * Execute a resolved adapter command with its merged args through the
- * invocation kernel (v0.213.3 R2). Returns the raw result array. Throws
- * on error — callers wrap in try/catch and surface the message over ACP.
+ * invocation kernel wrapper (v0.213.3 R2). Returns the raw result array.
+ * Throws on error — callers wrap in try/catch and surface the message over ACP.
  */
 export async function runCommand(
   adapter: AdapterManifest,
@@ -136,7 +137,7 @@ export async function runCommand(
     source: "acp",
   });
   if (!inv) throw new Error(`Unknown command: ${adapter.name} ${cmd.name}`);
-  const result = await execute(inv);
+  const result = await executeWithRunRecording(inv);
   if (result.error) {
     const err = new Error(result.error.message);
     (err as Error & { suggestion?: string }).suggestion =

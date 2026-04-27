@@ -25,6 +25,8 @@ export enum Strategy {
   UI = "ui",
 }
 
+export type TargetSurface = "web" | "desktop" | "system" | "mobile";
+
 export interface AdapterArg {
   name: string;
   type?: "str" | "int" | "float" | "bool";
@@ -84,6 +86,13 @@ export interface PipelineStep {
 export interface AdapterCommand {
   name: string;
   description?: string;
+  /** Source adapter file used in repair and evidence-bearing error envelopes. */
+  adapter_path?: string;
+  /**
+   * Runtime target surface. TS helper commands can operate on desktop apps
+   * even when their registration helper keeps the site in a web-api manifest.
+   */
+  target_surface?: TargetSurface;
 
   /**
    * When true, the adapter is quarantined: skipped by `unicli test` and the

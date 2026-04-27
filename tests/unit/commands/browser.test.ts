@@ -30,6 +30,7 @@ const mockPage = {
   autoScroll: vi.fn().mockResolvedValue(undefined),
   networkRequests: vi.fn().mockResolvedValue([]),
   closeWindow: vi.fn().mockResolvedValue(undefined),
+  addInitScript: vi.fn().mockResolvedValue(undefined),
   startNetworkCapture: vi.fn().mockResolvedValue(undefined),
   readNetworkCapture: vi.fn().mockResolvedValue([]),
   sendCDP: vi.fn().mockResolvedValue({
@@ -169,6 +170,130 @@ describe("unicli browser operator surface", () => {
     expect(mockPage.goto).toHaveBeenCalledWith("https://example.com", {
       settleMs: 2000,
     });
+  });
+
+  it("browser evidence captures a browser operator evidence packet", async () => {
+    const home = useTempHome();
+    mockPage.snapshot.mockResolvedValueOnce("[1]<button>Save</button>");
+    mockPage.evaluate.mockResolvedValueOnce(undefined).mockResolvedValueOnce(
+      JSON.stringify({
+        count: 1,
+        error_count: 0,
+        warn_count: 1,
+        observed_since: "2026-04-27T14:00:00.000Z",
+      }),
+    );
+    mockPage.readNetworkCapture.mockResolvedValueOnce([
+      {
+        url: "https://example.com/api/feed",
+        method: "GET",
+        status: 200,
+        contentType: "application/json",
+        size: 24,
+      },
+    ]);
+
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "evidence"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      ok: boolean;
+      schema_version: string;
+      command: string;
+      data: {
+        evidence_type: string;
+        workspace: string;
+        observed_since: string;
+        partial: boolean;
+        capture_scope: {
+          console: string;
+          dom: string;
+          network: string;
+          screenshot: string;
+        };
+        dom: { ref_count: number; chars: number };
+        console: { count: number; warn_count: number };
+        network: {
+          count: number;
+          status_counts: Record<string, number>;
+          method_counts: Record<string, number>;
+        };
+        screenshot: { path: string; sha256: string; skipped?: boolean };
+      };
+    };
+    expect(env.ok).toBe(true);
+    expect(env.schema_version).toBe("2");
+    expect(env.command).toBe("browser.evidence");
+    expect(env.data.evidence_type).toBe("browser-operator");
+    expect(env.data.workspace).toBe("browser:default");
+    expect(env.data.observed_since).toBe("2026-04-27T14:00:00.000Z");
+    expect(env.data.partial).toBe(true);
+    expect(env.data.capture_scope).toMatchObject({
+      console: "since_hook",
+      dom: "current_snapshot",
+      network: "session",
+      screenshot: "current_viewport",
+    });
+    expect(env.data.dom.ref_count).toBe(1);
+    expect(env.data.dom.chars).toBe("[1]<button>Save</button>".length);
+    expect(env.data.console).toMatchObject({ count: 1, warn_count: 1 });
+    expect(env.data.network).toMatchObject({
+      count: 1,
+      status_counts: { "200": 1 },
+      method_counts: { GET: 1 },
+    });
+    expect(env.data.screenshot.path).toContain(
+      join(home, ".unicli", "evidence", "browser"),
+    );
+    expect(env.data.screenshot.sha256).toBe(
+      "sha256:b29814cf5792e684cd75d6a7fce7a67a11887e312f87ca2ac2496d81f365ff72",
+    );
+    expect(mockPage.addInitScript).toHaveBeenCalledWith(
+      expect.stringContaining("__unicli_console_summary"),
+    );
+    expect(readFileSync(env.data.screenshot.path, "utf-8")).toBe("img");
+  });
+
+  it("browser evidence honors --no-screenshot without capturing a screenshot", async () => {
+    useTempHome();
+    mockPage.snapshot.mockResolvedValueOnce("[1]<button>Save</button>");
+    mockPage.evaluate.mockResolvedValueOnce(undefined).mockResolvedValueOnce(
+      JSON.stringify({
+        count: 0,
+        error_count: 0,
+        warn_count: 0,
+        observed_since: "2026-04-27T14:05:00.000Z",
+      }),
+    );
+
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "evidence", "--no-screenshot"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: {
+        capture_scope: { screenshot: string };
+        screenshot: { skipped?: boolean };
+      };
+    };
+    expect(env.data.screenshot).toEqual({ skipped: true });
+    expect(env.data.capture_scope.screenshot).toBe("skipped");
+    expect(mockPage.screenshot).not.toHaveBeenCalled();
   });
 
   it("browser find allocates refs and returns structured matches", async () => {

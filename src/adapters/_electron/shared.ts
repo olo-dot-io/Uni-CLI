@@ -43,6 +43,20 @@ export interface AIChatConfig {
   displayName?: string;
 }
 
+function normalizeModelText(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+export function isRequestedModelActive(
+  currentModelText: string,
+  requestedModel: string,
+): boolean {
+  const observed = normalizeModelText(currentModelText);
+  const requested = normalizeModelText(requestedModel);
+  if (!observed || !requested || observed === "unknown") return false;
+  return observed === requested || observed.includes(requested);
+}
+
 /**
  * Register standard AI chat commands for an Electron app.
  * Each app gets: ask, send, read, model, status, new, screenshot, dump
@@ -60,6 +74,10 @@ export function registerAIChatCommands(
     sendButtonSelector,
     displayName = site,
   } = config;
+  const desktopCommandMeta = {
+    adapter_path: `src/adapters/${site}/${site}.ts`,
+    target_surface: "desktop" as const,
+  };
 
   /** Escape single quotes in selectors for use in evaluate strings */
   const esc = (s: string): string => s.replace(/'/g, "\\'");
@@ -70,6 +88,7 @@ export function registerAIChatCommands(
     name: "ask",
     description: `Send a prompt to ${displayName} and wait for response`,
     strategy: Strategy.PUBLIC,
+    ...desktopCommandMeta,
     args: [
       {
         name: "prompt",
@@ -114,6 +133,7 @@ export function registerAIChatCommands(
     name: "send",
     description: `Send text to ${displayName} without waiting`,
     strategy: Strategy.PUBLIC,
+    ...desktopCommandMeta,
     args: [{ name: "text", required: true, positional: true }],
     func: async (_page: unknown, kwargs: Record<string, unknown>) => {
       const p = await connectElectronApp(site);
@@ -135,6 +155,7 @@ export function registerAIChatCommands(
     name: "read",
     description: `Read the last response from ${displayName}`,
     strategy: Strategy.PUBLIC,
+    ...desktopCommandMeta,
     func: async () => {
       const p = await connectElectronApp(site);
       const text = (await p.evaluate(
@@ -151,13 +172,40 @@ export function registerAIChatCommands(
       name: "model",
       description: `Read or switch the current model in ${displayName}`,
       strategy: Strategy.PUBLIC,
+      ...desktopCommandMeta,
       args: [{ name: "name", required: false, positional: true }],
-      func: async (_page: unknown, _kwargs: Record<string, unknown>) => {
+      func: async (_page: unknown, kwargs: Record<string, unknown>) => {
         const p = await connectElectronApp(site);
+        const requested =
+          typeof kwargs.name === "string" ? kwargs.name.trim() : "";
+        if (requested) {
+          await p.click(modelSelector);
+          await p.wait(0.5);
+          await p.evaluate(`(() => {
+            const wanted = ${JSON.stringify(requested.toLowerCase())};
+            const nodes = Array.from(document.querySelectorAll('button,[role="button"],[role="menuitem"],[role="option"],li,div,span'));
+            const candidate = nodes.find((node) => {
+              const text = (node.textContent || '').trim().toLowerCase();
+              return text === wanted || text.includes(wanted);
+            });
+            if (!candidate) return false;
+            candidate.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+            return true;
+          })()`);
+          await p.wait(0.8);
+        }
         const current = (await p.evaluate(
           `document.querySelector('${esc(modelSelector)}')?.innerText ?? 'unknown'`,
         )) as string;
-        return [{ model: current }];
+        return requested
+          ? [
+              {
+                model: current,
+                requested,
+                switched: isRequestedModelActive(current, requested),
+              },
+            ]
+          : [{ model: current }];
       },
     });
   }
@@ -168,6 +216,7 @@ export function registerAIChatCommands(
     name: "status",
     description: `Check ${displayName} app status`,
     strategy: Strategy.PUBLIC,
+    ...desktopCommandMeta,
     func: async () => {
       const p = await connectElectronApp(site);
       const title = await p.title();
@@ -188,6 +237,7 @@ export function registerAIChatCommands(
       name: "new",
       description: `Start a new conversation in ${displayName}`,
       strategy: Strategy.PUBLIC,
+      ...desktopCommandMeta,
       func: async () => {
         const p = await connectElectronApp(site);
         if (newChatSelector.startsWith("key:")) {
@@ -213,6 +263,7 @@ export function registerAIChatCommands(
     name: "screenshot",
     description: `Capture screenshot of ${displayName}`,
     strategy: Strategy.PUBLIC,
+    ...desktopCommandMeta,
     args: [
       {
         name: "path",
@@ -235,6 +286,7 @@ export function registerAIChatCommands(
     name: "dump",
     description: `Dump full page content from ${displayName}`,
     strategy: Strategy.PUBLIC,
+    ...desktopCommandMeta,
     func: async () => {
       const p = await connectElectronApp(site);
       const snapshot = await p.snapshot({ compact: true });

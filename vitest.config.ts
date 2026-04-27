@@ -1,8 +1,15 @@
 import { defineConfig } from "vitest/config";
 
+const workerEnv = {
+  UNICLI_ALLOW_LOCAL: "1",
+};
+
+const workerSetup = "./tests/setup-env.ts";
+
 export default defineConfig({
   test: {
     globalSetup: "./tests/setup.ts",
+    setupFiles: workerSetup,
     // CI runners are 3–4× slower than dev machines. Tests that spawn child
     // processes (e.g. MCP server stdio integration) routinely land 8–12 s
     // in CI, brushing against the 10 s default and causing flaky failures
@@ -17,19 +24,27 @@ export default defineConfig({
     // the server it's about to hit. Production code never has this env var
     // set, so the SSRF guard stays active by default everywhere else.
     env: {
-      UNICLI_ALLOW_LOCAL: "1",
+      ...workerEnv,
     },
     projects: [
       {
         test: {
           name: "unit",
           include: ["tests/unit/**/*.test.ts"],
+          setupFiles: workerSetup,
+          env: {
+            ...workerEnv,
+          },
         },
       },
       {
         test: {
           name: "integration",
           include: ["tests/integration/**/*.test.ts"],
+          setupFiles: workerSetup,
+          env: {
+            ...workerEnv,
+          },
           testTimeout: 30_000,
         },
       },
@@ -37,6 +52,10 @@ export default defineConfig({
         test: {
           name: "adapter",
           include: ["tests/adapter/**/*.test.ts", "src/adapters/**/*.test.ts"],
+          setupFiles: workerSetup,
+          env: {
+            ...workerEnv,
+          },
           testTimeout: 30_000,
         },
       },

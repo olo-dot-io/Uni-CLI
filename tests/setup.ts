@@ -26,6 +26,11 @@ export default function setup(): void {
   // Production runs never set this — only the test harness, which owns the
   // localhost it is about to fetch.
   process.env.UNICLI_ALLOW_LOCAL = process.env.UNICLI_ALLOW_LOCAL ?? "1";
+  // pnpm injects package-manager config into the test process. If this setup
+  // path has to spawn npm, keep npm stderr deterministic too.
+  for (const key of Object.keys(process.env)) {
+    if (/^(npm|pnpm)_config_/i.test(key)) delete process.env[key];
+  }
 
   if (existsSync(MANIFEST)) return;
 
