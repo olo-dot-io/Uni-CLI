@@ -18,7 +18,7 @@ hero:
 
 features:
   - title: Search By Intent
-    details: "Bilingual BM25 maps natural language to runnable commands across 223 sites and 1304 commands."
+    details: "Bilingual BM25 maps natural language to runnable commands across 235 sites and 1448 commands."
   - title: Operate Real Surfaces
     details: "The same CLI spans web APIs, browser automation, macOS apps, desktop tools, and external CLIs."
   - title: Return Agent Envelopes
@@ -30,6 +30,8 @@ features:
   - title: Stay Small
     details: "YAML adapters compose typed pipeline steps and avoid heavy per-site SDK dependencies."
 ---
+
+<VersionNotice />
 
 <SiteStats />
 

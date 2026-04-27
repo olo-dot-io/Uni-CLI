@@ -17,17 +17,36 @@ A shell-native command layer for real operations: discover by intent, execute ty
 
 ## Capabilities
 
-- **Search By Intent.** Bilingual BM25 maps natural language to runnable commands across 223 sites and 1304 commands.
+- **Search By Intent.** Bilingual BM25 maps natural language to runnable commands across 235 sites and 1448 commands.
 - **Operate Real Surfaces.** The same CLI spans web APIs, browser automation, macOS apps, desktop tools, and external CLIs.
 - **Return Agent Envelopes.** Markdown, JSON, YAML, CSV, and compact output share the same v2 success/error contract.
 - **Repair In Place.** Failures include adapter path, pipeline step, retryability, suggestions, and alternatives.
 - **Plug Into Agents.** CLI-first execution stays native to coding agents; MCP, ACP, and JSON streams are compatibility surfaces.
 - **Stay Small.** YAML adapters compose typed pipeline steps and avoid heavy per-site SDK dependencies.
 
+## Current Version
+
+v0.216.3 (Apollo · Collins) shipped to npm on 2026-04-27; the @zenalexa/unicli latest tag now points to this release.
+
+Current public catalog: 235 sites, 1448 commands.
+
+### Update Notes
+
+- Published as the npm latest tag with provenance.
+- OpenCLI parity remains at 0 missing sites and 0 missing commands against the current reference manifest.
+- Fast-path discovery now falls back cleanly when the generated manifest is absent.
+- The public docs catalog now reports the current 235-site, 1448-command surface.
+
+### Links
+
+- [@zenalexa/unicli on npm](https://www.npmjs.com/package/@zenalexa/unicli)
+- [GitHub Release v0.216.3](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.216.3)
+- [Changelog](https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02163--2026-04-27--apollo--collins)
+
 ## Catalog Snapshot
 
-- Sites: 223
-- Commands: 1304
+- Sites: 235
+- Commands: 1448
 - Surface families: 5
 - Agent envelope: v2
 
@@ -37,7 +56,7 @@ A shell-native command layer for real operations: discover by intent, execute ty
 | browser | 10 |
 | desktop | 32 |
 | service | 8 |
-| web-api | 149 |
+| web-api | 161 |
 
 ## Positioning
 

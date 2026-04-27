@@ -10,11 +10,11 @@ Agent-native infrastructure should publish real cost numbers. Uni-CLI measures
 both the command invocation and the response body so public claims stay tied to
 the current code, fixtures, and output contract.
 
-The v0.215.1 fixture bench measures current v2 `AgentEnvelope` response bodies
+The v0.216.3 fixture bench measures current v2 `AgentEnvelope` response bodies
 at **357-415 tokens** for representative `--limit 5` list-style calls. Total
 invocation-plus-response budgets land at **364-423 tokens** in the same suite.
 `unicli list` is much larger because it intentionally emits the full
-223-site / 1304-command catalog.
+235-site / 1448-command catalog.
 
 This file ships real numbers or says `TODO:` -- nothing in between.
 
@@ -49,29 +49,29 @@ contract even when source fixtures predate the envelope migration.
 
 <!-- BENCH:begin -->
 
-> Generated 2026-04-26T11:25:43.871Z on Node v22.22.2 / darwin-arm64.
-> Mode: **fixture** (50 iterations per case).
+> Generated 2026-04-27T04:36:49.364Z on Node v22.22.2 / darwin-arm64.
+> Mode: **fixture** (20 iterations per case).
 > Reproduce with `npm run bench` (local live mode) or `BENCH_FIXTURES_ONLY=1 npm run bench` (CI-deterministic fixture mode).
 
 ### Cold start: `unicli list`
 
-| metric          | value   |
-| --------------- | ------- |
-| wall p50        | 740 ms  |
-| wall p95        | 2720 ms |
-| response tokens | 66272   |
-| response chars  | 238579  |
-| sites listed    | 223     |
-| commands listed | 1304    |
+| metric          | value  |
+| --------------- | ------ |
+| wall p50        | 38 ms  |
+| wall p95        | 44 ms  |
+| response tokens | 73242  |
+| response chars  | 263668 |
+| sites listed    | 235    |
+| commands listed | 1448   |
 
 ### Adapter call: p50/p95 response tokens
 
 | category  | command                                  | invocation tokens | response p50 tokens | response p95 tokens | wall p50 ms | wall p95 ms | mode    |
 | --------- | ---------------------------------------- | ----------------: | ------------------: | ------------------: | ----------: | ----------: | ------- |
-| news      | `unicli hackernews top --limit 5`        |                 9 |                 404 |                 404 |       0.003 |       0.015 | fixture |
-| social    | `unicli reddit hot --limit 5`            |                 8 |                 415 |                 415 |       0.004 |       0.023 | fixture |
-| social-cn | `unicli 36kr hot --limit 5`              |                 7 |                 357 |                 357 |       0.003 |       0.003 | fixture |
-| dev       | `unicli github-trending daily --limit 5` |                11 |                 400 |                 400 |       0.004 |       0.004 | fixture |
+| news      | `unicli hackernews top --limit 5`        |                 9 |                 404 |                 404 |       0.004 |       0.073 | fixture |
+| social    | `unicli reddit hot --limit 5`            |                 8 |                 415 |                 415 |       0.005 |       0.011 | fixture |
+| social-cn | `unicli 36kr hot --limit 5`              |                 7 |                 357 |                 357 |       0.003 |       0.005 | fixture |
+| dev       | `unicli github-trending daily --limit 5` |                11 |                 400 |                 400 |       0.005 |       0.007 | fixture |
 
 ### Public call budget
 

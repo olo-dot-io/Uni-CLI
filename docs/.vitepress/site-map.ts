@@ -33,6 +33,7 @@ const rootTopNav = [
   { text: "Guides", link: "/guide/" },
   { text: "Reference", link: "/reference/" },
   { text: "Architecture", link: "/ARCHITECTURE" },
+  { text: "npm", link: "https://www.npmjs.com/package/@zenalexa/unicli" },
 ];
 
 const rootSidebarGroups: SiteGroup[] = [
@@ -87,6 +88,7 @@ const zhTopNav = [
   { text: "指南", link: "/guide/" },
   { text: "参考", link: "/reference/" },
   { text: "架构", link: "/ARCHITECTURE" },
+  { text: "npm", link: "https://www.npmjs.com/package/@zenalexa/unicli" },
 ];
 
 const zhSidebarGroups: SiteGroup[] = [
@@ -136,6 +138,10 @@ const zhSidebarGroups: SiteGroup[] = [
 ];
 
 function localePath(link: string, locale: LocaleKey): string {
+  if (/^[a-zA-Z][a-zA-Z\d+-.]*:/.test(link) || link.startsWith("//")) {
+    return link;
+  }
+
   if (locale === "root") {
     return link;
   }

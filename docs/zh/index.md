@@ -18,7 +18,7 @@ hero:
 
 features:
   - title: 按意图搜索
-    details: "双语 BM25 把自然语言映射到 223 个站点、1304 条可运行命令。"
+    details: "双语 BM25 把自然语言映射到 235 个站点、1448 条可运行命令。"
   - title: 操作真实软件
     details: "同一套 CLI 覆盖 Web API、浏览器自动化、macOS 应用、桌面工具和外部 CLI。"
   - title: 返回 AgentEnvelope
@@ -30,6 +30,8 @@ features:
   - title: 保持轻量
     details: "YAML adapter 组合 typed pipeline steps，不为每个站点引入沉重 SDK。"
 ---
+
+<VersionNotice />
 
 <SiteStats />
 
