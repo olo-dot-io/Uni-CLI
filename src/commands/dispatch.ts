@@ -22,6 +22,14 @@ import chalk from "chalk";
 import { commandStrategy, getAllAdapters } from "../registry.js";
 import { resolveArgs } from "../engine/args.js";
 import { buildInvocation, execute } from "../engine/kernel/execute.js";
+import { executeWithRunRecording } from "../engine/session/run-loop.js";
+import {
+  evaluateOperationPolicy,
+  InvalidPermissionProfileError,
+  resolveOperationAdapterPath,
+  resolveOperationTargetSurface,
+} from "../engine/operation-policy.js";
+import type { OperationPolicy } from "../engine/operation-policy.js";
 import { format, detectFormat } from "../output/formatter.js";
 import {
   applyProjection,
@@ -107,17 +115,26 @@ export function registerAdapterDispatch(program: Command): void {
 
       subCmd.action(async (...actionArgs: unknown[]) => {
         const startedAt = Date.now();
+        const targetSurface = resolveOperationTargetSurface({
+          adapterType: adapter.type,
+          targetSurface: cmd.target_surface,
+        });
+        const adapterPath = resolveOperationAdapterPath(
+          adapter.name,
+          cmdName,
+          cmd.adapter_path,
+        );
 
         if (isQuarantined && process.env.UNICLI_FORCE_QUARANTINE !== "1") {
           const errCtx: AgentContext = {
             command: `${adapter.name}.${cmdName}`,
             duration_ms: Date.now() - startedAt,
             adapter_version: adapter.version,
-            surface: "web",
+            surface: targetSurface,
             error: {
               code: "quarantined",
               message: `adapter ${adapter.name}.${cmdName} is quarantined${cmd.quarantineReason ? `: ${cmd.quarantineReason}` : ""}`,
-              adapter_path: `src/adapters/${adapter.name}/${cmdName}.yaml`,
+              adapter_path: adapterPath,
               step: 0,
               suggestion: `run \`unicli repair ${adapter.name} ${cmdName}\` or unset \`quarantine\` in the adapter YAML after fixing; override with UNICLI_FORCE_QUARANTINE=1 for one-off debugging`,
               retryable: false,
@@ -174,6 +191,9 @@ export function registerAdapterDispatch(program: Command): void {
         const rootOpts = program.opts() as {
           argsFile?: string;
           dryRun?: boolean;
+          permissionProfile?: string;
+          yes?: boolean;
+          record?: boolean;
           select?: string;
           fields?: string;
           pluck?: string;
@@ -206,11 +226,20 @@ export function registerAdapterDispatch(program: Command): void {
           delete mergedArgs.limit;
         }
 
-        const inv = buildInvocation("cli", adapter.name, cmdName, {
-          args: mergedArgs,
-          source: resolved.source,
-          stdinRaw: resolved.stdinRaw,
-        });
+        const inv = buildInvocation(
+          "cli",
+          adapter.name,
+          cmdName,
+          {
+            args: mergedArgs,
+            source: resolved.source,
+            stdinRaw: resolved.stdinRaw,
+          },
+          {
+            permissionProfile: rootOpts.permissionProfile,
+            approved: rootOpts.yes === true,
+          },
+        );
 
         // `buildInvocation` only returns null for unknown (site, cmd). We
         // came from iterating `getAllAdapters()` so that cannot happen, but
@@ -225,22 +254,64 @@ export function registerAdapterDispatch(program: Command): void {
         }
 
         if (rootOpts.dryRun) {
+          let operationPolicy: OperationPolicy;
+          try {
+            operationPolicy = evaluateOperationPolicy({
+              site: adapter.name,
+              command: cmdName,
+              description: cmd.description,
+              adapterType: adapter.type,
+              targetSurface,
+              strategy,
+              browser: adapter.browser === true || cmd.browser === true,
+              args: adapterArgs,
+              profile: rootOpts.permissionProfile,
+              approved: rootOpts.yes === true,
+            });
+          } catch (err) {
+            if (err instanceof InvalidPermissionProfileError) {
+              const errCtx: AgentContext = {
+                command: `${adapter.name}.${cmdName}`,
+                duration_ms: Date.now() - startedAt,
+                adapter_version: adapter.version,
+                surface: targetSurface,
+                error: {
+                  code: "invalid_input",
+                  message: err.message,
+                  adapter_path: adapterPath,
+                  step: 0,
+                  suggestion: "use one of: open, confirm, locked",
+                  retryable: false,
+                },
+              };
+              process.stderr.write(format([], cmd.columns, fmt, errCtx) + "\n");
+              process.exit(ExitCode.USAGE_ERROR);
+            }
+            throw err;
+          }
           const plan = {
             command: `${adapter.name}.${cmdName}`,
             adapter_type: adapter.type,
             strategy: strategy ?? null,
             args: mergedArgs,
             args_source: resolved.source,
+            operation_policy: operationPolicy,
             trace_id: inv.trace_id,
             surface: inv.surface,
+            target_surface: targetSurface,
             pipeline_steps: cmd.pipeline?.length ?? 0,
-            adapter_path: `src/adapters/${adapter.name}/${cmdName}.yaml`,
+            adapter_path: adapterPath,
           };
           console.log(JSON.stringify(plan, null, 2));
           process.exit(ExitCode.SUCCESS);
         }
 
-        const result = await execute(inv);
+        const result =
+          rootOpts.record === true || process.env.UNICLI_RECORD_RUN === "1"
+            ? await executeWithRunRecording(inv, {
+                enabled: rootOpts.record === true ? true : undefined,
+              })
+            : await execute(inv);
 
         // Surface harden warnings the same way the pre-R2 path did —
         // yellow `[harden] …` lines on stderr, above any output envelope.

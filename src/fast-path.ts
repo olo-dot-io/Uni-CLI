@@ -11,8 +11,13 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { search } from "./discovery/search.js";
 import { buildDefaultConfig } from "./engine/repair/config.js";
+import {
+  evaluateOperationPolicy,
+  resolveOperationAdapterPath,
+  resolveOperationTargetSurface,
+} from "./engine/operation-policy.js";
 import { format, detectFormat } from "./output/formatter.js";
-import type { OutputFormat } from "./types.js";
+import type { OutputFormat, TargetSurface } from "./types.js";
 
 type Io = {
   stdout: (text: string) => void;
@@ -24,6 +29,9 @@ type ParsedArgv = {
   rest: string[];
   format?: OutputFormat;
   dryRun: boolean;
+  permissionProfile?: string;
+  yes: boolean;
+  record: boolean;
 };
 
 type ManifestCommand = {
@@ -37,6 +45,7 @@ type ManifestCommand = {
   columns?: string[];
   pipeline_steps?: number;
   adapter_path?: string;
+  target_surface?: TargetSurface;
 };
 
 type ManifestArg = {
@@ -259,6 +268,9 @@ function parseArgv(argv: string[]): ParsedArgv {
   const args = argv.slice(2);
   let formatValue: OutputFormat | undefined;
   let dryRun = false;
+  let permissionProfile: string | undefined;
+  let yes = false;
+  let record = false;
   let command: string | undefined;
   const rest: string[] = [];
 
@@ -283,6 +295,23 @@ function parseArgv(argv: string[]): ParsedArgv {
       }
       if (arg === "--dry-run") {
         dryRun = true;
+        continue;
+      }
+      if (arg === "--permission-profile") {
+        permissionProfile = args[i + 1];
+        i += 1;
+        continue;
+      }
+      if (arg.startsWith("--permission-profile=")) {
+        permissionProfile = arg.slice("--permission-profile=".length);
+        continue;
+      }
+      if (arg === "--yes") {
+        yes = true;
+        continue;
+      }
+      if (arg === "--record") {
+        record = true;
         continue;
       }
       if (!arg.startsWith("-")) {
@@ -312,10 +341,35 @@ function parseArgv(argv: string[]): ParsedArgv {
       dryRun = true;
       continue;
     }
+    if (arg === "--permission-profile") {
+      permissionProfile = args[i + 1];
+      i += 1;
+      continue;
+    }
+    if (arg.startsWith("--permission-profile=")) {
+      permissionProfile = arg.slice("--permission-profile=".length);
+      continue;
+    }
+    if (arg === "--yes") {
+      yes = true;
+      continue;
+    }
+    if (arg === "--record") {
+      record = true;
+      continue;
+    }
     rest.push(arg);
   }
 
-  return { command, rest, format: formatValue, dryRun };
+  return {
+    command,
+    rest,
+    format: formatValue,
+    dryRun,
+    permissionProfile,
+    yes,
+    record,
+  };
 }
 
 function manifestPath(): string {
@@ -546,6 +600,10 @@ function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
     process.exitCode = 64;
     return true;
   }
+  const targetSurface = resolveOperationTargetSurface({
+    adapterType: command.type,
+    targetSurface: command.target_surface,
+  });
 
   io.stdout(
     JSON.stringify(
@@ -556,6 +614,24 @@ function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
         strategy: command.strategy ?? "public",
         auth: (command.strategy ?? "public") !== "public",
         browser: command.browser === true,
+        target_surface: targetSurface,
+        adapter_path: resolveOperationAdapterPath(
+          site,
+          cmdName,
+          command.adapter_path,
+        ),
+        operation_policy: evaluateOperationPolicy({
+          site,
+          command: cmdName,
+          description: command.description,
+          adapterType: command.type,
+          targetSurface: command.target_surface,
+          strategy: command.strategy,
+          browser: command.browser === true,
+          args: command.args,
+          profile: parsed.permissionProfile,
+          approved: parsed.yes,
+        }),
         args_schema: argsToJsonSchema(command.args ?? []),
         example_stdin: buildExample(command.args ?? []),
         channels: buildChannels(site, cmdName, command.args ?? []),
@@ -666,21 +742,42 @@ function handleAdapterDryRun(parsed: ParsedArgv, io: Io): boolean {
 
   const args = resolveDryRunArgs(command.args, tokens);
   if (!args) return false;
+  const adapterType = command.type ?? info.commands[0]?.type ?? "web-api";
+  const targetSurface = resolveOperationTargetSurface({
+    adapterType,
+    targetSurface: command.target_surface,
+  });
+  const adapterPath = resolveOperationAdapterPath(
+    parsed.command,
+    cmdName,
+    command.adapter_path,
+  );
 
   io.stdout(
     JSON.stringify(
       {
         command: `${parsed.command}.${cmdName}`,
-        adapter_type: command.type ?? info.commands[0]?.type ?? "web-api",
+        adapter_type: adapterType,
         strategy: command.strategy ?? "public",
         args,
         args_source: tokens.length > 0 ? "shell" : "defaults",
+        operation_policy: evaluateOperationPolicy({
+          site: parsed.command,
+          command: cmdName,
+          description: command.description,
+          adapterType,
+          targetSurface,
+          strategy: command.strategy,
+          browser: command.browser === true,
+          args: command.args,
+          profile: parsed.permissionProfile,
+          approved: parsed.yes,
+        }),
         trace_id: `fast-${Date.now().toString(36)}`,
         surface: "cli",
+        target_surface: targetSurface,
         pipeline_steps: command.pipeline_steps ?? 0,
-        adapter_path:
-          command.adapter_path ??
-          `src/adapters/${parsed.command}/${cmdName}.yaml`,
+        adapter_path: adapterPath,
       },
       null,
       2,

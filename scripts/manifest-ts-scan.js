@@ -12,6 +12,15 @@ const ELECTRON_DESKTOP_BASE_COMMANDS = [
   [
     "dump",
     "Dump visible DOM text from desktop Electron app. 读取桌面版可见文本内容",
+    [
+      {
+        name: "limit",
+        type: "str",
+        required: false,
+        positional: false,
+        description: "Maximum text characters to return",
+      },
+    ],
   ],
   [
     "snapshot-app",
@@ -20,14 +29,55 @@ const ELECTRON_DESKTOP_BASE_COMMANDS = [
   [
     "click-text",
     "Click visible text, aria-label, title, or button content in desktop Electron app. 按文本点击桌面版控件",
+    [
+      {
+        name: "text",
+        type: "str",
+        required: true,
+        positional: true,
+        description: "Visible text, aria-label, or title to click",
+      },
+    ],
   ],
   [
     "type-text",
     "Type text into the focused field or a text-matched target in desktop Electron app. 向桌面版输入文本",
+    [
+      {
+        name: "text",
+        type: "str",
+        required: true,
+        positional: true,
+        description: "Text to type",
+      },
+      {
+        name: "target",
+        type: "str",
+        required: false,
+        positional: false,
+        description: "Optional visible text to click before typing",
+      },
+    ],
   ],
   [
     "press",
     "Press a key in desktop Electron app, with optional modifiers. 向桌面版发送按键",
+    [
+      {
+        name: "key",
+        type: "str",
+        required: true,
+        positional: true,
+        description: "Key name",
+      },
+      {
+        name: "modifiers",
+        type: "str",
+        required: false,
+        positional: false,
+        description: "Comma-separated modifiers such as meta,shift",
+      },
+    ],
   ],
 ];
 
@@ -44,23 +94,57 @@ const ELECTRON_DESKTOP_MEDIA_COMMANDS = [
 ];
 
 const AI_CHAT_BASE_COMMANDS = [
-  ["ask", "Send a prompt and wait for response in desktop AI chat app"],
-  ["send", "Send text without waiting in desktop AI chat app"],
+  [
+    "ask",
+    "Send a prompt and wait for response in desktop AI chat app",
+    [{ name: "prompt", type: "str", required: true, positional: true }],
+  ],
+  [
+    "send",
+    "Send text without waiting in desktop AI chat app",
+    [{ name: "text", type: "str", required: true, positional: true }],
+  ],
   ["read", "Read the latest response from desktop AI chat app"],
   ["status", "Inspect desktop AI chat app status"],
-  ["screenshot", "Capture a screenshot from desktop AI chat app"],
+  [
+    "screenshot",
+    "Capture a screenshot from desktop AI chat app",
+    [
+      {
+        name: "path",
+        type: "str",
+        required: false,
+        positional: true,
+      },
+    ],
+  ],
   ["dump", "Dump visible text from desktop AI chat app"],
 ];
 
 const AI_CHAT_MODEL_COMMAND = [
   "model",
   "Switch or inspect the model in desktop AI chat app",
+  [{ name: "name", type: "str", required: false, positional: true }],
 ];
 
 const AI_CHAT_NEW_COMMAND = ["new", "Start a new desktop AI chat"];
 
-function extractElectronDesktopRegistrations(source) {
+function commandMetadata(adapterPath) {
+  return {
+    adapter_path: adapterPath,
+    target_surface: "desktop",
+  };
+}
+
+function extractElectronDesktopRegistrations(
+  source,
+  fallbackSite,
+  fallbackCommand,
+) {
   const out = [];
+  const metadata = commandMetadata(
+    `src/adapters/${fallbackSite}/${fallbackCommand}.ts`,
+  );
   const re =
     /registerElectronDesktopCommands\(\s*["'`]([^"'`]+)["'`]\s*(?:,\s*(\{[\s\S]*?\})\s*)?\)/g;
   for (const match of source.matchAll(re)) {
@@ -69,12 +153,16 @@ function extractElectronDesktopRegistrations(source) {
     const displayName =
       options.match(/displayName:\s*["'`]([^"'`]+)["'`]/)?.[1] ?? site;
     const hasMedia = /\bmedia\s*:/.test(options);
-    const commands = ELECTRON_DESKTOP_BASE_COMMANDS.map(([name, desc]) => ({
-      name,
-      description: `${desc} ${displayName}`,
-      strategy: "public",
-      type: "web-api",
-    }));
+    const commands = ELECTRON_DESKTOP_BASE_COMMANDS.map(
+      ([name, desc, args]) => ({
+        name,
+        description: `${desc} ${displayName}`,
+        strategy: "public",
+        type: "web-api",
+        ...metadata,
+        ...(args ? { args } : {}),
+      }),
+    );
     if (hasMedia) {
       commands.push(
         ...ELECTRON_DESKTOP_MEDIA_COMMANDS.map(([name, desc]) => ({
@@ -82,6 +170,7 @@ function extractElectronDesktopRegistrations(source) {
           description: `${desc} ${displayName}`,
           strategy: "public",
           type: "web-api",
+          ...metadata,
         })),
       );
     }
@@ -203,13 +292,24 @@ function hasObjectProperty(obj, prop) {
   return getObjectProperty(obj, prop) !== undefined;
 }
 
-function makeAiChatCommands(displayName, hasModel, hasNew) {
+function makeAiChatCommands(site, displayName, hasModel, hasNew, adapterPath) {
   const suffix = displayName ? ` ${displayName}` : "";
-  const commands = AI_CHAT_BASE_COMMANDS.map(([name, desc]) => ({
+  const metadata = commandMetadata(adapterPath);
+  const commands = AI_CHAT_BASE_COMMANDS.map(([name, desc, args]) => ({
     name,
     description: `${desc}${suffix}`,
     strategy: "public",
     type: "web-api",
+    ...metadata,
+    ...(args
+      ? {
+          args: args.map((arg) =>
+            name === "screenshot" && arg.name === "path"
+              ? { ...arg, default: `./${site}-screenshot.png` }
+              : arg,
+          ),
+        }
+      : {}),
   }));
   if (hasModel) {
     commands.push({
@@ -217,6 +317,8 @@ function makeAiChatCommands(displayName, hasModel, hasNew) {
       description: `${AI_CHAT_MODEL_COMMAND[1]}${suffix}`,
       strategy: "public",
       type: "web-api",
+      ...metadata,
+      args: AI_CHAT_MODEL_COMMAND[2],
     });
   }
   if (hasNew) {
@@ -225,6 +327,7 @@ function makeAiChatCommands(displayName, hasModel, hasNew) {
       description: `${AI_CHAT_NEW_COMMAND[1]}${suffix}`,
       strategy: "public",
       type: "web-api",
+      ...metadata,
     });
   }
   commands.sort((a, b) => a.name.localeCompare(b.name));
@@ -232,7 +335,11 @@ function makeAiChatCommands(displayName, hasModel, hasNew) {
 }
 
 export function extractTsRegistrations(source, fallbackSite, fallbackCommand) {
-  const out = extractElectronDesktopRegistrations(source);
+  const out = extractElectronDesktopRegistrations(
+    source,
+    fallbackSite,
+    fallbackCommand,
+  );
   const sf = ts.createSourceFile(
     `${fallbackSite}/${fallbackCommand}.ts`,
     source,
@@ -263,6 +370,7 @@ export function extractTsRegistrations(source, fallbackSite, fallbackCommand) {
               args: getObjectArgs(first),
               pipeline_steps: 0,
               adapter_path: `src/adapters/${fallbackSite}/${fallbackCommand}.ts`,
+              target_surface: getObjectString(first, "target_surface"),
             },
           ],
         });
@@ -282,9 +390,11 @@ export function extractTsRegistrations(source, fallbackSite, fallbackCommand) {
         out.push({
           site,
           commands: makeAiChatCommands(
+            site,
             displayName,
             options ? hasObjectProperty(options, "modelSelector") : false,
             options ? hasObjectProperty(options, "newChatSelector") : false,
+            `src/adapters/${fallbackSite}/${fallbackCommand}.ts`,
           ),
         });
       }

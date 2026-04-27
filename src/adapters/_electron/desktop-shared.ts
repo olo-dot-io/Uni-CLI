@@ -36,6 +36,11 @@ export const ELECTRON_DESKTOP_MEDIA_COMMANDS = [
   "prev",
 ] as const;
 
+const ELECTRON_DESKTOP_COMMAND_META = {
+  adapter_path: "src/adapters/electron-desktop/electron-desktop.ts",
+  target_surface: "desktop" as const,
+};
+
 export function registerElectronDesktopCommands(
   site: string,
   profile: ElectronDesktopCommandProfile = {},
@@ -48,6 +53,7 @@ export function registerElectronDesktopCommands(
     name: "open-app",
     description: `Open ${displayName} desktop Electron app with CDP enabled for AI control. 打开${displayName}桌面版并启用 CDP 控制。`,
     strategy: Strategy.PUBLIC,
+    ...ELECTRON_DESKTOP_COMMAND_META,
     func: async () => {
       const endpoint = await launchElectronApp(site);
       return [
@@ -67,6 +73,7 @@ export function registerElectronDesktopCommands(
     name: "status-app",
     description: `Inspect current ${displayName} desktop app page, title, URL, visible controls, and text summary. 查看${displayName}桌面版当前状态和可见内容。`,
     strategy: Strategy.PUBLIC,
+    ...ELECTRON_DESKTOP_COMMAND_META,
     func: async () => [await readDesktopStatus(site, displayName)],
   });
 
@@ -75,6 +82,7 @@ export function registerElectronDesktopCommands(
     name: "dump",
     description: `Dump visible text from the ${displayName} desktop Electron app via CDP DOM. 读取${displayName}桌面版可见文本。`,
     strategy: Strategy.PUBLIC,
+    ...ELECTRON_DESKTOP_COMMAND_META,
     args: [
       {
         name: "limit",
@@ -95,6 +103,7 @@ export function registerElectronDesktopCommands(
     name: "snapshot-app",
     description: `List visible clickable text, buttons, inputs, and regions in ${displayName}. 枚举${displayName}桌面版可交互内容。`,
     strategy: Strategy.PUBLIC,
+    ...ELECTRON_DESKTOP_COMMAND_META,
     func: async () => {
       const p = await connectElectronApp(site);
       return (await p.evaluate(visibleInteractivesJs())) as unknown[];
@@ -106,6 +115,7 @@ export function registerElectronDesktopCommands(
     name: "click-text",
     description: `Click visible text, aria-label, title, or button content in ${displayName}. 按文本点击${displayName}桌面版控件。`,
     strategy: Strategy.PUBLIC,
+    ...ELECTRON_DESKTOP_COMMAND_META,
     args: [
       {
         name: "text",
@@ -125,6 +135,7 @@ export function registerElectronDesktopCommands(
     name: "type-text",
     description: `Type text into the focused field or a text-matched target in ${displayName}. 向${displayName}桌面版输入文本。`,
     strategy: Strategy.PUBLIC,
+    ...ELECTRON_DESKTOP_COMMAND_META,
     args: [
       {
         name: "text",
@@ -154,6 +165,7 @@ export function registerElectronDesktopCommands(
     name: "press",
     description: `Press a key in ${displayName}, with optional comma-separated modifiers. 在${displayName}桌面版发送按键。`,
     strategy: Strategy.PUBLIC,
+    ...ELECTRON_DESKTOP_COMMAND_META,
     args: [
       {
         name: "key",
@@ -197,6 +209,7 @@ function registerMediaCommands(
     name: "play-liked",
     description: `Open ${displayName} liked songs and play the liked playlist. 打开${displayName}我喜欢的音乐/喜欢的歌曲并播放。`,
     strategy: Strategy.PUBLIC,
+    ...ELECTRON_DESKTOP_COMMAND_META,
     func: async () => {
       const p = await connectElectronApp(site);
       const liked = await clickVisibleText(p, media.likedText, displayName);
@@ -213,6 +226,7 @@ function registerMediaCommands(
       name: action,
       description: `${action} playback in the ${displayName} desktop app. 控制${displayName}桌面版播放：${action}。`,
       strategy: Strategy.PUBLIC,
+      ...ELECTRON_DESKTOP_COMMAND_META,
       func: async () => {
         const p = await connectElectronApp(site);
         const clicked = await clickMediaControl(p, action, displayName);

@@ -2,9 +2,9 @@
  * MCP tool-call dispatcher — the bridge between JSON-RPC tool invocations
  * and the invocation kernel.
  *
- * v0.213.3 R2: every MCP tool call funnels through `execute()` so the CLI
- * and MCP surfaces produce byte-identical envelopes (modulo trace_id and
- * duration_ms). Flat `params` shape preserved for D2 backward compat.
+ * v0.213.3 R2: every MCP tool call funnels through the invocation kernel so
+ * the CLI and MCP surfaces produce byte-identical envelopes (modulo trace_id
+ * and duration_ms). Flat `params` shape preserved for D2 backward compat.
  *
  * Shape contract (backward compat with v0.213.2 and earlier):
  *   - success → `{ content: [{type:"text", text: JSON.stringify({count, results}, null, 2)}],
@@ -13,7 +13,8 @@
  *   - warnings flow to `_meta.warnings` so agents can inspect them
  */
 
-import { buildInvocation, execute } from "../engine/kernel/execute.js";
+import { buildInvocation } from "../engine/kernel/execute.js";
+import { executeWithRunRecording } from "../engine/session/run-loop.js";
 import { coerceLimit } from "../engine/args.js";
 import type { AdapterManifest, AdapterCommand } from "../types.js";
 
@@ -108,7 +109,7 @@ export async function runResolvedCommand(
     };
   }
 
-  const result = await execute(inv);
+  const result = await executeWithRunRecording(inv);
 
   if (result.error) {
     const errorData = {

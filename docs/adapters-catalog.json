@@ -1,6 +1,6 @@
 {
   "source": "unicli@0.216.3",
-  "generated": "2026-04-27T04:51:36.432Z",
+  "generated": "2026-04-27T15:06:29.793Z",
   "total_sites": 235,
   "total_commands": 1448,
   "adapters": [
@@ -238,7 +238,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["rank", "title", "date", "summary"],
+          "columns": ["rank", "title", "date", "summary", "url"],
           "args": [
             {
               "name": "limit",

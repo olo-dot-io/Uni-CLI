@@ -26,6 +26,12 @@ import { commandStrategy, resolveCommand } from "../../registry.js";
 import type { AgentError } from "../../output/envelope.js";
 import { ExitCode } from "../../types.js";
 import type { ResolvedArgs } from "../args.js";
+import {
+  evaluateOperationPolicy,
+  InvalidPermissionProfileError,
+  resolveOperationAdapterPath,
+  resolveOperationTargetSurface,
+} from "../operation-policy.js";
 
 import { getCompiled } from "./compile.js";
 import type { Invocation, InvocationResult } from "./types.js";
@@ -56,6 +62,7 @@ export function buildInvocation(
   site: string,
   cmd: string,
   bag: ResolvedArgs,
+  options: { permissionProfile?: string; approved?: boolean } = {},
 ): Invocation | null {
   const resolved = resolveCommand(site, cmd);
   if (!resolved) return null;
@@ -65,6 +72,8 @@ export function buildInvocation(
     cmdName: cmd,
     bag,
     surface,
+    permissionProfile: options.permissionProfile,
+    approved: options.approved,
     trace_id: newULID(),
   };
 }
@@ -80,12 +89,106 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
   const compiled = getCompiled(inv.adapter.name, inv.cmdName);
   const warnings: string[] = [];
   const strategy = commandStrategy(inv.adapter, inv.command);
+  const targetSurface = resolveOperationTargetSurface({
+    adapterType: inv.adapter.type,
+    targetSurface: inv.command.target_surface,
+  });
+  const adapterPath = resolveOperationAdapterPath(
+    inv.adapter.name,
+    inv.cmdName,
+    inv.command.adapter_path,
+  );
 
   // Loader primes the kernel cache via primeKernelCache() after every
   // registry mutation. A miss here means either a wiring bug or a test
   // that registers an adapter without calling primeKernelCache() — throw
   // a clear error instead of silently recompiling.
   if (!compiled) throw new KernelLookupError(key);
+
+  try {
+    const operationPolicy = evaluateOperationPolicy({
+      site: inv.adapter.name,
+      command: inv.cmdName,
+      description: inv.command.description,
+      adapterType: inv.adapter.type,
+      targetSurface,
+      strategy,
+      browser: inv.adapter.browser === true || inv.command.browser === true,
+      args: inv.command.adapterArgs,
+      profile: inv.permissionProfile,
+      approved: inv.approved,
+    });
+
+    if (operationPolicy.enforcement === "needs_approval") {
+      const err: AgentError = {
+        code: "permission_denied",
+        message: `permission profile "${operationPolicy.profile}" requires approval for ${operationPolicy.effect}`,
+        adapter_path: adapterPath,
+        step: 0,
+        suggestion:
+          operationPolicy.approval_hint ??
+          "rerun with --yes or use --permission-profile open",
+        retryable: false,
+        alternatives: [
+          `unicli --dry-run ${inv.adapter.name} ${inv.cmdName}`,
+          `unicli --yes --permission-profile ${operationPolicy.profile} ${inv.adapter.name} ${inv.cmdName}`,
+          `unicli --permission-profile open ${inv.adapter.name} ${inv.cmdName}`,
+        ],
+      };
+      const durationMs = Date.now() - startedAt;
+      return {
+        results: [],
+        envelope: {
+          command: key,
+          duration_ms: durationMs,
+          adapter_version: inv.adapter.version,
+          surface: targetSurface,
+          error: err,
+          next_actions: defaultErrorNextActions(
+            inv.adapter.name,
+            inv.cmdName,
+            "permission_denied",
+          ),
+        },
+        durationMs,
+        exitCode: ExitCode.AUTH_REQUIRED,
+        warnings,
+        error: err,
+      };
+    }
+  } catch (err) {
+    if (err instanceof InvalidPermissionProfileError) {
+      const agentErr: AgentError = {
+        code: "invalid_input",
+        message: err.message,
+        adapter_path: adapterPath,
+        step: 0,
+        suggestion: "use one of: open, confirm, locked",
+        retryable: false,
+      };
+      const durationMs = Date.now() - startedAt;
+      return {
+        results: [],
+        envelope: {
+          command: key,
+          duration_ms: durationMs,
+          adapter_version: inv.adapter.version,
+          surface: targetSurface,
+          error: agentErr,
+          next_actions: defaultErrorNextActions(
+            inv.adapter.name,
+            inv.cmdName,
+            "invalid_input",
+          ),
+        },
+        durationMs,
+        exitCode: ExitCode.USAGE_ERROR,
+        warnings,
+        error: agentErr,
+      };
+    }
+    throw err;
+  }
 
   // 1. JSON Schema validation (fail-closed via ajv strict mode).
   const v = compiled.validate(inv.bag.args);
@@ -96,7 +199,7 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
     const err: AgentError = {
       code: "invalid_input",
       message: `arg "${name}" ${first.message ?? "invalid"}`,
-      adapter_path: `src/adapters/${inv.adapter.name}/${inv.cmdName}.yaml`,
+      adapter_path: adapterPath,
       step: 0,
       suggestion: `match the JSON Schema at \`unicli describe ${inv.adapter.name} ${inv.cmdName}\``,
       retryable: false,
@@ -108,7 +211,7 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
         command: key,
         duration_ms: durationMs,
         adapter_version: inv.adapter.version,
-        surface: "web",
+        surface: targetSurface,
         error: err,
         next_actions: defaultErrorNextActions(
           inv.adapter.name,
@@ -132,7 +235,7 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
       const agentErr: AgentError = {
         code: "invalid_input",
         message: err.message,
-        adapter_path: `src/adapters/${inv.adapter.name}/${inv.cmdName}.yaml`,
+        adapter_path: adapterPath,
         step: 0,
         suggestion: err.suggestion,
         retryable: false,
@@ -144,7 +247,7 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
           command: key,
           duration_ms: durationMs,
           adapter_version: inv.adapter.version,
-          surface: "web",
+          surface: targetSurface,
           error: agentErr,
           next_actions: defaultErrorNextActions(
             inv.adapter.name,
@@ -208,7 +311,7 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
       const agentErr: AgentError = {
         code: "internal_error",
         message: `command ${key} has neither pipeline nor func`,
-        adapter_path: `src/adapters/${inv.adapter.name}/${inv.cmdName}.yaml`,
+        adapter_path: adapterPath,
         step: 0,
         suggestion:
           "the adapter manifest is broken; run `unicli repair` to regenerate",
@@ -221,7 +324,7 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
           command: key,
           duration_ms: durationMs,
           adapter_version: inv.adapter.version,
-          surface: "web",
+          surface: targetSurface,
           error: agentErr,
         },
         durationMs,
@@ -231,7 +334,6 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
       };
     }
   } catch (err) {
-    const adapterPath = `src/adapters/${inv.adapter.name}/${inv.cmdName}.yaml`;
     const fields = errorToAgentFields(err, adapterPath, inv.adapter.name);
     const agentErr: AgentError = {
       code: errorTypeToCode(err),
@@ -245,7 +347,7 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
         command: key,
         duration_ms: durationMs,
         adapter_version: inv.adapter.version,
-        surface: "web",
+        surface: targetSurface,
         error: agentErr,
         next_actions: defaultErrorNextActions(
           inv.adapter.name,
@@ -273,7 +375,7 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
       command: key,
       duration_ms: durationMs,
       adapter_version: inv.adapter.version,
-      surface: "web",
+      surface: targetSurface,
       next_actions: nextActions,
     },
     durationMs,

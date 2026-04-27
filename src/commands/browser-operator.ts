@@ -22,6 +22,10 @@ import {
 } from "./browser-operator-runtime.js";
 import { sendCommand } from "../browser/daemon-client.js";
 import { registerBrowserAuthoringSubcommands } from "./browser-authoring-operator.js";
+import {
+  captureBrowserEvidencePacket,
+  installBrowserEvidenceHooks,
+} from "../engine/browser/evidence.js";
 
 export { withBrowserOperatorEnv };
 
@@ -115,6 +119,32 @@ export function registerBrowserOperatorSubcommands(
           return { ok: true, path, size: buf.length };
         }
         return buf.toString("base64");
+      }),
+    );
+
+  root
+    .command("evidence")
+    .description("Capture a browser operator evidence packet")
+    .option(
+      "--screenshot-dir <path>",
+      "Directory for screenshot evidence artifacts",
+    )
+    .option("--no-screenshot", "Skip screenshot evidence artifact")
+    .action((opts: { screenshotDir?: string; screenshot?: boolean }) =>
+      operatorAction(program, root, namespace, "evidence", async () => {
+        const page = await getOperatorPage(root, namespace);
+        await ensureNetworkCapture(page);
+        await installBrowserEvidenceHooks(page);
+        const screenshotDir =
+          opts.screenshot === false
+            ? undefined
+            : (opts.screenshotDir ??
+              join(userHome(), ".unicli", "evidence", "browser"));
+        return await captureBrowserEvidencePacket(page, {
+          action: "evidence",
+          workspace: resolveWorkspace(root, namespace),
+          screenshotDir,
+        });
       }),
     );
 

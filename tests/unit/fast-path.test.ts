@@ -127,6 +127,47 @@ describe("CLI fast path", () => {
     expect(payload.channels.shell).toContain("<query>");
   });
 
+  it("serves generated Electron command schemas from manifest metadata", () => {
+    const { stdout, io } = makeIo();
+
+    const handled = tryRunFastPath(
+      ["node", "unicli", "describe", "wechat-work", "type-text"],
+      io,
+    );
+
+    expect(handled).toBe(true);
+    const payload = JSON.parse(stdout.join("")) as {
+      args_schema: {
+        properties: Record<string, { type: string }>;
+        required: string[];
+      };
+      channels: { shell: string };
+      operation_policy: {
+        capability_scope: {
+          dimensions: {
+            desktop: { access: string };
+            process: { access: string };
+          };
+        };
+      };
+    };
+    expect(payload.args_schema.properties.text).toMatchObject({
+      type: "string",
+    });
+    expect(payload.args_schema.properties.target).toMatchObject({
+      type: "string",
+    });
+    expect(payload.args_schema.required).toContain("text");
+    expect(payload.channels.shell).toContain("<text>");
+    expect(payload.channels.shell).toContain("[--target <str>]");
+    expect(payload.operation_policy.capability_scope).toMatchObject({
+      dimensions: {
+        desktop: { access: "write" },
+        process: { access: "write" },
+      },
+    });
+  });
+
   it("serves repair dry-run without entering the repair loop", () => {
     const { stdout, io } = makeIo();
 
@@ -170,11 +211,115 @@ describe("CLI fast path", () => {
       command: string;
       args: Record<string, unknown>;
       adapter_path: string;
+      operation_policy: { profile: string; enforcement: string };
     };
     expect(plan).toMatchObject({
       command: "binance.price",
       args: { symbol: "BTCUSDT" },
       adapter_path: "src/adapters/binance/price.yaml",
+      operation_policy: { profile: "open", enforcement: "allow" },
+    });
+  });
+
+  it("serves user-selected operation policy in adapter dry-run plans", () => {
+    const { stdout, io } = makeIo();
+
+    const handled = tryRunFastPath(
+      [
+        "node",
+        "unicli",
+        "--dry-run",
+        "--permission-profile",
+        "confirm",
+        "slack",
+        "send",
+        "C0123456789",
+        "hello",
+      ],
+      io,
+    );
+
+    expect(handled).toBe(true);
+    const plan = JSON.parse(stdout.join("")) as {
+      operation_policy: {
+        profile: string;
+        effect: string;
+        risk: string;
+        enforcement: string;
+        capability_scope: {
+          dimensions: {
+            account: { access: string };
+            network: { access: string };
+          };
+        };
+      };
+    };
+    expect(plan.operation_policy).toMatchObject({
+      profile: "confirm",
+      effect: "send_message",
+      risk: "high",
+      enforcement: "needs_approval",
+      capability_scope: {
+        dimensions: {
+          account: { access: "write" },
+          network: { access: "write" },
+        },
+      },
+    });
+  });
+
+  it("resolves generated Electron adapter dry-run args from the manifest", () => {
+    const { stdout, io } = makeIo();
+
+    const handled = tryRunFastPath(
+      [
+        "node",
+        "unicli",
+        "--dry-run",
+        "wechat-work",
+        "type-text",
+        "hello",
+        "--target",
+        "文件传输助手",
+      ],
+      io,
+    );
+
+    expect(handled).toBe(true);
+    const plan = JSON.parse(stdout.join("")) as {
+      command: string;
+      args: Record<string, unknown>;
+      adapter_path: string;
+      target_surface: string;
+    };
+    expect(plan).toMatchObject({
+      command: "wechat-work.type-text",
+      args: { text: "hello", target: "文件传输助手" },
+      adapter_path: "src/adapters/electron-desktop/electron-desktop.ts",
+      target_surface: "desktop",
+    });
+  });
+
+  it("resolves generated AI chat defaults from the manifest", () => {
+    const { stdout, io } = makeIo();
+
+    const handled = tryRunFastPath(
+      ["node", "unicli", "--dry-run", "chatgpt", "screenshot"],
+      io,
+    );
+
+    expect(handled).toBe(true);
+    const plan = JSON.parse(stdout.join("")) as {
+      command: string;
+      args: Record<string, unknown>;
+      adapter_path: string;
+      target_surface: string;
+    };
+    expect(plan).toMatchObject({
+      command: "chatgpt.screenshot",
+      args: { path: "./chatgpt-screenshot.png" },
+      adapter_path: "src/adapters/chatgpt/chatgpt.ts",
+      target_surface: "desktop",
     });
   });
 

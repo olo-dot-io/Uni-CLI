@@ -83,6 +83,18 @@ export async function createCli(): Promise<Command> {
       "resolve args + print execution plan without running the pipeline",
     )
     .option(
+      "--permission-profile <profile>",
+      "operation policy: open, confirm, locked (default: open; env: UNICLI_PERMISSION_PROFILE)",
+    )
+    .option(
+      "--yes",
+      "approve commands blocked by confirm/locked permission profiles",
+    )
+    .option(
+      "--record",
+      "record an append-only run trace under ~/.unicli/runs (experimental)",
+    )
+    .option(
       "--select <jsonpath>",
       "project results via JSONPath (e.g. '$[*].title') before formatting",
     )

@@ -22,6 +22,11 @@ import {
   getAllAdapters,
   resolveCommand,
 } from "../registry.js";
+import {
+  evaluateOperationPolicy,
+  resolveOperationAdapterPath,
+  resolveOperationTargetSurface,
+} from "../engine/operation-policy.js";
 import { ExitCode } from "../types.js";
 import type {
   AdapterArg,
@@ -194,18 +199,40 @@ export function describeCommand(
   adapter?: AdapterManifest,
 ): Record<string, unknown> {
   const args = cmd.adapterArgs ?? [];
+  const strategy = adapter ? commandStrategy(adapter, cmd) : undefined;
+  const targetSurface = resolveOperationTargetSurface({
+    adapterType: adapter?.type,
+    targetSurface: cmd.target_surface,
+  });
   const metadata = adapter
     ? {
-        strategy: commandStrategy(adapter, cmd) ?? "public",
+        strategy: strategy ?? "public",
         auth: commandRequiresAuth(adapter, cmd),
         browser: commandUsesBrowser(adapter, cmd),
+        target_surface: targetSurface,
+        adapter_path: resolveOperationAdapterPath(
+          site,
+          cmdName,
+          cmd.adapter_path,
+        ),
       }
     : {};
+  const operationPolicy = evaluateOperationPolicy({
+    site,
+    command: cmdName,
+    description: cmd.description,
+    adapterType: adapter?.type,
+    targetSurface,
+    strategy,
+    browser: adapter ? commandUsesBrowser(adapter, cmd) : cmd.browser === true,
+    args,
+  });
   return {
     command: `unicli ${site} ${cmdName}`,
     description: cmd.description ?? "",
     quarantined: cmd.quarantine === true,
     ...metadata,
+    operation_policy: operationPolicy,
     args_schema: argsToJsonSchema(args),
     example_stdin: buildExample(args),
     output_schema: serializeOutputSchema(cmd.output),

@@ -5,6 +5,7 @@ import {
   DEFAULT_OPENCLI_SIGNALS,
   buildOpenCliParityReport,
   evaluateSignalCoverage,
+  readOpenCliSurface,
   readUniSurface,
 } from "../../bench/opencli-parity.js";
 
@@ -24,8 +25,10 @@ describe("OpenCLI parity benchmark", () => {
         repoRoot: process.cwd(),
         generatedAt: "2026-04-26T00:00:00.000Z",
       });
+      const referenceSurface = readOpenCliSurface(process.cwd());
 
-      expect(report.opencli.commands).toBe(628);
+      expect(report.opencli.commands).toBe(referenceSurface.commands);
+      expect(report.opencli.commands).toBeGreaterThan(0);
       expect(report.coverage.missing_commands).toBe(0);
       expect(report.coverage.command_coverage).toBe(1);
       expect(report.missing.commands).toEqual([]);

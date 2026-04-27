@@ -20,6 +20,8 @@ export interface Invocation {
   cmdName: string;
   bag: ResolvedArgs;
   surface: "cli" | "mcp" | "acp" | "bench" | "hub";
+  permissionProfile?: string;
+  approved?: boolean;
   /** ULID — 26-char Crockford Base32, time-sortable and monotonic within ms. */
   trace_id: string;
 }
