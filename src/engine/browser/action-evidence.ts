@@ -49,6 +49,13 @@ export interface BrowserActionEvidenceOptions {
 
 type BrowserEvidencePhase = "before" | "after";
 type BrowserEvidenceOutcome = "pending" | "success" | "failure";
+type MovementDimension =
+  | "url"
+  | "title"
+  | "dom"
+  | "screenshot"
+  | "network"
+  | "console";
 
 export function isBrowserActionEvidenceEnabled(enabled?: boolean): boolean {
   return isRunRecordingEnabled(enabled);
@@ -104,13 +111,17 @@ export async function withBrowserActionEvidence<T>(
   try {
     const result = await action();
     const after = await captureEvidence(page, options, "after");
+    const movement = evidenceMovement(before, after);
     await appendAll(
       store,
       [
         createEvidenceCapturedEvent(metadata, sequence, {
           evidence_type: "browser-operator",
           visibility: "internal",
-          data: evidenceEventData(after, "after", "success"),
+          data: {
+            ...evidenceEventData(after, "after", "success"),
+            movement,
+          },
           internal: after,
         }),
         createToolCallCompletedEvent(metadata, sequence, {
@@ -130,6 +141,7 @@ export async function withBrowserActionEvidence<T>(
     return result;
   } catch (err) {
     const after = await captureEvidence(page, options, "after");
+    const movement = evidenceMovement(before, after);
     const error = errorData(err);
     await appendAll(
       store,
@@ -139,6 +151,7 @@ export async function withBrowserActionEvidence<T>(
           visibility: "internal",
           data: {
             ...evidenceEventData(after, "after", "failure"),
+            movement,
             error,
           },
           internal: after,
@@ -234,6 +247,37 @@ function evidenceEventData(
     screenshot_sha256: packet.screenshot.sha256,
     screenshot_path: packet.screenshot.path,
   };
+}
+
+function evidenceMovement(
+  before: BrowserEvidencePacket,
+  after: BrowserEvidencePacket,
+): Record<string, unknown> {
+  const networkCountDelta = after.network.count - before.network.count;
+  const consoleCountDelta = after.console.count - before.console.count;
+  const screenshotChanged = screenshotSha(before) !== screenshotSha(after);
+  const changedDimensions: MovementDimension[] = [];
+  if (before.page.url !== after.page.url) changedDimensions.push("url");
+  if (before.page.title !== after.page.title) changedDimensions.push("title");
+  if (before.dom.sha256 !== after.dom.sha256) changedDimensions.push("dom");
+  if (screenshotChanged) changedDimensions.push("screenshot");
+  if (networkCountDelta !== 0) changedDimensions.push("network");
+  if (consoleCountDelta !== 0) changedDimensions.push("console");
+
+  return {
+    url_changed: before.page.url !== after.page.url,
+    title_changed: before.page.title !== after.page.title,
+    dom_changed: before.dom.sha256 !== after.dom.sha256,
+    screenshot_changed: screenshotChanged,
+    network_count_delta: networkCountDelta,
+    console_count_delta: consoleCountDelta,
+    changed_dimensions: changedDimensions,
+    no_observed_change: changedDimensions.length === 0,
+  };
+}
+
+function screenshotSha(packet: BrowserEvidencePacket): string | undefined {
+  return packet.screenshot.sha256;
 }
 
 async function appendAll(

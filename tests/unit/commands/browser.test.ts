@@ -283,6 +283,16 @@ describe("unicli browser operator surface", () => {
         phase: "after",
         outcome: "success",
         workspace: "browser:default",
+        movement: {
+          url_changed: false,
+          title_changed: false,
+          dom_changed: false,
+          screenshot_changed: false,
+          network_count_delta: 0,
+          console_count_delta: 0,
+          changed_dimensions: [],
+          no_observed_change: true,
+        },
       },
       internal: {
         action: "click.after",
@@ -292,6 +302,94 @@ describe("unicli browser operator surface", () => {
     });
     expect(evidenceEvents[0]?.data).not.toHaveProperty("snapshot");
     expect(evidenceEvents[0]?.data).not.toHaveProperty("text");
+  });
+
+  it("browser click records concrete movement dimensions after action", async () => {
+    const home = useTempHome();
+    const runRoot = join(home, "runs");
+    process.env.UNICLI_OUTPUT = "json";
+    process.env.UNICLI_RECORD_RUN = "1";
+    process.env.UNICLI_RUN_ROOT = runRoot;
+    let afterClick = false;
+    mockPage.click.mockImplementation(async () => {
+      afterClick = true;
+    });
+    mockPage.url.mockImplementation(async () =>
+      afterClick ? "https://example.com/saved" : "https://example.com",
+    );
+    mockPage.title.mockImplementation(async () =>
+      afterClick ? "Saved" : "Test Page",
+    );
+    mockPage.snapshot.mockImplementation(async () =>
+      afterClick ? "[1]<button>Saved</button>" : "[1]<button>Save</button>",
+    );
+    mockPage.screenshot.mockImplementation(async () =>
+      Buffer.from(afterClick ? "after-img" : "before-img"),
+    );
+    mockPage.readNetworkCapture.mockImplementation(async () =>
+      afterClick
+        ? [
+            {
+              url: "https://example.com/api/save",
+              method: "POST",
+              status: 200,
+              size: 12,
+            },
+          ]
+        : [],
+    );
+    mockPage.evaluate.mockImplementation(async (script: string) => {
+      if (script.includes("__unicli_ref_identity")) {
+        return { role: "button", name: "Save", taken_at: Date.now() };
+      }
+      if (script.includes("document.querySelectorAll")) return 1;
+      if (script.includes("__unicli_console_summary")) {
+        return JSON.stringify({
+          count: afterClick ? 2 : 0,
+          error_count: afterClick ? 1 : 0,
+          warn_count: 0,
+          observed_since: "2026-04-28T01:20:00.000Z",
+        });
+      }
+      return undefined;
+    });
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "click", "1"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const [runId] = readdirSync(runRoot);
+    const events = await readRunEvents(
+      createRunStore({ rootDir: runRoot }),
+      runId,
+    );
+    const afterEvidence = events.find(
+      (event) =>
+        event.name === "evidence.captured" && event.data?.phase === "after",
+    );
+    expect(afterEvidence?.data?.movement).toEqual({
+      url_changed: true,
+      title_changed: true,
+      dom_changed: true,
+      screenshot_changed: true,
+      network_count_delta: 1,
+      console_count_delta: 2,
+      changed_dimensions: [
+        "url",
+        "title",
+        "dom",
+        "screenshot",
+        "network",
+        "console",
+      ],
+      no_observed_change: false,
+    });
   });
 
   it("browser click records structured stale-ref evidence on recorded failure", async () => {
