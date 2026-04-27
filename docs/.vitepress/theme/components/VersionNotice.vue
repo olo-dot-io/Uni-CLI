@@ -58,13 +58,25 @@ const catalogLabel = computed(() =>
           </div>
         </dl>
         <div class="uni-version-actions">
-          <a :href="releaseInfo.npmUrl" target="_blank" rel="noreferrer">
+          <a
+            :href="releaseInfo.npmUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             {{ isZh ? "打开 npm 包" : "Open npm Package" }}
           </a>
-          <a :href="releaseInfo.releaseUrl" target="_blank" rel="noreferrer">
+          <a
+            :href="releaseInfo.releaseUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             {{ isZh ? "查看 GitHub Release" : "View GitHub Release" }}
           </a>
-          <a :href="releaseInfo.changelogUrl" target="_blank" rel="noreferrer">
+          <a
+            :href="releaseInfo.changelogUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             {{ isZh ? "查看 Changelog" : "Read Changelog" }}
           </a>
         </div>

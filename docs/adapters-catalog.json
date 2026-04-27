@@ -1,6 +1,6 @@
 {
   "source": "unicli@0.216.3",
-  "generated": "2026-04-27T04:40:08.195Z",
+  "generated": "2026-04-27T04:51:36.432Z",
   "total_sites": 235,
   "total_commands": 1448,
   "adapters": [
@@ -878,13 +878,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "text",
-              "required": true,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "text", "required": true, "positional": true }]
         },
         {
           "name": "read",
@@ -903,13 +897,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "name",
-              "required": false,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "name", "required": false, "positional": true }]
         },
         {
           "name": "status",
@@ -937,13 +925,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "path",
-              "required": false,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "path", "required": false, "positional": true }]
         },
         {
           "name": "dump",
@@ -4098,13 +4080,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "text",
-              "required": true,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "text", "required": true, "positional": true }]
         },
         {
           "name": "read",
@@ -4123,13 +4099,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "name",
-              "required": false,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "name", "required": false, "positional": true }]
         },
         {
           "name": "status",
@@ -4157,13 +4127,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "path",
-              "required": false,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "path", "required": false, "positional": true }]
         },
         {
           "name": "dump",
@@ -4333,13 +4297,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "text",
-              "required": true,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "text", "required": true, "positional": true }]
         },
         {
           "name": "read",
@@ -4358,13 +4316,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "name",
-              "required": false,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "name", "required": false, "positional": true }]
         },
         {
           "name": "status",
@@ -4392,13 +4344,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "path",
-              "required": false,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "path", "required": false, "positional": true }]
         },
         {
           "name": "dump",
@@ -4864,13 +4810,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "text",
-              "required": true,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "text", "required": true, "positional": true }]
         },
         {
           "name": "read",
@@ -4889,13 +4829,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "name",
-              "required": false,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "name", "required": false, "positional": true }]
         },
         {
           "name": "status",
@@ -4923,13 +4857,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "path",
-              "required": false,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "path", "required": false, "positional": true }]
         },
         {
           "name": "dump",
@@ -5542,13 +5470,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "text",
-              "required": true,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "text", "required": true, "positional": true }]
         },
         {
           "name": "read",
@@ -5567,13 +5489,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "name",
-              "required": false,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "name", "required": false, "positional": true }]
         },
         {
           "name": "status",
@@ -5601,13 +5517,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "path",
-              "required": false,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "path", "required": false, "positional": true }]
         },
         {
           "name": "dump",
@@ -30577,13 +30487,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "text",
-              "required": true,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "text", "required": true, "positional": true }]
         },
         {
           "name": "read",
@@ -30602,13 +30506,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "name",
-              "required": false,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "name", "required": false, "positional": true }]
         },
         {
           "name": "status",
@@ -30636,13 +30534,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "path",
-              "required": false,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "path", "required": false, "positional": true }]
         },
         {
           "name": "dump",
@@ -30686,13 +30578,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "text",
-              "required": true,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "text", "required": true, "positional": true }]
         },
         {
           "name": "read",
@@ -30729,13 +30615,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "path",
-              "required": false,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "path", "required": false, "positional": true }]
         },
         {
           "name": "dump",

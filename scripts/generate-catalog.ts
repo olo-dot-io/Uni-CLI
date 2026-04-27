@@ -92,12 +92,12 @@ async function main(): Promise<void> {
   mkdirSync(dirname(siteIndexOut), { recursive: true });
   writeFileSync(
     out,
-    await format(JSON.stringify(catalog, null, 2), { parser: "json" }),
+    await format(JSON.stringify(catalog), { parser: "json" }),
     "utf-8",
   );
   writeFileSync(
     siteIndexOut,
-    await format(JSON.stringify(siteIndex, null, 2), { parser: "json" }),
+    await format(JSON.stringify(siteIndex), { parser: "json" }),
     "utf-8",
   );
 
