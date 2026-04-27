@@ -130,11 +130,13 @@ export async function operatorAction(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const tagged = err as Partial<{ code: string; suggestion: string }>;
+    const code = tagged.code ?? errorTypeToCode(err);
     ctx.error = {
-      code: tagged.code ?? errorTypeToCode(err),
+      code,
       message,
       ...(tagged.suggestion ? { suggestion: tagged.suggestion } : {}),
       retryable:
+        code === "stale_ref" ||
         /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|daemon failed/i.test(
           message,
         ),

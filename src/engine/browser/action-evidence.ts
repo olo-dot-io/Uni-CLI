@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { join } from "node:path";
+import { isTargetError } from "../../browser/target-errors.js";
 import { AdapterType, Strategy, type IPage } from "../../types.js";
 import { evaluateOperationPolicy } from "../operation-policy.js";
 import {
@@ -261,7 +262,23 @@ function emitRunRecordWarnings(warnings: string[]): void {
 }
 
 function errorData(err: unknown): Record<string, unknown> {
+  if (isTargetError(err)) {
+    return {
+      code: err.detail.code,
+      message: err.detail.message,
+      ref: err.detail.ref,
+      ...(err.detail.snapshot_age_ms !== undefined
+        ? { snapshot_age_ms: err.detail.snapshot_age_ms }
+        : {}),
+      ...(err.detail.candidates !== undefined
+        ? { candidates: err.detail.candidates }
+        : {}),
+    };
+  }
+
+  const tagged = err as Partial<{ code: string }>;
   return {
+    ...(typeof tagged.code === "string" ? { code: tagged.code } : {}),
     message: err instanceof Error ? err.message : String(err),
   };
 }

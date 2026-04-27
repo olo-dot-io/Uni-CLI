@@ -294,6 +294,79 @@ describe("unicli browser operator surface", () => {
     expect(evidenceEvents[0]?.data).not.toHaveProperty("text");
   });
 
+  it("browser click records structured stale-ref evidence on recorded failure", async () => {
+    const home = useTempHome();
+    const runRoot = join(home, "runs");
+    process.env.UNICLI_OUTPUT = "json";
+    process.env.UNICLI_RECORD_RUN = "1";
+    process.env.UNICLI_RUN_ROOT = runRoot;
+    mockPage.snapshot.mockResolvedValue("[2]<button>Fresh</button>");
+    mockPage.evaluate.mockImplementation(async (script: string) => {
+      if (script.includes("__unicli_console_summary")) {
+        return JSON.stringify({
+          count: 0,
+          error_count: 0,
+          warn_count: 0,
+          observed_since: "2026-04-28T01:10:00.000Z",
+        });
+      }
+      if (script.includes("__unicli_ref_taken_at")) return 4200;
+      if (script.includes("Object.keys")) {
+        return [{ ref: "2", role: "button", name: "Fresh" }];
+      }
+      if (script.includes("__unicli_ref_identity")) return null;
+      return undefined;
+    });
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "click", "1"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const err = JSON.parse(cap.getStderr().trim()) as {
+      ok: boolean;
+      error: { code: string; retryable: boolean };
+    };
+    expect(err.ok).toBe(false);
+    expect(err.error.code).toBe("stale_ref");
+    expect(err.error.retryable).toBe(true);
+    expect(mockPage.click).not.toHaveBeenCalled();
+
+    const [runId] = readdirSync(runRoot);
+    const events = await readRunEvents(
+      createRunStore({ rootDir: runRoot }),
+      runId,
+    );
+    expect(events.map((event) => event.name)).toEqual([
+      "run.started",
+      "tool.call.started",
+      "permission.evaluated",
+      "evidence.captured",
+      "evidence.captured",
+      "tool.call.failed",
+      "run.failed",
+    ]);
+    const failedEvidence = events.find(
+      (event) =>
+        event.name === "evidence.captured" && event.data?.outcome === "failure",
+    );
+    expect(failedEvidence?.data?.error).toMatchObject({
+      code: "stale_ref",
+      ref: "1",
+      snapshot_age_ms: 4200,
+      candidates: [{ ref: "2", role: "button", name: "Fresh" }],
+    });
+    expect(events.at(-1)?.data?.error).toMatchObject({
+      code: "stale_ref",
+      ref: "1",
+    });
+  });
+
   it("browser open exposes the operator surface under browser", async () => {
     process.env.UNICLI_OUTPUT = "json";
     const cap = captureConsole();
