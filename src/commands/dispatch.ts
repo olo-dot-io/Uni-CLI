@@ -31,8 +31,20 @@ import {
 } from "../output/projection.js";
 import { recordUsage } from "../runtime/usage-ledger.js";
 import { ExitCode } from "../types.js";
-import type { OutputFormat } from "../types.js";
+import type { AdapterArg, OutputFormat } from "../types.js";
 import type { AgentContext } from "../output/envelope.js";
+
+export function allowsDashPrefixedPositionals(
+  adapterArgs: AdapterArg[],
+): boolean {
+  return adapterArgs.some((arg) => arg.positional === true);
+}
+
+export function findAmbiguousLongOptionPositional(
+  positionals: string[],
+): string | undefined {
+  return positionals.find((arg) => arg.startsWith("--"));
+}
 
 /**
  * Register one Commander sub-command per adapter×command.
@@ -71,6 +83,9 @@ export function registerAdapterDispatch(program: Command): void {
         ? `[quarantined] ${descBase || "disabled by health gate"}${cmd.quarantineReason ? ` — ${cmd.quarantineReason}` : ""}`
         : descBase;
       const subCmd = siteCmd.command(cmdStr).description(description);
+      if (allowsDashPrefixedPositionals(adapterArgs)) {
+        subCmd.allowUnknownOption();
+      }
 
       // Register option arguments
       const registeredOpts = new Set<string>();
@@ -136,6 +151,16 @@ export function registerAdapterDispatch(program: Command): void {
           0,
           actionArgs.length - 2,
         ) as string[];
+        const ambiguousLongOption =
+          findAmbiguousLongOptionPositional(positionals);
+        if (ambiguousLongOption) {
+          console.error(
+            chalk.red(
+              `ambiguous positional value ${ambiguousLongOption}: values starting with "--" must be passed via --args-file or stdin JSON`,
+            ),
+          );
+          process.exit(ExitCode.USAGE_ERROR);
+        }
 
         const fmt = detectFormat(
           (program.opts().format ?? cmd.defaultFormat) as

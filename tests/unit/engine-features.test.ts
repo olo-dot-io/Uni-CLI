@@ -47,6 +47,18 @@ beforeAll(async () => {
       return;
     }
 
+    if (req.url === "/flaky-text") {
+      requestCounts["/flaky-text"] = (requestCounts["/flaky-text"] ?? 0) + 1;
+      if (requestCounts["/flaky-text"] < 2) {
+        res.writeHead(503, { "Content-Type": "text/plain" });
+        res.end("try again");
+        return;
+      }
+      res.writeHead(200, { "Content-Type": "text/plain" });
+      res.end("text ok");
+      return;
+    }
+
     const body = await collectBody(req);
     const echo = {
       method: req.method,
@@ -304,5 +316,43 @@ describe("retry with backoff", () => {
     ];
     const result = await runPipeline(steps, { args: {}, source: "internal" });
     expect((result[0] as Record<string, unknown>).ok).toBe(true);
+  });
+
+  it("retries fetch_text on 5xx and succeeds", async () => {
+    requestCounts["/flaky-text"] = 0;
+    const steps = [
+      {
+        fetch_text: {
+          url: `${baseUrl}/flaky-text`,
+          retry: 2,
+          backoff: 10,
+        },
+      },
+    ];
+    const result = await runPipeline(steps, { args: {}, source: "internal" });
+    expect(result[0]).toBe("text ok");
+    expect(requestCounts["/flaky-text"]).toBe(2);
+  });
+
+  it("classifies final fetch_text network failure as retryable", async () => {
+    await expect(
+      runPipeline(
+        [
+          {
+            fetch_text: {
+              url: "http://127.0.0.1:1/unreachable",
+              retry: 1,
+            },
+          },
+        ],
+        { args: {}, source: "internal" },
+      ),
+    ).rejects.toMatchObject({
+      detail: {
+        action: "fetch_text",
+        errorType: "network_error",
+        retryable: true,
+      },
+    });
   });
 });

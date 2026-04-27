@@ -80,6 +80,21 @@ export interface OpenCliParityReport {
 
 export const DEFAULT_OPENCLI_SIGNALS: SignalCase[] = [
   {
+    id: "opencli-pr-1195",
+    title: "fix(browser): keep text/javascript API responses in network output",
+    url: "https://github.com/jackwener/OpenCLI/pull/1195",
+    required_text: [
+      {
+        file: "tests/unit/commands/browser.test.ts",
+        includes: "text/javascript",
+      },
+      {
+        file: "src/browser/network-cache.ts",
+        includes: "bodyMatchesNetworkFilter",
+      },
+    ],
+  },
+  {
     id: "opencli-pr-1176",
     title:
       "feat(google-scholar): add cite/profile commands and fix search dedup",
@@ -181,6 +196,21 @@ export const DEFAULT_OPENCLI_SIGNALS: SignalCase[] = [
     required_text: [
       { file: "src/adapters/deepseek/web.ts", includes: 'name: "file"' },
       { file: "src/adapters/deepseek/web.ts", includes: "setFileInput" },
+    ],
+  },
+  {
+    id: "opencli-issue-1161",
+    title: "Dash-prefixed positional args should stay positional",
+    url: "https://github.com/jackwener/OpenCLI/issues/1161",
+    required_text: [
+      {
+        file: "src/commands/dispatch.ts",
+        includes: "allowsDashPrefixedPositionals",
+      },
+      {
+        file: "tests/unit/fast-path.test.ts",
+        includes: "dash-prefixed positional",
+      },
     ],
   },
   {

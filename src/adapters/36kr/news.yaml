@@ -14,6 +14,8 @@ args:
 pipeline:
   - fetch_text:
       url: https://36kr.com/feed
+      retry: 2
+      backoff: 500
 
   - parse_rss: ~
 
@@ -22,11 +24,12 @@ pipeline:
       title: ${{ item.title }}
       date: ${{ item.pubDate }}
       summary: ${{ item.description | strip_html | truncate(150) }}
+      url: ${{ item.url || item.link }}
       link: ${{ item.link }}
 
   - limit: ${{ args.limit }}
 
-columns: [rank, title, date, summary]
+columns: [rank, title, date, summary, url]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
 capabilities: ["http.fetch"]

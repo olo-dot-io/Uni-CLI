@@ -81,6 +81,7 @@ export class PipelineError extends Error {
         | "selector_miss"
         | "empty_result"
         | "parse_error"
+        | "network_error"
         | "timeout"
         | "expression_error"
         | "assertion_failed"

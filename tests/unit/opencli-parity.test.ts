@@ -43,6 +43,9 @@ describe("OpenCLI parity benchmark", () => {
     const googleScholar = signals.find(
       (signal) => signal.id === "opencli-pr-1176",
     );
+    const textJavascriptNetwork = signals.find(
+      (signal) => signal.id === "opencli-pr-1195",
+    );
     const instagram = signals.find(
       (signal) => signal.id === "opencli-issue-1192",
     );
@@ -62,10 +65,17 @@ describe("OpenCLI parity benchmark", () => {
     const deepseekUpload = signals.find(
       (signal) => signal.id === "opencli-issue-1167",
     );
+    const dashPrefixedPositionals = signals.find(
+      (signal) => signal.id === "opencli-issue-1161",
+    );
 
     expect(googleScholar).toMatchObject({
       status: "covered",
       missing_commands: [],
+    });
+    expect(textJavascriptNetwork).toMatchObject({
+      status: "covered",
+      missing_text: [],
     });
     expect(instagram).toMatchObject({ status: "covered", missing_sites: [] });
     expect(doubao).toMatchObject({ status: "covered", missing_commands: [] });
@@ -88,6 +98,10 @@ describe("OpenCLI parity benchmark", () => {
       missing_text: [],
     });
     expect(deepseekUpload).toMatchObject({
+      status: "covered",
+      missing_text: [],
+    });
+    expect(dashPrefixedPositionals).toMatchObject({
       status: "covered",
       missing_text: [],
     });

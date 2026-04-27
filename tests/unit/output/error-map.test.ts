@@ -105,6 +105,11 @@ describe("errorTypeToCode — PipelineError branches", () => {
     expect(errorTypeToCode(err)).toBe("network_error");
   });
 
+  it("maps network_error errorType through directly", () => {
+    const err = makePipelineError({ errorType: "network_error" });
+    expect(errorTypeToCode(err)).toBe("network_error");
+  });
+
   it("falls back to internal_error for unclassified PipelineError", () => {
     const err = makePipelineError({ errorType: "parse_error" });
     expect(errorTypeToCode(err)).toBe("internal_error");
@@ -176,6 +181,11 @@ describe("mapErrorToExitCode", () => {
   it("returns EMPTY_RESULT for PipelineError with empty_result errorType", () => {
     const err = makePipelineError({ errorType: "empty_result" });
     expect(mapErrorToExitCode(err)).toBe(ExitCode.EMPTY_RESULT);
+  });
+
+  it("returns TEMP_FAILURE for PipelineError with network_error errorType", () => {
+    const err = makePipelineError({ errorType: "network_error" });
+    expect(mapErrorToExitCode(err)).toBe(ExitCode.TEMP_FAILURE);
   });
 
   it("returns GENERIC_ERROR for other PipelineError", () => {

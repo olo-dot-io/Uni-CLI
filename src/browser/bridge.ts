@@ -12,8 +12,13 @@ import { dirname, join } from "node:path";
 import { fetchDaemonStatus, sendCommand } from "./daemon-client.js";
 import { getRemoteEndpoint, CDPClient } from "./cdp-client.js";
 import { BrowserPage } from "./page.js";
-import { isRemoteBrowser } from "./launcher.js";
-import type { DaemonCommand } from "./protocol.js";
+import {
+  getCDPPort,
+  isCDPAvailable,
+  isRemoteBrowser,
+  launchChrome,
+} from "./launcher.js";
+import type { DaemonCommand, DaemonStatus } from "./protocol.js";
 import type {
   IPage,
   SnapshotOptions,
@@ -83,6 +88,7 @@ export class RemoteConnectionError extends Error {
 
 const DAEMON_SPAWN_TIMEOUT = 10_000; // 10s to start daemon
 const DAEMON_POLL_INTERVAL = 200;
+const EXTENSION_FAST_WAIT_MS = 2_000;
 const REMOTE_CONNECT_RETRIES = 2;
 const REMOTE_RETRY_DELAY = 1000;
 
@@ -113,9 +119,32 @@ export class BrowserBridge {
     const timeout = opts?.timeout ?? DAEMON_SPAWN_TIMEOUT;
     const workspace = opts?.workspace ?? "default";
 
-    await this.ensureDaemon(timeout);
+    const daemonStatus = await this.ensureDaemonBestEffort(timeout);
+    if (daemonStatus?.extensionConnected) {
+      this._page = new DaemonPage(workspace);
+      this._state = "connected";
+      return this._page;
+    }
 
-    this._page = new DaemonPage(workspace);
+    const extensionStatus = await this.waitForExtension(
+      Math.min(timeout, EXTENSION_FAST_WAIT_MS),
+    );
+    if (extensionStatus?.extensionConnected) {
+      this._page = new DaemonPage(workspace);
+      this._state = "connected";
+      return this._page;
+    }
+
+    try {
+      const page = await this.connectLocalCdp();
+      this._page = page;
+      this._remotePage = page;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new BridgeConnectionError(
+        `Browser automation unavailable: daemon is ${daemonStatus ? "running" : "not reachable"}, extension is not connected, and CDP auto-start failed: ${message}`,
+      );
+    }
     this._state = "connected";
     return this._page;
   }
@@ -165,23 +194,31 @@ export class BrowserBridge {
     );
   }
 
-  private async ensureDaemon(timeout: number): Promise<void> {
-    // Check if already running
-    let status = await fetchDaemonStatus({ timeout: 1000 });
-
-    if (status) {
-      // Running but extension not connected — wait for it
-      if (!status.extensionConnected) {
-        const deadline = Date.now() + timeout;
-        while (Date.now() < deadline) {
-          await new Promise((r) => setTimeout(r, DAEMON_POLL_INTERVAL));
-          status = await fetchDaemonStatus({ timeout: 500 });
-          if (status?.extensionConnected) return;
-        }
-        // Extension never connected — continue anyway (some commands work without extension)
-      }
-      return;
+  private async connectLocalCdp(): Promise<BrowserPage> {
+    const port = getCDPPort();
+    if (!(await isCDPAvailable(port))) {
+      await launchChrome(port);
     }
+    return BrowserPage.connect(port);
+  }
+
+  private async waitForExtension(
+    timeout: number,
+  ): Promise<DaemonStatus | null> {
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+      const status = await fetchDaemonStatus({ timeout: 300 });
+      if (status?.extensionConnected) return status;
+      await new Promise((r) => setTimeout(r, DAEMON_POLL_INTERVAL));
+    }
+    return null;
+  }
+
+  private async ensureDaemonBestEffort(
+    timeout: number,
+  ): Promise<DaemonStatus | null> {
+    const existing = await fetchDaemonStatus({ timeout: 500 });
+    if (existing) return existing;
 
     // Not running — spawn daemon
     const daemonPath = join(
@@ -195,16 +232,14 @@ export class BrowserBridge {
     proc.unref();
 
     // Poll until daemon is reachable
-    const deadline = Date.now() + timeout;
+    const deadline = Date.now() + Math.min(timeout, 2_000);
     while (Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, DAEMON_POLL_INTERVAL));
-      status = await fetchDaemonStatus({ timeout: 500 });
-      if (status) return;
+      const status = await fetchDaemonStatus({ timeout: 300 });
+      if (status) return status;
     }
 
-    throw new BridgeConnectionError(
-      `Daemon failed to start within ${timeout / 1000}s. Check if port ${process.env.UNICLI_DAEMON_PORT ?? "19825"} is available.`,
-    );
+    return null;
   }
 }
 

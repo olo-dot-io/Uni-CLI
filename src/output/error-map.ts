@@ -58,6 +58,7 @@ export function errorTypeToCode(err: unknown): string {
     if (REF_LOCATOR_CODES.has(errorType)) return errorType;
     if (errorType === "selector_miss") return "selector_miss";
     if (errorType === "empty_result") return "empty_result";
+    if (errorType === "network_error") return "network_error";
     if (errorType === "timeout") return "network_error";
     return "internal_error";
   }
@@ -83,6 +84,9 @@ export function mapErrorToExitCode(err: unknown): number {
     )
       return ExitCode.AUTH_REQUIRED;
     if (errorType === "empty_result") return ExitCode.EMPTY_RESULT;
+    if (errorType === "network_error" || errorType === "timeout") {
+      return ExitCode.TEMP_FAILURE;
+    }
     return ExitCode.GENERIC_ERROR;
   }
   if (err instanceof BridgeConnectionError) return ExitCode.SERVICE_UNAVAILABLE;

@@ -9,6 +9,7 @@
 
 import { runInNewContext } from "node:vm";
 import type { PipelineContext } from "./executor.js";
+import { stripHtml } from "./text-normalize.js";
 
 const FILENAME_UNSAFE_CHARS = '<>:"/\\|?*';
 
@@ -54,7 +55,7 @@ export const PIPE_FILTERS: Record<string, (...args: unknown[]) => unknown> = {
   last: (val: unknown) => (Array.isArray(val) ? val[val.length - 1] : val),
   length: (val: unknown) =>
     Array.isArray(val) ? val.length : String(val ?? "").length,
-  strip_html: (val: unknown) => String(val ?? "").replace(/<[^>]+>/g, ""),
+  strip_html: (val: unknown) => stripHtml(String(val ?? "")),
   truncate: (val: unknown, max: unknown) => {
     const s = String(val ?? "");
     const n = Number(max) || 100;

@@ -178,6 +178,25 @@ describe("CLI fast path", () => {
     });
   });
 
+  it("preserves dash-prefixed positional values in adapter dry-run plans", () => {
+    const { stdout, io } = makeIo();
+
+    const handled = tryRunFastPath(
+      ["node", "unicli", "--dry-run", "google", "search", "-securityid"],
+      io,
+    );
+
+    expect(handled).toBe(true);
+    const plan = JSON.parse(stdout.join("")) as {
+      command: string;
+      args: Record<string, unknown>;
+    };
+    expect(plan).toMatchObject({
+      command: "google.search",
+      args: { query: "-securityid" },
+    });
+  });
+
   it("falls through for adapter execution commands", () => {
     const { stdout, stderr, io } = makeIo();
 
