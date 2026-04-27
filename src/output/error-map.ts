@@ -13,6 +13,7 @@
 
 import { PipelineError } from "../engine/executor.js";
 import { BridgeConnectionError } from "../browser/bridge.js";
+import { isTargetError } from "../browser/target-errors.js";
 import { ExitCode } from "../types.js";
 
 /**
@@ -42,6 +43,7 @@ function isRetryableMessage(message: string): boolean {
  * contract. Covers the most common pipeline / network / HTTP failure modes.
  */
 export function errorTypeToCode(err: unknown): string {
+  if (isTargetError(err)) return err.detail.code;
   if (err instanceof PipelineError) {
     const { errorType, statusCode } = err.detail;
     if (
@@ -75,6 +77,7 @@ export function errorTypeToCode(err: unknown): string {
 
 /** Map a caught error to the appropriate sysexits exit code. */
 export function mapErrorToExitCode(err: unknown): number {
+  if (isTargetError(err)) return ExitCode.GENERIC_ERROR;
   if (err instanceof PipelineError) {
     const { errorType, statusCode } = err.detail;
     if (
@@ -122,6 +125,18 @@ export function errorToAgentFields(
   retryable: boolean;
   alternatives: string[];
 } {
+  if (isTargetError(err)) {
+    return {
+      adapter_path: undefined,
+      step: undefined,
+      suggestion:
+        err.detail.code === "stale_ref"
+          ? "Take a fresh browser state snapshot before retrying the action."
+          : "Inspect the current browser state and choose an unambiguous ref.",
+      retryable: err.detail.code === "stale_ref",
+      alternatives: ["unicli browser state", "unicli operate state"],
+    };
+  }
   if (err instanceof PipelineError) {
     return {
       adapter_path: adapterPath,
