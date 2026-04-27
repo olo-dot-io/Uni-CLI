@@ -27,6 +27,8 @@ import {
   installBrowserEvidenceHooks,
 } from "../engine/browser/evidence.js";
 import {
+  type BrowserActionWatchdogMode,
+  type BrowserActionWatchdogOptions,
   isBrowserActionEvidenceEnabled,
   withBrowserActionEvidence,
 } from "../engine/browser/action-evidence.js";
@@ -88,9 +90,35 @@ async function withRecordedBrowserAction<T>(
       enabled,
       approved: programOpts.yes === true,
       permissionProfile: programOpts.permissionProfile,
+      watchdog: browserActionWatchdog(action),
     },
     fn,
   );
+}
+
+function browserActionWatchdog(
+  action: string,
+): BrowserActionWatchdogOptions | undefined {
+  if (action !== "click" && action !== "type") return undefined;
+  return {
+    mode: browserActionWatchdogMode(process.env.UNICLI_BROWSER_WATCHDOG),
+    expectMovement: true,
+  };
+}
+
+function browserActionWatchdogMode(value?: string): BrowserActionWatchdogMode {
+  switch ((value ?? "").trim().toLowerCase()) {
+    case "1":
+    case "true":
+    case "error":
+    case "strict":
+      return "error";
+    case "warn":
+    case "warning":
+      return "warn";
+    default:
+      return "off";
+  }
 }
 
 export function registerBrowserOperatorSubcommands(
