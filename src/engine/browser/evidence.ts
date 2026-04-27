@@ -34,6 +34,7 @@ export interface BrowserEvidencePacket {
     format: "dom-ax";
     chars: number;
     ref_count: number;
+    sha256: string;
     preview: string;
   };
   console: {
@@ -197,6 +198,7 @@ export async function captureBrowserEvidencePacket(
       format: "dom-ax",
       chars: snapshot.length,
       ref_count: countSnapshotRefs(snapshot),
+      sha256: `sha256:${createHash("sha256").update(snapshot).digest("hex")}`,
       preview: snapshot.slice(0, maxPreviewChars),
     },
     console: summarizeConsole(consoleResult.summary),

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -109,6 +110,7 @@ describe("browser operator evidence", () => {
   it("captures URL, title, DOM ref summary, console count, network summary, and screenshot path", async () => {
     const page = mockPage();
 
+    const snapshot = "[1]<button>Save</button>\n<p>Ready</p>";
     const packet = await captureBrowserEvidencePacket(page, {
       action: "state",
       workspace: "browser:default",
@@ -135,8 +137,9 @@ describe("browser operator evidence", () => {
       },
       dom: {
         format: "dom-ax",
-        chars: "[1]<button>Save</button>\n<p>Ready</p>".length,
+        chars: snapshot.length,
         ref_count: 1,
+        sha256: `sha256:${createHash("sha256").update(snapshot).digest("hex")}`,
       },
       console: {
         count: 2,

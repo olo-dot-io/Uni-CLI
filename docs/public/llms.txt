@@ -8,7 +8,7 @@ Uni-CLI is the CLI-native command surface for AI agents to discover, run, and re
 - Commands: 1448
 - Adapters: 1039 (917 YAML + 122 TypeScript)
 - Pipeline steps: 59
-- Tests: 7467
+- Tests: 7468
 
 ## Agent Contract
 
