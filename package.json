@@ -220,14 +220,14 @@
     "@types/ws": "^8.5.14",
     "ai": "^6.0.168",
     "lefthook": "^2.1.5",
-    "markdown-it-mathjax3": "^4.3.2",
+    "markdown-it-mathjax3": "^5.2.0",
     "oxlint": "^1.0.0",
     "prettier": "^3.5.0",
     "shell-quote": "^1.8.3",
     "tsx": "^4.19.0",
     "typescript": "^6.0.2",
     "vitepress": "^1.6.0",
-    "vitest": "^3.2.4",
+    "vitest": "^4.1.5",
     "yaml": "^2.8.3"
   }
 }
