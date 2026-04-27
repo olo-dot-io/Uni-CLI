@@ -174,6 +174,7 @@ describe("unicli browser operator surface", () => {
   let origHome: string | undefined;
   let origRecordRun: string | undefined;
   let origRunRoot: string | undefined;
+  let origBrowserWatchdog: string | undefined;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -182,6 +183,7 @@ describe("unicli browser operator surface", () => {
     origHome = process.env.HOME;
     origRecordRun = process.env.UNICLI_RECORD_RUN;
     origRunRoot = process.env.UNICLI_RUN_ROOT;
+    origBrowserWatchdog = process.env.UNICLI_BROWSER_WATCHDOG;
   });
 
   afterEach(() => {
@@ -190,6 +192,9 @@ describe("unicli browser operator surface", () => {
     else process.env.UNICLI_RECORD_RUN = origRecordRun;
     if (origRunRoot === undefined) delete process.env.UNICLI_RUN_ROOT;
     else process.env.UNICLI_RUN_ROOT = origRunRoot;
+    if (origBrowserWatchdog === undefined)
+      delete process.env.UNICLI_BROWSER_WATCHDOG;
+    else process.env.UNICLI_BROWSER_WATCHDOG = origBrowserWatchdog;
     if (tmpHome) {
       rmSync(tmpHome, { recursive: true, force: true });
       tmpHome = null;
@@ -389,6 +394,86 @@ describe("unicli browser operator surface", () => {
         "console",
       ],
       no_observed_change: false,
+    });
+  });
+
+  it("strict browser watchdog fails a recorded click with no observed movement", async () => {
+    const home = useTempHome();
+    const runRoot = join(home, "runs");
+    process.env.UNICLI_OUTPUT = "json";
+    process.env.UNICLI_RECORD_RUN = "1";
+    process.env.UNICLI_RUN_ROOT = runRoot;
+    process.env.UNICLI_BROWSER_WATCHDOG = "error";
+    process.exitCode = undefined;
+    mockPage.snapshot.mockResolvedValue("[1]<button>Save</button>");
+    mockPage.evaluate.mockImplementation(async (script: string) => {
+      if (script.includes("__unicli_ref_identity")) {
+        return { role: "button", name: "Save", taken_at: Date.now() };
+      }
+      if (script.includes("document.querySelectorAll")) return 1;
+      if (script.includes("__unicli_console_summary")) {
+        return JSON.stringify({
+          count: 0,
+          error_count: 0,
+          warn_count: 0,
+          observed_since: "2026-04-28T01:30:00.000Z",
+        });
+      }
+      return undefined;
+    });
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "click", "1"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const err = JSON.parse(cap.getStderr().trim()) as {
+      ok: boolean;
+      error: { code: string; retryable: boolean; suggestion: string };
+    };
+    expect(err.ok).toBe(false);
+    expect(err.error).toMatchObject({
+      code: "no_observed_change",
+      retryable: false,
+      suggestion: "Inspect the browser state and retry with a fresh target.",
+    });
+    expect(process.exitCode).toBe(1);
+
+    const [runId] = readdirSync(runRoot);
+    const events = await readRunEvents(
+      createRunStore({ rootDir: runRoot }),
+      runId,
+    );
+    expect(events.map((event) => event.name)).toEqual([
+      "run.started",
+      "tool.call.started",
+      "permission.evaluated",
+      "evidence.captured",
+      "evidence.captured",
+      "tool.call.failed",
+      "run.failed",
+    ]);
+    const afterEvidence = events.find(
+      (event) =>
+        event.name === "evidence.captured" && event.data?.phase === "after",
+    );
+    expect(afterEvidence?.data).toMatchObject({
+      outcome: "failure",
+      watchdog: {
+        mode: "error",
+        expected_movement: true,
+        passed: false,
+        reason: "no_observed_change",
+        observed_dimensions: [],
+      },
+    });
+    expect(events.at(-1)?.data?.error).toMatchObject({
+      code: "no_observed_change",
     });
   });
 

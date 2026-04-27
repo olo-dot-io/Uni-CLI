@@ -45,17 +45,56 @@ export interface BrowserActionEvidenceOptions {
   traceId?: TraceId;
   store?: RunStore;
   screenshotDir?: string;
+  watchdog?: BrowserActionWatchdogOptions;
 }
 
 type BrowserEvidencePhase = "before" | "after";
 type BrowserEvidenceOutcome = "pending" | "success" | "failure";
-type MovementDimension =
+export type BrowserMovementDimension =
   | "url"
   | "title"
   | "dom"
   | "screenshot"
   | "network"
   | "console";
+export type BrowserActionWatchdogMode = "off" | "warn" | "error";
+
+export interface BrowserActionWatchdogOptions {
+  mode?: BrowserActionWatchdogMode;
+  expectMovement?: boolean;
+  requiredDimensions?: BrowserMovementDimension[];
+}
+
+interface BrowserActionMovement {
+  url_changed: boolean;
+  title_changed: boolean;
+  dom_changed: boolean;
+  screenshot_changed: boolean;
+  network_count_delta: number;
+  console_count_delta: number;
+  changed_dimensions: BrowserMovementDimension[];
+  no_observed_change: boolean;
+}
+
+interface BrowserActionWatchdogResult {
+  mode: BrowserActionWatchdogMode;
+  expected_movement: boolean;
+  required_dimensions: BrowserMovementDimension[];
+  observed_dimensions: BrowserMovementDimension[];
+  passed: boolean;
+  reason?: "no_observed_change" | "missing_required_dimensions";
+  missing_dimensions?: BrowserMovementDimension[];
+}
+
+class BrowserActionWatchdogError extends Error {
+  code = "no_observed_change";
+  suggestion = "Inspect the browser state and retry with a fresh target.";
+
+  constructor(readonly watchdog: BrowserActionWatchdogResult) {
+    super("Browser action produced no observed page movement.");
+    this.name = "BrowserActionWatchdogError";
+  }
+}
 
 export function isBrowserActionEvidenceEnabled(enabled?: boolean): boolean {
   return isRunRecordingEnabled(enabled);
@@ -112,6 +151,42 @@ export async function withBrowserActionEvidence<T>(
     const result = await action();
     const after = await captureEvidence(page, options, "after");
     const movement = evidenceMovement(before, after);
+    const watchdog = evaluateWatchdog(options, movement);
+    if (watchdog.mode === "error" && !watchdog.passed) {
+      const error = new BrowserActionWatchdogError(watchdog);
+      await appendAll(
+        store,
+        [
+          createEvidenceCapturedEvent(metadata, sequence, {
+            evidence_type: "browser-operator",
+            visibility: "internal",
+            data: {
+              ...evidenceEventData(after, "after", "failure"),
+              movement,
+              watchdog,
+              error: errorData(error),
+            },
+            internal: after,
+          }),
+          createToolCallFailedEvent(metadata, sequence, {
+            action: options.action,
+            workspace: options.workspace,
+            outcome: "failure",
+            error: errorData(error),
+          }),
+          createRunFailedEvent(metadata, sequence, {
+            action: options.action,
+            workspace: options.workspace,
+            outcome: "failure",
+            error: errorData(error),
+          }),
+        ],
+        warnings,
+      );
+      emitRunRecordWarnings(warnings);
+      throw error;
+    }
+
     await appendAll(
       store,
       [
@@ -121,6 +196,7 @@ export async function withBrowserActionEvidence<T>(
           data: {
             ...evidenceEventData(after, "after", "success"),
             movement,
+            ...watchdogEventData(watchdog),
           },
           internal: after,
         }),
@@ -140,6 +216,7 @@ export async function withBrowserActionEvidence<T>(
     emitRunRecordWarnings(warnings);
     return result;
   } catch (err) {
+    if (err instanceof BrowserActionWatchdogError) throw err;
     const after = await captureEvidence(page, options, "after");
     const movement = evidenceMovement(before, after);
     const error = errorData(err);
@@ -252,11 +329,11 @@ function evidenceEventData(
 function evidenceMovement(
   before: BrowserEvidencePacket,
   after: BrowserEvidencePacket,
-): Record<string, unknown> {
+): BrowserActionMovement {
   const networkCountDelta = after.network.count - before.network.count;
   const consoleCountDelta = after.console.count - before.console.count;
   const screenshotChanged = screenshotSha(before) !== screenshotSha(after);
-  const changedDimensions: MovementDimension[] = [];
+  const changedDimensions: BrowserMovementDimension[] = [];
   if (before.page.url !== after.page.url) changedDimensions.push("url");
   if (before.page.title !== after.page.title) changedDimensions.push("title");
   if (before.dom.sha256 !== after.dom.sha256) changedDimensions.push("dom");
@@ -278,6 +355,45 @@ function evidenceMovement(
 
 function screenshotSha(packet: BrowserEvidencePacket): string | undefined {
   return packet.screenshot.sha256;
+}
+
+function evaluateWatchdog(
+  options: BrowserActionEvidenceOptions,
+  movement: BrowserActionMovement,
+): BrowserActionWatchdogResult {
+  const mode = options.watchdog?.mode ?? "off";
+  const expectedMovement = options.watchdog?.expectMovement === true;
+  const requiredDimensions = options.watchdog?.requiredDimensions ?? [];
+  const missingDimensions = requiredDimensions.filter(
+    (dimension) => !movement.changed_dimensions.includes(dimension),
+  );
+  const passed =
+    !expectedMovement ||
+    (!movement.no_observed_change && missingDimensions.length === 0);
+
+  return {
+    mode,
+    expected_movement: expectedMovement,
+    required_dimensions: requiredDimensions,
+    observed_dimensions: movement.changed_dimensions,
+    passed,
+    ...(!passed
+      ? {
+          reason: movement.no_observed_change
+            ? ("no_observed_change" as const)
+            : ("missing_required_dimensions" as const),
+        }
+      : {}),
+    ...(missingDimensions.length > 0
+      ? { missing_dimensions: missingDimensions }
+      : {}),
+  };
+}
+
+function watchdogEventData(
+  watchdog: BrowserActionWatchdogResult,
+): Record<string, BrowserActionWatchdogResult> {
+  return watchdog.mode === "off" ? {} : { watchdog };
 }
 
 async function appendAll(
