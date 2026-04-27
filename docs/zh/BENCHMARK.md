@@ -25,11 +25,11 @@ npm run bench:gate
 
 这些数字来自仓库生成的 `stats.json` 和 manifest：
 
-- 223 个站点。
-- 1304 条命令。
-- 907 个 schema-v2 YAML adapter。
+- 235 个站点。
+- 1448 条命令。
+- 917 个 schema-v2 YAML adapter。
 - 59 个 pipeline steps。
-- 7317 个测试。
+- 7396 个测试。
 
 数字随开发更新，以 `npm run stats` 生成结果为准。
 

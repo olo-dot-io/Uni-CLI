@@ -1,8 +1,8 @@
 {
-  "source": "unicli@0.215.1",
-  "generated": "2026-04-26T08:16:04.836Z",
-  "total_sites": 223,
-  "total_commands": 1304,
+  "source": "unicli@0.216.3",
+  "generated": "2026-04-27T04:51:36.432Z",
+  "total_sites": 235,
+  "total_commands": 1448,
   "adapters": [
     {
       "site": "1688",
@@ -101,6 +101,60 @@
               "required": false,
               "positional": false,
               "description": "Number of products"
+            }
+          ]
+        },
+        {
+          "name": "assets",
+          "description": "Extract visible product media assets from a 1688 item page",
+          "when_to_use": "Extract visible product media assets from a 1688 item page",
+          "command": "unicli 1688 assets",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["type", "url", "alt"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "download",
+          "description": "Download visible product media assets from a 1688 item page",
+          "when_to_use": "When you need to download media or files from 1688.",
+          "command": "unicli 1688 download",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["path", "url", "status"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -218,6 +272,191 @@
               "required": false,
               "positional": false,
               "description": "Number of results"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "51job",
+      "type": "web-api",
+      "domain": "jobs.51job.com",
+      "auth": true,
+      "strategy": "cookie",
+      "commands": [
+        {
+          "name": "search",
+          "description": "51job 前程无忧关键词职位搜索",
+          "when_to_use": "When you need to search 51job for a specific query.",
+          "command": "unicli 51job search",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "rank",
+            "jobId",
+            "title",
+            "salary",
+            "city",
+            "company",
+            "companyId",
+            "workYear",
+            "degree",
+            "issueDate",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "keyword",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "岗位、技能或公司关键词"
+            },
+            {
+              "name": "area",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "城市名或 6 位城市码"
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "综合/最新"
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "页码"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
+            }
+          ]
+        },
+        {
+          "name": "hot",
+          "description": "51job 推荐职位列表",
+          "when_to_use": "When you need the current hot items from 51job.",
+          "command": "unicli 51job hot",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "rank",
+            "jobId",
+            "title",
+            "salary",
+            "city",
+            "company",
+            "companyId",
+            "workYear",
+            "degree",
+            "issueDate",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "area",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "城市名或 6 位城市码"
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "综合/最新"
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "页码"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
+            }
+          ]
+        },
+        {
+          "name": "detail",
+          "description": "51job 职位详情（按 jobId）",
+          "when_to_use": "When you need details about a specific item on 51job.",
+          "command": "unicli 51job detail",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "jobId",
+            "title",
+            "salary",
+            "location",
+            "description",
+            "company",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "jobId",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "职位 ID"
+            }
+          ]
+        },
+        {
+          "name": "company",
+          "description": "51job 公司在招职位（按 encCoId）",
+          "when_to_use": "51job 公司在招职位（按 encCoId）",
+          "command": "unicli 51job company",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "rank",
+            "jobId",
+            "title",
+            "salary",
+            "city",
+            "company",
+            "companyId",
+            "workYear",
+            "degree",
+            "issueDate",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "encCoId",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "加密公司 ID"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回职位数"
             }
           ]
         }
@@ -569,6 +808,229 @@
               "required": false,
               "positional": false,
               "description": "Number of results"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "antigravity",
+      "type": "web-api",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "extract-code",
+          "description": "Extract code blocks from the active Antigravity conversation",
+          "when_to_use": "Extract code blocks from the active Antigravity conversation",
+          "command": "unicli antigravity extract-code",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["language", "code"]
+        },
+        {
+          "name": "watch",
+          "description": "Poll Antigravity conversation text for updates",
+          "when_to_use": "Poll Antigravity conversation text for updates",
+          "command": "unicli antigravity watch",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["iteration", "text"],
+          "args": [
+            {
+              "name": "interval",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "iterations",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "ask",
+          "description": "Send a prompt to Antigravity and wait for response",
+          "when_to_use": "Send a prompt to Antigravity and wait for response",
+          "command": "unicli antigravity ask",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "prompt",
+              "required": true,
+              "positional": true,
+              "description": "The prompt to send"
+            }
+          ]
+        },
+        {
+          "name": "send",
+          "description": "Send text to Antigravity without waiting",
+          "when_to_use": "When you need to post content to antigravity.",
+          "command": "unicli antigravity send",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [{ "name": "text", "required": true, "positional": true }]
+        },
+        {
+          "name": "read",
+          "description": "Read the last response from Antigravity",
+          "when_to_use": "Read the last response from Antigravity",
+          "command": "unicli antigravity read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "model",
+          "description": "Read or switch the current model in Antigravity",
+          "when_to_use": "Read or switch the current model in Antigravity",
+          "command": "unicli antigravity model",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [{ "name": "name", "required": false, "positional": true }]
+        },
+        {
+          "name": "status",
+          "description": "Check Antigravity app status",
+          "when_to_use": "Check Antigravity app status",
+          "command": "unicli antigravity status",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "new",
+          "description": "Start a new conversation in Antigravity",
+          "when_to_use": "Start a new conversation in Antigravity",
+          "command": "unicli antigravity new",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "screenshot",
+          "description": "Capture screenshot of Antigravity",
+          "when_to_use": "Capture screenshot of Antigravity",
+          "command": "unicli antigravity screenshot",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [{ "name": "path", "required": false, "positional": true }]
+        },
+        {
+          "name": "dump",
+          "description": "Dump visible text from the Antigravity desktop Electron app via CDP DOM. 读取Antigravity桌面版可见文本。",
+          "when_to_use": "Dump visible text from the Antigravity desktop Electron app via CDP DOM. 读取Antigravity桌面版可见文本。",
+          "command": "unicli antigravity dump",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "limit",
+              "required": false,
+              "positional": false,
+              "description": "Maximum text characters to return"
+            }
+          ]
+        },
+        {
+          "name": "open-app",
+          "description": "Open Antigravity desktop Electron app with CDP enabled for AI control. 打开Antigravity桌面版并启用 CDP 控制。",
+          "when_to_use": "Open Antigravity desktop Electron app with CDP enabled for AI control. 打开Antigravity桌面版并启用 CDP 控制。",
+          "command": "unicli antigravity open-app",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "status-app",
+          "description": "Inspect current Antigravity desktop app page, title, URL, visible controls, and text summary. 查看Antigravity桌面版当前状态和可见内容。",
+          "when_to_use": "Inspect current Antigravity desktop app page, title, URL, visible controls, and text summary. 查看Antigravity桌面版当前状态和可见内容。",
+          "command": "unicli antigravity status-app",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "snapshot-app",
+          "description": "List visible clickable text, buttons, inputs, and regions in Antigravity. 枚举Antigravity桌面版可交互内容。",
+          "when_to_use": "List visible clickable text, buttons, inputs, and regions in Antigravity. 枚举Antigravity桌面版可交互内容。",
+          "command": "unicli antigravity snapshot-app",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "click-text",
+          "description": "Click visible text, aria-label, title, or button content in Antigravity. 按文本点击Antigravity桌面版控件。",
+          "when_to_use": "Click visible text, aria-label, title, or button content in Antigravity. 按文本点击Antigravity桌面版控件。",
+          "command": "unicli antigravity click-text",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "text",
+              "required": true,
+              "positional": true,
+              "description": "Visible text, aria-label, or title to click"
+            }
+          ]
+        },
+        {
+          "name": "type-text",
+          "description": "Type text into the focused field or a text-matched target in Antigravity. 向Antigravity桌面版输入文本。",
+          "when_to_use": "Type text into the focused field or a text-matched target in Antigravity. 向Antigravity桌面版输入文本。",
+          "command": "unicli antigravity type-text",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "text",
+              "required": true,
+              "positional": true,
+              "description": "Text to type"
+            },
+            {
+              "name": "target",
+              "required": false,
+              "positional": false,
+              "description": "Optional visible text to click before typing"
+            }
+          ]
+        },
+        {
+          "name": "press",
+          "description": "Press a key in Antigravity, with optional comma-separated modifiers. 在Antigravity桌面版发送按键。",
+          "when_to_use": "Press a key in Antigravity, with optional comma-separated modifiers. 在Antigravity桌面版发送按键。",
+          "command": "unicli antigravity press",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "key",
+              "required": true,
+              "positional": true,
+              "description": "Key name"
+            },
+            {
+              "name": "modifiers",
+              "required": false,
+              "positional": false,
+              "description": "Comma-separated modifiers such as meta,shift"
             }
           ]
         }
@@ -1210,6 +1672,39 @@
       ]
     },
     {
+      "site": "baidu-scholar",
+      "type": "web-api",
+      "domain": "xueshu.baidu.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Baidu Scholar papers",
+          "when_to_use": "When you need to search baidu-scholar for a specific query.",
+          "command": "unicli baidu-scholar search",
+          "auth": false,
+          "strategy": "public",
+          "browser": true,
+          "columns": ["title", "authors", "source", "url"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "band",
       "type": "web-api",
       "domain": "band.us",
@@ -1808,6 +2303,66 @@
           ]
         },
         {
+          "name": "video",
+          "description": "Get Bilibili video metadata by BV ID or URL",
+          "when_to_use": "Get Bilibili video metadata by BV ID or URL",
+          "command": "unicli bilibili video",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["title", "author", "duration", "views", "bvid"],
+          "args": [
+            {
+              "name": "bvid",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "favorite",
+          "description": "Read Bilibili favorite folder videos",
+          "when_to_use": "Read Bilibili favorite folder videos",
+          "command": "unicli bilibili favorite",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": false,
+          "columns": ["title", "author", "fav_time", "bvid"],
+          "args": [
+            {
+              "name": "fid",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "feed-detail",
+          "description": "Read a Bilibili dynamic feed item detail",
+          "when_to_use": "Read a Bilibili dynamic feed item detail",
+          "command": "unicli bilibili feed-detail",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": false,
+          "columns": ["author", "type", "text", "url"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
           "name": "download",
           "description": "Get download URLs for a Bilibili video",
           "when_to_use": "When you need to download media or files from bilibili.",
@@ -1903,8 +2458,86 @@
       "strategy": "public",
       "commands": [
         {
+          "name": "asks",
+          "description": "Binance ask-side order book levels / 币安卖盘挂单深度",
+          "when_to_use": "Binance ask-side order book levels / 币安卖盘挂单深度",
+          "command": "unicli binance asks",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["rank", "price", "quantity", "notional"],
+          "args": [
+            {
+              "name": "symbol",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Trading pair symbol (e.g. BTCUSDT, ETHUSDT)"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of order book levels"
+            }
+          ]
+        },
+        {
+          "name": "depth",
+          "description": "Binance bid-side order book levels / 币安买盘挂单深度",
+          "when_to_use": "Binance bid-side order book levels / 币安买盘挂单深度",
+          "command": "unicli binance depth",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["rank", "price", "quantity", "notional"],
+          "args": [
+            {
+              "name": "symbol",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Trading pair symbol (e.g. BTCUSDT, ETHUSDT)"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of order book levels"
+            }
+          ]
+        },
+        {
+          "name": "gainers",
+          "description": "Binance top 24h gainers by price change percentage / 币安24小时涨幅榜",
+          "when_to_use": "Binance top 24h gainers by price change percentage / 币安24小时涨幅榜",
+          "command": "unicli binance gainers",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "symbol",
+            "price",
+            "change_pct",
+            "volume",
+            "trades"
+          ],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of trading pairs"
+            }
+          ]
+        },
+        {
           "name": "hot",
-          "description": "Top trending coins by 24h trading volume",
+          "description": "Binance top trending coins by 24h trading volume / 币安热门成交量",
           "when_to_use": "When you need the current hot items from binance.",
           "command": "unicli binance hot",
           "auth": false,
@@ -1932,8 +2565,8 @@
         },
         {
           "name": "kline",
-          "description": "Candlestick (kline) data for a trading pair",
-          "when_to_use": "Candlestick (kline) data for a trading pair",
+          "description": "Binance candlestick kline data for a trading pair / 币安K线蜡烛图",
+          "when_to_use": "Binance candlestick kline data for a trading pair / 币安K线蜡烛图",
           "command": "unicli binance kline",
           "auth": false,
           "strategy": "public",
@@ -1957,9 +2590,132 @@
           ]
         },
         {
+          "name": "klines",
+          "description": "Binance candlestick kline data for a trading pair / 币安K线蜡烛图",
+          "when_to_use": "Binance candlestick kline data for a trading pair / 币安K线蜡烛图",
+          "command": "unicli binance klines",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["time", "open", "high", "low", "close", "volume"],
+          "args": [
+            {
+              "name": "symbol",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Trading pair symbol (e.g. BTCUSDT, ETHUSDT)"
+            },
+            {
+              "name": "interval",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Kline interval (1m, 5m, 15m, 1h, 4h, 1d, 1w, 1M)"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of candles"
+            }
+          ]
+        },
+        {
+          "name": "losers",
+          "description": "Binance top 24h losers by price change percentage / 币安24小时跌幅榜",
+          "when_to_use": "Binance top 24h losers by price change percentage / 币安24小时跌幅榜",
+          "command": "unicli binance losers",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "symbol",
+            "price",
+            "change_pct",
+            "volume",
+            "trades"
+          ],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of trading pairs"
+            }
+          ]
+        },
+        {
+          "name": "pairs",
+          "description": "Binance active spot trading pairs and base/quote assets / 币安现货交易对",
+          "when_to_use": "Binance active spot trading pairs and base/quote assets / 币安现货交易对",
+          "command": "unicli binance pairs",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["symbol", "base", "quote", "order_types"],
+          "args": [
+            {
+              "name": "quote",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Quote asset filter, or empty string for all pairs"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of pairs"
+            }
+          ]
+        },
+        {
+          "name": "price",
+          "description": "Binance latest price for a trading pair / 币安最新价格",
+          "when_to_use": "Binance latest price for a trading pair / 币安最新价格",
+          "command": "unicli binance price",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["symbol", "price"],
+          "args": [
+            {
+              "name": "symbol",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Trading pair symbol (e.g. BTCUSDT, ETHUSDT)"
+            }
+          ]
+        },
+        {
+          "name": "prices",
+          "description": "Binance latest prices for trading pairs / 币安全市场最新价格",
+          "when_to_use": "Binance latest prices for trading pairs / 币安全市场最新价格",
+          "command": "unicli binance prices",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["symbol", "price"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of trading pairs"
+            }
+          ]
+        },
+        {
           "name": "ticker",
-          "description": "Price ticker for a trading pair",
-          "when_to_use": "Price ticker for a trading pair",
+          "description": "Binance 24h price ticker for a trading pair / 币安24小时行情",
+          "when_to_use": "Binance 24h price ticker for a trading pair / 币安24小时行情",
           "command": "unicli binance ticker",
           "auth": false,
           "strategy": "public",
@@ -1982,6 +2738,67 @@
               "required": true,
               "positional": true,
               "description": "Trading pair symbol (e.g. BTCUSDT, ETHUSDT)"
+            }
+          ]
+        },
+        {
+          "name": "top",
+          "description": "Binance top trading pairs by 24h quote volume / 币安成交额排行",
+          "when_to_use": "When you need the current top items from binance.",
+          "command": "unicli binance top",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "symbol",
+            "price",
+            "change_pct",
+            "high",
+            "low",
+            "volume",
+            "trades"
+          ],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of trading pairs"
+            }
+          ]
+        },
+        {
+          "name": "trades",
+          "description": "Binance recent trades for a trading pair / 币安最新成交",
+          "when_to_use": "Binance recent trades for a trading pair / 币安最新成交",
+          "command": "unicli binance trades",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "time",
+            "side",
+            "price",
+            "quantity",
+            "quote_quantity"
+          ],
+          "args": [
+            {
+              "name": "symbol",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Trading pair symbol (e.g. BTCUSDT, ETHUSDT)"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of trades"
             }
           ]
         }
@@ -3196,6 +4013,449 @@
       ]
     },
     {
+      "site": "chatgpt",
+      "type": "web-api",
+      "domain": "chatgpt.com",
+      "auth": true,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "image",
+          "description": "Generate an image in ChatGPT web and optionally save visible images",
+          "when_to_use": "Generate an image in ChatGPT web and optionally save visible images",
+          "command": "unicli chatgpt image",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["status", "file", "link"],
+          "args": [
+            {
+              "name": "prompt",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "op",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sd",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "timeout",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "ask",
+          "description": "Send a prompt to ChatGPT and wait for response",
+          "when_to_use": "Send a prompt to ChatGPT and wait for response",
+          "command": "unicli chatgpt ask",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "prompt",
+              "required": true,
+              "positional": true,
+              "description": "The prompt to send"
+            }
+          ]
+        },
+        {
+          "name": "send",
+          "description": "Send text to ChatGPT without waiting",
+          "when_to_use": "When you need to post content to chatgpt.",
+          "command": "unicli chatgpt send",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [{ "name": "text", "required": true, "positional": true }]
+        },
+        {
+          "name": "read",
+          "description": "Read the last response from ChatGPT",
+          "when_to_use": "Read the last response from ChatGPT",
+          "command": "unicli chatgpt read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "model",
+          "description": "Read or switch the current model in ChatGPT",
+          "when_to_use": "Read or switch the current model in ChatGPT",
+          "command": "unicli chatgpt model",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [{ "name": "name", "required": false, "positional": true }]
+        },
+        {
+          "name": "status",
+          "description": "Check ChatGPT app status",
+          "when_to_use": "Check ChatGPT app status",
+          "command": "unicli chatgpt status",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "new",
+          "description": "Start a new conversation in ChatGPT",
+          "when_to_use": "Start a new conversation in ChatGPT",
+          "command": "unicli chatgpt new",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "screenshot",
+          "description": "Capture screenshot of ChatGPT",
+          "when_to_use": "Capture screenshot of ChatGPT",
+          "command": "unicli chatgpt screenshot",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [{ "name": "path", "required": false, "positional": true }]
+        },
+        {
+          "name": "dump",
+          "description": "Dump visible text from the ChatGPT desktop Electron app via CDP DOM. 读取ChatGPT桌面版可见文本。",
+          "when_to_use": "Dump visible text from the ChatGPT desktop Electron app via CDP DOM. 读取ChatGPT桌面版可见文本。",
+          "command": "unicli chatgpt dump",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "limit",
+              "required": false,
+              "positional": false,
+              "description": "Maximum text characters to return"
+            }
+          ]
+        },
+        {
+          "name": "open-app",
+          "description": "Open ChatGPT desktop Electron app with CDP enabled for AI control. 打开ChatGPT桌面版并启用 CDP 控制。",
+          "when_to_use": "Open ChatGPT desktop Electron app with CDP enabled for AI control. 打开ChatGPT桌面版并启用 CDP 控制。",
+          "command": "unicli chatgpt open-app",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "status-app",
+          "description": "Inspect current ChatGPT desktop app page, title, URL, visible controls, and text summary. 查看ChatGPT桌面版当前状态和可见内容。",
+          "when_to_use": "Inspect current ChatGPT desktop app page, title, URL, visible controls, and text summary. 查看ChatGPT桌面版当前状态和可见内容。",
+          "command": "unicli chatgpt status-app",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "snapshot-app",
+          "description": "List visible clickable text, buttons, inputs, and regions in ChatGPT. 枚举ChatGPT桌面版可交互内容。",
+          "when_to_use": "List visible clickable text, buttons, inputs, and regions in ChatGPT. 枚举ChatGPT桌面版可交互内容。",
+          "command": "unicli chatgpt snapshot-app",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "click-text",
+          "description": "Click visible text, aria-label, title, or button content in ChatGPT. 按文本点击ChatGPT桌面版控件。",
+          "when_to_use": "Click visible text, aria-label, title, or button content in ChatGPT. 按文本点击ChatGPT桌面版控件。",
+          "command": "unicli chatgpt click-text",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "text",
+              "required": true,
+              "positional": true,
+              "description": "Visible text, aria-label, or title to click"
+            }
+          ]
+        },
+        {
+          "name": "type-text",
+          "description": "Type text into the focused field or a text-matched target in ChatGPT. 向ChatGPT桌面版输入文本。",
+          "when_to_use": "Type text into the focused field or a text-matched target in ChatGPT. 向ChatGPT桌面版输入文本。",
+          "command": "unicli chatgpt type-text",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "text",
+              "required": true,
+              "positional": true,
+              "description": "Text to type"
+            },
+            {
+              "name": "target",
+              "required": false,
+              "positional": false,
+              "description": "Optional visible text to click before typing"
+            }
+          ]
+        },
+        {
+          "name": "press",
+          "description": "Press a key in ChatGPT, with optional comma-separated modifiers. 在ChatGPT桌面版发送按键。",
+          "when_to_use": "Press a key in ChatGPT, with optional comma-separated modifiers. 在ChatGPT桌面版发送按键。",
+          "command": "unicli chatgpt press",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "key",
+              "required": true,
+              "positional": true,
+              "description": "Key name"
+            },
+            {
+              "name": "modifiers",
+              "required": false,
+              "positional": false,
+              "description": "Comma-separated modifiers such as meta,shift"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "chatwise",
+      "type": "web-api",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "history",
+          "description": "List ChatWise conversations from the sidebar",
+          "when_to_use": "List ChatWise conversations from the sidebar",
+          "command": "unicli chatwise history",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["title"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "export",
+          "description": "Export the current ChatWise conversation as Markdown text",
+          "when_to_use": "Export the current ChatWise conversation as Markdown text",
+          "command": "unicli chatwise export",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["content"]
+        },
+        {
+          "name": "ask",
+          "description": "Send a prompt to ChatWise and wait for response",
+          "when_to_use": "Send a prompt to ChatWise and wait for response",
+          "command": "unicli chatwise ask",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "prompt",
+              "required": true,
+              "positional": true,
+              "description": "The prompt to send"
+            }
+          ]
+        },
+        {
+          "name": "send",
+          "description": "Send text to ChatWise without waiting",
+          "when_to_use": "When you need to post content to chatwise.",
+          "command": "unicli chatwise send",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [{ "name": "text", "required": true, "positional": true }]
+        },
+        {
+          "name": "read",
+          "description": "Read the last response from ChatWise",
+          "when_to_use": "Read the last response from ChatWise",
+          "command": "unicli chatwise read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "model",
+          "description": "Read or switch the current model in ChatWise",
+          "when_to_use": "Read or switch the current model in ChatWise",
+          "command": "unicli chatwise model",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [{ "name": "name", "required": false, "positional": true }]
+        },
+        {
+          "name": "status",
+          "description": "Check ChatWise app status",
+          "when_to_use": "Check ChatWise app status",
+          "command": "unicli chatwise status",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "new",
+          "description": "Start a new conversation in ChatWise",
+          "when_to_use": "Start a new conversation in ChatWise",
+          "command": "unicli chatwise new",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "screenshot",
+          "description": "Capture screenshot of ChatWise",
+          "when_to_use": "Capture screenshot of ChatWise",
+          "command": "unicli chatwise screenshot",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [{ "name": "path", "required": false, "positional": true }]
+        },
+        {
+          "name": "dump",
+          "description": "Dump visible text from the ChatWise desktop Electron app via CDP DOM. 读取ChatWise桌面版可见文本。",
+          "when_to_use": "Dump visible text from the ChatWise desktop Electron app via CDP DOM. 读取ChatWise桌面版可见文本。",
+          "command": "unicli chatwise dump",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "limit",
+              "required": false,
+              "positional": false,
+              "description": "Maximum text characters to return"
+            }
+          ]
+        },
+        {
+          "name": "open-app",
+          "description": "Open ChatWise desktop Electron app with CDP enabled for AI control. 打开ChatWise桌面版并启用 CDP 控制。",
+          "when_to_use": "Open ChatWise desktop Electron app with CDP enabled for AI control. 打开ChatWise桌面版并启用 CDP 控制。",
+          "command": "unicli chatwise open-app",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "status-app",
+          "description": "Inspect current ChatWise desktop app page, title, URL, visible controls, and text summary. 查看ChatWise桌面版当前状态和可见内容。",
+          "when_to_use": "Inspect current ChatWise desktop app page, title, URL, visible controls, and text summary. 查看ChatWise桌面版当前状态和可见内容。",
+          "command": "unicli chatwise status-app",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "snapshot-app",
+          "description": "List visible clickable text, buttons, inputs, and regions in ChatWise. 枚举ChatWise桌面版可交互内容。",
+          "when_to_use": "List visible clickable text, buttons, inputs, and regions in ChatWise. 枚举ChatWise桌面版可交互内容。",
+          "command": "unicli chatwise snapshot-app",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "click-text",
+          "description": "Click visible text, aria-label, title, or button content in ChatWise. 按文本点击ChatWise桌面版控件。",
+          "when_to_use": "Click visible text, aria-label, title, or button content in ChatWise. 按文本点击ChatWise桌面版控件。",
+          "command": "unicli chatwise click-text",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "text",
+              "required": true,
+              "positional": true,
+              "description": "Visible text, aria-label, or title to click"
+            }
+          ]
+        },
+        {
+          "name": "type-text",
+          "description": "Type text into the focused field or a text-matched target in ChatWise. 向ChatWise桌面版输入文本。",
+          "when_to_use": "Type text into the focused field or a text-matched target in ChatWise. 向ChatWise桌面版输入文本。",
+          "command": "unicli chatwise type-text",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "text",
+              "required": true,
+              "positional": true,
+              "description": "Text to type"
+            },
+            {
+              "name": "target",
+              "required": false,
+              "positional": false,
+              "description": "Optional visible text to click before typing"
+            }
+          ]
+        },
+        {
+          "name": "press",
+          "description": "Press a key in ChatWise, with optional comma-separated modifiers. 在ChatWise桌面版发送按键。",
+          "when_to_use": "Press a key in ChatWise, with optional comma-separated modifiers. 在ChatWise桌面版发送按键。",
+          "command": "unicli chatwise press",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "key",
+              "required": true,
+              "positional": true,
+              "description": "Key name"
+            },
+            {
+              "name": "modifiers",
+              "required": false,
+              "positional": false,
+              "description": "Comma-separated modifiers such as meta,shift"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "chrome",
       "type": "desktop",
       "auth": false,
@@ -3498,6 +4758,34 @@
           "browser": false
         },
         {
+          "name": "history",
+          "description": "List Codex desktop conversation threads",
+          "when_to_use": "List Codex desktop conversation threads",
+          "command": "unicli codex history",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["title"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "export",
+          "description": "Export the current Codex desktop thread as Markdown text",
+          "when_to_use": "Export the current Codex desktop thread as Markdown text",
+          "command": "unicli codex export",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["content"]
+        },
+        {
           "name": "ask",
           "description": "Send a prompt to Codex and wait for response",
           "when_to_use": "Send a prompt to Codex and wait for response",
@@ -3522,13 +4810,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "text",
-              "required": true,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "text", "required": true, "positional": true }]
         },
         {
           "name": "read",
@@ -3547,13 +4829,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "name",
-              "required": false,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "name", "required": false, "positional": true }]
         },
         {
           "name": "status",
@@ -3581,13 +4857,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "path",
-              "required": false,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "path", "required": false, "positional": true }]
         },
         {
           "name": "dump",
@@ -4200,13 +5470,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "text",
-              "required": true,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "text", "required": true, "positional": true }]
         },
         {
           "name": "read",
@@ -4225,13 +5489,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "name",
-              "required": false,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "name", "required": false, "positional": true }]
         },
         {
           "name": "status",
@@ -4259,13 +5517,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "path",
-              "required": false,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "path", "required": false, "positional": true }]
         },
         {
           "name": "dump",
@@ -4449,9 +5701,9 @@
     {
       "site": "deepseek",
       "type": "web-api",
-      "domain": "api.deepseek.com",
+      "domain": "chat.deepseek.com",
       "auth": true,
-      "strategy": "header",
+      "strategy": "cookie",
       "commands": [
         {
           "name": "chat",
@@ -4489,6 +5741,108 @@
           "browser": false,
           "columns": ["id", "object", "owned_by"],
           "args": []
+        },
+        {
+          "name": "ask",
+          "description": "Send a prompt to DeepSeek web chat and wait for a response",
+          "when_to_use": "Send a prompt to DeepSeek web chat and wait for a response",
+          "command": "unicli deepseek ask",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["response"],
+          "args": [
+            {
+              "name": "prompt",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "timeout",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "new",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "model",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "think",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "search",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "file",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Local file path, or comma-separated paths, to upload first"
+            }
+          ]
+        },
+        {
+          "name": "new",
+          "description": "Start a new DeepSeek web conversation",
+          "when_to_use": "Start a new DeepSeek web conversation",
+          "command": "unicli deepseek new",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true
+        },
+        {
+          "name": "status",
+          "description": "Check DeepSeek web page availability and login state",
+          "when_to_use": "Check DeepSeek web page availability and login state",
+          "command": "unicli deepseek status",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["title", "url", "logged_in"]
+        },
+        {
+          "name": "read",
+          "description": "Read the visible DeepSeek web conversation",
+          "when_to_use": "Read the visible DeepSeek web conversation",
+          "command": "unicli deepseek read",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["index", "role", "text"]
+        },
+        {
+          "name": "history",
+          "description": "List DeepSeek conversation history from the sidebar",
+          "when_to_use": "List DeepSeek conversation history from the sidebar",
+          "command": "unicli deepseek history",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["title", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
         }
       ]
     },
@@ -5667,7 +7021,7 @@
       "type": "web-api",
       "domain": "www.doubao.com",
       "auth": true,
-      "strategy": "intercept",
+      "strategy": "cookie",
       "commands": [
         {
           "name": "ask",
@@ -5714,6 +7068,105 @@
           "strategy": "intercept",
           "browser": true,
           "columns": ["logged_in", "account", "url"]
+        },
+        {
+          "name": "send",
+          "description": "Send text to the current Doubao web chat",
+          "when_to_use": "When you need to post content to doubao.",
+          "command": "unicli doubao send",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "args": [
+            {
+              "name": "text",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "read",
+          "description": "Read visible Doubao web conversation messages",
+          "when_to_use": "Read visible Doubao web conversation messages",
+          "command": "unicli doubao read",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["index", "role", "text"]
+        },
+        {
+          "name": "history",
+          "description": "List Doubao web conversation history",
+          "when_to_use": "List Doubao web conversation history",
+          "command": "unicli doubao history",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["title", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "detail",
+          "description": "Read a Doubao conversation by id or URL",
+          "when_to_use": "When you need details about a specific item on doubao.",
+          "command": "unicli doubao detail",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["index", "role", "text"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "meeting-summary",
+          "description": "Extract the visible summary for a Doubao meeting record",
+          "when_to_use": "Extract the visible summary for a Doubao meeting record",
+          "command": "unicli doubao meeting-summary",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["id", "summary"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "meeting-transcript",
+          "description": "Extract visible transcript text for a Doubao meeting record",
+          "when_to_use": "Extract visible transcript text for a Doubao meeting record",
+          "command": "unicli doubao meeting-transcript",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["id", "transcript"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
         }
       ]
     },
@@ -6424,7 +7877,7 @@
     {
       "site": "eastmoney",
       "type": "web-api",
-      "domain": "searchapi.eastmoney.com",
+      "domain": "push2.eastmoney.com",
       "auth": false,
       "strategy": "public",
       "commands": [
@@ -6510,6 +7963,443 @@
               "type": "str",
               "required": false,
               "positional": false
+            }
+          ]
+        },
+        {
+          "name": "quote",
+          "description": "东方财富个股实时行情（A股 / 港股 / 美股）",
+          "when_to_use": "东方财富个股实时行情（A股 / 港股 / 美股）",
+          "command": "unicli eastmoney quote",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "code",
+            "name",
+            "market",
+            "price",
+            "changePercent",
+            "turnover"
+          ],
+          "args": [
+            {
+              "name": "symbols",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "股票代码，支持逗号或空格分隔多个"
+            }
+          ]
+        },
+        {
+          "name": "rank",
+          "description": "东方财富市场涨跌/成交排行（沪深/北证/港/美）",
+          "when_to_use": "When you need the current rank items from eastmoney.",
+          "command": "unicli eastmoney rank",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "code",
+            "name",
+            "price",
+            "changePercent",
+            "turnover"
+          ],
+          "args": [
+            {
+              "name": "market",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "hs-a/sh-a/sz-a/bj-a/cyb/kcb/hk/us"
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "change/drop/turnover/volume/amplitude/rate"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
+            }
+          ]
+        },
+        {
+          "name": "etf",
+          "description": "东方财富 ETF 列表按成交额/涨跌幅排行",
+          "when_to_use": "东方财富 ETF 列表按成交额/涨跌幅排行",
+          "command": "unicli eastmoney etf",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "code",
+            "name",
+            "price",
+            "changePercent",
+            "turnover"
+          ],
+          "args": [
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "turnover/change/drop/volume/rate"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
+            }
+          ]
+        },
+        {
+          "name": "convertible",
+          "description": "东方财富可转债行情列表",
+          "when_to_use": "东方财富可转债行情列表",
+          "command": "unicli eastmoney convertible",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "bondCode",
+            "bondName",
+            "bondPrice",
+            "bondChangePct",
+            "convPremiumPct"
+          ],
+          "args": [
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "turnover/change/drop/price/premium/value/ytm"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
+            }
+          ]
+        },
+        {
+          "name": "sectors",
+          "description": "东方财富板块排行（行业/概念/地域）",
+          "when_to_use": "东方财富板块排行（行业/概念/地域）",
+          "command": "unicli eastmoney sectors",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "code",
+            "name",
+            "changePercent",
+            "mainNet",
+            "leadStock"
+          ],
+          "args": [
+            {
+              "name": "type",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "industry/concept/region"
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "change/drop/money-flow/out-flow/turnover"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
+            }
+          ]
+        },
+        {
+          "name": "index-board",
+          "description": "东方财富主要市场指数行情（A股 / 港股 / 美股）",
+          "when_to_use": "东方财富主要市场指数行情（A股 / 港股 / 美股）",
+          "command": "unicli eastmoney index-board",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["code", "name", "price", "changePercent", "change"],
+          "args": [
+            {
+              "name": "group",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "main/hk/us/all"
+            }
+          ]
+        },
+        {
+          "name": "money-flow",
+          "description": "东方财富主力资金净流入排行",
+          "when_to_use": "东方财富主力资金净流入排行",
+          "command": "unicli eastmoney money-flow",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "code",
+            "name",
+            "price",
+            "changePercent",
+            "mainNet"
+          ],
+          "args": [
+            {
+              "name": "range",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "today/5d/10d"
+            },
+            {
+              "name": "order",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "desc/asc"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
+            }
+          ]
+        },
+        {
+          "name": "northbound",
+          "description": "东方财富沪深港通北向/南向资金分时净流入",
+          "when_to_use": "东方财富沪深港通北向/南向资金分时净流入",
+          "command": "unicli eastmoney northbound",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["time", "cumulativeNetYi", "minuteNetYi", "totalNetYi"],
+          "args": [
+            {
+              "name": "direction",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "north/south"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回最近 N 分钟"
+            }
+          ]
+        },
+        {
+          "name": "announcement",
+          "description": "东方财富上市公司公告",
+          "when_to_use": "东方财富上市公司公告",
+          "command": "unicli eastmoney announcement",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["time", "code", "name", "title", "category", "url"],
+          "args": [
+            {
+              "name": "market",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "SHA/SZA/BJA，可逗号分隔"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
+            }
+          ]
+        },
+        {
+          "name": "holders",
+          "description": "东方财富十大流通股东（A股 F10）",
+          "when_to_use": "东方财富十大流通股东（A股 F10）",
+          "command": "unicli eastmoney holders",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "reportDate",
+            "name",
+            "holdNum",
+            "floatRatio",
+            "change"
+          ],
+          "args": [
+            {
+              "name": "symbol",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "A股代码"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回股东数"
+            }
+          ]
+        },
+        {
+          "name": "longhu",
+          "description": "东方财富龙虎榜明细",
+          "when_to_use": "东方财富龙虎榜明细",
+          "command": "unicli eastmoney longhu",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "tradeDate",
+            "code",
+            "name",
+            "closePrice",
+            "changeRate",
+            "netAmt",
+            "reason"
+          ],
+          "args": [
+            {
+              "name": "date",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "开始交易日 YYYY-MM-DD"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
+            }
+          ]
+        },
+        {
+          "name": "kuaixun",
+          "description": "东方财富财经快讯",
+          "when_to_use": "东方财富财经快讯",
+          "command": "unicli eastmoney kuaixun",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["time", "title", "summary", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
+            }
+          ]
+        },
+        {
+          "name": "kline",
+          "description": "东方财富个股 K 线行情",
+          "when_to_use": "东方财富个股 K 线行情",
+          "command": "unicli eastmoney kline",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "date",
+            "open",
+            "close",
+            "high",
+            "low",
+            "volume",
+            "amount"
+          ],
+          "args": [
+            {
+              "name": "symbol",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "股票代码"
+            },
+            {
+              "name": "period",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "daily/weekly/monthly"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回 K 线数"
+            }
+          ]
+        },
+        {
+          "name": "hot-rank",
+          "description": "东方财富热股榜（按成交额近似排序）",
+          "when_to_use": "东方财富热股榜（按成交额近似排序）",
+          "command": "unicli eastmoney hot-rank",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "symbol",
+            "name",
+            "price",
+            "changePercent",
+            "heat",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
             }
           ]
         }
@@ -9031,6 +10921,24 @@
               "positional": false
             }
           ]
+        },
+        {
+          "name": "user",
+          "description": "Show public Gitee user profile information",
+          "when_to_use": "When you need user/profile info from gitee.",
+          "command": "unicli gitee user",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["username", "name", "followers", "public_repos", "url"],
+          "args": [
+            {
+              "name": "username",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
         }
       ]
     },
@@ -9383,6 +11291,211 @@
               "required": false,
               "positional": false,
               "description": "Number of trends"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "google-scholar",
+      "type": "web-api",
+      "domain": "scholar.google.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "cite",
+          "description": "Fetch a Google Scholar citation for a paper",
+          "when_to_use": "Fetch a Google Scholar citation for a paper",
+          "command": "unicli google-scholar cite",
+          "auth": false,
+          "strategy": "public",
+          "browser": true,
+          "columns": ["title", "format", "citation"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "style",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "index",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "profile",
+          "description": "Read a Google Scholar author profile and top papers",
+          "when_to_use": "When you need user/profile info from google-scholar.",
+          "command": "unicli google-scholar profile",
+          "auth": false,
+          "strategy": "public",
+          "browser": true,
+          "columns": [
+            "rank",
+            "kind",
+            "title",
+            "authors",
+            "year",
+            "cited",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "author",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search Google Scholar papers",
+          "when_to_use": "When you need to search google-scholar for a specific query.",
+          "command": "unicli google-scholar search",
+          "auth": false,
+          "strategy": "public",
+          "browser": true,
+          "columns": [
+            "rank",
+            "title",
+            "authors",
+            "source",
+            "year",
+            "cited",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "gov-law",
+      "type": "web-api",
+      "domain": "flk.npc.gov.cn",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search the National Laws and Regulations Database",
+          "when_to_use": "When you need to search gov-law for a specific query.",
+          "command": "unicli gov-law search",
+          "auth": false,
+          "strategy": "public",
+          "browser": true,
+          "columns": ["title", "date", "url"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "recent",
+          "description": "List recent laws and regulations",
+          "when_to_use": "List recent laws and regulations",
+          "command": "unicli gov-law recent",
+          "auth": false,
+          "strategy": "public",
+          "browser": true,
+          "columns": ["title", "date", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "gov-policy",
+      "type": "web-api",
+      "domain": "www.gov.cn",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search gov.cn policy documents",
+          "when_to_use": "When you need to search gov-policy for a specific query.",
+          "command": "unicli gov-policy search",
+          "auth": false,
+          "strategy": "public",
+          "browser": true,
+          "columns": ["title", "date", "url"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "recent",
+          "description": "List latest State Council policy documents",
+          "when_to_use": "List latest State Council policy documents",
+          "command": "unicli gov-policy recent",
+          "auth": false,
+          "strategy": "public",
+          "browser": true,
+          "columns": ["title", "date", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -11513,7 +13626,7 @@
       "type": "web-api",
       "domain": "jd.com",
       "auth": true,
-      "strategy": "public",
+      "strategy": "cookie",
       "commands": [
         {
           "name": "hot",
@@ -11578,15 +13691,99 @@
               "description": "Number of results"
             }
           ]
+        },
+        {
+          "name": "detail",
+          "description": "Fetch JD product detail by SKU",
+          "when_to_use": "When you need details about a specific item on jd.",
+          "command": "unicli jd detail",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["title", "price", "shop", "stock", "sku"],
+          "args": [
+            {
+              "name": "sku",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "reviews",
+          "description": "Fetch JD product reviews by SKU",
+          "when_to_use": "Fetch JD product reviews by SKU",
+          "command": "unicli jd reviews",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["nickname", "score", "content", "creationTime"],
+          "args": [
+            {
+              "name": "sku",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "cart",
+          "description": "Read JD cart items from the active browser session",
+          "when_to_use": "Read JD cart items from the active browser session",
+          "command": "unicli jd cart",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["title", "price", "quantity", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "add-cart",
+          "description": "Add a JD product to cart in the active browser session",
+          "when_to_use": "Add a JD product to cart in the active browser session",
+          "command": "unicli jd add-cart",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["ok", "selector", "url"],
+          "args": [
+            {
+              "name": "sku",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "quantity",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
         }
       ]
     },
     {
       "site": "jianyu",
       "type": "browser",
-      "domain": "www.jianyu.com",
+      "domain": "www.jianyu360.cn",
       "auth": true,
-      "strategy": "intercept",
+      "strategy": "cookie",
       "commands": [
         {
           "name": "search",
@@ -11611,6 +13808,24 @@
               "required": false,
               "positional": false,
               "description": "Maximum results"
+            }
+          ]
+        },
+        {
+          "name": "detail",
+          "description": "Extract Jianyu procurement notice detail evidence",
+          "when_to_use": "When you need details about a specific item on jianyu.",
+          "command": "unicli jianyu detail",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["title", "published_at", "detail_text", "url"],
+          "args": [
+            {
+              "name": "url",
+              "type": "str",
+              "required": true,
+              "positional": true
             }
           ]
         }
@@ -11849,7 +14064,7 @@
       "type": "web-api",
       "domain": "jimeng.jianying.com",
       "auth": true,
-      "strategy": "intercept",
+      "strategy": "cookie",
       "commands": [
         {
           "name": "generate",
@@ -11893,6 +14108,34 @@
               "required": false,
               "positional": false,
               "description": "Number of results"
+            }
+          ]
+        },
+        {
+          "name": "new",
+          "description": "Open a new Jimeng generation workspace",
+          "when_to_use": "Open a new Jimeng generation workspace",
+          "command": "unicli jimeng new",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["ok", "url"]
+        },
+        {
+          "name": "workspaces",
+          "description": "List Jimeng visible workspaces",
+          "when_to_use": "List Jimeng visible workspaces",
+          "command": "unicli jimeng workspaces",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["name", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -12020,7 +14263,7 @@
       "type": "browser",
       "domain": "ke.com",
       "auth": true,
-      "strategy": "intercept",
+      "strategy": "cookie",
       "commands": [
         {
           "name": "ershoufang",
@@ -12094,6 +14337,72 @@
               "required": false,
               "positional": false,
               "description": "Number of results"
+            }
+          ]
+        },
+        {
+          "name": "zufang",
+          "description": "Browse Ke.com rental listings",
+          "when_to_use": "Browse Ke.com rental listings",
+          "command": "unicli ke zufang",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["title", "location", "price", "url"],
+          "args": [
+            {
+              "name": "city",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "district",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "max_price",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "chengjiao",
+          "description": "Browse Ke.com recent transaction records",
+          "when_to_use": "Browse Ke.com recent transaction records",
+          "command": "unicli ke chengjiao",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["title", "location", "price", "date", "url"],
+          "args": [
+            {
+              "name": "city",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "district",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -13092,7 +15401,7 @@
       "type": "web-api",
       "domain": "linux.do",
       "auth": true,
-      "strategy": "cookie",
+      "strategy": "public",
       "commands": [
         {
           "name": "categories",
@@ -13323,6 +15632,24 @@
               "required": false,
               "positional": false,
               "description": "Number of results"
+            }
+          ]
+        },
+        {
+          "name": "topic-content",
+          "description": "Read the main Linux.do topic body as Markdown",
+          "when_to_use": "Read the main Linux.do topic body as Markdown",
+          "command": "unicli linux-do topic-content",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["title", "author", "content"],
+          "args": [
+            {
+              "name": "id",
+              "type": "int",
+              "required": true,
+              "positional": true
             }
           ]
         }
@@ -14380,7 +16707,7 @@
       "type": "browser",
       "domain": "maimai.cn",
       "auth": true,
-      "strategy": "intercept",
+      "strategy": "cookie",
       "commands": [
         {
           "name": "search",
@@ -14413,6 +16740,54 @@
               "required": false,
               "positional": false,
               "description": "Number of results"
+            }
+          ]
+        },
+        {
+          "name": "search-talents",
+          "description": "Search Maimai talent profiles with filters",
+          "when_to_use": "When you need to search maimai for a specific query.",
+          "command": "unicli maimai search-talents",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["name", "title", "company", "location"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "companies",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "schools",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "cities",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "size",
+              "type": "int",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -14926,7 +17301,7 @@
       "type": "web-api",
       "domain": "mubu.com",
       "auth": true,
-      "strategy": "intercept",
+      "strategy": "cookie",
       "commands": [
         {
           "name": "list",
@@ -14970,6 +17345,120 @@
               "required": false,
               "positional": false,
               "description": "Number of results"
+            }
+          ]
+        },
+        {
+          "name": "docs",
+          "description": "List Mubu documents and folders",
+          "when_to_use": "List Mubu documents and folders",
+          "command": "unicli mubu docs",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["title", "updated", "url"],
+          "args": [
+            {
+              "name": "folder",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "starred",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "doc",
+          "description": "Read a Mubu document as Markdown-like text",
+          "when_to_use": "Read a Mubu document as Markdown-like text",
+          "command": "unicli mubu doc",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["title", "content", "url"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "recent",
+          "description": "List recently edited Mubu documents",
+          "when_to_use": "List recently edited Mubu documents",
+          "command": "unicli mubu recent",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["title", "updated", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "notes",
+          "description": "Read Mubu quick notes for a date or date range",
+          "when_to_use": "Read Mubu quick notes for a date or date range",
+          "command": "unicli mubu notes",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["title", "content", "url"],
+          "args": [
+            {
+              "name": "date",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "month",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "from",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "to",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "list",
+              "type": "bool",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -16068,6 +18557,412 @@
               "description": "Task ID from generate command"
             }
           ]
+        }
+      ]
+    },
+    {
+      "site": "nowcoder",
+      "type": "web-api",
+      "domain": "www.nowcoder.com",
+      "auth": true,
+      "strategy": "cookie",
+      "commands": [
+        {
+          "name": "hot",
+          "description": "牛客热搜榜 / Nowcoder hot search ranking",
+          "when_to_use": "When you need the current hot items from nowcoder.",
+          "command": "unicli nowcoder hot",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["rank", "title", "heat"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
+            }
+          ]
+        },
+        {
+          "name": "trending",
+          "description": "牛客热门帖子 / Nowcoder trending posts",
+          "when_to_use": "When you need the current trending items from nowcoder.",
+          "command": "unicli nowcoder trending",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["rank", "title", "heat", "id"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
+            }
+          ]
+        },
+        {
+          "name": "topics",
+          "description": "牛客热门讨论话题 / Nowcoder hot topics",
+          "when_to_use": "牛客热门讨论话题 / Nowcoder hot topics",
+          "command": "unicli nowcoder topics",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["rank", "topic", "views", "posts", "heat", "id"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
+            }
+          ]
+        },
+        {
+          "name": "jobs",
+          "description": "牛客职业方向列表 / Nowcoder career categories",
+          "when_to_use": "牛客职业方向列表 / Nowcoder career categories",
+          "command": "unicli nowcoder jobs",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["id", "career", "learners"],
+          "args": []
+        },
+        {
+          "name": "companies",
+          "description": "牛客面试题热门公司 / Nowcoder hot companies for interview prep",
+          "when_to_use": "牛客面试题热门公司 / Nowcoder hot companies for interview prep",
+          "command": "unicli nowcoder companies",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["rank", "company", "companyId"],
+          "args": [
+            {
+              "name": "job",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "职业 ID"
+            }
+          ]
+        },
+        {
+          "name": "creators",
+          "description": "牛客创作者榜 / Nowcoder creator leaderboard",
+          "when_to_use": "牛客创作者榜 / Nowcoder creator leaderboard",
+          "command": "unicli nowcoder creators",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["rank", "nickname", "school", "level", "heat", "tag"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
+            }
+          ]
+        },
+        {
+          "name": "recommend",
+          "description": "牛客推荐流 / Nowcoder recommended feed",
+          "when_to_use": "牛客推荐流 / Nowcoder recommended feed",
+          "command": "unicli nowcoder recommend",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "title",
+            "author",
+            "school",
+            "likes",
+            "comments",
+            "views",
+            "id"
+          ],
+          "args": [
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "页码"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
+            }
+          ]
+        },
+        {
+          "name": "experience",
+          "description": "牛客面经帖子 / Nowcoder interview experience posts",
+          "when_to_use": "牛客面经帖子 / Nowcoder interview experience posts",
+          "command": "unicli nowcoder experience",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "title",
+            "author",
+            "school",
+            "likes",
+            "comments",
+            "views",
+            "id"
+          ],
+          "args": [
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "页码"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
+            }
+          ]
+        },
+        {
+          "name": "referral",
+          "description": "牛客内推帖子 / Nowcoder referral posts",
+          "when_to_use": "牛客内推帖子 / Nowcoder referral posts",
+          "command": "unicli nowcoder referral",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "title",
+            "author",
+            "school",
+            "likes",
+            "comments",
+            "views",
+            "id"
+          ],
+          "args": [
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "页码"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
+            }
+          ]
+        },
+        {
+          "name": "salary",
+          "description": "牛客薪资爆料帖子 / Nowcoder salary disclosure posts",
+          "when_to_use": "牛客薪资爆料帖子 / Nowcoder salary disclosure posts",
+          "command": "unicli nowcoder salary",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "title",
+            "author",
+            "school",
+            "likes",
+            "comments",
+            "views",
+            "id"
+          ],
+          "args": [
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "页码"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
+            }
+          ]
+        },
+        {
+          "name": "papers",
+          "description": "牛客公司真题试卷 / Nowcoder interview question papers",
+          "when_to_use": "牛客公司真题试卷 / Nowcoder interview question papers",
+          "command": "unicli nowcoder papers",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["rank", "title", "company", "practitioners"],
+          "args": [
+            {
+              "name": "job",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "职业 ID"
+            },
+            {
+              "name": "company",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "公司 ID"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
+            }
+          ]
+        },
+        {
+          "name": "practice",
+          "description": "牛客专项练习题库 / Nowcoder practice question categories",
+          "when_to_use": "牛客专项练习题库 / Nowcoder practice question categories",
+          "command": "unicli nowcoder practice",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["category", "subject", "total", "done", "remaining"],
+          "args": [
+            {
+              "name": "job",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "职业 ID"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "牛客全文搜索 / Nowcoder full-text search",
+          "when_to_use": "When you need to search nowcoder for a specific query.",
+          "command": "unicli nowcoder search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["rank", "title", "author", "school", "content", "id"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "搜索关键词"
+            },
+            {
+              "name": "type",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "all/post/question/user/job"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "返回数量"
+            }
+          ]
+        },
+        {
+          "name": "suggest",
+          "description": "牛客搜索建议 / Nowcoder search suggestions",
+          "when_to_use": "牛客搜索建议 / Nowcoder search suggestions",
+          "command": "unicli nowcoder suggest",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["rank", "suggestion", "type"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "搜索关键词"
+            }
+          ]
+        },
+        {
+          "name": "detail",
+          "description": "牛客帖子详情 / Nowcoder post detail by ID, UUID, or URL",
+          "when_to_use": "When you need details about a specific item on nowcoder.",
+          "command": "unicli nowcoder detail",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "title",
+            "author",
+            "school",
+            "content",
+            "likes",
+            "comments",
+            "views",
+            "time",
+            "location"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "帖子 ID、UUID 或 URL"
+            }
+          ]
+        },
+        {
+          "name": "notifications",
+          "description": "牛客未读消息摘要 / Nowcoder unread message summary",
+          "when_to_use": "牛客未读消息摘要 / Nowcoder unread message summary",
+          "command": "unicli nowcoder notifications",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": false,
+          "columns": ["type", "unread"],
+          "args": []
         }
       ]
     },
@@ -17687,6 +20582,39 @@
       ]
     },
     {
+      "site": "powerchina",
+      "type": "web-api",
+      "domain": "bid.powerchina.cn",
+      "auth": true,
+      "strategy": "cookie",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search PowerChina procurement notices",
+          "when_to_use": "When you need to search powerchina for a specific query.",
+          "command": "unicli powerchina search",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["title", "publish_time", "content_type", "url"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "powerpoint",
       "type": "desktop",
       "auth": false,
@@ -18043,7 +20971,7 @@
     {
       "site": "quark",
       "type": "web-api",
-      "domain": "drive-pc.quark.cn",
+      "domain": "pan.quark.cn",
       "auth": true,
       "strategy": "cookie",
       "commands": [
@@ -18096,6 +21024,144 @@
               "required": false,
               "positional": false,
               "description": "Maximum results"
+            }
+          ]
+        },
+        {
+          "name": "mkdir",
+          "description": "Create a folder in Quark Drive",
+          "when_to_use": "Create a folder in Quark Drive",
+          "command": "unicli quark mkdir",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["ok", "status", "message"],
+          "args": [
+            {
+              "name": "name",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "parent_fid",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "rename",
+          "description": "Rename a Quark Drive file or folder",
+          "when_to_use": "Rename a Quark Drive file or folder",
+          "command": "unicli quark rename",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["ok", "status", "message"],
+          "args": [
+            {
+              "name": "fid",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "name",
+              "type": "str",
+              "required": true,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "rm",
+          "description": "Delete Quark Drive files or folders by fid list",
+          "when_to_use": "Delete Quark Drive files or folders by fid list",
+          "command": "unicli quark rm",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["ok", "status", "message"],
+          "args": [
+            {
+              "name": "fids",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "mv",
+          "description": "Move Quark Drive files to a target folder fid",
+          "when_to_use": "Move Quark Drive files to a target folder fid",
+          "command": "unicli quark mv",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["ok", "status", "message"],
+          "args": [
+            {
+              "name": "fids",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "to_fid",
+              "type": "str",
+              "required": true,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "share-tree",
+          "description": "Read a Quark share page directory tree",
+          "when_to_use": "Read a Quark share page directory tree",
+          "command": "unicli quark share-tree",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["name", "type", "size"],
+          "args": [
+            {
+              "name": "url",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "save",
+          "description": "Save a Quark share into the active Drive account",
+          "when_to_use": "Save a Quark share into the active Drive account",
+          "command": "unicli quark save",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["ok", "selector", "url"],
+          "args": [
+            {
+              "name": "url",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "to_fid",
+              "type": "str",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -19944,7 +23010,7 @@
       "type": "web-api",
       "domain": "api.spotify.com",
       "auth": true,
-      "strategy": "public",
+      "strategy": "cookie",
       "commands": [
         {
           "name": "now-playing",
@@ -20063,6 +23129,106 @@
               "type": "int",
               "required": false,
               "positional": false
+            }
+          ]
+        },
+        {
+          "name": "auth",
+          "description": "Create or complete Spotify OAuth setup",
+          "when_to_use": "Create or complete Spotify OAuth setup",
+          "command": "unicli spotify auth",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["status", "url"],
+          "args": [
+            {
+              "name": "code",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "status",
+          "description": "Show current Spotify playback status",
+          "when_to_use": "Show current Spotify playback status",
+          "command": "unicli spotify status",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": false,
+          "columns": ["track", "artist", "is_playing", "progress_ms"]
+        },
+        {
+          "name": "volume",
+          "description": "Set Spotify playback volume",
+          "when_to_use": "Set Spotify playback volume",
+          "command": "unicli spotify volume",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": false,
+          "columns": ["ok", "volume"],
+          "args": [
+            {
+              "name": "percent",
+              "type": "int",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "queue",
+          "description": "Add a Spotify track to the playback queue",
+          "when_to_use": "Add a Spotify track to the playback queue",
+          "command": "unicli spotify queue",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": false,
+          "columns": ["ok", "uri"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "shuffle",
+          "description": "Toggle Spotify shuffle mode",
+          "when_to_use": "Toggle Spotify shuffle mode",
+          "command": "unicli spotify shuffle",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": false,
+          "columns": ["ok", "state"],
+          "args": [
+            {
+              "name": "state",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "repeat",
+          "description": "Set Spotify repeat mode",
+          "when_to_use": "Set Spotify repeat mode",
+          "command": "unicli spotify repeat",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": false,
+          "columns": ["ok", "state"],
+          "args": [
+            {
+              "name": "state",
+              "type": "str",
+              "required": true,
+              "positional": true
             }
           ]
         },
@@ -20716,9 +23882,9 @@
     {
       "site": "taobao",
       "type": "browser",
-      "domain": "s.taobao.com",
+      "domain": "taobao.com",
       "auth": true,
-      "strategy": "intercept",
+      "strategy": "cookie",
       "commands": [
         {
           "name": "hot",
@@ -20761,6 +23927,117 @@
               "required": false,
               "positional": false,
               "description": "Maximum results"
+            }
+          ]
+        },
+        {
+          "name": "detail",
+          "description": "Read Taobao product detail from the active browser session",
+          "when_to_use": "When you need details about a specific item on taobao.",
+          "command": "unicli taobao detail",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["title", "price", "shop", "sales", "url"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "reviews",
+          "description": "Read visible Taobao product reviews",
+          "when_to_use": "Read visible Taobao product reviews",
+          "command": "unicli taobao reviews",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["author", "content", "date"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "cart",
+          "description": "Read Taobao cart items from the active browser session",
+          "when_to_use": "Read Taobao cart items from the active browser session",
+          "command": "unicli taobao cart",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["title", "price", "quantity", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "add-cart",
+          "description": "Add a Taobao product to cart in the active browser session",
+          "when_to_use": "Add a Taobao product to cart in the active browser session",
+          "command": "unicli taobao add-cart",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["ok", "selector", "url"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "spec",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "tdx",
+      "type": "web-api",
+      "domain": "pul.tdx.com.cn",
+      "auth": true,
+      "strategy": "cookie",
+      "commands": [
+        {
+          "name": "hot-rank",
+          "description": "Read TDX hot-search stock ranking",
+          "when_to_use": "Read TDX hot-search stock ranking",
+          "command": "unicli tdx hot-rank",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["rank", "symbol", "name", "changePercent", "heat"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -20917,6 +24194,33 @@
               "required": false,
               "positional": false,
               "description": "Number of results"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "ths",
+      "type": "web-api",
+      "domain": "eq.10jqka.com.cn",
+      "auth": true,
+      "strategy": "cookie",
+      "commands": [
+        {
+          "name": "hot-rank",
+          "description": "Read Tonghuashun hot-stock ranking",
+          "when_to_use": "Read Tonghuashun hot-stock ranking",
+          "command": "unicli ths hot-rank",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["rank", "name", "changePercent", "heat"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -21389,9 +24693,9 @@
     {
       "site": "toutiao",
       "type": "web-api",
-      "domain": "www.toutiao.com",
+      "domain": "mp.toutiao.com",
       "auth": true,
-      "strategy": "intercept",
+      "strategy": "cookie",
       "commands": [
         {
           "name": "hot",
@@ -21435,6 +24739,30 @@
               "required": false,
               "positional": false,
               "description": "Number of results"
+            }
+          ]
+        },
+        {
+          "name": "articles",
+          "description": "List Toutiao creator dashboard articles",
+          "when_to_use": "List Toutiao creator dashboard articles",
+          "command": "unicli toutiao articles",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["title", "date", "status", "reads", "likes", "comments"],
+          "args": [
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -22021,6 +25349,102 @@
           ]
         },
         {
+          "name": "tweets",
+          "description": "Read recent tweets from a Twitter/X user profile",
+          "when_to_use": "Read recent tweets from a Twitter/X user profile",
+          "command": "unicli twitter tweets",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["author", "text", "url"],
+          "args": [
+            {
+              "name": "user",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "list-tweets",
+          "description": "Read tweets from a Twitter/X list",
+          "when_to_use": "When you need to list items from twitter.",
+          "command": "unicli twitter list-tweets",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["author", "text", "url"],
+          "args": [
+            {
+              "name": "list",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "list-add",
+          "description": "Add a Twitter/X user to a list from the browser UI",
+          "when_to_use": "When you need to list items from twitter.",
+          "command": "unicli twitter list-add",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["ok", "selector", "url"],
+          "args": [
+            {
+              "name": "list",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "user",
+              "type": "str",
+              "required": true,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "list-remove",
+          "description": "Remove a Twitter/X user from a list from the browser UI",
+          "when_to_use": "When you need to list items from twitter.",
+          "command": "unicli twitter list-remove",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["ok", "selector", "url"],
+          "args": [
+            {
+              "name": "list",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "user",
+              "type": "str",
+              "required": true,
+              "positional": false
+            }
+          ]
+        },
+        {
           "name": "notifications",
           "description": "Get recent notifications",
           "when_to_use": "Get recent notifications",
@@ -22253,6 +25677,67 @@
               "required": true,
               "positional": true,
               "description": "User numeric ID to unfollow"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "uiverse",
+      "type": "web-api",
+      "domain": "uiverse.io",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "code",
+          "description": "Uiverse component code export (HTML or CSS)",
+          "when_to_use": "Uiverse component code export (HTML or CSS)",
+          "command": "unicli uiverse code",
+          "auth": false,
+          "strategy": "public",
+          "browser": true,
+          "columns": ["target", "username", "slug", "language", "length"],
+          "args": [
+            {
+              "name": "input",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Uiverse URL or author/slug"
+            },
+            {
+              "name": "target",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Code target"
+            }
+          ]
+        },
+        {
+          "name": "preview",
+          "description": "Capture a Uiverse component preview screenshot",
+          "when_to_use": "Capture a Uiverse component preview screenshot",
+          "command": "unicli uiverse preview",
+          "auth": false,
+          "strategy": "public",
+          "browser": true,
+          "columns": ["username", "slug", "output", "bytes"],
+          "args": [
+            {
+              "name": "input",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Uiverse URL or author/slug"
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output PNG path"
             }
           ]
         }
@@ -22765,6 +26250,39 @@
       ]
     },
     {
+      "site": "wanfang",
+      "type": "web-api",
+      "domain": "s.wanfangdata.com.cn",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Wanfang papers by keyword",
+          "when_to_use": "When you need to search wanfang for a specific query.",
+          "command": "unicli wanfang search",
+          "auth": false,
+          "strategy": "public",
+          "browser": true,
+          "columns": ["title", "authors", "source", "url"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "web",
       "type": "web-api",
       "auth": false,
@@ -23093,7 +26611,7 @@
     {
       "site": "weixin",
       "type": "browser",
-      "domain": "weixin.sogou.com",
+      "domain": "mp.weixin.qq.com",
       "auth": true,
       "strategy": "cookie",
       "commands": [
@@ -23183,6 +26701,66 @@
               "required": false,
               "positional": false,
               "description": "Number of results"
+            }
+          ]
+        },
+        {
+          "name": "drafts",
+          "description": "List WeChat Official Account article drafts",
+          "when_to_use": "List WeChat Official Account article drafts",
+          "command": "unicli weixin drafts",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["title", "updated", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "create-draft",
+          "description": "Create a WeChat Official Account article draft",
+          "when_to_use": "Create a WeChat Official Account article draft",
+          "command": "unicli weixin create-draft",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["ok", "url"],
+          "args": [
+            {
+              "name": "content",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "title",
+              "type": "str",
+              "required": true,
+              "positional": false
+            },
+            {
+              "name": "author",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "summary",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "cover_image",
+              "type": "str",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -23353,6 +26931,24 @@
               "required": false,
               "positional": false,
               "description": "Number of books"
+            }
+          ]
+        },
+        {
+          "name": "ai-outline",
+          "description": "Extract WeRead AI outline or visible book outline",
+          "when_to_use": "Extract WeRead AI outline or visible book outline",
+          "command": "unicli weread ai-outline",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["bookId", "outline", "url"],
+          "args": [
+            {
+              "name": "bookId",
+              "type": "str",
+              "required": true,
+              "positional": true
             }
           ]
         }
@@ -24493,9 +28089,9 @@
     {
       "site": "xiaoyuzhou",
       "type": "web-api",
-      "domain": "www.xiaoyuzhoufm.com",
-      "auth": false,
-      "strategy": "public",
+      "domain": "xiaoyuzhou.fm",
+      "auth": true,
+      "strategy": "cookie",
       "commands": [
         {
           "name": "episode",
@@ -24564,6 +28160,54 @@
               "required": true,
               "positional": true,
               "description": "Podcast ID (from xiaoyuzhoufm.com URL)"
+            }
+          ]
+        },
+        {
+          "name": "download",
+          "description": "Download Xiaoyuzhou episode audio",
+          "when_to_use": "When you need to download media or files from xiaoyuzhou.",
+          "command": "unicli xiaoyuzhou download",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": false,
+          "columns": ["title", "path", "bytes"],
+          "args": [
+            {
+              "name": "eid",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "transcript",
+          "description": "Download Xiaoyuzhou transcript JSON and extracted text",
+          "when_to_use": "Download Xiaoyuzhou transcript JSON and extracted text",
+          "command": "unicli xiaoyuzhou transcript",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": false,
+          "columns": ["eid", "path", "text"],
+          "args": [
+            {
+              "name": "eid",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -24859,6 +28503,54 @@
               "required": false,
               "positional": false,
               "description": "Number of stocks"
+            }
+          ]
+        },
+        {
+          "name": "kline",
+          "description": "Fetch Xueqiu stock candlestick data",
+          "when_to_use": "Fetch Xueqiu stock candlestick data",
+          "command": "unicli xueqiu kline",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": false,
+          "columns": ["timestamp", "open", "close", "high", "low", "volume"],
+          "args": [
+            {
+              "name": "symbol",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "period",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "count",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "groups",
+          "description": "Read visible Xueqiu portfolio or group lists",
+          "when_to_use": "Read visible Xueqiu portfolio or group lists",
+          "command": "unicli xueqiu groups",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["name", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -25379,6 +29071,150 @@
           ]
         },
         {
+          "name": "feed",
+          "description": "Read YouTube homepage recommended videos",
+          "when_to_use": "Read YouTube homepage recommended videos",
+          "command": "unicli youtube feed",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["title", "channel", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "history",
+          "description": "Read YouTube watch history",
+          "when_to_use": "Read YouTube watch history",
+          "command": "unicli youtube history",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["title", "channel", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "watch-later",
+          "description": "Read YouTube Watch Later queue",
+          "when_to_use": "Read YouTube Watch Later queue",
+          "command": "unicli youtube watch-later",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["title", "channel", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "subscriptions",
+          "description": "List YouTube subscribed channels",
+          "when_to_use": "List YouTube subscribed channels",
+          "command": "unicli youtube subscriptions",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["title", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "like",
+          "description": "Like a YouTube video in the active browser session",
+          "when_to_use": "Like a YouTube video in the active browser session",
+          "command": "unicli youtube like",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["ok", "selector", "url"],
+          "args": [
+            {
+              "name": "video",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "unlike",
+          "description": "Remove a YouTube video like in the active browser session",
+          "when_to_use": "Remove a YouTube video like in the active browser session",
+          "command": "unicli youtube unlike",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["ok", "selector", "url"],
+          "args": [
+            {
+              "name": "video",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "subscribe",
+          "description": "Subscribe to a YouTube channel",
+          "when_to_use": "Subscribe to a YouTube channel",
+          "command": "unicli youtube subscribe",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["ok", "selector", "url"],
+          "args": [
+            {
+              "name": "channel",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "unsubscribe",
+          "description": "Unsubscribe from a YouTube channel",
+          "when_to_use": "Unsubscribe from a YouTube channel",
+          "command": "unicli youtube unsubscribe",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["ok", "selector", "url"],
+          "args": [
+            {
+              "name": "channel",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
           "name": "search",
           "description": "Search YouTube videos",
           "when_to_use": "When you need to search youtube for a specific query.",
@@ -25642,7 +29478,7 @@
     {
       "site": "zhihu",
       "type": "web-api",
-      "domain": "www.zhihu.com",
+      "domain": "zhihu.com",
       "auth": true,
       "strategy": "cookie",
       "commands": [
@@ -26162,6 +29998,90 @@
               "description": "User URL token (e.g. zhang-san-12)"
             }
           ]
+        },
+        {
+          "name": "follow",
+          "description": "Follow a Zhihu user or question",
+          "when_to_use": "Follow a Zhihu user or question",
+          "command": "unicli zhihu follow",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["ok", "selector", "url"],
+          "args": [
+            {
+              "name": "target",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "execute",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "like",
+          "description": "Like a Zhihu answer or article",
+          "when_to_use": "Like a Zhihu answer or article",
+          "command": "unicli zhihu like",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["ok", "selector", "url"],
+          "args": [
+            {
+              "name": "target",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "execute",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "favorite",
+          "description": "Favorite a Zhihu answer or article into an existing collection",
+          "when_to_use": "Favorite a Zhihu answer or article into an existing collection",
+          "command": "unicli zhihu favorite",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["ok", "selector", "url"],
+          "args": [
+            {
+              "name": "target",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "collection",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "collection_id",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "execute",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            }
+          ]
         }
       ]
     },
@@ -26537,214 +30457,7 @@
       ]
     },
     {
-      "site": "antigravity",
-      "type": "web-api",
-      "auth": false,
-      "strategy": "public",
-      "commands": [
-        {
-          "name": "ask",
-          "description": "Send a prompt to Antigravity and wait for response",
-          "when_to_use": "Send a prompt to Antigravity and wait for response",
-          "command": "unicli antigravity ask",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "prompt",
-              "required": true,
-              "positional": true,
-              "description": "The prompt to send"
-            }
-          ]
-        },
-        {
-          "name": "send",
-          "description": "Send text to Antigravity without waiting",
-          "when_to_use": "When you need to post content to antigravity.",
-          "command": "unicli antigravity send",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "text",
-              "required": true,
-              "positional": true
-            }
-          ]
-        },
-        {
-          "name": "read",
-          "description": "Read the last response from Antigravity",
-          "when_to_use": "Read the last response from Antigravity",
-          "command": "unicli antigravity read",
-          "auth": false,
-          "strategy": "public",
-          "browser": false
-        },
-        {
-          "name": "model",
-          "description": "Read or switch the current model in Antigravity",
-          "when_to_use": "Read or switch the current model in Antigravity",
-          "command": "unicli antigravity model",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "name",
-              "required": false,
-              "positional": true
-            }
-          ]
-        },
-        {
-          "name": "status",
-          "description": "Check Antigravity app status",
-          "when_to_use": "Check Antigravity app status",
-          "command": "unicli antigravity status",
-          "auth": false,
-          "strategy": "public",
-          "browser": false
-        },
-        {
-          "name": "new",
-          "description": "Start a new conversation in Antigravity",
-          "when_to_use": "Start a new conversation in Antigravity",
-          "command": "unicli antigravity new",
-          "auth": false,
-          "strategy": "public",
-          "browser": false
-        },
-        {
-          "name": "screenshot",
-          "description": "Capture screenshot of Antigravity",
-          "when_to_use": "Capture screenshot of Antigravity",
-          "command": "unicli antigravity screenshot",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "path",
-              "required": false,
-              "positional": true
-            }
-          ]
-        },
-        {
-          "name": "dump",
-          "description": "Dump visible text from the Antigravity desktop Electron app via CDP DOM. 读取Antigravity桌面版可见文本。",
-          "when_to_use": "Dump visible text from the Antigravity desktop Electron app via CDP DOM. 读取Antigravity桌面版可见文本。",
-          "command": "unicli antigravity dump",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "limit",
-              "required": false,
-              "positional": false,
-              "description": "Maximum text characters to return"
-            }
-          ]
-        },
-        {
-          "name": "open-app",
-          "description": "Open Antigravity desktop Electron app with CDP enabled for AI control. 打开Antigravity桌面版并启用 CDP 控制。",
-          "when_to_use": "Open Antigravity desktop Electron app with CDP enabled for AI control. 打开Antigravity桌面版并启用 CDP 控制。",
-          "command": "unicli antigravity open-app",
-          "auth": false,
-          "strategy": "public",
-          "browser": false
-        },
-        {
-          "name": "status-app",
-          "description": "Inspect current Antigravity desktop app page, title, URL, visible controls, and text summary. 查看Antigravity桌面版当前状态和可见内容。",
-          "when_to_use": "Inspect current Antigravity desktop app page, title, URL, visible controls, and text summary. 查看Antigravity桌面版当前状态和可见内容。",
-          "command": "unicli antigravity status-app",
-          "auth": false,
-          "strategy": "public",
-          "browser": false
-        },
-        {
-          "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Antigravity. 枚举Antigravity桌面版可交互内容。",
-          "when_to_use": "List visible clickable text, buttons, inputs, and regions in Antigravity. 枚举Antigravity桌面版可交互内容。",
-          "command": "unicli antigravity snapshot-app",
-          "auth": false,
-          "strategy": "public",
-          "browser": false
-        },
-        {
-          "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Antigravity. 按文本点击Antigravity桌面版控件。",
-          "when_to_use": "Click visible text, aria-label, title, or button content in Antigravity. 按文本点击Antigravity桌面版控件。",
-          "command": "unicli antigravity click-text",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "text",
-              "required": true,
-              "positional": true,
-              "description": "Visible text, aria-label, or title to click"
-            }
-          ]
-        },
-        {
-          "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Antigravity. 向Antigravity桌面版输入文本。",
-          "when_to_use": "Type text into the focused field or a text-matched target in Antigravity. 向Antigravity桌面版输入文本。",
-          "command": "unicli antigravity type-text",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "text",
-              "required": true,
-              "positional": true,
-              "description": "Text to type"
-            },
-            {
-              "name": "target",
-              "required": false,
-              "positional": false,
-              "description": "Optional visible text to click before typing"
-            }
-          ]
-        },
-        {
-          "name": "press",
-          "description": "Press a key in Antigravity, with optional comma-separated modifiers. 在Antigravity桌面版发送按键。",
-          "when_to_use": "Press a key in Antigravity, with optional comma-separated modifiers. 在Antigravity桌面版发送按键。",
-          "command": "unicli antigravity press",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "key",
-              "required": true,
-              "positional": true,
-              "description": "Key name"
-            },
-            {
-              "name": "modifiers",
-              "required": false,
-              "positional": false,
-              "description": "Comma-separated modifiers such as meta,shift"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "site": "chatgpt",
+      "site": "chatgpt-app",
       "type": "web-api",
       "auth": false,
       "strategy": "public",
@@ -26753,7 +30466,7 @@
           "name": "ask",
           "description": "Send a prompt to ChatGPT and wait for response",
           "when_to_use": "Send a prompt to ChatGPT and wait for response",
-          "command": "unicli chatgpt ask",
+          "command": "unicli chatgpt-app ask",
           "auth": false,
           "strategy": "public",
           "browser": false,
@@ -26769,24 +30482,18 @@
         {
           "name": "send",
           "description": "Send text to ChatGPT without waiting",
-          "when_to_use": "When you need to post content to chatgpt.",
-          "command": "unicli chatgpt send",
+          "when_to_use": "When you need to post content to chatgpt-app.",
+          "command": "unicli chatgpt-app send",
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "text",
-              "required": true,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "text", "required": true, "positional": true }]
         },
         {
           "name": "read",
           "description": "Read the last response from ChatGPT",
           "when_to_use": "Read the last response from ChatGPT",
-          "command": "unicli chatgpt read",
+          "command": "unicli chatgpt-app read",
           "auth": false,
           "strategy": "public",
           "browser": false
@@ -26795,23 +30502,17 @@
           "name": "model",
           "description": "Read or switch the current model in ChatGPT",
           "when_to_use": "Read or switch the current model in ChatGPT",
-          "command": "unicli chatgpt model",
+          "command": "unicli chatgpt-app model",
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "name",
-              "required": false,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "name", "required": false, "positional": true }]
         },
         {
           "name": "status",
           "description": "Check ChatGPT app status",
           "when_to_use": "Check ChatGPT app status",
-          "command": "unicli chatgpt status",
+          "command": "unicli chatgpt-app status",
           "auth": false,
           "strategy": "public",
           "browser": false
@@ -26820,7 +30521,7 @@
           "name": "new",
           "description": "Start a new conversation in ChatGPT",
           "when_to_use": "Start a new conversation in ChatGPT",
-          "command": "unicli chatgpt new",
+          "command": "unicli chatgpt-app new",
           "auth": false,
           "strategy": "public",
           "browser": false
@@ -26829,331 +30530,20 @@
           "name": "screenshot",
           "description": "Capture screenshot of ChatGPT",
           "when_to_use": "Capture screenshot of ChatGPT",
-          "command": "unicli chatgpt screenshot",
+          "command": "unicli chatgpt-app screenshot",
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "path",
-              "required": false,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "path", "required": false, "positional": true }]
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the ChatGPT desktop Electron app via CDP DOM. 读取ChatGPT桌面版可见文本。",
-          "when_to_use": "Dump visible text from the ChatGPT desktop Electron app via CDP DOM. 读取ChatGPT桌面版可见文本。",
-          "command": "unicli chatgpt dump",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "limit",
-              "required": false,
-              "positional": false,
-              "description": "Maximum text characters to return"
-            }
-          ]
-        },
-        {
-          "name": "open-app",
-          "description": "Open ChatGPT desktop Electron app with CDP enabled for AI control. 打开ChatGPT桌面版并启用 CDP 控制。",
-          "when_to_use": "Open ChatGPT desktop Electron app with CDP enabled for AI control. 打开ChatGPT桌面版并启用 CDP 控制。",
-          "command": "unicli chatgpt open-app",
+          "description": "Dump full page content from ChatGPT",
+          "when_to_use": "Dump full page content from ChatGPT",
+          "command": "unicli chatgpt-app dump",
           "auth": false,
           "strategy": "public",
           "browser": false
-        },
-        {
-          "name": "status-app",
-          "description": "Inspect current ChatGPT desktop app page, title, URL, visible controls, and text summary. 查看ChatGPT桌面版当前状态和可见内容。",
-          "when_to_use": "Inspect current ChatGPT desktop app page, title, URL, visible controls, and text summary. 查看ChatGPT桌面版当前状态和可见内容。",
-          "command": "unicli chatgpt status-app",
-          "auth": false,
-          "strategy": "public",
-          "browser": false
-        },
-        {
-          "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in ChatGPT. 枚举ChatGPT桌面版可交互内容。",
-          "when_to_use": "List visible clickable text, buttons, inputs, and regions in ChatGPT. 枚举ChatGPT桌面版可交互内容。",
-          "command": "unicli chatgpt snapshot-app",
-          "auth": false,
-          "strategy": "public",
-          "browser": false
-        },
-        {
-          "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in ChatGPT. 按文本点击ChatGPT桌面版控件。",
-          "when_to_use": "Click visible text, aria-label, title, or button content in ChatGPT. 按文本点击ChatGPT桌面版控件。",
-          "command": "unicli chatgpt click-text",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "text",
-              "required": true,
-              "positional": true,
-              "description": "Visible text, aria-label, or title to click"
-            }
-          ]
-        },
-        {
-          "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in ChatGPT. 向ChatGPT桌面版输入文本。",
-          "when_to_use": "Type text into the focused field or a text-matched target in ChatGPT. 向ChatGPT桌面版输入文本。",
-          "command": "unicli chatgpt type-text",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "text",
-              "required": true,
-              "positional": true,
-              "description": "Text to type"
-            },
-            {
-              "name": "target",
-              "required": false,
-              "positional": false,
-              "description": "Optional visible text to click before typing"
-            }
-          ]
-        },
-        {
-          "name": "press",
-          "description": "Press a key in ChatGPT, with optional comma-separated modifiers. 在ChatGPT桌面版发送按键。",
-          "when_to_use": "Press a key in ChatGPT, with optional comma-separated modifiers. 在ChatGPT桌面版发送按键。",
-          "command": "unicli chatgpt press",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "key",
-              "required": true,
-              "positional": true,
-              "description": "Key name"
-            },
-            {
-              "name": "modifiers",
-              "required": false,
-              "positional": false,
-              "description": "Comma-separated modifiers such as meta,shift"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "site": "chatwise",
-      "type": "web-api",
-      "auth": false,
-      "strategy": "public",
-      "commands": [
-        {
-          "name": "ask",
-          "description": "Send a prompt to ChatWise and wait for response",
-          "when_to_use": "Send a prompt to ChatWise and wait for response",
-          "command": "unicli chatwise ask",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "prompt",
-              "required": true,
-              "positional": true,
-              "description": "The prompt to send"
-            }
-          ]
-        },
-        {
-          "name": "send",
-          "description": "Send text to ChatWise without waiting",
-          "when_to_use": "When you need to post content to chatwise.",
-          "command": "unicli chatwise send",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "text",
-              "required": true,
-              "positional": true
-            }
-          ]
-        },
-        {
-          "name": "read",
-          "description": "Read the last response from ChatWise",
-          "when_to_use": "Read the last response from ChatWise",
-          "command": "unicli chatwise read",
-          "auth": false,
-          "strategy": "public",
-          "browser": false
-        },
-        {
-          "name": "model",
-          "description": "Read or switch the current model in ChatWise",
-          "when_to_use": "Read or switch the current model in ChatWise",
-          "command": "unicli chatwise model",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "name",
-              "required": false,
-              "positional": true
-            }
-          ]
-        },
-        {
-          "name": "status",
-          "description": "Check ChatWise app status",
-          "when_to_use": "Check ChatWise app status",
-          "command": "unicli chatwise status",
-          "auth": false,
-          "strategy": "public",
-          "browser": false
-        },
-        {
-          "name": "new",
-          "description": "Start a new conversation in ChatWise",
-          "when_to_use": "Start a new conversation in ChatWise",
-          "command": "unicli chatwise new",
-          "auth": false,
-          "strategy": "public",
-          "browser": false
-        },
-        {
-          "name": "screenshot",
-          "description": "Capture screenshot of ChatWise",
-          "when_to_use": "Capture screenshot of ChatWise",
-          "command": "unicli chatwise screenshot",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "path",
-              "required": false,
-              "positional": true
-            }
-          ]
-        },
-        {
-          "name": "dump",
-          "description": "Dump visible text from the ChatWise desktop Electron app via CDP DOM. 读取ChatWise桌面版可见文本。",
-          "when_to_use": "Dump visible text from the ChatWise desktop Electron app via CDP DOM. 读取ChatWise桌面版可见文本。",
-          "command": "unicli chatwise dump",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "limit",
-              "required": false,
-              "positional": false,
-              "description": "Maximum text characters to return"
-            }
-          ]
-        },
-        {
-          "name": "open-app",
-          "description": "Open ChatWise desktop Electron app with CDP enabled for AI control. 打开ChatWise桌面版并启用 CDP 控制。",
-          "when_to_use": "Open ChatWise desktop Electron app with CDP enabled for AI control. 打开ChatWise桌面版并启用 CDP 控制。",
-          "command": "unicli chatwise open-app",
-          "auth": false,
-          "strategy": "public",
-          "browser": false
-        },
-        {
-          "name": "status-app",
-          "description": "Inspect current ChatWise desktop app page, title, URL, visible controls, and text summary. 查看ChatWise桌面版当前状态和可见内容。",
-          "when_to_use": "Inspect current ChatWise desktop app page, title, URL, visible controls, and text summary. 查看ChatWise桌面版当前状态和可见内容。",
-          "command": "unicli chatwise status-app",
-          "auth": false,
-          "strategy": "public",
-          "browser": false
-        },
-        {
-          "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in ChatWise. 枚举ChatWise桌面版可交互内容。",
-          "when_to_use": "List visible clickable text, buttons, inputs, and regions in ChatWise. 枚举ChatWise桌面版可交互内容。",
-          "command": "unicli chatwise snapshot-app",
-          "auth": false,
-          "strategy": "public",
-          "browser": false
-        },
-        {
-          "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in ChatWise. 按文本点击ChatWise桌面版控件。",
-          "when_to_use": "Click visible text, aria-label, title, or button content in ChatWise. 按文本点击ChatWise桌面版控件。",
-          "command": "unicli chatwise click-text",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "text",
-              "required": true,
-              "positional": true,
-              "description": "Visible text, aria-label, or title to click"
-            }
-          ]
-        },
-        {
-          "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in ChatWise. 向ChatWise桌面版输入文本。",
-          "when_to_use": "Type text into the focused field or a text-matched target in ChatWise. 向ChatWise桌面版输入文本。",
-          "command": "unicli chatwise type-text",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "text",
-              "required": true,
-              "positional": true,
-              "description": "Text to type"
-            },
-            {
-              "name": "target",
-              "required": false,
-              "positional": false,
-              "description": "Optional visible text to click before typing"
-            }
-          ]
-        },
-        {
-          "name": "press",
-          "description": "Press a key in ChatWise, with optional comma-separated modifiers. 在ChatWise桌面版发送按键。",
-          "when_to_use": "Press a key in ChatWise, with optional comma-separated modifiers. 在ChatWise桌面版发送按键。",
-          "command": "unicli chatwise press",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "key",
-              "required": true,
-              "positional": true,
-              "description": "Key name"
-            },
-            {
-              "name": "modifiers",
-              "required": false,
-              "positional": false,
-              "description": "Comma-separated modifiers such as meta,shift"
-            }
-          ]
         }
       ]
     },
@@ -27188,13 +30578,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "text",
-              "required": true,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "text", "required": true, "positional": true }]
         },
         {
           "name": "read",
@@ -27231,13 +30615,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "args": [
-            {
-              "name": "path",
-              "required": false,
-              "positional": true
-            }
-          ]
+          "args": [{ "name": "path", "required": false, "positional": true }]
         },
         {
           "name": "dump",

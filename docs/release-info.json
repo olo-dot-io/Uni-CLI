@@ -1,0 +1,23 @@
+{
+  "version": "0.216.3",
+  "codename": "Apollo · Collins",
+  "date": "2026-04-27",
+  "npmPackage": "@zenalexa/unicli",
+  "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.216.3",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02163--2026-04-27--apollo--collins",
+  "highlights": {
+    "root": [
+      "Published as the npm latest tag with provenance.",
+      "OpenCLI parity remains at 0 missing sites and 0 missing commands against the current reference manifest.",
+      "Fast-path discovery now falls back cleanly when the generated manifest is absent.",
+      "The public docs catalog now reports the current 235-site, 1448-command surface."
+    ],
+    "zh": [
+      "已通过 npm latest 发布，并带有 provenance。",
+      "对当前 OpenCLI reference manifest 保持 0 个站点缺失、0 条命令缺失。",
+      "冷启动 fast-path 在缺少生成 manifest 时会干净回退到完整 CLI。",
+      "公开文档目录已更新到当前 235 个站点、1448 条命令。"
+    ]
+  }
+}

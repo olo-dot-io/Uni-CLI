@@ -1,7 +1,7 @@
 {
-  "generated": "2026-04-26T12:30:47.039Z",
-  "total_sites": 223,
-  "total_commands": 1304,
+  "generated": "2026-04-27T04:51:36.432Z",
+  "total_sites": 235,
+  "total_commands": 1448,
   "sites": [
     {
       "site": "1688",
@@ -9,7 +9,7 @@
       "domain": "1688.com",
       "auth": true,
       "strategy": "cookie",
-      "command_count": 3,
+      "command_count": 5,
       "commands": [
         {
           "name": "item",
@@ -25,6 +25,16 @@
           "name": "store",
           "description": "List products from a 1688.com store",
           "command": "unicli 1688 store"
+        },
+        {
+          "name": "assets",
+          "description": "Extract visible product media assets from a 1688 item page",
+          "command": "unicli 1688 assets"
+        },
+        {
+          "name": "download",
+          "description": "Download visible product media assets from a 1688 item page",
+          "command": "unicli 1688 download"
         }
       ]
     },
@@ -60,6 +70,36 @@
           "name": "search",
           "description": "Search 36Kr articles",
           "command": "unicli 36kr search"
+        }
+      ]
+    },
+    {
+      "site": "51job",
+      "type": "web-api",
+      "domain": "jobs.51job.com",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 4,
+      "commands": [
+        {
+          "name": "search",
+          "description": "51job",
+          "command": "unicli 51job search"
+        },
+        {
+          "name": "hot",
+          "description": "51job",
+          "command": "unicli 51job hot"
+        },
+        {
+          "name": "detail",
+          "description": "51job",
+          "command": "unicli 51job detail"
+        },
+        {
+          "name": "company",
+          "description": "51job",
+          "command": "unicli 51job company"
         }
       ]
     },
@@ -144,6 +184,95 @@
           "name": "search",
           "description": "Search Amazon products",
           "command": "unicli amazon search"
+        }
+      ]
+    },
+    {
+      "site": "antigravity",
+      "type": "web-api",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 16,
+      "commands": [
+        {
+          "name": "extract-code",
+          "description": "Extract code blocks from the active Antigravity conversation",
+          "command": "unicli antigravity extract-code"
+        },
+        {
+          "name": "watch",
+          "description": "Poll Antigravity conversation text for updates",
+          "command": "unicli antigravity watch"
+        },
+        {
+          "name": "ask",
+          "description": "Send a prompt to Antigravity and wait for response",
+          "command": "unicli antigravity ask"
+        },
+        {
+          "name": "send",
+          "description": "Send text to Antigravity without waiting",
+          "command": "unicli antigravity send"
+        },
+        {
+          "name": "read",
+          "description": "Read the last response from Antigravity",
+          "command": "unicli antigravity read"
+        },
+        {
+          "name": "model",
+          "description": "Read or switch the current model in Antigravity",
+          "command": "unicli antigravity model"
+        },
+        {
+          "name": "status",
+          "description": "Check Antigravity app status",
+          "command": "unicli antigravity status"
+        },
+        {
+          "name": "new",
+          "description": "Start a new conversation in Antigravity",
+          "command": "unicli antigravity new"
+        },
+        {
+          "name": "screenshot",
+          "description": "Capture screenshot of Antigravity",
+          "command": "unicli antigravity screenshot"
+        },
+        {
+          "name": "dump",
+          "description": "Dump visible text from the Antigravity desktop Electron app via CDP DOM.",
+          "command": "unicli antigravity dump"
+        },
+        {
+          "name": "open-app",
+          "description": "Open Antigravity desktop Electron app with CDP enabled for AI control.",
+          "command": "unicli antigravity open-app"
+        },
+        {
+          "name": "status-app",
+          "description": "Inspect current Antigravity desktop app page, title, URL, visible controls, and text summary.",
+          "command": "unicli antigravity status-app"
+        },
+        {
+          "name": "snapshot-app",
+          "description": "List visible clickable text, buttons, inputs, and regions in Antigravity.",
+          "command": "unicli antigravity snapshot-app"
+        },
+        {
+          "name": "click-text",
+          "description": "Click visible text, aria-label, title, or button content in Antigravity.",
+          "command": "unicli antigravity click-text"
+        },
+        {
+          "name": "type-text",
+          "description": "Type text into the focused field or a text-matched target in Antigravity.",
+          "command": "unicli antigravity type-text"
+        },
+        {
+          "name": "press",
+          "description": "Press a key in Antigravity, with optional comma-separated modifiers.",
+          "command": "unicli antigravity press"
         }
       ]
     },
@@ -346,6 +475,21 @@
       ]
     },
     {
+      "site": "baidu-scholar",
+      "type": "web-api",
+      "domain": "xueshu.baidu.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Baidu Scholar papers",
+          "command": "unicli baidu-scholar search"
+        }
+      ]
+    },
+    {
       "site": "band",
       "type": "web-api",
       "domain": "band.us",
@@ -441,7 +585,7 @@
       "domain": "api.bilibili.com",
       "auth": true,
       "strategy": "cookie",
-      "command_count": 17,
+      "command_count": 20,
       "commands": [
         {
           "name": "coin",
@@ -509,6 +653,21 @@
           "command": "unicli bilibili comments"
         },
         {
+          "name": "video",
+          "description": "Get Bilibili video metadata by BV ID or URL",
+          "command": "unicli bilibili video"
+        },
+        {
+          "name": "favorite",
+          "description": "Read Bilibili favorite folder videos",
+          "command": "unicli bilibili favorite"
+        },
+        {
+          "name": "feed-detail",
+          "description": "Read a Bilibili dynamic feed item detail",
+          "command": "unicli bilibili feed-detail"
+        },
+        {
           "name": "download",
           "description": "Get download URLs for a Bilibili video",
           "command": "unicli bilibili download"
@@ -536,22 +695,72 @@
       "domain": "data-api.binance.vision",
       "auth": false,
       "strategy": "public",
-      "command_count": 3,
+      "command_count": 13,
       "commands": [
         {
+          "name": "asks",
+          "description": "Binance ask-side order book levels",
+          "command": "unicli binance asks"
+        },
+        {
+          "name": "depth",
+          "description": "Binance bid-side order book levels",
+          "command": "unicli binance depth"
+        },
+        {
+          "name": "gainers",
+          "description": "Binance top 24h gainers by price change percentage",
+          "command": "unicli binance gainers"
+        },
+        {
           "name": "hot",
-          "description": "Top trending coins by 24h trading volume",
+          "description": "Binance top trending coins by 24h trading volume",
           "command": "unicli binance hot"
         },
         {
           "name": "kline",
-          "description": "Candlestick (kline) data for a trading pair",
+          "description": "Binance candlestick kline data for a trading pair",
           "command": "unicli binance kline"
         },
         {
+          "name": "klines",
+          "description": "Binance candlestick kline data for a trading pair",
+          "command": "unicli binance klines"
+        },
+        {
+          "name": "losers",
+          "description": "Binance top 24h losers by price change percentage",
+          "command": "unicli binance losers"
+        },
+        {
+          "name": "pairs",
+          "description": "Binance active spot trading pairs and base/quote assets",
+          "command": "unicli binance pairs"
+        },
+        {
+          "name": "price",
+          "description": "Binance latest price for a trading pair",
+          "command": "unicli binance price"
+        },
+        {
+          "name": "prices",
+          "description": "Binance latest prices for trading pairs",
+          "command": "unicli binance prices"
+        },
+        {
           "name": "ticker",
-          "description": "Price ticker for a trading pair",
+          "description": "Binance 24h price ticker for a trading pair",
           "command": "unicli binance ticker"
+        },
+        {
+          "name": "top",
+          "description": "Binance top trading pairs by 24h quote volume",
+          "command": "unicli binance top"
+        },
+        {
+          "name": "trades",
+          "description": "Binance recent trades for a trading pair",
+          "command": "unicli binance trades"
         }
       ]
     },
@@ -859,6 +1068,180 @@
       ]
     },
     {
+      "site": "chatgpt",
+      "type": "web-api",
+      "domain": "chatgpt.com",
+      "auth": true,
+      "strategy": "public",
+      "command_count": 15,
+      "commands": [
+        {
+          "name": "image",
+          "description": "Generate an image in ChatGPT web and optionally save visible images",
+          "command": "unicli chatgpt image"
+        },
+        {
+          "name": "ask",
+          "description": "Send a prompt to ChatGPT and wait for response",
+          "command": "unicli chatgpt ask"
+        },
+        {
+          "name": "send",
+          "description": "Send text to ChatGPT without waiting",
+          "command": "unicli chatgpt send"
+        },
+        {
+          "name": "read",
+          "description": "Read the last response from ChatGPT",
+          "command": "unicli chatgpt read"
+        },
+        {
+          "name": "model",
+          "description": "Read or switch the current model in ChatGPT",
+          "command": "unicli chatgpt model"
+        },
+        {
+          "name": "status",
+          "description": "Check ChatGPT app status",
+          "command": "unicli chatgpt status"
+        },
+        {
+          "name": "new",
+          "description": "Start a new conversation in ChatGPT",
+          "command": "unicli chatgpt new"
+        },
+        {
+          "name": "screenshot",
+          "description": "Capture screenshot of ChatGPT",
+          "command": "unicli chatgpt screenshot"
+        },
+        {
+          "name": "dump",
+          "description": "Dump visible text from the ChatGPT desktop Electron app via CDP DOM.",
+          "command": "unicli chatgpt dump"
+        },
+        {
+          "name": "open-app",
+          "description": "Open ChatGPT desktop Electron app with CDP enabled for AI control.",
+          "command": "unicli chatgpt open-app"
+        },
+        {
+          "name": "status-app",
+          "description": "Inspect current ChatGPT desktop app page, title, URL, visible controls, and text summary.",
+          "command": "unicli chatgpt status-app"
+        },
+        {
+          "name": "snapshot-app",
+          "description": "List visible clickable text, buttons, inputs, and regions in ChatGPT.",
+          "command": "unicli chatgpt snapshot-app"
+        },
+        {
+          "name": "click-text",
+          "description": "Click visible text, aria-label, title, or button content in ChatGPT.",
+          "command": "unicli chatgpt click-text"
+        },
+        {
+          "name": "type-text",
+          "description": "Type text into the focused field or a text-matched target in ChatGPT.",
+          "command": "unicli chatgpt type-text"
+        },
+        {
+          "name": "press",
+          "description": "Press a key in ChatGPT, with optional comma-separated modifiers.",
+          "command": "unicli chatgpt press"
+        }
+      ]
+    },
+    {
+      "site": "chatwise",
+      "type": "web-api",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 16,
+      "commands": [
+        {
+          "name": "history",
+          "description": "List ChatWise conversations from the sidebar",
+          "command": "unicli chatwise history"
+        },
+        {
+          "name": "export",
+          "description": "Export the current ChatWise conversation as Markdown text",
+          "command": "unicli chatwise export"
+        },
+        {
+          "name": "ask",
+          "description": "Send a prompt to ChatWise and wait for response",
+          "command": "unicli chatwise ask"
+        },
+        {
+          "name": "send",
+          "description": "Send text to ChatWise without waiting",
+          "command": "unicli chatwise send"
+        },
+        {
+          "name": "read",
+          "description": "Read the last response from ChatWise",
+          "command": "unicli chatwise read"
+        },
+        {
+          "name": "model",
+          "description": "Read or switch the current model in ChatWise",
+          "command": "unicli chatwise model"
+        },
+        {
+          "name": "status",
+          "description": "Check ChatWise app status",
+          "command": "unicli chatwise status"
+        },
+        {
+          "name": "new",
+          "description": "Start a new conversation in ChatWise",
+          "command": "unicli chatwise new"
+        },
+        {
+          "name": "screenshot",
+          "description": "Capture screenshot of ChatWise",
+          "command": "unicli chatwise screenshot"
+        },
+        {
+          "name": "dump",
+          "description": "Dump visible text from the ChatWise desktop Electron app via CDP DOM.",
+          "command": "unicli chatwise dump"
+        },
+        {
+          "name": "open-app",
+          "description": "Open ChatWise desktop Electron app with CDP enabled for AI control.",
+          "command": "unicli chatwise open-app"
+        },
+        {
+          "name": "status-app",
+          "description": "Inspect current ChatWise desktop app page, title, URL, visible controls, and text summary.",
+          "command": "unicli chatwise status-app"
+        },
+        {
+          "name": "snapshot-app",
+          "description": "List visible clickable text, buttons, inputs, and regions in ChatWise.",
+          "command": "unicli chatwise snapshot-app"
+        },
+        {
+          "name": "click-text",
+          "description": "Click visible text, aria-label, title, or button content in ChatWise.",
+          "command": "unicli chatwise click-text"
+        },
+        {
+          "name": "type-text",
+          "description": "Type text into the focused field or a text-matched target in ChatWise.",
+          "command": "unicli chatwise type-text"
+        },
+        {
+          "name": "press",
+          "description": "Press a key in ChatWise, with optional comma-separated modifiers.",
+          "command": "unicli chatwise press"
+        }
+      ]
+    },
+    {
       "site": "chrome",
       "type": "desktop",
       "auth": false,
@@ -979,12 +1362,22 @@
       "type": "web-api",
       "auth": false,
       "strategy": "public",
-      "command_count": 15,
+      "command_count": 17,
       "commands": [
         {
           "name": "extract-diff",
           "description": "Extract diff patches from the last Codex response",
           "command": "unicli codex extract-diff"
+        },
+        {
+          "name": "history",
+          "description": "List Codex desktop conversation threads",
+          "command": "unicli codex history"
+        },
+        {
+          "name": "export",
+          "description": "Export the current Codex desktop thread as Markdown text",
+          "command": "unicli codex export"
         },
         {
           "name": "ask",
@@ -1332,10 +1725,10 @@
     {
       "site": "deepseek",
       "type": "web-api",
-      "domain": "api.deepseek.com",
+      "domain": "chat.deepseek.com",
       "auth": true,
-      "strategy": "header",
-      "command_count": 2,
+      "strategy": "cookie",
+      "command_count": 7,
       "commands": [
         {
           "name": "chat",
@@ -1346,6 +1739,31 @@
           "name": "models",
           "description": "List available DeepSeek models",
           "command": "unicli deepseek models"
+        },
+        {
+          "name": "ask",
+          "description": "Send a prompt to DeepSeek web chat and wait for a response",
+          "command": "unicli deepseek ask"
+        },
+        {
+          "name": "new",
+          "description": "Start a new DeepSeek web conversation",
+          "command": "unicli deepseek new"
+        },
+        {
+          "name": "status",
+          "description": "Check DeepSeek web page availability and login state",
+          "command": "unicli deepseek status"
+        },
+        {
+          "name": "read",
+          "description": "Read the visible DeepSeek web conversation",
+          "command": "unicli deepseek read"
+        },
+        {
+          "name": "history",
+          "description": "List DeepSeek conversation history from the sidebar",
+          "command": "unicli deepseek history"
         }
       ]
     },
@@ -1720,8 +2138,8 @@
       "type": "web-api",
       "domain": "www.doubao.com",
       "auth": true,
-      "strategy": "intercept",
-      "command_count": 3,
+      "strategy": "cookie",
+      "command_count": 9,
       "commands": [
         {
           "name": "ask",
@@ -1737,6 +2155,36 @@
           "name": "status",
           "description": "Check Doubao login status",
           "command": "unicli doubao status"
+        },
+        {
+          "name": "send",
+          "description": "Send text to the current Doubao web chat",
+          "command": "unicli doubao send"
+        },
+        {
+          "name": "read",
+          "description": "Read visible Doubao web conversation messages",
+          "command": "unicli doubao read"
+        },
+        {
+          "name": "history",
+          "description": "List Doubao web conversation history",
+          "command": "unicli doubao history"
+        },
+        {
+          "name": "detail",
+          "description": "Read a Doubao conversation by id or URL",
+          "command": "unicli doubao detail"
+        },
+        {
+          "name": "meeting-summary",
+          "description": "Extract the visible summary for a Doubao meeting record",
+          "command": "unicli doubao meeting-summary"
+        },
+        {
+          "name": "meeting-transcript",
+          "description": "Extract visible transcript text for a Doubao meeting record",
+          "command": "unicli doubao meeting-transcript"
         }
       ]
     },
@@ -1906,10 +2354,10 @@
     {
       "site": "eastmoney",
       "type": "web-api",
-      "domain": "searchapi.eastmoney.com",
+      "domain": "push2.eastmoney.com",
       "auth": false,
       "strategy": "public",
-      "command_count": 4,
+      "command_count": 18,
       "commands": [
         {
           "name": "fund",
@@ -1930,6 +2378,76 @@
           "name": "search",
           "description": "Search stocks on Eastmoney",
           "command": "unicli eastmoney search"
+        },
+        {
+          "name": "quote",
+          "description": "quote",
+          "command": "unicli eastmoney quote"
+        },
+        {
+          "name": "rank",
+          "description": "rank",
+          "command": "unicli eastmoney rank"
+        },
+        {
+          "name": "etf",
+          "description": "etf",
+          "command": "unicli eastmoney etf"
+        },
+        {
+          "name": "convertible",
+          "description": "convertible",
+          "command": "unicli eastmoney convertible"
+        },
+        {
+          "name": "sectors",
+          "description": "sectors",
+          "command": "unicli eastmoney sectors"
+        },
+        {
+          "name": "index-board",
+          "description": "index-board",
+          "command": "unicli eastmoney index-board"
+        },
+        {
+          "name": "money-flow",
+          "description": "money-flow",
+          "command": "unicli eastmoney money-flow"
+        },
+        {
+          "name": "northbound",
+          "description": "northbound",
+          "command": "unicli eastmoney northbound"
+        },
+        {
+          "name": "announcement",
+          "description": "announcement",
+          "command": "unicli eastmoney announcement"
+        },
+        {
+          "name": "holders",
+          "description": "holders",
+          "command": "unicli eastmoney holders"
+        },
+        {
+          "name": "longhu",
+          "description": "longhu",
+          "command": "unicli eastmoney longhu"
+        },
+        {
+          "name": "kuaixun",
+          "description": "kuaixun",
+          "command": "unicli eastmoney kuaixun"
+        },
+        {
+          "name": "kline",
+          "description": "kline",
+          "command": "unicli eastmoney kline"
+        },
+        {
+          "name": "hot-rank",
+          "description": "hot-rank",
+          "command": "unicli eastmoney hot-rank"
         }
       ]
     },
@@ -2510,7 +3028,7 @@
       "domain": "gitee.com",
       "auth": false,
       "strategy": "public",
-      "command_count": 3,
+      "command_count": 4,
       "commands": [
         {
           "name": "repos",
@@ -2526,6 +3044,11 @@
           "name": "trending",
           "description": "Trending repositories on Gitee",
           "command": "unicli gitee trending"
+        },
+        {
+          "name": "user",
+          "description": "Show public Gitee user profile information",
+          "command": "unicli gitee user"
         }
       ]
     },
@@ -2624,6 +3147,71 @@
           "name": "trends",
           "description": "Google Trends daily trending searches",
           "command": "unicli google trends"
+        }
+      ]
+    },
+    {
+      "site": "google-scholar",
+      "type": "web-api",
+      "domain": "scholar.google.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "cite",
+          "description": "Fetch a Google Scholar citation for a paper",
+          "command": "unicli google-scholar cite"
+        },
+        {
+          "name": "profile",
+          "description": "Read a Google Scholar author profile and top papers",
+          "command": "unicli google-scholar profile"
+        },
+        {
+          "name": "search",
+          "description": "Search Google Scholar papers",
+          "command": "unicli google-scholar search"
+        }
+      ]
+    },
+    {
+      "site": "gov-law",
+      "type": "web-api",
+      "domain": "flk.npc.gov.cn",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search the National Laws and Regulations Database",
+          "command": "unicli gov-law search"
+        },
+        {
+          "name": "recent",
+          "description": "List recent laws and regulations",
+          "command": "unicli gov-law recent"
+        }
+      ]
+    },
+    {
+      "site": "gov-policy",
+      "type": "web-api",
+      "domain": "www.gov.cn",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search gov.cn policy documents",
+          "command": "unicli gov-policy search"
+        },
+        {
+          "name": "recent",
+          "description": "List latest State Council policy documents",
+          "command": "unicli gov-policy recent"
         }
       ]
     },
@@ -3202,8 +3790,8 @@
       "type": "web-api",
       "domain": "jd.com",
       "auth": true,
-      "strategy": "public",
-      "command_count": 3,
+      "strategy": "cookie",
+      "command_count": 7,
       "commands": [
         {
           "name": "hot",
@@ -3219,21 +3807,46 @@
           "name": "search",
           "description": "Search JD.com products",
           "command": "unicli jd search"
+        },
+        {
+          "name": "detail",
+          "description": "Fetch JD product detail by SKU",
+          "command": "unicli jd detail"
+        },
+        {
+          "name": "reviews",
+          "description": "Fetch JD product reviews by SKU",
+          "command": "unicli jd reviews"
+        },
+        {
+          "name": "cart",
+          "description": "Read JD cart items from the active browser session",
+          "command": "unicli jd cart"
+        },
+        {
+          "name": "add-cart",
+          "description": "Add a JD product to cart in the active browser session",
+          "command": "unicli jd add-cart"
         }
       ]
     },
     {
       "site": "jianyu",
       "type": "browser",
-      "domain": "www.jianyu.com",
+      "domain": "www.jianyu360.cn",
       "auth": true,
-      "strategy": "intercept",
-      "command_count": 1,
+      "strategy": "cookie",
+      "command_count": 2,
       "commands": [
         {
           "name": "search",
           "description": "Search Jianyu real estate listings",
           "command": "unicli jianyu search"
+        },
+        {
+          "name": "detail",
+          "description": "Extract Jianyu procurement notice detail evidence",
+          "command": "unicli jianyu detail"
         }
       ]
     },
@@ -3302,8 +3915,8 @@
       "type": "web-api",
       "domain": "jimeng.jianying.com",
       "auth": true,
-      "strategy": "intercept",
-      "command_count": 2,
+      "strategy": "cookie",
+      "command_count": 4,
       "commands": [
         {
           "name": "generate",
@@ -3314,6 +3927,16 @@
           "name": "history",
           "description": "List Jimeng AI generation history",
           "command": "unicli jimeng history"
+        },
+        {
+          "name": "new",
+          "description": "Open a new Jimeng generation workspace",
+          "command": "unicli jimeng new"
+        },
+        {
+          "name": "workspaces",
+          "description": "List Jimeng visible workspaces",
+          "command": "unicli jimeng workspaces"
         }
       ]
     },
@@ -3364,8 +3987,8 @@
       "type": "browser",
       "domain": "ke.com",
       "auth": true,
-      "strategy": "intercept",
-      "command_count": 2,
+      "strategy": "cookie",
+      "command_count": 4,
       "commands": [
         {
           "name": "ershoufang",
@@ -3376,6 +3999,16 @@
           "name": "xiaoqu",
           "description": "Ke.com (Beike) neighborhood/community listings",
           "command": "unicli ke xiaoqu"
+        },
+        {
+          "name": "zufang",
+          "description": "Browse Ke.com rental listings",
+          "command": "unicli ke zufang"
+        },
+        {
+          "name": "chengjiao",
+          "description": "Browse Ke.com recent transaction records",
+          "command": "unicli ke chengjiao"
         }
       ]
     },
@@ -3675,8 +4308,8 @@
       "type": "web-api",
       "domain": "linux.do",
       "auth": true,
-      "strategy": "cookie",
-      "command_count": 10,
+      "strategy": "public",
+      "command_count": 11,
       "commands": [
         {
           "name": "categories",
@@ -3727,6 +4360,11 @@
           "name": "search",
           "description": "Search Linux.do forum topics",
           "command": "unicli linux-do search"
+        },
+        {
+          "name": "topic-content",
+          "description": "Read the main Linux.do topic body as Markdown",
+          "command": "unicli linux-do topic-content"
         }
       ]
     },
@@ -4068,13 +4706,18 @@
       "type": "browser",
       "domain": "maimai.cn",
       "auth": true,
-      "strategy": "intercept",
-      "command_count": 1,
+      "strategy": "cookie",
+      "command_count": 2,
       "commands": [
         {
           "name": "search",
           "description": "Search talents/people on Maimai (requires login)",
           "command": "unicli maimai search"
+        },
+        {
+          "name": "search-talents",
+          "description": "Search Maimai talent profiles with filters",
+          "command": "unicli maimai search-talents"
         }
       ]
     },
@@ -4237,8 +4880,8 @@
       "type": "web-api",
       "domain": "mubu.com",
       "auth": true,
-      "strategy": "intercept",
-      "command_count": 2,
+      "strategy": "cookie",
+      "command_count": 6,
       "commands": [
         {
           "name": "list",
@@ -4249,6 +4892,26 @@
           "name": "search",
           "description": "Search Mubu notes",
           "command": "unicli mubu search"
+        },
+        {
+          "name": "docs",
+          "description": "List Mubu documents and folders",
+          "command": "unicli mubu docs"
+        },
+        {
+          "name": "doc",
+          "description": "Read a Mubu document as Markdown-like text",
+          "command": "unicli mubu doc"
+        },
+        {
+          "name": "recent",
+          "description": "List recently edited Mubu documents",
+          "command": "unicli mubu recent"
+        },
+        {
+          "name": "notes",
+          "description": "Read Mubu quick notes for a date or date range",
+          "command": "unicli mubu notes"
         }
       ]
     },
@@ -4614,6 +5277,96 @@
           "name": "status",
           "description": "Check the status of a Novita AI generation task",
           "command": "unicli novita status"
+        }
+      ]
+    },
+    {
+      "site": "nowcoder",
+      "type": "web-api",
+      "domain": "www.nowcoder.com",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 16,
+      "commands": [
+        {
+          "name": "hot",
+          "description": "hot",
+          "command": "unicli nowcoder hot"
+        },
+        {
+          "name": "trending",
+          "description": "trending",
+          "command": "unicli nowcoder trending"
+        },
+        {
+          "name": "topics",
+          "description": "topics",
+          "command": "unicli nowcoder topics"
+        },
+        {
+          "name": "jobs",
+          "description": "jobs",
+          "command": "unicli nowcoder jobs"
+        },
+        {
+          "name": "companies",
+          "description": "companies",
+          "command": "unicli nowcoder companies"
+        },
+        {
+          "name": "creators",
+          "description": "creators",
+          "command": "unicli nowcoder creators"
+        },
+        {
+          "name": "recommend",
+          "description": "recommend",
+          "command": "unicli nowcoder recommend"
+        },
+        {
+          "name": "experience",
+          "description": "experience",
+          "command": "unicli nowcoder experience"
+        },
+        {
+          "name": "referral",
+          "description": "referral",
+          "command": "unicli nowcoder referral"
+        },
+        {
+          "name": "salary",
+          "description": "salary",
+          "command": "unicli nowcoder salary"
+        },
+        {
+          "name": "papers",
+          "description": "papers",
+          "command": "unicli nowcoder papers"
+        },
+        {
+          "name": "practice",
+          "description": "practice",
+          "command": "unicli nowcoder practice"
+        },
+        {
+          "name": "search",
+          "description": "search",
+          "command": "unicli nowcoder search"
+        },
+        {
+          "name": "suggest",
+          "description": "suggest",
+          "command": "unicli nowcoder suggest"
+        },
+        {
+          "name": "detail",
+          "description": "detail",
+          "command": "unicli nowcoder detail"
+        },
+        {
+          "name": "notifications",
+          "description": "notifications",
+          "command": "unicli nowcoder notifications"
         }
       ]
     },
@@ -5110,6 +5863,21 @@
       ]
     },
     {
+      "site": "powerchina",
+      "type": "web-api",
+      "domain": "bid.powerchina.cn",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search PowerChina procurement notices",
+          "command": "unicli powerchina search"
+        }
+      ]
+    },
+    {
       "site": "powerpoint",
       "type": "desktop",
       "auth": false,
@@ -5230,10 +5998,10 @@
     {
       "site": "quark",
       "type": "web-api",
-      "domain": "drive-pc.quark.cn",
+      "domain": "pan.quark.cn",
       "auth": true,
       "strategy": "cookie",
-      "command_count": 2,
+      "command_count": 8,
       "commands": [
         {
           "name": "ls",
@@ -5244,6 +6012,36 @@
           "name": "search",
           "description": "Search files in Quark cloud drive",
           "command": "unicli quark search"
+        },
+        {
+          "name": "mkdir",
+          "description": "Create a folder in Quark Drive",
+          "command": "unicli quark mkdir"
+        },
+        {
+          "name": "rename",
+          "description": "Rename a Quark Drive file or folder",
+          "command": "unicli quark rename"
+        },
+        {
+          "name": "rm",
+          "description": "Delete Quark Drive files or folders by fid list",
+          "command": "unicli quark rm"
+        },
+        {
+          "name": "mv",
+          "description": "Move Quark Drive files to a target folder fid",
+          "command": "unicli quark mv"
+        },
+        {
+          "name": "share-tree",
+          "description": "Read a Quark share page directory tree",
+          "command": "unicli quark share-tree"
+        },
+        {
+          "name": "save",
+          "description": "Save a Quark share into the active Drive account",
+          "command": "unicli quark save"
         }
       ]
     },
@@ -5740,8 +6538,8 @@
       "type": "web-api",
       "domain": "api.spotify.com",
       "auth": true,
-      "strategy": "public",
-      "command_count": 17,
+      "strategy": "cookie",
+      "command_count": 23,
       "commands": [
         {
           "name": "now-playing",
@@ -5762,6 +6560,36 @@
           "name": "top-tracks",
           "description": "Get user's top tracks on Spotify",
           "command": "unicli spotify top-tracks"
+        },
+        {
+          "name": "auth",
+          "description": "Create or complete Spotify OAuth setup",
+          "command": "unicli spotify auth"
+        },
+        {
+          "name": "status",
+          "description": "Show current Spotify playback status",
+          "command": "unicli spotify status"
+        },
+        {
+          "name": "volume",
+          "description": "Set Spotify playback volume",
+          "command": "unicli spotify volume"
+        },
+        {
+          "name": "queue",
+          "description": "Add a Spotify track to the playback queue",
+          "command": "unicli spotify queue"
+        },
+        {
+          "name": "shuffle",
+          "description": "Toggle Spotify shuffle mode",
+          "command": "unicli spotify shuffle"
+        },
+        {
+          "name": "repeat",
+          "description": "Set Spotify repeat mode",
+          "command": "unicli spotify repeat"
         },
         {
           "name": "open-app",
@@ -5991,10 +6819,10 @@
     {
       "site": "taobao",
       "type": "browser",
-      "domain": "s.taobao.com",
+      "domain": "taobao.com",
       "auth": true,
-      "strategy": "intercept",
-      "command_count": 2,
+      "strategy": "cookie",
+      "command_count": 6,
       "commands": [
         {
           "name": "hot",
@@ -6005,6 +6833,41 @@
           "name": "search",
           "description": "Search Taobao products",
           "command": "unicli taobao search"
+        },
+        {
+          "name": "detail",
+          "description": "Read Taobao product detail from the active browser session",
+          "command": "unicli taobao detail"
+        },
+        {
+          "name": "reviews",
+          "description": "Read visible Taobao product reviews",
+          "command": "unicli taobao reviews"
+        },
+        {
+          "name": "cart",
+          "description": "Read Taobao cart items from the active browser session",
+          "command": "unicli taobao cart"
+        },
+        {
+          "name": "add-cart",
+          "description": "Add a Taobao product to cart in the active browser session",
+          "command": "unicli taobao add-cart"
+        }
+      ]
+    },
+    {
+      "site": "tdx",
+      "type": "web-api",
+      "domain": "pul.tdx.com.cn",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "hot-rank",
+          "description": "Read TDX hot-search stock ranking",
+          "command": "unicli tdx hot-rank"
         }
       ]
     },
@@ -6065,6 +6928,21 @@
           "name": "search",
           "description": "Search Threads for posts matching a query",
           "command": "unicli threads search"
+        }
+      ]
+    },
+    {
+      "site": "ths",
+      "type": "web-api",
+      "domain": "eq.10jqka.com.cn",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "hot-rank",
+          "description": "Read Tonghuashun hot-stock ranking",
+          "command": "unicli ths hot-rank"
         }
       ]
     },
@@ -6191,10 +7069,10 @@
     {
       "site": "toutiao",
       "type": "web-api",
-      "domain": "www.toutiao.com",
+      "domain": "mp.toutiao.com",
       "auth": true,
-      "strategy": "intercept",
-      "command_count": 2,
+      "strategy": "cookie",
+      "command_count": 3,
       "commands": [
         {
           "name": "hot",
@@ -6205,6 +7083,11 @@
           "name": "search",
           "description": "Search Toutiao for articles",
           "command": "unicli toutiao search"
+        },
+        {
+          "name": "articles",
+          "description": "List Toutiao creator dashboard articles",
+          "command": "unicli toutiao articles"
         }
       ]
     },
@@ -6244,7 +7127,7 @@
       "domain": "x.com",
       "auth": true,
       "strategy": "cookie",
-      "command_count": 34,
+      "command_count": 38,
       "commands": [
         {
           "name": "lists",
@@ -6357,6 +7240,26 @@
           "command": "unicli twitter likes"
         },
         {
+          "name": "tweets",
+          "description": "Read recent tweets from a Twitter/X user profile",
+          "command": "unicli twitter tweets"
+        },
+        {
+          "name": "list-tweets",
+          "description": "Read tweets from a Twitter/X list",
+          "command": "unicli twitter list-tweets"
+        },
+        {
+          "name": "list-add",
+          "description": "Add a Twitter/X user to a list from the browser UI",
+          "command": "unicli twitter list-add"
+        },
+        {
+          "name": "list-remove",
+          "description": "Remove a Twitter/X user from a list from the browser UI",
+          "command": "unicli twitter list-remove"
+        },
+        {
           "name": "notifications",
           "description": "Get recent notifications",
           "command": "unicli twitter notifications"
@@ -6415,6 +7318,26 @@
           "name": "unfollow",
           "description": "Unfollow a user",
           "command": "unicli twitter unfollow"
+        }
+      ]
+    },
+    {
+      "site": "uiverse",
+      "type": "web-api",
+      "domain": "uiverse.io",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "code",
+          "description": "Uiverse component code export (HTML or CSS)",
+          "command": "unicli uiverse code"
+        },
+        {
+          "name": "preview",
+          "description": "Capture a Uiverse component preview screenshot",
+          "command": "unicli uiverse preview"
         }
       ]
     },
@@ -6582,6 +7505,21 @@
       ]
     },
     {
+      "site": "wanfang",
+      "type": "web-api",
+      "domain": "s.wanfangdata.com.cn",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Wanfang papers by keyword",
+          "command": "unicli wanfang search"
+        }
+      ]
+    },
+    {
       "site": "web",
       "type": "web-api",
       "auth": false,
@@ -6678,10 +7616,10 @@
     {
       "site": "weixin",
       "type": "browser",
-      "domain": "weixin.sogou.com",
+      "domain": "mp.weixin.qq.com",
       "auth": true,
       "strategy": "cookie",
-      "command_count": 4,
+      "command_count": 6,
       "commands": [
         {
           "name": "article",
@@ -6702,6 +7640,16 @@
           "name": "search",
           "description": "Search WeChat articles via Sogou",
           "command": "unicli weixin search"
+        },
+        {
+          "name": "drafts",
+          "description": "List WeChat Official Account article drafts",
+          "command": "unicli weixin drafts"
+        },
+        {
+          "name": "create-draft",
+          "description": "Create a WeChat Official Account article draft",
+          "command": "unicli weixin create-draft"
         }
       ]
     },
@@ -6711,7 +7659,7 @@
       "domain": "weread.qq.com",
       "auth": true,
       "strategy": "cookie",
-      "command_count": 7,
+      "command_count": 8,
       "commands": [
         {
           "name": "book",
@@ -6747,6 +7695,11 @@
           "name": "shelf",
           "description": "WeRead bookshelf (user's books)",
           "command": "unicli weread shelf"
+        },
+        {
+          "name": "ai-outline",
+          "description": "Extract WeRead AI outline or visible book outline",
+          "command": "unicli weread ai-outline"
         }
       ]
     },
@@ -7060,10 +8013,10 @@
     {
       "site": "xiaoyuzhou",
       "type": "web-api",
-      "domain": "www.xiaoyuzhoufm.com",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 3,
+      "domain": "xiaoyuzhou.fm",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 5,
       "commands": [
         {
           "name": "episode",
@@ -7079,6 +8032,16 @@
           "name": "podcast",
           "description": "View a Xiaoyuzhou podcast profile (via SSR page data)",
           "command": "unicli xiaoyuzhou podcast"
+        },
+        {
+          "name": "download",
+          "description": "Download Xiaoyuzhou episode audio",
+          "command": "unicli xiaoyuzhou download"
+        },
+        {
+          "name": "transcript",
+          "description": "Download Xiaoyuzhou transcript JSON and extracted text",
+          "command": "unicli xiaoyuzhou transcript"
         }
       ]
     },
@@ -7088,7 +8051,7 @@
       "domain": "xueqiu.com",
       "auth": true,
       "strategy": "cookie",
-      "command_count": 12,
+      "command_count": 14,
       "commands": [
         {
           "name": "comments",
@@ -7149,6 +8112,16 @@
           "name": "watchlist",
           "description": "Xueqiu personal watchlist",
           "command": "unicli xueqiu watchlist"
+        },
+        {
+          "name": "kline",
+          "description": "Fetch Xueqiu stock candlestick data",
+          "command": "unicli xueqiu kline"
+        },
+        {
+          "name": "groups",
+          "description": "Read visible Xueqiu portfolio or group lists",
+          "command": "unicli xueqiu groups"
         }
       ]
     },
@@ -7268,7 +8241,7 @@
       "domain": "www.youtube.com",
       "auth": true,
       "strategy": "public",
-      "command_count": 8,
+      "command_count": 16,
       "commands": [
         {
           "name": "playlist",
@@ -7294,6 +8267,46 @@
           "name": "comments",
           "description": "Get YouTube video comments",
           "command": "unicli youtube comments"
+        },
+        {
+          "name": "feed",
+          "description": "Read YouTube homepage recommended videos",
+          "command": "unicli youtube feed"
+        },
+        {
+          "name": "history",
+          "description": "Read YouTube watch history",
+          "command": "unicli youtube history"
+        },
+        {
+          "name": "watch-later",
+          "description": "Read YouTube Watch Later queue",
+          "command": "unicli youtube watch-later"
+        },
+        {
+          "name": "subscriptions",
+          "description": "List YouTube subscribed channels",
+          "command": "unicli youtube subscriptions"
+        },
+        {
+          "name": "like",
+          "description": "Like a YouTube video in the active browser session",
+          "command": "unicli youtube like"
+        },
+        {
+          "name": "unlike",
+          "description": "Remove a YouTube video like in the active browser session",
+          "command": "unicli youtube unlike"
+        },
+        {
+          "name": "subscribe",
+          "description": "Subscribe to a YouTube channel",
+          "command": "unicli youtube subscribe"
+        },
+        {
+          "name": "unsubscribe",
+          "description": "Unsubscribe from a YouTube channel",
+          "command": "unicli youtube unsubscribe"
         },
         {
           "name": "search",
@@ -7369,10 +8382,10 @@
     {
       "site": "zhihu",
       "type": "web-api",
-      "domain": "www.zhihu.com",
+      "domain": "zhihu.com",
       "auth": true,
       "strategy": "cookie",
-      "command_count": 21,
+      "command_count": 24,
       "commands": [
         {
           "name": "answer",
@@ -7478,6 +8491,21 @@
           "name": "user",
           "description": "Get a Zhihu user profile by URL name",
           "command": "unicli zhihu user"
+        },
+        {
+          "name": "follow",
+          "description": "Follow a Zhihu user or question",
+          "command": "unicli zhihu follow"
+        },
+        {
+          "name": "like",
+          "description": "Like a Zhihu answer or article",
+          "command": "unicli zhihu like"
+        },
+        {
+          "name": "favorite",
+          "description": "Favorite a Zhihu answer or article into an existing collection",
+          "command": "unicli zhihu favorite"
         }
       ]
     },
@@ -7590,239 +8618,51 @@
       ]
     },
     {
-      "site": "antigravity",
+      "site": "chatgpt-app",
       "type": "web-api",
       "auth": false,
       "strategy": "public",
-      "command_count": 14,
-      "commands": [
-        {
-          "name": "ask",
-          "description": "Send a prompt to Antigravity and wait for response",
-          "command": "unicli antigravity ask"
-        },
-        {
-          "name": "send",
-          "description": "Send text to Antigravity without waiting",
-          "command": "unicli antigravity send"
-        },
-        {
-          "name": "read",
-          "description": "Read the last response from Antigravity",
-          "command": "unicli antigravity read"
-        },
-        {
-          "name": "model",
-          "description": "Read or switch the current model in Antigravity",
-          "command": "unicli antigravity model"
-        },
-        {
-          "name": "status",
-          "description": "Check Antigravity app status",
-          "command": "unicli antigravity status"
-        },
-        {
-          "name": "new",
-          "description": "Start a new conversation in Antigravity",
-          "command": "unicli antigravity new"
-        },
-        {
-          "name": "screenshot",
-          "description": "Capture screenshot of Antigravity",
-          "command": "unicli antigravity screenshot"
-        },
-        {
-          "name": "dump",
-          "description": "Dump visible text from the Antigravity desktop Electron app via CDP DOM.",
-          "command": "unicli antigravity dump"
-        },
-        {
-          "name": "open-app",
-          "description": "Open Antigravity desktop Electron app with CDP enabled for AI control.",
-          "command": "unicli antigravity open-app"
-        },
-        {
-          "name": "status-app",
-          "description": "Inspect current Antigravity desktop app page, title, URL, visible controls, and text summary.",
-          "command": "unicli antigravity status-app"
-        },
-        {
-          "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Antigravity.",
-          "command": "unicli antigravity snapshot-app"
-        },
-        {
-          "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Antigravity.",
-          "command": "unicli antigravity click-text"
-        },
-        {
-          "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Antigravity.",
-          "command": "unicli antigravity type-text"
-        },
-        {
-          "name": "press",
-          "description": "Press a key in Antigravity, with optional comma-separated modifiers.",
-          "command": "unicli antigravity press"
-        }
-      ]
-    },
-    {
-      "site": "chatgpt",
-      "type": "web-api",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 14,
+      "command_count": 8,
       "commands": [
         {
           "name": "ask",
           "description": "Send a prompt to ChatGPT and wait for response",
-          "command": "unicli chatgpt ask"
+          "command": "unicli chatgpt-app ask"
         },
         {
           "name": "send",
           "description": "Send text to ChatGPT without waiting",
-          "command": "unicli chatgpt send"
+          "command": "unicli chatgpt-app send"
         },
         {
           "name": "read",
           "description": "Read the last response from ChatGPT",
-          "command": "unicli chatgpt read"
+          "command": "unicli chatgpt-app read"
         },
         {
           "name": "model",
           "description": "Read or switch the current model in ChatGPT",
-          "command": "unicli chatgpt model"
+          "command": "unicli chatgpt-app model"
         },
         {
           "name": "status",
           "description": "Check ChatGPT app status",
-          "command": "unicli chatgpt status"
+          "command": "unicli chatgpt-app status"
         },
         {
           "name": "new",
           "description": "Start a new conversation in ChatGPT",
-          "command": "unicli chatgpt new"
+          "command": "unicli chatgpt-app new"
         },
         {
           "name": "screenshot",
           "description": "Capture screenshot of ChatGPT",
-          "command": "unicli chatgpt screenshot"
+          "command": "unicli chatgpt-app screenshot"
         },
         {
           "name": "dump",
-          "description": "Dump visible text from the ChatGPT desktop Electron app via CDP DOM.",
-          "command": "unicli chatgpt dump"
-        },
-        {
-          "name": "open-app",
-          "description": "Open ChatGPT desktop Electron app with CDP enabled for AI control.",
-          "command": "unicli chatgpt open-app"
-        },
-        {
-          "name": "status-app",
-          "description": "Inspect current ChatGPT desktop app page, title, URL, visible controls, and text summary.",
-          "command": "unicli chatgpt status-app"
-        },
-        {
-          "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in ChatGPT.",
-          "command": "unicli chatgpt snapshot-app"
-        },
-        {
-          "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in ChatGPT.",
-          "command": "unicli chatgpt click-text"
-        },
-        {
-          "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in ChatGPT.",
-          "command": "unicli chatgpt type-text"
-        },
-        {
-          "name": "press",
-          "description": "Press a key in ChatGPT, with optional comma-separated modifiers.",
-          "command": "unicli chatgpt press"
-        }
-      ]
-    },
-    {
-      "site": "chatwise",
-      "type": "web-api",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 14,
-      "commands": [
-        {
-          "name": "ask",
-          "description": "Send a prompt to ChatWise and wait for response",
-          "command": "unicli chatwise ask"
-        },
-        {
-          "name": "send",
-          "description": "Send text to ChatWise without waiting",
-          "command": "unicli chatwise send"
-        },
-        {
-          "name": "read",
-          "description": "Read the last response from ChatWise",
-          "command": "unicli chatwise read"
-        },
-        {
-          "name": "model",
-          "description": "Read or switch the current model in ChatWise",
-          "command": "unicli chatwise model"
-        },
-        {
-          "name": "status",
-          "description": "Check ChatWise app status",
-          "command": "unicli chatwise status"
-        },
-        {
-          "name": "new",
-          "description": "Start a new conversation in ChatWise",
-          "command": "unicli chatwise new"
-        },
-        {
-          "name": "screenshot",
-          "description": "Capture screenshot of ChatWise",
-          "command": "unicli chatwise screenshot"
-        },
-        {
-          "name": "dump",
-          "description": "Dump visible text from the ChatWise desktop Electron app via CDP DOM.",
-          "command": "unicli chatwise dump"
-        },
-        {
-          "name": "open-app",
-          "description": "Open ChatWise desktop Electron app with CDP enabled for AI control.",
-          "command": "unicli chatwise open-app"
-        },
-        {
-          "name": "status-app",
-          "description": "Inspect current ChatWise desktop app page, title, URL, visible controls, and text summary.",
-          "command": "unicli chatwise status-app"
-        },
-        {
-          "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in ChatWise.",
-          "command": "unicli chatwise snapshot-app"
-        },
-        {
-          "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in ChatWise.",
-          "command": "unicli chatwise click-text"
-        },
-        {
-          "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in ChatWise.",
-          "command": "unicli chatwise type-text"
-        },
-        {
-          "name": "press",
-          "description": "Press a key in ChatWise, with optional comma-separated modifiers.",
-          "command": "unicli chatwise press"
+          "description": "Dump full page content from ChatGPT",
+          "command": "unicli chatgpt-app dump"
         }
       ]
     },

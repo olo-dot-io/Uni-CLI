@@ -60,6 +60,17 @@ type Stats = {
   test_count?: number;
 };
 
+type ReleaseInfo = {
+  version: string;
+  codename: string;
+  date: string;
+  npmPackage: string;
+  npmUrl: string;
+  releaseUrl: string;
+  changelogUrl: string;
+  highlights: Record<LocaleKey, string[]>;
+};
+
 const docsRoot = resolve("docs");
 const markdownRoot = resolve("docs/public/markdown");
 const pageIndexPath = resolve("docs/page-index.json");
@@ -185,6 +196,12 @@ function readStats(): Stats {
   return JSON.parse(readFileSync(statsPath, "utf-8")) as Stats;
 }
 
+function readReleaseInfo(): ReleaseInfo {
+  return JSON.parse(
+    readFileSync(resolve("docs/release-info.json"), "utf-8"),
+  ) as ReleaseInfo;
+}
+
 function toProjectPath(filePath: string): string {
   return relative(process.cwd(), filePath).replace(/\\/g, "/");
 }
@@ -243,6 +260,37 @@ function renderSiteStatsZh(siteIndex: SiteIndex): string {
   ].join("\n");
 }
 
+function renderVersionNotice(
+  releaseInfo: ReleaseInfo,
+  siteIndex: SiteIndex,
+  locale: LocaleKey,
+): string {
+  const isZh = locale === "zh";
+  const highlights = releaseInfo.highlights[locale] ?? [];
+
+  return [
+    isZh ? "## 当前版本" : "## Current Version",
+    "",
+    isZh
+      ? `v${releaseInfo.version}（${releaseInfo.codename}）已于 ${releaseInfo.date} 发布到 npm，${releaseInfo.npmPackage} 的 latest 当前指向这个版本。`
+      : `v${releaseInfo.version} (${releaseInfo.codename}) shipped to npm on ${releaseInfo.date}; the ${releaseInfo.npmPackage} latest tag now points to this release.`,
+    "",
+    isZh
+      ? `当前公开目录：${siteIndex.total_sites} 个站点，${siteIndex.total_commands} 条命令。`
+      : `Current public catalog: ${siteIndex.total_sites} sites, ${siteIndex.total_commands} commands.`,
+    "",
+    isZh ? "### 更新提示" : "### Update Notes",
+    "",
+    ...highlights.map((highlight) => `- ${highlight}`),
+    "",
+    isZh ? "### 链接" : "### Links",
+    "",
+    `- [${releaseInfo.npmPackage} on npm](${releaseInfo.npmUrl})`,
+    `- [GitHub Release v${releaseInfo.version}](${releaseInfo.releaseUrl})`,
+    `- [Changelog](${releaseInfo.changelogUrl})`,
+  ].join("\n");
+}
+
 function renderSiteCatalog(siteIndex: SiteIndex, locale: LocaleKey): string {
   const copy =
     locale === "zh"
@@ -290,9 +338,14 @@ function renderSiteCatalog(siteIndex: SiteIndex, locale: LocaleKey): string {
 function renderKnownComponents(
   markdown: string,
   siteIndex: SiteIndex,
+  releaseInfo: ReleaseInfo,
   locale: LocaleKey,
 ): string {
   return markdown
+    .replace(
+      /^<VersionNotice\s*\/>$/gm,
+      renderVersionNotice(releaseInfo, siteIndex, locale),
+    )
     .replace(
       /^<SiteStats\s*\/>$/gm,
       locale === "zh"
@@ -306,6 +359,7 @@ function buildMarkdownCopy(
   page: PageIndexEntry,
   sourceMarkdown: string,
   siteIndex: SiteIndex,
+  releaseInfo: ReleaseInfo,
 ): string {
   const { frontmatter, body: sourceBody } = splitFrontmatter(sourceMarkdown);
   const isZh = page.locale === "zh";
@@ -351,7 +405,7 @@ function buildMarkdownCopy(
     .join("\n");
 
   return rewriteRelativeLinks(
-    renderKnownComponents(markdown, siteIndex, page.locale),
+    renderKnownComponents(markdown, siteIndex, releaseInfo, page.locale),
     page.routePath,
   );
 }
@@ -481,6 +535,7 @@ function renderLlmsFullTxt(
 function main() {
   const siteIndex = readSiteIndex();
   const stats = readStats();
+  const releaseInfo = readReleaseInfo();
   const pages = supportedLocales.flatMap((locale) =>
     flatDocPages(locale).map<PageIndexEntry>((page) => {
       const routePath = normalizeDocPath(page.link);
@@ -511,6 +566,7 @@ function main() {
       page,
       readFileSync(page.sourcePath, "utf-8"),
       siteIndex,
+      releaseInfo,
     );
     writeGeneratedMarkdown(page, markdown);
     renderedPages.push({ page, markdown });

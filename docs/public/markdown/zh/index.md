@@ -17,17 +17,36 @@
 
 ## 核心能力
 
-- **按意图搜索.** 双语 BM25 把自然语言映射到 223 个站点、1304 条可运行命令。
+- **按意图搜索.** 双语 BM25 把自然语言映射到 235 个站点、1448 条可运行命令。
 - **操作真实软件.** 同一套 CLI 覆盖 Web API、浏览器自动化、macOS 应用、桌面工具和外部 CLI。
 - **返回 AgentEnvelope.** Markdown、JSON、YAML、CSV 和 compact 输出共用同一套 v2 成功/错误合同。
 - **就地修复.** 失败结果会带上 adapter path、pipeline step、是否可重试、建议和替代命令。
 - **接入智能体.** 命令行执行对 coding agent 是原生路径；MCP、ACP 和 JSON stream 是兼容接口。
 - **保持轻量.** YAML adapter 组合 typed pipeline steps，不为每个站点引入沉重 SDK。
 
+## 当前版本
+
+v0.216.3（Apollo · Collins）已于 2026-04-27 发布到 npm，@zenalexa/unicli 的 latest 当前指向这个版本。
+
+当前公开目录：235 个站点，1448 条命令。
+
+### 更新提示
+
+- 已通过 npm latest 发布，并带有 provenance。
+- 对当前 OpenCLI reference manifest 保持 0 个站点缺失、0 条命令缺失。
+- 冷启动 fast-path 在缺少生成 manifest 时会干净回退到完整 CLI。
+- 公开文档目录已更新到当前 235 个站点、1448 条命令。
+
+### 链接
+
+- [@zenalexa/unicli on npm](https://www.npmjs.com/package/@zenalexa/unicli)
+- [GitHub Release v0.216.3](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.216.3)
+- [Changelog](https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02163--2026-04-27--apollo--collins)
+
 ## 目录快照
 
-- 站点：223
-- 命令：1304
+- 站点：235
+- 命令：1448
 - 接口类型：5
 - AgentEnvelope：v2
 
@@ -37,7 +56,7 @@
 | browser | 10 |
 | desktop | 32 |
 | service | 8 |
-| web-api | 149 |
+| web-api | 161 |
 
 ## 定位
 

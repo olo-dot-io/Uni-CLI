@@ -15,6 +15,7 @@
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, join, resolve } from "node:path";
+import { format } from "prettier";
 import { loadAllAdapters, loadTsAdapters } from "../src/discovery/loader.js";
 import { buildCatalog } from "../src/commands/skills.js";
 import { publicEnglishDescription } from "./public-docs-text.js";
@@ -86,12 +87,17 @@ async function main(): Promise<void> {
   await loadTsAdapters();
 
   const catalog = buildCatalog();
+  const siteIndex = buildDocsSiteIndex(catalog);
   mkdirSync(dirname(out), { recursive: true });
   mkdirSync(dirname(siteIndexOut), { recursive: true });
-  writeFileSync(out, JSON.stringify(catalog, null, 2), "utf-8");
+  writeFileSync(
+    out,
+    await format(JSON.stringify(catalog), { parser: "json" }),
+    "utf-8",
+  );
   writeFileSync(
     siteIndexOut,
-    JSON.stringify(buildDocsSiteIndex(catalog), null, 2),
+    await format(JSON.stringify(siteIndex), { parser: "json" }),
     "utf-8",
   );
 
