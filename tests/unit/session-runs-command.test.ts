@@ -69,6 +69,17 @@ describe("unicli runs command", () => {
       workspace: "browser:default",
       expectedDomain: "example.com",
     });
+    lease.target = {
+      kind: "daemon-tab",
+      captured_at: "2026-04-29T01:00:00.000Z",
+      window_id: 9,
+      tab_id: 27,
+    };
+    lease.auth = {
+      state: "cookies_present",
+      captured_at: "2026-04-29T01:00:00.000Z",
+      cookie_count: 2,
+    };
     const metadata: RunTraceMetadata = {
       run_id: "run-browser-01",
       trace_id: "01HTRACEBROWSER0000000000",
@@ -133,6 +144,11 @@ describe("unicli runs command", () => {
           events: number;
           browser_session_id: string;
           browser_workspace_id: string;
+          browser_target_kind?: string;
+          browser_tab_id?: number;
+          browser_window_id?: number;
+          browser_auth_state?: string;
+          browser_cookie_count?: number;
         }>;
       };
     };
@@ -145,6 +161,11 @@ describe("unicli runs command", () => {
       status: "completed",
       events: 3,
       browser_workspace_id: "browser:default",
+      browser_target_kind: "daemon-tab",
+      browser_tab_id: 27,
+      browser_window_id: 9,
+      browser_auth_state: "cookies_present",
+      browser_cookie_count: 2,
     });
     expect(env.data.runs[0].browser_session_id).toMatch(/^browser-session:/);
   });

@@ -25,6 +25,12 @@ export interface RunSummary {
   target_surface?: string;
   browser_session_id?: string;
   browser_workspace_id?: string;
+  browser_target_kind?: string;
+  browser_target_id?: string;
+  browser_tab_id?: number;
+  browser_window_id?: number;
+  browser_auth_state?: string;
+  browser_cookie_count?: number;
   lease_owner?: string;
   lease_scope?: string;
   error_code?: string;
@@ -210,6 +216,28 @@ function browserLeaseSummary(lease?: BrowserSessionLease): Partial<RunSummary> {
   return {
     browser_session_id: lease.browser_session_id,
     browser_workspace_id: lease.browser_workspace_id,
+    ...(lease.target
+      ? {
+          browser_target_kind: lease.target.kind,
+          ...(lease.target.target_id
+            ? { browser_target_id: lease.target.target_id }
+            : {}),
+          ...(typeof lease.target.tab_id === "number"
+            ? { browser_tab_id: lease.target.tab_id }
+            : {}),
+          ...(typeof lease.target.window_id === "number"
+            ? { browser_window_id: lease.target.window_id }
+            : {}),
+        }
+      : {}),
+    ...(lease.auth
+      ? {
+          browser_auth_state: lease.auth.state,
+          ...(typeof lease.auth.cookie_count === "number"
+            ? { browser_cookie_count: lease.auth.cookie_count }
+            : {}),
+        }
+      : {}),
     lease_owner: lease.lease_owner,
     lease_scope: lease.scope,
   };

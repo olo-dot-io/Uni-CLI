@@ -6,12 +6,14 @@
  */
 
 import { CDPClient } from "./cdp-client.js";
+import type { CDPTarget } from "./cdp-client.js";
 import type {
   IPage,
   SnapshotOptions,
   ScreenshotOptions,
   NetworkRequest,
 } from "../types.js";
+import type { BrowserSessionLeaseTarget } from "../engine/browser/session-lease.js";
 
 // ── CDP result types ────────────────────────────────────────────────
 
@@ -141,6 +143,19 @@ const DEFAULT_WAIT_TIMEOUT = 10_000;
 const POLL_INTERVAL = 200;
 const LOAD_EVENT_TIMEOUT = 30_000;
 
+function connectedTargetSnapshot(
+  capturedAt: string,
+  connectedTarget?: CDPTarget,
+): BrowserSessionLeaseTarget | null {
+  if (!connectedTarget) return null;
+  return {
+    kind: "cdp-target",
+    captured_at: capturedAt,
+    target_id: connectedTarget.id,
+    target_type: connectedTarget.type,
+  };
+}
+
 // ── BrowserPage ─────────────────────────────────────────────────────
 
 export class BrowserPage implements IPage {
@@ -156,6 +171,38 @@ export class BrowserPage implements IPage {
 
   constructor(client: CDPClient) {
     this.client = client;
+  }
+
+  async browserTargetInfo(): Promise<BrowserSessionLeaseTarget | null> {
+    const capturedAt = new Date().toISOString();
+    const connectedTarget = this.client.getConnectedTarget();
+
+    try {
+      const raw = (await this.client.send("Target.getTargetInfo")) as {
+        targetInfo?: {
+          targetId?: string;
+          type?: string;
+          url?: string;
+          title?: string;
+        };
+      };
+      const info = raw.targetInfo;
+      if (!info) return connectedTargetSnapshot(capturedAt, connectedTarget);
+      return {
+        kind: "cdp-target",
+        captured_at: capturedAt,
+        ...(info.targetId || connectedTarget?.id
+          ? { target_id: info.targetId ?? connectedTarget?.id }
+          : {}),
+        ...(info.type || connectedTarget?.type
+          ? { target_type: info.type ?? connectedTarget?.type }
+          : {}),
+        ...(info.url ? { url: info.url } : {}),
+        ...(info.title ? { title: info.title } : {}),
+      };
+    } catch {
+      return connectedTargetSnapshot(capturedAt, connectedTarget);
+    }
   }
 
   /**

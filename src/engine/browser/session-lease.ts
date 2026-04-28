@@ -19,6 +19,8 @@ export interface BrowserSessionLease {
   scope: BrowserSessionLeaseScope;
   daemon_port?: string;
   url_guard?: BrowserSessionLeaseUrlGuard;
+  target?: BrowserSessionLeaseTarget;
+  auth?: BrowserSessionLeaseAuthPosture;
 }
 
 export interface BrowserSessionLeaseUrlGuard {
@@ -26,12 +28,35 @@ export interface BrowserSessionLeaseUrlGuard {
   expected_path_prefix?: string;
 }
 
+export interface BrowserSessionLeaseTarget {
+  kind: "daemon-tab" | "cdp-target" | "unknown";
+  captured_at: string;
+  target_id?: string;
+  tab_id?: number;
+  window_id?: number;
+  target_type?: string;
+  url?: string;
+  title?: string;
+  owned?: boolean;
+  preferred_tab_id?: number | null;
+  tab_count?: number;
+}
+
+export interface BrowserSessionLeaseAuthPosture {
+  state: "cookies_present" | "no_cookies" | "unavailable";
+  captured_at: string;
+  cookie_count?: number;
+}
+
 export class BrowserSessionLeaseGuardError extends Error {
   suggestion =
     "Bind or open a tab that matches the requested browser lease guard.";
 
   constructor(
-    readonly code: "browser_domain_mismatch" | "browser_path_mismatch",
+    readonly code:
+      | "browser_domain_mismatch"
+      | "browser_path_mismatch"
+      | "browser_target_mismatch",
     readonly lease: BrowserSessionLease,
     readonly expected: string,
     readonly actual: string,
@@ -39,7 +64,9 @@ export class BrowserSessionLeaseGuardError extends Error {
     super(
       code === "browser_domain_mismatch"
         ? `Browser tab hostname "${actual}" does not match expected domain "${expected}"`
-        : `Browser tab path "${actual}" does not match expected path prefix "${expected}"`,
+        : code === "browser_path_mismatch"
+          ? `Browser tab path "${actual}" does not match expected path prefix "${expected}"`
+          : `Browser target "${actual}" does not match expected target "${expected}"`,
     );
     this.name = "BrowserSessionLeaseGuardError";
   }

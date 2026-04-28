@@ -40,6 +40,18 @@ const mockPage = {
   scroll: vi.fn().mockResolvedValue(undefined),
   autoScroll: vi.fn().mockResolvedValue(undefined),
   networkRequests: vi.fn().mockResolvedValue([]),
+  cookies: vi.fn().mockResolvedValue({ sid: "cookie" }),
+  browserTargetInfo: vi.fn().mockResolvedValue({
+    kind: "daemon-tab",
+    captured_at: "2026-04-29T02:00:00.000Z",
+    tab_id: 77,
+    window_id: 41,
+    url: "https://example.com",
+    title: "Test Page",
+    owned: true,
+    preferred_tab_id: 77,
+    tab_count: 2,
+  }),
   closeWindow: vi.fn().mockResolvedValue(undefined),
   addInitScript: vi.fn().mockResolvedValue(undefined),
   startNetworkCapture: vi.fn().mockResolvedValue(undefined),
@@ -76,6 +88,18 @@ function resetMockPage(): void {
   mockPage.scroll.mockReset().mockResolvedValue(undefined);
   mockPage.autoScroll.mockReset().mockResolvedValue(undefined);
   mockPage.networkRequests.mockReset().mockResolvedValue([]);
+  mockPage.cookies.mockReset().mockResolvedValue({ sid: "cookie" });
+  mockPage.browserTargetInfo.mockReset().mockResolvedValue({
+    kind: "daemon-tab",
+    captured_at: "2026-04-29T02:00:00.000Z",
+    tab_id: 77,
+    window_id: 41,
+    url: "https://example.com",
+    title: "Test Page",
+    owned: true,
+    preferred_tab_id: 77,
+    tab_count: 2,
+  });
   mockPage.closeWindow.mockReset().mockResolvedValue(undefined);
   mockPage.addInitScript.mockReset().mockResolvedValue(undefined);
   mockPage.startNetworkCapture.mockReset().mockResolvedValue(undefined);
@@ -267,9 +291,21 @@ describe("unicli browser operator surface", () => {
       namespace: "browser",
       workspace: "browser:default",
     });
+    const browserLeases = events.map((event) => event.metadata.browser_lease);
     expect(events.map((event) => event.metadata.browser_lease)).toEqual(
-      events.map(() => expectedLease),
+      events.map(() => expect.objectContaining(expectedLease)),
     );
+    expect(browserLeases[0]).toMatchObject({
+      target: {
+        kind: "daemon-tab",
+        tab_id: 77,
+        window_id: 41,
+      },
+      auth: {
+        state: "cookies_present",
+        cookie_count: 1,
+      },
+    });
     const evidenceEvents = events.filter(
       (event) => event.name === "evidence.captured",
     );
@@ -283,6 +319,11 @@ describe("unicli browser operator surface", () => {
         workspace: "browser:default",
         browser_session_id: expectedLease.browser_session_id,
         browser_workspace_id: expectedLease.browser_workspace_id,
+        browser_target_kind: "daemon-tab",
+        browser_tab_id: 77,
+        browser_window_id: 41,
+        browser_auth_state: "cookies_present",
+        browser_cookie_count: 1,
         lease_owner: expectedLease.lease_owner,
         lease_scope: expectedLease.scope,
       },
@@ -290,9 +331,10 @@ describe("unicli browser operator surface", () => {
         action: "click.before",
         evidence_type: "browser-operator",
         workspace: "browser:default",
-        lease: expectedLease,
+        lease: expect.objectContaining(expectedLease),
       },
     });
+    expect(evidenceEvents[0].data).not.toHaveProperty("browser_target_id");
     expect(evidenceEvents[1]).toMatchObject({
       visibility: "internal",
       data: {
@@ -303,6 +345,11 @@ describe("unicli browser operator surface", () => {
         workspace: "browser:default",
         browser_session_id: expectedLease.browser_session_id,
         browser_workspace_id: expectedLease.browser_workspace_id,
+        browser_target_kind: "daemon-tab",
+        browser_tab_id: 77,
+        browser_window_id: 41,
+        browser_auth_state: "cookies_present",
+        browser_cookie_count: 1,
         lease_owner: expectedLease.lease_owner,
         lease_scope: expectedLease.scope,
         movement: {
@@ -634,6 +681,15 @@ describe("unicli browser operator surface", () => {
           browser_workspace_id: string;
           lease_owner: string;
           scope: string;
+          target: {
+            kind: string;
+            tab_id: number;
+            window_id: number;
+          };
+          auth: {
+            state: string;
+            cookie_count?: number;
+          };
         };
         observed_since: string;
         partial: boolean;
@@ -658,12 +714,21 @@ describe("unicli browser operator surface", () => {
     expect(env.command).toBe("browser.evidence");
     expect(env.data.evidence_type).toBe("browser-operator");
     expect(env.data.workspace).toBe("browser:default");
-    expect(env.data.lease).toEqual(
-      createBrowserSessionLease({
+    expect(env.data.lease).toMatchObject({
+      ...createBrowserSessionLease({
         namespace: "browser",
         workspace: "browser:default",
       }),
-    );
+      target: {
+        kind: "daemon-tab",
+        tab_id: 77,
+        window_id: 41,
+      },
+      auth: {
+        state: "cookies_present",
+        cookie_count: 1,
+      },
+    });
     expect(env.data.observed_since).toBe("2026-04-27T14:00:00.000Z");
     expect(env.data.partial).toBe(true);
     expect(env.data.capture_scope).toMatchObject({
@@ -827,6 +892,47 @@ describe("unicli browser operator surface", () => {
     });
     expect(process.exitCode).toBe(1);
     expect(mockPage.screenshot).not.toHaveBeenCalled();
+  });
+
+  it("browser click fails when the leased tab target changes before action", async () => {
+    useTempHome();
+    process.exitCode = undefined;
+    mockPage.browserTargetInfo
+      .mockResolvedValueOnce({
+        kind: "daemon-tab",
+        captured_at: "2026-04-29T02:00:00.000Z",
+        tab_id: 77,
+        window_id: 41,
+      })
+      .mockResolvedValueOnce({
+        kind: "daemon-tab",
+        captured_at: "2026-04-29T02:00:01.000Z",
+        tab_id: 78,
+        window_id: 41,
+      });
+
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "click", "1"], { from: "user" });
+    } finally {
+      cap.restore();
+    }
+
+    const err = JSON.parse(cap.getStderr().trim()) as {
+      ok: boolean;
+      error: { code: string; message: string; retryable: boolean };
+    };
+    expect(err.ok).toBe(false);
+    expect(err.error).toMatchObject({
+      code: "browser_target_mismatch",
+      retryable: false,
+    });
+    expect(err.error.message).toContain("window:41:tab:77");
+    expect(err.error.message).toContain("window:41:tab:78");
+    expect(process.exitCode).toBe(1);
+    expect(mockPage.click).not.toHaveBeenCalled();
   });
 
   it("browser evidence honors --no-screenshot without capturing a screenshot", async () => {
