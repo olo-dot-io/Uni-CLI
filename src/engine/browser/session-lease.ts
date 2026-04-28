@@ -128,7 +128,10 @@ function browserSessionLeaseUrlGuard(
 }
 
 function normalizedDomain(value?: string): string | undefined {
-  const normalized = value?.trim().replace(/^\.+/, "").toLowerCase();
+  const normalized = value
+    ?.trim()
+    .replace(/^\.+|\.+$/g, "")
+    .toLowerCase();
   return normalized && normalized.length > 0 ? normalized : undefined;
 }
 

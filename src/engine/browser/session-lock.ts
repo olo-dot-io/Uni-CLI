@@ -88,8 +88,8 @@ async function removeStaleLock(
     if (now() - info.mtimeMs <= staleMs) return false;
     await rm(lockPath, { force: true });
     return true;
-  } catch {
-    return true;
+  } catch (err) {
+    return isNotFoundError(err);
   }
 }
 
@@ -99,6 +99,15 @@ function isAlreadyExistsError(err: unknown): boolean {
     err !== null &&
     "code" in err &&
     (err as { code?: string }).code === "EEXIST"
+  );
+}
+
+function isNotFoundError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code?: string }).code === "ENOENT"
   );
 }
 

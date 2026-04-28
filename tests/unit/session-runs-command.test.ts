@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -147,6 +147,62 @@ describe("unicli runs command", () => {
       browser_workspace_id: "browser:default",
     });
     expect(env.data.runs[0].browser_session_id).toMatch(/^browser-session:/);
+  });
+
+  it("skips unexpected run directories with invalid ids", async () => {
+    const rootDir = join(tmp, "runs");
+    await writeBrowserRun(rootDir);
+    mkdirSync(join(rootDir, "bad run id"), { recursive: true });
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        ["-f", "json", "runs", "list", "--root", rootDir],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: { runs: Array<{ run_id: string }> };
+    };
+    expect(env.data.runs.map((run) => run.run_id)).toEqual(["run-browser-01"]);
+  });
+
+  it("marks malformed traces unreadable without failing the list", async () => {
+    const rootDir = join(tmp, "runs");
+    await writeBrowserRun(rootDir);
+    const brokenRunDir = join(rootDir, "run-broken-01");
+    mkdirSync(brokenRunDir, { recursive: true });
+    writeFileSync(join(brokenRunDir, "trace.jsonl"), "{not json}\n");
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        ["-f", "json", "runs", "list", "--root", rootDir],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: {
+        runs: Array<{ run_id: string; status: string; error_code?: string }>;
+      };
+    };
+    expect(env.data.runs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          run_id: "run-broken-01",
+          status: "unreadable",
+          error_code: "malformed_jsonl",
+        }),
+      ]),
+    );
   });
 
   it("shows public events without internal or secret payloads by default", async () => {

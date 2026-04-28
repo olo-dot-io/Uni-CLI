@@ -1,11 +1,8 @@
+import { createReadStream } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
+import { createInterface } from "node:readline";
 import type { BrowserSessionLease } from "../browser/session-lease.js";
-import {
-  readRunEvents,
-  runTracePath,
-  type RunStore,
-  RunStoreError,
-} from "./store.js";
+import { runTracePath, type RunStore, RunStoreError } from "./store.js";
 import type { PublicRunEvent, RunEvent, RunId } from "./types.js";
 
 export type RunTraceStatus =
@@ -52,13 +49,21 @@ export async function summarizeRunId(
   store: RunStore,
   runId: RunId,
 ): Promise<RunSummary | null> {
-  const tracePath = runTracePath(store, runId);
+  let tracePath: string;
+  try {
+    tracePath = runTracePath(store, runId);
+  } catch (err) {
+    if (err instanceof RunStoreError && err.code === "invalid_run_id") {
+      return null;
+    }
+    throw err;
+  }
+
   const traceStat = await stat(tracePath).catch(() => null);
   if (!traceStat) return null;
 
   try {
-    const events = await readRunEvents(store, runId);
-    return summarizeRunEvents(events, {
+    return await summarizeRunTraceFile(tracePath, {
       runId,
       updatedAt: traceStat.mtime.toISOString(),
     });
@@ -77,20 +82,92 @@ export function summarizeRunEvents(
   events: RunEvent[],
   options: { runId?: RunId; updatedAt?: string } = {},
 ): RunSummary {
-  const first = events[0];
-  const metadata = first?.metadata;
-  const terminal = [...events]
-    .reverse()
-    .find(
-      (event) => event.name === "run.completed" || event.name === "run.failed",
+  return summarizeRunEventScan(
+    {
+      first: events[0],
+      started: events.find((event) => event.name === "run.started"),
+      terminal: [...events]
+        .reverse()
+        .find(
+          (event) =>
+            event.name === "run.completed" || event.name === "run.failed",
+        ),
+      events: events.length,
+    },
+    options,
+  );
+}
+
+interface RunEventScan {
+  first?: RunEvent;
+  started?: RunEvent;
+  terminal?: RunEvent;
+  events: number;
+}
+
+async function summarizeRunTraceFile(
+  tracePath: string,
+  options: { runId?: RunId; updatedAt?: string } = {},
+): Promise<RunSummary> {
+  const scan: RunEventScan = { events: 0 };
+  const lines = createInterface({
+    input: createReadStream(tracePath, { encoding: "utf-8" }),
+    crlfDelay: Infinity,
+  });
+  let lineNumber = 0;
+
+  try {
+    for await (const lineText of lines) {
+      lineNumber += 1;
+      if (lineText.trim().length === 0) continue;
+      let event: RunEvent;
+      try {
+        event = JSON.parse(lineText) as RunEvent;
+      } catch {
+        throw new RunStoreError(
+          "malformed_jsonl",
+          `malformed run trace JSONL at line ${lineNumber}`,
+          tracePath,
+          lineNumber,
+        );
+      }
+
+      scan.events += 1;
+      scan.first ??= event;
+      if (!scan.started && event.name === "run.started") {
+        scan.started = event;
+      }
+      if (event.name === "run.completed" || event.name === "run.failed") {
+        scan.terminal = event;
+      }
+    }
+  } catch (err) {
+    if (err instanceof RunStoreError) throw err;
+    const message = err instanceof Error ? err.message : String(err);
+    throw new RunStoreError(
+      "io_error",
+      `failed to read run events: ${message}`,
+      tracePath,
     );
-  const started = events.find((event) => event.name === "run.started");
+  }
+
+  return summarizeRunEventScan(scan, options);
+}
+
+function summarizeRunEventScan(
+  scan: RunEventScan,
+  options: { runId?: RunId; updatedAt?: string } = {},
+): RunSummary {
+  const first = scan.first;
+  const metadata = first?.metadata;
+  const terminal = scan.terminal;
+  const started = scan.started;
   const lease = metadata?.browser_lease;
   const summary: RunSummary = {
     run_id: options.runId ?? metadata?.run_id ?? first?.run_id ?? "unknown",
     command: metadata?.command,
-    status: runStatus(events, terminal),
-    events: events.length,
+    status: runStatus(scan.events, terminal),
+    events: scan.events,
     ...(started ? { started_at: started.timestamp } : {}),
     ...(terminal ? { finished_at: terminal.timestamp } : {}),
     ...(options.updatedAt ? { updated_at: options.updatedAt } : {}),
@@ -121,8 +198,8 @@ export function projectRunEvents(
   });
 }
 
-function runStatus(events: RunEvent[], terminal?: RunEvent): RunTraceStatus {
-  if (events.length === 0) return "empty";
+function runStatus(eventCount: number, terminal?: RunEvent): RunTraceStatus {
+  if (eventCount === 0) return "empty";
   if (terminal?.name === "run.completed") return "completed";
   if (terminal?.name === "run.failed") return "failed";
   return "running";

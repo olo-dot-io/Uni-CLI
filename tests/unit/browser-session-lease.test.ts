@@ -11,7 +11,7 @@ describe("browser session lease", () => {
     const lease = createBrowserSessionLease({
       namespace: "browser",
       workspace: "profile-a",
-      expectedDomain: "Example.COM",
+      expectedDomain: " .Example.COM. ",
       expectedPathPrefix: "feed",
     });
 
