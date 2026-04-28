@@ -144,7 +144,8 @@ The kernel infers operation shape from the command contract and surfaces it in
   `--yes` or `UNICLI_APPROVE=1` is supplied.
 - `approval_memory`: deterministic command-scope key and dimension summary.
   `--remember-approval` stores allowed scopes in `~/.unicli/approvals.jsonl`
-  without raw runtime args.
+  with scope metadata only. `unicli approvals list`, `revoke`, and `clear`
+  inspect or remove remembered scopes.
 
 This keeps capability broad and easy to turn on, while still giving teams a way
 to tighten execution policy without rewriting adapter metadata.

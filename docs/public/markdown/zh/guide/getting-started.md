@@ -132,6 +132,8 @@ unicli runs probe <run_id>
 unicli runs replay <run_id> --permission-profile confirm --yes
 unicli runs compare <run_id> <replay_run_id>
 unicli --permission-profile locked --yes --remember-approval word set-font "Inter"
+unicli approvals list
+unicli approvals revoke <approval_key>
 ```
 
 ## 协议服务

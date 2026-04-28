@@ -5,14 +5,27 @@ import type { CapabilityApprovalMemory } from "./capability-policy.js";
 import type { OperationEffect, OperationPolicy } from "./operation-policy.js";
 import { userHome } from "./user-home.js";
 
+const APPROVAL_DIMENSIONS = [
+  "network",
+  "browser",
+  "desktop",
+  "file",
+  "process",
+  "account",
+] as const;
+
+const APPROVAL_ACCESS = new Set(["none", "read", "write"]);
+
 export interface ApprovalStore {
   path: string;
 }
 
+export type ApprovalDecision = "allow" | "revoke";
+
 export interface StoredApproval {
   schema_version: "1";
   key: string;
-  decision: "allow";
+  decision: ApprovalDecision;
   profile: string;
   created_at: string;
   command: {
@@ -25,6 +38,10 @@ export interface StoredApproval {
 
 export interface RememberApprovalOptions {
   policy: OperationPolicy;
+  now?: () => Date;
+}
+
+export interface ApprovalMutationOptions {
   now?: () => Date;
 }
 
@@ -77,9 +94,58 @@ export async function findStoredApproval(
   const entries = await listStoredApprovals(store);
   for (let i = entries.length - 1; i >= 0; i -= 1) {
     const entry = entries[i];
-    if (entry.key === key && entry.decision === "allow") return entry;
+    if (entry.key !== key) continue;
+    if (entry.decision === "revoke") return undefined;
+    return entry;
   }
   return undefined;
+}
+
+export async function listActiveStoredApprovals(
+  store: ApprovalStore,
+): Promise<StoredApproval[]> {
+  const byKey = new Map<string, StoredApproval>();
+  for (const entry of await listStoredApprovals(store)) {
+    if (entry.decision === "allow") {
+      byKey.set(entry.key, entry);
+    } else {
+      byKey.delete(entry.key);
+    }
+  }
+  return Array.from(byKey.values());
+}
+
+export async function revokeStoredApproval(
+  store: ApprovalStore,
+  key: string,
+  options: ApprovalMutationOptions = {},
+): Promise<StoredApproval | undefined> {
+  const active = await findStoredApproval(store, key);
+  if (!active) return undefined;
+
+  const entry: StoredApproval = {
+    ...active,
+    decision: "revoke",
+    created_at: (options.now ?? (() => new Date()))().toISOString(),
+  };
+  await appendApprovalEntry(store, entry);
+  return entry;
+}
+
+export async function clearStoredApprovals(
+  store: ApprovalStore,
+  options: ApprovalMutationOptions = {},
+): Promise<number> {
+  const active = await listActiveStoredApprovals(store);
+  const now = (options.now ?? (() => new Date()))().toISOString();
+  for (const entry of active) {
+    await appendApprovalEntry(store, {
+      ...entry,
+      decision: "revoke",
+      created_at: now,
+    });
+  }
+  return active.length;
 }
 
 export async function listStoredApprovals(
@@ -150,15 +216,28 @@ function commandFromApprovalKey(key: string): {
 export function isStoredApproval(value: unknown): value is StoredApproval {
   if (!value || typeof value !== "object") return false;
   const rec = value as Record<string, unknown>;
+  const command = rec.command as Record<string, unknown> | null;
   return (
     rec.schema_version === "1" &&
     typeof rec.key === "string" &&
-    rec.decision === "allow" &&
+    (rec.decision === "allow" || rec.decision === "revoke") &&
     typeof rec.profile === "string" &&
     typeof rec.created_at === "string" &&
     typeof rec.command === "object" &&
-    rec.command !== null &&
-    typeof rec.scope === "object" &&
-    rec.scope !== null
+    command !== null &&
+    typeof command.site === "string" &&
+    typeof command.command === "string" &&
+    typeof command.effect === "string" &&
+    isApprovalScope(rec.scope)
+  );
+}
+
+function isApprovalScope(value: unknown): value is StoredApproval["scope"] {
+  if (!value || typeof value !== "object") return false;
+  const scope = value as Record<string, unknown>;
+  if (!scope.dimensions || typeof scope.dimensions !== "object") return false;
+  const dimensions = scope.dimensions as Record<string, unknown>;
+  return APPROVAL_DIMENSIONS.every((name) =>
+    APPROVAL_ACCESS.has(String(dimensions[name])),
   );
 }

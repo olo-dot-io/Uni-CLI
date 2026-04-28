@@ -56,7 +56,7 @@ Agent execution needs an auditable, repairable, reusable command contract. Catal
 - Sites and tools: 235
 - Commands: 1448
 - Pipeline steps: 59
-- Tests: 7516
+- Tests: 7525
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -239,6 +239,8 @@ unicli runs probe <run_id>
 unicli runs replay <run_id> --permission-profile confirm --yes
 unicli runs compare <run_id> <replay_run_id>
 unicli --permission-profile locked --yes --remember-approval word set-font "Inter"
+unicli approvals list
+unicli approvals revoke <approval_key>
 ```
 
 ## Protocol Servers
@@ -3616,7 +3618,8 @@ The kernel infers operation shape from the command contract and surfaces it in
   `--yes` or `UNICLI_APPROVE=1` is supplied.
 - `approval_memory`: deterministic command-scope key and dimension summary.
   `--remember-approval` stores allowed scopes in `~/.unicli/approvals.jsonl`
-  without raw runtime args.
+  with scope metadata only. `unicli approvals list`, `revoke`, and `clear`
+  inspect or remove remembered scopes.
 
 This keeps capability broad and easy to turn on, while still giving teams a way
 to tighten execution policy without rewriting adapter metadata.
