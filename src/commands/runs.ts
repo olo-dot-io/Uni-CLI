@@ -1,13 +1,25 @@
+import { existsSync } from "node:fs";
 import type { Command } from "commander";
 import { detectFormat, format } from "../output/formatter.js";
-import { makeCtx } from "../output/envelope.js";
-import type { OutputFormat } from "../types.js";
-import { createRunStore, readRunEvents } from "../engine/session/store.js";
+import { makeCtx, type AgentError } from "../output/envelope.js";
+import { ExitCode, type OutputFormat } from "../types.js";
+import {
+  createRunStore,
+  readRunEvents,
+  runTracePath,
+  RunStoreError,
+} from "../engine/session/store.js";
 import {
   listRunSummaries,
   projectRunEvents,
   summarizeRunEvents,
 } from "../engine/session/query.js";
+import {
+  extractRunReplayInvocation,
+  extractRunReplayPlan,
+} from "../engine/session/replay.js";
+import { buildInvocation } from "../engine/invoke.js";
+import { executeWithRunRecording } from "../engine/session/run-loop.js";
 
 interface RunsListOptions {
   root?: string;
@@ -17,6 +29,37 @@ interface RunsListOptions {
 interface RunsShowOptions {
   root?: string;
   includeInternal?: boolean;
+}
+
+interface RunsProbeOptions {
+  root?: string;
+}
+
+interface RunsReplayOptions {
+  root?: string;
+  dryRun?: boolean;
+  permissionProfile?: string;
+  yes?: boolean;
+  replayRunId?: string;
+}
+
+function fmt(program: Command): OutputFormat {
+  return detectFormat(program.opts().format as OutputFormat | undefined);
+}
+
+function printRunError(
+  program: Command,
+  command: string,
+  startedAt: number,
+  error: AgentError,
+): void {
+  process.exitCode = ExitCode.USAGE_ERROR;
+  console.log(
+    format(null, undefined, fmt(program), {
+      ...makeCtx(command, startedAt),
+      error,
+    }),
+  );
 }
 
 export function registerRunsCommand(program: Command): void {
@@ -31,9 +74,7 @@ export function registerRunsCommand(program: Command): void {
     .option("--limit <n>", "Maximum runs to return", "50")
     .action(async (opts: RunsListOptions) => {
       const startedAt = Date.now();
-      const fmt = detectFormat(
-        program.opts().format as OutputFormat | undefined,
-      );
+      const outputFormat = fmt(program);
       const store = createRunStore({ rootDir: opts.root });
       const limit = Math.max(1, parseInt(opts.limit ?? "50", 10) || 50);
       const summaries = (await listRunSummaries(store)).slice(0, limit);
@@ -45,7 +86,7 @@ export function registerRunsCommand(program: Command): void {
             runs: summaries,
           },
           undefined,
-          fmt,
+          outputFormat,
           ctx,
         ),
       );
@@ -58,9 +99,7 @@ export function registerRunsCommand(program: Command): void {
     .option("--include-internal", "Include internal event payloads")
     .action(async (runId: string, opts: RunsShowOptions) => {
       const startedAt = Date.now();
-      const fmt = detectFormat(
-        program.opts().format as OutputFormat | undefined,
-      );
+      const outputFormat = fmt(program);
       const store = createRunStore({ rootDir: opts.root });
       const events = await readRunEvents(store, runId);
       const summary = summarizeRunEvents(events, { runId });
@@ -75,8 +114,169 @@ export function registerRunsCommand(program: Command): void {
             }),
           },
           undefined,
-          fmt,
+          outputFormat,
           ctx,
+        ),
+      );
+    });
+
+  runs
+    .command("probe <run_id>")
+    .description("Check whether a recorded run trace can be replayed")
+    .option("--root <path>", "Override run trace root")
+    .action(async (runId: string, opts: RunsProbeOptions) => {
+      const startedAt = Date.now();
+      const store = createRunStore({ rootDir: opts.root });
+      const events = await readRunEvents(store, runId);
+      const replay = extractRunReplayPlan(events, runId);
+      console.log(
+        format(
+          {
+            run_id: runId,
+            replay,
+          },
+          undefined,
+          fmt(program),
+          makeCtx("runs.probe", startedAt),
+        ),
+      );
+    });
+
+  runs
+    .command("replay <run_id>")
+    .description("Replay a recorded run trace using its private replay payload")
+    .option("--root <path>", "Override run trace root")
+    .option("--dry-run", "Show replay plan without executing")
+    .option(
+      "--permission-profile <profile>",
+      "Override replay permission profile",
+    )
+    .option("--yes", "Approve permission-gated replay execution")
+    .option("--replay-run-id <run_id>", "Override the new replay run id")
+    .action(async (runId: string, opts: RunsReplayOptions) => {
+      const startedAt = Date.now();
+      const store = createRunStore({ rootDir: opts.root });
+      const events = await readRunEvents(store, runId);
+      const replay = extractRunReplayPlan(events, runId);
+      if (!replay.replayable) {
+        printRunError(program, "runs.replay", startedAt, {
+          code: "invalid_input",
+          message: replay.reason ?? "run trace is not replayable",
+          suggestion:
+            "run the command again with --record, then replay the new run id",
+          retryable: false,
+        });
+        return;
+      }
+
+      if (opts.dryRun === true) {
+        console.log(
+          format(
+            {
+              run_id: runId,
+              replay,
+            },
+            undefined,
+            fmt(program),
+            makeCtx("runs.replay", startedAt),
+          ),
+        );
+        return;
+      }
+
+      const replayInvocation = extractRunReplayInvocation(events, runId);
+      if (!replayInvocation) {
+        printRunError(program, "runs.replay", startedAt, {
+          code: "invalid_input",
+          message: "run trace replay payload is malformed",
+          suggestion:
+            "inspect the trace with `unicli runs show <run_id> --include-internal`",
+          retryable: false,
+        });
+        return;
+      }
+
+      const inv = buildInvocation(
+        "cli",
+        replayInvocation.site,
+        replayInvocation.cmd,
+        {
+          args: replayInvocation.args,
+          source: replayInvocation.source,
+        },
+        {
+          permissionProfile:
+            opts.permissionProfile ?? replayInvocation.permissionProfile,
+          approved: opts.yes === true,
+        },
+      );
+      if (!inv) {
+        printRunError(program, "runs.replay", startedAt, {
+          code: "invalid_input",
+          message: `command is not registered: ${replayInvocation.site}.${replayInvocation.cmd}`,
+          suggestion:
+            "run `unicli list` and choose a currently registered command",
+          retryable: false,
+        });
+        return;
+      }
+
+      const replayRunId = opts.replayRunId ?? `run-replay-${inv.trace_id}`;
+      let replayTracePath: string;
+      try {
+        replayTracePath = runTracePath(store, replayRunId);
+      } catch (err) {
+        if (err instanceof RunStoreError && err.code === "invalid_run_id") {
+          printRunError(program, "runs.replay", startedAt, {
+            code: "invalid_input",
+            message: err.message,
+            suggestion:
+              "use letters, numbers, dot, underscore, or dash in --replay-run-id",
+            retryable: false,
+          });
+          return;
+        }
+        throw err;
+      }
+      if (existsSync(replayTracePath)) {
+        printRunError(program, "runs.replay", startedAt, {
+          code: "invalid_input",
+          message: `replay run id already exists: ${replayRunId}`,
+          suggestion: "omit --replay-run-id or choose a new run id",
+          retryable: false,
+        });
+        return;
+      }
+      const result = await executeWithRunRecording(inv, {
+        enabled: true,
+        store,
+        runId: replayRunId,
+      });
+      console.log(
+        format(
+          {
+            original_run_id: runId,
+            replay_run_id: replayRunId,
+            replay: {
+              command: replay.command,
+              args_hash: replay.args_hash,
+              argument_keys: replay.argument_keys,
+              source: replayInvocation.source,
+              permission_profile:
+                opts.permissionProfile ?? replayInvocation.permissionProfile,
+            },
+            result: {
+              exit_code: result.exitCode,
+              duration_ms: result.durationMs,
+              result_count: result.results.length,
+              error: result.error ?? null,
+              envelope: result.envelope,
+              warnings: result.warnings,
+            },
+          },
+          undefined,
+          fmt(program),
+          makeCtx("runs.replay", startedAt),
         ),
       );
     });

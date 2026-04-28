@@ -77,9 +77,9 @@ registrations and fast-path discovery is treated as a correctness bug.
 
 Run recording is explicit and local. `--record` or `UNICLI_RECORD_RUN=1` writes
 append-only JSONL traces under `~/.unicli/runs` with command metadata,
-permission evaluation, result-envelope evidence, warnings, and timing. The CLI
-does not make recording the default because many operations include private
-account state.
+permission evaluation, private replay payloads, result-envelope evidence,
+warnings, and timing. Recording stays explicit because many operations include
+private account state.
 
 Browser operator commands can add a narrower evidence layer. Recorded actions
 capture pre/post packets, movement dimensions, stale-reference failures, and
@@ -185,7 +185,7 @@ Use:
 - YAML adapters for durable website/app operations.
 - CDP, accessibility, subprocess, and app APIs before CUA.
 - CUA only when it can see, act, and verify.
-- Run traces, browser session leases with tab/auth posture, render-aware
+- Probeable and replayable run traces, browser session leases with tab/auth posture, render-aware
   evidence, and watchdog movement checks when an operation needs reviewable
   proof.
 - MCP/ACP/HTTP as compatibility surfaces generated from the same catalog.

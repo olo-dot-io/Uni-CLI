@@ -19,7 +19,7 @@ This file tracks current engineering direction. Historical release notes live in
 | Adapter catalog      | Web, browser, desktop, macOS, bridge, and external CLI surfaces are discoverable through `unicli list` and `unicli search`. |
 | v2 output envelope   | Normal command surfaces return structured success and error envelopes.                                                      |
 | Operation policy     | `open`, `confirm`, and `locked` profiles expose effect, risk, approval, and capability scope.                               |
-| Run recording        | `--record` and `UNICLI_RECORD_RUN=1` write append-only run traces under `~/.unicli/runs`.                                   |
+| Run recording        | `--record` and `UNICLI_RECORD_RUN=1` write append-only run traces that agents can list, show, probe, and replay.            |
 | Browser evidence     | Browser operator actions can emit pre/post evidence, movement dimensions, stale-ref details, and watchdog results.          |
 | MCP server           | Stdio, Streamable HTTP, SSE, and optional OAuth 2.1 PKCE entry points are available.                                        |
 | ACP gateway          | Supported as an editor compatibility path, not the primary runtime abstraction.                                             |
@@ -31,6 +31,7 @@ This file tracks current engineering direction. Historical release notes live in
 
 1. **Run/event kernel hardening**
    - Keep run traces append-only, local, and private by default.
+   - Let agents probe replayability before repeating a command.
    - Extend evidence coverage across transport classes without making opaque
      browser screenshots the only proof.
    - Keep result envelopes, permission evaluations, and browser action evidence

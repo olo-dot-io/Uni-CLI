@@ -150,6 +150,8 @@ unicli browser evidence --render-aware --expect-domain example.com
 unicli browser extract --render-aware --expect-domain example.com --no-screenshot
 unicli runs list
 unicli runs show <run_id>
+unicli runs probe <run_id>
+unicli runs replay <run_id> --permission-profile confirm --yes
 ```
 
 ## Protocol Servers
