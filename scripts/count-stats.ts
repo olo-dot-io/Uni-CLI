@@ -15,11 +15,12 @@
  *   site_count           — site directories that registered >=1 command
  *                          (matches the dist/manifest.json emission)
  *   command_count        — total commands across all sites
- *   test_count           — discovered vitest test cases. Enumerated via
- *                          `npx vitest list --json` per project, so
- *                          parametrised (`it.each`) and loop-generated
- *                          tests are counted exactly. Regex fallback if
- *                          vitest is unavailable.
+ *   test_count           — discovered public vitest test cases. Enumerated via
+ *                          `npx vitest list --json` per project with ignored
+ *                          reference-only tests disabled, so parametrised
+ *                          (`it.each`) and loop-generated tests are counted
+ *                          exactly without local `ref/` drift. Regex fallback
+ *                          if vitest is unavailable.
  *   pipeline_step_count  — top-level step keys in `CAPABILITY_MATRIX`
  *                          (src/transport/capability.ts). Source of truth
  *                          for the "N pipeline steps" claim in the docs.
@@ -56,6 +57,7 @@ const CAPABILITY_MATRIX_FILE = join(ROOT, "src", "transport", "capability.ts");
 const MCP_DIR = join(ROOT, "src", "mcp");
 const BUILD_MANIFEST = join(ROOT, "scripts", "build-manifest.js");
 const DIST_MANIFEST = join(ROOT, "dist", "manifest.json");
+const STATS_JSON = join(ROOT, "stats.json");
 const ELECTRON_DESKTOP_BASE_COMMAND_COUNT = 7;
 const ELECTRON_DESKTOP_MEDIA_COMMAND_COUNT = 6;
 const AI_CHAT_BASE_COMMAND_COUNT = 6;
@@ -267,6 +269,7 @@ function countTestsViaVitest(): number | null {
       {
         cwd: ROOT,
         encoding: "utf-8",
+        env: { ...process.env, UNICLI_STATS_PUBLIC: "1" },
         maxBuffer: 64 * 1024 * 1024,
         stdio: ["ignore", "pipe", "pipe"],
       },
@@ -283,18 +286,45 @@ function countTestsViaVitest(): number | null {
   return total;
 }
 
+function readCommittedTestCount(): number | null {
+  if (!existsSync(STATS_JSON)) return null;
+  try {
+    const stats = JSON.parse(readFileSync(STATS_JSON, "utf-8")) as {
+      test_count?: unknown;
+    };
+    return typeof stats.test_count === "number" ? stats.test_count : null;
+  } catch {
+    return null;
+  }
+}
+
+function isInsideVitest(): boolean {
+  return (
+    process.env.VITEST === "true" ||
+    process.env.VITEST_WORKER_ID !== undefined ||
+    process.env.VITEST_POOL_ID !== undefined
+  );
+}
+
 /**
  * Test-count strategy:
  *   1. If `UNICLI_STATS_TEST_STRATEGY=regex`, force the regex counter.
  *      (Useful in CI sandboxes where vitest cannot spawn.)
- *   2. Otherwise try `vitest list --json` per project; it expands
- *      parametrised tests and matches the runtime count.
- *   3. On vitest failure, fall back to the regex counter with a stderr
+ *   2. Inside Vitest, reuse committed stats.json for test_count so the unit
+ *      suite never recursively spawns `vitest list` and deadlocks or times out
+ *      on slower CI runners.
+ *   3. Otherwise try `vitest list --json` per project in public-stats mode; it
+ *      expands parametrised tests while excluding ignored local references.
+ *   4. On vitest failure, fall back to the regex counter with a stderr
  *      note so the drift is visible.
  */
 function countTests(): number {
   if (process.env.UNICLI_STATS_TEST_STRATEGY === "regex") {
     return countTestsByRegex();
+  }
+  if (isInsideVitest()) {
+    const committed = readCommittedTestCount();
+    if (committed !== null) return committed;
   }
   const fromVitest = countTestsViaVitest();
   if (fromVitest !== null) return fromVitest;

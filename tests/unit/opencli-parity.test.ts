@@ -16,7 +16,10 @@ describe("OpenCLI parity benchmark", () => {
     "opencli",
     "cli-manifest.json",
   );
-  const itWithReference = existsSync(referenceManifestPath) ? it : it.skip;
+  const includeReference =
+    process.env.UNICLI_STATS_PUBLIC !== "1" &&
+    existsSync(referenceManifestPath);
+  const itWithReference = includeReference ? it : it.skip;
 
   itWithReference(
     "reports zero missing commands against the synced OpenCLI manifest",
