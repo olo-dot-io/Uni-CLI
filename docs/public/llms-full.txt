@@ -33,7 +33,7 @@ Agents are moving from chat assistance to task-running systems. They need to cal
 ```bash
 npm install -g @zenalexa/unicli
 unicli search "twitter trending"
-unicli twitter trends --limit 10 -f json
+unicli twitter trending --limit 10 -f json
 ```
 
 ## Positioning

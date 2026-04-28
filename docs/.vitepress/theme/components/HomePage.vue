@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import { useData, withBase } from "vitepress";
 import releaseInfo from "../../../release-info.json";
 import siteIndex from "../../../site-index.json";
+import stats from "../../../../stats.json";
 import CommandLifecycleIsland from "./CommandLifecycleIsland.vue";
 
 const { localeIndex } = useData();
@@ -10,7 +11,7 @@ const isZh = computed(() => localeIndex.value === "zh");
 const copiedCommand = ref(false);
 const firstCommand = `npm install -g @zenalexa/unicli
 unicli search "twitter trending"
-unicli twitter trends --limit 10 -f json`;
+unicli twitter trending --limit 10 -f json`;
 
 const copy = computed(() =>
   isZh.value
@@ -47,7 +48,7 @@ const copy = computed(() =>
         stats: [
           { value: siteIndex.total_sites, label: "站点和工具" },
           { value: siteIndex.total_commands, label: "命令" },
-          { value: "59", label: "pipeline step" },
+          { value: String(stats.pipeline_step_count), label: "pipeline step" },
           { value: "v2", label: "AgentEnvelope" },
         ],
         entriesTitle: "从任务进入",
@@ -110,7 +111,7 @@ const copy = computed(() =>
         stats: [
           { value: siteIndex.total_sites, label: "sites and tools" },
           { value: siteIndex.total_commands, label: "commands" },
-          { value: "59", label: "pipeline steps" },
+          { value: String(stats.pipeline_step_count), label: "pipeline steps" },
           { value: "v2", label: "AgentEnvelope" },
         ],
         entriesTitle: "Start from the task",
@@ -146,7 +147,11 @@ async function copyFirstCommand() {
     return;
   }
 
-  await navigator.clipboard.writeText(firstCommand);
+  try {
+    await navigator.clipboard.writeText(firstCommand);
+  } catch {
+    return;
+  }
   copiedCommand.value = true;
   window.setTimeout(() => {
     copiedCommand.value = false;

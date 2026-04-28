@@ -338,8 +338,10 @@ function renderSiteCatalog(siteIndex: SiteIndex, locale: LocaleKey): string {
 function renderHomePageMarkdown(
   siteIndex: SiteIndex,
   releaseInfo: ReleaseInfo,
+  stats: Stats,
   locale: LocaleKey,
 ): string {
+  const pipelineSteps = stats.pipeline_step_count ?? "see docs";
   if (locale === "zh") {
     return [
       "## 面向 Agent 的软件执行层",
@@ -351,7 +353,7 @@ function renderHomePageMarkdown(
       "```bash",
       "npm install -g @zenalexa/unicli",
       'unicli search "twitter trending"',
-      "unicli twitter trends --limit 10 -f json",
+      "unicli twitter trending --limit 10 -f json",
       "```",
       "",
       "## 定位",
@@ -366,7 +368,7 @@ function renderHomePageMarkdown(
       "",
       `- 站点和工具：${siteIndex.total_sites}`,
       `- 命令：${siteIndex.total_commands}`,
-      "- Pipeline step：59",
+      `- Pipeline step：${pipelineSteps}`,
       "- 输出协议：v2 AgentEnvelope",
       "",
       "同一套调用路径覆盖公开 API、Cookie 会话、浏览器、桌面应用、外部 CLI 和本机能力。Agent 只需要学一条调用路径。",
@@ -398,7 +400,7 @@ function renderHomePageMarkdown(
     "```bash",
     "npm install -g @zenalexa/unicli",
     'unicli search "twitter trending"',
-    "unicli twitter trends --limit 10 -f json",
+    "unicli twitter trending --limit 10 -f json",
     "```",
     "",
     "## Positioning",
@@ -413,7 +415,7 @@ function renderHomePageMarkdown(
     "",
     `- Sites and tools: ${siteIndex.total_sites}`,
     `- Commands: ${siteIndex.total_commands}`,
-    "- Pipeline steps: 59",
+    `- Pipeline steps: ${pipelineSteps}`,
     "- Output contract: v2 AgentEnvelope",
     "",
     "One call path spans public APIs, cookie sessions, browsers, desktop apps, external CLIs, and local system capabilities. Agents learn one call path.",
@@ -437,6 +439,7 @@ function renderHomePageMarkdown(
 
 function renderKnownComponents(
   markdown: string,
+  stats: Stats,
   siteIndex: SiteIndex,
   releaseInfo: ReleaseInfo,
   locale: LocaleKey,
@@ -455,7 +458,7 @@ function renderKnownComponents(
     .replace(/^<SiteCatalog\s*\/>$/gm, renderSiteCatalog(siteIndex, locale))
     .replace(
       /^<HomePage\s*\/>$/gm,
-      renderHomePageMarkdown(siteIndex, releaseInfo, locale),
+      renderHomePageMarkdown(siteIndex, releaseInfo, stats, locale),
     );
 }
 
@@ -464,6 +467,7 @@ function buildMarkdownCopy(
   sourceMarkdown: string,
   siteIndex: SiteIndex,
   releaseInfo: ReleaseInfo,
+  stats: Stats,
 ): string {
   const { frontmatter, body: sourceBody } = splitFrontmatter(sourceMarkdown);
   const isZh = page.locale === "zh";
@@ -509,7 +513,7 @@ function buildMarkdownCopy(
     .join("\n");
 
   return rewriteRelativeLinks(
-    renderKnownComponents(markdown, siteIndex, releaseInfo, page.locale),
+    renderKnownComponents(markdown, stats, siteIndex, releaseInfo, page.locale),
     page.routePath,
   );
 }
@@ -671,6 +675,7 @@ function main() {
       readFileSync(page.sourcePath, "utf-8"),
       siteIndex,
       releaseInfo,
+      stats,
     );
     writeGeneratedMarkdown(page, markdown);
     renderedPages.push({ page, markdown });

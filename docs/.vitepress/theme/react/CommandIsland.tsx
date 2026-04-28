@@ -129,7 +129,11 @@ function CommandIsland({ locale }: CommandIslandProps) {
       return;
     }
 
-    await navigator.clipboard.writeText(step.command);
+    try {
+      await navigator.clipboard.writeText(step.command);
+    } catch {
+      return;
+    }
     setCopied(step.value);
     window.setTimeout(() => {
       setCopied(null);
