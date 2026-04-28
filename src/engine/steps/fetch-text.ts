@@ -4,7 +4,7 @@ import { type PipelineContext, PipelineError } from "../executor.js";
 import { assertSafeRequestUrl } from "../ssrf.js";
 import { evalTemplate } from "../template.js";
 import { getProxyAgent } from "../proxy.js";
-import type { FetchConfig } from "./fetch.js";
+import { normalizeFetchAttempts, type FetchConfig } from "./fetch.js";
 
 export async function stepFetchText(
   ctx: PipelineContext,
@@ -36,7 +36,7 @@ export async function stepFetchText(
   const ftAgent = getProxyAgent();
   if (ftAgent) fetchInit.dispatcher = ftAgent;
 
-  const maxAttempts = config.retry ?? 1;
+  const maxAttempts = normalizeFetchAttempts(config.retry);
   const baseDelay = config.backoff ?? 1000;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {

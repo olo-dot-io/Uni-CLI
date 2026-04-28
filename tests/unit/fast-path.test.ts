@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { tryRunFastPath } from "../../src/fast-path.js";
+import { ExitCode } from "../../src/types.js";
 
 function makeIo(): {
   stdout: string[];
@@ -20,6 +21,10 @@ function makeIo(): {
     },
   };
 }
+
+afterEach(() => {
+  process.exitCode = undefined;
+});
 
 describe("CLI fast path", () => {
   it("serves list from the manifest without falling through to full CLI boot", () => {
@@ -127,6 +132,41 @@ describe("CLI fast path", () => {
     expect(payload.channels.shell).toContain("<query>");
   });
 
+  it("emits structured invalid permission profile errors for describe", () => {
+    const { stdout, stderr, io } = makeIo();
+
+    const handled = tryRunFastPath(
+      [
+        "node",
+        "unicli",
+        "-f",
+        "json",
+        "--permission-profile",
+        "typo",
+        "describe",
+        "twitter",
+        "search",
+      ],
+      io,
+    );
+
+    expect(handled).toBe(true);
+    expect(stdout).toEqual([]);
+    expect(process.exitCode).toBe(ExitCode.USAGE_ERROR);
+    const env = JSON.parse(stderr.join("")) as {
+      ok: boolean;
+      command: string;
+      error: { code: string; message: string; adapter_path: string };
+    };
+    expect(env.ok).toBe(false);
+    expect(env.command).toBe("twitter.search");
+    expect(env.error).toMatchObject({
+      code: "invalid_input",
+      adapter_path: "src/adapters/twitter/search.ts",
+    });
+    expect(env.error.message).toContain("invalid permission profile");
+  });
+
   it("serves generated Electron command schemas from manifest metadata", () => {
     const { stdout, io } = makeIo();
 
@@ -219,6 +259,42 @@ describe("CLI fast path", () => {
       adapter_path: "src/adapters/binance/price.yaml",
       operation_policy: { profile: "open", enforcement: "allow" },
     });
+  });
+
+  it("emits structured invalid permission profile errors for adapter dry-run", () => {
+    const { stdout, stderr, io } = makeIo();
+
+    const handled = tryRunFastPath(
+      [
+        "node",
+        "unicli",
+        "-f",
+        "json",
+        "--dry-run",
+        "--permission-profile",
+        "typo",
+        "twitter",
+        "search",
+        "agent",
+      ],
+      io,
+    );
+
+    expect(handled).toBe(true);
+    expect(stdout).toEqual([]);
+    expect(process.exitCode).toBe(ExitCode.USAGE_ERROR);
+    const env = JSON.parse(stderr.join("")) as {
+      ok: boolean;
+      command: string;
+      error: { code: string; message: string; adapter_path: string };
+    };
+    expect(env.ok).toBe(false);
+    expect(env.command).toBe("twitter.search");
+    expect(env.error).toMatchObject({
+      code: "invalid_input",
+      adapter_path: "src/adapters/twitter/search.ts",
+    });
+    expect(env.error.message).toContain("invalid permission profile");
   });
 
   it("serves user-selected operation policy in adapter dry-run plans", () => {

@@ -1,4 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const childProcessMock = vi.hoisted(() => ({
+  spawn: vi.fn(() => ({ unref: vi.fn() })),
+}));
 
 const daemonMock = vi.hoisted(() => ({
   fetchDaemonStatus: vi.fn(),
@@ -14,6 +18,10 @@ const launcherMock = vi.hoisted(() => ({
 
 const pageMock = vi.hoisted(() => ({
   connect: vi.fn(),
+}));
+
+vi.mock("node:child_process", () => ({
+  spawn: childProcessMock.spawn,
 }));
 
 vi.mock("../../src/browser/daemon-client.js", () => ({
@@ -38,8 +46,13 @@ import { BrowserBridge, DaemonPage } from "../../src/browser/bridge.js";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  childProcessMock.spawn.mockReturnValue({ unref: vi.fn() });
   launcherMock.getCDPPort.mockReturnValue(9222);
   launcherMock.isRemoteBrowser.mockReturnValue(false);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 function daemonStatus(extensionConnected: boolean) {
@@ -88,5 +101,25 @@ describe("BrowserBridge auto-start behavior", () => {
     expect(launcherMock.launchChrome).toHaveBeenCalledWith(9222);
     expect(pageMock.connect).toHaveBeenCalledWith(9222);
     expect(page).toBe(directPage);
+  });
+
+  it("honors caller timeout while waiting for a spawned daemon", async () => {
+    vi.useFakeTimers();
+    let statusChecks = 0;
+    daemonMock.fetchDaemonStatus.mockImplementation(async () => {
+      statusChecks += 1;
+      return statusChecks >= 12 ? daemonStatus(false) : null;
+    });
+
+    const bridge = new BrowserBridge() as unknown as {
+      ensureDaemonBestEffort: (timeout: number) => Promise<unknown>;
+    };
+    const pendingStatus = bridge.ensureDaemonBestEffort(3_000);
+
+    await vi.advanceTimersByTimeAsync(2_200);
+
+    await expect(pendingStatus).resolves.toMatchObject({ ok: true });
+    expect(childProcessMock.spawn).toHaveBeenCalled();
+    expect(statusChecks).toBeGreaterThanOrEqual(12);
   });
 });

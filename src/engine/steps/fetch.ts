@@ -22,6 +22,12 @@ export interface FetchConfig {
   cache?: number;
 }
 
+export function normalizeFetchAttempts(retry: number | undefined): number {
+  const attempts = retry ?? 1;
+  if (!Number.isFinite(attempts)) return 1;
+  return Math.max(1, Math.floor(attempts));
+}
+
 export async function stepFetch(
   ctx: PipelineContext,
   config: FetchConfig,
@@ -163,7 +169,7 @@ async function fetchJson(
   const proxyAgent = getProxyAgent();
   if (proxyAgent) init.dispatcher = proxyAgent;
 
-  const maxAttempts = config.retry ?? 1;
+  const maxAttempts = normalizeFetchAttempts(config.retry);
   const baseDelay = config.backoff ?? 1000;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
