@@ -10,6 +10,7 @@ import { evalTemplate, resolveTemplateDeep } from "../template.js";
 import { formatCookieHeader, loadCookiesWithCDP } from "../cookies.js";
 import { mapConcurrent } from "../download.js";
 import { getProxyAgent } from "../proxy.js";
+import { assertRuntimeNetworkAllowed } from "../runtime-resource-guard.js";
 
 export interface FetchConfig {
   url: string;
@@ -31,9 +32,17 @@ export function normalizeFetchAttempts(retry: number | undefined): number {
 export async function stepFetch(
   ctx: PipelineContext,
   config: FetchConfig,
+  stepIndex = -1,
 ): Promise<PipelineContext> {
   let url = evalTemplate(config.url, ctx);
   assertSafeRequestUrl(url);
+  assertRuntimeNetworkAllowed(ctx, {
+    action: "fetch",
+    step: stepIndex,
+    config,
+    url,
+    access: networkAccessForMethod(config.method),
+  });
 
   // Fan-out with concurrency limit when data is an array of items.
   if (Array.isArray(ctx.data)) {
@@ -46,6 +55,13 @@ export async function stepFetch(
       const itemCtx = { ...ctx, data: item };
       const itemUrl = evalTemplate(config.url, itemCtx);
       assertSafeRequestUrl(itemUrl);
+      assertRuntimeNetworkAllowed(ctx, {
+        action: "fetch",
+        step: stepIndex,
+        config,
+        url: itemUrl,
+        access: networkAccessForMethod(config.method),
+      });
       const resolvedConfig = config.body
         ? { ...config, body: resolveTemplateDeep(config.body, itemCtx) }
         : config;
@@ -95,6 +111,10 @@ export async function stepFetch(
     }
     throw err;
   }
+}
+
+function networkAccessForMethod(method = "GET"): "read" | "write" {
+  return method.toUpperCase() === "GET" ? "read" : "write";
 }
 
 const CACHE_DIR = join(homedir(), ".unicli", "cache");

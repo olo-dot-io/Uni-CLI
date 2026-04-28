@@ -4,14 +4,23 @@ import { type PipelineContext, PipelineError } from "../executor.js";
 import { assertSafeRequestUrl } from "../ssrf.js";
 import { evalTemplate } from "../template.js";
 import { getProxyAgent } from "../proxy.js";
+import { assertRuntimeNetworkAllowed } from "../runtime-resource-guard.js";
 import { normalizeFetchAttempts, type FetchConfig } from "./fetch.js";
 
 export async function stepFetchText(
   ctx: PipelineContext,
   config: FetchConfig,
+  stepIndex = -1,
 ): Promise<PipelineContext> {
   let url = evalTemplate(config.url, ctx);
   assertSafeRequestUrl(url);
+  assertRuntimeNetworkAllowed(ctx, {
+    action: "fetch_text",
+    step: stepIndex,
+    config,
+    url,
+    access: (config.method ?? "GET").toUpperCase() === "GET" ? "read" : "write",
+  });
 
   if (config.params) {
     const params = new URLSearchParams();

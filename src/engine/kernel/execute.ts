@@ -371,6 +371,7 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
         inv.adapter.base,
         {
           site: inv.adapter.name,
+          command: inv.cmdName,
           strategy,
           surface: inv.surface,
           trace_id: inv.trace_id,

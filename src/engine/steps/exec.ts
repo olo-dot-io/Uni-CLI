@@ -9,6 +9,10 @@ import {
   matchSensitivePathRealpath,
   buildSensitivePathDenial,
 } from "../../permissions/sensitive-paths.js";
+import {
+  assertRuntimeExecutableAllowed,
+  assertRuntimePathAllowed,
+} from "../runtime-resource-guard.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -51,10 +55,17 @@ function resolveTimeout(
 export async function stepExec(
   ctx: PipelineContext,
   config: ExecConfig,
+  stepIndex = -1,
 ): Promise<PipelineContext> {
   const cmd = evalTemplate(config.command, ctx);
   const execArgs = (config.args ?? []).map((a) => evalTemplate(String(a), ctx));
   const timeout = resolveTimeout(ctx, config.timeout);
+  assertRuntimeExecutableAllowed(ctx, {
+    action: "exec",
+    step: stepIndex,
+    config,
+    command: cmd,
+  });
 
   // Sensitive-path deny list — realpath-aware so symlink smuggling is
   // blocked too. Cannot be overridden by permission mode.
@@ -98,6 +109,15 @@ export async function stepExec(
   const outputFile = config.output_file
     ? evalTemplate(config.output_file, ctx)
     : undefined;
+  if (outputFile) {
+    assertRuntimePathAllowed(ctx, {
+      action: "exec",
+      step: stepIndex,
+      config,
+      path: outputFile,
+      access: "write",
+    });
+  }
 
   try {
     let stdout: string;

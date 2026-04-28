@@ -56,7 +56,7 @@ Agent execution needs an auditable, repairable, reusable command contract. Catal
 - Sites and tools: 235
 - Commands: 1448
 - Pipeline steps: 59
-- Tests: 7540
+- Tests: 7544
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -270,6 +270,12 @@ Use local deny rules for scopes that a machine must block:
 
 Save the file as `~/.unicli/permission-rules.json`, or point
 `UNICLI_PERMISSION_RULES_PATH` at it.
+
+The same rules run again inside the pipeline for runtime resources. A denied
+domain stops `fetch`, `fetch_text`, `download`, and browser `navigate` before
+the request is sent. A denied path stops downloads and command output files
+before the directory or file is created. A denied executable stops `exec` before
+the subprocess starts.
 
 ## Protocol Servers
 
@@ -2724,16 +2730,16 @@ Uni-CLI uses exit codes from `sysexits.h` — the UNIX standard for machine-pars
 
 ## Code Reference
 
-| Code | Constant              | Meaning                 | Agent Response                    |
-| ---- | --------------------- | ----------------------- | --------------------------------- |
-| 0    | `SUCCESS`             | Command succeeded       | Use the data from stdout          |
-| 1    | `GENERIC_ERROR`       | Unclassified error      | Read stderr JSON for details      |
-| 2    | `USAGE_ERROR`         | Bad arguments or syntax | Fix the command invocation        |
-| 66   | `EMPTY_RESULT`        | No data returned        | Try different parameters or query |
-| 69   | `SERVICE_UNAVAILABLE` | Target site is down     | Retry later                       |
-| 75   | `TEMP_FAILURE`        | Temporary failure       | Retry with exponential backoff    |
-| 77   | `AUTH_REQUIRED`       | Authentication needed   | Run `unicli auth setup SITE`      |
-| 78   | `CONFIG_ERROR`        | Adapter misconfigured   | Read and fix the YAML adapter     |
+| Code | Constant              | Meaning                             | Agent Response                                 |
+| ---- | --------------------- | ----------------------------------- | ---------------------------------------------- |
+| 0    | `SUCCESS`             | Command succeeded                   | Use the data from stdout                       |
+| 1    | `GENERIC_ERROR`       | Unclassified error                  | Read stderr JSON for details                   |
+| 2    | `USAGE_ERROR`         | Bad arguments or syntax             | Fix the command invocation                     |
+| 66   | `EMPTY_RESULT`        | No data returned                    | Try different parameters or query              |
+| 69   | `SERVICE_UNAVAILABLE` | Target site is down                 | Retry later                                    |
+| 75   | `TEMP_FAILURE`        | Temporary failure                   | Retry with exponential backoff                 |
+| 77   | `AUTH_REQUIRED`       | Authentication or permission needed | Run `unicli auth setup SITE` or inspect policy |
+| 78   | `CONFIG_ERROR`        | Adapter misconfigured               | Read and fix the YAML adapter                  |
 
 ## Code 0 — Success
 
@@ -2809,9 +2815,11 @@ echo $?    # 75
 
 Agent action: wait and retry the entire command. Consider adding a `rate_limit` step to the adapter if rate limiting is the recurring cause.
 
-## Code 77 — Auth Required
+## Code 77 — Auth Or Permission Required
 
-The command requires authentication, but no valid credentials are available. Either cookies have not been set up, or they have expired.
+The command needs authentication or was stopped by local permission policy.
+Authentication failures usually need fresh cookies. Permission failures usually
+name the matching deny rule in the error envelope.
 
 ```bash
 unicli bilibili feed
@@ -2825,6 +2833,9 @@ unicli auth setup bilibili    # Interactive: opens Chrome login
 unicli auth check bilibili    # Verify cookies are valid
 unicli bilibili feed          # Retry
 ```
+
+For `permission_denied`, inspect `error.suggestion` and the local
+`~/.unicli/permission-rules.json` file.
 
 ## Code 78 — Config Error
 
@@ -3650,8 +3661,10 @@ The kernel infers operation shape from the command contract and surfaces it in
   `revoke`, and `clear` inspect or remove remembered scopes.
 - `deny_rule`: local rule id and reason when `~/.unicli/permission-rules.json`
   blocks a matching site, command, effect, capability dimension, or resource
-  scope. Deny rules run before `--yes` and remembered approvals. A malformed
-  configured rule file stops execution with `invalid_input`.
+  scope. Deny rules run before `--yes` and remembered approvals. The same rule
+  layer guards runtime domains, browser navigation targets, download/output
+  paths, and subprocess executables before the operation touches that resource.
+  A malformed configured rule file stops execution with `invalid_input`.
 
 This keeps capability broad and easy to turn on, while still giving teams a way
 to tighten execution policy without rewriting adapter metadata.

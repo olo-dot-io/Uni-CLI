@@ -179,6 +179,12 @@ Use local deny rules for scopes that a machine must block:
 Save the file as `~/.unicli/permission-rules.json`, or point
 `UNICLI_PERMISSION_RULES_PATH` at it.
 
+The same rules run again inside the pipeline for runtime resources. A denied
+domain stops `fetch`, `fetch_text`, `download`, and browser `navigate` before
+the request is sent. A denied path stops downloads and command output files
+before the directory or file is created. A denied executable stops `exec` before
+the subprocess starts.
+
 ## Protocol Servers
 
 MCP:

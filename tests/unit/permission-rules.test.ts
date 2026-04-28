@@ -7,6 +7,7 @@ import { evaluateOperationPolicy } from "../../src/engine/operation-policy.js";
 import {
   createPermissionRulesStore,
   findDenyRuleForPolicySync,
+  findDenyRuleForRuntimeResourceSync,
 } from "../../src/engine/permission-rules.js";
 
 describe("permission deny rules", () => {
@@ -193,6 +194,98 @@ describe("permission deny rules", () => {
         decision: "deny",
         id: "deny-dotted-site",
         reason: "Do not query this host",
+      });
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("matches runtime resources by host boundary and path prefix", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "unicli-rules-runtime-"));
+    try {
+      const store = createPermissionRulesStore({
+        path: join(tmp, "permission-rules.json"),
+      });
+      writeFileSync(
+        store.path,
+        JSON.stringify({
+          schema_version: "1",
+          rules: [
+            {
+              id: "deny-runtime-private-zone",
+              decision: "deny",
+              match: {
+                resources: {
+                  domains: ["example.com"],
+                  paths: ["/private"],
+                },
+              },
+              reason: "runtime resource is blocked",
+            },
+          ],
+        }),
+        "utf-8",
+      );
+
+      expect(
+        findDenyRuleForRuntimeResourceSync(
+          {
+            resources: {
+              domains: ["api.example.com"],
+              paths: ["/private/report.json"],
+            },
+          },
+          { path: store.path },
+        ),
+      ).toEqual({
+        decision: "deny",
+        id: "deny-runtime-private-zone",
+        reason: "runtime resource is blocked",
+      });
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("matches runtime executables by absolute path basename", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "unicli-rules-executable-"));
+    try {
+      const store = createPermissionRulesStore({
+        path: join(tmp, "permission-rules.json"),
+      });
+      writeFileSync(
+        store.path,
+        JSON.stringify({
+          schema_version: "1",
+          rules: [
+            {
+              id: "deny-bash-runtime",
+              decision: "deny",
+              match: {
+                resources: {
+                  executables: ["bash"],
+                },
+              },
+              reason: "shell execution is blocked",
+            },
+          ],
+        }),
+        "utf-8",
+      );
+
+      expect(
+        findDenyRuleForRuntimeResourceSync(
+          {
+            resources: {
+              executables: ["/bin/bash"],
+            },
+          },
+          { path: store.path },
+        ),
+      ).toEqual({
+        decision: "deny",
+        id: "deny-bash-runtime",
+        reason: "shell execution is blocked",
       });
     } finally {
       rmSync(tmp, { recursive: true, force: true });

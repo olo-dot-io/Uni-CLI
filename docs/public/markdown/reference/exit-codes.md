@@ -11,16 +11,16 @@ Uni-CLI uses exit codes from `sysexits.h` — the UNIX standard for machine-pars
 
 ## Code Reference
 
-| Code | Constant              | Meaning                 | Agent Response                    |
-| ---- | --------------------- | ----------------------- | --------------------------------- |
-| 0    | `SUCCESS`             | Command succeeded       | Use the data from stdout          |
-| 1    | `GENERIC_ERROR`       | Unclassified error      | Read stderr JSON for details      |
-| 2    | `USAGE_ERROR`         | Bad arguments or syntax | Fix the command invocation        |
-| 66   | `EMPTY_RESULT`        | No data returned        | Try different parameters or query |
-| 69   | `SERVICE_UNAVAILABLE` | Target site is down     | Retry later                       |
-| 75   | `TEMP_FAILURE`        | Temporary failure       | Retry with exponential backoff    |
-| 77   | `AUTH_REQUIRED`       | Authentication needed   | Run `unicli auth setup SITE`      |
-| 78   | `CONFIG_ERROR`        | Adapter misconfigured   | Read and fix the YAML adapter     |
+| Code | Constant              | Meaning                             | Agent Response                                 |
+| ---- | --------------------- | ----------------------------------- | ---------------------------------------------- |
+| 0    | `SUCCESS`             | Command succeeded                   | Use the data from stdout                       |
+| 1    | `GENERIC_ERROR`       | Unclassified error                  | Read stderr JSON for details                   |
+| 2    | `USAGE_ERROR`         | Bad arguments or syntax             | Fix the command invocation                     |
+| 66   | `EMPTY_RESULT`        | No data returned                    | Try different parameters or query              |
+| 69   | `SERVICE_UNAVAILABLE` | Target site is down                 | Retry later                                    |
+| 75   | `TEMP_FAILURE`        | Temporary failure                   | Retry with exponential backoff                 |
+| 77   | `AUTH_REQUIRED`       | Authentication or permission needed | Run `unicli auth setup SITE` or inspect policy |
+| 78   | `CONFIG_ERROR`        | Adapter misconfigured               | Read and fix the YAML adapter                  |
 
 ## Code 0 — Success
 
@@ -96,9 +96,11 @@ echo $?    # 75
 
 Agent action: wait and retry the entire command. Consider adding a `rate_limit` step to the adapter if rate limiting is the recurring cause.
 
-## Code 77 — Auth Required
+## Code 77 — Auth Or Permission Required
 
-The command requires authentication, but no valid credentials are available. Either cookies have not been set up, or they have expired.
+The command needs authentication or was stopped by local permission policy.
+Authentication failures usually need fresh cookies. Permission failures usually
+name the matching deny rule in the error envelope.
 
 ```bash
 unicli bilibili feed
@@ -112,6 +114,9 @@ unicli auth setup bilibili    # Interactive: opens Chrome login
 unicli auth check bilibili    # Verify cookies are valid
 unicli bilibili feed          # Retry
 ```
+
+For `permission_denied`, inspect `error.suggestion` and the local
+`~/.unicli/permission-rules.json` file.
 
 ## Code 78 — Config Error
 

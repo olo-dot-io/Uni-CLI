@@ -31,6 +31,15 @@ interface PermissionRulesStore {
 
 type ResourceBucketName = keyof CapabilityResourceScope;
 
+export interface RuntimeResourceCheckInput {
+  site?: string;
+  command?: string;
+  effect?: OperationEffect;
+  dimensions?: Partial<Record<CapabilityDimensionName, CapabilityAccess>>;
+  resources?: Partial<Record<ResourceBucketName, string[]>>;
+  resource_summary?: string[];
+}
+
 interface ParsedPermissionRule {
   id: string;
   decision: "deny";
@@ -136,6 +145,21 @@ export function findDenyRuleForPolicySync(
   const store = createPermissionRulesStore(options);
   const rules = readRules(store.path);
   const matched = rules.find((rule) => ruleMatchesPolicy(rule, policy));
+  if (!matched) return undefined;
+  return {
+    decision: "deny",
+    id: matched.id,
+    reason: matched.reason,
+  };
+}
+
+export function findDenyRuleForRuntimeResourceSync(
+  input: RuntimeResourceCheckInput,
+  options?: { path?: string; homeDir?: string },
+): PermissionRuleMatchResult | undefined {
+  const store = createPermissionRulesStore(options);
+  const rules = readRules(store.path);
+  const matched = rules.find((rule) => ruleMatchesRuntimeResource(rule, input));
   if (!matched) return undefined;
   return {
     decision: "deny",
@@ -336,6 +360,87 @@ function ruleMatchesPolicy(
   return true;
 }
 
+function ruleMatchesRuntimeResource(
+  rule: ParsedPermissionRule,
+  input: RuntimeResourceCheckInput,
+): boolean {
+  const match = rule.match;
+  if (match.site !== undefined && match.site !== input.site) return false;
+  if (match.command !== undefined && match.command !== input.command) {
+    return false;
+  }
+  if (match.effect !== undefined && match.effect !== input.effect) {
+    return false;
+  }
+
+  if (match.dimensions) {
+    for (const [name, access] of Object.entries(match.dimensions)) {
+      if (input.dimensions?.[name as CapabilityDimensionName] !== access) {
+        return false;
+      }
+    }
+  }
+
+  if (match.resources) {
+    for (const [name, values] of Object.entries(match.resources)) {
+      const bucket = input.resources?.[name as ResourceBucketName] ?? [];
+      if (
+        !values.some((value) =>
+          bucket.some((actual) =>
+            runtimeResourceValueMatches(
+              name as ResourceBucketName,
+              value,
+              actual,
+            ),
+          ),
+        )
+      ) {
+        return false;
+      }
+    }
+  }
+
+  if (match.resource_summary) {
+    const summary = input.resource_summary ?? [];
+    if (
+      !match.resource_summary.some((value) =>
+        summary.includes(normalizeComparable(value)),
+      )
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function runtimeResourceValueMatches(
+  bucket: ResourceBucketName,
+  ruleValue: string,
+  actualValue: string,
+): boolean {
+  if (bucket === "domains") {
+    const ruleDomain = normalizeDomainComparable(ruleValue);
+    const actualDomain = normalizeDomainComparable(actualValue);
+    return (
+      actualDomain === ruleDomain || actualDomain.endsWith(`.${ruleDomain}`)
+    );
+  }
+  if (bucket === "paths") {
+    const rulePath = normalizePathComparable(ruleValue);
+    const actualPath = normalizePathComparable(actualValue);
+    return actualPath === rulePath || actualPath.startsWith(`${rulePath}/`);
+  }
+  if (bucket === "executables") {
+    const ruleExecutable = normalizeComparable(ruleValue);
+    if (ruleValue.includes("/") || ruleValue.includes("\\")) {
+      return normalizeComparable(actualValue) === ruleExecutable;
+    }
+    return normalizeExecutableComparable(actualValue) === ruleExecutable;
+  }
+  return normalizeComparable(actualValue) === normalizeComparable(ruleValue);
+}
+
 function commandRefFromPolicy(policy: OperationPolicy): {
   site: string;
   command: string;
@@ -407,6 +512,27 @@ function expectStringArray(
 
 function normalizeComparable(value: string): string {
   return value.trim().toLowerCase();
+}
+
+function normalizeDomainComparable(value: string): string {
+  const raw = normalizeComparable(value);
+  try {
+    return new URL(raw.includes("://") ? raw : `https://${raw}`).hostname;
+  } catch {
+    return raw.replace(/^https?:\/\//, "").split("/")[0] ?? raw;
+  }
+}
+
+function normalizePathComparable(value: string): string {
+  const raw = value.trim();
+  if (raw === "/") return raw;
+  return raw.replace(/\/+$/, "");
+}
+
+function normalizeExecutableComparable(value: string): string {
+  const normalized = value.trim().replace(/\\/g, "/").replace(/\/+$/, "");
+  const parts = normalized.split("/").filter(Boolean);
+  return normalizeComparable(parts.at(-1) ?? normalized);
 }
 
 function invalid(path: string, message: string): PermissionRulesConfigError {

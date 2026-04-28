@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->235<!-- /STATS --> 个站点 · <!-- STATS:command_count -->1448<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> 个 pipeline step · <!-- STATS:test_count -->7544<!-- /STATS --> 个测试</sub>
+  <sub><!-- STATS:site_count -->235<!-- /STATS --> 个站点 · <!-- STATS:command_count -->1448<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> 个 pipeline step · <!-- STATS:test_count -->7549<!-- /STATS --> 个测试</sub>
 </p>
 
 <p align="center">
@@ -308,7 +308,9 @@ columns: [title, url]
   `clear` 查看或移除已记住的 scope。文件只存 scope metadata，原始运行参数留在审批记忆之外。
 - 本地 deny 规则放在 `~/.unicli/permission-rules.json`，也可以用
   `UNICLI_PERMISSION_RULES_PATH` 指定。规则按站点、命令、effect、capability
-  维度和资源 metadata 匹配，优先级高于 `--yes` 和已记住的审批。
+  维度和资源 metadata 匹配，优先级高于 `--yes` 和已记住的审批。运行时还会检查
+  fetch 域名、浏览器跳转目标、下载和输出路径、子进程可执行文件，命中后在请求、写入或
+  启动进程之前停下。
 - Run recording 是显式启用能力。需要可审查证据时使用 `--record` 或
   `UNICLI_RECORD_RUN=1`，追加写入 `~/.unicli/runs`。
 - CUA 路由必须配置真实 backend。声明了但不可用的 provider 会失败关闭，并返回结构化错误。

@@ -6,6 +6,9 @@
  * without actually connecting to Chrome.
  */
 
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { describe, it, expect, vi } from "vitest";
 import { runPipeline, PipelineError } from "../../src/engine/yaml-runner.js";
 
@@ -99,6 +102,57 @@ describe("browser step: navigate", () => {
     });
     // networkRequests should have been polled at least once
     expect(mockPage.networkRequests).toHaveBeenCalled();
+  });
+
+  it("blocks denied navigation domains before connecting to the browser", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "unicli-browser-deny-"));
+    const originalRulesPath = process.env.UNICLI_PERMISSION_RULES_PATH;
+    const mod = await import("../../src/browser/page.js");
+    const browserPage = (
+      mod as unknown as { BrowserPage: { connect: ReturnType<typeof vi.fn> } }
+    ).BrowserPage;
+    browserPage.connect.mockClear();
+    try {
+      process.env.UNICLI_PERMISSION_RULES_PATH = join(
+        tmp,
+        "permission-rules.json",
+      );
+      writeFileSync(
+        process.env.UNICLI_PERMISSION_RULES_PATH,
+        JSON.stringify({
+          schema_version: "1",
+          rules: [
+            {
+              id: "deny-example-navigation",
+              decision: "deny",
+              match: { resources: { domains: ["example.com"] } },
+              reason: "navigation target is blocked",
+            },
+          ],
+        }),
+        "utf-8",
+      );
+
+      await expect(
+        runPipeline([{ navigate: { url: "https://example.com/private" } }], {
+          args: {},
+          source: "internal",
+        }),
+      ).rejects.toMatchObject({
+        detail: {
+          action: "navigate",
+          errorType: "permission_denied",
+        },
+      });
+      expect(browserPage.connect).not.toHaveBeenCalled();
+    } finally {
+      if (originalRulesPath === undefined) {
+        delete process.env.UNICLI_PERMISSION_RULES_PATH;
+      } else {
+        process.env.UNICLI_PERMISSION_RULES_PATH = originalRulesPath;
+      }
+      rmSync(tmp, { recursive: true, force: true });
+    }
   });
 });
 

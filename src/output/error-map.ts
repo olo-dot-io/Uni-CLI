@@ -58,6 +58,7 @@ export function errorTypeToCode(err: unknown): string {
     if (statusCode === 404) return "not_found";
     if (statusCode === 429) return "rate_limited";
     if (REF_LOCATOR_CODES.has(errorType)) return errorType;
+    if (errorType === "permission_denied") return "permission_denied";
     if (errorType === "selector_miss") return "selector_miss";
     if (errorType === "empty_result") return "empty_result";
     if (errorType === "network_error") return "network_error";
@@ -87,6 +88,7 @@ export function mapErrorToExitCode(err: unknown): number {
     )
       return ExitCode.AUTH_REQUIRED;
     if (errorType === "empty_result") return ExitCode.EMPTY_RESULT;
+    if (errorType === "permission_denied") return ExitCode.AUTH_REQUIRED;
     if (errorType === "network_error" || errorType === "timeout") {
       return ExitCode.TEMP_FAILURE;
     }
