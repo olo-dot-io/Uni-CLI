@@ -10,6 +10,7 @@ import {
   createRunCompletedEvent,
   createRunEventSequence,
   createRunStartedEvent,
+  createToolCallStartedEvent,
   type RunTraceMetadata,
 } from "../../src/engine/session/events.js";
 import {
@@ -17,6 +18,16 @@ import {
   createRunStore,
 } from "../../src/engine/session/store.js";
 import { registerRunsCommand } from "../../src/commands/runs.js";
+import {
+  compileAll,
+  _resetCompiledCacheForTests,
+} from "../../src/engine/invoke.js";
+import { registerAdapter } from "../../src/registry.js";
+import {
+  AdapterType,
+  ExitCode,
+  type AdapterManifest,
+} from "../../src/types.js";
 
 function captureConsole(): {
   getStdout: () => string;
@@ -53,13 +64,33 @@ function createProgram(): Command {
 
 describe("unicli runs command", () => {
   let tmp: string;
+  const originalExitCode = process.exitCode;
+  const replayFixture: AdapterManifest = {
+    name: "runs-replay-fixture",
+    type: AdapterType.WEB_API,
+    commands: {
+      echo: {
+        name: "echo",
+        description: "Echo replay args",
+        adapterArgs: [
+          { name: "query", type: "str", required: true, positional: true },
+        ],
+        func: async (_page, kwargs) => ({ echoed: kwargs.query }),
+      },
+    },
+  };
 
   beforeEach(() => {
     tmp = mkdtempSync(join(tmpdir(), "unicli-runs-command-"));
+    process.exitCode = undefined;
+    _resetCompiledCacheForTests();
+    registerAdapter(replayFixture);
+    compileAll([replayFixture]);
   });
 
   afterEach(() => {
     rmSync(tmp, { recursive: true, force: true });
+    process.exitCode = originalExitCode;
   });
 
   async function writeBrowserRun(rootDir: string): Promise<string> {
@@ -114,6 +145,52 @@ describe("unicli runs command", () => {
     await appendRunEvent(store, {
       ...createRunCompletedEvent(metadata, sequence, { status: "ok" }),
       timestamp: "2026-04-29T01:00:02.000Z",
+    });
+    return metadata.run_id;
+  }
+
+  async function writeReplayableRun(rootDir: string): Promise<string> {
+    const store = createRunStore({ rootDir });
+    const metadata: RunTraceMetadata = {
+      run_id: "run-replayable-01",
+      trace_id: "01HTRACEREPLAY0000000000",
+      command: "runs-replay-fixture.echo",
+      site: "runs-replay-fixture",
+      cmd: "echo",
+      adapter_path: "src/adapters/runs-replay-fixture/echo.yaml",
+      permission_profile: "open",
+      transport_surface: "cli",
+      target_surface: "web",
+      args_hash:
+        "sha256:b3dc61a04d0090681b39ec6e9610cdc3dd998ed6cbf784840ffb53b4d184eed1",
+      pipeline_steps: 0,
+    };
+    const sequence = createRunEventSequence();
+    await appendRunEvent(
+      store,
+      createRunStartedEvent(metadata, sequence, {
+        timestamp: "2026-04-29T02:00:00.000Z",
+      }),
+    );
+    await appendRunEvent(store, {
+      ...createToolCallStartedEvent(metadata, sequence),
+      timestamp: "2026-04-29T02:00:01.000Z",
+      secret: {
+        replay: {
+          schema_version: "1",
+          site: "runs-replay-fixture",
+          cmd: "echo",
+          args: { query: "hello replay" },
+          source: "shell",
+          permission_profile: "open",
+          approved: false,
+          args_hash: metadata.args_hash,
+        },
+      },
+    });
+    await appendRunEvent(store, {
+      ...createRunCompletedEvent(metadata, sequence, { status: "ok" }),
+      timestamp: "2026-04-29T02:00:02.000Z",
     });
     return metadata.run_id;
   }
@@ -286,5 +363,210 @@ describe("unicli runs command", () => {
       screenshot: "private",
     });
     expect(env.data.events[1]).not.toHaveProperty("secret");
+  });
+
+  it("probes legacy traces as not replayable when exact args are absent", async () => {
+    const rootDir = join(tmp, "runs");
+    const runId = await writeBrowserRun(rootDir);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        ["-f", "json", "runs", "probe", runId, "--root", rootDir],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: { replay: { replayable: boolean; reason: string } };
+    };
+    expect(env.data.replay.replayable).toBe(false);
+    expect(env.data.replay.reason).toContain("recorded before replay payloads");
+  });
+
+  it("probes replayable traces without exposing argument values", async () => {
+    const rootDir = join(tmp, "runs");
+    const runId = await writeReplayableRun(rootDir);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        ["-f", "json", "runs", "probe", runId, "--root", rootDir],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: {
+        replay: {
+          replayable: boolean;
+          command: string;
+          argument_keys: string[];
+        };
+      };
+    };
+    expect(env.data.replay).toMatchObject({
+      replayable: true,
+      command: "runs-replay-fixture.echo",
+      argument_keys: ["query"],
+    });
+    expect(cap.getStdout()).not.toContain("hello replay");
+  });
+
+  it("replays a recorded trace and records the replay as a new run", async () => {
+    const rootDir = join(tmp, "runs");
+    const runId = await writeReplayableRun(rootDir);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "-f",
+          "json",
+          "runs",
+          "replay",
+          runId,
+          "--root",
+          rootDir,
+          "--replay-run-id",
+          "run-replayed-01",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      ok: boolean;
+      data: {
+        original_run_id: string;
+        replay_run_id: string;
+        result: {
+          exit_code: number;
+          result_count: number;
+          envelope: { command: string; error?: unknown };
+        };
+      };
+    };
+    expect(env.ok).toBe(true);
+    expect(env.data).toMatchObject({
+      original_run_id: runId,
+      replay_run_id: "run-replayed-01",
+      result: {
+        exit_code: 0,
+        result_count: 1,
+        envelope: { command: "runs-replay-fixture.echo" },
+      },
+    });
+
+    const replayEvents = JSON.parse(cap.getStdout().trim()) as typeof env;
+    expect(replayEvents.data.result.envelope.error).toBeUndefined();
+
+    const probeCap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        ["-f", "json", "runs", "probe", "run-replayed-01", "--root", rootDir],
+        { from: "user" },
+      );
+    } finally {
+      probeCap.restore();
+    }
+    const probeEnv = JSON.parse(probeCap.getStdout().trim()) as {
+      data: {
+        replay: {
+          replayable: boolean;
+          argument_keys: string[];
+          source: string;
+        };
+      };
+    };
+    expect(probeEnv.data.replay).toMatchObject({
+      replayable: true,
+      argument_keys: ["query"],
+      source: "shell",
+    });
+  });
+
+  it("rejects invalid replay run ids before executing", async () => {
+    const rootDir = join(tmp, "runs");
+    const runId = await writeReplayableRun(rootDir);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "-f",
+          "json",
+          "runs",
+          "replay",
+          runId,
+          "--root",
+          rootDir,
+          "--replay-run-id",
+          "../escape",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      ok: boolean;
+      error: { code: string; message: string };
+    };
+    expect(env.ok).toBe(false);
+    expect(env.error).toMatchObject({
+      code: "invalid_input",
+      message: "invalid run id: ../escape",
+    });
+    expect(process.exitCode).toBe(ExitCode.USAGE_ERROR);
+  });
+
+  it("rejects replay run ids that already have a trace", async () => {
+    const rootDir = join(tmp, "runs");
+    const runId = await writeReplayableRun(rootDir);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "-f",
+          "json",
+          "runs",
+          "replay",
+          runId,
+          "--root",
+          rootDir,
+          "--replay-run-id",
+          runId,
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      ok: boolean;
+      error: { code: string; message: string };
+    };
+    expect(env.ok).toBe(false);
+    expect(env.error).toMatchObject({
+      code: "invalid_input",
+      message: `replay run id already exists: ${runId}`,
+    });
+    expect(process.exitCode).toBe(ExitCode.USAGE_ERROR);
   });
 });

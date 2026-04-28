@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { execute } from "../kernel/execute.js";
 import type { Invocation, InvocationResult } from "../kernel/types.js";
 import {
@@ -28,6 +27,7 @@ import {
   type RunId,
   type RunTraceMetadata,
 } from "./events.js";
+import { hashRunArgs } from "./args.js";
 
 export interface RunRecordingOptions {
   enabled?: boolean;
@@ -38,26 +38,6 @@ export interface RunRecordingOptions {
 export function isRunRecordingEnabled(enabled?: boolean): boolean {
   if (enabled !== undefined) return enabled;
   return process.env.UNICLI_RECORD_RUN === "1";
-}
-
-function stableJson(value: unknown): string {
-  if (Array.isArray(value)) {
-    return `[${value.map(stableJson).join(",")}]`;
-  }
-  if (value && typeof value === "object") {
-    return `{${Object.keys(value as Record<string, unknown>)
-      .sort()
-      .map(
-        (key) =>
-          `${JSON.stringify(key)}:${stableJson((value as Record<string, unknown>)[key])}`,
-      )
-      .join(",")}}`;
-  }
-  return JSON.stringify(value);
-}
-
-function hashArgs(args: Record<string, unknown>): string {
-  return `sha256:${createHash("sha256").update(stableJson(args)).digest("hex")}`;
 }
 
 function rawPermissionProfile(inv: Invocation): string {
@@ -89,8 +69,26 @@ function metadataForInvocation(
     permission_profile: rawPermissionProfile(inv),
     transport_surface: inv.surface,
     target_surface: targetSurface,
-    args_hash: hashArgs(inv.bag.args),
+    args_hash: hashRunArgs(inv.bag.args),
     pipeline_steps: inv.command.pipeline?.length ?? 0,
+  };
+}
+
+function replaySecretForInvocation(
+  inv: Invocation,
+  metadata: RunTraceMetadata,
+): Record<string, unknown> {
+  return {
+    replay: {
+      schema_version: "1",
+      site: inv.adapter.name,
+      cmd: inv.cmdName,
+      args: inv.bag.args,
+      source: inv.bag.source,
+      permission_profile: metadata.permission_profile,
+      approved: inv.approved === true,
+      args_hash: metadata.args_hash,
+    },
   };
 }
 
@@ -216,7 +214,10 @@ export async function executeWithRunRecording(
     store,
     [
       createRunStartedEvent(metadata, sequence),
-      createToolCallStartedEvent(metadata, sequence),
+      {
+        ...createToolCallStartedEvent(metadata, sequence),
+        secret: replaySecretForInvocation(inv, metadata),
+      },
       createPermissionEvaluatedEvent(
         metadata,
         sequence,

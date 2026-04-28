@@ -168,6 +168,18 @@ const CORE_SEARCH_DOCUMENTS: readonly CoreSearchDocument[] = [
     description:
       "Show recorded run trace events for debugging, replay preparation, browser lease evidence, render stability, and agent audit review.",
   },
+  {
+    site: "runs",
+    command: "probe",
+    description:
+      "Probe a recorded run trace for exact replay readiness, private args availability, command metadata, and evidence-backed reproducibility.",
+  },
+  {
+    site: "runs",
+    command: "replay",
+    description:
+      "Replay a recorded command through the native execution kernel and write a fresh replay trace for verification or repair workflows.",
+  },
 ];
 
 // ── Index Management ────────────────────────────────────────────────────────
@@ -632,7 +644,14 @@ function architectureIntentBoost(
   const terms = new Set(queryTerms);
   const runTraceIntent =
     (hasAny(terms, ["run", "runs"]) &&
-      hasAny(terms, ["trace", "traces", "recorded", "record", "replay"])) ||
+      hasAny(terms, [
+        "trace",
+        "traces",
+        "recorded",
+        "record",
+        "replay",
+        "probe",
+      ])) ||
     (terms.has("trace") && hasAny(terms, ["evidence", "audit", "lease"]));
   if (runTraceIntent && doc.site === "runs") {
     return BOOST_RUN_TRACE_INTENT;

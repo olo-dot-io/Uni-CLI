@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->235<!-- /STATS --> sites · <!-- STATS:command_count -->1448<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7504<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->235<!-- /STATS --> sites · <!-- STATS:command_count -->1448<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7509<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -131,17 +131,17 @@ Prefer native CLI / JSON stream / MCP for agent runtimes. Use ACP as an editor c
 
 Uni-CLI sits under agent applications and turns software surfaces into commands that agents can discover, execute, record, and repair.
 
-| Surface            | What you get                                                                                                            |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| Websites and APIs  | Declarative adapters for public, cookie, header, and browser-intercept workflows                                        |
-| Browser automation | CDP steps for navigate, click, type, intercept, snapshot, extract, wait, and related browser work                       |
-| Desktop and macOS  | System commands, app adapters, screenshots, clipboard, calendar, brightness, and local tools                            |
-| External CLIs      | 58 registered pass-through bridges with install/status discovery                                                        |
-| Agent backends     | Route matrix for native CLI, JSON stream, MCP, ACP, HTTP API, OpenAI-compatible, and bridge routes                      |
-| Operation policy   | `open`, `confirm`, and `locked` profiles with effect, risk, approval, and capability scope                              |
-| Evidence           | Run traces, browser session leases with tab/auth posture, render-aware evidence, movement checks, and stale-ref details |
-| Output             | v2 `AgentEnvelope` in Markdown, JSON, YAML, CSV, or compact format                                                      |
-| Repair             | Structured errors with `adapter_path`, failing `step`, retryability, suggestions, and alternatives                      |
+| Surface            | What you get                                                                                                                              |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Websites and APIs  | Declarative adapters for public, cookie, header, and browser-intercept workflows                                                          |
+| Browser automation | CDP steps for navigate, click, type, intercept, snapshot, extract, wait, and related browser work                                         |
+| Desktop and macOS  | System commands, app adapters, screenshots, clipboard, calendar, brightness, and local tools                                              |
+| External CLIs      | 58 registered pass-through bridges with install/status discovery                                                                          |
+| Agent backends     | Route matrix for native CLI, JSON stream, MCP, ACP, HTTP API, OpenAI-compatible, and bridge routes                                        |
+| Operation policy   | `open`, `confirm`, and `locked` profiles with effect, risk, approval, and capability scope                                                |
+| Evidence           | Run traces with probe/replay, browser session leases with tab/auth posture, render-aware evidence, movement checks, and stale-ref details |
+| Output             | v2 `AgentEnvelope` in Markdown, JSON, YAML, CSV, or compact format                                                                        |
+| Repair             | Structured errors with `adapter_path`, failing `step`, retryability, suggestions, and alternatives                                        |
 
 ## For Agents
 
@@ -161,6 +161,8 @@ unicli hackernews top --limit 5 -f yaml
 unicli --record --permission-profile confirm twitter search "coding agents" -f json
 unicli runs list -f json
 unicli runs show <run_id> -f json
+unicli runs probe <run_id> -f json
+unicli runs replay <run_id> --permission-profile confirm --yes -f json
 unicli browser evidence --render-aware --expect-domain example.com -f json
 ```
 
