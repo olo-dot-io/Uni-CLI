@@ -10,10 +10,11 @@ export default defineConfig({
   test: {
     globalSetup: "./tests/setup.ts",
     setupFiles: workerSetup,
-    // CI runners are 3–4× slower than dev machines. Tests that spawn child
-    // processes (e.g. MCP server stdio integration) routinely land 8–12 s
-    // in CI, brushing against the 10 s default and causing flaky failures
-    // on Dependabot PRs despite identical code. 30 s leaves headroom.
+    // CI runners and clean pre-push runs are slower than dev machines. Some
+    // unit suites exercise whole-catalog discovery and command bootstrap
+    // paths that can legitimately cross Vitest's 5s per-test default while
+    // still staying well below a product-level startup budget.
+    testTimeout: 30_000,
     hookTimeout: 30_000,
     // Several unit suites spawn `node dist/main.js` and `npx tsx` child
     // processes. Letting Vitest fan out across every core can make those
@@ -35,6 +36,7 @@ export default defineConfig({
           env: {
             ...workerEnv,
           },
+          testTimeout: 30_000,
         },
       },
       {
