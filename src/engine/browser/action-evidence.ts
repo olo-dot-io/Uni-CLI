@@ -324,6 +324,28 @@ function evidenceEventData(
           browser_workspace_id: packet.lease.browser_workspace_id,
           lease_owner: packet.lease.lease_owner,
           lease_scope: packet.lease.scope,
+          ...(packet.lease.target
+            ? {
+                browser_target_kind: packet.lease.target.kind,
+                ...(packet.lease.target.target_id
+                  ? { browser_target_id: packet.lease.target.target_id }
+                  : {}),
+                ...(typeof packet.lease.target.tab_id === "number"
+                  ? { browser_tab_id: packet.lease.target.tab_id }
+                  : {}),
+                ...(typeof packet.lease.target.window_id === "number"
+                  ? { browser_window_id: packet.lease.target.window_id }
+                  : {}),
+              }
+            : {}),
+          ...(packet.lease.auth
+            ? {
+                browser_auth_state: packet.lease.auth.state,
+                ...(typeof packet.lease.auth.cookie_count === "number"
+                  ? { browser_cookie_count: packet.lease.auth.cookie_count }
+                  : {}),
+              }
+            : {}),
         }
       : {}),
     page_url: packet.page.url,

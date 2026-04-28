@@ -121,7 +121,7 @@ unicli operate screenshot --path ./page.png
 ```
 
 浏览器动作可以附带前后证据、stale-ref 细节、移动维度、watchdog 结果、
-session lease 和 render-aware 读取，方便审查。
+session lease、tab 目标身份、cookie 姿态和 render-aware 读取，方便审查。
 
 ```bash
 unicli browser evidence --render-aware --expect-domain example.com

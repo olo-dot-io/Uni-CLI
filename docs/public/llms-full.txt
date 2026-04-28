@@ -56,7 +56,7 @@ Agent execution needs an auditable, repairable, reusable command contract. Catal
 - Sites and tools: 235
 - Commands: 1448
 - Pipeline steps: 59
-- Tests: 7496
+- Tests: 7504
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -227,8 +227,8 @@ unicli operate screenshot --path ./page.png
 ```
 
 Browser actions can attach before/after evidence, stale-ref detail, movement
-dimensions, watchdog results, session lease metadata, and render-aware reads
-when a command needs reviewable proof.
+dimensions, watchdog results, session lease metadata, tab target identity,
+cookie posture, and render-aware reads when a command needs reviewable proof.
 
 ```bash
 unicli browser evidence --render-aware --expect-domain example.com
@@ -3653,8 +3653,9 @@ Use:
 - YAML adapters for durable website/app operations.
 - CDP, accessibility, subprocess, and app APIs before CUA.
 - CUA only when it can see, act, and verify.
-- Run traces, browser session leases, render-aware evidence, and watchdog
-  movement checks when an operation needs reviewable proof.
+- Run traces, browser session leases with tab/auth posture, render-aware
+  evidence, and watchdog movement checks when an operation needs reviewable
+  proof.
 - MCP/ACP/HTTP as compatibility surfaces generated from the same catalog.
 
 Do not use:

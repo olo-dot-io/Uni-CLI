@@ -80,6 +80,7 @@ export class CDPClient {
   private nextId = 1;
   private pending = new Map<number, PendingRequest>();
   private listeners = new Map<string, Set<(params: unknown) => void>>();
+  private connectedTarget?: CDPTarget;
 
   /**
    * Connect to a Chrome tab via WebSocket.
@@ -169,6 +170,10 @@ export class CDPClient {
     set.add(handler);
   }
 
+  getConnectedTarget(): CDPTarget | undefined {
+    return this.connectedTarget;
+  }
+
   /**
    * Unsubscribe from a CDP event.
    */
@@ -182,6 +187,7 @@ export class CDPClient {
   async close(): Promise<void> {
     const ws = this.ws;
     this.ws = null;
+    this.connectedTarget = undefined;
 
     // Reject all pending requests
     for (const entry of this.pending.values()) {
@@ -251,6 +257,7 @@ export class CDPClient {
 
     const client = new CDPClient();
     await client.connect(target.webSocketDebuggerUrl);
+    client.connectedTarget = target;
 
     // Enable Page domain immediately after connection (matches reference pattern)
     try {
@@ -331,6 +338,7 @@ export class CDPClient {
     }
     this.pending.clear();
     this.ws = null;
+    this.connectedTarget = undefined;
   }
 }
 

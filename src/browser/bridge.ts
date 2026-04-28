@@ -25,6 +25,7 @@ import type {
   ScreenshotOptions,
   NetworkRequest,
 } from "../types.js";
+import type { BrowserSessionLeaseTarget } from "../engine/browser/session-lease.js";
 
 // ── Errors ────────────────────────────────────────────────────────
 
@@ -252,6 +253,59 @@ export class DaemonPage implements IPage {
 
   private cmdOpts(extra: CommandParams = {}): CommandParams {
     return { workspace: this.workspace, ...extra };
+  }
+
+  async browserTargetInfo(): Promise<BrowserSessionLeaseTarget | null> {
+    const capturedAt = new Date().toISOString();
+    try {
+      const sessionsResult = (await sendCommand("sessions")) as {
+        sessions?: Array<{
+          workspace: string;
+          windowId: number;
+          tabCount?: number;
+          owned?: boolean;
+          preferredTabId?: number | null;
+        }>;
+      };
+      const session = sessionsResult.sessions?.find(
+        (item) => item.workspace === this.workspace,
+      );
+      if (!session) return null;
+
+      const tabsResult = await sendCommand("tabs", this.cmdOpts());
+      const tabs = Array.isArray(tabsResult)
+        ? (tabsResult as Array<{ id?: number; url?: string; title?: string }>)
+        : [];
+      const preferredTabId =
+        typeof session.preferredTabId === "number"
+          ? session.preferredTabId
+          : undefined;
+      const selectedTab =
+        preferredTabId !== undefined
+          ? tabs.find((tab) => tab.id === preferredTabId)
+          : tabs[0];
+      const targetTabId =
+        preferredTabId ??
+        (typeof selectedTab?.id === "number" ? selectedTab.id : undefined);
+
+      return {
+        kind: "daemon-tab",
+        captured_at: capturedAt,
+        window_id: session.windowId,
+        ...(typeof targetTabId === "number" ? { tab_id: targetTabId } : {}),
+        ...(selectedTab?.url ? { url: selectedTab.url } : {}),
+        ...(selectedTab?.title ? { title: selectedTab.title } : {}),
+        ...(session.owned !== undefined ? { owned: session.owned } : {}),
+        ...(session.preferredTabId !== undefined
+          ? { preferred_tab_id: session.preferredTabId }
+          : {}),
+        ...(typeof session.tabCount === "number"
+          ? { tab_count: session.tabCount }
+          : {}),
+      };
+    } catch {
+      return null;
+    }
   }
 
   async goto(

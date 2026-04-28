@@ -77,6 +77,42 @@ describe("DaemonPage", () => {
       "content",
     );
   });
+
+  it("keeps preferred tab id in target info when tabs no longer include it", async () => {
+    daemonMock.sendCommand
+      .mockResolvedValueOnce({
+        sessions: [
+          {
+            workspace: "test-workspace",
+            windowId: 41,
+            tabCount: 1,
+            owned: false,
+            preferredTabId: 99,
+          },
+        ],
+      })
+      .mockResolvedValueOnce([
+        {
+          id: 77,
+          url: "https://fallback.example",
+          title: "Fallback",
+        },
+      ]);
+    const page = new DaemonPage("test-workspace");
+
+    const target = await page.browserTargetInfo();
+
+    expect(target).toMatchObject({
+      kind: "daemon-tab",
+      window_id: 41,
+      tab_id: 99,
+      preferred_tab_id: 99,
+      tab_count: 1,
+      owned: false,
+    });
+    expect(target).not.toHaveProperty("url");
+    expect(target).not.toHaveProperty("title");
+  });
 });
 
 describe("BrowserBridge auto-start behavior", () => {

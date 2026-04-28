@@ -32,6 +32,10 @@ import {
   createBrowserSessionLease,
 } from "../engine/browser/session-lease.js";
 import {
+  assertBrowserSessionLeaseTargetCurrent,
+  enrichBrowserSessionLease,
+} from "../engine/browser/session-runtime.js";
+import {
   type BrowserActionWatchdogMode,
   type BrowserActionWatchdogOptions,
   isBrowserActionEvidenceEnabled,
@@ -94,34 +98,33 @@ async function withRecordedBrowserAction<T>(
     await ensureNetworkCapture(page);
   }
   const workspace = resolveWorkspace(root, namespace);
-  const lease = browserSessionLease(root, namespace, workspace);
-  assertBrowserSessionLeaseUrlGuard(lease, await page.url());
-  return await withBrowserSessionLeaseLock(
-    lease,
-    async () =>
-      await withBrowserActionEvidence(
-        page,
-        {
-          command: `${namespace}.${action.split(" ").join("_")}`,
-          namespace,
-          action,
-          workspace,
-          lease,
-          args,
-          enabled,
-          approved: programOpts.yes === true,
-          permissionProfile: programOpts.permissionProfile,
-          watchdog: browserActionWatchdog(action),
-        },
-        fn,
-      ),
-  );
+  const lease = await browserSessionLease(root, namespace, workspace, page);
+  return await withBrowserSessionLeaseLock(lease, async () => {
+    await assertBrowserSessionLeaseTargetCurrent(lease, page);
+    return await withBrowserActionEvidence(
+      page,
+      {
+        command: `${namespace}.${action.split(" ").join("_")}`,
+        namespace,
+        action,
+        workspace,
+        lease,
+        args,
+        enabled,
+        approved: programOpts.yes === true,
+        permissionProfile: programOpts.permissionProfile,
+        watchdog: browserActionWatchdog(action),
+      },
+      fn,
+    );
+  });
 }
 
-function browserSessionLease(
+async function browserSessionLease(
   root: Command,
   namespace: "browser" | "operate",
   workspace: string,
+  page: Awaited<ReturnType<typeof getOperatorPage>>,
 ) {
   const rootOpts = root.opts() as {
     isolated?: boolean;
@@ -130,7 +133,7 @@ function browserSessionLease(
     expectDomain?: string;
     expectPathPrefix?: string;
   };
-  return createBrowserSessionLease({
+  const lease = createBrowserSessionLease({
     namespace,
     workspace,
     isolated: rootOpts.isolated,
@@ -139,6 +142,8 @@ function browserSessionLease(
     expectedDomain: rootOpts.expectDomain,
     expectedPathPrefix: rootOpts.expectPathPrefix,
   });
+  assertBrowserSessionLeaseUrlGuard(lease, await page.url());
+  return await enrichBrowserSessionLease(lease, page);
 }
 
 function browserActionWatchdog(
@@ -291,8 +296,12 @@ export function registerBrowserOperatorSubcommands(
           await ensureNetworkCapture(page);
           await installBrowserEvidenceHooks(page);
           const workspace = resolveWorkspace(root, namespace);
-          const lease = browserSessionLease(root, namespace, workspace);
-          assertBrowserSessionLeaseUrlGuard(lease, await page.url());
+          const lease = await browserSessionLease(
+            root,
+            namespace,
+            workspace,
+            page,
+          );
           const screenshotDir =
             opts.screenshot === false
               ? undefined
@@ -744,8 +753,12 @@ export function registerBrowserOperatorSubcommands(
             await ensureNetworkCapture(page);
             await installBrowserEvidenceHooks(page);
             const workspace = resolveWorkspace(root, namespace);
-            const lease = browserSessionLease(root, namespace, workspace);
-            assertBrowserSessionLeaseUrlGuard(lease, await page.url());
+            const lease = await browserSessionLease(
+              root,
+              namespace,
+              workspace,
+              page,
+            );
             const observation = await captureRenderAwareBrowserEvidence(page, {
               action: "extract",
               workspace,

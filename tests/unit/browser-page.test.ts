@@ -16,6 +16,15 @@ class MockCDPClient {
   calls: RecordedCall[] = [];
   responses = new Map<string, unknown>();
   listeners = new Map<string, Set<(params: unknown) => void>>();
+  connectedTarget:
+    | {
+        id: string;
+        type: string;
+        title: string;
+        url: string;
+        webSocketDebuggerUrl: string;
+      }
+    | undefined;
 
   async send(
     method: string,
@@ -40,6 +49,10 @@ class MockCDPClient {
 
   async close(): Promise<void> {
     // no-op for mock
+  }
+
+  getConnectedTarget(): typeof this.connectedTarget {
+    return this.connectedTarget;
   }
 
   /** Simulate firing a CDP event */
@@ -72,6 +85,60 @@ describe("BrowserPage", () => {
     const result = createPage();
     page = result.page;
     mock = result.mock;
+  });
+
+  describe("browserTargetInfo()", () => {
+    it("uses fresh Target.getTargetInfo metadata before connected-target fallback", async () => {
+      mock.connectedTarget = {
+        id: "initial-target",
+        type: "page",
+        url: "https://old.example",
+        title: "Old Title",
+        webSocketDebuggerUrl: "ws://example",
+      };
+      mock.responses.set("Target.getTargetInfo", {
+        targetInfo: {
+          targetId: "current-target",
+          type: "page",
+          url: "https://current.example",
+          title: "Current Title",
+        },
+      });
+
+      await expect(page.browserTargetInfo()).resolves.toMatchObject({
+        kind: "cdp-target",
+        target_id: "current-target",
+        target_type: "page",
+        url: "https://current.example",
+        title: "Current Title",
+      });
+    });
+
+    it("falls back to connected target identity without stale URL fields", async () => {
+      mock.connectedTarget = {
+        id: "initial-target",
+        type: "page",
+        url: "https://old.example",
+        title: "Old Title",
+        webSocketDebuggerUrl: "ws://example",
+      };
+      mock.send = vi.fn(async (method: string) => {
+        if (method === "Target.getTargetInfo") {
+          throw new Error("target info unavailable");
+        }
+        return {};
+      });
+
+      const target = await page.browserTargetInfo();
+
+      expect(target).toMatchObject({
+        kind: "cdp-target",
+        target_id: "initial-target",
+        target_type: "page",
+      });
+      expect(target).not.toHaveProperty("url");
+      expect(target).not.toHaveProperty("title");
+    });
   });
 
   describe("evaluate()", () => {
