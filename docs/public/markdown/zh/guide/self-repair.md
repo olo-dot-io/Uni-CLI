@@ -7,7 +7,7 @@
 - 栏目: 指南
 - 上级: 指南 (/zh/guide/)
 
-Uni-CLI 的 adapter 是给智能体读和改的。命令失败时，不要只重试；先读错误信封，找到坏掉的 adapter 和 pipeline step，再做小修复。
+Uni-CLI 的 adapter 是给智能体读和改的。命令失败时，先读错误信封，找到坏掉的 adapter 和 pipeline step，再做小修复。
 
 ## 失败时会看到什么
 
@@ -43,7 +43,7 @@ Uni-CLI 的 adapter 是给智能体读和改的。命令失败时，不要只重
 | `auth_required` | 运行 `unicli auth setup SITE`，确认 Cookie 文件存在。       |
 | `network_error` | 检查 URL、参数、请求头和是否被限流。                        |
 | `invalid_input` | 补充 args schema，或者把错误提示写清楚。                    |
-| `quarantined`   | 先看 quarantine 原因，不要绕过风险门禁。                    |
+| `quarantined`   | 先看 quarantine 原因，按风险门禁处理。                      |
 
 ## YAML 为什么适合自修复
 
@@ -58,7 +58,7 @@ pipeline:
       url: "${{ item.url }}"
 ```
 
-如果命令需要复杂运行时代码，再使用 TypeScript adapter；不要为了简单 fetch 引入厚抽象。
+如果命令需要复杂运行时代码，再使用 TypeScript adapter；简单 fetch 保持 YAML。
 
 ## 验证
 
@@ -69,4 +69,4 @@ npm run lint:adapters
 npm run lint:schema-v2
 ```
 
-修复成功的标准不是“没有报错”，而是返回的数据形状仍然符合命令的公开合同。
+修复成功的标准是返回的数据形状符合命令的公开合同。

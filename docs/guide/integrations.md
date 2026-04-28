@@ -1,17 +1,19 @@
 # Integrations
 
 Uni-CLI is designed to be called directly from a shell. Agent clients that need
-a protocol server can use the same catalog over MCP or ACP without changing
-adapter behavior.
+a protocol server can use the same catalog over MCP, ACP, or generated platform
+configuration while keeping adapter behavior identical.
 
 ## Choose A Path
 
-| Client need                         | Use                      |
-| ----------------------------------- | ------------------------ |
-| Any agent can run shell commands    | Native `unicli` CLI      |
-| Tool-calling clients that speak MCP | `unicli mcp serve`       |
-| Editor clients that speak ACP       | `unicli acp`             |
-| Platform-specific setup             | `unicli agents generate` |
+| Client need                         | Use                                              |
+| ----------------------------------- | ------------------------------------------------ |
+| Any agent can run shell commands    | Native `unicli` CLI                              |
+| Tool-calling clients that speak MCP | `unicli mcp serve`                               |
+| Editor clients that speak ACP       | `unicli acp`                                     |
+| Platform-specific setup             | `unicli agents generate`                         |
+| Runtime/backend selection           | `unicli agents matrix` / `recommend`             |
+| Skill-native adapter discovery      | `unicli skills export` / `unicli skills publish` |
 
 Prefer the native CLI when the agent has shell access. It keeps discovery lazy,
 outputs compact, and preserves Unix composition.
@@ -32,6 +34,14 @@ Use `unicli search "intent"` before choosing a command. Run commands as
 Markdown for human-readable agent output.
 ```
 
+For higher-risk runs, inspect before execution:
+
+```bash
+unicli describe SITE COMMAND
+unicli SITE COMMAND --dry-run
+unicli SITE COMMAND --record
+```
+
 ## MCP
 
 Start a stdio server:
@@ -46,11 +56,14 @@ Start a Streamable HTTP server:
 npx @zenalexa/unicli mcp serve --transport streamable --port 19826
 ```
 
-SSE compatibility:
+Legacy SSE compatibility:
 
 ```bash
 npx @zenalexa/unicli mcp serve --transport sse --port 19826
 ```
+
+`sse` is a deprecated alias for the Streamable transport. Use
+`--transport streamable` for new setups.
 
 Remote deployments can enable OAuth 2.1 PKCE:
 
@@ -66,6 +79,9 @@ Default MCP tools:
 | `unicli_run`     | Run a selected site command.                |
 | `unicli_list`    | List sites and commands.                    |
 | `unicli_explore` | Inspect a page before authoring an adapter. |
+
+`mcp serve` and `acp` keep raw stdio protocol behavior. Normal command surfaces
+return the v2 `AgentEnvelope`.
 
 Claude-style stdio config:
 
@@ -91,8 +107,7 @@ args = ["@zenalexa/unicli", "mcp", "serve"]
 ## ACP
 
 ACP is an editor compatibility path for clients such as avante.nvim and Zed.
-Use MCP when the client needs structured tool calls; use ACP when the client
-expects prompt/session frames.
+MCP fits structured tool calls. ACP fits prompt/session frames.
 
 ```bash
 unicli acp
@@ -131,6 +146,24 @@ unicli agents generate --for claude
 unicli agents generate --for codex
 unicli agents generate --for opencode
 ```
+
+Backend recommendations model native CLI, JSON stream, MCP, ACP, HTTP API,
+OpenAI-compatible routes, bridge CLIs, and CUA candidates explicitly.
+
+## Skills
+
+Export adapter commands as `SKILL.md` files when the agent runtime has a local
+skills directory:
+
+```bash
+unicli skills export
+unicli skills publish --to ~/.cursor/skills/uni-cli/
+unicli skills catalog --out /tmp/unicli-skills.json
+```
+
+The generated files include command name, when-to-use text, auth notes, and a
+call example. They complement runtime discovery for agents that load skills at
+startup.
 
 Manual examples:
 

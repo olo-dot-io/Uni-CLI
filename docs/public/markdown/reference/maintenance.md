@@ -127,3 +127,13 @@ include the failing adapter path, step, and suggestion.
 `unicli skills catalog` writes `docs/adapters-catalog.json` or a custom output
 path. Agents can ingest the catalog once and route directly without repeated
 discovery calls.
+
+## Repo Skills
+
+Committed skills live under `skills/<name>/SKILL.md`. The loader checks repo
+skills first, then `$HOME/.unicli/skills`, then the XDG data directory. When a
+skill declares `depends-on`, dependency resolution loads those skills before the
+requesting skill.
+
+The core `unicli` skill depends on `talk-normal`, so documentation and
+user-facing copy should load the concise writing rules before drafting text.

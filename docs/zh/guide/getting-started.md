@@ -1,8 +1,8 @@
 # 快速开始
 
-Uni-CLI 把网站、桌面应用、服务和本地工具变成命令。智能体可以搜索它们、运行它们，并在命令坏掉时修复它们。
+Uni-CLI 把网站、桌面应用、服务、本地工具、协议入口和外部 CLI 变成命令。智能体可以搜索、运行、记录和修复这些命令。
 
-它解决的不是“怎么让 Agent 打开一个网页”，而是“怎么让 Agent 稳定调用真实软件”。一条命令会把参数、认证、接口类型、输出形状和错误处理放在同一个公开合同里；外部页面或 API 变了，失败结果也会指向可修复的 adapter 和 pipeline step。
+一条命令就是调用真实软件的稳定合同。参数、认证、接口类型、输出形状、权限 profile、运行证据和错误处理都在同一个地方；外部页面或 API 变了，失败结果也会指向可修复的 adapter 和 pipeline step。
 
 ## 安装
 
@@ -23,13 +23,14 @@ unicli SITE COMMAND [args] [-f json|md|yaml|csv|compact]
 
 ## 先理解执行链路
 
-Uni-CLI 的常用路径分成三步：
+Uni-CLI 的常用路径分成四步：
 
 1. **搜索**：`unicli search` 用自然语言找到候选命令，但不执行外部动作。
 2. **执行**：`unicli SITE COMMAND` 只运行选中的命令，参数和认证边界在执行前可检查。
-3. **修复**：命令坏掉时，结构化错误会给出 adapter 路径、pipeline step、建议和替代命令。
+3. **记录**：`--record` 或 `UNICLI_RECORD_RUN=1` 可以把 append-only run trace 写到 `~/.unicli/runs`，方便复盘和调试。
+4. **修复**：命令坏掉时，结构化错误会给出 adapter 路径、pipeline step、建议和替代命令。
 
-这和直接让 Agent 写一段浏览器自动化脚本不同。浏览器、CDP、a11y、本地命令、服务接口和 CUA 都只是传输层；稳定层是命令目录和 adapter。
+浏览器、CDP、a11y、本地命令、服务接口、MCP、ACP 和 CUA 都是传输层；稳定层是命令目录、adapter 和 v2 `AgentEnvelope`。
 
 ## 找命令
 
@@ -57,7 +58,7 @@ unicli hackernews top --limit 5
 unicli hackernews top --limit 5 -f json | jq '.[0]'
 ```
 
-支持的输出格式：
+支持的输出格式和自动选择顺序：
 
 ```bash
 unicli hackernews top -f md
@@ -66,6 +67,8 @@ unicli hackernews top -f yaml
 unicli hackernews top -f csv
 unicli hackernews top -f compact
 ```
+
+优先级是 `-f` 参数、`UNICLI_OUTPUT`、agent / non-TTY 检测、Markdown。Agent UA 环境变量包括 `CLAUDE_CODE`、`CODEX_CLI`、`OPENCODE`、`HERMES_AGENT` 和 `UNICLI_AGENT`。
 
 ## 认证
 
@@ -96,7 +99,7 @@ unicli repair SITE COMMAND
 4. 重新运行 unicli repair SITE COMMAND。
 ```
 
-修复的目标不是“重试到成功”，而是让命令重新符合公开输出形状。YAML adapter 通常只有几十行，适合 Agent 读取、修改、diff 和验证；需要复杂运行时代码时再使用 TypeScript adapter。
+修复的目标是让命令重新符合公开输出形状。YAML adapter 通常只有几十行，适合 Agent 读取、修改、diff 和验证；需要复杂运行时代码时再使用 TypeScript adapter。
 
 ## 浏览器自动化
 
@@ -110,6 +113,8 @@ unicli operate type --ref 7 --text "hello"
 unicli operate screenshot --path ./page.png
 ```
 
+浏览器动作可以附带前后证据、stale-ref 细节、移动维度和 watchdog 结果，便于审查。
+
 ## 协议服务
 
 MCP：
@@ -117,7 +122,11 @@ MCP：
 ```bash
 npx @zenalexa/unicli mcp serve
 npx @zenalexa/unicli mcp serve --transport streamable --port 19826
+npx @zenalexa/unicli mcp serve --transport streamable --port 19826 --auth
 ```
+
+`--transport sse` 仍然是 Streamable 的旧别名，但新部署优先使用
+`--transport streamable`。
 
 ACP：
 
@@ -130,6 +139,7 @@ ACP 是编辑器兼容网关。coding-agent 运行时路由优先看：
 ```bash
 unicli agents matrix
 unicli agents recommend codex
+unicli agents generate --for codex
 ```
 
 ## 退出码

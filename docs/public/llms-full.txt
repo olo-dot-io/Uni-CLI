@@ -24,40 +24,48 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
 - Section: Start
 
-## Software execution for agents
+## Command-grade software access for agents
 
-Agents are moving from chat assistance to task-running systems. They need to call CLIs, APIs, browsers, and desktop apps, while keeping audit trails, permission boundaries, and recovery paths. Uni-CLI turns those software surfaces into one searchable, executable, traceable, and repairable command interface.
+Uni-CLI puts sites, apps, local tools, MCP, and external CLIs into one searchable catalog. Agents use one command path to search, run, record, repair, and hand results to any client.
 
 ## First Command
 
 ```bash
 npm install -g @zenalexa/unicli
-unicli search "twitter trending"
-unicli twitter trending --limit 10 -f json
+unicli search "connect slack messages"
+unicli agents recommend codex
+unicli mcp serve --transport streamable --port 19826
 ```
 
 ## Positioning
 
-The gap is not another protocol. It is the engineering surface around agent execution. MCP improves interoperability. Browser and computer-use automation close API gaps. Production agent workflows still need a command catalog, policy, inspectable output, exit codes, and repair loops.
+Agent execution needs an auditable, repairable, reusable command contract. Catalog search handles discovery. The v2 AgentEnvelope stabilizes output. Operation policy exposes permissions and risk. Run evidence supports review. The repair loop points failures to adapters and pipeline steps.
 
-- **Unified entry.** One catalog covers public APIs, cookie sessions, browsers, desktop apps, external CLIs, and local capabilities.
-- **Auditable execution.** Arguments, auth, policy profiles, output shape, and exit codes stay inspectable before and after a run.
-- **Recoverable failure.** When a surface changes, the error names the adapter file, pipeline step, and verification command.
+- **Discover.** Bilingual BM25 search turns a natural-language task into a site, command, arguments, and auth strategy.
+- **Execute.** HTTP, cookies, browser CDP, desktop AX, subprocess, service, and CUA all return the same envelope.
+- **Recover.** Structured errors include adapter path, step, retryable, suggestion, and alternatives.
+
+## Common Tasks
+
+- `unicli search` reads the local catalog first, then execution can inspect command, args, auth, risk, and output fields.
+- When a page or API changes, the error envelope names the adapter file and failing pipeline step.
+- Web APIs, browser automation, macOS, desktop apps, external CLIs, MCP, ACP, HTTP API, and agent backend routes share the catalog.
 
 ## Coverage
 
 - Sites and tools: 235
 - Commands: 1448
 - Pipeline steps: 59
-- Output contract: v2 AgentEnvelope
+- Tests: 7473
 
-One call path spans public APIs, cookie sessions, browsers, desktop apps, external CLIs, and local system capabilities. Agents learn one call path.
+These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
 ## Entrypoints
 
-- [First Run](/guide/getting-started): install, search, execute, authenticate, and read exit codes.
-- [Command Catalog](/reference/sites): browse by site, surface type, auth strategy, and examples.
+- [First Run](/guide/getting-started): install, search, execute, authenticate, choose output formats, and read exit codes.
+- [Command Catalog](/reference/sites): browse by site, surface, auth strategy, and examples.
 - [Adapters](/guide/adapters): YAML adapters, pipeline steps, self-repair, and verification.
+- [Integrations](/guide/integrations): native CLI, MCP, ACP, and output modes for agent runtimes.
 
 ## Current Version
 
@@ -84,14 +92,13 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/getting-started.md
 - Section: Start
 - Parent: Start (/)
 
-Uni-CLI turns websites, desktop apps, services, and local tools into commands
-that agents can search, run, and repair.
+Uni-CLI turns websites, desktop apps, services, local tools, protocols, and
+external CLIs into commands that agents can search, run, record, and repair.
 
-The point is not "open a page for the agent." The point is a stable way for an
-agent to call real software. A command keeps arguments, auth, surface type,
-output shape, and error handling in one public contract. When an external page
-or API changes, the failure points back to a repairable adapter and pipeline
-step.
+A command is a stable contract for real software. It keeps arguments, auth,
+surface type, output shape, permission profile, evidence, and error handling in
+one place. When an external page or API changes, the failure points back to a
+repairable adapter and pipeline step.
 
 ## Install
 
@@ -113,18 +120,20 @@ machine-oriented consumer needs JSON.
 
 ## Understand The Flow
 
-The common path has three steps:
+The common path has four steps:
 
 1. **Search**: `unicli search` finds candidate commands from natural language
    without touching the external surface.
 2. **Execute**: `unicli SITE COMMAND` runs the selected command with inspectable
    arguments and auth boundaries.
-3. **Repair**: structured failures include the adapter path, pipeline step,
+3. **Record**: `--record` or `UNICLI_RECORD_RUN=1` can write append-only run
+   traces under `~/.unicli/runs` for review and debugging.
+4. **Repair**: structured failures include the adapter path, pipeline step,
    suggestion, and alternatives.
 
-This differs from asking an agent to write a one-off browser script. Browser
-automation, CDP, accessibility trees, subprocesses, service APIs, and CUA are
-transport choices. The stable layer is the command catalog and adapter.
+Browser automation, CDP, accessibility trees, subprocesses, service APIs, MCP,
+ACP, and CUA are transport choices. The stable layer is the command catalog,
+adapter, and v2 `AgentEnvelope`.
 
 ## Find A Command
 
@@ -155,7 +164,7 @@ Use JSON when a script needs it:
 unicli hackernews top --limit 5 -f json | jq '.[0]'
 ```
 
-Supported formats:
+Supported formats and automatic selection:
 
 ```bash
 unicli hackernews top -f md
@@ -164,6 +173,10 @@ unicli hackernews top -f yaml
 unicli hackernews top -f csv
 unicli hackernews top -f compact
 ```
+
+Priority is `-f` flag, then `UNICLI_OUTPUT`, then agent/non-TTY detection, then
+Markdown. Agent UA variables include `CLAUDE_CODE`, `CODEX_CLI`, `OPENCODE`,
+`HERMES_AGENT`, and `UNICLI_AGENT`.
 
 ## Authentication
 
@@ -213,6 +226,9 @@ unicli operate type --ref 7 --text "hello"
 unicli operate screenshot --path ./page.png
 ```
 
+Browser actions can attach before/after evidence, stale-ref detail, movement
+dimensions, and watchdog results when a command needs reviewable proof.
+
 ## Protocol Servers
 
 MCP:
@@ -220,7 +236,11 @@ MCP:
 ```bash
 npx @zenalexa/unicli mcp serve
 npx @zenalexa/unicli mcp serve --transport streamable --port 19826
+npx @zenalexa/unicli mcp serve --transport streamable --port 19826 --auth
 ```
+
+`--transport sse` still works as a legacy alias for Streamable, but new
+deployments should use `--transport streamable`.
 
 ACP:
 
@@ -233,6 +253,7 @@ ACP is an editor compatibility gateway. For coding-agent runtime routing:
 ```bash
 unicli agents matrix
 unicli agents recommend codex
+unicli agents generate --for codex
 ```
 
 ## Exit Codes
@@ -271,17 +292,19 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/integrations.md
 - Parent: Start (/)
 
 Uni-CLI is designed to be called directly from a shell. Agent clients that need
-a protocol server can use the same catalog over MCP or ACP without changing
-adapter behavior.
+a protocol server can use the same catalog over MCP, ACP, or generated platform
+configuration while keeping adapter behavior identical.
 
 ## Choose A Path
 
-| Client need                         | Use                      |
-| ----------------------------------- | ------------------------ |
-| Any agent can run shell commands    | Native `unicli` CLI      |
-| Tool-calling clients that speak MCP | `unicli mcp serve`       |
-| Editor clients that speak ACP       | `unicli acp`             |
-| Platform-specific setup             | `unicli agents generate` |
+| Client need                         | Use                                              |
+| ----------------------------------- | ------------------------------------------------ |
+| Any agent can run shell commands    | Native `unicli` CLI                              |
+| Tool-calling clients that speak MCP | `unicli mcp serve`                               |
+| Editor clients that speak ACP       | `unicli acp`                                     |
+| Platform-specific setup             | `unicli agents generate`                         |
+| Runtime/backend selection           | `unicli agents matrix` / `recommend`             |
+| Skill-native adapter discovery      | `unicli skills export` / `unicli skills publish` |
 
 Prefer the native CLI when the agent has shell access. It keeps discovery lazy,
 outputs compact, and preserves Unix composition.
@@ -302,6 +325,14 @@ Use `unicli search "intent"` before choosing a command. Run commands as
 Markdown for human-readable agent output.
 ```
 
+For higher-risk runs, inspect before execution:
+
+```bash
+unicli describe SITE COMMAND
+unicli SITE COMMAND --dry-run
+unicli SITE COMMAND --record
+```
+
 ## MCP
 
 Start a stdio server:
@@ -316,11 +347,14 @@ Start a Streamable HTTP server:
 npx @zenalexa/unicli mcp serve --transport streamable --port 19826
 ```
 
-SSE compatibility:
+Legacy SSE compatibility:
 
 ```bash
 npx @zenalexa/unicli mcp serve --transport sse --port 19826
 ```
+
+`sse` is a deprecated alias for the Streamable transport. Use
+`--transport streamable` for new setups.
 
 Remote deployments can enable OAuth 2.1 PKCE:
 
@@ -336,6 +370,9 @@ Default MCP tools:
 | `unicli_run`     | Run a selected site command.                |
 | `unicli_list`    | List sites and commands.                    |
 | `unicli_explore` | Inspect a page before authoring an adapter. |
+
+`mcp serve` and `acp` keep raw stdio protocol behavior. Normal command surfaces
+return the v2 `AgentEnvelope`.
 
 Claude-style stdio config:
 
@@ -361,8 +398,7 @@ args = ["@zenalexa/unicli", "mcp", "serve"]
 ## ACP
 
 ACP is an editor compatibility path for clients such as avante.nvim and Zed.
-Use MCP when the client needs structured tool calls; use ACP when the client
-expects prompt/session frames.
+MCP fits structured tool calls. ACP fits prompt/session frames.
 
 ```bash
 unicli acp
@@ -401,6 +437,24 @@ unicli agents generate --for claude
 unicli agents generate --for codex
 unicli agents generate --for opencode
 ```
+
+Backend recommendations model native CLI, JSON stream, MCP, ACP, HTTP API,
+OpenAI-compatible routes, bridge CLIs, and CUA candidates explicitly.
+
+## Skills
+
+Export adapter commands as `SKILL.md` files when the agent runtime has a local
+skills directory:
+
+```bash
+unicli skills export
+unicli skills publish --to ~/.cursor/skills/uni-cli/
+unicli skills catalog --out /tmp/unicli-skills.json
+```
+
+The generated files include command name, when-to-use text, auth notes, and a
+call example. They complement runtime discovery for agents that load skills at
+startup.
 
 Manual examples:
 
@@ -1101,7 +1155,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/self-repair.md
 
 The web breaks constantly. Selectors change, APIs version, auth tokens rotate,
 desktop permission channels disappear, and CLIs change flags. Uni-CLI is
-designed to fail as data, not as an opaque log line.
+designed to fail as structured data with a bounded repair path.
 
 ## The Problem
 
@@ -1261,11 +1315,11 @@ unicli test
 
 ## Design Principles
 
-1. **Errors are data, not strings.** JSON to stderr, parseable by any agent.
+1. **Errors are structured data.** JSON to stderr, parseable by any agent.
 2. **Adapters are small.** YAML-first adapters are short enough for an agent to inspect directly.
-3. **Fixes are local.** `~/.unicli/adapters/` overrides survive updates. No fork needed.
+3. **Fixes are local.** `~/.unicli/adapters/` overrides survive updates.
 4. **Exit codes are semantic.** `sysexits.h` codes tell agents _what kind_ of failure occurred.
-5. **Suggestions are actionable.** "Try: select: data.result.feeds" — not "something went wrong."
+5. **Suggestions are actionable.** "Try: select: data.result.feeds" gives the next edit.
 
 ---
 
@@ -2935,6 +2989,16 @@ include the failing adapter path, step, and suggestion.
 `unicli skills catalog` writes `docs/adapters-catalog.json` or a custom output
 path. Agents can ingest the catalog once and route directly without repeated
 discovery calls.
+
+## Repo Skills
+
+Committed skills live under `skills/<name>/SKILL.md`. The loader checks repo
+skills first, then `$HOME/.unicli/skills`, then the XDG data directory. When a
+skill declares `depends-on`, dependency resolution loads those skills before the
+requesting skill.
+
+The core `unicli` skill depends on `talk-normal`, so documentation and
+user-facing copy should load the concise writing rules before drafting text.
 
 ---
 

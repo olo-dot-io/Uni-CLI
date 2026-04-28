@@ -30,7 +30,7 @@ const siteBase = configuredSiteBase
     : "/";
 const siteOrigin = "https://olo-dot-io.github.io";
 const publicSiteUrl = `${siteOrigin}${siteBase}`;
-const zhDescription = "给 Agent 操作真实软件的软件执行层";
+const zhDescription = "给 Agent 的命令级软件入口。";
 const npmPackageUrl = "https://www.npmjs.com/package/@zenalexa/unicli";
 const npmIcon = `<svg viewBox="0 0 48 24" aria-hidden="true"><rect x="1" y="5" width="46" height="15" rx="1" fill="#cb3837"/><text x="6" y="17" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" letter-spacing="-1">npm</text></svg>`;
 
@@ -161,7 +161,7 @@ function escapeMustacheInFence(md: any) {
 export default defineConfig({
   title: "Uni-CLI",
   lang: localizedSiteMaps.root.lang,
-  description: "A software execution layer for agents operating real software.",
+  description: "Command-grade software access for agents.",
   base: siteBase,
   srcExclude: ["public/markdown/**/*.md", "demo/README.md"],
   cleanUrls: true,
@@ -189,7 +189,7 @@ export default defineConfig({
       {
         property: "og:description",
         content:
-          "A software execution layer for agents operating websites, apps, local tools, system capabilities, and external CLIs.",
+          "A searchable execution layer for sites, apps, local tools, MCP, and external CLIs.",
       },
     ],
     ["meta", { property: "og:url", content: publicSiteUrl }],
@@ -207,7 +207,7 @@ export default defineConfig({
     [
       "link",
       {
-        href: "https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap",
         rel: "stylesheet",
       },
     ],

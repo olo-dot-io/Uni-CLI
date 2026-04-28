@@ -1,13 +1,12 @@
 # Getting Started
 
-Uni-CLI turns websites, desktop apps, services, and local tools into commands
-that agents can search, run, and repair.
+Uni-CLI turns websites, desktop apps, services, local tools, protocols, and
+external CLIs into commands that agents can search, run, record, and repair.
 
-The point is not "open a page for the agent." The point is a stable way for an
-agent to call real software. A command keeps arguments, auth, surface type,
-output shape, and error handling in one public contract. When an external page
-or API changes, the failure points back to a repairable adapter and pipeline
-step.
+A command is a stable contract for real software. It keeps arguments, auth,
+surface type, output shape, permission profile, evidence, and error handling in
+one place. When an external page or API changes, the failure points back to a
+repairable adapter and pipeline step.
 
 ## Install
 
@@ -29,18 +28,20 @@ machine-oriented consumer needs JSON.
 
 ## Understand The Flow
 
-The common path has three steps:
+The common path has four steps:
 
 1. **Search**: `unicli search` finds candidate commands from natural language
    without touching the external surface.
 2. **Execute**: `unicli SITE COMMAND` runs the selected command with inspectable
    arguments and auth boundaries.
-3. **Repair**: structured failures include the adapter path, pipeline step,
+3. **Record**: `--record` or `UNICLI_RECORD_RUN=1` can write append-only run
+   traces under `~/.unicli/runs` for review and debugging.
+4. **Repair**: structured failures include the adapter path, pipeline step,
    suggestion, and alternatives.
 
-This differs from asking an agent to write a one-off browser script. Browser
-automation, CDP, accessibility trees, subprocesses, service APIs, and CUA are
-transport choices. The stable layer is the command catalog and adapter.
+Browser automation, CDP, accessibility trees, subprocesses, service APIs, MCP,
+ACP, and CUA are transport choices. The stable layer is the command catalog,
+adapter, and v2 `AgentEnvelope`.
 
 ## Find A Command
 
@@ -71,7 +72,7 @@ Use JSON when a script needs it:
 unicli hackernews top --limit 5 -f json | jq '.[0]'
 ```
 
-Supported formats:
+Supported formats and automatic selection:
 
 ```bash
 unicli hackernews top -f md
@@ -80,6 +81,10 @@ unicli hackernews top -f yaml
 unicli hackernews top -f csv
 unicli hackernews top -f compact
 ```
+
+Priority is `-f` flag, then `UNICLI_OUTPUT`, then agent/non-TTY detection, then
+Markdown. Agent UA variables include `CLAUDE_CODE`, `CODEX_CLI`, `OPENCODE`,
+`HERMES_AGENT`, and `UNICLI_AGENT`.
 
 ## Authentication
 
@@ -129,6 +134,9 @@ unicli operate type --ref 7 --text "hello"
 unicli operate screenshot --path ./page.png
 ```
 
+Browser actions can attach before/after evidence, stale-ref detail, movement
+dimensions, and watchdog results when a command needs reviewable proof.
+
 ## Protocol Servers
 
 MCP:
@@ -136,7 +144,11 @@ MCP:
 ```bash
 npx @zenalexa/unicli mcp serve
 npx @zenalexa/unicli mcp serve --transport streamable --port 19826
+npx @zenalexa/unicli mcp serve --transport streamable --port 19826 --auth
 ```
+
+`--transport sse` still works as a legacy alias for Streamable, but new
+deployments should use `--transport streamable`.
 
 ACP:
 
@@ -149,6 +161,7 @@ ACP is an editor compatibility gateway. For coding-agent runtime routing:
 ```bash
 unicli agents matrix
 unicli agents recommend codex
+unicli agents generate --for codex
 ```
 
 ## Exit Codes

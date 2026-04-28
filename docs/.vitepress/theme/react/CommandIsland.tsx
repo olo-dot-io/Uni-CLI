@@ -38,8 +38,8 @@ const copy: Record<
       {
         value: "discover",
         label: "01 Discover",
-        title: "Search selects a command. It does not hide an action.",
-        body: "The catalog can be broad because execution is still a separate, explicit command with visible inputs.",
+        title: "Search selects a command with the action still visible.",
+        body: "The catalog can be broad because execution stays explicit and keeps inputs visible.",
         command: 'unicli search "hacker news frontpage"',
         details: [
           { name: "ranked result", value: "site, command, summary, examples" },
@@ -50,7 +50,7 @@ const copy: Record<
       {
         value: "execute",
         label: "02 Execute",
-        title: "Execution returns one envelope, not a one-off blob.",
+        title: "Execution returns one stable envelope.",
         body: "The same command can render Markdown for review or JSON/YAML/CSV for programs without changing the underlying result shape.",
         command: "unicli hackernews top --limit 5 -f json",
         details: [
@@ -89,13 +89,13 @@ const copy: Record<
         details: [
           { name: "排序结果", value: "站点、命令、摘要、样例" },
           { name: "执行形状", value: "参数 schema、认证、接口类型" },
-          { name: "副作用", value: "没有，只做发现" },
+          { name: "副作用", value: "发现阶段只读目录" },
         ],
       },
       {
         value: "execute",
         label: "02 执行",
-        title: "执行返回统一 envelope，不吐一段临时文本。",
+        title: "执行返回统一 envelope，结果形状稳定。",
         body: "同一条命令可以渲染成 Markdown 给人审阅，也可以输出 JSON/YAML/CSV 给程序消费，底层结果形状不变。",
         command: "unicli hackernews top --limit 5 -f json",
         details: [

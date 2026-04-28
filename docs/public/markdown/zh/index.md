@@ -6,40 +6,48 @@
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/zh/index.md
 - 栏目: 上手
 
-## 面向 Agent 的软件执行层
+## 给 Agent 的命令级软件入口
 
-Agent 正从聊天助手走向任务执行系统：它需要调用 CLI、API、浏览器和桌面应用，也需要审计记录、权限边界和失败后的恢复路径。Uni-CLI 把这些软件入口整理成同一套可搜索、可执行、可追踪、可修复的命令接口。
+Uni-CLI 把网站、桌面应用、本机工具、MCP 和外部 CLI 放进同一个可搜索目录。Agent 通过一条命令路径完成搜索、执行、记录、修复，再把结果交给任意客户端消费。
 
 ## 第一条命令
 
 ```bash
 npm install -g @zenalexa/unicli
-unicli search "twitter trending"
-unicli twitter trending --limit 10 -f json
+unicli search "connect slack messages"
+unicli agents recommend codex
+unicli mcp serve --transport streamable --port 19826
 ```
 
 ## 定位
 
-不是再造一个协议层，而是补齐 Agent 执行的工程面。MCP 解决互操作，browser / computer-use 补 API 空白；真正进入生产环境时，还需要命令目录、权限策略、可审计输出、退出码和修复循环。
+Agent 执行需要一层可审计、可修复、可复用的命令合同。目录搜索负责发现能力，v2 AgentEnvelope 负责稳定输出，operation policy 负责权限和风险，run evidence 负责复盘，自修复 loop 负责把失败指向 adapter 与 pipeline step。
 
-- **统一入口。** 同一个目录覆盖公开 API、Cookie 会话、浏览器、桌面应用、外部 CLI 和本机能力。
-- **可审计执行。** 参数、认证、权限 profile、输出结构和退出码在运行前后都能检查，不靠 prompt 约定。
-- **可恢复失败。** 外部页面或 API 变了，错误要指向 adapter 文件、pipeline step 和复现命令。
+- **发现。** BM25 双语搜索把自然语言意图收敛到具体站点、命令、参数和认证策略。
+- **执行。** HTTP、Cookie、浏览器 CDP、桌面 AX、subprocess、service 和 CUA 走同一套 envelope。
+- **恢复。** 结构化错误带上 adapter path、step、retryable、suggestion 和 alternatives。
+
+## 常见任务
+
+- `unicli search` 只查本地目录，命令选定后再读取参数、认证、风险和输出字段。
+- 页面改版或接口失效时，错误 envelope 指出 adapter 文件和失败的 pipeline step。
+- Web API、浏览器、macOS、本地桌面应用、外部 CLI、MCP、ACP、HTTP API 和 agent backend routes 共享目录。
 
 ## 覆盖范围
 
 - 站点和工具：235
 - 命令：1448
 - Pipeline step：59
-- 输出协议：v2 AgentEnvelope
+- 测试：7473
 
-同一套调用路径覆盖公开 API、Cookie 会话、浏览器、桌面应用、外部 CLI 和本机能力。Agent 只需要学一条调用路径。
+能力规模来自当前仓库生成物：adapter、命令、pipeline step、测试和 transport 都在本地构建流程里计数。
 
 ## 入口
 
-- [安装运行](/zh/guide/getting-started)：安装、搜索、运行、认证和常见退出码。
-- [命令目录](/zh/reference/sites)：按站点、接口类型、认证方式和命令样例检索。
+- [安装运行](/zh/guide/getting-started)：安装、搜索、执行、认证、输出格式和退出码。
+- [命令目录](/zh/reference/sites)：按站点、surface、认证方式和命令样例检索。
 - [适配器](/zh/guide/adapters)：YAML 格式、pipeline step、自修复流程和验证方式。
+- [接入 Agent](/zh/guide/integrations)：原生 CLI、MCP、ACP 和可消费输出的取舍。
 
 ## 当前版本
 
