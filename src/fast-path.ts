@@ -6,7 +6,7 @@
  * be answered from the generated manifest and search index.
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { search } from "./discovery/search.js";
@@ -78,6 +78,15 @@ const DEFAULT_IO: Io = {
   stdout: (text) => process.stdout.write(`${text}\n`),
   stderr: (text) => process.stderr.write(`${text}\n`),
 };
+
+function emitStderrAndExit(io: Io, text: string, code: number): void {
+  if (io === DEFAULT_IO) {
+    writeSync(process.stderr.fd, `${text}\n`);
+    process.exit(code);
+  }
+  io.stderr(text);
+  process.exitCode = code;
+}
 
 function isOutputFormat(value: string): value is OutputFormat {
   return (
@@ -836,7 +845,8 @@ function handleAdapterPolicyGate(parsed: ParsedArgv, io: Io): boolean {
 
     if (operationPolicy.enforcement !== "needs_approval") return false;
 
-    io.stderr(
+    emitStderrAndExit(
+      io,
       format([], command.columns, detectFormat(parsed.format), {
         command: `${parsed.command}.${cmdName}`,
         duration_ms: Date.now() - startedAt,
@@ -862,13 +872,14 @@ function handleAdapterPolicyGate(parsed: ParsedArgv, io: Io): boolean {
           "permission_denied",
         ),
       }),
+      ExitCode.AUTH_REQUIRED,
     );
-    process.exitCode = ExitCode.AUTH_REQUIRED;
     return true;
   } catch (error) {
     if (!(error instanceof InvalidPermissionProfileError)) throw error;
 
-    io.stderr(
+    emitStderrAndExit(
+      io,
       format([], command.columns, detectFormat(parsed.format), {
         command: `${parsed.command}.${cmdName}`,
         duration_ms: Date.now() - startedAt,
@@ -887,8 +898,8 @@ function handleAdapterPolicyGate(parsed: ParsedArgv, io: Io): boolean {
           "invalid_input",
         ),
       }),
+      ExitCode.USAGE_ERROR,
     );
-    process.exitCode = ExitCode.USAGE_ERROR;
     return true;
   }
 }
