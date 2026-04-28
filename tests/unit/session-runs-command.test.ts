@@ -9,7 +9,10 @@ import {
   createEvidenceCapturedEvent,
   createRunCompletedEvent,
   createRunEventSequence,
+  createRunFailedEvent,
   createRunStartedEvent,
+  createToolCallCompletedEvent,
+  createToolCallFailedEvent,
   createToolCallStartedEvent,
   type RunTraceMetadata,
 } from "../../src/engine/session/events.js";
@@ -188,9 +191,102 @@ describe("unicli runs command", () => {
         },
       },
     });
+    const resultData = {
+      exit_code: 0,
+      result_count: 1,
+      duration_ms: 10,
+      outcome: "success",
+      envelope: { command: "runs-replay-fixture.echo" },
+    };
     await appendRunEvent(store, {
-      ...createRunCompletedEvent(metadata, sequence, { status: "ok" }),
+      ...createToolCallCompletedEvent(metadata, sequence, resultData),
       timestamp: "2026-04-29T02:00:02.000Z",
+    });
+    await appendRunEvent(
+      store,
+      createEvidenceCapturedEvent(metadata, sequence, {
+        evidence_type: "result-envelope",
+        data: {
+          outcome: "success",
+          exit_code: 0,
+          result_count: 1,
+          duration_ms: 10,
+          adapter_path: metadata.adapter_path,
+          envelope_command: "runs-replay-fixture.echo",
+          has_error: false,
+        },
+        timestamp: "2026-04-29T02:00:03.000Z",
+      }),
+    );
+    await appendRunEvent(store, {
+      ...createRunCompletedEvent(metadata, sequence, resultData),
+      timestamp: "2026-04-29T02:00:04.000Z",
+    });
+    return metadata.run_id;
+  }
+
+  async function writeDivergedRun(rootDir: string): Promise<string> {
+    const store = createRunStore({ rootDir });
+    const metadata: RunTraceMetadata = {
+      run_id: "run-drifted-01",
+      trace_id: "01HTRACEDRIFT00000000000",
+      command: "runs-replay-fixture.echo",
+      site: "runs-replay-fixture",
+      cmd: "echo",
+      adapter_path: "src/adapters/runs-replay-fixture/echo.yaml",
+      permission_profile: "open",
+      transport_surface: "cli",
+      target_surface: "web",
+      args_hash:
+        "sha256:b3dc61a04d0090681b39ec6e9610cdc3dd998ed6cbf784840ffb53b4d184eed1",
+      pipeline_steps: 0,
+    };
+    const sequence = createRunEventSequence();
+    const error = {
+      code: "auth_required",
+      message: "auth drift",
+      adapter_path: metadata.adapter_path,
+    };
+    const resultData = {
+      exit_code: 77,
+      result_count: 0,
+      duration_ms: 12,
+      error,
+      envelope: { command: "runs-replay-fixture.echo", error },
+    };
+    await appendRunEvent(
+      store,
+      createRunStartedEvent(metadata, sequence, {
+        timestamp: "2026-04-29T02:10:00.000Z",
+      }),
+    );
+    await appendRunEvent(store, {
+      ...createToolCallStartedEvent(metadata, sequence),
+      timestamp: "2026-04-29T02:10:01.000Z",
+    });
+    await appendRunEvent(store, {
+      ...createToolCallFailedEvent(metadata, sequence, resultData),
+      timestamp: "2026-04-29T02:10:02.000Z",
+    });
+    await appendRunEvent(
+      store,
+      createEvidenceCapturedEvent(metadata, sequence, {
+        evidence_type: "result-envelope",
+        data: {
+          outcome: "failure",
+          exit_code: 77,
+          result_count: 0,
+          duration_ms: 12,
+          adapter_path: metadata.adapter_path,
+          envelope_command: "runs-replay-fixture.echo",
+          has_error: true,
+        },
+        timestamp: "2026-04-29T02:10:03.000Z",
+      }),
+    );
+    await appendRunEvent(store, {
+      ...createRunFailedEvent(metadata, sequence, resultData),
+      timestamp: "2026-04-29T02:10:04.000Z",
     });
     return metadata.run_id;
   }
@@ -454,6 +550,10 @@ describe("unicli runs command", () => {
           result_count: number;
           envelope: { command: string; error?: unknown };
         };
+        comparison: {
+          status: string;
+          behavior: { diverged: number; unknown: number };
+        };
       };
     };
     expect(env.ok).toBe(true);
@@ -464,6 +564,10 @@ describe("unicli runs command", () => {
         exit_code: 0,
         result_count: 1,
         envelope: { command: "runs-replay-fixture.echo" },
+      },
+      comparison: {
+        status: "match",
+        behavior: { diverged: 0, unknown: 0 },
       },
     });
 
@@ -494,6 +598,158 @@ describe("unicli runs command", () => {
       argument_keys: ["query"],
       source: "shell",
     });
+  });
+
+  it("compares replay traces without exposing argument values", async () => {
+    const rootDir = join(tmp, "runs");
+    const runId = await writeReplayableRun(rootDir);
+
+    const replayCap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "-f",
+          "json",
+          "runs",
+          "replay",
+          runId,
+          "--root",
+          rootDir,
+          "--replay-run-id",
+          "run-replayed-01",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      replayCap.restore();
+    }
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "-f",
+          "json",
+          "runs",
+          "compare",
+          runId,
+          "run-replayed-01",
+          "--root",
+          rootDir,
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      ok: boolean;
+      command: string;
+      data: {
+        status: string;
+        behavior: { match: number; diverged: number; unknown: number };
+        checks: Array<{ name: string; status: string }>;
+      };
+    };
+    expect(env.ok).toBe(true);
+    expect(env.command).toBe("runs.compare");
+    expect(env.data.status).toBe("match");
+    expect(env.data.behavior.diverged).toBe(0);
+    expect(env.data.behavior.unknown).toBe(0);
+    expect(env.data.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "command", status: "match" }),
+        expect.objectContaining({ name: "args_hash", status: "match" }),
+        expect.objectContaining({ name: "result_count", status: "match" }),
+      ]),
+    );
+    expect(cap.getStdout()).not.toContain("hello replay");
+  });
+
+  it("reports behavioral divergence between run traces", async () => {
+    const rootDir = join(tmp, "runs");
+    const runId = await writeReplayableRun(rootDir);
+    const driftedRunId = await writeDivergedRun(rootDir);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "-f",
+          "json",
+          "runs",
+          "compare",
+          runId,
+          driftedRunId,
+          "--root",
+          rootDir,
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: {
+        status: string;
+        behavior: { diverged: number };
+        checks: Array<{ name: string; status: string }>;
+      };
+    };
+    expect(env.data.status).toBe("diverged");
+    expect(env.data.behavior.diverged).toBeGreaterThan(0);
+    expect(env.data.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "status", status: "diverged" }),
+        expect.objectContaining({ name: "exit_code", status: "diverged" }),
+        expect.objectContaining({ name: "error_code", status: "unknown" }),
+        expect.objectContaining({
+          name: "result_envelope_has_error",
+          status: "diverged",
+        }),
+      ]),
+    );
+  });
+
+  it("rejects compare when either trace is missing", async () => {
+    const rootDir = join(tmp, "runs");
+    const runId = await writeReplayableRun(rootDir);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "-f",
+          "json",
+          "runs",
+          "compare",
+          runId,
+          "run-missing-01",
+          "--root",
+          rootDir,
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      ok: boolean;
+      error: { code: string; message: string };
+    };
+    expect(env.ok).toBe(false);
+    expect(env.error).toMatchObject({
+      code: "invalid_input",
+      message: "run trace not found or empty: run-missing-01",
+    });
+    expect(process.exitCode).toBe(ExitCode.USAGE_ERROR);
   });
 
   it("rejects invalid replay run ids before executing", async () => {

@@ -56,7 +56,7 @@ Agent execution needs an auditable, repairable, reusable command contract. Catal
 - Sites and tools: 235
 - Commands: 1448
 - Pipeline steps: 59
-- Tests: 7509
+- Tests: 7512
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -237,6 +237,7 @@ unicli runs list
 unicli runs show <run_id>
 unicli runs probe <run_id>
 unicli runs replay <run_id> --permission-profile confirm --yes
+unicli runs compare <run_id> <replay_run_id>
 ```
 
 ## Protocol Servers
@@ -3655,9 +3656,9 @@ Use:
 - YAML adapters for durable website/app operations.
 - CDP, accessibility, subprocess, and app APIs before CUA.
 - CUA only when it can see, act, and verify.
-- Probeable and replayable run traces, browser session leases with tab/auth posture, render-aware
-  evidence, and watchdog movement checks when an operation needs reviewable
-  proof.
+- Probeable, replayable, and comparable run traces, browser session leases with
+  tab/auth posture, render-aware evidence, and watchdog movement checks when an
+  operation needs reviewable proof.
 - MCP/ACP/HTTP as compatibility surfaces generated from the same catalog.
 
 Do not use:
@@ -4051,7 +4052,7 @@ This file tracks current engineering direction. Historical release notes live in
 | Adapter catalog      | Web, browser, desktop, macOS, bridge, and external CLI surfaces are discoverable through `unicli list` and `unicli search`. |
 | v2 output envelope   | Normal command surfaces return structured success and error envelopes.                                                      |
 | Operation policy     | `open`, `confirm`, and `locked` profiles expose effect, risk, approval, and capability scope.                               |
-| Run recording        | `--record` and `UNICLI_RECORD_RUN=1` write append-only run traces that agents can list, show, probe, and replay.            |
+| Run recording        | `--record` and `UNICLI_RECORD_RUN=1` write append-only run traces that agents can list, show, probe, replay, and compare.   |
 | Browser evidence     | Browser operator actions can emit pre/post evidence, movement dimensions, stale-ref details, and watchdog results.          |
 | MCP server           | Stdio, Streamable HTTP, SSE, and optional OAuth 2.1 PKCE entry points are available.                                        |
 | ACP gateway          | Supported as an editor compatibility path, not the primary runtime abstraction.                                             |
@@ -4063,7 +4064,7 @@ This file tracks current engineering direction. Historical release notes live in
 
 1. **Run/event kernel hardening**
    - Keep run traces append-only, local, and private by default.
-   - Let agents probe replayability before repeating a command.
+   - Let agents probe replayability before repeating a command, then compare the replay trace against the original.
    - Extend evidence coverage across transport classes without making opaque
      browser screenshots the only proof.
    - Keep result envelopes, permission evaluations, and browser action evidence

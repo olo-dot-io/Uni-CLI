@@ -180,6 +180,12 @@ const CORE_SEARCH_DOCUMENTS: readonly CoreSearchDocument[] = [
     description:
       "Replay a recorded command through the native execution kernel and write a fresh replay trace for verification or repair workflows.",
   },
+  {
+    site: "runs",
+    command: "compare",
+    description:
+      "Compare two recorded run traces for replay evaluation, behavior drift, result envelope differences, repair verification, and reproducible agent audit checks.",
+  },
 ];
 
 // ── Index Management ────────────────────────────────────────────────────────

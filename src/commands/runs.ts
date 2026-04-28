@@ -18,6 +18,7 @@ import {
   extractRunReplayInvocation,
   extractRunReplayPlan,
 } from "../engine/session/replay.js";
+import { compareRunEvents } from "../engine/session/compare.js";
 import { buildInvocation } from "../engine/invoke.js";
 import { executeWithRunRecording } from "../engine/session/run-loop.js";
 
@@ -41,6 +42,10 @@ interface RunsReplayOptions {
   permissionProfile?: string;
   yes?: boolean;
   replayRunId?: string;
+}
+
+interface RunsCompareOptions {
+  root?: string;
 }
 
 function fmt(program: Command): OutputFormat {
@@ -141,6 +146,53 @@ export function registerRunsCommand(program: Command): void {
         ),
       );
     });
+
+  runs
+    .command("compare <left_run_id> <right_run_id>")
+    .description("Compare two recorded run traces for replay/eval review")
+    .option("--root <path>", "Override run trace root")
+    .action(
+      async (
+        leftRunId: string,
+        rightRunId: string,
+        opts: RunsCompareOptions,
+      ) => {
+        const startedAt = Date.now();
+        const store = createRunStore({ rootDir: opts.root });
+        const leftEvents = await readRunEvents(store, leftRunId);
+        if (leftEvents.length === 0) {
+          printRunError(program, "runs.compare", startedAt, {
+            code: "invalid_input",
+            message: `run trace not found or empty: ${leftRunId}`,
+            suggestion: "run `unicli runs list` and choose an existing run id",
+            retryable: false,
+          });
+          return;
+        }
+        const rightEvents = await readRunEvents(store, rightRunId);
+        if (rightEvents.length === 0) {
+          printRunError(program, "runs.compare", startedAt, {
+            code: "invalid_input",
+            message: `run trace not found or empty: ${rightRunId}`,
+            suggestion: "run `unicli runs list` and choose an existing run id",
+            retryable: false,
+          });
+          return;
+        }
+        const comparison = compareRunEvents(leftEvents, rightEvents, {
+          leftRunId,
+          rightRunId,
+        });
+        console.log(
+          format(
+            { ...comparison },
+            undefined,
+            fmt(program),
+            makeCtx("runs.compare", startedAt),
+          ),
+        );
+      },
+    );
 
   runs
     .command("replay <run_id>")
@@ -252,6 +304,11 @@ export function registerRunsCommand(program: Command): void {
         store,
         runId: replayRunId,
       });
+      const replayEvents = await readRunEvents(store, replayRunId);
+      const comparison = compareRunEvents(events, replayEvents, {
+        leftRunId: runId,
+        rightRunId: replayRunId,
+      });
       console.log(
         format(
           {
@@ -273,6 +330,7 @@ export function registerRunsCommand(program: Command): void {
               envelope: result.envelope,
               warnings: result.warnings,
             },
+            comparison,
           },
           undefined,
           fmt(program),

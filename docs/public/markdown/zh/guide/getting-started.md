@@ -130,6 +130,7 @@ unicli runs list
 unicli runs show <run_id>
 unicli runs probe <run_id>
 unicli runs replay <run_id> --permission-profile confirm --yes
+unicli runs compare <run_id> <replay_run_id>
 ```
 
 ## 协议服务

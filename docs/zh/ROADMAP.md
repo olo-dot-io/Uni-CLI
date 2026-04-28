@@ -6,18 +6,18 @@
 
 ## 已发布
 
-| 方向             | 状态                                                                             |
-| ---------------- | -------------------------------------------------------------------------------- |
-| Adapter catalog  | Web、browser、desktop、macOS、bridge、external CLI 都能通过 `list/search` 发现。 |
-| v2 envelope      | 常规命令返回结构化成功/失败信封。                                                |
-| Operation policy | `open`、`confirm`、`locked` profile 已暴露 effect、risk、approval、capability。  |
-| Run recording    | `--record` / `UNICLI_RECORD_RUN=1` 会写入 `~/.unicli/runs`。                     |
-| Browser evidence | 浏览器动作可以记录前后证据、移动维度、stale-ref 细节和 watchdog 结果。           |
-| Agent backends   | native CLI、JSON stream、MCP、ACP、HTTP API、OpenAI-compatible、bridge 已建模。  |
+| 方向             | 状态                                                                                      |
+| ---------------- | ----------------------------------------------------------------------------------------- |
+| Adapter catalog  | Web、browser、desktop、macOS、bridge、external CLI 都能通过 `list/search` 发现。          |
+| v2 envelope      | 常规命令返回结构化成功/失败信封。                                                         |
+| Operation policy | `open`、`confirm`、`locked` profile 已暴露 effect、risk、approval、capability。           |
+| Run recording    | `--record` / `UNICLI_RECORD_RUN=1` 会写入可 list/show/probe/replay/compare 的 run trace。 |
+| Browser evidence | 浏览器动作可以记录前后证据、移动维度、stale-ref 细节和 watchdog 结果。                    |
+| Agent backends   | native CLI、JSON stream、MCP、ACP、HTTP API、OpenAI-compatible、bridge 已建模。           |
 
 ## 当前重点
 
-- 继续强化 run/event kernel，保持执行证据 append-only、本地化、可审查。
+- 继续强化 run/event kernel，保持执行证据 append-only、本地化、可审查，并能比较 replay 和原始 trace。
 - 让 manifest、运行时、fast path 和协议面共享同一份参数合同。
 - 扩大 operation policy 的 effect/risk/capability-scope 覆盖，而不是默认改成 private。
 - 提升桌面应用控制能力，尤其是微信、企业微信、钉钉、飞书、Mail、Notes、Office 和常见 Electron 应用。
