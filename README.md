@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->235<!-- /STATS --> sites · <!-- STATS:command_count -->1448<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7519<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->235<!-- /STATS --> sites · <!-- STATS:command_count -->1448<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7525<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -165,6 +165,8 @@ unicli runs probe <run_id> -f json
 unicli runs replay <run_id> --permission-profile confirm --yes -f json
 unicli runs compare <run_id> <replay_run_id> -f json
 unicli --permission-profile locked --yes --remember-approval word set-font "Inter"
+unicli approvals list -f json
+unicli approvals revoke <approval_key> -f json
 unicli browser evidence --render-aware --expect-domain example.com -f json
 ```
 
@@ -301,8 +303,10 @@ Docs:
 - Permission profiles are user-selected runtime policy. The default is `open`;
   stricter `confirm` and `locked` profiles require `--yes` or `UNICLI_APPROVE=1`
   for blocked operations. Add `--remember-approval` with `--yes` to store the
-  same command capability scope under `~/.unicli/approvals.jsonl`; raw runtime
-  args are not stored.
+  same command capability scope under `~/.unicli/approvals.jsonl`. Use
+  `unicli approvals list`, `revoke`, and `clear` to inspect or remove remembered
+  scopes. The file stores scope metadata; runtime args stay out of approval
+  memory.
 - Run recording is opt-in. Use `--record` or `UNICLI_RECORD_RUN=1` when you need
   append-only evidence under `~/.unicli/runs`.
 - CUA routes require a configured real backend. Declared-but-unavailable providers fail closed with structured errors.

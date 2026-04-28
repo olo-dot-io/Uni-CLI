@@ -39,6 +39,7 @@ import { registerRepairCommand } from "./commands/repair.js";
 import { registerSkillsCommand } from "./commands/skills.js";
 import { registerUsageCommands } from "./commands/usage.js";
 import { registerRunsCommand } from "./commands/runs.js";
+import { registerApprovalsCommand } from "./commands/approvals.js";
 import { registerMcpCommand } from "./commands/mcp.js";
 import { registerAcpCommand } from "./commands/acp.js";
 import { registerEvalCommand } from "./commands/eval.js";
@@ -342,6 +343,9 @@ export async function createCli(): Promise<Command> {
 
   // Register runs command — inspect recorded run traces
   registerRunsCommand(program);
+
+  // Register approvals command — inspect and revoke persisted permission grants
+  registerApprovalsCommand(program);
 
   // Register mcp command — MCP gateway server + health check
   registerMcpCommand(program);

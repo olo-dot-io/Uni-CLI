@@ -514,19 +514,20 @@ function hasStoredApproval(key: string): boolean {
   if (!existsSync(store.path)) return false;
   try {
     const raw = readFileSync(store.path, "utf-8");
-    return raw.split(/\r?\n/).some((line) => {
-      if (line.trim().length === 0) return false;
+    const lines = raw.split(/\r?\n/);
+    for (let i = lines.length - 1; i >= 0; i -= 1) {
+      const line = lines[i];
+      if (line.trim().length === 0) continue;
       try {
         const entry = JSON.parse(line) as unknown;
-        return (
-          isStoredApproval(entry) &&
-          entry.key === key &&
-          entry.decision === "allow"
-        );
+        if (isStoredApproval(entry) && entry.key === key) {
+          return entry.decision === "allow";
+        }
       } catch {
-        return false;
+        continue;
       }
-    });
+    }
+    return false;
   } catch {
     return false;
   }
