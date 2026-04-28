@@ -13,11 +13,13 @@ import { search } from "./discovery/search.js";
 import { buildDefaultConfig } from "./engine/repair/config.js";
 import {
   evaluateOperationPolicy,
+  InvalidPermissionProfileError,
   resolveOperationAdapterPath,
   resolveOperationTargetSurface,
 } from "./engine/operation-policy.js";
+import { defaultErrorNextActions } from "./output/next-actions.js";
 import { format, detectFormat } from "./output/formatter.js";
-import type { OutputFormat, TargetSurface } from "./types.js";
+import { ExitCode, type OutputFormat, type TargetSurface } from "./types.js";
 
 type Io = {
   stdout: (text: string) => void;
@@ -86,6 +88,10 @@ function isOutputFormat(value: string): value is OutputFormat {
     value === "compact" ||
     value === "table"
   );
+}
+
+function isHelpToken(value: string): boolean {
+  return value === "-h" || value === "--help" || value === "help";
 }
 
 function jsonSchemaType(type: ManifestArg["type"]): string {
@@ -786,12 +792,109 @@ function handleAdapterDryRun(parsed: ParsedArgv, io: Io): boolean {
   return true;
 }
 
-function handleSiteHelp(parsed: ParsedArgv, io: Io): boolean {
-  const wantsHelp =
-    parsed.rest.length === 0 ||
-    parsed.rest.every(
-      (arg) => arg === "-h" || arg === "--help" || arg === "help",
+function handleAdapterPolicyGate(parsed: ParsedArgv, io: Io): boolean {
+  if (!parsed.command || parsed.dryRun || parsed.rest.length === 0) {
+    return false;
+  }
+
+  const [cmdName] = parsed.rest;
+  if (!cmdName || cmdName === "help" || cmdName.startsWith("-")) return false;
+  if (parsed.rest.slice(1).some(isHelpToken)) return false;
+
+  const startedAt = Date.now();
+  const manifest = readManifest();
+  const info = manifest.sites[parsed.command];
+  if (!info) return false;
+
+  const command = info.commands.find((candidate) => candidate.name === cmdName);
+  if (!command) return false;
+
+  const adapterType = command.type ?? info.commands[0]?.type ?? "web-api";
+  const targetSurface = resolveOperationTargetSurface({
+    adapterType,
+    targetSurface: command.target_surface,
+  });
+  const adapterPath = resolveOperationAdapterPath(
+    parsed.command,
+    cmdName,
+    command.adapter_path,
+  );
+
+  try {
+    const operationPolicy = evaluateOperationPolicy({
+      site: parsed.command,
+      command: cmdName,
+      description: command.description,
+      adapterType,
+      targetSurface,
+      strategy: command.strategy,
+      browser: command.browser === true,
+      args: command.args,
+      profile: parsed.permissionProfile,
+      approved: parsed.yes,
+    });
+
+    if (operationPolicy.enforcement !== "needs_approval") return false;
+
+    io.stderr(
+      format([], command.columns, detectFormat(parsed.format), {
+        command: `${parsed.command}.${cmdName}`,
+        duration_ms: Date.now() - startedAt,
+        surface: targetSurface,
+        error: {
+          code: "permission_denied",
+          message: `permission profile "${operationPolicy.profile}" requires approval for ${operationPolicy.effect}`,
+          adapter_path: adapterPath,
+          step: 0,
+          suggestion:
+            operationPolicy.approval_hint ??
+            "rerun with --yes or use --permission-profile open",
+          retryable: false,
+          alternatives: [
+            `unicli --dry-run ${parsed.command} ${cmdName}`,
+            `unicli --yes --permission-profile ${operationPolicy.profile} ${parsed.command} ${cmdName}`,
+            `unicli --permission-profile open ${parsed.command} ${cmdName}`,
+          ],
+        },
+        next_actions: defaultErrorNextActions(
+          parsed.command,
+          cmdName,
+          "permission_denied",
+        ),
+      }),
     );
+    process.exitCode = ExitCode.AUTH_REQUIRED;
+    return true;
+  } catch (error) {
+    if (!(error instanceof InvalidPermissionProfileError)) throw error;
+
+    io.stderr(
+      format([], command.columns, detectFormat(parsed.format), {
+        command: `${parsed.command}.${cmdName}`,
+        duration_ms: Date.now() - startedAt,
+        surface: targetSurface,
+        error: {
+          code: "invalid_input",
+          message: error.message,
+          adapter_path: adapterPath,
+          step: 0,
+          suggestion: "use one of: open, confirm, locked",
+          retryable: false,
+        },
+        next_actions: defaultErrorNextActions(
+          parsed.command,
+          cmdName,
+          "invalid_input",
+        ),
+      }),
+    );
+    process.exitCode = ExitCode.USAGE_ERROR;
+    return true;
+  }
+}
+
+function handleSiteHelp(parsed: ParsedArgv, io: Io): boolean {
+  const wantsHelp = parsed.rest.length === 0 || parsed.rest.every(isHelpToken);
   if (!parsed.command || !wantsHelp) return false;
 
   const manifest = readManifest();
@@ -840,7 +943,11 @@ export function tryRunFastPath(
       case "repair":
         return handleRepair(parsed, io);
       default:
-        return handleAdapterDryRun(parsed, io) || handleSiteHelp(parsed, io);
+        return (
+          handleAdapterPolicyGate(parsed, io) ||
+          handleAdapterDryRun(parsed, io) ||
+          handleSiteHelp(parsed, io)
+        );
     }
   } catch (error) {
     if (isMissingManifestError(error)) return false;
