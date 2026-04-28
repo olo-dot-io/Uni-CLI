@@ -246,6 +246,33 @@ describe("browser operator evidence", () => {
     expect(observation.packet.partial).toBe(true);
   });
 
+  it("normalizes invalid render-aware timing inputs before polling", async () => {
+    const page = mockPage();
+    let now = 0;
+
+    const observation = await captureRenderAwareBrowserEvidence(page, {
+      action: "evidence",
+      workspace: "browser:default",
+      timestamp: "2026-04-27T14:30:00.000Z",
+      timeoutMs: Number.NaN,
+      pollMs: Number.NaN,
+      stableForMs: Number.NaN,
+      now: () => now,
+      sleep: async (ms) => {
+        now += ms;
+      },
+    });
+
+    expect(observation.stability).toMatchObject({
+      reached: true,
+      reason: "stable",
+      samples: 6,
+      stable_for_ms: 500,
+      timeout_ms: 3000,
+      poll_ms: 100,
+    });
+  });
+
   it("counts numeric, Playwright-style, and structured snapshot refs", async () => {
     const page = mockPage();
 

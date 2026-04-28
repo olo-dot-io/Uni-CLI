@@ -236,9 +236,9 @@ export async function captureRenderAwareBrowserEvidence(
   page: IPage,
   options: RenderAwareBrowserEvidenceOptions,
 ): Promise<RenderAwareBrowserEvidence> {
-  const timeoutMs = Math.max(0, options.timeoutMs ?? 3000);
-  const pollMs = Math.max(10, options.pollMs ?? 100);
-  const stableForMs = Math.max(0, options.stableForMs ?? 500);
+  const timeoutMs = Math.max(0, finiteNumber(options.timeoutMs, 3000));
+  const pollMs = Math.max(10, finiteNumber(options.pollMs, 100));
+  const stableForMs = Math.max(0, finiteNumber(options.stableForMs, 500));
   const now = options.now ?? Date.now;
   const sleep =
     options.sleep ??
@@ -297,6 +297,10 @@ export async function captureRenderAwareBrowserEvidence(
       poll_ms: pollMs,
     },
   };
+}
+
+function finiteNumber(value: number | undefined, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
 function renderSignature(packet: BrowserEvidencePacket): string {

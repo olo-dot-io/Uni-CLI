@@ -1,5 +1,5 @@
 import { mkdirSync } from "node:fs";
-import { open, rm, stat } from "node:fs/promises";
+import { open, readFile, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { userHome } from "../user-home.js";
 import type { BrowserSessionLease } from "./session-lease.js";
@@ -86,6 +86,7 @@ async function removeStaleLock(
   try {
     const info = await stat(lockPath);
     if (now() - info.mtimeMs <= staleMs) return false;
+    if (await lockHolderIsAlive(lockPath)) return false;
     await rm(lockPath, { force: true });
     return true;
   } catch (err) {
@@ -99,6 +100,37 @@ function isAlreadyExistsError(err: unknown): boolean {
     err !== null &&
     "code" in err &&
     (err as { code?: string }).code === "EEXIST"
+  );
+}
+
+async function lockHolderIsAlive(lockPath: string): Promise<boolean> {
+  try {
+    const payload = JSON.parse(await readFile(lockPath, "utf-8")) as {
+      pid?: unknown;
+    };
+    return typeof payload.pid === "number" && processIsAlive(payload.pid);
+  } catch {
+    return false;
+  }
+}
+
+function processIsAlive(pid: number): boolean {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    if (isNoSuchProcessError(err)) return false;
+    return true;
+  }
+}
+
+function isNoSuchProcessError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code?: string }).code === "ESRCH"
   );
 }
 

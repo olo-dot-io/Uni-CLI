@@ -92,6 +92,27 @@ describe("browser session lease lock", () => {
     expect(existsSync(lockPath)).toBe(false);
   });
 
+  it("does not reclaim a stale-looking lock held by a live process", async () => {
+    const lease = createBrowserSessionLease({
+      namespace: "browser",
+      workspace: "browser:default",
+    });
+    const lockPath = browserSessionLeaseLockPath(lease, tmp);
+    writeFileSync(lockPath, JSON.stringify({ pid: process.pid }));
+
+    await expect(
+      withBrowserSessionLeaseLock(lease, async () => "not-run", {
+        rootDir: tmp,
+        retryMs: 0,
+        staleMs: -1,
+      }),
+    ).rejects.toMatchObject({
+      code: "browser_lease_locked",
+      lease,
+    });
+    expect(existsSync(lockPath)).toBe(true);
+  });
+
   it("exposes a structured retryable lock error", () => {
     const lease = createBrowserSessionLease({
       namespace: "browser",
