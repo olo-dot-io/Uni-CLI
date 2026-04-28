@@ -22,16 +22,16 @@ If the maintainer has not explicitly asked to release, development stays under
 
 ## Versioning
 
-Uni-CLI follows semver. The `1.x` line is the stable execution-substrate
-contract: command-first discovery and execution, v2 `AgentEnvelope` output,
+Uni-CLI follows semver. The `0.217.x` line is a minor execution-substrate
+release line: command-first discovery and execution, v2 `AgentEnvelope` output,
 repairable adapter errors, operation-policy metadata, and optional run
-recording.
+recording. It is not a major-version compatibility boundary.
 
 | Change                                                            | Version bump |
 | ----------------------------------------------------------------- | ------------ |
 | Adapter fixes, docs, tests, small command additions               | Patch        |
 | New transport, new protocol surface, broad output behavior change | Minor        |
-| Stable 1.0 compatibility contract or breaking public behavior     | Major        |
+| Explicit stable-major compatibility contract or breaking behavior | Major        |
 
 Do not bump `package.json`, run `changeset version`, tag, publish, or create a
 GitHub Release until the maintainer explicitly says to release.
@@ -73,10 +73,8 @@ Current program map:
 | Version range | Program |
 | ------------- | ------- |
 | `0.1xx`       | Sputnik |
-| `0.2xx`       | Vostok  |
-| `0.3xx`       | Mercury |
-| `0.4xx`       | Gemini  |
-| `1.x`         | Apollo  |
+| `0.200-0.213` | Vostok  |
+| `0.216+`      | Apollo  |
 
 Rules:
 
@@ -94,8 +92,8 @@ RELEASE_CODENAME="Vostok · Gagarin" npm run release
 npm run release:check -- --strict-codename
 ```
 
-For the 1.0 line, the release label format is unchanged. The first stable
-candidate used `Apollo · Lovell`.
+For the 0.217 line, the release label format is unchanged. The current release
+label is `Apollo · Lovell`.
 
 ## Substantive Commits
 

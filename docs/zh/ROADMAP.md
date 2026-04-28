@@ -1,6 +1,6 @@
 # 路线图
 
-> Current: v1.0.0 — Apollo · Lovell. <!-- STATS:site_count -->235<!-- /STATS --> 个站点，<!-- STATS:command_count -->1448<!-- /STATS --> 条命令，<!-- STATS:pipeline_step_count -->59<!-- /STATS --> 个 pipeline step。
+> Current: v0.217.0 — Apollo · Lovell. <!-- STATS:site_count -->235<!-- /STATS --> 个站点，<!-- STATS:command_count -->1448<!-- /STATS --> 条命令，<!-- STATS:pipeline_step_count -->59<!-- /STATS --> 个 pipeline step。
 
 路线图按能力成熟度推进，不按固定周节奏发布。发布节奏取决于社区反馈和实际开发状态。
 

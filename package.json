@@ -1,6 +1,6 @@
 {
   "name": "@zenalexa/unicli",
-  "version": "1.0.0",
+  "version": "0.217.0",
   "description": "Agent execution substrate for web, apps, local tools, and system capabilities",
   "type": "module",
   "main": "dist/main.js",

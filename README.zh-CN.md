@@ -313,5 +313,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v1.0.0 — Apollo · Lovell</sub>
+  <sub>v0.217.0 — Apollo · Lovell</sub>
 </p>

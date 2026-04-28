@@ -3,15 +3,15 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 
-## [1.0.0] — 2026-04-28 — Apollo · Lovell
+## [0.217.0] — 2026-04-28 — Apollo · Lovell
 
-> First stable execution-substrate release. Uni-CLI is now positioned as the
+> Execution-substrate minor release. Uni-CLI is now positioned as the
 > command-first layer under agents for web, browser, desktop, local tool, system,
 > and external CLI operations.
 
 ### Added
 
-- **Stable execution substrate** — 235 sites, 1448 commands, 1039 adapters, 59
+- **Execution substrate surface** — 235 sites, 1448 commands, 1039 adapters, 59
   pipeline steps, and 7473 tests ship behind one searchable `unicli` surface.
 - **Observable run kernel** — `--record` / `UNICLI_RECORD_RUN=1` records
   append-only run traces under `~/.unicli/runs` with permission evaluations,

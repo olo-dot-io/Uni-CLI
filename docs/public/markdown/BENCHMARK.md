@@ -17,7 +17,7 @@ Agent-native infrastructure should publish real cost numbers. Uni-CLI measures
 both the command invocation and the response body so public claims stay tied to
 the current code, fixtures, and output contract.
 
-The v1.0.0 fixture bench measures current v2 `AgentEnvelope` response bodies
+The v0.217.0 fixture bench measures current v2 `AgentEnvelope` response bodies
 at **357-415 tokens** for representative `--limit 5` list-style calls. Total
 invocation-plus-response budgets land at **364-423 tokens** in the same suite.
 `unicli list` is much larger because it intentionally emits the full
