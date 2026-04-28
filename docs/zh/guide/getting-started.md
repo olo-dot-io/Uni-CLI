@@ -129,6 +129,9 @@ unicli approvals list
 unicli approvals revoke <approval_key>
 ```
 
+记住的审批会绑定命令 capability 和稳定资源 metadata，比如域名、应用、账号面和路径参数槽。
+原始运行参数不会写进 approval store。
+
 ## 协议服务
 
 MCP：

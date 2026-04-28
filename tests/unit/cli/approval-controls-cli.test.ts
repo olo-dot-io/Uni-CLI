@@ -73,6 +73,7 @@ describe("CLI approval memory controls", () => {
             command: { site: string; command: string; effect: string };
             profile: string;
             scope_summary: string[];
+            resource_summary: string[];
           }>;
         };
       };
@@ -86,6 +87,7 @@ describe("CLI approval memory controls", () => {
             command: "send",
             effect: "send_message",
           },
+          resource_summary: expect.arrayContaining(["account:slack"]),
         }),
       ]);
       expect(JSON.stringify(envelope.data)).not.toContain("secret text");

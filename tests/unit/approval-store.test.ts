@@ -132,6 +132,41 @@ describe("persistent approval store", () => {
     await expect(listStoredApprovals(store)).resolves.toEqual([]);
   });
 
+  it("skips malformed approval entries with invalid resource buckets", async () => {
+    const store = createApprovalStore({ path: join(tmp, "approvals.jsonl") });
+    writeFileSync(
+      store.path,
+      `${JSON.stringify({
+        schema_version: "1",
+        key: "cap:1:slack.send:confirm:send_message:network:write,browser:none,desktop:none,file:none,process:none,account:write:res:bad",
+        decision: "allow",
+        profile: "confirm",
+        created_at: "2026-04-29T00:00:00.000Z",
+        command: { site: "slack", command: "send", effect: "send_message" },
+        scope: {
+          dimensions: {
+            network: "write",
+            browser: "none",
+            desktop: "none",
+            file: "none",
+            process: "none",
+            account: "write",
+          },
+          resources: {
+            domains: [1],
+            paths: [],
+            executables: [],
+            apps: [],
+            accounts: ["slack"],
+          },
+        },
+      })}\n`,
+      "utf-8",
+    );
+
+    await expect(listStoredApprovals(store)).resolves.toEqual([]);
+  });
+
   it("revokes an active approval with an append-only tombstone", async () => {
     const store = createApprovalStore({ homeDir: tmp });
     const input = {

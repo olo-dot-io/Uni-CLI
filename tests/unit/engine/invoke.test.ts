@@ -455,6 +455,116 @@ describe("execute (end-to-end)", () => {
     }
   });
 
+  it("binds remembered kernel approvals to adapter resource metadata", async () => {
+    const originalApprovalsPath = process.env.UNICLI_APPROVALS_PATH;
+    const tmp = mkdtempSync(join(tmpdir(), "unicli-kernel-resource-"));
+    const store = createApprovalStore({ homeDir: tmp });
+    process.env.UNICLI_APPROVALS_PATH = store.path;
+    try {
+      const permissionAdapter = mkAdapter({
+        name: "approval-resource-fixture",
+        domain: "api.approval-resource.example",
+        commands: {
+          send: {
+            name: "send",
+            description: "Send a message",
+            adapterArgs: [{ name: "text", type: "str", required: true }],
+            func: async () => ({ sent: true }),
+          },
+        },
+      });
+      registerAdapter(permissionAdapter);
+      compileAll([permissionAdapter]);
+
+      const approved = buildInvocation(
+        "cli",
+        "approval-resource-fixture",
+        "send",
+        {
+          args: { text: "secret text" },
+          source: "shell",
+        },
+        {
+          permissionProfile: "locked",
+          approved: true,
+          rememberApproval: true,
+        },
+      )!;
+
+      expect((await execute(approved)).exitCode).toBe(0);
+
+      const entries = await listStoredApprovals(store);
+      expect(entries).toHaveLength(1);
+      expect(entries[0].scope).toMatchObject({
+        resources: {
+          domains: ["api.approval-resource.example"],
+          accounts: ["approval-resource-fixture"],
+        },
+      });
+    } finally {
+      if (originalApprovalsPath === undefined) {
+        delete process.env.UNICLI_APPROVALS_PATH;
+      } else {
+        process.env.UNICLI_APPROVALS_PATH = originalApprovalsPath;
+      }
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("binds remembered kernel approvals to per-command resource metadata", async () => {
+    const originalApprovalsPath = process.env.UNICLI_APPROVALS_PATH;
+    const tmp = mkdtempSync(join(tmpdir(), "unicli-kernel-command-resource-"));
+    const store = createApprovalStore({ homeDir: tmp });
+    process.env.UNICLI_APPROVALS_PATH = store.path;
+    try {
+      const permissionAdapter = mkAdapter({
+        name: "approval-command-resource-fixture",
+        domain: "pan.approval-command.example",
+        commands: {
+          save: {
+            name: "save",
+            description: "Save a shared file",
+            domain: "drive.approval-command.example",
+            adapterArgs: [{ name: "url", type: "str", required: true }],
+            func: async () => ({ saved: true }),
+          },
+        },
+      });
+      registerAdapter(permissionAdapter);
+      compileAll([permissionAdapter]);
+
+      const approved = buildInvocation(
+        "cli",
+        "approval-command-resource-fixture",
+        "save",
+        {
+          args: { url: "https://example.test/share" },
+          source: "shell",
+        },
+        {
+          permissionProfile: "locked",
+          approved: true,
+          rememberApproval: true,
+        },
+      )!;
+
+      expect((await execute(approved)).exitCode).toBe(0);
+
+      const entries = await listStoredApprovals(store);
+      expect(entries).toHaveLength(1);
+      expect(entries[0].scope.resources.domains).toEqual([
+        "drive.approval-command.example",
+      ]);
+    } finally {
+      if (originalApprovalsPath === undefined) {
+        delete process.env.UNICLI_APPROVALS_PATH;
+      } else {
+        process.env.UNICLI_APPROVALS_PATH = originalApprovalsPath;
+      }
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   it("does not block execution when approval memory cannot be persisted", async () => {
     const originalApprovalsPath = process.env.UNICLI_APPROVALS_PATH;
     const tmp = mkdtempSync(join(tmpdir(), "unicli-kernel-approvals-fail-"));

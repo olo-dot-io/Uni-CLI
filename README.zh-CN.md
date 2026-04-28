@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->235<!-- /STATS --> 个站点 · <!-- STATS:command_count -->1448<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> 个 pipeline step · <!-- STATS:test_count -->7525<!-- /STATS --> 个测试</sub>
+  <sub><!-- STATS:site_count -->235<!-- /STATS --> 个站点 · <!-- STATS:command_count -->1448<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> 个 pipeline step · <!-- STATS:test_count -->7533<!-- /STATS --> 个测试</sub>
 </p>
 
 <p align="center">
@@ -302,9 +302,10 @@ columns: [title, url]
 - Browser adapter 需要可连接的 Chrome/CDP。
 - Permission profile 是用户选择的运行时策略。默认是 `open`；更严格的
   `confirm` 和 `locked` profile 会要求 `--yes` 或 `UNICLI_APPROVE=1`。
-  `--yes` 加 `--remember-approval` 会把同一条命令的 capability scope 记到
-  `~/.unicli/approvals.jsonl`。用 `unicli approvals list`、`revoke`、`clear`
-  查看或移除已记住的 scope。文件只存 scope metadata，原始运行参数留在审批记忆之外。
+  `--yes` 加 `--remember-approval` 会把同一条命令的 capability 和资源 scope
+  记到 `~/.unicli/approvals.jsonl`。资源 scope 来自稳定 metadata，比如域名、
+  账号面、应用、进程族和路径参数槽。用 `unicli approvals list`、`revoke`、
+  `clear` 查看或移除已记住的 scope。文件只存 scope metadata，原始运行参数留在审批记忆之外。
 - Run recording 是显式启用能力。需要可审查证据时使用 `--record` 或
   `UNICLI_RECORD_RUN=1`，追加写入 `~/.unicli/runs`。
 - CUA 路由必须配置真实 backend。声明了但不可用的 provider 会失败关闭，并返回结构化错误。
