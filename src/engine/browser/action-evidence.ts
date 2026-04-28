@@ -31,6 +31,7 @@ import {
   installBrowserEvidenceHooks,
   type BrowserEvidencePacket,
 } from "./evidence.js";
+import type { BrowserSessionLease } from "./session-lease.js";
 
 export interface BrowserActionEvidenceOptions {
   command: string;
@@ -46,6 +47,7 @@ export interface BrowserActionEvidenceOptions {
   store?: RunStore;
   screenshotDir?: string;
   watchdog?: BrowserActionWatchdogOptions;
+  lease?: BrowserSessionLease;
 }
 
 type BrowserEvidencePhase = "before" | "after";
@@ -261,6 +263,7 @@ async function captureEvidence(
   return await captureBrowserEvidencePacket(page, {
     action: `${options.action}.${phase}`,
     workspace: options.workspace,
+    lease: options.lease,
     screenshotDir: options.screenshotDir ?? defaultScreenshotDir(),
   });
 }
@@ -282,6 +285,7 @@ function metadataForBrowserAction(
     target_surface: "web",
     args_hash: hashArgs(options.args ?? {}),
     pipeline_steps: 0,
+    ...(options.lease ? { browser_lease: options.lease } : {}),
   };
 }
 
@@ -314,6 +318,14 @@ function evidenceEventData(
     phase,
     outcome,
     workspace: packet.workspace,
+    ...(packet.lease
+      ? {
+          browser_session_id: packet.lease.browser_session_id,
+          browser_workspace_id: packet.lease.browser_workspace_id,
+          lease_owner: packet.lease.lease_owner,
+          lease_scope: packet.lease.scope,
+        }
+      : {}),
     page_url: packet.page.url,
     partial: packet.partial,
     capture_scope: packet.capture_scope,

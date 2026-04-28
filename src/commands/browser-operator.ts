@@ -24,14 +24,20 @@ import { sendCommand } from "../browser/daemon-client.js";
 import { registerBrowserAuthoringSubcommands } from "./browser-authoring-operator.js";
 import {
   captureBrowserEvidencePacket,
+  captureRenderAwareBrowserEvidence,
   installBrowserEvidenceHooks,
 } from "../engine/browser/evidence.js";
+import {
+  assertBrowserSessionLeaseUrlGuard,
+  createBrowserSessionLease,
+} from "../engine/browser/session-lease.js";
 import {
   type BrowserActionWatchdogMode,
   type BrowserActionWatchdogOptions,
   isBrowserActionEvidenceEnabled,
   withBrowserActionEvidence,
 } from "../engine/browser/action-evidence.js";
+import { withBrowserSessionLeaseLock } from "../engine/browser/session-lock.js";
 
 export { withBrowserOperatorEnv };
 
@@ -56,6 +62,14 @@ export function applyBrowserOperatorRootOptions(command: Command): void {
       "--daemon-port <port>",
       "Route through a specific daemon port for multi-profile setups",
     )
+    .option(
+      "--expect-domain <domain>",
+      "Require browser commands to run on this hostname or subdomain",
+    )
+    .option(
+      "--expect-path-prefix <prefix>",
+      "Require browser commands to run under this URL path prefix",
+    )
     .option("--focus", "Allow the automation window to take focus")
     .option(
       "--background",
@@ -79,21 +93,52 @@ async function withRecordedBrowserAction<T>(
   if (enabled) {
     await ensureNetworkCapture(page);
   }
-  return await withBrowserActionEvidence(
-    page,
-    {
-      command: `${namespace}.${action.split(" ").join("_")}`,
-      namespace,
-      action,
-      workspace: resolveWorkspace(root, namespace),
-      args,
-      enabled,
-      approved: programOpts.yes === true,
-      permissionProfile: programOpts.permissionProfile,
-      watchdog: browserActionWatchdog(action),
-    },
-    fn,
+  const workspace = resolveWorkspace(root, namespace);
+  const lease = browserSessionLease(root, namespace, workspace);
+  assertBrowserSessionLeaseUrlGuard(lease, await page.url());
+  return await withBrowserSessionLeaseLock(
+    lease,
+    async () =>
+      await withBrowserActionEvidence(
+        page,
+        {
+          command: `${namespace}.${action.split(" ").join("_")}`,
+          namespace,
+          action,
+          workspace,
+          lease,
+          args,
+          enabled,
+          approved: programOpts.yes === true,
+          permissionProfile: programOpts.permissionProfile,
+          watchdog: browserActionWatchdog(action),
+        },
+        fn,
+      ),
   );
+}
+
+function browserSessionLease(
+  root: Command,
+  namespace: "browser" | "operate",
+  workspace: string,
+) {
+  const rootOpts = root.opts() as {
+    isolated?: boolean;
+    sharedSession?: boolean;
+    daemonPort?: string;
+    expectDomain?: string;
+    expectPathPrefix?: string;
+  };
+  return createBrowserSessionLease({
+    namespace,
+    workspace,
+    isolated: rootOpts.isolated,
+    sharedSession: rootOpts.sharedSession,
+    daemonPort: rootOpts.daemonPort,
+    expectedDomain: rootOpts.expectDomain,
+    expectedPathPrefix: rootOpts.expectPathPrefix,
+  });
 }
 
 function browserActionWatchdog(
@@ -213,22 +258,68 @@ export function registerBrowserOperatorSubcommands(
       "Directory for screenshot evidence artifacts",
     )
     .option("--no-screenshot", "Skip screenshot evidence artifact")
-    .action((opts: { screenshotDir?: string; screenshot?: boolean }) =>
-      operatorAction(program, root, namespace, "evidence", async () => {
-        const page = await getOperatorPage(root, namespace);
-        await ensureNetworkCapture(page);
-        await installBrowserEvidenceHooks(page);
-        const screenshotDir =
-          opts.screenshot === false
-            ? undefined
-            : (opts.screenshotDir ??
-              join(userHome(), ".unicli", "evidence", "browser"));
-        return await captureBrowserEvidencePacket(page, {
-          action: "evidence",
-          workspace: resolveWorkspace(root, namespace),
-          screenshotDir,
-        });
-      }),
+    .option(
+      "--render-aware",
+      "Wait for rendered page evidence to stabilize before returning",
+    )
+    .option(
+      "--stability-ms <n>",
+      "Rendered-state stability window for --render-aware",
+      "500",
+    )
+    .option(
+      "--timeout-ms <n>",
+      "Rendered-state timeout for --render-aware",
+      "3000",
+    )
+    .option(
+      "--poll-ms <n>",
+      "Rendered-state poll interval for --render-aware",
+      "100",
+    )
+    .action(
+      (opts: {
+        screenshotDir?: string;
+        screenshot?: boolean;
+        renderAware?: boolean;
+        stabilityMs: string;
+        timeoutMs: string;
+        pollMs: string;
+      }) =>
+        operatorAction(program, root, namespace, "evidence", async () => {
+          const page = await getOperatorPage(root, namespace);
+          await ensureNetworkCapture(page);
+          await installBrowserEvidenceHooks(page);
+          const workspace = resolveWorkspace(root, namespace);
+          const lease = browserSessionLease(root, namespace, workspace);
+          assertBrowserSessionLeaseUrlGuard(lease, await page.url());
+          const screenshotDir =
+            opts.screenshot === false
+              ? undefined
+              : (opts.screenshotDir ??
+                join(userHome(), ".unicli", "evidence", "browser"));
+          if (opts.renderAware) {
+            const observation = await captureRenderAwareBrowserEvidence(page, {
+              action: "evidence",
+              workspace,
+              lease,
+              screenshotDir,
+              stableForMs: parseInt(opts.stabilityMs, 10),
+              timeoutMs: parseInt(opts.timeoutMs, 10),
+              pollMs: parseInt(opts.pollMs, 10),
+            });
+            return {
+              ...observation.packet,
+              render_stability: observation.stability,
+            };
+          }
+          return await captureBrowserEvidencePacket(page, {
+            action: "evidence",
+            workspace,
+            lease,
+            screenshotDir,
+          });
+        }),
     );
 
   root
@@ -615,30 +706,84 @@ export function registerBrowserOperatorSubcommands(
     .option("--selector <css>", "Optional content root selector")
     .option("--chunk-size <n>", "Maximum chars to return", "8000")
     .option("--start <n>", "Start offset", "0")
-    .action((opts: { selector?: string; chunkSize: string; start: string }) =>
-      operatorAction(program, root, namespace, "extract", async () => {
-        const page = await getOperatorPage(root, namespace);
-        const result = (await page.evaluate(buildExtractJs(opts.selector))) as {
-          selector: string;
-          title: string;
-          url: string;
-          content: string;
-        };
-        const start = Math.max(0, parseInt(opts.start, 10) || 0);
-        const chunkSize = Math.max(256, parseInt(opts.chunkSize, 10) || 8000);
-        const end = Math.min(result.content.length, start + chunkSize);
-        return {
-          url: result.url,
-          title: result.title,
-          selector: result.selector,
-          total_chars: result.content.length,
-          chunk_size: chunkSize,
-          start,
-          end,
-          next_start_char: end < result.content.length ? end : null,
-          content: result.content.slice(start, end),
-        };
-      }),
+    .option(
+      "--render-aware",
+      "Wait for rendered page evidence to stabilize before extracting text",
+    )
+    .option("--no-screenshot", "Skip screenshot evidence during render wait")
+    .option(
+      "--stability-ms <n>",
+      "Rendered-state stability window for --render-aware",
+      "500",
+    )
+    .option(
+      "--timeout-ms <n>",
+      "Rendered-state timeout for --render-aware",
+      "3000",
+    )
+    .option(
+      "--poll-ms <n>",
+      "Rendered-state poll interval for --render-aware",
+      "100",
+    )
+    .action(
+      (opts: {
+        selector?: string;
+        chunkSize: string;
+        start: string;
+        renderAware?: boolean;
+        screenshot?: boolean;
+        stabilityMs: string;
+        timeoutMs: string;
+        pollMs: string;
+      }) =>
+        operatorAction(program, root, namespace, "extract", async () => {
+          const page = await getOperatorPage(root, namespace);
+          let renderStability: Record<string, unknown> | undefined;
+          if (opts.renderAware) {
+            await ensureNetworkCapture(page);
+            await installBrowserEvidenceHooks(page);
+            const workspace = resolveWorkspace(root, namespace);
+            const lease = browserSessionLease(root, namespace, workspace);
+            assertBrowserSessionLeaseUrlGuard(lease, await page.url());
+            const observation = await captureRenderAwareBrowserEvidence(page, {
+              action: "extract",
+              workspace,
+              lease,
+              screenshotDir:
+                opts.screenshot === false
+                  ? undefined
+                  : join(userHome(), ".unicli", "evidence", "browser"),
+              stableForMs: parseInt(opts.stabilityMs, 10),
+              timeoutMs: parseInt(opts.timeoutMs, 10),
+              pollMs: parseInt(opts.pollMs, 10),
+            });
+            renderStability = observation.stability;
+          }
+          const result = (await page.evaluate(
+            buildExtractJs(opts.selector),
+          )) as {
+            selector: string;
+            title: string;
+            url: string;
+            content: string;
+          };
+          const start = Math.max(0, parseInt(opts.start, 10) || 0);
+          const chunkSize = Math.max(256, parseInt(opts.chunkSize, 10) || 8000);
+          const end = Math.min(result.content.length, start + chunkSize);
+          return {
+            url: result.url,
+            title: result.title,
+            selector: result.selector,
+            total_chars: result.content.length,
+            chunk_size: chunkSize,
+            start,
+            end,
+            next_start_char: end < result.content.length ? end : null,
+            content: result.content.slice(start, end),
+            ...(renderStability ? { render_stability: renderStability } : {}),
+          };
+        }),
     );
 
   root

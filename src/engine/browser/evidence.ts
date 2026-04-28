@@ -2,14 +2,36 @@ import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { IPage, NetworkRequest } from "../../types.js";
+import type { BrowserSessionLease } from "./session-lease.js";
 
 export interface BrowserEvidenceOptions {
   action: string;
   workspace: string;
+  lease?: BrowserSessionLease;
   screenshotDir?: string;
   timestamp?: string;
   snapshot?: string;
   maxPreviewChars?: number;
+}
+
+export interface RenderAwareBrowserEvidenceOptions extends BrowserEvidenceOptions {
+  timeoutMs?: number;
+  pollMs?: number;
+  stableForMs?: number;
+  now?: () => number;
+  sleep?: (ms: number) => Promise<void>;
+}
+
+export interface RenderAwareBrowserEvidence {
+  packet: BrowserEvidencePacket;
+  stability: {
+    reached: boolean;
+    reason: "stable" | "timeout";
+    samples: number;
+    stable_for_ms: number;
+    timeout_ms: number;
+    poll_ms: number;
+  };
 }
 
 export interface BrowserEvidencePacket {
@@ -17,6 +39,7 @@ export interface BrowserEvidencePacket {
   evidence_type: "browser-operator";
   action: string;
   workspace: string;
+  lease?: BrowserSessionLease;
   captured_at: string;
   observed_since: string | null;
   partial: boolean;
@@ -189,6 +212,7 @@ export async function captureBrowserEvidencePacket(
     evidence_type: "browser-operator",
     action: options.action,
     workspace: options.workspace,
+    ...(options.lease ? { lease: options.lease } : {}),
     captured_at: capturedAt,
     observed_since: consoleResult.observedSince,
     partial: isPartialEvidence(captureScope),
@@ -206,6 +230,88 @@ export async function captureBrowserEvidencePacket(
     screenshot,
     capture_errors: captureErrors,
   };
+}
+
+export async function captureRenderAwareBrowserEvidence(
+  page: IPage,
+  options: RenderAwareBrowserEvidenceOptions,
+): Promise<RenderAwareBrowserEvidence> {
+  const timeoutMs = Math.max(0, finiteNumber(options.timeoutMs, 3000));
+  const pollMs = Math.max(10, finiteNumber(options.pollMs, 100));
+  const stableForMs = Math.max(0, finiteNumber(options.stableForMs, 500));
+  const now = options.now ?? Date.now;
+  const sleep =
+    options.sleep ??
+    (async (ms: number) => {
+      await new Promise((resolve) => setTimeout(resolve, ms));
+    });
+
+  const startedAt = now();
+  let samples = 1;
+  let packet = await captureBrowserEvidencePacket(page, options);
+  let signature = renderSignature(packet);
+  let stableSince = now();
+
+  while (now() - startedAt < timeoutMs) {
+    await sleep(pollMs);
+    samples += 1;
+    packet = await captureBrowserEvidencePacket(page, options);
+    const nextSignature = renderSignature(packet);
+    if (nextSignature !== signature) {
+      signature = nextSignature;
+      stableSince = now();
+      continue;
+    }
+
+    const stableFor = now() - stableSince;
+    if (stableFor >= stableForMs) {
+      return {
+        packet,
+        stability: {
+          reached: true,
+          reason: "stable",
+          samples,
+          stable_for_ms: stableFor,
+          timeout_ms: timeoutMs,
+          poll_ms: pollMs,
+        },
+      };
+    }
+  }
+
+  return {
+    packet: {
+      ...packet,
+      partial: true,
+      capture_errors: [
+        ...packet.capture_errors,
+        `render_stability: timeout after ${String(timeoutMs)}ms`,
+      ],
+    },
+    stability: {
+      reached: false,
+      reason: "timeout",
+      samples,
+      stable_for_ms: now() - stableSince,
+      timeout_ms: timeoutMs,
+      poll_ms: pollMs,
+    },
+  };
+}
+
+function finiteNumber(value: number | undefined, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function renderSignature(packet: BrowserEvidencePacket): string {
+  return [
+    packet.page.url,
+    packet.page.title,
+    packet.dom.sha256,
+    packet.screenshot.sha256 ?? "",
+    String(packet.network.count),
+    String(packet.console.count),
+  ].join("\0");
 }
 
 async function captureValue<T>(

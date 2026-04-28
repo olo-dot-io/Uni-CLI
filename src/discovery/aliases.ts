@@ -447,6 +447,9 @@ export const SITE_CATEGORIES: ReadonlyMap<string, string> = new Map([
   ["github-desktop", "dev"],
   ["gitkraken", "dev"],
   ["docker-desktop", "dev"],
+  ["agents", "agent"],
+  ["mcp", "agent"],
+  ["runs", "agent"],
 
   // AI
   ["ollama", "ai"],
@@ -511,6 +514,8 @@ export const SITE_CATEGORIES: ReadonlyMap<string, string> = new Map([
 
   // Desktop
   ["macos", "desktop"],
+  ["browser", "browser"],
+  ["operate", "browser"],
   ["ffmpeg", "desktop"],
   ["imagemagick", "desktop"],
   ["blender", "desktop"],
@@ -576,6 +581,16 @@ export const CATEGORY_ALIASES: ReadonlyMap<string, string> = new Map([
   ["笔记", "productivity"],
   ["游戏", "games"],
   ["工具", "utility"],
+  ["浏览器", "browser"],
+  ["网页自动化", "browser"],
+  ["自动化", "browser"],
+  ["browser", "browser"],
+  ["automation", "browser"],
+  ["agent", "agent"],
+  ["agents", "agent"],
+  ["mcp", "agent"],
+  ["trace", "agent"],
+  ["evidence", "agent"],
 ]);
 
 // ── Query Expansion ─────────────────────────────────────────────────────────

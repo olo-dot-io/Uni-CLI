@@ -14,11 +14,7 @@ import {
   expandToken,
   isCJKChar,
 } from "../../src/discovery/aliases.js";
-import {
-  search,
-  buildIndex,
-  type SearchIndex,
-} from "../../src/discovery/search.js";
+import { search, buildIndex } from "../../src/discovery/search.js";
 
 // ── Tokenizer Tests ─────────────────────────────────────────────────────────
 
@@ -227,5 +223,28 @@ describe("search", () => {
       expect(typeof r.score).toBe("number");
       expect(r.score).toBeGreaterThan(0);
     }
+  });
+
+  it("routes browser automation architecture queries to browser operator commands", () => {
+    const results = search(
+      "browser automation agent mcp cli website control",
+      10,
+    );
+    const commands = results.map((r) => `${r.site}/${r.command}`);
+
+    expect(commands[0]).toBe("browser/evidence");
+    expect(commands).toContain("browser/extract");
+    expect(commands).toContain("operate/state");
+  });
+
+  it("routes run trace evidence queries to recorded run inspection commands", () => {
+    const results = search(
+      "inspect recorded run trace browser lease evidence",
+      5,
+    );
+    const commands = results.map((r) => `${r.site}/${r.command}`);
+
+    expect(commands).toContain("runs/list");
+    expect(commands).toContain("runs/show");
   });
 });

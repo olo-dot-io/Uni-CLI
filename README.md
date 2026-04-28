@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->235<!-- /STATS --> sites · <!-- STATS:command_count -->1448<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7473<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->235<!-- /STATS --> sites · <!-- STATS:command_count -->1448<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7496<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -139,7 +139,7 @@ Uni-CLI sits under agent applications and turns software surfaces into commands 
 | External CLIs      | 58 registered pass-through bridges with install/status discovery                                   |
 | Agent backends     | Route matrix for native CLI, JSON stream, MCP, ACP, HTTP API, OpenAI-compatible, and bridge routes |
 | Operation policy   | `open`, `confirm`, and `locked` profiles with effect, risk, approval, and capability scope         |
-| Evidence           | Optional run traces plus browser pre/post evidence, movement detection, stale-ref details          |
+| Evidence           | Run traces, browser session leases, render-aware evidence, movement checks, and stale-ref details  |
 | Output             | v2 `AgentEnvelope` in Markdown, JSON, YAML, CSV, or compact format                                 |
 | Repair             | Structured errors with `adapter_path`, failing `step`, retryability, suggestions, and alternatives |
 
@@ -159,6 +159,9 @@ Output defaults to structured Markdown for non-TTY and agent-user-agent runs. Fo
 UNICLI_OUTPUT=json unicli reddit hot --limit 10
 unicli hackernews top --limit 5 -f yaml
 unicli --record --permission-profile confirm twitter search "coding agents" -f json
+unicli runs list -f json
+unicli runs show <run_id> -f json
+unicli browser evidence --render-aware --expect-domain example.com -f json
 ```
 
 Protocol entry points:

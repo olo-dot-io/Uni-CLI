@@ -48,6 +48,12 @@ interface Document {
   termCount: number;
 }
 
+interface CoreSearchDocument {
+  site: string;
+  command: string;
+  description: string;
+}
+
 /** Serialized search index (generated at build time, loaded at runtime). */
 export interface SearchIndex {
   /** Mapping: term → list of document indices that contain this term */
@@ -93,6 +99,76 @@ const BOOST_SITE_ALIAS = 12.0; // Query token's alias matches site name
 const BOOST_CMD_EXACT = 8.0; // Query token exactly matches command name
 const BOOST_CMD_PARTIAL = 3.0; // Query token is substring of command name
 const BOOST_CATEGORY = 2.0; // Query token matches site's category
+const BOOST_RUN_TRACE_INTENT = 45.0; // Recorded trace/replay/audit queries
+
+const CORE_SEARCH_DOCUMENTS: readonly CoreSearchDocument[] = [
+  {
+    site: "browser",
+    command: "evidence",
+    description:
+      "Capture browser operator evidence for web automation, website control, agent workflows, MCP/CLI debugging, DOM snapshots, screenshots, network summaries, render-aware observation, session leases, and audit trails.",
+  },
+  {
+    site: "browser",
+    command: "extract",
+    description:
+      "Extract rendered website text through the browser operator with render-aware waiting, session lease metadata, DOM evidence, and agent-friendly structured output.",
+  },
+  {
+    site: "browser",
+    command: "state",
+    description:
+      "Read the current browser page state, accessibility tree, refs, URL, and DOM snapshot for website control and agent browser automation.",
+  },
+  {
+    site: "browser",
+    command: "click",
+    description:
+      "Click a browser page ref with stale-ref checks, session lease ownership, action evidence, watchdog movement checks, and recorded run traces.",
+  },
+  {
+    site: "browser",
+    command: "bind",
+    description:
+      "Bind the current visible browser tab into a named workspace with domain and path guards for profile reuse and multi-command automation.",
+  },
+  {
+    site: "operate",
+    command: "state",
+    description:
+      "Inspect the current browser automation workspace for agent operation, website control, page refs, and accessibility tree state.",
+  },
+  {
+    site: "operate",
+    command: "click",
+    description:
+      "Operate a browser page by clicking refs with recorded evidence and session lease metadata.",
+  },
+  {
+    site: "mcp",
+    command: "serve",
+    description:
+      "Serve Uni-CLI through MCP for agents, exposing command search, command run, browser/web capabilities, structured envelopes, and protocol integration.",
+  },
+  {
+    site: "agents",
+    command: "recommend",
+    description:
+      "Recommend the right agent backend or CLI for a task, including Codex, Claude Code, OpenCode, MCP, ACP, browser, desktop, and tool workflows.",
+  },
+  {
+    site: "runs",
+    command: "list",
+    description:
+      "List recorded Uni-CLI run traces, browser session leases, evidence events, watchdog outcomes, command status, and replay/index metadata.",
+  },
+  {
+    site: "runs",
+    command: "show",
+    description:
+      "Show recorded run trace events for debugging, replay preparation, browser lease evidence, render stability, and agent audit review.",
+  },
+];
 
 // ── Index Management ────────────────────────────────────────────────────────
 
@@ -116,13 +192,46 @@ function loadIndex(): SearchIndex {
 
   const indexPath = getIndexPath();
   if (existsSync(indexPath)) {
-    cachedIndex = JSON.parse(readFileSync(indexPath, "utf-8")) as SearchIndex;
+    cachedIndex = augmentIndexWithCoreDocs(
+      JSON.parse(readFileSync(indexPath, "utf-8")) as SearchIndex,
+    );
     return cachedIndex;
   }
 
   // Fallback: build index on-the-fly from manifest.json
-  cachedIndex = buildIndexFromManifest();
+  cachedIndex = augmentIndexWithCoreDocs(buildIndexFromManifest());
   return cachedIndex;
+}
+
+function augmentIndexWithCoreDocs(index: SearchIndex): SearchIndex {
+  const manifest: {
+    sites: Record<
+      string,
+      { commands: Array<{ name: string; description: string }> }
+    >;
+  } = { sites: {} };
+  const seen = new Set<string>();
+
+  for (const doc of index.documents) {
+    manifest.sites[doc.site] ??= { commands: [] };
+    manifest.sites[doc.site].commands.push({
+      name: doc.command,
+      description: doc.description,
+    });
+    seen.add(doc.id);
+  }
+
+  for (const doc of CORE_SEARCH_DOCUMENTS) {
+    const id = `${doc.site}/${doc.command}`;
+    if (seen.has(id)) continue;
+    manifest.sites[doc.site] ??= { commands: [] };
+    manifest.sites[doc.site].commands.push({
+      name: doc.command,
+      description: doc.description,
+    });
+  }
+
+  return buildIndex(manifest);
 }
 
 /**
@@ -486,6 +595,8 @@ export function search(query: string, limit = 5): SearchResult[] {
       score += BOOST_CATEGORY;
     }
 
+    score += architectureIntentBoost(doc, queryTerms);
+
     if (score > 0) scored.push({ idx, score });
   }
 
@@ -512,6 +623,25 @@ export function search(query: string, limit = 5): SearchResult[] {
  */
 function buildUsageExample(site: string, command: string): string {
   return `unicli ${site} ${command}`;
+}
+
+function architectureIntentBoost(
+  doc: SearchIndex["documents"][number],
+  queryTerms: string[],
+): number {
+  const terms = new Set(queryTerms);
+  const runTraceIntent =
+    (hasAny(terms, ["run", "runs"]) &&
+      hasAny(terms, ["trace", "traces", "recorded", "record", "replay"])) ||
+    (terms.has("trace") && hasAny(terms, ["evidence", "audit", "lease"]));
+  if (runTraceIntent && doc.site === "runs") {
+    return BOOST_RUN_TRACE_INTENT;
+  }
+  return 0;
+}
+
+function hasAny(terms: Set<string>, values: string[]): boolean {
+  return values.some((value) => terms.has(value));
 }
 
 /**
