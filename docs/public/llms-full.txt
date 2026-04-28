@@ -54,7 +54,7 @@ Current public catalog: 235 sites, 1448 commands.
 - First stable execution-substrate release for agent-driven web, app, local tool, system, and external CLI operations.
 - The public contract is command-first discovery, v2 AgentEnvelope output, repairable adapter errors, operation policy metadata, and optional run recording.
 - Browser actions can emit structured pre/post evidence, movement detection, stale-ref failure details, and watchdog results.
-- The public docs catalog reports the current 235-site, 1448-command, 1039-adapter, 59-step, 7469-test surface.
+- The public docs catalog reports the current 235-site, 1448-command, 1039-adapter, 59-step, 7473-test surface.
 
 ### Links
 
@@ -3437,7 +3437,7 @@ Uni-CLI exposes one searchable command surface across:
   shell commands or protocol servers.
 
 The generated catalog is the source of truth: **235 sites**, **1448 commands**,
-**1039 adapters**, **59 pipeline steps**, and **7469 tests** in v1.0.0.
+**1039 adapters**, **59 pipeline steps**, and **7473 tests** in v1.0.0.
 
 ## Execution Contract
 

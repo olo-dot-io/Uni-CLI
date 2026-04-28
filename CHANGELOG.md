@@ -12,7 +12,7 @@ Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributin
 ### Added
 
 - **Stable execution substrate** — 235 sites, 1448 commands, 1039 adapters, 59
-  pipeline steps, and 7469 tests ship behind one searchable `unicli` surface.
+  pipeline steps, and 7473 tests ship behind one searchable `unicli` surface.
 - **Observable run kernel** — `--record` / `UNICLI_RECORD_RUN=1` records
   append-only run traces under `~/.unicli/runs` with permission evaluations,
   result envelopes, and evidence events.
