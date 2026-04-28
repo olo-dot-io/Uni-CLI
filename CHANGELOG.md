@@ -3,6 +3,63 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 
+## [1.0.0] — 2026-04-28 — Apollo · Lovell
+
+> First stable execution-substrate release. Uni-CLI is now positioned as the
+> command-first layer under agents for web, browser, desktop, local tool, system,
+> and external CLI operations.
+
+### Added
+
+- **Stable execution substrate** — 235 sites, 1448 commands, 1039 adapters, 59
+  pipeline steps, and 7469 tests ship behind one searchable `unicli` surface.
+- **Observable run kernel** — `--record` / `UNICLI_RECORD_RUN=1` records
+  append-only run traces under `~/.unicli/runs` with permission evaluations,
+  result envelopes, and evidence events.
+- **Browser action evidence** — recorded browser operations capture structured
+  pre/post evidence, movement dimensions, stale-ref failure details, and optional
+  watchdog enforcement instead of treating clicks and typing as opaque side
+  effects.
+- **Operation policy contract** — `--permission-profile open|confirm|locked`,
+  `--yes`, and `UNICLI_APPROVE=1` expose effect, risk, approval, and capability
+  scope without making the default catalog private.
+- **Agent backend matrix** — `unicli agents matrix` and
+  `unicli agents recommend <agent>` model native CLI, JSON stream, MCP, ACP,
+  HTTP API, OpenAI-compatible, and bridge routes explicitly.
+
+### Changed
+
+- Public positioning now describes Uni-CLI as an agent execution substrate, not a
+  scraper, protocol wrapper, or CUA-first product.
+- CLI, README, VitePress homepage, architecture, roadmap, release metadata, app
+  manifest, and generated docs now use the same slogan and capability framing.
+- Browser-backed adapter execution uses shared browser/kernel plumbing,
+  command-level browser/auth/strategy metadata, and structured auth/rate-limit
+  envelopes across the relevant surfaces.
+- MCP, ACP, HTTP, and generated agent configs remain compatibility surfaces over
+  the same command catalog rather than separate semantic runtimes.
+- Release automation now consumes changesets, requires a final
+  `Program · Astronaut` codename before tagging, and verifies release metadata
+  before publish workflows can run.
+
+### Fixed
+
+- Fast-path discovery falls back to the full CLI when the generated manifest is
+  absent and preserves `[quarantined]` health warnings in list output.
+- Browser daemon compatibility honors the legacy daemon port environment and the
+  response shapes used by compatible daemon implementations.
+- Auth and rate-limit failures map to structured `auth_required` and retryable
+  `rate_limited` envelopes consistently.
+- `vercel list` uses the current Vercel CLI JSON flag, and `uiverse preview`
+  handles Windows and slashless relative output paths.
+
+### Removed
+
+- Removed stale Reddit public JSON YAML adapters and fixtures that no longer
+  represented the live site.
+- Removed the dead Meituan hot adapter after the upstream endpoint returned
+  unrecoverable 404 responses and no reliable reference path remained.
+
 ## [0.216.3] — 2026-04-27 — Apollo · Collins
 
 ### Fixed
@@ -18,10 +75,9 @@ Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributin
 
 ### Fixed
 
-- CI no longer requires the ignored local `ref/opencli/cli-manifest.json`
-  checkout for unit tests. The full parity benchmark still runs locally when
-  the synced reference is present, while signal coverage remains validated in
-  GitHub Actions.
+- CI no longer requires the ignored local reference-manifest checkout for unit
+  tests. The full parity benchmark still runs locally when the synced reference
+  is present, while signal coverage remains validated in GitHub Actions.
 
 ## [0.216.1] — 2026-04-27 — Apollo · Armstrong
 
@@ -41,59 +97,13 @@ Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributin
 - Public LLM/docs markdown assets were regenerated so published docs match the
   current 235-site / 1448-command release surface.
 
-## [Unreleased] — Next major development — Vostok · Astronaut TBD
-
-> Development line only. Do not run release automation, create a tag, publish
-> npm, or create a GitHub Release until the maintainer explicitly says release.
-> The release codename must replace `Astronaut TBD` before tagging.
-
-### Added
-
-- **Browser-backed social adapters** — Reddit listing/search commands now run
-  through maintained TypeScript browser adapters instead of stale public JSON
-  endpoints, and Linux.do search has a browser/API-backed implementation with
-  structured rate-limit handling.
-- **Command-level execution metadata** — TypeScript adapters can now declare
-  per-command `strategy`, `browser`, and auth requirements, so discovery,
-  health probes, dispatch, describe, auth, and skill generation all see the
-  same execution contract.
-- **GitHub repository search adapter** — `gh search-repos` covers repository
-  research through the GitHub CLI bridge.
-- **Release codename gates** — release propagation, release checks, weekly
-  release automation, and publish automation now require an explicit
-  `Program · Astronaut` label before a version can be tagged or published.
-
-### Changed
-
-- Browser-function commands now receive a real page from the shared execution
-  kernel and close it best-effort after command completion.
-- Browser daemon compatibility now honors the legacy daemon port environment
-  and accepts the compatibility response shapes used by the reference daemon.
-- Adapter health probing now reads command-level browser/auth metadata before
-  deciding what is runnable, skipped, or auth-gated.
-
-### Fixed
-
-- Auth and rate-limit failures now map to structured `auth_required` /
-  retryable `rate_limited` envelopes consistently across adapter surfaces.
-- `vercel list` now uses the current Vercel CLI JSON flag.
-- Generated stats and public docs now reflect 220 sites, 1283 commands, 966
-  adapters, and 7103 tests after the adapter cleanup.
-
-### Removed
-
-- Removed stale Reddit public JSON YAML adapters and fixtures that no longer
-  represented the live site.
-- Removed the dead Meituan hot adapter after the upstream endpoint returned
-  unrecoverable 404 responses and no reliable reference path remained.
-
 ## [0.216.0] — 2026-04-27 — OpenCLI Parity Harness
 
 ### Added
 
 - **OpenCLI parity benchmark** — `pnpm bench:opencli-parity` compares the
-  synced `ref/opencli/cli-manifest.json` against Uni-CLI's generated manifest,
-  reports site/command gaps, and can fail CI with `--fail-on-gaps`.
+  synced reference manifest against Uni-CLI's generated manifest, reports
+  site/command gaps, and can fail CI with `--fail-on-gaps`.
 - **Latest OpenCLI signal watchlist** — public OpenCLI PR/issue movements for
   Google Scholar, Instagram, Doubao, browser upload, daemon ports,
   debugger-detach retry, plugin daemon docs, bind-current, browser network
@@ -125,7 +135,7 @@ Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributin
 
 - **Coding-agent backend matrix** — `unicli agents matrix` and
   `unicli agents recommend <agent>` now expose a structured v2 policy
-  matrix for core, SOTA, bridge, watchlist, and editor-owned coding agents:
+  matrix for core, direct, bridge, watchlist, and editor-owned coding agents:
   Claude Code, Codex, Hermes, Cursor, Kimi CLI, OpenCode, Gemini CLI, Qwen
   Code, Kiro CLI, Aider, Goose, Amp, GitHub Copilot CLI, Auggie, Crush,
   OpenHands, mini-SWE-agent, SWE-agent, acpx/OpenClaw, AgentAPI, MiniMax CLI,

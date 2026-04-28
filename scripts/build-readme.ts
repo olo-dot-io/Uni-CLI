@@ -23,6 +23,7 @@ const TARGETS = [
   "README.zh-CN.md",
   "AGENTS.md",
   join("docs", "ROADMAP.md"),
+  join("docs", "zh", "ROADMAP.md"),
   join("contributing", "COPY.md"),
 ];
 

@@ -6,9 +6,9 @@
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/zh/index.md
 - 栏目: 开始
 
-## AI 智能体与真实软件之间的通用接口。
+## 面向真实软件的 Agent 执行底座。
 
-用一条原生 CLI 串起真实操作：按意图发现命令，执行 typed adapter，返回结构化 AgentEnvelope，并在自动化失效时就地修复。
+按意图发现命令，跨 Web、应用、本地工具和系统能力执行可治理操作，再返回带证据的 AgentEnvelope，方便智能体检查和修复。
 
 ## 主要入口
 
@@ -17,31 +17,32 @@
 
 ## 核心能力
 
-- **按意图搜索.** 双语 BM25 把自然语言映射到 235 个站点、1448 条可运行命令。
-- **操作真实软件.** 同一套 CLI 覆盖 Web API、浏览器自动化、macOS 应用、桌面工具和外部 CLI。
+- **按意图发现.** 双语 BM25 把自然语言映射到 235 个站点、1448 条可运行命令。
+- **执行真实表面.** 同一套 CLI 覆盖 Web API、浏览器自动化、macOS 应用、桌面工具、本地服务和外部 CLI。
 - **返回 AgentEnvelope.** Markdown、JSON、YAML、CSV 和 compact 输出共用同一套 v2 成功/错误合同。
+- **治理副作用.** Operation policy 通过 open、confirm、locked profile 暴露 effect、risk、approval 和 capability scope。
+- **记录证据.** 可选 run trace 和浏览器动作证据让执行过程可审查，同时不改变命令合同。
 - **就地修复.** 失败结果会带上 adapter path、pipeline step、是否可重试、建议和替代命令。
 - **接入智能体.** 命令行执行对 coding agent 是原生路径；MCP、ACP 和 JSON stream 是兼容接口。
-- **保持轻量.** YAML adapter 组合 typed pipeline steps，不为每个站点引入沉重 SDK。
 
 ## 当前版本
 
-v0.216.3（Apollo · Collins）已于 2026-04-27 发布到 npm，@zenalexa/unicli 的 latest 当前指向这个版本。
+v1.0.0（Apollo · Lovell）已于 2026-04-28 发布到 npm，@zenalexa/unicli 的 latest 当前指向这个版本。
 
 当前公开目录：235 个站点，1448 条命令。
 
 ### 更新提示
 
-- 已通过 npm latest 发布，并带有 provenance。
-- 对当前 OpenCLI reference manifest 保持 0 个站点缺失、0 条命令缺失。
-- 冷启动 fast-path 在缺少生成 manifest 时会干净回退到完整 CLI。
-- 公开文档目录已更新到当前 235 个站点、1448 条命令。
+- 首个稳定执行底座版本，面向 Agent 驱动的 Web、应用、本地工具、系统能力和外部 CLI 操作。
+- 公开合同固定为命令优先发现、v2 AgentEnvelope 输出、可修复 adapter 错误、operation policy metadata 和可选 run recording。
+- 浏览器动作可以输出结构化前后证据、移动检测、stale-ref 失败细节和 watchdog 结果。
+- 公开文档目录已更新到当前 235 个站点、1448 条命令、1039 个 adapter、59 个 step、7469 个测试。
 
 ### 链接
 
 - [@zenalexa/unicli on npm](https://www.npmjs.com/package/@zenalexa/unicli)
-- [GitHub Release v0.216.3](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.216.3)
-- [Changelog](https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02163--2026-04-27--apollo--collins)
+- [GitHub Release v1.0.0](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.0.0)
+- [Changelog](https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#100--2026-04-28--apollo--lovell)
 
 ## 目录快照
 
@@ -60,9 +61,9 @@ v0.216.3（Apollo · Collins）已于 2026-04-27 发布到 npm，@zenalexa/unicl
 
 ## 定位
 
-Uni-CLI 面向已经能使用 shell 的智能体。它不是把所有软件包装成一个厚协议层，而是把可搜索、可执行、可修复的操作收敛成命令。
+Uni-CLI 位于 Agent 应用之下、网站/桌面应用/本地工具/系统能力之上。它不是 scraper，不是协议壳，也不是 CUA-first 产品。稳定原语是一条 Agent 能搜索、检查、执行、记录、修复的命令。
 
-常用路径很短：用 `unicli search` 找命令，用 `unicli describe` 看参数，用 `unicli <site> <command>` 执行。失败时，错误信封会告诉你该修哪一个 adapter、哪一步 pipeline 出了问题。
+常用路径很短：用 `unicli search` 找命令，用 `unicli describe` 看参数，用 `unicli <site> <command>` 执行，需要证据时加 `--record`。失败时，错误信封会告诉你该修哪一个 adapter、哪一步 pipeline 出了问题。
 
 ## 第一条命令
 

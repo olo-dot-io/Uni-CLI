@@ -1,7 +1,8 @@
 /**
  * count-consistency — Fail the build when a tracked release surface drifts from stats.json.
  *
- * Scans README.md, AGENTS.md, docs/ROADMAP.md, contributing/COPY.md for
+ * Scans README.md, AGENTS.md, docs/ROADMAP.md, docs/zh/ROADMAP.md,
+ * contributing/COPY.md for
  * `<!-- STATS:<key> -->...<!-- /STATS -->` markers and asserts the rendered
  * value matches `stats.json[<key>]`. CLAUDE.md is .gitignored and not part of
  * the published release surfaces.
@@ -27,6 +28,7 @@ const TARGETS = [
   "README.zh-CN.md",
   "AGENTS.md",
   join("docs", "ROADMAP.md"),
+  join("docs", "zh", "ROADMAP.md"),
   join("contributing", "COPY.md"),
 ];
 

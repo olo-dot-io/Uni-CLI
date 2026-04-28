@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: "Uni-CLI"
-  text: "AI 智能体与真实软件之间的通用接口。"
-  tagline: "用一条原生 CLI 串起真实操作：按意图发现命令，执行 typed adapter，返回结构化 AgentEnvelope，并在自动化失效时就地修复。"
+  text: "面向真实软件的 Agent 执行底座。"
+  tagline: "按意图发现命令，跨 Web、应用、本地工具和系统能力执行可治理操作，再返回带证据的 AgentEnvelope，方便智能体检查和修复。"
   image:
     src: /mascot-otter.png
     alt: Uni-CLI mascot holding a terminal tablet
@@ -17,18 +17,20 @@ hero:
       link: /zh/reference/sites
 
 features:
-  - title: 按意图搜索
+  - title: 按意图发现
     details: "双语 BM25 把自然语言映射到 235 个站点、1448 条可运行命令。"
-  - title: 操作真实软件
-    details: "同一套 CLI 覆盖 Web API、浏览器自动化、macOS 应用、桌面工具和外部 CLI。"
+  - title: 执行真实表面
+    details: "同一套 CLI 覆盖 Web API、浏览器自动化、macOS 应用、桌面工具、本地服务和外部 CLI。"
   - title: 返回 AgentEnvelope
     details: "Markdown、JSON、YAML、CSV 和 compact 输出共用同一套 v2 成功/错误合同。"
+  - title: 治理副作用
+    details: "Operation policy 通过 open、confirm、locked profile 暴露 effect、risk、approval 和 capability scope。"
+  - title: 记录证据
+    details: "可选 run trace 和浏览器动作证据让执行过程可审查，同时不改变命令合同。"
   - title: 就地修复
     details: "失败结果会带上 adapter path、pipeline step、是否可重试、建议和替代命令。"
   - title: 接入智能体
     details: "命令行执行对 coding agent 是原生路径；MCP、ACP 和 JSON stream 是兼容接口。"
-  - title: 保持轻量
-    details: "YAML adapter 组合 typed pipeline steps，不为每个站点引入沉重 SDK。"
 ---
 
 <VersionNotice />
@@ -37,9 +39,9 @@ features:
 
 ## 定位
 
-Uni-CLI 面向已经能使用 shell 的智能体。它不是把所有软件包装成一个厚协议层，而是把可搜索、可执行、可修复的操作收敛成命令。
+Uni-CLI 位于 Agent 应用之下、网站/桌面应用/本地工具/系统能力之上。它不是 scraper，不是协议壳，也不是 CUA-first 产品。稳定原语是一条 Agent 能搜索、检查、执行、记录、修复的命令。
 
-常用路径很短：用 `unicli search` 找命令，用 `unicli describe` 看参数，用 `unicli <site> <command>` 执行。失败时，错误信封会告诉你该修哪一个 adapter、哪一步 pipeline 出了问题。
+常用路径很短：用 `unicli search` 找命令，用 `unicli describe` 看参数，用 `unicli <site> <command>` 执行，需要证据时加 `--record`。失败时，错误信封会告诉你该修哪一个 adapter、哪一步 pipeline 出了问题。
 
 ## 第一条命令
 

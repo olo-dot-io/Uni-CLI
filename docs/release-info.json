@@ -1,23 +1,23 @@
 {
-  "version": "0.216.3",
-  "codename": "Apollo · Collins",
-  "date": "2026-04-27",
+  "version": "1.0.0",
+  "codename": "Apollo · Lovell",
+  "date": "2026-04-28",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.216.3",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02163--2026-04-27--apollo--collins",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.0.0",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#100--2026-04-28--apollo--lovell",
   "highlights": {
     "root": [
-      "Published as the npm latest tag with provenance.",
-      "OpenCLI parity remains at 0 missing sites and 0 missing commands against the current reference manifest.",
-      "Fast-path discovery now falls back cleanly when the generated manifest is absent.",
-      "The public docs catalog now reports the current 235-site, 1448-command surface."
+      "First stable execution-substrate release for agent-driven web, app, local tool, system, and external CLI operations.",
+      "The public contract is command-first discovery, v2 AgentEnvelope output, repairable adapter errors, operation policy metadata, and optional run recording.",
+      "Browser actions can emit structured pre/post evidence, movement detection, stale-ref failure details, and watchdog results.",
+      "The public docs catalog reports the current 235-site, 1448-command, 1039-adapter, 59-step, 7469-test surface."
     ],
     "zh": [
-      "已通过 npm latest 发布，并带有 provenance。",
-      "对当前 OpenCLI reference manifest 保持 0 个站点缺失、0 条命令缺失。",
-      "冷启动 fast-path 在缺少生成 manifest 时会干净回退到完整 CLI。",
-      "公开文档目录已更新到当前 235 个站点、1448 条命令。"
+      "首个稳定执行底座版本，面向 Agent 驱动的 Web、应用、本地工具、系统能力和外部 CLI 操作。",
+      "公开合同固定为命令优先发现、v2 AgentEnvelope 输出、可修复 adapter 错误、operation policy metadata 和可选 run recording。",
+      "浏览器动作可以输出结构化前后证据、移动检测、stale-ref 失败细节和 watchdog 结果。",
+      "公开文档目录已更新到当前 235 个站点、1448 条命令、1039 个 adapter、59 个 step、7469 个测试。"
     ]
   }
 }

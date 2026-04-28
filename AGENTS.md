@@ -212,4 +212,4 @@ unicli lark-cli calendar +agenda   # Direct passthrough
 
 ## Version
 
-0.216.3 — Apollo · Collins
+1.0.0 — Apollo · Lovell
