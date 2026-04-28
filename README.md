@@ -5,7 +5,7 @@
 <h1 align="center">Uni-CLI</h1>
 
 <p align="center">
-  <strong>One CLI surface for agents to operate websites, desktop apps, local tools, and other CLIs.</strong>
+  <strong>The agent execution substrate for the world's software.</strong>
 </p>
 
 <p align="center">
@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  Search by intent, run a real command, get a structured envelope back. If a site changes, the error points to the adapter file and step to repair.
+  Search by intent, execute governed commands across web, apps, local tools, and system capabilities, then return evidence-rich AgentEnvelopes that agents can inspect and repair.
 </p>
 
 <p align="center">
@@ -129,7 +129,7 @@ Prefer native CLI / JSON stream / MCP for agent runtimes. Use ACP as an editor c
 
 ## What It Does
 
-Uni-CLI turns software surfaces into commands that agents can discover, run, and fix.
+Uni-CLI sits under agent applications and turns software surfaces into commands that agents can discover, execute, record, and repair.
 
 | Surface            | What you get                                                                                       |
 | ------------------ | -------------------------------------------------------------------------------------------------- |
@@ -138,6 +138,8 @@ Uni-CLI turns software surfaces into commands that agents can discover, run, and
 | Desktop and macOS  | System commands, app adapters, screenshots, clipboard, calendar, brightness, and local tools       |
 | External CLIs      | 58 registered pass-through bridges with install/status discovery                                   |
 | Agent backends     | Route matrix for native CLI, JSON stream, MCP, ACP, HTTP API, OpenAI-compatible, and bridge routes |
+| Operation policy   | `open`, `confirm`, and `locked` profiles with effect, risk, approval, and capability scope         |
+| Evidence           | Optional run traces plus browser pre/post evidence, movement detection, stale-ref details          |
 | Output             | v2 `AgentEnvelope` in Markdown, JSON, YAML, CSV, or compact format                                 |
 | Repair             | Structured errors with `adapter_path`, failing `step`, retryability, suggestions, and alternatives |
 
@@ -156,6 +158,7 @@ Output defaults to structured Markdown for non-TTY and agent-user-agent runs. Fo
 ```bash
 UNICLI_OUTPUT=json unicli reddit hot --limit 10
 unicli hackernews top --limit 5 -f yaml
+unicli --record --permission-profile confirm twitter search "coding agents" -f json
 ```
 
 Protocol entry points:
@@ -288,6 +291,11 @@ Docs:
 
 - Auth-required sites use local cookie files under `~/.unicli/cookies/<site>.json`.
 - Browser adapters require a reachable Chrome/CDP session.
+- Permission profiles are user-selected runtime policy. The default is `open`;
+  stricter `confirm` and `locked` profiles require `--yes` or `UNICLI_APPROVE=1`
+  for blocked operations.
+- Run recording is opt-in. Use `--record` or `UNICLI_RECORD_RUN=1` when you need
+  append-only evidence under `~/.unicli/runs`.
 - CUA routes require a configured real backend. Declared-but-unavailable providers fail closed with structured errors.
 - User adapters and repairs live in `~/.unicli/adapters/`; committed adapters remain the package baseline.
 - If a site blocks automation or changes a private API, the correct behavior is a clear failure envelope, not a fabricated success.
@@ -306,5 +314,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v0.216.3 — Apollo · Collins</sub>
+  <sub>v1.0.0 — Apollo · Lovell</sub>
 </p>

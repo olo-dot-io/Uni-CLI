@@ -1,8 +1,9 @@
 # Uni-CLI Architecture
 
-> Uni-CLI is the CLI-native bridge between agents and software. The primary
-> contract is a command invocation plus a structured `AgentEnvelope`; protocol
-> servers are compatibility surfaces over the same catalog.
+> Uni-CLI is the agent execution substrate for web, apps, local tools, and
+> system capabilities. The primary contract is a command invocation plus a
+> structured `AgentEnvelope`; protocol servers are compatibility surfaces over
+> the same catalog.
 
 ## Current Shape
 
@@ -12,41 +13,44 @@ Uni-CLI exposes one searchable command surface across:
 - **Browser automation**: Chrome/CDP, UI, intercept, snapshot, and operate flows.
 - **Desktop/local tools**: subprocess-backed apps, macOS automation, media tools,
   design tools, Office adapters, and local developer utilities.
-- **Services**: local or remote HTTP/WebSocket services.
+- **Services and system capabilities**: local or remote HTTP/WebSocket services,
+  files, shell commands, and operating-system affordances.
 - **Bridge CLIs**: passthrough adapters for mature command-line tools.
 - **Agent backends**: routing and setup helpers for agent runtimes that can call
   shell commands or protocol servers.
 
 The generated catalog is the source of truth: **235 sites**, **1448 commands**,
-**1039 adapters**, **59 pipeline steps**, and **7396 tests** in v0.216.3.
+**1039 adapters**, **59 pipeline steps**, and **7469 tests** in v1.0.0.
 
 ## Execution Contract
 
 Coding agents already have a shell. Uni-CLI uses that native substrate first and
 keeps every other transport as an adapter over the same registry.
 
-| Layer             | Contract                                                      |
-| ----------------- | ------------------------------------------------------------- |
-| Discovery         | `unicli search`, `unicli list`, `unicli describe`             |
-| Execution         | `unicli <site> <command> [args]`                              |
-| Output            | v2 `AgentEnvelope` in Markdown, JSON, YAML, CSV, or compact   |
-| Repair            | Error envelope with adapter path, failing step, and next move |
-| Composition       | Shell pipes, files, scripts, JSON streams, and protocol wraps |
-| Compatibility     | MCP, ACP, HTTP API, and generated agent configuration         |
-| Extension surface | YAML adapters first; TypeScript only where the pipeline ends  |
+| Layer             | Contract                                                            |
+| ----------------- | ------------------------------------------------------------------- |
+| Discovery         | `unicli search`, `unicli list`, `unicli describe`                   |
+| Execution         | `unicli <site> <command> [args]`                                    |
+| Governance        | `--permission-profile`, `--yes`, effect/risk/approval metadata      |
+| Evidence          | `--record`, run events, result envelopes, browser pre/post evidence |
+| Output            | v2 `AgentEnvelope` in Markdown, JSON, YAML, CSV, or compact         |
+| Repair            | Error envelope with adapter path, failing step, and next move       |
+| Composition       | Shell pipes, files, scripts, JSON streams, and protocol wraps       |
+| Compatibility     | MCP, ACP, HTTP API, and generated agent configuration               |
+| Extension surface | YAML adapters first; TypeScript only where the finite pipeline ends |
 
 The architectural rule is simple: a protocol server may wrap Uni-CLI, but it
 does not define Uni-CLI. The stable primitive is still a command that an agent
-can search, execute, inspect, and repair.
+can search, inspect, execute, record, and repair.
 
 ## Operating Kernel
 
-The target architecture is an agent control kernel for websites, desktop apps,
-local tools, and files. The kernel stays small and auditable:
+The architecture is an agent control kernel for websites, desktop apps, local
+tools, files, and system capabilities. The kernel stays small and auditable:
 
 1. **Command registry**: one manifest with names, arguments, capability needs,
    output shape, auth, and inferred operation policy.
-2. **Invocation kernel**: one path that validates args, applies permissions,
+2. **Invocation kernel**: one path that validates args, evaluates permissions,
    runs the adapter, records evidence, and returns an `AgentEnvelope`.
 3. **Transport bus**: adapters choose HTTP, CDP, accessibility, subprocess,
    service, or CUA without changing the user-facing command contract.
@@ -62,6 +66,19 @@ The manifest is therefore a runtime contract, not just documentation. Generated
 commands must preserve the same argument schema in `search`, `describe`,
 `--dry-run`, MCP, ACP, and direct CLI execution. Drift between generated TypeScript
 registrations and fast-path discovery is treated as a correctness bug.
+
+## Run And Evidence Model
+
+Run recording is explicit and local. `--record` or `UNICLI_RECORD_RUN=1` writes
+append-only JSONL traces under `~/.unicli/runs` with command metadata,
+permission evaluation, result-envelope evidence, warnings, and timing. The CLI
+does not make recording the default because many operations include private
+account state.
+
+Browser operator commands can add a narrower evidence layer. Recorded actions
+capture pre/post packets, movement dimensions, stale-reference failures, and
+optional watchdog results. That evidence is meant to prove what the automation
+actually observed, not to replace the adapter contract.
 
 ## Capability Model
 
@@ -127,7 +144,9 @@ to tighten execution policy without rewriting adapter metadata.
 
 The surrounding agent-runtime field is moving quickly. Uni-CLI keeps external
 research out of the source-of-truth path for code, but uses it to update
-directional bets.
+directional bets. As of the 2026-04-28 public positioning pass, comparable
+systems are increasingly framed around controllable workflows, observability,
+policy, human review, and interoperability rather than raw autonomy.
 
 Current trend inputs point to:
 
@@ -136,19 +155,23 @@ Current trend inputs point to:
 - Parallel/background agents with isolated worktrees and review loops.
 - Editor-agent systems pushing parallel agents, subagents, worktrees, and async
   execution as core product direction.
-- Computer-use backends becoming a fallback capability, not the ideal primary
+- Browser and computer-use automation becoming more semantic and observable,
+  with managed state, screenshots, layout evidence, and audit trails.
+- Computer-use backends remaining a fallback capability, not the ideal primary
   transport.
 - Editor and desktop products adding async collaboration, persistent context,
   and history-aware agents.
 
 These inputs reinforce the same local architecture: command-first, manifest
-truth, repairable adapters, explicit permissions, and transport plurality.
+truth, repairable adapters, explicit permissions, evidence recording, and
+transport plurality.
 
 ## Industry Position
 
-Uni-CLI sits below agent applications and above websites, desktop apps, and local
-tools. It is not trying to be an IDE, a chat product, a model host, or a single
-agent loop. It is the execution substrate those products should be able to call.
+Uni-CLI sits below agent applications and above websites, desktop apps, local
+tools, and system capabilities. It is not trying to be an IDE, a chat product, a
+model host, a scraper, a protocol-only bridge, or a single agent loop. It is the
+execution substrate those products should be able to call.
 
 Use:
 
@@ -156,6 +179,7 @@ Use:
 - YAML adapters for durable website/app operations.
 - CDP, accessibility, subprocess, and app APIs before CUA.
 - CUA only when it can see, act, and verify.
+- Run and browser evidence when an operation needs reviewable proof.
 - MCP/ACP/HTTP as compatibility surfaces generated from the same catalog.
 
 Do not use:
@@ -163,6 +187,7 @@ Do not use:
 - ACP or MCP as the core semantic model.
 - CUA as the first transport when API/CDP/a11y/subprocess exists.
 - Static privacy labels as the only safety mechanism.
+- Unobserved browser actions as successful side effects.
 - Thick SDKs that hide the adapter path, failing step, and repair evidence.
 
 ## Self-Repair Loop

@@ -1,7 +1,7 @@
 {
   "name": "@zenalexa/unicli",
-  "version": "0.216.3",
-  "description": "The universal interface between AI agents and the world's software",
+  "version": "1.0.0",
+  "description": "Agent execution substrate for web, apps, local tools, and system capabilities",
   "type": "module",
   "main": "dist/main.js",
   "bin": {

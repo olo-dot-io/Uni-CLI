@@ -29,7 +29,7 @@ const siteBase = configuredSiteBase
     : "/";
 const siteOrigin = "https://olo-dot-io.github.io";
 const publicSiteUrl = `${siteOrigin}${siteBase}`;
-const zhDescription = "AI 智能体与真实软件之间的通用接口";
+const zhDescription = "面向真实软件的 Agent 执行底座";
 
 const socialLinks = [
   { icon: "github", link: "https://github.com/olo-dot-io/Uni-CLI" },
@@ -157,7 +157,7 @@ export default defineConfig({
   title: "Uni-CLI",
   lang: localizedSiteMaps.root.lang,
   description:
-    "The universal interface between AI agents and the world's software",
+    "Agent execution substrate for web, apps, local tools, and system capabilities",
   base: siteBase,
   srcExclude: ["public/markdown/**/*.md", "demo/README.md"],
   cleanUrls: true,
@@ -182,7 +182,7 @@ export default defineConfig({
       {
         property: "og:description",
         content:
-          "A shell-native command layer for agents to discover, execute, verify, and repair real workflows across websites, desktop apps, local tools, and external CLIs.",
+          "Command-first execution substrate for agents to discover, execute, record, and repair workflows across websites, apps, local tools, system capabilities, and external CLIs.",
       },
     ],
     ["meta", { property: "og:url", content: publicSiteUrl }],

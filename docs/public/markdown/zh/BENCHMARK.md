@@ -36,7 +36,7 @@ npm run bench:gate
 - 1448 条命令。
 - 917 个 schema-v2 YAML adapter。
 - 59 个 pipeline steps。
-- 7396 个测试。
+- 7469 个测试。
 
 数字随开发更新，以 `npm run stats` 生成结果为准。
 

@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: "Uni-CLI"
-  text: "The universal interface between AI agents and the world's software."
-  tagline: "A shell-native command layer for real operations: discover by intent, execute typed adapters, return structured AgentEnvelopes, and repair broken automation in place."
+  text: "The agent execution substrate for the world's software."
+  tagline: "Discover by intent, execute governed commands across web, apps, local tools, and system capabilities, then return evidence-rich AgentEnvelopes that agents can inspect and repair."
   image:
     src: /mascot-otter.png
     alt: Uni-CLI otter mascot holding a terminal tablet
@@ -17,18 +17,20 @@ hero:
       link: /reference/sites
 
 features:
-  - title: Search By Intent
+  - title: Discover By Intent
     details: "Bilingual BM25 maps natural language to runnable commands across 235 sites and 1448 commands."
-  - title: Operate Real Surfaces
-    details: "The same CLI spans web APIs, browser automation, macOS apps, desktop tools, and external CLIs."
-  - title: Return Agent Envelopes
+  - title: Execute Real Surfaces
+    details: "One CLI spans web APIs, browser automation, macOS apps, desktop tools, local services, and external CLIs."
+  - title: Return AgentEnvelopes
     details: "Markdown, JSON, YAML, CSV, and compact output share the same v2 success/error contract."
+  - title: Govern Side Effects
+    details: "Operation policy exposes effect, risk, approval, and capability scope through open, confirm, and locked profiles."
+  - title: Record Evidence
+    details: "Opt-in run traces and browser action evidence make execution inspectable without changing the command contract."
   - title: Repair In Place
     details: "Failures include adapter path, pipeline step, retryability, suggestions, and alternatives."
   - title: Plug Into Agents
     details: "CLI-first execution stays native to coding agents; MCP, ACP, and JSON streams are compatibility surfaces."
-  - title: Stay Small
-    details: "YAML adapters compose typed pipeline steps and avoid heavy per-site SDK dependencies."
 ---
 
 <VersionNotice />
@@ -37,11 +39,15 @@ features:
 
 ## Positioning
 
-Uni-CLI is built for agents that already have a shell. MCP compatibility is
-available, but the primary path is faster and smaller: discover with
-`unicli search`, inspect with `unicli describe`, execute with
-`unicli <site> <command>`, and repair through the adapter path in the error
-envelope.
+Uni-CLI sits below agent applications and above websites, desktop apps, local
+tools, and system capabilities. It is not a scraper, a protocol-only wrapper, or
+a CUA-first product. The stable primitive is a command an agent can search,
+inspect, execute, record, and repair.
+
+MCP compatibility is available, but the primary path is still direct and small:
+discover with `unicli search`, inspect with `unicli describe`, execute with
+`unicli <site> <command>`, optionally record with `--record`, and repair through
+the adapter path in the error envelope.
 
 ## First Command
 

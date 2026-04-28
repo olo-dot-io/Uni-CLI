@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * unicli — The universal interface between AI agents and the world's software.
+ * unicli — Agent execution substrate for web, apps, local tools, and system capabilities.
  */
 
 const args = process.argv.slice(2);

@@ -29,7 +29,10 @@ If the maintainer has not explicitly asked to release, development stays under
 
 ## Versioning
 
-Uni-CLI follows semver while the package is in the `0.x` line.
+Uni-CLI follows semver. The `1.x` line is the stable execution-substrate
+contract: command-first discovery and execution, v2 `AgentEnvelope` output,
+repairable adapter errors, operation-policy metadata, and optional run
+recording.
 
 | Change                                                            | Version bump |
 | ----------------------------------------------------------------- | ------------ |
@@ -70,7 +73,7 @@ Every tagged release must carry a final spaceflight label:
 Program · Astronaut
 ```
 
-Examples: `Vostok · Gagarin`, `Mercury · Glenn`.
+Examples: `Vostok · Gagarin`, `Mercury · Glenn`, `Apollo · Lovell`.
 
 Current program map:
 
@@ -80,6 +83,7 @@ Current program map:
 | `0.2xx`       | Vostok  |
 | `0.3xx`       | Mercury |
 | `0.4xx`       | Gemini  |
+| `1.x`         | Apollo  |
 
 Rules:
 
@@ -96,6 +100,9 @@ Automation enforces this:
 RELEASE_CODENAME="Vostok · Gagarin" npm run release
 npm run release:check -- --strict-codename
 ```
+
+For the 1.0 line, the release label format is unchanged. The first stable
+candidate used `Apollo · Lovell`.
 
 ## Substantive Commits
 

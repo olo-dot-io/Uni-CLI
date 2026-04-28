@@ -1,6 +1,6 @@
 # Uni-CLI Copy Rules
 
-> Current version: v0.216.3 — Apollo · Collins.
+> Current version: v1.0.0 — Apollo · Lovell.
 >
 > Current scale: <!-- STATS:site_count -->235<!-- /STATS --> sites, <!-- STATS:command_count -->1448<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->1039<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->917<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->122<!-- /STATS --> TS), <!-- STATS:test_count -->7469<!-- /STATS --> tests.
 
@@ -9,11 +9,12 @@ install, command, output, and repair facts with the fewest words needed.
 
 ## Product Sentence
 
-Uni-CLI adapts software surfaces into commands that agents can discover, run,
-and repair.
+Uni-CLI is the agent execution substrate for web, apps, local tools, and system
+capabilities.
 
 Use that sentence as the north star. If a paragraph does not help a user install,
-run, inspect, repair, or extend the tool, it probably does not belong in README.
+discover, execute, record, inspect, repair, or extend the tool, it probably does
+not belong in README.
 
 ## Copy Rules
 
@@ -22,6 +23,7 @@ run, inspect, repair, or extend the tool, it probably does not belong in README.
 | Start with install and a working command. | Start with theory, vision, or protocol politics.                  |
 | Show exact CLI commands.                  | Describe a feature without an executable path.                    |
 | Say what is shipped and what is gated.    | Imply a backend is live when it is only declared.                 |
+| Name evidence when behavior is recorded.  | Treat opaque side effects as proof of success.                    |
 | Keep adapter repair concrete.             | Say "self-healing" without the `adapter_path` and verify command. |
 | Use short tables for capability maps.     | Use giant badge walls or decorative animations.                   |
 | Link to references after the quick path.  | Make the first screen a table of contents.                        |
@@ -34,7 +36,7 @@ run, inspect, repair, or extend the tool, it probably does not belong in README.
 4. Output contract and error contract.
 5. Self-repair loop.
 6. Adapter authoring example.
-7. Trust, auth, browser, and CUA limits.
+7. Trust, auth, browser, evidence, operation policy, and CUA limits.
 8. Development and license.
 
 No scrolling animation. No Mermaid hero diagram. No theory section.
@@ -71,6 +73,8 @@ page.
 - ACP is compatibility unless the client gives us real session/tool event semantics.
 - CUA is only live when a real configured backend performs the action.
 - Browser automation requires a reachable browser runtime.
+- Run recording is opt-in and local; do not imply all commands are recorded by default.
+- Operation policy defaults to `open`; stricter profiles are user-selected.
 - Auth-required adapters should say exactly which cookie or credential path is needed.
 - Errors should be useful to an agent: code, message, adapter path, step, retryability, suggestion, alternatives.
 
