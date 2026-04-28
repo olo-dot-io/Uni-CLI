@@ -56,7 +56,7 @@ Agent execution needs an auditable, repairable, reusable command contract. Catal
 - Sites and tools: 235
 - Commands: 1448
 - Pipeline steps: 59
-- Tests: 7525
+- Tests: 7533
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -242,6 +242,10 @@ unicli --permission-profile locked --yes --remember-approval word set-font "Inte
 unicli approvals list
 unicli approvals revoke <approval_key>
 ```
+
+Remembered approvals are bound to the command capability and stable resource
+metadata, such as domain, app, account surface, and path argument slots. Runtime
+argument values stay out of the approval store.
 
 ## Protocol Servers
 
@@ -3616,10 +3620,10 @@ The kernel infers operation shape from the command contract and surfaces it in
 - `risk`: `low`, `medium`, or `high`.
 - `approval_required`: whether the active user profile blocks execution until
   `--yes` or `UNICLI_APPROVE=1` is supplied.
-- `approval_memory`: deterministic command-scope key and dimension summary.
-  `--remember-approval` stores allowed scopes in `~/.unicli/approvals.jsonl`
-  with scope metadata only. `unicli approvals list`, `revoke`, and `clear`
-  inspect or remove remembered scopes.
+- `approval_memory`: deterministic command-scope key with capability dimensions
+  and stable resource metadata. `--remember-approval` stores allowed scopes in
+  `~/.unicli/approvals.jsonl` with scope metadata only. `unicli approvals list`,
+  `revoke`, and `clear` inspect or remove remembered scopes.
 
 This keeps capability broad and easy to turn on, while still giving teams a way
 to tighten execution policy without rewriting adapter metadata.
@@ -4058,7 +4062,7 @@ This file tracks current engineering direction. Historical release notes live in
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | Adapter catalog      | Web, browser, desktop, macOS, bridge, and external CLI surfaces are discoverable through `unicli list` and `unicli search`. |
 | v2 output envelope   | Normal command surfaces return structured success and error envelopes.                                                      |
-| Operation policy     | `open`, `confirm`, and `locked` profiles expose effect/risk/capability scope, plus private remembered approvals.            |
+| Operation policy     | `open`, `confirm`, and `locked` profiles expose effect/risk/capability/resource scope, plus private remembered approvals.   |
 | Run recording        | `--record` and `UNICLI_RECORD_RUN=1` write append-only run traces that agents can list, show, probe, replay, and compare.   |
 | Browser evidence     | Browser operator actions can emit pre/post evidence, movement dimensions, stale-ref details, and watchdog results.          |
 | MCP server           | Stdio, Streamable HTTP, SSE, and optional OAuth 2.1 PKCE entry points are available.                                        |

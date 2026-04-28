@@ -266,6 +266,33 @@ describe("CLI fast path", () => {
     });
   });
 
+  it("includes manifest resource metadata in adapter dry-run policy", () => {
+    const { stdout, io } = makeIo();
+
+    const handled = tryRunFastPath(
+      ["node", "unicli", "--dry-run", "binance", "price", "BTCUSDT"],
+      io,
+    );
+
+    expect(handled).toBe(true);
+    const plan = JSON.parse(stdout.join("")) as {
+      operation_policy: {
+        capability_scope: {
+          resources?: {
+            domains: string[];
+          };
+          resource_summary?: string[];
+        };
+      };
+    };
+    expect(plan.operation_policy.capability_scope.resources?.domains).toEqual([
+      "data-api.binance.vision",
+    ]);
+    expect(plan.operation_policy.capability_scope.resource_summary).toContain(
+      "domain:data-api.binance.vision",
+    );
+  });
+
   it("emits structured invalid permission profile errors for adapter dry-run", () => {
     const { stdout, stderr, io } = makeIo();
 

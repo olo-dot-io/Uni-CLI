@@ -283,6 +283,8 @@ if (existsSync(ADAPTERS_DIR)) {
             description: parsed.description || "",
             strategy: parsed.strategy || "public",
             type: parsed.type || "web-api",
+            domain: parsed.domain,
+            base: parsed.base,
             browser: parsed.browser === true,
             quarantined: parsed.quarantine === true,
             args: serializeArgs(parsed.args),

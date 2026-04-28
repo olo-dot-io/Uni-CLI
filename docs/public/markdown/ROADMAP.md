@@ -18,7 +18,7 @@ This file tracks current engineering direction. Historical release notes live in
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | Adapter catalog      | Web, browser, desktop, macOS, bridge, and external CLI surfaces are discoverable through `unicli list` and `unicli search`. |
 | v2 output envelope   | Normal command surfaces return structured success and error envelopes.                                                      |
-| Operation policy     | `open`, `confirm`, and `locked` profiles expose effect/risk/capability scope, plus private remembered approvals.            |
+| Operation policy     | `open`, `confirm`, and `locked` profiles expose effect/risk/capability/resource scope, plus private remembered approvals.   |
 | Run recording        | `--record` and `UNICLI_RECORD_RUN=1` write append-only run traces that agents can list, show, probe, replay, and compare.   |
 | Browser evidence     | Browser operator actions can emit pre/post evidence, movement dimensions, stale-ref details, and watchdog results.          |
 | MCP server           | Stdio, Streamable HTTP, SSE, and optional OAuth 2.1 PKCE entry points are available.                                        |

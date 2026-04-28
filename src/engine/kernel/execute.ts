@@ -121,6 +121,8 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
       adapterType: inv.adapter.type,
       targetSurface,
       strategy,
+      domain: inv.command.domain ?? inv.adapter.domain,
+      base: inv.command.base ?? inv.adapter.base,
       browser: inv.adapter.browser === true || inv.command.browser === true,
       args: inv.command.adapterArgs,
       profile: inv.permissionProfile,

@@ -13,7 +13,7 @@ import {
   primeKernelCache,
 } from "../../src/discovery/loader.js";
 import { buildInvocation, execute } from "../../src/engine/kernel/execute.js";
-import { cli, Strategy } from "../../src/registry.js";
+import { cli, getAdapter, Strategy } from "../../src/registry.js";
 
 describe("kernel func execution", () => {
   it("passes an acquired page to browser-backed TypeScript commands", async () => {
@@ -43,5 +43,30 @@ describe("kernel func execution", () => {
 
     expect(result.exitCode).toBe(0);
     expect(receivedPage).toBe(browserMock.page);
+  });
+
+  it("keeps TypeScript adapter host metadata on each command", () => {
+    cli({
+      site: "unit-multi-domain-cli",
+      name: "drive",
+      description: "Drive command",
+      domain: "drive.unit-cli.example",
+      strategy: Strategy.COOKIE,
+      browser: true,
+      func: async () => [{ ok: true }],
+    });
+    cli({
+      site: "unit-multi-domain-cli",
+      name: "share",
+      description: "Share command",
+      domain: "share.unit-cli.example",
+      strategy: Strategy.COOKIE,
+      browser: true,
+      func: async () => [{ ok: true }],
+    });
+
+    const adapter = getAdapter("unit-multi-domain-cli");
+    expect(adapter?.commands.drive.domain).toBe("drive.unit-cli.example");
+    expect(adapter?.commands.share.domain).toBe("share.unit-cli.example");
   });
 });

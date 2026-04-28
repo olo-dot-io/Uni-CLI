@@ -158,6 +158,10 @@ unicli approvals list
 unicli approvals revoke <approval_key>
 ```
 
+Remembered approvals are bound to the command capability and stable resource
+metadata, such as domain, app, account surface, and path argument slots. Runtime
+argument values stay out of the approval store.
+
 ## Protocol Servers
 
 MCP:

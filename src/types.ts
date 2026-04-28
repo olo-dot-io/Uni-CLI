@@ -125,6 +125,8 @@ export interface AdapterCommand {
   adapterArgs?: AdapterArg[];
   strategy?: Strategy;
   browser?: boolean;
+  domain?: string;
+  base?: string;
   func?: (page: IPage, kwargs: Record<string, unknown>) => Promise<unknown>;
 
   // For web-api type

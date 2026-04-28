@@ -276,7 +276,9 @@ function extractTsCommandStubs(
       const strategy = objectStrategyProp(body);
       const browser = objectBoolProp(body, "browser");
       const domain = objectStringProp(body, "domain");
+      const base = objectStringProp(body, "base");
       if (domain) meta.domain = domain;
+      if (base) meta.base = base;
       if (strategy) meta.strategy = strategy;
       if (browser !== undefined) meta.browser = browser;
       commands[name] = {
@@ -289,6 +291,8 @@ function extractTsCommandStubs(
         ) as AdapterCommand["target_surface"],
         strategy,
         browser,
+        domain,
+        base,
         adapterArgs: objectArgsProp(body),
         columns: objectStringArrayProp(body, "columns"),
       };
@@ -454,6 +458,8 @@ export function loadAdaptersFromDir(dir: string): number {
           adapterArgs,
           strategy: parsed.strategy as AdapterCommand["strategy"],
           browser: parsed.browser,
+          domain: parsed.domain,
+          base: parsed.base,
           columns: parsed.columns,
           method: parsed.method as AdapterCommand["method"],
           path: parsed.path,

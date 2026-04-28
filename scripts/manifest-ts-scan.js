@@ -365,6 +365,8 @@ export function extractTsRegistrations(source, fallbackSite, fallbackCommand) {
               description: getObjectString(first, "description"),
               strategy: getObjectStrategy(first),
               type: "web-api",
+              domain: getObjectString(first, "domain") || undefined,
+              base: getObjectString(first, "base") || undefined,
               browser: getObjectBoolean(first, "browser"),
               columns: getStringArray(first, "columns"),
               args: getObjectArgs(first),

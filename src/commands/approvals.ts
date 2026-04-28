@@ -31,6 +31,7 @@ function projectApproval(entry: StoredApproval): Record<string, unknown> {
     created_at: entry.created_at,
     command: entry.command,
     scope_summary: scopeSummary(entry),
+    resource_summary: resourceSummary(entry),
     scope: entry.scope,
   };
 }
@@ -48,6 +49,18 @@ function scopeSummary(entry: StoredApproval): string[] {
     const access = entry.scope.dimensions[name];
     return access === "none" ? [] : [`${name}:${access}`];
   });
+}
+
+function resourceSummary(entry: StoredApproval): string[] {
+  const resources = entry.scope.resources;
+  if (!resources) return [];
+  return [
+    ...resources.domains.map((value) => `domain:${value}`),
+    ...resources.accounts.map((value) => `account:${value}`),
+    ...resources.apps.map((value) => `app:${value}`),
+    ...resources.executables.map((value) => `process:${value}`),
+    ...resources.paths.map((value) => `path:${value}`),
+  ];
 }
 
 function printApprovalError(

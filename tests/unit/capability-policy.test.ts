@@ -176,6 +176,124 @@ describe("capability-scoped permission classifier", () => {
     expect(scope.dimensions.process.access).toBe("none");
   });
 
+  it("does not put site fallbacks in the domains resource bucket", () => {
+    const scope = deriveCapabilityScope(
+      {
+        site: "unknown-host-site",
+        command: "search",
+        description: "Search without explicit host metadata",
+        adapterType: "web-api",
+        targetSurface: "web",
+        strategy: "public",
+      },
+      "read",
+    );
+
+    expect(scope.dimensions.network.access).toBe("read");
+    expect(scope.resources.domains).toEqual([]);
+    expect(scope.resource_summary).not.toContain(
+      "domain:site:unknown-host-site",
+    );
+  });
+
+  it("binds remote account approvals to stable resource metadata", () => {
+    const scope = deriveCapabilityScope(
+      {
+        site: "linear",
+        command: "issue-create",
+        description: "Create a new Linear issue",
+        adapterType: "web-api",
+        targetSurface: "web",
+        strategy: "public",
+        domain: "api.linear.app",
+      },
+      "remote_resource",
+    );
+
+    const resources = (
+      scope as {
+        resources?: {
+          domains: string[];
+          accounts: string[];
+        };
+        resource_summary?: string[];
+      }
+    ).resources;
+    expect(resources?.domains).toEqual(["api.linear.app"]);
+    expect(resources?.accounts).toEqual(["linear"]);
+    expect((scope as { resource_summary?: string[] }).resource_summary).toEqual(
+      expect.arrayContaining(["domain:api.linear.app", "account:linear"]),
+    );
+
+    const first = buildCapabilityApprovalMemory({
+      site: "linear",
+      command: "issue-create",
+      profile: "locked",
+      effect: "remote_resource",
+      approved: true,
+      scope,
+    });
+    const second = buildCapabilityApprovalMemory({
+      site: "linear",
+      command: "issue-create",
+      profile: "locked",
+      effect: "remote_resource",
+      approved: true,
+      scope,
+    });
+
+    expect(first.key).toBe(second.key);
+    expect(first.key).toContain(":res:");
+    expect(first.key).not.toContain("hello");
+    expect(
+      (
+        first.scope as {
+          resources?: { domains: string[]; accounts: string[] };
+        }
+      ).resources,
+    ).toMatchObject({
+      domains: ["api.linear.app"],
+      accounts: ["linear"],
+    });
+  });
+
+  it("binds local file approvals to path argument slots without runtime values", () => {
+    const scope = deriveCapabilityScope(
+      {
+        site: "chatgpt",
+        command: "screenshot",
+        description: "Capture a screenshot from desktop AI chat app",
+        adapterType: "desktop",
+        targetSurface: "desktop",
+        args: [
+          {
+            name: "path",
+            required: false,
+          },
+        ],
+      },
+      "local_file",
+    );
+
+    const resources = (
+      scope as {
+        resources?: {
+          apps: string[];
+          executables: string[];
+          paths: string[];
+        };
+        resource_summary?: string[];
+      }
+    ).resources;
+
+    expect(resources?.apps).toEqual(["chatgpt"]);
+    expect(resources?.executables).toEqual(["chatgpt"]);
+    expect(resources?.paths).toEqual(["arg:path"]);
+    expect((scope as { resource_summary?: string[] }).resource_summary).toEqual(
+      expect.arrayContaining(["app:chatgpt", "path:arg:path"]),
+    );
+  });
+
   it("builds deterministic non-persistent approval memory keys without raw args", () => {
     const scope = deriveCapabilityScope(
       {

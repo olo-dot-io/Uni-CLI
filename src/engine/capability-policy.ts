@@ -5,6 +5,7 @@
  * command contract, not user-provided runtime values.
  */
 
+import { createHash } from "node:crypto";
 import { AdapterType, type TargetSurface } from "../types.js";
 import type {
   OperationEffect,
@@ -31,10 +32,20 @@ export type CapabilityDimensionMap = Record<
   CapabilityDimension
 >;
 
+export interface CapabilityResourceScope {
+  domains: string[];
+  paths: string[];
+  executables: string[];
+  apps: string[];
+  accounts: string[];
+}
+
 export interface CapabilityScope {
   schema_version: "1";
   dimensions: CapabilityDimensionMap;
   summary: string[];
+  resources: CapabilityResourceScope;
+  resource_summary: string[];
 }
 
 export interface CapabilityApprovalMemory {
@@ -45,6 +56,7 @@ export interface CapabilityApprovalMemory {
   decision: "not_approved" | "approved_for_invocation" | "approved_by_memory";
   scope: {
     dimensions: Record<CapabilityDimensionName, CapabilityAccess>;
+    resources: CapabilityResourceScope;
   };
 }
 
@@ -65,6 +77,20 @@ const WEB_STRATEGIES = new Set([
   "ui",
 ]);
 
+const PATH_ARG_NAMES = new Set([
+  "dir",
+  "directory",
+  "file",
+  "filename",
+  "folder",
+  "input",
+  "out",
+  "output",
+  "path",
+  "source",
+  "destination",
+]);
+
 function emptyDimensions(): CapabilityDimensionMap {
   return {
     network: { access: "none" },
@@ -73,6 +99,16 @@ function emptyDimensions(): CapabilityDimensionMap {
     file: { access: "none" },
     process: { access: "none" },
     account: { access: "none" },
+  };
+}
+
+function emptyResources(): CapabilityResourceScope {
+  return {
+    domains: [],
+    paths: [],
+    executables: [],
+    apps: [],
+    accounts: [],
   };
 }
 
@@ -97,6 +133,81 @@ function promoteAccess(
   if (accessRank(access) >= accessRank(current.access)) {
     dimensions[name] = { access, reason };
   }
+}
+
+function normalizedUnique(values: string[]): string[] {
+  return Array.from(
+    new Set(
+      values
+        .map((value) => value.trim().toLowerCase())
+        .filter((value) => value.length > 0),
+    ),
+  ).sort();
+}
+
+function normalizeDomain(value?: string): string | undefined {
+  if (!value) return undefined;
+  const raw = value.trim();
+  if (raw.length === 0) return undefined;
+
+  try {
+    const url = new URL(raw.includes("://") ? raw : `https://${raw}`);
+    return url.host.toLowerCase();
+  } catch {
+    return raw
+      .replace(/^https?:\/\//i, "")
+      .split("/")[0]
+      ?.trim()
+      .toLowerCase();
+  }
+}
+
+function pathArgSlots(input: OperationPolicyInput): string[] {
+  return normalizedUnique(
+    (input.args ?? []).flatMap((arg) => {
+      const name = arg.name.trim().toLowerCase();
+      return PATH_ARG_NAMES.has(name) ? [`arg:${name}`] : [];
+    }),
+  );
+}
+
+function deriveResourceScope(
+  input: OperationPolicyInput,
+  dimensions: CapabilityDimensionMap,
+): CapabilityResourceScope {
+  const resources = emptyResources();
+
+  if (
+    dimensions.network.access !== "none" ||
+    dimensions.browser.access !== "none"
+  ) {
+    const domain = normalizeDomain(input.domain ?? input.base);
+    resources.domains = domain ? [domain] : [];
+  }
+
+  if (dimensions.account.access !== "none") {
+    resources.accounts = [input.site];
+  }
+
+  if (dimensions.desktop.access !== "none") {
+    resources.apps = [input.site];
+  }
+
+  if (dimensions.process.access !== "none") {
+    resources.executables = [input.site];
+  }
+
+  if (dimensions.file.access !== "none") {
+    resources.paths = pathArgSlots(input);
+  }
+
+  return {
+    domains: normalizedUnique(resources.domains),
+    paths: normalizedUnique(resources.paths),
+    executables: normalizedUnique(resources.executables),
+    apps: normalizedUnique(resources.apps),
+    accounts: normalizedUnique(resources.accounts),
+  };
 }
 
 function effectAccess(
@@ -165,6 +276,16 @@ function summaryFor(dimensions: CapabilityDimensionMap): string[] {
     const access = dimensions[name].access;
     return access === "none" ? [] : [`${name}:${access}`];
   });
+}
+
+function resourceSummaryFor(resources: CapabilityResourceScope): string[] {
+  return [
+    ...resources.domains.map((value) => `domain:${value}`),
+    ...resources.accounts.map((value) => `account:${value}`),
+    ...resources.apps.map((value) => `app:${value}`),
+    ...resources.executables.map((value) => `process:${value}`),
+    ...resources.paths.map((value) => `path:${value}`),
+  ];
 }
 
 function accessMapFor(
@@ -354,11 +475,30 @@ export function deriveCapabilityScope(
     );
   }
 
+  const resources = deriveResourceScope(input, dimensions);
+
   return {
     schema_version: "1",
     dimensions,
     summary: summaryFor(dimensions),
+    resources,
+    resource_summary: resourceSummaryFor(resources),
   };
+}
+
+function resourceFingerprintFor(resources: CapabilityResourceScope): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        accounts: normalizedUnique(resources.accounts),
+        apps: normalizedUnique(resources.apps),
+        domains: normalizedUnique(resources.domains),
+        executables: normalizedUnique(resources.executables),
+        paths: normalizedUnique(resources.paths),
+      }),
+    )
+    .digest("hex")
+    .slice(0, 16);
 }
 
 export function buildCapabilityApprovalMemory(input: {
@@ -374,12 +514,13 @@ export function buildCapabilityApprovalMemory(input: {
   const dimensionKey = DIMENSION_ORDER.map(
     (name) => `${name}:${dimensionAccess[name]}`,
   ).join(",");
+  const resourceKey = resourceFingerprintFor(input.scope.resources);
   const approvalSource =
     input.approvalSource ?? (input.approved ? "invocation" : "none");
 
   return {
     schema_version: "1",
-    key: `cap:1:${input.site}.${input.command}:${input.profile}:${input.effect}:${dimensionKey}`,
+    key: `cap:1:${input.site}.${input.command}:${input.profile}:${input.effect}:${dimensionKey}:res:${resourceKey}`,
     persistence: approvalSource === "memory" ? "persisted" : "not_persisted",
     profile: input.profile,
     decision:
@@ -390,6 +531,7 @@ export function buildCapabilityApprovalMemory(input: {
           : "not_approved",
     scope: {
       dimensions: dimensionAccess,
+      resources: input.scope.resources,
     },
   };
 }

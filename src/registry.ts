@@ -129,6 +129,7 @@ export interface CliRegistration {
   name: string;
   description?: string;
   domain?: string;
+  base?: string;
   strategy?: Strategy;
   browser?: boolean;
   adapter_path?: string;
@@ -145,6 +146,7 @@ export function cli(config: CliRegistration): void {
       name: config.site,
       type: AdapterType.WEB_API,
       domain: config.domain,
+      base: config.base,
       strategy: config.strategy,
       browser: config.browser,
       commands: {},
@@ -152,6 +154,7 @@ export function cli(config: CliRegistration): void {
     adapters.set(config.site, adapter);
   } else {
     if (config.domain) adapter.domain = config.domain;
+    if (config.base) adapter.base = config.base;
     if (config.strategy) adapter.strategy = config.strategy;
     if (config.browser !== undefined) adapter.browser = config.browser;
   }
@@ -164,6 +167,8 @@ export function cli(config: CliRegistration): void {
     adapterArgs: config.args,
     strategy: config.strategy,
     browser: config.browser,
+    domain: config.domain,
+    base: config.base,
     columns: config.columns,
     func: config.func as AdapterCommand["func"],
   };

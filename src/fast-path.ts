@@ -47,6 +47,8 @@ type ManifestCommand = {
   description?: string;
   strategy?: string;
   type?: string;
+  domain?: string;
+  base?: string;
   browser?: boolean;
   quarantined?: boolean;
   args?: ManifestArg[];
@@ -464,6 +466,8 @@ function evaluateManifestOperationPolicy(input: {
       adapterType: input.adapterType,
       targetSurface: input.targetSurface,
       strategy: input.command.strategy,
+      domain: input.command.domain,
+      base: input.command.base,
       browser: input.command.browser === true,
       args: input.command.args,
       profile: input.parsed.permissionProfile,

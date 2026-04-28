@@ -1,7 +1,10 @@
 import { existsSync } from "node:fs";
 import { appendFile, chmod, mkdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import type { CapabilityApprovalMemory } from "./capability-policy.js";
+import type {
+  CapabilityApprovalMemory,
+  CapabilityResourceScope,
+} from "./capability-policy.js";
 import type { OperationEffect, OperationPolicy } from "./operation-policy.js";
 import { userHome } from "./user-home.js";
 
@@ -15,6 +18,18 @@ const APPROVAL_DIMENSIONS = [
 ] as const;
 
 const APPROVAL_ACCESS = new Set(["none", "read", "write"]);
+const APPROVAL_RESOURCE_BUCKETS = [
+  "domains",
+  "paths",
+  "executables",
+  "apps",
+  "accounts",
+] as const;
+
+type StoredApprovalScope = {
+  dimensions: CapabilityApprovalMemory["scope"]["dimensions"];
+  resources?: CapabilityResourceScope;
+};
 
 export interface ApprovalStore {
   path: string;
@@ -33,7 +48,7 @@ export interface StoredApproval {
     command: string;
     effect: OperationEffect;
   };
-  scope: CapabilityApprovalMemory["scope"];
+  scope: StoredApprovalScope;
 }
 
 export interface RememberApprovalOptions {
@@ -237,7 +252,21 @@ function isApprovalScope(value: unknown): value is StoredApproval["scope"] {
   const scope = value as Record<string, unknown>;
   if (!scope.dimensions || typeof scope.dimensions !== "object") return false;
   const dimensions = scope.dimensions as Record<string, unknown>;
-  return APPROVAL_DIMENSIONS.every((name) =>
+  const dimensionsOk = APPROVAL_DIMENSIONS.every((name) =>
     APPROVAL_ACCESS.has(String(dimensions[name])),
   );
+  if (!dimensionsOk) return false;
+  if (scope.resources === undefined) return true;
+  return isApprovalResources(scope.resources);
+}
+
+function isApprovalResources(value: unknown): value is CapabilityResourceScope {
+  if (!value || typeof value !== "object") return false;
+  const resources = value as Record<string, unknown>;
+  return APPROVAL_RESOURCE_BUCKETS.every((name) => {
+    const bucket = resources[name];
+    return (
+      Array.isArray(bucket) && bucket.every((item) => typeof item === "string")
+    );
+  });
 }

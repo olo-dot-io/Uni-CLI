@@ -38,6 +38,8 @@ export interface OperationPolicyInput {
   adapterType?: string;
   targetSurface?: TargetSurface;
   strategy?: string;
+  domain?: string;
+  base?: string;
   browser?: boolean;
   args?: Array<{ name: string; required?: boolean }>;
   profile?: string;
