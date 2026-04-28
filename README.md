@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->235<!-- /STATS --> sites · <!-- STATS:command_count -->1448<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7533<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->235<!-- /STATS --> sites · <!-- STATS:command_count -->1448<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7544<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -138,7 +138,7 @@ Uni-CLI sits under agent applications and turns software surfaces into commands 
 | Desktop and macOS  | System commands, app adapters, screenshots, clipboard, calendar, brightness, and local tools                                                      |
 | External CLIs      | 58 registered pass-through bridges with install/status discovery                                                                                  |
 | Agent backends     | Route matrix for native CLI, JSON stream, MCP, ACP, HTTP API, OpenAI-compatible, and bridge routes                                                |
-| Operation policy   | `open`, `confirm`, and `locked` profiles with effect, risk, capability and resource scope, `--yes`, and persisted approval memory                 |
+| Operation policy   | `open`, `confirm`, and `locked` profiles with effect/risk scopes, local deny rules, `--yes`, and persisted approval memory                        |
 | Evidence           | Run traces with probe/replay/compare, browser session leases with tab/auth posture, render-aware evidence, movement checks, and stale-ref details |
 | Output             | v2 `AgentEnvelope` in Markdown, JSON, YAML, CSV, or compact format                                                                                |
 | Repair             | Structured errors with `adapter_path`, failing `step`, retryability, suggestions, and alternatives                                                |
@@ -309,6 +309,10 @@ Docs:
   `unicli approvals list`, `revoke`, and `clear` to inspect or remove remembered
   scopes. The file stores scope metadata; runtime args stay out of approval
   memory.
+- Local deny rules live at `~/.unicli/permission-rules.json`, or at
+  `UNICLI_PERMISSION_RULES_PATH`. They match site, command, effect, capability
+  dimensions, and resource metadata, then block before `--yes` and remembered
+  approvals.
 - Run recording is opt-in. Use `--record` or `UNICLI_RECORD_RUN=1` when you need
   append-only evidence under `~/.unicli/runs`.
 - CUA routes require a configured real backend. Declared-but-unavailable providers fail closed with structured errors.

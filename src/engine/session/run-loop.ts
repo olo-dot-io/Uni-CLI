@@ -7,6 +7,7 @@ import {
 } from "../operation-policy.js";
 import type { OperationPolicy } from "../operation-policy.js";
 import { evaluateOperationPolicyWithApprovals } from "../permission-runtime.js";
+import { PermissionRulesConfigError } from "../permission-rules.js";
 import {
   appendRunEvent,
   createRunStore,
@@ -121,6 +122,22 @@ async function evaluatePermissionForEvent(
         enforcement: "needs_approval",
         reason: err.message,
         error: { code: "invalid_input", message: err.message },
+      };
+    }
+    if (err instanceof PermissionRulesConfigError) {
+      return {
+        profile: metadata.permission_profile,
+        effect: "unknown_write",
+        risk: "high",
+        approval_required: true,
+        approved: false,
+        enforcement: "needs_approval",
+        reason: err.message,
+        error: {
+          code: err.code,
+          message: err.message,
+          suggestion: err.suggestion,
+        },
       };
     }
     throw err;

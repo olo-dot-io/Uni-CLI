@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -450,6 +450,85 @@ describe("execute (end-to-end)", () => {
         delete process.env.UNICLI_APPROVALS_PATH;
       } else {
         process.env.UNICLI_APPROVALS_PATH = originalApprovalsPath;
+      }
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("applies deny rules before approval memory in the shared kernel", async () => {
+    const originalApprovalsPath = process.env.UNICLI_APPROVALS_PATH;
+    const originalRulesPath = process.env.UNICLI_PERMISSION_RULES_PATH;
+    const tmp = mkdtempSync(join(tmpdir(), "unicli-kernel-deny-rules-"));
+    const store = createApprovalStore({ homeDir: tmp });
+    const rulesPath = join(tmp, "permission-rules.json");
+    process.env.UNICLI_APPROVALS_PATH = store.path;
+    process.env.UNICLI_PERMISSION_RULES_PATH = rulesPath;
+    try {
+      writeFileSync(
+        rulesPath,
+        JSON.stringify({
+          schema_version: "1",
+          rules: [
+            {
+              id: "deny-fixture-send",
+              decision: "deny",
+              match: {
+                site: "approval-deny-fixture",
+                command: "send",
+              },
+              reason: "fixture sends are blocked",
+            },
+          ],
+        }),
+        "utf-8",
+      );
+      const permissionAdapter = mkAdapter({
+        name: "approval-deny-fixture",
+        commands: {
+          send: {
+            name: "send",
+            description: "Send a message",
+            adapterArgs: [{ name: "text", type: "str", required: true }],
+            func: async () => ({ sent: true }),
+          },
+        },
+      });
+      registerAdapter(permissionAdapter);
+      compileAll([permissionAdapter]);
+
+      const denied = buildInvocation(
+        "cli",
+        "approval-deny-fixture",
+        "send",
+        {
+          args: { text: "secret text" },
+          source: "shell",
+        },
+        {
+          permissionProfile: "locked",
+          approved: true,
+          rememberApproval: true,
+        },
+      )!;
+
+      const result = await execute(denied);
+      expect(result.exitCode).toBe(77);
+      expect(result.error).toMatchObject({
+        code: "permission_denied",
+      });
+      expect(result.error?.message).toContain("deny-fixture-send");
+      expect(result.error?.message).toContain("send_message");
+      expect(await listStoredApprovals(store)).toEqual([]);
+    } finally {
+      if (originalApprovalsPath === undefined) {
+        delete process.env.UNICLI_APPROVALS_PATH;
+      } else {
+        process.env.UNICLI_APPROVALS_PATH = originalApprovalsPath;
+      }
+      if (originalRulesPath === undefined) {
+        delete process.env.UNICLI_PERMISSION_RULES_PATH;
+      } else {
+        process.env.UNICLI_PERMISSION_RULES_PATH = originalRulesPath;
       }
       rmSync(tmp, { recursive: true, force: true });
     }

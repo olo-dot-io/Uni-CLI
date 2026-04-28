@@ -22,6 +22,11 @@ import {
   resolveOperationTargetSurface,
   type OperationPolicy,
 } from "./engine/operation-policy.js";
+import {
+  applyDenyRuleToPolicy,
+  findDenyRuleForPolicySync,
+  PermissionRulesConfigError,
+} from "./engine/permission-rules.js";
 import { defaultErrorNextActions } from "./output/next-actions.js";
 import { format, detectFormat } from "./output/formatter.js";
 import { ExitCode, type OutputFormat, type TargetSurface } from "./types.js";
@@ -474,6 +479,9 @@ function evaluateManifestOperationPolicy(input: {
       approved: input.parsed.yes,
     };
     const policy = evaluateOperationPolicy(policyInput);
+    const denyRule = findDenyRuleForPolicySync(policy);
+    if (denyRule) return applyDenyRuleToPolicy(policy, denyRule);
+
     if (
       policy.enforcement === "needs_approval" &&
       hasStoredApproval(policy.approval_memory.key)
@@ -485,7 +493,14 @@ function evaluateManifestOperationPolicy(input: {
     }
     return policy;
   } catch (error) {
-    if (!(error instanceof InvalidPermissionProfileError)) throw error;
+    if (
+      !(
+        error instanceof InvalidPermissionProfileError ||
+        error instanceof PermissionRulesConfigError
+      )
+    ) {
+      throw error;
+    }
 
     emitStderrAndExit(
       input.io,
@@ -498,7 +513,10 @@ function evaluateManifestOperationPolicy(input: {
           message: error.message,
           adapter_path: input.adapterPath,
           step: 0,
-          suggestion: "use one of: open, confirm, locked",
+          suggestion:
+            error instanceof PermissionRulesConfigError
+              ? error.suggestion
+              : "use one of: open, confirm, locked",
           retryable: false,
         },
         next_actions: defaultErrorNextActions(
@@ -956,7 +974,17 @@ function handleAdapterPolicyGate(parsed: ParsedArgv, io: Io): boolean {
   });
   if (!operationPolicy) return true;
 
-  if (operationPolicy.enforcement !== "needs_approval") return false;
+  if (
+    operationPolicy.enforcement !== "needs_approval" &&
+    operationPolicy.enforcement !== "deny"
+  ) {
+    return false;
+  }
+
+  const isDenyRule = operationPolicy.enforcement === "deny";
+  const ruleId = operationPolicy.deny_rule?.id ?? "unknown";
+  const ruleReason =
+    operationPolicy.deny_rule?.reason ?? "permission rule matched";
 
   emitStderrAndExit(
     io,
@@ -966,18 +994,27 @@ function handleAdapterPolicyGate(parsed: ParsedArgv, io: Io): boolean {
       surface: targetSurface,
       error: {
         code: "permission_denied",
-        message: `permission profile "${operationPolicy.profile}" requires approval for ${operationPolicy.effect}`,
+        message: isDenyRule
+          ? `permission rule "${ruleId}" denies ${operationPolicy.effect}: ${ruleReason}`
+          : `permission profile "${operationPolicy.profile}" requires approval for ${operationPolicy.effect}`,
         adapter_path: adapterPath,
         step: 0,
         suggestion:
           operationPolicy.approval_hint ??
-          "rerun with --yes or use --permission-profile open",
+          (isDenyRule
+            ? "edit or remove the matching permission rule"
+            : "rerun with --yes or use --permission-profile open"),
         retryable: false,
-        alternatives: [
-          `unicli --dry-run ${parsed.command} ${cmdName}`,
-          `unicli --yes --permission-profile ${operationPolicy.profile} ${parsed.command} ${cmdName}`,
-          `unicli --permission-profile open ${parsed.command} ${cmdName}`,
-        ],
+        alternatives: isDenyRule
+          ? [
+              `unicli --dry-run ${parsed.command} ${cmdName}`,
+              "edit ~/.unicli/permission-rules.json",
+            ]
+          : [
+              `unicli --dry-run ${parsed.command} ${cmdName}`,
+              `unicli --yes --permission-profile ${operationPolicy.profile} ${parsed.command} ${cmdName}`,
+              `unicli --permission-profile open ${parsed.command} ${cmdName}`,
+            ],
       },
       next_actions: defaultErrorNextActions(
         parsed.command,

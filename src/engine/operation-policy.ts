@@ -55,9 +55,14 @@ export interface OperationPolicy {
   approval_memory: CapabilityApprovalMemory;
   approval_required: boolean;
   approved: boolean;
-  enforcement: "allow" | "needs_approval";
+  enforcement: "allow" | "needs_approval" | "deny";
   reason: string;
   approval_hint?: string;
+  deny_rule?: {
+    id: string;
+    reason: string;
+  };
+  deny_reason?: string;
 }
 
 export class InvalidPermissionProfileError extends Error {

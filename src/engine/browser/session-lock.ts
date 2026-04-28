@@ -85,7 +85,7 @@ async function removeStaleLock(
 ): Promise<boolean> {
   try {
     const info = await stat(lockPath);
-    if (now() - info.mtimeMs <= staleMs) return false;
+    if (staleMs >= 0 && now() - info.mtimeMs <= staleMs) return false;
     if (await lockHolderIsAlive(lockPath)) return false;
     await rm(lockPath, { force: true });
     return true;

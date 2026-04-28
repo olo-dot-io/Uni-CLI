@@ -162,6 +162,30 @@ Remembered approvals are bound to the command capability and stable resource
 metadata, such as domain, app, account surface, and path argument slots. Runtime
 argument values stay out of the approval store.
 
+Use local deny rules for scopes that a machine must block:
+
+```json
+{
+  "schema_version": "1",
+  "rules": [
+    {
+      "id": "deny-public-posting",
+      "decision": "deny",
+      "match": {
+        "effect": "publish_content",
+        "resources": {
+          "domains": ["x.com", "twitter.com"]
+        }
+      },
+      "reason": "Publishing is disabled on this machine"
+    }
+  ]
+}
+```
+
+Save the file as `~/.unicli/permission-rules.json`, or point
+`UNICLI_PERMISSION_RULES_PATH` at it.
+
 ## Protocol Servers
 
 MCP:

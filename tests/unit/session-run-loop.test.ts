@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -41,6 +41,7 @@ const fixture: AdapterManifest = {
 
 const originalRecordRun = process.env.UNICLI_RECORD_RUN;
 const originalRunRoot = process.env.UNICLI_RUN_ROOT;
+const originalPermissionRulesPath = process.env.UNICLI_PERMISSION_RULES_PATH;
 
 describe("recorded run wrapper", () => {
   let tmp: string;
@@ -65,6 +66,11 @@ describe("recorded run wrapper", () => {
       delete process.env.UNICLI_RUN_ROOT;
     } else {
       process.env.UNICLI_RUN_ROOT = originalRunRoot;
+    }
+    if (originalPermissionRulesPath === undefined) {
+      delete process.env.UNICLI_PERMISSION_RULES_PATH;
+    } else {
+      process.env.UNICLI_PERMISSION_RULES_PATH = originalPermissionRulesPath;
     }
   });
 
@@ -137,6 +143,35 @@ describe("recorded run wrapper", () => {
       error: {
         adapter_path: "src/adapters/session-fixture/fail.yaml",
       },
+    });
+  });
+
+  it("records structured permission config errors before execution", async () => {
+    const store = createRunStore({ rootDir: join(tmp, "runs") });
+    const rulesPath = join(tmp, "permission-rules.json");
+    writeFileSync(rulesPath, '{"schema_version":', "utf-8");
+    process.env.UNICLI_PERMISSION_RULES_PATH = rulesPath;
+    const inv = buildInvocation("cli", "session-fixture", "read", {
+      args: {},
+      source: "shell",
+    })!;
+
+    const result = await executeWithRunRecording(inv, {
+      enabled: true,
+      store,
+      runId: "run-bad-rules",
+    });
+
+    expect(result.error).toMatchObject({
+      code: "invalid_input",
+      adapter_path: "src/adapters/session-fixture/read.yaml",
+    });
+    const events = await readRunEvents(store, "run-bad-rules");
+    const permission = events.find(
+      (event) => event.name === "permission.evaluated",
+    );
+    expect(permission?.data).toMatchObject({
+      error: { code: "invalid_input" },
     });
   });
 

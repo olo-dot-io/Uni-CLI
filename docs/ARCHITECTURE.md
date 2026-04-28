@@ -140,6 +140,10 @@ The kernel infers operation shape from the command contract and surfaces it in
   and stable resource metadata. `--remember-approval` stores allowed scopes in
   `~/.unicli/approvals.jsonl` with scope metadata only. `unicli approvals list`,
   `revoke`, and `clear` inspect or remove remembered scopes.
+- `deny_rule`: local rule id and reason when `~/.unicli/permission-rules.json`
+  blocks a matching site, command, effect, capability dimension, or resource
+  scope. Deny rules run before `--yes` and remembered approvals. A malformed
+  configured rule file stops execution with `invalid_input`.
 
 This keeps capability broad and easy to turn on, while still giving teams a way
 to tighten execution policy without rewriting adapter metadata.

@@ -293,6 +293,73 @@ describe("CLI fast path", () => {
     );
   });
 
+  it("applies deny rules before stored approvals in adapter dry-run policy", () => {
+    const originalRulesPath = process.env.UNICLI_PERMISSION_RULES_PATH;
+    const tmp = mkdtempSync(join(tmpdir(), "unicli-fast-path-rules-"));
+    const rulesPath = join(tmp, "permission-rules.json");
+    writeFileSync(
+      rulesPath,
+      JSON.stringify({
+        schema_version: "1",
+        rules: [
+          {
+            id: "deny-binance-price",
+            decision: "deny",
+            match: {
+              site: "binance",
+              command: "price",
+              resources: {
+                domains: ["data-api.binance.vision"],
+              },
+            },
+            reason: "market data disabled in dry-run policy",
+          },
+        ],
+      }),
+      "utf-8",
+    );
+    process.env.UNICLI_PERMISSION_RULES_PATH = rulesPath;
+
+    try {
+      const { stdout, io } = makeIo();
+      const handled = tryRunFastPath(
+        [
+          "node",
+          "unicli",
+          "--dry-run",
+          "--permission-profile",
+          "open",
+          "binance",
+          "price",
+          "BTCUSDT",
+        ],
+        io,
+      );
+
+      expect(handled).toBe(true);
+      const plan = JSON.parse(stdout.join("")) as {
+        operation_policy: {
+          enforcement: string;
+          deny_rule?: { id: string; reason: string };
+        };
+      };
+      expect(plan.operation_policy).toMatchObject({
+        enforcement: "deny",
+        deny_rule: {
+          id: "deny-binance-price",
+          reason: "market data disabled in dry-run policy",
+        },
+      });
+    } finally {
+      if (originalRulesPath === undefined) {
+        delete process.env.UNICLI_PERMISSION_RULES_PATH;
+      } else {
+        process.env.UNICLI_PERMISSION_RULES_PATH = originalRulesPath;
+      }
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   it("emits structured invalid permission profile errors for adapter dry-run", () => {
     const { stdout, stderr, io } = makeIo();
 
