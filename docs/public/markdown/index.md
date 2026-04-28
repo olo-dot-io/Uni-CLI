@@ -36,7 +36,7 @@ Current public catalog: 235 sites, 1448 commands.
 - First stable execution-substrate release for agent-driven web, app, local tool, system, and external CLI operations.
 - The public contract is command-first discovery, v2 AgentEnvelope output, repairable adapter errors, operation policy metadata, and optional run recording.
 - Browser actions can emit structured pre/post evidence, movement detection, stale-ref failure details, and watchdog results.
-- The public docs catalog reports the current 235-site, 1448-command, 1039-adapter, 59-step, 7469-test surface.
+- The public docs catalog reports the current 235-site, 1448-command, 1039-adapter, 59-step, 7473-test surface.
 
 ### Links
 

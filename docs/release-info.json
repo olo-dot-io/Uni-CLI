@@ -11,13 +11,13 @@
       "First stable execution-substrate release for agent-driven web, app, local tool, system, and external CLI operations.",
       "The public contract is command-first discovery, v2 AgentEnvelope output, repairable adapter errors, operation policy metadata, and optional run recording.",
       "Browser actions can emit structured pre/post evidence, movement detection, stale-ref failure details, and watchdog results.",
-      "The public docs catalog reports the current 235-site, 1448-command, 1039-adapter, 59-step, 7469-test surface."
+      "The public docs catalog reports the current 235-site, 1448-command, 1039-adapter, 59-step, 7473-test surface."
     ],
     "zh": [
       "首个稳定执行底座版本，面向 Agent 驱动的 Web、应用、本地工具、系统能力和外部 CLI 操作。",
       "公开合同固定为命令优先发现、v2 AgentEnvelope 输出、可修复 adapter 错误、operation policy metadata 和可选 run recording。",
       "浏览器动作可以输出结构化前后证据、移动检测、stale-ref 失败细节和 watchdog 结果。",
-      "公开文档目录已更新到当前 235 个站点、1448 条命令、1039 个 adapter、59 个 step、7469 个测试。"
+      "公开文档目录已更新到当前 235 个站点、1448 条命令、1039 个 adapter、59 个 step、7473 个测试。"
     ]
   }
 }
