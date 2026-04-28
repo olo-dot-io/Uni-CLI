@@ -212,4 +212,4 @@ unicli lark-cli calendar +agenda   # Direct passthrough
 
 ## Version
 
-1.0.0 — Apollo · Lovell
+0.217.0 — Apollo · Lovell

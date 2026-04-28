@@ -27,13 +27,13 @@ Discover by intent, execute governed commands across web, apps, local tools, and
 
 ## Current Version
 
-v1.0.0 (Apollo · Lovell) shipped to npm on 2026-04-28; the @zenalexa/unicli latest tag now points to this release.
+v0.217.0 (Apollo · Lovell) shipped to npm on 2026-04-28; the @zenalexa/unicli latest tag now points to this release.
 
 Current public catalog: 235 sites, 1448 commands.
 
 ### Update Notes
 
-- First stable execution-substrate release for agent-driven web, app, local tool, system, and external CLI operations.
+- Execution-substrate minor release for agent-driven web, app, local tool, system, and external CLI operations.
 - The public contract is command-first discovery, v2 AgentEnvelope output, repairable adapter errors, operation policy metadata, and optional run recording.
 - Browser actions can emit structured pre/post evidence, movement detection, stale-ref failure details, and watchdog results.
 - The public docs catalog reports the current 235-site, 1448-command, 1039-adapter, 59-step, 7473-test surface.
@@ -41,8 +41,8 @@ Current public catalog: 235 sites, 1448 commands.
 ### Links
 
 - [@zenalexa/unicli on npm](https://www.npmjs.com/package/@zenalexa/unicli)
-- [GitHub Release v1.0.0](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.0.0)
-- [Changelog](https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#100--2026-04-28--apollo--lovell)
+- [GitHub Release v0.217.0](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.217.0)
+- [Changelog](https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02170--2026-04-28--apollo--lovell)
 
 ## Catalog Snapshot
 

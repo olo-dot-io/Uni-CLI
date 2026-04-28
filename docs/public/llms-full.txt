@@ -45,13 +45,13 @@ Discover by intent, execute governed commands across web, apps, local tools, and
 
 ## Current Version
 
-v1.0.0 (Apollo · Lovell) shipped to npm on 2026-04-28; the @zenalexa/unicli latest tag now points to this release.
+v0.217.0 (Apollo · Lovell) shipped to npm on 2026-04-28; the @zenalexa/unicli latest tag now points to this release.
 
 Current public catalog: 235 sites, 1448 commands.
 
 ### Update Notes
 
-- First stable execution-substrate release for agent-driven web, app, local tool, system, and external CLI operations.
+- Execution-substrate minor release for agent-driven web, app, local tool, system, and external CLI operations.
 - The public contract is command-first discovery, v2 AgentEnvelope output, repairable adapter errors, operation policy metadata, and optional run recording.
 - Browser actions can emit structured pre/post evidence, movement detection, stale-ref failure details, and watchdog results.
 - The public docs catalog reports the current 235-site, 1448-command, 1039-adapter, 59-step, 7473-test surface.
@@ -59,8 +59,8 @@ Current public catalog: 235 sites, 1448 commands.
 ### Links
 
 - [@zenalexa/unicli on npm](https://www.npmjs.com/package/@zenalexa/unicli)
-- [GitHub Release v1.0.0](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.0.0)
-- [Changelog](https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#100--2026-04-28--apollo--lovell)
+- [GitHub Release v0.217.0](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.217.0)
+- [Changelog](https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02170--2026-04-28--apollo--lovell)
 
 ## Catalog Snapshot
 
@@ -3228,16 +3228,16 @@ If the maintainer has not explicitly asked to release, development stays under
 
 ## Versioning
 
-Uni-CLI follows semver. The `1.x` line is the stable execution-substrate
-contract: command-first discovery and execution, v2 `AgentEnvelope` output,
+Uni-CLI follows semver. The `0.217.x` line is a minor execution-substrate
+release line: command-first discovery and execution, v2 `AgentEnvelope` output,
 repairable adapter errors, operation-policy metadata, and optional run
-recording.
+recording. It is not a major-version compatibility boundary.
 
 | Change                                                            | Version bump |
 | ----------------------------------------------------------------- | ------------ |
 | Adapter fixes, docs, tests, small command additions               | Patch        |
 | New transport, new protocol surface, broad output behavior change | Minor        |
-| Stable 1.0 compatibility contract or breaking public behavior     | Major        |
+| Explicit stable-major compatibility contract or breaking behavior | Major        |
 
 Do not bump `package.json`, run `changeset version`, tag, publish, or create a
 GitHub Release until the maintainer explicitly says to release.
@@ -3279,10 +3279,8 @@ Current program map:
 | Version range | Program |
 | ------------- | ------- |
 | `0.1xx`       | Sputnik |
-| `0.2xx`       | Vostok  |
-| `0.3xx`       | Mercury |
-| `0.4xx`       | Gemini  |
-| `1.x`         | Apollo  |
+| `0.200-0.213` | Vostok  |
+| `0.216+`      | Apollo  |
 
 Rules:
 
@@ -3300,8 +3298,8 @@ RELEASE_CODENAME="Vostok · Gagarin" npm run release
 npm run release:check -- --strict-codename
 ```
 
-For the 1.0 line, the release label format is unchanged. The first stable
-candidate used `Apollo · Lovell`.
+For the 0.217 line, the release label format is unchanged. The current release
+label is `Apollo · Lovell`.
 
 ## Substantive Commits
 
@@ -3437,7 +3435,7 @@ Uni-CLI exposes one searchable command surface across:
   shell commands or protocol servers.
 
 The generated catalog is the source of truth: **235 sites**, **1448 commands**,
-**1039 adapters**, **59 pipeline steps**, and **7473 tests** in v1.0.0.
+**1039 adapters**, **59 pipeline steps**, and **7473 tests** in v0.217.0.
 
 ## Execution Contract
 
@@ -3706,7 +3704,7 @@ Agent-native infrastructure should publish real cost numbers. Uni-CLI measures
 both the command invocation and the response body so public claims stay tied to
 the current code, fixtures, and output contract.
 
-The v1.0.0 fixture bench measures current v2 `AgentEnvelope` response bodies
+The v0.217.0 fixture bench measures current v2 `AgentEnvelope` response bodies
 at **357-415 tokens** for representative `--limit 5` list-style calls. Total
 invocation-plus-response budgets land at **364-423 tokens** in the same suite.
 `unicli list` is much larger because it intentionally emits the full
@@ -3978,7 +3976,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Current: v1.0.0 — Apollo · Lovell. <!-- STATS:site_count -->235<!-- /STATS --> sites, <!-- STATS:command_count -->1448<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps.
+> Current: v0.217.0 — Apollo · Lovell. <!-- STATS:site_count -->235<!-- /STATS --> sites, <!-- STATS:command_count -->1448<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction. Historical release notes live in
 `CHANGELOG.md`; they do not belong in the roadmap.
