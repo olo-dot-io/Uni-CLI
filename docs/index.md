@@ -1,7 +1,7 @@
 ---
 layout: home
 title: Uni-CLI
-description: A software execution layer for agents operating real software.
+description: Command-grade software access for agents.
 ---
 
 <HomePage />

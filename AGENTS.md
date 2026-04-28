@@ -6,6 +6,7 @@
      Agent routing: unicli agents matrix && unicli agents recommend <agent>
      Run: unicli <site> <command> [args]
      Output is structured Markdown by default (non-TTY + agent UA auto-detected). Use -f json for JSON. Errors are structured envelopes to stderr.
+     Style: load skills/talk-normal/SKILL.md before writing docs or user-facing text; keep prose direct and avoid filler.
      You can fix broken adapters yourself — read the Self-Repair section. -->
 
 <!-- BEGIN COUNTS -->

@@ -148,9 +148,9 @@ Uni-CLI sits under agent applications and turns software surfaces into commands 
 Use search first, then run the smallest matching command.
 
 ```bash
-unicli search "twitter trending" --limit 5
-unicli twitter search "coding agents" -f json
-unicli repair twitter search
+unicli search "connect slack messages" --limit 5
+unicli slack search "deploy incident" -f json
+unicli repair slack search
 ```
 
 Output defaults to structured Markdown for non-TTY and agent-user-agent runs. Force a machine format when you need one:
@@ -175,7 +175,7 @@ ACP is supported for editors and bridge tooling. The primary runtime path stays 
 
 ## Coverage
 
-The catalog is intentionally broad, but the important point is not the count. The important point is that every command is discoverable, typed, and repairable.
+The catalog is intentionally broad. Every command is discoverable, typed, and repairable.
 
 | Area                    | Examples                                                                                                    |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------- |
@@ -298,7 +298,7 @@ Docs:
   append-only evidence under `~/.unicli/runs`.
 - CUA routes require a configured real backend. Declared-but-unavailable providers fail closed with structured errors.
 - User adapters and repairs live in `~/.unicli/adapters/`; committed adapters remain the package baseline.
-- If a site blocks automation or changes a private API, the correct behavior is a clear failure envelope, not a fabricated success.
+- If a site blocks automation or changes a private API, Uni-CLI returns a clear failure envelope.
 
 ## Development
 

@@ -7,16 +7,18 @@
 - 栏目: 上手
 - 上级: 上手 (/zh/)
 
-Uni-CLI 的首选入口是 shell。只要智能体能运行命令，就可以直接使用 `unicli`。需要协议服务的客户端，可以用同一份目录通过 MCP 或 ACP 接入；adapter 行为不会变。
+Uni-CLI 的首选入口是 shell。只要智能体能运行命令，就可以直接使用 `unicli`。需要协议服务的客户端，可以用同一份目录通过 MCP、ACP 或生成的平台配置接入；adapter 行为保持一致。
 
 ## 选哪条路
 
-| 客户端需要什么                 | 用什么                   |
-| ------------------------------ | ------------------------ |
-| 能运行 shell 命令              | 原生 `unicli` CLI        |
-| 需要 MCP tool calls            | `unicli mcp serve`       |
-| 需要 ACP prompt/session frames | `unicli acp`             |
-| 需要生成平台配置               | `unicli agents generate` |
+| 客户端需要什么                 | 用什么                               |
+| ------------------------------ | ------------------------------------ |
+| 能运行 shell 命令              | 原生 `unicli` CLI                    |
+| 需要 MCP tool calls            | `unicli mcp serve`                   |
+| 需要 ACP prompt/session frames | `unicli acp`                         |
+| 需要生成平台配置               | `unicli agents generate`             |
+| 需要选择运行后端               | `unicli agents matrix` / `recommend` |
+| 需要本地 skills 发现           | `unicli skills export` / `publish`   |
 
 如果智能体有 shell 权限，优先用原生 CLI。它发现命令更懒加载，输出更小，也保留 Unix 组合能力。
 
@@ -33,6 +35,14 @@ unicli hackernews top --limit 5 -f json
 Use `unicli search "intent"` before choosing a command. Run commands as
 `unicli SITE COMMAND [args]`. Prefer `-f json` for scripts and structured
 Markdown for human-readable agent output.
+```
+
+高风险命令可以先检查：
+
+```bash
+unicli describe SITE COMMAND
+unicli SITE COMMAND --dry-run
+unicli SITE COMMAND --record
 ```
 
 ## MCP
@@ -70,6 +80,8 @@ npx @zenalexa/unicli mcp serve --transport streamable --port 19826 --auth
 | `unicli_list`    | 列出站点和命令。         |
 | `unicli_explore` | 写 adapter 前检查页面。  |
 
+`mcp serve` 和 `acp` 保持原始 stdio 协议行为。常规命令面返回 v2 `AgentEnvelope`。
+
 stdio 配置示例：
 
 ```json
@@ -93,7 +105,7 @@ args = ["@zenalexa/unicli", "mcp", "serve"]
 
 ## ACP
 
-ACP 是编辑器兼容路径。客户端如果需要结构化 tool calls，用 MCP；如果它期待 prompt/session frames，用 ACP。
+ACP 是编辑器兼容路径。结构化 tool calls 走 MCP，prompt/session frames 走 ACP。
 
 ```bash
 unicli acp
@@ -132,6 +144,20 @@ unicli agents generate --for claude
 unicli agents generate --for codex
 unicli agents generate --for opencode
 ```
+
+后端推荐会显式建模 native CLI、JSON stream、MCP、ACP、HTTP API、OpenAI-compatible routes、bridge CLIs 和 CUA candidates。
+
+## Skills
+
+当 agent runtime 有本地 skills 目录时，可以把 adapter 命令导出成 `SKILL.md`：
+
+```bash
+unicli skills export
+unicli skills publish --to ~/.cursor/skills/uni-cli/
+unicli skills catalog --out /tmp/unicli-skills.json
+```
+
+生成文件包含命令名、使用场景、认证提示和调用示例。它适合和运行时搜索一起使用。
 
 手动示例：
 

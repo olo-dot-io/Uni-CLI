@@ -4,7 +4,9 @@ description: >
   Use Uni-CLI to interact with 200+ websites, desktop apps, and system tools.
   Trigger when: user asks to check a website, fetch data, control a desktop app,
   or interact with social media, news, finance, or AI platforms.
-version: 0.214.0
+version: 0.217.0
+depends-on:
+  - talk-normal
 triggers:
   - "unicli"
   - "website"
@@ -16,7 +18,7 @@ triggers:
 
 # Uni-CLI Agent Skill
 
-Universal CLI for AI agents — 220 sites, 1283 commands.
+Universal CLI for AI agents — 235 sites, 1448 commands.
 
 ## Install
 
@@ -62,5 +64,5 @@ When a command fails:
 
 ```bash
 unicli mcp serve                    # 4 default tools (run, list, search, explore)
-unicli mcp serve --expanded         # All 1283 commands as individual tools
+unicli mcp serve --expanded         # All 1448 commands as individual tools
 ```

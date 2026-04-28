@@ -6,40 +6,48 @@
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
 - Section: Start
 
-## Software execution for agents
+## Command-grade software access for agents
 
-Agents are moving from chat assistance to task-running systems. They need to call CLIs, APIs, browsers, and desktop apps, while keeping audit trails, permission boundaries, and recovery paths. Uni-CLI turns those software surfaces into one searchable, executable, traceable, and repairable command interface.
+Uni-CLI puts sites, apps, local tools, MCP, and external CLIs into one searchable catalog. Agents use one command path to search, run, record, repair, and hand results to any client.
 
 ## First Command
 
 ```bash
 npm install -g @zenalexa/unicli
-unicli search "twitter trending"
-unicli twitter trending --limit 10 -f json
+unicli search "connect slack messages"
+unicli agents recommend codex
+unicli mcp serve --transport streamable --port 19826
 ```
 
 ## Positioning
 
-The gap is not another protocol. It is the engineering surface around agent execution. MCP improves interoperability. Browser and computer-use automation close API gaps. Production agent workflows still need a command catalog, policy, inspectable output, exit codes, and repair loops.
+Agent execution needs an auditable, repairable, reusable command contract. Catalog search handles discovery. The v2 AgentEnvelope stabilizes output. Operation policy exposes permissions and risk. Run evidence supports review. The repair loop points failures to adapters and pipeline steps.
 
-- **Unified entry.** One catalog covers public APIs, cookie sessions, browsers, desktop apps, external CLIs, and local capabilities.
-- **Auditable execution.** Arguments, auth, policy profiles, output shape, and exit codes stay inspectable before and after a run.
-- **Recoverable failure.** When a surface changes, the error names the adapter file, pipeline step, and verification command.
+- **Discover.** Bilingual BM25 search turns a natural-language task into a site, command, arguments, and auth strategy.
+- **Execute.** HTTP, cookies, browser CDP, desktop AX, subprocess, service, and CUA all return the same envelope.
+- **Recover.** Structured errors include adapter path, step, retryable, suggestion, and alternatives.
+
+## Common Tasks
+
+- `unicli search` reads the local catalog first, then execution can inspect command, args, auth, risk, and output fields.
+- When a page or API changes, the error envelope names the adapter file and failing pipeline step.
+- Web APIs, browser automation, macOS, desktop apps, external CLIs, MCP, ACP, HTTP API, and agent backend routes share the catalog.
 
 ## Coverage
 
 - Sites and tools: 235
 - Commands: 1448
 - Pipeline steps: 59
-- Output contract: v2 AgentEnvelope
+- Tests: 7473
 
-One call path spans public APIs, cookie sessions, browsers, desktop apps, external CLIs, and local system capabilities. Agents learn one call path.
+These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
 ## Entrypoints
 
-- [First Run](/guide/getting-started): install, search, execute, authenticate, and read exit codes.
-- [Command Catalog](/reference/sites): browse by site, surface type, auth strategy, and examples.
+- [First Run](/guide/getting-started): install, search, execute, authenticate, choose output formats, and read exit codes.
+- [Command Catalog](/reference/sites): browse by site, surface, auth strategy, and examples.
 - [Adapters](/guide/adapters): YAML adapters, pipeline steps, self-repair, and verification.
+- [Integrations](/guide/integrations): native CLI, MCP, ACP, and output modes for agent runtimes.
 
 ## Current Version
 

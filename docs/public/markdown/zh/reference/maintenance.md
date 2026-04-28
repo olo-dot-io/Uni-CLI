@@ -69,6 +69,12 @@ npm run docs:build
 
 `docs:build` 会同时运行公开文档检查，防止旧文案、错误语言路径或生成资产漂移。
 
+## Skills
+
+仓库内置 skills 放在 `skills/<name>/SKILL.md`。加载顺序是仓库 skills、`$HOME/.unicli/skills`、XDG data 目录。声明 `depends-on` 的 skill 会先加载依赖。
+
+核心 `unicli` skill 依赖 `talk-normal`。写文档、UI 文案、README 或 agent-facing 文本前，先加载这套简洁写作规则。
+
 ## Conformance
 
 ```bash

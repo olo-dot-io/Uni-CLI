@@ -2,7 +2,7 @@
 
 The web breaks constantly. Selectors change, APIs version, auth tokens rotate,
 desktop permission channels disappear, and CLIs change flags. Uni-CLI is
-designed to fail as data, not as an opaque log line.
+designed to fail as structured data with a bounded repair path.
 
 ## The Problem
 
@@ -162,8 +162,8 @@ unicli test
 
 ## Design Principles
 
-1. **Errors are data, not strings.** JSON to stderr, parseable by any agent.
+1. **Errors are structured data.** JSON to stderr, parseable by any agent.
 2. **Adapters are small.** YAML-first adapters are short enough for an agent to inspect directly.
-3. **Fixes are local.** `~/.unicli/adapters/` overrides survive updates. No fork needed.
+3. **Fixes are local.** `~/.unicli/adapters/` overrides survive updates.
 4. **Exit codes are semantic.** `sysexits.h` codes tell agents _what kind_ of failure occurred.
-5. **Suggestions are actionable.** "Try: select: data.result.feeds" — not "something went wrong."
+5. **Suggestions are actionable.** "Try: select: data.result.feeds" gives the next edit.

@@ -12,6 +12,7 @@ SKILL.md standard: Claude Code, Codex, Hermes, Cline, OpenCode, etc.
 
 | Skill                 | Purpose                                                  |
 | --------------------- | -------------------------------------------------------- |
+| `talk-normal`         | Always-on concise writing rules for docs and UI copy     |
 | `unicli`              | Core usage — run any `unicli <site> <command>`           |
 | `bgclick-rev`         | IDA-backed research workflow for macOS background clicks |
 | `unicli-browser`      | Control Chrome via daemon bridge                         |
