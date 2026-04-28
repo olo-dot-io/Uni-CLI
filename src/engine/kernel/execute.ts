@@ -17,6 +17,7 @@ import {
   defaultSuccessNextActions,
   defaultErrorNextActions,
 } from "../../output/next-actions.js";
+import { createApprovalStore, rememberApproval } from "../approval-store.js";
 import {
   errorTypeToCode,
   errorToAgentFields,
@@ -26,12 +27,13 @@ import { commandStrategy, resolveCommand } from "../../registry.js";
 import type { AgentError } from "../../output/envelope.js";
 import { ExitCode } from "../../types.js";
 import type { ResolvedArgs } from "../args.js";
+import type { OperationPolicy } from "../operation-policy.js";
 import {
-  evaluateOperationPolicy,
   InvalidPermissionProfileError,
   resolveOperationAdapterPath,
   resolveOperationTargetSurface,
 } from "../operation-policy.js";
+import { evaluateOperationPolicyWithApprovals } from "../permission-runtime.js";
 
 import { getCompiled } from "./compile.js";
 import type { Invocation, InvocationResult } from "./types.js";
@@ -62,7 +64,11 @@ export function buildInvocation(
   site: string,
   cmd: string,
   bag: ResolvedArgs,
-  options: { permissionProfile?: string; approved?: boolean } = {},
+  options: {
+    permissionProfile?: string;
+    approved?: boolean;
+    rememberApproval?: boolean;
+  } = {},
 ): Invocation | null {
   const resolved = resolveCommand(site, cmd);
   if (!resolved) return null;
@@ -74,6 +80,7 @@ export function buildInvocation(
     surface,
     permissionProfile: options.permissionProfile,
     approved: options.approved,
+    rememberApproval: options.rememberApproval,
     trace_id: newULID(),
   };
 }
@@ -105,8 +112,9 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
   // a clear error instead of silently recompiling.
   if (!compiled) throw new KernelLookupError(key);
 
+  let operationPolicy: OperationPolicy;
   try {
-    const operationPolicy = evaluateOperationPolicy({
+    operationPolicy = await evaluateOperationPolicyWithApprovals({
       site: inv.adapter.name,
       command: inv.cmdName,
       description: inv.command.description,
@@ -262,6 +270,20 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
       };
     }
     throw err;
+  }
+
+  if (inv.rememberApproval === true) {
+    try {
+      await rememberApproval(createApprovalStore(), {
+        policy: operationPolicy,
+      });
+    } catch (error) {
+      warnings.push(
+        `failed to persist approval memory: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 
   // 3. Pipeline / func execution. runPipeline requires a ResolvedArgs bag

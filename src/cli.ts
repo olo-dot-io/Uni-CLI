@@ -92,6 +92,10 @@ export async function createCli(): Promise<Command> {
       "approve commands blocked by confirm/locked permission profiles",
     )
     .option(
+      "--remember-approval",
+      "remember this --yes approval for the same command capability scope",
+    )
+    .option(
       "--record",
       "record an append-only run trace under ~/.unicli/runs (experimental)",
     )

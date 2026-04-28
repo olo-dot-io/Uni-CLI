@@ -24,12 +24,12 @@ import { resolveArgs } from "../engine/args.js";
 import { buildInvocation, execute } from "../engine/kernel/execute.js";
 import { executeWithRunRecording } from "../engine/session/run-loop.js";
 import {
-  evaluateOperationPolicy,
   InvalidPermissionProfileError,
   resolveOperationAdapterPath,
   resolveOperationTargetSurface,
 } from "../engine/operation-policy.js";
 import type { OperationPolicy } from "../engine/operation-policy.js";
+import { evaluateOperationPolicyWithApprovals } from "../engine/permission-runtime.js";
 import { format, detectFormat } from "../output/formatter.js";
 import {
   applyProjection,
@@ -193,6 +193,7 @@ export function registerAdapterDispatch(program: Command): void {
           dryRun?: boolean;
           permissionProfile?: string;
           yes?: boolean;
+          rememberApproval?: boolean;
           record?: boolean;
           select?: string;
           fields?: string;
@@ -238,6 +239,7 @@ export function registerAdapterDispatch(program: Command): void {
           {
             permissionProfile: rootOpts.permissionProfile,
             approved: rootOpts.yes === true,
+            rememberApproval: rootOpts.rememberApproval === true,
           },
         );
 
@@ -256,7 +258,7 @@ export function registerAdapterDispatch(program: Command): void {
         if (rootOpts.dryRun) {
           let operationPolicy: OperationPolicy;
           try {
-            operationPolicy = evaluateOperationPolicy({
+            operationPolicy = await evaluateOperationPolicyWithApprovals({
               site: adapter.name,
               command: cmdName,
               description: cmd.description,

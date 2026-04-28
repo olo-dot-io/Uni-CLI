@@ -33,17 +33,17 @@ The generated catalog is the source of truth: **235 sites**, **1448 commands**,
 Coding agents already have a shell. Uni-CLI uses that native substrate first and
 keeps every other transport as an adapter over the same registry.
 
-| Layer             | Contract                                                            |
-| ----------------- | ------------------------------------------------------------------- |
-| Discovery         | `unicli search`, `unicli list`, `unicli describe`                   |
-| Execution         | `unicli <site> <command> [args]`                                    |
-| Governance        | `--permission-profile`, `--yes`, effect/risk/approval metadata      |
-| Evidence          | `--record`, run events, result envelopes, browser pre/post evidence |
-| Output            | v2 `AgentEnvelope` in Markdown, JSON, YAML, CSV, or compact         |
-| Repair            | Error envelope with adapter path, failing step, and next move       |
-| Composition       | Shell pipes, files, scripts, JSON streams, and protocol wraps       |
-| Compatibility     | MCP, ACP, HTTP API, and generated agent configuration               |
-| Extension surface | YAML adapters first; TypeScript only where the finite pipeline ends |
+| Layer             | Contract                                                                    |
+| ----------------- | --------------------------------------------------------------------------- |
+| Discovery         | `unicli search`, `unicli list`, `unicli describe`                           |
+| Execution         | `unicli <site> <command> [args]`                                            |
+| Governance        | `--permission-profile`, `--yes`, remembered approvals, effect/risk metadata |
+| Evidence          | `--record`, run events, result envelopes, browser pre/post evidence         |
+| Output            | v2 `AgentEnvelope` in Markdown, JSON, YAML, CSV, or compact                 |
+| Repair            | Error envelope with adapter path, failing step, and next move               |
+| Composition       | Shell pipes, files, scripts, JSON streams, and protocol wraps               |
+| Compatibility     | MCP, ACP, HTTP API, and generated agent configuration                       |
+| Extension surface | YAML adapters first; TypeScript only where the finite pipeline ends         |
 
 The architectural rule is simple: a protocol server may wrap Uni-CLI, but it
 does not define Uni-CLI. The stable primitive is still a command that an agent
@@ -142,6 +142,9 @@ The kernel infers operation shape from the command contract and surfaces it in
 - `risk`: `low`, `medium`, or `high`.
 - `approval_required`: whether the active user profile blocks execution until
   `--yes` or `UNICLI_APPROVE=1` is supplied.
+- `approval_memory`: deterministic command-scope key and dimension summary.
+  `--remember-approval` stores allowed scopes in `~/.unicli/approvals.jsonl`
+  without raw runtime args.
 
 This keeps capability broad and easy to turn on, while still giving teams a way
 to tighten execution policy without rewriting adapter metadata.

@@ -14,6 +14,9 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   compileAll,
   buildInvocation,
@@ -23,6 +26,10 @@ import {
   _resetCompiledCacheForTests,
   _resetULIDForTests,
 } from "../../../src/engine/invoke.js";
+import {
+  createApprovalStore,
+  listStoredApprovals,
+} from "../../../src/engine/approval-store.js";
 import { AdapterType } from "../../../src/types.js";
 import type { AdapterManifest } from "../../../src/types.js";
 import { registerAdapter } from "../../../src/registry.js";
@@ -383,5 +390,119 @@ describe("execute (end-to-end)", () => {
     const res = await execute(inv);
     expect(res.exitCode).toBe(0);
     expect(res.envelope.surface).toBe("desktop");
+  });
+
+  it("remembers approved capability scopes in the shared kernel", async () => {
+    const originalApprovalsPath = process.env.UNICLI_APPROVALS_PATH;
+    const tmp = mkdtempSync(join(tmpdir(), "unicli-kernel-approvals-"));
+    const store = createApprovalStore({ homeDir: tmp });
+    process.env.UNICLI_APPROVALS_PATH = store.path;
+    try {
+      const permissionAdapter = mkAdapter({
+        name: "approval-fixture",
+        commands: {
+          send: {
+            name: "send",
+            description: "Send a message",
+            adapterArgs: [{ name: "text", type: "str", required: true }],
+            func: async () => ({ sent: true }),
+          },
+        },
+      });
+      registerAdapter(permissionAdapter);
+      compileAll([permissionAdapter]);
+
+      const approved = buildInvocation(
+        "cli",
+        "approval-fixture",
+        "send",
+        {
+          args: { text: "secret text" },
+          source: "shell",
+        },
+        {
+          permissionProfile: "locked",
+          approved: true,
+          rememberApproval: true,
+        },
+      )!;
+      expect((await execute(approved)).exitCode).toBe(0);
+
+      const entries = await listStoredApprovals(store);
+      expect(entries).toHaveLength(1);
+      expect(JSON.stringify(entries[0])).not.toContain("secret text");
+
+      const remembered = buildInvocation(
+        "cli",
+        "approval-fixture",
+        "send",
+        {
+          args: { text: "later text" },
+          source: "shell",
+        },
+        { permissionProfile: "locked" },
+      )!;
+      const rememberedResult = await execute(remembered);
+      expect(rememberedResult.exitCode).toBe(0);
+      expect(rememberedResult.error).toBeUndefined();
+    } finally {
+      if (originalApprovalsPath === undefined) {
+        delete process.env.UNICLI_APPROVALS_PATH;
+      } else {
+        process.env.UNICLI_APPROVALS_PATH = originalApprovalsPath;
+      }
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("does not block execution when approval memory cannot be persisted", async () => {
+    const originalApprovalsPath = process.env.UNICLI_APPROVALS_PATH;
+    const tmp = mkdtempSync(join(tmpdir(), "unicli-kernel-approvals-fail-"));
+    const approvalsPath = join(tmp, "approvals.jsonl");
+    mkdirSync(approvalsPath);
+    process.env.UNICLI_APPROVALS_PATH = approvalsPath;
+    try {
+      const permissionAdapter = mkAdapter({
+        name: "approval-write-failure",
+        commands: {
+          send: {
+            name: "send",
+            description: "Send a message",
+            adapterArgs: [{ name: "text", type: "str", required: true }],
+            func: async () => ({ sent: true }),
+          },
+        },
+      });
+      registerAdapter(permissionAdapter);
+      compileAll([permissionAdapter]);
+
+      const inv = buildInvocation(
+        "cli",
+        "approval-write-failure",
+        "send",
+        {
+          args: { text: "secret text" },
+          source: "shell",
+        },
+        {
+          permissionProfile: "locked",
+          approved: true,
+          rememberApproval: true,
+        },
+      )!;
+      const res = await execute(inv);
+      expect(res.exitCode).toBe(0);
+      expect(res.results).toEqual([{ sent: true }]);
+      expect(res.warnings).toContainEqual(
+        expect.stringContaining("failed to persist approval memory"),
+      );
+    } finally {
+      if (originalApprovalsPath === undefined) {
+        delete process.env.UNICLI_APPROVALS_PATH;
+      } else {
+        process.env.UNICLI_APPROVALS_PATH = originalApprovalsPath;
+      }
+      rmSync(tmp, { recursive: true, force: true });
+    }
   });
 });

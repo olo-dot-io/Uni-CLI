@@ -11,7 +11,7 @@ This file tracks current engineering direction. Historical release notes live in
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | Adapter catalog      | Web, browser, desktop, macOS, bridge, and external CLI surfaces are discoverable through `unicli list` and `unicli search`. |
 | v2 output envelope   | Normal command surfaces return structured success and error envelopes.                                                      |
-| Operation policy     | `open`, `confirm`, and `locked` profiles expose effect, risk, approval, and capability scope.                               |
+| Operation policy     | `open`, `confirm`, and `locked` profiles expose effect/risk/capability scope, plus private remembered approvals.            |
 | Run recording        | `--record` and `UNICLI_RECORD_RUN=1` write append-only run traces that agents can list, show, probe, replay, and compare.   |
 | Browser evidence     | Browser operator actions can emit pre/post evidence, movement dimensions, stale-ref details, and watchdog results.          |
 | MCP server           | Stdio, Streamable HTTP, SSE, and optional OAuth 2.1 PKCE entry points are available.                                        |
@@ -40,8 +40,8 @@ This file tracks current engineering direction. Historical release notes live in
    - Keep adapters open by default.
    - Expand effect/risk/capability-scope inference where commands still lack
      enough metadata.
-   - Keep `--yes` / `UNICLI_APPROVE=1` as the explicit approval path for
-     stricter profiles.
+   - Use `--yes --remember-approval` when a team wants repeat approval for the
+     same command capability scope without storing raw args.
 
 4. **Transport bus**
    - Make HTTP, CDP, accessibility, subprocess, service, and CUA dispatch share
