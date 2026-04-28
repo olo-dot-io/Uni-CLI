@@ -1,6 +1,6 @@
 <!-- Generated from docs/reference/sites.md. Do not edit this copy directly. -->
 
-# Sites Catalog
+# Command Catalog
 
 - Canonical: https://olo-dot-io.github.io/Uni-CLI/reference/sites
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/sites.md

@@ -29,11 +29,10 @@ type LocaleSiteMap = {
 
 const rootTopNav = [
   { text: "Start", link: "/guide/getting-started" },
-  { text: "Sites", link: "/reference/sites" },
+  { text: "Commands", link: "/reference/sites" },
   { text: "Guides", link: "/guide/" },
   { text: "Reference", link: "/reference/" },
   { text: "Architecture", link: "/ARCHITECTURE" },
-  { text: "npm", link: "https://www.npmjs.com/package/@zenalexa/unicli" },
 ];
 
 const rootSidebarGroups: SiteGroup[] = [
@@ -42,7 +41,7 @@ const rootSidebarGroups: SiteGroup[] = [
     link: "/",
     items: [
       { text: "Overview", link: "/" },
-      { text: "Getting Started", link: "/guide/getting-started" },
+      { text: "First Run", link: "/guide/getting-started" },
       { text: "Integrations", link: "/guide/integrations" },
       { text: "Recipes", link: "/RECIPES" },
     ],
@@ -61,7 +60,7 @@ const rootSidebarGroups: SiteGroup[] = [
     link: "/reference/",
     items: [
       { text: "Reference Index", link: "/reference/" },
-      { text: "Sites Catalog", link: "/reference/sites" },
+      { text: "Command Catalog", link: "/reference/sites" },
       { text: "Adapter Format", link: "/ADAPTER-FORMAT" },
       { text: "Pipeline Steps", link: "/reference/pipeline" },
       { text: "Exit Codes", link: "/reference/exit-codes" },
@@ -83,23 +82,22 @@ const rootSidebarGroups: SiteGroup[] = [
 ];
 
 const zhTopNav = [
-  { text: "开始", link: "/guide/getting-started" },
-  { text: "站点", link: "/reference/sites" },
+  { text: "上手", link: "/guide/getting-started" },
+  { text: "命令目录", link: "/reference/sites" },
   { text: "指南", link: "/guide/" },
   { text: "参考", link: "/reference/" },
   { text: "架构", link: "/ARCHITECTURE" },
-  { text: "npm", link: "https://www.npmjs.com/package/@zenalexa/unicli" },
 ];
 
 const zhSidebarGroups: SiteGroup[] = [
   {
-    text: "开始",
+    text: "上手",
     link: "/",
     items: [
       { text: "概览", link: "/" },
-      { text: "快速开始", link: "/guide/getting-started" },
-      { text: "集成方式", link: "/guide/integrations" },
-      { text: "常用配方", link: "/RECIPES" },
+      { text: "安装运行", link: "/guide/getting-started" },
+      { text: "接入 Agent", link: "/guide/integrations" },
+      { text: "常用场景", link: "/RECIPES" },
     ],
   },
   {
@@ -116,7 +114,7 @@ const zhSidebarGroups: SiteGroup[] = [
     link: "/reference/",
     items: [
       { text: "参考索引", link: "/reference/" },
-      { text: "站点目录", link: "/reference/sites" },
+      { text: "命令目录", link: "/reference/sites" },
       { text: "适配器格式", link: "/ADAPTER-FORMAT" },
       { text: "管线步骤", link: "/reference/pipeline" },
       { text: "退出码", link: "/reference/exit-codes" },

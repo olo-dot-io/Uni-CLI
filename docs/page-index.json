@@ -13,7 +13,7 @@
       "breadcrumbs": []
     },
     {
-      "title": "Getting Started",
+      "title": "First Run",
       "locale": "root",
       "routePath": "/guide/getting-started",
       "markdownPath": "/markdown/guide/getting-started.md",
@@ -130,7 +130,7 @@
       "breadcrumbs": []
     },
     {
-      "title": "Sites Catalog",
+      "title": "Command Catalog",
       "locale": "root",
       "routePath": "/reference/sites",
       "markdownPath": "/markdown/reference/sites.md",
@@ -337,63 +337,63 @@
       "markdownPath": "/markdown/zh/index.md",
       "sourceLink": "/",
       "sourcePath": "docs/zh/index.md",
-      "section": "开始",
+      "section": "上手",
       "parent": null,
       "breadcrumbs": []
     },
     {
-      "title": "快速开始",
+      "title": "安装运行",
       "locale": "zh",
       "routePath": "/zh/guide/getting-started",
       "markdownPath": "/markdown/zh/guide/getting-started.md",
       "sourceLink": "/guide/getting-started",
       "sourcePath": "docs/zh/guide/getting-started.md",
-      "section": "开始",
+      "section": "上手",
       "parent": {
-        "text": "开始",
+        "text": "上手",
         "link": "/zh/"
       },
       "breadcrumbs": [
         {
-          "text": "开始",
+          "text": "上手",
           "link": "/zh/"
         }
       ]
     },
     {
-      "title": "集成方式",
+      "title": "接入 Agent",
       "locale": "zh",
       "routePath": "/zh/guide/integrations",
       "markdownPath": "/markdown/zh/guide/integrations.md",
       "sourceLink": "/guide/integrations",
       "sourcePath": "docs/zh/guide/integrations.md",
-      "section": "开始",
+      "section": "上手",
       "parent": {
-        "text": "开始",
+        "text": "上手",
         "link": "/zh/"
       },
       "breadcrumbs": [
         {
-          "text": "开始",
+          "text": "上手",
           "link": "/zh/"
         }
       ]
     },
     {
-      "title": "常用配方",
+      "title": "常用场景",
       "locale": "zh",
       "routePath": "/zh/RECIPES",
       "markdownPath": "/markdown/zh/RECIPES.md",
       "sourceLink": "/RECIPES",
       "sourcePath": "docs/zh/RECIPES.md",
-      "section": "开始",
+      "section": "上手",
       "parent": {
-        "text": "开始",
+        "text": "上手",
         "link": "/zh/"
       },
       "breadcrumbs": [
         {
-          "text": "开始",
+          "text": "上手",
           "link": "/zh/"
         }
       ]
@@ -459,7 +459,7 @@
       "breadcrumbs": []
     },
     {
-      "title": "站点目录",
+      "title": "命令目录",
       "locale": "zh",
       "routePath": "/zh/reference/sites",
       "markdownPath": "/markdown/zh/reference/sites.md",

@@ -1,4 +1,5 @@
 import { defineConfig } from "vitepress";
+import react from "@vitejs/plugin-react";
 import { localizedSiteMaps, sidebarGroups, topNav } from "./site-map.js";
 
 function normalizeSiteBase(siteBase: string): string {
@@ -29,14 +30,18 @@ const siteBase = configuredSiteBase
     : "/";
 const siteOrigin = "https://olo-dot-io.github.io";
 const publicSiteUrl = `${siteOrigin}${siteBase}`;
-const zhDescription = "面向真实软件的 Agent 执行底座";
+const zhDescription = "给 Agent 操作真实软件的软件执行层";
+const npmPackageUrl = "https://www.npmjs.com/package/@zenalexa/unicli";
+const npmIcon = `<svg viewBox="0 0 48 24" aria-hidden="true"><rect x="1" y="5" width="46" height="15" rx="1" fill="#cb3837"/><text x="6" y="17" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" letter-spacing="-1">npm</text></svg>`;
 
 const socialLinks = [
   { icon: "github", link: "https://github.com/olo-dot-io/Uni-CLI" },
+  { icon: { svg: npmIcon }, link: npmPackageUrl, ariaLabel: "npm" },
 ] as const;
 
 const rootThemeConfig = {
   siteTitle: "Uni-CLI",
+  logo: { src: "/favicon.png", alt: "" },
   nav: topNav,
   search: {
     provider: "local",
@@ -156,12 +161,14 @@ function escapeMustacheInFence(md: any) {
 export default defineConfig({
   title: "Uni-CLI",
   lang: localizedSiteMaps.root.lang,
-  description:
-    "Agent execution substrate for web, apps, local tools, and system capabilities",
+  description: "A software execution layer for agents operating real software.",
   base: siteBase,
   srcExclude: ["public/markdown/**/*.md", "demo/README.md"],
   cleanUrls: true,
   lastUpdated: true,
+  vite: {
+    plugins: [react()],
+  },
   markdown: {
     math: true,
     config: (md) => {
@@ -182,7 +189,7 @@ export default defineConfig({
       {
         property: "og:description",
         content:
-          "Command-first execution substrate for agents to discover, execute, record, and repair workflows across websites, apps, local tools, system capabilities, and external CLIs.",
+          "A software execution layer for agents operating websites, apps, local tools, system capabilities, and external CLIs.",
       },
     ],
     ["meta", { property: "og:url", content: publicSiteUrl }],
@@ -200,7 +207,7 @@ export default defineConfig({
     [
       "link",
       {
-        href: "https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Geist:wght@400;500&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap",
         rel: "stylesheet",
       },
     ],

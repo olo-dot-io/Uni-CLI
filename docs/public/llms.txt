@@ -24,7 +24,7 @@ Every public page below has a clean Markdown companion. Fetch Markdown first; fe
 ## Start
 
 - [Overview](https://olo-dot-io.github.io/Uni-CLI/) — overview, install path, capability map, and agent entry points. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
-- [Getting Started](https://olo-dot-io.github.io/Uni-CLI/guide/getting-started) — start page for getting started. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/getting-started.md
+- [First Run](https://olo-dot-io.github.io/Uni-CLI/guide/getting-started) — start page for first run. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/getting-started.md
 - [Integrations](https://olo-dot-io.github.io/Uni-CLI/guide/integrations) — start page for integrations. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/integrations.md
 - [Recipes](https://olo-dot-io.github.io/Uni-CLI/RECIPES) — start page for recipes. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/RECIPES.md
 
@@ -37,7 +37,7 @@ Every public page below has a clean Markdown companion. Fetch Markdown first; fe
 ## Reference
 
 - [Reference Index](https://olo-dot-io.github.io/Uni-CLI/reference/) — reference page for reference index. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference.md
-- [Sites Catalog](https://olo-dot-io.github.io/Uni-CLI/reference/sites) — reference page for sites catalog. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/sites.md
+- [Command Catalog](https://olo-dot-io.github.io/Uni-CLI/reference/sites) — reference page for command catalog. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/sites.md
 - [Adapter Format](https://olo-dot-io.github.io/Uni-CLI/ADAPTER-FORMAT) — reference page for adapter format. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ADAPTER-FORMAT.md
 - [Pipeline Steps](https://olo-dot-io.github.io/Uni-CLI/reference/pipeline) — reference page for pipeline steps. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/pipeline.md
 - [Exit Codes](https://olo-dot-io.github.io/Uni-CLI/reference/exit-codes) — reference page for exit codes. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/exit-codes.md

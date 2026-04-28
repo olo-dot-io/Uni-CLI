@@ -1,6 +1,6 @@
 <!-- 由 docs/zh/reference/sites.md 生成。不要直接编辑此副本。 -->
 
-# 站点目录
+# 命令目录
 
 - 规范页: https://olo-dot-io.github.io/Uni-CLI/zh/reference/sites
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/zh/reference/sites.md

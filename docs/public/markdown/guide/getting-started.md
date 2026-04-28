@@ -1,6 +1,6 @@
 <!-- Generated from docs/guide/getting-started.md. Do not edit this copy directly. -->
 
-# Getting Started
+# First Run
 
 - Canonical: https://olo-dot-io.github.io/Uni-CLI/guide/getting-started
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/getting-started.md
@@ -9,6 +9,12 @@
 
 Uni-CLI turns websites, desktop apps, services, and local tools into commands
 that agents can search, run, and repair.
+
+The point is not "open a page for the agent." The point is a stable way for an
+agent to call real software. A command keeps arguments, auth, surface type,
+output shape, and error handling in one public contract. When an external page
+or API changes, the failure points back to a repairable adapter and pipeline
+step.
 
 ## Install
 
@@ -28,6 +34,21 @@ unicli SITE COMMAND [args] [-f json|md|yaml|csv|compact]
 Markdown is the default output format. Use `-f json` when a script or other
 machine-oriented consumer needs JSON.
 
+## Understand The Flow
+
+The common path has three steps:
+
+1. **Search**: `unicli search` finds candidate commands from natural language
+   without touching the external surface.
+2. **Execute**: `unicli SITE COMMAND` runs the selected command with inspectable
+   arguments and auth boundaries.
+3. **Repair**: structured failures include the adapter path, pipeline step,
+   suggestion, and alternatives.
+
+This differs from asking an agent to write a one-off browser script. Browser
+automation, CDP, accessibility trees, subprocesses, service APIs, and CUA are
+transport choices. The stable layer is the command catalog and adapter.
+
 ## Find A Command
 
 ```bash
@@ -36,6 +57,10 @@ unicli search "github trending"
 unicli list --site hackernews
 ```
 
+Search narrows the candidate set. Before execution, the agent can still inspect
+the command name, arguments, auth requirements, and surface type. That keeps
+"found a possible operation" separate from "performed the operation."
+
 ## Run A Command
 
 Run the selected command:
@@ -43,6 +68,9 @@ Run the selected command:
 ```bash
 unicli hackernews top --limit 5
 ```
+
+The default Markdown output contains data, context, and suggested next actions.
+It is meant to stay readable in terminals, chat transcripts, and agent logs.
 
 Use JSON when a script needs it:
 
@@ -90,6 +118,11 @@ Typical loop:
 3. Save a local override under ~/.unicli/adapters/SITE/COMMAND.yaml.
 4. Re-run unicli repair SITE COMMAND.
 ```
+
+The goal is not to retry until it works. The goal is to make the command match
+its public output shape again. YAML adapters are usually short enough for agents
+to read, patch, diff, and verify; use TypeScript adapters only when the runtime
+logic cannot stay declarative.
 
 ## Browser Automation
 

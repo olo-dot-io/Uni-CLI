@@ -1,11 +1,11 @@
 <!-- 由 docs/zh/RECIPES.md 生成。不要直接编辑此副本。 -->
 
-# 常用配方
+# 常用场景
 
 - 规范页: https://olo-dot-io.github.io/Uni-CLI/zh/RECIPES
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/zh/RECIPES.md
-- 栏目: 开始
-- 上级: 开始 (/zh/)
+- 栏目: 上手
+- 上级: 上手 (/zh/)
 
 这些配方覆盖最常见的使用路径。命令保持英文，因为它们就是实际 CLI 合同。
 
