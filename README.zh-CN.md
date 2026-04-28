@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->235<!-- /STATS --> 个站点 · <!-- STATS:command_count -->1448<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> 个 pipeline step · <!-- STATS:test_count -->7509<!-- /STATS --> 个测试</sub>
+  <sub><!-- STATS:site_count -->235<!-- /STATS --> 个站点 · <!-- STATS:command_count -->1448<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> 个 pipeline step · <!-- STATS:test_count -->7512<!-- /STATS --> 个测试</sub>
 </p>
 
 <p align="center">
@@ -131,17 +131,17 @@ Prefer native CLI / JSON stream / MCP for agent runtimes. Use ACP as an editor c
 
 Uni-CLI 位于 Agent 应用之下，把软件表面收敛成 Agent 能发现、能执行、能记录、能修的命令。
 
-| 表面         | 能力                                                                                                              |
-| ------------ | ----------------------------------------------------------------------------------------------------------------- |
-| 网站和 API   | public、cookie、header、browser-intercept 等 adapter                                                              |
-| 浏览器自动化 | CDP 的 navigate、click、type、intercept、snapshot、extract、wait 等步骤                                           |
-| 桌面和 macOS | 系统命令、App adapter、截图、剪贴板、日历、亮度、本地工具                                                         |
-| 外部 CLI     | 58 个已登记的 passthrough bridge，支持安装和状态发现                                                              |
-| Agent 后端   | native CLI、JSON stream、MCP、ACP、HTTP API、OpenAI-compatible、bridge 路由矩阵                                   |
-| 操作策略     | `open`、`confirm`、`locked` profile，暴露 effect、risk、approval、capability                                      |
-| 执行证据     | 可 probe/replay 的 run trace、带 tab/auth 姿态的浏览器 session lease、render-aware 证据、移动检测、stale-ref 细节 |
-| 输出         | v2 `AgentEnvelope`，支持 Markdown、JSON、YAML、CSV、compact                                                       |
-| 修复         | 错误里带 `adapter_path`、失败 `step`、是否可重试、修复建议和替代命令                                              |
+| 表面         | 能力                                                                                                                      |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| 网站和 API   | public、cookie、header、browser-intercept 等 adapter                                                                      |
+| 浏览器自动化 | CDP 的 navigate、click、type、intercept、snapshot、extract、wait 等步骤                                                   |
+| 桌面和 macOS | 系统命令、App adapter、截图、剪贴板、日历、亮度、本地工具                                                                 |
+| 外部 CLI     | 58 个已登记的 passthrough bridge，支持安装和状态发现                                                                      |
+| Agent 后端   | native CLI、JSON stream、MCP、ACP、HTTP API、OpenAI-compatible、bridge 路由矩阵                                           |
+| 操作策略     | `open`、`confirm`、`locked` profile，暴露 effect、risk、approval、capability                                              |
+| 执行证据     | 可 probe/replay/compare 的 run trace、带 tab/auth 姿态的浏览器 session lease、render-aware 证据、移动检测、stale-ref 细节 |
+| 输出         | v2 `AgentEnvelope`，支持 Markdown、JSON、YAML、CSV、compact                                                               |
+| 修复         | 错误里带 `adapter_path`、失败 `step`、是否可重试、修复建议和替代命令                                                      |
 
 ## 给 Agent 的入口
 
@@ -163,6 +163,7 @@ unicli runs list -f json
 unicli runs show <run_id> -f json
 unicli runs probe <run_id> -f json
 unicli runs replay <run_id> --permission-profile confirm --yes -f json
+unicli runs compare <run_id> <replay_run_id> -f json
 unicli browser evidence --render-aware --expect-domain example.com -f json
 ```
 
