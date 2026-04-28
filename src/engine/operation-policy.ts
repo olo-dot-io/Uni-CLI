@@ -42,6 +42,7 @@ export interface OperationPolicyInput {
   args?: Array<{ name: string; required?: boolean }>;
   profile?: string;
   approved?: boolean;
+  approvalSource?: "none" | "invocation" | "env" | "memory";
 }
 
 export interface OperationPolicy {
@@ -451,8 +452,12 @@ export function evaluateOperationPolicy(
   const profile = resolvePermissionProfile(input.profile);
   const effect = inferOperationEffect(input);
   const risk = riskForEffect(effect);
+  const envApproved = process.env.UNICLI_APPROVE === "1";
+  const approvalSource =
+    input.approvalSource ??
+    (input.approved === true ? "invocation" : envApproved ? "env" : "none");
   const approved =
-    input.approved === true || process.env.UNICLI_APPROVE === "1";
+    input.approved === true || envApproved || approvalSource === "memory";
   const approval_required = approvalRequired(profile, risk);
   const enforcement =
     approval_required && !approved ? "needs_approval" : "allow";
@@ -463,6 +468,7 @@ export function evaluateOperationPolicy(
     profile,
     effect,
     approved,
+    approvalSource,
     scope: capability_scope,
   });
   const reason =
@@ -483,7 +489,7 @@ export function evaluateOperationPolicy(
     ...(enforcement === "needs_approval"
       ? {
           approval_hint:
-            "rerun with --yes, set UNICLI_APPROVE=1, or use --permission-profile open",
+            "rerun with --yes, add --remember-approval to persist this command scope, set UNICLI_APPROVE=1, or use --permission-profile open",
         }
       : {}),
   };

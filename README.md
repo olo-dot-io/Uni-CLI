@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->235<!-- /STATS --> sites · <!-- STATS:command_count -->1448<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7512<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->235<!-- /STATS --> sites · <!-- STATS:command_count -->1448<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7519<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -138,7 +138,7 @@ Uni-CLI sits under agent applications and turns software surfaces into commands 
 | Desktop and macOS  | System commands, app adapters, screenshots, clipboard, calendar, brightness, and local tools                                                      |
 | External CLIs      | 58 registered pass-through bridges with install/status discovery                                                                                  |
 | Agent backends     | Route matrix for native CLI, JSON stream, MCP, ACP, HTTP API, OpenAI-compatible, and bridge routes                                                |
-| Operation policy   | `open`, `confirm`, and `locked` profiles with effect, risk, approval, and capability scope                                                        |
+| Operation policy   | `open`, `confirm`, and `locked` profiles with effect, risk, capability scope, `--yes`, and persisted approval memory                              |
 | Evidence           | Run traces with probe/replay/compare, browser session leases with tab/auth posture, render-aware evidence, movement checks, and stale-ref details |
 | Output             | v2 `AgentEnvelope` in Markdown, JSON, YAML, CSV, or compact format                                                                                |
 | Repair             | Structured errors with `adapter_path`, failing `step`, retryability, suggestions, and alternatives                                                |
@@ -164,6 +164,7 @@ unicli runs show <run_id> -f json
 unicli runs probe <run_id> -f json
 unicli runs replay <run_id> --permission-profile confirm --yes -f json
 unicli runs compare <run_id> <replay_run_id> -f json
+unicli --permission-profile locked --yes --remember-approval word set-font "Inter"
 unicli browser evidence --render-aware --expect-domain example.com -f json
 ```
 
@@ -299,7 +300,9 @@ Docs:
 - Browser adapters require a reachable Chrome/CDP session.
 - Permission profiles are user-selected runtime policy. The default is `open`;
   stricter `confirm` and `locked` profiles require `--yes` or `UNICLI_APPROVE=1`
-  for blocked operations.
+  for blocked operations. Add `--remember-approval` with `--yes` to store the
+  same command capability scope under `~/.unicli/approvals.jsonl`; raw runtime
+  args are not stored.
 - Run recording is opt-in. Use `--record` or `UNICLI_RECORD_RUN=1` when you need
   append-only evidence under `~/.unicli/runs`.
 - CUA routes require a configured real backend. Declared-but-unavailable providers fail closed with structured errors.

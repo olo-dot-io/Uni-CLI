@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { tryRunFastPath } from "../../src/fast-path.js";
+import { createApprovalStore } from "../../src/engine/approval-store.js";
+import { evaluateOperationPolicy } from "../../src/engine/operation-policy.js";
 import { ExitCode } from "../../src/types.js";
 
 function makeIo(): {
@@ -342,6 +347,77 @@ describe("CLI fast path", () => {
         },
       },
     });
+  });
+
+  it("ignores malformed approval-memory lines in adapter dry-run plans", () => {
+    const originalApprovalsPath = process.env.UNICLI_APPROVALS_PATH;
+    const tmp = mkdtempSync(join(tmpdir(), "unicli-fast-path-approvals-"));
+    const store = createApprovalStore({ path: join(tmp, "approvals.jsonl") });
+    const policy = evaluateOperationPolicy({
+      site: "slack",
+      command: "send",
+      description: "Send a message to a Slack channel",
+      adapterType: "bridge",
+      strategy: "public",
+      browser: false,
+      args: [
+        { name: "channel", required: true },
+        { name: "text", required: true },
+      ],
+      profile: "confirm",
+      approved: true,
+    });
+    writeFileSync(
+      store.path,
+      `${JSON.stringify({
+        key: policy.approval_memory.key,
+        decision: "allow",
+      })}\n`,
+      "utf-8",
+    );
+    process.env.UNICLI_APPROVALS_PATH = store.path;
+
+    try {
+      const { stdout, io } = makeIo();
+      const handled = tryRunFastPath(
+        [
+          "node",
+          "unicli",
+          "--dry-run",
+          "--permission-profile",
+          "confirm",
+          "slack",
+          "send",
+          "C0123456789",
+          "hello",
+        ],
+        io,
+      );
+
+      expect(handled).toBe(true);
+      const plan = JSON.parse(stdout.join("")) as {
+        operation_policy: {
+          enforcement: string;
+          approved: boolean;
+          approval_memory: { persistence: string; decision: string };
+        };
+      };
+      expect(plan.operation_policy).toMatchObject({
+        enforcement: "needs_approval",
+        approved: false,
+        approval_memory: {
+          persistence: "not_persisted",
+          decision: "not_approved",
+        },
+      });
+    } finally {
+      if (originalApprovalsPath === undefined) {
+        delete process.env.UNICLI_APPROVALS_PATH;
+      } else {
+        process.env.UNICLI_APPROVALS_PATH = originalApprovalsPath;
+      }
+      rmSync(tmp, { recursive: true, force: true });
+    }
   });
 
   it("resolves generated Electron adapter dry-run args from the manifest", () => {

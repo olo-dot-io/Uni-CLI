@@ -10,6 +10,10 @@ import { existsSync, readFileSync, writeSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { search } from "./discovery/search.js";
+import {
+  createApprovalStore,
+  isStoredApproval,
+} from "./engine/approval-store.js";
 import { buildDefaultConfig } from "./engine/repair/config.js";
 import {
   evaluateOperationPolicy,
@@ -34,6 +38,7 @@ type ParsedArgv = {
   dryRun: boolean;
   permissionProfile?: string;
   yes: boolean;
+  rememberApproval: boolean;
   record: boolean;
 };
 
@@ -286,6 +291,7 @@ function parseArgv(argv: string[]): ParsedArgv {
   let dryRun = false;
   let permissionProfile: string | undefined;
   let yes = false;
+  let rememberApproval = false;
   let record = false;
   let command: string | undefined;
   const rest: string[] = [];
@@ -324,6 +330,10 @@ function parseArgv(argv: string[]): ParsedArgv {
       }
       if (arg === "--yes") {
         yes = true;
+        continue;
+      }
+      if (arg === "--remember-approval") {
+        rememberApproval = true;
         continue;
       }
       if (arg === "--record") {
@@ -370,6 +380,10 @@ function parseArgv(argv: string[]): ParsedArgv {
       yes = true;
       continue;
     }
+    if (arg === "--remember-approval") {
+      rememberApproval = true;
+      continue;
+    }
     if (arg === "--record") {
       record = true;
       continue;
@@ -384,6 +398,7 @@ function parseArgv(argv: string[]): ParsedArgv {
     dryRun,
     permissionProfile,
     yes,
+    rememberApproval,
     record,
   };
 }
@@ -442,7 +457,7 @@ function evaluateManifestOperationPolicy(input: {
   startedAt: number;
 }): OperationPolicy | null {
   try {
-    return evaluateOperationPolicy({
+    const policyInput = {
       site: input.site,
       command: input.commandName,
       description: input.command.description,
@@ -453,7 +468,18 @@ function evaluateManifestOperationPolicy(input: {
       args: input.command.args,
       profile: input.parsed.permissionProfile,
       approved: input.parsed.yes,
-    });
+    };
+    const policy = evaluateOperationPolicy(policyInput);
+    if (
+      policy.enforcement === "needs_approval" &&
+      hasStoredApproval(policy.approval_memory.key)
+    ) {
+      return evaluateOperationPolicy({
+        ...policyInput,
+        approvalSource: "memory",
+      });
+    }
+    return policy;
   } catch (error) {
     if (!(error instanceof InvalidPermissionProfileError)) throw error;
 
@@ -480,6 +506,29 @@ function evaluateManifestOperationPolicy(input: {
       ExitCode.USAGE_ERROR,
     );
     return null;
+  }
+}
+
+function hasStoredApproval(key: string): boolean {
+  const store = createApprovalStore();
+  if (!existsSync(store.path)) return false;
+  try {
+    const raw = readFileSync(store.path, "utf-8");
+    return raw.split(/\r?\n/).some((line) => {
+      if (line.trim().length === 0) return false;
+      try {
+        const entry = JSON.parse(line) as unknown;
+        return (
+          isStoredApproval(entry) &&
+          entry.key === key &&
+          entry.decision === "allow"
+        );
+      } catch {
+        return false;
+      }
+    });
+  } catch {
+    return false;
   }
 }
 

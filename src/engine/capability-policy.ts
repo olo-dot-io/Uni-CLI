@@ -40,9 +40,9 @@ export interface CapabilityScope {
 export interface CapabilityApprovalMemory {
   schema_version: "1";
   key: string;
-  persistence: "not_persisted";
+  persistence: "not_persisted" | "persisted";
   profile: PermissionProfile;
-  decision: "not_approved" | "approved_for_invocation";
+  decision: "not_approved" | "approved_for_invocation" | "approved_by_memory";
   scope: {
     dimensions: Record<CapabilityDimensionName, CapabilityAccess>;
   };
@@ -367,19 +367,27 @@ export function buildCapabilityApprovalMemory(input: {
   profile: PermissionProfile;
   effect: OperationEffect;
   approved: boolean;
+  approvalSource?: "none" | "invocation" | "env" | "memory";
   scope: CapabilityScope;
 }): CapabilityApprovalMemory {
   const dimensionAccess = accessMapFor(input.scope.dimensions);
   const dimensionKey = DIMENSION_ORDER.map(
     (name) => `${name}:${dimensionAccess[name]}`,
   ).join(",");
+  const approvalSource =
+    input.approvalSource ?? (input.approved ? "invocation" : "none");
 
   return {
     schema_version: "1",
     key: `cap:1:${input.site}.${input.command}:${input.profile}:${input.effect}:${dimensionKey}`,
-    persistence: "not_persisted",
+    persistence: approvalSource === "memory" ? "persisted" : "not_persisted",
     profile: input.profile,
-    decision: input.approved ? "approved_for_invocation" : "not_approved",
+    decision:
+      approvalSource === "memory"
+        ? "approved_by_memory"
+        : input.approved
+          ? "approved_for_invocation"
+          : "not_approved",
     scope: {
       dimensions: dimensionAccess,
     },

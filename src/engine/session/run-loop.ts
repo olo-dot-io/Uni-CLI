@@ -1,12 +1,12 @@
 import { execute } from "../kernel/execute.js";
 import type { Invocation, InvocationResult } from "../kernel/types.js";
 import {
-  evaluateOperationPolicy,
   InvalidPermissionProfileError,
   resolveOperationAdapterPath,
   resolveOperationTargetSurface,
 } from "../operation-policy.js";
 import type { OperationPolicy } from "../operation-policy.js";
+import { evaluateOperationPolicyWithApprovals } from "../permission-runtime.js";
 import {
   appendRunEvent,
   createRunStore,
@@ -92,12 +92,12 @@ function replaySecretForInvocation(
   };
 }
 
-function evaluatePermissionForEvent(
+async function evaluatePermissionForEvent(
   inv: Invocation,
   metadata: RunTraceMetadata,
-): Record<string, unknown> {
+): Promise<Record<string, unknown>> {
   try {
-    const policy: OperationPolicy = evaluateOperationPolicy({
+    const policy: OperationPolicy = await evaluateOperationPolicyWithApprovals({
       site: inv.adapter.name,
       command: inv.cmdName,
       description: inv.command.description,
@@ -209,6 +209,7 @@ export async function executeWithRunRecording(
   const metadata = metadataForInvocation(inv, runId);
   const sequence = createRunEventSequence();
   const warnings: string[] = [];
+  const permissionData = await evaluatePermissionForEvent(inv, metadata);
 
   await appendAll(
     store,
@@ -218,11 +219,7 @@ export async function executeWithRunRecording(
         ...createToolCallStartedEvent(metadata, sequence),
         secret: replaySecretForInvocation(inv, metadata),
       },
-      createPermissionEvaluatedEvent(
-        metadata,
-        sequence,
-        evaluatePermissionForEvent(inv, metadata),
-      ),
+      createPermissionEvaluatedEvent(metadata, sequence, permissionData),
     ],
     warnings,
   );
