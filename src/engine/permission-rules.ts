@@ -524,9 +524,9 @@ function normalizeDomainComparable(value: string): string {
 }
 
 function normalizePathComparable(value: string): string {
-  const raw = value.trim();
+  const raw = value.trim().replace(/\\/g, "/");
   if (raw === "/") return raw;
-  return raw.replace(/\/+$/, "");
+  return normalizeComparable(raw.replace(/\/+$/, ""));
 }
 
 function normalizeExecutableComparable(value: string): string {

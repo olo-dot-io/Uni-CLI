@@ -247,6 +247,51 @@ describe("permission deny rules", () => {
     }
   });
 
+  it("matches runtime Windows paths with backslash separators", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "unicli-rules-windows-path-"));
+    try {
+      const store = createPermissionRulesStore({
+        path: join(tmp, "permission-rules.json"),
+      });
+      writeFileSync(
+        store.path,
+        JSON.stringify({
+          schema_version: "1",
+          rules: [
+            {
+              id: "deny-windows-private-zone",
+              decision: "deny",
+              match: {
+                resources: {
+                  paths: ["C:\\Temp\\private"],
+                },
+              },
+              reason: "runtime path is blocked",
+            },
+          ],
+        }),
+        "utf-8",
+      );
+
+      expect(
+        findDenyRuleForRuntimeResourceSync(
+          {
+            resources: {
+              paths: ["C:\\Temp\\private\\report.json"],
+            },
+          },
+          { path: store.path },
+        ),
+      ).toEqual({
+        decision: "deny",
+        id: "deny-windows-private-zone",
+        reason: "runtime path is blocked",
+      });
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   it("matches runtime executables by absolute path basename", () => {
     const tmp = mkdtempSync(join(tmpdir(), "unicli-rules-executable-"));
     try {
