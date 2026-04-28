@@ -13,14 +13,14 @@ configuration while keeping adapter behavior identical.
 
 ## Choose A Path
 
-| Client need                         | Use                                       |
-| ----------------------------------- | ----------------------------------------- |
-| Any agent can run shell commands    | Native `unicli` CLI                       |
-| Tool-calling clients that speak MCP | `unicli mcp serve`                        |
-| Editor clients that speak ACP       | `unicli acp`                              |
-| Platform-specific setup             | `unicli agents generate`                  |
-| Runtime/backend selection           | `unicli agents matrix` / `recommend`      |
-| Skill-native adapter discovery      | `unicli skills export` / `skills publish` |
+| Client need                         | Use                                              |
+| ----------------------------------- | ------------------------------------------------ |
+| Any agent can run shell commands    | Native `unicli` CLI                              |
+| Tool-calling clients that speak MCP | `unicli mcp serve`                               |
+| Editor clients that speak ACP       | `unicli acp`                                     |
+| Platform-specific setup             | `unicli agents generate`                         |
+| Runtime/backend selection           | `unicli agents matrix` / `recommend`             |
+| Skill-native adapter discovery      | `unicli skills export` / `unicli skills publish` |
 
 Prefer the native CLI when the agent has shell access. It keeps discovery lazy,
 outputs compact, and preserves Unix composition.
@@ -63,11 +63,14 @@ Start a Streamable HTTP server:
 npx @zenalexa/unicli mcp serve --transport streamable --port 19826
 ```
 
-SSE compatibility:
+Legacy SSE compatibility:
 
 ```bash
 npx @zenalexa/unicli mcp serve --transport sse --port 19826
 ```
+
+`sse` is a deprecated alias for the Streamable transport. Use
+`--transport streamable` for new setups.
 
 Remote deployments can enable OAuth 2.1 PKCE:
 

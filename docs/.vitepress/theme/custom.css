@@ -383,11 +383,16 @@ html[lang="zh-CN"] .vp-doc .uni-hero-lead {
 }
 
 .uni-link-primary:hover,
+.uni-link-secondary:hover {
+  transform: none;
+}
+
 .uni-link-primary:focus-visible,
-.uni-link-secondary:hover,
 .uni-link-secondary:focus-visible {
   transform: none;
-  outline: none;
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+  border-bottom-width: 2px;
 }
 
 .uni-command-strip {

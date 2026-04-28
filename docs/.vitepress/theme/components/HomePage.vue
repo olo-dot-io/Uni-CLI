@@ -98,7 +98,7 @@ const copy = computed(() =>
           },
           {
             name: "Agent 协议",
-            text: "MCP stdio / Streamable / SSE、ACP、agent matrix、skills export 和配置生成。",
+            text: "MCP stdio / Streamable（兼容旧版 `sse` 别名）、ACP、agent matrix、skills export 和配置生成。",
           },
         ],
         entriesTitle: "从这里进文档",
@@ -202,7 +202,7 @@ const copy = computed(() =>
           },
           {
             name: "Agent protocols",
-            text: "MCP stdio / Streamable / SSE, ACP, agent matrix, skills export, and config generation.",
+            text: "MCP stdio / Streamable (legacy `sse` alias), ACP, agent matrix, skills export, and config generation.",
           },
         ],
         entriesTitle: "Start here",

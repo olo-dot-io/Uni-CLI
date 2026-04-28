@@ -122,9 +122,11 @@ MCP：
 ```bash
 npx @zenalexa/unicli mcp serve
 npx @zenalexa/unicli mcp serve --transport streamable --port 19826
-npx @zenalexa/unicli mcp serve --transport sse --port 19826
 npx @zenalexa/unicli mcp serve --transport streamable --port 19826 --auth
 ```
+
+`--transport sse` 仍然是 Streamable 的旧别名，但新部署优先使用
+`--transport streamable`。
 
 ACP：
 

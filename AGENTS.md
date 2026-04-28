@@ -186,7 +186,7 @@ Full reference: [`docs/ADAPTER-FORMAT.md`](docs/ADAPTER-FORMAT.md).
 ```bash
 npx @zenalexa/unicli mcp serve                                # stdio (4 meta-tools)
 npx @zenalexa/unicli mcp serve --transport streamable --port 19826
-npx @zenalexa/unicli mcp serve --transport sse --port 19826   # SSE for remote
+npx @zenalexa/unicli mcp serve --transport sse --port 19826   # legacy alias for streamable
 npx @zenalexa/unicli mcp serve --auth                         # OAuth 2.1 PKCE
 ```
 

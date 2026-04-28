@@ -144,9 +144,11 @@ MCP:
 ```bash
 npx @zenalexa/unicli mcp serve
 npx @zenalexa/unicli mcp serve --transport streamable --port 19826
-npx @zenalexa/unicli mcp serve --transport sse --port 19826
 npx @zenalexa/unicli mcp serve --transport streamable --port 19826 --auth
 ```
+
+`--transport sse` still works as a legacy alias for Streamable, but new
+deployments should use `--transport streamable`.
 
 ACP:
 

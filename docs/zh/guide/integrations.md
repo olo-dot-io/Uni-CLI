@@ -4,14 +4,14 @@ Uni-CLI 的首选入口是 shell。只要智能体能运行命令，就可以直
 
 ## 选哪条路
 
-| 客户端需要什么                 | 用什么                               |
-| ------------------------------ | ------------------------------------ |
-| 能运行 shell 命令              | 原生 `unicli` CLI                    |
-| 需要 MCP tool calls            | `unicli mcp serve`                   |
-| 需要 ACP prompt/session frames | `unicli acp`                         |
-| 需要生成平台配置               | `unicli agents generate`             |
-| 需要选择运行后端               | `unicli agents matrix` / `recommend` |
-| 需要本地 skills 发现           | `unicli skills export` / `publish`   |
+| 客户端需要什么                 | 用什么                                           |
+| ------------------------------ | ------------------------------------------------ |
+| 能运行 shell 命令              | 原生 `unicli` CLI                                |
+| 需要 MCP tool calls            | `unicli mcp serve`                               |
+| 需要 ACP prompt/session frames | `unicli acp`                                     |
+| 需要生成平台配置               | `unicli agents generate`                         |
+| 需要选择运行后端               | `unicli agents matrix` / `recommend`             |
+| 需要本地 skills 发现           | `unicli skills export` / `unicli skills publish` |
 
 如果智能体有 shell 权限，优先用原生 CLI。它发现命令更懒加载，输出更小，也保留 Unix 组合能力。
 
@@ -52,11 +52,14 @@ npx @zenalexa/unicli mcp serve
 npx @zenalexa/unicli mcp serve --transport streamable --port 19826
 ```
 
-SSE 兼容：
+旧版 SSE 兼容：
 
 ```bash
 npx @zenalexa/unicli mcp serve --transport sse --port 19826
 ```
+
+`sse` 是 Streamable transport 的旧别名，新配置优先使用
+`--transport streamable`。
 
 远程部署可以打开 OAuth 2.1 PKCE：
 
