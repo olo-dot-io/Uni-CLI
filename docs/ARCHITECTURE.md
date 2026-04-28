@@ -179,7 +179,8 @@ Use:
 - YAML adapters for durable website/app operations.
 - CDP, accessibility, subprocess, and app APIs before CUA.
 - CUA only when it can see, act, and verify.
-- Run and browser evidence when an operation needs reviewable proof.
+- Run traces, browser session leases, render-aware evidence, and watchdog
+  movement checks when an operation needs reviewable proof.
 - MCP/ACP/HTTP as compatibility surfaces generated from the same catalog.
 
 Do not use:

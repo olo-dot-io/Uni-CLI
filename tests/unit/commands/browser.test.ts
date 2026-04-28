@@ -22,6 +22,7 @@ import {
   createRunStore,
   readRunEvents,
 } from "../../../src/engine/session/store.js";
+import { createBrowserSessionLease } from "../../../src/engine/browser/session-lease.js";
 
 const mockPage = {
   goto: vi.fn().mockResolvedValue(undefined),
@@ -262,6 +263,13 @@ describe("unicli browser operator surface", () => {
       "tool.call.completed",
       "run.completed",
     ]);
+    const expectedLease = createBrowserSessionLease({
+      namespace: "browser",
+      workspace: "browser:default",
+    });
+    expect(events.map((event) => event.metadata.browser_lease)).toEqual(
+      events.map(() => expectedLease),
+    );
     const evidenceEvents = events.filter(
       (event) => event.name === "evidence.captured",
     );
@@ -273,11 +281,16 @@ describe("unicli browser operator surface", () => {
         phase: "before",
         outcome: "pending",
         workspace: "browser:default",
+        browser_session_id: expectedLease.browser_session_id,
+        browser_workspace_id: expectedLease.browser_workspace_id,
+        lease_owner: expectedLease.lease_owner,
+        lease_scope: expectedLease.scope,
       },
       internal: {
         action: "click.before",
         evidence_type: "browser-operator",
         workspace: "browser:default",
+        lease: expectedLease,
       },
     });
     expect(evidenceEvents[1]).toMatchObject({
@@ -288,6 +301,10 @@ describe("unicli browser operator surface", () => {
         phase: "after",
         outcome: "success",
         workspace: "browser:default",
+        browser_session_id: expectedLease.browser_session_id,
+        browser_workspace_id: expectedLease.browser_workspace_id,
+        lease_owner: expectedLease.lease_owner,
+        lease_scope: expectedLease.scope,
         movement: {
           url_changed: false,
           title_changed: false,
@@ -612,6 +629,12 @@ describe("unicli browser operator surface", () => {
       data: {
         evidence_type: string;
         workspace: string;
+        lease: {
+          browser_session_id: string;
+          browser_workspace_id: string;
+          lease_owner: string;
+          scope: string;
+        };
         observed_since: string;
         partial: boolean;
         capture_scope: {
@@ -635,6 +658,12 @@ describe("unicli browser operator surface", () => {
     expect(env.command).toBe("browser.evidence");
     expect(env.data.evidence_type).toBe("browser-operator");
     expect(env.data.workspace).toBe("browser:default");
+    expect(env.data.lease).toEqual(
+      createBrowserSessionLease({
+        namespace: "browser",
+        workspace: "browser:default",
+      }),
+    );
     expect(env.data.observed_since).toBe("2026-04-27T14:00:00.000Z");
     expect(env.data.partial).toBe(true);
     expect(env.data.capture_scope).toMatchObject({
@@ -661,6 +690,143 @@ describe("unicli browser operator surface", () => {
       expect.stringContaining("__unicli_console_summary"),
     );
     expect(readFileSync(env.data.screenshot.path, "utf-8")).toBe("img");
+  });
+
+  it("browser evidence can wait for render-aware stability", async () => {
+    useTempHome();
+    mockPage.snapshot.mockResolvedValue("[1]<main>Ready</main>");
+    mockPage.evaluate.mockImplementation(async (script: string) => {
+      if (script.includes("__unicli_console_summary")) {
+        return JSON.stringify({
+          count: 0,
+          error_count: 0,
+          warn_count: 0,
+          observed_since: "2026-04-29T00:40:00.000Z",
+        });
+      }
+      return undefined;
+    });
+
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "browser",
+          "evidence",
+          "--render-aware",
+          "--no-screenshot",
+          "--stability-ms",
+          "100",
+          "--timeout-ms",
+          "400",
+          "--poll-ms",
+          "50",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: {
+        render_stability: {
+          reached: boolean;
+          reason: string;
+          samples: number;
+          stable_for_ms: number;
+        };
+      };
+    };
+    expect(env.data.render_stability).toMatchObject({
+      reached: true,
+      reason: "stable",
+    });
+    expect(env.data.render_stability.samples).toBeGreaterThanOrEqual(3);
+    expect(env.data.render_stability.stable_for_ms).toBeGreaterThanOrEqual(100);
+  });
+
+  it("browser evidence attaches URL guard metadata when the current tab matches", async () => {
+    useTempHome();
+    mockPage.url.mockResolvedValue("https://app.example.com/feed/today");
+    mockPage.snapshot.mockResolvedValueOnce("[1]<button>Save</button>");
+    mockPage.evaluate.mockResolvedValueOnce(undefined).mockResolvedValueOnce(
+      JSON.stringify({
+        count: 0,
+        error_count: 0,
+        warn_count: 0,
+        observed_since: "2026-04-29T01:10:00.000Z",
+      }),
+    );
+
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "browser",
+          "--expect-domain",
+          "example.com",
+          "--expect-path-prefix",
+          "/feed",
+          "evidence",
+          "--no-screenshot",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: {
+        lease: {
+          url_guard: {
+            expected_domain: string;
+            expected_path_prefix: string;
+          };
+        };
+      };
+    };
+    expect(env.data.lease.url_guard).toEqual({
+      expected_domain: "example.com",
+      expected_path_prefix: "/feed",
+    });
+  });
+
+  it("browser evidence fails when the current tab violates the lease URL guard", async () => {
+    useTempHome();
+    process.exitCode = undefined;
+    mockPage.url.mockResolvedValue("https://badexample.com/feed/today");
+
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        ["browser", "--expect-domain", "example.com", "evidence"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const err = JSON.parse(cap.getStderr().trim()) as {
+      ok: boolean;
+      error: { code: string; retryable: boolean; suggestion: string };
+    };
+    expect(err.ok).toBe(false);
+    expect(err.error).toMatchObject({
+      code: "browser_domain_mismatch",
+      retryable: false,
+      suggestion:
+        "Bind or open a tab that matches the requested browser lease guard.",
+    });
+    expect(process.exitCode).toBe(1);
+    expect(mockPage.screenshot).not.toHaveBeenCalled();
   });
 
   it("browser evidence honors --no-screenshot without capturing a screenshot", async () => {
@@ -985,6 +1151,64 @@ describe("unicli browser operator surface", () => {
     };
     expect(env.data.key).toBe("get-feed-deadbeef");
     expect(env.data.body).toEqual({ data: [{ id: "1" }] });
+  });
+
+  it("browser extract can wait for render-aware stability before reading text", async () => {
+    mockPage.snapshot.mockResolvedValue("[1]<main>Ready article</main>");
+    mockPage.evaluate.mockImplementation(async (script: string) => {
+      if (script.includes("__unicli_console_summary")) {
+        return JSON.stringify({
+          count: 0,
+          error_count: 0,
+          warn_count: 0,
+          observed_since: "2026-04-29T01:00:00.000Z",
+        });
+      }
+      if (script.includes("document.body")) {
+        return {
+          selector: "body",
+          title: "Ready",
+          url: "https://example.com/article",
+          content: "Ready article body",
+        };
+      }
+      return undefined;
+    });
+
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "browser",
+          "extract",
+          "--render-aware",
+          "--no-screenshot",
+          "--stability-ms",
+          "100",
+          "--timeout-ms",
+          "400",
+          "--poll-ms",
+          "50",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: {
+        content: string;
+        render_stability: { reached: boolean; reason: string };
+      };
+    };
+    expect(env.data.content).toBe("Ready article body");
+    expect(env.data.render_stability).toMatchObject({
+      reached: true,
+      reason: "stable",
+    });
   });
 
   it("browser init creates a schema-v2 YAML adapter skeleton", async () => {

@@ -137,6 +137,7 @@ export async function operatorAction(
       ...(tagged.suggestion ? { suggestion: tagged.suggestion } : {}),
       retryable:
         code === "stale_ref" ||
+        code === "browser_lease_locked" ||
         /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|daemon failed/i.test(
           message,
         ),

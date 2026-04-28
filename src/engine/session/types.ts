@@ -1,5 +1,6 @@
 import type { Surface } from "../../output/envelope.js";
 import type { TargetSurface } from "../../types.js";
+import type { BrowserSessionLease } from "../browser/session-lease.js";
 
 export type RunId = string;
 export type TraceId = string;
@@ -28,6 +29,7 @@ export interface RunTraceMetadata {
   target_surface: TargetSurface | Surface;
   args_hash: string;
   pipeline_steps: number;
+  browser_lease?: BrowserSessionLease;
 }
 
 export interface RunEvent {

@@ -142,7 +142,15 @@ unicli operate screenshot --path ./page.png
 ```
 
 Browser actions can attach before/after evidence, stale-ref detail, movement
-dimensions, and watchdog results when a command needs reviewable proof.
+dimensions, watchdog results, session lease metadata, and render-aware reads
+when a command needs reviewable proof.
+
+```bash
+unicli browser evidence --render-aware --expect-domain example.com
+unicli browser extract --render-aware --expect-domain example.com --no-screenshot
+unicli runs list
+unicli runs show <run_id>
+```
 
 ## Protocol Servers
 

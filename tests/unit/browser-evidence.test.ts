@@ -7,8 +7,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   BROWSER_EVIDENCE_HOOK_JS,
   captureBrowserEvidencePacket,
+  captureRenderAwareBrowserEvidence,
   installBrowserEvidenceHooks,
 } from "../../src/engine/browser/evidence.js";
+import { createBrowserSessionLease } from "../../src/engine/browser/session-lease.js";
 import type { IPage } from "../../src/types.js";
 
 describe("browser operator evidence", () => {
@@ -111,9 +113,14 @@ describe("browser operator evidence", () => {
     const page = mockPage();
 
     const snapshot = "[1]<button>Save</button>\n<p>Ready</p>";
+    const lease = createBrowserSessionLease({
+      namespace: "browser",
+      workspace: "browser:default",
+    });
     const packet = await captureBrowserEvidencePacket(page, {
       action: "state",
       workspace: "browser:default",
+      lease,
       screenshotDir: tmp,
       timestamp: "2026-04-27T14:30:00.000Z",
     });
@@ -123,6 +130,7 @@ describe("browser operator evidence", () => {
       evidence_type: "browser-operator",
       action: "state",
       workspace: "browser:default",
+      lease,
       observed_since: "2026-04-27T14:00:00.000Z",
       partial: true,
       capture_scope: {
@@ -166,6 +174,76 @@ describe("browser operator evidence", () => {
     expect(packet.dom.preview).toContain("<button>Save</button>");
     expect(packet.screenshot.path).toContain(tmp);
     expect(readFileSync(packet.screenshot.path!).toString()).toBe("png-bytes");
+  });
+
+  it("waits for stable rendered evidence before returning a render-aware observation", async () => {
+    const page = mockPage();
+    let sample = 0;
+    vi.mocked(page.title).mockImplementation(async () =>
+      sample < 2 ? `Loading ${sample}` : "Ready",
+    );
+    vi.mocked(page.snapshot).mockImplementation(async () => {
+      const value =
+        sample < 2
+          ? `[1]<main>Loading ${sample}</main>`
+          : "[1]<main>Ready</main>";
+      sample += 1;
+      return value;
+    });
+
+    let now = 0;
+    const observation = await captureRenderAwareBrowserEvidence(page, {
+      action: "evidence",
+      workspace: "browser:default",
+      timestamp: "2026-04-27T14:30:00.000Z",
+      timeoutMs: 1000,
+      pollMs: 100,
+      stableForMs: 200,
+      now: () => now,
+      sleep: async (ms) => {
+        now += ms;
+      },
+    });
+
+    expect(observation.stability).toMatchObject({
+      reached: true,
+      reason: "stable",
+      samples: 5,
+      stable_for_ms: 200,
+    });
+    expect(observation.packet.page.title).toBe("Ready");
+    expect(observation.packet.dom.preview).toContain("Ready");
+  });
+
+  it("returns partial render-aware evidence when rendered state never stabilizes", async () => {
+    const page = mockPage();
+    let sample = 0;
+    vi.mocked(page.snapshot).mockImplementation(async () => {
+      sample += 1;
+      return `[1]<main>Tick ${sample}</main>`;
+    });
+
+    let now = 0;
+    const observation = await captureRenderAwareBrowserEvidence(page, {
+      action: "evidence",
+      workspace: "browser:default",
+      timestamp: "2026-04-27T14:30:00.000Z",
+      timeoutMs: 250,
+      pollMs: 100,
+      stableForMs: 200,
+      now: () => now,
+      sleep: async (ms) => {
+        now += ms;
+      },
+    });
+
+    expect(observation.stability).toMatchObject({
+      reached: false,
+      reason: "timeout",
+      samples: 4,
+      timeout_ms: 250,
+    });
+    expect(observation.packet.partial).toBe(true);
   });
 
   it("counts numeric, Playwright-style, and structured snapshot refs", async () => {

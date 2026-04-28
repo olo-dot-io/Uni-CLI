@@ -120,7 +120,15 @@ unicli operate type --ref 7 --text "hello"
 unicli operate screenshot --path ./page.png
 ```
 
-浏览器动作可以附带前后证据、stale-ref 细节、移动维度和 watchdog 结果，便于审查。
+浏览器动作可以附带前后证据、stale-ref 细节、移动维度、watchdog 结果、
+session lease 和 render-aware 读取，方便审查。
+
+```bash
+unicli browser evidence --render-aware --expect-domain example.com
+unicli browser extract --render-aware --expect-domain example.com --no-screenshot
+unicli runs list
+unicli runs show <run_id>
+```
 
 ## 协议服务
 
