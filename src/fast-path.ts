@@ -16,6 +16,7 @@ import {
   InvalidPermissionProfileError,
   resolveOperationAdapterPath,
   resolveOperationTargetSurface,
+  type OperationPolicy,
 } from "./engine/operation-policy.js";
 import { defaultErrorNextActions } from "./output/next-actions.js";
 import { format, detectFormat } from "./output/formatter.js";
@@ -429,6 +430,59 @@ function emit(
   );
 }
 
+function evaluateManifestOperationPolicy(input: {
+  parsed: ParsedArgv;
+  io: Io;
+  site: string;
+  commandName: string;
+  command: ManifestCommand;
+  adapterType: string;
+  targetSurface: TargetSurface;
+  adapterPath: string;
+  startedAt: number;
+}): OperationPolicy | null {
+  try {
+    return evaluateOperationPolicy({
+      site: input.site,
+      command: input.commandName,
+      description: input.command.description,
+      adapterType: input.adapterType,
+      targetSurface: input.targetSurface,
+      strategy: input.command.strategy,
+      browser: input.command.browser === true,
+      args: input.command.args,
+      profile: input.parsed.permissionProfile,
+      approved: input.parsed.yes,
+    });
+  } catch (error) {
+    if (!(error instanceof InvalidPermissionProfileError)) throw error;
+
+    emitStderrAndExit(
+      input.io,
+      format([], input.command.columns, detectFormat(input.parsed.format), {
+        command: `${input.site}.${input.commandName}`,
+        duration_ms: Date.now() - input.startedAt,
+        surface: input.targetSurface,
+        error: {
+          code: "invalid_input",
+          message: error.message,
+          adapter_path: input.adapterPath,
+          step: 0,
+          suggestion: "use one of: open, confirm, locked",
+          retryable: false,
+        },
+        next_actions: defaultErrorNextActions(
+          input.site,
+          input.commandName,
+          "invalid_input",
+        ),
+      }),
+      ExitCode.USAGE_ERROR,
+    );
+    return null;
+  }
+}
+
 function handleList(parsed: ParsedArgv, io: Io): boolean {
   const startedAt = Date.now();
   let siteFilter: string | undefined;
@@ -558,6 +612,7 @@ function handleSearch(parsed: ParsedArgv, io: Io): boolean {
 }
 
 function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
+  const startedAt = Date.now();
   const manifest = readManifest();
   const [site, cmdName] = parsed.rest;
 
@@ -615,10 +670,28 @@ function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
     process.exitCode = 64;
     return true;
   }
+  const adapterType = command.type ?? info.commands[0]?.type ?? "web-api";
   const targetSurface = resolveOperationTargetSurface({
-    adapterType: command.type,
+    adapterType,
     targetSurface: command.target_surface,
   });
+  const adapterPath = resolveOperationAdapterPath(
+    site,
+    cmdName,
+    command.adapter_path,
+  );
+  const operationPolicy = evaluateManifestOperationPolicy({
+    parsed,
+    io,
+    site,
+    commandName: cmdName,
+    command,
+    adapterType,
+    targetSurface,
+    adapterPath,
+    startedAt,
+  });
+  if (!operationPolicy) return true;
 
   io.stdout(
     JSON.stringify(
@@ -630,23 +703,8 @@ function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
         auth: (command.strategy ?? "public") !== "public",
         browser: command.browser === true,
         target_surface: targetSurface,
-        adapter_path: resolveOperationAdapterPath(
-          site,
-          cmdName,
-          command.adapter_path,
-        ),
-        operation_policy: evaluateOperationPolicy({
-          site,
-          command: cmdName,
-          description: command.description,
-          adapterType: command.type,
-          targetSurface: command.target_surface,
-          strategy: command.strategy,
-          browser: command.browser === true,
-          args: command.args,
-          profile: parsed.permissionProfile,
-          approved: parsed.yes,
-        }),
+        adapter_path: adapterPath,
+        operation_policy: operationPolicy,
         args_schema: argsToJsonSchema(command.args ?? []),
         example_stdin: buildExample(command.args ?? []),
         channels: buildChannels(site, cmdName, command.args ?? []),
@@ -755,6 +813,7 @@ function handleAdapterDryRun(parsed: ParsedArgv, io: Io): boolean {
   const command = info.commands.find((candidate) => candidate.name === cmdName);
   if (!command) return false;
 
+  const startedAt = Date.now();
   const args = resolveDryRunArgs(command.args, tokens);
   if (!args) return false;
   const adapterType = command.type ?? info.commands[0]?.type ?? "web-api";
@@ -767,6 +826,18 @@ function handleAdapterDryRun(parsed: ParsedArgv, io: Io): boolean {
     cmdName,
     command.adapter_path,
   );
+  const operationPolicy = evaluateManifestOperationPolicy({
+    parsed,
+    io,
+    site: parsed.command,
+    commandName: cmdName,
+    command,
+    adapterType,
+    targetSurface,
+    adapterPath,
+    startedAt,
+  });
+  if (!operationPolicy) return true;
 
   io.stdout(
     JSON.stringify(
@@ -776,18 +847,7 @@ function handleAdapterDryRun(parsed: ParsedArgv, io: Io): boolean {
         strategy: command.strategy ?? "public",
         args,
         args_source: tokens.length > 0 ? "shell" : "defaults",
-        operation_policy: evaluateOperationPolicy({
-          site: parsed.command,
-          command: cmdName,
-          description: command.description,
-          adapterType,
-          targetSurface,
-          strategy: command.strategy,
-          browser: command.browser === true,
-          args: command.args,
-          profile: parsed.permissionProfile,
-          approved: parsed.yes,
-        }),
+        operation_policy: operationPolicy,
         trace_id: `fast-${Date.now().toString(36)}`,
         surface: "cli",
         target_surface: targetSurface,
@@ -829,79 +889,51 @@ function handleAdapterPolicyGate(parsed: ParsedArgv, io: Io): boolean {
     command.adapter_path,
   );
 
-  try {
-    const operationPolicy = evaluateOperationPolicy({
-      site: parsed.command,
-      command: cmdName,
-      description: command.description,
-      adapterType,
-      targetSurface,
-      strategy: command.strategy,
-      browser: command.browser === true,
-      args: command.args,
-      profile: parsed.permissionProfile,
-      approved: parsed.yes,
-    });
+  const operationPolicy = evaluateManifestOperationPolicy({
+    parsed,
+    io,
+    site: parsed.command,
+    commandName: cmdName,
+    command,
+    adapterType,
+    targetSurface,
+    adapterPath,
+    startedAt,
+  });
+  if (!operationPolicy) return true;
 
-    if (operationPolicy.enforcement !== "needs_approval") return false;
+  if (operationPolicy.enforcement !== "needs_approval") return false;
 
-    emitStderrAndExit(
-      io,
-      format([], command.columns, detectFormat(parsed.format), {
-        command: `${parsed.command}.${cmdName}`,
-        duration_ms: Date.now() - startedAt,
-        surface: targetSurface,
-        error: {
-          code: "permission_denied",
-          message: `permission profile "${operationPolicy.profile}" requires approval for ${operationPolicy.effect}`,
-          adapter_path: adapterPath,
-          step: 0,
-          suggestion:
-            operationPolicy.approval_hint ??
-            "rerun with --yes or use --permission-profile open",
-          retryable: false,
-          alternatives: [
-            `unicli --dry-run ${parsed.command} ${cmdName}`,
-            `unicli --yes --permission-profile ${operationPolicy.profile} ${parsed.command} ${cmdName}`,
-            `unicli --permission-profile open ${parsed.command} ${cmdName}`,
-          ],
-        },
-        next_actions: defaultErrorNextActions(
-          parsed.command,
-          cmdName,
-          "permission_denied",
-        ),
-      }),
-      ExitCode.AUTH_REQUIRED,
-    );
-    return true;
-  } catch (error) {
-    if (!(error instanceof InvalidPermissionProfileError)) throw error;
-
-    emitStderrAndExit(
-      io,
-      format([], command.columns, detectFormat(parsed.format), {
-        command: `${parsed.command}.${cmdName}`,
-        duration_ms: Date.now() - startedAt,
-        surface: targetSurface,
-        error: {
-          code: "invalid_input",
-          message: error.message,
-          adapter_path: adapterPath,
-          step: 0,
-          suggestion: "use one of: open, confirm, locked",
-          retryable: false,
-        },
-        next_actions: defaultErrorNextActions(
-          parsed.command,
-          cmdName,
-          "invalid_input",
-        ),
-      }),
-      ExitCode.USAGE_ERROR,
-    );
-    return true;
-  }
+  emitStderrAndExit(
+    io,
+    format([], command.columns, detectFormat(parsed.format), {
+      command: `${parsed.command}.${cmdName}`,
+      duration_ms: Date.now() - startedAt,
+      surface: targetSurface,
+      error: {
+        code: "permission_denied",
+        message: `permission profile "${operationPolicy.profile}" requires approval for ${operationPolicy.effect}`,
+        adapter_path: adapterPath,
+        step: 0,
+        suggestion:
+          operationPolicy.approval_hint ??
+          "rerun with --yes or use --permission-profile open",
+        retryable: false,
+        alternatives: [
+          `unicli --dry-run ${parsed.command} ${cmdName}`,
+          `unicli --yes --permission-profile ${operationPolicy.profile} ${parsed.command} ${cmdName}`,
+          `unicli --permission-profile open ${parsed.command} ${cmdName}`,
+        ],
+      },
+      next_actions: defaultErrorNextActions(
+        parsed.command,
+        cmdName,
+        "permission_denied",
+      ),
+    }),
+    ExitCode.AUTH_REQUIRED,
+  );
+  return true;
 }
 
 function handleSiteHelp(parsed: ParsedArgv, io: Io): boolean {

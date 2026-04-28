@@ -231,8 +231,8 @@ export class BrowserBridge {
     });
     proc.unref();
 
-    // Poll until daemon is reachable
-    const deadline = Date.now() + Math.min(timeout, 2_000);
+    // Poll until daemon is reachable within the caller's connection budget.
+    const deadline = Date.now() + timeout;
     while (Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, DAEMON_POLL_INTERVAL));
       const status = await fetchDaemonStatus({ timeout: 300 });

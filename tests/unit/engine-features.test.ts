@@ -334,6 +334,38 @@ describe("retry with backoff", () => {
     expect(requestCounts["/flaky-text"]).toBe(2);
   });
 
+  it("treats retry 0 as one fetch attempt", async () => {
+    const result = await runPipeline(
+      [
+        {
+          fetch: {
+            url: `${baseUrl}/retry-zero-json`,
+            retry: 0,
+          },
+        },
+      ],
+      { args: {}, source: "internal" },
+    );
+
+    expect(result[0]).toMatchObject({ url: "/retry-zero-json" });
+  });
+
+  it("treats retry 0 as one fetch_text attempt", async () => {
+    const result = await runPipeline(
+      [
+        {
+          fetch_text: {
+            url: `${baseUrl}/html`,
+            retry: 0,
+          },
+        },
+      ],
+      { args: {}, source: "internal" },
+    );
+
+    expect(result[0]).toContain("<h1>Title</h1>");
+  });
+
   it("classifies final fetch_text network failure as retryable", async () => {
     await expect(
       runPipeline(
