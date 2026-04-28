@@ -30,6 +30,7 @@ import {
 } from "../engine/operation-policy.js";
 import type { OperationPolicy } from "../engine/operation-policy.js";
 import { evaluateOperationPolicyWithApprovals } from "../engine/permission-runtime.js";
+import { PermissionRulesConfigError } from "../engine/permission-rules.js";
 import { format, detectFormat } from "../output/formatter.js";
 import {
   applyProjection,
@@ -271,7 +272,10 @@ export function registerAdapterDispatch(program: Command): void {
               approved: rootOpts.yes === true,
             });
           } catch (err) {
-            if (err instanceof InvalidPermissionProfileError) {
+            if (
+              err instanceof InvalidPermissionProfileError ||
+              err instanceof PermissionRulesConfigError
+            ) {
               const errCtx: AgentContext = {
                 command: `${adapter.name}.${cmdName}`,
                 duration_ms: Date.now() - startedAt,
@@ -282,7 +286,10 @@ export function registerAdapterDispatch(program: Command): void {
                   message: err.message,
                   adapter_path: adapterPath,
                   step: 0,
-                  suggestion: "use one of: open, confirm, locked",
+                  suggestion:
+                    err instanceof PermissionRulesConfigError
+                      ? err.suggestion
+                      : "use one of: open, confirm, locked",
                   retryable: false,
                 },
               };

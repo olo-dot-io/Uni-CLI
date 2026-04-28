@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { dirname } from "node:path";
 import { tmpdir } from "node:os";
@@ -161,6 +161,115 @@ describe("CLI permission policy dispatch", () => {
     };
     expect(envelope.error.code).toBe("permission_denied");
     expect(envelope.error.message).toContain("send_message");
+  });
+
+  it("blocks matching deny rules before command execution", () => {
+    const home = mkdtempSync(join(tmpdir(), "unicli-cli-deny-rules-"));
+    try {
+      const rulesPath = join(home, "permission-rules.json");
+      writeFileSync(
+        rulesPath,
+        JSON.stringify({
+          schema_version: "1",
+          rules: [
+            {
+              id: "deny-macos-clipboard",
+              decision: "deny",
+              match: {
+                site: "macos",
+                command: "clipboard",
+              },
+              reason: "clipboard reads are disabled here",
+            },
+          ],
+        }),
+        "utf-8",
+      );
+
+      const result = spawnSync(
+        npxBin,
+        [
+          "tsx",
+          SRC_MAIN,
+          "--yes",
+          "--permission-profile",
+          "open",
+          "macos",
+          "clipboard",
+          "-f",
+          "json",
+        ],
+        {
+          encoding: "utf-8",
+          env: {
+            ...process.env,
+            HOME: home,
+            UNICLI_PERMISSION_RULES_PATH: rulesPath,
+            UNICLI_NO_LEDGER: "1",
+            UNICLI_APPROVE: "",
+          },
+          timeout: 30_000,
+        },
+      );
+
+      expect(result.status).toBe(ExitCode.AUTH_REQUIRED);
+      expect(result.stdout.trim()).toBe("");
+      const envelope = JSON.parse(result.stderr) as {
+        ok: boolean;
+        error: { code: string; message: string };
+      };
+      expect(envelope.ok).toBe(false);
+      expect(envelope.error.code).toBe("permission_denied");
+      expect(envelope.error.message).toContain("deny-macos-clipboard");
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it("reports malformed deny rules as structured dry-run input errors", () => {
+    const home = mkdtempSync(join(tmpdir(), "unicli-cli-deny-rules-bad-"));
+    try {
+      const rulesPath = join(home, "permission-rules.json");
+      writeFileSync(rulesPath, '{"schema_version":', "utf-8");
+
+      const result = spawnSync(
+        npxBin,
+        [
+          "tsx",
+          SRC_MAIN,
+          "--dry-run",
+          "--permission-profile",
+          "open",
+          "macos",
+          "clipboard",
+          "-f",
+          "json",
+        ],
+        {
+          encoding: "utf-8",
+          env: {
+            ...process.env,
+            HOME: home,
+            UNICLI_PERMISSION_RULES_PATH: rulesPath,
+            UNICLI_NO_LEDGER: "1",
+            UNICLI_APPROVE: "",
+          },
+          timeout: 30_000,
+        },
+      );
+
+      expect(result.status).toBe(ExitCode.USAGE_ERROR);
+      expect(result.stdout.trim()).toBe("");
+      const envelope = JSON.parse(result.stderr) as {
+        ok: boolean;
+        error: { code: string; message: string };
+      };
+      expect(envelope.ok).toBe(false);
+      expect(envelope.error.code).toBe("invalid_input");
+      expect(envelope.error.message).toContain("invalid permission rules JSON");
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
   });
 
   it("shows persisted approval memory in dry-run plans", async () => {

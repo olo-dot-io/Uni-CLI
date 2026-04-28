@@ -56,7 +56,7 @@ Agent execution needs an auditable, repairable, reusable command contract. Catal
 - Sites and tools: 235
 - Commands: 1448
 - Pipeline steps: 59
-- Tests: 7533
+- Tests: 7540
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -246,6 +246,30 @@ unicli approvals revoke <approval_key>
 Remembered approvals are bound to the command capability and stable resource
 metadata, such as domain, app, account surface, and path argument slots. Runtime
 argument values stay out of the approval store.
+
+Use local deny rules for scopes that a machine must block:
+
+```json
+{
+  "schema_version": "1",
+  "rules": [
+    {
+      "id": "deny-public-posting",
+      "decision": "deny",
+      "match": {
+        "effect": "publish_content",
+        "resources": {
+          "domains": ["x.com", "twitter.com"]
+        }
+      },
+      "reason": "Publishing is disabled on this machine"
+    }
+  ]
+}
+```
+
+Save the file as `~/.unicli/permission-rules.json`, or point
+`UNICLI_PERMISSION_RULES_PATH` at it.
 
 ## Protocol Servers
 
@@ -3624,6 +3648,10 @@ The kernel infers operation shape from the command contract and surfaces it in
   and stable resource metadata. `--remember-approval` stores allowed scopes in
   `~/.unicli/approvals.jsonl` with scope metadata only. `unicli approvals list`,
   `revoke`, and `clear` inspect or remove remembered scopes.
+- `deny_rule`: local rule id and reason when `~/.unicli/permission-rules.json`
+  blocks a matching site, command, effect, capability dimension, or resource
+  scope. Deny rules run before `--yes` and remembered approvals. A malformed
+  configured rule file stops execution with `invalid_input`.
 
 This keeps capability broad and easy to turn on, while still giving teams a way
 to tighten execution policy without rewriting adapter metadata.

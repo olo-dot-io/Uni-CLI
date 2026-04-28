@@ -34,6 +34,7 @@ import {
   resolveOperationTargetSurface,
 } from "../operation-policy.js";
 import { evaluateOperationPolicyWithApprovals } from "../permission-runtime.js";
+import { PermissionRulesConfigError } from "../permission-rules.js";
 
 import { getCompiled } from "./compile.js";
 import type { Invocation, InvocationResult } from "./types.js";
@@ -129,6 +130,46 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
       approved: inv.approved,
     });
 
+    if (operationPolicy.enforcement === "deny") {
+      const ruleId = operationPolicy.deny_rule?.id ?? "unknown";
+      const ruleReason =
+        operationPolicy.deny_rule?.reason ?? "permission rule matched";
+      const err: AgentError = {
+        code: "permission_denied",
+        message: `permission rule "${ruleId}" denies ${operationPolicy.effect}: ${ruleReason}`,
+        adapter_path: adapterPath,
+        step: 0,
+        suggestion:
+          operationPolicy.approval_hint ??
+          "edit or remove the matching permission rule",
+        retryable: false,
+        alternatives: [
+          `unicli --dry-run ${inv.adapter.name} ${inv.cmdName}`,
+          "edit ~/.unicli/permission-rules.json",
+        ],
+      };
+      const durationMs = Date.now() - startedAt;
+      return {
+        results: [],
+        envelope: {
+          command: key,
+          duration_ms: durationMs,
+          adapter_version: inv.adapter.version,
+          surface: targetSurface,
+          error: err,
+          next_actions: defaultErrorNextActions(
+            inv.adapter.name,
+            inv.cmdName,
+            "permission_denied",
+          ),
+        },
+        durationMs,
+        exitCode: ExitCode.AUTH_REQUIRED,
+        warnings,
+        error: err,
+      };
+    }
+
     if (operationPolicy.enforcement === "needs_approval") {
       const err: AgentError = {
         code: "permission_denied",
@@ -174,6 +215,36 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
         adapter_path: adapterPath,
         step: 0,
         suggestion: "use one of: open, confirm, locked",
+        retryable: false,
+      };
+      const durationMs = Date.now() - startedAt;
+      return {
+        results: [],
+        envelope: {
+          command: key,
+          duration_ms: durationMs,
+          adapter_version: inv.adapter.version,
+          surface: targetSurface,
+          error: agentErr,
+          next_actions: defaultErrorNextActions(
+            inv.adapter.name,
+            inv.cmdName,
+            "invalid_input",
+          ),
+        },
+        durationMs,
+        exitCode: ExitCode.USAGE_ERROR,
+        warnings,
+        error: agentErr,
+      };
+    }
+    if (err instanceof PermissionRulesConfigError) {
+      const agentErr: AgentError = {
+        code: err.code,
+        message: err.message,
+        adapter_path: adapterPath,
+        step: 0,
+        suggestion: err.suggestion,
         retryable: false,
       };
       const durationMs = Date.now() - startedAt;

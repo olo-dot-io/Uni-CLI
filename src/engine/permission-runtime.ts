@@ -8,9 +8,17 @@ import {
   type OperationPolicy,
   type OperationPolicyInput,
 } from "./operation-policy.js";
+import {
+  applyDenyRuleToPolicy,
+  findDenyRuleForPolicySync,
+} from "./permission-rules.js";
 
 export interface PermissionRuntimeOptions {
   store?: ApprovalStore;
+  rules?: {
+    path?: string;
+    homeDir?: string;
+  };
 }
 
 export async function evaluateOperationPolicyWithApprovals(
@@ -18,6 +26,9 @@ export async function evaluateOperationPolicyWithApprovals(
   options: PermissionRuntimeOptions = {},
 ): Promise<OperationPolicy> {
   let policy = evaluateOperationPolicy(input);
+  const denyRule = findDenyRuleForPolicySync(policy, options.rules);
+  if (denyRule) return applyDenyRuleToPolicy(policy, denyRule);
+
   const store = options.store ?? createApprovalStore();
 
   if (policy.enforcement === "needs_approval") {

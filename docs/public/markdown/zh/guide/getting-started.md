@@ -139,6 +139,30 @@ unicli approvals revoke <approval_key>
 记住的审批会绑定命令 capability 和稳定资源 metadata，比如域名、应用、账号面和路径参数槽。
 原始运行参数不会写进 approval store。
 
+需要让某台机器固定挡住一类操作时，写本地 deny 规则：
+
+```json
+{
+  "schema_version": "1",
+  "rules": [
+    {
+      "id": "deny-public-posting",
+      "decision": "deny",
+      "match": {
+        "effect": "publish_content",
+        "resources": {
+          "domains": ["x.com", "twitter.com"]
+        }
+      },
+      "reason": "这台机器禁用公开发布"
+    }
+  ]
+}
+```
+
+文件保存到 `~/.unicli/permission-rules.json`，也可以用
+`UNICLI_PERMISSION_RULES_PATH` 指到其他位置。
+
 ## 协议服务
 
 MCP：
