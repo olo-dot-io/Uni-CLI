@@ -10,8 +10,5 @@ const { Layout } = DefaultTheme;
     <template #doc-before>
       <AgentDocToolbar />
     </template>
-    <template #home-hero-before>
-      <AgentDocToolbar />
-    </template>
   </Layout>
 </template>

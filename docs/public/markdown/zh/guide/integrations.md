@@ -1,11 +1,11 @@
 <!-- 由 docs/zh/guide/integrations.md 生成。不要直接编辑此副本。 -->
 
-# 集成方式
+# 接入 Agent
 
 - 规范页: https://olo-dot-io.github.io/Uni-CLI/zh/guide/integrations
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/zh/guide/integrations.md
-- 栏目: 开始
-- 上级: 开始 (/zh/)
+- 栏目: 上手
+- 上级: 上手 (/zh/)
 
 Uni-CLI 的首选入口是 shell。只要智能体能运行命令，就可以直接使用 `unicli`。需要协议服务的客户端，可以用同一份目录通过 MCP 或 ACP 接入；adapter 行为不会变。
 

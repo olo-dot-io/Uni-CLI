@@ -1,6 +1,8 @@
 import DefaultTheme from "vitepress/theme";
 import type { Theme } from "vitepress";
 import Layout from "./components/Layout.vue";
+import CommandLifecycleIsland from "./components/CommandLifecycleIsland.vue";
+import HomePage from "./components/HomePage.vue";
 import SiteCatalog from "./components/SiteCatalog.vue";
 import SiteStats from "./components/SiteStats.vue";
 import VersionNotice from "./components/VersionNotice.vue";
@@ -11,6 +13,8 @@ export default {
   extends: DefaultTheme,
   Layout,
   enhanceApp({ app }) {
+    app.component("CommandLifecycleIsland", CommandLifecycleIsland);
+    app.component("HomePage", HomePage);
     app.component("SiteCatalog", SiteCatalog);
     app.component("SiteStats", SiteStats);
     app.component("VersionNotice", VersionNotice);

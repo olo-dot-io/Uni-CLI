@@ -335,8 +335,111 @@ function renderSiteCatalog(siteIndex: SiteIndex, locale: LocaleKey): string {
   ].join("\n");
 }
 
+function renderHomePageMarkdown(
+  siteIndex: SiteIndex,
+  releaseInfo: ReleaseInfo,
+  stats: Stats,
+  locale: LocaleKey,
+): string {
+  const pipelineSteps = stats.pipeline_step_count ?? "see docs";
+  if (locale === "zh") {
+    return [
+      "## 面向 Agent 的软件执行层",
+      "",
+      "Agent 正从聊天助手走向任务执行系统：它需要调用 CLI、API、浏览器和桌面应用，也需要审计记录、权限边界和失败后的恢复路径。Uni-CLI 把这些软件入口整理成同一套可搜索、可执行、可追踪、可修复的命令接口。",
+      "",
+      "## 第一条命令",
+      "",
+      "```bash",
+      "npm install -g @zenalexa/unicli",
+      'unicli search "twitter trending"',
+      "unicli twitter trending --limit 10 -f json",
+      "```",
+      "",
+      "## 定位",
+      "",
+      "不是再造一个协议层，而是补齐 Agent 执行的工程面。MCP 解决互操作，browser / computer-use 补 API 空白；真正进入生产环境时，还需要命令目录、权限策略、可审计输出、退出码和修复循环。",
+      "",
+      "- **统一入口。** 同一个目录覆盖公开 API、Cookie 会话、浏览器、桌面应用、外部 CLI 和本机能力。",
+      "- **可审计执行。** 参数、认证、权限 profile、输出结构和退出码在运行前后都能检查，不靠 prompt 约定。",
+      "- **可恢复失败。** 外部页面或 API 变了，错误要指向 adapter 文件、pipeline step 和复现命令。",
+      "",
+      "## 覆盖范围",
+      "",
+      `- 站点和工具：${siteIndex.total_sites}`,
+      `- 命令：${siteIndex.total_commands}`,
+      `- Pipeline step：${pipelineSteps}`,
+      "- 输出协议：v2 AgentEnvelope",
+      "",
+      "同一套调用路径覆盖公开 API、Cookie 会话、浏览器、桌面应用、外部 CLI 和本机能力。Agent 只需要学一条调用路径。",
+      "",
+      "## 入口",
+      "",
+      "- [安装运行](/zh/guide/getting-started)：安装、搜索、运行、认证和常见退出码。",
+      "- [命令目录](/zh/reference/sites)：按站点、接口类型、认证方式和命令样例检索。",
+      "- [适配器](/zh/guide/adapters)：YAML 格式、pipeline step、自修复流程和验证方式。",
+      "",
+      "## 当前版本",
+      "",
+      `当前 latest：v${releaseInfo.version} · ${releaseInfo.codename}。`,
+      "",
+      "## Agent 索引",
+      "",
+      "- [/llms.txt](/llms.txt)",
+      "- [/llms-full.txt](/llms-full.txt)",
+    ].join("\n");
+  }
+
+  return [
+    "## Software execution for agents",
+    "",
+    "Agents are moving from chat assistance to task-running systems. They need to call CLIs, APIs, browsers, and desktop apps, while keeping audit trails, permission boundaries, and recovery paths. Uni-CLI turns those software surfaces into one searchable, executable, traceable, and repairable command interface.",
+    "",
+    "## First Command",
+    "",
+    "```bash",
+    "npm install -g @zenalexa/unicli",
+    'unicli search "twitter trending"',
+    "unicli twitter trending --limit 10 -f json",
+    "```",
+    "",
+    "## Positioning",
+    "",
+    "The gap is not another protocol. It is the engineering surface around agent execution. MCP improves interoperability. Browser and computer-use automation close API gaps. Production agent workflows still need a command catalog, policy, inspectable output, exit codes, and repair loops.",
+    "",
+    "- **Unified entry.** One catalog covers public APIs, cookie sessions, browsers, desktop apps, external CLIs, and local capabilities.",
+    "- **Auditable execution.** Arguments, auth, policy profiles, output shape, and exit codes stay inspectable before and after a run.",
+    "- **Recoverable failure.** When a surface changes, the error names the adapter file, pipeline step, and verification command.",
+    "",
+    "## Coverage",
+    "",
+    `- Sites and tools: ${siteIndex.total_sites}`,
+    `- Commands: ${siteIndex.total_commands}`,
+    `- Pipeline steps: ${pipelineSteps}`,
+    "- Output contract: v2 AgentEnvelope",
+    "",
+    "One call path spans public APIs, cookie sessions, browsers, desktop apps, external CLIs, and local system capabilities. Agents learn one call path.",
+    "",
+    "## Entrypoints",
+    "",
+    "- [First Run](/guide/getting-started): install, search, execute, authenticate, and read exit codes.",
+    "- [Command Catalog](/reference/sites): browse by site, surface type, auth strategy, and examples.",
+    "- [Adapters](/guide/adapters): YAML adapters, pipeline steps, self-repair, and verification.",
+    "",
+    "## Current Version",
+    "",
+    `Latest: v${releaseInfo.version} · ${releaseInfo.codename}.`,
+    "",
+    "## Agent Index",
+    "",
+    "- [/llms.txt](/llms.txt)",
+    "- [/llms-full.txt](/llms-full.txt)",
+  ].join("\n");
+}
+
 function renderKnownComponents(
   markdown: string,
+  stats: Stats,
   siteIndex: SiteIndex,
   releaseInfo: ReleaseInfo,
   locale: LocaleKey,
@@ -352,7 +455,11 @@ function renderKnownComponents(
         ? renderSiteStatsZh(siteIndex)
         : renderSiteStats(siteIndex),
     )
-    .replace(/^<SiteCatalog\s*\/>$/gm, renderSiteCatalog(siteIndex, locale));
+    .replace(/^<SiteCatalog\s*\/>$/gm, renderSiteCatalog(siteIndex, locale))
+    .replace(
+      /^<HomePage\s*\/>$/gm,
+      renderHomePageMarkdown(siteIndex, releaseInfo, stats, locale),
+    );
 }
 
 function buildMarkdownCopy(
@@ -360,6 +467,7 @@ function buildMarkdownCopy(
   sourceMarkdown: string,
   siteIndex: SiteIndex,
   releaseInfo: ReleaseInfo,
+  stats: Stats,
 ): string {
   const { frontmatter, body: sourceBody } = splitFrontmatter(sourceMarkdown);
   const isZh = page.locale === "zh";
@@ -405,7 +513,7 @@ function buildMarkdownCopy(
     .join("\n");
 
   return rewriteRelativeLinks(
-    renderKnownComponents(markdown, siteIndex, releaseInfo, page.locale),
+    renderKnownComponents(markdown, stats, siteIndex, releaseInfo, page.locale),
     page.routePath,
   );
 }
@@ -567,6 +675,7 @@ function main() {
       readFileSync(page.sourcePath, "utf-8"),
       siteIndex,
       releaseInfo,
+      stats,
     );
     writeGeneratedMarkdown(page, markdown);
     renderedPages.push({ page, markdown });
