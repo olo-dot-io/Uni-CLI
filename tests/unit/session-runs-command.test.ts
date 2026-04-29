@@ -868,6 +868,12 @@ describe("unicli runs command", () => {
       ok: boolean;
       data: {
         result: { exit_code: number; result_count: number };
+        gate: {
+          passed: boolean;
+          failed: string[];
+          thresholds: { behavior: number };
+          scores: { behavior: number };
+        };
         comparison: {
           status: string;
           score: {
@@ -889,7 +895,68 @@ describe("unicli runs command", () => {
     expect(env.data.comparison.score.failed_behavior_checks).toContain(
       "result_count",
     );
+    expect(env.data.gate).toMatchObject({
+      passed: false,
+      failed: ["behavior"],
+      thresholds: { behavior: 1 },
+    });
+    expect(env.data.gate.scores.behavior).toBeLessThan(1);
     expect(process.exitCode).toBe(1);
+    expect(cap.getStdout()).not.toContain("hello replay");
+  });
+
+  it("emits a passed gate when replay score thresholds are met", async () => {
+    const rootDir = join(tmp, "runs");
+    const runId = await writeReplayableRun(rootDir);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "-f",
+          "json",
+          "runs",
+          "replay",
+          runId,
+          "--root",
+          rootDir,
+          "--replay-run-id",
+          "run-replayed-01",
+          "--min-score",
+          "1",
+          "--min-context-score",
+          "1",
+          "--min-overall-score",
+          "1",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      ok: boolean;
+      data: {
+        gate: {
+          passed: boolean;
+          failed: string[];
+          thresholds: { behavior: number; context: number; overall: number };
+          scores: { behavior: number; context: number; overall: number };
+        };
+        comparison: { status: string };
+      };
+    };
+    expect(env.ok).toBe(true);
+    expect(env.data.comparison.status).toBe("match");
+    expect(env.data.gate).toEqual({
+      passed: true,
+      failed: [],
+      thresholds: { behavior: 1, context: 1, overall: 1 },
+      scores: { behavior: 1, context: 1, overall: 1 },
+    });
+    expect(process.exitCode).toBeUndefined();
     expect(cap.getStdout()).not.toContain("hello replay");
   });
 
@@ -926,6 +993,12 @@ describe("unicli runs command", () => {
     const env = JSON.parse(cap.getStdout().trim()) as {
       ok: boolean;
       data: {
+        gate: {
+          passed: boolean;
+          failed: string[];
+          thresholds: { context: number };
+          scores: { context: number };
+        };
         comparison: {
           status: string;
           context: { diverged: number };
@@ -946,6 +1019,12 @@ describe("unicli runs command", () => {
         }),
       ]),
     );
+    expect(env.data.gate).toMatchObject({
+      passed: false,
+      failed: ["context"],
+      thresholds: { context: 1 },
+    });
+    expect(env.data.gate.scores.context).toBeLessThan(1);
     expect(process.exitCode).toBe(1);
     expect(cap.getStdout()).not.toContain("hello replay");
   });
@@ -983,6 +1062,12 @@ describe("unicli runs command", () => {
     const env = JSON.parse(cap.getStdout().trim()) as {
       ok: boolean;
       data: {
+        gate: {
+          passed: boolean;
+          failed: string[];
+          thresholds: { overall: number };
+          scores: { overall: number };
+        };
         comparison: {
           status: string;
           score: { overall: number; context: { score: number } };
@@ -993,8 +1078,38 @@ describe("unicli runs command", () => {
     expect(env.data.comparison.status).toBe("match");
     expect(env.data.comparison.score.context.score).toBeLessThan(1);
     expect(env.data.comparison.score.overall).toBeLessThan(1);
+    expect(env.data.gate).toMatchObject({
+      passed: false,
+      failed: ["overall"],
+      thresholds: { overall: 1 },
+    });
+    expect(env.data.gate.scores.overall).toBeLessThan(1);
     expect(process.exitCode).toBe(1);
     expect(cap.getStdout()).not.toContain("hello replay");
+  });
+
+  it("rejects empty replay score thresholds", async () => {
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        ["-f", "json", "runs", "replay", "run-any", "--min-score", ""],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      ok: boolean;
+      error: { code: string; message: string };
+    };
+    expect(env.ok).toBe(false);
+    expect(env.error).toMatchObject({
+      code: "invalid_input",
+      message: "--min-score must be a number between 0 and 1",
+    });
+    expect(process.exitCode).toBe(ExitCode.USAGE_ERROR);
   });
 
   it("compares replay traces without exposing argument values", async () => {
@@ -1063,6 +1178,64 @@ describe("unicli runs command", () => {
         expect.objectContaining({ name: "result_count", status: "match" }),
       ]),
     );
+    expect(cap.getStdout()).not.toContain("hello replay");
+  });
+
+  it("emits a passed gate when compare score thresholds are met", async () => {
+    const rootDir = join(tmp, "runs");
+    const runId = await writeReplayableRun(rootDir);
+    const identicalRunId = await writeReplayableRun(rootDir, {
+      runId: "run-replayable-02",
+      traceId: "01HTRACEREPLAY0000000002",
+    });
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "-f",
+          "json",
+          "runs",
+          "compare",
+          runId,
+          identicalRunId,
+          "--root",
+          rootDir,
+          "--min-score",
+          "1",
+          "--min-context-score",
+          "1",
+          "--min-overall-score",
+          "1",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      ok: boolean;
+      data: {
+        status: string;
+        gate: {
+          passed: boolean;
+          failed: string[];
+          thresholds: { behavior: number; context: number; overall: number };
+          scores: { behavior: number; context: number; overall: number };
+        };
+      };
+    };
+    expect(env.ok).toBe(true);
+    expect(env.data.status).toBe("match");
+    expect(env.data.gate).toEqual({
+      passed: true,
+      failed: [],
+      thresholds: { behavior: 1, context: 1, overall: 1 },
+      scores: { behavior: 1, context: 1, overall: 1 },
+    });
+    expect(process.exitCode).toBeUndefined();
     expect(cap.getStdout()).not.toContain("hello replay");
   });
 
@@ -1144,6 +1317,12 @@ describe("unicli runs command", () => {
       ok: boolean;
       data: {
         status: string;
+        gate: {
+          passed: boolean;
+          failed: string[];
+          thresholds: { behavior: number };
+          scores: { behavior: number };
+        };
         score: {
           passed: boolean;
           behavior: { score: number };
@@ -1156,7 +1335,46 @@ describe("unicli runs command", () => {
     expect(env.data.score.passed).toBe(false);
     expect(env.data.score.behavior.score).toBeLessThan(1);
     expect(env.data.score.failed_behavior_checks.length).toBeGreaterThan(0);
+    expect(env.data.gate).toMatchObject({
+      passed: false,
+      failed: ["behavior"],
+      thresholds: { behavior: 1 },
+    });
+    expect(env.data.gate.scores.behavior).toBeLessThan(1);
     expect(process.exitCode).toBe(1);
+  });
+
+  it("rejects whitespace compare score thresholds", async () => {
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "-f",
+          "json",
+          "runs",
+          "compare",
+          "run-left",
+          "run-right",
+          "--min-context-score",
+          "   ",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      ok: boolean;
+      error: { code: string; message: string };
+    };
+    expect(env.ok).toBe(false);
+    expect(env.error).toMatchObject({
+      code: "invalid_input",
+      message: "--min-context-score must be a number between 0 and 1",
+    });
+    expect(process.exitCode).toBe(ExitCode.USAGE_ERROR);
   });
 
   it("can fail CI when compare context score is below a threshold", async () => {
@@ -1194,6 +1412,12 @@ describe("unicli runs command", () => {
       ok: boolean;
       data: {
         status: string;
+        gate: {
+          passed: boolean;
+          failed: string[];
+          thresholds: { context: number };
+          scores: { context: number };
+        };
         behavior: { diverged: number };
         context: { diverged: number };
         score: {
@@ -1217,6 +1441,12 @@ describe("unicli runs command", () => {
         }),
       ]),
     );
+    expect(env.data.gate).toMatchObject({
+      passed: false,
+      failed: ["context"],
+      thresholds: { context: 1 },
+    });
+    expect(env.data.gate.scores.context).toBeLessThan(1);
     expect(process.exitCode).toBe(1);
   });
 
@@ -1255,6 +1485,12 @@ describe("unicli runs command", () => {
       ok: boolean;
       data: {
         status: string;
+        gate: {
+          passed: boolean;
+          failed: string[];
+          thresholds: { overall: number };
+          scores: { overall: number };
+        };
         behavior: { diverged: number };
         score: {
           overall: number;
@@ -1267,6 +1503,12 @@ describe("unicli runs command", () => {
     expect(env.data.behavior.diverged).toBe(0);
     expect(env.data.score.context.score).toBeLessThan(1);
     expect(env.data.score.overall).toBeLessThan(1);
+    expect(env.data.gate).toMatchObject({
+      passed: false,
+      failed: ["overall"],
+      thresholds: { overall: 1 },
+    });
+    expect(env.data.gate.scores.overall).toBeLessThan(1);
     expect(process.exitCode).toBe(1);
   });
 
