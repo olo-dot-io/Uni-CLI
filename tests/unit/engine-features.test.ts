@@ -59,6 +59,18 @@ beforeAll(async () => {
       return;
     }
 
+    if (req.url === "/missing-json") {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "not found" }));
+      return;
+    }
+
+    if (req.url === "/missing-text") {
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("not found");
+      return;
+    }
+
     const body = await collectBody(req);
     const echo = {
       method: req.method,
@@ -383,7 +395,74 @@ describe("retry with backoff", () => {
       detail: {
         action: "fetch_text",
         errorType: "network_error",
+        step: 0,
         retryable: true,
+      },
+    });
+  });
+});
+
+describe("step error metadata", () => {
+  it("reports fetch HTTP errors with the pipeline step index", async () => {
+    await expect(
+      runPipeline(
+        [
+          { set: { marker: "before" } },
+          { fetch: { url: `${baseUrl}/missing-json` } },
+        ],
+        { args: {}, source: "internal" },
+      ),
+    ).rejects.toMatchObject({
+      detail: {
+        action: "fetch",
+        errorType: "http_error",
+        step: 1,
+        statusCode: 404,
+      },
+    });
+  });
+
+  it("reports fetch_text HTTP errors with the pipeline step index", async () => {
+    await expect(
+      runPipeline(
+        [
+          { set: { marker: "before" } },
+          { fetch_text: { url: `${baseUrl}/missing-text` } },
+        ],
+        { args: {}, source: "internal" },
+      ),
+    ).rejects.toMatchObject({
+      detail: {
+        action: "fetch_text",
+        errorType: "http_error",
+        step: 1,
+        statusCode: 404,
+      },
+    });
+  });
+});
+
+describe.skipIf(skipOnWindows)("exec error metadata", () => {
+  it("reports exec timeout parse errors with the pipeline step index", async () => {
+    await expect(
+      runPipeline(
+        [
+          { set: { marker: "before" } },
+          {
+            exec: {
+              command: "sh",
+              args: ["-c", "printf never-runs"],
+              timeout: "not-a-number",
+            },
+          },
+        ],
+        { args: {}, source: "internal" },
+      ),
+    ).rejects.toMatchObject({
+      detail: {
+        action: "exec",
+        errorType: "parse_error",
+        step: 1,
       },
     });
   });

@@ -9,6 +9,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { pathToFileURL } from "node:url";
 import { describe, it, expect, vi } from "vitest";
 import { runPipeline, PipelineError } from "../../src/engine/yaml-runner.js";
 
@@ -135,6 +136,58 @@ describe("browser step: navigate", () => {
 
       await expect(
         runPipeline([{ navigate: { url: "https://example.com/private" } }], {
+          args: {},
+          source: "internal",
+        }),
+      ).rejects.toMatchObject({
+        detail: {
+          action: "navigate",
+          errorType: "permission_denied",
+        },
+      });
+      expect(browserPage.connect).not.toHaveBeenCalled();
+    } finally {
+      if (originalRulesPath === undefined) {
+        delete process.env.UNICLI_PERMISSION_RULES_PATH;
+      } else {
+        process.env.UNICLI_PERMISSION_RULES_PATH = originalRulesPath;
+      }
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("blocks denied file navigation paths before connecting to the browser", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "unicli-browser-file-deny-"));
+    const originalRulesPath = process.env.UNICLI_PERMISSION_RULES_PATH;
+    const mod = await import("../../src/browser/page.js");
+    const browserPage = (
+      mod as unknown as { BrowserPage: { connect: ReturnType<typeof vi.fn> } }
+    ).BrowserPage;
+    browserPage.connect.mockClear();
+    try {
+      const deniedPath = join(tmp, "secret.html");
+      process.env.UNICLI_PERMISSION_RULES_PATH = join(
+        tmp,
+        "permission-rules.json",
+      );
+      writeFileSync(
+        process.env.UNICLI_PERMISSION_RULES_PATH,
+        JSON.stringify({
+          schema_version: "1",
+          rules: [
+            {
+              id: "deny-file-navigation",
+              decision: "deny",
+              match: { resources: { paths: [deniedPath] } },
+              reason: "file navigation target is blocked",
+            },
+          ],
+        }),
+        "utf-8",
+      );
+
+      await expect(
+        runPipeline([{ navigate: { url: pathToFileURL(deniedPath).href } }], {
           args: {},
           source: "internal",
         }),

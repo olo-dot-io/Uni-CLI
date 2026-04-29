@@ -5,7 +5,11 @@ import { assertSafeRequestUrl } from "../ssrf.js";
 import { evalTemplate } from "../template.js";
 import { getProxyAgent } from "../proxy.js";
 import { assertRuntimeNetworkAllowed } from "../runtime-resource-guard.js";
-import { normalizeFetchAttempts, type FetchConfig } from "./fetch.js";
+import {
+  networkAccessForMethod,
+  normalizeFetchAttempts,
+  type FetchConfig,
+} from "./fetch.js";
 
 export async function stepFetchText(
   ctx: PipelineContext,
@@ -19,7 +23,7 @@ export async function stepFetchText(
     step: stepIndex,
     config,
     url,
-    access: (config.method ?? "GET").toUpperCase() === "GET" ? "read" : "write",
+    access: networkAccessForMethod(config.method),
   });
 
   if (config.params) {
@@ -70,7 +74,7 @@ export async function stepFetchText(
       throw new PipelineError(
         `HTTP ${resp.status} ${resp.statusText} from ${url}`,
         {
-          step: -1,
+          step: stepIndex,
           action: "fetch_text",
           config: { url, method },
           errorType: "http_error",
@@ -92,7 +96,7 @@ export async function stepFetchText(
       if (isLastAttempt) {
         const message = err instanceof Error ? err.message : String(err);
         throw new PipelineError(`fetch_text failed for ${url}: ${message}`, {
-          step: -1,
+          step: stepIndex,
           action: "fetch_text",
           config: { url, method },
           errorType: "network_error",

@@ -247,6 +247,51 @@ describe("permission deny rules", () => {
     }
   });
 
+  it("matches runtime domains with trailing fully-qualified dots", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "unicli-rules-fqdn-dot-"));
+    try {
+      const store = createPermissionRulesStore({
+        path: join(tmp, "permission-rules.json"),
+      });
+      writeFileSync(
+        store.path,
+        JSON.stringify({
+          schema_version: "1",
+          rules: [
+            {
+              id: "deny-fqdn-dot",
+              decision: "deny",
+              match: {
+                resources: {
+                  domains: ["example.com"],
+                },
+              },
+              reason: "runtime domain is blocked",
+            },
+          ],
+        }),
+        "utf-8",
+      );
+
+      expect(
+        findDenyRuleForRuntimeResourceSync(
+          {
+            resources: {
+              domains: ["api.example.com."],
+            },
+          },
+          { path: store.path },
+        ),
+      ).toEqual({
+        decision: "deny",
+        id: "deny-fqdn-dot",
+        reason: "runtime domain is blocked",
+      });
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   it("matches runtime Windows paths with backslash separators", () => {
     const tmp = mkdtempSync(join(tmpdir(), "unicli-rules-windows-path-"));
     try {

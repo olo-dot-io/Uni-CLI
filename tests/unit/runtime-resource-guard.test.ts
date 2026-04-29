@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createServer, type Server } from "node:http";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -79,9 +86,43 @@ describe("runtime resource deny rules", () => {
         action: "fetch_text",
         errorType: "permission_denied",
         retryable: false,
+        suggestion: expect.stringContaining(
+          process.env.UNICLI_PERMISSION_RULES_PATH!,
+        ),
       },
     });
     expect(requests).toBe(0);
+  });
+
+  it("treats safe HTTP methods as read access for network denies", async () => {
+    writeFileSync(
+      process.env.UNICLI_PERMISSION_RULES_PATH!,
+      JSON.stringify({
+        schema_version: "1",
+        rules: [
+          {
+            id: "deny-loopback-writes",
+            decision: "deny",
+            match: {
+              dimensions: { network: "write" },
+              resources: { domains: ["127.0.0.1"] },
+            },
+            reason: "loopback writes are blocked for this run",
+          },
+        ],
+      }),
+      "utf-8",
+    );
+
+    await expect(
+      runPipeline(
+        [{ fetch_text: { url: `${baseUrl}/status`, method: "HEAD" } }],
+        { args: {}, source: "internal" },
+        undefined,
+        { site: "runtime-fixture" },
+      ),
+    ).resolves.toEqual([""]);
+    expect(requests).toBe(1);
   });
 
   it("blocks denied download paths before writing a file", async () => {
@@ -129,4 +170,56 @@ describe("runtime resource deny rules", () => {
     expect(requests).toBe(0);
     expect(existsSync(deniedDir)).toBe(false);
   });
+
+  it.skipIf(process.platform === "win32")(
+    "blocks denied real paths reached through a symlink before writing",
+    async () => {
+      const deniedDir = join(tmp, "private");
+      const linkDir = join(tmp, "link");
+      mkdirSync(deniedDir);
+      symlinkSync(deniedDir, linkDir, "dir");
+      writeFileSync(
+        process.env.UNICLI_PERMISSION_RULES_PATH!,
+        JSON.stringify({
+          schema_version: "1",
+          rules: [
+            {
+              id: "deny-private-realpath-downloads",
+              decision: "deny",
+              match: {
+                resources: { paths: [deniedDir] },
+              },
+              reason: "download real path is blocked",
+            },
+          ],
+        }),
+        "utf-8",
+      );
+
+      await expect(
+        runPipeline(
+          [
+            {
+              download: {
+                url: `${baseUrl}/file.txt`,
+                dir: linkDir,
+                filename: "file.txt",
+              },
+            },
+          ],
+          { args: {}, source: "internal" },
+          undefined,
+          { site: "runtime-fixture" },
+        ),
+      ).rejects.toMatchObject({
+        detail: {
+          action: "download",
+          errorType: "permission_denied",
+          retryable: false,
+        },
+      });
+      expect(requests).toBe(0);
+      expect(existsSync(join(deniedDir, "file.txt"))).toBe(false);
+    },
+  );
 });

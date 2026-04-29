@@ -1,9 +1,11 @@
-import { resolve } from "node:path";
+import { existsSync, realpathSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 
 import { PipelineError, type PipelineContext } from "./executor.js";
 import type { CapabilityAccess } from "./capability-policy.js";
 import type { OperationEffect } from "./operation-policy.js";
 import {
+  createPermissionRulesStore,
   findDenyRuleForRuntimeResourceSync,
   type RuntimeResourceCheckInput,
 } from "./permission-rules.js";
@@ -99,7 +101,7 @@ function assertRuntimeResourceAllowed(
         resources: input.resources,
       },
       errorType: "permission_denied",
-      suggestion: `Edit or remove permission rule "${rule.id}" in ~/.unicli/permission-rules.json.`,
+      suggestion: `Edit or remove permission rule "${rule.id}" in ${createPermissionRulesStore().path}.`,
       retryable: false,
       alternatives: ["unicli --dry-run <site> <command>"],
     },
@@ -108,12 +110,32 @@ function assertRuntimeResourceAllowed(
 
 function domainFromUrl(raw: string): string | undefined {
   try {
-    return new URL(raw).hostname.toLowerCase();
+    return new URL(raw).hostname.toLowerCase().replace(/\.+$/, "");
   } catch {
     return undefined;
   }
 }
 
 function normalizePath(path: string): string {
-  return resolve(path);
+  return realpathAwareResolve(path);
+}
+
+function realpathAwareResolve(path: string): string {
+  const resolved = resolve(path);
+  const missing: string[] = [];
+  let current = resolved;
+
+  while (!existsSync(current)) {
+    const parent = dirname(current);
+    if (parent === current) return resolved;
+    missing.unshift(basename(current));
+    current = parent;
+  }
+
+  try {
+    const real = realpathSync(current);
+    return missing.length > 0 ? join(real, ...missing) : real;
+  } catch {
+    return resolved;
+  }
 }

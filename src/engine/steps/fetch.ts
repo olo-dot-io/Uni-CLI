@@ -65,7 +65,7 @@ export async function stepFetch(
       const resolvedConfig = config.body
         ? { ...config, body: resolveTemplateDeep(config.body, itemCtx) }
         : config;
-      return fetchJson(itemUrl, resolvedConfig, ctx.cookieHeader);
+      return fetchJson(itemUrl, resolvedConfig, ctx.cookieHeader, stepIndex);
     });
     return { ...ctx, data: results };
   }
@@ -84,7 +84,12 @@ export async function stepFetch(
     : config;
 
   try {
-    const data = await fetchJson(url, resolvedConfig, ctx.cookieHeader);
+    const data = await fetchJson(
+      url,
+      resolvedConfig,
+      ctx.cookieHeader,
+      stepIndex,
+    );
     return { ...ctx, data };
   } catch (err) {
     if (
@@ -102,7 +107,12 @@ export async function stepFetch(
         const cookies = await loadCookiesWithCDP(siteName);
         if (cookies) {
           const fallbackCookie = formatCookieHeader(cookies);
-          const data = await fetchJson(url, resolvedConfig, fallbackCookie);
+          const data = await fetchJson(
+            url,
+            resolvedConfig,
+            fallbackCookie,
+            stepIndex,
+          );
           return { ...ctx, data, cookieHeader: fallbackCookie };
         }
       } catch {
@@ -113,8 +123,13 @@ export async function stepFetch(
   }
 }
 
-function networkAccessForMethod(method = "GET"): "read" | "write" {
-  return method.toUpperCase() === "GET" ? "read" : "write";
+export function networkAccessForMethod(method = "GET"): "read" | "write" {
+  const normalized = method.toUpperCase();
+  return normalized === "GET" ||
+    normalized === "HEAD" ||
+    normalized === "OPTIONS"
+    ? "read"
+    : "write";
 }
 
 const CACHE_DIR = join(homedir(), ".unicli", "cache");
@@ -162,6 +177,7 @@ async function fetchJson(
   url: string,
   config: FetchConfig,
   cookieHeader?: string,
+  stepIndex = -1,
 ): Promise<unknown> {
   const method = config.method ?? "GET";
 
@@ -223,7 +239,7 @@ async function fetchJson(
     throw new PipelineError(
       `HTTP ${resp.status} ${resp.statusText} from ${url}`,
       {
-        step: -1,
+        step: stepIndex,
         action: "fetch",
         config: { url, method },
         errorType: "http_error",

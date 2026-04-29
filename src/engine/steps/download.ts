@@ -38,6 +38,13 @@ export async function stepDownload(
   const concurrency = config.concurrency ?? 3;
   const skipExisting = config.skip_existing !== false; // default true
   const cookieHeader = ctx.cookieHeader;
+  let directoryReady = false;
+
+  function ensureDirectoryReady(): void {
+    if (directoryReady) return;
+    mkdirSync(dir, { recursive: true });
+    directoryReady = true;
+  }
 
   async function downloadOne(
     item: Record<string, unknown>,
@@ -65,7 +72,7 @@ export async function stepDownload(
       access: "read",
     });
 
-    mkdirSync(dir, { recursive: true });
+    ensureDirectoryReady();
 
     if (skipExisting && existsSync(destPath)) {
       return { ...item, _download: { status: "skipped", path: destPath } };

@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { basename, dirname, join, resolve as pathResolve } from "node:path";
 
 import type {
   CapabilityAccess,
@@ -54,6 +54,12 @@ interface ParsedPermissionRule {
   reason: string;
 }
 
+interface RulesCacheEntry {
+  mtimeMs: number;
+  size: number;
+  rules: ParsedPermissionRule[];
+}
+
 const ROOT_KEYS = new Set(["schema_version", "rules"]);
 const RULE_KEYS = new Set(["id", "decision", "match", "reason"]);
 const MATCH_KEYS = new Set([
@@ -93,6 +99,7 @@ const RESOURCE_KEYS = new Set<ResourceBucketName>([
   "apps",
   "accounts",
 ]);
+const rulesCache = new Map<string, RulesCacheEntry>();
 
 export function createPermissionRulesStore(options?: {
   path?: string;
@@ -169,11 +176,31 @@ export function findDenyRuleForRuntimeResourceSync(
 }
 
 function readRules(path: string): ParsedPermissionRule[] {
+  let stats: { mtimeMs: number; size: number };
+  try {
+    stats = statSync(path);
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") return [];
+    throw new PermissionRulesConfigError(
+      `failed to read permission rules file at ${path}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+
+  const cached = rulesCache.get(path);
+  if (
+    cached &&
+    cached.mtimeMs === stats.mtimeMs &&
+    cached.size === stats.size
+  ) {
+    return cached.rules;
+  }
+
   let raw: string;
   try {
     raw = readFileSync(path, "utf-8");
   } catch (error) {
-    if (isNodeError(error) && error.code === "ENOENT") return [];
     throw new PermissionRulesConfigError(
       `failed to read permission rules file at ${path}: ${
         error instanceof Error ? error.message : String(error)
@@ -191,7 +218,9 @@ function readRules(path: string): ParsedPermissionRule[] {
       }`,
     );
   }
-  return parseRulesDocument(parsed, path);
+  const rules = parseRulesDocument(parsed, path);
+  rulesCache.set(path, { mtimeMs: stats.mtimeMs, size: stats.size, rules });
+  return rules;
 }
 
 function parseRulesDocument(
@@ -517,16 +546,50 @@ function normalizeComparable(value: string): string {
 function normalizeDomainComparable(value: string): string {
   const raw = normalizeComparable(value);
   try {
-    return new URL(raw.includes("://") ? raw : `https://${raw}`).hostname;
+    return stripTrailingDomainDot(
+      new URL(raw.includes("://") ? raw : `https://${raw}`).hostname,
+    );
   } catch {
-    return raw.replace(/^https?:\/\//, "").split("/")[0] ?? raw;
+    return stripTrailingDomainDot(
+      raw.replace(/^https?:\/\//, "").split("/")[0] ?? raw,
+    );
   }
+}
+
+function stripTrailingDomainDot(value: string): string {
+  return value.replace(/\.+$/, "");
 }
 
 function normalizePathComparable(value: string): string {
   const raw = value.trim().replace(/\\/g, "/");
   if (raw === "/") return raw;
-  return normalizeComparable(raw.replace(/\/+$/, ""));
+  const comparable = isWindowsDrivePath(raw) ? raw : realpathAwarePath(raw);
+  return normalizeComparable(comparable.replace(/\/+$/, ""));
+}
+
+function realpathAwarePath(path: string): string {
+  if (!path.startsWith("/")) return path;
+  const resolved = pathResolve(path);
+  const missing: string[] = [];
+  let current = resolved;
+
+  while (!existsSync(current)) {
+    const parent = dirname(current);
+    if (parent === current) return resolved;
+    missing.unshift(basename(current));
+    current = parent;
+  }
+
+  try {
+    const real = realpathSync(current);
+    return missing.length > 0 ? join(real, ...missing) : real;
+  } catch {
+    return resolved;
+  }
+}
+
+function isWindowsDrivePath(value: string): boolean {
+  return /^[A-Za-z]:\//.test(value);
 }
 
 function normalizeExecutableComparable(value: string): string {
