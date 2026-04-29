@@ -36,6 +36,18 @@ const fixture: AdapterManifest = {
         throw new Error("fixture failure");
       },
     },
+    "runtime-deny": {
+      name: "runtime-deny",
+      description: "Fetch denied runtime data",
+      adapterArgs: [],
+      pipeline: [
+        {
+          fetch_text: {
+            url: "https://blocked.example/secret?token=hidden",
+          },
+        },
+      ],
+    },
   },
 };
 
@@ -144,6 +156,73 @@ describe("recorded run wrapper", () => {
         adapter_path: "src/adapters/session-fixture/fail.yaml",
       },
     });
+  });
+
+  it("records runtime permission denies as redacted trace decisions", async () => {
+    const store = createRunStore({ rootDir: join(tmp, "runs") });
+    const rulesPath = join(tmp, "permission-rules.json");
+    writeFileSync(
+      rulesPath,
+      JSON.stringify({
+        schema_version: "1",
+        rules: [
+          {
+            id: "deny-blocked-runtime",
+            decision: "deny",
+            match: {
+              resources: { domains: ["blocked.example"] },
+            },
+            reason: "runtime domain is blocked",
+          },
+        ],
+      }),
+      "utf-8",
+    );
+    process.env.UNICLI_PERMISSION_RULES_PATH = rulesPath;
+    const inv = buildInvocation("cli", "session-fixture", "runtime-deny", {
+      args: {},
+      source: "shell",
+    })!;
+
+    const result = await executeWithRunRecording(inv, {
+      enabled: true,
+      store,
+      runId: "run-runtime-denied",
+    });
+
+    expect(result.error?.code).toBe("permission_denied");
+    const events = await readRunEvents(store, "run-runtime-denied");
+    expect(events.map((event) => event.name)).toEqual([
+      "run.started",
+      "tool.call.started",
+      "permission.evaluated",
+      "permission.runtime_denied",
+      "tool.call.failed",
+      "evidence.captured",
+      "run.failed",
+    ]);
+    expect(events.map((event) => event.sequence)).toEqual([
+      1, 2, 3, 4, 5, 6, 7,
+    ]);
+    const runtimeDenied = events.find(
+      (event) => event.name === "permission.runtime_denied",
+    );
+    expect(runtimeDenied?.data).toMatchObject({
+      code: "permission_denied",
+      adapter_path: "src/adapters/session-fixture/runtime-deny.yaml",
+      action: "fetch_text",
+      step: 0,
+      rule_id: "deny-blocked-runtime",
+      resource_buckets: ["domains"],
+      retryable: false,
+    });
+    expect(runtimeDenied?.internal).toEqual({
+      resources: { domains: ["blocked.example"] },
+    });
+    expect(runtimeDenied).not.toHaveProperty("secret");
+    expect(JSON.stringify(runtimeDenied?.data)).not.toContain(
+      "/secret?token=hidden",
+    );
   });
 
   it("records structured permission config errors before execution", async () => {

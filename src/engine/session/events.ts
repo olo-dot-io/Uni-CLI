@@ -87,6 +87,18 @@ export function createPermissionEvaluatedEvent(
   return createEvent("permission.evaluated", metadata, sequence, { data });
 }
 
+export function createRuntimePermissionDeniedEvent(
+  metadata: RunTraceMetadata,
+  sequence: RunEventSequence,
+  data: Record<string, unknown>,
+  internal?: unknown,
+): RunEvent {
+  return createEvent("permission.runtime_denied", metadata, sequence, {
+    data,
+    ...(internal !== undefined ? { internal } : {}),
+  });
+}
+
 export function createEvidenceCapturedEvent(
   metadata: RunTraceMetadata,
   sequence: RunEventSequence,

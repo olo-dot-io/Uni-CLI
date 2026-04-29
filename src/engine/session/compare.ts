@@ -18,6 +18,14 @@ export interface RunComparableResult {
   error_code?: string;
   envelope_command?: string;
   has_error?: boolean;
+  runtime_permission_denied?: RunComparableRuntimePermissionDenied;
+}
+
+export interface RunComparableRuntimePermissionDenied {
+  action?: string;
+  step?: number;
+  rule_id?: string;
+  resource_buckets?: string[];
 }
 
 export interface RunComparableEvidence {
@@ -70,6 +78,7 @@ interface ComparableEventScan {
   terminal?: RunEvent;
   toolTerminal?: RunEvent;
   resultEnvelope?: RunEvent;
+  runtimePermissionDenied?: RunEvent;
 }
 
 function scanComparableEvents(events: RunEvent[]): ComparableEventScan {
@@ -96,7 +105,21 @@ function scanComparableEvents(events: RunEvent[]): ComparableEventScan {
     ) {
       scan.resultEnvelope = event;
     }
-    if (scan.terminal && scan.toolTerminal && scan.resultEnvelope) break;
+    if (
+      !scan.runtimePermissionDenied &&
+      event.name === "permission.runtime_denied"
+    ) {
+      scan.runtimePermissionDenied = event;
+    }
+    if (
+      scan.terminal &&
+      scan.toolTerminal &&
+      scan.resultEnvelope &&
+      (scan.runtimePermissionDenied ||
+        errorCodeFromEvent(scan.toolTerminal) !== "permission_denied")
+    ) {
+      break;
+    }
   }
   return scan;
 }
@@ -147,6 +170,35 @@ function errorCodeFromEvent(event?: RunEvent): string | undefined {
   return undefined;
 }
 
+function stringArrayField(
+  field: string,
+  event?: RunEvent,
+): string[] | undefined {
+  const value = event?.data?.[field];
+  if (!Array.isArray(value)) return undefined;
+  const values = value.filter((entry): entry is string => {
+    return typeof entry === "string";
+  });
+  return values.length > 0 ? values : undefined;
+}
+
+function runtimePermissionDeniedFromEvent(
+  event?: RunEvent,
+): RunComparableRuntimePermissionDenied | undefined {
+  if (!event) return undefined;
+  const action = stringField("action", event);
+  const step = numberField("step", event);
+  const ruleId = stringField("rule_id", event);
+  const resourceBuckets = stringArrayField("resource_buckets", event);
+
+  return {
+    ...(action ? { action } : {}),
+    ...(step !== undefined ? { step } : {}),
+    ...(ruleId ? { rule_id: ruleId } : {}),
+    ...(resourceBuckets ? { resource_buckets: resourceBuckets } : {}),
+  };
+}
+
 function evidenceSummary(events: RunEvent[]): RunComparableEvidence {
   const byType: Record<string, number> = {};
   for (const event of events) {
@@ -169,8 +221,9 @@ export function summarizeComparableRun(
 ): RunComparableSummary {
   const summary = summarizeRunEvents(events, { runId });
   const metadata = metadataFromEvents(events);
-  const { terminal, toolTerminal, resultEnvelope } =
-    scanComparableEvents(events);
+  const scan = scanComparableEvents(events);
+  const { terminal, toolTerminal, resultEnvelope, runtimePermissionDenied } =
+    scan;
   const exitCode = numberField(
     "exit_code",
     terminal,
@@ -187,6 +240,9 @@ export function summarizeComparableRun(
   const hasError = booleanField("has_error", resultEnvelope);
   const errorCode =
     errorCodeFromEvent(terminal) ?? errorCodeFromEvent(toolTerminal);
+  const runtimePermissionDeniedResult = runtimePermissionDeniedFromEvent(
+    runtimePermissionDenied,
+  );
 
   return {
     run_id: runId,
@@ -220,9 +276,18 @@ export function summarizeComparableRun(
       ...(errorCode ? { error_code: errorCode } : {}),
       ...(envelopeCommand ? { envelope_command: envelopeCommand } : {}),
       ...(hasError !== undefined ? { has_error: hasError } : {}),
+      ...(runtimePermissionDeniedResult
+        ? { runtime_permission_denied: runtimePermissionDeniedResult }
+        : {}),
     },
     evidence: evidenceSummary(events),
   };
+}
+
+function joinedBuckets(
+  runtimePermissionDenied?: RunComparableRuntimePermissionDenied,
+): string | undefined {
+  return runtimePermissionDenied?.resource_buckets?.slice().sort().join(",");
 }
 
 function compareScalar(
@@ -309,6 +374,34 @@ export function compareRunEvents(
       left.result.has_error,
       right.result.has_error,
       "behavior",
+    ),
+    compareScalar(
+      "runtime_permission_rule",
+      left.result.runtime_permission_denied?.rule_id,
+      right.result.runtime_permission_denied?.rule_id,
+      "behavior",
+      { missingMeansMatch: true },
+    ),
+    compareScalar(
+      "runtime_permission_action",
+      left.result.runtime_permission_denied?.action,
+      right.result.runtime_permission_denied?.action,
+      "behavior",
+      { missingMeansMatch: true },
+    ),
+    compareScalar(
+      "runtime_permission_step",
+      left.result.runtime_permission_denied?.step,
+      right.result.runtime_permission_denied?.step,
+      "behavior",
+      { missingMeansMatch: true },
+    ),
+    compareScalar(
+      "runtime_permission_resource_buckets",
+      joinedBuckets(left.result.runtime_permission_denied),
+      joinedBuckets(right.result.runtime_permission_denied),
+      "behavior",
+      { missingMeansMatch: true },
     ),
     compareScalar(
       "permission_profile",

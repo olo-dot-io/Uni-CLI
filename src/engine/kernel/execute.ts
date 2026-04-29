@@ -11,7 +11,7 @@
  * transport; they do not rebuild envelopes.
  */
 
-import { runPipeline } from "../executor.js";
+import { PipelineError, runPipeline } from "../executor.js";
 import { hardenArgs, InputHardeningError } from "../harden.js";
 import {
   defaultSuccessNextActions,
@@ -37,7 +37,11 @@ import { evaluateOperationPolicyWithApprovals } from "../permission-runtime.js";
 import { PermissionRulesConfigError } from "../permission-rules.js";
 
 import { getCompiled } from "./compile.js";
-import type { Invocation, InvocationResult } from "./types.js";
+import type {
+  Invocation,
+  InvocationDiagnostic,
+  InvocationResult,
+} from "./types.js";
 import { newULID } from "./ulid.js";
 
 /**
@@ -53,6 +57,61 @@ export class KernelLookupError extends Error {
     );
     this.name = "KernelLookupError";
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function resourcesFromPermissionConfig(
+  config: unknown,
+): Record<string, string[]> | undefined {
+  if (!isRecord(config) || !isRecord(config.resources)) return undefined;
+
+  const resources: Record<string, string[]> = {};
+  for (const [bucket, raw] of Object.entries(config.resources)) {
+    if (!Array.isArray(raw)) continue;
+    const values = raw.filter((value): value is string => {
+      return typeof value === "string";
+    });
+    if (values.length > 0) resources[bucket] = values;
+  }
+
+  return Object.keys(resources).length > 0 ? resources : undefined;
+}
+
+function runtimePermissionDeniedDiagnostic(
+  err: unknown,
+): InvocationDiagnostic | undefined {
+  if (
+    !(err instanceof PipelineError) ||
+    err.detail.errorType !== "permission_denied"
+  ) {
+    return undefined;
+  }
+
+  const config = err.detail.config;
+  const resources = resourcesFromPermissionConfig(config);
+  const ruleId =
+    isRecord(config) && typeof config.rule_id === "string"
+      ? config.rule_id
+      : undefined;
+
+  return {
+    kind: "runtime_permission_denied",
+    code: "permission_denied",
+    action: err.detail.action,
+    step: err.detail.step,
+    retryable: err.detail.retryable ?? false,
+    ...(ruleId ? { rule_id: ruleId } : {}),
+    resource_buckets: resources ? Object.keys(resources).sort() : [],
+    ...(resources ? { resources } : {}),
+  };
+}
+
+function diagnosticsForError(err: unknown): InvocationDiagnostic[] | undefined {
+  const diagnostic = runtimePermissionDeniedDiagnostic(err);
+  return diagnostic ? [diagnostic] : undefined;
 }
 
 /**
@@ -436,6 +495,7 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
       message: err instanceof Error ? err.message : String(err),
       ...fields,
     };
+    const diagnostics = diagnosticsForError(err);
     const durationMs = Date.now() - startedAt;
     return {
       results: [],
@@ -455,6 +515,7 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
       exitCode: mapErrorToExitCode(err),
       warnings,
       error: agentErr,
+      ...(diagnostics ? { diagnostics } : {}),
     };
   }
 

@@ -56,4 +56,18 @@ export interface InvocationResult {
   exitCode: number;
   warnings: string[];
   error?: AgentError;
+  diagnostics?: InvocationDiagnostic[];
+}
+
+export type InvocationDiagnostic = RuntimePermissionDeniedDiagnostic;
+
+export interface RuntimePermissionDeniedDiagnostic {
+  kind: "runtime_permission_denied";
+  code: "permission_denied";
+  action: string;
+  step: number;
+  retryable: boolean;
+  rule_id?: string;
+  resource_buckets: string[];
+  resources?: Record<string, string[]>;
 }
