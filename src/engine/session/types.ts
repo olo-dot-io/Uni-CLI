@@ -7,6 +7,7 @@ export type TraceId = string;
 
 export type RunEventName =
   | "run.started"
+  | "environment.snapshot"
   | "tool.call.started"
   | "permission.evaluated"
   | "permission.runtime_denied"

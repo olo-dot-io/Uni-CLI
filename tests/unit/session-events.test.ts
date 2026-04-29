@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createEnvironmentSnapshotEvent,
   createEvidenceCapturedEvent,
   createPermissionEvaluatedEvent,
   createRunEventSequence,
@@ -42,6 +43,42 @@ describe("session event builders", () => {
       visibility: "internal",
       metadata,
     });
+  });
+
+  it("builds environment snapshots as public reproducibility context", () => {
+    const sequence = createRunEventSequence();
+    const event = createEnvironmentSnapshotEvent(metadata, sequence, {
+      schema_version: "1",
+      unicli_version: "0.217.0",
+      node_version: "v24.0.0",
+      platform: "darwin",
+      arch: "arm64",
+      ci: false,
+      permission_profile: "locked",
+      transport_surface: "cli",
+      target_surface: "web",
+      pipeline_steps: 2,
+    });
+
+    expect(event).toMatchObject({
+      schema_version: "1",
+      name: "environment.snapshot",
+      visibility: "public",
+      data: {
+        schema_version: "1",
+        unicli_version: "0.217.0",
+        node_version: "v24.0.0",
+        platform: "darwin",
+        arch: "arm64",
+        ci: false,
+        permission_profile: "locked",
+        transport_surface: "cli",
+        target_surface: "web",
+        pipeline_steps: 2,
+      },
+    });
+    expect(event).not.toHaveProperty("internal");
+    expect(event).not.toHaveProperty("secret");
   });
 
   it("allocates monotonically increasing sequence numbers", () => {

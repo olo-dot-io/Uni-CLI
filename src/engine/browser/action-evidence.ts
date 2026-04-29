@@ -10,6 +10,7 @@ import {
   type RunStore,
 } from "../session/store.js";
 import {
+  createEnvironmentSnapshotEvent,
   createEvidenceCapturedEvent,
   createPermissionEvaluatedEvent,
   createRunCompletedEvent,
@@ -24,6 +25,7 @@ import {
   type RunTraceMetadata,
   type TraceId,
 } from "../session/events.js";
+import { environmentSnapshotData } from "../session/environment.js";
 import { isRunRecordingEnabled } from "../session/run-loop.js";
 import { userHome } from "../user-home.js";
 import {
@@ -121,6 +123,11 @@ export async function withBrowserActionEvidence<T>(
     store,
     [
       createRunStartedEvent(metadata, sequence),
+      createEnvironmentSnapshotEvent(
+        metadata,
+        sequence,
+        environmentSnapshotData(metadata),
+      ),
       createToolCallStartedEvent(metadata, sequence, {
         action: options.action,
         workspace: options.workspace,
