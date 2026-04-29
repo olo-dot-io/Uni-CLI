@@ -56,7 +56,7 @@ Agent execution needs an auditable, repairable, reusable command contract. Catal
 - Sites and tools: 235
 - Commands: 1448
 - Pipeline steps: 59
-- Tests: 7584
+- Tests: 7585
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -3546,7 +3546,7 @@ Uni-CLI exposes one searchable command surface across:
   shell commands or protocol servers.
 
 The generated catalog is the source of truth: **235 sites**, **1448 commands**,
-**1039 adapters**, **59 pipeline steps**, and **7584 tests** in v0.217.1.
+**1039 adapters**, **59 pipeline steps**, and **7585 tests** in v0.217.1.
 
 ## Execution Contract
 

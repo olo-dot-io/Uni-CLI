@@ -26,7 +26,7 @@ Uni-CLI exposes one searchable command surface across:
   shell commands or protocol servers.
 
 The generated catalog is the source of truth: **235 sites**, **1448 commands**,
-**1039 adapters**, **59 pipeline steps**, and **7584 tests** in v0.217.1.
+**1039 adapters**, **59 pipeline steps**, and **7585 tests** in v0.217.1.
 
 ## Execution Contract
 

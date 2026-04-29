@@ -104,7 +104,7 @@ export function summarizeRunEvents(
 ): RunSummary {
   const scan: RunEventScan = {
     first: events[0],
-    evidenceByType: {},
+    evidenceByType: createEvidenceByTypeCounts(),
     events: events.length,
   };
   for (const event of events) {
@@ -135,7 +135,10 @@ async function summarizeRunTraceFile(
   tracePath: string,
   options: { runId?: RunId; updatedAt?: string } = {},
 ): Promise<RunSummary> {
-  const scan: RunEventScan = { evidenceByType: {}, events: 0 };
+  const scan: RunEventScan = {
+    evidenceByType: createEvidenceByTypeCounts(),
+    events: 0,
+  };
   const input = createReadStream(tracePath, { encoding: "utf-8" });
   const lines = createInterface({
     input,
@@ -254,6 +257,10 @@ function recordEvidence(scan: RunEventScan, event: RunEvent): void {
       : "unknown";
   scan.evidenceByType[evidenceType] =
     (scan.evidenceByType[evidenceType] ?? 0) + 1;
+}
+
+function createEvidenceByTypeCounts(): Record<string, number> {
+  return Object.create(null) as Record<string, number>;
 }
 
 function sortedEvidenceByType(
