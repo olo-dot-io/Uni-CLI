@@ -122,8 +122,8 @@ unicli browser extract --render-aware --expect-domain example.com --no-screensho
 unicli runs list
 unicli runs show <run_id>
 unicli runs probe <run_id>
-unicli runs replay <run_id> --permission-profile confirm --yes --min-score 1
-unicli runs compare <run_id> <replay_run_id>
+unicli runs replay <run_id> --permission-profile confirm --yes --min-score 1 --min-context-score 1 --min-overall-score 1
+unicli runs compare <run_id> <replay_run_id> --min-score 1 --min-context-score 1 --min-overall-score 1
 unicli --permission-profile locked --yes --remember-approval word set-font "Inter"
 unicli approvals list
 unicli approvals revoke <approval_key>
