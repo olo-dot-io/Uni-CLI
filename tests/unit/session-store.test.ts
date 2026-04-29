@@ -8,10 +8,12 @@ import {
   rmSync,
   statSync,
 } from "node:fs";
+import { setTimeout as delay } from "node:timers/promises";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 
 import {
+  createRunCompletedEvent,
   createRunEventSequence,
   createRunStartedEvent,
   type RunTraceMetadata,
@@ -22,6 +24,7 @@ import {
   readRunEvents,
   RunStoreError,
   runTracePath,
+  watchRunEvents,
 } from "../../src/engine/session/store.js";
 
 const metadata: RunTraceMetadata = {
@@ -148,5 +151,65 @@ describe("session JSONL store", () => {
       line: 1,
       path: tracePath,
     } satisfies Partial<RunStoreError>);
+  });
+
+  it("watches appended run events after a sequence until terminal", async () => {
+    const store = createRunStore({ rootDir: join(tmp, "runs") });
+    const sequence = createRunEventSequence();
+
+    const streamed = (async () => {
+      const names: string[] = [];
+      for await (const event of watchRunEvents(store, "run-store-01", {
+        afterSequence: 1,
+        follow: true,
+        pollIntervalMs: 5,
+        timeoutMs: 500,
+      })) {
+        names.push(event.name);
+      }
+      return names;
+    })();
+
+    await appendRunEvent(store, createRunStartedEvent(metadata, sequence));
+    await delay(20);
+    await appendRunEvent(
+      store,
+      createRunCompletedEvent(metadata, sequence, { status: "ok" }),
+    );
+
+    await expect(streamed).resolves.toEqual(["run.completed"]);
+  });
+
+  it("waits for an unterminated trailing JSONL event in follow mode", async () => {
+    const store = createRunStore({ rootDir: join(tmp, "runs") });
+    const sequence = createRunEventSequence();
+    const started = createRunStartedEvent(metadata, sequence);
+    const completed = createRunCompletedEvent(metadata, sequence, {
+      status: "ok",
+    });
+    const tracePath = runTracePath(store, "run-store-01");
+    mkdirSync(dirname(tracePath), { recursive: true });
+    appendFileSync(tracePath, `${JSON.stringify(started)}\n`, "utf-8");
+
+    const streamed = (async () => {
+      const names: string[] = [];
+      for await (const event of watchRunEvents(store, "run-store-01", {
+        afterSequence: 1,
+        follow: true,
+        pollIntervalMs: 5,
+        timeoutMs: 500,
+      })) {
+        names.push(event.name);
+      }
+      return names;
+    })();
+
+    const completedLine = JSON.stringify(completed);
+    const splitAt = Math.floor(completedLine.length / 2);
+    appendFileSync(tracePath, completedLine.slice(0, splitAt), "utf-8");
+    await delay(20);
+    appendFileSync(tracePath, `${completedLine.slice(splitAt)}\n`, "utf-8");
+
+    await expect(streamed).resolves.toEqual(["run.completed"]);
   });
 });

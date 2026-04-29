@@ -584,6 +584,73 @@ describe("unicli runs command", () => {
     expect(cap.getStdout()).not.toContain("/secret?token=hidden");
   });
 
+  it("streams public run events as JSON lines after a sequence", async () => {
+    const rootDir = join(tmp, "runs");
+    const runId = await writeBrowserRun(rootDir);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        ["runs", "stream", runId, "--root", rootDir, "--after", "1"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const lines = cap
+      .getStdout()
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as Record<string, unknown>);
+    expect(lines.map((event) => event.name)).toEqual([
+      "evidence.captured",
+      "run.completed",
+    ]);
+    expect(lines[0]).not.toHaveProperty("internal");
+    expect(lines[0]).not.toHaveProperty("secret");
+    expect(cap.getStdout()).not.toContain("private");
+    expect(cap.getStdout()).not.toContain("hidden");
+  });
+
+  it("reports malformed stream traces as invalid input", async () => {
+    const rootDir = join(tmp, "runs");
+    const brokenRunDir = join(rootDir, "run-broken-stream-01");
+    mkdirSync(brokenRunDir, { recursive: true });
+    writeFileSync(join(brokenRunDir, "trace.jsonl"), "{not json}\n");
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "-f",
+          "json",
+          "runs",
+          "stream",
+          "run-broken-stream-01",
+          "--root",
+          rootDir,
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      ok: boolean;
+      error: { code: string; message: string };
+    };
+    expect(env.ok).toBe(false);
+    expect(env.error).toMatchObject({
+      code: "invalid_input",
+      message: "malformed run trace JSONL at line 1",
+    });
+    expect(process.exitCode).toBe(ExitCode.USAGE_ERROR);
+  });
+
   it("can include internal event payloads while still redacting secret payloads", async () => {
     const rootDir = join(tmp, "runs");
     const runId = await writeBrowserRun(rootDir);
