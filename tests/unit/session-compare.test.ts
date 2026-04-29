@@ -128,6 +128,8 @@ describe("run trace comparison", () => {
       },
       failed_behavior_checks: [],
       unknown_behavior_checks: [],
+      failed_context_checks: [],
+      unknown_context_checks: [],
     });
     expect(comparison.score.behavior.total).toBeGreaterThan(0);
     expect(comparison.score.overall).toBe(1);
@@ -203,6 +205,11 @@ describe("run trace comparison", () => {
     expect(comparison.status).toBe("match");
     expect(comparison.score.passed).toBe(true);
     expect(comparison.context.diverged).toBeGreaterThan(0);
+    expect(comparison.score.failed_context_checks).toEqual([
+      "environment_node_version",
+      "environment_platform",
+    ]);
+    expect(comparison.score.unknown_context_checks).toEqual([]);
     expect(comparison.left.environment).toMatchObject({
       node_version: "v24.0.0",
       platform: "darwin",
@@ -224,6 +231,25 @@ describe("run trace comparison", () => {
           status: "diverged",
         }),
       ]),
+    );
+  });
+
+  it("summarizes unknown context checks", () => {
+    const left = deniedTrace("run-left", "deny-old-domain", ["domains"]);
+    const right = deniedTrace("run-right", "deny-old-domain", ["domains"]);
+    for (const event of right) {
+      delete (event.metadata as Partial<RunTraceMetadata>).permission_profile;
+    }
+
+    const comparison = compareRunEvents(left, right, {
+      leftRunId: "run-left",
+      rightRunId: "run-right",
+    });
+
+    expect(comparison.status).toBe("match");
+    expect(comparison.score.passed).toBe(true);
+    expect(comparison.score.unknown_context_checks).toContain(
+      "permission_profile",
     );
   });
 
