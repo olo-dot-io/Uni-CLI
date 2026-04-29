@@ -76,6 +76,17 @@ interface RunsScoreThresholds {
   overall?: number;
 }
 
+interface RunsScoreGateResult {
+  passed: boolean;
+  failed: Array<keyof RunsScoreThresholds>;
+  thresholds: RunsScoreThresholds;
+  scores: {
+    behavior: number;
+    context: number;
+    overall: number;
+  };
+}
+
 function fmt(program: Command): OutputFormat {
   return detectFormat(program.opts().format as OutputFormat | undefined);
 }
@@ -112,7 +123,9 @@ function runStoreAgentErrorCode(error: RunStoreError): string {
 
 function scoreThreshold(value: string | undefined): number | undefined {
   if (value === undefined) return undefined;
-  const parsed = Number(value);
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return undefined;
+  const parsed = Number(trimmed);
   if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) return undefined;
   return parsed;
 }
@@ -163,26 +176,39 @@ function parseScoreThresholds(
   };
 }
 
-function applyScoreThresholds(
+function scoreGateResult(
   comparison: ReturnType<typeof compareRunEvents>,
   thresholds: RunsScoreThresholds,
-): void {
+): RunsScoreGateResult | undefined {
+  if (Object.keys(thresholds).length === 0) return undefined;
+  const scores = {
+    behavior: comparison.score.behavior.score,
+    context: comparison.score.context.score,
+    overall: comparison.score.overall,
+  };
+  const failed: Array<keyof RunsScoreThresholds> = [];
   if (
     thresholds.behavior !== undefined &&
-    comparison.score.behavior.score < thresholds.behavior
+    scores.behavior < thresholds.behavior
   ) {
-    process.exitCode = 1;
+    failed.push("behavior");
   }
-  if (
-    thresholds.context !== undefined &&
-    comparison.score.context.score < thresholds.context
-  ) {
-    process.exitCode = 1;
+  if (thresholds.context !== undefined && scores.context < thresholds.context) {
+    failed.push("context");
   }
-  if (
-    thresholds.overall !== undefined &&
-    comparison.score.overall < thresholds.overall
-  ) {
+  if (thresholds.overall !== undefined && scores.overall < thresholds.overall) {
+    failed.push("overall");
+  }
+  return {
+    passed: failed.length === 0,
+    failed,
+    thresholds,
+    scores,
+  };
+}
+
+function applyScoreGate(gate: RunsScoreGateResult | undefined): void {
+  if (gate && !gate.passed) {
     process.exitCode = 1;
   }
 }
@@ -360,15 +386,16 @@ export function registerRunsCommand(program: Command): void {
           leftRunId,
           rightRunId,
         });
+        const gate = scoreGateResult(comparison, thresholds);
         console.log(
           format(
-            { ...comparison },
+            { ...comparison, ...(gate ? { gate } : {}) },
             undefined,
             fmt(program),
             makeCtx("runs.compare", startedAt),
           ),
         );
-        applyScoreThresholds(comparison, thresholds);
+        applyScoreGate(gate);
       },
     );
 
@@ -506,6 +533,7 @@ export function registerRunsCommand(program: Command): void {
         leftRunId: runId,
         rightRunId: replayRunId,
       });
+      const gate = scoreGateResult(comparison, thresholds);
       console.log(
         format(
           {
@@ -528,12 +556,13 @@ export function registerRunsCommand(program: Command): void {
               warnings: result.warnings,
             },
             comparison,
+            ...(gate ? { gate } : {}),
           },
           undefined,
           fmt(program),
           makeCtx("runs.replay", startedAt),
         ),
       );
-      applyScoreThresholds(comparison, thresholds);
+      applyScoreGate(gate);
     });
 }
