@@ -31,6 +31,8 @@ export interface RunSummary {
   browser_window_id?: number;
   browser_auth_state?: string;
   browser_cookie_count?: number;
+  evidence_count: number;
+  evidence_by_type: Record<string, number>;
   lease_owner?: string;
   lease_scope?: string;
   error_code?: string;
@@ -88,6 +90,8 @@ export async function summarizeRunId(
       run_id: runId,
       status: "unreadable",
       events: 0,
+      evidence_count: 0,
+      evidence_by_type: {},
       updated_at: traceStat.mtime.toISOString(),
       error_code: err instanceof RunStoreError ? err.code : "io_error",
     };
@@ -98,7 +102,11 @@ export function summarizeRunEvents(
   events: RunEvent[],
   options: { runId?: RunId; updatedAt?: string } = {},
 ): RunSummary {
-  const scan: RunEventScan = { first: events[0], events: events.length };
+  const scan: RunEventScan = {
+    first: events[0],
+    evidenceByType: {},
+    events: events.length,
+  };
   for (const event of events) {
     if (!scan.started && event.name === "run.started") {
       scan.started = event;
@@ -109,6 +117,7 @@ export function summarizeRunEvents(
     if (event.name === "permission.runtime_denied") {
       scan.runtimePermissionDenied = event;
     }
+    recordEvidence(scan, event);
   }
   return summarizeRunEventScan(scan, options);
 }
@@ -118,6 +127,7 @@ interface RunEventScan {
   started?: RunEvent;
   terminal?: RunEvent;
   runtimePermissionDenied?: RunEvent;
+  evidenceByType: Record<string, number>;
   events: number;
 }
 
@@ -125,7 +135,7 @@ async function summarizeRunTraceFile(
   tracePath: string,
   options: { runId?: RunId; updatedAt?: string } = {},
 ): Promise<RunSummary> {
-  const scan: RunEventScan = { events: 0 };
+  const scan: RunEventScan = { evidenceByType: {}, events: 0 };
   const input = createReadStream(tracePath, { encoding: "utf-8" });
   const lines = createInterface({
     input,
@@ -160,6 +170,7 @@ async function summarizeRunTraceFile(
       if (event.name === "permission.runtime_denied") {
         scan.runtimePermissionDenied = event;
       }
+      recordEvidence(scan, event);
     }
   } catch (err) {
     if (err instanceof RunStoreError) throw err;
@@ -212,6 +223,11 @@ function summarizeRunEventScan(
     command: metadata?.command,
     status: runStatus(scan.events, terminal),
     events: scan.events,
+    evidence_count: Object.values(scan.evidenceByType).reduce(
+      (sum, count) => sum + count,
+      0,
+    ),
+    evidence_by_type: sortedEvidenceByType(scan.evidenceByType),
     ...(started ? { started_at: started.timestamp } : {}),
     ...(terminal ? { finished_at: terminal.timestamp } : {}),
     ...(options.updatedAt ? { updated_at: options.updatedAt } : {}),
@@ -228,6 +244,26 @@ function summarizeRunEventScan(
   return durationMs === undefined
     ? summary
     : { ...summary, duration_ms: durationMs };
+}
+
+function recordEvidence(scan: RunEventScan, event: RunEvent): void {
+  if (event.name !== "evidence.captured") return;
+  const evidenceType =
+    typeof event.data?.evidence_type === "string"
+      ? event.data.evidence_type
+      : "unknown";
+  scan.evidenceByType[evidenceType] =
+    (scan.evidenceByType[evidenceType] ?? 0) + 1;
+}
+
+function sortedEvidenceByType(
+  evidenceByType: Record<string, number>,
+): Record<string, number> {
+  return Object.fromEntries(
+    Object.entries(evidenceByType).sort(([left], [right]) =>
+      left.localeCompare(right),
+    ),
+  );
 }
 
 function runtimePermissionDeniedSummary(
