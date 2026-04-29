@@ -64,6 +64,17 @@ export function createRunStartedEvent(
   return createEvent("run.started", metadata, sequence, options);
 }
 
+export function createEnvironmentSnapshotEvent(
+  metadata: RunTraceMetadata,
+  sequence: RunEventSequence,
+  data: Record<string, unknown>,
+): RunEvent {
+  return createEvent("environment.snapshot", metadata, sequence, {
+    visibility: "public",
+    data,
+  });
+}
+
 export function createToolCallStartedEvent(
   metadata: RunTraceMetadata,
   sequence: RunEventSequence,

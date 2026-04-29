@@ -54,6 +54,8 @@ const fixture: AdapterManifest = {
 const originalRecordRun = process.env.UNICLI_RECORD_RUN;
 const originalRunRoot = process.env.UNICLI_RUN_ROOT;
 const originalPermissionRulesPath = process.env.UNICLI_PERMISSION_RULES_PATH;
+const originalCi = process.env.CI;
+const originalGithubActions = process.env.GITHUB_ACTIONS;
 
 describe("recorded run wrapper", () => {
   let tmp: string;
@@ -84,6 +86,16 @@ describe("recorded run wrapper", () => {
     } else {
       process.env.UNICLI_PERMISSION_RULES_PATH = originalPermissionRulesPath;
     }
+    if (originalCi === undefined) {
+      delete process.env.CI;
+    } else {
+      process.env.CI = originalCi;
+    }
+    if (originalGithubActions === undefined) {
+      delete process.env.GITHUB_ACTIONS;
+    } else {
+      process.env.GITHUB_ACTIONS = originalGithubActions;
+    }
   });
 
   it("returns the original InvocationResult while recording success events", async () => {
@@ -108,13 +120,16 @@ describe("recorded run wrapper", () => {
     const events = await readRunEvents(store, "run-success");
     expect(events.map((event) => event.name)).toEqual([
       "run.started",
+      "environment.snapshot",
       "tool.call.started",
       "permission.evaluated",
       "tool.call.completed",
       "evidence.captured",
       "run.completed",
     ]);
-    expect(events.map((event) => event.sequence)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(events.map((event) => event.sequence)).toEqual([
+      1, 2, 3, 4, 5, 6, 7,
+    ]);
     expect(events[0].metadata).toMatchObject({
       command: "session-fixture.read",
       adapter_path: "src/adapters/session-fixture/read.yaml",
@@ -122,6 +137,22 @@ describe("recorded run wrapper", () => {
       transport_surface: "cli",
       target_surface: "web",
     });
+    expect(events[1].data).toMatchObject({
+      schema_version: "1",
+      node_version: process.version,
+      platform: process.platform,
+      arch: process.arch,
+      ci: Boolean(process.env.CI || process.env.GITHUB_ACTIONS),
+      permission_profile: "open",
+      transport_surface: "cli",
+      target_surface: "web",
+      pipeline_steps: 0,
+    });
+    expect(typeof events[1].data?.unicli_version).toBe("string");
+    expect(events[1].visibility).toBe("public");
+    expect(events[1]).not.toHaveProperty("internal");
+    expect(events[1]).not.toHaveProperty("secret");
+    expect(JSON.stringify(events[1])).not.toContain(tmp);
   });
 
   it("records failure events with adapter path and error envelope", async () => {
@@ -141,6 +172,7 @@ describe("recorded run wrapper", () => {
     const events = await readRunEvents(store, "run-failed");
     expect(events.map((event) => event.name)).toEqual([
       "run.started",
+      "environment.snapshot",
       "tool.call.started",
       "permission.evaluated",
       "tool.call.failed",
@@ -156,6 +188,28 @@ describe("recorded run wrapper", () => {
         adapter_path: "src/adapters/session-fixture/fail.yaml",
       },
     });
+  });
+
+  it("does not treat false-like CI environment values as active CI", async () => {
+    const store = createRunStore({ rootDir: join(tmp, "runs") });
+    process.env.CI = "false";
+    process.env.GITHUB_ACTIONS = "0";
+    const inv = buildInvocation("cli", "session-fixture", "read", {
+      args: {},
+      source: "shell",
+    })!;
+
+    await executeWithRunRecording(inv, {
+      enabled: true,
+      store,
+      runId: "run-ci-false",
+    });
+
+    const events = await readRunEvents(store, "run-ci-false");
+    const environment = events.find(
+      (event) => event.name === "environment.snapshot",
+    );
+    expect(environment?.data?.ci).toBe(false);
   });
 
   it("records runtime permission denies as redacted trace decisions", async () => {
@@ -194,6 +248,7 @@ describe("recorded run wrapper", () => {
     const events = await readRunEvents(store, "run-runtime-denied");
     expect(events.map((event) => event.name)).toEqual([
       "run.started",
+      "environment.snapshot",
       "tool.call.started",
       "permission.evaluated",
       "permission.runtime_denied",
@@ -202,7 +257,7 @@ describe("recorded run wrapper", () => {
       "run.failed",
     ]);
     expect(events.map((event) => event.sequence)).toEqual([
-      1, 2, 3, 4, 5, 6, 7,
+      1, 2, 3, 4, 5, 6, 7, 8,
     ]);
     const runtimeDenied = events.find(
       (event) => event.name === "permission.runtime_denied",
