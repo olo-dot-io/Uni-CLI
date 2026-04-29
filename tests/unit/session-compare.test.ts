@@ -98,6 +98,28 @@ function deniedTrace(
 }
 
 describe("run trace comparison", () => {
+  it("scores matching behavior as a reproducible full match", () => {
+    const comparison = compareRunEvents(
+      deniedTrace("run-left", "deny-old-domain", ["domains"]),
+      deniedTrace("run-right", "deny-old-domain", ["domains"]),
+      { leftRunId: "run-left", rightRunId: "run-right" },
+    );
+
+    expect(comparison.status).toBe("match");
+    expect(comparison.score).toMatchObject({
+      passed: true,
+      behavior: {
+        score: 1,
+        diverged: 0,
+        unknown: 0,
+      },
+      failed_behavior_checks: [],
+      unknown_behavior_checks: [],
+    });
+    expect(comparison.score.behavior.total).toBeGreaterThan(0);
+    expect(comparison.score.overall).toBe(1);
+  });
+
   it("compares runtime permission deny decisions without raw resources", () => {
     const comparison = compareRunEvents(
       deniedTrace("run-left", "deny-old-domain", ["domains"]),
@@ -106,6 +128,14 @@ describe("run trace comparison", () => {
     );
 
     expect(comparison.status).toBe("diverged");
+    expect(comparison.score.passed).toBe(false);
+    expect(comparison.score.behavior.score).toBeLessThan(1);
+    expect(comparison.score.failed_behavior_checks).toEqual(
+      expect.arrayContaining([
+        "runtime_permission_rule",
+        "runtime_permission_resource_buckets",
+      ]),
+    );
     expect(comparison.left.result).toMatchObject({
       error_code: "permission_denied",
       runtime_permission_denied: {

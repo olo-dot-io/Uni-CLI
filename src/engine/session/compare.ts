@@ -55,12 +55,27 @@ export interface RunComparisonCounts {
   unknown: number;
 }
 
+export interface RunComparisonScoreBucket extends RunComparisonCounts {
+  total: number;
+  score: number;
+}
+
+export interface RunComparisonScore {
+  passed: boolean;
+  overall: number;
+  behavior: RunComparisonScoreBucket;
+  context: RunComparisonScoreBucket;
+  failed_behavior_checks: string[];
+  unknown_behavior_checks: string[];
+}
+
 export interface RunComparison {
   left_run_id: RunId;
   right_run_id: RunId;
   status: RunComparisonStatus;
   behavior: RunComparisonCounts;
   context: RunComparisonCounts;
+  score: RunComparisonScore;
   checks: RunComparisonCheck[];
   left: RunComparableSummary;
   right: RunComparableSummary;
@@ -328,6 +343,31 @@ function countChecks(
   };
 }
 
+function roundedScore(value: number): number {
+  return Number(value.toFixed(4));
+}
+
+function scoreChecks(
+  checks: RunComparisonCheck[],
+  impact?: RunComparisonImpact,
+): RunComparisonScoreBucket {
+  const scoped =
+    impact === undefined
+      ? checks
+      : checks.filter((check) => check.impact === impact);
+  const counts = {
+    match: scoped.filter((check) => check.status === "match").length,
+    diverged: scoped.filter((check) => check.status === "diverged").length,
+    unknown: scoped.filter((check) => check.status === "unknown").length,
+  };
+  const total = scoped.length;
+  return {
+    ...counts,
+    total,
+    score: total === 0 ? 1 : roundedScore(counts.match / total),
+  };
+}
+
 function overallStatus(checks: RunComparisonCheck[]): RunComparisonStatus {
   const behavior = checks.filter((check) => check.impact === "behavior");
   if (behavior.some((check) => check.status === "diverged")) {
@@ -337,6 +377,28 @@ function overallStatus(checks: RunComparisonCheck[]): RunComparisonStatus {
     return "unknown";
   }
   return "match";
+}
+
+function comparisonScore(
+  checks: RunComparisonCheck[],
+  status: RunComparisonStatus,
+): RunComparisonScore {
+  return {
+    passed: status === "match",
+    overall: scoreChecks(checks).score,
+    behavior: scoreChecks(checks, "behavior"),
+    context: scoreChecks(checks, "context"),
+    failed_behavior_checks: checks
+      .filter(
+        (check) => check.impact === "behavior" && check.status === "diverged",
+      )
+      .map((check) => check.name),
+    unknown_behavior_checks: checks
+      .filter(
+        (check) => check.impact === "behavior" && check.status === "unknown",
+      )
+      .map((check) => check.name),
+  };
 }
 
 export function compareRunEvents(
@@ -450,13 +512,15 @@ export function compareRunEvents(
       { missingMeansMatch: true },
     ),
   ];
+  const status = overallStatus(checks);
 
   return {
     left_run_id: options.leftRunId,
     right_run_id: options.rightRunId,
-    status: overallStatus(checks),
+    status,
     behavior: countChecks(checks, "behavior"),
     context: countChecks(checks, "context"),
+    score: comparisonScore(checks, status),
     checks,
     left,
     right,

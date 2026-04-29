@@ -56,6 +56,7 @@ interface RunsReplayOptions {
 
 interface RunsCompareOptions {
   root?: string;
+  minScore?: string;
 }
 
 function fmt(program: Command): OutputFormat {
@@ -90,6 +91,13 @@ function runStoreAgentErrorCode(error: RunStoreError): string {
   return error.code === "invalid_run_id" || error.code === "malformed_jsonl"
     ? "invalid_input"
     : "internal_error";
+}
+
+function scoreThreshold(value: string | undefined): number | undefined {
+  if (value === undefined) return undefined;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) return undefined;
+  return parsed;
 }
 
 export function registerRunsCommand(program: Command): void {
@@ -214,6 +222,10 @@ export function registerRunsCommand(program: Command): void {
     .command("compare <left_run_id> <right_run_id>")
     .description("Compare two recorded run traces for replay/eval review")
     .option("--root <path>", "Override run trace root")
+    .option(
+      "--min-score <0-1>",
+      "Set a minimum behavior score and exit non-zero when it is missed",
+    )
     .action(
       async (
         leftRunId: string,
@@ -222,6 +234,16 @@ export function registerRunsCommand(program: Command): void {
       ) => {
         const startedAt = Date.now();
         const store = createRunStore({ rootDir: opts.root });
+        const minScore = scoreThreshold(opts.minScore);
+        if (opts.minScore !== undefined && minScore === undefined) {
+          printRunError(program, "runs.compare", startedAt, {
+            code: "invalid_input",
+            message: "--min-score must be a number between 0 and 1",
+            suggestion: "use `--min-score 1` for exact replay gates",
+            retryable: false,
+          });
+          return;
+        }
         const leftEvents = await readRunEvents(store, leftRunId);
         if (leftEvents.length === 0) {
           printRunError(program, "runs.compare", startedAt, {
@@ -254,6 +276,12 @@ export function registerRunsCommand(program: Command): void {
             makeCtx("runs.compare", startedAt),
           ),
         );
+        if (
+          minScore !== undefined &&
+          comparison.score.behavior.score < minScore
+        ) {
+          process.exitCode = 1;
+        }
       },
     );
 
