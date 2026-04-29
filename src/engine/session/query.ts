@@ -1,4 +1,4 @@
-import { createReadStream } from "node:fs";
+import { createReadStream, type ReadStream } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import type { BrowserSessionLease } from "../browser/session-lease.js";
@@ -126,8 +126,9 @@ async function summarizeRunTraceFile(
   options: { runId?: RunId; updatedAt?: string } = {},
 ): Promise<RunSummary> {
   const scan: RunEventScan = { events: 0 };
+  const input = createReadStream(tracePath, { encoding: "utf-8" });
   const lines = createInterface({
-    input: createReadStream(tracePath, { encoding: "utf-8" }),
+    input,
     crlfDelay: Infinity,
   });
   let lineNumber = 0;
@@ -168,9 +169,30 @@ async function summarizeRunTraceFile(
       `failed to read run events: ${message}`,
       tracePath,
     );
+  } finally {
+    lines.close();
+    await closeRunTraceInput(input);
   }
 
   return summarizeRunEventScan(scan, options);
+}
+
+async function closeRunTraceInput(input: ReadStream): Promise<void> {
+  if (input.closed) return;
+  await new Promise<void>((resolve) => {
+    const done = (): void => {
+      input.off("close", done);
+      input.off("error", done);
+      resolve();
+    };
+    input.once("close", done);
+    input.once("error", done);
+    if (input.closed) {
+      done();
+      return;
+    }
+    input.destroy();
+  });
 }
 
 function summarizeRunEventScan(

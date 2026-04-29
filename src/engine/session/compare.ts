@@ -80,6 +80,8 @@ export interface RunComparisonScore {
   context: RunComparisonScoreBucket;
   failed_behavior_checks: string[];
   unknown_behavior_checks: string[];
+  failed_context_checks: string[];
+  unknown_context_checks: string[];
 }
 
 export interface RunComparison {
@@ -440,21 +442,26 @@ function comparisonScore(
   checks: RunComparisonCheck[],
   status: RunComparisonStatus,
 ): RunComparisonScore {
+  const checkNames = (
+    impact: RunComparisonImpact,
+    checkStatus: RunComparisonStatus,
+  ): string[] => {
+    return checks
+      .filter(
+        (check) => check.impact === impact && check.status === checkStatus,
+      )
+      .map((check) => check.name);
+  };
+
   return {
     passed: status === "match",
     overall: scoreChecks(checks).score,
     behavior: scoreChecks(checks, "behavior"),
     context: scoreChecks(checks, "context"),
-    failed_behavior_checks: checks
-      .filter(
-        (check) => check.impact === "behavior" && check.status === "diverged",
-      )
-      .map((check) => check.name),
-    unknown_behavior_checks: checks
-      .filter(
-        (check) => check.impact === "behavior" && check.status === "unknown",
-      )
-      .map((check) => check.name),
+    failed_behavior_checks: checkNames("behavior", "diverged"),
+    unknown_behavior_checks: checkNames("behavior", "unknown"),
+    failed_context_checks: checkNames("context", "diverged"),
+    unknown_context_checks: checkNames("context", "unknown"),
   };
 }
 

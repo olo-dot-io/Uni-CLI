@@ -123,6 +123,7 @@ unicli operate screenshot --path ./page.png
 浏览器动作可以附带前后证据、stale-ref 细节、移动维度、watchdog 结果、
 session lease、tab 目标身份、cookie 姿态和 render-aware 读取，方便审查。
 设置分数阈值时，replay 和 compare 会输出 `gate` 对象，里面有阈值、实际分数和失败的 gate。
+score 里也会列出失败或未知的 behavior/context check 名字。
 
 ```bash
 unicli browser evidence --render-aware --expect-domain example.com
