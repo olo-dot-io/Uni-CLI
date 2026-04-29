@@ -7,6 +7,7 @@ import { Command } from "commander";
 import { createBrowserSessionLease } from "../../src/engine/browser/session-lease.js";
 import {
   createEvidenceCapturedEvent,
+  createRuntimePermissionDeniedEvent,
   createRunCompletedEvent,
   createRunEventSequence,
   createRunFailedEvent,
@@ -148,6 +149,77 @@ describe("unicli runs command", () => {
     await appendRunEvent(store, {
       ...createRunCompletedEvent(metadata, sequence, { status: "ok" }),
       timestamp: "2026-04-29T01:00:02.000Z",
+    });
+    return metadata.run_id;
+  }
+
+  async function writeRuntimeDeniedRun(rootDir: string): Promise<string> {
+    const store = createRunStore({ rootDir });
+    const metadata: RunTraceMetadata = {
+      run_id: "run-runtime-denied-01",
+      trace_id: "01HTRACERUNTIME000000000",
+      command: "browser.fetch",
+      site: "browser",
+      cmd: "fetch",
+      adapter_path: "src/adapters/browser/fetch.yaml",
+      permission_profile: "locked",
+      transport_surface: "cli",
+      target_surface: "web",
+      args_hash: "sha256:runtime-denied",
+      pipeline_steps: 1,
+    };
+    const sequence = createRunEventSequence();
+    const error = {
+      code: "permission_denied",
+      message: "runtime domain is blocked",
+      adapter_path: metadata.adapter_path,
+    };
+    const resultData = {
+      exit_code: 77,
+      result_count: 0,
+      duration_ms: 16,
+      error,
+      envelope: { command: "browser.fetch", error },
+    };
+    await appendRunEvent(
+      store,
+      createRunStartedEvent(metadata, sequence, {
+        timestamp: "2026-04-29T01:10:00.000Z",
+      }),
+    );
+    await appendRunEvent(store, {
+      ...createToolCallStartedEvent(metadata, sequence),
+      timestamp: "2026-04-29T01:10:01.000Z",
+    });
+    await appendRunEvent(store, {
+      ...createRuntimePermissionDeniedEvent(
+        metadata,
+        sequence,
+        {
+          code: "permission_denied",
+          adapter_path: metadata.adapter_path,
+          action: "fetch_text",
+          step: 0,
+          rule_id: "deny-blocked-runtime",
+          resource_buckets: ["domains", "urls"],
+          retryable: false,
+        },
+        {
+          resources: {
+            domains: ["blocked.example"],
+            urls: ["https://blocked.example/secret?token=hidden"],
+          },
+        },
+      ),
+      timestamp: "2026-04-29T01:10:02.000Z",
+    });
+    await appendRunEvent(store, {
+      ...createToolCallFailedEvent(metadata, sequence, resultData),
+      timestamp: "2026-04-29T01:10:03.000Z",
+    });
+    await appendRunEvent(store, {
+      ...createRunFailedEvent(metadata, sequence, resultData),
+      timestamp: "2026-04-29T01:10:04.000Z",
     });
     return metadata.run_id;
   }
@@ -343,6 +415,51 @@ describe("unicli runs command", () => {
     expect(env.data.runs[0].browser_session_id).toMatch(/^browser-session:/);
   });
 
+  it("lists runtime permission deny summaries without raw resources", async () => {
+    const rootDir = join(tmp, "runs");
+    await writeRuntimeDeniedRun(rootDir);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        ["-f", "json", "runs", "list", "--root", rootDir],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: {
+        runs: Array<{
+          run_id: string;
+          runtime_permission_denied?: {
+            code: string;
+            action: string;
+            step: number;
+            rule_id: string;
+            resource_buckets: string[];
+            retryable: boolean;
+          };
+        }>;
+      };
+    };
+    expect(env.data.runs[0]).toMatchObject({
+      run_id: "run-runtime-denied-01",
+      runtime_permission_denied: {
+        code: "permission_denied",
+        action: "fetch_text",
+        step: 0,
+        rule_id: "deny-blocked-runtime",
+        resource_buckets: ["domains", "urls"],
+        retryable: false,
+      },
+    });
+    expect(cap.getStdout()).not.toContain("blocked.example");
+    expect(cap.getStdout()).not.toContain("/secret?token=hidden");
+  });
+
   it("skips unexpected run directories with invalid ids", async () => {
     const rootDir = join(tmp, "runs");
     await writeBrowserRun(rootDir);
@@ -424,6 +541,47 @@ describe("unicli runs command", () => {
     expect(env.data.events).toHaveLength(3);
     expect(env.data.events[1]).not.toHaveProperty("internal");
     expect(env.data.events[1]).not.toHaveProperty("secret");
+  });
+
+  it("shows runtime permission deny summaries without raw resources", async () => {
+    const rootDir = join(tmp, "runs");
+    const runId = await writeRuntimeDeniedRun(rootDir);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        ["-f", "json", "runs", "show", runId, "--root", rootDir],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: {
+        summary: {
+          runtime_permission_denied?: {
+            code: string;
+            action: string;
+            step: number;
+            rule_id: string;
+            resource_buckets: string[];
+            retryable: boolean;
+          };
+        };
+      };
+    };
+    expect(env.data.summary.runtime_permission_denied).toEqual({
+      code: "permission_denied",
+      action: "fetch_text",
+      step: 0,
+      rule_id: "deny-blocked-runtime",
+      resource_buckets: ["domains", "urls"],
+      retryable: false,
+    });
+    expect(cap.getStdout()).not.toContain("blocked.example");
+    expect(cap.getStdout()).not.toContain("/secret?token=hidden");
   });
 
   it("can include internal event payloads while still redacting secret payloads", async () => {

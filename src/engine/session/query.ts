@@ -34,6 +34,16 @@ export interface RunSummary {
   lease_owner?: string;
   lease_scope?: string;
   error_code?: string;
+  runtime_permission_denied?: RunSummaryRuntimePermissionDenied;
+}
+
+export interface RunSummaryRuntimePermissionDenied {
+  code?: string;
+  action?: string;
+  step?: number;
+  rule_id?: string;
+  resource_buckets?: string[];
+  retryable?: boolean;
 }
 
 export async function listRunSummaries(store: RunStore): Promise<RunSummary[]> {
@@ -88,26 +98,26 @@ export function summarizeRunEvents(
   events: RunEvent[],
   options: { runId?: RunId; updatedAt?: string } = {},
 ): RunSummary {
-  return summarizeRunEventScan(
-    {
-      first: events[0],
-      started: events.find((event) => event.name === "run.started"),
-      terminal: [...events]
-        .reverse()
-        .find(
-          (event) =>
-            event.name === "run.completed" || event.name === "run.failed",
-        ),
-      events: events.length,
-    },
-    options,
-  );
+  const scan: RunEventScan = { first: events[0], events: events.length };
+  for (const event of events) {
+    if (!scan.started && event.name === "run.started") {
+      scan.started = event;
+    }
+    if (event.name === "run.completed" || event.name === "run.failed") {
+      scan.terminal = event;
+    }
+    if (event.name === "permission.runtime_denied") {
+      scan.runtimePermissionDenied = event;
+    }
+  }
+  return summarizeRunEventScan(scan, options);
 }
 
 interface RunEventScan {
   first?: RunEvent;
   started?: RunEvent;
   terminal?: RunEvent;
+  runtimePermissionDenied?: RunEvent;
   events: number;
 }
 
@@ -146,6 +156,9 @@ async function summarizeRunTraceFile(
       if (event.name === "run.completed" || event.name === "run.failed") {
         scan.terminal = event;
       }
+      if (event.name === "permission.runtime_denied") {
+        scan.runtimePermissionDenied = event;
+      }
     }
   } catch (err) {
     if (err instanceof RunStoreError) throw err;
@@ -169,6 +182,9 @@ function summarizeRunEventScan(
   const terminal = scan.terminal;
   const started = scan.started;
   const lease = metadata?.browser_lease;
+  const runtimeDenied = runtimePermissionDeniedSummary(
+    scan.runtimePermissionDenied,
+  );
   const summary: RunSummary = {
     run_id: options.runId ?? metadata?.run_id ?? first?.run_id ?? "unknown",
     command: metadata?.command,
@@ -183,12 +199,62 @@ function summarizeRunEventScan(
     ...(metadata?.target_surface
       ? { target_surface: String(metadata.target_surface) }
       : {}),
+    ...(runtimeDenied ? { runtime_permission_denied: runtimeDenied } : {}),
     ...browserLeaseSummary(lease),
   };
   const durationMs = runDurationMs(summary.started_at, summary.finished_at);
   return durationMs === undefined
     ? summary
     : { ...summary, duration_ms: durationMs };
+}
+
+function runtimePermissionDeniedSummary(
+  event?: RunEvent,
+): RunSummaryRuntimePermissionDenied | undefined {
+  if (!event) return undefined;
+  const code = stringDataField(event, "code");
+  const action = stringDataField(event, "action");
+  const step = numberDataField(event, "step");
+  const ruleId = stringDataField(event, "rule_id");
+  const resourceBuckets = stringArrayDataField(event, "resource_buckets");
+  const retryable = booleanDataField(event, "retryable");
+  return {
+    ...(code ? { code } : {}),
+    ...(action ? { action } : {}),
+    ...(step !== undefined ? { step } : {}),
+    ...(ruleId ? { rule_id: ruleId } : {}),
+    ...(resourceBuckets ? { resource_buckets: resourceBuckets } : {}),
+    ...(retryable !== undefined ? { retryable } : {}),
+  };
+}
+
+function stringDataField(event: RunEvent, field: string): string | undefined {
+  const value = event.data?.[field];
+  return typeof value === "string" ? value : undefined;
+}
+
+function numberDataField(event: RunEvent, field: string): number | undefined {
+  const value = event.data?.[field];
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : undefined;
+}
+
+function booleanDataField(event: RunEvent, field: string): boolean | undefined {
+  const value = event.data?.[field];
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function stringArrayDataField(
+  event: RunEvent,
+  field: string,
+): string[] | undefined {
+  const value = event.data?.[field];
+  if (!Array.isArray(value)) return undefined;
+  const values = value.filter((entry): entry is string => {
+    return typeof entry === "string";
+  });
+  return values.length > 0 ? values : undefined;
 }
 
 export function projectRunEvents(
