@@ -178,13 +178,13 @@ const CORE_SEARCH_DOCUMENTS: readonly CoreSearchDocument[] = [
     site: "runs",
     command: "replay",
     description:
-      "Replay a recorded command through the native execution kernel and write a fresh replay trace for verification or repair workflows.",
+      "Replay a recorded command through the native execution kernel, write a fresh replay trace, and gate behavior, context, or overall scores.",
   },
   {
     site: "runs",
     command: "compare",
     description:
-      "Compare two recorded run traces for replay evaluation, behavior drift, result envelope differences, repair verification, and reproducible agent audit checks.",
+      "Compare two recorded run traces for behavior drift, context drift, score gates, result envelope differences, repair verification, and reproducible agent audit checks.",
   },
 ];
 

@@ -226,17 +226,25 @@ describe("unicli runs command", () => {
 
   async function writeReplayableRun(
     rootDir: string,
-    options: { resultCount?: number } = {},
+    options: {
+      resultCount?: number;
+      runId?: string;
+      traceId?: string;
+      permissionProfile?: string;
+    } = {},
   ): Promise<string> {
     const store = createRunStore({ rootDir });
+    const runId = options.runId ?? "run-replayable-01";
+    const traceId = options.traceId ?? "01HTRACEREPLAY0000000000";
+    const permissionProfile = options.permissionProfile ?? "open";
     const metadata: RunTraceMetadata = {
-      run_id: "run-replayable-01",
-      trace_id: "01HTRACEREPLAY0000000000",
+      run_id: runId,
+      trace_id: traceId,
       command: "runs-replay-fixture.echo",
       site: "runs-replay-fixture",
       cmd: "echo",
       adapter_path: "src/adapters/runs-replay-fixture/echo.yaml",
-      permission_profile: "open",
+      permission_profile: permissionProfile,
       transport_surface: "cli",
       target_surface: "web",
       args_hash:
@@ -260,7 +268,7 @@ describe("unicli runs command", () => {
           cmd: "echo",
           args: { query: "hello replay" },
           source: "shell",
-          permission_profile: "open",
+          permission_profile: permissionProfile,
           approved: false,
           args_hash: metadata.args_hash,
         },
@@ -885,6 +893,110 @@ describe("unicli runs command", () => {
     expect(cap.getStdout()).not.toContain("hello replay");
   });
 
+  it("can fail CI when replay context score is below a threshold", async () => {
+    const rootDir = join(tmp, "runs");
+    const runId = await writeReplayableRun(rootDir);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "-f",
+          "json",
+          "runs",
+          "replay",
+          runId,
+          "--root",
+          rootDir,
+          "--replay-run-id",
+          "run-replayed-01",
+          "--permission-profile",
+          "confirm",
+          "--yes",
+          "--min-context-score",
+          "1",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      ok: boolean;
+      data: {
+        comparison: {
+          status: string;
+          context: { diverged: number };
+          score: { context: { score: number } };
+          checks: Array<{ name: string; status: string }>;
+        };
+      };
+    };
+    expect(env.ok).toBe(true);
+    expect(env.data.comparison.status).toBe("match");
+    expect(env.data.comparison.context.diverged).toBeGreaterThan(0);
+    expect(env.data.comparison.score.context.score).toBeLessThan(1);
+    expect(env.data.comparison.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "permission_profile",
+          status: "diverged",
+        }),
+      ]),
+    );
+    expect(process.exitCode).toBe(1);
+    expect(cap.getStdout()).not.toContain("hello replay");
+  });
+
+  it("can fail CI when replay overall score is below a threshold", async () => {
+    const rootDir = join(tmp, "runs");
+    const runId = await writeReplayableRun(rootDir);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "-f",
+          "json",
+          "runs",
+          "replay",
+          runId,
+          "--root",
+          rootDir,
+          "--replay-run-id",
+          "run-replayed-01",
+          "--permission-profile",
+          "confirm",
+          "--yes",
+          "--min-overall-score",
+          "1",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      ok: boolean;
+      data: {
+        comparison: {
+          status: string;
+          score: { overall: number; context: { score: number } };
+        };
+      };
+    };
+    expect(env.ok).toBe(true);
+    expect(env.data.comparison.status).toBe("match");
+    expect(env.data.comparison.score.context.score).toBeLessThan(1);
+    expect(env.data.comparison.score.overall).toBeLessThan(1);
+    expect(process.exitCode).toBe(1);
+    expect(cap.getStdout()).not.toContain("hello replay");
+  });
+
   it("compares replay traces without exposing argument values", async () => {
     const rootDir = join(tmp, "runs");
     const runId = await writeReplayableRun(rootDir);
@@ -1044,6 +1156,117 @@ describe("unicli runs command", () => {
     expect(env.data.score.passed).toBe(false);
     expect(env.data.score.behavior.score).toBeLessThan(1);
     expect(env.data.score.failed_behavior_checks.length).toBeGreaterThan(0);
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("can fail CI when compare context score is below a threshold", async () => {
+    const rootDir = join(tmp, "runs");
+    const runId = await writeReplayableRun(rootDir);
+    const contextDriftRunId = await writeReplayableRun(rootDir, {
+      runId: "run-context-drift-01",
+      traceId: "01HTRACECONTEXT00000000",
+      permissionProfile: "confirm",
+    });
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "-f",
+          "json",
+          "runs",
+          "compare",
+          runId,
+          contextDriftRunId,
+          "--root",
+          rootDir,
+          "--min-context-score",
+          "1",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      ok: boolean;
+      data: {
+        status: string;
+        behavior: { diverged: number };
+        context: { diverged: number };
+        score: {
+          overall: number;
+          context: { score: number };
+        };
+        checks: Array<{ name: string; status: string }>;
+      };
+    };
+    expect(env.ok).toBe(true);
+    expect(env.data.status).toBe("match");
+    expect(env.data.behavior.diverged).toBe(0);
+    expect(env.data.context.diverged).toBeGreaterThan(0);
+    expect(env.data.score.context.score).toBeLessThan(1);
+    expect(env.data.score.overall).toBeLessThan(1);
+    expect(env.data.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "permission_profile",
+          status: "diverged",
+        }),
+      ]),
+    );
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("can fail CI when compare overall score is below a threshold", async () => {
+    const rootDir = join(tmp, "runs");
+    const runId = await writeReplayableRun(rootDir);
+    const contextDriftRunId = await writeReplayableRun(rootDir, {
+      runId: "run-context-drift-01",
+      traceId: "01HTRACECONTEXT00000000",
+      permissionProfile: "confirm",
+    });
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "-f",
+          "json",
+          "runs",
+          "compare",
+          runId,
+          contextDriftRunId,
+          "--root",
+          rootDir,
+          "--min-overall-score",
+          "1",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      ok: boolean;
+      data: {
+        status: string;
+        behavior: { diverged: number };
+        score: {
+          overall: number;
+          context: { score: number };
+        };
+      };
+    };
+    expect(env.ok).toBe(true);
+    expect(env.data.status).toBe("match");
+    expect(env.data.behavior.diverged).toBe(0);
+    expect(env.data.score.context.score).toBeLessThan(1);
+    expect(env.data.score.overall).toBeLessThan(1);
     expect(process.exitCode).toBe(1);
   });
 

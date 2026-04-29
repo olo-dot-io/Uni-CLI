@@ -53,11 +53,27 @@ interface RunsReplayOptions {
   yes?: boolean;
   replayRunId?: string;
   minScore?: string;
+  minContextScore?: string;
+  minOverallScore?: string;
 }
 
 interface RunsCompareOptions {
   root?: string;
   minScore?: string;
+  minContextScore?: string;
+  minOverallScore?: string;
+}
+
+interface RunsScoreGateOptions {
+  minScore?: string;
+  minContextScore?: string;
+  minOverallScore?: string;
+}
+
+interface RunsScoreThresholds {
+  behavior?: number;
+  context?: number;
+  overall?: number;
 }
 
 function fmt(program: Command): OutputFormat {
@@ -99,6 +115,76 @@ function scoreThreshold(value: string | undefined): number | undefined {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) return undefined;
   return parsed;
+}
+
+function parseScoreThresholds(
+  program: Command,
+  command: string,
+  startedAt: number,
+  opts: RunsScoreGateOptions,
+): RunsScoreThresholds | null {
+  const behavior = scoreThreshold(opts.minScore);
+  if (opts.minScore !== undefined && behavior === undefined) {
+    printRunError(program, command, startedAt, {
+      code: "invalid_input",
+      message: "--min-score must be a number between 0 and 1",
+      suggestion: "use `--min-score 1` for exact behavior gates",
+      retryable: false,
+    });
+    return null;
+  }
+
+  const context = scoreThreshold(opts.minContextScore);
+  if (opts.minContextScore !== undefined && context === undefined) {
+    printRunError(program, command, startedAt, {
+      code: "invalid_input",
+      message: "--min-context-score must be a number between 0 and 1",
+      suggestion: "use `--min-context-score 1` for exact context gates",
+      retryable: false,
+    });
+    return null;
+  }
+
+  const overall = scoreThreshold(opts.minOverallScore);
+  if (opts.minOverallScore !== undefined && overall === undefined) {
+    printRunError(program, command, startedAt, {
+      code: "invalid_input",
+      message: "--min-overall-score must be a number between 0 and 1",
+      suggestion: "use `--min-overall-score 1` for exact overall gates",
+      retryable: false,
+    });
+    return null;
+  }
+
+  return {
+    ...(behavior !== undefined ? { behavior } : {}),
+    ...(context !== undefined ? { context } : {}),
+    ...(overall !== undefined ? { overall } : {}),
+  };
+}
+
+function applyScoreThresholds(
+  comparison: ReturnType<typeof compareRunEvents>,
+  thresholds: RunsScoreThresholds,
+): void {
+  if (
+    thresholds.behavior !== undefined &&
+    comparison.score.behavior.score < thresholds.behavior
+  ) {
+    process.exitCode = 1;
+  }
+  if (
+    thresholds.context !== undefined &&
+    comparison.score.context.score < thresholds.context
+  ) {
+    process.exitCode = 1;
+  }
+  if (
+    thresholds.overall !== undefined &&
+    comparison.score.overall < thresholds.overall
+  ) {
+    process.exitCode = 1;
+  }
 }
 
 export function registerRunsCommand(program: Command): void {
@@ -227,6 +313,14 @@ export function registerRunsCommand(program: Command): void {
       "--min-score <0-1>",
       "Set a minimum behavior score and exit non-zero when it is missed",
     )
+    .option(
+      "--min-context-score <0-1>",
+      "Set a minimum context score and exit non-zero when it is missed",
+    )
+    .option(
+      "--min-overall-score <0-1>",
+      "Set a minimum overall score and exit non-zero when it is missed",
+    )
     .action(
       async (
         leftRunId: string,
@@ -235,16 +329,13 @@ export function registerRunsCommand(program: Command): void {
       ) => {
         const startedAt = Date.now();
         const store = createRunStore({ rootDir: opts.root });
-        const minScore = scoreThreshold(opts.minScore);
-        if (opts.minScore !== undefined && minScore === undefined) {
-          printRunError(program, "runs.compare", startedAt, {
-            code: "invalid_input",
-            message: "--min-score must be a number between 0 and 1",
-            suggestion: "use `--min-score 1` for exact replay gates",
-            retryable: false,
-          });
-          return;
-        }
+        const thresholds = parseScoreThresholds(
+          program,
+          "runs.compare",
+          startedAt,
+          opts,
+        );
+        if (thresholds === null) return;
         const leftEvents = await readRunEvents(store, leftRunId);
         if (leftEvents.length === 0) {
           printRunError(program, "runs.compare", startedAt, {
@@ -277,12 +368,7 @@ export function registerRunsCommand(program: Command): void {
             makeCtx("runs.compare", startedAt),
           ),
         );
-        if (
-          minScore !== undefined &&
-          comparison.score.behavior.score < minScore
-        ) {
-          process.exitCode = 1;
-        }
+        applyScoreThresholds(comparison, thresholds);
       },
     );
 
@@ -301,18 +387,23 @@ export function registerRunsCommand(program: Command): void {
       "--min-score <0-1>",
       "Set a minimum replay behavior score and exit non-zero when it is missed",
     )
+    .option(
+      "--min-context-score <0-1>",
+      "Set a minimum replay context score and exit non-zero when it is missed",
+    )
+    .option(
+      "--min-overall-score <0-1>",
+      "Set a minimum replay overall score and exit non-zero when it is missed",
+    )
     .action(async (runId: string, opts: RunsReplayOptions) => {
       const startedAt = Date.now();
-      const minScore = scoreThreshold(opts.minScore);
-      if (opts.minScore !== undefined && minScore === undefined) {
-        printRunError(program, "runs.replay", startedAt, {
-          code: "invalid_input",
-          message: "--min-score must be a number between 0 and 1",
-          suggestion: "use `--min-score 1` for exact replay gates",
-          retryable: false,
-        });
-        return;
-      }
+      const thresholds = parseScoreThresholds(
+        program,
+        "runs.replay",
+        startedAt,
+        opts,
+      );
+      if (thresholds === null) return;
       const store = createRunStore({ rootDir: opts.root });
       const events = await readRunEvents(store, runId);
       const replay = extractRunReplayPlan(events, runId);
@@ -443,11 +534,6 @@ export function registerRunsCommand(program: Command): void {
           makeCtx("runs.replay", startedAt),
         ),
       );
-      if (
-        minScore !== undefined &&
-        comparison.score.behavior.score < minScore
-      ) {
-        process.exitCode = 1;
-      }
+      applyScoreThresholds(comparison, thresholds);
     });
 }
