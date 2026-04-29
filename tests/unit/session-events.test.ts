@@ -5,6 +5,7 @@ import {
   createPermissionEvaluatedEvent,
   createRunEventSequence,
   createRunStartedEvent,
+  createRuntimePermissionDeniedEvent,
   createToolCallStartedEvent,
   projectRunEventForPublicSurface,
   type RunTraceMetadata,
@@ -81,5 +82,41 @@ describe("session event builders", () => {
     });
     expect(projected).not.toHaveProperty("internal");
     expect(projected).not.toHaveProperty("secret");
+  });
+
+  it("builds runtime permission deny events without exposing raw resources publicly", () => {
+    const sequence = createRunEventSequence();
+    const event = createRuntimePermissionDeniedEvent(
+      metadata,
+      sequence,
+      {
+        code: "permission_denied",
+        adapter_path: metadata.adapter_path,
+        action: "fetch_text",
+        step: 0,
+        rule_id: "deny-runtime-domain",
+        resource_buckets: ["domains"],
+        retryable: false,
+      },
+      {
+        resources: {
+          domains: ["blocked.example"],
+        },
+      },
+    );
+
+    const projected = projectRunEventForPublicSurface(event);
+
+    expect(projected).toMatchObject({
+      name: "permission.runtime_denied",
+      data: {
+        code: "permission_denied",
+        rule_id: "deny-runtime-domain",
+        resource_buckets: ["domains"],
+      },
+    });
+    expect(projected).not.toHaveProperty("internal");
+    expect(projected).not.toHaveProperty("secret");
+    expect(JSON.stringify(projected)).not.toContain("blocked.example");
   });
 });

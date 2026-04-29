@@ -9,6 +9,7 @@ export type RunEventName =
   | "run.started"
   | "tool.call.started"
   | "permission.evaluated"
+  | "permission.runtime_denied"
   | "evidence.captured"
   | "tool.call.completed"
   | "tool.call.failed"

@@ -17,6 +17,7 @@ import {
 import {
   createPermissionEvaluatedEvent,
   createEvidenceCapturedEvent,
+  createRuntimePermissionDeniedEvent,
   createRunCompletedEvent,
   createRunEventSequence,
   createRunFailedEvent,
@@ -213,6 +214,32 @@ function evidenceData(
   };
 }
 
+function runtimePermissionDeniedEvent(
+  result: InvocationResult,
+  metadata: RunTraceMetadata,
+  sequence: ReturnType<typeof createRunEventSequence>,
+): RunEvent | undefined {
+  const diagnostic = result.diagnostics?.find(
+    (entry) => entry.kind === "runtime_permission_denied",
+  );
+  if (!diagnostic) return undefined;
+
+  return createRuntimePermissionDeniedEvent(
+    metadata,
+    sequence,
+    {
+      code: diagnostic.code,
+      adapter_path: metadata.adapter_path,
+      action: diagnostic.action,
+      step: diagnostic.step,
+      ...(diagnostic.rule_id ? { rule_id: diagnostic.rule_id } : {}),
+      resource_buckets: diagnostic.resource_buckets,
+      retryable: diagnostic.retryable,
+    },
+    diagnostic.resources ? { resources: diagnostic.resources } : undefined,
+  );
+}
+
 export async function executeWithRunRecording(
   inv: Invocation,
   options: RunRecordingOptions = {},
@@ -242,6 +269,11 @@ export async function executeWithRunRecording(
   );
 
   const result = await execute(inv);
+  const runtimeDenied = runtimePermissionDeniedEvent(
+    result,
+    metadata,
+    sequence,
+  );
   const terminalEvents =
     result.error === undefined
       ? [
@@ -254,6 +286,7 @@ export async function executeWithRunRecording(
           createRunCompletedEvent(metadata, sequence, successData(result)),
         ]
       : [
+          ...(runtimeDenied ? [runtimeDenied] : []),
           createToolCallFailedEvent(
             metadata,
             sequence,
