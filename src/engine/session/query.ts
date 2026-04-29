@@ -218,14 +218,35 @@ function runtimePermissionDeniedSummary(
   const ruleId = stringDataField(event, "rule_id");
   const resourceBuckets = stringArrayDataField(event, "resource_buckets");
   const retryable = booleanDataField(event, "retryable");
-  return {
-    ...(code ? { code } : {}),
-    ...(action ? { action } : {}),
-    ...(step !== undefined ? { step } : {}),
-    ...(ruleId ? { rule_id: ruleId } : {}),
-    ...(resourceBuckets ? { resource_buckets: resourceBuckets } : {}),
-    ...(retryable !== undefined ? { retryable } : {}),
-  };
+  const summary: RunSummaryRuntimePermissionDenied = {};
+  let hasValue = false;
+
+  if (code) {
+    summary.code = code;
+    hasValue = true;
+  }
+  if (action) {
+    summary.action = action;
+    hasValue = true;
+  }
+  if (step !== undefined) {
+    summary.step = step;
+    hasValue = true;
+  }
+  if (ruleId) {
+    summary.rule_id = ruleId;
+    hasValue = true;
+  }
+  if (resourceBuckets) {
+    summary.resource_buckets = resourceBuckets;
+    hasValue = true;
+  }
+  if (retryable !== undefined) {
+    summary.retryable = retryable;
+    hasValue = true;
+  }
+
+  return hasValue ? summary : undefined;
 }
 
 function stringDataField(event: RunEvent, field: string): string | undefined {
