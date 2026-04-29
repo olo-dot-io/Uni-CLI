@@ -15,6 +15,7 @@ import {
   RunStoreError,
 } from "./store.js";
 import {
+  createEnvironmentSnapshotEvent,
   createPermissionEvaluatedEvent,
   createEvidenceCapturedEvent,
   createRuntimePermissionDeniedEvent,
@@ -30,6 +31,7 @@ import {
   type RunTraceMetadata,
 } from "./events.js";
 import { hashRunArgs } from "./args.js";
+import { environmentSnapshotData } from "./environment.js";
 
 export interface RunRecordingOptions {
   enabled?: boolean;
@@ -259,6 +261,11 @@ export async function executeWithRunRecording(
     store,
     [
       createRunStartedEvent(metadata, sequence),
+      createEnvironmentSnapshotEvent(
+        metadata,
+        sequence,
+        environmentSnapshotData(metadata),
+      ),
       {
         ...createToolCallStartedEvent(metadata, sequence),
         secret: replaySecretForInvocation(inv, metadata),

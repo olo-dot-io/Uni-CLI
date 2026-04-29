@@ -33,6 +33,18 @@ export interface RunComparableEvidence {
   by_type: Record<string, number>;
 }
 
+export interface RunComparableEnvironment {
+  unicli_version?: string;
+  node_version?: string;
+  platform?: string;
+  arch?: string;
+  ci?: boolean;
+  permission_profile?: string;
+  transport_surface?: string;
+  target_surface?: string;
+  pipeline_steps?: number;
+}
+
 export interface RunComparableSummary {
   run_id: RunId;
   command?: string;
@@ -45,6 +57,7 @@ export interface RunComparableSummary {
   browser_tab_id?: number;
   browser_window_id?: number;
   browser_auth_state?: string;
+  environment?: RunComparableEnvironment;
   result: RunComparableResult;
   evidence: RunComparableEvidence;
 }
@@ -90,6 +103,7 @@ function metadataFromEvents(events: RunEvent[]): RunTraceMetadata | undefined {
 }
 
 interface ComparableEventScan {
+  environment?: RunEvent;
   terminal?: RunEvent;
   toolTerminal?: RunEvent;
   resultEnvelope?: RunEvent;
@@ -120,6 +134,9 @@ function scanComparableEvents(events: RunEvent[]): ComparableEventScan {
     ) {
       scan.resultEnvelope = event;
     }
+    if (!scan.environment && event.name === "environment.snapshot") {
+      scan.environment = event;
+    }
     if (
       !scan.runtimePermissionDenied &&
       event.name === "permission.runtime_denied"
@@ -130,6 +147,7 @@ function scanComparableEvents(events: RunEvent[]): ComparableEventScan {
       scan.terminal &&
       scan.toolTerminal &&
       scan.resultEnvelope &&
+      scan.environment &&
       (scan.runtimePermissionDenied ||
         errorCodeFromEvent(scan.toolTerminal) !== "permission_denied")
     ) {
@@ -214,6 +232,33 @@ function runtimePermissionDeniedFromEvent(
   };
 }
 
+function environmentFromEvent(
+  event?: RunEvent,
+): RunComparableEnvironment | undefined {
+  if (!event) return undefined;
+  const unicliVersion = stringField("unicli_version", event);
+  const nodeVersion = stringField("node_version", event);
+  const platform = stringField("platform", event);
+  const arch = stringField("arch", event);
+  const ci = booleanField("ci", event);
+  const permissionProfile = stringField("permission_profile", event);
+  const transportSurface = stringField("transport_surface", event);
+  const targetSurface = stringField("target_surface", event);
+  const pipelineSteps = numberField("pipeline_steps", event);
+  const environment: RunComparableEnvironment = {
+    ...(unicliVersion ? { unicli_version: unicliVersion } : {}),
+    ...(nodeVersion ? { node_version: nodeVersion } : {}),
+    ...(platform ? { platform } : {}),
+    ...(arch ? { arch } : {}),
+    ...(ci !== undefined ? { ci } : {}),
+    ...(permissionProfile ? { permission_profile: permissionProfile } : {}),
+    ...(transportSurface ? { transport_surface: transportSurface } : {}),
+    ...(targetSurface ? { target_surface: targetSurface } : {}),
+    ...(pipelineSteps !== undefined ? { pipeline_steps: pipelineSteps } : {}),
+  };
+  return Object.keys(environment).length > 0 ? environment : undefined;
+}
+
 function evidenceSummary(events: RunEvent[]): RunComparableEvidence {
   const byType: Record<string, number> = {};
   for (const event of events) {
@@ -239,6 +284,7 @@ export function summarizeComparableRun(
   const scan = scanComparableEvents(events);
   const { terminal, toolTerminal, resultEnvelope, runtimePermissionDenied } =
     scan;
+  const environment = environmentFromEvent(scan.environment);
   const exitCode = numberField(
     "exit_code",
     terminal,
@@ -285,6 +331,7 @@ export function summarizeComparableRun(
     ...(summary.browser_auth_state
       ? { browser_auth_state: summary.browser_auth_state }
       : {}),
+    ...(environment ? { environment } : {}),
     result: {
       ...(exitCode !== undefined ? { exit_code: exitCode } : {}),
       ...(resultCount !== undefined ? { result_count: resultCount } : {}),
@@ -310,16 +357,26 @@ function compareScalar(
   left: unknown,
   right: unknown,
   impact: RunComparisonImpact,
-  options: { missingMeansMatch?: boolean } = {},
+  options: {
+    missingMeansMatch?: boolean;
+    missingEitherMeansMatch?: boolean;
+  } = {},
 ): RunComparisonCheck {
   if (left === undefined && right === undefined) {
     return {
       name,
       impact,
-      status: options.missingMeansMatch === true ? "match" : "unknown",
+      status:
+        options.missingMeansMatch === true ||
+        options.missingEitherMeansMatch === true
+          ? "match"
+          : "unknown",
     };
   }
   if (left === undefined || right === undefined) {
+    if (options.missingEitherMeansMatch === true) {
+      return { name, impact, status: "match", left, right };
+    }
     return { name, impact, status: "unknown", left, right };
   }
   return {
@@ -482,6 +539,69 @@ export function compareRunEvents(
       left.target_surface,
       right.target_surface,
       "context",
+    ),
+    compareScalar(
+      "environment_unicli_version",
+      left.environment?.unicli_version,
+      right.environment?.unicli_version,
+      "context",
+      { missingEitherMeansMatch: true },
+    ),
+    compareScalar(
+      "environment_node_version",
+      left.environment?.node_version,
+      right.environment?.node_version,
+      "context",
+      { missingEitherMeansMatch: true },
+    ),
+    compareScalar(
+      "environment_platform",
+      left.environment?.platform,
+      right.environment?.platform,
+      "context",
+      { missingEitherMeansMatch: true },
+    ),
+    compareScalar(
+      "environment_arch",
+      left.environment?.arch,
+      right.environment?.arch,
+      "context",
+      { missingEitherMeansMatch: true },
+    ),
+    compareScalar(
+      "environment_ci",
+      left.environment?.ci,
+      right.environment?.ci,
+      "context",
+      { missingEitherMeansMatch: true },
+    ),
+    compareScalar(
+      "environment_permission_profile",
+      left.environment?.permission_profile,
+      right.environment?.permission_profile,
+      "context",
+      { missingEitherMeansMatch: true },
+    ),
+    compareScalar(
+      "environment_transport_surface",
+      left.environment?.transport_surface,
+      right.environment?.transport_surface,
+      "context",
+      { missingEitherMeansMatch: true },
+    ),
+    compareScalar(
+      "environment_target_surface",
+      left.environment?.target_surface,
+      right.environment?.target_surface,
+      "context",
+      { missingEitherMeansMatch: true },
+    ),
+    compareScalar(
+      "environment_pipeline_steps",
+      left.environment?.pipeline_steps,
+      right.environment?.pipeline_steps,
+      "context",
+      { missingEitherMeansMatch: true },
     ),
     compareScalar(
       "browser_target_kind",

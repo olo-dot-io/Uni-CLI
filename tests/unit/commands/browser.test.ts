@@ -280,6 +280,7 @@ describe("unicli browser operator surface", () => {
     );
     expect(events.map((event) => event.name)).toEqual([
       "run.started",
+      "environment.snapshot",
       "tool.call.started",
       "permission.evaluated",
       "evidence.captured",
@@ -287,6 +288,18 @@ describe("unicli browser operator surface", () => {
       "tool.call.completed",
       "run.completed",
     ]);
+    expect(events[1]).toMatchObject({
+      visibility: "public",
+      data: {
+        schema_version: "1",
+        transport_surface: "cli",
+        target_surface: "web",
+        permission_profile: "open",
+        pipeline_steps: 0,
+      },
+    });
+    expect(events[1]).not.toHaveProperty("internal");
+    expect(events[1]).not.toHaveProperty("secret");
     const expectedLease = createBrowserSessionLease({
       namespace: "browser",
       workspace: "browser:default",
@@ -515,6 +528,7 @@ describe("unicli browser operator surface", () => {
     );
     expect(events.map((event) => event.name)).toEqual([
       "run.started",
+      "environment.snapshot",
       "tool.call.started",
       "permission.evaluated",
       "evidence.captured",
@@ -591,6 +605,7 @@ describe("unicli browser operator surface", () => {
     );
     expect(events.map((event) => event.name)).toEqual([
       "run.started",
+      "environment.snapshot",
       "tool.call.started",
       "permission.evaluated",
       "evidence.captured",

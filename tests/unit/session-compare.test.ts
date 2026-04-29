@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createEnvironmentSnapshotEvent,
   createEvidenceCapturedEvent,
   createPermissionEvaluatedEvent,
   createRunEventSequence,
@@ -55,6 +56,18 @@ function deniedTrace(
 
   return [
     createRunStartedEvent(metadata, sequence),
+    createEnvironmentSnapshotEvent(metadata, sequence, {
+      schema_version: "1",
+      unicli_version: "0.217.0",
+      node_version: "v24.0.0",
+      platform: "darwin",
+      arch: "arm64",
+      ci: false,
+      permission_profile: metadata.permission_profile,
+      transport_surface: metadata.transport_surface,
+      target_surface: metadata.target_surface,
+      pipeline_steps: metadata.pipeline_steps,
+    }),
     createToolCallStartedEvent(metadata, sequence),
     createPermissionEvaluatedEvent(metadata, sequence, {
       profile: "open",
@@ -166,5 +179,76 @@ describe("run trace comparison", () => {
       ]),
     );
     expect(JSON.stringify(comparison)).not.toContain("blocked.example");
+  });
+
+  it("compares environment snapshots as reproducibility context", () => {
+    const left = deniedTrace("run-left", "deny-old-domain", ["domains"]);
+    const right = deniedTrace("run-right", "deny-old-domain", ["domains"]);
+    const rightEnvironment = right.find(
+      (event) => event.name === "environment.snapshot",
+    );
+    if (rightEnvironment?.data) {
+      rightEnvironment.data = {
+        ...rightEnvironment.data,
+        node_version: "v25.0.0",
+        platform: "linux",
+      };
+    }
+
+    const comparison = compareRunEvents(left, right, {
+      leftRunId: "run-left",
+      rightRunId: "run-right",
+    });
+
+    expect(comparison.status).toBe("match");
+    expect(comparison.score.passed).toBe(true);
+    expect(comparison.context.diverged).toBeGreaterThan(0);
+    expect(comparison.left.environment).toMatchObject({
+      node_version: "v24.0.0",
+      platform: "darwin",
+    });
+    expect(comparison.right.environment).toMatchObject({
+      node_version: "v25.0.0",
+      platform: "linux",
+    });
+    expect(comparison.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "environment_node_version",
+          impact: "context",
+          status: "diverged",
+        }),
+        expect.objectContaining({
+          name: "environment_platform",
+          impact: "context",
+          status: "diverged",
+        }),
+      ]),
+    );
+  });
+
+  it("keeps old traces without environment snapshots compatible with new traces", () => {
+    const oldTrace = deniedTrace("run-left", "deny-old-domain", [
+      "domains",
+    ]).filter((event) => event.name !== "environment.snapshot");
+    const newTrace = deniedTrace("run-right", "deny-old-domain", ["domains"]);
+
+    const comparison = compareRunEvents(oldTrace, newTrace, {
+      leftRunId: "run-left",
+      rightRunId: "run-right",
+    });
+
+    expect(comparison.status).toBe("match");
+    expect(comparison.score.overall).toBe(1);
+    expect(comparison.context.unknown).toBe(0);
+    expect(comparison.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "environment_node_version",
+          impact: "context",
+          status: "match",
+        }),
+      ]),
+    );
   });
 });
