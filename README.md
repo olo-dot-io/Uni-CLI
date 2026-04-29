@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->235<!-- /STATS --> sites · <!-- STATS:command_count -->1448<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7573<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->235<!-- /STATS --> sites · <!-- STATS:command_count -->1448<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7574<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -162,7 +162,7 @@ unicli --record --permission-profile confirm twitter search "coding agents" -f j
 unicli runs list -f json
 unicli runs show <run_id> -f json
 unicli runs probe <run_id> -f json
-unicli runs replay <run_id> --permission-profile confirm --yes -f json
+unicli runs replay <run_id> --permission-profile confirm --yes --min-score 1 -f json
 unicli runs compare <run_id> <replay_run_id> -f json
 unicli runs compare <run_id> <replay_run_id> --min-score 1 -f json
 unicli --permission-profile locked --yes --remember-approval word set-font "Inter"

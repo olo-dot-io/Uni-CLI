@@ -224,7 +224,10 @@ describe("unicli runs command", () => {
     return metadata.run_id;
   }
 
-  async function writeReplayableRun(rootDir: string): Promise<string> {
+  async function writeReplayableRun(
+    rootDir: string,
+    options: { resultCount?: number } = {},
+  ): Promise<string> {
     const store = createRunStore({ rootDir });
     const metadata: RunTraceMetadata = {
       run_id: "run-replayable-01",
@@ -263,9 +266,10 @@ describe("unicli runs command", () => {
         },
       },
     });
+    const resultCount = options.resultCount ?? 1;
     const resultData = {
       exit_code: 0,
-      result_count: 1,
+      result_count: resultCount,
       duration_ms: 10,
       outcome: "success",
       envelope: { command: "runs-replay-fixture.echo" },
@@ -281,7 +285,7 @@ describe("unicli runs command", () => {
         data: {
           outcome: "success",
           exit_code: 0,
-          result_count: 1,
+          result_count: resultCount,
           duration_ms: 10,
           adapter_path: metadata.adapter_path,
           envelope_command: "runs-replay-fixture.echo",
@@ -823,6 +827,62 @@ describe("unicli runs command", () => {
       argument_keys: ["query"],
       source: "shell",
     });
+  });
+
+  it("can fail CI when replay behavior score is below a threshold", async () => {
+    const rootDir = join(tmp, "runs");
+    const runId = await writeReplayableRun(rootDir, { resultCount: 2 });
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "-f",
+          "json",
+          "runs",
+          "replay",
+          runId,
+          "--root",
+          rootDir,
+          "--replay-run-id",
+          "run-replayed-01",
+          "--min-score",
+          "1",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      ok: boolean;
+      data: {
+        result: { exit_code: number; result_count: number };
+        comparison: {
+          status: string;
+          score: {
+            passed: boolean;
+            behavior: { score: number };
+            failed_behavior_checks: string[];
+          };
+        };
+      };
+    };
+    expect(env.ok).toBe(true);
+    expect(env.data.result).toMatchObject({
+      exit_code: 0,
+      result_count: 1,
+    });
+    expect(env.data.comparison.status).toBe("diverged");
+    expect(env.data.comparison.score.passed).toBe(false);
+    expect(env.data.comparison.score.behavior.score).toBeLessThan(1);
+    expect(env.data.comparison.score.failed_behavior_checks).toContain(
+      "result_count",
+    );
+    expect(process.exitCode).toBe(1);
+    expect(cap.getStdout()).not.toContain("hello replay");
   });
 
   it("compares replay traces without exposing argument values", async () => {
