@@ -406,6 +406,8 @@ describe("unicli runs command", () => {
           browser_window_id?: number;
           browser_auth_state?: string;
           browser_cookie_count?: number;
+          evidence_count: number;
+          evidence_by_type: Record<string, number>;
         }>;
       };
     };
@@ -423,6 +425,8 @@ describe("unicli runs command", () => {
       browser_window_id: 9,
       browser_auth_state: "cookies_present",
       browser_cookie_count: 2,
+      evidence_count: 1,
+      evidence_by_type: { "browser-operator": 1 },
     });
     expect(env.data.runs[0].browser_session_id).toMatch(/^browser-session:/);
   });

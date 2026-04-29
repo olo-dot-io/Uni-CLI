@@ -142,6 +142,8 @@ the thresholds, actual scores, and failed gates.
 The score block also lists failed or unknown behavior and context check names.
 Evidence coverage is context too: missing screenshots, operator logs, or result
 envelopes show up as evidence check names.
+`unicli runs list` also shows `evidence_count` and `evidence_by_type`, so an
+agent can pick runs with reviewable proof before opening the trace.
 
 ```bash
 unicli browser evidence --render-aware --expect-domain example.com
