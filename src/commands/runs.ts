@@ -8,6 +8,7 @@ import {
   readRunEvents,
   runTracePath,
   RunStoreError,
+  watchRunEvents,
 } from "../engine/session/store.js";
 import {
   listRunSummaries,
@@ -30,6 +31,15 @@ interface RunsListOptions {
 interface RunsShowOptions {
   root?: string;
   includeInternal?: boolean;
+}
+
+interface RunsStreamOptions {
+  root?: string;
+  after?: string;
+  follow?: boolean;
+  includeInternal?: boolean;
+  pollMs?: string;
+  timeoutMs?: string;
 }
 
 interface RunsProbeOptions {
@@ -65,6 +75,15 @@ function printRunError(
       error,
     }),
   );
+}
+
+function nonNegativeInteger(
+  value: string | undefined,
+  fallback: number,
+): number {
+  if (value === undefined) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
 export function registerRunsCommand(program: Command): void {
@@ -123,6 +142,47 @@ export function registerRunsCommand(program: Command): void {
           ctx,
         ),
       );
+    });
+
+  runs
+    .command("stream <run_id>")
+    .description("Stream recorded run trace events as JSON lines")
+    .option("--root <path>", "Override run trace root")
+    .option("--after <sequence>", "Only stream events after this sequence", "0")
+    .option("--follow", "Poll until the run reaches a terminal event")
+    .option("--include-internal", "Include internal event payloads")
+    .option("--poll-ms <ms>", "Follow poll interval in milliseconds", "250")
+    .option("--timeout-ms <ms>", "Follow timeout in milliseconds", "30000")
+    .action(async (runId: string, opts: RunsStreamOptions) => {
+      const startedAt = Date.now();
+      const store = createRunStore({ rootDir: opts.root });
+      try {
+        for await (const event of watchRunEvents(store, runId, {
+          afterSequence: nonNegativeInteger(opts.after, 0),
+          follow: opts.follow === true,
+          pollIntervalMs: nonNegativeInteger(opts.pollMs, 250),
+          timeoutMs: nonNegativeInteger(opts.timeoutMs, 30_000),
+        })) {
+          const [projected] = projectRunEvents([event], {
+            includeInternal: opts.includeInternal === true,
+          });
+          console.log(JSON.stringify(projected));
+        }
+      } catch (err) {
+        if (err instanceof RunStoreError) {
+          printRunError(program, "runs.stream", startedAt, {
+            code:
+              err.code === "invalid_run_id"
+                ? "invalid_input"
+                : "internal_error",
+            message: err.message,
+            suggestion: "run `unicli runs list` and choose an existing run id",
+            retryable: false,
+          });
+          return;
+        }
+        throw err;
+      }
     });
 
   runs

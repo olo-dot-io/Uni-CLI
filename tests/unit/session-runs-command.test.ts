@@ -584,6 +584,36 @@ describe("unicli runs command", () => {
     expect(cap.getStdout()).not.toContain("/secret?token=hidden");
   });
 
+  it("streams public run events as JSON lines after a sequence", async () => {
+    const rootDir = join(tmp, "runs");
+    const runId = await writeBrowserRun(rootDir);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        ["runs", "stream", runId, "--root", rootDir, "--after", "1"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const lines = cap
+      .getStdout()
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as Record<string, unknown>);
+    expect(lines.map((event) => event.name)).toEqual([
+      "evidence.captured",
+      "run.completed",
+    ]);
+    expect(lines[0]).not.toHaveProperty("internal");
+    expect(lines[0]).not.toHaveProperty("secret");
+    expect(cap.getStdout()).not.toContain("private");
+    expect(cap.getStdout()).not.toContain("hidden");
+  });
+
   it("can include internal event payloads while still redacting secret payloads", async () => {
     const rootDir = join(tmp, "runs");
     const runId = await writeBrowserRun(rootDir);

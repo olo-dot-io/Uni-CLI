@@ -8,10 +8,12 @@ import {
   rmSync,
   statSync,
 } from "node:fs";
+import { setTimeout as delay } from "node:timers/promises";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 
 import {
+  createRunCompletedEvent,
   createRunEventSequence,
   createRunStartedEvent,
   type RunTraceMetadata,
@@ -22,6 +24,7 @@ import {
   readRunEvents,
   RunStoreError,
   runTracePath,
+  watchRunEvents,
 } from "../../src/engine/session/store.js";
 
 const metadata: RunTraceMetadata = {
@@ -148,5 +151,32 @@ describe("session JSONL store", () => {
       line: 1,
       path: tracePath,
     } satisfies Partial<RunStoreError>);
+  });
+
+  it("watches appended run events after a sequence until terminal", async () => {
+    const store = createRunStore({ rootDir: join(tmp, "runs") });
+    const sequence = createRunEventSequence();
+
+    const streamed = (async () => {
+      const names: string[] = [];
+      for await (const event of watchRunEvents(store, "run-store-01", {
+        afterSequence: 1,
+        follow: true,
+        pollIntervalMs: 5,
+        timeoutMs: 500,
+      })) {
+        names.push(event.name);
+      }
+      return names;
+    })();
+
+    await appendRunEvent(store, createRunStartedEvent(metadata, sequence));
+    await delay(20);
+    await appendRunEvent(
+      store,
+      createRunCompletedEvent(metadata, sequence, { status: "ok" }),
+    );
+
+    await expect(streamed).resolves.toEqual(["run.completed"]);
   });
 });

@@ -1,11 +1,19 @@
 import { mkdir, readFile, appendFile, chmod } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { setTimeout as delay } from "node:timers/promises";
 import { dirname, join } from "node:path";
 import { userHome } from "../user-home.js";
 import type { RunEvent, RunId } from "./types.js";
 
 export interface RunStore {
   rootDir: string;
+}
+
+export interface WatchRunEventsOptions {
+  afterSequence?: number;
+  follow?: boolean;
+  pollIntervalMs?: number;
+  timeoutMs?: number;
 }
 
 export type RunStoreErrorCode =
@@ -116,4 +124,47 @@ export async function readRunEvents(
     }
   });
   return events;
+}
+
+export async function* watchRunEvents(
+  store: RunStore,
+  runId: RunId,
+  options: WatchRunEventsOptions = {},
+): AsyncGenerator<RunEvent> {
+  const follow = options.follow === true;
+  const pollIntervalMs = Math.max(1, options.pollIntervalMs ?? 250);
+  const timeoutMs = Math.max(0, options.timeoutMs ?? 30_000);
+  const deadline = follow ? Date.now() + timeoutMs : undefined;
+  let afterSequence = Math.max(0, Math.floor(options.afterSequence ?? 0));
+
+  while (true) {
+    const events = await readRunEvents(store, runId);
+    const nextEvents = events
+      .filter((event) => event.sequence > afterSequence)
+      .sort((a, b) => a.sequence - b.sequence);
+    let yieldedTerminal = false;
+
+    for (const event of nextEvents) {
+      yield event;
+      afterSequence = Math.max(afterSequence, event.sequence);
+      if (isTerminalRunEvent(event)) {
+        yieldedTerminal = true;
+      }
+    }
+
+    if (!follow || yieldedTerminal) return;
+    if (events.some((event) => isTerminalRunEvent(event))) return;
+    if (deadline !== undefined && Date.now() >= deadline) return;
+
+    const waitMs =
+      deadline === undefined
+        ? pollIntervalMs
+        : Math.min(pollIntervalMs, Math.max(0, deadline - Date.now()));
+    if (waitMs <= 0) return;
+    await delay(waitMs);
+  }
+}
+
+function isTerminalRunEvent(event: RunEvent): boolean {
+  return event.name === "run.completed" || event.name === "run.failed";
 }
