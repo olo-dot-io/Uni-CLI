@@ -50,7 +50,7 @@ npm run changeset
 | `0.200-0.213` | Vostok  |
 | `0.216+`      | Apollo  |
 
-`0.217.0` 的发布 label 是 `Apollo · Lovell`。
+`0.217.1` 的发布 label 是 `Apollo · Haise`。
 
 ## 发布步骤
 

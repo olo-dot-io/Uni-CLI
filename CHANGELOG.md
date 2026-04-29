@@ -3,6 +3,57 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 
+## [0.217.1] — 2026-04-29 — Apollo · Haise
+
+> Patch release after reviewing `v0.217.0..HEAD`: docs/site refresh,
+> approval memory, runtime deny policy, browser lease evidence, run replay,
+> run comparison, score gates, and evidence coverage. This release bump does
+> not update dependency versions.
+
+### Added
+
+- **Approval memory controls** — `unicli approvals list`, `approvals revoke`,
+  and `approvals clear` manage persisted approval memory locally.
+- **Resource-bound approvals** — remembered approvals are bound to stable
+  resource metadata such as domain, app, process family, account surface, and
+  path argument slots.
+- **Explicit deny rules** — local permission deny rules can block matching
+  command scopes before `--yes` or remembered approvals apply.
+- **Runtime resource denies** — fetch domains, browser targets, downloads,
+  output paths, and subprocess executables are checked against local deny
+  policy during execution.
+- **Browser lease evidence** — recorded browser work now carries session lease
+  metadata, target identity, auth posture, render-aware evidence, and guarded
+  browser operation traces.
+- **Run replay and comparison** — `unicli runs probe`, `runs replay`, and
+  `runs compare` add evidence-backed replay checks, private replay payloads,
+  numeric comparison scores, and `--min-score` gates.
+- **Run event streaming** — `unicli runs stream <run_id>` streams JSONL events
+  with sequence cursors, follow mode, terminal stop handling, and the same
+  public/internal redaction model as `runs show`.
+- **Run context and evidence scoring** — run traces record public environment
+  snapshots, context check summaries, score gate output, evidence coverage
+  checks, and `runs list` evidence totals by type.
+
+### Changed
+
+- Public docs, VitePress home page, generated Markdown, and agent-facing docs
+  were refreshed around Uni-CLI as an execution substrate for agents.
+- Runtime permission deny traces now expose only reviewable summaries in public
+  run output while keeping raw runtime resources inside internal trace payloads.
+- Replay and compare output now reports threshold gates, actual scores, failed
+  behavior checks, failed context checks, and unknown context checks.
+- Dependency maintenance that had already landed after `v0.217.0` is included
+  in this release line, but the `0.217.1` release commit itself only changes
+  Uni-CLI version metadata.
+
+### Fixed
+
+- Windows Node 20 malformed-trace scans now close the run trace input stream
+  explicitly, avoiding a hanging Vitest worker on that path.
+- Recorded run summaries now surface runtime permission deny summaries and
+  evidence counts without forcing agents to open the full trace first.
+
 ## [0.217.0] — 2026-04-28 — Apollo · Lovell
 
 > Execution-substrate minor release. Uni-CLI is now positioned as the

@@ -100,7 +100,7 @@ npm run release:check -- --strict-codename
 ```
 
 For the 0.217 line, the release label format is unchanged. The current release
-label is `Apollo · Lovell`.
+label is `Apollo · Haise`.
 
 ## Substantive Commits
 

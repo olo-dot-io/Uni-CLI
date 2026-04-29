@@ -69,7 +69,7 @@ These numbers come from the current generated repo artifacts: adapters, commands
 
 ## Current Version
 
-Latest: v0.217.0 · Apollo · Lovell.
+Latest: v0.217.1 · Apollo · Haise.
 
 ## Agent Index
 
@@ -3410,7 +3410,7 @@ npm run release:check -- --strict-codename
 ```
 
 For the 0.217 line, the release label format is unchanged. The current release
-label is `Apollo · Lovell`.
+label is `Apollo · Haise`.
 
 ## Substantive Commits
 
@@ -3546,7 +3546,7 @@ Uni-CLI exposes one searchable command surface across:
   shell commands or protocol servers.
 
 The generated catalog is the source of truth: **235 sites**, **1448 commands**,
-**1039 adapters**, **59 pipeline steps**, and **7473 tests** in v0.217.0.
+**1039 adapters**, **59 pipeline steps**, and **7584 tests** in v0.217.1.
 
 ## Execution Contract
 
@@ -3827,8 +3827,8 @@ Agent-native infrastructure should publish real cost numbers. Uni-CLI measures
 both the command invocation and the response body so public claims stay tied to
 the current code, fixtures, and output contract.
 
-The v0.217.0 fixture bench measures current v2 `AgentEnvelope` response bodies
-at **357-415 tokens** for representative `--limit 5` list-style calls. Total
+The current fixture bench measures v2 `AgentEnvelope` response bodies at
+**357-415 tokens** for representative `--limit 5` list-style calls. Total
 invocation-plus-response budgets land at **364-423 tokens** in the same suite.
 `unicli list` is much larger because it intentionally emits the full
 235-site / 1448-command catalog.
@@ -4099,7 +4099,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Current: v0.217.0 — Apollo · Lovell. <!-- STATS:site_count -->235<!-- /STATS --> sites, <!-- STATS:command_count -->1448<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps.
+> Current: v0.217.1 — Apollo · Haise. <!-- STATS:site_count -->235<!-- /STATS --> sites, <!-- STATS:command_count -->1448<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction. Historical release notes live in
 `CHANGELOG.md`; they do not belong in the roadmap.
