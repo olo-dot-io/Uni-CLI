@@ -11,13 +11,13 @@
       "Patch release for reviewable run evidence, local approval memory, and runtime deny policy.",
       "Run recording now covers stream, probe, replay, compare, score gates, context checks, and evidence totals in run summaries.",
       "Approval memory and deny policy are bound to stable resource metadata instead of raw private values.",
-      "The public docs catalog reports the current 235-site, 1448-command, 1039-adapter, 59-step, 7584-test surface."
+      "The public docs catalog reports the current 235-site, 1448-command, 1039-adapter, 59-step, 7585-test surface."
     ],
     "zh": [
       "面向可审查 run evidence、本地审批记忆和 runtime deny policy 的 patch 发布。",
       "Run recording 现在覆盖 stream、probe、replay、compare、score gate、context check，以及 run summary 里的 evidence 统计。",
       "审批记忆和 deny policy 绑定稳定资源 metadata，不保存原始私密值。",
-      "公开文档目录已更新到当前 235 个站点、1448 条命令、1039 个 adapter、59 个 step、7584 个测试。"
+      "公开文档目录已更新到当前 235 个站点、1448 条命令、1039 个 adapter、59 个 step、7585 个测试。"
     ]
   }
 }

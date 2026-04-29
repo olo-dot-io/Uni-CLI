@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createEvidenceCapturedEvent,
   createRunEventSequence,
   createRunStartedEvent,
   createRuntimePermissionDeniedEvent,
@@ -23,6 +24,30 @@ const metadata: RunTraceMetadata = {
 };
 
 describe("session run summaries", () => {
+  it("counts evidence types that match object prototype keys", () => {
+    const sequence = createRunEventSequence();
+    const events = [
+      createRunStartedEvent(metadata, sequence),
+      createEvidenceCapturedEvent(metadata, sequence, {
+        evidence_type: "toString",
+      }),
+      createEvidenceCapturedEvent(metadata, sequence, {
+        evidence_type: "constructor",
+      }),
+      createEvidenceCapturedEvent(metadata, sequence, {
+        evidence_type: "toString",
+      }),
+    ];
+
+    const summary = summarizeRunEvents(events);
+
+    expect(summary.evidence_count).toBe(3);
+    expect(summary.evidence_by_type).toEqual({
+      constructor: 1,
+      toString: 2,
+    });
+  });
+
   it("omits runtime permission deny summaries with no public fields", () => {
     const sequence = createRunEventSequence();
     const events = [
