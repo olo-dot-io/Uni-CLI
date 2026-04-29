@@ -564,7 +564,9 @@ function normalizePathComparable(value: string): string {
   const raw = value.trim().replace(/\\/g, "/");
   if (raw === "/") return raw;
   const comparable = isWindowsDrivePath(raw) ? raw : realpathAwarePath(raw);
-  return normalizeComparable(comparable.replace(/\/+$/, ""));
+  return normalizeComparable(
+    comparable.replace(/\\/g, "/").replace(/\/+$/, ""),
+  );
 }
 
 function realpathAwarePath(path: string): string {
