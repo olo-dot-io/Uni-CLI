@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->235<!-- /STATS --> sites · <!-- STATS:command_count -->1448<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7544<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->235<!-- /STATS --> sites · <!-- STATS:command_count -->1448<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7557<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -312,7 +312,9 @@ Docs:
 - Local deny rules live at `~/.unicli/permission-rules.json`, or at
   `UNICLI_PERMISSION_RULES_PATH`. They match site, command, effect, capability
   dimensions, and resource metadata, then block before `--yes` and remembered
-  approvals.
+  approvals. Runtime guards also check fetched domains, browser navigation
+  targets, download and output paths, and subprocess executables before the
+  request, write, or process spawn happens.
 - Run recording is opt-in. Use `--record` or `UNICLI_RECORD_RUN=1` when you need
   append-only evidence under `~/.unicli/runs`.
 - CUA routes require a configured real backend. Declared-but-unavailable providers fail closed with structured errors.

@@ -9,6 +9,10 @@ import {
   matchSensitivePathRealpath,
   buildSensitivePathDenial,
 } from "../../permissions/sensitive-paths.js";
+import {
+  assertRuntimeExecutableAllowed,
+  assertRuntimePathAllowed,
+} from "../runtime-resource-guard.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -25,6 +29,7 @@ export interface ExecConfig {
 function resolveTimeout(
   ctx: PipelineContext,
   timeout: number | string | undefined,
+  stepIndex: number,
 ): number {
   if (timeout === undefined) return 30000;
   if (typeof timeout === "number") return timeout;
@@ -36,7 +41,7 @@ function resolveTimeout(
   throw new PipelineError(
     `exec timeout must resolve to a number: ${resolved}`,
     {
-      step: -1,
+      step: stepIndex,
       action: "exec",
       config: { timeout },
       errorType: "parse_error",
@@ -51,10 +56,17 @@ function resolveTimeout(
 export async function stepExec(
   ctx: PipelineContext,
   config: ExecConfig,
+  stepIndex = -1,
 ): Promise<PipelineContext> {
   const cmd = evalTemplate(config.command, ctx);
   const execArgs = (config.args ?? []).map((a) => evalTemplate(String(a), ctx));
-  const timeout = resolveTimeout(ctx, config.timeout);
+  const timeout = resolveTimeout(ctx, config.timeout, stepIndex);
+  assertRuntimeExecutableAllowed(ctx, {
+    action: "exec",
+    step: stepIndex,
+    config,
+    command: cmd,
+  });
 
   // Sensitive-path deny list — realpath-aware so symlink smuggling is
   // blocked too. Cannot be overridden by permission mode.
@@ -66,7 +78,7 @@ export async function stepExec(
     if (matched) {
       const denial = buildSensitivePathDenial(expanded);
       throw new PipelineError("sensitive_path_denied", {
-        step: -1,
+        step: stepIndex,
         action: "exec",
         config: {
           command: cmd,
@@ -98,6 +110,15 @@ export async function stepExec(
   const outputFile = config.output_file
     ? evalTemplate(config.output_file, ctx)
     : undefined;
+  if (outputFile) {
+    assertRuntimePathAllowed(ctx, {
+      action: "exec",
+      step: stepIndex,
+      config,
+      path: outputFile,
+      access: "write",
+    });
+  }
 
   try {
     let stdout: string;
@@ -156,7 +177,7 @@ export async function stepExec(
         throw new PipelineError(
           `exec "${cmd}" did not produce expected output file: ${outputFile}`,
           {
-            step: -1,
+            step: stepIndex,
             action: "exec",
             config: { command: cmd, args: execArgs },
             errorType: "parse_error",
@@ -209,7 +230,7 @@ export async function stepExec(
       msg,
     );
     throw new PipelineError(`exec "${cmd}" failed: ${msg}`, {
-      step: -1,
+      step: stepIndex,
       action: "exec",
       config: { command: cmd, args: execArgs },
       errorType: isExecTransient ? "timeout" : "parse_error",

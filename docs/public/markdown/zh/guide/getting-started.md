@@ -163,6 +163,10 @@ unicli approvals revoke <approval_key>
 文件保存到 `~/.unicli/permission-rules.json`，也可以用
 `UNICLI_PERMISSION_RULES_PATH` 指到其他位置。
 
+同一套规则也会进入 pipeline 运行时。被 deny 的域名会在 `fetch`、`fetch_text`、
+`download` 和浏览器 `navigate` 发请求前停下；被 deny 的路径会在下载或命令输出创建目录、
+写文件前停下；被 deny 的可执行文件会在 `exec` 启动子进程前停下。
+
 ## 协议服务
 
 MCP：

@@ -36,6 +36,7 @@ export { getBus, buildTransportCtx, _resetTransportBusForTests };
 
 export interface PipelineOptions {
   site?: string;
+  command?: string;
   strategy?: string;
   /**
    * Kernel surface that dispatched the pipeline. When provided, becomes
@@ -66,6 +67,10 @@ export type PipelineContext = {
   surface?: "cli" | "mcp" | "acp" | "bench" | "hub";
   /** Kernel trace ID. Mirrors `PipelineOptions.trace_id`. */
   trace_id?: string;
+  /** Adapter site that owns this pipeline, when routed through the kernel. */
+  site?: string;
+  /** Adapter command that owns this pipeline, when routed through the kernel. */
+  command?: string;
 };
 
 /** Structured pipeline error — designed for AI agent consumption. */
@@ -85,6 +90,7 @@ export class PipelineError extends Error {
         | "timeout"
         | "expression_error"
         | "assertion_failed"
+        | "permission_denied"
         | "stale_ref"
         | "ambiguous"
         | "ref_not_found";
@@ -232,6 +238,8 @@ export async function runPipeline(
     source: bag.source,
     surface: options?.surface,
     trace_id: options?.trace_id,
+    site: options?.site,
+    command: options?.command,
   };
   let tempDir: string | undefined;
 

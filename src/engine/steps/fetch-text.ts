@@ -4,14 +4,27 @@ import { type PipelineContext, PipelineError } from "../executor.js";
 import { assertSafeRequestUrl } from "../ssrf.js";
 import { evalTemplate } from "../template.js";
 import { getProxyAgent } from "../proxy.js";
-import { normalizeFetchAttempts, type FetchConfig } from "./fetch.js";
+import { assertRuntimeNetworkAllowed } from "../runtime-resource-guard.js";
+import {
+  networkAccessForMethod,
+  normalizeFetchAttempts,
+  type FetchConfig,
+} from "./fetch.js";
 
 export async function stepFetchText(
   ctx: PipelineContext,
   config: FetchConfig,
+  stepIndex = -1,
 ): Promise<PipelineContext> {
   let url = evalTemplate(config.url, ctx);
   assertSafeRequestUrl(url);
+  assertRuntimeNetworkAllowed(ctx, {
+    action: "fetch_text",
+    step: stepIndex,
+    config,
+    url,
+    access: networkAccessForMethod(config.method),
+  });
 
   if (config.params) {
     const params = new URLSearchParams();
@@ -61,7 +74,7 @@ export async function stepFetchText(
       throw new PipelineError(
         `HTTP ${resp.status} ${resp.statusText} from ${url}`,
         {
-          step: -1,
+          step: stepIndex,
           action: "fetch_text",
           config: { url, method },
           errorType: "http_error",
@@ -83,7 +96,7 @@ export async function stepFetchText(
       if (isLastAttempt) {
         const message = err instanceof Error ? err.message : String(err);
         throw new PipelineError(`fetch_text failed for ${url}: ${message}`, {
-          step: -1,
+          step: stepIndex,
           action: "fetch_text",
           config: { url, method },
           errorType: "network_error",

@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { basename, dirname, join, resolve as pathResolve } from "node:path";
 
 import type {
   CapabilityAccess,
@@ -31,6 +31,15 @@ interface PermissionRulesStore {
 
 type ResourceBucketName = keyof CapabilityResourceScope;
 
+export interface RuntimeResourceCheckInput {
+  site?: string;
+  command?: string;
+  effect?: OperationEffect;
+  dimensions?: Partial<Record<CapabilityDimensionName, CapabilityAccess>>;
+  resources?: Partial<Record<ResourceBucketName, string[]>>;
+  resource_summary?: string[];
+}
+
 interface ParsedPermissionRule {
   id: string;
   decision: "deny";
@@ -43,6 +52,12 @@ interface ParsedPermissionRule {
     resource_summary?: string[];
   };
   reason: string;
+}
+
+interface RulesCacheEntry {
+  mtimeMs: number;
+  size: number;
+  rules: ParsedPermissionRule[];
 }
 
 const ROOT_KEYS = new Set(["schema_version", "rules"]);
@@ -84,6 +99,7 @@ const RESOURCE_KEYS = new Set<ResourceBucketName>([
   "apps",
   "accounts",
 ]);
+const rulesCache = new Map<string, RulesCacheEntry>();
 
 export function createPermissionRulesStore(options?: {
   path?: string;
@@ -144,12 +160,47 @@ export function findDenyRuleForPolicySync(
   };
 }
 
+export function findDenyRuleForRuntimeResourceSync(
+  input: RuntimeResourceCheckInput,
+  options?: { path?: string; homeDir?: string },
+): PermissionRuleMatchResult | undefined {
+  const store = createPermissionRulesStore(options);
+  const rules = readRules(store.path);
+  const matched = rules.find((rule) => ruleMatchesRuntimeResource(rule, input));
+  if (!matched) return undefined;
+  return {
+    decision: "deny",
+    id: matched.id,
+    reason: matched.reason,
+  };
+}
+
 function readRules(path: string): ParsedPermissionRule[] {
+  let stats: { mtimeMs: number; size: number };
+  try {
+    stats = statSync(path);
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") return [];
+    throw new PermissionRulesConfigError(
+      `failed to read permission rules file at ${path}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+
+  const cached = rulesCache.get(path);
+  if (
+    cached &&
+    cached.mtimeMs === stats.mtimeMs &&
+    cached.size === stats.size
+  ) {
+    return cached.rules;
+  }
+
   let raw: string;
   try {
     raw = readFileSync(path, "utf-8");
   } catch (error) {
-    if (isNodeError(error) && error.code === "ENOENT") return [];
     throw new PermissionRulesConfigError(
       `failed to read permission rules file at ${path}: ${
         error instanceof Error ? error.message : String(error)
@@ -167,7 +218,9 @@ function readRules(path: string): ParsedPermissionRule[] {
       }`,
     );
   }
-  return parseRulesDocument(parsed, path);
+  const rules = parseRulesDocument(parsed, path);
+  rulesCache.set(path, { mtimeMs: stats.mtimeMs, size: stats.size, rules });
+  return rules;
 }
 
 function parseRulesDocument(
@@ -336,6 +389,87 @@ function ruleMatchesPolicy(
   return true;
 }
 
+function ruleMatchesRuntimeResource(
+  rule: ParsedPermissionRule,
+  input: RuntimeResourceCheckInput,
+): boolean {
+  const match = rule.match;
+  if (match.site !== undefined && match.site !== input.site) return false;
+  if (match.command !== undefined && match.command !== input.command) {
+    return false;
+  }
+  if (match.effect !== undefined && match.effect !== input.effect) {
+    return false;
+  }
+
+  if (match.dimensions) {
+    for (const [name, access] of Object.entries(match.dimensions)) {
+      if (input.dimensions?.[name as CapabilityDimensionName] !== access) {
+        return false;
+      }
+    }
+  }
+
+  if (match.resources) {
+    for (const [name, values] of Object.entries(match.resources)) {
+      const bucket = input.resources?.[name as ResourceBucketName] ?? [];
+      if (
+        !values.some((value) =>
+          bucket.some((actual) =>
+            runtimeResourceValueMatches(
+              name as ResourceBucketName,
+              value,
+              actual,
+            ),
+          ),
+        )
+      ) {
+        return false;
+      }
+    }
+  }
+
+  if (match.resource_summary) {
+    const summary = input.resource_summary ?? [];
+    if (
+      !match.resource_summary.some((value) =>
+        summary.includes(normalizeComparable(value)),
+      )
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function runtimeResourceValueMatches(
+  bucket: ResourceBucketName,
+  ruleValue: string,
+  actualValue: string,
+): boolean {
+  if (bucket === "domains") {
+    const ruleDomain = normalizeDomainComparable(ruleValue);
+    const actualDomain = normalizeDomainComparable(actualValue);
+    return (
+      actualDomain === ruleDomain || actualDomain.endsWith(`.${ruleDomain}`)
+    );
+  }
+  if (bucket === "paths") {
+    const rulePath = normalizePathComparable(ruleValue);
+    const actualPath = normalizePathComparable(actualValue);
+    return actualPath === rulePath || actualPath.startsWith(`${rulePath}/`);
+  }
+  if (bucket === "executables") {
+    const ruleExecutable = normalizeComparable(ruleValue);
+    if (ruleValue.includes("/") || ruleValue.includes("\\")) {
+      return normalizeComparable(actualValue) === ruleExecutable;
+    }
+    return normalizeExecutableComparable(actualValue) === ruleExecutable;
+  }
+  return normalizeComparable(actualValue) === normalizeComparable(ruleValue);
+}
+
 function commandRefFromPolicy(policy: OperationPolicy): {
   site: string;
   command: string;
@@ -407,6 +541,63 @@ function expectStringArray(
 
 function normalizeComparable(value: string): string {
   return value.trim().toLowerCase();
+}
+
+function normalizeDomainComparable(value: string): string {
+  const raw = normalizeComparable(value);
+  try {
+    return stripTrailingDomainDot(
+      new URL(raw.includes("://") ? raw : `https://${raw}`).hostname,
+    );
+  } catch {
+    return stripTrailingDomainDot(
+      raw.replace(/^https?:\/\//, "").split("/")[0] ?? raw,
+    );
+  }
+}
+
+function stripTrailingDomainDot(value: string): string {
+  return value.replace(/\.+$/, "");
+}
+
+function normalizePathComparable(value: string): string {
+  const raw = value.trim().replace(/\\/g, "/");
+  if (raw === "/") return raw;
+  const comparable = isWindowsDrivePath(raw) ? raw : realpathAwarePath(raw);
+  return normalizeComparable(
+    comparable.replace(/\\/g, "/").replace(/\/+$/, ""),
+  );
+}
+
+function realpathAwarePath(path: string): string {
+  if (!path.startsWith("/")) return path;
+  const resolved = pathResolve(path);
+  const missing: string[] = [];
+  let current = resolved;
+
+  while (!existsSync(current)) {
+    const parent = dirname(current);
+    if (parent === current) return resolved;
+    missing.unshift(basename(current));
+    current = parent;
+  }
+
+  try {
+    const real = realpathSync(current);
+    return missing.length > 0 ? join(real, ...missing) : real;
+  } catch {
+    return resolved;
+  }
+}
+
+function isWindowsDrivePath(value: string): boolean {
+  return /^[A-Za-z]:\//.test(value);
+}
+
+function normalizeExecutableComparable(value: string): string {
+  const normalized = value.trim().replace(/\\/g, "/").replace(/\/+$/, "");
+  const parts = normalized.split("/").filter(Boolean);
+  return normalizeComparable(parts.at(-1) ?? normalized);
 }
 
 function invalid(path: string, message: string): PermissionRulesConfigError {

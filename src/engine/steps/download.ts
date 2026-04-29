@@ -5,6 +5,10 @@ import { registerStep, type StepHandler } from "../step-registry.js";
 import type { PipelineContext } from "../executor.js";
 import { evalTemplate } from "../template.js";
 import {
+  assertRuntimeNetworkAllowed,
+  assertRuntimePathAllowed,
+} from "../runtime-resource-guard.js";
+import {
   type DownloadResult,
   httpDownload,
   ytdlpDownload,
@@ -28,12 +32,19 @@ export interface DownloadStepConfig {
 export async function stepDownload(
   ctx: PipelineContext,
   config: DownloadStepConfig,
+  stepIndex = -1,
 ): Promise<PipelineContext> {
   const dir = resolve(config.dir ?? "./downloads");
-  mkdirSync(dir, { recursive: true });
   const concurrency = config.concurrency ?? 3;
   const skipExisting = config.skip_existing !== false; // default true
   const cookieHeader = ctx.cookieHeader;
+  let directoryReady = false;
+
+  function ensureDirectoryReady(): void {
+    if (directoryReady) return;
+    mkdirSync(dir, { recursive: true });
+    directoryReady = true;
+  }
 
   async function downloadOne(
     item: Record<string, unknown>,
@@ -45,6 +56,23 @@ export async function stepDownload(
       ? evalTemplate(config.filename, itemCtx)
       : generateFilename(url, index);
     const destPath = join(dir, sanitizeFilename(filename));
+
+    assertRuntimePathAllowed(ctx, {
+      action: "download",
+      step: stepIndex,
+      config,
+      path: destPath,
+      access: "write",
+    });
+    assertRuntimeNetworkAllowed(ctx, {
+      action: "download",
+      step: stepIndex,
+      config,
+      url,
+      access: "read",
+    });
+
+    ensureDirectoryReady();
 
     if (skipExisting && existsSync(destPath)) {
       return { ...item, _download: { status: "skipped", path: destPath } };
