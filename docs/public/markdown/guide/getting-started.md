@@ -147,6 +147,8 @@ cookie posture, and render-aware reads when a command needs reviewable proof.
 When score thresholds are set, replay and compare output a `gate` object with
 the thresholds, actual scores, and failed gates.
 The score block also lists failed or unknown behavior and context check names.
+Evidence coverage is context too: missing screenshots, operator logs, or result
+envelopes show up as evidence check names.
 
 ```bash
 unicli browser evidence --render-aware --expect-domain example.com

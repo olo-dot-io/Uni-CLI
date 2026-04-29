@@ -354,6 +354,15 @@ function joinedBuckets(
   return runtimePermissionDenied?.resource_buckets?.slice().sort().join(",");
 }
 
+function evidenceTypeNames(
+  left: RunComparableEvidence,
+  right: RunComparableEvidence,
+): string[] {
+  return Array.from(
+    new Set([...Object.keys(left.by_type), ...Object.keys(right.by_type)]),
+  ).sort();
+}
+
 function compareScalar(
   name: string,
   left: unknown,
@@ -637,6 +646,20 @@ export function compareRunEvents(
       right.browser_auth_state,
       "context",
       { missingMeansMatch: true },
+    ),
+    compareScalar(
+      "evidence_total",
+      left.evidence.total,
+      right.evidence.total,
+      "context",
+    ),
+    ...evidenceTypeNames(left.evidence, right.evidence).map((evidenceType) =>
+      compareScalar(
+        `evidence_type_${evidenceType}`,
+        left.evidence.by_type[evidenceType] ?? 0,
+        right.evidence.by_type[evidenceType] ?? 0,
+        "context",
+      ),
     ),
   ];
   const status = overallStatus(checks);
