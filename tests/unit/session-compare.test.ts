@@ -234,6 +234,58 @@ describe("run trace comparison", () => {
     );
   });
 
+  it("compares evidence coverage as reproducibility context", () => {
+    const left = deniedTrace("run-left", "deny-old-domain", ["domains"]);
+    const metadata = left[0]?.metadata;
+    if (!metadata) throw new Error("fixture metadata missing");
+    const extraEvidence = createEvidenceCapturedEvent(
+      metadata,
+      createRunEventSequence(),
+      {
+        evidence_type: "browser-operator",
+        data: { phase: "after", outcome: "failure" },
+      },
+    );
+    left.splice(left.length - 1, 0, extraEvidence);
+    const right = deniedTrace("run-right", "deny-old-domain", ["domains"]);
+
+    const comparison = compareRunEvents(left, right, {
+      leftRunId: "run-left",
+      rightRunId: "run-right",
+    });
+
+    expect(comparison.status).toBe("match");
+    expect(comparison.score.passed).toBe(true);
+    expect(comparison.left.evidence).toMatchObject({
+      total: 2,
+      by_type: { "browser-operator": 1, "result-envelope": 1 },
+    });
+    expect(comparison.right.evidence).toMatchObject({
+      total: 1,
+      by_type: { "result-envelope": 1 },
+    });
+    expect(comparison.score.failed_context_checks).toEqual(
+      expect.arrayContaining([
+        "evidence_total",
+        "evidence_type_browser-operator",
+      ]),
+    );
+    expect(comparison.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "evidence_total",
+          impact: "context",
+          status: "diverged",
+        }),
+        expect.objectContaining({
+          name: "evidence_type_browser-operator",
+          impact: "context",
+          status: "diverged",
+        }),
+      ]),
+    );
+  });
+
   it("summarizes unknown context checks", () => {
     const left = deniedTrace("run-left", "deny-old-domain", ["domains"]);
     const right = deniedTrace("run-right", "deny-old-domain", ["domains"]);
