@@ -115,7 +115,8 @@ function scanComparableEvents(events: RunEvent[]): ComparableEventScan {
       scan.terminal &&
       scan.toolTerminal &&
       scan.resultEnvelope &&
-      scan.runtimePermissionDenied
+      (scan.runtimePermissionDenied ||
+        errorCodeFromEvent(scan.toolTerminal) !== "permission_denied")
     ) {
       break;
     }

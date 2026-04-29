@@ -62,15 +62,24 @@ function deniedTrace(
       risk: "low",
       enforcement: "allow",
     }),
-    createRuntimePermissionDeniedEvent(metadata, sequence, {
-      code: "permission_denied",
-      adapter_path: metadata.adapter_path,
-      action: "fetch_text",
-      step: 0,
-      rule_id: ruleId,
-      resource_buckets: resourceBuckets,
-      retryable: false,
-    }),
+    createRuntimePermissionDeniedEvent(
+      metadata,
+      sequence,
+      {
+        code: "permission_denied",
+        adapter_path: metadata.adapter_path,
+        action: "fetch_text",
+        step: 0,
+        rule_id: ruleId,
+        resource_buckets: resourceBuckets,
+        retryable: false,
+      },
+      {
+        resources: {
+          domains: ["blocked.example"],
+        },
+      },
+    ),
     createToolCallFailedEvent(metadata, sequence, resultData),
     createEvidenceCapturedEvent(metadata, sequence, {
       evidence_type: "result-envelope",
