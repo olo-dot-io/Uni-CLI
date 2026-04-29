@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->235<!-- /STATS --> sites · <!-- STATS:command_count -->1448<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7567<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->235<!-- /STATS --> sites · <!-- STATS:command_count -->1448<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7569<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -131,17 +131,17 @@ Prefer native CLI / JSON stream / MCP for agent runtimes. Use ACP as an editor c
 
 Uni-CLI sits under agent applications and turns software surfaces into commands that agents can discover, execute, record, and repair.
 
-| Surface            | What you get                                                                                                                                      |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Websites and APIs  | Declarative adapters for public, cookie, header, and browser-intercept workflows                                                                  |
-| Browser automation | CDP steps for navigate, click, type, intercept, snapshot, extract, wait, and related browser work                                                 |
-| Desktop and macOS  | System commands, app adapters, screenshots, clipboard, calendar, brightness, and local tools                                                      |
-| External CLIs      | 58 registered pass-through bridges with install/status discovery                                                                                  |
-| Agent backends     | Route matrix for native CLI, JSON stream, MCP, ACP, HTTP API, OpenAI-compatible, and bridge routes                                                |
-| Operation policy   | `open`, `confirm`, and `locked` profiles with effect/risk scopes, local deny rules, `--yes`, and persisted approval memory                        |
-| Evidence           | Run traces with probe/replay/compare, browser session leases with tab/auth posture, render-aware evidence, movement checks, and stale-ref details |
-| Output             | v2 `AgentEnvelope` in Markdown, JSON, YAML, CSV, or compact format                                                                                |
-| Repair             | Structured errors with `adapter_path`, failing `step`, retryability, suggestions, and alternatives                                                |
+| Surface            | What you get                                                                                                                                             |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Websites and APIs  | Declarative adapters for public, cookie, header, and browser-intercept workflows                                                                         |
+| Browser automation | CDP steps for navigate, click, type, intercept, snapshot, extract, wait, and related browser work                                                        |
+| Desktop and macOS  | System commands, app adapters, screenshots, clipboard, calendar, brightness, and local tools                                                             |
+| External CLIs      | 58 registered pass-through bridges with install/status discovery                                                                                         |
+| Agent backends     | Route matrix for native CLI, JSON stream, MCP, ACP, HTTP API, OpenAI-compatible, and bridge routes                                                       |
+| Operation policy   | `open`, `confirm`, and `locked` profiles with effect/risk scopes, local deny rules, `--yes`, and persisted approval memory                               |
+| Evidence           | Run traces with probe/replay/compare scores, browser session leases with tab/auth posture, render-aware evidence, movement checks, and stale-ref details |
+| Output             | v2 `AgentEnvelope` in Markdown, JSON, YAML, CSV, or compact format                                                                                       |
+| Repair             | Structured errors with `adapter_path`, failing `step`, retryability, suggestions, and alternatives                                                       |
 
 ## For Agents
 
@@ -164,6 +164,7 @@ unicli runs show <run_id> -f json
 unicli runs probe <run_id> -f json
 unicli runs replay <run_id> --permission-profile confirm --yes -f json
 unicli runs compare <run_id> <replay_run_id> -f json
+unicli runs compare <run_id> <replay_run_id> --min-score 1 -f json
 unicli --permission-profile locked --yes --remember-approval word set-font "Inter"
 unicli approvals list -f json
 unicli approvals revoke <approval_key> -f json

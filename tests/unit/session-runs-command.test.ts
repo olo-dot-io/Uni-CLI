@@ -941,6 +941,52 @@ describe("unicli runs command", () => {
     );
   });
 
+  it("can fail CI when compare behavior score is below a threshold", async () => {
+    const rootDir = join(tmp, "runs");
+    const runId = await writeReplayableRun(rootDir);
+    const driftedRunId = await writeDivergedRun(rootDir);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "-f",
+          "json",
+          "runs",
+          "compare",
+          runId,
+          driftedRunId,
+          "--root",
+          rootDir,
+          "--min-score",
+          "1",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      ok: boolean;
+      data: {
+        status: string;
+        score: {
+          passed: boolean;
+          behavior: { score: number };
+          failed_behavior_checks: string[];
+        };
+      };
+    };
+    expect(env.ok).toBe(true);
+    expect(env.data.status).toBe("diverged");
+    expect(env.data.score.passed).toBe(false);
+    expect(env.data.score.behavior.score).toBeLessThan(1);
+    expect(env.data.score.failed_behavior_checks.length).toBeGreaterThan(0);
+    expect(process.exitCode).toBe(1);
+  });
+
   it("rejects compare when either trace is missing", async () => {
     const rootDir = join(tmp, "runs");
     const runId = await writeReplayableRun(rootDir);
