@@ -52,6 +52,7 @@ interface RunsReplayOptions {
   permissionProfile?: string;
   yes?: boolean;
   replayRunId?: string;
+  minScore?: string;
 }
 
 interface RunsCompareOptions {
@@ -296,8 +297,22 @@ export function registerRunsCommand(program: Command): void {
     )
     .option("--yes", "Approve permission-gated replay execution")
     .option("--replay-run-id <run_id>", "Override the new replay run id")
+    .option(
+      "--min-score <0-1>",
+      "Set a minimum replay behavior score and exit non-zero when it is missed",
+    )
     .action(async (runId: string, opts: RunsReplayOptions) => {
       const startedAt = Date.now();
+      const minScore = scoreThreshold(opts.minScore);
+      if (opts.minScore !== undefined && minScore === undefined) {
+        printRunError(program, "runs.replay", startedAt, {
+          code: "invalid_input",
+          message: "--min-score must be a number between 0 and 1",
+          suggestion: "use `--min-score 1` for exact replay gates",
+          retryable: false,
+        });
+        return;
+      }
       const store = createRunStore({ rootDir: opts.root });
       const events = await readRunEvents(store, runId);
       const replay = extractRunReplayPlan(events, runId);
@@ -428,5 +443,11 @@ export function registerRunsCommand(program: Command): void {
           makeCtx("runs.replay", startedAt),
         ),
       );
+      if (
+        minScore !== undefined &&
+        comparison.score.behavior.score < minScore
+      ) {
+        process.exitCode = 1;
+      }
     });
 }
