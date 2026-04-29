@@ -86,6 +86,12 @@ function nonNegativeInteger(
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
+function runStoreAgentErrorCode(error: RunStoreError): string {
+  return error.code === "invalid_run_id" || error.code === "malformed_jsonl"
+    ? "invalid_input"
+    : "internal_error";
+}
+
 export function registerRunsCommand(program: Command): void {
   const runs = program
     .command("runs")
@@ -171,10 +177,7 @@ export function registerRunsCommand(program: Command): void {
       } catch (err) {
         if (err instanceof RunStoreError) {
           printRunError(program, "runs.stream", startedAt, {
-            code:
-              err.code === "invalid_run_id"
-                ? "invalid_input"
-                : "internal_error",
+            code: runStoreAgentErrorCode(err),
             message: err.message,
             suggestion: "run `unicli runs list` and choose an existing run id",
             retryable: false,

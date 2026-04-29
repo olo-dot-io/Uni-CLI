@@ -1,5 +1,13 @@
-import { mkdir, readFile, appendFile, chmod } from "node:fs/promises";
+import {
+  mkdir,
+  readFile,
+  appendFile,
+  chmod,
+  open,
+  stat,
+} from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { StringDecoder } from "node:string_decoder";
 import { setTimeout as delay } from "node:timers/promises";
 import { dirname, join } from "node:path";
 import { userHome } from "../user-home.js";
@@ -31,6 +39,18 @@ export class RunStoreError extends Error {
     super(message);
     this.name = "RunStoreError";
   }
+}
+
+interface RunEventTailState {
+  offset: number;
+  partialLine: string;
+  nextLineNumber: number;
+  decoder: StringDecoder;
+}
+
+interface ReadAppendedRunEventsResult {
+  events: RunEvent[];
+  sawTerminal: boolean;
 }
 
 export function createRunStore(
@@ -137,9 +157,28 @@ export async function* watchRunEvents(
   const deadline = follow ? Date.now() + timeoutMs : undefined;
   let afterSequence = Math.max(0, Math.floor(options.afterSequence ?? 0));
 
-  while (true) {
+  if (!follow) {
     const events = await readRunEvents(store, runId);
     const nextEvents = events
+      .filter((event) => event.sequence > afterSequence)
+      .sort((a, b) => a.sequence - b.sequence);
+    for (const event of nextEvents) {
+      yield event;
+    }
+    return;
+  }
+
+  const path = runTracePath(store, runId);
+  const tailState: RunEventTailState = {
+    offset: 0,
+    partialLine: "",
+    nextLineNumber: 1,
+    decoder: new StringDecoder("utf8"),
+  };
+
+  while (true) {
+    const readResult = await readAppendedRunEvents(path, tailState);
+    const nextEvents = readResult.events
       .filter((event) => event.sequence > afterSequence)
       .sort((a, b) => a.sequence - b.sequence);
     let yieldedTerminal = false;
@@ -152,8 +191,7 @@ export async function* watchRunEvents(
       }
     }
 
-    if (!follow || yieldedTerminal) return;
-    if (events.some((event) => isTerminalRunEvent(event))) return;
+    if (yieldedTerminal || readResult.sawTerminal) return;
     if (deadline !== undefined && Date.now() >= deadline) return;
 
     const waitMs =
@@ -163,6 +201,103 @@ export async function* watchRunEvents(
     if (waitMs <= 0) return;
     await delay(waitMs);
   }
+}
+
+async function readAppendedRunEvents(
+  path: string,
+  state: RunEventTailState,
+): Promise<ReadAppendedRunEventsResult> {
+  const size = await traceFileSize(path);
+  if (size === undefined) return { events: [], sawTerminal: false };
+
+  if (size < state.offset) {
+    state.offset = 0;
+    state.partialLine = "";
+    state.nextLineNumber = 1;
+    state.decoder = new StringDecoder("utf8");
+  }
+  if (size === state.offset) return { events: [], sawTerminal: false };
+
+  const chunk = await readTraceChunk(path, state.offset, size - state.offset);
+  state.offset += chunk.byteLength;
+
+  const text = state.partialLine + state.decoder.write(chunk);
+  const lastNewlineIndex = text.lastIndexOf("\n");
+  if (lastNewlineIndex < 0) {
+    state.partialLine = text;
+    return { events: [], sawTerminal: false };
+  }
+
+  const completeText = text.slice(0, lastNewlineIndex + 1);
+  state.partialLine = text.slice(lastNewlineIndex + 1);
+  const lines = completeText.split(/\r?\n/);
+  const events: RunEvent[] = [];
+  let sawTerminal = false;
+
+  for (let index = 0; index < lines.length - 1; index += 1) {
+    const lineText = lines[index] ?? "";
+    const lineNumber = state.nextLineNumber;
+    state.nextLineNumber += 1;
+    if (lineText.trim().length === 0) continue;
+    try {
+      const event = JSON.parse(lineText) as RunEvent;
+      if (isTerminalRunEvent(event)) sawTerminal = true;
+      events.push(event);
+    } catch {
+      throw new RunStoreError(
+        "malformed_jsonl",
+        `malformed run trace JSONL at line ${lineNumber}`,
+        path,
+        lineNumber,
+      );
+    }
+  }
+
+  return { events, sawTerminal };
+}
+
+async function traceFileSize(path: string): Promise<number | undefined> {
+  try {
+    return (await stat(path)).size;
+  } catch (err) {
+    if (errorCode(err) === "ENOENT") return undefined;
+    const message = err instanceof Error ? err.message : String(err);
+    throw new RunStoreError(
+      "io_error",
+      `failed to stat run events: ${message}`,
+      path,
+    );
+  }
+}
+
+async function readTraceChunk(
+  path: string,
+  offset: number,
+  byteLength: number,
+): Promise<Buffer> {
+  let handle: Awaited<ReturnType<typeof open>> | undefined;
+  try {
+    handle = await open(path, "r");
+    const buffer = Buffer.alloc(byteLength);
+    const { bytesRead } = await handle.read(buffer, 0, byteLength, offset);
+    return buffer.subarray(0, bytesRead);
+  } catch (err) {
+    if (errorCode(err) === "ENOENT") return Buffer.alloc(0);
+    const message = err instanceof Error ? err.message : String(err);
+    throw new RunStoreError(
+      "io_error",
+      `failed to read run event tail: ${message}`,
+      path,
+    );
+  } finally {
+    await handle?.close();
+  }
+}
+
+function errorCode(err: unknown): string | undefined {
+  return typeof err === "object" && err !== null && "code" in err
+    ? String((err as { code?: unknown }).code)
+    : undefined;
 }
 
 function isTerminalRunEvent(event: RunEvent): boolean {

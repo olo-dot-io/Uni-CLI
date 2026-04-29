@@ -614,6 +614,43 @@ describe("unicli runs command", () => {
     expect(cap.getStdout()).not.toContain("hidden");
   });
 
+  it("reports malformed stream traces as invalid input", async () => {
+    const rootDir = join(tmp, "runs");
+    const brokenRunDir = join(rootDir, "run-broken-stream-01");
+    mkdirSync(brokenRunDir, { recursive: true });
+    writeFileSync(join(brokenRunDir, "trace.jsonl"), "{not json}\n");
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "-f",
+          "json",
+          "runs",
+          "stream",
+          "run-broken-stream-01",
+          "--root",
+          rootDir,
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      ok: boolean;
+      error: { code: string; message: string };
+    };
+    expect(env.ok).toBe(false);
+    expect(env.error).toMatchObject({
+      code: "invalid_input",
+      message: "malformed run trace JSONL at line 1",
+    });
+    expect(process.exitCode).toBe(ExitCode.USAGE_ERROR);
+  });
+
   it("can include internal event payloads while still redacting secret payloads", async () => {
     const rootDir = join(tmp, "runs");
     const runId = await writeBrowserRun(rootDir);
