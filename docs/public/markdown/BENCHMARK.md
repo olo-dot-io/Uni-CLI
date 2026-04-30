@@ -62,31 +62,31 @@ contract even when source fixtures predate the envelope migration.
 
 ### Cold start: `unicli list`
 
-| metric | value |
-| ------ | ----- |
-| wall p50 | 47 ms |
-| wall p95 | 82 ms |
-| response tokens | 73370 |
-| response chars | 264131 |
-| sites listed | 235 |
-| commands listed | 1450 |
+| metric          | value  |
+| --------------- | ------ |
+| wall p50        | 47 ms  |
+| wall p95        | 82 ms  |
+| response tokens | 73370  |
+| response chars  | 264131 |
+| sites listed    | 235    |
+| commands listed | 1450   |
 
 ### Adapter call: p50/p95 response tokens
 
-| category | command | invocation tokens | response p50 tokens | response p95 tokens | wall p50 ms | wall p95 ms | mode |
-| -------- | ------- | ----------------: | ------------------: | ------------------: | ----------: | ----------: | ---- |
-| news | `unicli hackernews top --limit 5` | 9 | 404 | 404 | 0.005 | 0.08 | fixture |
-| social | `unicli reddit hot --limit 5` | 8 | 415 | 415 | 0.005 | 0.016 | fixture |
-| social-cn | `unicli 36kr hot --limit 5` | 7 | 357 | 357 | 0.003 | 0.004 | fixture |
-| dev | `unicli github-trending daily --limit 5` | 11 | 400 | 400 | 0.005 | 0.006 | fixture |
+| category  | command                                  | invocation tokens | response p50 tokens | response p95 tokens | wall p50 ms | wall p95 ms | mode    |
+| --------- | ---------------------------------------- | ----------------: | ------------------: | ------------------: | ----------: | ----------: | ------- |
+| news      | `unicli hackernews top --limit 5`        |                 9 |                 404 |                 404 |       0.005 |        0.08 | fixture |
+| social    | `unicli reddit hot --limit 5`            |                 8 |                 415 |                 415 |       0.005 |       0.016 | fixture |
+| social-cn | `unicli 36kr hot --limit 5`              |                 7 |                 357 |                 357 |       0.003 |       0.004 | fixture |
+| dev       | `unicli github-trending daily --limit 5` |                11 |                 400 |                 400 |       0.005 |       0.006 | fixture |
 
 ### Public call budget
 
-| metric | value |
-| ------ | ----- |
-| Smallest total call budget | 364 tokens |
-| Largest total call budget | 423 tokens |
-| Median total call budget | 412 tokens |
+| metric                             | value          |
+| ---------------------------------- | -------------- |
+| Smallest total call budget         | 364 tokens     |
+| Largest total call budget          | 423 tokens     |
+| Median total call budget           | 412 tokens     |
 | Representative response token span | 357-415 tokens |
 
 <!-- BENCH:end -->

@@ -3353,6 +3353,14 @@ recording. It is not a major-version compatibility boundary.
 Do not bump `package.json`, run `changeset version`, tag, publish, or create a
 GitHub Release until the maintainer explicitly says to release.
 
+Before any release, the macOS dynamic discovery work from
+`codex/macos-dynamic-actions` must already be audited, reviewed, and merged to
+`main`. `npm run verify:release-mainline`, `npm run release`, and
+`npm run release:check` enforce this by requiring release commands to run from
+`main`, requiring commit `33bafa6087bf81c9b9df5cc0e996e79f6e28f030` to be an
+ancestor of `HEAD`, and checking that the first-class `macos app-actions` and
+`macos automation-smoke` manifest entries are present before publish.
+
 ## Changesets
 
 Every PR that touches production source should add one changeset:
@@ -3410,7 +3418,7 @@ npm run release:check -- --strict-codename
 ```
 
 For the 0.217 line, the release label format is unchanged. The current release
-label is `Apollo · Haise`.
+label is `Apollo · Swigert`.
 
 ## Substantive Commits
 
@@ -3468,10 +3476,12 @@ After two successful OIDC publishes, delete the fallback `NPM_TOKEN` from the
 To ship a release:
 
 1. Confirm the intended version bump and release label.
-2. Open GitHub Actions.
-3. Run **Release Candidate**.
-4. Set `codename` to the final `Program · Astronaut` label.
-5. Set `force: true` only when the release should happen even if the commit
+2. Confirm `codex/macos-dynamic-actions` is merged to `main` with
+   `npm run verify:release-mainline`.
+3. Open GitHub Actions.
+4. Run **Release Candidate**.
+5. Set `codename` to the final `Program · Astronaut` label.
+6. Set `force: true` only when the release should happen even if the commit
    filter found no substantive changes.
 
 The dispatch path consumes changesets, verifies, commits release metadata, tags,
@@ -3872,31 +3882,31 @@ contract even when source fixtures predate the envelope migration.
 
 ### Cold start: `unicli list`
 
-| metric | value |
-| ------ | ----- |
-| wall p50 | 47 ms |
-| wall p95 | 82 ms |
-| response tokens | 73370 |
-| response chars | 264131 |
-| sites listed | 235 |
-| commands listed | 1450 |
+| metric          | value  |
+| --------------- | ------ |
+| wall p50        | 47 ms  |
+| wall p95        | 82 ms  |
+| response tokens | 73370  |
+| response chars  | 264131 |
+| sites listed    | 235    |
+| commands listed | 1450   |
 
 ### Adapter call: p50/p95 response tokens
 
-| category | command | invocation tokens | response p50 tokens | response p95 tokens | wall p50 ms | wall p95 ms | mode |
-| -------- | ------- | ----------------: | ------------------: | ------------------: | ----------: | ----------: | ---- |
-| news | `unicli hackernews top --limit 5` | 9 | 404 | 404 | 0.005 | 0.08 | fixture |
-| social | `unicli reddit hot --limit 5` | 8 | 415 | 415 | 0.005 | 0.016 | fixture |
-| social-cn | `unicli 36kr hot --limit 5` | 7 | 357 | 357 | 0.003 | 0.004 | fixture |
-| dev | `unicli github-trending daily --limit 5` | 11 | 400 | 400 | 0.005 | 0.006 | fixture |
+| category  | command                                  | invocation tokens | response p50 tokens | response p95 tokens | wall p50 ms | wall p95 ms | mode    |
+| --------- | ---------------------------------------- | ----------------: | ------------------: | ------------------: | ----------: | ----------: | ------- |
+| news      | `unicli hackernews top --limit 5`        |                 9 |                 404 |                 404 |       0.005 |        0.08 | fixture |
+| social    | `unicli reddit hot --limit 5`            |                 8 |                 415 |                 415 |       0.005 |       0.016 | fixture |
+| social-cn | `unicli 36kr hot --limit 5`              |                 7 |                 357 |                 357 |       0.003 |       0.004 | fixture |
+| dev       | `unicli github-trending daily --limit 5` |                11 |                 400 |                 400 |       0.005 |       0.006 | fixture |
 
 ### Public call budget
 
-| metric | value |
-| ------ | ----- |
-| Smallest total call budget | 364 tokens |
-| Largest total call budget | 423 tokens |
-| Median total call budget | 412 tokens |
+| metric                             | value          |
+| ---------------------------------- | -------------- |
+| Smallest total call budget         | 364 tokens     |
+| Largest total call budget          | 423 tokens     |
+| Median total call budget           | 412 tokens     |
 | Representative response token span | 357-415 tokens |
 
 <!-- BENCH:end -->

@@ -43,6 +43,14 @@ recording. It is not a major-version compatibility boundary.
 Do not bump `package.json`, run `changeset version`, tag, publish, or create a
 GitHub Release until the maintainer explicitly says to release.
 
+Before any release, the macOS dynamic discovery work from
+`codex/macos-dynamic-actions` must already be audited, reviewed, and merged to
+`main`. `npm run verify:release-mainline`, `npm run release`, and
+`npm run release:check` enforce this by requiring release commands to run from
+`main`, requiring commit `33bafa6087bf81c9b9df5cc0e996e79f6e28f030` to be an
+ancestor of `HEAD`, and checking that the first-class `macos app-actions` and
+`macos automation-smoke` manifest entries are present before publish.
+
 ## Changesets
 
 Every PR that touches production source should add one changeset:
@@ -100,7 +108,7 @@ npm run release:check -- --strict-codename
 ```
 
 For the 0.217 line, the release label format is unchanged. The current release
-label is `Apollo · Haise`.
+label is `Apollo · Swigert`.
 
 ## Substantive Commits
 
@@ -158,10 +166,12 @@ After two successful OIDC publishes, delete the fallback `NPM_TOKEN` from the
 To ship a release:
 
 1. Confirm the intended version bump and release label.
-2. Open GitHub Actions.
-3. Run **Release Candidate**.
-4. Set `codename` to the final `Program · Astronaut` label.
-5. Set `force: true` only when the release should happen even if the commit
+2. Confirm `codex/macos-dynamic-actions` is merged to `main` with
+   `npm run verify:release-mainline`.
+3. Open GitHub Actions.
+4. Run **Release Candidate**.
+5. Set `codename` to the final `Program · Astronaut` label.
+6. Set `force: true` only when the release should happen even if the commit
    filter found no substantive changes.
 
 The dispatch path consumes changesets, verifies, commits release metadata, tags,

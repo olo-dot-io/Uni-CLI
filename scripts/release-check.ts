@@ -15,6 +15,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { collectReleaseMainlineChecks } from "./release-mainline-check.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -33,6 +34,10 @@ interface CheckResult {
 }
 
 const results: CheckResult[] = [];
+
+// --- Check 0: Release mainline gate ---
+
+results.push(...collectReleaseMainlineChecks({ requireManifest: true }));
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

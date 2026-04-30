@@ -8,6 +8,18 @@ Uni-CLI uses [Changesets](https://github.com/changesets/changesets) to manage
 per-PR version notes and npm OIDC Trusted Publishing to push artifacts.
 This document describes how to ship a release from a clean main.
 
+Release preflight: no version may be shipped until
+`codex/macos-dynamic-actions` has been audited, reviewed, and merged into
+`main`. Run this before `npm run release`, `npm run release:check`, tagging, or
+publishing:
+
+```bash
+npm run verify:release-mainline
+```
+
+If it fails, review the macOS dynamic discovery work, merge it into `main`, and
+restart the release process from a clean `main`.
+
 ## 1. Per-PR: add a changeset
 
 Every PR that modifies production code under `src/` (excluding `src/adapters/`)

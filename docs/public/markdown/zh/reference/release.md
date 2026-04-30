@@ -14,10 +14,18 @@
 ## 发布前检查
 
 ```bash
+npm run verify:release-mainline
 npm run verify
 npm run docs:build
 npm run release:check
 ```
+
+任何版本发布前，都必须先确认 `codex/macos-dynamic-actions` 已经审核、
+审查并合并到 `main`。`npm run verify:release-mainline`、`npm run release`
+和 `npm run release:check` 会强制检查当前发布从 `main` 发起、提交
+`33bafa6087bf81c9b9df5cc0e996e79f6e28f030` 已进入 `HEAD` 历史，并确认
+`macos app-actions` / `macos automation-smoke` 已进入 manifest。检查失败时，
+先完成审核、审查、合并到 `main`，再重新发布。
 
 `verify` 覆盖格式、类型、lint、manifest、adapter lint、schema lint、构建、单元测试、adapter 测试、统计、conformance 和 exports。
 
@@ -50,11 +58,12 @@ npm run changeset
 | `0.200-0.213` | Vostok  |
 | `0.216+`      | Apollo  |
 
-`0.217.1` 的发布 label 是 `Apollo · Haise`。
+`0.217.2` 的发布 label 是 `Apollo · Swigert`。
 
 ## 发布步骤
 
 ```bash
+npm run verify:release-mainline
 npm run verify
 npm run changeset:version
 npm run build

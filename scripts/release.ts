@@ -28,6 +28,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { assertReleaseMainline } from "./release-mainline-check.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -36,6 +37,8 @@ const ROOT = join(__dirname, "..");
 
 const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf-8"));
 const version: string = pkg.version;
+
+assertReleaseMainline();
 
 // Parse CLI args
 const args = process.argv.slice(2);
