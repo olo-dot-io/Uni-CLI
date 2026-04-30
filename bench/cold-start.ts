@@ -66,7 +66,7 @@ export function runColdStart(runs: number = 50): ColdStartResult {
     const t0 = performance.now();
     const res = spawnSync(process.execPath, [CLI_ENTRY, "list", "-f", "json"], {
       encoding: "utf-8",
-      env: { ...process.env, NO_COLOR: "1" },
+      env: { ...process.env, NO_COLOR: "1", UNICLI_DYNAMIC_MACOS: "0" },
       timeout: 15_000,
       maxBuffer: MAX_STDOUT_BYTES,
     });

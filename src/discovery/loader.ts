@@ -14,6 +14,7 @@ import yaml from "js-yaml";
 import { getAllAdapters, registerAdapter } from "../registry.js";
 import { validateAdapterV2 } from "../core/schema-v2.js";
 import { compileAll } from "../engine/kernel/compile.js";
+import { registerMacosDynamicCommands } from "./macos-dynamic.js";
 
 /**
  * Upper bound on YAML adapter file size. A legitimate YAML adapter is
@@ -551,6 +552,7 @@ export function loadAllAdapters(): number {
   let total = 0;
   total += loadAdaptersFromDir(BUILTIN_YAML_DIR);
   total += loadAdaptersFromDir(USER_DIR);
+  total += registerMacosDynamicCommands();
   // Prime the kernel cache for every registered adapter so CLI / MCP / ACP
   // surfaces look up CompiledCommand entries in O(1). Safe to run again
   // after loadTsAdapters — compileAll clears + refills.

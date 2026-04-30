@@ -14,7 +14,7 @@ running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 235 sites, 1448 commands.
+This catalog is generated from the adapter manifest: 235 sites, 1450 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -132,7 +132,7 @@ This catalog is generated from the adapter manifest: 235 sites, 1448 commands.
 | linkedin | web-api | 4 | yes | unicli linkedin jobs<br>unicli linkedin profile<br>unicli linkedin search |
 | linux-do | web-api | 11 | yes | unicli linux-do categories<br>unicli linux-do category<br>unicli linux-do feed |
 | lobsters | web-api | 5 | no | unicli lobsters active<br>unicli lobsters hot<br>unicli lobsters newest |
-| macos | desktop | 58 | no | unicli macos active-app<br>unicli macos apps-list<br>unicli macos apps |
+| macos | desktop | 60 | no | unicli macos active-app<br>unicli macos apps-list<br>unicli macos apps |
 | maimai | browser | 2 | yes | unicli maimai search<br>unicli maimai search-talents |
 | maoyan | web-api | 2 | yes | unicli maoyan hot<br>unicli maoyan search |
 | mastodon | web-api | 4 | no | unicli mastodon search<br>unicli mastodon timeline<br>unicli mastodon trending |

@@ -1,8 +1,8 @@
 {
-  "source": "unicli@0.217.1",
-  "generated": "2026-04-29T13:41:40.214Z",
+  "source": "unicli@0.217.2",
+  "generated": "2026-04-30T12:50:23.943Z",
   "total_sites": 235,
-  "total_commands": 1448,
+  "total_commands": 1450,
   "adapters": [
     {
       "site": "1688",
@@ -15775,6 +15775,7 @@
       "site": "macos",
       "type": "desktop",
       "auth": false,
+      "strategy": "public",
       "commands": [
         {
           "name": "active-app",
@@ -15782,6 +15783,7 @@
           "when_to_use": "Get the currently active macOS application",
           "command": "unicli macos active-app",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["result"]
         },
@@ -15791,6 +15793,7 @@
           "when_to_use": "List installed macOS applications",
           "command": "unicli macos apps-list",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["name"]
         },
@@ -15800,6 +15803,7 @@
           "when_to_use": "List running applications with name, PID, and bundle ID",
           "command": "unicli macos apps",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["name", "pid", "bundleId"]
         },
@@ -15809,6 +15813,7 @@
           "when_to_use": "Get battery percentage, charging status, and time remaining",
           "command": "unicli macos battery",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["percent", "status", "remaining"]
         },
@@ -15818,6 +15823,7 @@
           "when_to_use": "Check macOS Bluetooth status",
           "command": "unicli macos bluetooth",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["result"]
         },
@@ -15827,6 +15833,7 @@
           "when_to_use": "Get current screen brightness",
           "command": "unicli macos brightness",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["brightness"]
         },
@@ -15836,6 +15843,7 @@
           "when_to_use": "Keep Mac awake for a specified duration (prevents display sleep)",
           "command": "unicli macos caffeinate",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": [],
           "args": [
@@ -15854,6 +15862,7 @@
           "when_to_use": "Create a new calendar event with title, date, time, and duration",
           "command": "unicli macos calendar-create",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["created", "title", "start", "end", "calendar"],
           "args": [
@@ -15900,6 +15909,7 @@
           "when_to_use": "List calendar events for the next N days",
           "command": "unicli macos calendar-list",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["calendar", "title", "start", "end", "location"],
           "args": [
@@ -15918,6 +15928,7 @@
           "when_to_use": "List today's calendar events from macOS Calendar.app",
           "command": "unicli macos calendar-today",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["calendar", "summary", "start", "end", "location"]
         },
@@ -15927,6 +15938,7 @@
           "when_to_use": "Get current clipboard text contents",
           "command": "unicli macos clipboard",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["content"]
         },
@@ -15936,6 +15948,7 @@
           "when_to_use": "Search contacts by name, email, or phone",
           "command": "unicli macos contacts-search",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["name", "email", "phone", "company"],
           "args": [
@@ -15954,6 +15967,7 @@
           "when_to_use": "Get current dark mode status",
           "command": "unicli macos dark-mode",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["darkMode"]
         },
@@ -15963,6 +15977,7 @@
           "when_to_use": "Get disk names, capacity, and free space for all mounted volumes",
           "command": "unicli macos disk-info",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["name", "capacity", "freeSpace"]
         },
@@ -15972,6 +15987,7 @@
           "when_to_use": "Get disk usage summary",
           "command": "unicli macos disk-usage",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["result"]
         },
@@ -15981,6 +15997,7 @@
           "when_to_use": "Toggle macOS Focus/Do Not Disturb mode",
           "command": "unicli macos do-not-disturb",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["result"]
         },
@@ -15990,6 +16007,7 @@
           "when_to_use": "Empty the macOS Trash",
           "command": "unicli macos empty-trash",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["result"]
         },
@@ -15999,6 +16017,7 @@
           "when_to_use": "Copy a file or folder to a destination path",
           "command": "unicli macos finder-copy",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["copied", "to", "status"],
           "args": [
@@ -16024,6 +16043,7 @@
           "when_to_use": "Move or rename a file or folder",
           "command": "unicli macos finder-move",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["moved", "to", "status"],
           "args": [
@@ -16049,6 +16069,7 @@
           "when_to_use": "Create a new directory (with intermediate directories)",
           "command": "unicli macos finder-new-folder",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["created", "status"],
           "args": [
@@ -16067,6 +16088,7 @@
           "when_to_use": "List files opened in the last 7 days",
           "command": "unicli macos finder-recent",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["path"]
         },
@@ -16076,6 +16098,7 @@
           "when_to_use": "Get currently selected files in Finder",
           "command": "unicli macos finder-selection",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["name", "path"]
         },
@@ -16085,6 +16108,7 @@
           "when_to_use": "List Finder tags on a file or directory",
           "command": "unicli macos finder-tags",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["path", "tags"],
           "args": [
@@ -16103,6 +16127,7 @@
           "when_to_use": "Lock the screen (put display to sleep)",
           "command": "unicli macos lock-screen",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": []
         },
@@ -16112,6 +16137,7 @@
           "when_to_use": "Send an email using Mail.app",
           "command": "unicli macos mail-send",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["sent", "to", "subject"],
           "args": [
@@ -16144,6 +16170,7 @@
           "when_to_use": "Get Mail.app accounts and unread message counts",
           "command": "unicli macos mail-status",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["name", "email", "type", "unread"]
         },
@@ -16153,6 +16180,7 @@
           "when_to_use": "Send an iMessage to a contact",
           "command": "unicli macos messages-send",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["sent", "to"],
           "args": [
@@ -16178,6 +16206,7 @@
           "when_to_use": "Control Apple Music playback (play, pause, next, prev, toggle)",
           "command": "unicli macos music-control",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["action", "success", "state"],
           "args": [
@@ -16196,6 +16225,7 @@
           "when_to_use": "Get currently playing track from Apple Music",
           "command": "unicli macos music-now",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["name", "artist", "album", "state"]
         },
@@ -16205,6 +16235,7 @@
           "when_to_use": "List recent Apple Notes with folder and modification date",
           "command": "unicli macos notes-list",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["name", "folder", "modified"]
         },
@@ -16214,6 +16245,7 @@
           "when_to_use": "Search Apple Notes by title or content",
           "command": "unicli macos notes-search",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["name", "folder", "snippet"],
           "args": [
@@ -16232,6 +16264,7 @@
           "when_to_use": "Send a macOS notification",
           "command": "unicli macos notification",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["result"],
           "args": [
@@ -16257,6 +16290,7 @@
           "when_to_use": "Send a macOS notification with title and optional subtitle",
           "command": "unicli macos notify",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["sent", "message", "title"],
           "args": [
@@ -16289,6 +16323,7 @@
           "when_to_use": "Open a macOS application",
           "command": "unicli macos open-app",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["result"],
           "args": [
@@ -16307,6 +16342,7 @@
           "when_to_use": "Open a file, URL, or application using macOS open command",
           "command": "unicli macos open",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": [],
           "args": [
@@ -16325,6 +16361,7 @@
           "when_to_use": "Search Apple Photos library by keyword",
           "command": "unicli macos photos-search",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": [
             "name",
@@ -16350,6 +16387,7 @@
           "when_to_use": "List top processes by CPU usage",
           "command": "unicli macos processes",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["result"]
         },
@@ -16359,6 +16397,7 @@
           "when_to_use": "Create a new reminder in Reminders.app",
           "command": "unicli macos reminder-create",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["created", "title", "list", "due"],
           "args": [
@@ -16398,6 +16437,7 @@
           "when_to_use": "Mark a reminder as complete in macOS Reminders.app",
           "command": "unicli macos reminders-complete",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["completed", "title"],
           "args": [
@@ -16416,6 +16456,7 @@
           "when_to_use": "List all reminders from macOS Reminders.app",
           "command": "unicli macos reminders-list",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["list", "name", "dueDate", "priority"]
         },
@@ -16425,6 +16466,7 @@
           "when_to_use": "Get recent Safari browsing history via SQLite",
           "command": "unicli macos safari-history",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["title", "url", "visited_at"],
           "args": [
@@ -16443,6 +16485,7 @@
           "when_to_use": "List all open Safari tabs",
           "command": "unicli macos safari-tabs",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["title", "url"]
         },
@@ -16452,6 +16495,7 @@
           "when_to_use": "Get the URL and title of the active Safari tab",
           "command": "unicli macos safari-url",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["url", "title"]
         },
@@ -16461,6 +16505,7 @@
           "when_to_use": "Speak text aloud using macOS text-to-speech",
           "command": "unicli macos say",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": [],
           "args": [
@@ -16493,6 +16538,7 @@
           "when_to_use": "Lock the macOS screen",
           "command": "unicli macos screen-lock",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["result"]
         },
@@ -16502,6 +16548,7 @@
           "when_to_use": "Record the screen to a video file using screencapture",
           "command": "unicli macos screen-recording",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["file", "duration", "status"],
           "args": [
@@ -16527,6 +16574,7 @@
           "when_to_use": "Take a screenshot and save to file or clipboard",
           "command": "unicli macos screenshot",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["output", "message"],
           "args": [
@@ -16552,6 +16600,7 @@
           "when_to_use": "List all Shortcuts.app shortcuts",
           "command": "unicli macos shortcuts-list",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["name"]
         },
@@ -16561,6 +16610,7 @@
           "when_to_use": "Run a Shortcuts.app shortcut",
           "command": "unicli macos shortcuts-run",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["result"],
           "args": [
@@ -16586,6 +16636,7 @@
           "when_to_use": "Put macOS to sleep",
           "command": "unicli macos sleep",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["result"]
         },
@@ -16595,6 +16646,7 @@
           "when_to_use": "Search files by name using Spotlight index",
           "command": "unicli macos spotlight",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["path"],
           "args": [
@@ -16620,6 +16672,7 @@
           "when_to_use": "Get hardware model, processor, memory, and OS version",
           "command": "unicli macos system-info",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["model_name", "processor", "memory", "os_version"]
         },
@@ -16629,6 +16682,7 @@
           "when_to_use": "Get Trash item count and list of items",
           "command": "unicli macos trash",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["count", "items"]
         },
@@ -16638,6 +16692,7 @@
           "when_to_use": "Get system uptime",
           "command": "unicli macos uptime",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["result"]
         },
@@ -16647,6 +16702,7 @@
           "when_to_use": "Get system volume settings (output, input, alert levels and mute status)",
           "command": "unicli macos volume",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": [
             "outputVolume",
@@ -16661,6 +16717,7 @@
           "when_to_use": "Get or set the desktop wallpaper",
           "command": "unicli macos wallpaper",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["wallpaper", "action"],
           "args": [
@@ -16679,6 +16736,7 @@
           "when_to_use": "Get current WiFi connection info",
           "command": "unicli macos wifi-info",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["result"]
         },
@@ -16688,6 +16746,7 @@
           "when_to_use": "Get Wi-Fi status or turn Wi-Fi on/off",
           "command": "unicli macos wifi",
           "auth": false,
+          "strategy": "public",
           "browser": false,
           "columns": ["network", "power", "action", "message"],
           "args": [
@@ -16697,6 +16756,58 @@
               "required": true,
               "positional": true,
               "description": "Action: status, on, or off"
+            }
+          ]
+        },
+        {
+          "name": "app-actions",
+          "description": "List real-time Shortcuts app actions and App Intents exposed by installed macOS apps",
+          "when_to_use": "List real-time Shortcuts app actions and App Intents exposed by installed macOS apps",
+          "command": "unicli macos app-actions",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["app", "name", "id", "kind", "description"],
+          "args": [
+            {
+              "name": "app",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Filter by app or bundle display name, e.g. WhatsApp"
+            },
+            {
+              "name": "query",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Filter by action name, description, or identifier"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum actions to return"
+            }
+          ]
+        },
+        {
+          "name": "automation-smoke",
+          "description": "Probe macOS automation reproducibility across Shortcuts CLI, Shortcuts ToolKit API, and AX/System Events",
+          "when_to_use": "Probe macOS automation reproducibility across Shortcuts CLI, Shortcuts ToolKit API, and AX/System Events",
+          "command": "unicli macos automation-smoke",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["layers", "apps"],
+          "args": [
+            {
+              "name": "apps",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Comma-separated app names to summarize, default: Finder,Safari,Mail,Messages,Reminders,Notes,WhatsApp"
             }
           ]
         }

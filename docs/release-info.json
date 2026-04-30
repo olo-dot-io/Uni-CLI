@@ -1,23 +1,23 @@
 {
-  "version": "0.217.1",
-  "codename": "Apollo · Haise",
-  "date": "2026-04-29",
+  "version": "0.217.2",
+  "codename": "Apollo · Swigert",
+  "date": "2026-04-30",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.217.1",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02171--2026-04-29--apollo--haise",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.217.2",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02172--2026-04-30--apollo--swigert",
   "highlights": {
     "root": [
-      "Patch release for reviewable run evidence, local approval memory, and runtime deny policy.",
-      "Run recording now covers stream, probe, replay, compare, score gates, context checks, and evidence totals in run summaries.",
-      "Approval memory and deny policy are bound to stable resource metadata instead of raw private values.",
-      "The public docs catalog reports the current 235-site, 1448-command, 1039-adapter, 59-step, 7585-test surface."
+      "Patch release for real-time macOS automation discovery.",
+      "Shortcuts.app shortcuts and installed app actions are discoverable through search and list on macOS.",
+      "New macos app-actions and automation-smoke commands expose ToolKit API, Shortcuts CLI, and AX/System Events checks.",
+      "The public docs catalog reports the current 235-site, 1450-command, 1040-adapter, 59-step, 7591-test surface."
     ],
     "zh": [
-      "面向可审查 run evidence、本地审批记忆和 runtime deny policy 的 patch 发布。",
-      "Run recording 现在覆盖 stream、probe、replay、compare、score gate、context check，以及 run summary 里的 evidence 统计。",
-      "审批记忆和 deny policy 绑定稳定资源 metadata，不保存原始私密值。",
-      "公开文档目录已更新到当前 235 个站点、1448 条命令、1039 个 adapter、59 个 step、7585 个测试。"
+      "面向实时 macOS 自动化发现的 patch 发布。",
+      "Shortcuts.app 快捷指令和已安装应用动作现在可在 macOS 上通过 search/list 发现。",
+      "新增 macos app-actions 和 automation-smoke，暴露 ToolKit API、Shortcuts CLI、AX/System Events 三层检查。",
+      "公开文档目录已更新到当前 235 个站点、1450 条命令、1040 个 adapter、59 个 step、7591 个测试。"
     ]
   }
 }

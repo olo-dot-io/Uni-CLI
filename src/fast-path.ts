@@ -11,6 +11,11 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { search } from "./discovery/search.js";
 import {
+  buildMacosDynamicCommands,
+  discoverMacosDynamicData,
+  dynamicMacosDiscoveryEnabled,
+} from "./discovery/macos-dynamic.js";
+import {
   createApprovalStore,
   isStoredApproval,
 } from "./engine/approval-store.js";
@@ -600,6 +605,7 @@ function handleList(parsed: ParsedArgv, io: Io): boolean {
         };
       }),
     )
+    .concat(dynamicListRows())
     .filter((row) => !siteFilter || row.site.includes(siteFilter))
     .filter((row) => !typeFilter || row.type === typeFilter)
     .sort(
@@ -616,6 +622,26 @@ function handleList(parsed: ParsedArgv, io: Io): boolean {
     startedAt,
   );
   return true;
+}
+
+function dynamicListRows(): Array<{
+  site: string;
+  command: string;
+  description: string;
+  type: string;
+  auth: string;
+}> {
+  if (!dynamicMacosDiscoveryEnabled()) return [];
+
+  return Object.values(
+    buildMacosDynamicCommands(discoverMacosDynamicData()),
+  ).map((command) => ({
+    site: "macos",
+    command: command.name,
+    description: command.description ?? "",
+    type: "desktop",
+    auth: "",
+  }));
 }
 
 function handleSearch(parsed: ParsedArgv, io: Io): boolean {

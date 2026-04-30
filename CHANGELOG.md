@@ -3,6 +3,34 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 
+## [0.217.2] — 2026-04-30 — Apollo · Swigert
+
+### Added
+
+- **Real-time macOS automation discovery** — Uni-CLI now promotes local
+  Shortcuts and App Intents into runtime-discovered macOS commands. User
+  shortcuts become runnable `macos shortcut-*` commands, while installed app
+  actions become searchable `macos app-action-*` inspection commands.
+- **First-class macOS action inventory** — `unicli macos app-actions` lists
+  real-time Shortcuts ToolKit actions with app/query filters so agents can
+  inspect apps such as Finder, Safari, Mail, Messages, Notes, Reminders, and
+  WhatsApp before choosing a concrete action.
+- **macOS automation smoke probe** — `unicli macos automation-smoke` checks the
+  three local automation layers independently: Shortcuts CLI, Shortcuts ToolKit
+  SQLite API, and AX/System Events.
+
+### Changed
+
+- `unicli search` and fast-path `unicli list --site macos` now merge the static
+  manifest with live macOS discovery results on Darwin hosts.
+- Generated docs and stats were refreshed for the new test coverage.
+
+### Fixed
+
+- Dynamic macOS discovery is now guarded by platform and environment checks, has
+  bounded subprocess timeouts, and degrades to empty structured results when
+  Shortcuts, ToolKit, SQLite, or AX access is unavailable.
+
 ## [0.217.1] — 2026-04-29 — Apollo · Haise
 
 > Patch release after reviewing `v0.217.0..HEAD`: docs/site refresh,

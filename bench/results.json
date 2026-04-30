@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-27T04:36:49.364Z",
+  "generated_at": "2026-04-30T12:50:15.804Z",
   "node_version": "v22.22.2",
   "platform": "darwin-arm64",
   "runs": 20,
@@ -7,12 +7,12 @@
   "cold_start": {
     "target": "unicli list",
     "runs": 20,
-    "wall_ms_p50": 38,
-    "wall_ms_p95": 44,
-    "response_tokens": 73242,
-    "response_chars": 263668,
+    "wall_ms_p50": 47,
+    "wall_ms_p95": 82,
+    "response_tokens": 73370,
+    "response_chars": 264131,
     "sites": 235,
-    "commands": 1448
+    "commands": 1450
   },
   "adapter_calls": [
     {
@@ -23,8 +23,8 @@
       "invocation_tokens": 9,
       "mode": "fixture",
       "runs": 20,
-      "wall_ms_p50": 0.004,
-      "wall_ms_p95": 0.073,
+      "wall_ms_p50": 0.005,
+      "wall_ms_p95": 0.08,
       "response_chars": 1453,
       "response_tokens": 404,
       "response_tokens_p50": 404,
@@ -39,7 +39,7 @@
       "mode": "fixture",
       "runs": 20,
       "wall_ms_p50": 0.005,
-      "wall_ms_p95": 0.011,
+      "wall_ms_p95": 0.016,
       "response_chars": 1491,
       "response_tokens": 415,
       "response_tokens_p50": 415,
@@ -54,7 +54,7 @@
       "mode": "fixture",
       "runs": 20,
       "wall_ms_p50": 0.003,
-      "wall_ms_p95": 0.005,
+      "wall_ms_p95": 0.004,
       "response_chars": 1284,
       "response_tokens": 357,
       "response_tokens_p50": 357,
@@ -69,7 +69,7 @@
       "mode": "fixture",
       "runs": 20,
       "wall_ms_p50": 0.005,
-      "wall_ms_p95": 0.007,
+      "wall_ms_p95": 0.006,
       "response_chars": 1440,
       "response_tokens": 400,
       "response_tokens_p50": 400,

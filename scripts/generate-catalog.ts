@@ -82,6 +82,11 @@ async function main(): Promise<void> {
     process.argv[3] ?? defaultSiteIndexPath(out, Boolean(catalogArg)),
   );
 
+  // Published docs must be reproducible on every machine. Runtime-only
+  // macOS discovery depends on the current user's Shortcuts/App Intents, so
+  // catalog generation pins the loader to the committed static adapter set.
+  process.env.UNICLI_DYNAMIC_MACOS = "0";
+
   // Load both YAML + TS adapters into the registry.
   loadAllAdapters();
   await loadTsAdapters();

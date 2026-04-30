@@ -24,6 +24,11 @@ import {
   SITE_CATEGORIES,
   CATEGORY_ALIASES,
 } from "./aliases.js";
+import {
+  buildMacosDynamicSearchDocuments,
+  discoverMacosDynamicData,
+  dynamicMacosDiscoveryEnabled,
+} from "./macos-dynamic.js";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -527,7 +532,53 @@ function tfidfCosine(
  * @param limit - Maximum results to return (default 5)
  */
 export function search(query: string, limit = 5): SearchResult[] {
-  const index = loadIndex();
+  const staticResults = searchIndex(loadIndex(), query, limit);
+  const dynamicResults = searchDynamicMacosIndex(query, limit);
+
+  if (dynamicResults.length === 0) return staticResults;
+
+  const byCommand = new Map<string, SearchResult>();
+  for (const result of [...staticResults, ...dynamicResults]) {
+    const key = `${result.site}/${result.command}`;
+    const existing = byCommand.get(key);
+    if (!existing || result.score > existing.score) {
+      byCommand.set(key, result);
+    }
+  }
+
+  return Array.from(byCommand.values())
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+}
+
+function searchDynamicMacosIndex(query: string, limit: number): SearchResult[] {
+  if (!dynamicMacosDiscoveryEnabled()) return [];
+
+  const docs = buildMacosDynamicSearchDocuments(discoverMacosDynamicData());
+  if (docs.length === 0) return [];
+
+  const manifest: {
+    sites: Record<
+      string,
+      { commands: Array<{ name: string; description: string }> }
+    >;
+  } = { sites: { macos: { commands: [] } } };
+
+  for (const doc of docs) {
+    manifest.sites.macos.commands.push({
+      name: doc.command,
+      description: doc.description,
+    });
+  }
+
+  return searchIndex(buildIndex(manifest), query, limit);
+}
+
+function searchIndex(
+  index: SearchIndex,
+  query: string,
+  limit: number,
+): SearchResult[] {
   if (index.N === 0) return [];
 
   // Step 1: Tokenize

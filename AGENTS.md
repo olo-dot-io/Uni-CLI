@@ -11,7 +11,7 @@
 
 <!-- BEGIN COUNTS -->
 
-> <!-- STATS:site_count -->235<!-- /STATS --> sites, <!-- STATS:command_count -->1448<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> <!-- STATS:site_count -->235<!-- /STATS --> sites, <!-- STATS:command_count -->1450<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 
@@ -52,9 +52,9 @@ npm install -g @zenalexa/unicli
 
 **Reference**: spotify (23), netease-music (17), linear (10), imdb (7), bitwarden (7), todoist (7), wikipedia (5), xiaoyuzhou (5), +11 more (`unicli list`)
 
-### macOS (58 cmds)
+### macOS (60 cmds)
 
-active-app, apps, apps-list, battery, bluetooth, brightness, caffeinate, calendar-create, calendar-list, calendar-today, clipboard, contacts-search, … (`unicli list --site macos`)
+active-app, app-actions, apps, apps-list, automation-smoke, battery, bluetooth, brightness, caffeinate, calendar-create, calendar-list, calendar-today, … (`unicli list --site macos`)
 
 ### Desktop (28 apps)
 
@@ -213,4 +213,4 @@ unicli lark-cli calendar +agenda   # Direct passthrough
 
 ## Version
 
-0.217.1 — Apollo · Haise
+0.217.2 — Apollo · Swigert

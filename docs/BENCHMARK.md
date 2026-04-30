@@ -14,7 +14,7 @@ The current fixture bench measures v2 `AgentEnvelope` response bodies at
 **357-415 tokens** for representative `--limit 5` list-style calls. Total
 invocation-plus-response budgets land at **364-423 tokens** in the same suite.
 `unicli list` is much larger because it intentionally emits the full
-235-site / 1448-command catalog.
+235-site / 1450-command catalog.
 
 This file ships real numbers or says `TODO:` -- nothing in between.
 
@@ -49,7 +49,7 @@ contract even when source fixtures predate the envelope migration.
 
 <!-- BENCH:begin -->
 
-> Generated 2026-04-27T04:36:49.364Z on Node v22.22.2 / darwin-arm64.
+> Generated 2026-04-30T12:50:15.804Z on Node v22.22.2 / darwin-arm64.
 > Mode: **fixture** (20 iterations per case).
 > Reproduce with `npm run bench` (local live mode) or `BENCH_FIXTURES_ONLY=1 npm run bench` (CI-deterministic fixture mode).
 
@@ -57,21 +57,21 @@ contract even when source fixtures predate the envelope migration.
 
 | metric          | value  |
 | --------------- | ------ |
-| wall p50        | 38 ms  |
-| wall p95        | 44 ms  |
-| response tokens | 73242  |
-| response chars  | 263668 |
+| wall p50        | 47 ms  |
+| wall p95        | 82 ms  |
+| response tokens | 73370  |
+| response chars  | 264131 |
 | sites listed    | 235    |
-| commands listed | 1448   |
+| commands listed | 1450   |
 
 ### Adapter call: p50/p95 response tokens
 
 | category  | command                                  | invocation tokens | response p50 tokens | response p95 tokens | wall p50 ms | wall p95 ms | mode    |
 | --------- | ---------------------------------------- | ----------------: | ------------------: | ------------------: | ----------: | ----------: | ------- |
-| news      | `unicli hackernews top --limit 5`        |                 9 |                 404 |                 404 |       0.004 |       0.073 | fixture |
-| social    | `unicli reddit hot --limit 5`            |                 8 |                 415 |                 415 |       0.005 |       0.011 | fixture |
-| social-cn | `unicli 36kr hot --limit 5`              |                 7 |                 357 |                 357 |       0.003 |       0.005 | fixture |
-| dev       | `unicli github-trending daily --limit 5` |                11 |                 400 |                 400 |       0.005 |       0.007 | fixture |
+| news      | `unicli hackernews top --limit 5`        |                 9 |                 404 |                 404 |       0.005 |        0.08 | fixture |
+| social    | `unicli reddit hot --limit 5`            |                 8 |                 415 |                 415 |       0.005 |       0.016 | fixture |
+| social-cn | `unicli 36kr hot --limit 5`              |                 7 |                 357 |                 357 |       0.003 |       0.004 | fixture |
+| dev       | `unicli github-trending daily --limit 5` |                11 |                 400 |                 400 |       0.005 |       0.006 | fixture |
 
 ### Public call budget
 

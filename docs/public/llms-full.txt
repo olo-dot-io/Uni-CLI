@@ -5,8 +5,8 @@ This file is generated from the same VitePress site map as the public docs.
 ## Snapshot
 
 - Sites: 235
-- Commands: 1448
-- Adapters: 1039
+- Commands: 1450
+- Adapters: 1040
 - Pipeline steps: 59
 
 ---
@@ -54,9 +54,9 @@ Agent execution needs an auditable, repairable, reusable command contract. Catal
 ## Coverage
 
 - Sites and tools: 235
-- Commands: 1448
+- Commands: 1450
 - Pipeline steps: 59
-- Tests: 7585
+- Tests: 7591
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -69,7 +69,7 @@ These numbers come from the current generated repo artifacts: adapters, commands
 
 ## Current Version
 
-Latest: v0.217.1 · Apollo · Haise.
+Latest: v0.217.2 · Apollo · Swigert.
 
 ## Agent Index
 
@@ -1430,7 +1430,7 @@ running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 235 sites, 1448 commands.
+This catalog is generated from the adapter manifest: 235 sites, 1450 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -1548,7 +1548,7 @@ This catalog is generated from the adapter manifest: 235 sites, 1448 commands.
 | linkedin | web-api | 4 | yes | unicli linkedin jobs<br>unicli linkedin profile<br>unicli linkedin search |
 | linux-do | web-api | 11 | yes | unicli linux-do categories<br>unicli linux-do category<br>unicli linux-do feed |
 | lobsters | web-api | 5 | no | unicli lobsters active<br>unicli lobsters hot<br>unicli lobsters newest |
-| macos | desktop | 58 | no | unicli macos active-app<br>unicli macos apps-list<br>unicli macos apps |
+| macos | desktop | 60 | no | unicli macos active-app<br>unicli macos apps-list<br>unicli macos apps |
 | maimai | browser | 2 | yes | unicli maimai search<br>unicli maimai search-talents |
 | maoyan | web-api | 2 | yes | unicli maoyan hot<br>unicli maoyan search |
 | mastodon | web-api | 4 | no | unicli mastodon search<br>unicli mastodon timeline<br>unicli mastodon trending |
@@ -3545,8 +3545,8 @@ Uni-CLI exposes one searchable command surface across:
 - **Agent backends**: routing and setup helpers for agent runtimes that can call
   shell commands or protocol servers.
 
-The generated catalog is the source of truth: **235 sites**, **1448 commands**,
-**1039 adapters**, **59 pipeline steps**, and **7585 tests** in v0.217.1.
+The generated catalog is the source of truth: **235 sites**, **1450 commands**,
+**1040 adapters**, **59 pipeline steps**, and **7591 tests** in v0.217.2.
 
 ## Execution Contract
 
@@ -3784,7 +3784,7 @@ enough.
 bench shows representative `--limit 5` adapter responses at **357-415
 tokens**, with total invocation-plus-response budgets at **364-423 tokens**.
 The full catalog command is intentionally much larger because it emits all
-235 sites and 1448 commands; agents should search and describe before asking
+235 sites and 1450 commands; agents should search and describe before asking
 for the full registry.
 
 ## Direction
@@ -3831,7 +3831,7 @@ The current fixture bench measures v2 `AgentEnvelope` response bodies at
 **357-415 tokens** for representative `--limit 5` list-style calls. Total
 invocation-plus-response budgets land at **364-423 tokens** in the same suite.
 `unicli list` is much larger because it intentionally emits the full
-235-site / 1448-command catalog.
+235-site / 1450-command catalog.
 
 This file ships real numbers or says `TODO:` -- nothing in between.
 
@@ -3866,37 +3866,37 @@ contract even when source fixtures predate the envelope migration.
 
 <!-- BENCH:begin -->
 
-> Generated 2026-04-27T04:36:49.364Z on Node v22.22.2 / darwin-arm64.
+> Generated 2026-04-30T12:50:15.804Z on Node v22.22.2 / darwin-arm64.
 > Mode: **fixture** (20 iterations per case).
 > Reproduce with `npm run bench` (local live mode) or `BENCH_FIXTURES_ONLY=1 npm run bench` (CI-deterministic fixture mode).
 
 ### Cold start: `unicli list`
 
-| metric          | value  |
-| --------------- | ------ |
-| wall p50        | 38 ms  |
-| wall p95        | 44 ms  |
-| response tokens | 73242  |
-| response chars  | 263668 |
-| sites listed    | 235    |
-| commands listed | 1448   |
+| metric | value |
+| ------ | ----- |
+| wall p50 | 47 ms |
+| wall p95 | 82 ms |
+| response tokens | 73370 |
+| response chars | 264131 |
+| sites listed | 235 |
+| commands listed | 1450 |
 
 ### Adapter call: p50/p95 response tokens
 
-| category  | command                                  | invocation tokens | response p50 tokens | response p95 tokens | wall p50 ms | wall p95 ms | mode    |
-| --------- | ---------------------------------------- | ----------------: | ------------------: | ------------------: | ----------: | ----------: | ------- |
-| news      | `unicli hackernews top --limit 5`        |                 9 |                 404 |                 404 |       0.004 |       0.073 | fixture |
-| social    | `unicli reddit hot --limit 5`            |                 8 |                 415 |                 415 |       0.005 |       0.011 | fixture |
-| social-cn | `unicli 36kr hot --limit 5`              |                 7 |                 357 |                 357 |       0.003 |       0.005 | fixture |
-| dev       | `unicli github-trending daily --limit 5` |                11 |                 400 |                 400 |       0.005 |       0.007 | fixture |
+| category | command | invocation tokens | response p50 tokens | response p95 tokens | wall p50 ms | wall p95 ms | mode |
+| -------- | ------- | ----------------: | ------------------: | ------------------: | ----------: | ----------: | ---- |
+| news | `unicli hackernews top --limit 5` | 9 | 404 | 404 | 0.005 | 0.08 | fixture |
+| social | `unicli reddit hot --limit 5` | 8 | 415 | 415 | 0.005 | 0.016 | fixture |
+| social-cn | `unicli 36kr hot --limit 5` | 7 | 357 | 357 | 0.003 | 0.004 | fixture |
+| dev | `unicli github-trending daily --limit 5` | 11 | 400 | 400 | 0.005 | 0.006 | fixture |
 
 ### Public call budget
 
-| metric                             | value          |
-| ---------------------------------- | -------------- |
-| Smallest total call budget         | 364 tokens     |
-| Largest total call budget          | 423 tokens     |
-| Median total call budget           | 412 tokens     |
+| metric | value |
+| ------ | ----- |
+| Smallest total call budget | 364 tokens |
+| Largest total call budget | 423 tokens |
+| Median total call budget | 412 tokens |
 | Representative response token span | 357-415 tokens |
 
 <!-- BENCH:end -->
@@ -3990,8 +3990,8 @@ $$
 - `output` defines the fields returned to the agent.
 - `errors` are normalized into a v2 `AgentEnvelope`.
 
-The current public catalog has **235 sites**, **1448 commands**,
-**1039 adapters**, and **59 pipeline steps**. Those numbers are generated from
+The current public catalog has **235 sites**, **1450 commands**,
+**1040 adapters**, and **59 pipeline steps**. Those numbers are generated from
 the repo by `scripts/count-stats.ts`, not hand-maintained marketing copy.
 
 ## Self-Repair
@@ -4056,7 +4056,7 @@ envelope. In the current fixture suite:
 - representative invocation strings: **7-11 tokens**;
 - representative total budgets: **364-423 tokens**;
 - full catalog output: **73242 tokens** because it intentionally lists all
-  235 sites and 1448 commands.
+  235 sites and 1450 commands.
 
 The operational rule follows directly: agents should search and describe first,
 then execute the smallest matching command. Full catalog output is available,
@@ -4099,7 +4099,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Current: v0.217.1 — Apollo · Haise. <!-- STATS:site_count -->235<!-- /STATS --> sites, <!-- STATS:command_count -->1448<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps.
+> Current: v0.217.2 — Apollo · Swigert. <!-- STATS:site_count -->235<!-- /STATS --> sites, <!-- STATS:command_count -->1450<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction. Historical release notes live in
 `CHANGELOG.md`; they do not belong in the roadmap.

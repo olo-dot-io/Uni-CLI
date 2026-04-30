@@ -11,7 +11,7 @@
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：235 个站点，1448 条命令。
+这个目录来自适配器 manifest：235 个站点，1450 条命令。
 
 | 站点 | 接口类型 | 命令数 | 认证 | 示例命令 |
 | --- | --- | ---: | --- | --- |
@@ -129,7 +129,7 @@
 | linkedin | web-api | 4 | 是 | unicli linkedin jobs<br>unicli linkedin profile<br>unicli linkedin search |
 | linux-do | web-api | 11 | 是 | unicli linux-do categories<br>unicli linux-do category<br>unicli linux-do feed |
 | lobsters | web-api | 5 | 否 | unicli lobsters active<br>unicli lobsters hot<br>unicli lobsters newest |
-| macos | desktop | 58 | 否 | unicli macos active-app<br>unicli macos apps-list<br>unicli macos apps |
+| macos | desktop | 60 | 否 | unicli macos active-app<br>unicli macos apps-list<br>unicli macos apps |
 | maimai | browser | 2 | 是 | unicli maimai search<br>unicli maimai search-talents |
 | maoyan | web-api | 2 | 是 | unicli maoyan hot<br>unicli maoyan search |
 | mastodon | web-api | 4 | 否 | unicli mastodon search<br>unicli mastodon timeline<br>unicli mastodon trending |

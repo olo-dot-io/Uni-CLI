@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->235<!-- /STATS --> sites · <!-- STATS:command_count -->1448<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7585<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->235<!-- /STATS --> sites · <!-- STATS:command_count -->1450<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7591<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -135,7 +135,7 @@ Uni-CLI sits under agent applications and turns software surfaces into commands 
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Websites and APIs  | Declarative adapters for public, cookie, header, and browser-intercept workflows                                                                                                                         |
 | Browser automation | CDP steps for navigate, click, type, intercept, snapshot, extract, wait, and related browser work                                                                                                        |
-| Desktop and macOS  | System commands, app adapters, screenshots, clipboard, calendar, brightness, and local tools                                                                                                             |
+| Desktop and macOS  | System commands, app adapters, real-time Shortcuts/App Intent discovery, screenshots, clipboard, calendar, brightness, and local tools                                                                   |
 | External CLIs      | 58 registered pass-through bridges with install/status discovery                                                                                                                                         |
 | Agent backends     | Route matrix for native CLI, JSON stream, MCP, ACP, HTTP API, OpenAI-compatible, and bridge routes                                                                                                       |
 | Operation policy   | `open`, `confirm`, and `locked` profiles with effect/risk scopes, local deny rules, `--yes`, and persisted approval memory                                                                               |
@@ -150,6 +150,8 @@ Use search first, then run the smallest matching command.
 ```bash
 unicli search "connect slack messages" --limit 5
 unicli slack search "deploy incident" -f json
+unicli macos app-actions --app WhatsApp -f json
+unicli macos automation-smoke -f json
 unicli repair slack search
 ```
 
@@ -336,5 +338,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v0.217.1 — Apollo · Haise</sub>
+  <sub>v0.217.2 — Apollo · Swigert</sub>
 </p>

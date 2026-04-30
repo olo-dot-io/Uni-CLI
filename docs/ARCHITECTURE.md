@@ -19,8 +19,8 @@ Uni-CLI exposes one searchable command surface across:
 - **Agent backends**: routing and setup helpers for agent runtimes that can call
   shell commands or protocol servers.
 
-The generated catalog is the source of truth: **235 sites**, **1448 commands**,
-**1039 adapters**, **59 pipeline steps**, and **7585 tests** in v0.217.1.
+The generated catalog is the source of truth: **235 sites**, **1450 commands**,
+**1040 adapters**, **59 pipeline steps**, and **7591 tests** in v0.217.2.
 
 ## Execution Contract
 
@@ -258,7 +258,7 @@ enough.
 bench shows representative `--limit 5` adapter responses at **357-415
 tokens**, with total invocation-plus-response budgets at **364-423 tokens**.
 The full catalog command is intentionally much larger because it emits all
-235 sites and 1448 commands; agents should search and describe before asking
+235 sites and 1450 commands; agents should search and describe before asking
 for the full registry.
 
 ## Direction

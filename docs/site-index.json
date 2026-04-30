@@ -1,7 +1,7 @@
 {
-  "generated": "2026-04-29T13:41:40.214Z",
+  "generated": "2026-04-30T12:50:23.943Z",
   "total_sites": 235,
-  "total_commands": 1448,
+  "total_commands": 1450,
   "sites": [
     {
       "site": "1688",
@@ -4407,7 +4407,8 @@
       "site": "macos",
       "type": "desktop",
       "auth": false,
-      "command_count": 58,
+      "strategy": "public",
+      "command_count": 60,
       "commands": [
         {
           "name": "active-app",
@@ -4698,6 +4699,16 @@
           "name": "wifi",
           "description": "Get Wi-Fi status or turn Wi-Fi on/off",
           "command": "unicli macos wifi"
+        },
+        {
+          "name": "app-actions",
+          "description": "List real-time Shortcuts app actions and App Intents exposed by installed macOS apps",
+          "command": "unicli macos app-actions"
+        },
+        {
+          "name": "automation-smoke",
+          "description": "Probe macOS automation reproducibility across Shortcuts CLI, Shortcuts ToolKit API, and AX/System Events",
+          "command": "unicli macos automation-smoke"
         }
       ]
     },
