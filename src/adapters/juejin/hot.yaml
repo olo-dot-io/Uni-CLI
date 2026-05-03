@@ -13,21 +13,17 @@ args:
 
 pipeline:
   - fetch:
-      url: https://api.juejin.cn/recommend_api/v1/article/recommend_all_feed
+      url: https://api.juejin.cn/recommend_api/v1/article/recommend_all_feed?aid=2608&uuid=&spider=0
       method: POST
-      params:
-        aid: "2608"
-        uuid: ""
-        spider: "0"
       headers:
         Content-Type: application/json
         User-Agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
-      body_json:
+      body:
         id_type: 2
         client_type: 2608
         sort_type: 200
         cursor: "0"
-        limit: "${{ args.limit }}"
+        limit: 30
 
   - select: data
 
