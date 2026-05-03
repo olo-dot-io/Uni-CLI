@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "recorded_at": "2026-05-03T00:00:00.000Z",
+  "args": { "query": "Anthropic" },
+  "http_requests": [
+    {
+      "url_pattern": ".*juejin.*search.*",
+      "response": {
+        "status": 200,
+        "headers": { "content-type": "application/json" },
+        "body_json": {
+          "err_no": 0,
+          "err_msg": "success",
+          "data": [
+            {
+              "result_type": 2,
+              "result_model": {
+                "article_id": "7448955863714627596",
+                "article_info": {
+                  "article_id": "7448955863714627596",
+                  "title": "Anthropic Claude 4.7 实测：长上下文 + Agent",
+                  "brief_content": "本文系统评测了 Claude 4.7 在长上下文检索、工具调用、多步推理三个维度的表现，并给出与 GPT-5 的横向对比。",
+                  "view_count": 36065,
+                  "digg_count": 275,
+                  "comment_count": 32
+                },
+                "author_user_info": {
+                  "user_name": "CodeSheep",
+                  "company": "r2coding.com",
+                  "job_title": "软件开发"
+                }
+              }
+            },
+            {
+              "result_type": 2,
+              "result_model": {
+                "article_id": "7400000000000000001",
+                "article_info": {
+                  "article_id": "7400000000000000001",
+                  "title": "Anthropic 面试经验：从 SWE 到 Research Engineer",
+                  "brief_content": "记录一次 Anthropic 的面试流程：电面、coding、system design、research deep dive。",
+                  "view_count": 12000,
+                  "digg_count": 88,
+                  "comment_count": 7
+                },
+                "author_user_info": {
+                  "user_name": "synth_user",
+                  "company": "Self",
+                  "job_title": "ML Engineer"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expected": {
+    "columns": [
+      "rank",
+      "title",
+      "excerpt",
+      "author",
+      "company",
+      "views",
+      "diggs",
+      "comments",
+      "url"
+    ],
+    "minItems": 1
+  }
+}

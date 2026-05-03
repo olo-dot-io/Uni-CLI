@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "recorded_at": "2026-05-03T00:00:00.000Z",
+  "args": {},
+  "http_requests": [
+    {
+      "url_pattern": ".*juejin.*recommend_cate_feed.*",
+      "response": {
+        "status": 200,
+        "headers": { "content-type": "application/json" },
+        "body_json": {
+          "err_no": 0,
+          "err_msg": "success",
+          "data": [
+            {
+              "item_type": 2,
+              "item_info": {
+                "article_id": "7584110439933100078",
+                "article_info": {
+                  "article_id": "7584110439933100078",
+                  "title": "DeepSeek-V4 开源：MoE 路由细节解析",
+                  "view_count": 50000,
+                  "digg_count": 800,
+                  "comment_count": 120,
+                  "hot_index": 5000
+                },
+                "author_user_info": {
+                  "user_name": "synth_author",
+                  "company": "DeepSeek",
+                  "job_title": "Research"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expected": {
+    "columns": [
+      "rank",
+      "title",
+      "author",
+      "company",
+      "views",
+      "diggs",
+      "comments",
+      "hot_index",
+      "url"
+    ],
+    "minItems": 1
+  }
+}
