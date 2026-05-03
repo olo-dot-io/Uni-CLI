@@ -4,7 +4,7 @@
   "args": {},
   "http_requests": [
     {
-      "url_pattern": ".*juejin.*recommend_cate_feed.*",
+      "url_pattern": ".*juejin.*recommend_all_feed.*",
       "response": {
         "status": 200,
         "headers": { "content-type": "application/json" },
@@ -28,6 +28,25 @@
                   "user_name": "synth_author",
                   "company": "DeepSeek",
                   "job_title": "Research"
+                }
+              }
+            },
+            {
+              "item_type": 2,
+              "item_info": {
+                "article_id": "7400000000000000002",
+                "article_info": {
+                  "article_id": "7400000000000000002",
+                  "title": "Qwen3 技术解读：从架构到推理优化",
+                  "view_count": 25000,
+                  "digg_count": 320,
+                  "comment_count": 45,
+                  "hot_index": 2100
+                },
+                "author_user_info": {
+                  "user_name": "synth_qwen",
+                  "company": "Alibaba",
+                  "job_title": "Researcher"
                 }
               }
             }
