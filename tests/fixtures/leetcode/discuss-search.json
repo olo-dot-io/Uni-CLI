@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "recorded_at": "2026-05-03T00:00:00.000Z",
+  "args": { "query": "Anthropic" },
+  "http_requests": [
+    {
+      "url_pattern": ".*leetcode.*graphql.*",
+      "response": {
+        "status": 200,
+        "headers": { "content-type": "application/json" },
+        "body_json": {
+          "data": {
+            "ugcArticleDiscussionArticles": {
+              "totalNum": 13,
+              "edges": [
+                {
+                  "node": {
+                    "uuid": "7QYnt1i9",
+                    "title": "Anthropic Technical Screen",
+                    "summary": "Anyone made to the onsite after the technical screen ?",
+                    "slug": "anthropic-technical-screen-by-luckycoder-gaad",
+                    "createdAt": "2026-05-02T02:15:35.398451+00:00",
+                    "hitCount": 182,
+                    "author": {
+                      "userName": "luckycoder2710",
+                      "realName": "luckycoder2710"
+                    }
+                  }
+                },
+                {
+                  "node": {
+                    "uuid": "QhH8Cviu",
+                    "title": "[OA + Coding Question] Anthropic Phone Screen",
+                    "summary": "I noticed not many people have shared their experience interviewing with Anthropic.",
+                    "slug": "anthropic-phone-screen-easy-pass-small-q-8dhg",
+                    "createdAt": "2026-02-07T09:42:42.578708+00:00",
+                    "hitCount": 1322,
+                    "author": { "userName": null, "realName": "Anonymous User" }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "expected": {
+    "columns": [
+      "rank",
+      "title",
+      "summary",
+      "author",
+      "views",
+      "created",
+      "url"
+    ],
+    "minItems": 1
+  }
+}
