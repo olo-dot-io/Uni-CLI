@@ -1,0 +1,56 @@
+site: juejin
+name: hot
+description: 掘金全站热门推荐 / Juejin all-categories hot feed
+domain: juejin.cn
+type: web-api
+strategy: public
+
+args:
+  limit:
+    type: int
+    default: 20
+    description: Number of items
+
+pipeline:
+  - fetch:
+      url: https://api.juejin.cn/recommend_api/v1/article/recommend_all_feed
+      method: POST
+      params:
+        aid: "2608"
+        uuid: ""
+        spider: "0"
+      headers:
+        Content-Type: application/json
+        User-Agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+      body_json:
+        id_type: 2
+        client_type: 2608
+        sort_type: 200
+        cursor: "0"
+        limit: "${{ args.limit }}"
+
+  - select: data
+
+  - filter: item.item_type === 2 && item.item_info && item.item_info.article_info
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.item_info.article_info.title }}
+      author: ${{ item.item_info.author_user_info && item.item_info.author_user_info.user_name }}
+      company: ${{ item.item_info.author_user_info && item.item_info.author_user_info.company }}
+      views: ${{ item.item_info.article_info.view_count }}
+      diggs: ${{ item.item_info.article_info.digg_count }}
+      comments: ${{ item.item_info.article_info.comment_count }}
+      hot_index: ${{ item.item_info.article_info.hot_index }}
+      url: https://juejin.cn/post/${{ item.item_info.article_info.article_id }}
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, author, company, views, diggs, comments, hot_index, url]
+
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2
