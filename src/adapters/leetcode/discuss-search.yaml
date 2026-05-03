@@ -1,0 +1,56 @@
+site: leetcode
+name: discuss-search
+description: LeetCode Discuss 文章关键词搜索 / Search LeetCode Discuss articles by keyword
+domain: leetcode.com
+type: web-api
+strategy: public
+
+args:
+  query:
+    required: true
+    positional: true
+    description: Search keyword (single string; matched against title and body)
+  limit:
+    type: int
+    default: 20
+    description: Number of articles
+  order:
+    type: string
+    default: MOST_RECENT
+    description: Sort order — MOST_RECENT or HOTTEST
+
+pipeline:
+  - fetch:
+      url: https://leetcode.com/graphql/
+      method: POST
+      headers:
+        Content-Type: application/json
+        Referer: https://leetcode.com/discuss/
+        Origin: https://leetcode.com
+        User-Agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+      body:
+        query: '{ ugcArticleDiscussionArticles(orderBy: ${{ args.order }}, skip: 0, first: ${{ args.limit }}, keywords: ["${{ args.query }}"], tagSlugs: []) { totalNum edges { node { uuid title summary slug createdAt hitCount author { userName realName } } } } }'
+
+  - select: data.ugcArticleDiscussionArticles.edges
+
+  - filter: item.node && item.node.title
+
+  - map:
+      rank: ${{ index + 1 }}
+      title: ${{ item.node.title }}
+      summary: ${{ String(item.node.summary || '').slice(0, 200) }}
+      author: ${{ item.node.author && (item.node.author.realName || item.node.author.userName) }}
+      views: ${{ item.node.hitCount }}
+      created: ${{ item.node.createdAt }}
+      url: https://leetcode.com/discuss/post/${{ item.node.slug }}/
+
+  - limit: ${{ args.limit }}
+
+columns: [rank, title, summary, author, views, created, url]
+
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2
