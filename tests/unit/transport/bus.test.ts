@@ -160,13 +160,11 @@ describe("TransportBus.require", () => {
     }
   });
 
-  it("ignores unregistered transports even if matrix lists them", () => {
-    // Matrix says cdp-browser supports click, but we don't register it.
+  it("does not route generic browser UI steps to native desktop transports", () => {
     const bus = createTransportBus();
     const desktopAx = makeStub("desktop-ax", ["click"]);
     bus.register(desktopAx);
-    // Should still find one — desktop-ax also supports click per matrix.
-    expect(bus.require("click")).toBe(desktopAx);
+    expect(() => bus.require("click")).toThrow(NoTransportForStepError);
   });
 });
 

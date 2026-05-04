@@ -17,6 +17,8 @@
  */
 
 import type { Envelope } from "../core/envelope.js";
+import type { RefStore } from "./refs.js";
+import type { SnapshotEncoding } from "./snapshot-encoder.js";
 
 /**
  * The seven transports that together cover the full "operate anything"
@@ -47,6 +49,7 @@ export type SnapshotFormat =
 /** Uniform snapshot shape returned by {@link TransportAdapter.snapshot}. */
 export interface Snapshot {
   format: SnapshotFormat;
+  encoding?: SnapshotEncoding;
   data: string | Buffer;
   width?: number;
   height?: number;
@@ -113,6 +116,7 @@ export interface TransportEvent {
  * to `cua` on non-trivial perception tasks).
  */
 export interface TransportBus {
+  refs: RefStore;
   register(adapter: TransportAdapter): void;
   get(kind: TransportKind): TransportAdapter;
   /**
@@ -141,6 +145,7 @@ export interface TransportContext {
   vars: Record<string, unknown>;
   signal?: AbortSignal;
   bus: TransportBus;
+  refs?: RefStore;
 }
 
 /**
@@ -161,7 +166,7 @@ export interface TransportAdapter {
   open(ctx: TransportContext): Promise<void>;
 
   snapshot(opts?: {
-    format?: SnapshotFormat;
+    format?: SnapshotFormat | SnapshotEncoding;
     fresh?: boolean;
   }): Promise<Snapshot>;
 

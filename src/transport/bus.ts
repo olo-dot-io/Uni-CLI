@@ -36,6 +36,7 @@ import { DesktopAtspiTransport } from "./adapters/desktop-atspi.js";
 import { HttpTransport } from "./adapters/http.js";
 import { SubprocessTransport } from "./adapters/subprocess.js";
 import { CdpBrowserTransport } from "./adapters/cdp-browser.js";
+import { RefStore } from "./refs.js";
 import type {
   TransportAdapter,
   TransportBus,
@@ -57,6 +58,17 @@ export type {
   Capability,
   TransportEvent,
 } from "./types.js";
+export {
+  RefAllocator,
+  RefStore,
+  type ElementRef,
+  type RefBucket,
+} from "./refs.js";
+export {
+  encodeSnapshot,
+  type RawAxNode,
+  type SnapshotEncoding,
+} from "./snapshot-encoder.js";
 
 /**
  * Typed error thrown by {@link TransportBus.require} when no registered
@@ -75,6 +87,7 @@ export class NoTransportForStepError extends Error {
 
 /** Implementation of the {@link TransportBus} interface. */
 class TransportBusImpl implements TransportBus {
+  readonly refs = new RefStore();
   private readonly adapters = new Map<TransportKind, TransportAdapter>();
 
   register(adapter: TransportAdapter): void {
@@ -143,19 +156,6 @@ class TransportBusImpl implements TransportBus {
     for (const kind of row.transports) {
       const adapter = this.adapters.get(kind);
       if (adapter && adapter.capability.steps.includes(step)) return adapter;
-    }
-
-    // Fallback: maybe a registered transport declares this step even if the
-    // matrix is tighter. Walk every registered transport and match.
-    for (const adapter of this.adapters.values()) {
-      if (adapter.capability.steps.includes(step)) {
-        if (
-          !row.platforms ||
-          row.platforms.includes(hostPlatform as "darwin" | "win32" | "linux")
-        ) {
-          return adapter;
-        }
-      }
     }
 
     const requiredTransport = row.transports[0] ?? "http";
@@ -233,11 +233,13 @@ export interface TransportCtxInput {
 
 /** Build a {@link TransportContext} for a dispatched step. */
 export function buildTransportCtx(ctx: TransportCtxInput): TransportContext {
+  const bus = getBus();
   return {
     cwd: process.cwd(),
     env: process.env as Record<string, string>,
     cookieHeader: ctx.cookieHeader,
     vars: ctx.vars,
-    bus: getBus(),
+    bus,
+    refs: bus.refs,
   };
 }

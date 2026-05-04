@@ -54,15 +54,33 @@ describe("stepSupportedBy", () => {
     expect(stepSupportedBy("exec")).toEqual(["subprocess"]);
   });
 
-  it("click spans browser + desktop + cua", () => {
-    const t = stepSupportedBy("click");
-    expect(t).toContain("cdp-browser");
-    expect(t).toContain("desktop-ax");
-    expect(t).toContain("desktop-uia");
-    expect(t).toContain("desktop-atspi");
-    expect(t).toContain("cua");
-    expect(t).not.toContain("http");
-    expect(t).not.toContain("subprocess");
+  it("generic browser UI steps stay on CDP-backed browser execution", () => {
+    for (const step of [
+      "navigate",
+      "click",
+      "type",
+      "press",
+      "scroll",
+      "snapshot",
+      "screenshot",
+      "extract",
+    ]) {
+      expect(stepSupportedBy(step), step).toEqual(["cdp-browser"]);
+    }
+  });
+
+  it("generic wait keeps subprocess as the non-browser timer fallback", () => {
+    expect(stepSupportedBy("wait")).toEqual(["cdp-browser", "subprocess"]);
+  });
+
+  it("compute_screenshot advertises CUA as the last visual fallback", () => {
+    expect(stepSupportedBy("compute_screenshot")).toEqual([
+      "cdp-browser",
+      "desktop-ax",
+      "desktop-uia",
+      "desktop-atspi",
+      "cua",
+    ]);
   });
 
   it("applescript is desktop-ax-only", () => {
@@ -70,23 +88,87 @@ describe("stepSupportedBy", () => {
   });
 
   it("new direct AX actions stay desktop-ax-only", () => {
+    expect(stepSupportedBy("ax_apps")).toEqual(["desktop-ax"]);
+    expect(stepSupportedBy("ax_windows")).toEqual(["desktop-ax"]);
     expect(stepSupportedBy("ax_snapshot")).toEqual(["desktop-ax"]);
     expect(stepSupportedBy("ax_focused_read")).toEqual(["desktop-ax"]);
     expect(stepSupportedBy("ax_set_value")).toEqual(["desktop-ax"]);
     expect(stepSupportedBy("ax_press")).toEqual(["desktop-ax"]);
+    expect(stepSupportedBy("ax_scroll")).toEqual(["desktop-ax"]);
+    expect(stepSupportedBy("ax_screenshot")).toEqual(["desktop-ax"]);
     expect(stepSupportedBy("ax_background_click")).toEqual(["desktop-ax"]);
   });
 
-  it("uia_invoke is desktop-uia-only", () => {
-    expect(stepSupportedBy("uia_invoke")).toEqual(["desktop-uia"]);
+  it("direct UIA actions stay desktop-uia-only", () => {
+    for (const step of [
+      "uia_apps",
+      "uia_windows",
+      "uia_snapshot",
+      "uia_find",
+      "uia_invoke",
+      "uia_set_value",
+      "uia_focus",
+      "uia_press",
+      "uia_scroll",
+      "uia_screenshot",
+      "uia_wait",
+      "uia_observe",
+      "uia_assert",
+    ]) {
+      expect(stepSupportedBy(step), step).toEqual(["desktop-uia"]);
+    }
+    expect(stepSupportedBy("uia_get_pattern")).toEqual([]);
   });
 
-  it("atspi_activate is desktop-atspi-only", () => {
-    expect(stepSupportedBy("atspi_activate")).toEqual(["desktop-atspi"]);
+  it("direct AT-SPI actions stay desktop-atspi-only", () => {
+    for (const step of [
+      "atspi_apps",
+      "atspi_windows",
+      "atspi_snapshot",
+      "atspi_find",
+      "atspi_invoke",
+      "atspi_set_value",
+      "atspi_focus",
+      "atspi_press",
+      "atspi_scroll",
+      "atspi_screenshot",
+      "atspi_wait",
+      "atspi_observe",
+      "atspi_assert",
+    ]) {
+      expect(stepSupportedBy(step), step).toEqual(["desktop-atspi"]);
+    }
+    expect(stepSupportedBy("atspi_activate")).toEqual([]);
   });
 
-  it("cua_snapshot is cua-only (native)", () => {
-    expect(stepSupportedBy("cua_snapshot")).toEqual(["cua"]);
+  it("direct CUA actions stay cua-only", () => {
+    for (const step of [
+      "cua_snapshot",
+      "cua_click",
+      "cua_type",
+      "cua_key",
+      "cua_scroll",
+      "cua_drag",
+      "cua_wait",
+      "cua_assert",
+      "cua_ask",
+      "cua_backend",
+      "cua_launch",
+    ]) {
+      expect(stepSupportedBy(step), step).toEqual(["cua"]);
+    }
+  });
+
+  it("shared desktop lifecycle rows only advertise implemented native actions", () => {
+    expect(stepSupportedBy("clipboard_read")).toEqual(["desktop-ax"]);
+    expect(stepSupportedBy("clipboard_write")).toEqual(["desktop-ax"]);
+    expect(stepSupportedBy("focus_window")).toEqual(["desktop-ax"]);
+    expect(stepSupportedBy("launch_app")).toEqual([
+      "subprocess",
+      "desktop-ax",
+      "desktop-uia",
+      "desktop-atspi",
+    ]);
   });
 
   it("control-flow steps (set/if/append/each/parallel) span every transport", () => {
@@ -112,26 +194,64 @@ describe("stepPlatform", () => {
   });
 
   it("direct AX actions are darwin-gated", () => {
+    expect(stepPlatform("ax_apps")).toEqual(["darwin"]);
+    expect(stepPlatform("ax_windows")).toEqual(["darwin"]);
     expect(stepPlatform("ax_snapshot")).toEqual(["darwin"]);
     expect(stepPlatform("ax_focused_read")).toEqual(["darwin"]);
     expect(stepPlatform("ax_set_value")).toEqual(["darwin"]);
     expect(stepPlatform("ax_press")).toEqual(["darwin"]);
+    expect(stepPlatform("ax_scroll")).toEqual(["darwin"]);
+    expect(stepPlatform("ax_screenshot")).toEqual(["darwin"]);
     expect(stepPlatform("ax_background_click")).toEqual(["darwin"]);
   });
 
-  it("uia_invoke is win32-gated", () => {
-    expect(stepPlatform("uia_invoke")).toEqual(["win32"]);
+  it("direct UIA actions are win32-gated", () => {
+    for (const step of [
+      "uia_apps",
+      "uia_windows",
+      "uia_snapshot",
+      "uia_find",
+      "uia_invoke",
+      "uia_set_value",
+      "uia_focus",
+      "uia_press",
+      "uia_scroll",
+      "uia_screenshot",
+      "uia_wait",
+      "uia_observe",
+      "uia_assert",
+    ]) {
+      expect(stepPlatform(step), step).toEqual(["win32"]);
+    }
+    expect(stepPlatform("uia_get_pattern")).toBeUndefined();
   });
 
-  it("atspi_activate is linux-gated", () => {
-    expect(stepPlatform("atspi_activate")).toEqual(["linux"]);
+  it("direct AT-SPI actions are linux-gated", () => {
+    for (const step of [
+      "atspi_apps",
+      "atspi_windows",
+      "atspi_snapshot",
+      "atspi_find",
+      "atspi_invoke",
+      "atspi_set_value",
+      "atspi_focus",
+      "atspi_press",
+      "atspi_scroll",
+      "atspi_screenshot",
+      "atspi_wait",
+      "atspi_observe",
+      "atspi_assert",
+    ]) {
+      expect(stepPlatform(step), step).toEqual(["linux"]);
+    }
+    expect(stepPlatform("atspi_activate")).toBeUndefined();
   });
 
   it("fetch has no platform gate", () => {
     expect(stepPlatform("fetch")).toBeUndefined();
   });
 
-  it("click has no platform gate (supported on all three host platforms)", () => {
+  it("click has no platform gate because CDP runs on every host platform", () => {
     expect(stepPlatform("click")).toBeUndefined();
   });
 });
