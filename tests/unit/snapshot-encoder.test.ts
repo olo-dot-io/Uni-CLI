@@ -16,66 +16,6 @@ function loadFixture(name: string): RawAxNode {
   ) as RawAxNode;
 }
 
-function slackFixture(): RawAxNode {
-  return {
-    role: "AXWindow",
-    name: "Slack",
-    path: "AXWindow[0]",
-    scope: "pid-100",
-    app: "Slack",
-    pid: 100,
-    bounds: { x: 0, y: 0, w: 1200, h: 800 },
-    states: ["focused"],
-    children: [
-      {
-        role: "AXGroup",
-        path: "AXWindow[0]/AXGroup[0]",
-        scope: "pid-100",
-        children: [
-          {
-            role: "AXStaticText",
-            name: "general",
-            path: "AXWindow[0]/AXGroup[0]/AXStaticText[0]",
-            scope: "pid-100",
-          },
-          {
-            role: "AXTextArea",
-            name: "Message general",
-            path: "AXWindow[0]/AXGroup[0]/AXTextArea[0]",
-            scope: "pid-100",
-            bounds: { x: 40, y: 710, w: 900, h: 44 },
-            states: ["focusable", "editable"],
-          },
-          {
-            role: "AXButton",
-            name: "Send",
-            path: "AXWindow[0]/AXGroup[0]/AXButton[0]",
-            scope: "pid-100",
-            bounds: { x: 960, y: 710, w: 80, h: 44 },
-            states: ["enabled"],
-          },
-        ],
-      },
-    ],
-  };
-}
-
-function largeFixture(count: number): RawAxNode {
-  return {
-    role: "Window",
-    name: "VS Code",
-    path: "Window[0]",
-    scope: "pid-200",
-    children: Array.from({ length: count }, (_, i) => ({
-      role: i % 3 === 0 ? "Button" : "Text",
-      name: `node-${i}`,
-      path: `Window[0]/${i % 3 === 0 ? "Button" : "Text"}[${i}]`,
-      scope: "pid-200",
-      states: i % 3 === 0 ? ["enabled"] : [],
-    })),
-  };
-}
-
 describe("encodeSnapshot", () => {
   it("loads the six P1 golden fixtures from disk", () => {
     expect(
