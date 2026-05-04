@@ -61,7 +61,7 @@ An adapter that shells out to a local binary (e.g., `ffmpeg`, `imagemagick`, `bl
 
 ## Discovery
 
-The phase where an agent maps natural-language intent to a concrete command. Performed by `unicli search "<intent>"` against the local catalog. Discovery cost is bounded — see [docs/BENCHMARK.md](/BENCHMARK) for measured per-call token budgets.
+The phase where an agent maps natural-language intent to a concrete command. Performed by `unicli search "<intent>"` against the local catalog. Discovery cost is bounded — see [docs/BENCHMARK.md](/BENCHMARK) for measured token budgets.
 
 ## Error envelope
 
