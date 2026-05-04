@@ -42,8 +42,11 @@ const rootSidebarGroups: SiteGroup[] = [
     items: [
       { text: "Overview", link: "/" },
       { text: "First Run", link: "/guide/getting-started" },
+      { text: "How It Works", link: "/how-it-works" },
       { text: "Integrations", link: "/guide/integrations" },
       { text: "Recipes", link: "/RECIPES" },
+      { text: "FAQ", link: "/faq" },
+      { text: "Glossary", link: "/glossary" },
     ],
   },
   {
@@ -96,8 +99,11 @@ const zhSidebarGroups: SiteGroup[] = [
     items: [
       { text: "概览", link: "/" },
       { text: "安装运行", link: "/guide/getting-started" },
+      { text: "工作原理", link: "/how-it-works" },
       { text: "接入 Agent", link: "/guide/integrations" },
       { text: "常用场景", link: "/RECIPES" },
+      { text: "常见问题", link: "/faq" },
+      { text: "术语表", link: "/glossary" },
     ],
   },
   {

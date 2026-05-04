@@ -158,6 +158,206 @@ function escapeMustacheInFence(md: any) {
   };
 }
 
+const homeFaqs: { q: string; a: string }[] = [
+  {
+    q: "What is Uni-CLI?",
+    a: "Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across 235+ sites and tools.",
+  },
+  {
+    q: "How is Uni-CLI different from a browser automation library?",
+    a: "Uni-CLI uses YAML adapters that compile sites into deterministic CLI commands, not Turing-complete scripts. Each command returns the same v2 AgentEnvelope, so agents can pipe results, retry on structured errors, and patch the YAML when an upstream API changes.",
+  },
+  {
+    q: "Why a CLI instead of an MCP server?",
+    a: "Measured Uni-CLI list-style calls land at 364-423 tokens total (median 412) per docs/BENCHMARK.md. An MCP server keeps its tool list resident — usually 1,500-3,000 tokens per server — even when idle. Uni-CLI publishes both surfaces; the CLI is the cheap, deterministic primary, and MCP wraps it for runtimes that only speak MCP.",
+  },
+  {
+    q: "How does self-repair work in Uni-CLI?",
+    a: "When a command fails, Uni-CLI emits a structured error JSON with adapter_path, failing pipeline step, action, and a suggestion. An agent reads the YAML at that path, edits the selector or auth header, then runs unicli repair <site> <command> to verify the fix. Patches persist in ~/.unicli/adapters/.",
+  },
+  {
+    q: "Which AI agent platforms work with Uni-CLI?",
+    a: "Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, and any runtime that can spawn a subprocess. Uni-CLI also exposes an MCP server, an ACP gateway, and an AGENTS.md discovery surface so agents pick it up without manual configuration.",
+  },
+  {
+    q: "How many sites and commands does Uni-CLI ship?",
+    a: "v0.217 covers 235 sites with 1,450 commands across 1,040 adapters, 59 pipeline steps, and 7,591 tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, government policy, podcasts, and macOS apps.",
+  },
+  {
+    q: "Can I add a new site to Uni-CLI without writing TypeScript?",
+    a: "Yes. The preferred contribution format is a 20-line YAML adapter that names the site, command, strategy, and pipeline. Run unicli init <site> <command> to scaffold one, then unicli dev <path> to hot-reload while iterating.",
+  },
+  {
+    q: "Does Uni-CLI handle authenticated sites?",
+    a: "Yes. Strategies cascade across public, cookie, header (cookie+CSRF), intercept (browser XHR capture), and ui (interactive). Cookies live in ~/.unicli/cookies/ and Uni-CLI auto-probes the cheapest strategy that returns valid data.",
+  },
+  {
+    q: "How does Uni-CLI compare to MCP for token cost?",
+    a: "docs/BENCHMARK.md measures real Uni-CLI call budgets at 364-423 tokens (median 412) for --limit 5 list-style adapters. An MCP server keeps its tool list resident — usually 1,500-3,000 tokens per server — even when idle. Uni-CLI emits structured error envelopes so agents avoid retry loops that further inflate context.",
+  },
+  {
+    q: "Is Uni-CLI free and open source?",
+    a: "Yes. Uni-CLI is Apache-2.0 on GitHub at olo-dot-io/Uni-CLI and on npm as @zenalexa/unicli. There are no paid features, no gated commands, and no telemetry. YAML adapters and pipeline steps are agent-readable and agent-editable.",
+  },
+];
+
+const softwareApplicationLdJson = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Uni-CLI",
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "macOS, Linux, Windows",
+  description:
+    "Command-grade software access for AI agents. Turns 235+ websites, desktop apps, MCP servers, and external CLIs into a single searchable, self-repairing command catalog.",
+  url: publicSiteUrl,
+  downloadUrl: npmPackageUrl,
+  softwareVersion: "0.217",
+  license: "https://www.apache.org/licenses/LICENSE-2.0",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  author: {
+    "@type": "Organization",
+    name: "OLo",
+    url: "https://github.com/olo-dot-io",
+  },
+};
+
+const organizationLdJson = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "OLo",
+  url: "https://github.com/olo-dot-io",
+  sameAs: [
+    "https://github.com/olo-dot-io/Uni-CLI",
+    "https://www.npmjs.com/package/@zenalexa/unicli",
+  ],
+};
+
+const faqPageLdJson = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: homeFaqs.map(({ q, a }) => ({
+    "@type": "Question",
+    name: q,
+    acceptedAnswer: { "@type": "Answer", text: a },
+  })),
+};
+
+function pageUrl(relativePath: string): string {
+  const cleaned = relativePath
+    .replace(/\.md$/, "")
+    .replace(/(^|\/)index$/, "$1");
+  return cleaned ? `${publicSiteUrl}${cleaned}` : publicSiteUrl;
+}
+
+function pageLanguage(relativePath: string): string {
+  return relativePath.startsWith("zh/") ? "zh-CN" : "en-US";
+}
+
+type Crumb = { name: string; item: string };
+
+function breadcrumbsFor(relativePath: string): Crumb[] {
+  const isZh = relativePath.startsWith("zh/");
+  const home = isZh ? "Uni-CLI 中文" : "Uni-CLI";
+  const homeUrl = isZh ? `${publicSiteUrl}zh/` : publicSiteUrl;
+  const crumbs: Crumb[] = [{ name: home, item: homeUrl }];
+
+  const trimmed = relativePath
+    .replace(/^zh\//, "")
+    .replace(/\.md$/, "")
+    .replace(/\/index$/, "");
+  if (!trimmed || trimmed === "index") return crumbs;
+
+  const segments = trimmed.split("/");
+  let acc = isZh ? `${publicSiteUrl}zh/` : publicSiteUrl;
+  for (const seg of segments) {
+    acc = `${acc}${seg}/`;
+    const pretty = seg
+      .replace(/[-_]/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+    crumbs.push({ name: pretty, item: acc.replace(/\/$/, "") });
+  }
+  return crumbs;
+}
+
+function buildBreadcrumbLdJson(relativePath: string) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: breadcrumbsFor(relativePath).map((c, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: c.name,
+      item: c.item,
+    })),
+  };
+}
+
+function buildArticleLdJson(pageData: {
+  title: string;
+  description?: string;
+  relativePath: string;
+  lastUpdated?: number;
+  frontmatter?: { description?: string };
+}): Record<string, unknown> {
+  const url = pageUrl(pageData.relativePath);
+  const lang = pageLanguage(pageData.relativePath);
+  const description =
+    pageData.description ||
+    pageData.frontmatter?.description ||
+    "Uni-CLI documentation";
+  const dateModified = pageData.lastUpdated
+    ? new Date(pageData.lastUpdated).toISOString()
+    : undefined;
+  return {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    headline: pageData.title || "Uni-CLI",
+    description,
+    inLanguage: lang,
+    url,
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+    author: organizationLdJson,
+    publisher: organizationLdJson,
+    ...(dateModified ? { dateModified } : {}),
+  };
+}
+
+const howToLdJson = {
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  name: "Install Uni-CLI and run your first command",
+  description:
+    "Install Uni-CLI globally via npm, search the command catalog with natural-language intent, then execute a command across one of 235+ supported sites or tools.",
+  totalTime: "PT5M",
+  inLanguage: "en-US",
+  step: [
+    {
+      "@type": "HowToStep",
+      position: 1,
+      name: "Install via npm",
+      text: "Run `npm install -g @zenalexa/unicli` to install the global binary. Requires Node.js 20 or later.",
+    },
+    {
+      "@type": "HowToStep",
+      position: 2,
+      name: "Search the catalog",
+      text: "Run `unicli search 'find AI agent discussions on reddit'` to discover the matching site, command, and arguments.",
+    },
+    {
+      "@type": "HowToStep",
+      position: 3,
+      name: "Execute the command",
+      text: "Run the suggested command, e.g. `unicli reddit search 'AI agents' -n 20 -f json` to fetch results in agent-readable JSON.",
+    },
+    {
+      "@type": "HowToStep",
+      position: 4,
+      name: "Recover from failures",
+      text: "If a site changes shape, the v2 AgentEnvelope returns adapter_path, failing step, and a suggestion. Edit the YAML, then run `unicli repair <site> <command>` to verify.",
+    },
+  ],
+};
+
 export default defineConfig({
   title: "Uni-CLI",
   lang: localizedSiteMaps.root.lang,
@@ -166,6 +366,84 @@ export default defineConfig({
   srcExclude: ["public/markdown/**/*.md", "demo/README.md"],
   cleanUrls: true,
   lastUpdated: true,
+  ignoreDeadLinks: [/\.rs$/, /\.ts$/],
+  sitemap: {
+    hostname: publicSiteUrl,
+  },
+  transformHead({ pageData }) {
+    const head: [string, Record<string, string>, string?][] = [];
+    const canonical = pageUrl(pageData.relativePath);
+    head.push(["link", { rel: "canonical", href: canonical }]);
+
+    const isHome =
+      pageData.relativePath === "index.md" ||
+      pageData.relativePath === "zh/index.md";
+    if (isHome) {
+      head.push([
+        "script",
+        { type: "application/ld+json" },
+        JSON.stringify(softwareApplicationLdJson),
+      ]);
+      head.push([
+        "script",
+        { type: "application/ld+json" },
+        JSON.stringify(organizationLdJson),
+      ]);
+    }
+
+    const isFaq =
+      pageData.relativePath === "faq.md" ||
+      pageData.relativePath === "zh/faq.md";
+    if (isFaq) {
+      head.push([
+        "script",
+        { type: "application/ld+json" },
+        JSON.stringify(faqPageLdJson),
+      ]);
+    }
+
+    const isHowTo =
+      pageData.relativePath === "guide/getting-started.md" ||
+      pageData.relativePath === "zh/guide/getting-started.md";
+    if (isHowTo) {
+      head.push([
+        "script",
+        { type: "application/ld+json" },
+        JSON.stringify(howToLdJson),
+      ]);
+    }
+
+    head.push([
+      "script",
+      { type: "application/ld+json" },
+      JSON.stringify(buildBreadcrumbLdJson(pageData.relativePath)),
+    ]);
+
+    if (!isHome && !isFaq) {
+      head.push([
+        "script",
+        { type: "application/ld+json" },
+        JSON.stringify(buildArticleLdJson(pageData)),
+      ]);
+    }
+
+    head.push([
+      "meta",
+      { name: "twitter:title", content: pageData.title || "Uni-CLI" },
+    ]);
+    if (pageData.frontmatter?.description || pageData.description) {
+      head.push([
+        "meta",
+        {
+          name: "twitter:description",
+          content:
+            pageData.frontmatter?.description || pageData.description || "",
+        },
+      ]);
+    }
+
+    return head;
+  },
   vite: {
     plugins: [react()],
   },
