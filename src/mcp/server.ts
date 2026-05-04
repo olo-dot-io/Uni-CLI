@@ -31,9 +31,10 @@ import { loadAllAdapters, loadTsAdapters } from "../discovery/loader.js";
 import { getAllAdapters, listCommands } from "../registry.js";
 import { VERSION } from "../constants.js";
 import {
-  buildDefaultTools,
   buildExpandedTools,
   buildDeferredTools,
+  selectPrompts,
+  selectTools,
 } from "./tools.js";
 import {
   buildHandler,
@@ -50,6 +51,7 @@ interface ServerOptions {
   transport: "stdio" | "http" | "streamable";
   port: number;
   auth: boolean;
+  profile: string;
 }
 
 function parseArgs(argv: string[]): ServerOptions {
@@ -58,12 +60,16 @@ function parseArgs(argv: string[]): ServerOptions {
     transport: "stdio",
     port: 19826,
     auth: false,
+    profile: "default",
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--expanded") opts.expanded = true;
     else if (a === "--auth") opts.auth = true;
-    else if (a === "--transport") {
+    else if (a === "--profile") {
+      opts.profile = argv[++i] || "default";
+      if (opts.profile === "expanded") opts.expanded = true;
+    } else if (a === "--transport") {
       const v = argv[++i];
       if (v === "stdio" || v === "http" || v === "streamable") {
         opts.transport = v;
@@ -87,6 +93,14 @@ async function startStdio(
   handler: ReturnType<typeof buildHandler>,
 ): Promise<void> {
   const rl = createInterface({ input: process.stdin, terminal: false });
+  let pending = 0;
+  let inputClosed = false;
+
+  const exitIfDrained = () => {
+    if (inputClosed && pending === 0) {
+      process.exit(0);
+    }
+  };
 
   rl.on("line", async (line: string) => {
     const trimmed = line.trim();
@@ -104,6 +118,7 @@ async function startStdio(
       return;
     }
 
+    pending++;
     try {
       const response = await handler(req);
       if (response) send(response);
@@ -114,11 +129,15 @@ async function startStdio(
         id: req.id ?? null,
         error: { code: -32603, message: `Internal error: ${message}` },
       });
+    } finally {
+      pending--;
+      exitIfDrained();
     }
   });
 
   rl.on("close", () => {
-    process.exit(0);
+    inputClosed = true;
+    exitIfDrained();
   });
 }
 
@@ -128,16 +147,23 @@ async function main(): Promise<void> {
   loadAllAdapters();
   await loadTsAdapters();
 
-  const mode = opts.expanded ? "expanded" : "default";
-  const tools = opts.expanded ? buildExpandedTools() : buildDefaultTools();
+  const mode = opts.expanded ? "expanded" : opts.profile;
+  const tools = opts.expanded
+    ? buildExpandedTools()
+    : selectTools(opts.profile);
+  const prompts = opts.expanded ? [] : selectPrompts(opts.profile);
   // Streamable HTTP auto-activates deferred mode — remote clients benefit
   // most from searchHint-based discovery.
-  if (opts.transport === "streamable" && !opts.expanded) {
+  if (
+    opts.transport === "streamable" &&
+    !opts.expanded &&
+    opts.profile === "default"
+  ) {
     const deferredTools = buildDeferredTools();
     tools.length = 0;
     tools.push(...deferredTools);
   }
-  const handler = buildHandler(tools);
+  const handler = buildHandler(tools, prompts);
 
   const adapterCount = getAllAdapters().length;
   const commandCount = listCommands().length;

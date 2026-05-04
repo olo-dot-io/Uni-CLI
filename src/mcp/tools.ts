@@ -12,6 +12,7 @@
 
 import { getAllAdapters } from "../registry.js";
 import type { AdapterManifest, AdapterCommand } from "../types.js";
+import type { McpToolResult } from "./dispatch.js";
 import {
   type JsonSchemaObject,
   buildInputSchema,
@@ -19,6 +20,10 @@ import {
   buildToolName,
   truncateDescription,
 } from "./schema.js";
+import {
+  COMPUTER_USE_PROMPTS,
+  COMPUTER_USE_TOOLS,
+} from "./profiles/computer-use.js";
 
 export interface McpToolAnnotations {
   readOnlyHint?: boolean;
@@ -34,6 +39,15 @@ export interface McpTool {
   outputSchema?: JsonSchemaObject;
   _meta?: Record<string, unknown>;
   annotations?: McpToolAnnotations;
+  handler?: (
+    args: Record<string, unknown>,
+  ) => McpToolResult | Promise<McpToolResult>;
+}
+
+export interface McpPrompt {
+  name: string;
+  description: string;
+  text: string;
 }
 
 export interface ExpandedEntry {
@@ -182,6 +196,27 @@ export function buildDefaultTools(): McpTool[] {
       },
     },
   ];
+}
+
+export function selectTools(profile: string): McpTool[] {
+  switch (profile) {
+    case "computer-use":
+      return COMPUTER_USE_TOOLS;
+    case "expanded":
+      return buildExpandedTools();
+    case "default":
+    default:
+      return buildDefaultTools();
+  }
+}
+
+export function selectPrompts(profile: string): McpPrompt[] {
+  switch (profile) {
+    case "computer-use":
+      return COMPUTER_USE_PROMPTS;
+    default:
+      return [];
+  }
 }
 
 /**

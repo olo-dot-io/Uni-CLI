@@ -102,6 +102,12 @@ export interface AgentError {
   adapter_path?: string;
   step?: number;
   suggestion?: string;
+  remedy?: {
+    message: string;
+    command?: string;
+    deeplink?: string;
+    doc?: string;
+  };
   retryable?: boolean;
   alternatives?: string[];
 }

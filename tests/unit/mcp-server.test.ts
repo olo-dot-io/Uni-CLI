@@ -303,3 +303,188 @@ describe("MCP server — smart default mode", () => {
     });
   });
 });
+
+describe("MCP server — computer-use profile", () => {
+  let proc: ChildProcess;
+
+  beforeAll(async () => {
+    const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
+    proc = spawn(npxBin, ["tsx", SERVER_PATH, "--profile", "computer-use"], {
+      stdio: ["pipe", "pipe", "pipe"],
+      cwd: join(__dirname, "..", ".."),
+      shell: process.platform === "win32",
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(
+        () => reject(new Error("Computer-use MCP server start timeout")),
+        15_000,
+      );
+      proc.stderr!.on("data", (chunk: Buffer) => {
+        const text = chunk.toString();
+        if (text.includes("MCP server") && text.includes("mode=computer-use")) {
+          clearTimeout(timeout);
+          resolve();
+        }
+      });
+      proc.on("error", (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+    });
+
+    return () => {
+      proc.kill();
+    };
+  });
+
+  it("advertises tools and prompts in initialize", async () => {
+    const response = await sendRequest(proc, {
+      jsonrpc: "2.0",
+      id: 101,
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-11-25",
+        capabilities: {},
+        clientInfo: { name: "test", version: "1.0" },
+      },
+    });
+
+    const result = response.result as {
+      capabilities: Record<string, unknown>;
+    };
+    expect(result.capabilities).toEqual(
+      expect.objectContaining({
+        tools: { listChanged: false },
+        prompts: { listChanged: false },
+      }),
+    );
+  });
+
+  it("lists the 15 computer-use tools over stdio", async () => {
+    const response = await sendRequest(proc, {
+      jsonrpc: "2.0",
+      id: 102,
+      method: "tools/list",
+      params: {},
+    });
+
+    const result = response.result as { tools: Array<{ name: string }> };
+    expect(result.tools.map((tool) => tool.name)).toEqual([
+      "computer-use.apps",
+      "computer-use.windows",
+      "computer-use.snapshot",
+      "computer-use.find",
+      "computer-use.click",
+      "computer-use.type",
+      "computer-use.press",
+      "computer-use.scroll",
+      "computer-use.launch",
+      "computer-use.screenshot",
+      "computer-use.attach",
+      "computer-use.evaluate",
+      "computer-use.wait",
+      "computer-use.observe",
+      "computer-use.assert",
+    ]);
+  });
+
+  it("serves the computer-use operating prompt over stdio", async () => {
+    const listed = await sendRequest(proc, {
+      jsonrpc: "2.0",
+      id: 103,
+      method: "prompts/list",
+      params: {},
+    });
+    expect(listed.result).toEqual({
+      prompts: [
+        expect.objectContaining({
+          name: "computer-use",
+          description: expect.stringContaining("desktop"),
+        }),
+      ],
+    });
+
+    const got = await sendRequest(proc, {
+      jsonrpc: "2.0",
+      id: 104,
+      method: "prompts/get",
+      params: { name: "computer-use" },
+    });
+    expect(got.result).toMatchObject({
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: expect.stringContaining("compact accessibility snapshots"),
+          },
+        },
+      ],
+    });
+  });
+});
+
+describe("MCP server — stdio shutdown", () => {
+  it("drains an in-flight async tools/call before exiting on stdin close", async () => {
+    const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
+    const proc = spawn(npxBin, ["tsx", SERVER_PATH], {
+      stdio: ["pipe", "pipe", "pipe"],
+      cwd: join(__dirname, "..", ".."),
+      shell: process.platform === "win32",
+    });
+
+    const stdout: Buffer[] = [];
+    const stderr: Buffer[] = [];
+    proc.stdout!.on("data", (chunk: Buffer) => stdout.push(chunk));
+    proc.stderr!.on("data", (chunk: Buffer) => stderr.push(chunk));
+
+    proc.stdin!.write(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 90,
+        method: "tools/call",
+        params: {
+          name: "unicli_search",
+          arguments: { query: "hacker news", limit: 1 },
+        },
+      }) + "\n",
+    );
+    proc.stdin!.end();
+
+    const code = await new Promise<number | null>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        proc.kill();
+        reject(
+          new Error(
+            `MCP one-shot timeout; stderr=${Buffer.concat(stderr).toString("utf8")}`,
+          ),
+        );
+      }, 15_000);
+      proc.on("close", (exitCode) => {
+        clearTimeout(timeout);
+        resolve(exitCode);
+      });
+      proc.on("error", (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      });
+    });
+
+    expect(code).toBe(0);
+    const lines = Buffer.concat(stdout)
+      .toString("utf8")
+      .split("\n")
+      .filter((line) => line.trim().length > 0);
+    const response = lines
+      .map((line) => JSON.parse(line) as Record<string, unknown>)
+      .find((line) => line.id === 90);
+
+    expect(response).toBeDefined();
+    expect(response?.jsonrpc).toBe("2.0");
+    const result = response?.result as
+      | { structuredContent?: { data?: { count?: number } } }
+      | undefined;
+    expect(result?.structuredContent?.data?.count).toBe(1);
+  }, 20_000);
+});

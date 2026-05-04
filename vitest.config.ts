@@ -61,6 +61,18 @@ export default defineConfig({
           testTimeout: 30_000,
         },
       },
+      {
+        test: {
+          name: "perf",
+          include: ["tests/perf/**/*.test.ts"],
+          setupFiles: workerSetup,
+          env: {
+            ...workerEnv,
+          },
+          maxWorkers: 1,
+          testTimeout: 120_000,
+        },
+      },
     ],
   },
 });

@@ -19,7 +19,9 @@ import { ExitCode } from "./types.js";
 import { VERSION } from "./constants.js";
 import { registerAuthCommands } from "./commands/auth.js";
 import { registerBrowserCommands } from "./commands/browser.js";
+import { registerComputeCommand } from "./commands/compute.js";
 import { registerDaemonCommands } from "./commands/daemon.js";
+import { registerDoctorComputeCommand } from "./commands/doctor-compute.js";
 import {
   registerCompletionCommand,
   getCompletions,
@@ -165,7 +167,7 @@ export async function createCli(): Promise<Command> {
     });
 
   // Register "doctor" command
-  program
+  const doctor = program
     .command("doctor")
     .description("Diagnose environment: adapters, browser, daemon, tools")
     .action(async () => {
@@ -270,12 +272,16 @@ export async function createCli(): Promise<Command> {
 
       console.log(chalk.dim(`\n  Version:  ${VERSION}`));
     });
+  registerDoctorComputeCommand(doctor);
 
   // Register auth commands — cookie management
   registerAuthCommands(program);
 
   // Register browser commands — Chrome CDP management
   registerBrowserCommands(program);
+
+  // Register compute commands — local app control cascade
+  registerComputeCommand(program);
 
   // Register daemon commands — lifecycle management
   registerDaemonCommands(program);

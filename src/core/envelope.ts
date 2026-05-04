@@ -29,10 +29,18 @@ export interface EnvelopeError {
   action: string;
   reason: string;
   suggestion: string;
+  remedy?: EnvelopeRemedy;
   minimum_capability?: string;
   diff_candidate?: string;
   retryable: boolean;
   exit_code: number;
+}
+
+export interface EnvelopeRemedy {
+  message: string;
+  command?: string;
+  deeplink?: string;
+  doc?: string;
 }
 
 /** Optional metadata fields the runner or orchestrator may attach. */
@@ -116,6 +124,7 @@ export interface ErrInput {
   action: string;
   reason: string;
   suggestion: string;
+  remedy?: EnvelopeRemedy;
   adapter_path?: string;
   diff_candidate?: string;
   minimum_capability?: string;
@@ -131,6 +140,7 @@ export function err(input: ErrInput, meta: EnvelopeMeta = {}): EnvelopeErr {
     action: input.action,
     reason: input.reason,
     suggestion: input.suggestion,
+    ...(input.remedy !== undefined ? { remedy: input.remedy } : {}),
     retryable: input.retryable ?? false,
     exit_code: input.exit_code ?? EnvelopeExit.GENERIC_ERROR,
     ...(input.adapter_path !== undefined

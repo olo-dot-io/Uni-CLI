@@ -16,7 +16,7 @@ import {
   runResolvedCommand,
   type McpToolResult,
 } from "./dispatch.js";
-import { expandedRegistry, type McpTool } from "./tools.js";
+import { expandedRegistry, type McpPrompt, type McpTool } from "./tools.js";
 import { MCP_PROTOCOL_VERSION, VERSION } from "../constants.js";
 import { resolveElicitation, type ElicitationResponse } from "./elicitation.js";
 
@@ -134,7 +134,10 @@ async function handleExpandedTool(
   return runResolvedCommand(entry.adapter, entry.cmd, entry.cmdName, args);
 }
 
-function initializeResponse(id: JsonRpcResponse["id"]): JsonRpcResponse {
+function initializeResponse(
+  id: JsonRpcResponse["id"],
+  prompts: readonly McpPrompt[],
+): JsonRpcResponse {
   return {
     jsonrpc: "2.0",
     id,
@@ -142,9 +145,63 @@ function initializeResponse(id: JsonRpcResponse["id"]): JsonRpcResponse {
       protocolVersion: MCP_PROTOCOL_VERSION,
       capabilities: {
         tools: { listChanged: false },
+        ...(prompts.length > 0 ? { prompts: { listChanged: false } } : {}),
         elicitation: { supported: true },
       },
       serverInfo: { name: "unicli", version: VERSION },
+    },
+  };
+}
+
+function handlePromptsList(
+  id: JsonRpcResponse["id"],
+  prompts: readonly McpPrompt[],
+): JsonRpcResponse {
+  return {
+    jsonrpc: "2.0",
+    id,
+    result: {
+      prompts: prompts.map((prompt) => ({
+        name: prompt.name,
+        description: prompt.description,
+      })),
+    },
+  };
+}
+
+function handlePromptsGet(
+  id: JsonRpcResponse["id"],
+  req: JsonRpcRequest,
+  prompts: readonly McpPrompt[],
+): JsonRpcResponse {
+  const params = req.params as { name?: unknown } | undefined;
+  const name = typeof params?.name === "string" ? params.name : undefined;
+  const prompt = name
+    ? prompts.find((candidate) => candidate.name === name)
+    : undefined;
+  if (!prompt) {
+    return {
+      jsonrpc: "2.0",
+      id,
+      error: {
+        code: -32602,
+        message: name
+          ? `Unknown prompt: ${name}`
+          : "Missing required prompt name",
+      },
+    };
+  }
+  return {
+    jsonrpc: "2.0",
+    id,
+    result: {
+      description: prompt.description,
+      messages: [
+        {
+          role: "user",
+          content: { type: "text", text: prompt.text },
+        },
+      ],
     },
   };
 }
@@ -273,6 +330,7 @@ async function dispatchExplore(
 async function handleToolsCall(
   id: JsonRpcResponse["id"],
   req: JsonRpcRequest,
+  tools: McpTool[],
 ): Promise<JsonRpcResponse> {
   const params = req.params as
     | { name: string; arguments?: Record<string, unknown> }
@@ -285,6 +343,12 @@ async function handleToolsCall(
     };
   }
   const toolArgs = params.arguments ?? {};
+
+  const directTool = tools.find((tool) => tool.name === params.name);
+  if (directTool?.handler) {
+    const result = await directTool.handler(toolArgs);
+    return { jsonrpc: "2.0", id, result: annotateIfLarge(result) };
+  }
 
   const builtin = await dispatchBuiltin(id, params.name, toolArgs);
   if (builtin) return builtin;
@@ -326,6 +390,7 @@ function handleElicitationResponse(
 
 export function buildHandler(
   tools: McpTool[],
+  prompts: McpPrompt[] = [],
 ): (
   req: JsonRpcRequest,
 ) => JsonRpcResponse | undefined | Promise<JsonRpcResponse | undefined> {
@@ -336,14 +401,18 @@ export function buildHandler(
 
     switch (req.method) {
       case "initialize":
-        return initializeResponse(id);
+        return initializeResponse(id, prompts);
       case "notifications/initialized":
         // Notifications have no response — transports already guard `if (response)`.
         return undefined;
       case "tools/list":
         return { jsonrpc: "2.0", id, result: { tools } };
       case "tools/call":
-        return handleToolsCall(id, req);
+        return handleToolsCall(id, req, tools);
+      case "prompts/list":
+        return handlePromptsList(id, prompts);
+      case "prompts/get":
+        return handlePromptsGet(id, req, prompts);
       case "elicitation/response":
         return handleElicitationResponse(id, req);
       case "ping":

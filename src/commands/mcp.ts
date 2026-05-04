@@ -29,6 +29,7 @@ interface ServeOptions {
   transport?: "stdio" | "http";
   port?: string;
   expanded?: boolean;
+  profile?: string;
 }
 
 interface HealthOptions {
@@ -68,10 +69,18 @@ export function registerMcpCommand(program: Command): void {
       "--expanded",
       "Register one tool per adapter command (full catalog)",
     )
+    .option(
+      "--profile <name>",
+      "Tool profile: default, expanded, or computer-use",
+      "default",
+    )
     .action((opts: ServeOptions) => {
       const entry = resolveServerEntry();
       const args: string[] = [entry.path];
       if (opts.expanded) args.push("--expanded");
+      if (opts.profile && opts.profile !== "default") {
+        args.push("--profile", opts.profile);
+      }
       if (opts.transport) {
         args.push("--transport", opts.transport);
       }
