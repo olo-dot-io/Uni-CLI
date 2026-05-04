@@ -3,6 +3,21 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 
+## [Unreleased]
+
+### Added
+
+- **Local computer-control surface** — `unicli compute` adds a unified
+  app-control family for apps, windows, snapshot, find, click, type, press,
+  scroll, screenshot, CDP attach, eval, wait, observe, and assert, backed by
+  macOS AX, Electron CDP, UIA/AT-SPI sidecar scaffolds, and CUA fallback.
+- **Computer-use MCP profile** — `unicli mcp serve --profile computer-use`
+  exposes 15 `computer-use.*` tools, prompt support, stdio e2e coverage, and
+  action evidence metadata for direct agent desktop control.
+- **Compute self-repair** — `unicli doctor compute --json`, structured
+  remedies, troubleshooting docs, sidecar install hints, and macOS Accessibility
+  and Screen Recording probes help recover from local-control failures.
+
 ## [0.217.2] — 2026-04-30 — Apollo · Swigert
 
 ### Added

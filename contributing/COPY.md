@@ -2,7 +2,7 @@
 
 > Current version: v0.217.2 — Apollo · Swigert.
 >
-> Current scale: <!-- STATS:site_count -->235<!-- /STATS --> sites, <!-- STATS:command_count -->1450<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->1040<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->917<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->123<!-- /STATS --> TS), <!-- STATS:test_count -->7591<!-- /STATS --> tests.
+> Current scale: <!-- STATS:site_count -->237<!-- /STATS --> sites, <!-- STATS:command_count -->1453<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->1043<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->920<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->123<!-- /STATS --> TS), <!-- STATS:test_count -->7744<!-- /STATS --> tests.
 
 This file keeps docs and user-facing copy consistent. Public pages should expose
 install, command, output, and repair facts with the fewest words needed.

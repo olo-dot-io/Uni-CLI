@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->235<!-- /STATS --> sites · <!-- STATS:command_count -->1450<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7591<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->237<!-- /STATS --> sites · <!-- STATS:command_count -->1453<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7744<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -184,6 +184,22 @@ unicli agents matrix
 ```
 
 ACP is supported for editors and bridge tooling. The primary runtime path stays native CLI, JSON stream, or MCP when those routes are available.
+
+## Local Computer Control
+
+`unicli compute` controls installed apps through native accessibility, Electron CDP, and visual fallback transports.
+
+```bash
+unicli compute apps
+unicli compute snapshot --app Calculator --format compact
+unicli compute find --role button --name 5 --first
+unicli compute find --role input --text 8 --first
+unicli compute click @e7
+unicli doctor compute --json
+npx @zenalexa/unicli mcp serve --profile computer-use
+```
+
+Start with [Compute](docs/operate/compute.md), [Electron App Control](docs/operate/electron.md), and [Compute Troubleshooting](docs/operate/troubleshooting.md).
 
 ## Coverage
 

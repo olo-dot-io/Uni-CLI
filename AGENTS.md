@@ -11,7 +11,7 @@
 
 <!-- BEGIN COUNTS -->
 
-> <!-- STATS:site_count -->235<!-- /STATS --> sites, <!-- STATS:command_count -->1450<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> <!-- STATS:site_count -->237<!-- /STATS --> sites, <!-- STATS:command_count -->1453<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 
@@ -40,7 +40,7 @@ npm install -g @zenalexa/unicli
 
 **Chinese**: zhihu (24), xiaohongshu (22), bilibili (20), douyin (13), douban (12), v2ex (12), linux-do (11), jike (10), +31 more (`unicli list`)
 
-**International**: twitter (38), instagram (26), reddit (20), tiktok (16), youtube (16), nowcoder (16), discord-app (15), lesswrong (15), +48 more (`unicli list`)
+**International**: twitter (38), instagram (26), reddit (20), tiktok (16), youtube (16), nowcoder (16), discord-app (15), lesswrong (15), +50 more (`unicli list`)
 
 **AI / ML**: antigravity (16), chatwise (16), chatgpt (15), notebooklm (15), doubao-app (13), doubao (9), doubao-web (9), perplexity (8), +13 more (`unicli list`)
 

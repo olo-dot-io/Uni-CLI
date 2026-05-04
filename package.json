@@ -9,6 +9,9 @@
   },
   "files": [
     "dist/",
+    "crates/",
+    "docs/operate/",
+    "docs/mcp/clients/",
     "src/adapters/",
     "src/hub/",
     "AGENTS.md"
@@ -127,6 +130,9 @@
     "build:agents": "tsx scripts/build-agents.ts",
     "test": "vitest run --project unit",
     "test:adapter": "vitest run --project adapter",
+    "test:perf": "vitest run --project perf",
+    "compute:smoke": "tsx scripts/compute-live-smoke.ts",
+    "coverage:compute-snapshot": "vitest run --project unit tests/unit/refs.test.ts tests/unit/snapshot-encoder.test.ts --coverage --coverage.enabled=true --coverage.provider=v8 --coverage.include=src/transport/refs.ts --coverage.include=src/transport/snapshot-encoder.ts --coverage.reporter=text --coverage.thresholds.lines=100 --coverage.thresholds.functions=100 --coverage.thresholds.branches=100 --coverage.thresholds.statements=100",
     "coverage:adapter-test": "tsx scripts/check-adapter-test-coverage.ts --threshold 50",
     "adapter:bootstrap": "tsx scripts/bootstrap-adapter-tests.ts",
     "adapter:health": "tsx scripts/adapter-health-probe.ts",
@@ -137,6 +143,8 @@
     "format:check": "prettier --check .",
     "lint:context": "bash scripts/lint-context.sh",
     "build:manifest": "tsx scripts/build-manifest.js",
+    "sidecars:build": "node scripts/build-sidecars.mjs",
+    "sidecars:publish": "node scripts/publish-sidecars.mjs",
     "changeset": "changeset",
     "changeset:version": "changeset version",
     "changeset:status": "changeset status --since=origin/main",
@@ -148,7 +156,7 @@
     "lint:schema-v2": "tsx scripts/lint-schema-v2.ts",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "validate:agents-size": "tsx scripts/validate-agents-size.ts",
-    "verify": "npm run format:check && npm run typecheck && npm run lint && npm run lint:context && npm run build:manifest && npm run lint:adapters && npm run lint:schema-v2 && npm run build && npm run test && npm run test:adapter && npm run coverage:adapter-test && npm run validate:agents-size && npm run stats:check && npm run conformance && npm run check:exports && npm run verify:changesets",
+    "verify": "npm run format:check && npm run typecheck && npm run lint && npm run lint:context && npm run build:manifest && npm run lint:adapters && npm run lint:schema-v2 && npm run build && npm run test && npm run test:adapter && npm run test:perf && npm run coverage:compute-snapshot && npm run coverage:adapter-test && npm run validate:agents-size && npm run stats:check && npm run conformance && npm run check:exports && npm run verify:changesets",
     "verify:full": "npm run verify && npm run refs:verify && npm run adapter:health",
     "verify:clean": "npm run clean && npm run verify",
     "docs:prepare": "tsx scripts/generate-catalog.ts && tsx scripts/generate-docs-agent-assets.ts",
@@ -210,6 +218,12 @@
     "ws": "^8.20.0",
     "zod": "^4.3.6"
   },
+  "optionalDependencies": {
+    "@zenalexa/unicli-atspi-linux-arm64": "0.218.0",
+    "@zenalexa/unicli-atspi-linux-x64": "0.218.0",
+    "@zenalexa/unicli-uia-win32-arm64": "0.218.0",
+    "@zenalexa/unicli-uia-win32-x64": "0.218.0"
+  },
   "devDependencies": {
     "@ai-sdk/openai-compatible": "^2.0.41",
     "@base-ui/react": "^1.4.1",
@@ -226,6 +240,7 @@
     "@types/turndown": "^5.0.6",
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^6.0.1",
+    "@vitest/coverage-v8": "^3.2.4",
     "ai": "^6.0.168",
     "lefthook": "^2.1.6",
     "markdown-it-mathjax3": "^4.3.2",
