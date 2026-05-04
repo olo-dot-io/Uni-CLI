@@ -86,6 +86,7 @@ interface YamlAdapter {
   minimum_capability?: unknown;
   trust?: unknown;
   confidentiality?: unknown;
+  domain?: unknown;
 }
 
 export interface LintIssue {
@@ -295,6 +296,24 @@ export function lintAdapterFile(filePath: string): LintIssue[] {
   }
   if (parsed.quarantine === undefined) {
     add("error", "schema-v2", "missing required field: quarantine");
+  }
+
+  // cookie/header strategies must declare an explicit `domain` — naive
+  // site→domain inference (`${site}.com` after `_` → `.`) silently picks the
+  // wrong cookie store for sites like notion (.notion.so), perplexity (.ai),
+  // weixin (mp.weixin.qq.com), twitch (.tv), linux-do (linux.do) and breaks
+  // ~10 adapters at runtime. Block at lint time so this never regresses.
+  const strategy =
+    typeof parsed.strategy === "string" ? parsed.strategy : undefined;
+  if (
+    (strategy === "cookie" || strategy === "header") &&
+    typeof parsed.domain !== "string"
+  ) {
+    add(
+      "error",
+      "cookie-domain-required",
+      `strategy "${strategy}" requires a top-level "domain:" field — site-name guessing is unreliable`,
+    );
   }
 
   // quarantine integrity

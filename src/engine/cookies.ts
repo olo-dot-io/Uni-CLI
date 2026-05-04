@@ -76,31 +76,52 @@ export function getCookieDir(): string {
 }
 
 /**
- * Load cookies with CDP fallback.
- * 1. Try disk (fast, synchronous) — ~/.unicli/cookies/<site>.json
- * 2. Try CDP extraction (connects to Chrome debug port)
- * 3. Return null if neither available
+ * Load cookies with multi-source fallback.
  *
- * When CDP extraction succeeds, cookies are saved to disk for future use.
+ * Precedence (each falls through silently to the next on miss):
+ *   1. ~/.unicli/cookies/<site>.json       — explicit user import
+ *   2. browser local DB (Chrome/Arc/Dia/…) — direct SQLite read, no browser launch
+ *   3. CDP                                  — connects to Chrome debug port (legacy)
+ *
+ * The browser disk source is the new default for `strategy: cookie` adapters:
+ * it works whether the browser is open or closed, never opens a new tab, and
+ * needs neither extension nor daemon. Successful reads are persisted to
+ * ~/.unicli/cookies for offline reuse.
+ *
+ * Set `UNICLI_COOKIE_NO_BROWSER=1` to skip the browser-disk step (e.g., in CI
+ * where the macOS Keychain prompt would block).
  */
 export async function loadCookiesWithCDP(
   site: string,
   domain?: string,
 ): Promise<Record<string, string> | null> {
-  // 1. Try disk first (existing behavior)
+  // 1. ~/.unicli/cookies first
   const diskCookies = loadCookies(site);
   if (diskCookies) return diskCookies;
 
-  // 2. Try CDP extraction
+  // Resolve the cookie domain once for both browser and CDP paths.
   let cookieDomain = domain ?? site.replace(/_/g, ".");
-  // If no TLD in domain, append .com as default (covers bilibili, zhihu, weibo, etc.)
   if (!cookieDomain.includes(".")) {
     cookieDomain = `${cookieDomain}.com`;
   }
+
+  // 2. Direct browser disk read (no launch, no CDP, no extension).
+  if (process.env.UNICLI_COOKIE_NO_BROWSER !== "1") {
+    const browserCookies = await loadFromInstalledBrowser(cookieDomain);
+    if (browserCookies && Object.keys(browserCookies).length > 0) {
+      try {
+        saveCookiesToDisk(site, browserCookies);
+      } catch {
+        // Non-fatal — caller still gets the cookies.
+      }
+      return browserCookies;
+    }
+  }
+
+  // 3. CDP fallback for users running Chrome with --remote-debugging-port.
   try {
     const cdpCookies = await extractCookiesViaCDP(cookieDomain);
     if (Object.keys(cdpCookies).length > 0) {
-      // Save to disk for future use (site name is already validated by saveCookiesToDisk)
       try {
         saveCookiesToDisk(site, cdpCookies);
       } catch {
@@ -112,5 +133,31 @@ export async function loadCookiesWithCDP(
     // CDP not available — fall through
   }
 
+  return null;
+}
+
+/**
+ * Try each installed Chromium browser in priority order until one yields
+ * cookies for the domain. Failures (browser not installed, Keychain denied,
+ * unsupported encryption) fall through silently — the next source handles it.
+ */
+async function loadFromInstalledBrowser(
+  domain: string,
+): Promise<Record<string, string> | null> {
+  let mod: typeof import("./chromium-cookies.js");
+  try {
+    mod = await import("./chromium-cookies.js");
+  } catch {
+    return null;
+  }
+  const installed = mod.detectInstalledBrowsers();
+  for (const browser of installed) {
+    try {
+      const record = mod.readCookiesAsRecord({ browser, domain });
+      if (Object.keys(record).length > 0) return record;
+    } catch {
+      // Move on to the next browser.
+    }
+  }
   return null;
 }

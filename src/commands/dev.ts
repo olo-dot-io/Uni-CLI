@@ -69,6 +69,7 @@ async function runAdapter(filePath: string, fmt: string): Promise<void> {
       {
         site: doc.site as string,
         strategy: doc.strategy as string,
+        domain: doc.domain as string | undefined,
       },
     );
 

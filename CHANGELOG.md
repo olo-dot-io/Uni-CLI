@@ -5,6 +5,48 @@ Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributin
 
 ## [Unreleased]
 
+### Added
+
+- **First-class cross-platform browser cookie source (macOS / Linux / Windows)** —
+  `unicli auth import <site> --browser chrome|arc|dia|brave|edge|atlas` reads
+  cookies straight from the browser's local SQLite DB and decrypts them via
+  the platform-native key store: macOS Keychain (`security` CLI), Linux
+  libsecret/KWallet (`secret-tool`, with `peanuts` fallback for headless
+  boxes), Windows DPAPI (`Local State` master key via PowerShell, no native
+  modules). No browser launch, no CDP, no extension. Wired as the new
+  default middle source: `~/.unicli/cookies/ → BROWSER → CDP`. Successful
+  reads persist to disk for offline reuse. Honest Windows v20 (Chrome 127+
+  App-Bound Encryption) handling: surfaces `encryption_unsupported` and
+  suggests CDP fallback rather than ship a brittle bypass. Set
+  `UNICLI_COOKIE_NO_BROWSER=1` to skip in CI.
+- **`unicli auth audit`** — walks every cookie/header adapter, probes each
+  declared `domain:` against every detected browser, and reports a summary
+  of `ok / no-domain / no-cookies / blocked` plus per-adapter breakdown.
+  Agent-friendly JSON with structured `suggestion` fields.
+- **`unicli doctor cookies`** — diagnoses platform readiness: sqlite3 binary
+  detection, installed browsers + profiles, Keychain/secret-service
+  reachability, and platform-specific notes (Windows v20 caveat, Linux
+  no-keyring fallback).
+- **Adapter `domain:` field is now first-class** — `PipelineOptions.domain`
+  is plumbed through every `runPipeline` caller (cli.ts test, kernel,
+  health, dev, skills) and consumed by the cookie loader. Silently fixes
+  ~10 adapters whose naïve site→`<site>.com` derivation pointed at the
+  wrong cookie store: notion (`api.notion.com`), perplexity (`.ai`), weixin
+  (`mp.weixin.qq.com`), weread (`weread.qq.com`), twitch (`.tv`), linux-do
+  (`linux.do`), jike (`okjike.com`), bluesky (`bsky.app`), minimax
+  (`.chat`), pinduoduo (`yangkeduo.com`).
+- **Parent-domain matching for cookie lookup** — when an adapter declares
+  `api.bilibili.com`, the SQLite host_key filter now also matches
+  `.bilibili.com` cookies (per RFC 6265), capturing parent-domain auth
+  cookies that the previous strict matcher missed.
+
+### Changed
+
+- **Lint rule `cookie-domain-required`** — `strategy: cookie|header` adapters
+  must declare a top-level `domain:`. Added at lint-time so the broken
+  inference path can never come back. All 135 current cookie/header
+  adapters already satisfy the rule (920 lint passes, 0 failures).
+
 ## [0.217.3] — 2026-05-04 — Apollo · Shepard
 
 ### Added

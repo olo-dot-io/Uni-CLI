@@ -43,6 +43,14 @@ export interface PipelineOptions {
   command?: string;
   strategy?: string;
   /**
+   * Cookie domain declared by the adapter (or the command override). Drives
+   * the browser-cookie source — without this the loader has to guess
+   * `${site}.com`, which is wrong for sites like notion (`.notion.so`),
+   * weixin (`mp.weixin.qq.com`), perplexity (`.perplexity.ai`), twitch
+   * (`.twitch.tv`), linux-do (`linux.do`), etc.
+   */
+  domain?: string;
+  /**
    * Kernel surface that dispatched the pipeline. When provided, becomes
    * `${{ surface }}` in YAML templates. Undefined for legacy callers
    * (dev/health/skills) — those set `source: "internal"` on the bag.
@@ -221,7 +229,7 @@ export async function runPipeline(
     (options?.strategy === "cookie" || options?.strategy === "header") &&
     options?.site
   ) {
-    const cookies = await loadCookiesWithCDP(options.site);
+    const cookies = await loadCookiesWithCDP(options.site, options.domain);
     if (!cookies) {
       throw new PipelineError(
         `No cookies found for "${options.site}". Run: unicli auth setup ${options.site}`,

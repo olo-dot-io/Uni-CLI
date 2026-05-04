@@ -22,6 +22,7 @@ import { registerBrowserCommands } from "./commands/browser.js";
 import { registerComputeCommand } from "./commands/compute.js";
 import { registerDaemonCommands } from "./commands/daemon.js";
 import { registerDoctorComputeCommand } from "./commands/doctor-compute.js";
+import { registerDoctorCookies } from "./commands/auth.js";
 import {
   registerCompletionCommand,
   getCompletions,
@@ -273,6 +274,7 @@ export async function createCli(): Promise<Command> {
       console.log(chalk.dim(`\n  Version:  ${VERSION}`));
     });
   registerDoctorComputeCommand(doctor);
+  registerDoctorCookies(doctor);
 
   // Register auth commands — cookie management
   registerAuthCommands(program);
@@ -454,7 +456,11 @@ export async function createCli(): Promise<Command> {
               cmd.pipeline,
               { args: { limit: 2 }, source: "internal" },
               adapter.base,
-              { site: adapter.name, strategy: commandStrategy(adapter, cmd) },
+              {
+                site: adapter.name,
+                strategy: commandStrategy(adapter, cmd),
+                domain: cmd.domain ?? adapter.domain,
+              },
             );
             clearTimeout(timer);
 

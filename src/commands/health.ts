@@ -143,6 +143,7 @@ export function registerHealthCommand(program: Command): void {
                   {
                     site: adapter.name,
                     strategy: commandStrategy(adapter, cmd),
+                    domain: cmd.domain ?? adapter.domain,
                   },
                 ),
                 timeout,
