@@ -1,0 +1,21 @@
+{
+  "role": "Window",
+  "name": "Untitled - Notepad",
+  "path": "Window[0]",
+  "scope": "pid-400",
+  "children": [
+    {
+      "role": "Edit",
+      "name": "Text Editor",
+      "path": "Window[0]/Edit[0]",
+      "scope": "pid-400",
+      "bounds": {
+        "x": 8,
+        "y": 40,
+        "w": 700,
+        "h": 500
+      },
+      "states": ["focusable", "editable"]
+    }
+  ]
+}

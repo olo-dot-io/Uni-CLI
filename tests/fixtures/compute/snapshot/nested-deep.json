@@ -1,0 +1,31 @@
+{
+  "role": "AXWindow",
+  "name": "Nested",
+  "path": "AXWindow[0]",
+  "scope": "pid-600",
+  "children": [
+    {
+      "role": "AXGroup",
+      "name": "Level 1",
+      "path": "AXWindow[0]/AXGroup[0]",
+      "scope": "pid-600",
+      "children": [
+        {
+          "role": "AXGroup",
+          "name": "Level 2",
+          "path": "AXWindow[0]/AXGroup[0]/AXGroup[0]",
+          "scope": "pid-600",
+          "children": [
+            {
+              "role": "AXButton",
+              "name": "Deep Action",
+              "path": "AXWindow[0]/AXGroup[0]/AXGroup[0]/AXButton[0]",
+              "scope": "pid-600",
+              "states": ["enabled"]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

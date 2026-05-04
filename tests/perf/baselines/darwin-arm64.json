@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "platform": "darwin",
+  "arch": "arm64",
+  "status": "live-baseline",
+  "budgets_ms": {
+    "structured_wire_p95": 15,
+    "cdp_warm_p95": 40,
+    "cua_p95": 3000,
+    "live_snapshot_p95": 80
+  },
+  "observed": {
+    "date": "2026-05-03",
+    "host": "macOS 26.4 arm64",
+    "command": "UNICLI_COMPUTE_PERF_LIVE=1 pnpm test:perf",
+    "target_app": "Calculator",
+    "live_snapshot": {
+      "samples_ms": [
+        56.977, 57.089, 57.221, 57.232, 58.153, 58.269, 59.078, 60.49, 64.286,
+        65.779
+      ],
+      "p50_ms": 58.153,
+      "p95_ms": 65.779,
+      "p99_ms": 65.779
+    }
+  }
+}

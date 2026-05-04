@@ -1,0 +1,24 @@
+{
+  "role": "AXWindow",
+  "name": "Safari",
+  "path": "AXWindow[0]",
+  "scope": "pid-300",
+  "app": "Safari",
+  "children": [
+    {
+      "role": "AXTextField",
+      "name": "Smart Search Field",
+      "value": "https://example.com",
+      "path": "AXWindow[0]/AXTextField[0]",
+      "scope": "pid-300",
+      "states": ["focusable", "editable"]
+    },
+    {
+      "role": "AXLink",
+      "name": "Example Domain",
+      "path": "AXWindow[0]/AXLink[0]",
+      "scope": "pid-300",
+      "states": ["enabled"]
+    }
+  ]
+}

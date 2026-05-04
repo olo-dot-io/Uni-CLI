@@ -1,0 +1,30 @@
+{
+  "role": "frame",
+  "name": "Calculator",
+  "path": "frame[0]",
+  "scope": "pid-500",
+  "children": [
+    {
+      "role": "text",
+      "name": "Display",
+      "value": "0",
+      "path": "frame[0]/text[0]",
+      "scope": "pid-500",
+      "states": ["focusable"]
+    },
+    {
+      "role": "push_button",
+      "name": "7",
+      "path": "frame[0]/push_button[0]",
+      "scope": "pid-500",
+      "states": ["enabled"]
+    },
+    {
+      "role": "push_button",
+      "name": "plus",
+      "path": "frame[0]/push_button[1]",
+      "scope": "pid-500",
+      "states": ["enabled"]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "platform": "linux",
+  "arch": "x64",
+  "status": "pending-live-baseline",
+  "budgets_ms": {
+    "structured_wire_p95": 15,
+    "cdp_warm_p95": 40,
+    "cua_p95": 3000,
+    "live_snapshot_p95": 80
+  }
+}
