@@ -348,6 +348,67 @@ export function lintAdapterFile(filePath: string): LintIssue[] {
   return issues;
 }
 
+// ── Cross-adapter rule: listing ↔ detail pairing ────────────────────────
+//
+// Mirrors the convention OpenCLI shipped under #1297 (listing↔detail id
+// pairing rule + CI gate, 2026-04-30). When a site exposes adapter
+// commands that look like listings (top/hot/search/feed/list) but has no
+// matching detail-style command (read/get/item/show/view/lookup), agents
+// who fetch a list cannot fetch the underlying record. The rule is a
+// soft warning today; promote to error after the long tail is fixed.
+//
+// Detection is name-based. Adapters that legitimately do not need a
+// detail can opt out with `lint_listing_detail: skip` at the YAML root.
+
+const LISTING_NAME_RE =
+  /^(top|new|hot|trending|search|list|listings?|feed|recent|popular|index|browse|all|home|timeline|stream|inbox|results?|find)(_.*|-.*)?$|(_|-)(list|listings?|feed|search|results?)$/i;
+
+const DETAIL_NAME_RE =
+  /^(read|item|get|show|view|fetch|info|details?|page|lookup|inspect|describe)(_.*|-.*)?$|(_|-)(read|by[_-]?id|detail)$/i;
+
+interface SiteAdapterEntry {
+  file: string;
+  site: string;
+  name: string;
+  raw: YamlAdapter;
+}
+
+function applyListingDetailRule(entries: SiteAdapterEntry[]): LintIssue[] {
+  const issues: LintIssue[] = [];
+  const bySite = new Map<string, SiteAdapterEntry[]>();
+  for (const e of entries) {
+    if (!bySite.has(e.site)) bySite.set(e.site, []);
+    bySite.get(e.site)!.push(e);
+  }
+  for (const [, list] of bySite) {
+    const listings = list.filter(
+      (e) =>
+        LISTING_NAME_RE.test(e.name) &&
+        (e.raw as Record<string, unknown>)["lint_listing_detail"] !== "skip",
+    );
+    if (listings.length === 0) continue;
+    const hasDetail = list.some((e) => DETAIL_NAME_RE.test(e.name));
+    if (hasDetail) continue;
+    for (const e of listings) {
+      issues.push({
+        file: e.file,
+        severity: "warning",
+        rule: "listing-detail-pairing",
+        message: `site "${e.site}" exposes listing "${e.name}" but no detail command (read/get/item/show/...) — add one or set lint_listing_detail: skip`,
+      });
+    }
+  }
+  return issues;
+}
+
+function readSiteAndName(raw: YamlAdapter): {
+  site: string;
+  name: string;
+} | null {
+  if (typeof raw.site !== "string" || typeof raw.name !== "string") return null;
+  return { site: raw.site, name: raw.name };
+}
+
 // ── Directory walk ──────────────────────────────────────────────────────
 
 function* walkYaml(path: string): Generator<string> {
@@ -382,6 +443,8 @@ export function lintPath(target: string): LintReport {
     issues: [],
   };
 
+  const siteEntries: SiteAdapterEntry[] = [];
+
   for (const file of walkYaml(target)) {
     report.scanned++;
     const issues = lintAdapterFile(file);
@@ -390,7 +453,28 @@ export function lintPath(target: string): LintReport {
     else report.passed++;
     report.warnings += issues.filter((i) => i.severity === "warning").length;
     report.issues.push(...issues);
+
+    if (!hasError) {
+      try {
+        const parsed = yaml.load(readFileSync(file, "utf-8")) as YamlAdapter;
+        const named = readSiteAndName(parsed);
+        if (named) {
+          siteEntries.push({
+            file,
+            site: named.site,
+            name: named.name,
+            raw: parsed,
+          });
+        }
+      } catch {
+        // already reported by lintAdapterFile
+      }
+    }
   }
+
+  const crossIssues = applyListingDetailRule(siteEntries);
+  report.warnings += crossIssues.length;
+  report.issues.push(...crossIssues);
 
   return report;
 }

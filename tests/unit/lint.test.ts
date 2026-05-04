@@ -253,6 +253,97 @@ describe("unicli lint — directory walk", () => {
   });
 });
 
+describe("unicli lint — listing-detail pairing rule", () => {
+  function adapter(extra: Record<string, unknown>): string {
+    const base = {
+      capabilities: ["http.fetch"],
+      minimum_capability: "http.fetch",
+      trust: "public",
+      confidentiality: "public",
+      quarantine: false,
+    };
+    return Object.entries({ ...base, ...extra })
+      .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+      .join("\n");
+  }
+
+  it("warns on listings without a detail command for the same site", () => {
+    const root = mkdtempSync(join(tmpdir(), "unicli-lint-pair-"));
+    try {
+      mkdirSync(join(root, "examplesite"), { recursive: true });
+      writeFileSync(
+        join(root, "examplesite", "top.yaml"),
+        adapter({ site: "examplesite", name: "top" }),
+        "utf-8",
+      );
+      writeFileSync(
+        join(root, "examplesite", "search.yaml"),
+        adapter({ site: "examplesite", name: "search" }),
+        "utf-8",
+      );
+
+      const report = lintPath(root);
+      const warns = report.issues.filter(
+        (i) => i.rule === "listing-detail-pairing",
+      );
+      expect(warns.length).toBe(2);
+      expect(warns.every((w) => w.severity === "warning")).toBe(true);
+      expect(report.failed).toBe(0);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("does not warn when a detail-style command exists in the same site", () => {
+    const root = mkdtempSync(join(tmpdir(), "unicli-lint-pair2-"));
+    try {
+      mkdirSync(join(root, "paired"), { recursive: true });
+      writeFileSync(
+        join(root, "paired", "top.yaml"),
+        adapter({ site: "paired", name: "top" }),
+        "utf-8",
+      );
+      writeFileSync(
+        join(root, "paired", "read.yaml"),
+        adapter({ site: "paired", name: "read" }),
+        "utf-8",
+      );
+
+      const report = lintPath(root);
+      const warns = report.issues.filter(
+        (i) => i.rule === "listing-detail-pairing",
+      );
+      expect(warns).toHaveLength(0);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("respects lint_listing_detail: skip on a listing", () => {
+    const root = mkdtempSync(join(tmpdir(), "unicli-lint-pair3-"));
+    try {
+      mkdirSync(join(root, "feed-only"), { recursive: true });
+      writeFileSync(
+        join(root, "feed-only", "feed.yaml"),
+        adapter({
+          site: "feed-only",
+          name: "feed",
+          lint_listing_detail: "skip",
+        }),
+        "utf-8",
+      );
+
+      const report = lintPath(root);
+      const warns = report.issues.filter(
+        (i) => i.rule === "listing-detail-pairing",
+      );
+      expect(warns).toHaveLength(0);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("unicli lint — production adapters", () => {
   it("lints every built-in adapter without fatal errors", () => {
     // Smoke test: the production src/adapters/ tree must lint clean.
