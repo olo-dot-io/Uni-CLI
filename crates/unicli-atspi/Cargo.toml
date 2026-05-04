@@ -1,0 +1,47 @@
+[package]
+name = "unicli-atspi"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "unicli-atspi"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+unicli-shared.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+atspi = { version = "0.29.0", default-features = false, features = [
+  "connection",
+  "proxies",
+  "wrappers",
+] }
+async-lock = "=3.4.1"
+async-signal = "=0.2.13"
+futures-lite = "=2.6.1"
+indexmap = "=2.11.3"
+proc-macro-crate = "=3.4.0"
+tempfile = "=3.22.0"
+toml_datetime = "=0.7.1"
+toml_edit = "=0.23.5"
+toml_parser = "=1.0.2"
+toml_writer = "=1.0.2"
+wasip2 = "=1.0.1"
+winnow = "=0.7.13"
+wit-bindgen = "=0.46.0"
+zbus = { version = "=5.11.0", features = ["async-io"], default-features = false }
+zbus_macros = "=5.11.0"
+zvariant = "=5.7.0"
+zvariant_derive = "=5.7.0"
+zvariant_utils = "=3.2.1"

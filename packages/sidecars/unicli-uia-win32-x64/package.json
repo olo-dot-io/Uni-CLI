@@ -1,0 +1,31 @@
+{
+  "name": "@zenalexa/unicli-uia-win32-x64",
+  "version": "0.218.0",
+  "description": "Windows x64 UIA sidecar binary for Uni-CLI compute",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/olo-dot-io/Uni-CLI",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/olo-dot-io/Uni-CLI.git"
+  },
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "bin": {
+    "unicli-uia": "unicli-uia.exe"
+  },
+  "scripts": {
+    "postinstall": "node postinstall.mjs"
+  },
+  "files": [
+    "unicli-uia.exe",
+    "postinstall.mjs",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

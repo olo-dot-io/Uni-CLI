@@ -91,13 +91,74 @@ jobs:
       - name: Unit tests
         run: npm run test
 
+      - name: Compute snapshot coverage
+        run: npm run coverage:compute-snapshot
+
+      - name: Compute perf tests
+        run: npm run test:perf
+
       - name: Stats consistency gate
         run: npm run stats:check
+
+  rust-sidecars:
+    name: Rust Sidecars (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: x86_64-apple-darwin
+          - os: macos-14
+            target: aarch64-apple-darwin
+          - os: windows-2022
+            target: x86_64-pc-windows-msvc
+          - os: windows-2022
+            target: aarch64-pc-windows-msvc
+          - os: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Rust 1.82.0
+        run: |
+          rustup toolchain install 1.82.0 --profile minimal --component rustfmt --component clippy --target "${{ matrix.target }}"
+          rustup default 1.82.0
+
+      - name: Install Linux accessibility tooling
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libatspi2.0-dev xdotool ydotool wtype
+
+      - name: Format check
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --target "${{ matrix.target }}" -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace --target "${{ matrix.target }}"
+
+      - name: Build sidecars
+        run: cargo build --workspace --profile release-sidecar --target "${{ matrix.target }}"
+
+      - name: Upload sidecar artifacts
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: sidecars-${{ matrix.target }}
+          path: |
+            target/${{ matrix.target }}/release-sidecar/unicli-uia*
+            target/${{ matrix.target }}/release-sidecar/unicli-atspi*
 
   adapter-tests:
     name: Adapter Tests
     runs-on: ubuntu-latest
-    needs: verify
+    needs:
+      - verify
+      - rust-sidecars
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

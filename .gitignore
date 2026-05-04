@@ -3,6 +3,10 @@ node_modules/
 
 # Build output
 dist/
+target/
+crates/**/target/
+crates/**/Cargo.lock
+*.profraw
 
 # IDE
 .vscode/
