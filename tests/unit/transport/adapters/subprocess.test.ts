@@ -7,7 +7,10 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { SubprocessTransport } from "../../../../src/transport/adapters/subprocess.js";
+import {
+  launchPlanForPlatform,
+  SubprocessTransport,
+} from "../../../../src/transport/adapters/subprocess.js";
 import { createTransportBus } from "../../../../src/transport/bus.js";
 import type { TransportContext } from "../../../../src/transport/types.js";
 
@@ -27,6 +30,56 @@ describe("SubprocessTransport", () => {
       expect.arrayContaining(["exec", "write_temp", "download"]),
     );
     expect(t.capability.mutatesHost).toBe(true);
+  });
+
+  it("plans launch_app commands for each desktop platform", () => {
+    expect(launchPlanForPlatform("darwin", "Calculator")).toEqual({
+      command: "open",
+      args: ["-a", "Calculator"],
+    });
+    expect(launchPlanForPlatform("win32", "notepad")).toEqual({
+      command: "powershell.exe",
+      args: [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "Start-Process -FilePath $args[0]",
+        "notepad",
+      ],
+    });
+    expect(launchPlanForPlatform("linux", "org.gnome.Calculator")).toEqual({
+      command: "gtk-launch",
+      args: ["org.gnome.Calculator"],
+    });
+  });
+
+  it("plans Electron debug-port launch args for each desktop platform", () => {
+    expect(
+      launchPlanForPlatform("darwin", "Visual Studio Code", [], 9230),
+    ).toEqual({
+      command: "open",
+      args: [
+        "-a",
+        "Visual Studio Code",
+        "--args",
+        "--remote-debugging-port=9230",
+      ],
+    });
+    expect(launchPlanForPlatform("win32", "Code.exe", [], 9230)).toEqual({
+      command: "powershell.exe",
+      args: [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "Start-Process -FilePath $args[0] -ArgumentList $args[1]",
+        "Code.exe",
+        "--remote-debugging-port=9230",
+      ],
+    });
+    expect(launchPlanForPlatform("linux", "code.desktop", [], 9230)).toEqual({
+      command: "gtk-launch",
+      args: ["code.desktop", "--remote-debugging-port=9230"],
+    });
   });
 
   it("runs echo successfully and returns stdout", async () => {

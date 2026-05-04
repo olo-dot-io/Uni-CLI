@@ -50,6 +50,7 @@ export interface ElectronAppEntry {
   kind?: ElectronAppKind;
   contentHints?: string[];
   control?: Partial<AppControlPolicy>;
+  relaunchLosesSession?: boolean;
 }
 
 const DEFAULT_CONTROL_POLICY: AppControlPolicy = {
@@ -94,6 +95,7 @@ const BUILTIN_APPS: Record<string, ElectronAppEntry> = {
     displayName: "Notion",
     kind: "docs",
     contentHints: ["page", "database", "document", "workspace"],
+    relaunchLosesSession: true,
   },
   "discord-app": {
     port: 9232,

@@ -18,20 +18,43 @@
  */
 
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
+import {
+  access,
+  chmod,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
+import { homedir, tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { err, exitCodeFor, ok } from "../../core/envelope.js";
 import { resolveAppControlPolicy } from "../../electron-apps.js";
 import type { Envelope } from "../../core/envelope.js";
+import { RefAllocator } from "../refs.js";
+import {
+  encodeSnapshot,
+  type RawAxNode,
+  type SnapshotEncoding,
+} from "../snapshot-encoder.js";
 import { runAxBackgroundClick } from "./desktop-ax-background-click.js";
 import {
+  buildAxAppsScript,
   buildAxFocusedReadScript,
   buildAxPressScript,
+  buildAxScrollScript,
   buildAxSetValueScript,
   buildAxSnapshotScript,
+  buildAxWindowsScript,
   buildElectronAxWarmupScript,
   hasAxElementMatcher,
   type AxPressScriptOptions,
+  type AxScrollScriptOptions,
   type AxSetValueScriptOptions,
+  type AxWindowsScriptOptions,
   type AxWarmupResult,
   type ResolvedAxTarget,
   readAxElementQuery,
@@ -54,9 +77,13 @@ const AX_STEPS = [
   "ax_menu_select",
   "applescript",
   "ax_snapshot",
+  "ax_apps",
+  "ax_windows",
   "ax_focused_read",
   "ax_set_value",
   "ax_press",
+  "ax_scroll",
+  "ax_screenshot",
   "ax_background_click",
   "clipboard_read",
   "clipboard_write",
@@ -142,6 +169,8 @@ interface CachedAxSession {
 }
 
 const AX_SESSION_TTL_MS = 30_000;
+const SWIFT_SCRIPT_CACHE_VERSION = "v1";
+const swiftScriptCompileLocks = new Map<string, Promise<void>>();
 
 export class DesktopAxTransport implements TransportAdapter {
   readonly kind: TransportKind = "desktop-ax";
@@ -151,6 +180,7 @@ export class DesktopAxTransport implements TransportAdapter {
   private readonly platform: NodeJS.Platform;
   private lastClip: string | undefined;
   private lastAxSnapshot: Record<string, unknown> | undefined;
+  private refs: TransportContext["refs"] | undefined;
   private readonly warmSessions = new Map<string, CachedAxSession>();
 
   constructor(opts: DesktopAxTransportOptions = {}) {
@@ -158,19 +188,39 @@ export class DesktopAxTransport implements TransportAdapter {
     this.platform = opts.platform ?? process.platform;
   }
 
-  async open(_ctx: TransportContext): Promise<void> {
+  async open(ctx: TransportContext): Promise<void> {
+    this.refs = ctx.refs ?? ctx.bus.refs;
     // Intentionally non-fatal on non-darwin — capability queries must still
     // work so agents can see why the transport declined the step.
   }
 
-  async snapshot(opts?: { format?: SnapshotFormat }): Promise<Snapshot> {
+  async snapshot(opts?: {
+    format?: SnapshotFormat | SnapshotEncoding;
+  }): Promise<Snapshot> {
     const format = opts?.format ?? "os-ax";
     if (format === "text") {
       return { format: "text", data: this.lastClip ?? "" };
     }
     if (this.lastAxSnapshot) {
+      if (format === "compact" || format === "tree") {
+        const raw = normalizeAxSnapshot(this.lastAxSnapshot);
+        const alloc = new RefAllocator();
+        const { encoded, refCount } = encodeSnapshot(raw, {
+          format,
+          transport: this.kind,
+          alloc,
+        });
+        this.refs?.put(alloc.freeze(this.kind, raw.scope));
+        return {
+          format: "text",
+          encoding: format,
+          data: encoded,
+          refs: { count: refCount, scope: raw.scope },
+        };
+      }
       return {
         format: "json",
+        encoding: format === "json" ? "json" : undefined,
         data: JSON.stringify(this.lastAxSnapshot),
       };
     }
@@ -319,10 +369,9 @@ export class DesktopAxTransport implements TransportAdapter {
     target: ResolvedAxTarget,
     waitMs: number,
   ): Promise<AxWarmupResult> {
-    const { stdout } = await this.shell.run(
-      "swift",
-      ["-e", buildElectronAxWarmupScript(target, waitMs)],
-      { timeoutMs: Math.max(10_000, waitMs + 6_000) },
+    const { stdout } = await this.runSwiftScript(
+      buildElectronAxWarmupScript(target, waitMs),
+      Math.max(10_000, waitMs + 6_000),
     );
     const raw = stdout.trim();
     if (!raw) {
@@ -343,12 +392,20 @@ export class DesktopAxTransport implements TransportAdapter {
         return this.doApplescript<T>(req.params);
       case "ax_snapshot":
         return this.doAxSnapshot<T>(req.params);
+      case "ax_apps":
+        return this.doAxApps<T>();
+      case "ax_windows":
+        return this.doAxWindows<T>(req.params);
       case "ax_focused_read":
         return this.doAxFocusedRead<T>(req.params);
       case "ax_set_value":
         return this.doAxSetValue<T>(req.params);
       case "ax_press":
         return this.doAxPress<T>(req.params);
+      case "ax_scroll":
+        return this.doAxScroll<T>(req.params);
+      case "ax_screenshot":
+        return this.doAxScreenshot<T>(req.params);
       case "ax_background_click":
         return this.doAxBackgroundClick<T>(req.params);
       case "clipboard_read":
@@ -498,6 +555,19 @@ export class DesktopAxTransport implements TransportAdapter {
     );
   }
 
+  private async doAxApps<T>(): Promise<Envelope<T>> {
+    return this.runSwiftJsonAction<T>("ax_apps", buildAxAppsScript());
+  }
+
+  private async doAxWindows<T>(
+    params: Record<string, unknown>,
+  ): Promise<Envelope<T>> {
+    return this.runSwiftJsonAction<T>(
+      "ax_windows",
+      buildAxWindowsScript(readAxWindowsFilter(params)),
+    );
+  }
+
   private async doAxFocusedRead<T>(
     params: Record<string, unknown>,
   ): Promise<Envelope<T>> {
@@ -557,6 +627,60 @@ export class DesktopAxTransport implements TransportAdapter {
     );
   }
 
+  private async doAxScroll<T>(
+    params: Record<string, unknown>,
+  ): Promise<Envelope<T>> {
+    const target = resolveAxTarget(params);
+    if (!target) return this.missingTargetParam("ax_scroll");
+    const hasMatcher = hasAxElementMatcher(params);
+    const query: AxScrollScriptOptions = {
+      ...readAxElementQuery(params, !hasMatcher),
+      actionName:
+        typeof params.action === "string" && params.action.trim()
+          ? params.action.trim()
+          : "AXScrollToVisible",
+    };
+    return this.runSwiftAxAction<T>(
+      "ax_scroll",
+      target,
+      buildAxScrollScript(target, query),
+    );
+  }
+
+  private async doAxScreenshot<T>(
+    params: Record<string, unknown>,
+  ): Promise<Envelope<T>> {
+    const path = readStringParam(params.path);
+    if (path) {
+      try {
+        await this.shell.run("screencapture", ["-x", "-t", "png", path], {
+          timeoutMs: 10_000,
+        });
+        return ok({ path, mime: "image/png" } as unknown as T);
+      } catch (e) {
+        return this.envelopeFromShellError("ax_screenshot", e);
+      }
+    }
+
+    const dir = await mkdtemp(join(tmpdir(), "unicli-ax-screenshot-"));
+    const file = join(dir, "capture.png");
+    try {
+      await this.shell.run("screencapture", ["-x", "-t", "png", file], {
+        timeoutMs: 10_000,
+      });
+      const buffer = await readFile(file);
+      return ok({
+        base64: buffer.toString("base64"),
+        mime: "image/png",
+        bytes: buffer.length,
+      } as unknown as T);
+    } catch (e) {
+      return this.envelopeFromShellError("ax_screenshot", e);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  }
+
   private async doAxBackgroundClick<T>(
     params: Record<string, unknown>,
   ): Promise<Envelope<T>> {
@@ -593,7 +717,7 @@ export class DesktopAxTransport implements TransportAdapter {
     const target = resolveAxTarget(params);
     if (!target) return this.missingTargetParam("launch_app");
     try {
-      await this.shell.run("open", [...target.openArgs]);
+      await this.shell.run("open", launchOpenArgs(target, params));
       await this.maybeWarmupElectronAx("launch_app", target, { waitMs: 2_000 });
       return ok({
         app: target.appName,
@@ -616,9 +740,7 @@ export class DesktopAxTransport implements TransportAdapter {
     if (warmupError) return warmupError;
 
     try {
-      const { stdout } = await this.shell.run("swift", ["-e", script], {
-        timeoutMs: 10_000,
-      });
+      const { stdout } = await this.runSwiftScript(script, 10_000);
       const raw = stdout.trim();
       if (!raw) {
         throw new Error("swift AX action produced no output");
@@ -664,9 +786,32 @@ export class DesktopAxTransport implements TransportAdapter {
       }
 
       if (result.element) {
-        this.lastAxSnapshot = result.element;
+        this.lastAxSnapshot = {
+          ...result.element,
+          app:
+            typeof result.element.app === "string"
+              ? result.element.app
+              : target.appName,
+          ...(target.bundleId ? { bundleId: target.bundleId } : {}),
+        };
       }
       return ok(result as unknown as T);
+    } catch (e) {
+      return this.envelopeFromShellError(action, e);
+    }
+  }
+
+  private async runSwiftJsonAction<T>(
+    action: string,
+    script: string,
+  ): Promise<Envelope<T>> {
+    try {
+      const { stdout } = await this.runSwiftScript(script, 10_000);
+      const raw = stdout.trim();
+      if (!raw) {
+        throw new Error("swift AX action produced no output");
+      }
+      return ok(JSON.parse(raw) as T);
     } catch (e) {
       return this.envelopeFromShellError(action, e);
     }
@@ -688,6 +833,247 @@ export class DesktopAxTransport implements TransportAdapter {
         : exitCodeFor("service_unavailable"),
     });
   }
+
+  private async runSwiftScript(
+    script: string,
+    timeoutMs: number,
+  ): Promise<{ stdout: string; stderr: string }> {
+    if (!this.shouldUseSwiftScriptCache()) {
+      return this.shell.run("swift", ["-e", script], { timeoutMs });
+    }
+
+    try {
+      const binary = await ensureSwiftScriptBinary(script, this.shell);
+      return await this.shell.run(binary, [], { timeoutMs });
+    } catch {
+      return this.shell.run("swift", ["-e", script], { timeoutMs });
+    }
+  }
+
+  private shouldUseSwiftScriptCache(): boolean {
+    return (
+      this.shell === defaultShell &&
+      this.isDarwin() &&
+      process.env.UNICLI_AX_SWIFT_CACHE !== "0"
+    );
+  }
+}
+
+async function ensureSwiftScriptBinary(
+  script: string,
+  shell: AxShell,
+): Promise<string> {
+  const digest = createHash("sha256")
+    .update(SWIFT_SCRIPT_CACHE_VERSION)
+    .update("\0")
+    .update(script)
+    .digest("hex");
+  const root = swiftScriptCacheDir();
+  const sourcePath = join(root, `${digest}.swift`);
+  const binaryPath = join(root, digest);
+
+  if (await fileExists(binaryPath)) return binaryPath;
+
+  let lock = swiftScriptCompileLocks.get(binaryPath);
+  if (!lock) {
+    lock = compileSwiftScript(shell, sourcePath, binaryPath, script);
+    swiftScriptCompileLocks.set(binaryPath, lock);
+  }
+
+  try {
+    await lock;
+  } finally {
+    swiftScriptCompileLocks.delete(binaryPath);
+  }
+  return binaryPath;
+}
+
+async function compileSwiftScript(
+  shell: AxShell,
+  sourcePath: string,
+  binaryPath: string,
+  script: string,
+): Promise<void> {
+  await mkdir(swiftScriptCacheDir(), { recursive: true });
+  await writeFile(sourcePath, script, "utf8");
+  await shell.run("swiftc", [sourcePath, "-O", "-o", binaryPath], {
+    timeoutMs: 30_000,
+  });
+  await chmod(binaryPath, 0o755);
+}
+
+function swiftScriptCacheDir(): string {
+  return (
+    process.env.UNICLI_AX_SWIFT_CACHE_DIR ??
+    join(homedir(), ".unicli", "cache", "swift", SWIFT_SCRIPT_CACHE_VERSION)
+  );
+}
+
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function launchOpenArgs(
+  target: ResolvedAxTarget,
+  params: Record<string, unknown>,
+): string[] {
+  const debugPort =
+    typeof params.debugPort === "number"
+      ? params.debugPort
+      : typeof params.debugPort === "string"
+        ? Number(params.debugPort)
+        : undefined;
+  if (typeof debugPort !== "number" || !Number.isFinite(debugPort)) {
+    return [...target.openArgs];
+  }
+  return [
+    "-a",
+    target.appName,
+    "--args",
+    `--remote-debugging-port=${debugPort}`,
+  ];
+}
+
+function readAxWindowsFilter(
+  params: Record<string, unknown>,
+): AxWindowsScriptOptions {
+  const resolved = resolveAxTarget(params);
+  if (resolved) {
+    return {
+      appName: resolved.appName,
+      bundleId: resolved.bundleId,
+      processName: resolved.processName,
+    };
+  }
+  return {
+    appName: readStringParam(params.app),
+    bundleId: readStringParam(params.bundleId),
+    processName: readStringParam(params.processName),
+  };
+}
+
+function normalizeAxSnapshot(
+  input: Record<string, unknown>,
+  path = String(input.role ?? "AXUnknown") + "[0]",
+  scope = readScope(input),
+  inherited: { app?: string; pid?: number } = {},
+): RawAxNode {
+  const role = typeof input.role === "string" ? input.role : "AXUnknown";
+  const app = typeof input.app === "string" ? input.app : inherited.app;
+  const pid = typeof input.pid === "number" ? input.pid : inherited.pid;
+  const children = Array.isArray(input.children)
+    ? normalizeChildren(input.children, path, scope, { app, pid })
+    : undefined;
+  return {
+    role,
+    name: readName(input),
+    value: typeof input.value === "string" ? input.value : undefined,
+    bounds: readBounds(input),
+    screenIndex: readScreenIndex(input),
+    states: readStates(input),
+    children,
+    path,
+    scope,
+    app,
+    pid,
+  };
+}
+
+function normalizeChildren(
+  children: unknown[],
+  parentPath: string,
+  scope: string,
+  inherited: { app?: string; pid?: number },
+): RawAxNode[] {
+  const roleCounts = new Map<string, number>();
+  const nodes: RawAxNode[] = [];
+
+  for (const child of children) {
+    if (!isRecord(child)) continue;
+    const role = typeof child.role === "string" ? child.role : "AXUnknown";
+    const index = roleCounts.get(role) ?? 0;
+    roleCounts.set(role, index + 1);
+    nodes.push(
+      normalizeAxSnapshot(
+        child,
+        `${parentPath}/${role}[${index}]`,
+        scope,
+        inherited,
+      ),
+    );
+  }
+  return nodes;
+}
+
+function readScope(input: Record<string, unknown>): string {
+  if (typeof input.scope === "string" && input.scope) return input.scope;
+  if (typeof input.pid === "number") return String(input.pid);
+  return "focusedWindow";
+}
+
+function readName(input: Record<string, unknown>): string | undefined {
+  for (const key of ["name", "title", "label", "description"]) {
+    const value = input[key];
+    if (typeof value === "string" && value) return value;
+  }
+  return undefined;
+}
+
+function readBounds(
+  input: Record<string, unknown>,
+): RawAxNode["bounds"] | undefined {
+  const bounds = input.bounds;
+  if (!isRecord(bounds)) return undefined;
+  const x = readNumber(bounds.x);
+  const y = readNumber(bounds.y);
+  const w = readNumber(bounds.w ?? bounds.width);
+  const h = readNumber(bounds.h ?? bounds.height);
+  if (
+    x === undefined ||
+    y === undefined ||
+    w === undefined ||
+    h === undefined
+  ) {
+    return undefined;
+  }
+  return { x, y, w, h };
+}
+
+function readScreenIndex(input: Record<string, unknown>): number | undefined {
+  const value = input.screenIndex;
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.trunc(value)
+    : undefined;
+}
+
+function readStates(
+  input: Record<string, unknown>,
+): readonly string[] | undefined {
+  if (!Array.isArray(input.states)) return undefined;
+  return input.states.filter(
+    (state): state is string => typeof state === "string",
+  );
+}
+
+function readNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : undefined;
+}
+
+function readStringParam(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /** Escape an AppleScript string literal used inside `osascript -e`. */

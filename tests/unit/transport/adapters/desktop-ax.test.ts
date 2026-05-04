@@ -18,6 +18,7 @@ import {
 import {
   buildAxBackgroundClickScript,
   buildAxPressScript,
+  buildAxScrollScript,
   buildAxSetValueScript,
   buildAxSnapshotScript,
   buildElectronAxWarmupScript,
@@ -134,6 +135,10 @@ describe("DesktopAxTransport", () => {
         value: "hello",
       }),
       buildAxPressScript(target!, { ...query, actionName: "AXPress" }),
+      buildAxScrollScript(target!, {
+        ...query,
+        actionName: "AXScrollToVisible",
+      }),
       buildAxBackgroundClickScript(target!, {
         x: 120,
         y: 80,
@@ -171,6 +176,20 @@ describe("DesktopAxTransport", () => {
     expect(script).not.toContain("kAXFrontmostAttribute");
   });
 
+  it("generated AX snapshots include bounds and screen index metadata", () => {
+    const target = resolveAxTarget({ app: "Calculator" });
+    expect(target).not.toBeNull();
+    const script = buildAxSnapshotScript(target!, {
+      maxDepth: 1,
+      scope: "focusedWindow",
+    });
+
+    expect(script).toContain("AXPosition");
+    expect(script).toContain("AXSize");
+    expect(script).toContain("screenIndex");
+    expect(script).toContain("NSScreen.screens");
+  });
+
   it("typechecks generated Swift AX scripts when swiftc is available", () => {
     if (process.platform !== "darwin") return;
     try {
@@ -194,6 +213,10 @@ describe("DesktopAxTransport", () => {
         value: "hello",
       }),
       press: buildAxPressScript(target!, { ...query, actionName: "AXPress" }),
+      scroll: buildAxScrollScript(target!, {
+        ...query,
+        actionName: "AXScrollToVisible",
+      }),
       backgroundClick: buildAxBackgroundClickScript(target!, {
         x: 120,
         y: 80,
@@ -221,7 +244,11 @@ describe("DesktopAxTransport", () => {
     expect(t.capability.steps).toContain("ax_menu_select");
     expect(t.capability.steps).toContain("ax_snapshot");
     expect(t.capability.steps).toContain("ax_set_value");
+    expect(t.capability.steps).toContain("ax_scroll");
+    expect(t.capability.steps).toContain("ax_screenshot");
     expect(t.capability.steps).toContain("ax_background_click");
+    expect(t.capability.steps).toContain("ax_apps");
+    expect(t.capability.steps).toContain("ax_windows");
   });
 
   it("returns service_unavailable envelope on linux", async () => {
@@ -290,6 +317,51 @@ describe("DesktopAxTransport", () => {
     });
   });
 
+  it("launch_app forwards debugPort to open --args", async () => {
+    const shell = new FakeShell();
+    const t = new DesktopAxTransport({ shell, platform: "darwin" });
+    await t.open(makeCtx());
+    const res = await t.action({
+      kind: "launch_app",
+      params: { app: "Visual Studio Code", debugPort: 9230 },
+    });
+    expect(res.ok).toBe(true);
+    expect(shell.calls[0]).toEqual({
+      command: "open",
+      args: [
+        "-a",
+        "Visual Studio Code",
+        "--args",
+        "--remote-debugging-port=9230",
+      ],
+      input: undefined,
+    });
+  });
+
+  it("ax_screenshot shells screencapture to the requested path", async () => {
+    const shell = new FakeShell();
+    const t = new DesktopAxTransport({ shell, platform: "darwin" });
+    await t.open(makeCtx());
+
+    const res = await t.action({
+      kind: "ax_screenshot",
+      params: { path: "/tmp/unicli-ax-shot.png" },
+    });
+
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.data).toEqual({
+        path: "/tmp/unicli-ax-shot.png",
+        mime: "image/png",
+      });
+    }
+    expect(shell.calls[0]).toEqual({
+      command: "screencapture",
+      args: ["-x", "-t", "png", "/tmp/unicli-ax-shot.png"],
+      input: undefined,
+    });
+  });
+
   it("launch_app resolves known Electron apps by bundle id", async () => {
     const shell = new FakeShell();
     shell.respondCommand(
@@ -337,6 +409,93 @@ describe("DesktopAxTransport", () => {
     });
     expect(res.ok).toBe(true);
     if (res.ok) expect(res.data.text).toBe("clipboard-contents");
+  });
+
+  it("ax_apps lists regular running apps through Swift", async () => {
+    const shell = new FakeShell();
+    shell.respondMatch(
+      "swift",
+      `let commandMode = "apps"`,
+      JSON.stringify({
+        count: 1,
+        apps: [
+          {
+            name: "Calculator",
+            bundleId: "com.apple.calculator",
+            processName: "Calculator",
+            pid: 4242,
+            active: true,
+            hidden: false,
+          },
+        ],
+      }),
+    );
+    const t = new DesktopAxTransport({ shell, platform: "darwin" });
+    await t.open(makeCtx());
+    const res = await t.action<{
+      count: number;
+      apps: Array<{ name: string; bundleId: string; pid: number }>;
+    }>({
+      kind: "ax_apps",
+      params: {},
+    });
+
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.data.count).toBe(1);
+      expect(res.data.apps[0]).toMatchObject({
+        name: "Calculator",
+        bundleId: "com.apple.calculator",
+        pid: 4242,
+      });
+    }
+    expect(shell.calls[0]?.command).toBe("swift");
+    expect(shell.calls[0]?.args[1]).toContain(`let commandMode = "apps"`);
+  });
+
+  it("ax_windows lists windows scoped to an app through Swift", async () => {
+    const shell = new FakeShell();
+    shell.respondMatch(
+      "swift",
+      `let commandMode = "windows"`,
+      JSON.stringify({
+        count: 1,
+        windows: [
+          {
+            app: "Calculator",
+            bundleId: "com.apple.calculator",
+            pid: 4242,
+            title: "Calculator",
+            role: "AXWindow",
+            focused: true,
+          },
+        ],
+      }),
+    );
+    const t = new DesktopAxTransport({ shell, platform: "darwin" });
+    await t.open(makeCtx());
+    const res = await t.action<{
+      count: number;
+      windows: Array<{ app: string; title: string; focused: boolean }>;
+    }>({
+      kind: "ax_windows",
+      params: { app: "Calculator" },
+    });
+
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.data.count).toBe(1);
+      expect(res.data.windows[0]).toMatchObject({
+        app: "Calculator",
+        title: "Calculator",
+        focused: true,
+      });
+    }
+    expect(shell.calls[0]?.command).toBe("swift");
+    expect(shell.calls[0]?.args[1]).toContain(`let commandMode = "windows"`);
+    expect(shell.calls[0]?.args[1]).toContain(
+      `let requestedAppName = "Calculator"`,
+    );
   });
 
   it("ax_menu_select builds a path-walk AppleScript", async () => {
@@ -531,6 +690,43 @@ describe("DesktopAxTransport", () => {
       expect(res.error.reason).toMatch(/no matching accessibility element/i);
       expect(res.error.suggestion).toMatch(/focus the target control/i);
     }
+  });
+
+  it("ax_scroll performs AXScrollToVisible without activating the app", async () => {
+    const shell = new FakeShell();
+    shell.respondMatch(
+      "swift",
+      `let commandMode = "scroll"`,
+      JSON.stringify({
+        found: true,
+        matched: true,
+        mode: "scroll",
+        result: 0,
+        action: "AXScrollToVisible",
+        element: { role: "AXScrollArea", title: "Results" },
+      }),
+    );
+    const t = new DesktopAxTransport({ shell, platform: "darwin" });
+    await t.open(makeCtx());
+
+    const res = await t.action<{ action: string }>({
+      kind: "ax_scroll",
+      params: {
+        app: "ChatGPT",
+        ensureElectronAx: false,
+        focused: false,
+        role: "AXScrollArea",
+        title: "Results",
+      },
+    });
+
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.data.action).toBe("AXScrollToVisible");
+    expect(shell.calls).toHaveLength(1);
+    const script = shell.calls[0]?.args[1] ?? "";
+    expect(script).toContain(`let commandMode = "scroll"`);
+    expect(script).toContain(`AXUIElementPerformAction`);
+    expect(script).not.toContain(`activate`);
   });
 
   it("ax_background_click posts a background click through Swift", async () => {

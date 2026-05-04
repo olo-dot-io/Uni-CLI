@@ -46,10 +46,65 @@ interface ExecParams {
   timeoutMs?: unknown;
 }
 
+interface LaunchParams {
+  app?: unknown;
+  args?: unknown;
+  debugPort?: unknown;
+  timeoutMs?: unknown;
+}
+
 interface ExecOutcome {
   stdout: string;
   stderr: string;
   exitCode: number;
+}
+
+interface CommandPlan {
+  command: string;
+  args: string[];
+}
+
+export function launchPlanForPlatform(
+  platform: NodeJS.Platform,
+  app: string,
+  args: readonly string[] = [],
+  debugPort?: number,
+): CommandPlan {
+  const launchArgs =
+    typeof debugPort === "number" && Number.isFinite(debugPort)
+      ? [...args, `--remote-debugging-port=${debugPort}`]
+      : [...args];
+  if (platform === "darwin") {
+    return {
+      command: "open",
+      args: [
+        "-a",
+        app,
+        ...(launchArgs.length > 0 ? ["--args", ...launchArgs] : []),
+      ],
+    };
+  }
+  if (platform === "win32") {
+    const command =
+      launchArgs.length > 0
+        ? "Start-Process -FilePath $args[0] -ArgumentList $args[1]"
+        : "Start-Process -FilePath $args[0]";
+    const planArgs = [
+      "-NoProfile",
+      "-NonInteractive",
+      "-Command",
+      command,
+      app,
+    ];
+    if (launchArgs.length > 0) {
+      planArgs.push(launchArgs.join(" "));
+    }
+    return { command: "powershell.exe", args: planArgs };
+  }
+  return {
+    command: "gtk-launch",
+    args: [app, ...launchArgs],
+  };
 }
 
 /** Minimal async queue fed by stdout/stderr chunks, drained by `stream()`. */
@@ -113,6 +168,9 @@ export class SubprocessTransport implements TransportAdapter {
       switch (req.kind) {
         case "exec":
           envelope = await this.doExec(req.params as ExecParams);
+          break;
+        case "launch_app":
+          envelope = await this.doLaunch(req.params as LaunchParams);
           break;
         case "wait": {
           const p = req.params as { seconds?: unknown; ms?: unknown };
@@ -178,6 +236,35 @@ export class SubprocessTransport implements TransportAdapter {
   }
 
   // ── internals ────────────────────────────────────────────────────
+
+  private async doLaunch(p: LaunchParams): Promise<Envelope<ExecOutcome>> {
+    const app = typeof p.app === "string" ? p.app.trim() : "";
+    if (!app) {
+      return err({
+        transport: "subprocess",
+        step: 0,
+        action: "launch_app",
+        reason: "missing required param `app`",
+        suggestion: "pass params.app with the application name or desktop id",
+        retryable: false,
+        exit_code: exitCodeFor("usage_error"),
+      });
+    }
+
+    const args = Array.isArray(p.args) ? p.args.map((arg) => String(arg)) : [];
+    const debugPort =
+      typeof p.debugPort === "number"
+        ? p.debugPort
+        : typeof p.debugPort === "string"
+          ? Number(p.debugPort)
+          : undefined;
+    const plan = launchPlanForPlatform(process.platform, app, args, debugPort);
+    return this.doExec({
+      command: plan.command,
+      args: plan.args,
+      timeoutMs: p.timeoutMs,
+    });
+  }
 
   private async doExec(p: ExecParams): Promise<Envelope<ExecOutcome>> {
     const command = typeof p.command === "string" ? p.command : undefined;
