@@ -83,6 +83,18 @@ Default MCP tools:
 `mcp serve` and `acp` keep raw stdio protocol behavior. Normal command surfaces
 return the v2 `AgentEnvelope`.
 
+For local computer control, start the dedicated profile:
+
+```bash
+npx @zenalexa/unicli mcp serve --profile computer-use
+```
+
+It exposes the `computer-use.*` tool set backed by `unicli compute`. Client
+snippets are available for [Claude Desktop](../mcp/clients/claude-desktop.md),
+[Claude Code](../mcp/clients/claude-code.md),
+[Codex](../mcp/clients/codex.md), [Cursor](../mcp/clients/cursor.md), and
+[Gemini CLI](../mcp/clients/gemini-cli.md).
+
 Claude-style stdio config:
 
 ```json
