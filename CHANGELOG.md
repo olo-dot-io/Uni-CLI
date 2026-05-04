@@ -5,18 +5,47 @@ Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributin
 
 ## [Unreleased]
 
+## [0.217.3] — 2026-05-04 — Apollo · Shepard
+
 ### Added
 
-- **Local computer-control surface** — `unicli compute` adds a unified
-  app-control family for apps, windows, snapshot, find, click, type, press,
-  scroll, screenshot, CDP attach, eval, wait, observe, and assert, backed by
-  macOS AX, Electron CDP, UIA/AT-SPI sidecar scaffolds, and CUA fallback.
+- **Local computer-control surface (preview, macOS-first)** — `unicli compute`
+  adds a unified app-control family for apps, windows, snapshot, find, click,
+  type, press, scroll, screenshot, CDP attach, eval, wait, observe, and
+  assert, backed by macOS AX (functional), Electron CDP (functional), and
+  UIA/AT-SPI sidecar scaffolds (Windows/Linux compile-clean; live smoke
+  pending). Treat Windows and Linux paths as preview until cross-OS smoke
+  ships.
 - **Computer-use MCP profile** — `unicli mcp serve --profile computer-use`
   exposes 15 `computer-use.*` tools, prompt support, stdio e2e coverage, and
   action evidence metadata for direct agent desktop control.
 - **Compute self-repair** — `unicli doctor compute --json`, structured
-  remedies, troubleshooting docs, sidecar install hints, and macOS Accessibility
-  and Screen Recording probes help recover from local-control failures.
+  remedies, troubleshooting docs, sidecar install hints, and macOS
+  Accessibility and Screen Recording probes help recover from local-control
+  failures.
+- **Listing↔detail adapter lint** — new cross-adapter rule
+  `listing-detail-pairing` flags any site that exposes a listing-style
+  command (top/hot/search/feed/list/...) without a paired detail command
+  (read/get/item/show/...). Soft warning today, 185 hits across the 920
+  built-in YAML adapters; opt out per adapter via `lint_listing_detail: skip`.
+
+### Changed
+
+- **`desktop-ax.ts` slimmed by 21%** — module-level helpers (Swift binary
+  lifecycle + snapshot normalization) extracted to a sibling
+  `desktop-ax-helpers.ts`. Main file 1086 → 853 LOC. No behavior change;
+  31 unit tests stay green.
+
+### Internal
+
+- Rust workspace bootstrapped under `crates/{unicli-shared,unicli-uia,
+unicli-atspi}` with rust-toolchain pinned to 1.82.0 and a 6-target CI
+  matrix (macOS/Windows/Linux × x64/arm64).
+- Sidecar packaging (`packages/sidecars/*`) and build/publish scripts
+  (`scripts/build-sidecars.mjs`, `publish-sidecars.mjs`) wire the optional
+  `@zenalexa/unicli-{uia,atspi}-*` packages addressed at `0.218.0`.
+- Snapshot encoder + ref store gain 100/100/100/100 coverage with six
+  golden fixtures and a perf budget project (`tests/perf/`).
 
 ## [0.217.2] — 2026-04-30 — Apollo · Swigert
 
