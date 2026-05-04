@@ -35,3 +35,5 @@ export { stepDownload, type DownloadStepConfig } from "./download.js";
 export { stepWebsocket } from "./websocket.js";
 export * from "./cua.js";
 export * from "./desktop-ax.js";
+export * from "./desktop-sidecar.js";
+export * from "./compute.js";

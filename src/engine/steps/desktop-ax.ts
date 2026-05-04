@@ -57,6 +57,20 @@ export async function handleAxSnapshot(
   return dispatch(ctx, "ax_snapshot", params);
 }
 
+export async function handleAxApps(
+  ctx: DesktopAxStepContext,
+  params: Record<string, unknown> = {},
+): Promise<Envelope<unknown>> {
+  return dispatch(ctx, "ax_apps", params);
+}
+
+export async function handleAxWindows(
+  ctx: DesktopAxStepContext,
+  params: Record<string, unknown>,
+): Promise<Envelope<unknown>> {
+  return dispatch(ctx, "ax_windows", params);
+}
+
 export async function handleAxFocusedRead(
   ctx: DesktopAxStepContext,
   params: Record<string, unknown>,
@@ -76,6 +90,20 @@ export async function handleAxPress(
   params: Record<string, unknown>,
 ): Promise<Envelope<unknown>> {
   return dispatch(ctx, "ax_press", params);
+}
+
+export async function handleAxScroll(
+  ctx: DesktopAxStepContext,
+  params: Record<string, unknown>,
+): Promise<Envelope<unknown>> {
+  return dispatch(ctx, "ax_scroll", params);
+}
+
+export async function handleAxScreenshot(
+  ctx: DesktopAxStepContext,
+  params: Record<string, unknown>,
+): Promise<Envelope<unknown>> {
+  return dispatch(ctx, "ax_screenshot", params);
 }
 
 export async function handleAxBackgroundClick(
@@ -117,10 +145,14 @@ export const DESKTOP_AX_STEP_HANDLERS = {
   ax_focus: handleAxFocus,
   ax_menu_select: handleAxMenuSelect,
   applescript: handleApplescript,
+  ax_apps: handleAxApps,
+  ax_windows: handleAxWindows,
   ax_snapshot: handleAxSnapshot,
   ax_focused_read: handleAxFocusedRead,
   ax_set_value: handleAxSetValue,
   ax_press: handleAxPress,
+  ax_scroll: handleAxScroll,
+  ax_screenshot: handleAxScreenshot,
   ax_background_click: handleAxBackgroundClick,
   clipboard_read: handleClipboardRead,
   clipboard_write: handleClipboardWrite,

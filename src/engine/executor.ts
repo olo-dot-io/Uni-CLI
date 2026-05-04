@@ -21,6 +21,10 @@ import {
   DESKTOP_AX_STEP_HANDLERS,
   type DesktopAxStepKind,
 } from "./steps/desktop-ax.js";
+import {
+  DESKTOP_SIDECAR_STEP_HANDLERS,
+  isDesktopSidecarStep,
+} from "./steps/desktop-sidecar.js";
 import { getStep } from "./step-registry.js";
 import {
   getBus,
@@ -160,7 +164,11 @@ export async function executeStep(
   const handler = getStep(action);
   if (handler) return handler(ctx, config, stepIndex, fullStep, depth);
 
-  if (isCuaStep(action) || isDesktopAxStep(action)) {
+  if (
+    isCuaStep(action) ||
+    isDesktopAxStep(action) ||
+    isDesktopSidecarStep(action)
+  ) {
     return dispatchBusStep(ctx, action, config);
   }
 
@@ -193,7 +201,9 @@ async function dispatchBusStep(
   const busCtx = { bus: getBus(), transportCtx: buildTransportCtx(ctx) };
   const handlerFn = isCuaStep(action)
     ? CUA_STEP_HANDLERS[action]
-    : DESKTOP_AX_STEP_HANDLERS[action as DesktopAxStepKind];
+    : isDesktopSidecarStep(action)
+      ? DESKTOP_SIDECAR_STEP_HANDLERS[action]
+      : DESKTOP_AX_STEP_HANDLERS[action as DesktopAxStepKind];
   const envelope = await handlerFn(busCtx, params);
   ctx.vars["lastEnvelope"] = envelope;
   return { ...ctx, data: envelope.ok ? envelope.data : envelope };
