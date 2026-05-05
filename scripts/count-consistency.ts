@@ -1,18 +1,9 @@
 /**
- * count-consistency — Fail the build when a tracked release surface drifts from stats.json.
- *
- * Scans README.md, AGENTS.md, docs/ROADMAP.md, docs/zh/ROADMAP.md,
- * contributing/COPY.md for
- * `<!-- STATS:<key> -->...<!-- /STATS -->` markers and asserts the rendered
- * value matches `stats.json[<key>]`. CLAUDE.md is .gitignored and not part of
- * the published release surfaces.
- *
- * Exit:
- *   0  — every marker matches stats.json
- *   1  — at least one mismatch; details on stderr
- *
- * Regenerate stats:  npm run stats
- * Inject into docs:  npm run build  (calls build-readme and build-agents)
+ * @owner   scripts/count-consistency.ts
+ * @does    Fail the build when tracked release surfaces drift from stats.json.
+ * @needs   stats.json, docs and README STATS markers
+ * @feeds   npm run stats:check, npm run verify
+ * @breaks  Public docs can ship stale generated catalog counts.
  */
 
 import { readFileSync, existsSync } from "node:fs";
@@ -29,6 +20,10 @@ const TARGETS = [
   "AGENTS.md",
   join("docs", "ROADMAP.md"),
   join("docs", "zh", "ROADMAP.md"),
+  join("docs", "ARCHITECTURE.md"),
+  join("docs", "THEORY.md"),
+  join("docs", "how-it-works.md"),
+  join("docs", "faq.md"),
   join("contributing", "COPY.md"),
 ];
 

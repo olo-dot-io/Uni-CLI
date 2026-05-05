@@ -21,6 +21,10 @@ const TARGETS = [
   "AGENTS.md",
   join("docs", "ROADMAP.md"),
   join("docs", "zh", "ROADMAP.md"),
+  join("docs", "ARCHITECTURE.md"),
+  join("docs", "THEORY.md"),
+  join("docs", "how-it-works.md"),
+  join("docs", "faq.md"),
   join("contributing", "COPY.md"),
 ];
 

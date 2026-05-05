@@ -38,7 +38,7 @@ Agent execution needs an auditable, repairable, reusable command contract. Catal
 - Sites and tools: 238
 - Commands: 1458
 - Pipeline steps: 101
-- Tests: 7887
+- Tests: 7896
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -51,7 +51,7 @@ These numbers come from the current generated repo artifacts: adapters, commands
 
 ## Current Version
 
-Latest: v0.218.0 · Apollo · Cernan.
+Latest: v0.218.1 · Apollo · Cernan Patch.
 
 ## Agent Index
 

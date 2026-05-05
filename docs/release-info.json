@@ -1,23 +1,23 @@
 {
-  "version": "0.218.0",
-  "codename": "Apollo · Cernan",
+  "version": "0.218.1",
+  "codename": "Apollo · Cernan Patch",
   "date": "2026-05-05",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.218.0",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02180--2026-05-05--apollo--cernan",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.218.1",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02181--2026-05-05--apollo--cernan-patch",
   "highlights": {
     "root": [
-      "Cross-platform browser cookie source (macOS / Linux / Windows) lands as first-class auth: read straight from Chrome/Arc/Dia/Brave/Edge/Atlas SQLite DBs via the native key store; default cascade is `~/.unicli/cookies → BROWSER → CDP`.",
-      "`unicli auth audit` and `unicli doctor cookies` round out the cross-platform cookie surface; the `domain:` field is plumbed through every pipeline caller and silently corrects ten adapters whose naïve `<site>.com` derivation pointed at the wrong cookie store.",
-      "Pipeline engine hardening: `parsePipes` no longer mistreats the second `|` of a `||` as a filter pipe (the bug silently dropped Homebrew and OpenRouter search rows), unknown filter names now throw `TemplateEvalError` instead of being silently skipped, and the shorthand `- navigate: <url>` form is finally accepted by the navigate step (used by 58 adapters).",
-      "Documentation discipline: a quarantine honesty invariant test asserts every `quarantine: true` carries a dated reason; release.ts now propagates version + codename to all nine tracked surfaces (added `docs/zh/ROADMAP.md`, `docs/ARCHITECTURE.md`, and `docs/release-info.json`) so a release leaves no stale tag pointer."
+      "`unicli-mcp` binary support lets `npx -y @zenalexa/unicli-mcp` boot the MCP server directly for Claude Desktop, Cursor, Continue, and similar clients.",
+      "`server.json` now ships at the package root for MCP registry discovery.",
+      "The npm package now includes the Uni-CLI skill packs under `skills/`, so global installs give agents the usage, repair, browser, and smart-search guidance without a separate clone.",
+      "`AGENTS.md` includes the MCP one-liner config block and current command-contract metadata."
     ],
     "zh": [
-      "跨平台浏览器 Cookie 源（macOS / Linux / Windows）成为一等公民认证：直接从 Chrome/Arc/Dia/Brave/Edge/Atlas 的 SQLite DB 通过原生 key store 读取；默认级联 `~/.unicli/cookies → BROWSER → CDP`。",
-      "`unicli auth audit` 与 `unicli doctor cookies` 让跨平台 cookie 体系自洽；`domain:` 字段已贯穿所有 pipeline 调用方，悄悄修正了十个把 cookie 域名猜成 `<site>.com` 的 adapter。",
-      "Pipeline 引擎收紧：`parsePipes` 不再把 `||` 第二个 `|` 误判为 filter（旧 bug 让 Homebrew / OpenRouter 搜索默默掉行），未知 filter 名抛出 `TemplateEvalError` 不再静默吞掉，`- navigate: <url>` 简写终于被 navigate step 接受（58 个 adapter 受益）。",
-      "文档纪律：新增 quarantine 诚实不变量测试要求每个 `quarantine: true` 带日期；release.ts 同步覆盖到全部 9 个文档面（新加 `docs/zh/ROADMAP.md`、`docs/ARCHITECTURE.md`、`docs/release-info.json`），发版后不再有残留的旧版本指针。"
+      "`unicli-mcp` 二进制入口让 `npx -y @zenalexa/unicli-mcp` 可以直接启动 MCP server，方便 Claude Desktop、Cursor、Continue 等客户端配置。",
+      "包根目录新增 `server.json`，用于 MCP registry 发现。",
+      "npm 包现在随包发布 `skills/` 下的 Uni-CLI skill pack，全局安装后 Agent 不需要额外 clone 就能拿到使用、修复、浏览器和 smart-search 指引。",
+      "`AGENTS.md` 增加 MCP 一行配置块，并同步当前命令契约元数据。"
     ]
   }
 }

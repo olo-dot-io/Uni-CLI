@@ -56,7 +56,7 @@ Agent execution needs an auditable, repairable, reusable command contract. Catal
 - Sites and tools: 238
 - Commands: 1458
 - Pipeline steps: 101
-- Tests: 7887
+- Tests: 7896
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -69,7 +69,7 @@ These numbers come from the current generated repo artifacts: adapters, commands
 
 ## Current Version
 
-Latest: v0.218.0 · Apollo · Cernan.
+Latest: v0.218.1 · Apollo · Cernan Patch.
 
 ## Agent Index
 
@@ -414,7 +414,9 @@ The cascade order is `public → cookie → header → intercept → ui`. On the
 
 ## The v2 AgentEnvelope
 
-Every command returns a v2 AgentEnvelope — the same shape on success or failure. Agents parse one schema across 1,448 commands.
+Every command returns a v2 AgentEnvelope — the same shape on success or failure.
+Agents parse one schema across
+<span><!-- STATS:command_count -->1458<!-- /STATS --></span> commands.
 
 ```json
 {
@@ -504,7 +506,10 @@ $ unicli hackernews top -n 10 -f json \
 # 4. The agent edits the YAML and re-verifies with `unicli repair`
 ```
 
-That is the entire interaction model. One command shape across 233 sites and 1,448 commands. One error envelope across every failure. One self-repair path across every adapter.
+That is the entire interaction model. One command shape across
+<span><!-- STATS:site_count -->238<!-- /STATS --></span> sites and
+<span><!-- STATS:command_count -->1458<!-- /STATS --></span> commands. One error
+envelope across every failure. One self-repair path across every adapter.
 
 ## Further reading
 
@@ -1006,7 +1011,7 @@ Quick answers to the questions agents and developers ask most often. Each answer
 
 ## What is Uni-CLI?
 
-Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across 233 sites and tools, returning a stable v2 AgentEnvelope on every call.
+Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across <span><!-- STATS:site_count -->238<!-- /STATS --></span> sites and tools, returning a stable v2 AgentEnvelope on every call.
 
 ## How is Uni-CLI different from a browser automation library?
 
@@ -1026,7 +1031,7 @@ Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, and any runtime that can spa
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.218.1 covers 233 sites with 1,448 commands across 1,038 adapters, 101 pipeline steps, and 7,820 tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, government policy, podcasts, and macOS apps.
+v0.218.1 covers <span><!-- STATS:site_count -->238<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1458<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1048<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->7896<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, government policy, podcasts, and macOS apps.
 
 ## Can I add a new site without writing TypeScript?
 
@@ -3979,8 +3984,13 @@ Uni-CLI exposes one searchable command surface across:
 - **Agent backends**: routing and setup helpers for agent runtimes that can call
   shell commands or protocol servers.
 
-The generated catalog is the source of truth: **233 sites**, **1448 commands**,
-**1038 adapters**, **101 pipeline steps**, and **7820 tests** in v0.218.1.
+The generated catalog is the source of truth:
+**<span><!-- STATS:site_count -->238<!-- /STATS --></span> sites**,
+**<span><!-- STATS:command_count -->1458<!-- /STATS --></span> commands**,
+**<span><!-- STATS:adapter_count_total -->1048<!-- /STATS --></span> adapters**,
+**<span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps**,
+and **<span><!-- STATS:test_count -->7896<!-- /STATS --></span> tests** in
+v0.218.1.
 
 ## Execution Contract
 
@@ -4218,8 +4228,9 @@ enough.
 bench shows representative `--limit 5` adapter responses at **357-415
 tokens**, with total invocation-plus-response budgets at **364-423 tokens**.
 The full catalog command is intentionally much larger because it emits all
-233 sites and 1448 commands; agents should search and describe before asking
-for the full registry.
+<span><!-- STATS:site_count -->238<!-- /STATS --></span> sites and
+<span><!-- STATS:command_count -->1458<!-- /STATS --></span> commands; agents
+should search and describe before asking for the full registry.
 
 ## Direction
 
@@ -4424,9 +4435,13 @@ $$
 - `output` defines the fields returned to the agent.
 - `errors` are normalized into a v2 `AgentEnvelope`.
 
-The current public catalog has **233 sites**, **1448 commands**,
-**1038 adapters**, and **101 pipeline steps**. Those numbers are generated from
-the repo by `scripts/count-stats.ts`, not hand-maintained marketing copy.
+The current public catalog has
+**<span><!-- STATS:site_count -->238<!-- /STATS --></span> sites**,
+**<span><!-- STATS:command_count -->1458<!-- /STATS --></span> commands**,
+**<span><!-- STATS:adapter_count_total -->1048<!-- /STATS --></span> adapters**,
+and **<span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline
+steps**. Those numbers are generated from the repo by `scripts/count-stats.ts`,
+not hand-maintained marketing copy.
 
 ## Self-Repair
 
@@ -4490,7 +4505,8 @@ envelope. In the current fixture suite:
 - representative invocation strings: **7-11 tokens**;
 - representative total budgets: **364-423 tokens**;
 - full catalog output: **73242 tokens** because it intentionally lists all
-  233 sites and 1448 commands.
+  <span><!-- STATS:site_count -->238<!-- /STATS --></span> sites and
+  <span><!-- STATS:command_count -->1458<!-- /STATS --></span> commands.
 
 The operational rule follows directly: agents should search and describe first,
 then execute the smallest matching command. Full catalog output is available,

@@ -1,5 +1,14 @@
+/**
+ * @owner   docs/.vitepress/config.ts
+ * @does    Configure VitePress navigation, metadata, search, and JSON-LD.
+ * @needs   stats.json, docs/release-info.json, docs/.vitepress/site-map.js
+ * @feeds   docs build, docs public site
+ * @breaks  Stale catalog or release metadata leaks into generated docs.
+ */
+
 import { defineConfig } from "vitepress";
 import react from "@vitejs/plugin-react";
+import { readFileSync } from "node:fs";
 import { localizedSiteMaps, sidebarGroups, topNav } from "./site-map.js";
 
 function normalizeSiteBase(siteBase: string): string {
@@ -38,6 +47,34 @@ const socialLinks = [
   { icon: "github", link: "https://github.com/olo-dot-io/Uni-CLI" },
   { icon: { svg: npmIcon }, link: npmPackageUrl, ariaLabel: "npm" },
 ] as const;
+
+type SiteStats = {
+  site_count: number;
+  command_count: number;
+  adapter_count_total: number;
+  pipeline_step_count: number;
+  test_count: number;
+};
+
+type ReleaseInfo = {
+  version: string;
+  codename: string;
+};
+
+function readJson<T>(url: URL): T {
+  return JSON.parse(readFileSync(url, "utf-8")) as T;
+}
+
+const siteStats = readJson<SiteStats>(
+  new URL("../../stats.json", import.meta.url),
+);
+const releaseInfo = readJson<ReleaseInfo>(
+  new URL("../release-info.json", import.meta.url),
+);
+const commandCount = siteStats.command_count.toLocaleString("en-US");
+const adapterCount = siteStats.adapter_count_total.toLocaleString("en-US");
+const testCount = siteStats.test_count.toLocaleString("en-US");
+const releaseLabel = `v${releaseInfo.version}`;
 
 const rootThemeConfig = {
   siteTitle: "Uni-CLI",
@@ -161,7 +198,7 @@ function escapeMustacheInFence(md: any) {
 const homeFaqs: { q: string; a: string }[] = [
   {
     q: "What is Uni-CLI?",
-    a: "Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across 235+ sites and tools.",
+    a: `Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across ${siteStats.site_count} sites and tools.`,
   },
   {
     q: "How is Uni-CLI different from a browser automation library?",
@@ -181,7 +218,7 @@ const homeFaqs: { q: string; a: string }[] = [
   },
   {
     q: "How many sites and commands does Uni-CLI ship?",
-    a: "v0.217 covers 235 sites with 1,450 commands across 1,040 adapters, 59 pipeline steps, and 7,591 tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, government policy, podcasts, and macOS apps.",
+    a: `${releaseLabel} covers ${siteStats.site_count} sites with ${commandCount} commands across ${adapterCount} adapters, ${siteStats.pipeline_step_count} pipeline steps, and ${testCount} tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, government policy, podcasts, and macOS apps.`,
   },
   {
     q: "Can I add a new site to Uni-CLI without writing TypeScript?",
@@ -207,11 +244,10 @@ const softwareApplicationLdJson = {
   name: "Uni-CLI",
   applicationCategory: "DeveloperApplication",
   operatingSystem: "macOS, Linux, Windows",
-  description:
-    "Command-grade software access for AI agents. Turns 235+ websites, desktop apps, MCP servers, and external CLIs into a single searchable, self-repairing command catalog.",
+  description: `Command-grade software access for AI agents. Turns ${siteStats.site_count} websites, desktop apps, MCP servers, and external CLIs into a single searchable, self-repairing command catalog.`,
   url: publicSiteUrl,
   downloadUrl: npmPackageUrl,
-  softwareVersion: "0.217",
+  softwareVersion: releaseInfo.version,
   license: "https://www.apache.org/licenses/LICENSE-2.0",
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
   author: {
@@ -326,8 +362,7 @@ const howToLdJson = {
   "@context": "https://schema.org",
   "@type": "HowTo",
   name: "Install Uni-CLI and run your first command",
-  description:
-    "Install Uni-CLI globally via npm, search the command catalog with natural-language intent, then execute a command across one of 235+ supported sites or tools.",
+  description: `Install Uni-CLI globally via npm, search the command catalog with natural-language intent, then execute a command across one of ${siteStats.site_count} supported sites or tools.`,
   totalTime: "PT5M",
   inLanguage: "en-US",
   step: [

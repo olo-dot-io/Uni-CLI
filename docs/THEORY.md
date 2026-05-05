@@ -41,9 +41,13 @@ $$
 - `output` defines the fields returned to the agent.
 - `errors` are normalized into a v2 `AgentEnvelope`.
 
-The current public catalog has **233 sites**, **1448 commands**,
-**1038 adapters**, and **101 pipeline steps**. Those numbers are generated from
-the repo by `scripts/count-stats.ts`, not hand-maintained marketing copy.
+The current public catalog has
+**<span><!-- STATS:site_count -->238<!-- /STATS --></span> sites**,
+**<span><!-- STATS:command_count -->1458<!-- /STATS --></span> commands**,
+**<span><!-- STATS:adapter_count_total -->1048<!-- /STATS --></span> adapters**,
+and **<span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline
+steps**. Those numbers are generated from the repo by `scripts/count-stats.ts`,
+not hand-maintained marketing copy.
 
 ## Self-Repair
 
@@ -107,7 +111,8 @@ envelope. In the current fixture suite:
 - representative invocation strings: **7-11 tokens**;
 - representative total budgets: **364-423 tokens**;
 - full catalog output: **73242 tokens** because it intentionally lists all
-  233 sites and 1448 commands.
+  <span><!-- STATS:site_count -->238<!-- /STATS --></span> sites and
+  <span><!-- STATS:command_count -->1458<!-- /STATS --></span> commands.
 
 The operational rule follows directly: agents should search and describe first,
 then execute the smallest matching command. Full catalog output is available,
