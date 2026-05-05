@@ -5,6 +5,8 @@ Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributin
 
 ## [Unreleased]
 
+## [0.218.0] — 2026-05-05 — Apollo · Cernan
+
 ### Added
 
 - **First-class cross-platform browser cookie source (macOS / Linux / Windows)** —
@@ -39,6 +41,16 @@ Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributin
   `api.bilibili.com`, the SQLite host_key filter now also matches
   `.bilibili.com` cookies (per RFC 6265), capturing parent-domain auth
   cookies that the previous strict matcher missed.
+- **`date_iso` pipe filter** — converts Unix epoch (seconds or
+  milliseconds) to ISO-8601 strings inside YAML templates; returns "" for
+  null / NaN / non-positive input rather than `Invalid Date`. First user is
+  `sspai/latest.yaml`.
+- **Quarantine honesty invariant test** — `tests/unit/quarantine-honesty.test.ts`
+  walks every YAML under `src/adapters/` and asserts each `quarantine: true`
+  entry carries a `quarantineReason` string with a 4-digit year, blocking
+  `quarantine: true` from drifting into an undated kill-switch. Backfilled
+  the 18 pre-existing quarantines with `(quarantined 2026-04-15)` matching
+  the date the entries first landed.
 
 ### Changed
 
@@ -46,6 +58,56 @@ Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributin
   must declare a top-level `domain:`. Added at lint-time so the broken
   inference path can never come back. All 135 current cookie/header
   adapters already satisfy the rule (920 lint passes, 0 failures).
+- **AGENTS.md trimmed** — restated envelope shape, error-code table, site
+  enumerations, and adapter template removed (canonical sources are
+  `unicli describe`, `unicli search`, the YAML files, and the project
+  skill). Front-matter now points cold agents at `unicli auth setup
+<site>` directly when an `auth_required` envelope arrives.
+- **Documentation surface synced to a single source** — `scripts/release.ts`
+  now also propagates the version and codename to `docs/zh/ROADMAP.md`,
+  `docs/ARCHITECTURE.md`, and `docs/release-info.json` so a release leaves
+  no stale tag pointer in any tracked surface. Build-emitted stats counts
+  remain owned by `scripts/build-readme.ts` via STATS markers.
+
+### Fixed
+
+- **`parsePipes` now treats both halves of `||` as logical-OR** — the
+  parser only looked one character ahead, so the second `|` of a `||`
+  token got split as a real filter pipe; the base expression then
+  contained a stray `|` (invalid JS, threw in vm) and the unknown filter
+  was silently dropped, so any filter expression wrapping its condition
+  in `||` returned 0 rows. The Homebrew and OpenRouter `search` adapters
+  silently matched nothing because of this. Look back as well as forward
+  when deciding whether a `|` is part of a `||`.
+- **`evalExpression` surfaces unknown filter names as `TemplateEvalError`** —
+  the previous `if (!filterFn) continue;` paired with an outer
+  `try { ... } catch { return undefined; }` swallowed adapter-author
+  typos. Throw a typed error instead so the pipeline executor produces a
+  visible step error envelope. The VM eval path stays lenient (with a
+  `// REASON:` line) so optional access like `item.foo.bar` against null
+  still returns undefined; the `FORBIDDEN_EXPR` security gate keeps
+  soft-rejecting (Postel: lenient at the boundary).
+- **`navigate` step accepts the shorthand `- navigate: <url>` form** —
+  fifty-eight YAML adapters use the bare-string shorthand and previously
+  crashed at step 0 with `Cannot read properties of undefined (reading
+'match')` because the step typed `NavigateConfig` only. Sibling steps
+  (`click`, `press`, `select`, `wait`) already accepted both forms; this
+  brings `navigate` to parity.
+- **sspai `hot` and `latest` adapters** — the legacy
+  `/api/v1/articles?sort=hot|created_at` endpoint returns HTTP 405/500.
+  Switched both to `/api/v1/article/index/page/get`; for the hot view,
+  fetch a wider window and sort client-side by `like_count`. The
+  `released_at` column is rendered through the new `date_iso` filter
+  instead of a raw Unix epoch.
+- **Homebrew and OpenRouter search filter expressions** — replaced the
+  embedded `${{ args.query }}` template literals (which never substituted
+  inside a filter JS body) with direct `args.query` references and
+  case-insensitive matching.
+- **Four upstream-blocked adapters quarantined** with dated reasons
+  (`quarantined 2026-05-05`): `pypi.search` (Fastly bot-wall HTML),
+  `ctrip.hot` (HTTP 502), `ctrip.search` (`showAuthCode` CAPTCHA gate),
+  `coupang.hot` (Cloudflare 403). Quarantine count 42 → 46. Future
+  repair via the cookie strategy stays open.
 
 ## [0.217.3] — 2026-05-04 — Apollo · Shepard
 

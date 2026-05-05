@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->237<!-- /STATS --> sites · <!-- STATS:command_count -->1453<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7791<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->237<!-- /STATS --> sites · <!-- STATS:command_count -->1453<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7842<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -354,5 +354,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v0.217.3 — Apollo · Shepard</sub>
+  <sub>v0.218.0 — Apollo · Cernan</sub>
 </p>

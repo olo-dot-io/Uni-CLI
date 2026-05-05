@@ -1,23 +1,23 @@
 {
-  "version": "0.217.2",
-  "codename": "Apollo · Swigert",
-  "date": "2026-04-30",
+  "version": "0.218.0",
+  "codename": "Apollo · Cernan",
+  "date": "2026-05-05",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.217.2",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02172--2026-04-30--apollo--swigert",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.218.0",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02180--2026-05-05--apollo--cernan",
   "highlights": {
     "root": [
-      "Patch release for real-time macOS automation discovery.",
-      "Shortcuts.app shortcuts and installed app actions are discoverable through search and list on macOS.",
-      "New macos app-actions and automation-smoke commands expose ToolKit API, Shortcuts CLI, and AX/System Events checks.",
-      "The public docs catalog reports the current 235-site, 1450-command, 1040-adapter, 59-step, 7591-test surface."
+      "Cross-platform browser cookie source (macOS / Linux / Windows) lands as first-class auth: read straight from Chrome/Arc/Dia/Brave/Edge/Atlas SQLite DBs via the native key store; default cascade is `~/.unicli/cookies → BROWSER → CDP`.",
+      "`unicli auth audit` and `unicli doctor cookies` round out the cross-platform cookie surface; the `domain:` field is plumbed through every pipeline caller and silently corrects ten adapters whose naïve `<site>.com` derivation pointed at the wrong cookie store.",
+      "Pipeline engine hardening: `parsePipes` no longer mistreats the second `|` of a `||` as a filter pipe (the bug silently dropped Homebrew and OpenRouter search rows), unknown filter names now throw `TemplateEvalError` instead of being silently skipped, and the shorthand `- navigate: <url>` form is finally accepted by the navigate step (used by 58 adapters).",
+      "Documentation discipline: a quarantine honesty invariant test asserts every `quarantine: true` carries a dated reason; release.ts now propagates version + codename to all nine tracked surfaces (added `docs/zh/ROADMAP.md`, `docs/ARCHITECTURE.md`, and `docs/release-info.json`) so a release leaves no stale tag pointer."
     ],
     "zh": [
-      "面向实时 macOS 自动化发现的 patch 发布。",
-      "Shortcuts.app 快捷指令和已安装应用动作现在可在 macOS 上通过 search/list 发现。",
-      "新增 macos app-actions 和 automation-smoke，暴露 ToolKit API、Shortcuts CLI、AX/System Events 三层检查。",
-      "公开文档目录已更新到当前 235 个站点、1450 条命令、1040 个 adapter、59 个 step、7591 个测试。"
+      "跨平台浏览器 Cookie 源（macOS / Linux / Windows）成为一等公民认证：直接从 Chrome/Arc/Dia/Brave/Edge/Atlas 的 SQLite DB 通过原生 key store 读取；默认级联 `~/.unicli/cookies → BROWSER → CDP`。",
+      "`unicli auth audit` 与 `unicli doctor cookies` 让跨平台 cookie 体系自洽；`domain:` 字段已贯穿所有 pipeline 调用方，悄悄修正了十个把 cookie 域名猜成 `<site>.com` 的 adapter。",
+      "Pipeline 引擎收紧：`parsePipes` 不再把 `||` 第二个 `|` 误判为 filter（旧 bug 让 Homebrew / OpenRouter 搜索默默掉行），未知 filter 名抛出 `TemplateEvalError` 不再静默吞掉，`- navigate: <url>` 简写终于被 navigate step 接受（58 个 adapter 受益）。",
+      "文档纪律：新增 quarantine 诚实不变量测试要求每个 `quarantine: true` 带日期；release.ts 同步覆盖到全部 9 个文档面（新加 `docs/zh/ROADMAP.md`、`docs/ARCHITECTURE.md`、`docs/release-info.json`），发版后不再有残留的旧版本指针。"
     ]
   }
 }

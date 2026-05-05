@@ -52,4 +52,4 @@ project ships at high cadence, written counts go stale fast.
 
 ## Version
 
-0.217.3 — Apollo · Shepard
+0.218.0 — Apollo · Cernan

@@ -150,6 +150,18 @@ const rules: Rule[] = [
     replacement: `## Version\n\n${version} — ${codename}`,
     description: "AGENTS.md version",
   },
+  {
+    file: "docs/zh/ROADMAP.md",
+    pattern: /^> Current: v[\d.]+(?:\s+—\s+[^.]+)?\./m,
+    replacement: `> Current: v${version} — ${codename}.`,
+    description: "docs/zh/ROADMAP.md current version",
+  },
+  {
+    file: "docs/ARCHITECTURE.md",
+    pattern: /\bin v[\d.]+\./,
+    replacement: `in v${version}.`,
+    description: "docs/ARCHITECTURE.md version pin",
+  },
 ];
 
 // --- Apply rules ---
@@ -242,6 +254,52 @@ if (existsSync(changelogPath)) {
   }
 } else {
   console.log(`   ✗ FAIL CHANGELOG.md — file not found`);
+  failed++;
+}
+
+// --- docs/release-info.json: sync version + codename + date + URLs ---
+//
+// Highlights stay maintainer-curated (CHANGELOG is the canonical narrative);
+// release.ts only refreshes the version-derived fields so consumers of the
+// JSON contract never see a stale tag pointer.
+
+const releaseInfoPath = join(ROOT, "docs/release-info.json");
+if (existsSync(releaseInfoPath)) {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const info = JSON.parse(readFileSync(releaseInfoPath, "utf-8")) as Record<
+      string,
+      unknown
+    >;
+    const slug = `${version.replace(/\./g, "")}--${today}--${codename
+      .toLowerCase()
+      .replace(/\s+·\s+/g, "--")
+      .replace(/[^a-z0-9-]+/g, "-")
+      .replace(/-+$/g, "")}`;
+    const next = {
+      ...info,
+      version,
+      codename,
+      date: today,
+      releaseUrl: `https://github.com/olo-dot-io/Uni-CLI/releases/tag/v${version}`,
+      changelogUrl: `https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#${slug}`,
+    };
+    const serialized = JSON.stringify(next, null, 2) + "\n";
+    if (serialized !== readFileSync(releaseInfoPath, "utf-8")) {
+      if (!dryRun) writeFileSync(releaseInfoPath, serialized);
+      console.log(
+        `   ${dryRun ? "→" : "✓"} docs/release-info.json — version + URLs refreshed`,
+      );
+      updated++;
+    } else {
+      console.log(`   ✓ docs/release-info.json — already up to date`);
+    }
+  } catch (err) {
+    console.log(`   ✗ FAIL docs/release-info.json — ${(err as Error).message}`);
+    failed++;
+  }
+} else {
+  console.log(`   ✗ FAIL docs/release-info.json — file not found`);
   failed++;
 }
 
