@@ -1,13 +1,9 @@
 /**
- * opencli-parity.ts — quantitative comparison against the synced OpenCLI ref.
- *
- * Default mode is offline and deterministic:
- *   Uni-CLI:  dist/manifest.json
- *   OpenCLI: ref/opencli/cli-manifest.json
- *
- * It also evaluates a small set of public OpenCLI PR/issue signals captured
- * from GitHub so current competitor movement becomes a measurable watchlist
- * instead of a prose note.
+ * @owner   bench/opencli-parity.ts
+ * @does    Compare Uni-CLI active command coverage against the synced OpenCLI reference and tracked signal cases.
+ * @needs   dist/manifest.json, ref/opencli/cli-manifest.json, optional src/adapters/_archived/archive.json
+ * @feeds   tests/unit/opencli-parity.test.ts, npm run bench:opencli-parity, roadmap coverage evidence
+ * @breaks  Missing active commands, stale reference manifests, or untracked archive exclusions skew parity reporting.
  */
 
 import { spawnSync } from "node:child_process";
@@ -64,10 +60,17 @@ export interface OpenCliParityReport {
     command_coverage: number;
     missing_sites: number;
     missing_commands: number;
+    archived_sites: number;
+    archived_commands: number;
     extra_sites: number;
     extra_commands: number;
   };
   missing: {
+    sites: string[];
+    commands: string[];
+  };
+  archived: {
+    source?: string;
     sites: string[];
     commands: string[];
   };
@@ -298,6 +301,31 @@ export function readOpenCliSurface(repoRoot: string): CommandSurface {
   );
 }
 
+export function readArchivedSurface(repoRoot: string): CommandSurface {
+  const archivePath = join(
+    repoRoot,
+    "src",
+    "adapters",
+    "_archived",
+    "archive.json",
+  );
+  if (!existsSync(archivePath)) {
+    return toSurface(archivePath, []);
+  }
+
+  const archive = JSON.parse(readFileSync(archivePath, "utf-8")) as {
+    sites?: Array<{ site?: string; commands?: string[] }>;
+  };
+  const pairs: Array<[string, string]> = [];
+  for (const record of archive.sites ?? []) {
+    if (!record.site) continue;
+    for (const command of record.commands ?? []) {
+      pairs.push([record.site, command]);
+    }
+  }
+  return toSurface(archivePath, pairs);
+}
+
 function readOpenCliGit(
   repoRoot: string,
 ): OpenCliParityReport["opencli"]["git"] {
@@ -368,17 +396,28 @@ export function buildOpenCliParityReport(opts?: {
   const repoRoot = opts?.repoRoot ?? DEFAULT_REPO_ROOT;
   const uni = readUniSurface(repoRoot);
   const opencli = readOpenCliSurface(repoRoot);
+  const archived = readArchivedSurface(repoRoot);
 
   const uniSites = new Set(Object.keys(uni.site_counts));
   const opencliSites = new Set(Object.keys(opencli.site_counts));
+  const archivedSites = new Set(Object.keys(archived.site_counts));
   const uniCommands = new Set(uni.command_keys);
   const opencliCommands = new Set(opencli.command_keys);
+  const archivedCommands = new Set(archived.command_keys);
 
   const missingSites = [...opencliSites]
-    .filter((site) => !uniSites.has(site))
+    .filter((site) => !uniSites.has(site) && !archivedSites.has(site))
     .sort();
   const missingCommands = [...opencliCommands]
-    .filter((command) => !uniCommands.has(command))
+    .filter(
+      (command) => !uniCommands.has(command) && !archivedCommands.has(command),
+    )
+    .sort();
+  const archivedOpenCliSites = [...opencliSites]
+    .filter((site) => archivedSites.has(site))
+    .sort();
+  const archivedOpenCliCommands = [...opencliCommands]
+    .filter((command) => archivedCommands.has(command))
     .sort();
   const extraSites = [...uniSites]
     .filter((site) => !opencliSites.has(site))
@@ -421,12 +460,19 @@ export function buildOpenCliParityReport(opts?: {
       ),
       missing_sites: missingSites.length,
       missing_commands: missingCommands.length,
+      archived_sites: archivedOpenCliSites.length,
+      archived_commands: archivedOpenCliCommands.length,
       extra_sites: extraSites.length,
       extra_commands: extraCommands.length,
     },
     missing: {
       sites: missingSites,
       commands: missingCommands,
+    },
+    archived: {
+      source: existsSync(archived.source) ? archived.source : undefined,
+      sites: archivedOpenCliSites,
+      commands: archivedOpenCliCommands,
     },
     extra: {
       sites: extraSites,

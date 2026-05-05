@@ -1,8 +1,8 @@
 {
-  "source": "unicli@0.218.0",
-  "generated": "2026-05-05T05:39:12.936Z",
-  "total_sites": 237,
-  "total_commands": 1453,
+  "source": "unicli@0.218.1",
+  "generated": "2026-05-05T18:30:21.396Z",
+  "total_sites": 233,
+  "total_commands": 1448,
   "adapters": [
     {
       "site": "1688",
@@ -1037,48 +1037,6 @@
       ]
     },
     {
-      "site": "apple-music",
-      "type": "browser",
-      "domain": "music.apple.com",
-      "auth": true,
-      "strategy": "ui",
-      "commands": [
-        {
-          "name": "rate-album",
-          "description": "Rate the currently-playing Apple Music album via AX menu + CUA click",
-          "when_to_use": "Rate the currently-playing Apple Music album via AX menu + CUA click",
-          "command": "unicli apple-music rate-album",
-          "auth": true,
-          "strategy": "ui",
-          "browser": false,
-          "columns": ["backend", "stars"],
-          "args": [
-            {
-              "name": "stars",
-              "type": "int",
-              "required": false,
-              "positional": false,
-              "description": "Number of stars (1-5)"
-            },
-            {
-              "name": "x",
-              "type": "int",
-              "required": false,
-              "positional": false,
-              "description": "Stars UI x-coordinate (pixels)"
-            },
-            {
-              "name": "y",
-              "type": "int",
-              "required": false,
-              "positional": false,
-              "description": "Stars UI y-coordinate (pixels)"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "site": "apple-notes",
       "type": "desktop",
       "auth": false,
@@ -1596,24 +1554,6 @@
           "strategy": "public",
           "browser": false,
           "columns": ["Name", "CreationDate"]
-        }
-      ]
-    },
-    {
-      "site": "az",
-      "type": "bridge",
-      "auth": false,
-      "strategy": "public",
-      "commands": [
-        {
-          "name": "account",
-          "description": "List Azure subscriptions",
-          "when_to_use": "List Azure subscriptions",
-          "command": "unicli az account",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "columns": ["name", "id", "state", "isDefault"]
         }
       ]
     },
@@ -5266,72 +5206,6 @@
               "required": true,
               "positional": true,
               "description": "Crate name"
-            },
-            {
-              "name": "limit",
-              "type": "int",
-              "required": false,
-              "positional": false
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "site": "ctrip",
-      "type": "web-api",
-      "domain": "m.ctrip.com",
-      "auth": false,
-      "strategy": "public",
-      "commands": [
-        {
-          "name": "hot",
-          "description": "Ctrip popular travel destinations",
-          "when_to_use": "When you need the current hot items from ctrip.",
-          "command": "unicli ctrip hot",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "columns": ["rank", "name", "type"],
-          "args": [
-            {
-              "name": "limit",
-              "type": "int",
-              "required": false,
-              "positional": false
-            }
-          ]
-        },
-        {
-          "name": "search",
-          "description": "Search flights on Ctrip",
-          "when_to_use": "When you need to search ctrip for a specific query.",
-          "command": "unicli ctrip search",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "columns": ["airline", "flight", "depart", "arrive", "price"],
-          "args": [
-            {
-              "name": "from",
-              "type": "str",
-              "required": true,
-              "positional": false,
-              "description": "Departure city code (e.g. SHA, PEK, HKG)"
-            },
-            {
-              "name": "to",
-              "type": "str",
-              "required": true,
-              "positional": false,
-              "description": "Arrival city code"
-            },
-            {
-              "name": "date",
-              "type": "str",
-              "required": true,
-              "positional": false,
-              "description": "Departure date (YYYY-MM-DD)"
             },
             {
               "name": "limit",
@@ -10064,24 +9938,6 @@
               "description": "Stock symbol (e.g. AAPL, 00700)"
             }
           ]
-        }
-      ]
-    },
-    {
-      "site": "gcloud",
-      "type": "bridge",
-      "auth": false,
-      "strategy": "public",
-      "commands": [
-        {
-          "name": "projects",
-          "description": "List Google Cloud projects",
-          "when_to_use": "List Google Cloud projects",
-          "command": "unicli gcloud projects",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "columns": ["projectId", "name", "projectNumber", "lifecycleState"]
         }
       ]
     },

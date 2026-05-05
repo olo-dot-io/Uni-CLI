@@ -1,0 +1,44 @@
+{
+  "archived_on": "2026-05-06",
+  "reason": "Feature 3.2 dead-site archive: each listed site had zero active commands and only quarantined adapters.",
+  "sites": [
+    {
+      "site": "apple-music",
+      "commands": ["rate-album"],
+      "original_paths": ["src/adapters/apple-music/rate-album.yaml"],
+      "archived_paths": ["src/adapters/_archived/apple-music/rate-album.yaml"],
+      "reason": "Host-app CUA demo requires the macOS Music app and a CUA backend; active Apple Music controls remain under the macos adapter.",
+      "replacement": "unicli macos music-now; unicli macos music-control <action>"
+    },
+    {
+      "site": "az",
+      "commands": ["account"],
+      "original_paths": ["src/adapters/az/account.yaml"],
+      "archived_paths": ["src/adapters/_archived/az/account.yaml"],
+      "reason": "Dedicated Azure account adapter cannot run in CI without interactive az login; az remains available through external CLI passthrough when installed.",
+      "replacement": "az account list --output json"
+    },
+    {
+      "site": "ctrip",
+      "commands": ["hot", "search"],
+      "original_paths": [
+        "src/adapters/ctrip/hot.yaml",
+        "src/adapters/ctrip/search.yaml"
+      ],
+      "archived_paths": [
+        "src/adapters/_archived/ctrip/hot.yaml",
+        "src/adapters/_archived/ctrip/search.yaml"
+      ],
+      "reason": "Public Ctrip endpoints were verified broken or CAPTCHA-gated on 2026-05-05, with no stable public replacement captured.",
+      "replacement": "Use the web adapter or browser/CUA flow against an authenticated Ctrip session."
+    },
+    {
+      "site": "gcloud",
+      "commands": ["projects"],
+      "original_paths": ["src/adapters/gcloud/projects.yaml"],
+      "archived_paths": ["src/adapters/_archived/gcloud/projects.yaml"],
+      "reason": "Dedicated Google Cloud projects adapter cannot run in CI without interactive gcloud auth; gcloud remains available through external CLI passthrough when installed.",
+      "replacement": "gcloud projects list --format=json"
+    }
+  ]
+}

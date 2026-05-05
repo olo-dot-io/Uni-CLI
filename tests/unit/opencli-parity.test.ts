@@ -5,6 +5,7 @@ import {
   DEFAULT_OPENCLI_SIGNALS,
   buildOpenCliParityReport,
   evaluateSignalCoverage,
+  readArchivedSurface,
   readOpenCliSurface,
   readUniSurface,
 } from "../../bench/opencli-parity.js";
@@ -35,6 +36,11 @@ describe("OpenCLI parity benchmark", () => {
       expect(report.coverage.missing_commands).toBe(0);
       expect(report.coverage.command_coverage).toBe(1);
       expect(report.missing.commands).toEqual([]);
+      expect(report.archived.commands).toEqual(["ctrip/search"]);
+      expect(report.coverage.archived_commands).toBe(1);
+      expect(readArchivedSurface(process.cwd()).command_keys).toContain(
+        "ctrip/search",
+      );
     },
   );
 

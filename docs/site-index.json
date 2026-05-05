@@ -1,7 +1,7 @@
 {
-  "generated": "2026-05-05T05:39:12.936Z",
-  "total_sites": 237,
-  "total_commands": 1453,
+  "generated": "2026-05-05T18:30:21.396Z",
+  "total_sites": 233,
+  "total_commands": 1448,
   "sites": [
     {
       "site": "1688",
@@ -277,21 +277,6 @@
       ]
     },
     {
-      "site": "apple-music",
-      "type": "browser",
-      "domain": "music.apple.com",
-      "auth": true,
-      "strategy": "ui",
-      "command_count": 1,
-      "commands": [
-        {
-          "name": "rate-album",
-          "description": "Rate the currently-playing Apple Music album via AX menu + CUA click",
-          "command": "unicli apple-music rate-album"
-        }
-      ]
-    },
-    {
       "site": "apple-notes",
       "type": "desktop",
       "auth": false,
@@ -437,20 +422,6 @@
           "name": "s3-ls",
           "description": "List S3 buckets",
           "command": "unicli aws s3-ls"
-        }
-      ]
-    },
-    {
-      "site": "az",
-      "type": "bridge",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 1,
-      "commands": [
-        {
-          "name": "account",
-          "description": "List Azure subscriptions",
-          "command": "unicli az account"
         }
       ]
     },
@@ -1561,26 +1532,6 @@
           "name": "versions",
           "description": "List versions of a Rust crate",
           "command": "unicli crates-io versions"
-        }
-      ]
-    },
-    {
-      "site": "ctrip",
-      "type": "web-api",
-      "domain": "m.ctrip.com",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "hot",
-          "description": "Ctrip popular travel destinations",
-          "command": "unicli ctrip hot"
-        },
-        {
-          "name": "search",
-          "description": "Search flights on Ctrip",
-          "command": "unicli ctrip search"
         }
       ]
     },
@@ -2863,20 +2814,6 @@
           "name": "quote",
           "description": "Get stock quote from Futu",
           "command": "unicli futu quote"
-        }
-      ]
-    },
-    {
-      "site": "gcloud",
-      "type": "bridge",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 1,
-      "commands": [
-        {
-          "name": "projects",
-          "description": "List Google Cloud projects",
-          "command": "unicli gcloud projects"
         }
       ]
     },

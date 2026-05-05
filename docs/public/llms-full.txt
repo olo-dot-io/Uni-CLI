@@ -4,9 +4,9 @@ This file is generated from the same VitePress site map as the public docs.
 
 ## Snapshot
 
-- Sites: 237
-- Commands: 1453
-- Adapters: 1043
+- Sites: 233
+- Commands: 1448
+- Adapters: 1038
 - Pipeline steps: 101
 
 ---
@@ -53,10 +53,10 @@ Agent execution needs an auditable, repairable, reusable command contract. Catal
 
 ## Coverage
 
-- Sites and tools: 237
-- Commands: 1453
+- Sites and tools: 233
+- Commands: 1448
 - Pipeline steps: 101
-- Tests: 7842
+- Tests: 7820
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -414,7 +414,7 @@ The cascade order is `public → cookie → header → intercept → ui`. On the
 
 ## The v2 AgentEnvelope
 
-Every command returns a v2 AgentEnvelope — the same shape on success or failure. Agents parse one schema across 1,450 commands.
+Every command returns a v2 AgentEnvelope — the same shape on success or failure. Agents parse one schema across 1,448 commands.
 
 ```json
 {
@@ -504,7 +504,7 @@ $ unicli hackernews top -n 10 -f json \
 # 4. The agent edits the YAML and re-verifies with `unicli repair`
 ```
 
-That is the entire interaction model. One command shape across 235+ sites and 1,450 commands. One error envelope across every failure. One self-repair path across every adapter.
+That is the entire interaction model. One command shape across 233 sites and 1,448 commands. One error envelope across every failure. One self-repair path across every adapter.
 
 ## Further reading
 
@@ -1006,7 +1006,7 @@ Quick answers to the questions agents and developers ask most often. Each answer
 
 ## What is Uni-CLI?
 
-Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across 235+ sites and tools, returning a stable v2 AgentEnvelope on every call.
+Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across 233 sites and tools, returning a stable v2 AgentEnvelope on every call.
 
 ## How is Uni-CLI different from a browser automation library?
 
@@ -1026,7 +1026,7 @@ Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, and any runtime that can spa
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.217 covers 235 sites with 1,450 commands across 1,040 adapters, 59 pipeline steps, and 7,591 tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, government policy, podcasts, and macOS apps.
+v0.218.1 covers 233 sites with 1,448 commands across 1,038 adapters, 101 pipeline steps, and 7,820 tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, government policy, podcasts, and macOS apps.
 
 ## Can I add a new site without writing TypeScript?
 
@@ -1851,7 +1851,7 @@ running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 237 sites, 1453 commands.
+This catalog is generated from the adapter manifest: 233 sites, 1448 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -1861,14 +1861,12 @@ This catalog is generated from the adapter manifest: 237 sites, 1453 commands.
 | adguardhome | service | 5 | no | unicli adguardhome add-rule<br>unicli adguardhome rules<br>unicli adguardhome stats |
 | amazon | web-api | 8 | yes | unicli amazon bestsellers<br>unicli amazon discussion<br>unicli amazon movers-shakers |
 | antigravity | web-api | 16 | no | unicli antigravity extract-code<br>unicli antigravity watch<br>unicli antigravity ask |
-| apple-music | browser | 1 | yes | unicli apple-music rate-album |
 | apple-notes | desktop | 3 | no | unicli apple-notes list<br>unicli apple-notes read<br>unicli apple-notes search |
 | apple-podcasts | web-api | 3 | no | unicli apple-podcasts episodes<br>unicli apple-podcasts search<br>unicli apple-podcasts top |
 | arxiv | web-api | 3 | no | unicli arxiv paper<br>unicli arxiv search<br>unicli arxiv trending |
 | audacity | desktop | 8 | no | unicli audacity convert<br>unicli audacity effects<br>unicli audacity info |
 | autoagent | bridge | 1 | no | unicli autoagent eval-run |
 | aws | bridge | 1 | no | unicli aws s3-ls |
-| az | bridge | 1 | no | unicli az account |
 | baidu | web-api | 2 | yes | unicli baidu hot<br>unicli baidu search |
 | baidu-scholar | web-api | 1 | no | unicli baidu-scholar search |
 | band | web-api | 4 | yes | unicli band bands<br>unicli band mentions<br>unicli band post |
@@ -1895,7 +1893,6 @@ This catalog is generated from the adapter manifest: 237 sites, 1453 commands.
 | comfyui | service | 4 | no | unicli comfyui generate<br>unicli comfyui history<br>unicli comfyui nodes |
 | coupang | web-api | 3 | yes | unicli coupang add-to-cart<br>unicli coupang hot<br>unicli coupang search |
 | crates-io | web-api | 3 | no | unicli crates-io info<br>unicli crates-io search<br>unicli crates-io versions |
-| ctrip | web-api | 2 | no | unicli ctrip hot<br>unicli ctrip search |
 | cua | bridge | 2 | no | unicli cua bench-list<br>unicli cua bench-run |
 | cursor | web-api | 18 | no | unicli cursor composer<br>unicli cursor extract-code<br>unicli cursor export |
 | dangdang | web-api | 2 | yes | unicli dangdang hot<br>unicli dangdang search |
@@ -1925,7 +1922,6 @@ This catalog is generated from the adapter manifest: 237 sites, 1453 commands.
 | flyctl | bridge | 1 | no | unicli flyctl apps |
 | freecad | desktop | 15 | no | unicli freecad assembly<br>unicli freecad bom<br>unicli freecad boolean |
 | futu | web-api | 2 | yes | unicli futu hot<br>unicli futu quote |
-| gcloud | bridge | 1 | no | unicli gcloud projects |
 | gemini | web-api | 5 | yes | unicli gemini ask<br>unicli gemini deep-research-result<br>unicli gemini deep-research |
 | gh | bridge | 6 | no | unicli gh issue<br>unicli gh pr<br>unicli gh release |
 | gimp | desktop | 12 | no | unicli gimp adjust<br>unicli gimp batch<br>unicli gimp convert |
@@ -3978,8 +3974,8 @@ Uni-CLI exposes one searchable command surface across:
 - **Agent backends**: routing and setup helpers for agent runtimes that can call
   shell commands or protocol servers.
 
-The generated catalog is the source of truth: **235 sites**, **1450 commands**,
-**1040 adapters**, **59 pipeline steps**, and **7591 tests** in v0.218.0.
+The generated catalog is the source of truth: **233 sites**, **1448 commands**,
+**1038 adapters**, **101 pipeline steps**, and **7820 tests** in v0.218.1.
 
 ## Execution Contract
 
@@ -4217,7 +4213,7 @@ enough.
 bench shows representative `--limit 5` adapter responses at **357-415
 tokens**, with total invocation-plus-response budgets at **364-423 tokens**.
 The full catalog command is intentionally much larger because it emits all
-235 sites and 1450 commands; agents should search and describe before asking
+233 sites and 1448 commands; agents should search and describe before asking
 for the full registry.
 
 ## Direction
@@ -4423,8 +4419,8 @@ $$
 - `output` defines the fields returned to the agent.
 - `errors` are normalized into a v2 `AgentEnvelope`.
 
-The current public catalog has **235 sites**, **1450 commands**,
-**1040 adapters**, and **59 pipeline steps**. Those numbers are generated from
+The current public catalog has **233 sites**, **1448 commands**,
+**1038 adapters**, and **101 pipeline steps**. Those numbers are generated from
 the repo by `scripts/count-stats.ts`, not hand-maintained marketing copy.
 
 ## Self-Repair
@@ -4489,7 +4485,7 @@ envelope. In the current fixture suite:
 - representative invocation strings: **7-11 tokens**;
 - representative total budgets: **364-423 tokens**;
 - full catalog output: **73242 tokens** because it intentionally lists all
-  235 sites and 1450 commands.
+  233 sites and 1448 commands.
 
 The operational rule follows directly: agents should search and describe first,
 then execute the smallest matching command. Full catalog output is available,
@@ -4532,7 +4528,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Current: v0.218.0 — Apollo · Cernan. <!-- STATS:site_count -->237<!-- /STATS --> sites, <!-- STATS:command_count -->1453<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps.
+> Current: v0.218.1 — Apollo · Cernan Patch. <!-- STATS:site_count -->233<!-- /STATS --> sites, <!-- STATS:command_count -->1448<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction. Historical release notes live in
 `CHANGELOG.md`; they do not belong in the roadmap.

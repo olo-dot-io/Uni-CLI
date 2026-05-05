@@ -73,7 +73,7 @@ The cascade order is `public → cookie → header → intercept → ui`. On the
 
 ## The v2 AgentEnvelope
 
-Every command returns a v2 AgentEnvelope — the same shape on success or failure. Agents parse one schema across 1,450 commands.
+Every command returns a v2 AgentEnvelope — the same shape on success or failure. Agents parse one schema across 1,448 commands.
 
 ```json
 {
@@ -163,7 +163,7 @@ $ unicli hackernews top -n 10 -f json \
 # 4. The agent edits the YAML and re-verifies with `unicli repair`
 ```
 
-That is the entire interaction model. One command shape across 235+ sites and 1,450 commands. One error envelope across every failure. One self-repair path across every adapter.
+That is the entire interaction model. One command shape across 233 sites and 1,448 commands. One error envelope across every failure. One self-repair path across every adapter.
 
 ## Further reading
 

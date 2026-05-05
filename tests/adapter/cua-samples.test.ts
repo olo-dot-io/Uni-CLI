@@ -1,10 +1,9 @@
 /**
- * CUA sample-adapter contract.
- *
- * The three demos in Phase 2.6 (figma/apple-music/zoom) cannot run on CI
- * without their host apps + a real VLM backend, so they are quarantined.
- * These tests guarantee the YAML is structurally valid and that the
- * pipeline names route to transports that exist.
+ * @owner   tests/adapter/cua-samples.test.ts
+ * @does    Validate active CUA sample adapters without exercising host apps or VLM backends.
+ * @needs   src/adapters/figma/export-selected.yaml, src/adapters/zoom/toggle-mute.yaml, CAPABILITY_MATRIX
+ * @feeds   npm run test:adapter, CUA sample adapter contract
+ * @breaks  Unknown CUA or desktop step names can ship without matching transports.
  */
 
 import { describe, it, expect } from "vitest";
@@ -28,7 +27,6 @@ interface Adapter {
 
 const SAMPLES = [
   { rel: "figma/export-selected.yaml" },
-  { rel: "apple-music/rate-album.yaml" },
   { rel: "zoom/toggle-mute.yaml" },
 ];
 
@@ -91,17 +89,6 @@ describe("CUA sample adapters", () => {
     expect(actions.some((a) => a.startsWith("ax_") || a === "launch_app")).toBe(
       true,
     );
-  });
-
-  it("apple-music sample uses cua_click with AX launch", () => {
-    const raw = readFileSync(
-      join(ADAPTERS_DIR, "apple-music/rate-album.yaml"),
-      "utf-8",
-    );
-    const parsed = yaml.load(raw) as Adapter;
-    const actions = parsed.pipeline.map(stepAction);
-    expect(actions).toContain("launch_app");
-    expect(actions).toContain("cua_click");
   });
 
   it("zoom sample is pure AX — no cua_* verbs", () => {

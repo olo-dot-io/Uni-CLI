@@ -1,3 +1,8 @@
+# @owner   src/adapters/_archived/ctrip/hot.yaml
+# @does    Preserve the archived Ctrip hot-destination adapter outside active discovery.
+# @needs   Historical m.ctrip.com hotcity endpoint
+# @feeds   src/adapters/_archived/archive.json provenance, historical adapter review
+# @breaks  Moving back under an active site would reintroduce an archive-only discovered site.
 site: ctrip
 name: hot
 description: Ctrip popular travel destinations
@@ -27,7 +32,6 @@ pipeline:
 
 columns: [rank, name, type]
 
-# schema-v2 metadata — injected by `unicli migrate schema-v2`
 capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public

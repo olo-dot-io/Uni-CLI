@@ -1,3 +1,8 @@
+# @owner   src/adapters/_archived/ctrip/search.yaml
+# @does    Preserve the archived Ctrip flight-search adapter outside active discovery.
+# @needs   Historical flights.ctrip.com batchSearch endpoint without CAPTCHA
+# @feeds   src/adapters/_archived/archive.json provenance, historical adapter review
+# @breaks  Moving back under an active site would reintroduce an archive-only discovered site.
 site: ctrip
 name: search
 description: Search flights on Ctrip
@@ -52,11 +57,10 @@ args:
 
 columns: [airline, flight, depart, arrive, price]
 
-# schema-v2 metadata — injected by `unicli migrate schema-v2`
 capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public
 quarantine: true
-quarantineReason: "flights.ctrip.com search endpoint now requires CAPTCHA (showAuthCode=true on every public hit, verified 2026-05-05) — needs cookie/UI strategy with anti-bot solve"
+quarantineReason: "flights.ctrip.com search endpoint now requires CAPTCHA (showAuthCode=true on every public hit, verified 2026-05-05) - needs cookie/UI strategy with anti-bot solve"
 schema_version: v2

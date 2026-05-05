@@ -11,7 +11,7 @@
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：237 个站点，1453 条命令。
+这个目录来自适配器 manifest：233 个站点，1448 条命令。
 
 | 站点 | 接口类型 | 命令数 | 认证 | 示例命令 |
 | --- | --- | ---: | --- | --- |
@@ -21,14 +21,12 @@
 | adguardhome | service | 5 | 否 | unicli adguardhome add-rule<br>unicli adguardhome rules<br>unicli adguardhome stats |
 | amazon | web-api | 8 | 是 | unicli amazon bestsellers<br>unicli amazon discussion<br>unicli amazon movers-shakers |
 | antigravity | web-api | 16 | 否 | unicli antigravity extract-code<br>unicli antigravity watch<br>unicli antigravity ask |
-| apple-music | browser | 1 | 是 | unicli apple-music rate-album |
 | apple-notes | desktop | 3 | 否 | unicli apple-notes list<br>unicli apple-notes read<br>unicli apple-notes search |
 | apple-podcasts | web-api | 3 | 否 | unicli apple-podcasts episodes<br>unicli apple-podcasts search<br>unicli apple-podcasts top |
 | arxiv | web-api | 3 | 否 | unicli arxiv paper<br>unicli arxiv search<br>unicli arxiv trending |
 | audacity | desktop | 8 | 否 | unicli audacity convert<br>unicli audacity effects<br>unicli audacity info |
 | autoagent | bridge | 1 | 否 | unicli autoagent eval-run |
 | aws | bridge | 1 | 否 | unicli aws s3-ls |
-| az | bridge | 1 | 否 | unicli az account |
 | baidu | web-api | 2 | 是 | unicli baidu hot<br>unicli baidu search |
 | baidu-scholar | web-api | 1 | 否 | unicli baidu-scholar search |
 | band | web-api | 4 | 是 | unicli band bands<br>unicli band mentions<br>unicli band post |
@@ -55,7 +53,6 @@
 | comfyui | service | 4 | 否 | unicli comfyui generate<br>unicli comfyui history<br>unicli comfyui nodes |
 | coupang | web-api | 3 | 是 | unicli coupang add-to-cart<br>unicli coupang hot<br>unicli coupang search |
 | crates-io | web-api | 3 | 否 | unicli crates-io info<br>unicli crates-io search<br>unicli crates-io versions |
-| ctrip | web-api | 2 | 否 | unicli ctrip hot<br>unicli ctrip search |
 | cua | bridge | 2 | 否 | unicli cua bench-list<br>unicli cua bench-run |
 | cursor | web-api | 18 | 否 | unicli cursor composer<br>unicli cursor extract-code<br>unicli cursor export |
 | dangdang | web-api | 2 | 是 | unicli dangdang hot<br>unicli dangdang search |
@@ -85,7 +82,6 @@
 | flyctl | bridge | 1 | 否 | unicli flyctl apps |
 | freecad | desktop | 15 | 否 | unicli freecad assembly<br>unicli freecad bom<br>unicli freecad boolean |
 | futu | web-api | 2 | 是 | unicli futu hot<br>unicli futu quote |
-| gcloud | bridge | 1 | 否 | unicli gcloud projects |
 | gemini | web-api | 5 | 是 | unicli gemini ask<br>unicli gemini deep-research-result<br>unicli gemini deep-research |
 | gh | bridge | 6 | 否 | unicli gh issue<br>unicli gh pr<br>unicli gh release |
 | gimp | desktop | 12 | 否 | unicli gimp adjust<br>unicli gimp batch<br>unicli gimp convert |

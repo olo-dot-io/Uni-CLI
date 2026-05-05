@@ -1,14 +1,8 @@
-# AX-first demo with CUA fallback — rate the current Apple Music album.
-#
-# Strategy:
-#   1. desktop-ax   → launch and focus Music
-#   2. desktop-ax   → open the "Album" AppleScript menu (cheap & exact)
-#   3. cua          → take a screenshot so the VLM can verify the stars
-#                     UI is visible before we click it
-#   4. cua          → click the star coordinate (caller-provided)
-#
-# Real UI coordinates vary by screen size — callers either pass x/y or
-# let the pipeline use the VLM snapshot to locate the stars themselves.
+# @owner   src/adapters/_archived/apple-music/rate-album.yaml
+# @does    Preserve the archived Apple Music CUA rating demo outside active discovery.
+# @needs   macOS Music app, desktop AX transport, CUA backend, caller-provided star coordinates
+# @feeds   src/adapters/_archived/archive.json provenance, historical adapter review
+# @breaks  Moving back under an active site would reintroduce an archive-only discovered site.
 site: apple-music
 name: rate-album
 description: Rate the currently-playing Apple Music album via AX menu + CUA click
@@ -56,7 +50,6 @@ pipeline:
 
 columns: [backend, stars]
 
-# schema-v2 metadata — injected by `unicli migrate schema-v2`
 capabilities:
   [
     "cua.ask",

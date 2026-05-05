@@ -7,7 +7,7 @@
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Current: v0.218.0 — Apollo · Cernan. <!-- STATS:site_count -->237<!-- /STATS --> sites, <!-- STATS:command_count -->1453<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps.
+> Current: v0.218.1 — Apollo · Cernan Patch. <!-- STATS:site_count -->233<!-- /STATS --> sites, <!-- STATS:command_count -->1448<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction. Historical release notes live in
 `CHANGELOG.md`; they do not belong in the roadmap.

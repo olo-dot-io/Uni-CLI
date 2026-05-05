@@ -1,3 +1,8 @@
+# @owner   src/adapters/_archived/gcloud/projects.yaml
+# @does    Preserve the archived Google Cloud projects adapter outside active discovery.
+# @needs   Google Cloud CLI installed and authenticated with gcloud auth login
+# @feeds   src/adapters/_archived/archive.json provenance, historical adapter review
+# @breaks  Moving back under an active site would reintroduce an archive-only discovered site.
 site: gcloud
 name: projects
 description: List Google Cloud projects
@@ -18,7 +23,6 @@ pipeline:
 
 columns: [projectId, name, projectNumber, lifecycleState]
 
-# schema-v2 metadata — injected by `unicli migrate schema-v2`
 capabilities: ["subprocess.exec"]
 minimum_capability: subprocess.exec
 trust: user

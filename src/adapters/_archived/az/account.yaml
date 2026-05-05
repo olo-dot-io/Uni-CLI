@@ -1,3 +1,8 @@
+# @owner   src/adapters/_archived/az/account.yaml
+# @does    Preserve the archived Azure account-list adapter outside active discovery.
+# @needs   Azure CLI installed and authenticated with az login
+# @feeds   src/adapters/_archived/archive.json provenance, historical adapter review
+# @breaks  Moving back under an active site would reintroduce an archive-only discovered site.
 site: az
 name: account
 description: List Azure subscriptions
@@ -20,7 +25,6 @@ pipeline:
 
 columns: [name, id, state, isDefault]
 
-# schema-v2 metadata — injected by `unicli migrate schema-v2`
 capabilities: ["subprocess.exec"]
 minimum_capability: subprocess.exec
 trust: user
