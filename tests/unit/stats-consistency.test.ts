@@ -1,3 +1,11 @@
+/**
+ * @owner   tests/unit/stats-consistency.test.ts
+ * @does    Verify stats.json source-of-truth counts and generated documentation marker consistency.
+ * @needs   vitest, scripts/build-readme.ts, scripts/count-consistency.ts, scripts/count-stats.ts, repo stats/docs files
+ * @feeds   npm run test, npm run stats:check, npm run verify
+ * @breaks  Drift between computed stats and public documentation markers fails unit verification.
+ */
+
 import { describe, it, expect, afterEach } from "vitest";
 import { inject } from "../../scripts/build-readme.js";
 import { findViolations } from "../../scripts/count-consistency.js";
@@ -74,6 +82,20 @@ describe("stats SSOT", () => {
       expect(typeof stats.built_at).toBe("string");
     },
   );
+
+  it("counts current MCP transport surfaces without legacy SSE transport", () => {
+    expect(existsSync(join(ROOT, "src", "mcp", "server.ts"))).toBe(true);
+    expect(existsSync(join(ROOT, "src", "mcp", "http-transport.ts"))).toBe(
+      true,
+    );
+    expect(existsSync(join(ROOT, "src", "mcp", "streamable-http.ts"))).toBe(
+      true,
+    );
+    expect(existsSync(join(ROOT, "src", "mcp", "sse-transport.ts"))).toBe(
+      false,
+    );
+    expect(computeStats().transport_count).toBe(3);
+  });
 
   it("inject rewrites a STATS marker to match stats.json", () => {
     const stats: Record<string, unknown> = {

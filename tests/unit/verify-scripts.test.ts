@@ -1,3 +1,11 @@
+/**
+ * @owner   tests/unit/verify-scripts.test.ts
+ * @does    Verify package script wiring keeps release and verification gates complete.
+ * @needs   vitest, package.json scripts
+ * @feeds   npm run test, npm run verify
+ * @breaks  Missing release or verification script gates fail unit verification.
+ */
+
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -18,5 +26,12 @@ describe("verify scripts", () => {
 
     expect(scripts["test:perf"]).toBe("vitest run --project perf");
     expect(scripts.verify).toContain("npm run test:perf");
+  });
+
+  it("cleans stale dist output before building publishable files", () => {
+    const scripts = rootScripts();
+
+    expect(scripts.clean).toContain("rmSync('dist'");
+    expect(scripts.build).toMatch(/^npm run clean && tsc && /);
   });
 });

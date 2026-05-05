@@ -1,40 +1,9 @@
 /**
- * stats.json — Single Source of Truth for every count surfaced in docs.
- *
- * Produces `<repo-root>/stats.json`. Tracked release surfaces (README.md,
- * AGENTS.md, docs/ROADMAP.md, docs/zh/ROADMAP.md, contributing/COPY.md) must reference these numbers via
- * `<!-- STATS:key -->NNN<!-- /STATS -->` markers — inject at build time
- * via `scripts/build-readme.ts` and `scripts/build-agents.ts`.
- *
- * CLAUDE.md is .gitignored and internal-only; its numbers stay manual.
- *
- * Fields:
- *   adapter_count_yaml   — YAML files under src/adapters/<site>/*.yaml
- *   adapter_count_ts     — TS adapter files (excluding .d.ts, .test.ts)
- *   adapter_count_total  — yaml + ts
- *   site_count           — site directories that registered >=1 command
- *                          (matches the dist/manifest.json emission)
- *   command_count        — total commands across all sites
- *   test_count           — discovered public vitest test cases. Enumerated via
- *                          `npx vitest list --json` per project with ignored
- *                          reference-only tests disabled, so parametrised
- *                          (`it.each`) and loop-generated tests are counted
- *                          exactly without local `ref/` drift. Regex fallback
- *                          if vitest is unavailable.
- *   pipeline_step_count  — top-level step keys in `CAPABILITY_MATRIX`
- *                          (src/transport/capability.ts). Source of truth
- *                          for the "N pipeline steps" claim in the docs.
- *   transport_count      — MCP transports shipped (stdio + streamable-http
- *                          + sse + ...); read from src/mcp/ entry files
- *   app_transport_count  — application-layer transports registered on
- *                          TransportBus (http, cdp-browser, subprocess,
- *                          desktop-ax, desktop-uia, desktop-atspi, cua).
- *                          Derived from `TRANSPORT_KINDS`.
- *   category_count       — categories declared in build-manifest.js
- *   built_at             — ISO timestamp of stats.json generation
- *
- * Regenerate manually:   npm run stats
- * Regenerate in build:   wired into `npm run build` (after manifest).
+ * @owner   scripts/count-stats.ts
+ * @does    Compute stats.json counts used by README, docs, AGENTS, and release copy.
+ * @needs   repo adapters/tests/manifest/MCP/capability files, vitest list, build-manifest category declarations
+ * @feeds   stats.json, scripts/build-readme.ts, scripts/build-agents.ts, npm run build, npm run stats:check
+ * @breaks  Missing or malformed repo count sources produce zero counts or explicit test-count degradation warnings.
  */
 
 import {
@@ -78,7 +47,7 @@ export interface Stats {
   pipeline_step_count: number;
   /**
    * Transport surfaces the MCP server exposes (stdio, streamable-http,
-   * sse). Distinct from {@link app_transport_count}.
+   * http). Distinct from {@link app_transport_count}.
    */
   transport_count: number;
   /**
@@ -405,31 +374,13 @@ function countAppTransports(): number {
 }
 
 function countTransports(): number {
-  if (!existsSync(MCP_DIR)) return 0;
-  // Known transport surfaces shipped today. We key on filenames rather than
-  // implementation details so this count stays stable while v0.212
-  // rewrites internals.
-  const known = new Set<string>();
-  for (const file of readdirSync(MCP_DIR)) {
-    if (file === "server.ts" || file === "index.ts") continue;
-    if (!file.endsWith(".ts")) continue;
-    if (file.endsWith(".d.ts")) continue;
-    if (file.endsWith(".test.ts")) continue;
-    // stdio is the implicit default transport bundled into server.ts
-    if (
-      file === "stdio.ts" ||
-      file === "streamable-http.ts" ||
-      file === "sse-transport.ts"
-    ) {
-      known.add(file);
-    }
+  const transports = new Set<string>();
+  if (existsSync(join(MCP_DIR, "server.ts"))) transports.add("stdio");
+  if (existsSync(join(MCP_DIR, "http-transport.ts"))) transports.add("http");
+  if (existsSync(join(MCP_DIR, "streamable-http.ts"))) {
+    transports.add("streamable");
   }
-  // stdio lives inline in server.ts but is always present — count it.
-  const hasStdio =
-    existsSync(join(MCP_DIR, "server.ts")) ||
-    existsSync(join(MCP_DIR, "stdio.ts"));
-  if (hasStdio) known.add("stdio");
-  return known.size;
+  return transports.size;
 }
 
 function countCategories(): number {
