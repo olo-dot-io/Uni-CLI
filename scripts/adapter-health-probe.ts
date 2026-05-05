@@ -30,7 +30,7 @@ import {
   commandUsesBrowser,
   getAllAdapters,
 } from "../src/registry.js";
-import { runPipeline } from "../src/engine/yaml-runner.js";
+import { runPipeline } from "../src/engine/executor.js";
 
 interface ProbeResult {
   site: string;

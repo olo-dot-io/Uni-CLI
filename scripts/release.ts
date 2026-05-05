@@ -21,7 +21,7 @@
  *
  * What it does NOT update (read from package.json at runtime):
  * - src/cli.ts — imports VERSION from constants.ts
- * - src/engine/yaml-runner.ts — imports USER_AGENT from constants.ts
+ * - src/constants.ts — reads package.json directly
  * - scripts/build-manifest.js — reads package.json directly
  */
 

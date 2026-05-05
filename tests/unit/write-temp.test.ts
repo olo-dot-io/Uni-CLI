@@ -5,7 +5,7 @@ import "../../src/engine/steps/index.js";
 
 // write_temp is written on every platform, but the assertions here shell out
 // to `cat` and `echo`, which are not on a default Windows runner PATH.
-// Skip on win32 — the write_temp logic in src/engine/yaml-runner.ts is
+// Skip on win32 — the write_temp logic in src/engine/executor.ts is
 // exercised by cross-platform tests in loader.test.ts and eval.test.ts.
 const skipOnWindows = process.platform === "win32";
 

@@ -211,7 +211,7 @@ describe("POST body template resolution", () => {
 // These scenarios depend on POSIX tools (cat, sh, echo redirection) and
 // /tmp. Windows CI runners ship without cat/sh by default, so we skip the
 // three blocks below there. Coverage on ubuntu-latest + macOS is enough:
-// the subprocess-plumbing logic in src/engine/yaml-runner.ts is
+// the subprocess-plumbing logic in src/engine/executor.ts is
 // platform-agnostic; the skipped blocks verify external tool behavior.
 const skipOnWindows = process.platform === "win32";
 

@@ -12,7 +12,7 @@
  *      quarantine) so the Phase 1.7 migration has nothing to fill in.
  *   2. Every pipeline step name routes to a known step handler
  *      (registered in CAPABILITY_MATRIX or executed directly by the
- *      YAML runner — `exec`, `fetch`, etc.).
+ *      pipeline executor — `exec`, `fetch`, etc.).
  *
  * These tests are offline/deterministic — no macOS, Linear API, or
  * `chat.db` required. They validate adapter shape only.
@@ -67,9 +67,9 @@ function loadAdapter(rel: string): Phase5Adapter {
   return yaml.load(raw) as Phase5Adapter;
 }
 
-// Steps the YAML runner recognises directly (non-desktop-ax, non-browser).
+// Steps the pipeline executor recognises directly (non-desktop-ax, non-browser).
 // Kept small and local to this test; the full runtime registry lives in
-// src/engine/yaml-runner.ts and src/commands/lint.ts.
+// src/engine/executor.ts and src/commands/lint.ts.
 const RUNNER_STEPS = new Set([
   "fetch",
   "fetch_text",

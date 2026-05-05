@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, extname, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,7 +18,14 @@ import yaml from "js-yaml";
  */
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ADAPTERS_DIR = join(__dirname, "..", "..", "src", "adapters");
+const REPO_ROOT = join(__dirname, "..", "..");
+const ADAPTERS_DIR = join(REPO_ROOT, "src", "adapters");
+const TSX_BIN = join(
+  REPO_ROOT,
+  "node_modules",
+  ".bin",
+  process.platform === "win32" ? "tsx.cmd" : "tsx",
+);
 
 interface ParsedAdapter {
   site?: string;
@@ -74,5 +82,29 @@ describe("adapter health gate", () => {
         parsed.quarantine !== true && !parsed.pipeline && !parsed.execArgs,
     );
     expect(violations.map((v) => v.rel)).toEqual([]);
+  });
+
+  it("adapter health probe boots through the canonical executor", () => {
+    const result = spawnSync(TSX_BIN, ["scripts/adapter-health-probe.ts"], {
+      cwd: REPO_ROOT,
+      encoding: "utf-8",
+      env: {
+        ...process.env,
+        HEALTH_SITE: "__no_such_site__",
+      },
+      timeout: 30_000,
+      shell: process.platform === "win32",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toContain("adapter-health: ok=0 skip=0");
+    expect(JSON.parse(result.stdout)).toEqual({
+      ok: 0,
+      fail: 0,
+      skip: 0,
+      skip_env_missing: 0,
+      total: 0,
+      failing: [],
+    });
   });
 });
