@@ -1,403 +1,115 @@
 /**
- * Fast-path handlers for discovery-only commands.
- *
- * The full Commander tree loads every adapter before it can dispatch. That is
- * correct for execution commands, but wasteful for discovery surfaces that can
- * be answered from the generated manifest and search index.
+ * @owner   src/fast-path.ts
+ * @does    Argv parsing and dispatch for discovery surfaces (list/search/describe/repair, plus pre-Commander adapter dry-run, policy gate, and site help).
+ * @needs   ./fast-path/{manifest,parsed-argv,render,policy,handlers/discovery,handlers/adapter}, ./types (OutputFormat)
+ * @feeds   src/main.ts (dispatched before the full Commander tree loads)
+ * @breaks  Missing dist/manifest.json → returns false so caller falls through to Commander; structured errors propagate via emitStderrAndExit.
  */
 
-import { existsSync, readFileSync, writeSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { search } from "./discovery/search.js";
+import { type OutputFormat } from "./types.js";
 import {
-  buildMacosDynamicCommands,
-  discoverMacosDynamicData,
-  dynamicMacosDiscoveryEnabled,
-} from "./discovery/macos-dynamic.js";
+  handleAdapterDryRun,
+  handleAdapterPolicyGate,
+  handleSiteHelp,
+} from "./fast-path/handlers/adapter.js";
 import {
-  createApprovalStore,
-  isStoredApproval,
-} from "./engine/approval-store.js";
-import { buildDefaultConfig } from "./engine/repair/config.js";
-import {
-  evaluateOperationPolicy,
-  InvalidPermissionProfileError,
-  resolveOperationAdapterPath,
-  resolveOperationTargetSurface,
-  type OperationPolicy,
-} from "./engine/operation-policy.js";
-import {
-  applyDenyRuleToPolicy,
-  findDenyRuleForPolicySync,
-  PermissionRulesConfigError,
-} from "./engine/permission-rules.js";
-import { defaultErrorNextActions } from "./output/next-actions.js";
-import { format, detectFormat } from "./output/formatter.js";
-import { ExitCode, type OutputFormat, type TargetSurface } from "./types.js";
+  handleDescribe,
+  handleList,
+  handleRepair,
+  handleSearch,
+} from "./fast-path/handlers/discovery.js";
+import { isMissingManifestError } from "./fast-path/manifest.js";
+import type { ParsedArgv } from "./fast-path/parsed-argv.js";
+import { DEFAULT_IO, type Io, isOutputFormat } from "./fast-path/render.js";
 
-type Io = {
-  stdout: (text: string) => void;
-  stderr: (text: string) => void;
-};
+export type { Io } from "./fast-path/render.js";
+export type { ParsedArgv } from "./fast-path/parsed-argv.js";
 
-type ParsedArgv = {
-  command?: string;
-  rest: string[];
-  format?: OutputFormat;
+interface ParseAccumulator {
+  formatValue?: OutputFormat;
   dryRun: boolean;
   permissionProfile?: string;
   yes: boolean;
   rememberApproval: boolean;
   record: boolean;
-};
+}
 
-type ManifestCommand = {
-  name: string;
-  description?: string;
-  strategy?: string;
-  type?: string;
-  domain?: string;
-  base?: string;
-  browser?: boolean;
-  quarantined?: boolean;
-  args?: ManifestArg[];
-  columns?: string[];
-  pipeline_steps?: number;
-  adapter_path?: string;
-  target_surface?: TargetSurface;
-};
+/**
+ * Try to consume one global flag at `args[i]`. Returns the new index
+ * (i + skipped tokens) or `null` when the arg is not a recognized flag.
+ * The single source of truth — adding a flag means editing one branch
+ * here, not two parallel passes (rule 02 third-copy halt).
+ */
+function tryConsumeFlag(
+  args: string[],
+  i: number,
+  acc: ParseAccumulator,
+): number | null {
+  const arg = args[i];
 
-type ManifestArg = {
-  name: string;
-  type?: "str" | "int" | "float" | "bool";
-  default?: unknown;
-  required?: boolean;
-  positional?: boolean;
-  choices?: string[];
-  description?: string;
-  format?: string;
-  "x-unicli-kind"?: string;
-  "x-unicli-accepts"?: string[];
-};
-
-type Manifest = {
-  version: string;
-  sites: Record<
-    string,
-    {
-      category?: string;
-      commands: ManifestCommand[];
+  if (arg === "-f" || arg === "--format") {
+    const next = args[i + 1];
+    if (next && isOutputFormat(next)) {
+      acc.formatValue = next;
+      return i + 1;
     }
-  >;
-};
-
-const DEFAULT_IO: Io = {
-  stdout: (text) => process.stdout.write(`${text}\n`),
-  stderr: (text) => process.stderr.write(`${text}\n`),
-};
-
-function emitStderrAndExit(io: Io, text: string, code: number): void {
-  if (io === DEFAULT_IO) {
-    writeSync(process.stderr.fd, `${text}\n`);
-    process.exit(code);
+    return null;
   }
-  io.stderr(text);
-  process.exitCode = code;
-}
-
-function isOutputFormat(value: string): value is OutputFormat {
-  return (
-    value === "json" ||
-    value === "yaml" ||
-    value === "md" ||
-    value === "csv" ||
-    value === "compact" ||
-    value === "table"
-  );
-}
-
-function isHelpToken(value: string): boolean {
-  return value === "-h" || value === "--help" || value === "help";
-}
-
-function jsonSchemaType(type: ManifestArg["type"]): string {
-  switch (type) {
-    case "int":
-      return "integer";
-    case "float":
-      return "number";
-    case "bool":
-      return "boolean";
-    default:
-      return "string";
-  }
-}
-
-function argsToJsonSchema(args: ManifestArg[]): Record<string, unknown> {
-  const properties: Record<string, Record<string, unknown>> = {};
-  const required: string[] = [];
-
-  for (const arg of args) {
-    const prop: Record<string, unknown> = {
-      type: jsonSchemaType(arg.type),
-    };
-    if (arg.description) prop.description = arg.description;
-    if (arg.default !== undefined) prop.default = arg.default;
-    if (arg.choices && arg.choices.length > 0) prop.enum = arg.choices;
-    if (arg.format) prop.format = arg.format;
-    if (arg["x-unicli-kind"]) prop["x-unicli-kind"] = arg["x-unicli-kind"];
-    if (arg["x-unicli-accepts"]) {
-      prop["x-unicli-accepts"] = arg["x-unicli-accepts"];
+  if (arg.startsWith("--format=")) {
+    const next = arg.slice("--format=".length);
+    if (isOutputFormat(next)) {
+      acc.formatValue = next;
+      return i;
     }
-    properties[arg.name] = prop;
-    if (arg.required) required.push(arg.name);
+    return null;
   }
-
-  return {
-    $schema: "https://json-schema.org/draft/2020-12/schema",
-    type: "object",
-    properties,
-    required,
-    additionalProperties: true,
-  };
-}
-
-function buildExample(args: ManifestArg[]): Record<string, unknown> {
-  const example: Record<string, unknown> = {};
-  for (const arg of args) {
-    if (arg.default !== undefined) {
-      example[arg.name] = arg.default;
-      continue;
-    }
-    if (arg.choices && arg.choices.length > 0) {
-      example[arg.name] = arg.choices[0];
-      continue;
-    }
-    switch (arg.type) {
-      case "int":
-        example[arg.name] = 10;
-        break;
-      case "float":
-        example[arg.name] = 0.5;
-        break;
-      case "bool":
-        example[arg.name] = false;
-        break;
-      default:
-        example[arg.name] = `<${arg.name}>`;
-    }
+  if (arg === "--dry-run") {
+    acc.dryRun = true;
+    return i;
   }
-  return example;
-}
-
-function buildChannels(
-  site: string,
-  command: string,
-  args: ManifestArg[],
-): Record<string, string> {
-  const positionals = args
-    .filter((arg) => arg.positional)
-    .map((arg) => (arg.required ? `<${arg.name}>` : `[${arg.name}]`))
-    .join(" ");
-  const options = args
-    .filter((arg) => !arg.positional)
-    .map((arg) => `[--${arg.name} <${arg.type ?? "value"}>]`)
-    .join(" ");
-  const shell =
-    `unicli ${site} ${command}` +
-    (positionals ? ` ${positionals}` : "") +
-    (options ? ` ${options}` : "");
-
-  return {
-    shell: shell.trim(),
-    args_file: `unicli ${site} ${command} --args-file <path.json>`,
-    stdin: `echo '{...}' | unicli ${site} ${command}`,
-  };
-}
-
-function summarizeArgs(
-  args: ManifestArg[] = [],
-): Array<Record<string, unknown>> {
-  return args.map((arg) => ({
-    name: arg.name,
-    type: arg.type ?? "str",
-    required: arg.required === true,
-    positional: arg.positional === true,
-  }));
-}
-
-function coerceArgValue(value: unknown, type: ManifestArg["type"]): unknown {
-  if (type === "int") {
-    const parsed = parseInt(String(value), 10);
-    return Number.isNaN(parsed) ? value : parsed;
+  if (arg === "--permission-profile") {
+    acc.permissionProfile = args[i + 1];
+    return i + 1;
   }
-  if (type === "float") {
-    const parsed = parseFloat(String(value));
-    return Number.isNaN(parsed) ? value : parsed;
+  if (arg.startsWith("--permission-profile=")) {
+    acc.permissionProfile = arg.slice("--permission-profile=".length);
+    return i;
   }
-  if (type === "bool") {
-    if (typeof value === "boolean") return value;
-    const text = String(value).toLowerCase();
-    return text === "1" || text === "true" || text === "yes";
+  if (arg === "--yes") {
+    acc.yes = true;
+    return i;
   }
-  return value;
-}
-
-function resolveDryRunArgs(
-  schema: ManifestArg[] = [],
-  tokens: string[],
-): Record<string, unknown> | null {
-  const values: Record<string, unknown> = {};
-  for (const arg of schema) {
-    if (arg.default !== undefined) values[arg.name] = arg.default;
+  if (arg === "--remember-approval") {
+    acc.rememberApproval = true;
+    return i;
   }
-
-  const positionals = schema.filter((arg) => arg.positional);
-  let positionalIndex = 0;
-
-  for (let i = 0; i < tokens.length; i += 1) {
-    const token = tokens[i];
-    if (token.startsWith("--")) {
-      const eqIdx = token.indexOf("=");
-      const name =
-        eqIdx === -1 ? token.slice(2) : token.slice(2, Math.max(2, eqIdx));
-      const arg = schema.find((candidate) => candidate.name === name);
-      if (!arg) {
-        if (eqIdx === -1 && tokens[i + 1] && !tokens[i + 1].startsWith("-")) {
-          i += 1;
-        }
-        continue;
-      }
-
-      let raw: unknown;
-      if (arg.type === "bool" && eqIdx === -1) {
-        raw = true;
-      } else if (eqIdx !== -1) {
-        raw = token.slice(eqIdx + 1);
-      } else {
-        raw = tokens[i + 1];
-        i += 1;
-      }
-      values[arg.name] = coerceArgValue(raw, arg.type);
-      continue;
-    }
-
-    const arg = positionals[positionalIndex];
-    if (arg) {
-      values[arg.name] = coerceArgValue(token, arg.type);
-      positionalIndex += 1;
-    }
+  if (arg === "--record") {
+    acc.record = true;
+    return i;
   }
-
-  for (const arg of schema) {
-    if (arg.required && values[arg.name] === undefined) return null;
-  }
-
-  return values;
+  return null;
 }
 
 function parseArgv(argv: string[]): ParsedArgv {
   const args = argv.slice(2);
-  let formatValue: OutputFormat | undefined;
-  let dryRun = false;
-  let permissionProfile: string | undefined;
-  let yes = false;
-  let rememberApproval = false;
-  let record = false;
+  const acc: ParseAccumulator = {
+    dryRun: false,
+    yes: false,
+    rememberApproval: false,
+    record: false,
+  };
   let command: string | undefined;
   const rest: string[] = [];
 
   for (let i = 0; i < args.length; i += 1) {
+    const consumed = tryConsumeFlag(args, i, acc);
+    if (consumed !== null) {
+      i = consumed;
+      continue;
+    }
     const arg = args[i];
-
-    if (!command) {
-      if (arg === "-f" || arg === "--format") {
-        const next = args[i + 1];
-        if (next && isOutputFormat(next)) {
-          formatValue = next;
-          i += 1;
-          continue;
-        }
-      }
-      if (arg.startsWith("--format=")) {
-        const next = arg.slice("--format=".length);
-        if (isOutputFormat(next)) {
-          formatValue = next;
-          continue;
-        }
-      }
-      if (arg === "--dry-run") {
-        dryRun = true;
-        continue;
-      }
-      if (arg === "--permission-profile") {
-        permissionProfile = args[i + 1];
-        i += 1;
-        continue;
-      }
-      if (arg.startsWith("--permission-profile=")) {
-        permissionProfile = arg.slice("--permission-profile=".length);
-        continue;
-      }
-      if (arg === "--yes") {
-        yes = true;
-        continue;
-      }
-      if (arg === "--remember-approval") {
-        rememberApproval = true;
-        continue;
-      }
-      if (arg === "--record") {
-        record = true;
-        continue;
-      }
-      if (!arg.startsWith("-")) {
-        command = arg;
-        continue;
-      }
-      rest.push(arg);
-      continue;
-    }
-
-    if (arg === "-f" || arg === "--format") {
-      const next = args[i + 1];
-      if (next && isOutputFormat(next)) {
-        formatValue = next;
-        i += 1;
-        continue;
-      }
-    }
-    if (arg.startsWith("--format=")) {
-      const next = arg.slice("--format=".length);
-      if (isOutputFormat(next)) {
-        formatValue = next;
-        continue;
-      }
-    }
-    if (arg === "--dry-run") {
-      dryRun = true;
-      continue;
-    }
-    if (arg === "--permission-profile") {
-      permissionProfile = args[i + 1];
-      i += 1;
-      continue;
-    }
-    if (arg.startsWith("--permission-profile=")) {
-      permissionProfile = arg.slice("--permission-profile=".length);
-      continue;
-    }
-    if (arg === "--yes") {
-      yes = true;
-      continue;
-    }
-    if (arg === "--remember-approval") {
-      rememberApproval = true;
-      continue;
-    }
-    if (arg === "--record") {
-      record = true;
+    if (!command && !arg.startsWith("-")) {
+      command = arg;
       continue;
     }
     rest.push(arg);
@@ -406,685 +118,13 @@ function parseArgv(argv: string[]): ParsedArgv {
   return {
     command,
     rest,
-    format: formatValue,
-    dryRun,
-    permissionProfile,
-    yes,
-    rememberApproval,
-    record,
+    format: acc.formatValue,
+    dryRun: acc.dryRun,
+    permissionProfile: acc.permissionProfile,
+    yes: acc.yes,
+    rememberApproval: acc.rememberApproval,
+    record: acc.record,
   };
-}
-
-function manifestPath(): string {
-  const here = dirname(fileURLToPath(import.meta.url));
-  const candidates = [
-    join(here, "manifest.json"),
-    join(here, "..", "dist", "manifest.json"),
-    join(here, "..", "..", "dist", "manifest.json"),
-  ];
-  const found = candidates.find((candidate) => existsSync(candidate));
-  if (!found) {
-    throw new Error("Missing dist/manifest.json. Run: npm run build:manifest");
-  }
-  return found;
-}
-
-function readManifest(): Manifest {
-  return JSON.parse(readFileSync(manifestPath(), "utf8")) as Manifest;
-}
-
-function isMissingManifestError(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    error.message.includes("Missing dist/manifest.json")
-  );
-}
-
-function emit(
-  io: Io,
-  data: unknown[] | Record<string, unknown>,
-  columns: string[] | undefined,
-  fmt: OutputFormat | undefined,
-  command: string,
-  startedAt: number,
-): void {
-  io.stdout(
-    format(data, columns, detectFormat(fmt), {
-      command,
-      duration_ms: Date.now() - startedAt,
-      surface: "web",
-    }),
-  );
-}
-
-function evaluateManifestOperationPolicy(input: {
-  parsed: ParsedArgv;
-  io: Io;
-  site: string;
-  commandName: string;
-  command: ManifestCommand;
-  adapterType: string;
-  targetSurface: TargetSurface;
-  adapterPath: string;
-  startedAt: number;
-}): OperationPolicy | null {
-  try {
-    const policyInput = {
-      site: input.site,
-      command: input.commandName,
-      description: input.command.description,
-      adapterType: input.adapterType,
-      targetSurface: input.targetSurface,
-      strategy: input.command.strategy,
-      domain: input.command.domain,
-      base: input.command.base,
-      browser: input.command.browser === true,
-      args: input.command.args,
-      profile: input.parsed.permissionProfile,
-      approved: input.parsed.yes,
-    };
-    const policy = evaluateOperationPolicy(policyInput);
-    const denyRule = findDenyRuleForPolicySync(policy);
-    if (denyRule) return applyDenyRuleToPolicy(policy, denyRule);
-
-    if (
-      policy.enforcement === "needs_approval" &&
-      hasStoredApproval(policy.approval_memory.key)
-    ) {
-      return evaluateOperationPolicy({
-        ...policyInput,
-        approvalSource: "memory",
-      });
-    }
-    return policy;
-  } catch (error) {
-    if (
-      !(
-        error instanceof InvalidPermissionProfileError ||
-        error instanceof PermissionRulesConfigError
-      )
-    ) {
-      throw error;
-    }
-
-    emitStderrAndExit(
-      input.io,
-      format([], input.command.columns, detectFormat(input.parsed.format), {
-        command: `${input.site}.${input.commandName}`,
-        duration_ms: Date.now() - input.startedAt,
-        surface: input.targetSurface,
-        error: {
-          code: "invalid_input",
-          message: error.message,
-          adapter_path: input.adapterPath,
-          step: 0,
-          suggestion:
-            error instanceof PermissionRulesConfigError
-              ? error.suggestion
-              : "use one of: open, confirm, locked",
-          retryable: false,
-        },
-        next_actions: defaultErrorNextActions(
-          input.site,
-          input.commandName,
-          "invalid_input",
-        ),
-      }),
-      ExitCode.USAGE_ERROR,
-    );
-    return null;
-  }
-}
-
-function hasStoredApproval(key: string): boolean {
-  const store = createApprovalStore();
-  if (!existsSync(store.path)) return false;
-  try {
-    const raw = readFileSync(store.path, "utf-8");
-    const lines = raw.split(/\r?\n/);
-    for (let i = lines.length - 1; i >= 0; i -= 1) {
-      const line = lines[i];
-      if (line.trim().length === 0) continue;
-      try {
-        const entry = JSON.parse(line) as unknown;
-        if (isStoredApproval(entry) && entry.key === key) {
-          return entry.decision === "allow";
-        }
-      } catch {
-        continue;
-      }
-    }
-    return false;
-  } catch {
-    return false;
-  }
-}
-
-function handleList(parsed: ParsedArgv, io: Io): boolean {
-  const startedAt = Date.now();
-  let siteFilter: string | undefined;
-  let typeFilter: string | undefined;
-
-  for (let i = 0; i < parsed.rest.length; i += 1) {
-    const arg = parsed.rest[i];
-    if (arg === "--site") {
-      siteFilter = parsed.rest[i + 1];
-      i += 1;
-      continue;
-    }
-    if (arg.startsWith("--site=")) {
-      siteFilter = arg.slice("--site=".length);
-      continue;
-    }
-    if (arg === "--type") {
-      typeFilter = parsed.rest[i + 1];
-      i += 1;
-      continue;
-    }
-    if (arg.startsWith("--type=")) {
-      typeFilter = arg.slice("--type=".length);
-      continue;
-    }
-    return false;
-  }
-
-  const manifest = readManifest();
-  const rows = Object.entries(manifest.sites)
-    .flatMap(([site, info]) =>
-      info.commands.map((command) => {
-        const strategy = command.strategy ?? "public";
-        const tags: string[] = [];
-        if (strategy !== "public") tags.push("[auth]");
-        if (command.quarantined === true) tags.push("[quarantined]");
-        return {
-          site,
-          command: command.name,
-          description: command.description ?? "",
-          type: command.type ?? "web-api",
-          auth: tags.join(" "),
-        };
-      }),
-    )
-    .concat(dynamicListRows())
-    .filter((row) => !siteFilter || row.site.includes(siteFilter))
-    .filter((row) => !typeFilter || row.type === typeFilter)
-    .sort(
-      (a, b) =>
-        a.site.localeCompare(b.site) || a.command.localeCompare(b.command),
-    );
-
-  emit(
-    io,
-    rows,
-    ["site", "command", "description", "type", "auth"],
-    parsed.format,
-    "core.list",
-    startedAt,
-  );
-  return true;
-}
-
-function dynamicListRows(): Array<{
-  site: string;
-  command: string;
-  description: string;
-  type: string;
-  auth: string;
-}> {
-  if (!dynamicMacosDiscoveryEnabled()) return [];
-
-  return Object.values(
-    buildMacosDynamicCommands(discoverMacosDynamicData()),
-  ).map((command) => ({
-    site: "macos",
-    command: command.name,
-    description: command.description ?? "",
-    type: "desktop",
-    auth: "",
-  }));
-}
-
-function handleSearch(parsed: ParsedArgv, io: Io): boolean {
-  const startedAt = Date.now();
-  let limit = 8;
-  let category: string | undefined;
-  const queryParts: string[] = [];
-
-  for (let i = 0; i < parsed.rest.length; i += 1) {
-    const arg = parsed.rest[i];
-    if (arg === "-n" || arg === "--limit") {
-      limit = parseInt(parsed.rest[i + 1] ?? "", 10) || 8;
-      i += 1;
-      continue;
-    }
-    if (arg.startsWith("--limit=")) {
-      limit = parseInt(arg.slice("--limit=".length), 10) || 8;
-      continue;
-    }
-    if (arg === "--category") {
-      category = parsed.rest[i + 1];
-      i += 1;
-      continue;
-    }
-    if (arg.startsWith("--category=")) {
-      category = arg.slice("--category=".length);
-      continue;
-    }
-    queryParts.push(arg);
-  }
-
-  const query = queryParts.join(" ");
-  if (!query && !category) {
-    io.stderr(
-      "Usage: unicli search <query>  or  unicli search --category <cat>",
-    );
-    process.exitCode = 2;
-    return true;
-  }
-
-  const effectiveQuery = category ? `${category} ${query}`.trim() : query;
-  const results = search(effectiveQuery, limit);
-  if (results.length === 0) {
-    io.stderr(`No commands found for: ${effectiveQuery}`);
-    process.exitCode = 66;
-    return true;
-  }
-
-  const rows = results.map((result) => ({
-    command: `${result.site} ${result.command}`,
-    description: result.description || `${result.command} for ${result.site}`,
-    score: result.score,
-    category: result.category,
-    usage: result.usage,
-  }));
-
-  emit(
-    io,
-    rows,
-    ["command", "description", "score", "usage"],
-    parsed.format,
-    "core.search",
-    startedAt,
-  );
-  return true;
-}
-
-function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
-  const startedAt = Date.now();
-  const manifest = readManifest();
-  const [site, cmdName] = parsed.rest;
-
-  if (!site) {
-    const sites = Object.entries(manifest.sites).map(([name, info]) => ({
-      name,
-      display_name: name,
-      type: info.commands[0]?.type ?? "web-api",
-      strategy: info.commands[0]?.strategy ?? "public",
-      commands_count: info.commands.length,
-      description: "",
-    }));
-    io.stdout(JSON.stringify({ sites, total: sites.length }, null, 2));
-    return true;
-  }
-
-  const info = manifest.sites[site];
-  if (!info) {
-    io.stdout(JSON.stringify({ error: `unknown site: ${site}` }, null, 2));
-    process.exitCode = 64;
-    return true;
-  }
-
-  if (!cmdName) {
-    const commands = info.commands.map((command) => ({
-      name: command.name,
-      description: command.description ?? "",
-      quarantined: command.quarantined === true,
-      strategy: command.strategy ?? "public",
-      auth: (command.strategy ?? "public") !== "public",
-      browser: command.browser === true,
-      args: summarizeArgs(command.args),
-    }));
-    io.stdout(
-      JSON.stringify(
-        {
-          site,
-          display_name: site,
-          type: info.commands[0]?.type ?? "web-api",
-          strategy: info.commands[0]?.strategy ?? "public",
-          commands,
-        },
-        null,
-        2,
-      ),
-    );
-    return true;
-  }
-
-  const command = info.commands.find((candidate) => candidate.name === cmdName);
-  if (!command) {
-    io.stdout(
-      JSON.stringify({ error: `unknown command: ${site} ${cmdName}` }, null, 2),
-    );
-    process.exitCode = 64;
-    return true;
-  }
-  const adapterType = command.type ?? info.commands[0]?.type ?? "web-api";
-  const targetSurface = resolveOperationTargetSurface({
-    adapterType,
-    targetSurface: command.target_surface,
-  });
-  const adapterPath = resolveOperationAdapterPath(
-    site,
-    cmdName,
-    command.adapter_path,
-  );
-  const operationPolicy = evaluateManifestOperationPolicy({
-    parsed,
-    io,
-    site,
-    commandName: cmdName,
-    command,
-    adapterType,
-    targetSurface,
-    adapterPath,
-    startedAt,
-  });
-  if (!operationPolicy) return true;
-
-  io.stdout(
-    JSON.stringify(
-      {
-        command: `unicli ${site} ${cmdName}`,
-        description: command.description ?? "",
-        quarantined: command.quarantined === true,
-        strategy: command.strategy ?? "public",
-        auth: (command.strategy ?? "public") !== "public",
-        browser: command.browser === true,
-        target_surface: targetSurface,
-        adapter_path: adapterPath,
-        operation_policy: operationPolicy,
-        args_schema: argsToJsonSchema(command.args ?? []),
-        example_stdin: buildExample(command.args ?? []),
-        channels: buildChannels(site, cmdName, command.args ?? []),
-        next_actions: [
-          {
-            command: `unicli ${site} ${cmdName} --dry-run`,
-            description: "Preview the resolved argument bag and pipeline plan",
-          },
-          {
-            command: `unicli ${site} ${cmdName}`,
-            description: "Run the command (shell channel)",
-            params: {
-              note: {
-                description:
-                  "For payloads with quotes/emoji/JSON, pipe stdin-JSON instead.",
-              },
-            },
-          },
-          {
-            command: `unicli repair ${site} ${cmdName}`,
-            description: "If the command fails due to upstream drift",
-          },
-        ],
-      },
-      null,
-      2,
-    ),
-  );
-  return true;
-}
-
-function handleRepair(parsed: ParsedArgv, io: Io): boolean {
-  const startedAt = Date.now();
-  let dryRun = parsed.dryRun;
-  let max = 20;
-  let timeout = 90;
-  const positionals: string[] = [];
-
-  for (let i = 0; i < parsed.rest.length; i += 1) {
-    const arg = parsed.rest[i];
-    if (arg === "--dry-run") {
-      dryRun = true;
-      continue;
-    }
-    if (arg === "--max") {
-      max = parseInt(parsed.rest[i + 1] ?? "", 10) || 20;
-      i += 1;
-      continue;
-    }
-    if (arg.startsWith("--max=")) {
-      max = parseInt(arg.slice("--max=".length), 10) || 20;
-      continue;
-    }
-    if (arg === "--timeout") {
-      timeout = parseInt(parsed.rest[i + 1] ?? "", 10) || 90;
-      i += 1;
-      continue;
-    }
-    if (arg.startsWith("--timeout=")) {
-      timeout = parseInt(arg.slice("--timeout=".length), 10) || 90;
-      continue;
-    }
-    if (arg.startsWith("-")) return false;
-    positionals.push(arg);
-  }
-
-  if (!dryRun) return false;
-
-  const [site, command] = positionals;
-  if (!site) return false;
-  const config = buildDefaultConfig(site, command);
-  config.maxIterations = max;
-  config.timeout = timeout * 1000;
-
-  emit(
-    io,
-    {
-      mode: "dry-run",
-      site,
-      command: command ?? null,
-      config: {
-        ...config,
-        metricPattern: config.metricPattern.source,
-      },
-    },
-    undefined,
-    parsed.format,
-    "repair.run",
-    startedAt,
-  );
-  return true;
-}
-
-function handleAdapterDryRun(parsed: ParsedArgv, io: Io): boolean {
-  if (!parsed.command || !parsed.dryRun || parsed.rest.length === 0) {
-    return false;
-  }
-
-  const manifest = readManifest();
-  const info = manifest.sites[parsed.command];
-  if (!info) return false;
-
-  const [cmdName, ...tokens] = parsed.rest;
-  if (!cmdName || cmdName === "help" || cmdName.startsWith("-")) return false;
-
-  const command = info.commands.find((candidate) => candidate.name === cmdName);
-  if (!command) return false;
-
-  const startedAt = Date.now();
-  const args = resolveDryRunArgs(command.args, tokens);
-  if (!args) return false;
-  const adapterType = command.type ?? info.commands[0]?.type ?? "web-api";
-  const targetSurface = resolveOperationTargetSurface({
-    adapterType,
-    targetSurface: command.target_surface,
-  });
-  const adapterPath = resolveOperationAdapterPath(
-    parsed.command,
-    cmdName,
-    command.adapter_path,
-  );
-  const operationPolicy = evaluateManifestOperationPolicy({
-    parsed,
-    io,
-    site: parsed.command,
-    commandName: cmdName,
-    command,
-    adapterType,
-    targetSurface,
-    adapterPath,
-    startedAt,
-  });
-  if (!operationPolicy) return true;
-
-  io.stdout(
-    JSON.stringify(
-      {
-        command: `${parsed.command}.${cmdName}`,
-        adapter_type: adapterType,
-        strategy: command.strategy ?? "public",
-        args,
-        args_source: tokens.length > 0 ? "shell" : "defaults",
-        operation_policy: operationPolicy,
-        trace_id: `fast-${Date.now().toString(36)}`,
-        surface: "cli",
-        target_surface: targetSurface,
-        pipeline_steps: command.pipeline_steps ?? 0,
-        adapter_path: adapterPath,
-      },
-      null,
-      2,
-    ),
-  );
-  return true;
-}
-
-function handleAdapterPolicyGate(parsed: ParsedArgv, io: Io): boolean {
-  if (!parsed.command || parsed.dryRun || parsed.rest.length === 0) {
-    return false;
-  }
-
-  const [cmdName] = parsed.rest;
-  if (!cmdName || cmdName === "help" || cmdName.startsWith("-")) return false;
-  if (parsed.rest.slice(1).some(isHelpToken)) return false;
-
-  const startedAt = Date.now();
-  const manifest = readManifest();
-  const info = manifest.sites[parsed.command];
-  if (!info) return false;
-
-  const command = info.commands.find((candidate) => candidate.name === cmdName);
-  if (!command) return false;
-
-  const adapterType = command.type ?? info.commands[0]?.type ?? "web-api";
-  const targetSurface = resolveOperationTargetSurface({
-    adapterType,
-    targetSurface: command.target_surface,
-  });
-  const adapterPath = resolveOperationAdapterPath(
-    parsed.command,
-    cmdName,
-    command.adapter_path,
-  );
-
-  const operationPolicy = evaluateManifestOperationPolicy({
-    parsed,
-    io,
-    site: parsed.command,
-    commandName: cmdName,
-    command,
-    adapterType,
-    targetSurface,
-    adapterPath,
-    startedAt,
-  });
-  if (!operationPolicy) return true;
-
-  if (
-    operationPolicy.enforcement !== "needs_approval" &&
-    operationPolicy.enforcement !== "deny"
-  ) {
-    return false;
-  }
-
-  const isDenyRule = operationPolicy.enforcement === "deny";
-  const ruleId = operationPolicy.deny_rule?.id ?? "unknown";
-  const ruleReason =
-    operationPolicy.deny_rule?.reason ?? "permission rule matched";
-
-  emitStderrAndExit(
-    io,
-    format([], command.columns, detectFormat(parsed.format), {
-      command: `${parsed.command}.${cmdName}`,
-      duration_ms: Date.now() - startedAt,
-      surface: targetSurface,
-      error: {
-        code: "permission_denied",
-        message: isDenyRule
-          ? `permission rule "${ruleId}" denies ${operationPolicy.effect}: ${ruleReason}`
-          : `permission profile "${operationPolicy.profile}" requires approval for ${operationPolicy.effect}`,
-        adapter_path: adapterPath,
-        step: 0,
-        suggestion:
-          operationPolicy.approval_hint ??
-          (isDenyRule
-            ? "edit or remove the matching permission rule"
-            : "rerun with --yes or use --permission-profile open"),
-        retryable: false,
-        alternatives: isDenyRule
-          ? [
-              `unicli --dry-run ${parsed.command} ${cmdName}`,
-              "edit ~/.unicli/permission-rules.json",
-            ]
-          : [
-              `unicli --dry-run ${parsed.command} ${cmdName}`,
-              `unicli --yes --permission-profile ${operationPolicy.profile} ${parsed.command} ${cmdName}`,
-              `unicli --permission-profile open ${parsed.command} ${cmdName}`,
-            ],
-      },
-      next_actions: defaultErrorNextActions(
-        parsed.command,
-        cmdName,
-        "permission_denied",
-      ),
-    }),
-    ExitCode.AUTH_REQUIRED,
-  );
-  return true;
-}
-
-function handleSiteHelp(parsed: ParsedArgv, io: Io): boolean {
-  const wantsHelp = parsed.rest.length === 0 || parsed.rest.every(isHelpToken);
-  if (!parsed.command || !wantsHelp) return false;
-
-  const manifest = readManifest();
-  const info = manifest.sites[parsed.command];
-  if (!info) return false;
-
-  const commandWidth = Math.max(
-    7,
-    ...info.commands.map((command) => command.name.length),
-  );
-  const lines = [
-    `Usage: unicli ${parsed.command} [options] [command]`,
-    "",
-    `Commands for ${parsed.command}`,
-    "",
-    "Options:",
-    "  -h, --help".padEnd(commandWidth + 6) + "display help for command",
-    "",
-    "Commands:",
-  ];
-  for (const command of info.commands) {
-    lines.push(
-      `  ${command.name.padEnd(commandWidth)}  ${command.description ?? ""}`.trimEnd(),
-    );
-  }
-  lines.push(
-    `  ${"help [command]".padEnd(commandWidth)}  display help for command`,
-  );
-  io.stdout(lines.join("\n"));
-  return true;
 }
 
 export function tryRunFastPath(
