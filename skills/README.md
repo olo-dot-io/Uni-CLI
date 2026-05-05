@@ -10,19 +10,21 @@ SKILL.md standard: Claude Code, Codex, Hermes, Cline, OpenCode, etc.
 
 ## Skills
 
-| Skill                 | Purpose                                                  |
-| --------------------- | -------------------------------------------------------- |
-| `talk-normal`         | Always-on concise writing rules for docs and UI copy     |
-| `unicli`              | Core usage — run any `unicli <site> <command>`           |
-| `bgclick-rev`         | IDA-backed research workflow for macOS background clicks |
-| `unicli-browser`      | Control Chrome via daemon bridge                         |
-| `unicli-claude`       | Claude-specific slash commands (unicli-repair, etc.)     |
-| `unicli-explorer`     | Create new adapters by exploring sites/APIs              |
-| `unicli-hermes`       | Hermes-platform integration                              |
-| `unicli-oneshot`      | One-shot adapter generation from a URL + goal            |
-| `unicli-operate`      | Direct browser automation via `operate` subcommands      |
-| `unicli-smart-search` | Route search queries to the best platform                |
-| `unicli-usage`        | Command reference and usage guide                        |
+| Skill                 | Purpose                                                                             |
+| --------------------- | ----------------------------------------------------------------------------------- |
+| `talk-normal`         | Always-on concise writing rules for docs and UI copy                                |
+| `unicli`              | Comprehensive agent guide — discover, run, read output, auth, errors, skill routing |
+| `bgclick-rev`         | IDA-backed research workflow for macOS background clicks                            |
+| `unicli-browser`      | Control Chrome via daemon bridge                                                    |
+| `unicli-claude`       | Claude.ai-specific commands and integration                                         |
+| `unicli-claude-code`  | Claude Code CLI integration                                                         |
+| `unicli-explorer`     | Create new adapters by exploring sites/APIs                                         |
+| `unicli-hermes`       | Hermes-platform integration                                                         |
+| `unicli-oneshot`      | One-shot adapter generation from a URL + goal                                       |
+| `unicli-operate`      | Direct browser automation via `operate` subcommands                                 |
+| `unicli-repair`       | Self-repair workflow for broken adapters (envelope-driven)                          |
+| `unicli-smart-search` | Route search queries to the best platform                                           |
+| `unicli-usage`        | Command reference and usage guide                                                   |
 
 ## Adding a skill
 
