@@ -18,7 +18,14 @@ args:
 pipeline:
   - fetch:
       url: "https://pub.dev/api/packages/${{ args.package | urlencode }}"
-columns: [name]
+  - map:
+      name: "${{ item.name }}"
+      version: "${{ item.latest.version }}"
+      description: "${{ item.latest.pubspec.description || '' }}"
+      repository: "${{ item.latest.pubspec.repository || '' }}"
+      homepage: "${{ item.latest.pubspec.homepage || '' }}"
+      versions: "${{ item.versions | length }}"
+columns: [name, version, description, repository, homepage, versions]
 capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public

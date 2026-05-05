@@ -25,6 +25,10 @@ const TARGETS = [
   join("docs", "THEORY.md"),
   join("docs", "how-it-works.md"),
   join("docs", "faq.md"),
+  join("docs", "zh", "BENCHMARK.md"),
+  join("docs", "zh", "how-it-works.md"),
+  join("docs", "zh", "faq.md"),
+  join("docs", "zh", "glossary.md"),
   join("contributing", "COPY.md"),
 ];
 
@@ -281,14 +285,17 @@ export function buildSiteGrid(
   categoryLabels: Record<string, string> = {},
 ): string {
   const rows = Object.entries(manifest.sites)
-    .filter(([, site]) =>
-      site.commands.every((command) => command.quarantined !== true),
-    )
-    .map(([site, info]) => ({
-      site,
-      category: info.category ?? "other",
-      commandCount: info.commands.length,
-    }))
+    .map(([site, info]) => {
+      const commandCount = info.commands.filter(
+        (command) => command.quarantined !== true,
+      ).length;
+      return {
+        site,
+        category: info.category ?? "other",
+        commandCount,
+      };
+    })
+    .filter((row) => row.commandCount > 0)
     .sort(
       (a, b) =>
         categoryRank(a.category) - categoryRank(b.category) ||

@@ -24,6 +24,10 @@ const TARGETS = [
   join("docs", "THEORY.md"),
   join("docs", "how-it-works.md"),
   join("docs", "faq.md"),
+  join("docs", "zh", "BENCHMARK.md"),
+  join("docs", "zh", "how-it-works.md"),
+  join("docs", "zh", "faq.md"),
+  join("docs", "zh", "glossary.md"),
   join("contributing", "COPY.md"),
 ];
 

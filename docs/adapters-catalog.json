@@ -1,6 +1,6 @@
 {
   "source": "unicli@0.218.1",
-  "generated": "2026-05-05T19:59:25.607Z",
+  "generated": "2026-05-05T20:24:16.122Z",
   "total_sites": 238,
   "total_commands": 1458,
   "adapters": [
@@ -20194,7 +20194,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["name", "description", "time"],
+          "columns": ["name", "description", "time", "repository", "versions"],
           "args": [
             {
               "name": "package",
@@ -21181,7 +21181,14 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["name"],
+          "columns": [
+            "name",
+            "version",
+            "description",
+            "repository",
+            "homepage",
+            "versions"
+          ],
           "args": [
             {
               "name": "package",

@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->238<!-- /STATS --> sites · <!-- STATS:command_count -->1458<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7896<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->238<!-- /STATS --> sites · <!-- STATS:command_count -->1458<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7907<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -205,7 +205,7 @@ Start with [Compute](docs/operate/compute.md), [Electron App Control](docs/opera
 
 The catalog is intentionally broad. Every command is discoverable, typed, and repairable.
 
-The grid below is generated from active manifest sites with no quarantined commands.
+The grid below is generated from active manifest sites. Badge counts exclude quarantined commands.
 
 <!-- BEGIN README_SITE_GRID -->
 <div align="center">
@@ -214,6 +214,7 @@ The grid below is generated from active manifest sites with no quarantined comma
   <a data-site="bluesky" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="bluesky: 12 commands"><img alt="bluesky" src="https://img.shields.io/static/v1?label=bluesky&message=12+cmds&color=2563eb&style=flat-square&logo=bluesky&logoColor=white"></a>
   <a data-site="dingtalk" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="dingtalk: 8 commands"><img alt="dingtalk" src="https://img.shields.io/static/v1?label=dingtalk&message=8+cmds&color=2563eb&style=flat-square&logo=dingtalk&logoColor=white"></a>
   <a data-site="discord-app" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="discord-app: 15 commands"><img alt="discord-app" src="https://img.shields.io/static/v1?label=discord-app&message=15+cmds&color=2563eb&style=flat-square&logo=discord&logoColor=white"></a>
+  <a data-site="douban" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="douban: 9 commands"><img alt="douban" src="https://img.shields.io/static/v1?label=douban&message=9+cmds&color=2563eb&style=flat-square"></a>
   <a data-site="facebook" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="facebook: 12 commands"><img alt="facebook" src="https://img.shields.io/static/v1?label=facebook&message=12+cmds&color=2563eb&style=flat-square"></a>
   <a data-site="hupu" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="hupu: 7 commands"><img alt="hupu" src="https://img.shields.io/static/v1?label=hupu&message=7+cmds&color=2563eb&style=flat-square"></a>
   <a data-site="instagram" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="instagram: 26 commands"><img alt="instagram" src="https://img.shields.io/static/v1?label=instagram&message=26+cmds&color=2563eb&style=flat-square&logo=instagram&logoColor=white"></a>
@@ -221,10 +222,12 @@ The grid below is generated from active manifest sites with no quarantined comma
   <a data-site="lark" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="lark: 8 commands"><img alt="lark" src="https://img.shields.io/static/v1?label=lark&message=8+cmds&color=2563eb&style=flat-square&logo=lark&logoColor=white"></a>
   <a data-site="linux-do" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="linux-do: 11 commands"><img alt="linux-do" src="https://img.shields.io/static/v1?label=linux-do&message=11+cmds&color=2563eb&style=flat-square"></a>
   <a data-site="lobsters" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="lobsters: 5 commands"><img alt="lobsters" src="https://img.shields.io/static/v1?label=lobsters&message=5+cmds&color=2563eb&style=flat-square"></a>
+  <a data-site="mastodon" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="mastodon: 3 commands"><img alt="mastodon" src="https://img.shields.io/static/v1?label=mastodon&message=3+cmds&color=2563eb&style=flat-square&logo=mastodon&logoColor=white"></a>
   <a data-site="reddit" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="reddit: 20 commands"><img alt="reddit" src="https://img.shields.io/static/v1?label=reddit&message=20+cmds&color=2563eb&style=flat-square&logo=reddit&logoColor=white"></a>
   <a data-site="signal" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="signal: 7 commands"><img alt="signal" src="https://img.shields.io/static/v1?label=signal&message=7+cmds&color=2563eb&style=flat-square&logo=signal&logoColor=white"></a>
   <a data-site="slack" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="slack: 14 commands"><img alt="slack" src="https://img.shields.io/static/v1?label=slack&message=14+cmds&color=2563eb&style=flat-square&logo=slack&logoColor=white"></a>
   <a data-site="teams" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="teams: 7 commands"><img alt="teams" src="https://img.shields.io/static/v1?label=teams&message=7+cmds&color=2563eb&style=flat-square&logo=microsoftteams&logoColor=white"></a>
+  <a data-site="tieba" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="tieba: 3 commands"><img alt="tieba" src="https://img.shields.io/static/v1?label=tieba&message=3+cmds&color=2563eb&style=flat-square"></a>
   <a data-site="twitter" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="twitter: 38 commands"><img alt="twitter" src="https://img.shields.io/static/v1?label=twitter&message=38+cmds&color=2563eb&style=flat-square&logo=x&logoColor=white"></a>
   <a data-site="v2ex" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="v2ex: 12 commands"><img alt="v2ex" src="https://img.shields.io/static/v1?label=v2ex&message=12+cmds&color=2563eb&style=flat-square"></a>
   <a data-site="wechat-work" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="wechat-work: 7 commands"><img alt="wechat-work" src="https://img.shields.io/static/v1?label=wechat-work&message=7+cmds&color=2563eb&style=flat-square&logo=wechat&logoColor=white"></a>
@@ -235,6 +238,7 @@ The grid below is generated from active manifest sites with no quarantined comma
   <a data-site="zoom-app" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="zoom-app: 7 commands"><img alt="zoom-app" src="https://img.shields.io/static/v1?label=zoom-app&message=7+cmds&color=2563eb&style=flat-square&logo=zoom&logoColor=white"></a>
 </p>
 <p><strong>video</strong><br>
+  <a data-site="bilibili" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="bilibili: 14 commands"><img alt="bilibili" src="https://img.shields.io/static/v1?label=bilibili&message=14+cmds&color=dc2626&style=flat-square"></a>
   <a data-site="douyin" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="douyin: 13 commands"><img alt="douyin" src="https://img.shields.io/static/v1?label=douyin&message=13+cmds&color=dc2626&style=flat-square"></a>
   <a data-site="douyu" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="douyu: 2 commands"><img alt="douyu" src="https://img.shields.io/static/v1?label=douyu&message=2+cmds&color=dc2626&style=flat-square"></a>
   <a data-site="kuaishou" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="kuaishou: 2 commands"><img alt="kuaishou" src="https://img.shields.io/static/v1?label=kuaishou&message=2+cmds&color=dc2626&style=flat-square"></a>
@@ -243,12 +247,15 @@ The grid below is generated from active manifest sites with no quarantined comma
   <a data-site="youtube" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="youtube: 16 commands"><img alt="youtube" src="https://img.shields.io/static/v1?label=youtube&message=16+cmds&color=dc2626&style=flat-square&logo=youtube&logoColor=white"></a>
 </p>
 <p><strong>news</strong><br>
+  <a data-site="36kr" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="36kr: 4 commands"><img alt="36kr" src="https://img.shields.io/static/v1?label=36kr&message=4+cmds&color=b45309&style=flat-square"></a>
   <a data-site="bbc" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="bbc: 4 commands"><img alt="bbc" src="https://img.shields.io/static/v1?label=bbc&message=4+cmds&color=b45309&style=flat-square&logo=bbc&logoColor=white"></a>
   <a data-site="bloomberg" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="bloomberg: 10 commands"><img alt="bloomberg" src="https://img.shields.io/static/v1?label=bloomberg&message=10+cmds&color=b45309&style=flat-square"></a>
   <a data-site="cnn" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="cnn: 2 commands"><img alt="cnn" src="https://img.shields.io/static/v1?label=cnn&message=2+cmds&color=b45309&style=flat-square"></a>
   <a data-site="hackernews" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="hackernews: 10 commands"><img alt="hackernews" src="https://img.shields.io/static/v1?label=hackernews&message=10+cmds&color=b45309&style=flat-square&logo=ycombinator&logoColor=white"></a>
   <a data-site="infoq" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="infoq: 2 commands"><img alt="infoq" src="https://img.shields.io/static/v1?label=infoq&message=2+cmds&color=b45309&style=flat-square"></a>
+  <a data-site="ithome" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="ithome: 2 commands"><img alt="ithome" src="https://img.shields.io/static/v1?label=ithome&message=2+cmds&color=b45309&style=flat-square"></a>
   <a data-site="nytimes" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="nytimes: 2 commands"><img alt="nytimes" src="https://img.shields.io/static/v1?label=nytimes&message=2+cmds&color=b45309&style=flat-square"></a>
+  <a data-site="reuters" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="reuters: 2 commands"><img alt="reuters" src="https://img.shields.io/static/v1?label=reuters&message=2+cmds&color=b45309&style=flat-square&logo=reuters&logoColor=white"></a>
   <a data-site="techcrunch" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="techcrunch: 2 commands"><img alt="techcrunch" src="https://img.shields.io/static/v1?label=techcrunch&message=2+cmds&color=b45309&style=flat-square"></a>
   <a data-site="theverge" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="theverge: 2 commands"><img alt="theverge" src="https://img.shields.io/static/v1?label=theverge&message=2+cmds&color=b45309&style=flat-square"></a>
 </p>
@@ -256,16 +263,20 @@ The grid below is generated from active manifest sites with no quarantined comma
   <a data-site="barchart" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="barchart: 4 commands"><img alt="barchart" src="https://img.shields.io/static/v1?label=barchart&message=4+cmds&color=047857&style=flat-square&logo=chartdotjs&logoColor=white"></a>
   <a data-site="binance" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="binance: 13 commands"><img alt="binance" src="https://img.shields.io/static/v1?label=binance&message=13+cmds&color=047857&style=flat-square&logo=binance&logoColor=white"></a>
   <a data-site="coinbase" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="coinbase: 2 commands"><img alt="coinbase" src="https://img.shields.io/static/v1?label=coinbase&message=2+cmds&color=047857&style=flat-square&logo=coinbase&logoColor=white"></a>
+  <a data-site="eastmoney" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="eastmoney: 16 commands"><img alt="eastmoney" src="https://img.shields.io/static/v1?label=eastmoney&message=16+cmds&color=047857&style=flat-square"></a>
   <a data-site="futu" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="futu: 2 commands"><img alt="futu" src="https://img.shields.io/static/v1?label=futu&message=2+cmds&color=047857&style=flat-square"></a>
   <a data-site="sinafinance" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="sinafinance: 5 commands"><img alt="sinafinance" src="https://img.shields.io/static/v1?label=sinafinance&message=5+cmds&color=047857&style=flat-square"></a>
   <a data-site="xueqiu" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="xueqiu: 14 commands"><img alt="xueqiu" src="https://img.shields.io/static/v1?label=xueqiu&message=14+cmds&color=047857&style=flat-square"></a>
+  <a data-site="yahoo-finance" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="yahoo-finance: 2 commands"><img alt="yahoo-finance" src="https://img.shields.io/static/v1?label=yahoo-finance&message=2+cmds&color=047857&style=flat-square&logo=yahoo&logoColor=white"></a>
 </p>
 <p><strong>shopping</strong><br>
   <a data-site="1688" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="1688: 5 commands"><img alt="1688" src="https://img.shields.io/static/v1?label=1688&message=5+cmds&color=be185d&style=flat-square"></a>
   <a data-site="amazon" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="amazon: 8 commands"><img alt="amazon" src="https://img.shields.io/static/v1?label=amazon&message=8+cmds&color=be185d&style=flat-square&logo=amazon&logoColor=white"></a>
+  <a data-site="coupang" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="coupang: 2 commands"><img alt="coupang" src="https://img.shields.io/static/v1?label=coupang&message=2+cmds&color=be185d&style=flat-square"></a>
   <a data-site="dangdang" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="dangdang: 2 commands"><img alt="dangdang" src="https://img.shields.io/static/v1?label=dangdang&message=2+cmds&color=be185d&style=flat-square"></a>
   <a data-site="dianping" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="dianping: 2 commands"><img alt="dianping" src="https://img.shields.io/static/v1?label=dianping&message=2+cmds&color=be185d&style=flat-square"></a>
   <a data-site="ele" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="ele: 2 commands"><img alt="ele" src="https://img.shields.io/static/v1?label=ele&message=2+cmds&color=be185d&style=flat-square"></a>
+  <a data-site="jd" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="jd: 6 commands"><img alt="jd" src="https://img.shields.io/static/v1?label=jd&message=6+cmds&color=be185d&style=flat-square"></a>
   <a data-site="maoyan" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="maoyan: 2 commands"><img alt="maoyan" src="https://img.shields.io/static/v1?label=maoyan&message=2+cmds&color=be185d&style=flat-square"></a>
   <a data-site="meituan" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="meituan: 1 command"><img alt="meituan" src="https://img.shields.io/static/v1?label=meituan&message=1+cmds&color=be185d&style=flat-square"></a>
   <a data-site="pinduoduo" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="pinduoduo: 2 commands"><img alt="pinduoduo" src="https://img.shields.io/static/v1?label=pinduoduo&message=2+cmds&color=be185d&style=flat-square"></a>
@@ -283,7 +294,9 @@ The grid below is generated from active manifest sites with no quarantined comma
   <a data-site="devto" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="devto: 5 commands"><img alt="devto" src="https://img.shields.io/static/v1?label=devto&message=5+cmds&color=4f46e5&style=flat-square"></a>
   <a data-site="docker-desktop" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="docker-desktop: 7 commands"><img alt="docker-desktop" src="https://img.shields.io/static/v1?label=docker-desktop&message=7+cmds&color=4f46e5&style=flat-square&logo=docker&logoColor=white"></a>
   <a data-site="docker-hub" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="docker-hub: 3 commands"><img alt="docker-hub" src="https://img.shields.io/static/v1?label=docker-hub&message=3+cmds&color=4f46e5&style=flat-square&logo=docker&logoColor=white"></a>
+  <a data-site="gitee" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="gitee: 3 commands"><img alt="gitee" src="https://img.shields.io/static/v1?label=gitee&message=3+cmds&color=4f46e5&style=flat-square"></a>
   <a data-site="github-desktop" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="github-desktop: 7 commands"><img alt="github-desktop" src="https://img.shields.io/static/v1?label=github-desktop&message=7+cmds&color=4f46e5&style=flat-square&logo=github&logoColor=white"></a>
+  <a data-site="github-trending" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="github-trending: 1 command"><img alt="github-trending" src="https://img.shields.io/static/v1?label=github-trending&message=1+cmds&color=4f46e5&style=flat-square&logo=github&logoColor=white"></a>
   <a data-site="gitkraken" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="gitkraken: 7 commands"><img alt="gitkraken" src="https://img.shields.io/static/v1?label=gitkraken&message=7+cmds&color=4f46e5&style=flat-square&logo=gitkraken&logoColor=white"></a>
   <a data-site="gitlab" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="gitlab: 3 commands"><img alt="gitlab" src="https://img.shields.io/static/v1?label=gitlab&message=3+cmds&color=4f46e5&style=flat-square&logo=gitlab&logoColor=white"></a>
   <a data-site="homebrew" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="homebrew: 2 commands"><img alt="homebrew" src="https://img.shields.io/static/v1?label=homebrew&message=2+cmds&color=4f46e5&style=flat-square&logo=homebrew&logoColor=white"></a>
@@ -297,6 +310,7 @@ The grid below is generated from active manifest sites with no quarantined comma
   <a data-site="postman" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="postman: 7 commands"><img alt="postman" src="https://img.shields.io/static/v1?label=postman&message=7+cmds&color=4f46e5&style=flat-square&logo=postman&logoColor=white"></a>
   <a data-site="producthunt" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="producthunt: 5 commands"><img alt="producthunt" src="https://img.shields.io/static/v1?label=producthunt&message=5+cmds&color=4f46e5&style=flat-square&logo=producthunt&logoColor=white"></a>
   <a data-site="pub-dev" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="pub-dev: 2 commands"><img alt="pub-dev" src="https://img.shields.io/static/v1?label=pub-dev&message=2+cmds&color=4f46e5&style=flat-square&logo=dart&logoColor=white"></a>
+  <a data-site="pypi" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="pypi: 2 commands"><img alt="pypi" src="https://img.shields.io/static/v1?label=pypi&message=2+cmds&color=4f46e5&style=flat-square&logo=pypi&logoColor=white"></a>
   <a data-site="rubygems" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="rubygems: 2 commands"><img alt="rubygems" src="https://img.shields.io/static/v1?label=rubygems&message=2+cmds&color=4f46e5&style=flat-square&logo=rubygems&logoColor=white"></a>
   <a data-site="stackoverflow" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="stackoverflow: 6 commands"><img alt="stackoverflow" src="https://img.shields.io/static/v1?label=stackoverflow&message=6+cmds&color=4f46e5&style=flat-square&logo=stackoverflow&logoColor=white"></a>
   <a data-site="vscode" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="vscode: 10 commands"><img alt="vscode" src="https://img.shields.io/static/v1?label=vscode&message=10+cmds&color=4f46e5&style=flat-square&logo=visualstudiocode&logoColor=white"></a>
@@ -318,18 +332,25 @@ The grid below is generated from active manifest sites with no quarantined comma
   <a data-site="minimax" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="minimax: 3 commands"><img alt="minimax" src="https://img.shields.io/static/v1?label=minimax&message=3+cmds&color=7c3aed&style=flat-square"></a>
   <a data-site="notebooklm" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="notebooklm: 15 commands"><img alt="notebooklm" src="https://img.shields.io/static/v1?label=notebooklm&message=15+cmds&color=7c3aed&style=flat-square"></a>
   <a data-site="novita" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="novita: 3 commands"><img alt="novita" src="https://img.shields.io/static/v1?label=novita&message=3+cmds&color=7c3aed&style=flat-square"></a>
+  <a data-site="ollama" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="ollama: 3 commands"><img alt="ollama" src="https://img.shields.io/static/v1?label=ollama&message=3+cmds&color=7c3aed&style=flat-square"></a>
   <a data-site="openrouter" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="openrouter: 2 commands"><img alt="openrouter" src="https://img.shields.io/static/v1?label=openrouter&message=2+cmds&color=7c3aed&style=flat-square&logo=openai&logoColor=white"></a>
   <a data-site="perplexity" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="perplexity: 8 commands"><img alt="perplexity" src="https://img.shields.io/static/v1?label=perplexity&message=8+cmds&color=7c3aed&style=flat-square"></a>
+  <a data-site="replicate" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="replicate: 2 commands"><img alt="replicate" src="https://img.shields.io/static/v1?label=replicate&message=2+cmds&color=7c3aed&style=flat-square"></a>
   <a data-site="yuanbao" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="yuanbao: 3 commands"><img alt="yuanbao" src="https://img.shields.io/static/v1?label=yuanbao&message=3+cmds&color=7c3aed&style=flat-square"></a>
 </p>
 <p><strong>reference</strong><br>
+  <a data-site="arxiv" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="arxiv: 2 commands"><img alt="arxiv" src="https://img.shields.io/static/v1?label=arxiv&message=2+cmds&color=0f766e&style=flat-square&logo=arxiv&logoColor=white"></a>
   <a data-site="chaoxing" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="chaoxing: 2 commands"><img alt="chaoxing" src="https://img.shields.io/static/v1?label=chaoxing&message=2+cmds&color=0f766e&style=flat-square"></a>
   <a data-site="cnki" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="cnki: 1 command"><img alt="cnki" src="https://img.shields.io/static/v1?label=cnki&message=1+cmds&color=0f766e&style=flat-square"></a>
   <a data-site="dictionary" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="dictionary: 3 commands"><img alt="dictionary" src="https://img.shields.io/static/v1?label=dictionary&message=3+cmds&color=0f766e&style=flat-square"></a>
   <a data-site="google" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="google: 4 commands"><img alt="google" src="https://img.shields.io/static/v1?label=google&message=4+cmds&color=0f766e&style=flat-square&logo=google&logoColor=white"></a>
+  <a data-site="imdb" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="imdb: 6 commands"><img alt="imdb" src="https://img.shields.io/static/v1?label=imdb&message=6+cmds&color=0f766e&style=flat-square"></a>
   <a data-site="paperreview" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="paperreview: 3 commands"><img alt="paperreview" src="https://img.shields.io/static/v1?label=paperreview&message=3+cmds&color=0f766e&style=flat-square"></a>
+  <a data-site="wikipedia" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="wikipedia: 4 commands"><img alt="wikipedia" src="https://img.shields.io/static/v1?label=wikipedia&message=4+cmds&color=0f766e&style=flat-square&logo=wikipedia&logoColor=white"></a>
 </p>
 <p><strong>audio</strong><br>
+  <a data-site="apple-podcasts" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="apple-podcasts: 2 commands"><img alt="apple-podcasts" src="https://img.shields.io/static/v1?label=apple-podcasts&message=2+cmds&color=16a34a&style=flat-square&logo=applepodcasts&logoColor=white"></a>
+  <a data-site="netease-music" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="netease-music: 15 commands"><img alt="netease-music" src="https://img.shields.io/static/v1?label=netease-music&message=15+cmds&color=16a34a&style=flat-square&logo=neteasecloudmusic&logoColor=white"></a>
   <a data-site="spotify" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="spotify: 23 commands"><img alt="spotify" src="https://img.shields.io/static/v1?label=spotify&message=23+cmds&color=16a34a&style=flat-square&logo=spotify&logoColor=white"></a>
   <a data-site="xiaoyuzhou" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="xiaoyuzhou: 5 commands"><img alt="xiaoyuzhou" src="https://img.shields.io/static/v1?label=xiaoyuzhou&message=5+cmds&color=16a34a&style=flat-square"></a>
 </p>
@@ -337,6 +358,7 @@ The grid below is generated from active manifest sites with no quarantined comma
   <a data-site="medium" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="medium: 5 commands"><img alt="medium" src="https://img.shields.io/static/v1?label=medium&message=5+cmds&color=c2410c&style=flat-square"></a>
   <a data-site="pixiv" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="pixiv: 6 commands"><img alt="pixiv" src="https://img.shields.io/static/v1?label=pixiv&message=6+cmds&color=c2410c&style=flat-square&logo=pixiv&logoColor=white"></a>
   <a data-site="sspai" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="sspai: 2 commands"><img alt="sspai" src="https://img.shields.io/static/v1?label=sspai&message=2+cmds&color=c2410c&style=flat-square"></a>
+  <a data-site="substack" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="substack: 3 commands"><img alt="substack" src="https://img.shields.io/static/v1?label=substack&message=3+cmds&color=c2410c&style=flat-square"></a>
   <a data-site="weread" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="weread: 8 commands"><img alt="weread" src="https://img.shields.io/static/v1?label=weread&message=8+cmds&color=c2410c&style=flat-square"></a>
   <a data-site="zsxq" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="zsxq: 5 commands"><img alt="zsxq" src="https://img.shields.io/static/v1?label=zsxq&message=5+cmds&color=c2410c&style=flat-square"></a>
 </p>
@@ -360,6 +382,7 @@ The grid below is generated from active manifest sites with no quarantined comma
   <a data-site="drawio" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="drawio: 1 command"><img alt="drawio" src="https://img.shields.io/static/v1?label=drawio&message=1+cmds&color=334155&style=flat-square"></a>
   <a data-site="excel" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="excel: 7 commands"><img alt="excel" src="https://img.shields.io/static/v1?label=excel&message=7+cmds&color=334155&style=flat-square"></a>
   <a data-site="ffmpeg" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="ffmpeg: 11 commands"><img alt="ffmpeg" src="https://img.shields.io/static/v1?label=ffmpeg&message=11+cmds&color=334155&style=flat-square&logo=ffmpeg&logoColor=white"></a>
+  <a data-site="figma" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="figma: 7 commands"><img alt="figma" src="https://img.shields.io/static/v1?label=figma&message=7+cmds&color=334155&style=flat-square&logo=figma&logoColor=white"></a>
   <a data-site="freecad" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="freecad: 15 commands"><img alt="freecad" src="https://img.shields.io/static/v1?label=freecad&message=15+cmds&color=334155&style=flat-square&logo=freecad&logoColor=white"></a>
   <a data-site="gimp" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="gimp: 12 commands"><img alt="gimp" src="https://img.shields.io/static/v1?label=gimp&message=12+cmds&color=334155&style=flat-square&logo=gimp&logoColor=white"></a>
   <a data-site="imagemagick" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="imagemagick: 6 commands"><img alt="imagemagick" src="https://img.shields.io/static/v1?label=imagemagick&message=6+cmds&color=334155&style=flat-square&logo=imagemagick&logoColor=white"></a>
@@ -377,6 +400,7 @@ The grid below is generated from active manifest sites with no quarantined comma
 </p>
 <p><strong>utility</strong><br>
   <a data-site="bitwarden" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="bitwarden: 7 commands"><img alt="bitwarden" src="https://img.shields.io/static/v1?label=bitwarden&message=7+cmds&color=0d9488&style=flat-square"></a>
+  <a data-site="exchangerate" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="exchangerate: 1 command"><img alt="exchangerate" src="https://img.shields.io/static/v1?label=exchangerate&message=1+cmds&color=0d9488&style=flat-square"></a>
   <a data-site="ip-info" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="ip-info: 1 command"><img alt="ip-info" src="https://img.shields.io/static/v1?label=ip-info&message=1+cmds&color=0d9488&style=flat-square"></a>
   <a data-site="linear" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="linear: 10 commands"><img alt="linear" src="https://img.shields.io/static/v1?label=linear&message=10+cmds&color=0d9488&style=flat-square&logo=linear&logoColor=white"></a>
   <a data-site="qweather" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="qweather: 2 commands"><img alt="qweather" src="https://img.shields.io/static/v1?label=qweather&message=2+cmds&color=0d9488&style=flat-square&logo=icloud&logoColor=white"></a>
@@ -385,6 +409,7 @@ The grid below is generated from active manifest sites with no quarantined comma
 </p>
 <p><strong>other</strong><br>
   <a data-site="51job" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="51job: 4 commands"><img alt="51job" src="https://img.shields.io/static/v1?label=51job&message=4+cmds&color=64748b&style=flat-square"></a>
+  <a data-site="adguardhome" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="adguardhome: 2 commands"><img alt="adguardhome" src="https://img.shields.io/static/v1?label=adguardhome&message=2+cmds&color=64748b&style=flat-square"></a>
   <a data-site="audacity" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="audacity: 8 commands"><img alt="audacity" src="https://img.shields.io/static/v1?label=audacity&message=8+cmds&color=64748b&style=flat-square"></a>
   <a data-site="autoagent" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="autoagent: 1 command"><img alt="autoagent" src="https://img.shields.io/static/v1?label=autoagent&message=1+cmds&color=64748b&style=flat-square"></a>
   <a data-site="aws" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="aws: 1 command"><img alt="aws" src="https://img.shields.io/static/v1?label=aws&message=1+cmds&color=64748b&style=flat-square&logo=amazonaws&logoColor=white"></a>
@@ -404,6 +429,7 @@ The grid below is generated from active manifest sites with no quarantined comma
   <a data-site="gov-policy" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="gov-policy: 2 commands"><img alt="gov-policy" src="https://img.shields.io/static/v1?label=gov-policy&message=2+cmds&color=64748b&style=flat-square"></a>
   <a data-site="hermes" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="hermes: 3 commands"><img alt="hermes" src="https://img.shields.io/static/v1?label=hermes&message=3+cmds&color=64748b&style=flat-square"></a>
   <a data-site="imessage" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="imessage: 3 commands"><img alt="imessage" src="https://img.shields.io/static/v1?label=imessage&message=3+cmds&color=64748b&style=flat-square"></a>
+  <a data-site="itch-io" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="itch-io: 1 command"><img alt="itch-io" src="https://img.shields.io/static/v1?label=itch-io&message=1+cmds&color=64748b&style=flat-square"></a>
   <a data-site="jianyu" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="jianyu: 2 commands"><img alt="jianyu" src="https://img.shields.io/static/v1?label=jianyu&message=2+cmds&color=64748b&style=flat-square"></a>
   <a data-site="jimeng" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="jimeng: 4 commands"><img alt="jimeng" src="https://img.shields.io/static/v1?label=jimeng&message=4+cmds&color=64748b&style=flat-square"></a>
   <a data-site="jq" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="jq: 2 commands"><img alt="jq" src="https://img.shields.io/static/v1?label=jq&message=2+cmds&color=64748b&style=flat-square&logo=json&logoColor=white"></a>
@@ -450,6 +476,7 @@ The grid below is generated from active manifest sites with no quarantined comma
   <a data-site="ycombinator" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="ycombinator: 1 command"><img alt="ycombinator" src="https://img.shields.io/static/v1?label=ycombinator&message=1+cmds&color=64748b&style=flat-square"></a>
   <a data-site="yollomi" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="yollomi: 12 commands"><img alt="yollomi" src="https://img.shields.io/static/v1?label=yollomi&message=12+cmds&color=64748b&style=flat-square"></a>
   <a data-site="yt-dlp" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="yt-dlp: 4 commands"><img alt="yt-dlp" src="https://img.shields.io/static/v1?label=yt-dlp&message=4+cmds&color=64748b&style=flat-square&logo=youtube&logoColor=white"></a>
+  <a data-site="zoom" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="zoom: 2 commands"><img alt="zoom" src="https://img.shields.io/static/v1?label=zoom&message=2+cmds&color=64748b&style=flat-square&logo=zoom&logoColor=white"></a>
   <a data-site="zotero" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="zotero: 8 commands"><img alt="zotero" src="https://img.shields.io/static/v1?label=zotero&message=8+cmds&color=64748b&style=flat-square&logo=zotero&logoColor=white"></a>
 </p>
 </div>

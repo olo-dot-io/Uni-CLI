@@ -43,9 +43,9 @@ columns: [title, published, url]
 
 五个字段定义契约：`site` (集成名)、`name` (命令)、`type` (面向哪个表面 — web-api / browser / desktop / bridge / service)、`strategy` (认证路径)、`pipeline` (产出结果的步骤)。零 import、零 class、零编译——Agent 直接读、直接改选择器、几秒就验证完。
 
-## 59 步 pipeline
+## <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> 步 pipeline
 
-所有适配器共用同一份 59 步 pipeline 注册表。步骤按用途分组：API 拉取、变换、浏览器、桌面、媒体、控制流、断言。每步都是确定性的——同样输入产出同样输出——所以适配器组合起来就是稳定的执行图。
+所有适配器共用同一份 <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> 步 pipeline 注册表。步骤按用途分组：API 拉取、变换、浏览器、桌面、媒体、控制流、断言。每步都是确定性的——同样输入产出同样输出——所以适配器组合起来就是稳定的执行图。
 
 | 类别   | 示例                                                                | 用途                  |
 | ------ | ------------------------------------------------------------------- | --------------------- |
@@ -75,7 +75,7 @@ Pipeline 自上而下走，共享一个 context 对象。每步读 `ctx.data`、
 
 ## v2 AgentEnvelope
 
-每条命令都返回 v2 AgentEnvelope——成功失败同一个形状。Agent 用一份 schema 解析 1450 条命令。
+每条命令都返回 v2 AgentEnvelope——成功失败同一个形状。Agent 用一份 schema 解析 <span><!-- STATS:command_count -->1458<!-- /STATS --></span> 条命令。
 
 ```json
 {
@@ -165,7 +165,7 @@ $ unicli hackernews top -n 10 -f json \
 # 4. Agent 改 YAML，跑 `unicli repair` 重新验证
 ```
 
-这就是整套交互模型。一种命令形状跨 235+ 站点、1450 条命令。一种错误回执跨每一次失败。一条 self-repair 路径跨每一个适配器。
+这就是整套交互模型。一种命令形状跨 <span><!-- STATS:site_count -->238<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1458<!-- /STATS --></span> 条命令。一种错误回执跨每一次失败。一条 self-repair 路径跨每一个适配器。
 
 ## 延伸阅读
 

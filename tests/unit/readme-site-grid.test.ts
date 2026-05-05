@@ -51,14 +51,22 @@ function readGrid(target: { label: string; path: string }): string {
   return readme.slice(start, end);
 }
 
-function aliveSites(): string[] {
+interface ActiveSiteRecord {
+  site: string;
+  commandCount: number;
+}
+
+function activeSites(): ActiveSiteRecord[] {
   const manifest = JSON.parse(readFileSync(MANIFEST, "utf-8")) as Manifest;
   return Object.entries(manifest.sites)
-    .filter(([, site]) =>
-      site.commands.every((command) => command.quarantined !== true),
-    )
-    .map(([site]) => site)
-    .sort();
+    .map(([site, info]) => ({
+      site,
+      commandCount: info.commands.filter(
+        (command) => command.quarantined !== true,
+      ).length,
+    }))
+    .filter((record) => record.commandCount > 0)
+    .sort((a, b) => a.site.localeCompare(b.site));
 }
 
 describe("README active-site grid", () => {
@@ -66,7 +74,7 @@ describe("README active-site grid", () => {
     "lists every alive manifest site exactly once in $label",
     (target) => {
       const grid = readGrid(target);
-      const sites = aliveSites();
+      const sites = activeSites().map((record) => record.site);
       const missing = sites.filter(
         (site) => !grid.includes(`data-site="${site}"`),
       );
@@ -82,6 +90,20 @@ describe("README active-site grid", () => {
 
       expect(missing).toEqual([]);
       expect(wrongOccurrences).toEqual([]);
+    },
+  );
+
+  it.each(README_TARGETS)(
+    "uses non-quarantined command counts in $label badges",
+    (target) => {
+      const grid = readGrid(target);
+
+      for (const record of activeSites()) {
+        const suffix = record.commandCount === 1 ? "command" : "commands";
+        expect(grid, `${target.label} grid count for ${record.site}`).toContain(
+          `title="${record.site}: ${record.commandCount} ${suffix}"`,
+        );
+      }
     },
   );
 

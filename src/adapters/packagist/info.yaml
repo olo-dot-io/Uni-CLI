@@ -19,7 +19,13 @@ pipeline:
   - fetch:
       url: "https://packagist.org/packages/${{ args.package }}.json"
   - select: package
-columns: [name, description, time]
+  - map:
+      name: "${{ item.name }}"
+      description: "${{ item.description }}"
+      time: "${{ item.time }}"
+      repository: "${{ item.repository }}"
+      versions: "${{ item.versions | keys | length }}"
+columns: [name, description, time, repository, versions]
 capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public
