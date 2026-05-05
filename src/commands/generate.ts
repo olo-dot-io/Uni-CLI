@@ -1,9 +1,9 @@
 /**
- * Generate command — one-shot explore + synthesize + select best adapter.
- *
- * Flow: explore URL → synthesize candidates → match against goal →
- * copy winning YAML to ~/.unicli/adapters/<site>/<name>.yaml →
- * print the generated adapter to stdout.
+ * @owner   src/commands/generate.ts
+ * @does    Run one-shot adapter authoring by exploring a URL, generating candidates, selecting one, and installing it locally.
+ * @needs   commander, chalk, fs/path, browser bridge/workspace/site-memory, engine interceptor/endpoint-scorer/user-home, output, adapter-authoring
+ * @feeds   src/cli.ts, eval smoke files, ~/.unicli/adapters, tests/unit/commands/explore-generate.test.ts
+ * @breaks  Browser, endpoint, candidate, and filesystem failures emit structured command envelopes. No fallback.
  */
 
 import { Command } from "commander";
@@ -22,11 +22,17 @@ import {
   generateInterceptorJs,
   generateReadInterceptedJs,
 } from "../engine/interceptor.js";
+import { processEndpoints } from "../engine/endpoint-scorer.js";
 import {
-  processEndpoints,
-  type EndpointEntry,
-  type ScoredEndpoint,
-} from "../engine/endpoint-scorer.js";
+  buildGeneratedAdapterYaml,
+  convertToEndpointEntries,
+  deriveCommandName,
+  detectAuth,
+  extractSiteName,
+  pickStrategy,
+  uniqueName,
+  type CapturedEndpointRequest,
+} from "./adapter-authoring.js";
 import { recordEndpointDiscoveries } from "../browser/site-memory.js";
 import { format, detectFormat } from "../output/formatter.js";
 import { makeCtx } from "../output/envelope.js";
@@ -36,25 +42,12 @@ import type { OutputFormat } from "../types.js";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
-interface CapturedRequest {
-  url: string;
-  data: unknown;
-  ts: number;
-}
-
 interface CandidateInfo {
   name: string;
   file: string;
   endpoint: string;
   capability: string | undefined;
   strategy: string;
-}
-
-interface AuthInfo {
-  strategy: "public" | "cookie" | "header";
-  cookies: string[];
-  csrfToken: boolean;
-  notes: string[];
 }
 
 // ── Goal Alias Table ──────────────────────────────────────────────────
@@ -163,7 +156,7 @@ export function registerGenerateCommand(program: Command): void {
           }
 
           // Collect captured requests
-          const allRequests: CapturedRequest[] = [];
+          const allRequests: CapturedEndpointRequest[] = [];
 
           let polling = false;
           const pollInterval = setInterval(async () => {
@@ -173,7 +166,7 @@ export function registerGenerateCommand(program: Command): void {
               const raw = (await page.evaluate(
                 generateReadInterceptedJs(),
               )) as string;
-              const batch = JSON.parse(raw) as CapturedRequest[];
+              const batch = JSON.parse(raw) as CapturedEndpointRequest[];
               allRequests.push(...batch);
             } catch {
               /* page may have navigated */
@@ -203,7 +196,7 @@ export function registerGenerateCommand(program: Command): void {
             const raw = (await page.evaluate(
               generateReadInterceptedJs(),
             )) as string;
-            const batch = JSON.parse(raw) as CapturedRequest[];
+            const batch = JSON.parse(raw) as CapturedEndpointRequest[];
             allRequests.push(...batch);
           } catch {
             /* ok */
@@ -281,7 +274,12 @@ export function registerGenerateCommand(program: Command): void {
             usedNames.add(name);
 
             const strategy = pickStrategy(auth);
-            const yaml = buildYaml(siteName, name, ep, strategy);
+            const yaml = buildGeneratedAdapterYaml(
+              siteName,
+              name,
+              ep,
+              strategy,
+            );
             const filePath = join(candidatesDir, `${name}.yaml`);
 
             const { writeFileSync } = await import("node:fs");
@@ -440,201 +438,4 @@ function selectBest(
   }
 
   return bestMatch;
-}
-
-// ── Shared Helpers (duplicated from explore/synthesize for isolation) ─
-
-function extractSiteName(url: string): string {
-  try {
-    const hostname = new URL(url).hostname;
-    return (
-      hostname
-        .replace(/^www\./, "")
-        .split(".")
-        .slice(0, -1)
-        .join("-") || hostname
-    );
-  } catch {
-    return "unknown";
-  }
-}
-
-function convertToEndpointEntries(
-  requests: CapturedRequest[],
-): EndpointEntry[] {
-  const seen = new Set<string>();
-  const entries: EndpointEntry[] = [];
-
-  for (const req of requests) {
-    let pathname: string;
-    try {
-      pathname = new URL(req.url).pathname;
-    } catch {
-      continue;
-    }
-    if (seen.has(pathname)) continue;
-    seen.add(pathname);
-
-    const bodyStr = req.data != null ? JSON.stringify(req.data) : "";
-
-    entries.push({
-      url: req.url,
-      method: "GET",
-      status: 200,
-      contentType: "application/json",
-      responseBody: bodyStr || undefined,
-      size: bodyStr.length,
-    });
-  }
-
-  return entries;
-}
-
-const AUTH_COOKIE_NAMES = [
-  "session_id",
-  "sessionid",
-  "session",
-  "token",
-  "access_token",
-  "auth_token",
-  "jwt",
-  "sid",
-  "PHPSESSID",
-  "connect.sid",
-  "_session",
-  "user_session",
-  "login_token",
-];
-
-function detectAuth(cookies: Record<string, string>): AuthInfo {
-  const notes: string[] = [];
-  const authCookies: string[] = [];
-  let csrfToken = false;
-
-  for (const name of Object.keys(cookies)) {
-    const lower = name.toLowerCase();
-    if (AUTH_COOKIE_NAMES.some((pat) => lower.includes(pat.toLowerCase()))) {
-      authCookies.push(name);
-    }
-    if (lower.includes("csrf") || lower.includes("xsrf")) {
-      csrfToken = true;
-    }
-  }
-
-  let strategy: AuthInfo["strategy"] = "public";
-  if (csrfToken) {
-    strategy = "header";
-  } else if (authCookies.length > 0) {
-    strategy = "cookie";
-  }
-
-  return { strategy, cookies: authCookies, csrfToken, notes };
-}
-
-function pickStrategy(auth: AuthInfo): string {
-  if (auth.csrfToken) return "header";
-  if (auth.cookies.length > 0) return "cookie";
-  return "public";
-}
-
-function deriveCommandName(url: string): string {
-  let pathname: string;
-  try {
-    pathname = new URL(url).pathname;
-  } catch {
-    return "data";
-  }
-
-  const parts = pathname
-    .replace(/^\/api\/(v\d+\/)?/, "")
-    .replace(/\/$/, "")
-    .split("/")
-    .filter(Boolean);
-
-  if (parts.length === 0) return "data";
-
-  const name = parts
-    .slice(-2)
-    .join("-")
-    .replace(/[^a-zA-Z0-9-]/g, "-")
-    .replace(/-+/g, "-")
-    .toLowerCase();
-
-  return name || "data";
-}
-
-function uniqueName(base: string, used: Set<string>): string {
-  if (!used.has(base)) return base;
-  let i = 2;
-  while (used.has(`${base}-${i}`)) i++;
-  return `${base}-${i}`;
-}
-
-function detectSelectPath(body: unknown): string {
-  if (body == null) return "";
-  if (Array.isArray(body)) return "";
-
-  if (typeof body === "object") {
-    const obj = body as Record<string, unknown>;
-    for (const [key, val] of Object.entries(obj)) {
-      if (Array.isArray(val) && val.length > 0) {
-        return key;
-      }
-    }
-  }
-
-  return "";
-}
-
-function buildYaml(
-  site: string,
-  name: string,
-  ep: ScoredEndpoint,
-  strategy: string,
-): string {
-  const description = ep.capability
-    ? `Auto-generated: ${ep.capability}`
-    : `Auto-generated from ${deriveCommandName(ep.url)}`;
-
-  let parsedBody: unknown;
-  try {
-    parsedBody = ep.responseBody ? JSON.parse(ep.responseBody) : undefined;
-  } catch {
-    parsedBody = undefined;
-  }
-  const selectPath = detectSelectPath(parsedBody);
-  const fields = ep.detectedFields.slice(0, 10);
-  const columns = fields.slice(0, 6);
-
-  const lines: string[] = [
-    `site: ${site}`,
-    `name: ${name}`,
-    `description: "${description}"`,
-    "type: web-api",
-    `strategy: ${strategy}`,
-    "pipeline:",
-    `  - fetch:`,
-    `      url: "${ep.url}"`,
-  ];
-
-  if (selectPath) {
-    lines.push(`  - select: "${selectPath}"`);
-  }
-
-  if (fields.length > 0) {
-    lines.push("  - map:");
-    for (const field of fields) {
-      lines.push(`      ${field}: "\${{ item.${field} }}"`);
-    }
-  }
-
-  lines.push(`  - limit: "\${{ args.limit | default(20) }}"`);
-
-  if (columns.length > 0) {
-    lines.push(`columns: [${columns.join(", ")}]`);
-  } else {
-    lines.push("columns: []");
-  }
-
-  return lines.join("\n") + "\n";
 }

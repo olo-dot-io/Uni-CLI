@@ -1,9 +1,9 @@
 /**
- * Explore command — API discovery engine.
- *
- * Flow: connect browser → navigate to URL → inject interceptor →
- * optionally auto-interact → capture network requests → score endpoints →
- * detect auth method → write results to ~/.unicli/explore/<site>/
+ * @owner   src/commands/explore.ts
+ * @does    Explore a browser page, capture API traffic, score endpoints, and persist adapter-authoring evidence.
+ * @needs   commander, chalk, fs/path, browser bridge/workspace/site-memory, engine interceptor/endpoint-scorer/user-home, output, adapter-authoring
+ * @feeds   src/cli.ts, src/commands/generate.ts workflow, src/commands/synthesize.ts workflow, tests/unit/commands/explore-generate.test.ts
+ * @breaks  Browser, capture, scoring, and filesystem failures emit structured command envelopes. No fallback.
  */
 
 import { Command } from "commander";
@@ -21,6 +21,13 @@ import {
   type EndpointEntry,
   type ScoredEndpoint,
 } from "../engine/endpoint-scorer.js";
+import {
+  convertToEndpointEntries,
+  detectAuth,
+  extractSiteName,
+  type AdapterAuthoringAuthInfo,
+  type CapturedEndpointRequest,
+} from "./adapter-authoring.js";
 import { recordEndpointDiscoveries } from "../browser/site-memory.js";
 import { format, detectFormat } from "../output/formatter.js";
 import { makeCtx } from "../output/envelope.js";
@@ -29,21 +36,6 @@ import { userHome } from "../engine/user-home.js";
 import type { OutputFormat } from "../types.js";
 
 // ── Types ─────────────────────────────────────────────────────────────
-
-interface CapturedRequest {
-  url: string;
-  data: unknown;
-  ts: number;
-  method?: string;
-  status?: number;
-}
-
-interface AuthInfo {
-  strategy: "public" | "cookie" | "header";
-  cookies: string[];
-  csrfToken: boolean;
-  notes: string[];
-}
 
 interface CapabilityGroup {
   capability: string;
@@ -121,7 +113,7 @@ export function registerExploreCommand(program: Command): void {
           }
 
           // Collect captured requests over the timeout period
-          const allRequests: CapturedRequest[] = [];
+          const allRequests: CapturedEndpointRequest[] = [];
           const MAX_CAPTURED = 10_000;
 
           let polling = false;
@@ -133,7 +125,7 @@ export function registerExploreCommand(program: Command): void {
               const raw = (await page.evaluate(
                 generateReadInterceptedJs(),
               )) as string;
-              const batch = JSON.parse(raw) as CapturedRequest[];
+              const batch = JSON.parse(raw) as CapturedEndpointRequest[];
               if (batch.length > 0) {
                 const remaining = MAX_CAPTURED - allRequests.length;
                 allRequests.push(...batch.slice(0, remaining));
@@ -173,7 +165,7 @@ export function registerExploreCommand(program: Command): void {
               const raw = (await page.evaluate(
                 generateReadInterceptedJs(),
               )) as string;
-              const batch = JSON.parse(raw) as CapturedRequest[];
+              const batch = JSON.parse(raw) as CapturedEndpointRequest[];
               const remaining = MAX_CAPTURED - allRequests.length;
               allRequests.push(...batch.slice(0, remaining));
             }
@@ -210,7 +202,7 @@ export function registerExploreCommand(program: Command): void {
 
           // Detect auth
           const cookies = await page.cookies();
-          const auth = detectAuth(cookies, allRequests);
+          const auth = detectAuth(cookies);
 
           // Group by capability
           const capabilities = groupByCapability(scored);
@@ -457,97 +449,6 @@ async function iframeRefetch(
   }
 }
 
-// ── Data Conversion ───────────────────────────────────────────────────
-
-function convertToEndpointEntries(
-  requests: CapturedRequest[],
-): EndpointEntry[] {
-  const seen = new Set<string>();
-  const entries: EndpointEntry[] = [];
-
-  for (const req of requests) {
-    // Deduplicate by URL pathname
-    let pathname: string;
-    try {
-      pathname = new URL(req.url).pathname;
-    } catch {
-      continue;
-    }
-    if (seen.has(pathname)) continue;
-    seen.add(pathname);
-
-    const bodyStr = req.data != null ? JSON.stringify(req.data) : "";
-
-    entries.push({
-      url: req.url,
-      method: req.method ?? "GET",
-      status: req.status ?? 200,
-      contentType: "application/json",
-      responseBody: bodyStr || undefined,
-      size: bodyStr.length,
-    });
-  }
-
-  return entries;
-}
-
-// ── Auth Detection ────────────────────────────────────────────────────
-
-const AUTH_COOKIE_NAMES = [
-  "session_id",
-  "sessionid",
-  "session",
-  "token",
-  "access_token",
-  "auth_token",
-  "jwt",
-  "sid",
-  "PHPSESSID",
-  "connect.sid",
-  "_session",
-  "user_session",
-  "login_token",
-];
-
-function detectAuth(
-  cookies: Record<string, string>,
-  _requests: CapturedRequest[],
-): AuthInfo {
-  const notes: string[] = [];
-  const authCookies: string[] = [];
-  let csrfToken = false;
-
-  // Scan cookie names for auth indicators
-  for (const name of Object.keys(cookies)) {
-    const lower = name.toLowerCase();
-    if (AUTH_COOKIE_NAMES.some((pat) => lower.includes(pat.toLowerCase()))) {
-      authCookies.push(name);
-    }
-    if (lower.includes("csrf") || lower.includes("xsrf")) {
-      csrfToken = true;
-      notes.push(`CSRF cookie detected: ${name}`);
-    }
-  }
-
-  if (authCookies.length > 0) {
-    notes.push(`Auth cookies: ${authCookies.join(", ")}`);
-  }
-
-  // Determine strategy
-  let strategy: AuthInfo["strategy"] = "public";
-  if (csrfToken) {
-    strategy = "header";
-    notes.push("Recommended strategy: header (CSRF token present)");
-  } else if (authCookies.length > 0) {
-    strategy = "cookie";
-    notes.push("Recommended strategy: cookie");
-  } else {
-    notes.push("No auth detected — public API likely");
-  }
-
-  return { strategy, cookies: authCookies, csrfToken, notes };
-}
-
 // ── Capability Grouping ───────────────────────────────────────────────
 
 function groupByCapability(scored: ScoredEndpoint[]): CapabilityGroup[] {
@@ -574,7 +475,7 @@ function printSummary(
   siteName: string,
   scored: ScoredEndpoint[],
   capabilities: CapabilityGroup[],
-  auth: AuthInfo,
+  auth: AdapterAuthoringAuthInfo,
   outDir: string,
 ): void {
   process.stderr.write(chalk.bold(`\n--- Explore Results: ${siteName} ---\n`));
@@ -618,21 +519,4 @@ function printSummary(
   process.stderr.write(
     chalk.dim("  Next: unicli synthesize " + siteName + "\n\n"),
   );
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────
-
-function extractSiteName(url: string): string {
-  try {
-    const hostname = new URL(url).hostname;
-    return (
-      hostname
-        .replace(/^www\./, "")
-        .split(".")
-        .slice(0, -1)
-        .join("-") || hostname
-    );
-  } catch {
-    return "unknown";
-  }
 }

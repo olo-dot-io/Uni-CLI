@@ -1,9 +1,9 @@
 /**
- * Synthesize command — YAML adapter candidate generator.
- *
- * Reads explore results from ~/.unicli/explore/<site>/ and generates
- * YAML adapter candidates for each high-scoring endpoint. Three pipeline
- * modes: public API, cookie API, browser intercept.
+ * @owner   src/commands/synthesize.ts
+ * @does    Generate YAML adapter candidates from explored endpoints or reusable site memory.
+ * @needs   commander, chalk, fs/path, engine analysis/endpoint-scorer/user-home, browser site-memory, output, adapter-authoring
+ * @feeds   src/cli.ts, src/commands/generate.ts workflow, ~/.unicli/explore candidates, tests/unit/commands/synthesize.test.ts
+ * @breaks  Missing explore data, malformed endpoint data, and filesystem failures emit structured command envelopes. No fallback.
  */
 
 import { Command } from "commander";
@@ -19,15 +19,15 @@ import type { OutputFormat } from "../types.js";
 import { format, detectFormat } from "../output/formatter.js";
 import { makeCtx } from "../output/envelope.js";
 import { errorTypeToCode, mapErrorToExitCode } from "../output/error-map.js";
+import {
+  buildGeneratedAdapterYaml,
+  deriveCommandName,
+  pickStrategy,
+  uniqueName,
+  type AdapterAuthoringAuthInfo,
+} from "./adapter-authoring.js";
 
 // ── Types ─────────────────────────────────────────────────────────────
-
-interface AuthInfo {
-  strategy: "public" | "cookie" | "header";
-  cookies: string[];
-  csrfToken: boolean;
-  notes: string[];
-}
 
 interface CandidateInfo {
   name: string;
@@ -109,14 +109,16 @@ export function registerSynthesizeCommand(program: Command): void {
           ? JSON.parse(readFileSync(endpointsPath, "utf-8"))
           : memoryEndpoints;
 
-        let auth: AuthInfo = {
+        let auth: AdapterAuthoringAuthInfo = {
           strategy: "public",
           cookies: [],
           csrfToken: false,
           notes: [],
         };
         if (existsSync(authPath)) {
-          auth = JSON.parse(readFileSync(authPath, "utf-8")) as AuthInfo;
+          auth = JSON.parse(
+            readFileSync(authPath, "utf-8"),
+          ) as AdapterAuthoringAuthInfo;
         }
 
         // Filter to useful endpoints and take the top N
@@ -176,8 +178,8 @@ export function registerSynthesizeCommand(program: Command): void {
           );
           usedNames.add(name);
 
-          const strategy = pickStrategy(auth, ep);
-          const yaml = buildYaml(site, name, ep, strategy);
+          const strategy = pickStrategy(auth);
+          const yaml = buildGeneratedAdapterYaml(site, name, ep, strategy);
           const fileName = `${name}.yaml`;
           const filePath = join(candidatesDir, fileName);
 
@@ -240,184 +242,4 @@ export function registerSynthesizeCommand(program: Command): void {
         process.exit(mapErrorToExitCode(err));
       }
     });
-}
-
-// ── Strategy Selection ────────────────────────────────────────────────
-
-function pickStrategy(auth: AuthInfo, _ep: ScoredEndpoint): string {
-  // If the auth detection found CSRF tokens, use header strategy
-  if (auth.csrfToken) return "header";
-  // If auth cookies found, use cookie strategy
-  if (auth.cookies.length > 0) return "cookie";
-  // Default to public
-  return "public";
-}
-
-// ── YAML Generation ───────────────────────────────────────────────────
-
-function parseResponseBody(ep: ScoredEndpoint): unknown {
-  try {
-    return ep.responseBody ? JSON.parse(ep.responseBody) : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function getBaseUrl(url: string): string {
-  try {
-    const u = new URL(url);
-    return `${u.protocol}//${u.hostname}`;
-  } catch {
-    return url;
-  }
-}
-
-function getPathname(url: string): string {
-  try {
-    return new URL(url).pathname;
-  } catch {
-    return url;
-  }
-}
-
-function pipelineMapLines(fields: string[]): string[] {
-  if (fields.length === 0) return [];
-  const lines = ["  - map:"];
-  for (const field of fields) {
-    lines.push(`      ${field}: "\${{ item.${field} }}"`);
-  }
-  return lines;
-}
-
-function pipelineSelectLine(selectPath: string): string[] {
-  return selectPath ? [`  - select: "${selectPath}"`] : [];
-}
-
-function buildApiPipeline(
-  ep: ScoredEndpoint,
-  strategy: string,
-  selectPath: string,
-  fields: string[],
-): string[] {
-  return [
-    "type: web-api",
-    `strategy: ${strategy}`,
-    "pipeline:",
-    "  - fetch:",
-    `      url: "${ep.url}"`,
-    ...pipelineSelectLine(selectPath),
-    ...pipelineMapLines(fields),
-    `  - limit: "\${{ args.limit | default(20) }}"`,
-  ];
-}
-
-function buildBrowserPipeline(
-  ep: ScoredEndpoint,
-  selectPath: string,
-  fields: string[],
-): string[] {
-  return [
-    "type: browser",
-    "strategy: intercept",
-    "pipeline:",
-    "  - navigate:",
-    `      url: "${getBaseUrl(ep.url)}"`,
-    "      settleMs: 2000",
-    "  - intercept:",
-    `      pattern: "${getPathname(ep.url)}"`,
-    "      wait: 5000",
-    ...pipelineSelectLine(selectPath),
-    ...pipelineMapLines(fields),
-    `  - limit: "\${{ args.limit | default(20) }}"`,
-  ];
-}
-
-function buildYaml(
-  site: string,
-  name: string,
-  ep: ScoredEndpoint,
-  strategy: string,
-): string {
-  const description = ep.capability
-    ? `Auto-generated: ${ep.capability}`
-    : `Auto-generated from ${deriveCommandName(ep.url)}`;
-  const selectPath = detectSelectPath(parseResponseBody(ep));
-  const fields = ep.detectedFields.slice(0, 10);
-  const columns = fields.slice(0, 6);
-
-  const header = [
-    `site: ${site}`,
-    `name: ${name}`,
-    `description: "${description}"`,
-  ];
-  const body =
-    strategy === "public" || strategy === "cookie" || strategy === "header"
-      ? buildApiPipeline(ep, strategy, selectPath, fields)
-      : buildBrowserPipeline(ep, selectPath, fields);
-  const footer = [
-    columns.length > 0 ? `columns: [${columns.join(", ")}]` : "columns: []",
-  ];
-
-  return [...header, ...body, ...footer].join("\n") + "\n";
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────
-
-/**
- * Detect the JSON path to the main data array in a response body.
- * Returns the key name (e.g. "data", "items", "results") or empty string.
- */
-function detectSelectPath(body: unknown): string {
-  if (body == null) return "";
-  if (Array.isArray(body)) return ""; // Top-level array, no select needed
-
-  if (typeof body === "object") {
-    const obj = body as Record<string, unknown>;
-    for (const [key, val] of Object.entries(obj)) {
-      if (Array.isArray(val) && val.length > 0) {
-        return key;
-      }
-    }
-  }
-
-  return "";
-}
-
-/**
- * Derive a command name from a URL pathname.
- */
-function deriveCommandName(url: string): string {
-  let pathname: string;
-  try {
-    pathname = new URL(url).pathname;
-  } catch {
-    return "data";
-  }
-
-  const parts = pathname
-    .replace(/^\/api\/(v\d+\/)?/, "")
-    .replace(/\/$/, "")
-    .split("/")
-    .filter(Boolean);
-
-  if (parts.length === 0) return "data";
-
-  const name = parts
-    .slice(-2)
-    .join("-")
-    .replace(/[^a-zA-Z0-9-]/g, "-")
-    .replace(/-+/g, "-")
-    .toLowerCase();
-
-  return name || "data";
-}
-
-/**
- * Ensure a unique name by appending -2, -3, etc. if needed.
- */
-function uniqueName(base: string, used: Set<string>): string {
-  if (!used.has(base)) return base;
-  let i = 2;
-  while (used.has(`${base}-${i}`)) i++;
-  return `${base}-${i}`;
 }
