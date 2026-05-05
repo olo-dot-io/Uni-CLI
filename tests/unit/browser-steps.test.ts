@@ -79,6 +79,20 @@ describe("browser step: navigate", () => {
     });
   });
 
+  it("accepts the shorthand `- navigate: <url>` form (used by 58 adapters)", async () => {
+    const mockPage = await getMockPage();
+    mockPage.goto.mockClear();
+    const steps = [{ navigate: "https://example.com/${{ args.section }}" }];
+    await runPipeline(steps, {
+      args: { section: "feed/trending" },
+      source: "internal",
+    });
+    expect(mockPage.goto).toHaveBeenCalledWith(
+      "https://example.com/feed/trending",
+      { settleMs: 0 },
+    );
+  });
+
   it("passes waitUntil option and waits for networkidle", async () => {
     const mockPage = await getMockPage();
     mockPage.goto.mockClear();

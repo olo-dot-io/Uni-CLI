@@ -15,11 +15,18 @@ export interface NavigateConfig {
   waitUntil?: "load" | "domcontentloaded" | "networkidle" | "commit";
 }
 
+function normalizeNavigateConfig(
+  config: NavigateConfig | string,
+): NavigateConfig {
+  return typeof config === "string" ? { url: config } : config;
+}
+
 export async function stepNavigate(
   ctx: PipelineContext,
-  config: NavigateConfig,
+  rawConfig: NavigateConfig | string,
   stepIndex = -1,
 ): Promise<PipelineContext> {
+  const config = normalizeNavigateConfig(rawConfig);
   const url = evalTemplate(config.url, ctx);
   const settleMs = config.settleMs ?? 0;
   let parsedUrl: URL | undefined;
