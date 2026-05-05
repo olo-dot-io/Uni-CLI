@@ -1,13 +1,9 @@
 /**
- * build-readme — Inject stats.json values into public docs.
- *
- * For each file in TARGETS, rewrite every
- *   <!-- STATS:<key> -->...<!-- /STATS -->
- * block so its text content equals `stats.json[<key>]`. Idempotent: running
- * twice is a no-op. CLAUDE.md is .gitignored; its numbers stay manual.
- *
- * Wired into `npm run build` after `scripts/build-manifest.js`. Also runs
- * as part of `npm run stats` so authors see doc diffs immediately.
+ * @owner   scripts/build-readme.ts
+ * @does    Inject generated stats and active-site README grid content.
+ * @needs   stats.json, dist/manifest.json, README/doc marker blocks
+ * @feeds   README.md, README.zh-CN.md, AGENTS.md, roadmap/copy stats
+ * @breaks  Stale public counts or site grids misrepresent catalog coverage.
  */
 
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
@@ -17,6 +13,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
 const STATS_PATH = join(ROOT, "stats.json");
+const MANIFEST_PATH = join(ROOT, "dist", "manifest.json");
 
 const TARGETS = [
   "README.md",
@@ -28,6 +25,169 @@ const TARGETS = [
 ];
 
 const MARKER = /<!--\s*STATS:([a-z_]+)\s*-->[\s\S]*?<!--\s*\/STATS\s*-->/g;
+const SITE_GRID_START = "<!-- BEGIN README_SITE_GRID -->";
+const SITE_GRID_END = "<!-- END README_SITE_GRID -->";
+
+interface ManifestCommand {
+  name: string;
+  quarantined?: boolean;
+}
+
+interface ManifestSite {
+  category?: string;
+  commands: ManifestCommand[];
+}
+
+interface Manifest {
+  sites: Record<string, ManifestSite>;
+}
+
+const CATEGORY_ORDER = [
+  "social",
+  "video",
+  "news",
+  "finance",
+  "shopping",
+  "dev",
+  "ai",
+  "reference",
+  "audio",
+  "content",
+  "productivity",
+  "jobs",
+  "desktop",
+  "games",
+  "utility",
+  "agent",
+  "other",
+];
+
+const CATEGORY_COLORS: Record<string, string> = {
+  social: "2563eb",
+  video: "dc2626",
+  news: "b45309",
+  finance: "047857",
+  shopping: "be185d",
+  dev: "4f46e5",
+  ai: "7c3aed",
+  reference: "0f766e",
+  audio: "16a34a",
+  content: "c2410c",
+  productivity: "475569",
+  jobs: "0891b2",
+  desktop: "334155",
+  games: "9333ea",
+  utility: "0d9488",
+  agent: "111827",
+  other: "64748b",
+};
+
+const SITE_LOGOS: Record<string, string> = {
+  "apple-notes": "apple",
+  "apple-podcasts": "applepodcasts",
+  "claude-code": "anthropic",
+  "codex-cli": "openai",
+  "crates-io": "rust",
+  "discord-app": "discord",
+  "docker-desktop": "docker",
+  "docker-hub": "docker",
+  "github-desktop": "github",
+  "github-trending": "github",
+  "google-scholar": "google",
+  "huggingface-papers": "huggingface",
+  "lm-studio": "lmstudio",
+  "netease-music": "neteasecloudmusic",
+  "npm-trends": "npm",
+  "pub-dev": "dart",
+  qweather: "icloud",
+  "slay-the-spire-ii": "steam",
+  "wechat-channels": "wechat",
+  "wechat-work": "wechat",
+  "yahoo-finance": "yahoo",
+  "yt-dlp": "youtube",
+  "zoom-app": "zoom",
+  amazon: "amazon",
+  antigravity: "google",
+  arxiv: "arxiv",
+  aws: "amazonaws",
+  band: "bandlab",
+  barchart: "chartdotjs",
+  bbc: "bbc",
+  binance: "binance",
+  blender: "blender",
+  bluesky: "bluesky",
+  chatgpt: "openai",
+  chrome: "googlechrome",
+  claude: "anthropic",
+  cloudcompare: "cloudinary",
+  cocoapods: "cocoapods",
+  codex: "openai",
+  coinbase: "coinbase",
+  cursor: "cursor",
+  deepseek: "deepseek",
+  dingtalk: "dingtalk",
+  docker: "docker",
+  figma: "figma",
+  ffmpeg: "ffmpeg",
+  freecad: "freecad",
+  gemini: "googlegemini",
+  gh: "github",
+  gimp: "gimp",
+  gitkraken: "gitkraken",
+  gitlab: "gitlab",
+  google: "google",
+  hackernews: "ycombinator",
+  hf: "huggingface",
+  homebrew: "homebrew",
+  imagemagick: "imagemagick",
+  instagram: "instagram",
+  jq: "json",
+  lark: "lark",
+  linear: "linear",
+  macos: "apple",
+  mastodon: "mastodon",
+  maven: "apachemaven",
+  mermaid: "mermaid",
+  netlify: "netlify",
+  notion: "notion",
+  npm: "npm",
+  nuget: "nuget",
+  obsidian: "obsidian",
+  openrouter: "openai",
+  packagist: "packagist",
+  pandoc: "pandoc",
+  pexels: "pexels",
+  pixiv: "pixiv",
+  postman: "postman",
+  powerpoint: "microsoftpowerpoint",
+  producthunt: "producthunt",
+  pypi: "pypi",
+  reddit: "reddit",
+  reuters: "reuters",
+  rubygems: "rubygems",
+  signal: "signal",
+  slack: "slack",
+  spotify: "spotify",
+  stackoverflow: "stackoverflow",
+  steam: "steam",
+  supabase: "supabase",
+  teams: "microsoftteams",
+  tiktok: "tiktok",
+  todoist: "todoist",
+  twitch: "twitch",
+  twitter: "x",
+  typora: "typora",
+  unsplash: "unsplash",
+  vercel: "vercel",
+  vscode: "visualstudiocode",
+  weibo: "sinaweibo",
+  wikipedia: "wikipedia",
+  word: "microsoftword",
+  youtube: "youtube",
+  zhihu: "zhihu",
+  zoom: "zoom",
+  zotero: "zotero",
+};
 
 function loadStats(): Record<string, unknown> {
   if (!existsSync(STATS_PATH)) {
@@ -37,6 +197,16 @@ function loadStats(): Record<string, unknown> {
     process.exit(1);
   }
   return JSON.parse(readFileSync(STATS_PATH, "utf-8"));
+}
+
+function loadManifest(): Manifest {
+  if (!existsSync(MANIFEST_PATH)) {
+    console.error(
+      "build-readme: dist/manifest.json is missing. Run `npm run build:manifest` first.",
+    );
+    process.exit(1);
+  }
+  return JSON.parse(readFileSync(MANIFEST_PATH, "utf-8")) as Manifest;
 }
 
 export function inject(
@@ -56,26 +226,127 @@ export function inject(
   return { output, changed, missing };
 }
 
+function categoryRank(category: string): number {
+  const rank = CATEGORY_ORDER.indexOf(category);
+  return rank === -1 ? CATEGORY_ORDER.length : rank;
+}
+
+function badgeUrl(
+  site: string,
+  commandCount: number,
+  category: string,
+): string {
+  const params = new URLSearchParams({
+    label: site,
+    message: `${commandCount} cmds`,
+    color: CATEGORY_COLORS[category] ?? CATEGORY_COLORS.other,
+    style: "flat-square",
+  });
+  const logo = SITE_LOGOS[site];
+  if (logo) {
+    params.set("logo", logo);
+    params.set("logoColor", "white");
+  }
+  return `https://img.shields.io/static/v1?${params.toString()}`;
+}
+
+export function buildSiteGrid(manifest: Manifest): string {
+  const rows = Object.entries(manifest.sites)
+    .filter(([, site]) =>
+      site.commands.every((command) => command.quarantined !== true),
+    )
+    .map(([site, info]) => ({
+      site,
+      category: info.category ?? "other",
+      commandCount: info.commands.length,
+    }))
+    .sort(
+      (a, b) =>
+        categoryRank(a.category) - categoryRank(b.category) ||
+        a.site.localeCompare(b.site),
+    );
+
+  const byCategory = new Map<string, typeof rows>();
+  for (const row of rows) {
+    const categoryRows = byCategory.get(row.category) ?? [];
+    categoryRows.push(row);
+    byCategory.set(row.category, categoryRows);
+  }
+
+  const sections = Array.from(byCategory.entries()).map(([category, sites]) => {
+    const badges = sites
+      .map((row) => {
+        const title = `${row.site}: ${row.commandCount} command${row.commandCount === 1 ? "" : "s"}`;
+        return `<a data-site="${row.site}" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="${title}"><img alt="${row.site}" src="${badgeUrl(row.site, row.commandCount, category)}"></a>`;
+      })
+      .join("\n  ");
+    return `<p><strong>${category}</strong><br>\n  ${badges}\n</p>`;
+  });
+
+  return [
+    SITE_GRID_START,
+    '<div align="center">',
+    ...sections,
+    "</div>",
+    SITE_GRID_END,
+  ].join("\n");
+}
+
+export function injectSiteGrid(
+  source: string,
+  manifest: Manifest,
+): { output: string; changed: boolean } {
+  const hasStart = source.includes(SITE_GRID_START);
+  const hasEnd = source.includes(SITE_GRID_END);
+  if (!hasStart && !hasEnd) return { output: source, changed: false };
+  if (!hasStart || !hasEnd) {
+    throw new Error("README site grid markers must appear as a pair");
+  }
+
+  const start = source.indexOf(SITE_GRID_START);
+  const end = source.indexOf(SITE_GRID_END);
+  if (end <= start) {
+    throw new Error("README site grid end marker must follow start marker");
+  }
+
+  const replacement = buildSiteGrid(manifest);
+  const output =
+    source.slice(0, start) +
+    replacement +
+    source.slice(end + SITE_GRID_END.length);
+  return { output, changed: output !== source };
+}
+
 function main(): void {
   const stats = loadStats();
+  const manifest = loadManifest();
   let totalChanged = 0;
+  let gridChanged = 0;
   const missingAll: Array<{ file: string; keys: string[] }> = [];
 
   for (const rel of TARGETS) {
     const full = join(ROOT, rel);
     if (!existsSync(full)) continue;
     const source = readFileSync(full, "utf-8");
-    const { output, changed, missing } = inject(source, stats);
-    if (output !== source) {
-      writeFileSync(full, output, "utf-8");
+    const injected = inject(source, stats);
+    const gridded =
+      rel === "README.md"
+        ? injectSiteGrid(injected.output, manifest)
+        : { output: injected.output, changed: false };
+    if (gridded.output !== source) {
+      writeFileSync(full, gridded.output, "utf-8");
     }
-    totalChanged += changed;
-    if (missing.length > 0) missingAll.push({ file: rel, keys: missing });
+    totalChanged += injected.changed;
+    if (gridded.changed) gridChanged++;
+    if (injected.missing.length > 0) {
+      missingAll.push({ file: rel, keys: injected.missing });
+    }
   }
 
   console.log(
     `build-readme: injected ${totalChanged} STATS marker${totalChanged === 1 ? "" : "s"} across ${TARGETS.length} file${TARGETS.length === 1 ? "" : "s"}`,
   );
+  console.log(`build-readme: updated ${gridChanged} README site grid block`);
   if (missingAll.length > 0) {
     for (const { file, keys } of missingAll) {
       console.error(
