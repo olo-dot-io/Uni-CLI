@@ -10,8 +10,7 @@ binary: osascript
 detect: Darwin
 strategy: public
 quarantine: true
-quarantineReason: Requires macOS + zoom.us running with an active meeting
-
+quarantineReason: Requires macOS + zoom.us running with an active meeting (quarantined 2026-04-15)
 pipeline:
   - ax_focus:
       app: zoom.us

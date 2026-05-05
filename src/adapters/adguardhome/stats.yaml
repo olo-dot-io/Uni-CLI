@@ -30,5 +30,5 @@ minimum_capability: http.fetch
 trust: public
 confidentiality: public
 quarantine: true
-quarantineReason: "requires local AdGuard Home instance on a private host"
+quarantineReason: "requires local AdGuard Home instance on a private host (quarantined 2026-04-15)"
 schema_version: v2

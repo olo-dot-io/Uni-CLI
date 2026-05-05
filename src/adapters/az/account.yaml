@@ -26,5 +26,5 @@ minimum_capability: subprocess.exec
 trust: user
 confidentiality: public
 quarantine: true
-quarantineReason: "`az account show` times out in CI without interactive login"
+quarantineReason: "`az account show` times out in CI without interactive login (quarantined 2026-04-15)"
 schema_version: v2

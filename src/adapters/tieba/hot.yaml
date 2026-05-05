@@ -35,5 +35,5 @@ minimum_capability: http.fetch
 trust: public
 confidentiality: public
 quarantine: true
-quarantineReason: "upstream returns HTML (anti-bot page) instead of JSON from CI egress"
+quarantineReason: "upstream returns HTML (anti-bot page) instead of JSON from CI egress (quarantined 2026-04-15)"
 schema_version: v2

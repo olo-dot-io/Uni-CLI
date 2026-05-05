@@ -36,5 +36,5 @@ minimum_capability: http.fetch
 trust: public
 confidentiality: public
 quarantine: true
-quarantineReason: "HTTP 404 — itch.io /api/1/x/games endpoint removed"
+quarantineReason: "HTTP 404 — itch.io /api/1/x/games endpoint removed (quarantined 2026-04-15)"
 schema_version: v2

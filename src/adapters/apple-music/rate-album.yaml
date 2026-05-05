@@ -17,8 +17,7 @@ strategy: ui
 domain: music.apple.com
 browser: false
 quarantine: true
-quarantineReason: Requires macOS + Apple Music desktop app + a CUA backend
-
+quarantineReason: Requires macOS + Apple Music desktop app + a CUA backend (quarantined 2026-04-15)
 args:
   stars:
     type: int

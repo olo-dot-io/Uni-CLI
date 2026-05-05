@@ -42,5 +42,5 @@ minimum_capability: http.fetch
 trust: public
 confidentiality: public
 quarantine: true
-quarantineReason: "HTTP 400 on empty category — probe fires without required `category` arg default"
+quarantineReason: "HTTP 400 on empty category — probe fires without required `category` arg default (quarantined 2026-04-15)"
 schema_version: v2

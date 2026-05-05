@@ -15,8 +15,7 @@ strategy: ui
 domain: figma.com
 browser: false
 quarantine: true
-quarantineReason: Requires macOS + Figma desktop app + a CUA backend (ANTHROPIC_API_KEY etc.)
-
+quarantineReason: Requires macOS + Figma desktop app + a CUA backend (ANTHROPIC_API_KEY etc.) (quarantined 2026-04-15)
 args:
   format:
     type: str

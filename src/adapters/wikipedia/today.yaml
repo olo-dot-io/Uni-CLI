@@ -30,5 +30,5 @@ minimum_capability: http.fetch
 trust: public
 confidentiality: public
 quarantine: true
-quarantineReason: "wikipedia REST blocks CI egress; adapter works from real user hosts"
+quarantineReason: "wikipedia REST blocks CI egress; adapter works from real user hosts (quarantined 2026-04-15)"
 schema_version: v2

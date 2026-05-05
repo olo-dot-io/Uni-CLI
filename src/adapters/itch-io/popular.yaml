@@ -27,5 +27,5 @@ minimum_capability: http.fetch
 trust: public
 confidentiality: public
 quarantine: true
-quarantineReason: "HTTP 404 — itch.io removed the top-rated JSON feed"
+quarantineReason: "HTTP 404 — itch.io removed the top-rated JSON feed (quarantined 2026-04-15)"
 schema_version: v2

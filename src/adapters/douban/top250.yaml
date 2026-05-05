@@ -70,5 +70,5 @@ minimum_capability: cdp-browser.evaluate
 trust: public
 confidentiality: public
 quarantine: true
-quarantineReason: "timed out after 8s — upstream slow from hosted runners"
+quarantineReason: "timed out after 8s — upstream slow from hosted runners (quarantined 2026-04-15)"
 schema_version: v2
