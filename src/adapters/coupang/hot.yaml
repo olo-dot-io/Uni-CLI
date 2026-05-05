@@ -33,5 +33,6 @@ capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public
-quarantine: false
+quarantine: true
+quarantineReason: "www.coupang.com/np/goldbox returns HTTP 403 from public IPs (Cloudflare bot-wall, verified 2026-05-05) — needs cookie strategy with a real browser session"
 schema_version: v2

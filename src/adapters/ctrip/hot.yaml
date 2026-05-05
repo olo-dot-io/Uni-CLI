@@ -32,5 +32,6 @@ capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public
-quarantine: false
+quarantine: true
+quarantineReason: "m.ctrip.com/restapi/h5api/searchapp/search returns HTTP 502 (verified 2026-05-05); upstream re-architected, no obvious public hot-city replacement endpoint"
 schema_version: v2

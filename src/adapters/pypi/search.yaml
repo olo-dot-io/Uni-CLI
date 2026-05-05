@@ -41,5 +41,6 @@ capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public
-quarantine: false
+quarantine: true
+quarantineReason: "pypi.org/search now serves a Fastly bot-wall HTML instead of JSON (verified 2026-05-05); the herokuapp fallback domain is dead — switch to a JSON search backend or render the page through the browser strategy"
 schema_version: v2
