@@ -1,8 +1,8 @@
 {
   "source": "unicli@0.218.1",
-  "generated": "2026-05-05T18:30:21.396Z",
-  "total_sites": 233,
-  "total_commands": 1448,
+  "generated": "2026-05-05T18:58:34.437Z",
+  "total_sites": 238,
+  "total_commands": 1458,
   "adapters": [
     {
       "site": "1688",
@@ -17068,6 +17068,66 @@
       ]
     },
     {
+      "site": "maven",
+      "type": "web-api",
+      "domain": "search.maven.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "info",
+          "description": "Get Maven Central artifact metadata",
+          "when_to_use": "When you need details about a specific item on maven.",
+          "command": "unicli maven info",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["group", "artifact", "latest", "packaging", "versions"],
+          "args": [
+            {
+              "name": "group",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Maven group id, for example com.fasterxml.jackson.core"
+            },
+            {
+              "name": "artifact",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Maven artifact id, for example jackson-databind"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search Maven Central artifacts",
+          "when_to_use": "When you need to search maven for a specific query.",
+          "command": "unicli maven search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["group", "artifact", "latest", "packaging", "versions"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Artifact, group, or keyword query"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "medium",
       "type": "web-api",
       "domain": "medium.com",
@@ -19206,6 +19266,72 @@
       ]
     },
     {
+      "site": "nuget",
+      "type": "web-api",
+      "domain": "nuget.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "info",
+          "description": "Get NuGet package metadata",
+          "when_to_use": "When you need details about a specific item on nuget.",
+          "command": "unicli nuget info",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "name",
+            "version",
+            "description",
+            "downloads",
+            "project",
+            "verified"
+          ],
+          "args": [
+            {
+              "name": "package",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "NuGet package id, for example Newtonsoft.Json"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search NuGet packages",
+          "when_to_use": "When you need to search nuget for a specific query.",
+          "command": "unicli nuget search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "name",
+            "version",
+            "description",
+            "downloads",
+            "verified"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Package search query"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "nytimes",
       "type": "web-api",
       "domain": "rss.nytimes.com",
@@ -20048,6 +20174,59 @@
               "required": false,
               "positional": true,
               "description": "Search query (model name, provider)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "packagist",
+      "type": "web-api",
+      "domain": "packagist.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "info",
+          "description": "Get Packagist Composer package metadata",
+          "when_to_use": "When you need details about a specific item on packagist.",
+          "command": "unicli packagist info",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["name", "description", "time"],
+          "args": [
+            {
+              "name": "package",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Composer package name, for example laravel/framework"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search Packagist Composer packages",
+          "when_to_use": "When you need to search packagist for a specific query.",
+          "command": "unicli packagist search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["name", "description", "downloads", "favers", "url"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Composer package search query"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -20984,6 +21163,65 @@
           "strategy": "public",
           "browser": false,
           "columns": ["name", "region", "created_at"]
+        }
+      ]
+    },
+    {
+      "site": "pub-dev",
+      "type": "web-api",
+      "domain": "pub.dev",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "info",
+          "description": "Get Dart and Flutter package metadata from pub.dev",
+          "when_to_use": "When you need details about a specific item on pub-dev.",
+          "command": "unicli pub-dev info",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["name"],
+          "args": [
+            {
+              "name": "package",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "pub.dev package name, for example http"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search Dart and Flutter packages on pub.dev",
+          "when_to_use": "When you need to search pub-dev for a specific query.",
+          "command": "unicli pub-dev search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "name",
+            "version",
+            "description",
+            "repository",
+            "published"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Dart or Flutter package search query"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
         }
       ]
     },
@@ -22175,6 +22413,66 @@
               "required": false,
               "positional": false,
               "description": "Number of stories"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "rubygems",
+      "type": "web-api",
+      "domain": "rubygems.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "info",
+          "description": "Get RubyGems package metadata",
+          "when_to_use": "When you need details about a specific item on rubygems.",
+          "command": "unicli rubygems info",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "name",
+            "version",
+            "info",
+            "downloads",
+            "project_uri",
+            "homepage_uri"
+          ],
+          "args": [
+            {
+              "name": "gem",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Gem name, for example rails"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search RubyGems packages",
+          "when_to_use": "When you need to search rubygems for a specific query.",
+          "command": "unicli rubygems search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["name", "version", "description", "downloads", "project"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Gem search query"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
             }
           ]
         }

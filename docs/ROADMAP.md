@@ -1,6 +1,6 @@
 # Uni-CLI Roadmap
 
-> Current: v0.218.1 — Apollo · Cernan Patch. <!-- STATS:site_count -->233<!-- /STATS --> sites, <!-- STATS:command_count -->1448<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps.
+> Current: v0.218.1 — Apollo · Cernan Patch. <!-- STATS:site_count -->238<!-- /STATS --> sites, <!-- STATS:command_count -->1458<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction. Historical release notes live in
 `CHANGELOG.md`; they do not belong in the roadmap.

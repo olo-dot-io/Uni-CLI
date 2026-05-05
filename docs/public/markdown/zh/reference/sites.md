@@ -11,7 +11,7 @@
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：233 个站点，1448 条命令。
+这个目录来自适配器 manifest：238 个站点，1458 条命令。
 
 | 站点 | 接口类型 | 命令数 | 认证 | 示例命令 |
 | --- | --- | ---: | --- | --- |
@@ -131,6 +131,7 @@
 | maimai | browser | 2 | 是 | unicli maimai search<br>unicli maimai search-talents |
 | maoyan | web-api | 2 | 是 | unicli maoyan hot<br>unicli maoyan search |
 | mastodon | web-api | 4 | 否 | unicli mastodon search<br>unicli mastodon timeline<br>unicli mastodon trending |
+| maven | web-api | 2 | 否 | unicli maven info<br>unicli maven search |
 | medium | web-api | 5 | 否 | unicli medium article<br>unicli medium feed<br>unicli medium search |
 | meituan | web-api | 1 | 是 | unicli meituan search |
 | mermaid | desktop | 1 | 否 | unicli mermaid render |
@@ -147,6 +148,7 @@
 | nowcoder | web-api | 16 | 是 | unicli nowcoder hot<br>unicli nowcoder trending<br>unicli nowcoder topics |
 | npm | web-api | 4 | 否 | unicli npm downloads<br>unicli npm info<br>unicli npm search |
 | npm-trends | web-api | 2 | 否 | unicli npm-trends compare<br>unicli npm-trends trending |
+| nuget | web-api | 2 | 否 | unicli nuget info<br>unicli nuget search |
 | nytimes | web-api | 2 | 否 | unicli nytimes search<br>unicli nytimes top |
 | obs | service | 8 | 否 | unicli obs record-start<br>unicli obs record-stop<br>unicli obs scenes |
 | obsidian | desktop | 10 | 否 | unicli obsidian daily<br>unicli obsidian open<br>unicli obsidian search |
@@ -155,6 +157,7 @@
 | opencode | bridge | 1 | 否 | unicli opencode version |
 | openharness | desktop | 2 | 否 | unicli openharness memory-read<br>unicli openharness skills-list |
 | openrouter | web-api | 2 | 否 | unicli openrouter models<br>unicli openrouter search |
+| packagist | web-api | 2 | 否 | unicli packagist info<br>unicli packagist search |
 | pandoc | desktop | 1 | 否 | unicli pandoc convert |
 | paperreview | web-api | 3 | 否 | unicli paperreview feedback<br>unicli paperreview review<br>unicli paperreview submit |
 | perplexity | web-api | 8 | 是 | unicli perplexity ask<br>unicli perplexity open-app<br>unicli perplexity status-app |
@@ -165,6 +168,7 @@
 | powerpoint | desktop | 7 | 否 | unicli powerpoint add-slide<br>unicli powerpoint insert-image<br>unicli powerpoint insert-link |
 | producthunt | web-api | 5 | 否 | unicli producthunt browse<br>unicli producthunt hot<br>unicli producthunt posts |
 | pscale | bridge | 1 | 否 | unicli pscale databases |
+| pub-dev | web-api | 2 | 否 | unicli pub-dev info<br>unicli pub-dev search |
 | pypi | web-api | 3 | 否 | unicli pypi info<br>unicli pypi search<br>unicli pypi versions |
 | quark | web-api | 8 | 是 | unicli quark ls<br>unicli quark search<br>unicli quark mkdir |
 | qweather | web-api | 2 | 否 | unicli qweather forecast<br>unicli qweather now |
@@ -173,6 +177,7 @@
 | renderdoc | desktop | 2 | 否 | unicli renderdoc capture-list<br>unicli renderdoc frame-export |
 | replicate | web-api | 3 | 是 | unicli replicate run<br>unicli replicate search<br>unicli replicate trending |
 | reuters | web-api | 4 | 否 | unicli reuters article<br>unicli reuters latest<br>unicli reuters search |
+| rubygems | web-api | 2 | 否 | unicli rubygems info<br>unicli rubygems search |
 | shotcut | desktop | 3 | 否 | unicli shotcut effects<br>unicli shotcut info<br>unicli shotcut render |
 | sinablog | browser | 4 | 否 | unicli sinablog article<br>unicli sinablog hot<br>unicli sinablog search |
 | sinafinance | web-api | 5 | 否 | unicli sinafinance market<br>unicli sinafinance news<br>unicli sinafinance rolling-news |

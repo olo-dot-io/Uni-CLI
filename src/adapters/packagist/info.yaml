@@ -1,0 +1,28 @@
+# @owner   src/adapters/packagist/info.yaml
+# @does    Fetch Packagist Composer package metadata by vendor/package name.
+# @needs   packagist.org package API
+# @feeds   unicli packagist info, package registry expansion
+# @breaks  Agents cannot inspect PHP package metadata and maintainers.
+site: packagist
+name: info
+description: Get Packagist Composer package metadata
+type: web-api
+domain: packagist.org
+strategy: public
+args:
+  package:
+    type: str
+    required: true
+    positional: true
+    description: Composer package name, for example laravel/framework
+pipeline:
+  - fetch:
+      url: "https://packagist.org/packages/${{ args.package }}.json"
+  - select: package
+columns: [name, description, time]
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

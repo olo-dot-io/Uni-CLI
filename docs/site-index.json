@@ -1,7 +1,7 @@
 {
-  "generated": "2026-05-05T18:30:21.396Z",
-  "total_sites": 233,
-  "total_commands": 1448,
+  "generated": "2026-05-05T18:58:34.437Z",
+  "total_sites": 238,
+  "total_commands": 1458,
   "sites": [
     {
       "site": "1688",
@@ -4751,6 +4751,26 @@
       ]
     },
     {
+      "site": "maven",
+      "type": "web-api",
+      "domain": "search.maven.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "info",
+          "description": "Get Maven Central artifact metadata",
+          "command": "unicli maven info"
+        },
+        {
+          "name": "search",
+          "description": "Search Maven Central artifacts",
+          "command": "unicli maven search"
+        }
+      ]
+    },
+    {
       "site": "medium",
       "type": "web-api",
       "domain": "medium.com",
@@ -5400,6 +5420,26 @@
       ]
     },
     {
+      "site": "nuget",
+      "type": "web-api",
+      "domain": "nuget.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "info",
+          "description": "Get NuGet package metadata",
+          "command": "unicli nuget info"
+        },
+        {
+          "name": "search",
+          "description": "Search NuGet packages",
+          "command": "unicli nuget search"
+        }
+      ]
+    },
+    {
       "site": "nytimes",
       "type": "web-api",
       "domain": "rss.nytimes.com",
@@ -5670,6 +5710,26 @@
           "name": "search",
           "description": "Search OpenRouter AI models",
           "command": "unicli openrouter search"
+        }
+      ]
+    },
+    {
+      "site": "packagist",
+      "type": "web-api",
+      "domain": "packagist.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "info",
+          "description": "Get Packagist Composer package metadata",
+          "command": "unicli packagist info"
+        },
+        {
+          "name": "search",
+          "description": "Search Packagist Composer packages",
+          "command": "unicli packagist search"
         }
       ]
     },
@@ -5946,6 +6006,26 @@
           "name": "databases",
           "description": "List PlanetScale databases",
           "command": "unicli pscale databases"
+        }
+      ]
+    },
+    {
+      "site": "pub-dev",
+      "type": "web-api",
+      "domain": "pub.dev",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "info",
+          "description": "Get Dart and Flutter package metadata from pub.dev",
+          "command": "unicli pub-dev info"
+        },
+        {
+          "name": "search",
+          "description": "Search Dart and Flutter packages on pub.dev",
+          "command": "unicli pub-dev search"
         }
       ]
     },
@@ -6239,6 +6319,26 @@
           "name": "top",
           "description": "Reuters top stories (front page)",
           "command": "unicli reuters top"
+        }
+      ]
+    },
+    {
+      "site": "rubygems",
+      "type": "web-api",
+      "domain": "rubygems.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "info",
+          "description": "Get RubyGems package metadata",
+          "command": "unicli rubygems info"
+        },
+        {
+          "name": "search",
+          "description": "Search RubyGems packages",
+          "command": "unicli rubygems search"
         }
       ]
     },

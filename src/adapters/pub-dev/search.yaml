@@ -1,0 +1,43 @@
+# @owner   src/adapters/pub-dev/search.yaml
+# @does    Search Dart and Flutter packages on pub.dev and hydrate package metadata.
+# @needs   pub.dev search and package APIs
+# @feeds   unicli pub-dev search, package registry expansion
+# @breaks  Dart package discovery loses first-class CLI coverage.
+site: pub-dev
+name: search
+description: Search Dart and Flutter packages on pub.dev
+type: web-api
+domain: pub.dev
+strategy: public
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Dart or Flutter package search query
+  limit:
+    type: int
+    default: 10
+pipeline:
+  - fetch:
+      url: "https://pub.dev/api/search"
+      params:
+        q: "${{ args.query }}"
+  - select: packages
+  - limit: ${{ args.limit }}
+  - fetch:
+      url: "https://pub.dev/api/packages/${{ item.package | urlencode }}"
+      concurrency: 5
+  - map:
+      name: "${{ item.name }}"
+      version: "${{ item.latest.version }}"
+      description: "${{ (item.latest.pubspec.description || '') | truncate(80) }}"
+      repository: "${{ item.latest.pubspec.repository || '' }}"
+      published: "${{ item.latest.published }}"
+columns: [name, version, description, repository, published]
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

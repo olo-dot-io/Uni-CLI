@@ -2,7 +2,7 @@
 
 > Current version: v0.218.1 — Apollo · Cernan Patch.
 >
-> Current scale: <!-- STATS:site_count -->233<!-- /STATS --> sites, <!-- STATS:command_count -->1448<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->1038<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->915<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->123<!-- /STATS --> TS), <!-- STATS:test_count -->7820<!-- /STATS --> tests.
+> Current scale: <!-- STATS:site_count -->238<!-- /STATS --> sites, <!-- STATS:command_count -->1458<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->1048<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->925<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->123<!-- /STATS --> TS), <!-- STATS:test_count -->7881<!-- /STATS --> tests.
 
 This file keeps docs and user-facing copy consistent. Public pages should expose
 install, command, output, and repair facts with the fewest words needed.

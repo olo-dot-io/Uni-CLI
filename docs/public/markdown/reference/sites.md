@@ -14,7 +14,7 @@ running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 233 sites, 1448 commands.
+This catalog is generated from the adapter manifest: 238 sites, 1458 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -134,6 +134,7 @@ This catalog is generated from the adapter manifest: 233 sites, 1448 commands.
 | maimai | browser | 2 | yes | unicli maimai search<br>unicli maimai search-talents |
 | maoyan | web-api | 2 | yes | unicli maoyan hot<br>unicli maoyan search |
 | mastodon | web-api | 4 | no | unicli mastodon search<br>unicli mastodon timeline<br>unicli mastodon trending |
+| maven | web-api | 2 | no | unicli maven info<br>unicli maven search |
 | medium | web-api | 5 | no | unicli medium article<br>unicli medium feed<br>unicli medium search |
 | meituan | web-api | 1 | yes | unicli meituan search |
 | mermaid | desktop | 1 | no | unicli mermaid render |
@@ -150,6 +151,7 @@ This catalog is generated from the adapter manifest: 233 sites, 1448 commands.
 | nowcoder | web-api | 16 | yes | unicli nowcoder hot<br>unicli nowcoder trending<br>unicli nowcoder topics |
 | npm | web-api | 4 | no | unicli npm downloads<br>unicli npm info<br>unicli npm search |
 | npm-trends | web-api | 2 | no | unicli npm-trends compare<br>unicli npm-trends trending |
+| nuget | web-api | 2 | no | unicli nuget info<br>unicli nuget search |
 | nytimes | web-api | 2 | no | unicli nytimes search<br>unicli nytimes top |
 | obs | service | 8 | no | unicli obs record-start<br>unicli obs record-stop<br>unicli obs scenes |
 | obsidian | desktop | 10 | no | unicli obsidian daily<br>unicli obsidian open<br>unicli obsidian search |
@@ -158,6 +160,7 @@ This catalog is generated from the adapter manifest: 233 sites, 1448 commands.
 | opencode | bridge | 1 | no | unicli opencode version |
 | openharness | desktop | 2 | no | unicli openharness memory-read<br>unicli openharness skills-list |
 | openrouter | web-api | 2 | no | unicli openrouter models<br>unicli openrouter search |
+| packagist | web-api | 2 | no | unicli packagist info<br>unicli packagist search |
 | pandoc | desktop | 1 | no | unicli pandoc convert |
 | paperreview | web-api | 3 | no | unicli paperreview feedback<br>unicli paperreview review<br>unicli paperreview submit |
 | perplexity | web-api | 8 | yes | unicli perplexity ask<br>unicli perplexity open-app<br>unicli perplexity status-app |
@@ -168,6 +171,7 @@ This catalog is generated from the adapter manifest: 233 sites, 1448 commands.
 | powerpoint | desktop | 7 | no | unicli powerpoint add-slide<br>unicli powerpoint insert-image<br>unicli powerpoint insert-link |
 | producthunt | web-api | 5 | no | unicli producthunt browse<br>unicli producthunt hot<br>unicli producthunt posts |
 | pscale | bridge | 1 | no | unicli pscale databases |
+| pub-dev | web-api | 2 | no | unicli pub-dev info<br>unicli pub-dev search |
 | pypi | web-api | 3 | no | unicli pypi info<br>unicli pypi search<br>unicli pypi versions |
 | quark | web-api | 8 | yes | unicli quark ls<br>unicli quark search<br>unicli quark mkdir |
 | qweather | web-api | 2 | no | unicli qweather forecast<br>unicli qweather now |
@@ -176,6 +180,7 @@ This catalog is generated from the adapter manifest: 233 sites, 1448 commands.
 | renderdoc | desktop | 2 | no | unicli renderdoc capture-list<br>unicli renderdoc frame-export |
 | replicate | web-api | 3 | yes | unicli replicate run<br>unicli replicate search<br>unicli replicate trending |
 | reuters | web-api | 4 | no | unicli reuters article<br>unicli reuters latest<br>unicli reuters search |
+| rubygems | web-api | 2 | no | unicli rubygems info<br>unicli rubygems search |
 | shotcut | desktop | 3 | no | unicli shotcut effects<br>unicli shotcut info<br>unicli shotcut render |
 | sinablog | browser | 4 | no | unicli sinablog article<br>unicli sinablog hot<br>unicli sinablog search |
 | sinafinance | web-api | 5 | no | unicli sinafinance market<br>unicli sinafinance news<br>unicli sinafinance rolling-news |

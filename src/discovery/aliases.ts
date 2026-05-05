@@ -1,14 +1,9 @@
 /**
- * Bilingual alias table for command discovery.
- *
- * Three alias categories enable Chinese↔English search:
- *   1. Site aliases — 推特→twitter, B站→bilibili
- *   2. Action verbs — 搜索→[search, find], 下载→[download]
- *   3. Domain terms — 股票→[stock, quote, finance]
- *
- * Used by the BM25 search engine to expand queries before scoring.
- * Curated for quality over quantity — ~200 entries covering common
- * agent intents across all supported categories.
+ * @owner   src/discovery/aliases.ts
+ * @does    Define bilingual aliases, action synonyms, domain synonyms, and site categories.
+ * @needs   Supported site ids, discovery search scoring rules
+ * @feeds   src/discovery/search.ts, generated manifest categories
+ * @breaks  Missing aliases or categories degrade command discovery relevance.
  */
 
 // ── Site Aliases ────────────────────────────────────────────────────────────
@@ -429,6 +424,11 @@ export const SITE_CATEGORIES: ReadonlyMap<string, string> = new Map([
   ["npm", "dev"],
   ["pypi", "dev"],
   ["crates-io", "dev"],
+  ["maven", "dev"],
+  ["nuget", "dev"],
+  ["rubygems", "dev"],
+  ["packagist", "dev"],
+  ["pub-dev", "dev"],
   ["cocoapods", "dev"],
   ["docker-hub", "dev"],
   ["npm-trends", "dev"],

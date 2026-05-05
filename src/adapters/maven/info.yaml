@@ -1,0 +1,46 @@
+# @owner   src/adapters/maven/info.yaml
+# @does    Resolve one Maven Central artifact by group and artifact id.
+# @needs   search.maven.org Solr search endpoint
+# @feeds   unicli maven info, package registry expansion
+# @breaks  Agents cannot inspect exact JVM dependency coordinates.
+site: maven
+name: info
+description: Get Maven Central artifact metadata
+type: web-api
+domain: search.maven.org
+strategy: public
+args:
+  group:
+    type: str
+    required: true
+    positional: true
+    description: Maven group id, for example com.fasterxml.jackson.core
+  artifact:
+    type: str
+    required: true
+    positional: true
+    description: Maven artifact id, for example jackson-databind
+pipeline:
+  - fetch:
+      url: "https://search.maven.org/solrsearch/select"
+      params:
+        q: "g:${{ args.group }} AND a:${{ args.artifact }}"
+        rows: "1"
+        wt: json
+      headers:
+        User-Agent: "unicli/0.219 (https://github.com/olo-dot-io/Uni-CLI)"
+  - select: response.docs
+  - map:
+      group: "${{ item.g }}"
+      artifact: "${{ item.a }}"
+      latest: "${{ item.latestVersion }}"
+      packaging: "${{ item.p }}"
+      versions: "${{ item.versionCount }}"
+  - limit: 1
+columns: [group, artifact, latest, packaging, versions]
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

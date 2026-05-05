@@ -1,0 +1,27 @@
+# @owner   src/adapters/pub-dev/info.yaml
+# @does    Fetch Dart and Flutter package metadata by pub.dev package name.
+# @needs   pub.dev package API
+# @feeds   unicli pub-dev info, package registry expansion
+# @breaks  Agents cannot inspect Dart package version and repository metadata.
+site: pub-dev
+name: info
+description: Get Dart and Flutter package metadata from pub.dev
+type: web-api
+domain: pub.dev
+strategy: public
+args:
+  package:
+    type: str
+    required: true
+    positional: true
+    description: pub.dev package name, for example http
+pipeline:
+  - fetch:
+      url: "https://pub.dev/api/packages/${{ args.package | urlencode }}"
+columns: [name]
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

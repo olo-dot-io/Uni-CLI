@@ -1,0 +1,39 @@
+# @owner   src/adapters/rubygems/search.yaml
+# @does    Search RubyGems packages through the public JSON API.
+# @needs   rubygems.org search API
+# @feeds   unicli rubygems search, package registry expansion
+# @breaks  Ruby package discovery loses first-class CLI coverage.
+site: rubygems
+name: search
+description: Search RubyGems packages
+type: web-api
+domain: rubygems.org
+strategy: public
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Gem search query
+  limit:
+    type: int
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://rubygems.org/api/v1/search.json"
+      params:
+        query: "${{ args.query }}"
+  - map:
+      name: "${{ item.name }}"
+      version: "${{ item.version }}"
+      description: "${{ (item.info || '') | truncate(80) }}"
+      downloads: "${{ item.downloads }}"
+      project: "${{ item.project_uri }}"
+  - limit: ${{ args.limit }}
+columns: [name, version, description, downloads, project]
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

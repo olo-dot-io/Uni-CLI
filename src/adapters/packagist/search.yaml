@@ -1,0 +1,41 @@
+# @owner   src/adapters/packagist/search.yaml
+# @does    Search Packagist Composer packages through the public JSON API.
+# @needs   packagist.org search API
+# @feeds   unicli packagist search, package registry expansion
+# @breaks  PHP package discovery loses first-class CLI coverage.
+site: packagist
+name: search
+description: Search Packagist Composer packages
+type: web-api
+domain: packagist.org
+strategy: public
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Composer package search query
+  limit:
+    type: int
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://packagist.org/search.json"
+      params:
+        q: "${{ args.query }}"
+        per_page: "${{ args.limit }}"
+  - select: results
+  - map:
+      name: "${{ item.name }}"
+      description: "${{ (item.description || '') | truncate(80) }}"
+      downloads: "${{ item.downloads }}"
+      favers: "${{ item.favers }}"
+      url: "${{ item.url }}"
+  - limit: ${{ args.limit }}
+columns: [name, description, downloads, favers, url]
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

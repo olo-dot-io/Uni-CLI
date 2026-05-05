@@ -1,0 +1,27 @@
+# @owner   src/adapters/rubygems/info.yaml
+# @does    Fetch RubyGems package metadata by gem name.
+# @needs   rubygems.org gem API
+# @feeds   unicli rubygems info, package registry expansion
+# @breaks  Agents cannot inspect Ruby gem version, license, and source metadata.
+site: rubygems
+name: info
+description: Get RubyGems package metadata
+type: web-api
+domain: rubygems.org
+strategy: public
+args:
+  gem:
+    type: str
+    required: true
+    positional: true
+    description: Gem name, for example rails
+pipeline:
+  - fetch:
+      url: "https://rubygems.org/api/v1/gems/${{ args.gem | urlencode }}.json"
+columns: [name, version, info, downloads, project_uri, homepage_uri]
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

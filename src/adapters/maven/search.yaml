@@ -1,0 +1,44 @@
+# @owner   src/adapters/maven/search.yaml
+# @does    Search Maven Central artifacts through the public Solr API.
+# @needs   search.maven.org Solr search endpoint
+# @feeds   unicli maven search, package registry expansion
+# @breaks  Maven dependency discovery loses Java/JVM package coverage.
+site: maven
+name: search
+description: Search Maven Central artifacts
+type: web-api
+domain: search.maven.org
+strategy: public
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Artifact, group, or keyword query
+  limit:
+    type: int
+    default: 20
+pipeline:
+  - fetch:
+      url: "https://search.maven.org/solrsearch/select"
+      params:
+        q: "${{ args.query }}"
+        rows: "${{ args.limit }}"
+        wt: json
+      headers:
+        User-Agent: "unicli/0.219 (https://github.com/olo-dot-io/Uni-CLI)"
+  - select: response.docs
+  - map:
+      group: "${{ item.g }}"
+      artifact: "${{ item.a }}"
+      latest: "${{ item.latestVersion }}"
+      packaging: "${{ item.p }}"
+      versions: "${{ item.versionCount }}"
+  - limit: ${{ args.limit }}
+columns: [group, artifact, latest, packaging, versions]
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

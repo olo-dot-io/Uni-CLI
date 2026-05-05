@@ -1,0 +1,41 @@
+# @owner   src/adapters/nuget/info.yaml
+# @does    Fetch top NuGet package metadata for a package id query.
+# @needs   azuresearch-usnc.nuget.org query API
+# @feeds   unicli nuget info, package registry expansion
+# @breaks  Agents cannot inspect .NET package version and download metadata.
+site: nuget
+name: info
+description: Get NuGet package metadata
+type: web-api
+domain: nuget.org
+strategy: public
+args:
+  package:
+    type: str
+    required: true
+    positional: true
+    description: NuGet package id, for example Newtonsoft.Json
+pipeline:
+  - fetch:
+      url: "https://azuresearch-usnc.nuget.org/query"
+      params:
+        q: "packageid:${{ args.package }}"
+        take: "1"
+        prerelease: "false"
+        semVerLevel: "2.0.0"
+  - select: data
+  - map:
+      name: "${{ item.id }}"
+      version: "${{ item.version }}"
+      description: "${{ item.description }}"
+      downloads: "${{ item.totalDownloads }}"
+      project: "${{ item.projectUrl }}"
+      verified: "${{ item.verified }}"
+  - limit: 1
+columns: [name, version, description, downloads, project, verified]
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

@@ -1,13 +1,9 @@
 /**
- * Build manifest — generates multiple index files for adapter discovery.
- *
- * Outputs:
- *   1. dist/manifest.json       — Full metadata (existing, enhanced)
- *   2. dist/manifest-search.json — BM25 inverted index + IDF values
- *   3. dist/manifest-compact.txt — Compressed catalog for AGENTS.md embedding
- *
- * Scans YAML files directly and TS adapters through the TypeScript AST to
- * produce a complete manifest.
+ * @owner   scripts/build-manifest.js
+ * @does    Build adapter discovery manifests, search index, and compact catalog.
+ * @needs   src/adapters YAML files, TypeScript adapter registrations
+ * @feeds   dist/manifest.json, dist/manifest-search.json, dist/manifest-compact.txt
+ * @breaks  Stale manifest metadata hides commands from CLI and docs discovery.
  */
 
 import {
@@ -119,6 +115,11 @@ const CATEGORIES = {
     "npm",
     "pypi",
     "crates-io",
+    "maven",
+    "nuget",
+    "rubygems",
+    "packagist",
+    "pub-dev",
     "cocoapods",
     "docker-hub",
     "npm-trends",
