@@ -8,7 +8,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { runPipeline } from "../../src/engine/yaml-runner.js";
+import { runPipeline } from "../../src/engine/executor.js";
+import "../../src/engine/steps/index.js";
 
 // Mock the browser modules so tests don't require a running Chrome
 vi.mock("../../src/browser/page.js", () => {

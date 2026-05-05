@@ -16,7 +16,8 @@ import {
   MAX_DIAGNOSTIC_BYTES,
   type RepairContext,
 } from "../../src/engine/diagnostic.js";
-import { PipelineError, runPipeline } from "../../src/engine/yaml-runner.js";
+import { PipelineError, runPipeline } from "../../src/engine/executor.js";
+import "../../src/engine/steps/index.js";
 
 // --- Echo server for integration tests ---
 

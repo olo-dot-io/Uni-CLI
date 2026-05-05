@@ -7,7 +7,8 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createServer, type Server, type IncomingMessage } from "node:http";
-import { runPipeline } from "../../src/engine/yaml-runner.js";
+import { runPipeline } from "../../src/engine/executor.js";
+import "../../src/engine/steps/index.js";
 
 // --- Echo server: returns request info as JSON ---
 

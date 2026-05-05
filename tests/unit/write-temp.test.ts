@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { existsSync } from "node:fs";
-import { runPipeline } from "../../src/engine/yaml-runner.js";
+import { runPipeline } from "../../src/engine/executor.js";
+import "../../src/engine/steps/index.js";
 
 // write_temp is written on every platform, but the assertions here shell out
 // to `cat` and `echo`, which are not on a default Windows runner PATH.

@@ -11,7 +11,8 @@ import {
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { runPipeline } from "../../src/engine/yaml-runner.js";
+import { runPipeline } from "../../src/engine/executor.js";
+import "../../src/engine/steps/index.js";
 
 const originalAllowLocal = process.env.UNICLI_ALLOW_LOCAL;
 const originalRulesPath = process.env.UNICLI_PERMISSION_RULES_PATH;

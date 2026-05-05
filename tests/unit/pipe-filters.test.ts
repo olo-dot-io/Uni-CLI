@@ -3,8 +3,8 @@ import {
   PIPE_FILTERS,
   evalExpression,
   buildScope,
-  stepParseRss,
-} from "../../src/engine/yaml-runner.js";
+} from "../../src/engine/template.js";
+import { stepParseRss } from "../../src/engine/steps/parse-rss.js";
 
 // ---------- Existing filters (regression) ----------
 

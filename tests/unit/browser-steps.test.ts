@@ -11,7 +11,8 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { describe, it, expect, vi } from "vitest";
-import { runPipeline, PipelineError } from "../../src/engine/yaml-runner.js";
+import { runPipeline, PipelineError } from "../../src/engine/executor.js";
+import "../../src/engine/steps/index.js";
 
 // Mock the browser modules so tests don't require a running Chrome
 vi.mock("../../src/browser/page.js", () => {

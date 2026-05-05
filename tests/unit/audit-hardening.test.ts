@@ -35,7 +35,7 @@ describe("assertSafeRequestUrl — SSRF defence on pipeline fetch", () => {
 
   it("accepts a public https URL", async () => {
     const { assertSafeRequestUrl } =
-      await import("../../src/engine/yaml-runner.js");
+      await import("../../src/engine/executor.js");
     expect(() => assertSafeRequestUrl("https://api.example.com/v1/foo")).not
       .toThrow;
     expect(() => assertSafeRequestUrl("https://api.example.com/v1/foo")).not
@@ -48,7 +48,7 @@ describe("assertSafeRequestUrl — SSRF defence on pipeline fetch", () => {
     ["gopher:", "gopher://evil.test/"],
   ])("rejects %s scheme", async (_label, url) => {
     const { assertSafeRequestUrl } =
-      await import("../../src/engine/yaml-runner.js");
+      await import("../../src/engine/executor.js");
     expect(() => assertSafeRequestUrl(url)).toThrow(/disallowed URL scheme/);
   });
 
@@ -63,7 +63,7 @@ describe("assertSafeRequestUrl — SSRF defence on pipeline fetch", () => {
     ["localhost literal", "http://localhost/"],
   ])("rejects %s", async (_label, url) => {
     const { assertSafeRequestUrl } =
-      await import("../../src/engine/yaml-runner.js");
+      await import("../../src/engine/executor.js");
     expect(() => assertSafeRequestUrl(url)).toThrow(
       /blocked fetch to reserved\/local address/,
     );
@@ -72,7 +72,7 @@ describe("assertSafeRequestUrl — SSRF defence on pipeline fetch", () => {
   it("UNICLI_ALLOW_LOCAL=1 override permits 127.0.0.1", async () => {
     process.env.UNICLI_ALLOW_LOCAL = "1";
     const { assertSafeRequestUrl } =
-      await import("../../src/engine/yaml-runner.js");
+      await import("../../src/engine/executor.js");
     expect(() =>
       assertSafeRequestUrl("http://127.0.0.1:8080/ok"),
     ).not.toThrow();
@@ -80,7 +80,7 @@ describe("assertSafeRequestUrl — SSRF defence on pipeline fetch", () => {
 
   it("rejects a malformed URL rather than passing it through", async () => {
     const { assertSafeRequestUrl } =
-      await import("../../src/engine/yaml-runner.js");
+      await import("../../src/engine/executor.js");
     expect(() => assertSafeRequestUrl("not a url")).toThrow(/invalid URL/);
   });
 });

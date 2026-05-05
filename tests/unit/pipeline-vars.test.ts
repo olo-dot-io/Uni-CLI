@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createServer, type Server } from "node:http";
-import { runPipeline } from "../../src/engine/yaml-runner.js";
+import { runPipeline } from "../../src/engine/executor.js";
+import "../../src/engine/steps/index.js";
 
 let server: Server;
 let baseUrl: string;
