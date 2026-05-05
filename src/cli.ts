@@ -15,6 +15,7 @@ import { loadExternalClis, isInstalled } from "./hub/index.js";
 import { executeExternal } from "./hub/passthrough.js";
 import { format, detectFormat } from "./output/formatter.js";
 import { runPipeline } from "./engine/executor.js";
+import { verifyRowShape } from "./engine/verify-row-shape.js";
 import { ExitCode } from "./types.js";
 import { VERSION } from "./constants.js";
 import { registerAuthCommands } from "./commands/auth.js";
@@ -465,9 +466,17 @@ export async function createCli(): Promise<Command> {
             clearTimeout(timer);
 
             if (results.length > 0) {
+              const shape = verifyRowShape(results, cmd.columns);
               console.log(
                 chalk.green(`  ${cmdName}: ✓ (${results.length} results)`),
               );
+              if (shape.dropped.length > 0) {
+                console.log(
+                  chalk.yellow(
+                    `    ⚠ silent column drop: ${shape.dropped.join(", ")} declared but never populated`,
+                  ),
+                );
+              }
               passed++;
             } else {
               console.log(chalk.yellow(`  ${cmdName}: ✓ (empty)`));
