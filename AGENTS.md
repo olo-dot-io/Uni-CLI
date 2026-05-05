@@ -1,215 +1,52 @@
 # Uni-CLI
 
-<!-- IF YOU ARE AN AI AGENT: Read this file. It tells you everything you need.
-     Install: npm install -g @zenalexa/unicli
-     Discover: unicli search "your intent"
-     Agent routing: unicli agents matrix && unicli agents recommend <agent>
-     Run: unicli <site> <command> [args]
-     Output is structured Markdown by default (non-TTY + agent UA auto-detected). Use -f json for JSON. Errors are structured envelopes to stderr.
-     Style: load skills/talk-normal/SKILL.md before writing docs or user-facing text; keep prose direct and avoid filler.
-     You can fix broken adapters yourself — read the Self-Repair section. -->
+> AI agents: install with `npm install -g @zenalexa/unicli`. Discover with
+> `unicli search "intent"`. Run with `unicli <site> <command>`. Output is
+> Markdown when piped, JSON via `-f json`. Errors are structured envelopes
+> on stderr. Adapter is broken? Read `unicli repair <site> <command>`.
 
-<!-- BEGIN COUNTS -->
+Universal CLI for websites, desktop apps, and local tools. YAML adapters are
+self-repairing — agents can fix them by editing one file. See
+`docs/BENCHMARK.md` for measured per-call token costs.
 
-> <!-- STATS:site_count -->237<!-- /STATS --> sites, <!-- STATS:command_count -->1453<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
-
-<!-- END COUNTS -->
-
-## For AI Agents
-
-Universal CLI for websites, desktop apps, and local tools. Markdown when piped (structured envelope). Self-repairing YAML adapters.
-
-```bash
-unicli search "twitter trending"    # Find commands by intent
-unicli <site> <command> [options]    # Run any command
-unicli repair <site> <command>       # Diagnose + fix a broken adapter
-unicli list                          # All commands (MD when piped)
-```
-
-## Install
-
-```bash
-npm install -g @zenalexa/unicli
-```
-
-<!-- BEGIN ADAPTERS -->
-
-## What You Can Do
-
-### Web (138+ sites)
-
-**Chinese**: zhihu (24), xiaohongshu (22), bilibili (20), douyin (13), douban (12), v2ex (12), linux-do (11), jike (10), +31 more (`unicli list`)
-
-**International**: twitter (38), instagram (26), reddit (20), tiktok (16), youtube (16), nowcoder (16), discord-app (15), lesswrong (15), +50 more (`unicli list`)
-
-**AI / ML**: antigravity (16), chatwise (16), chatgpt (15), notebooklm (15), doubao-app (13), doubao (9), doubao-web (9), perplexity (8), +13 more (`unicli list`)
-
-**Finance**: eastmoney (18), xueqiu (14), binance (13), sinafinance (5), barchart (4), yahoo-finance (3), coinbase (2), futu (2)
-
-**Developer**: cursor (18), codex (17), vscode (10), docker-desktop (7), github-desktop (7), gitkraken (7), insomnia (7), postman (7), +16 more (`unicli list`)
-
-**News**: bloomberg (10), hackernews (10), 36kr (5), bbc (4), reuters (4), ithome (3), cnn (2), infoq (2), +3 more (`unicli list`)
-
-**Reference**: spotify (23), netease-music (17), linear (10), imdb (7), bitwarden (7), todoist (7), wikipedia (5), xiaoyuzhou (5), +11 more (`unicli list`)
-
-### macOS (60 cmds)
-
-active-app, app-actions, apps, apps-list, automation-smoke, battery, bluetooth, brightness, caffeinate, calendar-create, calendar-list, calendar-today, … (`unicli list --site macos`)
-
-### Desktop (28 apps)
-
-freecad (15 cmds), blender (13 cmds), gimp (12 cmds), ffmpeg (11 cmds), audacity (8 cmds), figma (8 cmds), docker (7 cmds), excel (7 cmds), +20 more (`unicli list --category desktop`)
-
-### Bridge (3 CLIs)
-
-gh (6 cmds), jq (2 cmds), yt-dlp (4 cmds)
-
-<!-- END ADAPTERS -->
-
-## Authentication
-
-Some sites require cookies:
-
-```bash
-unicli auth setup <site>    # Show required cookies + template
-unicli auth check <site>    # Validate cookie file
-unicli auth list            # List configured sites
-```
-
-Cookie file format: `{ "SESSDATA": "value", "bili_jct": "value" }`. Store at `~/.unicli/cookies/<site>.json`.
-
-Sites requiring auth: bilibili, weibo, zhihu, twitter, xueqiu, zsxq, jike, weread, douban, linux-do, v2ex (some commands).
-
-## Output Contract
-
-Commands return v2 `AgentEnvelope` on stdout across adapter, core, ext/dev, and admin surfaces (`agents matrix/recommend/generate`, `auth`, `mcp`, `repair`, etc.). `mcp serve` and `acp` stay raw stdio protocol servers. Format auto-selected — pipe or set an agent UA env var for Markdown.
-
-### Format auto-selection
-
-Priority: `-f` flag > `UNICLI_OUTPUT` env > non-TTY or agent-UA env (`md`) > `md` default. Values: `json | yaml | md | csv | compact`. Agent-UA env vars: `CLAUDE_CODE`, `CODEX_CLI`, `OPENCODE`, `HERMES_AGENT`, `UNICLI_AGENT`.
-
-### Envelope shape
-
-Success:
-
-```yaml
-ok: true
-schema_version: "2"
-command: "twitter.mentions"
-meta:
-  duration_ms: 412
-  count: 20
-  surface: web # web | desktop | system | mobile
-  pagination:
-    has_more: true
-    next_cursor: "abc123"
-data:
-  - { id: "...", text: "...", author: "..." }
-error: null
-```
-
-Error:
-
-```yaml
-ok: false
-schema_version: "2"
-command: "twitter.mentions"
-meta:
-  duration_ms: 91
-data: null
-error:
-  code: auth_required # see error codes below
-  message: "401 Unauthorized"
-  adapter_path: "src/adapters/twitter/mentions.yaml"
-  step: 1
-  suggestion: "Run: unicli auth setup twitter"
-  retryable: false
-  alternatives: ["twitter.search", "twitter.timeline"]
-```
-
-### MD body sections
-
-Success: `## Data` (per-item list) · `## Context` (surface, pagination) · `## Next Actions`. Error: `## Error` (code, message, adapter_path, step, retryable) · `## Suggestion` · `## Alternatives`. YAML frontmatter carries `ok`, `schema_version`, `command`, `duration_ms`, `count`.
-
-### Error codes
-
-net: `network_error` `rate_limited` `upstream_error` `api_error` `not_authenticated`
-input: `invalid_input` `selector_miss` `not_found`
-authz: `auth_required` `permission_denied`
-runtime: `internal_error` `quarantined`
-ref: `stale_ref` `ambiguous` `ref_not_found`
-
-### Exit codes
-
-0 ok · 66 empty · 69 unavailable · 75 temp-fail · 77 auth · 78 config
-
-## Self-Repair Protocol
-
-When a command fails:
+## Done = these commands exit 0
 
 ```
-1. Read error envelope (MD or JSON) → get adapter_path
-2. Open the YAML (~20 lines, no imports)
-3. Edit the failing step (URL changed, selector moved, auth needed)
-4. Save to ~/.unicli/adapters/<site>/<command>.yaml
-5. Verify: unicli repair <site> <command>
+pnpm typecheck && pnpm lint && pnpm test:unit
 ```
 
-Fixes persist in `~/.unicli/adapters/` and survive `npm update`.
+Full E2E + adapter coverage: `npm run verify`. Required before any release.
 
-## Creating Adapters
+## Project conventions
 
-```yaml
-site: example
-name: search
-type: web-api
-strategy: public
-pipeline:
-  - fetch: { url: "https://api.example.com/search?q=${{ args.query }}" }
-  - select: data.results
-  - map: { title: "${{ item.title }}", url: "${{ item.url }}" }
-  - limit: ${{ args.limit }}
-args:
-  query: { type: str, required: true, positional: true }
-  limit: { type: int, default: 20 }
-columns: [title, url]
-```
+The cross-CLI contract `~/.claude/AGENTS.md` and ruleset `~/.claude/rules/`
+apply in full. The bullets below are the project-specific reinforcement
+because Uni-CLI is adapter-heavy and patch-rot kills us faster than most
+codebases.
 
-Full reference: [`docs/ADAPTER-FORMAT.md`](docs/ADAPTER-FORMAT.md).
+- **Engine code lives in `src/engine/`, browser in `src/browser/`, commands in `src/commands/`, adapters in `src/adapters/`.** Map by responsibility — never by version.
+- **Errors emit structured envelopes** to stderr with `code`, `adapter_path`, `step`, `suggestion`. Pipeline steps that fail must surface the real cause, never coerce to a generic `internal_error`. (rule 02)
+- **Tests under `tests/` and `*.test.ts` exercise real owned code** — engine, registry, adapter loader. External boundaries (network fetch, subprocess, Chrome CDP) may be stubbed with one `// REASON:` line. (rule 03)
+- **`unicli test [site]` runs adapter E2E.** Never substitute a fixture for the YAML pipeline runner.
+- **Multi-file change in `src/engine/`, `src/browser/`, or new adapter type → independent audit subagent before PR.** (rule 05)
 
-## Pipeline Steps
+## Style template
 
-59 registered pipeline steps across api, transform, control, browser, subprocess, and CUA-oriented families. Common steps include fetch, fetch_text, parse_rss, html_to_md, select, map, filter, sort, limit, set, if, each, parallel, rate_limit, assert, retry, append, navigate, evaluate, click, type, press, scroll, intercept, snapshot, tap, extract, wait, exec, write_temp, download, and websocket. See [`docs/ADAPTER-FORMAT.md`](docs/ADAPTER-FORMAT.md) for examples.
+Detailed adapter format, pipeline conventions, and error envelope shape live
+in the project skill: `~/.claude/skills/uni-cli-style/SKILL.md`. Load on
+demand. Never paraphrase from memory.
 
-## MCP Server
+## Project-internal references
 
-```bash
-npx @zenalexa/unicli mcp serve                                # stdio (4 meta-tools)
-npx @zenalexa/unicli mcp serve --transport streamable --port 19826
-npx @zenalexa/unicli mcp serve --transport sse --port 19826   # legacy alias for streamable
-npx @zenalexa/unicli mcp serve --auth                         # OAuth 2.1 PKCE
-```
+| Topic                       | Where                    |
+| --------------------------- | ------------------------ |
+| Adapter format              | `docs/ADAPTER-FORMAT.md` |
+| Pipeline steps (live count) | `unicli list`            |
+| Strategy semantics          | `src/types.ts`           |
+| Theory / citations          | `docs/THEORY.md`         |
 
-Default tools: `unicli_run`, `unicli_list`, `unicli_search`, `unicli_explore`. Agents call `unicli_search` first (bilingual BM25), then `unicli_run` with the chosen site + command.
-
-## ACP (avante.nvim / Zed)
-
-```bash
-unicli acp          # ACP compatibility over stdio
-```
-
-ACP is an editor compatibility gateway, not the core runtime. Prefer `unicli agents recommend <agent>` for Claude Code, Codex, Cursor, OpenCode, Gemini, Qwen, Kiro, Aider, Goose, Cline, Roo, AgentAPI, etc.
-
-## External CLI Passthrough
-
-58 registered external CLIs. If installed on your system, they're available as top-level commands:
-
-```bash
-unicli ext list                    # Show all external CLIs + install status
-unicli ext list --tag agent        # Show coding-agent CLIs
-unicli ext install <name>          # Install an external CLI
-unicli lark-cli calendar +agenda   # Direct passthrough
-```
+`unicli list` is more authoritative than any inventory in this file — the
+project ships at high cadence, written counts go stale fast.
 
 ## Version
 
