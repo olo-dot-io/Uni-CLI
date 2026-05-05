@@ -10,8 +10,11 @@ args:
     default: 20
 pipeline:
   - fetch:
-      url: "https://sspai.com/api/v1/articles?offset=0&limit=${{ args.limit | default(20) }}&sort=hot"
+      url: "https://sspai.com/api/v1/article/index/page/get?offset=0&limit=60"
   - select: data
+  - sort:
+      by: like_count
+      order: desc
   - map:
       title: "${{ item.title }}"
       author: "${{ item.author.nickname }}"

@@ -10,16 +10,16 @@ args:
     default: 20
 pipeline:
   - fetch:
-      url: "https://sspai.com/api/v1/articles?offset=0&limit=${{ args.limit | default(20) }}&sort=created_at"
+      url: "https://sspai.com/api/v1/article/index/page/get?offset=0&limit=${{ args.limit | default(20) }}"
   - select: data
   - map:
       title: "${{ item.title }}"
       author: "${{ item.author.nickname }}"
       likes: "${{ item.like_count }}"
+      released_at: "${{ item.released_time }}"
       url: "${{ 'https://sspai.com/post/' + item.id }}"
-      date: "${{ item.created_at }}"
   - limit: "${{ args.limit | default(20) }}"
-columns: [title, author, likes, url]
+columns: [title, author, likes, released_at, url]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
 capabilities: ["http.fetch"]
