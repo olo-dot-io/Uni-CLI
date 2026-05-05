@@ -4,7 +4,7 @@ description: >
   Use Uni-CLI to interact with 237 websites, desktop apps, and system tools.
   Trigger when: user asks to check a website, fetch data, control a desktop app,
   or interact with social media, news, finance, or AI platforms.
-version: 0.218.1
+version: 0.219.0
 depends-on:
   - talk-normal
 triggers:

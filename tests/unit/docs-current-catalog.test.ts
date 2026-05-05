@@ -82,8 +82,17 @@ interface ReleaseInfo {
   changelogUrl: string;
 }
 
+interface ServerJson {
+  version: string;
+  packages: Array<{ version: string }>;
+}
+
 function readRepoFile(path: string): string {
   return readFileSync(join(ROOT, path), "utf-8");
+}
+
+function versionSlug(version: string): string {
+  return version.replace(/\./g, "");
 }
 
 describe("current docs catalog claims", () => {
@@ -106,8 +115,30 @@ describe("current docs catalog claims", () => {
     ) as ReleaseInfo;
 
     expect(releaseInfo.version).toBe(pkg.version);
-    expect(releaseInfo.codename).toBe("Apollo · Cernan Patch");
+    expect(releaseInfo.codename).toMatch(/^\S.+\s·\s\S.+$/);
+    expect(releaseInfo.codename).not.toMatch(
+      /\b(?:tbd|todo|unreleased|next)\b/i,
+    );
     expect(releaseInfo.releaseUrl).toContain(`/v${pkg.version}`);
-    expect(releaseInfo.changelogUrl).toContain("02181--");
+    expect(releaseInfo.changelogUrl).toContain(`${versionSlug(pkg.version)}--`);
   });
+
+  it("MCP registry manifest matches the package version", () => {
+    const pkg = JSON.parse(readRepoFile("package.json")) as PackageJson;
+    const server = JSON.parse(readRepoFile("server.json")) as ServerJson;
+
+    expect(server.version).toBe(pkg.version);
+    expect(server.packages.map((entry) => entry.version)).toEqual([
+      pkg.version,
+    ]);
+  });
+
+  it.each(["docs/faq.md", "docs/zh/faq.md"])(
+    "%s names the current package version",
+    (path) => {
+      const pkg = JSON.parse(readRepoFile("package.json")) as PackageJson;
+
+      expect(readRepoFile(path)).toContain(`v${pkg.version}`);
+    },
+  );
 });

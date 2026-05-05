@@ -54,6 +54,27 @@ function runCatalogGenerator(catalogPath: string, siteIndexPath: string): void {
   expect(result.stderr).toBe("");
 }
 
+function runReleaseDryRun(): void {
+  const result = spawnSync(
+    npxBin,
+    [
+      "tsx",
+      "scripts/release.ts",
+      "--codename",
+      "Vostok · Gagarin",
+      "--dry-run",
+    ],
+    {
+      cwd: ROOT,
+      encoding: "utf8",
+      timeout: 60_000,
+    },
+  );
+
+  expect(result.status).toBe(0);
+  expect(result.stderr).toBe("");
+}
+
 describe("verify scripts", () => {
   it("runs the compute perf budget gate in the default verify chain", () => {
     const scripts = rootScripts();
@@ -115,5 +136,9 @@ describe("verify scripts", () => {
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }
+  }, 70_000);
+
+  it("runs release metadata propagation in dry-run mode", () => {
+    runReleaseDryRun();
   }, 70_000);
 });

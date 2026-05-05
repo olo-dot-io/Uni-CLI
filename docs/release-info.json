@@ -1,23 +1,23 @@
 {
-  "version": "0.218.1",
-  "codename": "Apollo · Cernan Patch",
+  "version": "0.219.0",
+  "codename": "Vostok · Gagarin",
   "date": "2026-05-05",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.218.1",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02181--2026-05-05--apollo--cernan-patch",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.219.0",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02190--2026-05-05--vostok--gagarin",
   "highlights": {
     "root": [
-      "`unicli-mcp` binary support lets `npx -y @zenalexa/unicli-mcp` boot the MCP server directly for Claude Desktop, Cursor, Continue, and similar clients.",
-      "`server.json` now ships at the package root for MCP registry discovery.",
-      "The npm package now includes the Uni-CLI skill packs under `skills/`, so global installs give agents the usage, repair, browser, and smart-search guidance without a separate clone.",
-      "`AGENTS.md` includes the MCP one-liner config block and current command-contract metadata."
+      "Release surfaces are generated from the live catalog: README, README.zh-CN, VitePress docs, public Markdown, AGENTS.md, and the AI-readable docs now agree on 238 sites, 1458 commands, 1048 adapters, 101 pipeline steps, and 7920 tests.",
+      "Dead active adapters moved into a public archive with provenance, while Maven, NuGet, RubyGems, Packagist, and pub.dev add five high-value package-registry surfaces.",
+      "Legacy engine-shim and SSE release leaks are gone from current docs, and deterministic catalog generation keeps docs builds idempotent.",
+      "The npm package exposes the root `bin/unicli-mcp` wrapper, `server.json` registry metadata, and shipped Uni-CLI skill packs for agent installs."
     ],
     "zh": [
-      "`unicli-mcp` 二进制入口让 `npx -y @zenalexa/unicli-mcp` 可以直接启动 MCP server，方便 Claude Desktop、Cursor、Continue 等客户端配置。",
-      "包根目录新增 `server.json`，用于 MCP registry 发现。",
-      "npm 包现在随包发布 `skills/` 下的 Uni-CLI skill pack，全局安装后 Agent 不需要额外 clone 就能拿到使用、修复、浏览器和 smart-search 指引。",
-      "`AGENTS.md` 增加 MCP 一行配置块，并同步当前命令契约元数据。"
+      "README、README.zh-CN、VitePress 文档、public Markdown、AGENTS.md 和 Agent 可读文档都改为从真实目录生成，统一显示 238 个站点、1458 条命令、1048 个适配器、101 个 pipeline step、7920 个测试。",
+      "已失效的 active adapter 移入带来源说明的公开 archive，同时新增 Maven、NuGet、RubyGems、Packagist、pub.dev 五个高价值包生态站点。",
+      "当前文档里的旧 engine shim 与旧 SSE 发布痕迹已清理，catalog 生成改成内容不变则时间戳不变，docs build 可重复。",
+      "npm 包继续发布根目录 `bin/unicli-mcp` wrapper、`server.json` registry metadata 和 Uni-CLI skill pack，方便 Agent 全局安装后直接使用。"
     ]
   }
 }

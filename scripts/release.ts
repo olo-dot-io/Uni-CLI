@@ -13,6 +13,9 @@
  * - AGENTS.md: command-contract version footer
  * - CHANGELOG.md: Insert new version heading (content added manually)
  * - docs/ROADMAP.md: Current version line
+ * - docs/faq.md / docs/zh/faq.md: Current package version sentence
+ * - docs/release-info.json: Version-derived release metadata
+ * - server.json: MCP registry manifest version fields
  *
  * What it does NOT update (handled elsewhere):
  * - README.md / AGENTS.md / docs/ROADMAP.md / docs/zh/ROADMAP.md site/command/pipeline/test counts
@@ -158,9 +161,21 @@ const rules: Rule[] = [
   },
   {
     file: "docs/ARCHITECTURE.md",
-    pattern: /\bin v[\d.]+\./,
+    pattern: /\bin\s+v[\d.]+\./,
     replacement: `in v${version}.`,
     description: "docs/ARCHITECTURE.md version pin",
+  },
+  {
+    file: "docs/faq.md",
+    pattern: /^v[\d.]+ covers(?=\s+<span><!--\s*STATS:site_count\s*-->)/m,
+    replacement: `v${version} covers`,
+    description: "docs/faq.md package version pin",
+  },
+  {
+    file: "docs/zh/faq.md",
+    pattern: /^v[\d.]+ 覆盖(?=\s+<span><!--\s*STATS:site_count\s*-->)/m,
+    replacement: `v${version} 覆盖`,
+    description: "docs/zh/faq.md package version pin",
   },
   {
     file: "skills/unicli/SKILL.md",
@@ -318,6 +333,50 @@ if (existsSync(releaseInfoPath)) {
   }
 } else {
   console.log(`   ✗ FAIL docs/release-info.json — file not found`);
+  failed++;
+}
+
+// --- server.json: sync MCP registry manifest package versions ---
+
+const serverJsonPath = join(ROOT, "server.json");
+if (existsSync(serverJsonPath)) {
+  try {
+    const manifest = JSON.parse(
+      readFileSync(serverJsonPath, "utf-8"),
+    ) as Record<string, unknown>;
+    if (typeof manifest.version !== "string") {
+      throw new Error("top-level version must be a string");
+    }
+    if (!Array.isArray(manifest.packages)) {
+      throw new Error("packages must be an array");
+    }
+    const packages = manifest.packages.map((entry, index) => {
+      if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+        throw new Error(`packages[${index}] must be an object`);
+      }
+      const packageEntry = entry as Record<string, unknown>;
+      if (typeof packageEntry.version !== "string") {
+        throw new Error(`packages[${index}].version must be a string`);
+      }
+      return { ...packageEntry, version };
+    });
+    const next = { ...manifest, version, packages };
+    const serialized = JSON.stringify(next, null, 2) + "\n";
+    if (serialized !== readFileSync(serverJsonPath, "utf-8")) {
+      if (!dryRun) writeFileSync(serverJsonPath, serialized);
+      console.log(
+        `   ${dryRun ? "→" : "✓"} server.json — manifest versions refreshed`,
+      );
+      updated++;
+    } else {
+      console.log(`   ✓ server.json — already up to date`);
+    }
+  } catch (err) {
+    console.log(`   ✗ FAIL server.json — ${(err as Error).message}`);
+    failed++;
+  }
+} else {
+  console.log(`   ✗ FAIL server.json — file not found`);
   failed++;
 }
 

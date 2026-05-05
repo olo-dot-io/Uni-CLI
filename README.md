@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->238<!-- /STATS --> sites · <!-- STATS:command_count -->1458<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7916<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->238<!-- /STATS --> sites · <!-- STATS:command_count -->1458<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->7920<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -622,5 +622,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v0.218.1 — Apollo · Cernan Patch</sub>
+  <sub>v0.219.0 — Vostok · Gagarin</sub>
 </p>

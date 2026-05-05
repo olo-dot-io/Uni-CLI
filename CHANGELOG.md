@@ -5,6 +5,17 @@ Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributin
 
 ## [Unreleased]
 
+## [0.219.0] — 2026-05-05 — Vostok · Gagarin
+
+### Minor Changes
+
+- 9a9b68f: Add `juejin` (search, hot) and `leetcode` (discuss-search) adapters as public web-api commands. Both run anonymously — no cookie required. Includes fixture-based vitest coverage for all three commands.
+- Standardize the Uni-CLI release surface for v0.219 Vostok: archive dead adapters with public provenance, add Maven/NuGet/RubyGems/Packagist/pub.dev package registry coverage, rebuild the README and Chinese README from the live manifest, sync VitePress/public docs to generated catalog data, remove legacy MCP/SSE and yaml-runner release leaks, and make the npm package expose the root `bin/unicli-mcp` wrapper plus registry metadata.
+
+### Patch Changes
+
+- 33bafa6: Promote macOS Shortcuts and App Intent discovery into first-class runtime commands, with stable app action inventory and automation smoke probes.
+
 ## [0.218.1] — 2026-05-05 — Apollo · Cernan Patch
 
 ### Added

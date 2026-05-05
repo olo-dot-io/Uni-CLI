@@ -92,7 +92,7 @@ project ships at high cadence, written counts go stale fast.
 
 ## Version
 
-0.218.1 — Apollo · Cernan Patch
+0.219.0 — Vostok · Gagarin
 
 ## MCP one-liner (Claude Desktop / Cursor / Continue)
 
