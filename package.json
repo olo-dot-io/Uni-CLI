@@ -1,11 +1,12 @@
 {
   "name": "@zenalexa/unicli",
-  "version": "0.218.0",
-  "description": "Agent execution substrate for web, apps, local tools, and system capabilities",
+  "version": "0.218.1",
+  "description": "Agent execution substrate for web, apps, local tools, and system capabilities. Self-repairing CLI catalog for 237+ websites and apps. Stdio + Streamable HTTP MCP server.",
   "type": "module",
   "main": "dist/main.js",
   "bin": {
-    "unicli": "dist/main.js"
+    "unicli": "dist/main.js",
+    "unicli-mcp": "dist/bin/unicli-mcp.js"
   },
   "files": [
     "dist/",
@@ -14,6 +15,19 @@
     "docs/mcp/clients/",
     "src/adapters/",
     "src/hub/",
+    "skills/unicli/",
+    "skills/unicli-browser/",
+    "skills/unicli-claude-code/",
+    "skills/unicli-explorer/",
+    "skills/unicli-hermes/",
+    "skills/unicli-oneshot/",
+    "skills/unicli-operate/",
+    "skills/unicli-repair/",
+    "skills/unicli-smart-search/",
+    "skills/unicli-usage/",
+    "skills/talk-normal/",
+    "skills/README.md",
+    "server.json",
     "AGENTS.md"
   ],
   "publishConfig": {
@@ -124,7 +138,7 @@
   "scripts": {
     "dev": "tsx src/main.ts",
     "build": "tsc && tsx scripts/build-manifest.js && tsx scripts/count-stats.ts && tsx scripts/build-readme.ts && tsx scripts/build-agents.ts && prettier --write AGENTS.md",
-    "postbuild": "node -e \"require('fs').chmodSync('dist/main.js', 0o755)\"",
+    "postbuild": "node -e \"const fs=require('fs'); fs.chmodSync('dist/main.js', 0o755); fs.chmodSync('dist/bin/unicli-mcp.js', 0o755);\"",
     "stats": "tsx scripts/build-manifest.js && tsx scripts/count-stats.ts && tsx scripts/build-readme.ts && tsx scripts/build-agents.ts",
     "stats:check": "tsx scripts/count-consistency.ts",
     "build:agents": "tsx scripts/build-agents.ts",
@@ -219,10 +233,10 @@
     "zod": "^4.3.6"
   },
   "optionalDependencies": {
-    "@zenalexa/unicli-atspi-linux-arm64": "0.218.0",
-    "@zenalexa/unicli-atspi-linux-x64": "0.218.0",
-    "@zenalexa/unicli-uia-win32-arm64": "0.218.0",
-    "@zenalexa/unicli-uia-win32-x64": "0.218.0"
+    "@zenalexa/unicli-atspi-linux-arm64": "0.218.1",
+    "@zenalexa/unicli-atspi-linux-x64": "0.218.1",
+    "@zenalexa/unicli-uia-win32-arm64": "0.218.1",
+    "@zenalexa/unicli-uia-win32-x64": "0.218.1"
   },
   "devDependencies": {
     "@ai-sdk/openai-compatible": "^2.0.41",

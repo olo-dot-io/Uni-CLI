@@ -52,4 +52,22 @@ project ships at high cadence, written counts go stale fast.
 
 ## Version
 
-0.218.0 — Apollo · Cernan
+0.218.1 — Apollo · Cernan Patch
+
+## MCP one-liner (Claude Desktop / Cursor / Continue)
+
+```json
+{
+  "mcpServers": {
+    "unicli": {
+      "command": "npx",
+      "args": ["-y", "@zenalexa/unicli-mcp"]
+    }
+  }
+}
+```
+
+Equivalent: `npx -y @zenalexa/unicli mcp serve`. Default profile exposes 4
+meta-tools (~200 tokens); `--expanded` exposes one tool per command (3,319
+tools, ~160K tokens). The registry manifest is shipped at `server.json` for
+the official MCP registry.

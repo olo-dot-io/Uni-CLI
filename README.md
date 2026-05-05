@@ -354,5 +354,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v0.218.0 — Apollo · Cernan</sub>
+  <sub>v0.218.1 — Apollo · Cernan Patch</sub>
 </p>

@@ -1,6 +1,6 @@
 # Uni-CLI Copy Rules
 
-> Current version: v0.218.0 — Apollo · Cernan.
+> Current version: v0.218.1 — Apollo · Cernan Patch.
 >
 > Current scale: <!-- STATS:site_count -->237<!-- /STATS --> sites, <!-- STATS:command_count -->1453<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->1043<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->920<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->123<!-- /STATS --> TS), <!-- STATS:test_count -->7842<!-- /STATS --> tests.
 

@@ -1,10 +1,10 @@
 ---
 name: unicli-hermes
 description: >
-  Use Uni-CLI to interact with 235 websites, desktop apps, and system tools.
+  Use Uni-CLI to interact with 237 websites, desktop apps, and system tools.
   Trigger when: user asks to check a website, fetch data, control a desktop app,
   or interact with social media, news, finance, or AI platforms.
-version: 0.218.0
+version: 0.218.1
 depends-on:
   - talk-normal
 triggers:
@@ -18,7 +18,7 @@ triggers:
 
 # Uni-CLI Agent Skill
 
-Universal CLI for AI agents — 235 sites, 1448 commands.
+Universal CLI for AI agents — 237 sites, 3,319 commands.
 
 ## Install
 
@@ -73,7 +73,7 @@ mcp_servers:
       include: [unicli_run, unicli_list, unicli_search, unicli_explore]
 ```
 
-Or run the expanded server to expose all 1448 commands as individual tools:
+Or run the expanded server to expose all 3,319 commands as individual tools:
 
 ```yaml
 mcp_servers:

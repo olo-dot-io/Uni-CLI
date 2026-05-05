@@ -1,0 +1,44 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "name": "io.github.olo-dot-io/Uni-CLI",
+  "description": "Self-repairing CLI catalog that exposes 237+ websites, desktop apps, and external CLIs as one MCP server. 920 declarative YAML adapters; structured error envelopes let agents fix failing adapters at runtime and retry.",
+  "version": "0.218.1",
+  "repository": {
+    "url": "https://github.com/olo-dot-io/Uni-CLI",
+    "source": "github"
+  },
+  "websiteUrl": "https://olo-dot-io.github.io/Uni-CLI/",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@zenalexa/unicli",
+      "version": "0.218.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeArguments": [
+        {
+          "type": "positional",
+          "value": "mcp",
+          "valueHint": "subcommand",
+          "isRequired": true
+        },
+        {
+          "type": "positional",
+          "value": "serve",
+          "valueHint": "subcommand",
+          "isRequired": true
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "UNICLI_MCP_PROFILE",
+          "description": "Tool profile: default (4 meta-tools), expanded (one tool per command), or computer-use",
+          "isRequired": false,
+          "default": "default"
+        }
+      ]
+    }
+  ]
+}

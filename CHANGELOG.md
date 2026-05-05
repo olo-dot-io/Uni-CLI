@@ -5,6 +5,31 @@ Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributin
 
 ## [Unreleased]
 
+## [0.218.1] — 2026-05-05 — Apollo · Cernan Patch
+
+### Added
+
+- **`unicli-mcp` bin** — `npx -y @zenalexa/unicli-mcp` boots the MCP server
+  in one step; equivalent to `npx -y @zenalexa/unicli mcp serve`. Useful as
+  the `command` value in Claude Desktop / Cursor / Continue MCP configs.
+- **`server.json` MCP registry manifest** at the package root, conforming
+  to the official `https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json`,
+  so Uni-CLI can be published to `registry.modelcontextprotocol.io` and
+  similar discovery endpoints.
+- **Skills shipped to npm** — the `unicli`, `unicli-browser`,
+  `unicli-claude-code`, `unicli-explorer`, `unicli-hermes`, `unicli-oneshot`,
+  `unicli-operate`, `unicli-repair`, `unicli-smart-search`, `unicli-usage`,
+  and `talk-normal` skill packs are now in the published npm tarball under
+  `node_modules/@zenalexa/unicli/skills/`. Agents that install via
+  `npm i -g @zenalexa/unicli` get the skills without a separate clone.
+
+### Fixed
+
+- **`skills/unicli-hermes/SKILL.md`** — refreshed numbers (was 235 sites /
+  1,448 commands; now 237 / 3,319) and bumped `version: 0.218.1`.
+- **`AGENTS.md`** — added the MCP one-liner config block so agents can
+  copy-paste the JSON into Claude Desktop / Cursor without grepping docs.
+
 ## [0.218.0] — 2026-05-05 — Apollo · Cernan
 
 ### Added
