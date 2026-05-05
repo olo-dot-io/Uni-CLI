@@ -17,7 +17,7 @@ pipeline:
 
   - select: data
 
-  - filter: "!('${{ args.query }}') || item.name.toLowerCase().includes('${{ args.query }}'.toLowerCase()) || item.id.toLowerCase().includes('${{ args.query }}'.toLowerCase())"
+  - filter: "!args.query || item.name.toLowerCase().includes(args.query.toLowerCase()) || item.id.toLowerCase().includes(args.query.toLowerCase())"
 
   - map:
       id: ${{ item.id }}

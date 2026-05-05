@@ -15,7 +15,7 @@ pipeline:
   - fetch:
       url: "https://formulae.brew.sh/api/formula.json"
 
-  - filter: "item.name.includes('${{ args.query }}') || (item.desc || '').toLowerCase().includes('${{ args.query }}'.toLowerCase())"
+  - filter: "item.name.toLowerCase().includes(args.query.toLowerCase()) || (item.desc || '').toLowerCase().includes(args.query.toLowerCase())"
 
   - map:
       name: ${{ item.name }}
