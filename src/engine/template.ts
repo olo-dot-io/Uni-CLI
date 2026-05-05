@@ -1,9 +1,9 @@
 /**
  * Pipeline template engine — ${{ expression | filter | ... }} evaluation.
  *
- * Extracted from the legacy yaml-runner so per-step handlers can share a
- * single implementation. The expression evaluator uses a null-prototype VM
- * sandbox with a 50ms timeout and a deny-list for prototype-chain escape
+ * Shared by every step handler so interpolation is uniform across the
+ * pipeline. The expression evaluator uses a null-prototype VM sandbox
+ * with a 50ms timeout and a deny-list for prototype-chain escape
  * vectors; simple dotted access bypasses the VM for performance.
  */
 
@@ -154,8 +154,13 @@ function parsePipes(expr: string): {
       current += ch;
       continue;
     }
-    if (ch === "|" && depth === 0 && expr[i + 1] !== "|") {
-      // Check it's not || (logical OR)
+    if (
+      ch === "|" &&
+      depth === 0 &&
+      expr[i + 1] !== "|" &&
+      expr[i - 1] !== "|"
+    ) {
+      // Skip both halves of a `||` logical-OR token, not just the first.
       parts.push(current.trim());
       current = "";
       continue;
