@@ -16,7 +16,7 @@ pipeline:
       title: "${{ item.title }}"
       author: "${{ item.author.nickname }}"
       likes: "${{ item.like_count }}"
-      released_at: "${{ item.released_time }}"
+      released_at: "${{ item.released_time | date_iso }}"
       url: "${{ 'https://sspai.com/post/' + item.id }}"
   - limit: "${{ args.limit | default(20) }}"
 columns: [title, author, likes, released_at, url]

@@ -116,6 +116,16 @@ export const PIPE_FILTERS: Record<string, (...args: unknown[]) => unknown> = {
           .reverse()
           .join(""),
   unique: (val: unknown) => (Array.isArray(val) ? [...new Set(val)] : val),
+  // Convert Unix epoch (seconds or milliseconds) to an ISO-8601 string.
+  // Heuristic: anything below 10^12 is treated as seconds; >= 10^12 as ms.
+  // Returns "" for null / NaN / non-numeric input rather than `Invalid Date`.
+  date_iso: (val: unknown) => {
+    const n = Number(val);
+    if (!Number.isFinite(n) || n <= 0) return "";
+    const ms = n < 1e12 ? n * 1000 : n;
+    const d = new Date(ms);
+    return Number.isNaN(d.getTime()) ? "" : d.toISOString();
+  },
 };
 
 /**

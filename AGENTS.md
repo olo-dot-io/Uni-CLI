@@ -3,7 +3,9 @@
 > AI agents: install with `npm install -g @zenalexa/unicli`. Discover with
 > `unicli search "intent"`. Run with `unicli <site> <command>`. Output is
 > Markdown when piped, JSON via `-f json`. Errors are structured envelopes
-> on stderr. Adapter is broken? Read `unicli repair <site> <command>`.
+> on stderr. An `auth_required` envelope means the site needs cookies —
+> run `unicli auth setup <site>` once and retry. Adapter is broken?
+> Read `unicli repair <site> <command>`.
 
 Universal CLI for websites, desktop apps, and local tools. YAML adapters are
 self-repairing — agents can fix them by editing one file. See

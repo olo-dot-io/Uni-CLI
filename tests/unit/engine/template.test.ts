@@ -111,3 +111,26 @@ describe("evalExpression — unknown filter surfaces TemplateEvalError", () => {
     expect(result).toBeUndefined();
   });
 });
+
+describe("evalExpression — date_iso pipe filter", () => {
+  it("converts Unix epoch in seconds to ISO-8601", () => {
+    expect(
+      evalExpression("item.t | date_iso", { item: { t: 1777950000 } }),
+    ).toBe(new Date(1777950000 * 1000).toISOString());
+  });
+
+  it("converts Unix epoch in milliseconds to ISO-8601", () => {
+    expect(
+      evalExpression("item.t | date_iso", { item: { t: 1777950000000 } }),
+    ).toBe(new Date(1777950000000).toISOString());
+  });
+
+  it("returns empty string for null / NaN / zero / negative input", () => {
+    expect(evalExpression("item.t | date_iso", { item: { t: null } })).toBe("");
+    expect(evalExpression("item.t | date_iso", { item: { t: "abc" } })).toBe(
+      "",
+    );
+    expect(evalExpression("item.t | date_iso", { item: { t: 0 } })).toBe("");
+    expect(evalExpression("item.t | date_iso", { item: { t: -5 } })).toBe("");
+  });
+});
