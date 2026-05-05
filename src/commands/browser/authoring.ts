@@ -1,5 +1,13 @@
+/**
+ * @owner   src/commands/browser/authoring.ts
+ * @does    Register browser authoring subcommands for page analysis, network capture, cached reads, and site comparison.
+ * @needs   commander, src/browser/analyze, src/browser/network-cache, src/registry, ./runtime
+ * @feeds   src/commands/browser/actions.ts
+ * @breaks  Analyze, capture, cache, and registry failures propagate as command errors. No fallback.
+ */
+
 import { Command } from "commander";
-import { analyzeSite, type PageSignals } from "../browser/analyze.js";
+import { analyzeSite, type PageSignals } from "../../browser/analyze.js";
 import {
   DEFAULT_NETWORK_CACHE_TTL_MS,
   bodyMatchesNetworkFilter,
@@ -9,15 +17,15 @@ import {
   saveNetworkCache,
   toCachedNetworkEntries,
   truncateNetworkBody,
-} from "../browser/network-cache.js";
-import { getAllAdapters } from "../registry.js";
+} from "../../browser/network-cache.js";
+import { getAllAdapters } from "../../registry.js";
 import {
   ensureNetworkCapture,
   getOperatorPage,
   operatorAction,
   readNetworkEntries,
   resolveWorkspace,
-} from "./browser-operator-runtime.js";
+} from "./runtime.js";
 
 function commandError(
   code: string,

@@ -1,13 +1,21 @@
+/**
+ * @owner   src/commands/browser/actions.ts
+ * @does    Register browser action CLI handlers and wrap actions with session lease, evidence, and daemon execution.
+ * @needs   commander, chalk, fs/path, src/browser observe/snapshot/daemon, ./runtime, ./authoring, src/engine/browser
+ * @feeds   src/commands/browser/index.ts, src/commands/operate.ts, tests/unit/commands/browser.test.ts
+ * @breaks  Action, lease, daemon, and evidence failures propagate as command errors or evidence envelopes. No fallback.
+ */
+
 import { appendFileSync, mkdirSync } from "node:fs";
 import { dirname as pathDirname, join } from "node:path";
 import { Command } from "commander";
 import chalk from "chalk";
-import { userHome } from "../engine/user-home.js";
+import { userHome } from "../../engine/user-home.js";
 import {
   FINGERPRINT_PERSIST_JS,
   verifyRef,
-} from "../browser/snapshot-identity.js";
-import { rankCandidates, type SnapshotRef } from "../browser/observe.js";
+} from "../../browser/snapshot-identity.js";
+import { rankCandidates, type SnapshotRef } from "../../browser/observe.js";
 import {
   buildExtractJs,
   buildFindJs,
@@ -19,29 +27,29 @@ import {
   resolveWorkspace,
   validateRef,
   withBrowserOperatorEnv,
-} from "./browser-operator-runtime.js";
-import { sendCommand } from "../browser/daemon-client.js";
-import { registerBrowserAuthoringSubcommands } from "./browser-authoring-operator.js";
+} from "./runtime.js";
+import { sendCommand } from "../../browser/daemon-client.js";
+import { registerBrowserAuthoringSubcommands } from "./authoring.js";
 import {
   captureBrowserEvidencePacket,
   captureRenderAwareBrowserEvidence,
   installBrowserEvidenceHooks,
-} from "../engine/browser/evidence.js";
+} from "../../engine/browser/evidence.js";
 import {
   assertBrowserSessionLeaseUrlGuard,
   createBrowserSessionLease,
-} from "../engine/browser/session-lease.js";
+} from "../../engine/browser/session-lease.js";
 import {
   assertBrowserSessionLeaseTargetCurrent,
   enrichBrowserSessionLease,
-} from "../engine/browser/session-runtime.js";
+} from "../../engine/browser/session-runtime.js";
 import {
   type BrowserActionWatchdogMode,
   type BrowserActionWatchdogOptions,
   isBrowserActionEvidenceEnabled,
   withBrowserActionEvidence,
-} from "../engine/browser/action-evidence.js";
-import { withBrowserSessionLeaseLock } from "../engine/browser/session-lock.js";
+} from "../../engine/browser/action-evidence.js";
+import { withBrowserSessionLeaseLock } from "../../engine/browser/session-lock.js";
 
 export { withBrowserOperatorEnv };
 

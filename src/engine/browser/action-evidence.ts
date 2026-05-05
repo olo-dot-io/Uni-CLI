@@ -286,7 +286,7 @@ function metadataForBrowserAction(
     command: options.command,
     site: site || options.namespace,
     cmd: cmdParts.join(".") || options.action,
-    adapter_path: `src/commands/browser-operator.ts#${options.command}`,
+    adapter_path: `src/commands/browser/actions.ts#${options.command}`,
     permission_profile: rawPermissionProfile(options.permissionProfile),
     transport_surface: "cli",
     target_surface: "web",

@@ -19,7 +19,7 @@ import { verifyRowShape } from "./engine/verify-row-shape.js";
 import { ExitCode } from "./types.js";
 import { VERSION } from "./constants.js";
 import { registerAuthCommands } from "./commands/auth.js";
-import { registerBrowserCommands } from "./commands/browser.js";
+import { registerBrowserCommands } from "./commands/browser/index.js";
 import { registerComputeCommand } from "./commands/compute.js";
 import { registerDaemonCommands } from "./commands/daemon.js";
 import { registerDoctorComputeCommand } from "./commands/doctor-compute.js";

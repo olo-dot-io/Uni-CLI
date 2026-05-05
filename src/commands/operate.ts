@@ -10,7 +10,7 @@ import { Command } from "commander";
 import {
   applyBrowserOperatorRootOptions,
   registerBrowserOperatorSubcommands,
-} from "./browser-operator.js";
+} from "./browser/actions.js";
 
 export function registerOperateCommands(program: Command): void {
   const operate = program

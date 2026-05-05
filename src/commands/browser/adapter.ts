@@ -1,10 +1,18 @@
+/**
+ * @owner   src/commands/browser/adapter.ts
+ * @does    Register browser adapter authoring and verification subcommands backed by real adapter execution.
+ * @needs   commander, src/browser adapter-authoring/verify-fixture, src/engine args/kernel, output, types
+ * @feeds   src/commands/browser/index.ts
+ * @breaks  Fixture, skeleton, argument, and adapter execution failures emit structured envelopes. No fallback.
+ */
+
 import { existsSync } from "node:fs";
 import type { Command } from "commander";
 import {
   createAdapterSkeleton,
   missingStrictMemoryFiles,
   parseAdapterTarget,
-} from "../browser/adapter-authoring.js";
+} from "../../browser/adapter-authoring.js";
 import {
   deriveFixture,
   expandFixtureArgs,
@@ -14,16 +22,16 @@ import {
   writeFixture,
   type Fixture,
   type FixtureArgs,
-} from "../browser/verify-fixture.js";
-import { resolveArgs, type ResolvedArgs } from "../engine/args.js";
-import { buildInvocation, execute } from "../engine/kernel/execute.js";
+} from "../../browser/verify-fixture.js";
+import { resolveArgs, type ResolvedArgs } from "../../engine/args.js";
+import { buildInvocation, execute } from "../../engine/kernel/execute.js";
 import {
   makeCtx,
   type AgentContext,
   type AgentError,
-} from "../output/envelope.js";
-import { detectFormat, format } from "../output/formatter.js";
-import type { AdapterArg, OutputFormat } from "../types.js";
+} from "../../output/envelope.js";
+import { detectFormat, format } from "../../output/formatter.js";
+import type { AdapterArg, OutputFormat } from "../../types.js";
 
 type BrowserVerifyOptions = {
   writeFixture?: boolean;

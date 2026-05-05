@@ -1,20 +1,28 @@
+/**
+ * @owner   src/commands/browser/runtime.ts
+ * @does    Provide shared browser operator runtime helpers for workspace resolution, bridge access, and output formatting.
+ * @needs   commander, src/browser bridge/workspace, src/engine interceptor/user-home, permissions, output, types
+ * @feeds   src/commands/browser/actions.ts, src/commands/browser/authoring.ts
+ * @breaks  Bridge, workspace, permission, and formatting failures return structured errors and nonzero exits. No fallback.
+ */
+
 import { isAbsolute, relative, resolve } from "node:path";
 import { Command } from "commander";
-import { BrowserBridge, type DaemonPage } from "../browser/bridge.js";
-import { resolveBrowserWorkspace } from "../browser/workspace.js";
+import { BrowserBridge, type DaemonPage } from "../../browser/bridge.js";
+import { resolveBrowserWorkspace } from "../../browser/workspace.js";
 import {
   generateInterceptorJs,
   generateReadInterceptedJs,
-} from "../engine/interceptor.js";
+} from "../../engine/interceptor.js";
 import {
   buildSensitivePathDenial,
   isSensitivePathRealpath,
-} from "../permissions/sensitive-paths.js";
-import type { OutputFormat } from "../types.js";
-import { detectFormat, format } from "../output/formatter.js";
-import { makeCtx } from "../output/envelope.js";
-import { errorTypeToCode, mapErrorToExitCode } from "../output/error-map.js";
-import { userHome } from "../engine/user-home.js";
+} from "../../permissions/sensitive-paths.js";
+import type { OutputFormat } from "../../types.js";
+import { detectFormat, format } from "../../output/formatter.js";
+import { makeCtx } from "../../output/envelope.js";
+import { errorTypeToCode, mapErrorToExitCode } from "../../output/error-map.js";
+import { userHome } from "../../engine/user-home.js";
 
 export interface BrowserOperatorRootOptions {
   workspace?: string;

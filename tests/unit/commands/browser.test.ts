@@ -159,7 +159,7 @@ vi.mock("../../../src/browser/daemon-client.js", () => ({
   sendCommand: daemonClientMocks.sendCommand,
 }));
 
-import { registerBrowserCommands } from "../../../src/commands/browser.js";
+import { registerBrowserCommands } from "../../../src/commands/browser/index.js";
 
 function captureConsole(): {
   getStdout: () => string;

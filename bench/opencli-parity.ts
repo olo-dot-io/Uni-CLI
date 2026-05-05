@@ -147,7 +147,7 @@ export const DEFAULT_OPENCLI_SIGNALS: SignalCase[] = [
     url: "https://github.com/jackwener/OpenCLI/pull/1187",
     required_text: [
       {
-        file: "src/commands/browser-operator.ts",
+        file: "src/commands/browser/actions.ts",
         includes: "--daemon-port <port>",
       },
       { file: "src/browser/daemon-client.ts", includes: "UNICLI_DAEMON_PORT" },
@@ -173,10 +173,10 @@ export const DEFAULT_OPENCLI_SIGNALS: SignalCase[] = [
     required_commands: ["producthunt/hot"],
     required_text: [
       {
-        file: "src/commands/browser-operator.ts",
+        file: "src/commands/browser/actions.ts",
         includes: '.command("upload <ref> <path>")',
       },
-      { file: "src/commands/browser-operator.ts", includes: "setFileInput" },
+      { file: "src/commands/browser/actions.ts", includes: "setFileInput" },
     ],
   },
   {
@@ -186,7 +186,7 @@ export const DEFAULT_OPENCLI_SIGNALS: SignalCase[] = [
     required_text: [
       { file: "src/browser/protocol.ts", includes: '"bind-current"' },
       { file: "src/browser/daemon-client.ts", includes: "bindCurrentTab" },
-      { file: "src/commands/browser.ts", includes: '.command("bind")' },
+      { file: "src/commands/browser/index.ts", includes: '.command("bind")' },
     ],
   },
   {
@@ -219,7 +219,7 @@ export const DEFAULT_OPENCLI_SIGNALS: SignalCase[] = [
     url: "https://github.com/jackwener/OpenCLI/issues/1120",
     required_text: [
       {
-        file: "src/commands/browser-authoring-operator.ts",
+        file: "src/commands/browser/authoring.ts",
         includes: "--detail <key>",
       },
       {

@@ -1,10 +1,9 @@
 /**
- * Browser CLI subcommands — Chrome launcher and CDP connection management.
- *
- * Commands:
- *   browser start          — Start or connect to Chrome with CDP enabled
- *   browser status         — Check Chrome CDP connection status
- *   browser cookies <domain> — Extract cookies from Chrome for a domain
+ * @owner   src/commands/browser/index.ts
+ * @does    Register browser root commands for Chrome lifecycle, CDP status, cookies, sessions, actions, and adapter authoring.
+ * @needs   commander, chalk, src/browser launcher/CDP/daemon/workspace, ./actions, ./adapter, src/engine/cookie-extractor
+ * @feeds   src/cli.ts, tests/unit/commands/browser.test.ts
+ * @breaks  Chrome, CDP, daemon, and cookie failures propagate through command errors and stderr. No fallback.
  */
 
 import { Command } from "commander";
@@ -14,20 +13,20 @@ import {
   isCDPAvailable,
   launchChrome,
   getCDPPort,
-} from "../browser/launcher.js";
-import { CDPClient, getRemoteEndpoint } from "../browser/cdp-client.js";
+} from "../../browser/launcher.js";
+import { CDPClient, getRemoteEndpoint } from "../../browser/cdp-client.js";
 import {
   bindCurrentTab,
   fetchDaemonStatus,
   listSessions,
-} from "../browser/daemon-client.js";
+} from "../../browser/daemon-client.js";
 import {
   applyBrowserOperatorRootOptions,
   registerBrowserOperatorSubcommands,
   withBrowserOperatorEnv,
-} from "./browser-operator.js";
-import { registerBrowserAdapterAuthoringSubcommands } from "./browser-adapter-authoring.js";
-import { resolveBrowserWorkspace } from "../browser/workspace.js";
+} from "./actions.js";
+import { registerBrowserAdapterAuthoringSubcommands } from "./adapter.js";
+import { resolveBrowserWorkspace } from "../../browser/workspace.js";
 
 export function registerBrowserCommands(program: Command): void {
   const browser = program
@@ -278,7 +277,7 @@ export function registerBrowserCommands(program: Command): void {
 
       try {
         const { extractCookiesViaCDP, saveCookies } =
-          await import("../engine/cookie-extractor.js");
+          await import("../../engine/cookie-extractor.js");
         const cookies = await extractCookiesViaCDP(domain, port);
         const count = Object.keys(cookies).length;
 
