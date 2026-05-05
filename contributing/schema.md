@@ -28,8 +28,10 @@ errors.
 
 ## Known step names
 
-The canonical list (v0.212): 35 steps. Source of truth is the switch in
-`src/engine/yaml-runner.ts:148`. The lint engine reads the same registry.
+The canonical list is generated from the current engine surface. Source of
+truth is the step registry in `src/engine/step-registry.ts`, the built-in
+registrations in `src/engine/steps/index.ts`, and the executor in
+`src/engine/executor.ts`. The lint engine reads the same registry.
 
 | Category  | Steps                                                                                                         |
 | --------- | ------------------------------------------------------------------------------------------------------------- |
@@ -42,12 +44,13 @@ The canonical list (v0.212): 35 steps. Source of truth is the switch in
 
 Adding a new step:
 
-1. Add a `case "<name>":` in `src/engine/yaml-runner.ts` switch.
-2. Document semantics in the JSDoc at the top of the file.
-3. Add the step to the capability matrix in `src/engine/capability.ts`
-   (when Phase 1 lands) or the inline list in `src/commands/lint.ts`.
+1. Add the implementation under `src/engine/steps/` when the behavior fits
+   the shared step registry.
+2. Register the built-in step from `src/engine/steps/index.ts`, or wire it
+   explicitly in `src/engine/executor.ts` only when it is a control-flow step.
+3. Add the step to the capability matrix used by linting and operation policy.
 4. Add a unit test in `tests/unit/pipeline-*.test.ts`.
-5. Update this doc's table.
+5. Update `docs/reference/pipeline.md`.
 
 ## Quarantine
 

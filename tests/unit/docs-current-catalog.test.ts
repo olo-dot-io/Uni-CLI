@@ -15,11 +15,15 @@ const ROOT = process.cwd();
 const CURRENT_DOCS = [
   "package.json",
   "server.json",
+  "contributing/adapter.md",
+  "contributing/schema.md",
   "docs/.vitepress/config.ts",
   "docs/ARCHITECTURE.md",
   "docs/THEORY.md",
+  "docs/glossary.md",
   "docs/how-it-works.md",
   "docs/faq.md",
+  "docs/reference/pipeline.md",
   "docs/zh/BENCHMARK.md",
   "docs/zh/how-it-works.md",
   "docs/zh/faq.md",
@@ -54,12 +58,17 @@ const RETIRED_CATALOG_CLAIMS = [
   /\b59 个 pipeline step\b/i,
   /\b59 个 pipeline steps\b/i,
   /\b59 步 pipeline\b/i,
+  /\b59-step\b/i,
+  /\b59 steps\b/i,
+  /\b30 steps\b/i,
+  /\b35 steps\b/i,
   /\b7591 个测试\b/i,
   /\b235\+ 站点\b/i,
   /\b235\+ supported sites\b/i,
   /\b235\+ sites\b/i,
   /\bv0\.217\b/i,
   /\bv0\.218\.0\b/i,
+  new RegExp("\\byaml" + "-runner\\b", "i"),
 ];
 
 interface PackageJson {

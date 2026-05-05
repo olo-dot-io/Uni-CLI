@@ -9,7 +9,7 @@ Definitions for the terms used across Uni-CLI documentation, source, and YAML ad
 
 ## Adapter
 
-A YAML or TypeScript file that maps one site or tool to a set of CLI commands. Adapters declare site, command name, type, strategy, arguments, pipeline steps, and column projection. The preferred contribution format is YAML; TypeScript is reserved for adapters that need imperative control flow beyond the 59-step pipeline.
+A YAML or TypeScript file that maps one site or tool to a set of CLI commands. Adapters declare site, command name, type, strategy, arguments, pipeline steps, and column projection. The preferred contribution format is YAML; TypeScript is reserved for adapters that need imperative control flow beyond the shared pipeline registry.
 
 ## Adapter type
 
@@ -89,7 +89,7 @@ The Anthropic-led protocol for letting AI assistants invoke tools through a stat
 
 ## Pipeline
 
-The ordered list of steps an adapter runs to produce its result. Drawn from a 59-step registry covering API fetch, transform, browser, desktop, media, control flow, and assertion. Steps share a context object — each step reads `ctx.data` and writes back.
+The ordered list of steps an adapter runs to produce its result. Drawn from the <!-- STATS:pipeline_step_count -->101<!-- /STATS -->-step registry covering API fetch, transform, browser, desktop, media, control flow, and assertion. Steps share a context object — each step reads `ctx.data` and writes back.
 
 ## Pipeline step
 

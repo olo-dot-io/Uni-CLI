@@ -56,7 +56,7 @@ Agent execution needs an auditable, repairable, reusable command contract. Catal
 - Sites and tools: 238
 - Commands: 1458
 - Pipeline steps: 101
-- Tests: 7911
+- Tests: 7916
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -382,9 +382,9 @@ columns: [title, published, url]
 
 Five fields define the contract: `site` (the integration name), `name` (the command), `type` (which surface — web-api, browser, desktop, bridge, service), `strategy` (auth path), and `pipeline` (the steps that produce the result). An adapter without imports, classes, or compile steps lets an agent read it, patch a selector, and verify the fix in seconds.
 
-## The 59-step pipeline
+## The pipeline registry
 
-Every adapter runs through the same 59-step pipeline registry. Steps are grouped by purpose: API fetch, transform, browser, desktop, media, control flow, and assertion. Each step is deterministic — same inputs produce same outputs — so adapters compose into reliable execution graphs.
+Every adapter runs through the same <!-- STATS:pipeline_step_count -->101<!-- /STATS -->-step pipeline registry. Steps are grouped by purpose: API fetch, transform, browser, desktop, media, control flow, and assertion. Each step is deterministic — same inputs produce same outputs — so adapters compose into reliable execution graphs.
 
 | Group     | Examples                                                            | Purpose                                  |
 | --------- | ------------------------------------------------------------------- | ---------------------------------------- |
@@ -1031,7 +1031,7 @@ Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, and any runtime that can spa
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.218.1 covers <span><!-- STATS:site_count -->238<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1458<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1048<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->7911<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, government policy, podcasts, and macOS apps.
+v0.218.1 covers <span><!-- STATS:site_count -->238<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1458<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1048<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->7916<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, government policy, podcasts, and macOS apps.
 
 ## Can I add a new site without writing TypeScript?
 
@@ -1077,7 +1077,7 @@ Definitions for the terms used across Uni-CLI documentation, source, and YAML ad
 
 ## Adapter
 
-A YAML or TypeScript file that maps one site or tool to a set of CLI commands. Adapters declare site, command name, type, strategy, arguments, pipeline steps, and column projection. The preferred contribution format is YAML; TypeScript is reserved for adapters that need imperative control flow beyond the 59-step pipeline.
+A YAML or TypeScript file that maps one site or tool to a set of CLI commands. Adapters declare site, command name, type, strategy, arguments, pipeline steps, and column projection. The preferred contribution format is YAML; TypeScript is reserved for adapters that need imperative control flow beyond the shared pipeline registry.
 
 ## Adapter type
 
@@ -1157,7 +1157,7 @@ The Anthropic-led protocol for letting AI assistants invoke tools through a stat
 
 ## Pipeline
 
-The ordered list of steps an adapter runs to produce its result. Drawn from a 59-step registry covering API fetch, transform, browser, desktop, media, control flow, and assertion. Steps share a context object — each step reads `ctx.data` and writes back.
+The ordered list of steps an adapter runs to produce its result. Drawn from the <!-- STATS:pipeline_step_count -->101<!-- /STATS -->-step registry covering API fetch, transform, browser, desktop, media, control flow, and assertion. Steps share a context object — each step reads `ctx.data` and writes back.
 
 ## Pipeline step
 
@@ -2567,19 +2567,19 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/pipeline.md
 - Section: Reference
 - Parent: Reference (/reference/)
 
-Uni-CLI adapters execute a sequence of pipeline steps. Each step performs one action — fetch data, transform it, interact with a browser, or control execution flow. There are 30 steps grouped into 7 categories.
+Uni-CLI adapters execute a sequence of pipeline steps. Each step performs one action: fetch data, transform it, interact with a browser, or control execution flow. The current registry has <!-- STATS:pipeline_step_count -->101<!-- /STATS --> step names; the table below lists the common author-facing families.
 
 ## Overview
 
-| Category  | Steps                                                                          | Count |
-| --------- | ------------------------------------------------------------------------------ | ----- |
-| API       | fetch, fetch_text, parse_rss, html_to_md                                       | 4     |
-| Transform | select, map, filter, sort, limit                                               | 5     |
-| Desktop   | exec, write_temp                                                               | 2     |
-| Browser   | navigate, evaluate, click, type, wait, intercept, press, scroll, snapshot, tap | 10    |
-| Media     | download                                                                       | 1     |
-| Service   | websocket                                                                      | 1     |
-| Control   | set, if, append, each, parallel, rate_limit                                    | 6     |
+| Category  | Common steps                                                                   |
+| --------- | ------------------------------------------------------------------------------ |
+| API       | fetch, fetch_text, parse_rss, html_to_md                                       |
+| Transform | select, map, filter, sort, limit                                               |
+| Desktop   | exec, write_temp                                                               |
+| Browser   | navigate, evaluate, click, type, wait, intercept, press, scroll, snapshot, tap |
+| Media     | download                                                                       |
+| Service   | websocket                                                                      |
+| Control   | set, if, append, each, parallel, rate_limit                                    |
 
 ---
 
@@ -3989,7 +3989,7 @@ The generated catalog is the source of truth:
 **<span><!-- STATS:command_count -->1458<!-- /STATS --></span> commands**,
 **<span><!-- STATS:adapter_count_total -->1048<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->7911<!-- /STATS --></span> tests** in
+and **<span><!-- STATS:test_count -->7916<!-- /STATS --></span> tests** in
 v0.218.1.
 
 ## Execution Contract

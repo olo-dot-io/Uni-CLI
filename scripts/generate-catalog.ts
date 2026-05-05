@@ -13,7 +13,7 @@
  *   tsx scripts/generate-catalog.ts docs/catalog.json docs/site-index.json
  */
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { format } from "prettier";
 import { loadAllAdapters, loadTsAdapters } from "../src/discovery/loader.js";
@@ -34,6 +34,10 @@ type CatalogAdapter = {
   auth?: boolean;
   strategy?: string;
   commands: CatalogCommand[];
+};
+
+type GeneratedJson = {
+  generated: string;
 };
 
 function buildDocsSiteIndex(catalog: {
@@ -65,6 +69,54 @@ function buildDocsSiteIndex(catalog: {
   };
 }
 
+function readGeneratedJson(path: string): GeneratedJson | undefined {
+  if (!existsSync(path)) {
+    return undefined;
+  }
+
+  const parsed = JSON.parse(readFileSync(path, "utf-8")) as {
+    generated?: unknown;
+  };
+  if (typeof parsed.generated !== "string") {
+    throw new Error(`${path} is missing a string generated field`);
+  }
+  return parsed as GeneratedJson;
+}
+
+function contentFingerprint(value: GeneratedJson): string {
+  const { generated: _generated, ...content } = value;
+  return JSON.stringify(content);
+}
+
+function contentUnchanged(
+  existing: GeneratedJson | undefined,
+  next: GeneratedJson,
+): boolean {
+  return (
+    existing !== undefined &&
+    contentFingerprint(existing) === contentFingerprint(next)
+  );
+}
+
+function chooseGeneratedTimestamp(
+  catalog: ReturnType<typeof buildCatalog>,
+  siteIndex: ReturnType<typeof buildDocsSiteIndex>,
+  catalogPath: string,
+  siteIndexPath: string,
+): string {
+  const existingCatalog = readGeneratedJson(catalogPath);
+  const existingSiteIndex = readGeneratedJson(siteIndexPath);
+
+  if (
+    contentUnchanged(existingCatalog, catalog) &&
+    contentUnchanged(existingSiteIndex, siteIndex)
+  ) {
+    return existingCatalog.generated;
+  }
+
+  return catalog.generated;
+}
+
 function defaultSiteIndexPath(catalogOut: string, hasCatalogArg: boolean) {
   if (!hasCatalogArg) {
     return "docs/site-index.json";
@@ -92,6 +144,13 @@ async function main(): Promise<void> {
   await loadTsAdapters();
 
   const catalog = buildCatalog();
+  const candidateSiteIndex = buildDocsSiteIndex(catalog);
+  catalog.generated = chooseGeneratedTimestamp(
+    catalog,
+    candidateSiteIndex,
+    out,
+    siteIndexOut,
+  );
   const siteIndex = buildDocsSiteIndex(catalog);
   mkdirSync(dirname(out), { recursive: true });
   mkdirSync(dirname(siteIndexOut), { recursive: true });

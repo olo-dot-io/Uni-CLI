@@ -43,9 +43,9 @@ columns: [title, published, url]
 
 Five fields define the contract: `site` (the integration name), `name` (the command), `type` (which surface — web-api, browser, desktop, bridge, service), `strategy` (auth path), and `pipeline` (the steps that produce the result). An adapter without imports, classes, or compile steps lets an agent read it, patch a selector, and verify the fix in seconds.
 
-## The 59-step pipeline
+## The pipeline registry
 
-Every adapter runs through the same 59-step pipeline registry. Steps are grouped by purpose: API fetch, transform, browser, desktop, media, control flow, and assertion. Each step is deterministic — same inputs produce same outputs — so adapters compose into reliable execution graphs.
+Every adapter runs through the same <!-- STATS:pipeline_step_count -->101<!-- /STATS -->-step pipeline registry. Steps are grouped by purpose: API fetch, transform, browser, desktop, media, control flow, and assertion. Each step is deterministic — same inputs produce same outputs — so adapters compose into reliable execution graphs.
 
 | Group     | Examples                                                            | Purpose                                  |
 | --------- | ------------------------------------------------------------------- | ---------------------------------------- |

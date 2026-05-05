@@ -1,18 +1,18 @@
 # Pipeline Steps
 
-Uni-CLI adapters execute a sequence of pipeline steps. Each step performs one action — fetch data, transform it, interact with a browser, or control execution flow. There are 30 steps grouped into 7 categories.
+Uni-CLI adapters execute a sequence of pipeline steps. Each step performs one action: fetch data, transform it, interact with a browser, or control execution flow. The current registry has <!-- STATS:pipeline_step_count -->101<!-- /STATS --> step names; the table below lists the common author-facing families.
 
 ## Overview
 
-| Category  | Steps                                                                          | Count |
-| --------- | ------------------------------------------------------------------------------ | ----- |
-| API       | fetch, fetch_text, parse_rss, html_to_md                                       | 4     |
-| Transform | select, map, filter, sort, limit                                               | 5     |
-| Desktop   | exec, write_temp                                                               | 2     |
-| Browser   | navigate, evaluate, click, type, wait, intercept, press, scroll, snapshot, tap | 10    |
-| Media     | download                                                                       | 1     |
-| Service   | websocket                                                                      | 1     |
-| Control   | set, if, append, each, parallel, rate_limit                                    | 6     |
+| Category  | Common steps                                                                   |
+| --------- | ------------------------------------------------------------------------------ |
+| API       | fetch, fetch_text, parse_rss, html_to_md                                       |
+| Transform | select, map, filter, sort, limit                                               |
+| Desktop   | exec, write_temp                                                               |
+| Browser   | navigate, evaluate, click, type, wait, intercept, press, scroll, snapshot, tap |
+| Media     | download                                                                       |
+| Service   | websocket                                                                      |
+| Control   | set, if, append, each, parallel, rate_limit                                    |
 
 ---
 

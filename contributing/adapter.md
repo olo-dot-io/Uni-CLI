@@ -68,9 +68,12 @@ cli({
 
 Loader entry point: `src/discovery/loader.ts:306` (`loadTsAdapters`).
 
-## The 35 pipeline steps
+## Pipeline steps
 
-Switch table: `src/engine/yaml-runner.ts:148`. Categories:
+Reference: `docs/reference/pipeline.md`. Runtime source of truth:
+`src/engine/step-registry.ts`, built-in registrations from
+`src/engine/steps/index.ts`, and executor wiring in `src/engine/executor.ts`.
+Categories:
 
 - API: `fetch`, `fetch_text`, `parse_rss`, `html_to_md`
 - Transform: `select`, `map`, `filter`, `sort`, `limit`
