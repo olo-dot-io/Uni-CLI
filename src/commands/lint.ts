@@ -369,12 +369,11 @@ export function lintAdapterFile(filePath: string): LintIssue[] {
 
 // ── Cross-adapter rule: listing ↔ detail pairing ────────────────────────
 //
-// Mirrors the convention OpenCLI shipped under #1297 (listing↔detail id
-// pairing rule + CI gate, 2026-04-30). When a site exposes adapter
-// commands that look like listings (top/hot/search/feed/list) but has no
-// matching detail-style command (read/get/item/show/view/lookup), agents
-// who fetch a list cannot fetch the underlying record. The rule is a
-// soft warning today; promote to error after the long tail is fixed.
+// When a site exposes adapter commands that look like listings
+// (top/hot/search/feed/list) but has no matching detail-style command
+// (read/get/item/show/view/lookup), agents who fetch a list cannot fetch
+// the underlying record. The rule is a soft warning today; promote to
+// error after the long tail is fixed.
 //
 // Detection is name-based. Adapters that legitimately do not need a
 // detail can opt out with `lint_listing_detail: skip` at the YAML root.

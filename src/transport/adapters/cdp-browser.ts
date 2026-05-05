@@ -2,14 +2,14 @@
  * CdpBrowserTransport — wraps the existing `BrowserPage` (an IPage impl)
  * behind the TransportAdapter interface.
  *
- * The underlying `src/browser/page.ts` continues to serve the legacy
- * yaml-runner paths; this wrapper exposes the same methods through the
- * uniform envelope contract so the new bus-driven dispatch routes
- * browser steps without duplicating the CDP client logic.
+ * The underlying `src/browser/page.ts` is the canonical CDP client; this
+ * wrapper exposes the same methods through the uniform envelope contract
+ * so the bus-driven dispatch routes browser steps without duplicating
+ * the CDP client logic.
  *
  * Page acquisition is pluggable via the constructor `pageFactory` for
- * testability. The default factory mirrors the yaml-runner strategy:
- * try an already-running browser on CDP port, else auto-launch.
+ * testability. The default factory tries an already-running browser on
+ * the configured CDP port and falls back to auto-launch.
  */
 
 import { err, exitCodeFor, ok } from "../../core/envelope.js";
@@ -100,7 +100,7 @@ async function defaultPageFactory(): Promise<IPage> {
   } catch {
     const { launchChrome } = await import("../../browser/launcher.js");
     await launchChrome(port);
-    // Poll (5 attempts) — mirrors yaml-runner behavior.
+    // Poll up to 20 attempts at 500ms each while the launched Chrome warms up.
     let lastErr: unknown;
     for (let attempt = 0; attempt < 20; attempt++) {
       try {

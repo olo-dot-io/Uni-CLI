@@ -2,10 +2,10 @@
  * SubprocessTransport — wraps `child_process.spawn` behind the
  * TransportAdapter interface.
  *
- * Mirrors the contract of the existing yaml-runner `exec` step
- * (command + args + stdin + env + cwd + timeout) and adds a lightweight
- * event stream (`stream()`) for callers that want to observe stdout/stderr
- * chunks as they arrive.
+ * Mirrors the contract of the pipeline `exec` step (command + args +
+ * stdin + env + cwd + timeout) and adds a lightweight event stream
+ * (`stream()`) for callers that want to observe stdout/stderr chunks as
+ * they arrive.
  */
 
 import { spawn } from "node:child_process";
