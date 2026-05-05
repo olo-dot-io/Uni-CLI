@@ -11,6 +11,46 @@ Universal CLI for websites, desktop apps, and local tools. YAML adapters are
 self-repairing — agents can fix them by editing one file. See
 `docs/BENCHMARK.md` for measured per-call token costs.
 
+<!-- BEGIN COUNTS -->
+
+> <!-- STATS:site_count -->238<!-- /STATS --> sites, <!-- STATS:command_count -->1458<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
+
+<!-- END COUNTS -->
+
+<!-- BEGIN ADAPTERS -->
+
+## What You Can Do
+
+### Web (143+ sites)
+
+**Chinese**: zhihu (24), xiaohongshu (22), bilibili (20), douyin (13), douban (12), v2ex (12), linux-do (11), jike (10), +30 more (`unicli list`)
+
+**International**: twitter (38), instagram (26), reddit (20), tiktok (16), youtube (16), nowcoder (16), discord-app (15), lesswrong (15), +49 more (`unicli list`)
+
+**AI / ML**: antigravity (16), chatwise (16), chatgpt (15), notebooklm (15), doubao-app (13), doubao (9), doubao-web (9), perplexity (8), +13 more (`unicli list`)
+
+**Finance**: eastmoney (18), xueqiu (14), binance (13), sinafinance (5), barchart (4), yahoo-finance (3), coinbase (2), futu (2)
+
+**Developer**: cursor (18), codex (17), vscode (10), docker-desktop (7), github-desktop (7), gitkraken (7), insomnia (7), postman (7), +21 more (`unicli list`)
+
+**News**: bloomberg (10), hackernews (10), 36kr (5), bbc (4), reuters (4), ithome (3), cnn (2), infoq (2), +3 more (`unicli list`)
+
+**Reference**: spotify (23), netease-music (17), linear (10), imdb (7), bitwarden (7), todoist (7), wikipedia (5), xiaoyuzhou (5), +11 more (`unicli list`)
+
+### macOS (60 cmds)
+
+active-app, app-actions, apps, apps-list, automation-smoke, battery, bluetooth, brightness, caffeinate, calendar-create, calendar-list, calendar-today, … (`unicli list --site macos`)
+
+### Desktop (28 apps)
+
+freecad (15 cmds), blender (13 cmds), gimp (12 cmds), ffmpeg (11 cmds), audacity (8 cmds), figma (8 cmds), docker (7 cmds), excel (7 cmds), +20 more (`unicli list --category desktop`)
+
+### Bridge (3 CLIs)
+
+gh (6 cmds), jq (2 cmds), yt-dlp (4 cmds)
+
+<!-- END ADAPTERS -->
+
 ## Done = these commands exit 0
 
 ```

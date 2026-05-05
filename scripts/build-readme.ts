@@ -27,6 +27,28 @@ const TARGETS = [
 const MARKER = /<!--\s*STATS:([a-z_]+)\s*-->[\s\S]*?<!--\s*\/STATS\s*-->/g;
 const SITE_GRID_START = "<!-- BEGIN README_SITE_GRID -->";
 const SITE_GRID_END = "<!-- END README_SITE_GRID -->";
+const README_SITE_GRID_TARGETS: Record<string, Record<string, string>> = {
+  "README.md": {},
+  "README.zh-CN.md": {
+    social: "社交",
+    video: "视频",
+    news: "新闻",
+    finance: "财经",
+    shopping: "购物",
+    dev: "开发",
+    ai: "AI",
+    reference: "知识",
+    audio: "音频",
+    content: "内容",
+    productivity: "效率",
+    jobs: "招聘",
+    desktop: "桌面",
+    games: "游戏",
+    utility: "工具",
+    agent: "Agent",
+    other: "其他",
+  },
+};
 
 interface ManifestCommand {
   name: string;
@@ -250,7 +272,10 @@ function badgeUrl(
   return `https://img.shields.io/static/v1?${params.toString()}`;
 }
 
-export function buildSiteGrid(manifest: Manifest): string {
+export function buildSiteGrid(
+  manifest: Manifest,
+  categoryLabels: Record<string, string> = {},
+): string {
   const rows = Object.entries(manifest.sites)
     .filter(([, site]) =>
       site.commands.every((command) => command.quarantined !== true),
@@ -280,7 +305,7 @@ export function buildSiteGrid(manifest: Manifest): string {
         return `<a data-site="${row.site}" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="${title}"><img alt="${row.site}" src="${badgeUrl(row.site, row.commandCount, category)}"></a>`;
       })
       .join("\n  ");
-    return `<p><strong>${category}</strong><br>\n  ${badges}\n</p>`;
+    return `<p><strong>${categoryLabels[category] ?? category}</strong><br>\n  ${badges}\n</p>`;
   });
 
   return [
@@ -295,6 +320,7 @@ export function buildSiteGrid(manifest: Manifest): string {
 export function injectSiteGrid(
   source: string,
   manifest: Manifest,
+  categoryLabels: Record<string, string> = {},
 ): { output: string; changed: boolean } {
   const hasStart = source.includes(SITE_GRID_START);
   const hasEnd = source.includes(SITE_GRID_END);
@@ -309,7 +335,7 @@ export function injectSiteGrid(
     throw new Error("README site grid end marker must follow start marker");
   }
 
-  const replacement = buildSiteGrid(manifest);
+  const replacement = buildSiteGrid(manifest, categoryLabels);
   const output =
     source.slice(0, start) +
     replacement +
@@ -329,10 +355,10 @@ function main(): void {
     if (!existsSync(full)) continue;
     const source = readFileSync(full, "utf-8");
     const injected = inject(source, stats);
-    const gridded =
-      rel === "README.md"
-        ? injectSiteGrid(injected.output, manifest)
-        : { output: injected.output, changed: false };
+    const siteGridLabels = README_SITE_GRID_TARGETS[rel];
+    const gridded = siteGridLabels
+      ? injectSiteGrid(injected.output, manifest, siteGridLabels)
+      : { output: injected.output, changed: false };
     if (gridded.output !== source) {
       writeFileSync(full, gridded.output, "utf-8");
     }
