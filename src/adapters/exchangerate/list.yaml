@@ -4,6 +4,7 @@ description: List all exchange rates for a base currency
 domain: open.er-api.com
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   base:

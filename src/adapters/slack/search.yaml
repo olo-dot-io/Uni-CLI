@@ -3,6 +3,7 @@ name: search
 description: Search Slack messages
 type: bridge
 strategy: public
+lint_listing_detail: skip
 binary: slack
 detect: which slack
 

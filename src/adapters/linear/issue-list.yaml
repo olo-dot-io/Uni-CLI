@@ -20,6 +20,7 @@ description: List Linear issues (optional project/state filter)
 type: web-api
 domain: api.linear.app
 strategy: public # auth is via Authorization header from env, no cookies
+lint_listing_detail: skip
 
 # schema-v2 fields
 capabilities: ["http.fetch"]

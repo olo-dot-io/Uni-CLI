@@ -4,6 +4,7 @@ description: Search songs on NetEase Cloud Music
 type: web-api
 domain: music.163.com
 strategy: public
+lint_listing_detail: skip
 args:
   query:
     required: true

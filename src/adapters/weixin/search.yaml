@@ -4,6 +4,7 @@ description: Search WeChat articles via Sogou
 domain: weixin.sogou.com
 type: browser
 strategy: cookie
+lint_listing_detail: skip
 browser: true
 
 args:

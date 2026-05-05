@@ -3,6 +3,7 @@ site: macos
 name: notes-list
 description: List recent Apple Notes with folder and modification date
 type: desktop
+lint_listing_detail: skip
 binary: osascript
 detect: "test $(uname) = Darwin"
 

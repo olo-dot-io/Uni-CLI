@@ -4,6 +4,7 @@ description: Search Jike posts by keyword
 domain: web-api.okjike.com
 type: web-api
 strategy: cookie
+lint_listing_detail: skip
 auth_cookies: [accessToken]
 
 args:

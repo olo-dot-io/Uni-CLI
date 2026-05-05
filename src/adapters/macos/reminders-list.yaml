@@ -2,6 +2,7 @@ site: macos
 name: reminders-list
 description: List all reminders from macOS Reminders.app
 type: desktop
+lint_listing_detail: skip
 binary: osascript
 detect: which osascript
 

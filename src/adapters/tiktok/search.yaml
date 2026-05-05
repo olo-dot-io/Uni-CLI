@@ -3,6 +3,7 @@ name: search
 description: Search TikTok videos
 domain: www.tiktok.com
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 args:

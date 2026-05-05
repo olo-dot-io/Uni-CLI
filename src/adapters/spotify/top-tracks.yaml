@@ -4,6 +4,7 @@ description: Get user's top tracks on Spotify
 type: web-api
 domain: api.spotify.com
 strategy: cookie
+lint_listing_detail: skip
 
 args:
   token:

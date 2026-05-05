@@ -4,6 +4,7 @@ description: WeChat/Weixin hot articles trending
 domain: mp.weixin.qq.com
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   limit:

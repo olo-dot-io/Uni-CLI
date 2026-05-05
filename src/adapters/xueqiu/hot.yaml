@@ -4,6 +4,7 @@ description: Xueqiu hot stocks and discussions
 domain: xueqiu.com
 type: web-api
 strategy: cookie
+lint_listing_detail: skip
 auth_cookies: [xq_a_token]
 
 args:

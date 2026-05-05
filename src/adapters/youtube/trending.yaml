@@ -3,6 +3,7 @@ name: trending
 description: Get YouTube trending videos
 domain: www.youtube.com
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 args:

@@ -3,6 +3,7 @@ site: ollama
 name: list
 description: List locally installed Ollama models
 type: service
+lint_listing_detail: skip
 base: "http://localhost:11434"
 health: /api/tags
 

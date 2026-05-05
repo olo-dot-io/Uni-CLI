@@ -4,6 +4,7 @@ description: Search Notion pages via web API
 domain: www.notion.so
 type: web-api
 strategy: cookie
+lint_listing_detail: skip
 
 args:
   query:

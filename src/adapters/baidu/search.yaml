@@ -3,6 +3,7 @@ name: search
 description: Search Baidu for web results
 domain: www.baidu.com
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 args:

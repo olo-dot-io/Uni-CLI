@@ -4,6 +4,7 @@ description: Pinduoduo hot/trending products
 type: web-api
 domain: mobile.yangkeduo.com
 strategy: cookie
+lint_listing_detail: skip
 args:
   limit:
     required: false

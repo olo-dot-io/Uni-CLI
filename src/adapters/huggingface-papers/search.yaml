@@ -4,6 +4,7 @@ description: Search Hugging Face papers
 type: web-api
 domain: huggingface.co
 strategy: public
+lint_listing_detail: skip
 
 args:
   query:

@@ -4,6 +4,7 @@ description: Eastmoney hot stocks (A-share volume leaders)
 type: web-api
 domain: push2.eastmoney.com
 strategy: public
+lint_listing_detail: skip
 args:
   limit:
     required: false

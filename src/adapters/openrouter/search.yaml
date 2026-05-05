@@ -4,6 +4,7 @@ description: Search OpenRouter AI models
 type: web-api
 domain: openrouter.ai
 strategy: public
+lint_listing_detail: skip
 
 args:
   query:

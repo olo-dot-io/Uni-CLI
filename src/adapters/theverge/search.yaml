@@ -4,6 +4,7 @@ description: Search The Verge articles
 domain: www.theverge.com
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   query:

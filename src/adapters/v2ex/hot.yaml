@@ -4,6 +4,7 @@ description: V2EX hot topics
 domain: www.v2ex.com
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   limit:

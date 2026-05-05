@@ -4,6 +4,7 @@ description: Search Steam store for games
 domain: store.steampowered.com
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   query:

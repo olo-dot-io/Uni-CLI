@@ -4,6 +4,7 @@ description: Search Xueqiu stocks by code or name
 domain: xueqiu.com
 type: web-api
 strategy: cookie
+lint_listing_detail: skip
 auth_cookies: [xq_a_token]
 
 args:

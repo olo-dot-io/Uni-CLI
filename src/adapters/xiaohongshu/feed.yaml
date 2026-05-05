@@ -3,6 +3,7 @@ name: feed
 description: "Xiaohongshu home feed (via Pinia Store Action)"
 domain: www.xiaohongshu.com
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 args:

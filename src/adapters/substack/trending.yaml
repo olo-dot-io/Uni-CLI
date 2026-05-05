@@ -4,6 +4,7 @@ description: Trending Substack posts
 type: web-api
 domain: substack.com
 strategy: public
+lint_listing_detail: skip
 
 args:
   limit:

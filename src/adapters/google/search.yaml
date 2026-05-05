@@ -3,6 +3,7 @@ name: search
 description: Google web search via RSS
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   query:

@@ -3,6 +3,7 @@ name: search
 description: Search Threads for posts matching a query
 domain: threads.net
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 args:

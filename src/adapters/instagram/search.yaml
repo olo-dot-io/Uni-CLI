@@ -3,6 +3,7 @@ name: search
 description: Search Instagram users
 domain: www.instagram.com
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 args:

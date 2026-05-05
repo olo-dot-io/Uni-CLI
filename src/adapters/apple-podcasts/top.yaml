@@ -4,6 +4,7 @@ description: Top podcasts chart on Apple Podcasts
 domain: rss.marketingtools.apple.com
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   limit:

@@ -4,6 +4,7 @@ description: Binance top trading pairs by 24h quote volume / 币安成交额排�
 domain: data-api.binance.vision
 type: web-api
 strategy: public
+lint_listing_detail: skip
 browser: false
 
 args:

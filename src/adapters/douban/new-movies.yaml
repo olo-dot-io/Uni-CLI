@@ -4,6 +4,7 @@ description: Douban new movies in theaters
 domain: movie.douban.com
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   limit:

@@ -4,6 +4,7 @@ description: Search Substack publications
 domain: substack.com
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   query:

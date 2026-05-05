@@ -3,6 +3,7 @@ name: hot
 description: Dangdang bestseller book list
 domain: bang.dangdang.com
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 args:

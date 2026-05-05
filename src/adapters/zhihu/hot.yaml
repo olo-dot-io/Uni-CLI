@@ -4,6 +4,7 @@ description: Zhihu hot topics list
 domain: www.zhihu.com
 type: web-api
 strategy: cookie
+lint_listing_detail: skip
 auth_cookies: [z_c0]
 
 args:

@@ -4,6 +4,7 @@ description: Medium trending articles by topic
 domain: medium.com
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   topic:

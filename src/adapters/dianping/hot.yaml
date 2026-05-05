@@ -3,6 +3,7 @@ name: hot
 description: Dianping trending restaurants
 domain: www.dianping.com
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 args:

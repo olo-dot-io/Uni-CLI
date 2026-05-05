@@ -4,6 +4,7 @@ description: Search Jianyu real estate listings
 domain: www.jianyu.com
 type: browser
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 args:

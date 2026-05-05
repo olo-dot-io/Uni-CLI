@@ -3,6 +3,7 @@ site: macos
 name: notes-search
 description: Search Apple Notes by title or content
 type: desktop
+lint_listing_detail: skip
 binary: osascript
 detect: "test $(uname) = Darwin"
 

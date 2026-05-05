@@ -4,6 +4,7 @@ description: Search Dev.to articles
 type: web-api
 domain: dev.to
 strategy: public
+lint_listing_detail: skip
 
 args:
   query:

@@ -3,6 +3,7 @@ name: list
 description: List open Microsoft PowerPoint presentations
 type: desktop
 strategy: public
+lint_listing_detail: skip
 binary: osascript
 detect: "test $(uname) = Darwin"
 

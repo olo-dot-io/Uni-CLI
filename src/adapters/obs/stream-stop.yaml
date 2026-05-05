@@ -3,6 +3,7 @@ site: obs
 name: stream-stop
 description: Stop OBS streaming
 type: service
+lint_listing_detail: skip
 
 args:
   port:

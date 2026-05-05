@@ -3,6 +3,7 @@ site: macos
 name: contacts-search
 description: Search contacts by name, email, or phone
 type: desktop
+lint_listing_detail: skip
 binary: osascript
 detect: "test $(uname) = Darwin"
 

@@ -4,6 +4,7 @@ description: Search Pinduoduo products
 domain: mobile.yangkeduo.com
 type: web-api
 strategy: cookie
+lint_listing_detail: skip
 
 args:
   query:

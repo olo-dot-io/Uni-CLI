@@ -4,6 +4,7 @@ description: Search V2EX topics via SOV2EX
 domain: www.sov2ex.com
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   query:

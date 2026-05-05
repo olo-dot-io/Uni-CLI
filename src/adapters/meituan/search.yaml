@@ -4,6 +4,7 @@ description: Search restaurants/shops on Meituan
 type: web-api
 domain: apimobile.meituan.com
 strategy: cookie
+lint_listing_detail: skip
 args:
   query:
     required: true

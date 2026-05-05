@@ -4,6 +4,7 @@ description: Search Douban movies and books
 domain: www.douban.com
 type: web-api
 strategy: cookie
+lint_listing_detail: skip
 auth_cookies: [dbcl2]
 
 args:

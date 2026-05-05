@@ -6,6 +6,7 @@ type: desktop
 binary: open
 detect: Darwin
 strategy: public
+lint_listing_detail: skip
 
 args:
   vault:

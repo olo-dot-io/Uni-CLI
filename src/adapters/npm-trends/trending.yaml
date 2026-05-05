@@ -4,6 +4,7 @@ description: Get trending npm packages
 type: web-api
 domain: npmtrends.com
 strategy: public
+lint_listing_detail: skip
 
 pipeline:
   - fetch:

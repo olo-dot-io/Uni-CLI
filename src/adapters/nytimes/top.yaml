@@ -4,6 +4,7 @@ description: New York Times top stories via RSS
 type: web-api
 domain: rss.nytimes.com
 strategy: public
+lint_listing_detail: skip
 args:
   section:
     required: false

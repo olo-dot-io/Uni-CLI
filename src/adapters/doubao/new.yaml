@@ -3,6 +3,7 @@ name: new
 description: Start a new Doubao chat conversation
 domain: www.doubao.com
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 columns: [status, url]

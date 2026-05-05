@@ -4,6 +4,7 @@ description: Linux.do hot topics
 domain: linux.do
 type: web-api
 strategy: cookie
+lint_listing_detail: skip
 auth_cookies: [_t, _forum_session]
 
 args:

@@ -2,6 +2,7 @@ site: macos
 name: shortcuts-list
 description: List all Shortcuts.app shortcuts
 type: desktop
+lint_listing_detail: skip
 binary: shortcuts
 detect: which shortcuts
 

@@ -4,6 +4,7 @@ description: Search stocks on Eastmoney
 type: web-api
 domain: searchapi.eastmoney.com
 strategy: public
+lint_listing_detail: skip
 args:
   query:
     required: true

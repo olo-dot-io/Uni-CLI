@@ -4,6 +4,7 @@ description: Sina Blog trending/popular posts
 domain: blog.sina.com.cn
 type: browser
 strategy: public
+lint_listing_detail: skip
 browser: true
 
 args:

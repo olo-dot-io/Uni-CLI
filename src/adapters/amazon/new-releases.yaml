@@ -3,6 +3,7 @@ name: new-releases
 description: Amazon New Releases ranking
 domain: www.amazon.com
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 args:

@@ -3,6 +3,7 @@ name: hot
 description: "Xiaohongshu trending/hot notes"
 domain: www.xiaohongshu.com
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 args:

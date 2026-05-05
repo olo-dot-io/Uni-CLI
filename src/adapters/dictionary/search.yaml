@@ -4,6 +4,7 @@ description: Look up word definitions, phonetics, and parts of speech
 domain: api.dictionaryapi.dev
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   word:

@@ -3,6 +3,7 @@ name: deep-research-result
 description: Export Deep Research report as Google Docs URL
 domain: gemini.google.com
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 args:

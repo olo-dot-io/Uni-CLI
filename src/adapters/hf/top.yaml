@@ -4,6 +4,7 @@ description: Top upvoted Hugging Face papers (daily)
 domain: huggingface.co
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   limit:

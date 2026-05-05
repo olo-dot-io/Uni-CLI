@@ -3,6 +3,7 @@ site: macos
 name: calendar-list
 description: List calendar events for the next N days
 type: desktop
+lint_listing_detail: skip
 binary: osascript
 detect: "test $(uname) = Darwin"
 

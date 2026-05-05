@@ -4,6 +4,7 @@ description: Trending topics on Bluesky
 domain: public.api.bsky.app
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   limit:

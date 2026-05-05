@@ -4,6 +4,7 @@ description: Top live streams on Twitch via GQL public endpoint
 type: web-api
 domain: gql.twitch.tv
 strategy: public
+lint_listing_detail: skip
 args:
   limit:
     required: false

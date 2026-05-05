@@ -4,6 +4,7 @@ description: Weibo home timeline feed
 domain: weibo.com
 type: web-api
 strategy: cookie
+lint_listing_detail: skip
 auth_cookies: [SUB, SUBP]
 
 args:

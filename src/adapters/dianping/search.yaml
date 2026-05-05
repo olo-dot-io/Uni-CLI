@@ -3,6 +3,7 @@ name: search
 description: Search restaurants on Dianping
 domain: www.dianping.com
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 args:

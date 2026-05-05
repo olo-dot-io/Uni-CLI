@@ -17,6 +17,7 @@ site: imessage
 name: recent
 description: Recent iMessages with timestamp and direction (macOS-only, read-only)
 type: desktop
+lint_listing_detail: skip
 binary: sqlite3
 detect: "test $(uname) = Darwin"
 

@@ -4,6 +4,7 @@ description: Search Medium articles
 domain: medium.com
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   query:

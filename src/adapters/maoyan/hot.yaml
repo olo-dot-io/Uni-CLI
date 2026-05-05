@@ -4,6 +4,7 @@ description: Maoyan current hot movies (box office)
 domain: piaofang.maoyan.com
 type: web-api
 strategy: public
+lint_listing_detail: skip
 browser: false
 
 args:

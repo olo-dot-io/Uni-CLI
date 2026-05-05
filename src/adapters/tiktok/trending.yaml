@@ -4,6 +4,7 @@ description: TikTok trending hashtags and sounds
 domain: www.tiktok.com
 type: web-api
 strategy: cookie
+lint_listing_detail: skip
 
 args:
   limit:

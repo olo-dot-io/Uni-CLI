@@ -4,6 +4,7 @@ description: Browse Product Hunt products by category
 domain: www.producthunt.com
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   topic:

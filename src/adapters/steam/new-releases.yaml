@@ -4,6 +4,7 @@ description: Steam new releases
 domain: store.steampowered.com
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   limit:

@@ -3,6 +3,7 @@ name: hot
 description: Futu hot stocks list
 domain: www.futunn.com
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 args:

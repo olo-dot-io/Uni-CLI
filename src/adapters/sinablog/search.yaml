@@ -4,6 +4,7 @@ description: Search Sina Blog posts
 domain: search.sina.com.cn
 type: browser
 strategy: public
+lint_listing_detail: skip
 browser: true
 
 args:

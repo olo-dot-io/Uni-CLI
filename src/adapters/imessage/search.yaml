@@ -17,6 +17,7 @@ site: imessage
 name: search
 description: Full-text LIKE search over all message bodies
 type: desktop
+lint_listing_detail: skip
 binary: sqlite3
 detect: "test $(uname) = Darwin"
 

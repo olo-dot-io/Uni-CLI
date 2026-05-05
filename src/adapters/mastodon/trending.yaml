@@ -4,6 +4,7 @@ description: Trending posts on a Mastodon instance (default mastodon.social)
 type: web-api
 domain: mastodon.social
 strategy: public
+lint_listing_detail: skip
 args:
   instance:
     required: false

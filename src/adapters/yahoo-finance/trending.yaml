@@ -4,6 +4,7 @@ description: Yahoo Finance trending tickers
 domain: finance.yahoo.com
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   region:

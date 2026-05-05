@@ -3,6 +3,7 @@ site: macos
 name: photos-search
 description: Search Apple Photos library by keyword
 type: desktop
+lint_listing_detail: skip
 binary: osascript
 detect: "test $(uname) = Darwin"
 

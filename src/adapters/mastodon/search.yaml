@@ -4,6 +4,7 @@ description: Search posts on a Mastodon instance
 type: web-api
 domain: mastodon.social
 strategy: public
+lint_listing_detail: skip
 args:
   query:
     required: true

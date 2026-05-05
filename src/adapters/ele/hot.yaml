@@ -3,6 +3,7 @@ name: hot
 description: Ele.me trending restaurants
 domain: www.ele.me
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 args:

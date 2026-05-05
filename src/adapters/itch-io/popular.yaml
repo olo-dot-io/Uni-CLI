@@ -4,6 +4,7 @@ description: Popular games on itch.io
 type: web-api
 domain: itch.io
 strategy: public
+lint_listing_detail: skip
 args:
   limit:
     required: false

@@ -3,6 +3,7 @@ name: search
 description: Search Facebook for people, pages, or posts
 domain: www.facebook.com
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 args:

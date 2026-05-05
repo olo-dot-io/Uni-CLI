@@ -4,6 +4,7 @@ description: Search free photos on Unsplash
 type: web-api
 domain: unsplash.com
 strategy: public
+lint_listing_detail: skip
 args:
   query:
     required: true

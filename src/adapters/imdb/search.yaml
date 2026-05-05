@@ -3,6 +3,7 @@ name: search
 description: Search movies and shows via IMDb suggestion API
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   query:

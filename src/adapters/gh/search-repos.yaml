@@ -3,6 +3,7 @@ name: search-repos
 description: Search GitHub repositories
 type: bridge
 strategy: public
+lint_listing_detail: skip
 binary: gh
 detect: which gh
 

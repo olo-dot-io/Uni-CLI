@@ -4,6 +4,7 @@ description: SMZDM trending/recommended deals
 domain: smzdm.com
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   page:

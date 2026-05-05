@@ -3,6 +3,7 @@ name: list
 description: List Mubu documents
 domain: mubu.com
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 args:

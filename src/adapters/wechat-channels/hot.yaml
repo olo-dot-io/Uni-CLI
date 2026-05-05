@@ -3,6 +3,7 @@ name: hot
 description: WeChat Channels (Video Accounts) trending videos
 domain: channels.weixin.qq.com
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 args:

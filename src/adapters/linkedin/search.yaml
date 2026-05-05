@@ -4,6 +4,7 @@ description: Search LinkedIn profiles, jobs, and content
 domain: linkedin.com
 type: web-api
 strategy: header
+lint_listing_detail: skip
 auth_cookies: [li_at, JSESSIONID]
 
 args:

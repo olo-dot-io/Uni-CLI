@@ -3,6 +3,7 @@ name: list
 description: List Cloudflare Workers
 type: bridge
 strategy: public
+lint_listing_detail: skip
 binary: wrangler
 detect: which wrangler
 autoInstall: npm install -g wrangler

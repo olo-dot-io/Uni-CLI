@@ -4,6 +4,7 @@ description: Search topics within a Zsxq group
 domain: api.zsxq.com
 type: web-api
 strategy: cookie
+lint_listing_detail: skip
 auth_cookies: [zsxq_access_token]
 
 args:

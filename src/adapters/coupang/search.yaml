@@ -3,6 +3,7 @@ name: search
 description: Search Coupang products
 domain: www.coupang.com
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 args:

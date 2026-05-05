@@ -4,6 +4,7 @@ description: Search Twitch channels
 type: web-api
 domain: api.twitch.tv
 strategy: cookie
+lint_listing_detail: skip
 
 args:
   query:

@@ -4,6 +4,7 @@ description: Search CNKI academic papers
 domain: scholar.cnki.net
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   query:

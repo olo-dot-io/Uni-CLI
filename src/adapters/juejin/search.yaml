@@ -4,6 +4,7 @@ description: 掘金全文搜索 / Juejin full-text search
 domain: juejin.cn
 type: web-api
 strategy: public
+lint_listing_detail: skip
 
 args:
   query:

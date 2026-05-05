@@ -4,6 +4,7 @@ description: Search Taobao products
 domain: s.taobao.com
 type: browser
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 args:

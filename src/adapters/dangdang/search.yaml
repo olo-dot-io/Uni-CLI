@@ -3,6 +3,7 @@ name: search
 description: Search books on Dangdang
 domain: www.dangdang.com
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 args:

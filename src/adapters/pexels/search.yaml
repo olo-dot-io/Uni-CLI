@@ -4,6 +4,7 @@ description: Search free stock photos on Pexels
 type: web-api
 domain: api.pexels.com
 strategy: header
+lint_listing_detail: skip
 args:
   query:
     required: true

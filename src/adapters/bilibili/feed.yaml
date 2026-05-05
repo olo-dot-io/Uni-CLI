@@ -4,6 +4,7 @@ description: Bilibili dynamic feed (following updates)
 domain: api.bilibili.com
 type: web-api
 strategy: cookie
+lint_listing_detail: skip
 auth_cookies: [SESSDATA, bili_jct]
 
 args:

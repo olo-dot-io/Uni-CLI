@@ -4,6 +4,7 @@ name: search
 description: Search Zotero library by query string
 type: service
 strategy: public
+lint_listing_detail: skip
 base: "http://localhost:23119"
 
 args:

@@ -3,6 +3,7 @@ name: new
 description: Start a new Gemini conversation
 domain: gemini.google.com
 strategy: intercept
+lint_listing_detail: skip
 browser: true
 
 columns: [status, url]

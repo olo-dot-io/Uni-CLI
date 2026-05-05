@@ -4,6 +4,7 @@ description: Get Mastodon public timeline
 type: web-api
 domain: mastodon.social
 strategy: public
+lint_listing_detail: skip
 
 args:
   instance:

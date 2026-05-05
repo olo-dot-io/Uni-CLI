@@ -4,6 +4,7 @@ description: Search files in Quark cloud drive
 domain: drive-pc.quark.cn
 type: web-api
 strategy: cookie
+lint_listing_detail: skip
 
 args:
   query:

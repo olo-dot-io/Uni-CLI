@@ -4,6 +4,7 @@ description: Douyu trending live streams
 domain: www.douyu.com
 type: web-api
 strategy: public
+lint_listing_detail: skip
 browser: false
 
 args:
