@@ -1,0 +1,14 @@
+#!/usr/bin/env node
+
+/**
+ * @owner   bin/unicli-mcp
+ * @does    Package root wrapper that launches the compiled Uni-CLI MCP server.
+ * @needs   dist/bin/unicli-mcp.js
+ * @feeds   npm bin payload, MCP registry package inspection
+ * @breaks  Missing wrapper makes npm pack omit the expected MCP binary entry.
+ */
+
+import("../dist/bin/unicli-mcp.js").catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

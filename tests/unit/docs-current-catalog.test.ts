@@ -13,6 +13,8 @@ import { describe, expect, it } from "vitest";
 const ROOT = process.cwd();
 
 const CURRENT_DOCS = [
+  "package.json",
+  "server.json",
   "docs/.vitepress/config.ts",
   "docs/ARCHITECTURE.md",
   "docs/THEORY.md",
@@ -25,6 +27,7 @@ const CURRENT_DOCS = [
   "docs/ROADMAP.md",
   "docs/zh/ROADMAP.md",
   "docs/release-info.json",
+  "docs/superpowers/specs/2026-05-02-local-computer-use-design.md",
   "docs/public/markdown/zh/BENCHMARK.md",
   "docs/public/markdown/zh/how-it-works.md",
   "docs/public/markdown/zh/faq.md",
@@ -32,6 +35,9 @@ const CURRENT_DOCS = [
 ];
 
 const RETIRED_CATALOG_CLAIMS = [
+  /\b237\+ websites\b/i,
+  /\b237\+ websites and apps\b/i,
+  /\b920 declarative YAML adapters\b/i,
   /\b233 sites\b/i,
   /\b233 sites and 1448 commands\b/i,
   /\b233 sites and 1,448 commands\b/i,

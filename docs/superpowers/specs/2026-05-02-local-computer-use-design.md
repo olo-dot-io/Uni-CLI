@@ -3,9 +3,9 @@
 **Date:** 2026-05-02
 **Status:** Draft (awaiting maintainer approval)
 **Author:** Claude (sonnet-aligned brainstorm) + ZenAlexa
-**Target:** v0.218 Vostok · Tereshkova (or v0.219 Leonov)
+**Target:** v0.219 Vostok
 **Supersedes:** none — first first-class "operate any installed app" spec
-**Adjacent:** `.claude/plans/sessions/2026-04-14-v212-rethink/round4/02-operate-anything-arch.md` (capability-matrix origin), `.claude/plans/sessions/2026-04-26-office-control/` (Office work that motivated this), v0.212–v0.217 transport-bus refactor
+**Adjacent:** `.claude/plans/sessions/2026-04-14-v212-rethink/round4/02-operate-anything-arch.md` (capability-matrix origin), `.claude/plans/sessions/2026-04-26-office-control/` (Office work that motivated this), v0.212+ transport-bus work
 
 ---
 
@@ -15,13 +15,13 @@
 
 Codex shipped its "Computer Use" plugin on 2026-04-16 as **a bundled MCP server** (`com.openai.sky.CUAService`), gated by macOS Accessibility + Screen Recording perms. The community has repeatedly verified — issue #16666, #18404, #18522 — that the plugin's primitives are MCP tool calls, not raw `click(x,y)` over a screenshot. Anthropic's `computer_20251124` is the only major vendor still pushing the screenshot+coordinate paradigm; the community calls it "fragile" and is actively building AX-first replacements (Touchpoint, Windows-MCP, MacOS-MCP, lahfir/agent-desktop, native-devtools-mcp, desktop-pilot-mcp).
 
-**UNICLI's position on this debate is already correct.** v0.212 shipped the seven-transport architecture (HTTP, CDP-Browser, Subprocess, Desktop-AX, Desktop-UIA, Desktop-ATSPI, CUA), declared the 49-step capability matrix, and made AX/UIA/ATSPI first-class peers to CUA — not fallbacks for it. What's missing is the **cross-platform completion** of the AX/UIA/ATSPI side and a **unified MCP surface** that lets any MCP-speaking agent (Claude Code, Codex CLI, Cursor, Gemini CLI) drop UNICLI in as their computer-use substrate.
+**UNICLI's position on this debate is already correct.** The transport architecture has seven lanes (HTTP, CDP-Browser, Subprocess, Desktop-AX, Desktop-UIA, Desktop-ATSPI, CUA), a 101-step pipeline surface, and AX/UIA/ATSPI as first-class peers to CUA — not fallbacks for it. What's missing is the **cross-platform completion** of the AX/UIA/ATSPI side and a **unified MCP surface** that lets any MCP-speaking agent (Claude Code, Codex CLI, Cursor, Gemini CLI) drop UNICLI in as their computer-use substrate.
 
 This spec closes those two gaps and ships UNICLI as **the open-source `computer-use` MCP server** with broader coverage than any single vendor's offering.
 
 ---
 
-## 2. What we have today (v0.217.2)
+## 2. What we have today (v0.218.1)
 
 | Layer                 | State                   | Notes                                                                                                                                                                                                                                                                     |
 | --------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -33,7 +33,7 @@ This spec closes those two gaps and ships UNICLI as **the open-source `computer-
 | Desktop-UIA (Windows) | ❌ **Stub**             | 86 LOC. Returns `service_unavailable:69` for every call. Capability declared but no backend.                                                                                                                                                                              |
 | Desktop-ATSPI (Linux) | ❌ **Stub**             | 85 LOC. Same shape as UIA. No backend.                                                                                                                                                                                                                                    |
 | CUA transport         | 🟡 **Backend skeleton** | 866 LOC. `CuaBackend` interface + provider selection (`anthropic`/`trycua`/`opencua`/`scrapybara`/`mock`). Provider network paths are explicit stubs, mock works for tests.                                                                                               |
-| MCP server            | ✅ Real                 | `src/mcp/`, stdio + HTTP + Streamable HTTP + SSE + OAuth-PKCE. `unicli mcp serve [--expanded]` exposes adapter commands as tools.                                                                                                                                         |
+| MCP server            | ✅ Real                 | `src/mcp/`, stdio + HTTP + Streamable HTTP + OAuth-PKCE, with deprecated SSE requests routed through Streamable HTTP compatibility. `unicli mcp serve [--expanded]` exposes adapter commands as tools.                                                                    |
 | `unicli operate`      | ✅ Real                 | 16 browser subcommands (open/state/click/type/keys/scroll/get/wait/eval/screenshot/find/observe/extract/network/upload/hover) — but **browser-only**. No `unicli operate <app>` for native apps.                                                                          |
 | AX-tree text encoding | 🟡 Partial              | `snapshot` step returns DOM-AX or screenshot; no compact-text encoding with progressive disclosure (lahfir/agent-desktop's `[e1] role "name" wxh ...`).                                                                                                                   |
 

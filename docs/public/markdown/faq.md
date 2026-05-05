@@ -31,7 +31,7 @@ Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, and any runtime that can spa
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.218.1 covers <span><!-- STATS:site_count -->238<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1458<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1048<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->7907<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, government policy, podcasts, and macOS apps.
+v0.218.1 covers <span><!-- STATS:site_count -->238<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1458<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1048<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->7911<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, government policy, podcasts, and macOS apps.
 
 ## Can I add a new site without writing TypeScript?
 

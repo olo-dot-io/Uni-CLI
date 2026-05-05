@@ -6,7 +6,7 @@
  * @breaks  Missing release or verification script gates fail unit verification.
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -18,6 +18,16 @@ function rootScripts(): Record<string, string> {
     scripts?: Record<string, string>;
   };
   return pkg.scripts ?? {};
+}
+
+function rootPackage(): {
+  bin?: Record<string, string>;
+  files?: string[];
+} {
+  return JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) as {
+    bin?: Record<string, string>;
+    files?: string[];
+  };
 }
 
 describe("verify scripts", () => {
@@ -33,5 +43,13 @@ describe("verify scripts", () => {
 
     expect(scripts.clean).toContain("rmSync('dist'");
     expect(scripts.build).toMatch(/^npm run clean && tsc && /);
+  });
+
+  it("packages a root MCP binary wrapper for npm payload inspection", () => {
+    const pkg = rootPackage();
+
+    expect(pkg.bin?.["unicli-mcp"]).toBe("bin/unicli-mcp");
+    expect(pkg.files).toContain("bin/");
+    expect(existsSync(join(ROOT, "bin", "unicli-mcp"))).toBe(true);
   });
 });
