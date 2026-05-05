@@ -4,11 +4,11 @@ Uni-CLI is the CLI-native command surface for AI agents to discover, run, and re
 
 ## Catalog Snapshot
 
-- Sites: 235
-- Commands: 1450
-- Adapters: 1040 (917 YAML + 123 TypeScript)
-- Pipeline steps: 59
-- Tests: 7591
+- Sites: 237
+- Commands: 1453
+- Adapters: 1043 (920 YAML + 123 TypeScript)
+- Pipeline steps: 101
+- Tests: 7842
 
 ## Agent Contract
 
@@ -25,8 +25,11 @@ Every public page below has a clean Markdown companion. Fetch Markdown first; fe
 
 - [Overview](https://olo-dot-io.github.io/Uni-CLI/) — overview, install path, capability map, and agent entry points. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
 - [First Run](https://olo-dot-io.github.io/Uni-CLI/guide/getting-started) — start page for first run. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/getting-started.md
+- [How It Works](https://olo-dot-io.github.io/Uni-CLI/how-it-works) — start page for how it works. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/how-it-works.md
 - [Integrations](https://olo-dot-io.github.io/Uni-CLI/guide/integrations) — start page for integrations. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/integrations.md
 - [Recipes](https://olo-dot-io.github.io/Uni-CLI/RECIPES) — start page for recipes. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/RECIPES.md
+- [FAQ](https://olo-dot-io.github.io/Uni-CLI/faq) — start page for faq. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/faq.md
+- [Glossary](https://olo-dot-io.github.io/Uni-CLI/glossary) — start page for glossary. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/glossary.md
 
 ## Guides
 

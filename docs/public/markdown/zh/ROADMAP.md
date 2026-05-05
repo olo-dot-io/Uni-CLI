@@ -7,7 +7,7 @@
 - 栏目: 解释
 - 上级: 解释 (/zh/ARCHITECTURE)
 
-> Current: v0.217.2 — Apollo · Swigert. <!-- STATS:site_count -->235<!-- /STATS --> 个站点，<!-- STATS:command_count -->1450<!-- /STATS --> 条命令，<!-- STATS:pipeline_step_count -->59<!-- /STATS --> 个 pipeline step。
+> Current: v0.218.0 — Apollo · Cernan. <!-- STATS:site_count -->237<!-- /STATS --> 个站点，<!-- STATS:command_count -->1453<!-- /STATS --> 条命令，<!-- STATS:pipeline_step_count -->101<!-- /STATS --> 个 pipeline step。
 
 路线图按能力成熟度推进，不按固定周节奏发布。发布节奏取决于社区反馈和实际开发状态。
 

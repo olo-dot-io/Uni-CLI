@@ -4,10 +4,10 @@ This file is generated from the same VitePress site map as the public docs.
 
 ## Snapshot
 
-- Sites: 235
-- Commands: 1450
-- Adapters: 1040
-- Pipeline steps: 59
+- Sites: 237
+- Commands: 1453
+- Adapters: 1043
+- Pipeline steps: 101
 
 ---
 
@@ -53,10 +53,10 @@ Agent execution needs an auditable, repairable, reusable command contract. Catal
 
 ## Coverage
 
-- Sites and tools: 235
-- Commands: 1450
-- Pipeline steps: 59
-- Tests: 7591
+- Sites and tools: 237
+- Commands: 1453
+- Pipeline steps: 101
+- Tests: 7842
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -69,7 +69,7 @@ These numbers come from the current generated repo artifacts: adapters, commands
 
 ## Current Version
 
-Latest: v0.217.2 · Apollo · Swigert.
+Latest: v0.218.0 · Apollo · Cernan.
 
 ## Agent Index
 
@@ -332,6 +332,191 @@ unicli agents generate --for codex
 
 ---
 
+# Page: How It Works
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/how-it-works
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/how-it-works.md
+
+<!-- Generated from docs/how-it-works.md. Do not edit this copy directly. -->
+
+# How It Works
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/how-it-works
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/how-it-works.md
+- Section: Start
+- Parent: Start (/)
+
+Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. This page walks through the architecture: how a YAML adapter compiles into a CLI command, how the strategy cascade resolves authentication, how the v2 AgentEnvelope returns evidence, and how the self-repair loop closes when a site changes shape.
+
+## The four-part contract
+
+Every Uni-CLI command runs through the same four phases. Agents can stop at any phase and reason about the result.
+
+1. **Discover.** `unicli search "<intent>"` queries the local catalog with bilingual BM25 ranking and returns matching site, command, args, auth strategy, and output schema.
+2. **Execute.** `unicli <site> <command> [args]` runs the YAML pipeline and returns a v2 AgentEnvelope.
+3. **Recover.** Failures emit `{ adapter_path, step, action, suggestion, retryable, alternatives }` so the agent has a bounded fix path.
+4. **Repair.** The agent edits the YAML at `adapter_path` and runs `unicli repair <site> <command>` to verify the patch.
+
+This contract holds across all five adapter types: web-api, browser, desktop, bridge, and service.
+
+## The YAML adapter format
+
+The unit of integration is a 20-line YAML file. Here's a complete adapter for a public RSS feed:
+
+```yaml
+site: techcrunch
+name: latest
+type: web-api
+strategy: public
+pipeline:
+  - fetch_text:
+      url: https://techcrunch.com/feed/
+  - parse_rss: {}
+  - limit: 10
+  - map:
+      title: "${{ item.title }}"
+      url: "${{ item.link }}"
+      published: "${{ item.published }}"
+columns: [title, published, url]
+```
+
+Five fields define the contract: `site` (the integration name), `name` (the command), `type` (which surface — web-api, browser, desktop, bridge, service), `strategy` (auth path), and `pipeline` (the steps that produce the result). An adapter without imports, classes, or compile steps lets an agent read it, patch a selector, and verify the fix in seconds.
+
+## The 59-step pipeline
+
+Every adapter runs through the same 59-step pipeline registry. Steps are grouped by purpose: API fetch, transform, browser, desktop, media, control flow, and assertion. Each step is deterministic — same inputs produce same outputs — so adapters compose into reliable execution graphs.
+
+| Group     | Examples                                                            | Purpose                                  |
+| --------- | ------------------------------------------------------------------- | ---------------------------------------- |
+| API       | `fetch`, `fetch_text`, `parse_rss`, `html_to_md`                    | HTTP retrieval and structured extraction |
+| Transform | `select`, `map`, `filter`, `sort`, `limit`                          | Reshape JSON between steps               |
+| Browser   | `navigate`, `evaluate`, `click`, `type`, `wait`, `intercept`, `tap` | CDP control over Chrome                  |
+| Desktop   | `exec`, `write_temp`                                                | Subprocess control                       |
+| Media     | `download`, `websocket`                                             | File and stream capture                  |
+| Control   | `set`, `if`, `each`, `parallel`, `rate_limit`, `assert`, `retry`    | Composition primitives                   |
+| Output    | `extract`, columns                                                  | Final shape for the agent                |
+
+The pipeline runs top to bottom with a shared context object. Each step reads `ctx.data` and writes back. Templates (`${{ item.field }}`) interpolate from prior step outputs.
+
+## The strategy cascade
+
+Authentication is the messiest part of touching the modern web. Every adapter declares one of five strategies, and Uni-CLI auto-probes the cheapest one that returns valid data.
+
+| Strategy    | Auth source                                    | Typical cost                               |
+| ----------- | ---------------------------------------------- | ------------------------------------------ |
+| `public`    | None                                           | Direct fetch                               |
+| `cookie`    | Cookie file at `~/.unicli/cookies/<site>.json` | Inject into headers                        |
+| `header`    | Cookie + auto-extracted CSRF                   | Read CSRF from cookie, inject into request |
+| `intercept` | Live browser session                           | Navigate page, capture XHR/fetch responses |
+| `ui`        | Live browser session                           | Click, type, snapshot                      |
+
+The cascade order is `public → cookie → header → intercept → ui`. On the first run for a site, Uni-CLI tries each strategy until one returns parseable data, then caches the result. Subsequent calls skip the probe.
+
+## The v2 AgentEnvelope
+
+Every command returns a v2 AgentEnvelope — the same shape on success or failure. Agents parse one schema across 1,450 commands.
+
+```json
+{
+  "ok": true,
+  "version": "v2",
+  "data": [
+    /* the result */
+  ],
+  "meta": {
+    "site": "reddit",
+    "command": "search",
+    "strategy": "public",
+    "duration_ms": 412,
+    "adapter_path": "/Users/me/.unicli/adapters/reddit/search.yaml"
+  },
+  "exit_code": 0
+}
+```
+
+On failure, `ok` becomes `false`, `data` becomes `null`, and `error` populates with structured fields. Exit codes follow `sysexits.h` (0=ok, 1=error, 2=usage, 66=empty, 69=unavailable, 75=temp, 77=auth, 78=config) so shell pipelines can route by failure class.
+
+## The self-repair loop
+
+This is the design choice that makes the rest of the architecture worth building. When a site changes shape, the error envelope gives the agent a bounded fix:
+
+```json
+{
+  "ok": false,
+  "version": "v2",
+  "data": null,
+  "error": {
+    "adapter_path": "/Users/me/.unicli/adapters/twitter/search.yaml",
+    "step": "fetch",
+    "action": "request returned 404",
+    "suggestion": "endpoint may have moved; check x.com/i/api/graphql/* in DevTools Network tab",
+    "retryable": false,
+    "alternatives": ["unicli twitter timeline @user", "unicli twitter trending"]
+  },
+  "exit_code": 69
+}
+```
+
+The agent has everything it needs: the file to edit, the failing step, a one-line hypothesis, and at least one alternative path. After the YAML edit, `unicli repair twitter search` re-runs the failing step against a known-good fixture. The patch persists in `~/.unicli/adapters/`, so `npm update` cannot wipe it.
+
+A bug that would have cost 30 minutes of human debugging closes in 30 seconds of agent runtime. That two-orders-of-magnitude difference is the entire economic argument for adapters as YAML.
+
+## Why CLI is the right shape for agent tools
+
+Three forces make CLI the cheaper primary surface for agent tooling.
+
+**Token economics.** [docs/BENCHMARK.md](/BENCHMARK) measures `--limit 5` list-style adapters at a 364-423 token total call budget (median 412). An MCP server keeps its tool list resident in the agent's context window — typically 1,500-3,000 tokens per server — even when the agent does not invoke it. The CLI pays for what it uses; the MCP server pays to be available.
+
+**Determinism.** A CLI call is a pure function of arguments and time. Same arguments, same minute, same output. MCP roundtrips add a stateful server, a transport, and a protocol layer that can drift. For agent automation, fewer moving parts reduces failure modes.
+
+**Composability.** Shell pipelines are the lingua franca of automation. `unicli reddit hot r/programming -n 50 -f json | jq '.data[].title' | unicli huggingface summarize -` works the day Uni-CLI installs. Same composition with MCP requires a glue layer.
+
+## When MCP still wins
+
+CLI is not a universal replacement. MCP is the better surface for:
+
+- **Stateful auth** — long-lived OAuth flows, refreshing tokens, session-bound resources.
+- **Real-time** — WebSocket-driven chat platforms, server-sent events, streaming completions.
+- **Single-platform deep integration** — a vendor-built MCP server for a vertical platform usually outperforms a third-party CLI adapter for that platform.
+
+Most production agent stacks need both. Uni-CLI ships an MCP gateway (`unicli mcp serve`) that wraps the same catalog, so a runtime that only speaks MCP gets the same execution surface without a second integration.
+
+## The catalog as a first-class artifact
+
+Search beats discovery-by-prompt. `unicli search "find AI agent discussions on reddit"` returns a ranked list of matching commands with arguments, auth, and example output. The agent picks one, runs it, and never has to enumerate the catalog. This is the same pattern Apideck CLI and OnlyCLI report 96-99% token savings on — load the catalog index, not the catalog body.
+
+## Putting it together
+
+A typical agent run looks like this:
+
+```bash
+# 1. Discover
+$ unicli search "summarize today's Hacker News top stories"
+  → suggested: unicli hackernews top -n 10
+  → next:      unicli huggingface summarize -
+
+# 2. Execute and pipe
+$ unicli hackernews top -n 10 -f json \
+    | jq -r '.data[] | .title + "\n" + .url' \
+    | unicli huggingface summarize - -f md
+
+# 3. On failure, the error envelope names the adapter to fix
+# 4. The agent edits the YAML and re-verifies with `unicli repair`
+```
+
+That is the entire interaction model. One command shape across 235+ sites and 1,450 commands. One error envelope across every failure. One self-repair path across every adapter.
+
+## Further reading
+
+- [Adapter Format](/ADAPTER-FORMAT) — full reference for the YAML adapter schema.
+- [Pipeline Reference](/reference/pipeline) — every pipeline step and its parameters.
+- [Self-Repair Guide](/guide/self-repair) — the repair loop in detail.
+- [Theory](/THEORY) — the CS-theoretical grounding (Rice's restriction, Lehman's mandate, Banach convergence, the agent-tool trilemma).
+- [FAQ](/faq) — quick answers to the most common questions.
+- [Glossary](/glossary) — definitions for every term used in this guide.
+
+---
+
 # Page: Integrations
 
 Canonical: https://olo-dot-io.github.io/Uni-CLI/guide/integrations
@@ -428,6 +613,18 @@ Default MCP tools:
 
 `mcp serve` and `acp` keep raw stdio protocol behavior. Normal command surfaces
 return the v2 `AgentEnvelope`.
+
+For local computer control, start the dedicated profile:
+
+```bash
+npx @zenalexa/unicli mcp serve --profile computer-use
+```
+
+It exposes the `computer-use.*` tool set backed by `unicli compute`. Client
+snippets are available for [Claude Desktop](/mcp/clients/claude-desktop.md),
+[Claude Code](/mcp/clients/claude-code.md),
+[Codex](/mcp/clients/codex.md), [Cursor](/mcp/clients/cursor.md), and
+[Gemini CLI](/mcp/clients/gemini-cli.md).
 
 Claude-style stdio config:
 
@@ -788,6 +985,230 @@ Exit codes follow `sysexits.h`:
 
 See `docs/reference/exit-codes.md` for how agents detect and handle each
 exit code.
+
+---
+
+# Page: FAQ
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/faq
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/faq.md
+
+<!-- Generated from docs/faq.md. Do not edit this copy directly. -->
+
+# FAQ
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/faq
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/faq.md
+- Section: Start
+- Parent: Start (/)
+
+Quick answers to the questions agents and developers ask most often. Each answer is a standalone summary so AI assistants can quote it directly.
+
+## What is Uni-CLI?
+
+Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across 235+ sites and tools, returning a stable v2 AgentEnvelope on every call.
+
+## How is Uni-CLI different from a browser automation library?
+
+Uni-CLI uses YAML adapters that compile sites into deterministic CLI commands rather than Turing-complete scripts. Each command returns the same structured envelope, so agents can pipe results, retry on errors, and patch the YAML directly when an upstream API changes — no recompile, no library upgrade, no headless browser flakiness.
+
+## Why a CLI instead of an MCP server?
+
+A measured Uni-CLI list-style call lands at a 364-423 token total budget (median 412) per [docs/BENCHMARK.md](/BENCHMARK), while an equivalent MCP server keeps its tool list resident — typically 1,500-3,000 tokens per server, even when idle. Uni-CLI publishes both surfaces; the CLI is the cheap, deterministic primary, and MCP wraps it for runtimes that only speak MCP.
+
+## How does self-repair work in Uni-CLI?
+
+When a command fails, Uni-CLI emits a structured error JSON containing the adapter path, failing pipeline step, action, and a one-line suggestion. An agent reads the YAML at that path, edits the selector or auth header, then runs `unicli repair <site> <command>` to verify the fix. Patches persist in `~/.unicli/adapters/` so they survive `npm update`.
+
+## Which AI agent platforms work with Uni-CLI?
+
+Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, and any runtime that can spawn a subprocess. Uni-CLI also exposes an MCP server, an ACP gateway, and an `AGENTS.md` discovery surface so agents pick it up without manual configuration.
+
+## How many sites and commands does Uni-CLI ship?
+
+v0.217 covers 235 sites with 1,450 commands across 1,040 adapters, 59 pipeline steps, and 7,591 tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, government policy, podcasts, and macOS apps.
+
+## Can I add a new site without writing TypeScript?
+
+Yes. The preferred contribution format is a 20-line YAML adapter that names the site, command, strategy, and pipeline. Run `unicli init <site> <command>` to scaffold one, then `unicli dev <path>` to hot-reload while iterating. Most adapters ship without a single line of TypeScript.
+
+## Does Uni-CLI handle authenticated sites?
+
+Yes. Strategies cascade across `public`, `cookie`, `header` (cookie + CSRF), `intercept` (browser XHR capture), and `ui` (interactive). Cookies live in `~/.unicli/cookies/`, and Uni-CLI auto-probes the cheapest strategy that returns valid data.
+
+## How does Uni-CLI compare to MCP for token cost?
+
+[docs/BENCHMARK.md](/BENCHMARK) measures real Uni-CLI call budgets at 364-423 tokens (median 412) for `--limit 5` list-style adapters. An MCP server has to keep its tool list in resident context — usually 1,500-3,000 tokens per server — before any tool is invoked. Uni-CLI emits structured error envelopes so agents avoid retry loops that further inflate context.
+
+## Is Uni-CLI free and open source?
+
+Yes. Uni-CLI is Apache-2.0 licensed on GitHub at [olo-dot-io/Uni-CLI](https://github.com/olo-dot-io/Uni-CLI) and on npm as [@zenalexa/unicli](https://www.npmjs.com/package/@zenalexa/unicli). There are no paid features, no gated commands, and no telemetry. YAML adapters and pipeline steps are agent-readable and agent-editable.
+
+## Where can I see all commands?
+
+The full command catalog lives at [/reference/sites](/reference/sites). For agent-readable indexes, fetch [/llms.txt](/llms.txt) for a curated map or [/llms-full.txt](/llms-full.txt) for the concatenated docs.
+
+## How do I report a broken adapter?
+
+Open an issue at [github.com/olo-dot-io/Uni-CLI/issues](https://github.com/olo-dot-io/Uni-CLI/issues) with the structured error JSON. The error envelope already includes the adapter path and failing step, so a fix is usually a single YAML edit.
+
+---
+
+# Page: Glossary
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/glossary
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/glossary.md
+
+<!-- Generated from docs/glossary.md. Do not edit this copy directly. -->
+
+# Glossary
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/glossary
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/glossary.md
+- Section: Start
+- Parent: Start (/)
+
+Definitions for the terms used across Uni-CLI documentation, source, and YAML adapters. Each entry is a standalone explanation so AI assistants can quote it directly when answering questions about the project.
+
+## Adapter
+
+A YAML or TypeScript file that maps one site or tool to a set of CLI commands. Adapters declare site, command name, type, strategy, arguments, pipeline steps, and column projection. The preferred contribution format is YAML; TypeScript is reserved for adapters that need imperative control flow beyond the 59-step pipeline.
+
+## Adapter type
+
+The integration surface an adapter targets. Five types: `web-api` for HTTP APIs, `browser` for full Chrome control via CDP, `desktop` for local subprocesses, `bridge` for passthrough to existing CLIs, and `service` for WebSocket or HTTP services like Ollama, OBS, or ComfyUI.
+
+## AgentEnvelope (v2)
+
+The structured response shape returned by every Uni-CLI command. Contains `ok`, `version`, `data`, `meta`, optional `error`, and `exit_code`. On success `data` carries the result. On failure `data` is null and `error` populates with `adapter_path`, `step`, `action`, `suggestion`, `retryable`, and `alternatives`.
+
+## AGENTS.md
+
+A discovery file that agent runtimes (Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, Hermes) read at startup to learn about available tools. Uni-CLI is registered in `AGENTS.md` so agents pick it up without per-runtime configuration.
+
+## Bilingual BM25 search
+
+The catalog discovery algorithm Uni-CLI uses to map natural-language intent to a site, command, and arguments. Indexes adapter metadata in English and Chinese with TF-IDF weighting. Returns ranked candidates for `unicli search "<intent>"`.
+
+## Bridge adapter
+
+An adapter that wraps an existing CLI (e.g., `gh`, `docker`, `yt-dlp`, `lark-cli`) and exposes its commands through Uni-CLI's catalog. Pure passthrough — Uni-CLI does not re-implement the wrapped CLI, only registers, auto-installs, and aggregates discovery.
+
+## Browser adapter
+
+An adapter that drives Chrome via the Chrome DevTools Protocol (CDP) for sites that require interactive sessions, JavaScript execution, or login state. Uses `navigate`, `evaluate`, `click`, `type`, `wait`, `intercept`, `tap`, `snapshot`, and `screenshot` pipeline steps.
+
+## Catalog
+
+The local index of all sites, commands, arguments, strategies, and output schemas. Generated at install time and updated when adapters change. Searched via `unicli search` rather than enumerated, so agents pay catalog cost only when they need to discover.
+
+## CDP (Chrome DevTools Protocol)
+
+The wire protocol Uni-CLI uses to control a real Chrome instance for browser adapters. Implemented as a raw WebSocket client in `src/browser/cdp-client.ts` with no third-party browser library. Supports the full Page, Network, DOM, and Runtime domains.
+
+## Compute (CUA)
+
+The visual fallback adapter family. When structured transports (web-api, desktop AX, browser CDP) cannot reach a target, Compute drives the screen via vision — clicks, types, screenshots — through a unified actuating verb set.
+
+## Cookie file
+
+Per-site authentication state stored at `~/.unicli/cookies/<site>.json`. Read by adapters with `strategy: cookie` or `strategy: header`. Never sent off the local machine.
+
+## Daemon
+
+A long-lived browser process Uni-CLI can manage on port 19825. Spawns Chrome with the `--remote-debugging-port` flag, holds session state across CLI calls, and exits on idle timeout. Optional — most adapters work without it.
+
+## Desktop adapter
+
+An adapter that shells out to a local binary (e.g., `ffmpeg`, `imagemagick`, `blender`) via the `exec` and `write_temp` pipeline steps. Used for media processing, file conversion, and any CLI tool already on the user's PATH.
+
+## Discovery
+
+The phase where an agent maps natural-language intent to a concrete command. Performed by `unicli search "<intent>"` against the local catalog. Discovery cost is bounded — see [docs/BENCHMARK.md](/BENCHMARK) for measured token budgets.
+
+## Error envelope
+
+The `error` field on a v2 AgentEnvelope when `ok` is false. Carries `adapter_path` (the YAML to edit), `step` (the failing pipeline step), `action` (one-line description), `suggestion` (a hypothesis the agent can test), `retryable` (whether retry would help), and `alternatives` (other commands that might satisfy the intent).
+
+## Exit code
+
+A `sysexits.h`-compatible numeric status returned by every Uni-CLI invocation. 0 is success. 1 is generic error. 2 is usage error. 66 is empty result. 69 is service unavailable. 75 is temporary failure. 77 is auth error. 78 is config error. Shell pipelines can route on these classes.
+
+## Header strategy
+
+An auth strategy that reads a cookie file and auto-extracts a CSRF token from it, then injects both into request headers. Used by sites that require CSRF on state-changing requests (e.g., Reddit `vote`, Twitter `like`).
+
+## Intercept strategy
+
+An auth strategy that navigates a real browser session to the target page and captures the XHR/fetch response that the page itself loaded. Used when a site's API is undocumented or requires session state too complex to replicate manually.
+
+## llms.txt
+
+A standardized agent-readable index file at the site root (`/llms.txt` and `/llms-full.txt`). Lists key documentation pages with Markdown companion URLs so AI assistants can fetch and cite docs without rendering HTML.
+
+## MCP (Model Context Protocol)
+
+The Anthropic-led protocol for letting AI assistants invoke tools through a stateful server. Uni-CLI ships an optional MCP gateway (`unicli mcp serve`) that wraps the catalog for runtimes that only speak MCP.
+
+## Pipeline
+
+The ordered list of steps an adapter runs to produce its result. Drawn from a 59-step registry covering API fetch, transform, browser, desktop, media, control flow, and assertion. Steps share a context object — each step reads `ctx.data` and writes back.
+
+## Pipeline step
+
+One unit of work in an adapter's pipeline. Examples: `fetch`, `select`, `map`, `filter`, `navigate`, `click`, `intercept`, `if`, `each`, `assert`. Every step is deterministic — same inputs produce same outputs — so adapters compose into reliable execution graphs.
+
+## Public strategy
+
+The cheapest auth strategy. Direct fetch with no credentials. Used by sites with public APIs (RSS feeds, search endpoints, public stats). Always tried first by the strategy cascade.
+
+## Repair
+
+The fourth phase of the four-part contract. After an error envelope names a failing adapter and step, the agent edits the YAML and runs `unicli repair <site> <command>` to verify. Patches persist in `~/.unicli/adapters/`.
+
+## Self-repair
+
+The capability that lets agents fix their own integrations when sites drift. Composed of: structured error envelopes, agent-readable YAML adapters, a repair verification command, and a persistent overlay directory. The single design choice that makes catalog-as-YAML economically viable.
+
+## Service adapter
+
+An adapter that talks to a long-lived service (Ollama, OBS Studio, ComfyUI) over WebSocket or HTTP with optional API-key auth. Distinct from `web-api` because the connection persists across pipeline steps.
+
+## Site
+
+The integration target for an adapter. Typically a website (`reddit`, `twitter`, `bilibili`), but can also be a desktop app (`obsidian`), an external CLI (`gh`), or a local service (`ollama`).
+
+## Snapshot
+
+A DOM accessibility tree generated by the `snapshot` pipeline step in browser adapters. Produces interactive ref numbers that subsequent `click`, `type`, and `extract` steps reference. Used by adapters that need stable element targeting across page state changes.
+
+## Strategy
+
+The auth path an adapter declares. Five strategies in cascade order: `public`, `cookie`, `header`, `intercept`, `ui`. Auto-probed on first run; cached afterward.
+
+## Strategy cascade
+
+The auto-probe sequence Uni-CLI runs on first call to a site. Tries each strategy from cheapest to most expensive (`public` to `ui`) until one returns parseable data. The selected strategy is then cached so subsequent calls skip the probe.
+
+## Tap
+
+A pipeline step that bridges Vue stores (Pinia, Vuex) to network capture. Drives the page's own state actions, then captures the resulting XHR/fetch responses. Used for sites with deep client-side state (Twitter, Bilibili, Notion).
+
+## UI strategy
+
+The most expensive auth strategy. Drives a real browser session interactively — clicks, types, snapshots, waits. Used when a site requires multi-step user interaction that cannot be replicated by header injection or XHR replay.
+
+## v2 envelope version
+
+The current AgentEnvelope schema. v1 was a flat `{ ok, data, error }` shape; v2 added structured `error` fields, `meta`, `version`, and `exit_code` for shell-friendly routing. All adapters as of v0.213 emit v2.
+
+## Web-api adapter
+
+An adapter that hits HTTP APIs directly, with no browser involvement. The most common adapter type. Uses `fetch`, `fetch_text`, `parse_rss`, and `html_to_md` for retrieval; `select`, `map`, `filter` for shaping.
+
+## YAML adapter
+
+The preferred adapter format. A 20-30 line file declaring site, name, type, strategy, args, pipeline, and columns. Agent-readable, agent-editable, and decidable (no Turing-complete logic) per Rice's restriction. Lives at `~/.unicli/adapters/<site>/<name>.yaml`.
 
 ---
 
@@ -1430,7 +1851,7 @@ running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 235 sites, 1450 commands.
+This catalog is generated from the adapter manifest: 237 sites, 1453 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -1537,11 +1958,13 @@ This catalog is generated from the adapter manifest: 235 sites, 1450 commands.
 | jike | browser | 10 | yes | unicli jike feed<br>unicli jike notifications<br>unicli jike post |
 | jimeng | web-api | 4 | yes | unicli jimeng generate<br>unicli jimeng history<br>unicli jimeng new |
 | jq | bridge | 2 | no | unicli jq format<br>unicli jq query |
+| juejin | web-api | 2 | no | unicli juejin hot<br>unicli juejin search |
 | kdenlive | desktop | 3 | no | unicli kdenlive effects<br>unicli kdenlive info<br>unicli kdenlive render |
 | ke | browser | 4 | yes | unicli ke ershoufang<br>unicli ke xiaoqu<br>unicli ke zufang |
 | krita | desktop | 4 | no | unicli krita batch<br>unicli krita convert<br>unicli krita export |
 | kuaishou | web-api | 2 | yes | unicli kuaishou hot<br>unicli kuaishou search |
 | lark | bridge | 8 | no | unicli lark version<br>unicli lark open-app<br>unicli lark status-app |
+| leetcode | web-api | 1 | no | unicli leetcode discuss-search |
 | lesswrong | web-api | 15 | no | unicli lesswrong comments<br>unicli lesswrong curated<br>unicli lesswrong frontpage |
 | libreoffice | desktop | 2 | no | unicli libreoffice convert<br>unicli libreoffice print |
 | linear | web-api | 10 | no | unicli linear issue-create<br>unicli linear issue-list<br>unicli linear issue-update |
@@ -3556,7 +3979,7 @@ Uni-CLI exposes one searchable command surface across:
   shell commands or protocol servers.
 
 The generated catalog is the source of truth: **235 sites**, **1450 commands**,
-**1040 adapters**, **59 pipeline steps**, and **7591 tests** in v0.217.2.
+**1040 adapters**, **59 pipeline steps**, and **7591 tests** in v0.218.0.
 
 ## Execution Contract
 
@@ -4109,7 +4532,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Current: v0.217.2 — Apollo · Swigert. <!-- STATS:site_count -->235<!-- /STATS --> sites, <!-- STATS:command_count -->1450<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->59<!-- /STATS --> pipeline steps.
+> Current: v0.218.0 — Apollo · Cernan. <!-- STATS:site_count -->237<!-- /STATS --> sites, <!-- STATS:command_count -->1453<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction. Historical release notes live in
 `CHANGELOG.md`; they do not belong in the roadmap.

@@ -1,8 +1,8 @@
 {
-  "source": "unicli@0.217.2",
-  "generated": "2026-04-30T13:08:02.663Z",
-  "total_sites": 235,
-  "total_commands": 1450,
+  "source": "unicli@0.218.0",
+  "generated": "2026-05-05T05:39:12.936Z",
+  "total_sites": 237,
+  "total_commands": 1453,
   "adapters": [
     {
       "site": "1688",
@@ -14193,6 +14193,80 @@
       ]
     },
     {
+      "site": "juejin",
+      "type": "web-api",
+      "domain": "juejin.cn",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "hot",
+          "description": "掘金全站热门推荐 / Juejin all-categories hot feed",
+          "when_to_use": "When you need the current hot items from juejin.",
+          "command": "unicli juejin hot",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "title",
+            "author",
+            "company",
+            "views",
+            "diggs",
+            "comments",
+            "hot_index",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of items"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "掘金全文搜索 / Juejin full-text search",
+          "when_to_use": "When you need to search juejin for a specific query.",
+          "command": "unicli juejin search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "title",
+            "excerpt",
+            "author",
+            "company",
+            "views",
+            "diggs",
+            "comments",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Search keyword"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of results"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "kdenlive",
       "type": "desktop",
       "auth": false,
@@ -14682,6 +14756,56 @@
               "required": false,
               "positional": false,
               "description": "Comma-separated modifiers such as meta,shift"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "leetcode",
+      "type": "web-api",
+      "domain": "leetcode.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "discuss-search",
+          "description": "LeetCode Discuss 文章关键词搜索 / Search LeetCode Discuss articles by keyword",
+          "when_to_use": "LeetCode Discuss 文章关键词搜索 / Search LeetCode Discuss articles by keyword",
+          "command": "unicli leetcode discuss-search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "title",
+            "summary",
+            "author",
+            "views",
+            "created",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Search keyword (single string; matched against title and body)"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of articles"
+            },
+            {
+              "name": "order",
+              "type": "string",
+              "required": false,
+              "positional": false,
+              "description": "Sort order — MOST_RECENT or HOTTEST"
             }
           ]
         }
@@ -23539,7 +23663,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["title", "author", "likes", "url"],
+          "columns": ["title", "author", "likes", "released_at", "url"],
           "args": [
             {
               "name": "limit",

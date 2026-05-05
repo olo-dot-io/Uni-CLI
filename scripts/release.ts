@@ -162,6 +162,24 @@ const rules: Rule[] = [
     replacement: `in v${version}.`,
     description: "docs/ARCHITECTURE.md version pin",
   },
+  {
+    file: "skills/unicli/SKILL.md",
+    pattern: /^version: [\d.]+/m,
+    replacement: `version: ${version}`,
+    description: "skills/unicli SKILL.md version",
+  },
+  {
+    file: "skills/unicli-claude-code/SKILL.md",
+    pattern: /^version: [\d.]+/m,
+    replacement: `version: ${version}`,
+    description: "skills/unicli-claude-code SKILL.md version",
+  },
+  {
+    file: "skills/unicli-hermes/SKILL.md",
+    pattern: /^version: [\d.]+/m,
+    replacement: `version: ${version}`,
+    description: "skills/unicli-hermes SKILL.md version",
+  },
 ];
 
 // --- Apply rules ---

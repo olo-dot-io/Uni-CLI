@@ -14,7 +14,7 @@ running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 235 sites, 1450 commands.
+This catalog is generated from the adapter manifest: 237 sites, 1453 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -121,11 +121,13 @@ This catalog is generated from the adapter manifest: 235 sites, 1450 commands.
 | jike | browser | 10 | yes | unicli jike feed<br>unicli jike notifications<br>unicli jike post |
 | jimeng | web-api | 4 | yes | unicli jimeng generate<br>unicli jimeng history<br>unicli jimeng new |
 | jq | bridge | 2 | no | unicli jq format<br>unicli jq query |
+| juejin | web-api | 2 | no | unicli juejin hot<br>unicli juejin search |
 | kdenlive | desktop | 3 | no | unicli kdenlive effects<br>unicli kdenlive info<br>unicli kdenlive render |
 | ke | browser | 4 | yes | unicli ke ershoufang<br>unicli ke xiaoqu<br>unicli ke zufang |
 | krita | desktop | 4 | no | unicli krita batch<br>unicli krita convert<br>unicli krita export |
 | kuaishou | web-api | 2 | yes | unicli kuaishou hot<br>unicli kuaishou search |
 | lark | bridge | 8 | no | unicli lark version<br>unicli lark open-app<br>unicli lark status-app |
+| leetcode | web-api | 1 | no | unicli leetcode discuss-search |
 | lesswrong | web-api | 15 | no | unicli lesswrong comments<br>unicli lesswrong curated<br>unicli lesswrong frontpage |
 | libreoffice | desktop | 2 | no | unicli libreoffice convert<br>unicli libreoffice print |
 | linear | web-api | 10 | no | unicli linear issue-create<br>unicli linear issue-list<br>unicli linear issue-update |

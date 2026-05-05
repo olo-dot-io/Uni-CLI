@@ -32,6 +32,25 @@
       ]
     },
     {
+      "title": "How It Works",
+      "locale": "root",
+      "routePath": "/how-it-works",
+      "markdownPath": "/markdown/how-it-works.md",
+      "sourceLink": "/how-it-works",
+      "sourcePath": "docs/how-it-works.md",
+      "section": "Start",
+      "parent": {
+        "text": "Start",
+        "link": "/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Start",
+          "link": "/"
+        }
+      ]
+    },
+    {
       "title": "Integrations",
       "locale": "root",
       "routePath": "/guide/integrations",
@@ -57,6 +76,44 @@
       "markdownPath": "/markdown/RECIPES.md",
       "sourceLink": "/RECIPES",
       "sourcePath": "docs/RECIPES.md",
+      "section": "Start",
+      "parent": {
+        "text": "Start",
+        "link": "/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Start",
+          "link": "/"
+        }
+      ]
+    },
+    {
+      "title": "FAQ",
+      "locale": "root",
+      "routePath": "/faq",
+      "markdownPath": "/markdown/faq.md",
+      "sourceLink": "/faq",
+      "sourcePath": "docs/faq.md",
+      "section": "Start",
+      "parent": {
+        "text": "Start",
+        "link": "/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Start",
+          "link": "/"
+        }
+      ]
+    },
+    {
+      "title": "Glossary",
+      "locale": "root",
+      "routePath": "/glossary",
+      "markdownPath": "/markdown/glossary.md",
+      "sourceLink": "/glossary",
+      "sourcePath": "docs/glossary.md",
       "section": "Start",
       "parent": {
         "text": "Start",
@@ -361,6 +418,25 @@
       ]
     },
     {
+      "title": "工作原理",
+      "locale": "zh",
+      "routePath": "/zh/how-it-works",
+      "markdownPath": "/markdown/zh/how-it-works.md",
+      "sourceLink": "/how-it-works",
+      "sourcePath": "docs/zh/how-it-works.md",
+      "section": "上手",
+      "parent": {
+        "text": "上手",
+        "link": "/zh/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "上手",
+          "link": "/zh/"
+        }
+      ]
+    },
+    {
       "title": "接入 Agent",
       "locale": "zh",
       "routePath": "/zh/guide/integrations",
@@ -386,6 +462,44 @@
       "markdownPath": "/markdown/zh/RECIPES.md",
       "sourceLink": "/RECIPES",
       "sourcePath": "docs/zh/RECIPES.md",
+      "section": "上手",
+      "parent": {
+        "text": "上手",
+        "link": "/zh/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "上手",
+          "link": "/zh/"
+        }
+      ]
+    },
+    {
+      "title": "常见问题",
+      "locale": "zh",
+      "routePath": "/zh/faq",
+      "markdownPath": "/markdown/zh/faq.md",
+      "sourceLink": "/faq",
+      "sourcePath": "docs/zh/faq.md",
+      "section": "上手",
+      "parent": {
+        "text": "上手",
+        "link": "/zh/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "上手",
+          "link": "/zh/"
+        }
+      ]
+    },
+    {
+      "title": "术语表",
+      "locale": "zh",
+      "routePath": "/zh/glossary",
+      "markdownPath": "/markdown/zh/glossary.md",
+      "sourceLink": "/glossary",
+      "sourcePath": "docs/zh/glossary.md",
       "section": "上手",
       "parent": {
         "text": "上手",

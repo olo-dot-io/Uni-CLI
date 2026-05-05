@@ -1,7 +1,7 @@
 {
-  "generated": "2026-04-30T13:08:02.663Z",
-  "total_sites": 235,
-  "total_commands": 1450,
+  "generated": "2026-05-05T05:39:12.936Z",
+  "total_sites": 237,
+  "total_commands": 1453,
   "sites": [
     {
       "site": "1688",
@@ -3960,6 +3960,22 @@
       ]
     },
     {
+      "site": "juejin",
+      "type": "web-api",
+      "domain": "juejin.cn",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        { "name": "hot", "description": "hot", "command": "unicli juejin hot" },
+        {
+          "name": "search",
+          "description": "search",
+          "command": "unicli juejin search"
+        }
+      ]
+    },
+    {
       "site": "kdenlive",
       "type": "desktop",
       "auth": false,
@@ -4106,6 +4122,21 @@
           "name": "press",
           "description": "Press a key in Lark, with optional comma-separated modifiers.",
           "command": "unicli lark press"
+        }
+      ]
+    },
+    {
+      "site": "leetcode",
+      "type": "web-api",
+      "domain": "leetcode.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "discuss-search",
+          "description": "LeetCode Discuss",
+          "command": "unicli leetcode discuss-search"
         }
       ]
     },

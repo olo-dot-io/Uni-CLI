@@ -11,7 +11,7 @@
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：235 个站点，1450 条命令。
+这个目录来自适配器 manifest：237 个站点，1453 条命令。
 
 | 站点 | 接口类型 | 命令数 | 认证 | 示例命令 |
 | --- | --- | ---: | --- | --- |
@@ -118,11 +118,13 @@
 | jike | browser | 10 | 是 | unicli jike feed<br>unicli jike notifications<br>unicli jike post |
 | jimeng | web-api | 4 | 是 | unicli jimeng generate<br>unicli jimeng history<br>unicli jimeng new |
 | jq | bridge | 2 | 否 | unicli jq format<br>unicli jq query |
+| juejin | web-api | 2 | 否 | unicli juejin hot<br>unicli juejin search |
 | kdenlive | desktop | 3 | 否 | unicli kdenlive effects<br>unicli kdenlive info<br>unicli kdenlive render |
 | ke | browser | 4 | 是 | unicli ke ershoufang<br>unicli ke xiaoqu<br>unicli ke zufang |
 | krita | desktop | 4 | 否 | unicli krita batch<br>unicli krita convert<br>unicli krita export |
 | kuaishou | web-api | 2 | 是 | unicli kuaishou hot<br>unicli kuaishou search |
 | lark | bridge | 8 | 否 | unicli lark version<br>unicli lark open-app<br>unicli lark status-app |
+| leetcode | web-api | 1 | 否 | unicli leetcode discuss-search |
 | lesswrong | web-api | 15 | 否 | unicli lesswrong comments<br>unicli lesswrong curated<br>unicli lesswrong frontpage |
 | libreoffice | desktop | 2 | 否 | unicli libreoffice convert<br>unicli libreoffice print |
 | linear | web-api | 10 | 否 | unicli linear issue-create<br>unicli linear issue-list<br>unicli linear issue-update |

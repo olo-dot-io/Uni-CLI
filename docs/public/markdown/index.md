@@ -35,10 +35,10 @@ Agent execution needs an auditable, repairable, reusable command contract. Catal
 
 ## Coverage
 
-- Sites and tools: 235
-- Commands: 1450
-- Pipeline steps: 59
-- Tests: 7591
+- Sites and tools: 237
+- Commands: 1453
+- Pipeline steps: 101
+- Tests: 7842
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -51,7 +51,7 @@ These numbers come from the current generated repo artifacts: adapters, commands
 
 ## Current Version
 
-Latest: v0.217.2 · Apollo · Swigert.
+Latest: v0.218.0 · Apollo · Cernan.
 
 ## Agent Index
 
