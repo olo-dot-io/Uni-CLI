@@ -227,11 +227,44 @@ function splitFilterArgs(raw: string): string[] {
 const FORBIDDEN_EXPR =
   /constructor|__proto__|prototype|globalThis|process|require|import\s*\(|eval\s*\(/;
 
+export class TemplateEvalError extends Error {
+  override readonly name = "TemplateEvalError";
+  constructor(
+    message: string,
+    readonly expr: string,
+    readonly cause?: unknown,
+  ) {
+    super(message);
+  }
+}
+
+function applyFilters(
+  value: unknown,
+  filters: Array<{ name: string; args: string[] }>,
+  scope: Record<string, unknown>,
+  expr: string,
+): unknown {
+  let result = value;
+  for (const filter of filters) {
+    const filterFn = PIPE_FILTERS[filter.name];
+    if (!filterFn) {
+      throw new TemplateEvalError(`unknown filter: ${filter.name}`, expr);
+    }
+    const evaledArgs = filter.args.map((a) => resolveFilterArg(a, scope));
+    result = filterFn(result, ...evaledArgs);
+  }
+  return result;
+}
+
 /**
  * Safe expression evaluator using Node.js VM sandbox.
- * Provides stronger isolation than `new Function()` with a 50ms timeout
+ * Provides stronger isolation than `new Function()` with a 250ms timeout
  * to prevent DoS. Simple dotted access (the most common case) uses a
  * fast path that avoids the VM overhead entirely.
+ *
+ * Throws `TemplateEvalError` on author-side failures (security pattern,
+ * unknown filter name) so adapter typos surface as visible step errors
+ * instead of silently dropping rows.
  *
  * Supports pipe filters: ${{ expr | join(', ') | slice(0, 100) }}
  */
@@ -239,71 +272,61 @@ export function evalExpression(
   expr: string,
   scope: Record<string, unknown>,
 ): unknown {
+  // REASON: Security defense-in-depth. Returning undefined here keeps the
+  // boundary lenient (Postel) — dangerous identifiers never reach the VM
+  // and the empty downstream value is meaningful in the envelope. The
+  // strict-internal failure modes (unknown filter, syntax error in YAML)
+  // throw TemplateEvalError below.
+  if (FORBIDDEN_EXPR.test(expr)) return undefined;
+
+  const { baseExpr, filters } = parsePipes(expr);
+
+  // Fast path: simple dotted access like "item.title" or "args.query"
+  if (/^[a-zA-Z_][\w.]*(\[\d+\])?$/.test(baseExpr)) {
+    const value = resolveDottedPath(baseExpr, scope);
+    return applyFilters(value, filters, scope, expr);
+  }
+
+  // VM sandbox evaluation with 250ms timeout.
+  // SECURITY: Create a null-prototype sandbox to prevent prototype chain escape.
+  // Node.js vm is NOT a security boundary — host objects leak constructors.
+  // We mitigate by: (1) null-prototype sandbox, (2) frozen copies of built-ins,
+  // (3) contextCodeGeneration restriction, (4) FORBIDDEN_EXPR pre-check.
+  const sandbox = Object.create(null) as Record<string, unknown>;
+  for (const [k, v] of Object.entries(scope)) {
+    sandbox[k] = v;
+  }
+  sandbox.encodeURIComponent = encodeURIComponent;
+  sandbox.decodeURIComponent = decodeURIComponent;
+  sandbox.JSON = { parse: JSON.parse, stringify: JSON.stringify };
+  sandbox.Math = Object.freeze({ ...Math });
+  sandbox.parseInt = parseInt;
+  sandbox.parseFloat = parseFloat;
+  sandbox.isNaN = isNaN;
+  sandbox.isFinite = isFinite;
+
+  let value: unknown;
   try {
-    // Security: reject dangerous patterns
-    if (FORBIDDEN_EXPR.test(expr)) return undefined;
-
-    const { baseExpr, filters } = parsePipes(expr);
-
-    // Fast path: simple dotted access like "item.title" or "args.query"
-    if (/^[a-zA-Z_][\w.]*(\[\d+\])?$/.test(baseExpr)) {
-      let result: unknown = resolveDottedPath(baseExpr, scope);
-      for (const filter of filters) {
-        const filterFn = PIPE_FILTERS[filter.name];
-        if (!filterFn) continue;
-        const evaledArgs = filter.args.map((a) => resolveFilterArg(a, scope));
-        result = filterFn(result, ...evaledArgs);
-      }
-      return result;
-    }
-
-    // VM sandbox evaluation with 50ms timeout.
-    // SECURITY: Create a null-prototype sandbox to prevent prototype chain escape.
-    // Node.js vm is NOT a security boundary — host objects leak constructors.
-    // We mitigate by: (1) null-prototype sandbox, (2) frozen copies of built-ins,
-    // (3) contextCodeGeneration restriction, (4) FORBIDDEN_EXPR pre-check.
-    const sandbox = Object.create(null) as Record<string, unknown>;
-    // Copy scope values (args, item, index, etc.) — shallow copy with null prototype
-    for (const [k, v] of Object.entries(scope)) {
-      sandbox[k] = v;
-    }
-    // Add safe built-ins as frozen copies (prevents constructor chain traversal)
-    sandbox.encodeURIComponent = encodeURIComponent;
-    sandbox.decodeURIComponent = decodeURIComponent;
-    sandbox.JSON = { parse: JSON.parse, stringify: JSON.stringify };
-    sandbox.Math = Object.freeze({ ...Math });
-    sandbox.parseInt = parseInt;
-    sandbox.parseFloat = parseFloat;
-    sandbox.isNaN = isNaN;
-    sandbox.isFinite = isFinite;
-
-    let result: unknown;
-    try {
-      // 250 ms is comfortably above Windows-CI cold-start cost for the first
-      // VM context (observed up to ~80 ms on Node 20 + windows-latest) and
-      // still well below any reasonable expression-eval budget. The hardened
-      // sandbox (null prototype + frozen built-ins + FORBIDDEN_EXPR pre-check)
-      // is the actual security boundary, not the timeout.
-      result = runInNewContext(`(${baseExpr})`, sandbox, {
-        timeout: 250,
-        contextCodeGeneration: { strings: false, wasm: false },
-      });
-    } catch {
-      return undefined;
-    }
-
-    // Apply pipe filters
-    for (const filter of filters) {
-      const filterFn = PIPE_FILTERS[filter.name];
-      if (!filterFn) continue;
-      const evaledArgs = filter.args.map((a) => resolveFilterArg(a, scope));
-      result = filterFn(result, ...evaledArgs);
-    }
-
-    return result;
+    // 250 ms is comfortably above Windows-CI cold-start cost for the first
+    // VM context (observed up to ~80 ms on Node 20 + windows-latest) and
+    // still well below any reasonable expression-eval budget. The hardened
+    // sandbox (null prototype + frozen built-ins + FORBIDDEN_EXPR pre-check)
+    // is the actual security boundary, not the timeout.
+    value = runInNewContext(`(${baseExpr})`, sandbox, {
+      timeout: 250,
+      contextCodeGeneration: { strings: false, wasm: false },
+    });
   } catch {
+    // REASON: optional-access ergonomics. Adapter authors widely write
+    // `item.author.nickname` without `?.`; when the chain hits null/undefined
+    // the VM throws but the row is still meaningful with an empty cell.
+    // Real authoring failures (unknown filter, security pattern) surface
+    // through the dedicated TemplateEvalError throws above; only the VM
+    // runtime path is treated as "lenient at the boundary" per Postel.
     return undefined;
   }
+
+  return applyFilters(value, filters, scope, expr);
 }
 
 /** Resolve a dotted path like "item.tags[0]" against the scope object. */

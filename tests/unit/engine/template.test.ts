@@ -8,7 +8,11 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { evalExpression, evalTemplate } from "../../../src/engine/template.js";
+import {
+  evalExpression,
+  evalTemplate,
+  TemplateEvalError,
+} from "../../../src/engine/template.js";
 import type { PipelineContext } from "../../../src/engine/executor.js";
 
 function makeCtx(overrides: Partial<PipelineContext> = {}): PipelineContext {
@@ -70,5 +74,40 @@ describe("evalExpression — || logical-OR is not split as a pipe filter", () =>
     expect(
       evalExpression("a || b || c | uppercase", { a: "", b: "", c: "ok" }),
     ).toBe("OK");
+  });
+});
+
+describe("evalExpression — unknown filter surfaces TemplateEvalError", () => {
+  it("throws on a single unknown filter (fast-path)", () => {
+    expect(() =>
+      evalExpression("item.title | nosuchfilter", { item: { title: "x" } }),
+    ).toThrowError(TemplateEvalError);
+  });
+
+  it("throws on an unknown filter after a valid one (slow-path)", () => {
+    expect(() =>
+      evalExpression("(a + b) | uppercase | nope", { a: "x", b: "y" }),
+    ).toThrowError(/unknown filter: nope/);
+  });
+
+  it("includes the offending filter name on the error", () => {
+    try {
+      evalExpression("item.title | bogus", { item: { title: "x" } });
+      expect.fail("should have thrown");
+    } catch (err) {
+      expect(err).toBeInstanceOf(TemplateEvalError);
+      expect((err as TemplateEvalError).message).toContain("bogus");
+      expect((err as TemplateEvalError).expr).toBe("item.title | bogus");
+    }
+  });
+
+  it("VM-side undefined access stays lenient (no throw)", () => {
+    // Adapter authors widely rely on `item.author.nickname` not crashing
+    // when author is null; the VM throws TypeError, our catch surfaces it
+    // as `undefined` so evalTemplate can stringify to an empty cell.
+    const result = evalExpression("item.author.nickname", {
+      item: { author: null },
+    });
+    expect(result).toBeUndefined();
   });
 });
