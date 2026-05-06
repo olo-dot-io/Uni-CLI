@@ -41,11 +41,13 @@ const ROOT = join(__dirname, "..");
 const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf-8"));
 const version: string = pkg.version;
 
-assertReleaseMainline();
-
 // Parse CLI args
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
+
+if (!dryRun) {
+  assertReleaseMainline();
+}
 
 function readArgValue(name: string): string | undefined {
   const idx = args.indexOf(name);
