@@ -55,17 +55,67 @@ function gitOk(args: string[]): boolean {
   }
 }
 
-function currentBranchName(): string {
+function currentRefName(): string {
   const refName = process.env.GITHUB_REF_NAME?.trim();
   if (refName) return refName;
 
   const branch = git(["rev-parse", "--abbrev-ref", "HEAD"]);
-  if (branch) return branch;
+  if (branch && branch !== "HEAD") return branch;
 
   const ref = process.env.GITHUB_REF?.trim();
   if (ref?.startsWith("refs/heads/")) return ref.slice("refs/heads/".length);
+  if (ref?.startsWith("refs/tags/")) return ref.slice("refs/tags/".length);
 
   return "";
+}
+
+function isReleaseTagRef(): boolean {
+  const ref = process.env.GITHUB_REF?.trim();
+  const refName = process.env.GITHUB_REF_NAME?.trim();
+  return ref?.startsWith("refs/tags/v") || refName?.startsWith("v") || false;
+}
+
+function refMatchesHead(ref: string): boolean {
+  const head = git(["rev-parse", "HEAD"]);
+  const candidate = git(["rev-parse", "--verify", ref]);
+  return Boolean(head && candidate && head === candidate);
+}
+
+function fetchOriginMain(): void {
+  git(["fetch", "--depth=1", "origin", "main:refs/remotes/origin/main"]);
+}
+
+function mainlineRefCheck(): ReleaseMainlineCheckResult {
+  const refName = currentRefName();
+
+  if (refName === "main") {
+    return {
+      name: "Release runs from main",
+      pass: true,
+      detail: "Current branch is main",
+    };
+  }
+
+  if (isReleaseTagRef()) {
+    const headMatchesMain =
+      refMatchesHead("main") ||
+      refMatchesHead("origin/main") ||
+      (fetchOriginMain(), refMatchesHead("origin/main"));
+
+    return {
+      name: "Release runs from main",
+      pass: headMatchesMain,
+      detail: headMatchesMain
+        ? `Current release tag "${refName}" points at main`
+        : `Current release tag "${refName || "unknown"}" does not point at main; move the tag to main before publishing`,
+    };
+  }
+
+  return {
+    name: "Release runs from main",
+    pass: false,
+    detail: `Current ref is "${refName || "unknown"}"; review, merge to main, then release`,
+  };
 }
 
 function manifestCommands(): string[] | undefined {
@@ -90,16 +140,7 @@ export function collectReleaseMainlineChecks(
   options: ReleaseMainlineCheckOptions = {},
 ): ReleaseMainlineCheckResult[] {
   const results: ReleaseMainlineCheckResult[] = [];
-  const branch = currentBranchName();
-
-  results.push({
-    name: "Release runs from main",
-    pass: branch === "main",
-    detail:
-      branch === "main"
-        ? "Current branch is main"
-        : `Current branch is "${branch || "unknown"}"; review, merge to main, then release`,
-  });
+  results.push(mainlineRefCheck());
 
   const commitExists = gitOk(["cat-file", "-e", `${REQUIRED_COMMIT}^{commit}`]);
   results.push({
