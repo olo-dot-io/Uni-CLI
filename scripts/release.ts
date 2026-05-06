@@ -56,8 +56,14 @@ function readArgValue(name: string): string | undefined {
   return args.find((arg) => arg.startsWith(prefix))?.slice(prefix.length);
 }
 
+function printableCodename(value: string): string {
+  if (value.length === 0) return "<empty>";
+  return JSON.stringify(value);
+}
+
 function failConfig(message: string): never {
   console.error(`\n✗ Release metadata error: ${message}`);
+  console.error(`  Received codename: ${printableCodename(codename)}`);
   console.error('  Use: npm run release -- --codename "Vostok · Gagarin"');
   console.error(
     '  Or:  RELEASE_CODENAME="Vostok · Gagarin" npm version VERSION --no-git-tag-version',

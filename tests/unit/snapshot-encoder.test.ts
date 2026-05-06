@@ -9,6 +9,7 @@ import {
 import { RefAllocator } from "../../src/transport/refs.js";
 
 const FIXTURE_DIR = join(process.cwd(), "tests/fixtures/compute/snapshot");
+const timedIt = isCoverageRun() ? it.skip : it;
 
 function loadFixture(name: string): RawAxNode {
   return JSON.parse(
@@ -181,7 +182,7 @@ describe("encodeSnapshot", () => {
     expect(depthLimited.encoded).not.toContain("Send");
   });
 
-  it("encodes a 400-node fixture under the latency budget", () => {
+  timedIt("encodes a 400-node fixture under the latency budget", () => {
     const started = performance.now();
     const result = encodeSnapshot(loadFixture("vscode-editor"), {
       transport: "desktop-uia",
@@ -194,3 +195,14 @@ describe("encodeSnapshot", () => {
     expect(elapsed).toBeLessThan(5);
   });
 });
+
+function isCoverageRun(): boolean {
+  const worker = (
+    globalThis as {
+      __vitest_worker__?: {
+        config?: { coverage?: { enabled?: boolean } };
+      };
+    }
+  ).__vitest_worker__;
+  return worker?.config?.coverage?.enabled === true;
+}

@@ -55,23 +55,17 @@ function runCatalogGenerator(catalogPath: string, siteIndexPath: string): void {
 }
 
 function runReleaseDryRun(): void {
-  const result = spawnSync(
-    npxBin,
-    [
-      "tsx",
-      "scripts/release.ts",
-      "--codename",
-      "Vostok · Gagarin",
-      "--dry-run",
-    ],
-    {
-      cwd: ROOT,
-      encoding: "utf8",
-      timeout: 60_000,
+  const result = spawnSync(npxBin, ["tsx", "scripts/release.ts", "--dry-run"], {
+    cwd: ROOT,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      RELEASE_CODENAME: "Vostok · Gagarin",
     },
-  );
+    timeout: 60_000,
+  });
 
-  expect(result.status).toBe(0);
+  expect(result.status, `${result.stderr}\n${result.stdout}`).toBe(0);
   expect(result.stderr).toBe("");
 }
 
