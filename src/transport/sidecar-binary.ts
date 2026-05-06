@@ -1,6 +1,14 @@
+/**
+ * @owner   src/transport/sidecar-binary.ts
+ * @does    Resolve native desktop sidecar executables from env, optional packages, user installs, or PATH.
+ * @needs   host platform, arch, env, package resolver, filesystem probe
+ * @feeds   desktop UIA and AT-SPI transports, compute doctor
+ * @breaks  Wrong platform path resolution prevents native desktop automation startup.
+ */
+
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { posix, win32 } from "node:path";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
@@ -39,16 +47,19 @@ export function resolveSidecarBinary(
   }
 
   if (packageName) {
-    try {
-      const pkgJson = requireResolve(`${packageName}/package.json`);
-      const command = join(dirname(pkgJson), executableName(name, platform));
+    const command = resolvePackageCommand(
+      name,
+      platform,
+      packageName,
+      requireResolve,
+    );
+    if (command) {
       return { command, source: "package", packageName };
-    } catch {
-      // Optional platform packages are absent on non-matching hosts.
     }
   }
 
-  const userCommand = join(
+  const userCommand = joinPathForPlatform(
+    platform,
     opts.homeDir ?? homedir(),
     ".unicli",
     "sidecars",
@@ -87,4 +98,35 @@ function envVarForSidecar(name: SidecarName): string {
 
 function executableName(name: SidecarName, platform: NodeJS.Platform): string {
   return platform === "win32" ? `${name}.exe` : name;
+}
+
+function resolvePackageCommand(
+  name: SidecarName,
+  platform: NodeJS.Platform,
+  packageName: string,
+  requireResolve: (id: string) => string,
+): string | undefined {
+  try {
+    const pkgJson = requireResolve(`${packageName}/package.json`);
+    return joinPathForPlatform(
+      platform,
+      dirnameForPlatform(platform, pkgJson),
+      executableName(name, platform),
+    );
+  } catch {
+    return undefined;
+  }
+}
+
+function dirnameForPlatform(platform: NodeJS.Platform, value: string): string {
+  return platform === "win32" ? win32.dirname(value) : posix.dirname(value);
+}
+
+function joinPathForPlatform(
+  platform: NodeJS.Platform,
+  ...segments: string[]
+): string {
+  return platform === "win32"
+    ? win32.join(...segments)
+    : posix.join(...segments);
 }

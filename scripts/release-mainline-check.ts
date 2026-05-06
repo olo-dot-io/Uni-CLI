@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 /**
- * Release mainline check — blocks releases unless the macOS dynamic discovery
- * work is already on main.
+ * @owner   scripts/release-mainline-check.ts
+ * @does    Verify release commits include required mainline history and macOS dynamic discovery work.
+ * @needs   git history, release metadata, built manifest when requested
+ * @feeds   release script, release check, GitHub release workflow
+ * @breaks  Missing release ancestry or stale main refs block publish gates.
  */
 
 import { execFileSync } from "node:child_process";
@@ -81,8 +84,39 @@ function refMatchesHead(ref: string): boolean {
   return Boolean(head && candidate && head === candidate);
 }
 
-function fetchOriginMain(): void {
+function fetchOriginMainRef(): void {
   git(["fetch", "--depth=1", "origin", "main:refs/remotes/origin/main"]);
+}
+
+function isShallowRepository(): boolean {
+  return git(["rev-parse", "--is-shallow-repository"]) === "true";
+}
+
+function fetchOriginMainHistory(): void {
+  if (isShallowRepository()) {
+    git(["fetch", "--filter=blob:none", "--deepen=100000", "origin", "main"]);
+  }
+  git([
+    "fetch",
+    "--filter=blob:none",
+    "origin",
+    "main:refs/remotes/origin/main",
+  ]);
+}
+
+function requiredCommitExists(): boolean {
+  if (gitOk(["cat-file", "-e", `${REQUIRED_COMMIT}^{commit}`])) return true;
+  fetchOriginMainHistory();
+  return gitOk(["cat-file", "-e", `${REQUIRED_COMMIT}^{commit}`]);
+}
+
+function requiredCommitInHead(commitExists: boolean): boolean {
+  if (!commitExists) return false;
+  if (gitOk(["merge-base", "--is-ancestor", REQUIRED_COMMIT, "HEAD"])) {
+    return true;
+  }
+  fetchOriginMainHistory();
+  return gitOk(["merge-base", "--is-ancestor", REQUIRED_COMMIT, "HEAD"]);
 }
 
 function mainlineRefCheck(): ReleaseMainlineCheckResult {
@@ -100,7 +134,7 @@ function mainlineRefCheck(): ReleaseMainlineCheckResult {
     const headMatchesMain =
       refMatchesHead("main") ||
       refMatchesHead("origin/main") ||
-      (fetchOriginMain(), refMatchesHead("origin/main"));
+      (fetchOriginMainRef(), refMatchesHead("origin/main"));
 
     return {
       name: "Release runs from main",
@@ -142,7 +176,7 @@ export function collectReleaseMainlineChecks(
   const results: ReleaseMainlineCheckResult[] = [];
   results.push(mainlineRefCheck());
 
-  const commitExists = gitOk(["cat-file", "-e", `${REQUIRED_COMMIT}^{commit}`]);
+  const commitExists = requiredCommitExists();
   results.push({
     name: `${REQUIRED_BRANCH} commit exists`,
     pass: commitExists,
@@ -151,9 +185,7 @@ export function collectReleaseMainlineChecks(
       : `Missing ${REQUIRED_COMMIT}; fetch main/history before release`,
   });
 
-  const commitInHead =
-    commitExists &&
-    gitOk(["merge-base", "--is-ancestor", REQUIRED_COMMIT, "HEAD"]);
+  const commitInHead = requiredCommitInHead(commitExists);
   results.push({
     name: `${REQUIRED_BRANCH} merged to main`,
     pass: commitInHead,

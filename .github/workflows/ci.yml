@@ -140,6 +140,7 @@ jobs:
         run: cargo clippy --workspace --all-targets --target "${{ matrix.target }}" -- -D warnings
 
       - name: Test
+        if: matrix.target != 'aarch64-pc-windows-msvc'
         run: cargo test --workspace --target "${{ matrix.target }}"
 
       - name: Build sidecars

@@ -1,12 +1,14 @@
+/**
+ * @owner   src/transport/refs.ts
+ * @does    Allocate, persist, and reload stable desktop element references across CLI processes.
+ * @needs   filesystem, process env, home directory
+ * @feeds   desktop transports and compute commands
+ * @breaks  Lost or invalid refs prevent follow-up desktop actions from targeting prior snapshots.
+ */
+
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
-
-/**
- * Element-ref allocator. Each snapshot gets short monotonic aliases (`@e1`)
- * backed by stable transport tokens so later actions can dereference either
- * form without reparsing encoded text.
- */
 
 export interface ElementRef {
   alias: string;
@@ -120,7 +122,7 @@ export class RefStore {
 export function computeRefsPath(): string {
   return (
     process.env.UNICLI_COMPUTE_REFS_PATH ??
-    join(homedir(), ".unicli", "compute", "refs.json")
+    join(homedir(), ".unicli", "compute", "refs.json").replaceAll("\\", "/")
   );
 }
 
