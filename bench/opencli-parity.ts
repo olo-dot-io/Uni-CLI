@@ -519,7 +519,7 @@ function parseArgs(argv: string[]): {
     if (arg === "-h" || arg === "--help") {
       console.log(
         [
-          "Usage: pnpm bench:opencli-parity [--repo-root <path>] [--signals <json>] [--fail-on-gaps]",
+          "Usage: npm run bench:opencli-parity -- [--repo-root <path>] [--signals <json>] [--fail-on-gaps]",
           "",
           "Outputs a JSON report comparing dist/manifest.json with ref/opencli/cli-manifest.json.",
         ].join("\n"),

@@ -611,9 +611,9 @@ Docs:
 ## Development
 
 ```bash
-pnpm install
-pnpm typecheck
-pnpm lint
+npm install
+npm run typecheck
+npm run lint
 npm run verify
 ```
 

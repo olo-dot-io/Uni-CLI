@@ -591,9 +591,9 @@ columns: [title, url]
 ## 开发
 
 ```bash
-pnpm install
-pnpm typecheck
-pnpm lint
+npm install
+npm run typecheck
+npm run lint
 npm run verify
 ```
 

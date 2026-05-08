@@ -12,7 +12,7 @@
   "observed": {
     "date": "2026-05-03",
     "host": "macOS 26.4 arm64",
-    "command": "UNICLI_COMPUTE_PERF_LIVE=1 pnpm test:perf",
+    "command": "UNICLI_COMPUTE_PERF_LIVE=1 npm run test:perf",
     "target_app": "Calculator",
     "live_snapshot": {
       "samples_ms": [

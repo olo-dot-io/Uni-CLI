@@ -1,6 +1,15 @@
 # Dependencies
 node_modules/
 
+# Foreign package manager artifacts (project is npm-only — see packageManager
+# field in package.json). These get auto-created by tools that probe for pnpm
+# and would corrupt the npm-managed node_modules if committed.
+pnpm-lock.yaml
+pnpm-workspace.yaml
+yarn.lock
+bun.lockb
+bun.lock
+
 # Build output
 dist/
 target/

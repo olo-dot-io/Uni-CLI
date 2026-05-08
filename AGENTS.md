@@ -54,7 +54,7 @@ gh (6 cmds), jq (2 cmds), yt-dlp (4 cmds)
 ## Done = these commands exit 0
 
 ```
-pnpm typecheck && pnpm lint && pnpm test:unit
+npm run typecheck && npm run lint && npm test
 ```
 
 Full E2E + adapter coverage: `npm run verify`. Required before any release.
