@@ -230,7 +230,7 @@
     "js-yaml": "^4.1.1",
     "jsonpath-plus": "^10.4.0",
     "turndown": "^7.2.4",
-    "undici": "^7.25.0",
+    "undici": "^8.2.0",
     "ws": "^8.20.0",
     "zod": "^4.3.6"
   },
@@ -244,7 +244,7 @@
     "@ai-sdk/openai-compatible": "^2.0.41",
     "@base-ui/react": "^1.4.1",
     "@changesets/cli": "^2.31.0",
-    "@chenglou/pretext": "^0.0.6",
+    "@chenglou/pretext": "^0.0.7",
     "@hugeicons/core-free-icons": "^4.1.1",
     "@hugeicons/react": "^1.1.6",
     "@hugeicons/vue": "^1.0.5",
@@ -256,10 +256,10 @@
     "@types/turndown": "^5.0.6",
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^6.0.1",
-    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/coverage-v8": "^4.1.5",
     "ai": "^6.0.168",
     "lefthook": "^2.1.6",
-    "markdown-it-mathjax3": "^4.3.2",
+    "markdown-it-mathjax3": "^5.2.0",
     "oxlint": "^1.61.0",
     "prettier": "^3.8.3",
     "react": "^19.2.5",
@@ -268,7 +268,7 @@
     "tsx": "^4.21.0",
     "typescript": "^6.0.3",
     "vitepress": "^1.6.4",
-    "vitest": "^3.2.4",
+    "vitest": "^4.1.5",
     "yaml": "^2.8.3"
   }
 }
