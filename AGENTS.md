@@ -92,7 +92,7 @@ project ships at high cadence, written counts go stale fast.
 
 ## Version
 
-0.219.0 — Vostok · Gagarin
+0.220.0 — Apollo · Lovell
 
 ## MCP one-liner (Claude Desktop / Cursor / Continue)
 

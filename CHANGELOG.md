@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.220.0] — 2026-05-12 — Apollo · Lovell
+
+### Minor Changes
+
+- 02bb048: Expand command coverage with Rednote, 1Point3Acres, travel, marketplace, AI chat, and social command surfaces plus release-signal coverage gates.
+
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 

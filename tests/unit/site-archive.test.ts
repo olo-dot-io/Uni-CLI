@@ -96,6 +96,11 @@ function readPublicCatalogEntries(
   return entries;
 }
 
+function commandPattern(command: string): RegExp {
+  const escaped = command.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`${escaped}(?=$|[\\s<\`|,.)])`);
+}
+
 describe("dead-site archive", () => {
   it("records the dead sites archived by Feature 3.2", () => {
     const archived = readArchive().map((record) => [
@@ -160,8 +165,8 @@ describe("dead-site archive", () => {
     for (const relPath of PUBLIC_TEXT_CATALOGS) {
       const body = readFileSync(join(ROOT, relPath), "utf-8");
       for (const command of archivedCommands) {
-        expect(body, `${relPath} still advertises ${command}`).not.toContain(
-          command,
+        expect(body, `${relPath} still advertises ${command}`).not.toMatch(
+          commandPattern(command),
         );
       }
     }

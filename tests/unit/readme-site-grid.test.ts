@@ -1,9 +1,9 @@
 /**
  * @owner   tests/unit/readme-site-grid.test.ts
- * @does    Assert READMEs expose every active site in the generated coverage grid.
+ * @does    Assert README coverage grids expose only logo-backed manifest sites.
  * @needs   README.md, README.zh-CN.md, dist/manifest.json, archive.json
  * @feeds   README grid gate, npm run test
- * @breaks  Missing active-site coverage in README makes the public project surface stale.
+ * @breaks  Placeholder badges make the public project surface look stale.
  */
 
 import { readFileSync } from "node:fs";
@@ -53,34 +53,46 @@ function readGrid(target: { label: string; path: string }): string {
   return readme.slice(start, end);
 }
 
-interface ActiveSiteRecord {
+interface SiteRecord {
   site: string;
   commandCount: number;
 }
 
-function activeSites(): ActiveSiteRecord[] {
+function manifestSites(): Map<string, SiteRecord> {
   const manifest = JSON.parse(readFileSync(MANIFEST, "utf-8")) as Manifest;
-  return Object.entries(manifest.sites)
-    .map(([site, info]) => ({
+  return new Map(
+    Object.entries(manifest.sites).map(([site, info]) => [
       site,
-      commandCount: info.commands.filter(
-        (command) => command.quarantined !== true,
-      ).length,
-    }))
-    .filter((record) => record.commandCount > 0)
-    .sort((a, b) => a.site.localeCompare(b.site));
+      {
+        site,
+        commandCount: info.commands.filter(
+          (command) => command.quarantined !== true,
+        ).length,
+      },
+    ]),
+  );
+}
+
+function listedSites(grid: string): string[] {
+  return [...grid.matchAll(/data-site="([^"]+)"/g)].map((match) => match[1]);
+}
+
+function commandCountFor(site: string): number {
+  const manifest = JSON.parse(readFileSync(MANIFEST, "utf-8")) as Manifest;
+  const info = manifest.sites[site];
+  expect(info, `manifest entry for ${site}`).toBeDefined();
+  return info.commands.filter((command) => command.quarantined !== true).length;
 }
 
 describe("README active-site grid", () => {
   it.each(README_TARGETS)(
-    "lists every alive manifest site exactly once in $label",
+    "lists each displayed manifest site exactly once in $label",
     (target) => {
       const grid = readGrid(target);
-      const sites = activeSites().map((record) => record.site);
-      const missing = sites.filter(
-        (site) => !grid.includes(`data-site="${site}"`),
-      );
-      const wrongOccurrences = sites.filter((site) => {
+      const knownSites = manifestSites();
+      const sites = listedSites(grid);
+      const unknown = sites.filter((site) => !knownSites.has(site));
+      const wrongOccurrences = [...new Set(sites)].filter((site) => {
         const occurrences = grid.match(
           new RegExp(
             `data-site="${site.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`,
@@ -90,20 +102,44 @@ describe("README active-site grid", () => {
         return (occurrences?.length ?? 0) !== 1;
       });
 
-      expect(missing).toEqual([]);
+      expect(unknown).toEqual([]);
       expect(wrongOccurrences).toEqual([]);
     },
   );
 
   it.each(README_TARGETS)(
-    "uses non-quarantined command counts in $label badges",
+    "uses non-quarantined command counts for displayed sites in $label",
     (target) => {
       const grid = readGrid(target);
 
-      for (const record of activeSites()) {
-        const suffix = record.commandCount === 1 ? "command" : "commands";
-        expect(grid, `${target.label} grid count for ${record.site}`).toContain(
-          `title="${record.site}: ${record.commandCount} ${suffix}"`,
+      for (const site of listedSites(grid)) {
+        const commandCount = commandCountFor(site);
+        const suffix = commandCount === 1 ? "command" : "commands";
+        expect(grid, `${target.label} grid count for ${site}`).toContain(
+          `title="${site}: ${commandCount} ${suffix}"`,
+        );
+      }
+    },
+  );
+
+  it.each(README_TARGETS)(
+    "uses real logo-backed badges in $label",
+    (target) => {
+      const grid = readGrid(target);
+      const badges = [
+        ...grid.matchAll(
+          /<a data-site="([^"]+)"[\s\S]*?<img [^>]*src="([^"]+)"/g,
+        ),
+      ];
+
+      expect(
+        badges.length,
+        `${target.label} displayed badge count`,
+      ).toBeGreaterThan(20);
+      for (const [, site, src] of badges) {
+        expect(src, `${target.label} ${site} badge logo`).toContain("logo=");
+        expect(src, `${target.label} ${site} badge logo color`).toContain(
+          "logoColor=white",
         );
       }
     },

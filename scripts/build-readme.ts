@@ -1,9 +1,9 @@
 /**
  * @owner   scripts/build-readme.ts
- * @does    Inject generated stats and active-site README grid content.
+ * @does    Inject generated stats and logo-backed README coverage content.
  * @needs   stats.json, dist/manifest.json, README/doc marker blocks
  * @feeds   README.md, README.zh-CN.md, AGENTS.md, roadmap/copy stats
- * @breaks  Stale public counts or site grids misrepresent catalog coverage.
+ * @breaks  Stale public counts or placeholder badges misrepresent catalog quality.
  */
 
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
@@ -117,19 +117,26 @@ const CATEGORY_COLORS: Record<string, string> = {
 const SITE_LOGOS: Record<string, string> = {
   "apple-notes": "apple",
   "apple-podcasts": "applepodcasts",
+  "apple-tv": "appletv",
   "claude-code": "anthropic",
   "codex-cli": "openai",
   "crates-io": "rust",
   "discord-app": "discord",
   "docker-desktop": "docker",
   "docker-hub": "docker",
+  firefox: "firefoxbrowser",
   "github-desktop": "github",
   "github-trending": "github",
   "google-scholar": "google",
   "huggingface-papers": "huggingface",
   "lm-studio": "lmstudio",
+  "microsoft-excel": "microsoftexcel",
+  "microsoft-powerpoint": "microsoftpowerpoint",
+  "microsoft-teams": "microsoftteams",
+  "microsoft-word": "microsoftword",
   "netease-music": "neteasecloudmusic",
   "npm-trends": "npm",
+  "openai-responses": "openai",
   "pub-dev": "dart",
   qweather: "icloud",
   "slay-the-spire-ii": "steam",
@@ -138,6 +145,7 @@ const SITE_LOGOS: Record<string, string> = {
   "yahoo-finance": "yahoo",
   "yt-dlp": "youtube",
   "zoom-app": "zoom",
+  "1688": "alibabadotcom",
   amazon: "amazon",
   antigravity: "google",
   arxiv: "arxiv",
@@ -145,20 +153,26 @@ const SITE_LOGOS: Record<string, string> = {
   band: "bandlab",
   barchart: "chartdotjs",
   bbc: "bbc",
+  bilibili: "bilibili",
   binance: "binance",
   blender: "blender",
   bluesky: "bluesky",
+  bloomberg: "bloomberg",
   chatgpt: "openai",
   chrome: "googlechrome",
+  cnn: "cnn",
   claude: "anthropic",
   cloudcompare: "cloudinary",
   cocoapods: "cocoapods",
   codex: "openai",
   coinbase: "coinbase",
+  coupang: "coupang",
   cursor: "cursor",
   deepseek: "deepseek",
   dingtalk: "dingtalk",
   docker: "docker",
+  douban: "douban",
+  douyin: "tiktok",
   figma: "figma",
   ffmpeg: "ffmpeg",
   freecad: "freecad",
@@ -173,6 +187,7 @@ const SITE_LOGOS: Record<string, string> = {
   homebrew: "homebrew",
   imagemagick: "imagemagick",
   instagram: "instagram",
+  insomnia: "insomnia",
   jq: "json",
   lark: "lark",
   linear: "linear",
@@ -183,6 +198,7 @@ const SITE_LOGOS: Record<string, string> = {
   netlify: "netlify",
   notion: "notion",
   npm: "npm",
+  nytimes: "newyorktimes",
   nuget: "nuget",
   obsidian: "obsidian",
   openrouter: "openai",
@@ -194,7 +210,9 @@ const SITE_LOGOS: Record<string, string> = {
   powerpoint: "microsoftpowerpoint",
   producthunt: "producthunt",
   pypi: "pypi",
+  qwen: "alibabacloud",
   reddit: "reddit",
+  replicate: "replicate",
   reuters: "reuters",
   rubygems: "rubygems",
   signal: "signal",
@@ -211,10 +229,13 @@ const SITE_LOGOS: Record<string, string> = {
   typora: "typora",
   unsplash: "unsplash",
   vercel: "vercel",
+  viber: "viber",
   vscode: "visualstudiocode",
   weibo: "sinaweibo",
+  whatsapp: "whatsapp",
   wikipedia: "wikipedia",
   word: "microsoftword",
+  xiaohongshu: "xiaohongshu",
   youtube: "youtube",
   zhihu: "zhihu",
   zoom: "zoom",
@@ -297,7 +318,7 @@ export function buildSiteGrid(
         commandCount,
       };
     })
-    .filter((row) => row.commandCount > 0)
+    .filter((row) => row.commandCount > 0 && SITE_LOGOS[row.site])
     .sort(
       (a, b) =>
         categoryRank(a.category) - categoryRank(b.category) ||

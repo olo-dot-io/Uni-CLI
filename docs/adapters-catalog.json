@@ -1,8 +1,8 @@
 {
-  "source": "unicli@0.219.0",
-  "generated": "2026-05-05T21:13:03.587Z",
-  "total_sites": 238,
-  "total_commands": 1458,
+  "source": "unicli@0.220.0",
+  "generated": "2026-05-12T16:44:27.511Z",
+  "total_sites": 268,
+  "total_commands": 1616,
   "adapters": [
     {
       "site": "1688",
@@ -155,6 +155,300 @@
               "type": "int",
               "required": false,
               "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "1point3acres",
+      "type": "web-api",
+      "domain": "www.1point3acres.com",
+      "auth": true,
+      "strategy": "cookie",
+      "commands": [
+        {
+          "name": "hot",
+          "description": "Read hot 1Point3Acres threads",
+          "when_to_use": "When you need the current hot items from 1point3acres.",
+          "command": "unicli 1point3acres hot",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "tid",
+            "title",
+            "forum",
+            "author",
+            "replies",
+            "views",
+            "lastReplyTime",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of rows to return, max 50"
+            }
+          ]
+        },
+        {
+          "name": "latest",
+          "description": "Read latest 1Point3Acres threads",
+          "when_to_use": "Read latest 1Point3Acres threads",
+          "command": "unicli 1point3acres latest",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "tid",
+            "title",
+            "forum",
+            "author",
+            "replies",
+            "views",
+            "postTime",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of rows to return, max 50"
+            }
+          ]
+        },
+        {
+          "name": "digest",
+          "description": "Read digest 1Point3Acres threads",
+          "when_to_use": "Read digest 1Point3Acres threads",
+          "command": "unicli 1point3acres digest",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "tid",
+            "title",
+            "forum",
+            "author",
+            "replies",
+            "views",
+            "lastReplyTime",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of rows to return, max 50"
+            }
+          ]
+        },
+        {
+          "name": "forum",
+          "description": "Browse threads from a 1Point3Acres forum by fid",
+          "when_to_use": "Browse threads from a 1Point3Acres forum by fid",
+          "command": "unicli 1point3acres forum",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "tid",
+            "kind",
+            "title",
+            "author",
+            "replies",
+            "views",
+            "lastReplyTime",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "fid",
+              "required": true,
+              "positional": true,
+              "description": "Forum id"
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Page number"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of rows to return, max 50"
+            }
+          ]
+        },
+        {
+          "name": "forums",
+          "description": "List 1Point3Acres forum ids and names",
+          "when_to_use": "List 1Point3Acres forum ids and names",
+          "command": "unicli 1point3acres forums",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["fid", "name", "url"],
+          "args": [
+            {
+              "name": "filter",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Filter by forum name substring"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search 1Point3Acres forum posts using browser cookies",
+          "when_to_use": "When you need to search 1point3acres for a specific query.",
+          "command": "unicli 1point3acres search",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "rank",
+            "tid",
+            "title",
+            "forum",
+            "author",
+            "replies",
+            "views",
+            "postTime",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "required": true,
+              "positional": true,
+              "description": "Keyword"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of rows to return, max 50"
+            },
+            {
+              "name": "fid",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Optional forum id"
+            }
+          ]
+        },
+        {
+          "name": "thread",
+          "description": "Read a 1Point3Acres thread page with floor rows",
+          "when_to_use": "Read a 1Point3Acres thread page with floor rows",
+          "command": "unicli 1point3acres thread",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["floor", "pid", "author", "postTime", "content", "url"],
+          "args": [
+            {
+              "name": "tid",
+              "required": true,
+              "positional": true,
+              "description": "Thread id"
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Thread page"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of floors"
+            },
+            {
+              "name": "contentLimit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max content characters per floor"
+            }
+          ]
+        },
+        {
+          "name": "notifications",
+          "description": "Read 1Point3Acres account notifications using browser cookies",
+          "when_to_use": "Read 1Point3Acres account notifications using browser cookies",
+          "command": "unicli 1point3acres notifications",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["index", "from", "summary", "time", "threadUrl"],
+          "args": [
+            {
+              "name": "kind",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Notice type: mypost, interactive, system, or app"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of rows"
+            }
+          ]
+        },
+        {
+          "name": "user",
+          "description": "Read a 1Point3Acres user profile",
+          "when_to_use": "When you need user/profile info from 1point3acres.",
+          "command": "unicli 1point3acres user",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "uid",
+            "username",
+            "group",
+            "credits",
+            "rice",
+            "posts",
+            "threads",
+            "digests",
+            "registerTime",
+            "lastAccess",
+            "profileUrl"
+          ],
+          "args": [
+            {
+              "name": "who",
+              "required": true,
+              "positional": true,
+              "description": "Username or numeric uid"
             }
           ]
         }
@@ -579,6 +873,34 @@
               "required": false,
               "positional": false,
               "description": "AdGuard Home host:port"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "aibase",
+      "type": "web-api",
+      "domain": "www.aibase.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "news",
+          "description": "AIbase daily AI industry news",
+          "when_to_use": "AIbase daily AI industry news",
+          "command": "unicli aibase news",
+          "auth": false,
+          "strategy": "public",
+          "browser": true,
+          "columns": ["rank", "title", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
             }
           ]
         }
@@ -1260,6 +1582,72 @@
               "positional": false
             }
           ]
+        },
+        {
+          "name": "author",
+          "description": "List arXiv papers by a given author",
+          "when_to_use": "List arXiv papers by a given author",
+          "command": "unicli arxiv author",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "published",
+            "primary_category",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "author",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Author name"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max papers"
+            }
+          ]
+        },
+        {
+          "name": "recent",
+          "description": "List recent arXiv submissions in a category",
+          "when_to_use": "List recent arXiv submissions in a category",
+          "command": "unicli arxiv recent",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "published",
+            "primary_category",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "category",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "arXiv category"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max papers"
+            }
+          ]
         }
       ]
     },
@@ -1870,7 +2258,7 @@
     {
       "site": "bbc",
       "type": "web-api",
-      "domain": "www.bbc.co.uk",
+      "domain": "feeds.bbci.co.uk",
       "auth": false,
       "strategy": "public",
       "commands": [
@@ -1944,6 +2332,32 @@
               "type": "int",
               "required": false,
               "positional": false
+            }
+          ]
+        },
+        {
+          "name": "topic",
+          "description": "BBC News headlines for a specific section",
+          "when_to_use": "BBC News headlines for a specific section",
+          "command": "unicli bbc topic",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["rank", "title", "description", "pubDate", "url"],
+          "args": [
+            {
+              "name": "topic",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "BBC section name"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max headlines"
             }
           ]
         }
@@ -3996,6 +4410,50 @@
           ]
         },
         {
+          "name": "history",
+          "description": "List visible ChatGPT web conversation history from the sidebar",
+          "when_to_use": "List visible ChatGPT web conversation history from the sidebar",
+          "command": "unicli chatgpt history",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Index", "Id", "Title", "Url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "detail",
+          "description": "Open a ChatGPT web conversation by ID and read its messages",
+          "when_to_use": "When you need details about a specific item on chatgpt.",
+          "command": "unicli chatgpt detail",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Index", "Role", "Text"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Conversation ID or full /c/<id> URL"
+            },
+            {
+              "name": "markdown",
+              "type": "bool",
+              "required": false,
+              "positional": false,
+              "description": "Emit assistant replies as markdown"
+            }
+          ]
+        },
+        {
           "name": "ask",
           "description": "Send a prompt to ChatGPT and wait for response",
           "when_to_use": "Send a prompt to ChatGPT and wait for response",
@@ -4424,6 +4882,260 @@
       ]
     },
     {
+      "site": "claude",
+      "type": "web-api",
+      "domain": "claude.ai",
+      "auth": true,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "ask",
+          "description": "Send a prompt to Claude and return the assistant response",
+          "when_to_use": "Send a prompt to Claude and return the assistant response",
+          "command": "unicli claude ask",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["response"],
+          "args": [
+            {
+              "name": "prompt",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "timeout",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "new",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "model",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "think",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "file",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "send",
+          "description": "Send a prompt to Claude without waiting for a response",
+          "when_to_use": "When you need to post content to claude.",
+          "command": "unicli claude send",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Status", "SubmittedBy", "InjectedText"],
+          "args": [
+            {
+              "name": "prompt",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "new",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "new",
+          "description": "Start a new conversation in Claude",
+          "when_to_use": "Start a new conversation in Claude",
+          "command": "unicli claude new",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Status"]
+        },
+        {
+          "name": "status",
+          "description": "Check Claude page availability and login state",
+          "when_to_use": "Check Claude page availability and login state",
+          "command": "unicli claude status",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Status", "Login", "Url"]
+        },
+        {
+          "name": "read",
+          "description": "Read the current Claude conversation",
+          "when_to_use": "Read the current Claude conversation",
+          "command": "unicli claude read",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Index", "Role", "Text"]
+        },
+        {
+          "name": "history",
+          "description": "List conversation history from Claude /recents",
+          "when_to_use": "List conversation history from Claude /recents",
+          "command": "unicli claude history",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Index", "Id", "Title", "Url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "detail",
+          "description": "Open a Claude conversation by ID and read its messages",
+          "when_to_use": "When you need details about a specific item on claude.",
+          "command": "unicli claude detail",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Index", "Role", "Text"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "open-app",
+          "description": "Open Claude desktop Electron app with CDP enabled for AI control. 打开Claude桌面版并启用 CDP 控制。",
+          "when_to_use": "Open Claude desktop Electron app with CDP enabled for AI control. 打开Claude桌面版并启用 CDP 控制。",
+          "command": "unicli claude open-app",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "status-app",
+          "description": "Inspect current Claude desktop app page, title, URL, visible controls, and text summary. 查看Claude桌面版当前状态和可见内容。",
+          "when_to_use": "Inspect current Claude desktop app page, title, URL, visible controls, and text summary. 查看Claude桌面版当前状态和可见内容。",
+          "command": "unicli claude status-app",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "dump",
+          "description": "Dump visible text from the Claude desktop Electron app via CDP DOM. 读取Claude桌面版可见文本。",
+          "when_to_use": "Dump visible text from the Claude desktop Electron app via CDP DOM. 读取Claude桌面版可见文本。",
+          "command": "unicli claude dump",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "limit",
+              "required": false,
+              "positional": false,
+              "description": "Maximum text characters to return"
+            }
+          ]
+        },
+        {
+          "name": "snapshot-app",
+          "description": "List visible clickable text, buttons, inputs, and regions in Claude. 枚举Claude桌面版可交互内容。",
+          "when_to_use": "List visible clickable text, buttons, inputs, and regions in Claude. 枚举Claude桌面版可交互内容。",
+          "command": "unicli claude snapshot-app",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "click-text",
+          "description": "Click visible text, aria-label, title, or button content in Claude. 按文本点击Claude桌面版控件。",
+          "when_to_use": "Click visible text, aria-label, title, or button content in Claude. 按文本点击Claude桌面版控件。",
+          "command": "unicli claude click-text",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "text",
+              "required": true,
+              "positional": true,
+              "description": "Visible text, aria-label, or title to click"
+            }
+          ]
+        },
+        {
+          "name": "type-text",
+          "description": "Type text into the focused field or a text-matched target in Claude. 向Claude桌面版输入文本。",
+          "when_to_use": "Type text into the focused field or a text-matched target in Claude. 向Claude桌面版输入文本。",
+          "command": "unicli claude type-text",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "text",
+              "required": true,
+              "positional": true,
+              "description": "Text to type"
+            },
+            {
+              "name": "target",
+              "required": false,
+              "positional": false,
+              "description": "Optional visible text to click before typing"
+            }
+          ]
+        },
+        {
+          "name": "press",
+          "description": "Press a key in Claude, with optional comma-separated modifiers. 在Claude桌面版发送按键。",
+          "when_to_use": "Press a key in Claude, with optional comma-separated modifiers. 在Claude桌面版发送按键。",
+          "command": "unicli claude press",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "key",
+              "required": true,
+              "positional": true,
+              "description": "Key name"
+            },
+            {
+              "name": "modifiers",
+              "required": false,
+              "positional": false,
+              "description": "Comma-separated modifiers such as meta,shift"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "claude-code",
       "type": "bridge",
       "auth": false,
@@ -4685,6 +5397,7 @@
     {
       "site": "codex",
       "type": "web-api",
+      "domain": "localhost",
       "auth": false,
       "strategy": "public",
       "commands": [
@@ -4724,6 +5437,32 @@
           "strategy": "public",
           "browser": false,
           "columns": ["content"]
+        },
+        {
+          "name": "projects",
+          "description": "List Codex projects and visible conversations from the sidebar",
+          "when_to_use": "List Codex projects and visible conversations from the sidebar",
+          "command": "unicli codex projects",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["Project", "Index", "Title", "Updated", "Active"],
+          "args": [
+            {
+              "name": "project",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Filter by project label or path"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max conversations per project"
+            }
+          ]
         },
         {
           "name": "ask",
@@ -4974,6 +5713,253 @@
       ]
     },
     {
+      "site": "coingecko",
+      "type": "web-api",
+      "domain": "api.coingecko.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "coin",
+          "description": "Fetch a single cryptocurrency's market data by CoinGecko id",
+          "when_to_use": "Fetch a single cryptocurrency's market data by CoinGecko id",
+          "command": "unicli coingecko coin",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "symbol",
+            "name",
+            "rank",
+            "price",
+            "marketCap",
+            "volume24h",
+            "change24hPct",
+            "change7dPct",
+            "change30dPct",
+            "ath",
+            "athDate",
+            "atl",
+            "atlDate",
+            "circulatingSupply",
+            "totalSupply",
+            "maxSupply",
+            "genesisDate",
+            "homepage"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "CoinGecko coin id"
+            },
+            {
+              "name": "currency",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Quote currency"
+            }
+          ]
+        },
+        {
+          "name": "top",
+          "description": "Top coins by market cap",
+          "when_to_use": "When you need the current top items from coingecko.",
+          "command": "unicli coingecko top",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "symbol",
+            "name",
+            "price",
+            "change24hPct",
+            "marketCap",
+            "volume24h",
+            "high24h",
+            "low24h"
+          ],
+          "args": [
+            {
+              "name": "currency",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Quote currency"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of coins"
+            }
+          ]
+        },
+        {
+          "name": "trending",
+          "description": "Top trending cryptocurrencies on CoinGecko",
+          "when_to_use": "When you need the current trending items from coingecko.",
+          "command": "unicli coingecko trending",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "symbol",
+            "name",
+            "marketCapRank",
+            "priceBtc",
+            "thumb"
+          ],
+          "args": []
+        },
+        {
+          "name": "categories",
+          "description": "Crypto categories ranked by aggregated market cap",
+          "when_to_use": "Crypto categories ranked by aggregated market cap",
+          "command": "unicli coingecko categories",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "name",
+            "marketCap",
+            "volume24h",
+            "marketCapChange24hPct",
+            "top3Coins"
+          ],
+          "args": [
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Sort order"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of categories"
+            }
+          ]
+        },
+        {
+          "name": "exchanges",
+          "description": "Top crypto exchanges by 24h BTC trading volume",
+          "when_to_use": "Top crypto exchanges by 24h BTC trading volume",
+          "command": "unicli coingecko exchanges",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "name",
+            "trustScore",
+            "volume24hBtc",
+            "country",
+            "yearEstablished",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of exchanges"
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Page number"
+            }
+          ]
+        },
+        {
+          "name": "derivatives",
+          "description": "Top crypto derivative markets by 24h volume",
+          "when_to_use": "Top crypto derivative markets by 24h volume",
+          "command": "unicli coingecko derivatives",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "market",
+            "symbol",
+            "indexId",
+            "contractType",
+            "price",
+            "change24hPct",
+            "fundingRate",
+            "openInterestUsd",
+            "volume24hUsd",
+            "expired"
+          ],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
+            },
+            {
+              "name": "symbol",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Optional symbol substring filter"
+            }
+          ]
+        },
+        {
+          "name": "global",
+          "description": "Aggregate crypto market stats",
+          "when_to_use": "Aggregate crypto market stats",
+          "command": "unicli coingecko global",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "currency",
+            "totalMarketCap",
+            "totalVolume24h",
+            "marketCapChange24hPct",
+            "btcDominancePct",
+            "ethDominancePct",
+            "activeCryptocurrencies",
+            "markets",
+            "ongoingIcos",
+            "updatedAt"
+          ],
+          "args": [
+            {
+              "name": "currency",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Quote currency"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "comfyui",
       "type": "service",
       "auth": false,
@@ -5066,7 +6052,7 @@
       "type": "web-api",
       "domain": "www.coupang.com",
       "auth": true,
-      "strategy": "intercept",
+      "strategy": "cookie",
       "commands": [
         {
           "name": "add-to-cart",
@@ -5128,6 +6114,124 @@
               "required": false,
               "positional": false,
               "description": "Number of results"
+            }
+          ]
+        },
+        {
+          "name": "product",
+          "description": "Read full product detail for a Coupang product",
+          "when_to_use": "Read full product detail for a Coupang product",
+          "command": "unicli coupang product",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "product_id",
+            "title",
+            "price",
+            "original_price",
+            "discount_rate",
+            "rating",
+            "review_count",
+            "seller",
+            "brand",
+            "rocket",
+            "delivery_promise",
+            "image_url",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "product-id",
+              "type": "str",
+              "required": false,
+              "positional": true
+            },
+            {
+              "name": "url",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "crates",
+      "type": "web-api",
+      "domain": "crates.io",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search the public crates.io registry by keyword",
+          "when_to_use": "When you need to search crates for a specific query.",
+          "command": "unicli crates search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "name",
+            "latestVersion",
+            "description",
+            "downloads",
+            "recentDownloads",
+            "repository",
+            "updated",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Search keyword"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max results"
+            }
+          ]
+        },
+        {
+          "name": "crate",
+          "description": "Single crates.io crate metadata",
+          "when_to_use": "Single crates.io crate metadata",
+          "command": "unicli crates crate",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "name",
+            "latestVersion",
+            "description",
+            "downloads",
+            "recentDownloads",
+            "versions",
+            "license",
+            "homepage",
+            "documentation",
+            "repository",
+            "keywords",
+            "categories",
+            "created",
+            "updated",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "name",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "crates.io crate name"
             }
           ]
         }
@@ -5206,6 +6310,196 @@
               "required": true,
               "positional": true,
               "description": "Crate name"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "ctrip",
+      "type": "web-api",
+      "domain": "flights.ctrip.com",
+      "auth": true,
+      "strategy": "cookie",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Ctrip destinations, landmarks, scenic spots, and stations",
+          "when_to_use": "When you need to search ctrip for a specific query.",
+          "command": "unicli ctrip search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "type",
+            "displayType",
+            "name",
+            "eName",
+            "cityId",
+            "cityName",
+            "provinceName",
+            "countryName",
+            "lat",
+            "lon",
+            "score",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "hotel-suggest",
+          "description": "Search Ctrip hotel context suggestions",
+          "when_to_use": "Search Ctrip hotel context suggestions",
+          "command": "unicli ctrip hotel-suggest",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "type",
+            "displayType",
+            "name",
+            "eName",
+            "cityId",
+            "cityName",
+            "provinceName",
+            "countryName",
+            "lat",
+            "lon",
+            "score",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "hotel-search",
+          "description": "Search Ctrip hotel list by city and stay dates",
+          "when_to_use": "Search Ctrip hotel list by city and stay dates",
+          "command": "unicli ctrip hotel-search",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "rank",
+            "hotelId",
+            "name",
+            "enName",
+            "star",
+            "score",
+            "scoreLabel",
+            "reviewCount",
+            "cityName",
+            "district",
+            "address",
+            "lat",
+            "lon",
+            "price",
+            "currency",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "city",
+              "type": "int",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "checkin",
+              "type": "str",
+              "required": true,
+              "positional": false
+            },
+            {
+              "name": "checkout",
+              "type": "str",
+              "required": true,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "flight",
+          "description": "Search Ctrip one-way flights by IATA route and date",
+          "when_to_use": "Search Ctrip one-way flights by IATA route and date",
+          "command": "unicli ctrip flight",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "rank",
+            "airline",
+            "flightNo",
+            "aircraft",
+            "departureTime",
+            "departureAirport",
+            "arrivalTime",
+            "arrivalAirport",
+            "terminal",
+            "price",
+            "currency",
+            "cabin",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "from",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "to",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "date",
+              "type": "str",
+              "required": true,
+              "positional": false
             },
             {
               "name": "limit",
@@ -5573,6 +6867,151 @@
       ]
     },
     {
+      "site": "dblp",
+      "type": "web-api",
+      "domain": "dblp.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search dblp computer-science bibliography",
+          "when_to_use": "When you need to search dblp for a specific query.",
+          "command": "unicli dblp search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "key",
+            "title",
+            "authors",
+            "venue",
+            "year",
+            "type",
+            "doi",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Publication search query"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max results"
+            }
+          ]
+        },
+        {
+          "name": "paper",
+          "description": "Fetch a dblp record by canonical key",
+          "when_to_use": "Fetch a dblp record by canonical key",
+          "command": "unicli dblp paper",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "key",
+            "type",
+            "title",
+            "authors",
+            "venue",
+            "year",
+            "pages",
+            "doi",
+            "open_access_url",
+            "dblp_url"
+          ],
+          "args": [
+            {
+              "name": "key",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "dblp record key"
+            }
+          ]
+        },
+        {
+          "name": "venue",
+          "description": "Search dblp venue registry by name or acronym",
+          "when_to_use": "Search dblp venue registry by name or acronym",
+          "command": "unicli dblp venue",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["rank", "acronym", "venue", "type", "url"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Venue name or acronym"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max venues"
+            }
+          ]
+        },
+        {
+          "name": "author",
+          "description": "List dblp publications by author name or PID",
+          "when_to_use": "List dblp publications by author name or PID",
+          "command": "unicli dblp author",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "key",
+            "title",
+            "authors",
+            "venue",
+            "year",
+            "type",
+            "doi",
+            "pid",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "author",
+              "type": "str",
+              "required": false,
+              "positional": true,
+              "description": "Author name; optional when pid is given"
+            },
+            {
+              "name": "pid",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Canonical dblp PID"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max publications"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "deepseek",
       "type": "web-api",
       "domain": "chat.deepseek.com",
@@ -5717,6 +7156,123 @@
               "positional": false
             }
           ]
+        },
+        {
+          "name": "detail",
+          "description": "Read a specific DeepSeek conversation by ID",
+          "when_to_use": "When you need details about a specific item on deepseek.",
+          "command": "unicli deepseek detail",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["index", "role", "text"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "send",
+          "description": "Send a prompt to a specific DeepSeek conversation without waiting for a response",
+          "when_to_use": "When you need to post content to deepseek.",
+          "command": "unicli deepseek send",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["status", "injectedText"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "prompt",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "defillama",
+      "type": "web-api",
+      "domain": "defillama.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "protocols",
+          "description": "Top DeFi protocols by current TVL",
+          "when_to_use": "Top DeFi protocols by current TVL",
+          "command": "unicli defillama protocols",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "slug",
+            "name",
+            "category",
+            "tvl",
+            "mcap",
+            "change_1d",
+            "change_7d",
+            "chains",
+            "listedAt",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
+            }
+          ]
+        },
+        {
+          "name": "protocol",
+          "description": "Fetch DefiLlama protocol detail by slug",
+          "when_to_use": "Fetch DefiLlama protocol detail by slug",
+          "command": "unicli defillama protocol",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "slug",
+            "name",
+            "category",
+            "isParent",
+            "tvl",
+            "tvlAt",
+            "mcap",
+            "chains",
+            "twitter",
+            "github",
+            "audits",
+            "listedAt",
+            "description",
+            "website",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "slug",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Protocol slug"
+            }
+          ]
         }
       ]
     },
@@ -5853,6 +7409,42 @@
               "description": "Number of articles"
             }
           ]
+        },
+        {
+          "name": "read",
+          "description": "Read a DEV.to article body by id",
+          "when_to_use": "Read a DEV.to article body by id",
+          "command": "unicli devto read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "author",
+            "reactions",
+            "reading_time",
+            "tags",
+            "published_at",
+            "body",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "DEV.to numeric article id"
+            },
+            {
+              "name": "max-length",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max body characters"
+            }
+          ]
         }
       ]
     },
@@ -5861,7 +7453,7 @@
       "type": "web-api",
       "domain": "www.dianping.com",
       "auth": true,
-      "strategy": "intercept",
+      "strategy": "cookie",
       "commands": [
         {
           "name": "hot",
@@ -5935,6 +7527,25 @@
               "required": false,
               "positional": false,
               "description": "Number of results"
+            }
+          ]
+        },
+        {
+          "name": "shop",
+          "description": "Read Dianping shop details by shop ID or shop URL",
+          "when_to_use": "Read Dianping shop details by shop ID or shop URL",
+          "command": "unicli dianping shop",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["field", "value"],
+          "args": [
+            {
+              "name": "shop_id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Dianping shop ID or https://www.dianping.com/shop/<id> URL"
             }
           ]
         }
@@ -6554,6 +8165,79 @@
               "type": "int",
               "required": false,
               "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "dockerhub",
+      "type": "web-api",
+      "domain": "hub.docker.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Docker Hub repositories by keyword",
+          "when_to_use": "When you need to search dockerhub for a specific query.",
+          "command": "unicli dockerhub search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "image",
+            "official",
+            "stars",
+            "pulls",
+            "description",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Search keyword"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max repositories"
+            }
+          ]
+        },
+        {
+          "name": "image",
+          "description": "Fetch a Docker Hub repository's public metadata",
+          "when_to_use": "Fetch a Docker Hub repository's public metadata",
+          "command": "unicli dockerhub image",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "image",
+            "official",
+            "stars",
+            "pulls",
+            "description",
+            "lastUpdated",
+            "lastModified",
+            "registered",
+            "status",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "image",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Image name, e.g. nginx or bitnami/redis"
             }
           ]
         }
@@ -8349,6 +10033,46 @@
       ]
     },
     {
+      "site": "endoflife",
+      "type": "web-api",
+      "domain": "endoflife.date",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "product",
+          "description": "Release cycles and support dates for an endoflife.date product",
+          "when_to_use": "Release cycles and support dates for an endoflife.date product",
+          "command": "unicli endoflife product",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "product",
+            "cycle",
+            "releaseDate",
+            "latest",
+            "latestReleaseDate",
+            "lts",
+            "support",
+            "eol",
+            "extendedSupport",
+            "eolStatus",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "product",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "endoflife.date product slug"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "excel",
       "type": "desktop",
       "auth": false,
@@ -8580,7 +10304,7 @@
       "type": "web-api",
       "domain": "www.facebook.com",
       "auth": true,
-      "strategy": "intercept",
+      "strategy": "cookie",
       "commands": [
         {
           "name": "add-friend",
@@ -8827,6 +10551,50 @@
               "required": false,
               "positional": false,
               "description": "Number of results"
+            }
+          ]
+        },
+        {
+          "name": "marketplace-listings",
+          "description": "List your Facebook Marketplace seller listings",
+          "when_to_use": "List your Facebook Marketplace seller listings",
+          "command": "unicli facebook marketplace-listings",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "index",
+            "title",
+            "price",
+            "status",
+            "listed",
+            "clicks",
+            "actions"
+          ],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "marketplace-inbox",
+          "description": "List recent Facebook Marketplace buyer and seller conversations",
+          "when_to_use": "List recent Facebook Marketplace buyer and seller conversations",
+          "command": "unicli facebook marketplace-inbox",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["index", "buyer", "listing", "snippet", "time", "unread"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -9444,6 +11212,88 @@
               "required": false,
               "positional": false,
               "description": "Comma-separated modifiers such as meta,shift"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "flathub",
+      "type": "web-api",
+      "domain": "flathub.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Flathub apps by keyword",
+          "when_to_use": "When you need to search flathub for a specific query.",
+          "command": "unicli flathub search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "appId",
+            "name",
+            "summary",
+            "developer",
+            "license",
+            "isFreeLicense",
+            "mainCategories",
+            "installsLastMonth",
+            "updatedAt",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Search keyword"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
+            }
+          ]
+        },
+        {
+          "name": "app",
+          "description": "Fetch full Flathub appstream metadata by app id",
+          "when_to_use": "Fetch full Flathub appstream metadata by app id",
+          "command": "unicli flathub app",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "appId",
+            "name",
+            "summary",
+            "developer",
+            "license",
+            "isFreeLicense",
+            "isEol",
+            "categories",
+            "keywords",
+            "latestVersion",
+            "latestReleaseDate",
+            "homepage",
+            "bugtracker",
+            "donation",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "appId",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "AppStream id"
             }
           ]
         }
@@ -11256,6 +13106,70 @@
       ]
     },
     {
+      "site": "goproxy",
+      "type": "web-api",
+      "domain": "proxy.golang.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "module",
+          "description": "Latest version and VCS origin metadata for a Go module",
+          "when_to_use": "Latest version and VCS origin metadata for a Go module",
+          "command": "unicli goproxy module",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "module",
+            "version",
+            "publishedAt",
+            "vcs",
+            "repository",
+            "commit",
+            "ref",
+            "pkgGoDevUrl",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "module",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Go module path"
+            }
+          ]
+        },
+        {
+          "name": "versions",
+          "description": "Published version tags for a Go module",
+          "when_to_use": "Published version tags for a Go module",
+          "command": "unicli goproxy versions",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["rank", "module", "version", "publishedAt", "url"],
+          "args": [
+            {
+              "name": "module",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Go module path"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "gov-law",
       "type": "web-api",
       "domain": "flk.npc.gov.cn",
@@ -11362,7 +13276,7 @@
       "type": "web-api",
       "domain": "grok.com",
       "auth": true,
-      "strategy": "intercept",
+      "strategy": "cookie",
       "commands": [
         {
           "name": "ask",
@@ -11387,6 +13301,152 @@
               "required": false,
               "positional": false,
               "description": "Seconds to wait for response"
+            }
+          ]
+        },
+        {
+          "name": "read",
+          "description": "Read messages in the current Grok conversation",
+          "when_to_use": "Read messages in the current Grok conversation",
+          "command": "unicli grok read",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Role", "Text"],
+          "args": [
+            {
+              "name": "markdown",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "history",
+          "description": "List recent Grok conversations from the sidebar",
+          "when_to_use": "List recent Grok conversations from the sidebar",
+          "command": "unicli grok history",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Index", "Title", "Url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "detail",
+          "description": "Open a Grok conversation by ID and read its messages",
+          "when_to_use": "When you need details about a specific item on grok.",
+          "command": "unicli grok detail",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Role", "Text"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "markdown",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "send",
+          "description": "Send a prompt to Grok without waiting for the reply",
+          "when_to_use": "When you need to post content to grok.",
+          "command": "unicli grok send",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Status", "Prompt"],
+          "args": [
+            {
+              "name": "prompt",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "new",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "new",
+          "description": "Start a new conversation in Grok",
+          "when_to_use": "Start a new conversation in Grok",
+          "command": "unicli grok new",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Status"]
+        },
+        {
+          "name": "status",
+          "description": "Check Grok page availability, login state, current session and model",
+          "when_to_use": "Check Grok page availability, login state, current session and model",
+          "command": "unicli grok status",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Status", "Login", "Model", "SessionId", "Url"]
+        },
+        {
+          "name": "image",
+          "description": "Generate images with Grok and return or save image assets",
+          "when_to_use": "Generate images with Grok and return or save image assets",
+          "command": "unicli grok image",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["url", "width", "height", "path"],
+          "args": [
+            {
+              "name": "prompt",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "timeout",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "new",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "count",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "out",
+              "type": "str",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -11610,6 +13670,53 @@
               "description": "HN username"
             }
           ]
+        },
+        {
+          "name": "read",
+          "description": "Read a Hacker News story and comment tree",
+          "when_to_use": "Read a Hacker News story and comment tree",
+          "command": "unicli hackernews read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["type", "author", "score", "text"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "HN item id"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max top-level comments"
+            },
+            {
+              "name": "depth",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max reply depth"
+            },
+            {
+              "name": "replies",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max replies per comment"
+            },
+            {
+              "name": "max-length",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max chars per body"
+            }
+          ]
         }
       ]
     },
@@ -11777,6 +13884,35 @@
               "description": "Date (YYYY-MM-DD), defaults to today"
             }
           ]
+        },
+        {
+          "name": "paper",
+          "description": "Hugging Face paper detail by arXiv id",
+          "when_to_use": "Hugging Face paper detail by arXiv id",
+          "command": "unicli hf paper",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "publishedAt",
+            "upvotes",
+            "aiKeywords",
+            "summary",
+            "aiSummary",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "arXiv id"
+            }
+          ]
         }
       ]
     },
@@ -11822,6 +13958,108 @@
               "required": true,
               "positional": true,
               "description": "Search query"
+            }
+          ]
+        },
+        {
+          "name": "formula",
+          "description": "Fetch Homebrew formula metadata",
+          "when_to_use": "Fetch Homebrew formula metadata",
+          "command": "unicli homebrew formula",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "formula",
+            "tap",
+            "version",
+            "license",
+            "description",
+            "homepage",
+            "dependencies",
+            "deprecated",
+            "disabled",
+            "source",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "name",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Formula name"
+            }
+          ]
+        },
+        {
+          "name": "cask",
+          "description": "Fetch Homebrew cask metadata",
+          "when_to_use": "Fetch Homebrew cask metadata",
+          "command": "unicli homebrew cask",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "cask",
+            "tap",
+            "name",
+            "version",
+            "description",
+            "homepage",
+            "deprecated",
+            "disabled",
+            "download",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "token",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Cask token"
+            }
+          ]
+        },
+        {
+          "name": "popular",
+          "description": "List most-installed Homebrew formulae or casks",
+          "when_to_use": "List most-installed Homebrew formulae or casks",
+          "command": "unicli homebrew popular",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "token",
+            "type",
+            "installs",
+            "percent",
+            "window",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "type",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Package type"
+            },
+            {
+              "name": "window",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Homebrew analytics window"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
             }
           ]
         }
@@ -12556,6 +14794,99 @@
       ]
     },
     {
+      "site": "indeed",
+      "type": "web-api",
+      "domain": "www.indeed.com",
+      "auth": true,
+      "strategy": "cookie",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Indeed jobs through the rendered browser DOM",
+          "when_to_use": "When you need to search indeed for a specific query.",
+          "command": "unicli indeed search",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "rank",
+            "id",
+            "title",
+            "company",
+            "location",
+            "salary",
+            "tags",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "location",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "fromage",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "start",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "job",
+          "description": "Read an Indeed job posting by 16-character jk job key",
+          "when_to_use": "Read an Indeed job posting by 16-character jk job key",
+          "command": "unicli indeed job",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "id",
+            "title",
+            "company",
+            "location",
+            "salary",
+            "job_type",
+            "description",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "infoq",
       "type": "web-api",
       "domain": "www.infoq.com",
@@ -13201,6 +15532,42 @@
               "required": false,
               "positional": false,
               "description": "Number of posts"
+            }
+          ]
+        },
+        {
+          "name": "collection-create",
+          "description": "Create a new Instagram saved-posts collection",
+          "when_to_use": "Create a new Instagram saved-posts collection",
+          "command": "unicli instagram collection-create",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["status", "collectionId", "collectionName", "mediaCount"],
+          "args": [
+            {
+              "name": "name",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "collection-delete",
+          "description": "Delete an Instagram saved-posts collection by name or id",
+          "when_to_use": "Delete an Instagram saved-posts collection by name or id",
+          "command": "unicli instagram collection-delete",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["status", "collectionId", "collectionName"],
+          "args": [
+            {
+              "name": "target",
+              "type": "str",
+              "required": true,
+              "positional": true
             }
           ]
         },
@@ -15058,6 +17425,89 @@
       ]
     },
     {
+      "site": "lichess",
+      "type": "web-api",
+      "domain": "lichess.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "top",
+          "description": "Top-N Lichess leaderboard for a perf type",
+          "when_to_use": "When you need the current top items from lichess.",
+          "command": "unicli lichess top",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "username",
+            "id",
+            "title",
+            "rating",
+            "progress",
+            "patron",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "perf",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Perf type"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Top-N rows"
+            }
+          ]
+        },
+        {
+          "name": "user",
+          "description": "Fetch a public Lichess player profile by username",
+          "when_to_use": "When you need user/profile info from lichess.",
+          "command": "unicli lichess user",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "username",
+            "id",
+            "title",
+            "patron",
+            "online",
+            "tosViolation",
+            "createdAt",
+            "seenAt",
+            "gamesAll",
+            "gamesWin",
+            "gamesLoss",
+            "gamesDraw",
+            "topPerfName",
+            "topPerfRating",
+            "topPerfGames",
+            "fideRating",
+            "country",
+            "bio",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "username",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Lichess username"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "linear",
       "type": "web-api",
       "domain": "api.linear.app",
@@ -15739,6 +18189,90 @@
               "required": true,
               "positional": true,
               "description": "Tag name (e.g. programming, rust, security, ai)"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of stories"
+            }
+          ]
+        },
+        {
+          "name": "read",
+          "description": "Read a Lobste.rs story and its comment tree",
+          "when_to_use": "Read a Lobste.rs story and its comment tree",
+          "command": "unicli lobsters read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["type", "author", "score", "text"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Lobste.rs short_id"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max top-level comments"
+            },
+            {
+              "name": "depth",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max reply depth"
+            },
+            {
+              "name": "replies",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max replies per comment"
+            },
+            {
+              "name": "max-length",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max characters per comment body"
+            }
+          ]
+        },
+        {
+          "name": "domain",
+          "description": "Lobste.rs stories submitted from a specific domain",
+          "when_to_use": "Lobste.rs stories submitted from a specific domain",
+          "command": "unicli lobsters domain",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "title",
+            "score",
+            "author",
+            "comments",
+            "created_at",
+            "tags",
+            "submission_url",
+            "comments_url"
+          ],
+          "args": [
+            {
+              "name": "domain",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Source domain"
             },
             {
               "name": "limit",
@@ -17124,6 +19658,82 @@
               "positional": false
             }
           ]
+        },
+        {
+          "name": "artifact",
+          "description": "Fetch Maven Central artifact version history",
+          "when_to_use": "Fetch Maven Central artifact version history",
+          "command": "unicli maven artifact",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "groupId",
+            "artifactId",
+            "version",
+            "packaging",
+            "publishedAt",
+            "tags",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "coordinate",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Maven coordinate \"groupId:artifactId[:version]\""
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max versions"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "mdn",
+      "type": "web-api",
+      "domain": "developer.mozilla.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search MDN Web Docs by keyword",
+          "when_to_use": "When you need to search mdn for a specific query.",
+          "command": "unicli mdn search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["rank", "title", "slug", "locale", "summary", "url"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Search keyword"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
+            },
+            {
+              "name": "locale",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "MDN locale"
+            }
+          ]
         }
       ]
     },
@@ -17246,6 +19856,40 @@
               "required": false,
               "positional": false,
               "description": "Number of articles"
+            }
+          ]
+        },
+        {
+          "name": "tag",
+          "description": "Latest Medium articles tagged with a keyword from RSS",
+          "when_to_use": "Latest Medium articles tagged with a keyword from RSS",
+          "command": "unicli medium tag",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "title",
+            "author",
+            "description",
+            "categories",
+            "published",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "tag",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Medium tag slug"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max articles"
             }
           ]
         }
@@ -19217,6 +21861,38 @@
               "positional": false
             }
           ]
+        },
+        {
+          "name": "package",
+          "description": "Single npm package metadata",
+          "when_to_use": "Single npm package metadata",
+          "command": "unicli npm package",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "name",
+            "latestVersion",
+            "description",
+            "license",
+            "homepage",
+            "repository",
+            "bugs",
+            "maintainers",
+            "keywords",
+            "created",
+            "modified",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "name",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "npm package name"
+            }
+          ]
         }
       ]
     },
@@ -19268,7 +21944,7 @@
     {
       "site": "nuget",
       "type": "web-api",
-      "domain": "nuget.org",
+      "domain": "api.nuget.org",
       "auth": false,
       "strategy": "public",
       "commands": [
@@ -19326,6 +22002,78 @@
               "type": "int",
               "required": false,
               "positional": false
+            }
+          ]
+        },
+        {
+          "name": "package",
+          "description": "Full NuGet package version history",
+          "when_to_use": "Full NuGet package version history",
+          "command": "unicli nuget package",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "version",
+            "title",
+            "authors",
+            "tags",
+            "language",
+            "licenseExpression",
+            "projectUrl",
+            "published",
+            "listed",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "NuGet package id"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "nvd",
+      "type": "web-api",
+      "domain": "services.nvd.nist.gov",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "cve",
+          "description": "NIST NVD CVE detail",
+          "when_to_use": "NIST NVD CVE detail",
+          "command": "unicli nvd cve",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "published",
+            "lastModified",
+            "vulnStatus",
+            "baseScore",
+            "severity",
+            "attackVector",
+            "cwe",
+            "kevAdded",
+            "description",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "CVE identifier"
             }
           ]
         }
@@ -19762,6 +22510,85 @@
       ]
     },
     {
+      "site": "oeis",
+      "type": "web-api",
+      "domain": "oeis.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search OEIS sequences by keyword or numeric pattern",
+          "when_to_use": "When you need to search oeis for a specific query.",
+          "command": "unicli oeis search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "name",
+            "keywords",
+            "preview",
+            "author",
+            "created",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Keyword or comma-separated terms"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
+            }
+          ]
+        },
+        {
+          "name": "sequence",
+          "description": "Fetch OEIS sequence detail by A-number",
+          "when_to_use": "Fetch OEIS sequence detail by A-number",
+          "command": "unicli oeis sequence",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "name",
+            "keywords",
+            "preview",
+            "termCount",
+            "offset",
+            "author",
+            "created",
+            "revision",
+            "commentCount",
+            "formulaCount",
+            "referenceCount",
+            "xrefCount",
+            "linkCount",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "OEIS A-number"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "ollama",
       "type": "service",
       "auth": false,
@@ -20073,6 +22900,88 @@
       ]
     },
     {
+      "site": "openalex",
+      "type": "web-api",
+      "domain": "api.openalex.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search OpenAlex Works by keyword",
+          "when_to_use": "When you need to search openalex for a specific query.",
+          "command": "unicli openalex search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "title",
+            "year",
+            "citations",
+            "firstAuthor",
+            "venue",
+            "openAccess",
+            "type",
+            "doi",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Search text"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max works"
+            }
+          ]
+        },
+        {
+          "name": "work",
+          "description": "Fetch a single OpenAlex Work",
+          "when_to_use": "Fetch a single OpenAlex Work",
+          "command": "unicli openalex work",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "type",
+            "year",
+            "date",
+            "language",
+            "authors",
+            "venue",
+            "citations",
+            "openAccess",
+            "openAccessUrl",
+            "referencedCount",
+            "doi",
+            "abstract",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "OpenAlex Work id or DOI"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "opencode",
       "type": "bridge",
       "auth": false,
@@ -20087,6 +22996,113 @@
           "strategy": "public",
           "browser": false,
           "columns": ["output"]
+        }
+      ]
+    },
+    {
+      "site": "openfda",
+      "type": "web-api",
+      "domain": "fda.gov",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "drug-label",
+          "description": "Search FDA drug labels by brand or generic name",
+          "when_to_use": "Search FDA drug labels by brand or generic name",
+          "command": "unicli openfda drug-label",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "brandName",
+            "genericName",
+            "manufacturer",
+            "productType",
+            "route",
+            "productNdc",
+            "pharmClass",
+            "purpose",
+            "indications",
+            "warnings",
+            "dosage",
+            "effectiveTime"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Brand or generic drug name"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
+            }
+          ]
+        },
+        {
+          "name": "food-recall",
+          "description": "Search FDA food recall and enforcement actions",
+          "when_to_use": "Search FDA food recall and enforcement actions",
+          "command": "unicli openfda food-recall",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "recallNumber",
+            "status",
+            "classification",
+            "voluntary",
+            "recallingFirm",
+            "city",
+            "state",
+            "country",
+            "productDescription",
+            "reasonForRecall",
+            "productQuantity",
+            "distributionPattern",
+            "reportDate",
+            "recallInitiationDate",
+            "terminationDate"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Free-text Lucene query"
+            },
+            {
+              "name": "status",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Recall status"
+            },
+            {
+              "name": "classification",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Recall classification"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
+            }
+          ]
         }
       ]
     },
@@ -20124,6 +23140,183 @@
           "strategy": "public",
           "browser": false,
           "columns": ["name"]
+        }
+      ]
+    },
+    {
+      "site": "openreview",
+      "type": "web-api",
+      "domain": "openreview.net",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search OpenReview papers by free-text query",
+          "when_to_use": "When you need to search openreview for a specific query.",
+          "command": "unicli openreview search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "title",
+            "authors",
+            "venue",
+            "pdate",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Search keyword"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max results"
+            }
+          ]
+        },
+        {
+          "name": "paper",
+          "description": "Show full metadata for a single OpenReview paper",
+          "when_to_use": "Show full metadata for a single OpenReview paper",
+          "command": "unicli openreview paper",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "keywords",
+            "venue",
+            "venueid",
+            "primary_area",
+            "abstract",
+            "pdate",
+            "pdf",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "OpenReview note id"
+            }
+          ]
+        },
+        {
+          "name": "author",
+          "description": "List OpenReview submissions by author profile id",
+          "when_to_use": "List OpenReview submissions by author profile id",
+          "command": "unicli openreview author",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "title",
+            "authors",
+            "venue",
+            "pdate",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "profile",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "OpenReview profile id"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max submissions"
+            }
+          ]
+        },
+        {
+          "name": "venue",
+          "description": "List papers at an OpenReview venue or invitation",
+          "when_to_use": "List papers at an OpenReview venue or invitation",
+          "command": "unicli openreview venue",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "title",
+            "authors",
+            "keywords",
+            "primary_area",
+            "pdate",
+            "pdf",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "venue",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Venue text or invitation id"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max results"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Pagination offset"
+            }
+          ]
+        },
+        {
+          "name": "reviews",
+          "description": "Show paper, reviews, decisions, and comments for an OpenReview forum",
+          "when_to_use": "Show paper, reviews, decisions, and comments for an OpenReview forum",
+          "command": "unicli openreview reviews",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["type", "author", "rating", "confidence", "text"],
+          "args": [
+            {
+              "name": "forum",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "OpenReview forum id"
+            },
+            {
+              "name": "max-length",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Per-row text truncation length"
+            }
+          ]
         }
       ]
     },
@@ -20180,6 +23373,95 @@
       ]
     },
     {
+      "site": "osv",
+      "type": "web-api",
+      "domain": "osv.dev",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "query",
+          "description": "OSV.dev vulnerabilities affecting a package",
+          "when_to_use": "OSV.dev vulnerabilities affecting a package",
+          "command": "unicli osv query",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "summary",
+            "severity",
+            "aliases",
+            "published",
+            "modified",
+            "affectedPackages",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "package",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Package name"
+            },
+            {
+              "name": "ecosystem",
+              "type": "str",
+              "required": true,
+              "positional": false,
+              "description": "OSV ecosystem"
+            },
+            {
+              "name": "version",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Specific package version"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
+            }
+          ]
+        },
+        {
+          "name": "vulnerability",
+          "description": "Single OSV.dev vulnerability detail",
+          "when_to_use": "Single OSV.dev vulnerability detail",
+          "command": "unicli osv vulnerability",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "summary",
+            "severity",
+            "aliases",
+            "published",
+            "modified",
+            "affectedPackages",
+            "cwes",
+            "referenceCount",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "OSV vulnerability id"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "packagist",
       "type": "web-api",
       "domain": "packagist.org",
@@ -20227,6 +23509,38 @@
               "type": "int",
               "required": false,
               "positional": false
+            }
+          ]
+        },
+        {
+          "name": "package",
+          "description": "Fetch Packagist package metadata",
+          "when_to_use": "Fetch Packagist package metadata",
+          "command": "unicli packagist package",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "package",
+            "version",
+            "releasedAt",
+            "license",
+            "description",
+            "repository",
+            "githubStars",
+            "favers",
+            "downloads",
+            "monthlyDownloads",
+            "dailyDownloads",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "name",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Composer package \"<vendor>/<package>\""
             }
           ]
         }
@@ -21233,9 +24547,196 @@
       ]
     },
     {
+      "site": "pubmed",
+      "type": "web-api",
+      "domain": "pubmed.ncbi.nlm.nih.gov",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search PubMed articles",
+          "when_to_use": "When you need to search pubmed for a specific query.",
+          "command": "unicli pubmed search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "pmid",
+            "title",
+            "authors",
+            "journal",
+            "year",
+            "article_type",
+            "doi",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Search query"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max results"
+            }
+          ]
+        },
+        {
+          "name": "article",
+          "description": "Get detailed information for a PubMed article by PMID",
+          "when_to_use": "Get detailed information for a PubMed article by PMID",
+          "command": "unicli pubmed article",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["field", "value"],
+          "args": [
+            {
+              "name": "pmid",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "PubMed ID"
+            },
+            {
+              "name": "full-abstract",
+              "type": "bool",
+              "required": false,
+              "positional": false,
+              "description": "Do not truncate abstract"
+            }
+          ]
+        },
+        {
+          "name": "author",
+          "description": "Search PubMed articles by author name",
+          "when_to_use": "Search PubMed articles by author name",
+          "command": "unicli pubmed author",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "pmid",
+            "title",
+            "authors",
+            "journal",
+            "year",
+            "article_type",
+            "doi",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "name",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Author name"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max results"
+            }
+          ]
+        },
+        {
+          "name": "citations",
+          "description": "Get PubMed citation relationships for an article",
+          "when_to_use": "Get PubMed citation relationships for an article",
+          "command": "unicli pubmed citations",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "pmid",
+            "title",
+            "authors",
+            "journal",
+            "year",
+            "article_type",
+            "doi",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "pmid",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "PubMed ID"
+            },
+            {
+              "name": "direction",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "citedby or references"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max results"
+            }
+          ]
+        },
+        {
+          "name": "related",
+          "description": "Find articles related to a PubMed article",
+          "when_to_use": "Find articles related to a PubMed article",
+          "command": "unicli pubmed related",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "pmid",
+            "title",
+            "authors",
+            "journal",
+            "year",
+            "article_type",
+            "score",
+            "doi",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "pmid",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "PubMed ID"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max results"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "pypi",
       "type": "web-api",
-      "domain": "pypi.org",
+      "domain": "pypistats.org",
       "auth": false,
       "strategy": "public",
       "commands": [
@@ -21299,6 +24800,65 @@
               "required": true,
               "positional": true,
               "description": "Package name"
+            }
+          ]
+        },
+        {
+          "name": "package",
+          "description": "Single PyPI package metadata",
+          "when_to_use": "Single PyPI package metadata",
+          "command": "unicli pypi package",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "name",
+            "latestVersion",
+            "summary",
+            "author",
+            "license",
+            "homepage",
+            "repository",
+            "requiresPython",
+            "keywords",
+            "releases",
+            "firstReleased",
+            "lastReleased",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "name",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "PyPI package name"
+            }
+          ]
+        },
+        {
+          "name": "downloads",
+          "description": "PyPI download stats for a package",
+          "when_to_use": "When you need to download media or files from pypi.",
+          "command": "unicli pypi downloads",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["rank", "package", "period", "date", "downloads"],
+          "args": [
+            {
+              "name": "name",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "PyPI package name"
+            },
+            {
+              "name": "period",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "recent totals or overall daily history"
             }
           ]
         }
@@ -21568,6 +25128,221 @@
               "required": true,
               "positional": true,
               "description": "Location ID or coordinates (e.g. \"101010100\" for Beijing)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "qwen",
+      "type": "web-api",
+      "domain": "www.qianwen.com",
+      "auth": true,
+      "strategy": "cookie",
+      "commands": [
+        {
+          "name": "ask",
+          "description": "Send a prompt to Qwen and return the assistant reply",
+          "when_to_use": "Send a prompt to Qwen and return the assistant reply",
+          "command": "unicli qwen ask",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Role", "Text"],
+          "args": [
+            {
+              "name": "prompt",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "timeout",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "new",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "think",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "research",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "markdown",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "read",
+          "description": "Read messages in the current Qwen conversation",
+          "when_to_use": "Read messages in the current Qwen conversation",
+          "command": "unicli qwen read",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Role", "Text"],
+          "args": [
+            {
+              "name": "markdown",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "send",
+          "description": "Send a prompt to Qwen without waiting for the reply",
+          "when_to_use": "When you need to post content to qwen.",
+          "command": "unicli qwen send",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Status", "Prompt"],
+          "args": [
+            {
+              "name": "prompt",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "new",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "think",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "research",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "history",
+          "description": "List recent Qwen conversations",
+          "when_to_use": "List recent Qwen conversations",
+          "command": "unicli qwen history",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Index", "Title", "Updated", "Url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "detail",
+          "description": "Open a Qwen conversation by ID and read its messages",
+          "when_to_use": "When you need details about a specific item on qwen.",
+          "command": "unicli qwen detail",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Role", "Text"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "markdown",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "new",
+          "description": "Start a new conversation in Qwen",
+          "when_to_use": "Start a new conversation in Qwen",
+          "command": "unicli qwen new",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Status"]
+        },
+        {
+          "name": "status",
+          "description": "Check Qwen page availability, login state, current session and model",
+          "when_to_use": "Check Qwen page availability, login state, current session and model",
+          "command": "unicli qwen status",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Status", "Login", "Model", "SessionId", "Url"]
+        },
+        {
+          "name": "image",
+          "description": "Generate images with Qwen and save them locally",
+          "when_to_use": "Generate images with Qwen and save them locally",
+          "command": "unicli qwen image",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Status", "File", "Link"],
+          "args": [
+            {
+              "name": "prompt",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "op",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "new",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sd",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "timeout",
+              "type": "int",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -21873,6 +25648,90 @@
               "required": true,
               "positional": true,
               "description": "Reddit username"
+            }
+          ]
+        },
+        {
+          "name": "whoami",
+          "description": "Show the currently logged-in Reddit user",
+          "when_to_use": "Show the currently logged-in Reddit user",
+          "command": "unicli reddit whoami",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["field", "value"],
+          "args": []
+        },
+        {
+          "name": "home",
+          "description": "Reddit personalized home feed",
+          "when_to_use": "Reddit personalized home feed",
+          "command": "unicli reddit home",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "rank",
+            "title",
+            "subreddit",
+            "score",
+            "comments",
+            "postId",
+            "author",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of posts (1-100)"
+            }
+          ]
+        },
+        {
+          "name": "subreddit-info",
+          "description": "Show metadata for a Reddit subreddit",
+          "when_to_use": "Show metadata for a Reddit subreddit",
+          "command": "unicli reddit subreddit-info",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["field", "value"],
+          "args": [
+            {
+              "name": "name",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Subreddit name without r/"
+            }
+          ]
+        },
+        {
+          "name": "reply",
+          "description": "Reply to a Reddit comment",
+          "when_to_use": "Reply to a Reddit comment",
+          "command": "unicli reddit reply",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["status", "message"],
+          "args": [
+            {
+              "name": "comment-id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Comment ID, t1_ fullname, or Reddit comment URL"
+            },
+            {
+              "name": "text",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Reply text"
             }
           ]
         },
@@ -22197,6 +26056,208 @@
       ]
     },
     {
+      "site": "rednote",
+      "type": "web-api",
+      "domain": "www.rednote.com",
+      "auth": true,
+      "strategy": "cookie",
+      "commands": [
+        {
+          "name": "note",
+          "description": "Read note body and engagement counts from a rednote note",
+          "when_to_use": "Read note body and engagement counts from a rednote note",
+          "command": "unicli rednote note",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["field", "value"],
+          "args": [
+            {
+              "name": "note-id",
+              "required": true,
+              "positional": true,
+              "description": "Full rednote note URL with xsec_token"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search rednote notes",
+          "when_to_use": "When you need to search rednote for a specific query.",
+          "command": "unicli rednote search",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "rank",
+            "title",
+            "author",
+            "likes",
+            "published_at",
+            "url",
+            "author_url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "required": true,
+              "positional": true,
+              "description": "Search keyword"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of results"
+            }
+          ]
+        },
+        {
+          "name": "user",
+          "description": "Get public notes from a rednote user profile",
+          "when_to_use": "When you need user/profile info from rednote.",
+          "command": "unicli rednote user",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["id", "title", "type", "likes", "url"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "User id or profile URL"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of notes to return"
+            }
+          ]
+        },
+        {
+          "name": "comments",
+          "description": "Read comments from a rednote note (supports nested replies)",
+          "when_to_use": "When you need to read comments/replies from rednote.",
+          "command": "unicli rednote comments",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "rank",
+            "author",
+            "text",
+            "likes",
+            "time",
+            "is_reply",
+            "reply_to"
+          ],
+          "args": [
+            {
+              "name": "note-id",
+              "required": true,
+              "positional": true,
+              "description": "Full rednote note URL with xsec_token"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of top-level comments (max 50)"
+            },
+            {
+              "name": "with-replies",
+              "type": "bool",
+              "required": false,
+              "positional": false,
+              "description": "Include nested replies"
+            }
+          ]
+        },
+        {
+          "name": "feed",
+          "description": "Rednote home feed (reads hydrated Pinia store)",
+          "when_to_use": "Rednote home feed (reads hydrated Pinia store)",
+          "command": "unicli rednote feed",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["id", "title", "author", "likes", "type", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of items to return"
+            }
+          ]
+        },
+        {
+          "name": "notifications",
+          "description": "Rednote notifications (mentions/likes/connections)",
+          "when_to_use": "Rednote notifications (mentions/likes/connections)",
+          "command": "unicli rednote notifications",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["rank", "user", "action", "content", "note", "time"],
+          "args": [
+            {
+              "name": "type",
+              "required": false,
+              "positional": false,
+              "description": "Notification type: mentions, likes, or connections"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of notifications to return"
+            }
+          ]
+        },
+        {
+          "name": "download",
+          "description": "Download images and videos from a rednote note",
+          "when_to_use": "When you need to download media or files from rednote.",
+          "command": "unicli rednote download",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "index",
+            "type",
+            "status",
+            "path",
+            "size",
+            "url",
+            "error"
+          ],
+          "args": [
+            {
+              "name": "note-id",
+              "required": true,
+              "positional": true,
+              "description": "Full rednote note URL with xsec_token"
+            },
+            {
+              "name": "output",
+              "required": false,
+              "positional": false,
+              "description": "Output directory"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "renderdoc",
       "type": "desktop",
       "auth": false,
@@ -22335,9 +26396,114 @@
       ]
     },
     {
+      "site": "rest-countries",
+      "type": "web-api",
+      "domain": "restcountries.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "country",
+          "description": "Look up countries by common or official name",
+          "when_to_use": "Look up countries by common or official name",
+          "command": "unicli rest-countries country",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "commonName",
+            "officialName",
+            "cca2",
+            "cca3",
+            "ccn3",
+            "capital",
+            "region",
+            "subregion",
+            "population",
+            "area",
+            "languages",
+            "currencies",
+            "latitude",
+            "longitude",
+            "timezones",
+            "independent",
+            "unMember",
+            "landlocked",
+            "flag",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "name",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Country name"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
+            }
+          ]
+        },
+        {
+          "name": "region",
+          "description": "List countries in a REST Countries region",
+          "when_to_use": "List countries in a REST Countries region",
+          "command": "unicli rest-countries region",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "commonName",
+            "officialName",
+            "cca2",
+            "cca3",
+            "ccn3",
+            "capital",
+            "region",
+            "subregion",
+            "population",
+            "area",
+            "languages",
+            "currencies",
+            "latitude",
+            "longitude",
+            "timezones",
+            "independent",
+            "unMember",
+            "landlocked",
+            "flag",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "region",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Region name"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "reuters",
       "type": "web-api",
-      "domain": "reuters.com",
+      "domain": "www.reuters.com",
       "auth": false,
       "strategy": "public",
       "commands": [
@@ -22422,6 +26588,76 @@
               "description": "Number of stories"
             }
           ]
+        },
+        {
+          "name": "article-detail",
+          "description": "Reuters article detail with title, metadata, and body text",
+          "when_to_use": "Reuters article detail with title, metadata, and body text",
+          "command": "unicli reuters article-detail",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "title",
+            "date",
+            "section",
+            "section_path",
+            "authors",
+            "description",
+            "word_count",
+            "url",
+            "body"
+          ],
+          "args": [
+            {
+              "name": "url",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Reuters article URL"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "rfc",
+      "type": "web-api",
+      "domain": "datatracker.ietf.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "rfc",
+          "description": "Fetch IETF RFC metadata by RFC number",
+          "when_to_use": "Fetch IETF RFC metadata by RFC number",
+          "command": "unicli rfc rfc",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rfc",
+            "title",
+            "state",
+            "stdLevel",
+            "group",
+            "groupType",
+            "pages",
+            "published",
+            "authors",
+            "abstract",
+            "rfcEditorUrl",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "number",
+              "type": "int",
+              "required": true,
+              "positional": true,
+              "description": "RFC number"
+            }
+          ]
         }
       ]
     },
@@ -22480,6 +26716,38 @@
               "type": "int",
               "required": false,
               "positional": false
+            }
+          ]
+        },
+        {
+          "name": "gem",
+          "description": "Fetch RubyGems gem metadata",
+          "when_to_use": "Fetch RubyGems gem metadata",
+          "command": "unicli rubygems gem",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "gem",
+            "version",
+            "releasedAt",
+            "downloads",
+            "versionDownloads",
+            "license",
+            "authors",
+            "homepage",
+            "source",
+            "bugs",
+            "info",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "name",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Gem name"
             }
           ]
         }
@@ -23962,6 +28230,175 @@
               "description": "Max number of results"
             }
           ]
+        },
+        {
+          "name": "read",
+          "description": "Read a Stack Overflow question with answers and comments",
+          "when_to_use": "Read a Stack Overflow question with answers and comments",
+          "command": "unicli stackoverflow read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["type", "author", "score", "accepted", "text"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Stack Overflow question id"
+            },
+            {
+              "name": "answers-limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max answers to include"
+            },
+            {
+              "name": "comments-limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max comments per question or answer"
+            },
+            {
+              "name": "max-length",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max characters per body"
+            }
+          ]
+        },
+        {
+          "name": "related",
+          "description": "List Stack Overflow questions related to a question id",
+          "when_to_use": "List Stack Overflow questions related to a question id",
+          "command": "unicli stackoverflow related",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "title",
+            "score",
+            "answers",
+            "views",
+            "isAnswered",
+            "tags",
+            "author",
+            "createdAt",
+            "lastActivityAt",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Stack Overflow question id"
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Sort key: rank, activity, votes, creation"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max questions"
+            }
+          ]
+        },
+        {
+          "name": "tag",
+          "description": "List Stack Overflow questions tagged with a given tag",
+          "when_to_use": "List Stack Overflow questions tagged with a given tag",
+          "command": "unicli stackoverflow tag",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "title",
+            "score",
+            "answers",
+            "views",
+            "isAnswered",
+            "tags",
+            "author",
+            "createdAt",
+            "lastActivityAt",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "tag",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Tag slug"
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Sort key: activity, votes, creation, hot, week, month"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max questions"
+            }
+          ]
+        },
+        {
+          "name": "user",
+          "description": "Find Stack Overflow users by display name",
+          "when_to_use": "When you need user/profile info from stackoverflow.",
+          "command": "unicli stackoverflow user",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "userId",
+            "displayName",
+            "reputation",
+            "goldBadges",
+            "silverBadges",
+            "bronzeBadges",
+            "location",
+            "createdAt",
+            "lastAccessAt",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "name",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Display name or substring to search"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max users"
+            }
+          ]
         }
       ]
     },
@@ -24147,6 +28584,49 @@
               "type": "int",
               "required": false,
               "positional": false
+            }
+          ]
+        },
+        {
+          "name": "app",
+          "description": "Steam storefront detail for a single app id",
+          "when_to_use": "Steam storefront detail for a single app id",
+          "command": "unicli steam app",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "name",
+            "type",
+            "isFree",
+            "releaseDate",
+            "developers",
+            "publishers",
+            "price",
+            "currency",
+            "metacritic",
+            "recommendations",
+            "genres",
+            "categories",
+            "shortDescription",
+            "website",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Numeric Steam app id"
+            },
+            {
+              "name": "currency",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Storefront country code"
             }
           ]
         }
@@ -24733,7 +29213,7 @@
       "type": "web-api",
       "domain": "www.tiktok.com",
       "auth": true,
-      "strategy": "intercept",
+      "strategy": "cookie",
       "commands": [
         {
           "name": "comment",
@@ -25083,6 +29563,42 @@
               "description": "Number of videos"
             }
           ]
+        },
+        {
+          "name": "creator-videos",
+          "description": "Read TikTok Studio creator content metrics",
+          "when_to_use": "Read TikTok Studio creator content metrics",
+          "command": "unicli tiktok creator-videos",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "video_id",
+            "title",
+            "date",
+            "views",
+            "likes",
+            "comments",
+            "saves",
+            "shares",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of creator videos to return (max 250)"
+            },
+            {
+              "name": "cursor",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Non-negative TikTok Studio pagination cursor"
+            }
+          ]
         }
       ]
     },
@@ -25159,6 +29675,95 @@
               "type": "int",
               "required": false,
               "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "tvmaze",
+      "type": "web-api",
+      "domain": "tvmaze.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search TVmaze shows by title",
+          "when_to_use": "When you need to search tvmaze for a specific query.",
+          "command": "unicli tvmaze search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "name",
+            "type",
+            "language",
+            "genres",
+            "status",
+            "premiered",
+            "ended",
+            "network",
+            "rating",
+            "matchScore",
+            "summary",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "TV show title or fragment"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
+            }
+          ]
+        },
+        {
+          "name": "show",
+          "description": "Fetch TVmaze show detail by id",
+          "when_to_use": "Fetch TVmaze show detail by id",
+          "command": "unicli tvmaze show",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "name",
+            "type",
+            "language",
+            "genres",
+            "status",
+            "premiered",
+            "ended",
+            "runtime",
+            "averageRuntime",
+            "network",
+            "country",
+            "schedule",
+            "rating",
+            "imdb",
+            "thetvdb",
+            "officialSite",
+            "summary",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "int",
+              "required": true,
+              "positional": true,
+              "description": "TVmaze show id"
             }
           ]
         }
@@ -25543,6 +30148,56 @@
           ]
         },
         {
+          "name": "bookmark-folders",
+          "description": "List Twitter/X bookmark folders",
+          "when_to_use": "List Twitter/X bookmark folders",
+          "command": "unicli twitter bookmark-folders",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": false,
+          "columns": ["id", "name", "items", "created_at"],
+          "args": []
+        },
+        {
+          "name": "bookmark-folder",
+          "description": "Read tweets inside a Twitter/X bookmark folder",
+          "when_to_use": "Read tweets inside a Twitter/X bookmark folder",
+          "command": "unicli twitter bookmark-folder",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": false,
+          "columns": [
+            "id",
+            "author",
+            "text",
+            "likes",
+            "retweets",
+            "bookmarks",
+            "created_at",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "folder-id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "top-by-engagement",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
           "name": "bookmark",
           "description": "Bookmark a tweet",
           "when_to_use": "Bookmark a tweet",
@@ -25895,6 +30550,46 @@
           ]
         },
         {
+          "name": "quote",
+          "description": "Quote-tweet a specific tweet with text and optional image",
+          "when_to_use": "Quote-tweet a specific tweet with text and optional image",
+          "command": "unicli twitter quote",
+          "auth": true,
+          "strategy": "ui",
+          "browser": true,
+          "columns": ["status", "message", "text"],
+          "args": [
+            {
+              "name": "url",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Tweet URL to quote"
+            },
+            {
+              "name": "text",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Quote text"
+            },
+            {
+              "name": "image",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Optional local image path"
+            },
+            {
+              "name": "image-url",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Optional remote image URL"
+            }
+          ]
+        },
+        {
           "name": "reply-dm",
           "description": "Reply to a DM conversation",
           "when_to_use": "Reply to a DM conversation",
@@ -26023,6 +30718,63 @@
           "columns": ["name", "tweet_count", "description", "url"]
         },
         {
+          "name": "unlike",
+          "description": "Twitter unlike a specific tweet",
+          "when_to_use": "Twitter unlike a specific tweet",
+          "command": "unicli twitter unlike",
+          "auth": true,
+          "strategy": "ui",
+          "browser": true,
+          "columns": ["status", "message"],
+          "args": [
+            {
+              "name": "url",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Tweet URL"
+            }
+          ]
+        },
+        {
+          "name": "retweet",
+          "description": "Twitter retweet a specific tweet",
+          "when_to_use": "Twitter retweet a specific tweet",
+          "command": "unicli twitter retweet",
+          "auth": true,
+          "strategy": "ui",
+          "browser": true,
+          "columns": ["status", "message"],
+          "args": [
+            {
+              "name": "url",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Tweet URL"
+            }
+          ]
+        },
+        {
+          "name": "unretweet",
+          "description": "Twitter unretweet a specific tweet",
+          "when_to_use": "Twitter unretweet a specific tweet",
+          "command": "unicli twitter unretweet",
+          "auth": true,
+          "strategy": "ui",
+          "browser": true,
+          "columns": ["status", "message"],
+          "args": [
+            {
+              "name": "url",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Tweet URL"
+            }
+          ]
+        },
+        {
           "name": "unblock",
           "description": "Unblock a user",
           "when_to_use": "Unblock a user",
@@ -26073,6 +30825,34 @@
               "required": true,
               "positional": true,
               "description": "User numeric ID to unfollow"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "uisdc",
+      "type": "web-api",
+      "domain": "www.uisdc.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "news",
+          "description": "UISDC latest AI and design news",
+          "when_to_use": "UISDC latest AI and design news",
+          "command": "unicli uisdc news",
+          "auth": false,
+          "strategy": "public",
+          "browser": true,
+          "columns": ["rank", "title", "summary", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
             }
           ]
         }
@@ -26764,7 +31544,7 @@
       "type": "web-api",
       "domain": "weibo.com",
       "auth": true,
-      "strategy": "cookie",
+      "strategy": "ui",
       "commands": [
         {
           "name": "comments",
@@ -26999,6 +31779,57 @@
               "required": true,
               "positional": true,
               "description": "User ID (numeric uid)"
+            }
+          ]
+        },
+        {
+          "name": "favorites",
+          "description": "Read your Weibo favorites",
+          "when_to_use": "Read your Weibo favorites",
+          "command": "unicli weibo favorites",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "author",
+            "text",
+            "time",
+            "source",
+            "likes",
+            "comments",
+            "reposts",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "publish",
+          "description": "Publish a new Weibo post immediately",
+          "when_to_use": "Publish a new Weibo post immediately",
+          "command": "unicli weibo publish",
+          "auth": true,
+          "strategy": "ui",
+          "browser": true,
+          "columns": ["status", "message", "text"],
+          "args": [
+            {
+              "name": "text",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "images",
+              "type": "str",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -27351,6 +32182,93 @@
       ]
     },
     {
+      "site": "wikidata",
+      "type": "web-api",
+      "domain": "www.wikidata.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Wikidata items by keyword",
+          "when_to_use": "When you need to search wikidata for a specific query.",
+          "command": "unicli wikidata search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "qid",
+            "label",
+            "description",
+            "matchType",
+            "matchText",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Search keyword"
+            },
+            {
+              "name": "language",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Language code"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
+            }
+          ]
+        },
+        {
+          "name": "entity",
+          "description": "Fetch a Wikidata entity by Q/P/L id",
+          "when_to_use": "Fetch a Wikidata entity by Q/P/L id",
+          "command": "unicli wikidata entity",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "qid",
+            "type",
+            "label",
+            "description",
+            "aliases",
+            "claimPropertyCount",
+            "sitelinkCount",
+            "enwikiTitle",
+            "modified",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Entity id"
+            },
+            {
+              "name": "language",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Language code"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "wikipedia",
       "type": "web-api",
       "domain": "wikipedia.org",
@@ -27453,6 +32371,46 @@
               "required": false,
               "positional": false,
               "description": "Language code (e.g. en, zh, ja)"
+            }
+          ]
+        },
+        {
+          "name": "page",
+          "description": "Full plain-text extract of a Wikipedia article",
+          "when_to_use": "Full plain-text extract of a Wikipedia article",
+          "command": "unicli wikipedia page",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "title",
+            "description",
+            "pageId",
+            "paragraphs",
+            "extract",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "title",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Article title"
+            },
+            {
+              "name": "lang",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Language code"
+            },
+            {
+              "name": "paragraphs",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Paragraph cap, 0 means full"
             }
           ]
         }
@@ -27764,11 +32722,101 @@
       ]
     },
     {
+      "site": "wttr",
+      "type": "web-api",
+      "domain": "wttr.in",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "current",
+          "description": "Current weather conditions for a location",
+          "when_to_use": "Current weather conditions for a location",
+          "command": "unicli wttr current",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "location",
+            "region",
+            "country",
+            "latitude",
+            "longitude",
+            "observedAt",
+            "tempC",
+            "tempF",
+            "feelsLikeC",
+            "feelsLikeF",
+            "description",
+            "humidity",
+            "cloudCover",
+            "pressure",
+            "precipMm",
+            "visibilityKm",
+            "uvIndex",
+            "windKmph",
+            "windDirection",
+            "windDirectionDegree"
+          ],
+          "args": [
+            {
+              "name": "location",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "City, lat/lon, airport code, or domain location"
+            }
+          ]
+        },
+        {
+          "name": "forecast",
+          "description": "Multi-day weather forecast for a location",
+          "when_to_use": "Multi-day weather forecast for a location",
+          "command": "unicli wttr forecast",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "date",
+            "minTempC",
+            "maxTempC",
+            "avgTempC",
+            "minTempF",
+            "maxTempF",
+            "avgTempF",
+            "sunHour",
+            "totalSnowCm",
+            "uvIndex",
+            "description",
+            "sunrise",
+            "sunset"
+          ],
+          "args": [
+            {
+              "name": "location",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "City, lat/lon, airport code, or domain location"
+            },
+            {
+              "name": "days",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Forecast days"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "xianyu",
       "type": "web-api",
       "domain": "www.goofish.com",
       "auth": true,
-      "strategy": "intercept",
+      "strategy": "ui",
       "commands": [
         {
           "name": "chat",
@@ -27839,6 +32887,74 @@
               "required": false,
               "positional": false,
               "description": "Number of results"
+            }
+          ]
+        },
+        {
+          "name": "publish",
+          "description": "Publish a Xianyu listing from a logged-in Goofish browser session",
+          "when_to_use": "Publish a Xianyu listing from a logged-in Goofish browser session",
+          "command": "unicli xianyu publish",
+          "auth": true,
+          "strategy": "ui",
+          "browser": true,
+          "columns": [
+            "status",
+            "item_id",
+            "title",
+            "price",
+            "condition",
+            "url",
+            "message"
+          ],
+          "args": [
+            {
+              "name": "title",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "description",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "price",
+              "type": "float",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "condition",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "category",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "original_price",
+              "type": "float",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "location",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "images",
+              "type": "str",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -29812,7 +34928,7 @@
       "type": "web-api",
       "domain": "yuanbao.tencent.com",
       "auth": true,
-      "strategy": "intercept",
+      "strategy": "cookie",
       "commands": [
         {
           "name": "ask",
@@ -29868,13 +34984,101 @@
               "description": "Number of conversations"
             }
           ]
+        },
+        {
+          "name": "read",
+          "description": "Read messages in the current Yuanbao conversation",
+          "when_to_use": "Read messages in the current Yuanbao conversation",
+          "command": "unicli yuanbao read",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Role", "Text"]
+        },
+        {
+          "name": "send",
+          "description": "Send a prompt to Yuanbao without waiting for the reply",
+          "when_to_use": "When you need to post content to yuanbao.",
+          "command": "unicli yuanbao send",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Status", "Prompt"],
+          "args": [
+            {
+              "name": "prompt",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "new",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "history",
+          "description": "List recent Yuanbao conversations from the sidebar",
+          "when_to_use": "List recent Yuanbao conversations from the sidebar",
+          "command": "unicli yuanbao history",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Index", "Title", "AgentId", "SessionId", "Url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "detail",
+          "description": "Open a Yuanbao conversation by ID and read its messages",
+          "when_to_use": "When you need details about a specific item on yuanbao.",
+          "command": "unicli yuanbao detail",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["Role", "Text"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "status",
+          "description": "Check Yuanbao page availability, login state, current session and model",
+          "when_to_use": "Check Yuanbao page availability, login state, current session and model",
+          "command": "unicli yuanbao status",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "Status",
+            "Login",
+            "Model",
+            "ModelId",
+            "AgentId",
+            "SessionId",
+            "Url"
+          ]
         }
       ]
     },
     {
       "site": "zhihu",
       "type": "web-api",
-      "domain": "zhihu.com",
+      "domain": "www.zhihu.com",
       "auth": true,
       "strategy": "cookie",
       "commands": [
@@ -30476,6 +35680,98 @@
               "type": "bool",
               "required": false,
               "positional": false
+            }
+          ]
+        },
+        {
+          "name": "collection",
+          "description": "List items in a Zhihu collection",
+          "when_to_use": "List items in a Zhihu collection",
+          "command": "unicli zhihu collection",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "rank",
+            "type",
+            "title",
+            "author",
+            "votes",
+            "excerpt",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Collection ID"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Starting offset"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of items"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "zlibrary",
+      "type": "web-api",
+      "domain": "z-library.im",
+      "auth": true,
+      "strategy": "cookie",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Z-Library for books by title, author, ISBN, or keyword",
+          "when_to_use": "When you need to search zlibrary for a specific query.",
+          "command": "unicli zlibrary search",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["rank", "title", "author", "url"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "info",
+          "description": "Get book details and available download formats from a Z-Library book page",
+          "when_to_use": "When you need details about a specific item on zlibrary.",
+          "command": "unicli zlibrary info",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["title", "pdf", "epub", "url"],
+          "args": [
+            {
+              "name": "url",
+              "type": "str",
+              "required": true,
+              "positional": true
             }
           ]
         }
@@ -32597,121 +37893,6 @@
           "description": "Press a key in LM Studio, with optional comma-separated modifiers. 在LM Studio桌面版发送按键。",
           "when_to_use": "Press a key in LM Studio, with optional comma-separated modifiers. 在LM Studio桌面版发送按键。",
           "command": "unicli lm-studio press",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "key",
-              "required": true,
-              "positional": true,
-              "description": "Key name"
-            },
-            {
-              "name": "modifiers",
-              "required": false,
-              "positional": false,
-              "description": "Comma-separated modifiers such as meta,shift"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "site": "claude",
-      "type": "web-api",
-      "auth": false,
-      "strategy": "public",
-      "commands": [
-        {
-          "name": "open-app",
-          "description": "Open Claude desktop Electron app with CDP enabled for AI control. 打开Claude桌面版并启用 CDP 控制。",
-          "when_to_use": "Open Claude desktop Electron app with CDP enabled for AI control. 打开Claude桌面版并启用 CDP 控制。",
-          "command": "unicli claude open-app",
-          "auth": false,
-          "strategy": "public",
-          "browser": false
-        },
-        {
-          "name": "status-app",
-          "description": "Inspect current Claude desktop app page, title, URL, visible controls, and text summary. 查看Claude桌面版当前状态和可见内容。",
-          "when_to_use": "Inspect current Claude desktop app page, title, URL, visible controls, and text summary. 查看Claude桌面版当前状态和可见内容。",
-          "command": "unicli claude status-app",
-          "auth": false,
-          "strategy": "public",
-          "browser": false
-        },
-        {
-          "name": "dump",
-          "description": "Dump visible text from the Claude desktop Electron app via CDP DOM. 读取Claude桌面版可见文本。",
-          "when_to_use": "Dump visible text from the Claude desktop Electron app via CDP DOM. 读取Claude桌面版可见文本。",
-          "command": "unicli claude dump",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "limit",
-              "required": false,
-              "positional": false,
-              "description": "Maximum text characters to return"
-            }
-          ]
-        },
-        {
-          "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Claude. 枚举Claude桌面版可交互内容。",
-          "when_to_use": "List visible clickable text, buttons, inputs, and regions in Claude. 枚举Claude桌面版可交互内容。",
-          "command": "unicli claude snapshot-app",
-          "auth": false,
-          "strategy": "public",
-          "browser": false
-        },
-        {
-          "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Claude. 按文本点击Claude桌面版控件。",
-          "when_to_use": "Click visible text, aria-label, title, or button content in Claude. 按文本点击Claude桌面版控件。",
-          "command": "unicli claude click-text",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "text",
-              "required": true,
-              "positional": true,
-              "description": "Visible text, aria-label, or title to click"
-            }
-          ]
-        },
-        {
-          "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Claude. 向Claude桌面版输入文本。",
-          "when_to_use": "Type text into the focused field or a text-matched target in Claude. 向Claude桌面版输入文本。",
-          "command": "unicli claude type-text",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "args": [
-            {
-              "name": "text",
-              "required": true,
-              "positional": true,
-              "description": "Text to type"
-            },
-            {
-              "name": "target",
-              "required": false,
-              "positional": false,
-              "description": "Optional visible text to click before typing"
-            }
-          ]
-        },
-        {
-          "name": "press",
-          "description": "Press a key in Claude, with optional comma-separated modifiers. 在Claude桌面版发送按键。",
-          "when_to_use": "Press a key in Claude, with optional comma-separated modifiers. 在Claude桌面版发送按键。",
-          "command": "unicli claude press",
           "auth": false,
           "strategy": "public",
           "browser": false,

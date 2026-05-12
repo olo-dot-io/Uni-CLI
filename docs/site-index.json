@@ -1,7 +1,7 @@
 {
-  "generated": "2026-05-05T21:13:03.587Z",
-  "total_sites": 238,
-  "total_commands": 1458,
+  "generated": "2026-05-12T16:44:27.511Z",
+  "total_sites": 268,
+  "total_commands": 1616,
   "sites": [
     {
       "site": "1688",
@@ -35,6 +35,61 @@
           "name": "download",
           "description": "Download visible product media assets from a 1688 item page",
           "command": "unicli 1688 download"
+        }
+      ]
+    },
+    {
+      "site": "1point3acres",
+      "type": "web-api",
+      "domain": "www.1point3acres.com",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 9,
+      "commands": [
+        {
+          "name": "hot",
+          "description": "Read hot 1Point3Acres threads",
+          "command": "unicli 1point3acres hot"
+        },
+        {
+          "name": "latest",
+          "description": "Read latest 1Point3Acres threads",
+          "command": "unicli 1point3acres latest"
+        },
+        {
+          "name": "digest",
+          "description": "Read digest 1Point3Acres threads",
+          "command": "unicli 1point3acres digest"
+        },
+        {
+          "name": "forum",
+          "description": "Browse threads from a 1Point3Acres forum by fid",
+          "command": "unicli 1point3acres forum"
+        },
+        {
+          "name": "forums",
+          "description": "List 1Point3Acres forum ids and names",
+          "command": "unicli 1point3acres forums"
+        },
+        {
+          "name": "search",
+          "description": "Search 1Point3Acres forum posts using browser cookies",
+          "command": "unicli 1point3acres search"
+        },
+        {
+          "name": "thread",
+          "description": "Read a 1Point3Acres thread page with floor rows",
+          "command": "unicli 1point3acres thread"
+        },
+        {
+          "name": "notifications",
+          "description": "Read 1Point3Acres account notifications using browser cookies",
+          "command": "unicli 1point3acres notifications"
+        },
+        {
+          "name": "user",
+          "description": "Read a 1Point3Acres user profile",
+          "command": "unicli 1point3acres user"
         }
       ]
     },
@@ -134,6 +189,21 @@
           "name": "toggle",
           "description": "Enable or disable AdGuard Home DNS filtering protection",
           "command": "unicli adguardhome toggle"
+        }
+      ]
+    },
+    {
+      "site": "aibase",
+      "type": "web-api",
+      "domain": "www.aibase.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "news",
+          "description": "AIbase daily AI industry news",
+          "command": "unicli aibase news"
         }
       ]
     },
@@ -330,7 +400,7 @@
       "domain": "export.arxiv.org",
       "auth": false,
       "strategy": "public",
-      "command_count": 3,
+      "command_count": 5,
       "commands": [
         {
           "name": "paper",
@@ -346,6 +416,16 @@
           "name": "trending",
           "description": "Recent arXiv papers by category (newest submissions)",
           "command": "unicli arxiv trending"
+        },
+        {
+          "name": "author",
+          "description": "List arXiv papers by a given author",
+          "command": "unicli arxiv author"
+        },
+        {
+          "name": "recent",
+          "description": "List recent arXiv submissions in a category",
+          "command": "unicli arxiv recent"
         }
       ]
     },
@@ -523,10 +603,10 @@
     {
       "site": "bbc",
       "type": "web-api",
-      "domain": "www.bbc.co.uk",
+      "domain": "feeds.bbci.co.uk",
       "auth": false,
       "strategy": "public",
-      "command_count": 4,
+      "command_count": 5,
       "commands": [
         {
           "name": "news",
@@ -547,6 +627,11 @@
           "name": "world",
           "description": "BBC world news",
           "command": "unicli bbc world"
+        },
+        {
+          "name": "topic",
+          "description": "BBC News headlines for a specific section",
+          "command": "unicli bbc topic"
         }
       ]
     },
@@ -1044,12 +1129,22 @@
       "domain": "chatgpt.com",
       "auth": true,
       "strategy": "public",
-      "command_count": 15,
+      "command_count": 17,
       "commands": [
         {
           "name": "image",
           "description": "Generate an image in ChatGPT web and optionally save visible images",
           "command": "unicli chatgpt image"
+        },
+        {
+          "name": "history",
+          "description": "List visible ChatGPT web conversation history from the sidebar",
+          "command": "unicli chatgpt history"
+        },
+        {
+          "name": "detail",
+          "description": "Open a ChatGPT web conversation by ID and read its messages",
+          "command": "unicli chatgpt detail"
         },
         {
           "name": "ask",
@@ -1232,6 +1327,86 @@
       ]
     },
     {
+      "site": "claude",
+      "type": "web-api",
+      "domain": "claude.ai",
+      "auth": true,
+      "strategy": "public",
+      "command_count": 14,
+      "commands": [
+        {
+          "name": "ask",
+          "description": "Send a prompt to Claude and return the assistant response",
+          "command": "unicli claude ask"
+        },
+        {
+          "name": "send",
+          "description": "Send a prompt to Claude without waiting for a response",
+          "command": "unicli claude send"
+        },
+        {
+          "name": "new",
+          "description": "Start a new conversation in Claude",
+          "command": "unicli claude new"
+        },
+        {
+          "name": "status",
+          "description": "Check Claude page availability and login state",
+          "command": "unicli claude status"
+        },
+        {
+          "name": "read",
+          "description": "Read the current Claude conversation",
+          "command": "unicli claude read"
+        },
+        {
+          "name": "history",
+          "description": "List conversation history from Claude /recents",
+          "command": "unicli claude history"
+        },
+        {
+          "name": "detail",
+          "description": "Open a Claude conversation by ID and read its messages",
+          "command": "unicli claude detail"
+        },
+        {
+          "name": "open-app",
+          "description": "Open Claude desktop Electron app with CDP enabled for AI control.",
+          "command": "unicli claude open-app"
+        },
+        {
+          "name": "status-app",
+          "description": "Inspect current Claude desktop app page, title, URL, visible controls, and text summary.",
+          "command": "unicli claude status-app"
+        },
+        {
+          "name": "dump",
+          "description": "Dump visible text from the Claude desktop Electron app via CDP DOM.",
+          "command": "unicli claude dump"
+        },
+        {
+          "name": "snapshot-app",
+          "description": "List visible clickable text, buttons, inputs, and regions in Claude.",
+          "command": "unicli claude snapshot-app"
+        },
+        {
+          "name": "click-text",
+          "description": "Click visible text, aria-label, title, or button content in Claude.",
+          "command": "unicli claude click-text"
+        },
+        {
+          "name": "type-text",
+          "description": "Type text into the focused field or a text-matched target in Claude.",
+          "command": "unicli claude type-text"
+        },
+        {
+          "name": "press",
+          "description": "Press a key in Claude, with optional comma-separated modifiers.",
+          "command": "unicli claude press"
+        }
+      ]
+    },
+    {
       "site": "claude-code",
       "type": "bridge",
       "auth": false,
@@ -1331,9 +1506,10 @@
     {
       "site": "codex",
       "type": "web-api",
+      "domain": "localhost",
       "auth": false,
       "strategy": "public",
-      "command_count": 17,
+      "command_count": 18,
       "commands": [
         {
           "name": "extract-diff",
@@ -1349,6 +1525,11 @@
           "name": "export",
           "description": "Export the current Codex desktop thread as Markdown text",
           "command": "unicli codex export"
+        },
+        {
+          "name": "projects",
+          "description": "List Codex projects and visible conversations from the sidebar",
+          "command": "unicli codex projects"
         },
         {
           "name": "ask",
@@ -1457,6 +1638,51 @@
       ]
     },
     {
+      "site": "coingecko",
+      "type": "web-api",
+      "domain": "api.coingecko.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 7,
+      "commands": [
+        {
+          "name": "coin",
+          "description": "Fetch a single cryptocurrency's market data by CoinGecko id",
+          "command": "unicli coingecko coin"
+        },
+        {
+          "name": "top",
+          "description": "Top coins by market cap",
+          "command": "unicli coingecko top"
+        },
+        {
+          "name": "trending",
+          "description": "Top trending cryptocurrencies on CoinGecko",
+          "command": "unicli coingecko trending"
+        },
+        {
+          "name": "categories",
+          "description": "Crypto categories ranked by aggregated market cap",
+          "command": "unicli coingecko categories"
+        },
+        {
+          "name": "exchanges",
+          "description": "Top crypto exchanges by 24h BTC trading volume",
+          "command": "unicli coingecko exchanges"
+        },
+        {
+          "name": "derivatives",
+          "description": "Top crypto derivative markets by 24h volume",
+          "command": "unicli coingecko derivatives"
+        },
+        {
+          "name": "global",
+          "description": "Aggregate crypto market stats",
+          "command": "unicli coingecko global"
+        }
+      ]
+    },
+    {
       "site": "comfyui",
       "type": "service",
       "auth": false,
@@ -1490,8 +1716,8 @@
       "type": "web-api",
       "domain": "www.coupang.com",
       "auth": true,
-      "strategy": "intercept",
-      "command_count": 3,
+      "strategy": "cookie",
+      "command_count": 4,
       "commands": [
         {
           "name": "add-to-cart",
@@ -1507,6 +1733,31 @@
           "name": "search",
           "description": "Search Coupang products",
           "command": "unicli coupang search"
+        },
+        {
+          "name": "product",
+          "description": "Read full product detail for a Coupang product",
+          "command": "unicli coupang product"
+        }
+      ]
+    },
+    {
+      "site": "crates",
+      "type": "web-api",
+      "domain": "crates.io",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search the public crates.io registry by keyword",
+          "command": "unicli crates search"
+        },
+        {
+          "name": "crate",
+          "description": "Single crates.io crate metadata",
+          "command": "unicli crates crate"
         }
       ]
     },
@@ -1532,6 +1783,36 @@
           "name": "versions",
           "description": "List versions of a Rust crate",
           "command": "unicli crates-io versions"
+        }
+      ]
+    },
+    {
+      "site": "ctrip",
+      "type": "web-api",
+      "domain": "flights.ctrip.com",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 4,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Ctrip destinations, landmarks, scenic spots, and stations",
+          "command": "unicli ctrip search"
+        },
+        {
+          "name": "hotel-suggest",
+          "description": "Search Ctrip hotel context suggestions",
+          "command": "unicli ctrip hotel-suggest"
+        },
+        {
+          "name": "hotel-search",
+          "description": "Search Ctrip hotel list by city and stay dates",
+          "command": "unicli ctrip hotel-search"
+        },
+        {
+          "name": "flight",
+          "description": "Search Ctrip one-way flights by IATA route and date",
+          "command": "unicli ctrip flight"
         }
       ]
     },
@@ -1674,12 +1955,42 @@
       ]
     },
     {
+      "site": "dblp",
+      "type": "web-api",
+      "domain": "dblp.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 4,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search dblp computer-science bibliography",
+          "command": "unicli dblp search"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch a dblp record by canonical key",
+          "command": "unicli dblp paper"
+        },
+        {
+          "name": "venue",
+          "description": "Search dblp venue registry by name or acronym",
+          "command": "unicli dblp venue"
+        },
+        {
+          "name": "author",
+          "description": "List dblp publications by author name or PID",
+          "command": "unicli dblp author"
+        }
+      ]
+    },
+    {
       "site": "deepseek",
       "type": "web-api",
       "domain": "chat.deepseek.com",
       "auth": true,
       "strategy": "cookie",
-      "command_count": 7,
+      "command_count": 9,
       "commands": [
         {
           "name": "chat",
@@ -1715,6 +2026,36 @@
           "name": "history",
           "description": "List DeepSeek conversation history from the sidebar",
           "command": "unicli deepseek history"
+        },
+        {
+          "name": "detail",
+          "description": "Read a specific DeepSeek conversation by ID",
+          "command": "unicli deepseek detail"
+        },
+        {
+          "name": "send",
+          "description": "Send a prompt to a specific DeepSeek conversation without waiting for a response",
+          "command": "unicli deepseek send"
+        }
+      ]
+    },
+    {
+      "site": "defillama",
+      "type": "web-api",
+      "domain": "defillama.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "protocols",
+          "description": "Top DeFi protocols by current TVL",
+          "command": "unicli defillama protocols"
+        },
+        {
+          "name": "protocol",
+          "description": "Fetch DefiLlama protocol detail by slug",
+          "command": "unicli defillama protocol"
         }
       ]
     },
@@ -1724,7 +2065,7 @@
       "domain": "dev.to",
       "auth": false,
       "strategy": "public",
-      "command_count": 5,
+      "command_count": 6,
       "commands": [
         {
           "name": "latest",
@@ -1750,6 +2091,11 @@
           "name": "user",
           "description": "Recent DEV.to articles from a specific user",
           "command": "unicli devto user"
+        },
+        {
+          "name": "read",
+          "description": "Read a DEV.to article body by id",
+          "command": "unicli devto read"
         }
       ]
     },
@@ -1758,8 +2104,8 @@
       "type": "web-api",
       "domain": "www.dianping.com",
       "auth": true,
-      "strategy": "intercept",
-      "command_count": 2,
+      "strategy": "cookie",
+      "command_count": 3,
       "commands": [
         {
           "name": "hot",
@@ -1770,6 +2116,11 @@
           "name": "search",
           "description": "Search restaurants on Dianping",
           "command": "unicli dianping search"
+        },
+        {
+          "name": "shop",
+          "description": "Read Dianping shop details by shop ID or shop URL",
+          "command": "unicli dianping shop"
         }
       ]
     },
@@ -1997,6 +2348,26 @@
           "name": "tags",
           "description": "List Docker Hub image tags",
           "command": "unicli docker-hub tags"
+        }
+      ]
+    },
+    {
+      "site": "dockerhub",
+      "type": "web-api",
+      "domain": "hub.docker.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Docker Hub repositories by keyword",
+          "command": "unicli dockerhub search"
+        },
+        {
+          "name": "image",
+          "description": "Fetch a Docker Hub repository's public metadata",
+          "command": "unicli dockerhub image"
         }
       ]
     },
@@ -2423,6 +2794,21 @@
       ]
     },
     {
+      "site": "endoflife",
+      "type": "web-api",
+      "domain": "endoflife.date",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "product",
+          "description": "Release cycles and support dates for an endoflife.date product",
+          "command": "unicli endoflife product"
+        }
+      ]
+    },
+    {
       "site": "excel",
       "type": "desktop",
       "auth": false,
@@ -2491,8 +2877,8 @@
       "type": "web-api",
       "domain": "www.facebook.com",
       "auth": true,
-      "strategy": "intercept",
-      "command_count": 12,
+      "strategy": "cookie",
+      "command_count": 14,
       "commands": [
         {
           "name": "add-friend",
@@ -2553,6 +2939,16 @@
           "name": "search",
           "description": "Search Facebook for people, pages, or posts",
           "command": "unicli facebook search"
+        },
+        {
+          "name": "marketplace-listings",
+          "description": "List your Facebook Marketplace seller listings",
+          "command": "unicli facebook marketplace-listings"
+        },
+        {
+          "name": "marketplace-inbox",
+          "description": "List recent Facebook Marketplace buyer and seller conversations",
+          "command": "unicli facebook marketplace-inbox"
         }
       ]
     },
@@ -2697,6 +3093,26 @@
           "name": "press",
           "description": "Press a key in Figma, with optional comma-separated modifiers.",
           "command": "unicli figma press"
+        }
+      ]
+    },
+    {
+      "site": "flathub",
+      "type": "web-api",
+      "domain": "flathub.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Flathub apps by keyword",
+          "command": "unicli flathub search"
+        },
+        {
+          "name": "app",
+          "description": "Fetch full Flathub appstream metadata by app id",
+          "command": "unicli flathub app"
         }
       ]
     },
@@ -3113,6 +3529,26 @@
       ]
     },
     {
+      "site": "goproxy",
+      "type": "web-api",
+      "domain": "proxy.golang.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "module",
+          "description": "Latest version and VCS origin metadata for a Go module",
+          "command": "unicli goproxy module"
+        },
+        {
+          "name": "versions",
+          "description": "Published version tags for a Go module",
+          "command": "unicli goproxy versions"
+        }
+      ]
+    },
+    {
       "site": "gov-law",
       "type": "web-api",
       "domain": "flk.npc.gov.cn",
@@ -3157,13 +3593,48 @@
       "type": "web-api",
       "domain": "grok.com",
       "auth": true,
-      "strategy": "intercept",
-      "command_count": 1,
+      "strategy": "cookie",
+      "command_count": 8,
       "commands": [
         {
           "name": "ask",
           "description": "Ask Grok AI a question",
           "command": "unicli grok ask"
+        },
+        {
+          "name": "read",
+          "description": "Read messages in the current Grok conversation",
+          "command": "unicli grok read"
+        },
+        {
+          "name": "history",
+          "description": "List recent Grok conversations from the sidebar",
+          "command": "unicli grok history"
+        },
+        {
+          "name": "detail",
+          "description": "Open a Grok conversation by ID and read its messages",
+          "command": "unicli grok detail"
+        },
+        {
+          "name": "send",
+          "description": "Send a prompt to Grok without waiting for the reply",
+          "command": "unicli grok send"
+        },
+        {
+          "name": "new",
+          "description": "Start a new conversation in Grok",
+          "command": "unicli grok new"
+        },
+        {
+          "name": "status",
+          "description": "Check Grok page availability, login state, current session and model",
+          "command": "unicli grok status"
+        },
+        {
+          "name": "image",
+          "description": "Generate images with Grok and return or save image assets",
+          "command": "unicli grok image"
         }
       ]
     },
@@ -3173,7 +3644,7 @@
       "domain": "news.ycombinator.com",
       "auth": false,
       "strategy": "public",
-      "command_count": 10,
+      "command_count": 11,
       "commands": [
         {
           "name": "ask",
@@ -3224,6 +3695,11 @@
           "name": "user",
           "description": "Hacker News user profile",
           "command": "unicli hackernews user"
+        },
+        {
+          "name": "read",
+          "description": "Read a Hacker News story and comment tree",
+          "command": "unicli hackernews read"
         }
       ]
     },
@@ -3257,7 +3733,7 @@
       "domain": "huggingface.co",
       "auth": false,
       "strategy": "public",
-      "command_count": 4,
+      "command_count": 5,
       "commands": [
         {
           "name": "datasets",
@@ -3278,6 +3754,11 @@
           "name": "top",
           "description": "Top upvoted Hugging Face papers (daily)",
           "command": "unicli hf top"
+        },
+        {
+          "name": "paper",
+          "description": "Hugging Face paper detail by arXiv id",
+          "command": "unicli hf paper"
         }
       ]
     },
@@ -3287,7 +3768,7 @@
       "domain": "formulae.brew.sh",
       "auth": false,
       "strategy": "public",
-      "command_count": 2,
+      "command_count": 5,
       "commands": [
         {
           "name": "info",
@@ -3298,6 +3779,21 @@
           "name": "search",
           "description": "Search Homebrew formulae",
           "command": "unicli homebrew search"
+        },
+        {
+          "name": "formula",
+          "description": "Fetch Homebrew formula metadata",
+          "command": "unicli homebrew formula"
+        },
+        {
+          "name": "cask",
+          "description": "Fetch Homebrew cask metadata",
+          "command": "unicli homebrew cask"
+        },
+        {
+          "name": "popular",
+          "description": "List most-installed Homebrew formulae or casks",
+          "command": "unicli homebrew popular"
         }
       ]
     },
@@ -3474,6 +3970,26 @@
       ]
     },
     {
+      "site": "indeed",
+      "type": "web-api",
+      "domain": "www.indeed.com",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Indeed jobs through the rendered browser DOM",
+          "command": "unicli indeed search"
+        },
+        {
+          "name": "job",
+          "description": "Read an Indeed job posting by 16-character jk job key",
+          "command": "unicli indeed job"
+        }
+      ]
+    },
+    {
       "site": "infoq",
       "type": "web-api",
       "domain": "www.infoq.com",
@@ -3523,7 +4039,7 @@
       "domain": "www.instagram.com",
       "auth": true,
       "strategy": "ui",
-      "command_count": 26,
+      "command_count": 28,
       "commands": [
         {
           "name": "activity",
@@ -3629,6 +4145,16 @@
           "name": "user",
           "description": "Get recent posts from an Instagram user",
           "command": "unicli instagram user"
+        },
+        {
+          "name": "collection-create",
+          "description": "Create a new Instagram saved-posts collection",
+          "command": "unicli instagram collection-create"
+        },
+        {
+          "name": "collection-delete",
+          "description": "Delete an Instagram saved-posts collection by name or id",
+          "command": "unicli instagram collection-delete"
         },
         {
           "name": "download",
@@ -4182,6 +4708,26 @@
       ]
     },
     {
+      "site": "lichess",
+      "type": "web-api",
+      "domain": "lichess.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "top",
+          "description": "Top-N Lichess leaderboard for a perf type",
+          "command": "unicli lichess top"
+        },
+        {
+          "name": "user",
+          "description": "Fetch a public Lichess player profile by username",
+          "command": "unicli lichess user"
+        }
+      ]
+    },
+    {
       "site": "linear",
       "type": "web-api",
       "domain": "api.linear.app",
@@ -4342,7 +4888,7 @@
       "domain": "lobste.rs",
       "auth": false,
       "strategy": "public",
-      "command_count": 5,
+      "command_count": 7,
       "commands": [
         {
           "name": "active",
@@ -4368,6 +4914,16 @@
           "name": "tag",
           "description": "Lobste.rs stories by tag",
           "command": "unicli lobsters tag"
+        },
+        {
+          "name": "read",
+          "description": "Read a Lobste.rs story and its comment tree",
+          "command": "unicli lobsters read"
+        },
+        {
+          "name": "domain",
+          "description": "Lobste.rs stories submitted from a specific domain",
+          "command": "unicli lobsters domain"
         }
       ]
     },
@@ -4756,7 +5312,7 @@
       "domain": "search.maven.org",
       "auth": false,
       "strategy": "public",
-      "command_count": 2,
+      "command_count": 3,
       "commands": [
         {
           "name": "info",
@@ -4767,6 +5323,26 @@
           "name": "search",
           "description": "Search Maven Central artifacts",
           "command": "unicli maven search"
+        },
+        {
+          "name": "artifact",
+          "description": "Fetch Maven Central artifact version history",
+          "command": "unicli maven artifact"
+        }
+      ]
+    },
+    {
+      "site": "mdn",
+      "type": "web-api",
+      "domain": "developer.mozilla.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search MDN Web Docs by keyword",
+          "command": "unicli mdn search"
         }
       ]
     },
@@ -4776,7 +5352,7 @@
       "domain": "medium.com",
       "auth": false,
       "strategy": "public",
-      "command_count": 5,
+      "command_count": 6,
       "commands": [
         {
           "name": "article",
@@ -4802,6 +5378,11 @@
           "name": "user",
           "description": "Medium user profile and recent articles",
           "command": "unicli medium user"
+        },
+        {
+          "name": "tag",
+          "description": "Latest Medium articles tagged with a keyword from RSS",
+          "command": "unicli medium tag"
         }
       ]
     },
@@ -5375,7 +5956,7 @@
       "domain": "registry.npmjs.org",
       "auth": false,
       "strategy": "public",
-      "command_count": 4,
+      "command_count": 5,
       "commands": [
         {
           "name": "downloads",
@@ -5396,6 +5977,11 @@
           "name": "versions",
           "description": "List all versions of an npm package",
           "command": "unicli npm versions"
+        },
+        {
+          "name": "package",
+          "description": "Single npm package metadata",
+          "command": "unicli npm package"
         }
       ]
     },
@@ -5422,10 +6008,10 @@
     {
       "site": "nuget",
       "type": "web-api",
-      "domain": "nuget.org",
+      "domain": "api.nuget.org",
       "auth": false,
       "strategy": "public",
-      "command_count": 2,
+      "command_count": 3,
       "commands": [
         {
           "name": "info",
@@ -5436,6 +6022,26 @@
           "name": "search",
           "description": "Search NuGet packages",
           "command": "unicli nuget search"
+        },
+        {
+          "name": "package",
+          "description": "Full NuGet package version history",
+          "command": "unicli nuget package"
+        }
+      ]
+    },
+    {
+      "site": "nvd",
+      "type": "web-api",
+      "domain": "services.nvd.nist.gov",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "cve",
+          "description": "NIST NVD CVE detail",
+          "command": "unicli nvd cve"
         }
       ]
     },
@@ -5567,6 +6173,26 @@
       ]
     },
     {
+      "site": "oeis",
+      "type": "web-api",
+      "domain": "oeis.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search OEIS sequences by keyword or numeric pattern",
+          "command": "unicli oeis search"
+        },
+        {
+          "name": "sequence",
+          "description": "Fetch OEIS sequence detail by A-number",
+          "command": "unicli oeis sequence"
+        }
+      ]
+    },
+    {
       "site": "ollama",
       "type": "service",
       "auth": false,
@@ -5661,6 +6287,26 @@
       ]
     },
     {
+      "site": "openalex",
+      "type": "web-api",
+      "domain": "api.openalex.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search OpenAlex Works by keyword",
+          "command": "unicli openalex search"
+        },
+        {
+          "name": "work",
+          "description": "Fetch a single OpenAlex Work",
+          "command": "unicli openalex work"
+        }
+      ]
+    },
+    {
       "site": "opencode",
       "type": "bridge",
       "auth": false,
@@ -5671,6 +6317,26 @@
           "name": "version",
           "description": "Check OpenCode CLI version",
           "command": "unicli opencode version"
+        }
+      ]
+    },
+    {
+      "site": "openfda",
+      "type": "web-api",
+      "domain": "fda.gov",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "drug-label",
+          "description": "Search FDA drug labels by brand or generic name",
+          "command": "unicli openfda drug-label"
+        },
+        {
+          "name": "food-recall",
+          "description": "Search FDA food recall and enforcement actions",
+          "command": "unicli openfda food-recall"
         }
       ]
     },
@@ -5690,6 +6356,41 @@
           "name": "skills-list",
           "description": "List skills installed in the local OpenHarness (~/.openharness/skills)",
           "command": "unicli openharness skills-list"
+        }
+      ]
+    },
+    {
+      "site": "openreview",
+      "type": "web-api",
+      "domain": "openreview.net",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 5,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search OpenReview papers by free-text query",
+          "command": "unicli openreview search"
+        },
+        {
+          "name": "paper",
+          "description": "Show full metadata for a single OpenReview paper",
+          "command": "unicli openreview paper"
+        },
+        {
+          "name": "author",
+          "description": "List OpenReview submissions by author profile id",
+          "command": "unicli openreview author"
+        },
+        {
+          "name": "venue",
+          "description": "List papers at an OpenReview venue or invitation",
+          "command": "unicli openreview venue"
+        },
+        {
+          "name": "reviews",
+          "description": "Show paper, reviews, decisions, and comments for an OpenReview forum",
+          "command": "unicli openreview reviews"
         }
       ]
     },
@@ -5714,12 +6415,32 @@
       ]
     },
     {
+      "site": "osv",
+      "type": "web-api",
+      "domain": "osv.dev",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "query",
+          "description": "OSV.dev vulnerabilities affecting a package",
+          "command": "unicli osv query"
+        },
+        {
+          "name": "vulnerability",
+          "description": "Single OSV.dev vulnerability detail",
+          "command": "unicli osv vulnerability"
+        }
+      ]
+    },
+    {
       "site": "packagist",
       "type": "web-api",
       "domain": "packagist.org",
       "auth": false,
       "strategy": "public",
-      "command_count": 2,
+      "command_count": 3,
       "commands": [
         {
           "name": "info",
@@ -5730,6 +6451,11 @@
           "name": "search",
           "description": "Search Packagist Composer packages",
           "command": "unicli packagist search"
+        },
+        {
+          "name": "package",
+          "description": "Fetch Packagist package metadata",
+          "command": "unicli packagist package"
         }
       ]
     },
@@ -6030,12 +6756,47 @@
       ]
     },
     {
-      "site": "pypi",
+      "site": "pubmed",
       "type": "web-api",
-      "domain": "pypi.org",
+      "domain": "pubmed.ncbi.nlm.nih.gov",
       "auth": false,
       "strategy": "public",
-      "command_count": 3,
+      "command_count": 5,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search PubMed articles",
+          "command": "unicli pubmed search"
+        },
+        {
+          "name": "article",
+          "description": "Get detailed information for a PubMed article by PMID",
+          "command": "unicli pubmed article"
+        },
+        {
+          "name": "author",
+          "description": "Search PubMed articles by author name",
+          "command": "unicli pubmed author"
+        },
+        {
+          "name": "citations",
+          "description": "Get PubMed citation relationships for an article",
+          "command": "unicli pubmed citations"
+        },
+        {
+          "name": "related",
+          "description": "Find articles related to a PubMed article",
+          "command": "unicli pubmed related"
+        }
+      ]
+    },
+    {
+      "site": "pypi",
+      "type": "web-api",
+      "domain": "pypistats.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 5,
       "commands": [
         {
           "name": "info",
@@ -6051,6 +6812,16 @@
           "name": "versions",
           "description": "List all versions of a PyPI package",
           "command": "unicli pypi versions"
+        },
+        {
+          "name": "package",
+          "description": "Single PyPI package metadata",
+          "command": "unicli pypi package"
+        },
+        {
+          "name": "downloads",
+          "description": "PyPI download stats for a package",
+          "command": "unicli pypi downloads"
         }
       ]
     },
@@ -6125,6 +6896,56 @@
       ]
     },
     {
+      "site": "qwen",
+      "type": "web-api",
+      "domain": "www.qianwen.com",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 8,
+      "commands": [
+        {
+          "name": "ask",
+          "description": "Send a prompt to Qwen and return the assistant reply",
+          "command": "unicli qwen ask"
+        },
+        {
+          "name": "read",
+          "description": "Read messages in the current Qwen conversation",
+          "command": "unicli qwen read"
+        },
+        {
+          "name": "send",
+          "description": "Send a prompt to Qwen without waiting for the reply",
+          "command": "unicli qwen send"
+        },
+        {
+          "name": "history",
+          "description": "List recent Qwen conversations",
+          "command": "unicli qwen history"
+        },
+        {
+          "name": "detail",
+          "description": "Open a Qwen conversation by ID and read its messages",
+          "command": "unicli qwen detail"
+        },
+        {
+          "name": "new",
+          "description": "Start a new conversation in Qwen",
+          "command": "unicli qwen new"
+        },
+        {
+          "name": "status",
+          "description": "Check Qwen page availability, login state, current session and model",
+          "command": "unicli qwen status"
+        },
+        {
+          "name": "image",
+          "description": "Generate images with Qwen and save them locally",
+          "command": "unicli qwen image"
+        }
+      ]
+    },
+    {
       "site": "railway",
       "type": "bridge",
       "auth": false,
@@ -6144,7 +6965,7 @@
       "domain": "www.reddit.com",
       "auth": true,
       "strategy": "cookie",
-      "command_count": 20,
+      "command_count": 24,
       "commands": [
         {
           "name": "comment",
@@ -6202,6 +7023,26 @@
           "command": "unicli reddit user"
         },
         {
+          "name": "whoami",
+          "description": "Show the currently logged-in Reddit user",
+          "command": "unicli reddit whoami"
+        },
+        {
+          "name": "home",
+          "description": "Reddit personalized home feed",
+          "command": "unicli reddit home"
+        },
+        {
+          "name": "subreddit-info",
+          "description": "Show metadata for a Reddit subreddit",
+          "command": "unicli reddit subreddit-info"
+        },
+        {
+          "name": "reply",
+          "description": "Reply to a Reddit comment",
+          "command": "unicli reddit reply"
+        },
+        {
           "name": "hot",
           "description": "Reddit front page hot posts",
           "command": "unicli reddit hot"
@@ -6245,6 +7086,51 @@
           "name": "search",
           "description": "Search Reddit posts",
           "command": "unicli reddit search"
+        }
+      ]
+    },
+    {
+      "site": "rednote",
+      "type": "web-api",
+      "domain": "www.rednote.com",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 7,
+      "commands": [
+        {
+          "name": "note",
+          "description": "Read note body and engagement counts from a rednote note",
+          "command": "unicli rednote note"
+        },
+        {
+          "name": "search",
+          "description": "Search rednote notes",
+          "command": "unicli rednote search"
+        },
+        {
+          "name": "user",
+          "description": "Get public notes from a rednote user profile",
+          "command": "unicli rednote user"
+        },
+        {
+          "name": "comments",
+          "description": "Read comments from a rednote note (supports nested replies)",
+          "command": "unicli rednote comments"
+        },
+        {
+          "name": "feed",
+          "description": "Rednote home feed (reads hydrated Pinia store)",
+          "command": "unicli rednote feed"
+        },
+        {
+          "name": "notifications",
+          "description": "Rednote notifications (mentions/likes/connections)",
+          "command": "unicli rednote notifications"
+        },
+        {
+          "name": "download",
+          "description": "Download images and videos from a rednote note",
+          "command": "unicli rednote download"
         }
       ]
     },
@@ -6293,12 +7179,32 @@
       ]
     },
     {
-      "site": "reuters",
+      "site": "rest-countries",
       "type": "web-api",
-      "domain": "reuters.com",
+      "domain": "restcountries.com",
       "auth": false,
       "strategy": "public",
-      "command_count": 4,
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "country",
+          "description": "Look up countries by common or official name",
+          "command": "unicli rest-countries country"
+        },
+        {
+          "name": "region",
+          "description": "List countries in a REST Countries region",
+          "command": "unicli rest-countries region"
+        }
+      ]
+    },
+    {
+      "site": "reuters",
+      "type": "web-api",
+      "domain": "www.reuters.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 5,
       "commands": [
         {
           "name": "article",
@@ -6319,6 +7225,26 @@
           "name": "top",
           "description": "Reuters top stories (front page)",
           "command": "unicli reuters top"
+        },
+        {
+          "name": "article-detail",
+          "description": "Reuters article detail with title, metadata, and body text",
+          "command": "unicli reuters article-detail"
+        }
+      ]
+    },
+    {
+      "site": "rfc",
+      "type": "web-api",
+      "domain": "datatracker.ietf.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "rfc",
+          "description": "Fetch IETF RFC metadata by RFC number",
+          "command": "unicli rfc rfc"
         }
       ]
     },
@@ -6328,7 +7254,7 @@
       "domain": "rubygems.org",
       "auth": false,
       "strategy": "public",
-      "command_count": 2,
+      "command_count": 3,
       "commands": [
         {
           "name": "info",
@@ -6339,6 +7265,11 @@
           "name": "search",
           "description": "Search RubyGems packages",
           "command": "unicli rubygems search"
+        },
+        {
+          "name": "gem",
+          "description": "Fetch RubyGems gem metadata",
+          "command": "unicli rubygems gem"
         }
       ]
     },
@@ -6763,7 +7694,7 @@
       "domain": "stackoverflow.com",
       "auth": false,
       "strategy": "public",
-      "command_count": 6,
+      "command_count": 10,
       "commands": [
         {
           "name": "bounties",
@@ -6794,6 +7725,26 @@
           "name": "unanswered",
           "description": "Top voted unanswered questions on Stack Overflow",
           "command": "unicli stackoverflow unanswered"
+        },
+        {
+          "name": "read",
+          "description": "Read a Stack Overflow question with answers and comments",
+          "command": "unicli stackoverflow read"
+        },
+        {
+          "name": "related",
+          "description": "List Stack Overflow questions related to a question id",
+          "command": "unicli stackoverflow related"
+        },
+        {
+          "name": "tag",
+          "description": "List Stack Overflow questions tagged with a given tag",
+          "command": "unicli stackoverflow tag"
+        },
+        {
+          "name": "user",
+          "description": "Find Stack Overflow users by display name",
+          "command": "unicli stackoverflow user"
         }
       ]
     },
@@ -6817,7 +7768,7 @@
       "domain": "store.steampowered.com",
       "auth": false,
       "strategy": "public",
-      "command_count": 6,
+      "command_count": 7,
       "commands": [
         {
           "name": "app-details",
@@ -6848,6 +7799,11 @@
           "name": "wishlist",
           "description": "Get a Steam user's public wishlist",
           "command": "unicli steam wishlist"
+        },
+        {
+          "name": "app",
+          "description": "Steam storefront detail for a single app id",
+          "command": "unicli steam app"
         }
       ]
     },
@@ -7060,8 +8016,8 @@
       "type": "web-api",
       "domain": "www.tiktok.com",
       "auth": true,
-      "strategy": "intercept",
-      "command_count": 16,
+      "strategy": "cookie",
+      "command_count": 17,
       "commands": [
         {
           "name": "comment",
@@ -7142,6 +8098,11 @@
           "name": "user",
           "description": "Get recent videos from a TikTok user",
           "command": "unicli tiktok user"
+        },
+        {
+          "name": "creator-videos",
+          "description": "Read TikTok Studio creator content metrics",
+          "command": "unicli tiktok creator-videos"
         }
       ]
     },
@@ -7167,6 +8128,26 @@
           "name": "articles",
           "description": "List Toutiao creator dashboard articles",
           "command": "unicli toutiao articles"
+        }
+      ]
+    },
+    {
+      "site": "tvmaze",
+      "type": "web-api",
+      "domain": "tvmaze.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search TVmaze shows by title",
+          "command": "unicli tvmaze search"
+        },
+        {
+          "name": "show",
+          "description": "Fetch TVmaze show detail by id",
+          "command": "unicli tvmaze show"
         }
       ]
     },
@@ -7206,7 +8187,7 @@
       "domain": "x.com",
       "auth": true,
       "strategy": "cookie",
-      "command_count": 38,
+      "command_count": 44,
       "commands": [
         {
           "name": "lists",
@@ -7267,6 +8248,16 @@
           "name": "block",
           "description": "Block a user",
           "command": "unicli twitter block"
+        },
+        {
+          "name": "bookmark-folders",
+          "description": "List Twitter/X bookmark folders",
+          "command": "unicli twitter bookmark-folders"
+        },
+        {
+          "name": "bookmark-folder",
+          "description": "Read tweets inside a Twitter/X bookmark folder",
+          "command": "unicli twitter bookmark-folder"
         },
         {
           "name": "bookmark",
@@ -7354,6 +8345,11 @@
           "command": "unicli twitter profile"
         },
         {
+          "name": "quote",
+          "description": "Quote-tweet a specific tweet with text and optional image",
+          "command": "unicli twitter quote"
+        },
+        {
           "name": "reply-dm",
           "description": "Reply to a DM conversation",
           "command": "unicli twitter reply-dm"
@@ -7384,6 +8380,21 @@
           "command": "unicli twitter trending"
         },
         {
+          "name": "unlike",
+          "description": "Twitter unlike a specific tweet",
+          "command": "unicli twitter unlike"
+        },
+        {
+          "name": "retweet",
+          "description": "Twitter retweet a specific tweet",
+          "command": "unicli twitter retweet"
+        },
+        {
+          "name": "unretweet",
+          "description": "Twitter unretweet a specific tweet",
+          "command": "unicli twitter unretweet"
+        },
+        {
           "name": "unblock",
           "description": "Unblock a user",
           "command": "unicli twitter unblock"
@@ -7397,6 +8408,21 @@
           "name": "unfollow",
           "description": "Unfollow a user",
           "command": "unicli twitter unfollow"
+        }
+      ]
+    },
+    {
+      "site": "uisdc",
+      "type": "web-api",
+      "domain": "www.uisdc.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "news",
+          "description": "UISDC latest AI and design news",
+          "command": "unicli uisdc news"
         }
       ]
     },
@@ -7637,8 +8663,8 @@
       "type": "web-api",
       "domain": "weibo.com",
       "auth": true,
-      "strategy": "cookie",
-      "command_count": 10,
+      "strategy": "ui",
+      "command_count": 12,
       "commands": [
         {
           "name": "comments",
@@ -7689,6 +8715,16 @@
           "name": "user",
           "description": "Get Weibo user profile by UID",
           "command": "unicli weibo user"
+        },
+        {
+          "name": "favorites",
+          "description": "Read your Weibo favorites",
+          "command": "unicli weibo favorites"
+        },
+        {
+          "name": "publish",
+          "description": "Publish a new Weibo post immediately",
+          "command": "unicli weibo publish"
         }
       ]
     },
@@ -7783,12 +8819,32 @@
       ]
     },
     {
+      "site": "wikidata",
+      "type": "web-api",
+      "domain": "www.wikidata.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Wikidata items by keyword",
+          "command": "unicli wikidata search"
+        },
+        {
+          "name": "entity",
+          "description": "Fetch a Wikidata entity by Q/P/L id",
+          "command": "unicli wikidata entity"
+        }
+      ]
+    },
+    {
       "site": "wikipedia",
       "type": "web-api",
       "domain": "wikipedia.org",
       "auth": false,
       "strategy": "public",
-      "command_count": 5,
+      "command_count": 6,
       "commands": [
         {
           "name": "random",
@@ -7814,6 +8870,11 @@
           "name": "trending",
           "description": "Most-read Wikipedia articles (yesterday)",
           "command": "unicli wikipedia trending"
+        },
+        {
+          "name": "page",
+          "description": "Full plain-text extract of a Wikipedia article",
+          "command": "unicli wikipedia page"
         }
       ]
     },
@@ -7910,12 +8971,32 @@
       ]
     },
     {
+      "site": "wttr",
+      "type": "web-api",
+      "domain": "wttr.in",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "current",
+          "description": "Current weather conditions for a location",
+          "command": "unicli wttr current"
+        },
+        {
+          "name": "forecast",
+          "description": "Multi-day weather forecast for a location",
+          "command": "unicli wttr forecast"
+        }
+      ]
+    },
+    {
       "site": "xianyu",
       "type": "web-api",
       "domain": "www.goofish.com",
       "auth": true,
-      "strategy": "intercept",
-      "command_count": 3,
+      "strategy": "ui",
+      "command_count": 4,
       "commands": [
         {
           "name": "chat",
@@ -7931,6 +9012,11 @@
           "name": "search",
           "description": "Search Xianyu (Goofish) second-hand items",
           "command": "unicli xianyu search"
+        },
+        {
+          "name": "publish",
+          "description": "Publish a Xianyu listing from a logged-in Goofish browser session",
+          "command": "unicli xianyu publish"
         }
       ]
     },
@@ -8438,8 +9524,8 @@
       "type": "web-api",
       "domain": "yuanbao.tencent.com",
       "auth": true,
-      "strategy": "intercept",
-      "command_count": 3,
+      "strategy": "cookie",
+      "command_count": 8,
       "commands": [
         {
           "name": "ask",
@@ -8455,16 +9541,41 @@
           "name": "shared",
           "description": "List Tencent Yuanbao shared conversations",
           "command": "unicli yuanbao shared"
+        },
+        {
+          "name": "read",
+          "description": "Read messages in the current Yuanbao conversation",
+          "command": "unicli yuanbao read"
+        },
+        {
+          "name": "send",
+          "description": "Send a prompt to Yuanbao without waiting for the reply",
+          "command": "unicli yuanbao send"
+        },
+        {
+          "name": "history",
+          "description": "List recent Yuanbao conversations from the sidebar",
+          "command": "unicli yuanbao history"
+        },
+        {
+          "name": "detail",
+          "description": "Open a Yuanbao conversation by ID and read its messages",
+          "command": "unicli yuanbao detail"
+        },
+        {
+          "name": "status",
+          "description": "Check Yuanbao page availability, login state, current session and model",
+          "command": "unicli yuanbao status"
         }
       ]
     },
     {
       "site": "zhihu",
       "type": "web-api",
-      "domain": "zhihu.com",
+      "domain": "www.zhihu.com",
       "auth": true,
       "strategy": "cookie",
-      "command_count": 24,
+      "command_count": 25,
       "commands": [
         {
           "name": "answer",
@@ -8585,6 +9696,31 @@
           "name": "favorite",
           "description": "Favorite a Zhihu answer or article into an existing collection",
           "command": "unicli zhihu favorite"
+        },
+        {
+          "name": "collection",
+          "description": "List items in a Zhihu collection",
+          "command": "unicli zhihu collection"
+        }
+      ]
+    },
+    {
+      "site": "zlibrary",
+      "type": "web-api",
+      "domain": "z-library.im",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Z-Library for books by title, author, ISBN, or keyword",
+          "command": "unicli zlibrary search"
+        },
+        {
+          "name": "info",
+          "description": "Get book details and available download formats from a Z-Library book page",
+          "command": "unicli zlibrary info"
         }
       ]
     },
@@ -9388,50 +10524,6 @@
           "name": "press",
           "description": "Press a key in LM Studio, with optional comma-separated modifiers.",
           "command": "unicli lm-studio press"
-        }
-      ]
-    },
-    {
-      "site": "claude",
-      "type": "web-api",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 7,
-      "commands": [
-        {
-          "name": "open-app",
-          "description": "Open Claude desktop Electron app with CDP enabled for AI control.",
-          "command": "unicli claude open-app"
-        },
-        {
-          "name": "status-app",
-          "description": "Inspect current Claude desktop app page, title, URL, visible controls, and text summary.",
-          "command": "unicli claude status-app"
-        },
-        {
-          "name": "dump",
-          "description": "Dump visible text from the Claude desktop Electron app via CDP DOM.",
-          "command": "unicli claude dump"
-        },
-        {
-          "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Claude.",
-          "command": "unicli claude snapshot-app"
-        },
-        {
-          "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Claude.",
-          "command": "unicli claude click-text"
-        },
-        {
-          "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Claude.",
-          "command": "unicli claude type-text"
-        },
-        {
-          "name": "press",
-          "description": "Press a key in Claude, with optional comma-separated modifiers.",
-          "command": "unicli claude press"
         }
       ]
     },

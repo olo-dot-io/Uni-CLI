@@ -1,8 +1,8 @@
 # Uni-CLI Copy Rules
 
-> Current version: v0.219.0 — Vostok · Gagarin.
+> Current version: v0.220.0 — Apollo · Lovell.
 >
-> Current scale: <!-- STATS:site_count -->268<!-- /STATS --> sites, <!-- STATS:command_count -->1616<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->1113<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->925<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->188<!-- /STATS --> TS), <!-- STATS:test_count -->8186<!-- /STATS --> tests.
+> Current scale: <!-- STATS:site_count -->268<!-- /STATS --> sites, <!-- STATS:command_count -->1616<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->1113<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->925<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->188<!-- /STATS --> TS), <!-- STATS:test_count -->8188<!-- /STATS --> tests.
 
 This file keeps docs and user-facing copy consistent. Public pages should expose
 install, command, output, and repair facts with the fewest words needed.
