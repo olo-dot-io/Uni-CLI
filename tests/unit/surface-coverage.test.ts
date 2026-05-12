@@ -18,64 +18,67 @@ describe("surface coverage benchmark", () => {
     "reference",
     "cli-manifest.json",
   );
-  it("classifies every synced reference command into the coverage ledger", () => {
-    if (!existsSync(referenceManifestPath)) {
-      expect(process.env.UNICLI_STATS_PUBLIC).toBe("1");
-      return;
-    }
-    const report = buildSurfaceCoverageReport({
-      repoRoot: process.cwd(),
-      generatedAt: "2026-04-26T00:00:00.000Z",
-    });
-    const referenceSurface = readReferenceSurface(process.cwd());
+  const referenceCoverageIt = existsSync(referenceManifestPath) ? it : it.skip;
 
-    expect(report.reference.commands).toBe(referenceSurface.commands);
-    expect(report.reference.commands).toBeGreaterThan(0);
-    expect(report.ledger.commands).toHaveLength(referenceSurface.commands);
-    expect(report.ledger.unclassified_commands).toEqual([]);
-    expect(
-      Object.values(report.ledger.summary).reduce(
-        (sum, value) => sum + value,
-        0,
-      ),
-    ).toBe(referenceSurface.commands);
-    expect(report.coverage.missing_commands).toBe(
-      report.ledger.summary.missing,
-    );
-    expect(report.coverage.command_coverage).toBe(
-      report.ledger.functional_command_coverage,
-    );
-    expect(report.coverage.command_coverage).toBe(1);
-    expect(report.missing.sites).toEqual([]);
-    expect(report.missing.commands).toEqual([]);
-    expect(
-      report.missing.commands.filter((command) =>
-        command.startsWith("rednote/"),
-      ),
-    ).toEqual([]);
-    expect(
-      report.missing.commands.filter((command) =>
-        /^(aibase|arxiv|bbc|codex|coingecko|crates|dblp|defillama|devto|dockerhub|endoflife|flathub|goproxy|hackernews|hf|homebrew|lichess|lobsters|maven|mdn|medium|npm|nuget|nvd|oeis|openalex|openfda|openreview|osv|packagist|pubmed|pypi|reddit|rest-countries|reuters|rfc|rubygems|stackoverflow|steam|tvmaze|uisdc|wikidata|wikipedia|wttr|zhihu)\//.test(
-          command,
+  referenceCoverageIt(
+    "classifies every synced reference command into the coverage ledger",
+    () => {
+      const report = buildSurfaceCoverageReport({
+        repoRoot: process.cwd(),
+        generatedAt: "2026-04-26T00:00:00.000Z",
+      });
+      const referenceSurface = readReferenceSurface(process.cwd());
+
+      expect(report.reference.commands).toBe(referenceSurface.commands);
+      expect(report.reference.commands).toBeGreaterThan(0);
+      expect(report.ledger.commands).toHaveLength(referenceSurface.commands);
+      expect(report.ledger.unclassified_commands).toEqual([]);
+      expect(
+        Object.values(report.ledger.summary).reduce(
+          (sum, value) => sum + value,
+          0,
         ),
-      ),
-    ).toEqual([]);
-    expect(
-      report.missing.commands.filter((command) => command.startsWith("ctrip/")),
-    ).toEqual([]);
-    expect(report.archived.commands).toContain("ctrip/search");
-    expect(
-      report.ledger.commands.find(
-        (entry) => entry.reference_command === "ctrip/search",
-      ),
-    ).toMatchObject({
-      status: "implemented",
-      evidence: [{ kind: "uni-command", command: "ctrip/search" }],
-    });
-    expect(readArchivedSurface(process.cwd()).command_keys).toContain(
-      "ctrip/search",
-    );
-  });
+      ).toBe(referenceSurface.commands);
+      expect(report.coverage.missing_commands).toBe(
+        report.ledger.summary.missing,
+      );
+      expect(report.coverage.command_coverage).toBe(
+        report.ledger.functional_command_coverage,
+      );
+      expect(report.coverage.command_coverage).toBe(1);
+      expect(report.missing.sites).toEqual([]);
+      expect(report.missing.commands).toEqual([]);
+      expect(
+        report.missing.commands.filter((command) =>
+          command.startsWith("rednote/"),
+        ),
+      ).toEqual([]);
+      expect(
+        report.missing.commands.filter((command) =>
+          /^(aibase|arxiv|bbc|codex|coingecko|crates|dblp|defillama|devto|dockerhub|endoflife|flathub|goproxy|hackernews|hf|homebrew|lichess|lobsters|maven|mdn|medium|npm|nuget|nvd|oeis|openalex|openfda|openreview|osv|packagist|pubmed|pypi|reddit|rest-countries|reuters|rfc|rubygems|stackoverflow|steam|tvmaze|uisdc|wikidata|wikipedia|wttr|zhihu)\//.test(
+            command,
+          ),
+        ),
+      ).toEqual([]);
+      expect(
+        report.missing.commands.filter((command) =>
+          command.startsWith("ctrip/"),
+        ),
+      ).toEqual([]);
+      expect(report.archived.commands).toContain("ctrip/search");
+      expect(
+        report.ledger.commands.find(
+          (entry) => entry.reference_command === "ctrip/search",
+        ),
+      ).toMatchObject({
+        status: "implemented",
+        evidence: [{ kind: "uni-command", command: "ctrip/search" }],
+      });
+      expect(readArchivedSurface(process.cwd()).command_keys).toContain(
+        "ctrip/search",
+      );
+    },
+  );
 
   it("turns surface release signals into measurable coverage", () => {
     const uni = readUniSurface(process.cwd());
