@@ -39,6 +39,18 @@ function rootPackage(): {
   };
 }
 
+function stripNodeDeprecationWarnings(stderr: string): string {
+  return stderr
+    .split(/\r?\n/)
+    .filter(
+      (line) =>
+        !line.includes("[DEP0205] DeprecationWarning") &&
+        !line.includes("Use `node --trace-deprecation ...`"),
+    )
+    .join("\n")
+    .trim();
+}
+
 function runCatalogGenerator(catalogPath: string, siteIndexPath: string): void {
   const result = spawnSync(
     npxBin,
@@ -51,7 +63,7 @@ function runCatalogGenerator(catalogPath: string, siteIndexPath: string): void {
   );
 
   expect(result.status).toBe(0);
-  expect(result.stderr).toBe("");
+  expect(stripNodeDeprecationWarnings(result.stderr)).toBe("");
 }
 
 function runReleaseDryRun(): void {
@@ -66,7 +78,7 @@ function runReleaseDryRun(): void {
   });
 
   expect(result.status, `${result.stderr}\n${result.stdout}`).toBe(0);
-  expect(result.stderr).toBe("");
+  expect(stripNodeDeprecationWarnings(result.stderr)).toBe("");
 }
 
 describe("verify scripts", () => {

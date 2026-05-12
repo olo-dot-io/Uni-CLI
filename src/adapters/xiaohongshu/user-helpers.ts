@@ -50,13 +50,15 @@ export function buildXhsNoteUrl(
   userId: string,
   noteId: string,
   xsecToken?: string,
+  host = "www.xiaohongshu.com",
 ): string {
   const cleanUserId = toCleanString(userId);
   const cleanNoteId = toCleanString(noteId);
+  const cleanHost = toCleanString(host) || "www.xiaohongshu.com";
   if (!cleanUserId || !cleanNoteId) return "";
 
   const url = new URL(
-    `https://www.xiaohongshu.com/user/profile/${cleanUserId}/${cleanNoteId}`,
+    `https://${cleanHost}/user/profile/${cleanUserId}/${cleanNoteId}`,
   );
   const cleanToken = toCleanString(xsecToken);
   if (cleanToken) {
@@ -70,6 +72,7 @@ export function buildXhsNoteUrl(
 export function extractXhsUserNotes(
   snapshot: XhsUserPageSnapshot,
   fallbackUserId: string,
+  host = "www.xiaohongshu.com",
 ): XhsUserNoteRow[] {
   const notes = flattenXhsNoteGroups(snapshot.noteGroups);
   const rows: XhsUserNoteRow[] = [];
@@ -117,7 +120,7 @@ export function extractXhsUserNotes(
       type: toCleanString(noteCard.type),
       likes,
       cover,
-      url: buildXhsNoteUrl(userId || fallbackUserId, noteId, xsecToken),
+      url: buildXhsNoteUrl(userId || fallbackUserId, noteId, xsecToken, host),
     });
   }
 

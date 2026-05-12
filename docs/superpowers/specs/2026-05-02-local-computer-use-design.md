@@ -166,7 +166,7 @@ This is the user's actual ask: they don't want to think about whether they're ca
 2. New `--profile compute` flag that exposes only the computer-use surface (~15 tools).
 3. New separate binary `unicli-compute-mcp` (matches Codex's split between `codex mcp-server` and `computer-use`).
 
-**RECOMMEND: 2.** Same binary, focused tool list. Avoids the 855-tool token bomb of `--expanded` (real problem, see opencli-audit-2026-04-15 memory). Codex went with separate binaries for governance reasons we don't have. One binary, focused profile, lazy tool loading.
+**RECOMMEND: 2.** Same binary, focused tool list. Avoids the 855-tool token bomb of `--expanded` (real problem, see tool-surface-audit-2026-04-15 memory). Codex went with separate binaries for governance reasons we don't have. One binary, focused profile, lazy tool loading.
 
 ### DECISION 8 — Anti-screenshot stance
 

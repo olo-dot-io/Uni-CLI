@@ -18,10 +18,10 @@ import "../../src/engine/steps/index.js";
 import { listCommands } from "../../src/registry.js";
 
 const EXPECTED_PACKAGE_REGISTRIES = {
-  maven: ["info", "search"],
-  nuget: ["info", "search"],
-  rubygems: ["info", "search"],
-  packagist: ["info", "search"],
+  maven: ["artifact", "info", "search"],
+  nuget: ["info", "package", "search"],
+  rubygems: ["gem", "info", "search"],
+  packagist: ["info", "package", "search"],
   "pub-dev": ["info", "search"],
 } as const;
 

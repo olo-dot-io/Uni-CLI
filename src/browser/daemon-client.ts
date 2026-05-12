@@ -20,8 +20,8 @@ const DEFAULT_COMMAND_TIMEOUT = 30_000;
 const MAX_RETRIES = 4;
 const NETWORK_RETRY_DELAY = 500;
 const EXTENSION_RETRY_DELAY = 1500;
-const COMPAT_DAEMON_PORT_ENV = ["OPEN", "CLI_DAEMON_PORT"].join("");
-const COMPAT_DAEMON_HEADER = ["X-Open", "CLI"].join("");
+const COMPAT_DAEMON_PORT_ENV = "UNICLI_COMPAT_DAEMON_PORT";
+const COMPAT_DAEMON_HEADER = "X-Unicli-Compat";
 
 function getPort(): number {
   return parseInt(

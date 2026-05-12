@@ -29,7 +29,7 @@ describe("adapter loader", () => {
     }
   });
 
-  it("loads hackernews adapter with all 10 commands", () => {
+  it("loads hackernews adapter with all 11 commands", () => {
     const adapters = getAllAdapters();
     const hn = adapters.find((a) => a.name === "hackernews");
     expect(hn).toBeDefined();
@@ -41,6 +41,7 @@ describe("adapter loader", () => {
         "item",
         "jobs",
         "new",
+        "read",
         "search",
         "show",
         "top",

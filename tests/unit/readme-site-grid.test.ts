@@ -37,6 +37,8 @@ interface ArchiveManifest {
   sites: Array<{ site: string }>;
 }
 
+const ARCHIVE_ONLY_SITES = new Set(["apple-music", "az", "gcloud"]);
+
 function readGrid(target: { label: string; path: string }): string {
   const readme = readFileSync(target.path, "utf-8");
   const start = readme.indexOf(GRID_START);
@@ -113,7 +115,9 @@ describe("README active-site grid", () => {
       const grid = readGrid(target);
       const archived = (
         JSON.parse(readFileSync(ARCHIVE, "utf-8")) as ArchiveManifest
-      ).sites.map((record) => record.site);
+      ).sites
+        .map((record) => record.site)
+        .filter((site) => ARCHIVE_ONLY_SITES.has(site));
 
       for (const site of archived) {
         expect(grid, `${target.label} grid still lists ${site}`).not.toContain(

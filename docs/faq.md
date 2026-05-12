@@ -9,7 +9,7 @@ Quick answers to the questions agents and developers ask most often. Each answer
 
 ## What is Uni-CLI?
 
-Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across <span><!-- STATS:site_count -->238<!-- /STATS --></span> sites and tools, returning a stable v2 AgentEnvelope on every call.
+Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across <span><!-- STATS:site_count -->268<!-- /STATS --></span> sites and tools, returning a stable v2 AgentEnvelope on every call.
 
 ## How is Uni-CLI different from a browser automation library?
 
@@ -29,7 +29,7 @@ Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, and any runtime that can spa
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.219.0 covers <span><!-- STATS:site_count -->238<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1458<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1048<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->7920<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, government policy, podcasts, and macOS apps.
+v0.219.0 covers <span><!-- STATS:site_count -->268<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1616<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1113<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8186<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, government policy, podcasts, and macOS apps.
 
 ## Can I add a new site without writing TypeScript?
 

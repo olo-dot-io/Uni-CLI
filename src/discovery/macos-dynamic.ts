@@ -216,11 +216,24 @@ function findToolKitDatabase(home = homedir()): string | undefined {
   const dir = join(home, "Library", "Shortcuts", "ToolKit");
   if (!existsSync(dir)) return undefined;
 
-  const files = readdirSync(dir)
+  let names: string[];
+  try {
+    names = readdirSync(dir);
+  } catch {
+    // REASON: macOS Shortcuts data is a user permission boundary; absence or EPERM means ToolKit dynamic actions are unavailable.
+    return undefined;
+  }
+
+  const files = names
     .filter((file) => /^Tools-.*\.sqlite$/.test(file))
-    .map((file) => {
+    .flatMap((file) => {
       const path = join(dir, file);
-      return { path, mtimeMs: statSync(path).mtimeMs };
+      try {
+        return [{ path, mtimeMs: statSync(path).mtimeMs }];
+      } catch {
+        // REASON: ToolKit database files can be rotated or permission-gated between directory read and stat.
+        return [];
+      }
     })
     .sort((a, b) => b.mtimeMs - a.mtimeMs);
 

@@ -360,14 +360,14 @@ unicli-atspi}` with rust-toolchain pinned to 1.82.0 and a 6-target CI
 - Public LLM/docs markdown assets were regenerated so published docs match the
   current 235-site / 1448-command release surface.
 
-## [0.216.0] — 2026-04-27 — OpenCLI Parity Harness
+## [0.216.0] — 2026-04-27 — Surface Coverage Harness
 
 ### Added
 
-- **OpenCLI parity benchmark** — `pnpm bench:opencli-parity` compares the
+- **Surface coverage benchmark** — `pnpm bench:surface-coverage` compares the
   synced reference manifest against Uni-CLI's generated manifest, reports
   site/command gaps, and can fail CI with `--fail-on-gaps`.
-- **Latest OpenCLI signal watchlist** — public OpenCLI PR/issue movements for
+- **Latest surface signal watchlist** — release-signal movements for
   Google Scholar, Instagram, Doubao, browser upload, daemon ports,
   debugger-detach retry, plugin daemon docs, bind-current, browser network
   detail, and DeepSeek file upload are now checked as quantitative signals.

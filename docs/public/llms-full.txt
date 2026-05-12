@@ -3661,7 +3661,7 @@ unicli browser --daemon-port 19826 status
 unicli browser --daemon-port 19826 upload 12 ./fixture.png
 ```
 
-Plugins that still need OpenCLI compatibility may set `OPENCLI_DAEMON_PORT`;
+Plugins that still need legacy daemon compatibility may set `UNICLI_COMPAT_DAEMON_PORT`;
 Uni-CLI will honor it when `UNICLI_DAEMON_PORT` is not set. New plugins
 should prefer the Uni-CLI environment variable and the `X-Unicli` daemon
 header.

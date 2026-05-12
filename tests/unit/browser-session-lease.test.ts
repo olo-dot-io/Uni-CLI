@@ -15,6 +15,7 @@ describe("browser session lease", () => {
       expectedPathPrefix: "feed",
     });
 
+    expect(lease.browser_session_id).toMatch(/^browser-session:/);
     expect(lease.url_guard).toEqual({
       expected_domain: "example.com",
       expected_path_prefix: "/feed",

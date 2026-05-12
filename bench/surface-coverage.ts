@@ -1,8 +1,8 @@
 /**
- * @owner   bench/opencli-parity.ts
- * @does    Compare Uni-CLI active command coverage against the synced OpenCLI reference and tracked signal cases.
- * @needs   dist/manifest.json, ref/opencli/cli-manifest.json, optional src/adapters/_archived/archive.json
- * @feeds   tests/unit/opencli-parity.test.ts, npm run bench:opencli-parity, roadmap coverage evidence
+ * @owner   bench/surface-coverage.ts
+ * @does    Compare Uni-CLI active command coverage against the synced surface reference and tracked signal cases.
+ * @needs   dist/manifest.json, ref/reference/cli-manifest.json, optional src/adapters/_archived/archive.json
+ * @feeds   tests/unit/surface-coverage.test.ts, npm run bench:surface-coverage, roadmap coverage evidence
  * @breaks  Missing active commands, stale reference manifests, or untracked archive exclusions skew parity reporting.
  */
 
@@ -27,6 +27,8 @@ export interface SignalCase {
   id: string;
   title: string;
   url?: string;
+  source_version?: string;
+  source_kind?: "release" | "pr" | "issue" | "fix";
   required_sites?: string[];
   required_commands?: string[];
   required_files?: string[];
@@ -45,10 +47,46 @@ export interface SignalCoverage extends SignalCase {
   missing_text: string[];
 }
 
-export interface OpenCliParityReport {
+export type CommandParityStatus =
+  | "implemented"
+  | "equivalent"
+  | "strict-superset"
+  | "missing";
+
+export interface CommandParityEvidence {
+  kind: "uni-command" | "mapping" | "archived-command" | "evidence-file";
+  command?: string;
+  file?: string;
+  rationale?: string;
+}
+
+export interface CommandParityMapping {
+  reference_command: string;
+  status: "equivalent" | "strict-superset";
+  uni_command?: string;
+  evidence_files?: string[];
+  rationale: string;
+}
+
+export interface CommandParityEntry {
+  reference_command: string;
+  reference_site: string;
+  reference_name: string;
+  status: CommandParityStatus;
+  evidence: CommandParityEvidence[];
+}
+
+export interface CommandParityLedger {
+  summary: Record<CommandParityStatus, number>;
+  functional_command_coverage: number;
+  unclassified_commands: string[];
+  commands: CommandParityEntry[];
+}
+
+export interface SurfaceCoverageReport {
   generated_at: string;
   uni: Omit<CommandSurface, "command_keys">;
-  opencli: Omit<CommandSurface, "command_keys"> & {
+  reference: Omit<CommandSurface, "command_keys"> & {
     git?: {
       commit: string;
       subject: string;
@@ -78,14 +116,129 @@ export interface OpenCliParityReport {
     sites: string[];
     commands: string[];
   };
+  ledger: CommandParityLedger;
   signals: SignalCoverage[];
 }
 
-export const DEFAULT_OPENCLI_SIGNALS: SignalCase[] = [
+export const DEFAULT_SURFACE_SIGNALS: SignalCase[] = [
   {
-    id: "opencli-pr-1195",
+    id: "surface-v1.7.18-reddit-account-and-thread-actions",
+    title: "feat(reddit): add whoami, home, subreddit-info, and reply commands",
+    source_version: "v1.7.18",
+    source_kind: "release",
+    required_commands: [
+      "reddit/whoami",
+      "reddit/home",
+      "reddit/subreddit-info",
+      "reddit/reply",
+    ],
+  },
+  {
+    id: "surface-v1.7.18-rednote-read-surface",
+    title: "feat(rednote): add Rednote browser read/search surface",
+    source_version: "v1.7.18",
+    source_kind: "release",
+    required_sites: ["rednote"],
+    required_commands: [
+      "rednote/comments",
+      "rednote/download",
+      "rednote/feed",
+      "rednote/note",
+      "rednote/notifications",
+      "rednote/search",
+      "rednote/user",
+    ],
+  },
+  {
+    id: "surface-v1.7.17-research-and-registry-sources",
+    title:
+      "feat: add OpenAlex, PubMed, OSV, NVD, DockerHub, crates, and goproxy sources",
+    source_version: "v1.7.17",
+    source_kind: "release",
+    required_sites: [
+      "openalex",
+      "pubmed",
+      "osv",
+      "nvd",
+      "dockerhub",
+      "crates",
+      "goproxy",
+    ],
+  },
+  {
+    id: "surface-v1.7.16-browser-agent-runtime",
+    title:
+      "feat(browser): agent-browser AX refs, semantic locators, native input, iframe routing, and annotated screenshots",
+    source_version: "v1.7.16",
+    source_kind: "release",
+    required_text: [
+      {
+        file: "src/browser/snapshot.ts",
+        includes: "data-unicli-ref",
+        label: "browser snapshot emits refs",
+      },
+      {
+        file: "src/browser/cdp-client.ts",
+        includes: "iframe",
+        label: "CDP client has iframe-aware logic",
+      },
+      {
+        file: "tests/unit/browser/target-errors.test.ts",
+        includes: "data-unicli-ref",
+        label: "ref-backed locator verification tests",
+      },
+    ],
+  },
+  {
+    id: "surface-v1.7.15-persistent-browser-session-contract",
+    title: "feat(browser): replace workspace reuse with persistent sessions",
+    source_version: "v1.7.15",
+    source_kind: "release",
+    required_text: [
+      {
+        file: "src/engine/session/query.ts",
+        includes: "browser_session_id",
+      },
+      {
+        file: "src/engine/browser/session-lease.ts",
+        includes: "browser_session_id",
+      },
+      {
+        file: "tests/unit/browser-session-lease.test.ts",
+        includes: "browser_session_id",
+      },
+    ],
+  },
+  {
+    id: "surface-v1.7.14-structured-help",
+    title:
+      "feat(help): adapter, browser, daemon, plugin, and profile help surfaces",
+    source_version: "v1.7.14",
+    source_kind: "release",
+    required_commands: ["codex/projects", "chatgpt/history"],
+  },
+  {
+    id: "surface-v1.7.13-typed-error-hardening",
+    title:
+      "fix: typed errors, no silent clamps, no sentinel rows, and no silent empty arrays",
+    source_version: "v1.7.13",
+    source_kind: "release",
+    required_text: [
+      {
+        file: "src/core/envelope.ts",
+        includes: "code",
+        label: "structured error code surface",
+      },
+      {
+        file: "src/engine/harden.ts",
+        includes: "structured",
+        label: "engine hardening path",
+      },
+    ],
+  },
+  {
+    id: "surface-pr-1195",
     title: "fix(browser): keep text/javascript API responses in network output",
-    url: "https://github.com/jackwener/OpenCLI/pull/1195",
     required_text: [
       {
         file: "tests/unit/commands/browser.test.ts",
@@ -98,10 +251,9 @@ export const DEFAULT_OPENCLI_SIGNALS: SignalCase[] = [
     ],
   },
   {
-    id: "opencli-pr-1176",
+    id: "surface-pr-1176",
     title:
       "feat(google-scholar): add cite/profile commands and fix search dedup",
-    url: "https://github.com/jackwener/OpenCLI/pull/1176",
     required_commands: [
       "google-scholar/search",
       "google-scholar/cite",
@@ -109,28 +261,24 @@ export const DEFAULT_OPENCLI_SIGNALS: SignalCase[] = [
     ],
   },
   {
-    id: "opencli-issue-1192",
+    id: "surface-issue-1192",
     title: "[Feature]: Instagram",
-    url: "https://github.com/jackwener/OpenCLI/issues/1192",
     required_sites: ["instagram"],
     required_commands: ["instagram/search", "instagram/profile"],
   },
   {
-    id: "opencli-issue-1189",
+    id: "surface-issue-1189",
     title: "[autofix] doubao/ask: message reading broken after DOM restructure",
-    url: "https://github.com/jackwener/OpenCLI/issues/1189",
     required_commands: ["doubao/ask"],
   },
   {
-    id: "opencli-issue-1184",
+    id: "surface-issue-1184",
     title: "web/read should preserve meaningful button text",
-    url: "https://github.com/jackwener/OpenCLI/issues/1184",
     required_commands: ["web/read"],
   },
   {
-    id: "opencli-pr-1193",
+    id: "surface-pr-1193",
     title: "docs: plugin-side daemon spawn pattern",
-    url: "https://github.com/jackwener/OpenCLI/pull/1193",
     required_files: ["docs/PLUGIN.md"],
     required_text: [
       {
@@ -145,9 +293,8 @@ export const DEFAULT_OPENCLI_SIGNALS: SignalCase[] = [
     ],
   },
   {
-    id: "opencli-pr-1187",
+    id: "surface-pr-1187",
     title: "feat(browser): custom daemon ports for extension dashboard",
-    url: "https://github.com/jackwener/OpenCLI/pull/1187",
     required_text: [
       {
         file: "src/commands/browser/actions.ts",
@@ -161,18 +308,16 @@ export const DEFAULT_OPENCLI_SIGNALS: SignalCase[] = [
     ],
   },
   {
-    id: "opencli-pr-1182",
+    id: "surface-pr-1182",
     title: "errors: classify CDP debugger-detach as transient",
-    url: "https://github.com/jackwener/OpenCLI/pull/1182",
     required_text: [
       { file: "src/browser/daemon-client.ts", includes: "debugger" },
       { file: "src/browser/daemon-client.ts", includes: "detach" },
     ],
   },
   {
-    id: "opencli-pr-1181",
+    id: "surface-pr-1181",
     title: "feat(browser): add upload command and fix producthunt hot",
-    url: "https://github.com/jackwener/OpenCLI/pull/1181",
     required_commands: ["producthunt/hot"],
     required_text: [
       {
@@ -183,9 +328,8 @@ export const DEFAULT_OPENCLI_SIGNALS: SignalCase[] = [
     ],
   },
   {
-    id: "opencli-issue-1169",
+    id: "surface-issue-1169",
     title: "browser bind-current runtime contract",
-    url: "https://github.com/jackwener/OpenCLI/issues/1169",
     required_text: [
       { file: "src/browser/protocol.ts", includes: '"bind-current"' },
       { file: "src/browser/daemon-client.ts", includes: "bindCurrentTab" },
@@ -193,18 +337,16 @@ export const DEFAULT_OPENCLI_SIGNALS: SignalCase[] = [
     ],
   },
   {
-    id: "opencli-issue-1167",
+    id: "surface-issue-1167",
     title: "DeepSeek file upload should not fail silently",
-    url: "https://github.com/jackwener/OpenCLI/issues/1167",
     required_text: [
       { file: "src/adapters/deepseek/web.ts", includes: 'name: "file"' },
       { file: "src/adapters/deepseek/web.ts", includes: "setFileInput" },
     ],
   },
   {
-    id: "opencli-issue-1161",
+    id: "surface-issue-1161",
     title: "Dash-prefixed positional args should stay positional",
-    url: "https://github.com/jackwener/OpenCLI/issues/1161",
     required_text: [
       {
         file: "src/commands/dispatch.ts",
@@ -217,9 +359,8 @@ export const DEFAULT_OPENCLI_SIGNALS: SignalCase[] = [
     ],
   },
   {
-    id: "opencli-issue-1120",
+    id: "surface-issue-1120",
     title: "browser network detail should expose captured requests",
-    url: "https://github.com/jackwener/OpenCLI/issues/1120",
     required_text: [
       {
         file: "src/commands/browser/authoring.ts",
@@ -235,6 +376,14 @@ export const DEFAULT_OPENCLI_SIGNALS: SignalCase[] = [
 
 function commandKey(site: string, command: string): string {
   return `${site}/${command}`;
+}
+
+function splitCommandKey(key: string): [string, string] {
+  const slash = key.indexOf("/");
+  if (slash <= 0 || slash === key.length - 1) {
+    throw new Error(`invalid command key: ${key}`);
+  }
+  return [key.slice(0, slash), key.slice(slash + 1)];
 }
 
 function roundRatio(value: number): number {
@@ -283,10 +432,10 @@ export function readUniSurface(repoRoot: string): CommandSurface {
   return toSurface(manifestPath, pairs);
 }
 
-export function readOpenCliSurface(repoRoot: string): CommandSurface {
-  const manifestPath = join(repoRoot, "ref", "opencli", "cli-manifest.json");
+export function readReferenceSurface(repoRoot: string): CommandSurface {
+  const manifestPath = join(repoRoot, "ref", "reference", "cli-manifest.json");
   if (!existsSync(manifestPath)) {
-    throw new Error(`missing OpenCLI reference manifest: ${manifestPath}`);
+    throw new Error(`missing surface reference manifest: ${manifestPath}`);
   }
 
   const manifest = JSON.parse(readFileSync(manifestPath, "utf-8")) as Array<{
@@ -326,10 +475,10 @@ export function readArchivedSurface(repoRoot: string): CommandSurface {
   return toSurface(archivePath, pairs);
 }
 
-function readOpenCliGit(
+function readReferenceGit(
   repoRoot: string,
-): OpenCliParityReport["opencli"]["git"] {
-  const refRoot = join(repoRoot, "ref", "opencli");
+): SurfaceCoverageReport["reference"]["git"] {
+  const refRoot = join(repoRoot, "ref", "reference");
   if (!existsSync(join(refRoot, ".git"))) return undefined;
   const res = spawnSync(
     "git",
@@ -388,47 +537,151 @@ export function evaluateSignalCoverage(
   });
 }
 
-export function buildOpenCliParityReport(opts?: {
+function validateCommandParityMappings(
+  mappings: CommandParityMapping[],
+): Map<string, CommandParityMapping> {
+  const map = new Map<string, CommandParityMapping>();
+  for (const mapping of mappings) {
+    if (!mapping.reference_command) {
+      throw new Error("command coverage mapping missing reference_command");
+    }
+    if (
+      mapping.status !== "equivalent" &&
+      mapping.status !== "strict-superset"
+    ) {
+      throw new Error(
+        `invalid mapping status for ${mapping.reference_command}: ${mapping.status}`,
+      );
+    }
+    if (!mapping.rationale.trim()) {
+      throw new Error(
+        `command coverage mapping missing rationale: ${mapping.reference_command}`,
+      );
+    }
+    if (
+      map.has(mapping.reference_command) &&
+      JSON.stringify(map.get(mapping.reference_command)) !==
+        JSON.stringify(mapping)
+    ) {
+      throw new Error(
+        `duplicate command coverage mapping: ${mapping.reference_command}`,
+      );
+    }
+    map.set(mapping.reference_command, mapping);
+  }
+  return map;
+}
+
+export function buildCommandParityLedger(
+  reference: CommandSurface,
+  uni: CommandSurface,
+  archived: CommandSurface,
+  mappings: CommandParityMapping[] = [],
+): CommandParityLedger {
+  const uniCommands = new Set(uni.command_keys);
+  const archivedCommands = new Set(archived.command_keys);
+  const mappingByCommand = validateCommandParityMappings(mappings);
+  const summary: Record<CommandParityStatus, number> = {
+    implemented: 0,
+    equivalent: 0,
+    "strict-superset": 0,
+    missing: 0,
+  };
+
+  const commands = reference.command_keys.map((referenceCommand) => {
+    const [referenceSite, referenceName] = splitCommandKey(referenceCommand);
+    const mapping = mappingByCommand.get(referenceCommand);
+    let status: CommandParityStatus = "missing";
+    const evidence: CommandParityEvidence[] = [];
+
+    if (uniCommands.has(referenceCommand)) {
+      status = "implemented";
+      evidence.push({ kind: "uni-command", command: referenceCommand });
+    } else if (mapping) {
+      status = mapping.status;
+      evidence.push({
+        kind: "mapping",
+        command: mapping.uni_command,
+        rationale: mapping.rationale,
+      });
+      for (const file of mapping.evidence_files ?? []) {
+        evidence.push({ kind: "evidence-file", file });
+      }
+    } else if (archivedCommands.has(referenceCommand)) {
+      evidence.push({ kind: "archived-command", command: referenceCommand });
+    }
+
+    summary[status] += 1;
+    return {
+      reference_command: referenceCommand,
+      reference_site: referenceSite,
+      reference_name: referenceName,
+      status,
+      evidence,
+    };
+  });
+
+  const covered =
+    summary.implemented + summary.equivalent + summary["strict-superset"];
+  return {
+    summary,
+    functional_command_coverage: roundRatio(
+      reference.commands === 0 ? 1 : covered / reference.commands,
+    ),
+    unclassified_commands: commands
+      .filter((entry) => !entry.status)
+      .map((entry) => entry.reference_command),
+    commands,
+  };
+}
+
+export function buildSurfaceCoverageReport(opts?: {
   repoRoot?: string;
   generatedAt?: string;
   signals?: SignalCase[];
-}): OpenCliParityReport {
+  commandMappings?: CommandParityMapping[];
+}): SurfaceCoverageReport {
   const repoRoot = opts?.repoRoot ?? DEFAULT_REPO_ROOT;
   const uni = readUniSurface(repoRoot);
-  const opencli = readOpenCliSurface(repoRoot);
+  const reference = readReferenceSurface(repoRoot);
   const archived = readArchivedSurface(repoRoot);
 
   const uniSites = new Set(Object.keys(uni.site_counts));
-  const opencliSites = new Set(Object.keys(opencli.site_counts));
+  const referenceSites = new Set(Object.keys(reference.site_counts));
   const archivedSites = new Set(Object.keys(archived.site_counts));
   const uniCommands = new Set(uni.command_keys);
-  const opencliCommands = new Set(opencli.command_keys);
+  const referenceCommands = new Set(reference.command_keys);
   const archivedCommands = new Set(archived.command_keys);
+  const ledger = buildCommandParityLedger(
+    reference,
+    uni,
+    archived,
+    opts?.commandMappings,
+  );
 
-  const missingSites = [...opencliSites]
-    .filter((site) => !uniSites.has(site) && !archivedSites.has(site))
+  const missingSites = [...referenceSites]
+    .filter((site) => !uniSites.has(site))
     .sort();
-  const missingCommands = [...opencliCommands]
-    .filter(
-      (command) => !uniCommands.has(command) && !archivedCommands.has(command),
-    )
+  const missingCommands = ledger.commands
+    .filter((entry) => entry.status === "missing")
+    .map((entry) => entry.reference_command)
     .sort();
-  const archivedOpenCliSites = [...opencliSites]
+  const archivedReferenceSites = [...referenceSites]
     .filter((site) => archivedSites.has(site))
     .sort();
-  const archivedOpenCliCommands = [...opencliCommands]
+  const archivedReferenceCommands = [...referenceCommands]
     .filter((command) => archivedCommands.has(command))
     .sort();
   const extraSites = [...uniSites]
-    .filter((site) => !opencliSites.has(site))
+    .filter((site) => !referenceSites.has(site))
     .sort();
   const extraCommands = [...uniCommands]
-    .filter((command) => !opencliCommands.has(command))
+    .filter((command) => !referenceCommands.has(command))
     .sort();
 
   const signals = evaluateSignalCoverage(
     uni,
-    opts?.signals ?? DEFAULT_OPENCLI_SIGNALS,
+    opts?.signals ?? DEFAULT_SURFACE_SIGNALS,
     repoRoot,
   );
 
@@ -440,28 +693,28 @@ export function buildOpenCliParityReport(opts?: {
       commands: uni.commands,
       site_counts: uni.site_counts,
     },
-    opencli: {
-      source: opencli.source,
-      sites: opencli.sites,
-      commands: opencli.commands,
-      site_counts: opencli.site_counts,
-      git: readOpenCliGit(repoRoot),
+    reference: {
+      source: reference.source,
+      sites: reference.sites,
+      commands: reference.commands,
+      site_counts: reference.site_counts,
+      git: readReferenceGit(repoRoot),
     },
     coverage: {
       site_coverage: roundRatio(
-        opencli.sites === 0
+        reference.sites === 0
           ? 1
-          : (opencli.sites - missingSites.length) / opencli.sites,
+          : (reference.sites - missingSites.length) / reference.sites,
       ),
       command_coverage: roundRatio(
-        opencli.commands === 0
+        reference.commands === 0
           ? 1
-          : (opencli.commands - missingCommands.length) / opencli.commands,
+          : (reference.commands - ledger.summary.missing) / reference.commands,
       ),
       missing_sites: missingSites.length,
       missing_commands: missingCommands.length,
-      archived_sites: archivedOpenCliSites.length,
-      archived_commands: archivedOpenCliCommands.length,
+      archived_sites: archivedReferenceSites.length,
+      archived_commands: archivedReferenceCommands.length,
       extra_sites: extraSites.length,
       extra_commands: extraCommands.length,
     },
@@ -471,13 +724,14 @@ export function buildOpenCliParityReport(opts?: {
     },
     archived: {
       source: existsSync(archived.source) ? archived.source : undefined,
-      sites: archivedOpenCliSites,
-      commands: archivedOpenCliCommands,
+      sites: archivedReferenceSites,
+      commands: archivedReferenceCommands,
     },
     extra: {
       sites: extraSites,
       commands: extraCommands,
     },
+    ledger,
     signals,
   };
 }
@@ -493,10 +747,12 @@ function readSignalsFile(path: string): SignalCase[] {
 function parseArgs(argv: string[]): {
   repoRoot: string;
   signals?: SignalCase[];
+  commandMappings?: CommandParityMapping[];
   failOnGaps: boolean;
 } {
   let repoRoot = DEFAULT_REPO_ROOT;
   let signals: SignalCase[] | undefined;
+  let commandMappings: CommandParityMapping[] | undefined;
   let failOnGaps = false;
 
   for (let i = 0; i < argv.length; i++) {
@@ -512,6 +768,12 @@ function parseArgs(argv: string[]): {
       signals = readSignalsFile(path);
       continue;
     }
+    if (arg === "--mappings") {
+      const path = argv[++i];
+      if (!path) throw new Error("--mappings requires a file path");
+      commandMappings = readMappingsFile(path);
+      continue;
+    }
     if (arg === "--fail-on-gaps") {
       failOnGaps = true;
       continue;
@@ -519,9 +781,9 @@ function parseArgs(argv: string[]): {
     if (arg === "-h" || arg === "--help") {
       console.log(
         [
-          "Usage: npm run bench:opencli-parity -- [--repo-root <path>] [--signals <json>] [--fail-on-gaps]",
+          "Usage: npm run bench:surface-coverage -- [--repo-root <path>] [--signals <json>] [--mappings <json>] [--fail-on-gaps]",
           "",
-          "Outputs a JSON report comparing dist/manifest.json with ref/opencli/cli-manifest.json.",
+          "Outputs a JSON report comparing dist/manifest.json with ref/reference/cli-manifest.json.",
         ].join("\n"),
       );
       process.exit(0);
@@ -529,15 +791,24 @@ function parseArgs(argv: string[]): {
     throw new Error(`unknown argument: ${arg}`);
   }
 
-  return { repoRoot, signals, failOnGaps };
+  return { repoRoot, signals, commandMappings, failOnGaps };
+}
+
+function readMappingsFile(path: string): CommandParityMapping[] {
+  const parsed = JSON.parse(readFileSync(path, "utf-8")) as unknown;
+  if (!Array.isArray(parsed)) {
+    throw new Error(`mappings file must contain an array: ${path}`);
+  }
+  return parsed as CommandParityMapping[];
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   try {
     const args = parseArgs(process.argv.slice(2));
-    const report = buildOpenCliParityReport({
+    const report = buildSurfaceCoverageReport({
       repoRoot: args.repoRoot,
       signals: args.signals,
+      commandMappings: args.commandMappings,
     });
     console.log(JSON.stringify(report, null, 2));
     const missingSignal = report.signals.some(

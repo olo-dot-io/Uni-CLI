@@ -73,7 +73,7 @@ Pipeline 自上而下走，共享一个 context 对象。每步读 `ctx.data`、
 
 ## v2 AgentEnvelope
 
-每条命令都返回 v2 AgentEnvelope——成功失败同一个形状。Agent 用一份 schema 解析 <span><!-- STATS:command_count -->1458<!-- /STATS --></span> 条命令。
+每条命令都返回 v2 AgentEnvelope——成功失败同一个形状。Agent 用一份 schema 解析 <span><!-- STATS:command_count -->1616<!-- /STATS --></span> 条命令。
 
 ```json
 {
@@ -163,7 +163,7 @@ $ unicli hackernews top -n 10 -f json \
 # 4. Agent 改 YAML，跑 `unicli repair` 重新验证
 ```
 
-这就是整套交互模型。一种命令形状跨 <span><!-- STATS:site_count -->238<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1458<!-- /STATS --></span> 条命令。一种错误回执跨每一次失败。一条 self-repair 路径跨每一个适配器。
+这就是整套交互模型。一种命令形状跨 <span><!-- STATS:site_count -->268<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1616<!-- /STATS --></span> 条命令。一种错误回执跨每一次失败。一条 self-repair 路径跨每一个适配器。
 
 ## 延伸阅读
 

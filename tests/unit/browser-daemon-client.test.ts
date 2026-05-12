@@ -5,17 +5,17 @@ import {
   sendCommand,
 } from "../../src/browser/daemon-client.js";
 
-const originalOpenCliPort = process.env.OPENCLI_DAEMON_PORT;
+const originalCompatPort = process.env.UNICLI_COMPAT_DAEMON_PORT;
 const originalUniCliPort = process.env.UNICLI_DAEMON_PORT;
-const compatPortEnv = ["OPEN", "CLI_DAEMON_PORT"].join("");
-const compatHeader = ["X-Open", "CLI"].join("");
+const compatPortEnv = "UNICLI_COMPAT_DAEMON_PORT";
+const compatHeader = "X-Unicli-Compat";
 
 afterEach(() => {
   vi.useRealTimers();
-  if (originalOpenCliPort === undefined) {
-    delete process.env.OPENCLI_DAEMON_PORT;
+  if (originalCompatPort === undefined) {
+    delete process.env.UNICLI_COMPAT_DAEMON_PORT;
   } else {
-    process.env.OPENCLI_DAEMON_PORT = originalOpenCliPort;
+    process.env.UNICLI_COMPAT_DAEMON_PORT = originalCompatPort;
   }
   if (originalUniCliPort === undefined) {
     delete process.env.UNICLI_DAEMON_PORT;

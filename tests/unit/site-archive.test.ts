@@ -60,6 +60,7 @@ const EXPECTED_ARCHIVE = [
   ["ctrip", ["hot", "search"]],
   ["gcloud", ["projects"]],
 ] as const;
+const ARCHIVE_ONLY_SITES = ["apple-music", "az", "gcloud"] as const;
 
 function readArchive(): ArchiveRecord[] {
   if (!existsSync(ARCHIVE_MANIFEST)) {
@@ -120,7 +121,7 @@ describe("dead-site archive", () => {
   it("does not expose archive-only sites in the active manifest", () => {
     const active = readActiveManifest();
 
-    for (const [site] of EXPECTED_ARCHIVE) {
+    for (const site of ARCHIVE_ONLY_SITES) {
       expect(active.sites[site]).toBeUndefined();
     }
   });
@@ -142,9 +143,19 @@ describe("dead-site archive", () => {
   });
 
   it("does not advertise archived commands in public catalogs", () => {
-    const archivedCommands = readArchive().flatMap((record) =>
-      record.commands.map((command) => `unicli ${record.site} ${command}`),
+    const active = readActiveManifest();
+    const activeCommands = new Set(
+      Object.entries(active.sites).flatMap(([site, info]) =>
+        (info.commands ?? []).map(
+          (command) => `unicli ${site} ${command.name}`,
+        ),
+      ),
     );
+    const archivedCommands = readArchive()
+      .flatMap((record) =>
+        record.commands.map((command) => `unicli ${record.site} ${command}`),
+      )
+      .filter((command) => !activeCommands.has(command));
 
     for (const relPath of PUBLIC_TEXT_CATALOGS) {
       const body = readFileSync(join(ROOT, relPath), "utf-8");
@@ -155,7 +166,7 @@ describe("dead-site archive", () => {
       }
     }
 
-    const archivedSites = new Set(readArchive().map((record) => record.site));
+    const archivedSites = new Set(ARCHIVE_ONLY_SITES);
     for (const catalog of PUBLIC_JSON_CATALOGS) {
       const entries = readPublicCatalogEntries(catalog);
       expect(

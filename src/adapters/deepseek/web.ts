@@ -14,6 +14,8 @@ import {
 
 const HOME = "https://chat.deepseek.com";
 const CHAT = `${HOME}/`;
+const CONVERSATION_ID_RE =
+  /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const INPUT = "textarea, [contenteditable='true'], .chat-input textarea";
 const FILE_INPUT = 'input[type="file"]';
 const MESSAGES =
@@ -37,6 +39,13 @@ async function readConversation(
   page: IPage,
 ): Promise<Record<string, unknown>[]> {
   await openChat(page);
+  return readVisibleConversation(page, true);
+}
+
+async function readVisibleConversation(
+  page: IPage,
+  withFallback: boolean,
+): Promise<Record<string, unknown>[]> {
   const items = (await page.evaluate(`(() => {
     const nodes = [...document.querySelectorAll(${js(MESSAGES)})];
     const rows = nodes.map((node, index) => ({
@@ -44,9 +53,26 @@ async function readConversation(
       text: (node.textContent || '').trim(),
       role: /user|human|question/i.test(node.getAttribute('class') || '') ? 'user' : 'assistant'
     })).filter((row) => row.text.length > 0);
-    return rows.length ? rows : [{ index: 1, role: 'page', text: (document.body?.innerText || '').trim().slice(0, 4000) }];
+    return rows.length ? rows : (${withFallback} ? [{ index: 1, role: 'page', text: (document.body?.innerText || '').trim().slice(0, 4000) }] : []);
   })()`)) as Record<string, unknown>[];
   return items;
+}
+
+export function parseDeepSeekConversationId(value: unknown): string {
+  const raw = str(value).trim();
+  if (!raw) throw new Error("DeepSeek conversation ID cannot be empty.");
+  const urlMatch = raw.match(/\/a\/chat\/s\/([a-f0-9-]+)/i);
+  const candidate = urlMatch ? urlMatch[1] : raw;
+  if (!CONVERSATION_ID_RE.test(candidate)) {
+    throw new Error(
+      `Invalid DeepSeek conversation ID: ${raw}. Expected a UUID or /a/chat/s/<id> URL.`,
+    );
+  }
+  return candidate.toLowerCase();
+}
+
+function deepSeekConversationUrl(id: string): string {
+  return `${HOME}/a/chat/s/${id}`;
 }
 
 function resolveUploadFiles(value: unknown): string[] {
@@ -199,5 +225,56 @@ cli({
       })).filter((row) => row.title);
     })()`)) as Record<string, unknown>[];
     return rows.slice(0, limit);
+  },
+});
+
+cli({
+  site: "deepseek",
+  name: "detail",
+  description: "Read a specific DeepSeek conversation by ID",
+  domain: "chat.deepseek.com",
+  strategy: Strategy.COOKIE,
+  browser: true,
+  args: [{ name: "id", type: "str", required: true, positional: true }],
+  columns: ["index", "role", "text"],
+  func: async (page, kwargs) => {
+    const p = page as IPage;
+    const id = parseDeepSeekConversationId(kwargs.id);
+    await p.goto(deepSeekConversationUrl(id), { settleMs: 1800 });
+    await p.wait(1);
+    const rows = await readVisibleConversation(p, false);
+    if (!rows.length) {
+      throw new Error(
+        `No visible DeepSeek messages found for conversation ${id}.`,
+      );
+    }
+    return rows;
+  },
+});
+
+cli({
+  site: "deepseek",
+  name: "send",
+  description:
+    "Send a prompt to a specific DeepSeek conversation without waiting for a response",
+  domain: "chat.deepseek.com",
+  strategy: Strategy.COOKIE,
+  browser: true,
+  args: [
+    { name: "id", type: "str", required: true, positional: true },
+    { name: "prompt", type: "str", required: true, positional: true },
+  ],
+  columns: ["status", "injectedText"],
+  func: async (page, kwargs) => {
+    const p = page as IPage;
+    const id = parseDeepSeekConversationId(kwargs.id);
+    const prompt = str(kwargs.prompt).trim();
+    if (!prompt) throw new Error("DeepSeek prompt cannot be empty.");
+    await p.goto(deepSeekConversationUrl(id), { settleMs: 1800 });
+    await p.click(INPUT);
+    await p.insertText(prompt);
+    await p.press("Enter");
+    await p.wait(0.6);
+    return [{ status: "success", injectedText: prompt }];
   },
 });
