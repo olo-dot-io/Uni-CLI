@@ -1,0 +1,49 @@
+site: pdf
+name: read
+description: Extract text from a local PDF file
+type: desktop
+strategy: public
+binary: pdftotext
+detect: which pdftotext
+
+args:
+  file:
+    type: str
+    required: true
+    positional: true
+    description: Local PDF file path
+    x-unicli-kind: path
+  first_page:
+    type: int
+    default: 1
+    description: First page to read
+  last_page:
+    type: int
+    default: 20
+    description: Last page to read
+
+pipeline:
+  - exec:
+      command: pdftotext
+      args:
+        - "-layout"
+        - "-enc"
+        - "UTF-8"
+        - "-f"
+        - "${{ args.first_page }}"
+        - "-l"
+        - "${{ args.last_page }}"
+        - "${{ args.file }}"
+        - "-"
+      parse: text
+      timeout: 60000
+
+columns: []
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["subprocess.exec"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: private
+quarantine: false
+schema_version: v2

@@ -22,6 +22,7 @@ export interface DownloadStepConfig {
   url: string;
   dir?: string;
   filename?: string;
+  headers?: Record<string, string>;
   concurrency?: number;
   skip_existing?: boolean;
   use_ytdlp?: boolean;
@@ -34,16 +35,16 @@ export async function stepDownload(
   config: DownloadStepConfig,
   stepIndex = -1,
 ): Promise<PipelineContext> {
-  const dir = resolve(config.dir ?? "./downloads");
+  const dirTemplate = config.dir ?? "./downloads";
   const concurrency = config.concurrency ?? 3;
   const skipExisting = config.skip_existing !== false; // default true
   const cookieHeader = ctx.cookieHeader;
-  let directoryReady = false;
+  const readyDirs = new Set<string>();
 
-  function ensureDirectoryReady(): void {
-    if (directoryReady) return;
+  function ensureDirectoryReady(dir: string): void {
+    if (readyDirs.has(dir)) return;
     mkdirSync(dir, { recursive: true });
-    directoryReady = true;
+    readyDirs.add(dir);
   }
 
   async function downloadOne(
@@ -52,6 +53,7 @@ export async function stepDownload(
   ): Promise<Record<string, unknown>> {
     const itemCtx: PipelineContext = { ...ctx, data: { item, index } };
     const url = evalTemplate(config.url, itemCtx);
+    const dir = resolve(evalTemplate(dirTemplate, itemCtx));
     const filename = config.filename
       ? evalTemplate(config.filename, itemCtx)
       : generateFilename(url, index);
@@ -72,7 +74,7 @@ export async function stepDownload(
       access: "read",
     });
 
-    ensureDirectoryReady();
+    ensureDirectoryReady(dir);
 
     if (skipExisting && existsSync(destPath)) {
       return { ...item, _download: { status: "skipped", path: destPath } };
@@ -96,6 +98,9 @@ export async function stepDownload(
       result = await ytdlpDownload(url, dir);
     } else {
       const headers: Record<string, string> = {};
+      for (const [key, value] of Object.entries(config.headers ?? {})) {
+        headers[key] = evalTemplate(String(value), itemCtx);
+      }
       if (cookieHeader) headers["Cookie"] = cookieHeader;
       result = await httpDownload(url, destPath, headers);
     }

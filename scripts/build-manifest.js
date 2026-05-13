@@ -173,7 +173,16 @@ const CATEGORIES = {
     "paperreview",
   ],
   audio: ["spotify", "netease-music", "apple-podcasts", "xiaoyuzhou"],
-  content: ["medium", "substack", "sspai", "weread", "zsxq", "pixiv"],
+  content: [
+    "medium",
+    "substack",
+    "sspai",
+    "weread",
+    "zsxq",
+    "pixiv",
+    "danbooru",
+    "ehentai",
+  ],
   productivity: [
     "notion",
     "notion-app",

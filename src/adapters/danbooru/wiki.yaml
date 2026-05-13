@@ -1,0 +1,44 @@
+site: danbooru
+name: wiki
+description: Search Danbooru wiki pages
+domain: danbooru.donmai.us
+type: web-api
+strategy: public
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Wiki page title
+  limit:
+    type: int
+    default: 20
+    description: Number of wiki pages to return
+
+pipeline:
+  - fetch:
+      url: "https://danbooru.donmai.us/wiki_pages.json"
+      params:
+        "search[title]": "${{ args.query }}"
+        limit: "${{ args.limit }}"
+
+  - map:
+      rank: "${{ index + 1 }}"
+      id: "${{ item.id }}"
+      title: "${{ item.title }}"
+      body: "${{ String(item.body || '').replace(/\\s+/g, ' ').slice(0, 500) }}"
+      other_names: "${{ Array.isArray(item.other_names) ? item.other_names.join(', ') : '' }}"
+      is_locked: "${{ item.is_locked }}"
+      is_deleted: "${{ item.is_deleted }}"
+      url: "${{ 'https://danbooru.donmai.us/wiki_pages/' + item.id }}"
+
+columns: [rank, id, title, body, other_names, is_locked, is_deleted, url]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

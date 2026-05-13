@@ -1,0 +1,51 @@
+site: danbooru
+name: download
+description: Download original media for a Danbooru post
+domain: danbooru.donmai.us
+type: web-api
+strategy: public
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: Danbooru post ID
+    x-unicli-kind: id
+  output:
+    type: str
+    default: "./danbooru-downloads"
+    description: Output directory
+    x-unicli-kind: path
+
+pipeline:
+  - fetch:
+      url: "https://danbooru.donmai.us/posts/${{ args.id }}.json"
+
+  - map:
+      id: "${{ item.id }}"
+      rating: "${{ item.rating }}"
+      tags: "${{ item.tag_string }}"
+      file_ext: "${{ item.file_ext }}"
+      file_url: "${{ item.file_url }}"
+      url: "${{ 'https://danbooru.donmai.us/posts/' + item.id }}"
+
+  - assert:
+      condition: "data.length > 0 && data[0].file_url"
+      message: "Danbooru post has no public downloadable file URL."
+
+  - download:
+      url: "${{ item.file_url }}"
+      dir: "${{ args.output }}"
+      filename: "${{ item.id }}.${{ item.file_ext | default('bin') }}"
+      type: auto
+
+columns: [id, rating, tags, file_url, url, _download]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch", "http.download"]
+minimum_capability: http.download
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

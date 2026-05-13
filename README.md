@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->268<!-- /STATS --> sites · <!-- STATS:command_count -->1616<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->8212<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->271<!-- /STATS --> sites · <!-- STATS:command_count -->1632<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->8279<!-- /STATS --> tests</sub>
 </p>
 
 ## Start In 30 Seconds
@@ -226,7 +226,7 @@ The wall below is generated from active manifest sites with real logo support. B
   <a data-site="replicate" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="replicate: 2 commands"><img alt="replicate" src="https://img.shields.io/static/v1?label=replicate&message=2+cmds&color=7c3aed&style=flat-square&logo=replicate&logoColor=white"></a>
 </p>
 <p><strong>reference</strong><br>
-  <a data-site="arxiv" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="arxiv: 4 commands"><img alt="arxiv" src="https://img.shields.io/static/v1?label=arxiv&message=4+cmds&color=0f766e&style=flat-square&logo=arxiv&logoColor=white"></a>
+  <a data-site="arxiv" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="arxiv: 5 commands"><img alt="arxiv" src="https://img.shields.io/static/v1?label=arxiv&message=5+cmds&color=0f766e&style=flat-square&logo=arxiv&logoColor=white"></a>
   <a data-site="google" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="google: 4 commands"><img alt="google" src="https://img.shields.io/static/v1?label=google&message=4+cmds&color=0f766e&style=flat-square&logo=google&logoColor=white"></a>
   <a data-site="wikipedia" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="wikipedia: 5 commands"><img alt="wikipedia" src="https://img.shields.io/static/v1?label=wikipedia&message=5+cmds&color=0f766e&style=flat-square&logo=wikipedia&logoColor=white"></a>
 </p>

@@ -50,9 +50,11 @@ export function allowsDashPrefixedPositionals(
 }
 
 export function findAmbiguousLongOptionPositional(
-  positionals: string[],
+  positionals: unknown[],
 ): string | undefined {
-  return positionals.find((arg) => arg.startsWith("--"));
+  return positionals.find(
+    (arg): arg is string => typeof arg === "string" && arg.startsWith("--"),
+  );
 }
 
 /**
@@ -165,10 +167,9 @@ export function registerAdapterDispatch(program: Command): void {
           string,
           string
         >;
-        const positionals = actionArgs.slice(
-          0,
-          actionArgs.length - 2,
-        ) as string[];
+        const positionals = actionArgs
+          .slice(0, actionArgs.length - 2)
+          .filter((arg): arg is string => typeof arg === "string");
         const ambiguousLongOption =
           findAmbiguousLongOptionPositional(positionals);
         if (ambiguousLongOption) {

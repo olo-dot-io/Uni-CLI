@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->268<!-- /STATS --> 个站点 · <!-- STATS:command_count -->1616<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->101<!-- /STATS --> 个 pipeline step · <!-- STATS:test_count -->8212<!-- /STATS --> 个测试</sub>
+  <sub><!-- STATS:site_count -->271<!-- /STATS --> 个站点 · <!-- STATS:command_count -->1632<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->101<!-- /STATS --> 个 pipeline step · <!-- STATS:test_count -->8279<!-- /STATS --> 个测试</sub>
 </p>
 
 ## 30 秒开始
@@ -210,7 +210,7 @@ ACP 作为编辑器和桥接兼容层保留。真正跑任务时，优先 native
   <a data-site="replicate" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="replicate: 2 commands"><img alt="replicate" src="https://img.shields.io/static/v1?label=replicate&message=2+cmds&color=7c3aed&style=flat-square&logo=replicate&logoColor=white"></a>
 </p>
 <p><strong>知识</strong><br>
-  <a data-site="arxiv" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="arxiv: 4 commands"><img alt="arxiv" src="https://img.shields.io/static/v1?label=arxiv&message=4+cmds&color=0f766e&style=flat-square&logo=arxiv&logoColor=white"></a>
+  <a data-site="arxiv" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="arxiv: 5 commands"><img alt="arxiv" src="https://img.shields.io/static/v1?label=arxiv&message=5+cmds&color=0f766e&style=flat-square&logo=arxiv&logoColor=white"></a>
   <a data-site="google" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="google: 4 commands"><img alt="google" src="https://img.shields.io/static/v1?label=google&message=4+cmds&color=0f766e&style=flat-square&logo=google&logoColor=white"></a>
   <a data-site="wikipedia" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="wikipedia: 5 commands"><img alt="wikipedia" src="https://img.shields.io/static/v1?label=wikipedia&message=5+cmds&color=0f766e&style=flat-square&logo=wikipedia&logoColor=white"></a>
 </p>

@@ -1,0 +1,78 @@
+site: danbooru
+name: detail
+description: Get Danbooru post details by ID
+domain: danbooru.donmai.us
+type: web-api
+strategy: public
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: Danbooru post ID
+    x-unicli-kind: id
+
+pipeline:
+  - fetch:
+      url: "https://danbooru.donmai.us/posts/${{ args.id }}.json"
+
+  - map:
+      id: "${{ item.id }}"
+      rating: "${{ item.rating }}"
+      score: "${{ item.score }}"
+      up_score: "${{ item.up_score }}"
+      down_score: "${{ item.down_score }}"
+      fav_count: "${{ item.fav_count }}"
+      file_ext: "${{ item.file_ext }}"
+      file_size: "${{ item.file_size }}"
+      image_width: "${{ item.image_width }}"
+      image_height: "${{ item.image_height }}"
+      artist_tags: "${{ item.tag_string_artist }}"
+      character_tags: "${{ item.tag_string_character }}"
+      copyright_tags: "${{ item.tag_string_copyright }}"
+      general_tags: "${{ item.tag_string_general }}"
+      meta_tags: "${{ item.tag_string_meta }}"
+      source: "${{ item.source }}"
+      preview_url: "${{ item.preview_file_url }}"
+      large_url: "${{ item.large_file_url }}"
+      file_url: "${{ item.file_url }}"
+      pixiv_id: "${{ item.pixiv_id }}"
+      parent_id: "${{ item.parent_id }}"
+      has_children: "${{ item.has_children }}"
+      url: "${{ 'https://danbooru.donmai.us/posts/' + item.id }}"
+
+columns:
+  [
+    id,
+    rating,
+    score,
+    up_score,
+    down_score,
+    fav_count,
+    file_ext,
+    file_size,
+    image_width,
+    image_height,
+    artist_tags,
+    character_tags,
+    copyright_tags,
+    general_tags,
+    meta_tags,
+    source,
+    preview_url,
+    large_url,
+    file_url,
+    pixiv_id,
+    parent_id,
+    has_children,
+    url,
+  ]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

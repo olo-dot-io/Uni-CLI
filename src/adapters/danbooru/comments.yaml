@@ -1,0 +1,45 @@
+site: danbooru
+name: comments
+description: List Danbooru comments for a post
+domain: danbooru.donmai.us
+type: web-api
+strategy: public
+
+args:
+  post_id:
+    type: str
+    required: true
+    positional: true
+    description: Danbooru post ID
+    x-unicli-kind: id
+  limit:
+    type: int
+    default: 20
+    description: Number of comments to return
+
+pipeline:
+  - fetch:
+      url: "https://danbooru.donmai.us/comments.json"
+      params:
+        "search[post_id]": "${{ args.post_id }}"
+        limit: "${{ args.limit }}"
+
+  - map:
+      rank: "${{ index + 1 }}"
+      id: "${{ item.id }}"
+      post_id: "${{ item.post_id }}"
+      creator_id: "${{ item.creator_id }}"
+      score: "${{ item.score }}"
+      body: "${{ String(item.body || '').replace(/\\s+/g, ' ').trim() }}"
+      created_at: "${{ item.created_at }}"
+      is_deleted: "${{ item.is_deleted }}"
+
+columns: [rank, id, post_id, creator_id, score, body, created_at, is_deleted]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

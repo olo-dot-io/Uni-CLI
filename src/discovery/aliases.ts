@@ -111,6 +111,15 @@ export const SITE_ALIASES: ReadonlyMap<string, string> = new Map([
   ["幻灯片", "powerpoint"],
   ["互联网", "google"],
   ["网页搜索", "google"],
+  ["P站", "pixiv"],
+  ["p站", "pixiv"],
+  ["pixiv", "pixiv"],
+  ["Danbooru", "danbooru"],
+  ["danbooru", "danbooru"],
+  ["E-Hentai", "ehentai"],
+  ["e-hentai", "ehentai"],
+  ["ehentai", "ehentai"],
+  ["exhentai", "ehentai"],
 
   // International social — common abbreviations
   ["twitter", "twitter"],
@@ -497,6 +506,8 @@ export const SITE_CATEGORIES: ReadonlyMap<string, string> = new Map([
   ["weread", "content"],
   ["zsxq", "content"],
   ["pixiv", "content"],
+  ["danbooru", "content"],
+  ["ehentai", "content"],
 
   // Productivity
   ["notion", "productivity"],

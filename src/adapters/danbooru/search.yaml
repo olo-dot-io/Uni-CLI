@@ -1,0 +1,69 @@
+site: danbooru
+name: search
+description: Search Danbooru posts by tag query
+domain: danbooru.donmai.us
+type: web-api
+strategy: public
+
+args:
+  tags:
+    type: str
+    required: true
+    positional: true
+    description: Danbooru tag query, for example "landscape rating:g"
+  limit:
+    type: int
+    default: 20
+    description: Number of posts to return
+  page:
+    type: int
+    default: 1
+    description: Page number
+
+pipeline:
+  - fetch:
+      url: "https://danbooru.donmai.us/posts.json"
+      params:
+        tags: "${{ args.tags }}"
+        limit: "${{ args.limit }}"
+        page: "${{ args.page }}"
+
+  - map:
+      rank: "${{ index + 1 }}"
+      id: "${{ item.id }}"
+      rating: "${{ item.rating }}"
+      score: "${{ item.score }}"
+      fav_count: "${{ item.fav_count }}"
+      file_ext: "${{ item.file_ext }}"
+      image_width: "${{ item.image_width }}"
+      image_height: "${{ item.image_height }}"
+      tags: "${{ item.tag_string }}"
+      source: "${{ item.source }}"
+      preview_url: "${{ item.preview_file_url }}"
+      file_url: "${{ item.file_url }}"
+      url: "${{ 'https://danbooru.donmai.us/posts/' + item.id }}"
+
+columns:
+  [
+    rank,
+    id,
+    rating,
+    score,
+    fav_count,
+    file_ext,
+    image_width,
+    image_height,
+    tags,
+    source,
+    preview_url,
+    file_url,
+    url,
+  ]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

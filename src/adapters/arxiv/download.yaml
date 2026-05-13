@@ -1,0 +1,53 @@
+site: arxiv
+name: download
+description: Download an arXiv paper PDF by ID
+domain: export.arxiv.org
+type: web-api
+strategy: public
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+    description: "arXiv paper ID (e.g. 1706.03762)"
+    x-unicli-kind: id
+  output:
+    type: str
+    default: "./arxiv-downloads"
+    description: Output directory
+    x-unicli-kind: path
+
+pipeline:
+  - fetch_text:
+      url: "https://export.arxiv.org/api/query?id_list=${{ args.id | urlencode }}"
+
+  - parse_rss:
+      fields:
+        id: id
+        title: title
+
+  - map:
+      id: "${{ item.id.replace(/^https?:\\/\\/arxiv\\.org\\/abs\\//, '').replace(/v\\d+$/, '') }}"
+      title: "${{ item.title.replace(/\\s+/g, ' ').trim() }}"
+      pdf: "${{ 'https://arxiv.org/pdf/' + item.id.replace(/^https?:\\/\\/arxiv\\.org\\/abs\\//, '').replace(/v\\d+$/, '') }}"
+
+  - assert:
+      condition: "data.length > 0"
+      message: "No arXiv paper found for the requested ID."
+
+  - download:
+      url: "${{ item.pdf }}"
+      dir: "${{ args.output }}"
+      filename: "${{ item.id }}.pdf"
+      type: document
+
+columns: [id, title, pdf, _download]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch", "http.download"]
+minimum_capability: http.download
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

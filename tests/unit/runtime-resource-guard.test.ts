@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -170,6 +171,52 @@ describe("runtime resource deny rules", () => {
     });
     expect(requests).toBe(0);
     expect(existsSync(deniedDir)).toBe(false);
+  });
+
+  it("resolves templated download directories before permission checks and writes", async () => {
+    const outDir = join(tmp, "downloads");
+    let referer = "";
+    server.removeAllListeners("request");
+    server.on("request", (req, res) => {
+      requests += 1;
+      referer = req.headers.referer ?? "";
+      res.writeHead(200, { "Content-Type": "text/plain" });
+      res.end("templated header reached");
+    });
+
+    await expect(
+      runPipeline(
+        [
+          {
+            download: {
+              url: `${baseUrl}/file.txt`,
+              dir: "${{ args.output }}",
+              filename: "file.txt",
+              headers: {
+                Referer: "${{ args.referer }}",
+              },
+            },
+          },
+        ],
+        {
+          args: { output: outDir, referer: "https://www.pixiv.net/" },
+          source: "internal",
+        },
+        undefined,
+        { site: "runtime-fixture" },
+      ),
+    ).resolves.toMatchObject([
+      {
+        _download: {
+          status: "success",
+          path: join(outDir, "file.txt"),
+        },
+      },
+    ]);
+    expect(readFileSync(join(outDir, "file.txt"), "utf-8")).toBe(
+      "templated header reached",
+    );
+    expect(referer).toBe("https://www.pixiv.net/");
   });
 
   it.skipIf(process.platform === "win32")(

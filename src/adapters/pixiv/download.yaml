@@ -18,7 +18,7 @@ args:
     description: Output directory
     x-unicli-kind: path
 
-columns: [illust_id, page, url]
+columns: [illust_id, page, url, _download]
 
 pipeline:
   - navigate: https://www.pixiv.net
@@ -40,8 +40,21 @@ pipeline:
         }));
       })()
 
+  - assert:
+      condition: "data.length > 0"
+      message: "No downloadable Pixiv pages found for this illustration."
+
+  - download:
+      url: "${{ item.url }}"
+      dir: "${{ args.output }}"
+      filename: "${{ item.illust_id }}_p${{ item.page }}.${{ item.url | ext | default('jpg') }}"
+      headers:
+        Referer: "https://www.pixiv.net/"
+      type: image
+      concurrency: 2
+
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["cdp-browser.evaluate", "cdp-browser.navigate"]
+capabilities: ["cdp-browser.evaluate", "cdp-browser.navigate", "http.download"]
 minimum_capability: cdp-browser.evaluate
 trust: public
 confidentiality: public
