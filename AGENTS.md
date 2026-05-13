@@ -61,24 +61,15 @@ Full E2E + adapter coverage: `npm run verify`. Required before any release.
 
 ## Project conventions
 
-The cross-CLI contract `~/.claude/AGENTS.md` and ruleset `~/.claude/rules/`
-apply in full. The bullets below are the project-specific reinforcement
-because Uni-CLI is adapter-heavy and patch-rot kills us faster than most
-codebases.
+Uni-CLI is adapter-heavy; patch-rot is the failure mode that kills us fastest.
 
 - **Engine code lives in `src/engine/`, browser in `src/browser/`, commands in `src/commands/`, adapters in `src/adapters/`.** Map by responsibility — never by version.
-- **Errors emit structured envelopes** to stderr with `code`, `adapter_path`, `step`, `suggestion`. Pipeline steps that fail must surface the real cause, never coerce to a generic `internal_error`. (rule 02)
-- **Tests under `tests/` and `*.test.ts` exercise real owned code** — engine, registry, adapter loader. External boundaries (network fetch, subprocess, Chrome CDP) may be stubbed with one `// REASON:` line. (rule 03)
+- **Errors emit structured envelopes** to stderr with `code`, `adapter_path`, `step`, `suggestion`. Pipeline steps that fail must surface the real cause, never coerce to a generic `internal_error`.
+- **Tests under `tests/` and `*.test.ts` exercise real owned code** — engine, registry, adapter loader. External boundaries (network fetch, subprocess, Chrome CDP) may be stubbed with one `// REASON:` line.
 - **`unicli test [site]` runs adapter E2E.** Never substitute a fixture for the YAML pipeline runner.
-- **Multi-file change in `src/engine/`, `src/browser/`, or new adapter type → independent audit subagent before PR.** (rule 05)
+- **Multi-file change in `src/engine/`, `src/browser/`, or new adapter type → independent code review before PR.**
 
-## Style template
-
-Detailed adapter format, pipeline conventions, and error envelope shape live
-in the project skill: `~/.claude/skills/uni-cli-style/SKILL.md`. Load on
-demand. Never paraphrase from memory.
-
-## Project-internal references
+## Project references
 
 | Topic                       | Where                    |
 | --------------------------- | ------------------------ |
