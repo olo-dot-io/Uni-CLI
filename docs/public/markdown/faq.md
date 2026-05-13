@@ -11,7 +11,7 @@ Quick answers to the questions agents and developers ask most often. Each answer
 
 ## What is Uni-CLI?
 
-Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across <span><!-- STATS:site_count -->268<!-- /STATS --></span> sites and tools, returning a stable v2 AgentEnvelope on every call.
+Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across <span><!-- STATS:site_count -->282<!-- /STATS --></span> sites and tools, returning a stable v2 AgentEnvelope on every call.
 
 ## How is Uni-CLI different from a browser automation library?
 
@@ -31,7 +31,15 @@ Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, and any runtime that can spa
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.220.0 covers <span><!-- STATS:site_count -->268<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1616<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1113<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8188<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, government policy, podcasts, and macOS apps.
+v0.220.0 covers <span><!-- STATS:site_count -->282<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1144<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8393<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, paper/PDF workflows, ACG/anime/manga/wiki sources, booru tag search, government policy, podcasts, and macOS apps.
+
+## Can Uni-CLI download papers and read local PDFs?
+
+Yes. `unicli arxiv download <id> --output ./papers -f json` downloads a paper PDF, and `unicli pdf read ./papers/<id>.pdf --first_page 1 --last_page 3 -f json` extracts local text into the same structured envelope shape as web adapters. Agents can search arXiv, download the PDF, read selected pages, and summarize the result without leaving the CLI contract.
+
+## How should agents search ACG, anime, manga, and booru content?
+
+Start with intent search, then narrow by the domain-specific command: `unicli search "Sparkle Honkai Star Rail character"`, `unicli anilist characters "Sparkle" -f json`, `unicli moegirl search "Sparkle Honkai Star Rail" -f json`, or `unicli danbooru tags sparkle -f json`. Booru adapters expose explicit tag workflows, while anime/game/wiki adapters expose entity search, media catalogs, year filters, and popularity/rank/trending sort options where the source supports them.
 
 ## Can I add a new site without writing TypeScript?
 

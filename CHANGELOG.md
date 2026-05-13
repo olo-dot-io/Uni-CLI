@@ -11,6 +11,33 @@ Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributin
 
 ## [Unreleased]
 
+### Added
+
+- Documented the new paper workflow: arXiv PDF download plus local `pdf read`
+  extraction for agents that need to collect, read, and summarize papers
+  without leaving the CLI contract.
+- Documented ACG discovery workflows for character lookup, wiki lookup,
+  booru tag confirmation, visual-novel catalogs, and 2024-2026 anime/game
+  queries across AniList, Bangumi, Danbooru, E-Hentai, Moegirl, Safebooru,
+  VNDB, and related adapters.
+- Added English and Chinese recipes that show entity-first search for
+  ambiguous names such as `花火`, tag-first booru search, and Japanese /
+  romaji / Chinese / English alias handling.
+
+### Changed
+
+- Refreshed README, Chinese README, FAQ, and architecture docs to describe
+  the latest 282-site, 1680-command catalog, including scholarly PDF,
+  ACG/anime/manga/wiki, booru, and visual-novel coverage.
+- Removed the stale package description count so the npm metadata no longer
+  drifts behind generated catalog statistics.
+
+### Fixed
+
+- Regenerated public docs, `llms.txt`, `llms-full.txt`, and catalog indexes
+  from the current source docs and manifest data so agent-facing references
+  do not retain the old 268-site / 1616-command inventory.
+
 ## [0.219.0] — 2026-05-05 — Vostok · Gagarin
 
 ### Minor Changes

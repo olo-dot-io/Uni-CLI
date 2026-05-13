@@ -1,8 +1,8 @@
 {
   "source": "unicli@0.220.0",
-  "generated": "2026-05-12T16:44:27.511Z",
-  "total_sites": 268,
-  "total_commands": 1616,
+  "generated": "2026-05-13T17:08:30.044Z",
+  "total_sites": 282,
+  "total_commands": 1680,
   "adapters": [
     {
       "site": "1688",
@@ -1136,6 +1136,209 @@
       ]
     },
     {
+      "site": "anilist",
+      "type": "web-api",
+      "domain": "anilist.co",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "anime",
+          "description": "Search AniList anime by Japanese title, native title, romaji, alias, or keyword",
+          "when_to_use": "Search AniList anime by Japanese title, native title, romaji, alias, or keyword",
+          "command": "unicli anilist anime",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "title",
+            "native",
+            "type",
+            "format",
+            "status",
+            "score",
+            "popularity",
+            "trending",
+            "start_date",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "manga",
+          "description": "Search AniList manga by Japanese title, native title, romaji, alias, or keyword",
+          "when_to_use": "Search AniList manga by Japanese title, native title, romaji, alias, or keyword",
+          "command": "unicli anilist manga",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "title",
+            "native",
+            "type",
+            "format",
+            "status",
+            "score",
+            "popularity",
+            "trending",
+            "start_date",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "characters",
+          "description": "Search AniList characters by Japanese name, native name, romaji, or alias",
+          "when_to_use": "Search AniList characters by Japanese name, native name, romaji, or alias",
+          "command": "unicli anilist characters",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "kind",
+            "name",
+            "native",
+            "favourites",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "staff",
+          "description": "Search AniList staff by Japanese name, native name, romaji, or alias",
+          "when_to_use": "Search AniList staff by Japanese name, native name, romaji, or alias",
+          "command": "unicli anilist staff",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "kind",
+            "name",
+            "native",
+            "favourites",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "studios",
+          "description": "Search AniList studios by Japanese name, native name, romaji, or alias",
+          "when_to_use": "Search AniList studios by Japanese name, native name, romaji, or alias",
+          "command": "unicli anilist studios",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "kind",
+            "name",
+            "native",
+            "favourites",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "antigravity",
       "type": "web-api",
       "auth": false,
@@ -1513,6 +1716,32 @@
       "auth": false,
       "strategy": "public",
       "commands": [
+        {
+          "name": "download",
+          "description": "Download an arXiv paper PDF by ID",
+          "when_to_use": "When you need to download media or files from arxiv.",
+          "command": "unicli arxiv download",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["id", "title", "pdf", "_download"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "arXiv paper ID (e.g. 1706.03762)"
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory"
+            }
+          ]
+        },
         {
           "name": "paper",
           "description": "Get arXiv paper details by ID",
@@ -2126,6 +2355,218 @@
               "required": false,
               "positional": false,
               "description": "Number of posts"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "bangumi",
+      "type": "web-api",
+      "domain": "bgm.tv",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "characters",
+          "description": "Search Bangumi characters by Japanese name, Chinese name, romaji, or alias",
+          "when_to_use": "Search Bangumi characters by Japanese name, Chinese name, romaji, or alias",
+          "command": "unicli bangumi characters",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "name",
+            "gender",
+            "comments",
+            "collects",
+            "summary",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "subject",
+          "description": "Get Bangumi subject details by subject id",
+          "when_to_use": "Get Bangumi subject details by subject id",
+          "command": "unicli bangumi subject",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "type",
+            "name",
+            "name_cn",
+            "platform",
+            "date",
+            "score",
+            "rank_site",
+            "summary",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "anime",
+          "description": "Search Bangumi anime subjects by Japanese title, Chinese title, romaji, or alias",
+          "when_to_use": "Search Bangumi anime subjects by Japanese title, Chinese title, romaji, or alias",
+          "command": "unicli bangumi anime",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "type",
+            "name",
+            "name_cn",
+            "date",
+            "score",
+            "rank_site",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "match, rank, score, heat"
+            }
+          ]
+        },
+        {
+          "name": "book",
+          "description": "Search Bangumi book subjects by Japanese title, Chinese title, romaji, or alias",
+          "when_to_use": "Search Bangumi book subjects by Japanese title, Chinese title, romaji, or alias",
+          "command": "unicli bangumi book",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "type",
+            "name",
+            "name_cn",
+            "date",
+            "score",
+            "rank_site",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "match, rank, score, heat"
+            }
+          ]
+        },
+        {
+          "name": "game",
+          "description": "Search Bangumi game subjects by Japanese title, Chinese title, romaji, or alias",
+          "when_to_use": "Search Bangumi game subjects by Japanese title, Chinese title, romaji, or alias",
+          "command": "unicli bangumi game",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "type",
+            "name",
+            "name_cn",
+            "date",
+            "score",
+            "rank_site",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "match, rank, score, heat"
             }
           ]
         }
@@ -6797,6 +7238,305 @@
       ]
     },
     {
+      "site": "danbooru",
+      "type": "web-api",
+      "domain": "danbooru.donmai.us",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "artists",
+          "description": "Search Danbooru artist records",
+          "when_to_use": "Search Danbooru artist records",
+          "command": "unicli danbooru artists",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "name",
+            "group_name",
+            "other_names",
+            "is_banned",
+            "is_deleted",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Artist name"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of artists to return"
+            }
+          ]
+        },
+        {
+          "name": "comments",
+          "description": "List Danbooru comments for a post",
+          "when_to_use": "When you need to read comments/replies from danbooru.",
+          "command": "unicli danbooru comments",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "post_id",
+            "creator_id",
+            "score",
+            "body",
+            "created_at",
+            "is_deleted"
+          ],
+          "args": [
+            {
+              "name": "post_id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Danbooru post ID"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of comments to return"
+            }
+          ]
+        },
+        {
+          "name": "detail",
+          "description": "Get Danbooru post details by ID",
+          "when_to_use": "When you need details about a specific item on danbooru.",
+          "command": "unicli danbooru detail",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "rating",
+            "score",
+            "up_score",
+            "down_score",
+            "fav_count",
+            "file_ext",
+            "file_size",
+            "image_width",
+            "image_height",
+            "artist_tags",
+            "character_tags",
+            "copyright_tags",
+            "general_tags",
+            "meta_tags",
+            "source",
+            "preview_url",
+            "large_url",
+            "file_url",
+            "pixiv_id",
+            "parent_id",
+            "has_children",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Danbooru post ID"
+            }
+          ]
+        },
+        {
+          "name": "download",
+          "description": "Download original media for a Danbooru post",
+          "when_to_use": "When you need to download media or files from danbooru.",
+          "command": "unicli danbooru download",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["id", "rating", "tags", "file_url", "url", "_download"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Danbooru post ID"
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory"
+            }
+          ]
+        },
+        {
+          "name": "pools",
+          "description": "Search Danbooru pools",
+          "when_to_use": "Search Danbooru pools",
+          "command": "unicli danbooru pools",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "name",
+            "category",
+            "post_count",
+            "description",
+            "is_active",
+            "is_deleted",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Pool name wildcard query"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of pools to return"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search Danbooru posts by tag query",
+          "when_to_use": "When you need to search danbooru for a specific query.",
+          "command": "unicli danbooru search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "rating",
+            "score",
+            "fav_count",
+            "file_ext",
+            "image_width",
+            "image_height",
+            "tags",
+            "source",
+            "preview_url",
+            "file_url",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "tags",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Danbooru tag query, for example \"landscape rating:g\""
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of posts to return"
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Page number"
+            }
+          ]
+        },
+        {
+          "name": "tags",
+          "description": "Search Danbooru tags",
+          "when_to_use": "Search Danbooru tags",
+          "command": "unicli danbooru tags",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "name",
+            "post_count",
+            "category",
+            "is_deprecated"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Tag name prefix or wildcard query"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of tags to return"
+            }
+          ]
+        },
+        {
+          "name": "wiki",
+          "description": "Search Danbooru wiki pages",
+          "when_to_use": "Search Danbooru wiki pages",
+          "command": "unicli danbooru wiki",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "title",
+            "body",
+            "other_names",
+            "is_locked",
+            "is_deleted",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Wiki page title"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of wiki pages to return"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "dangdang",
       "type": "web-api",
       "domain": "www.dangdang.com",
@@ -7948,6 +8688,410 @@
               "required": false,
               "positional": false,
               "description": "Comma-separated modifiers such as meta,shift"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "dlsite",
+      "type": "web-api",
+      "domain": "www.dlsite.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search DLsite doujin works by keyword, type, and sort order",
+          "when_to_use": "When you need to search dlsite for a specific query.",
+          "command": "unicli dlsite search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "product_id",
+            "title",
+            "maker",
+            "maker_id",
+            "work_type",
+            "age",
+            "price_jpy",
+            "sales",
+            "rating",
+            "reviews",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "release, hot, rating, reviews, price, title"
+            },
+            {
+              "name": "type",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "all, manga, cg, game, novel, voice, video"
+            }
+          ]
+        },
+        {
+          "name": "manga",
+          "description": "Search DLsite manga works",
+          "when_to_use": "Search DLsite manga works",
+          "command": "unicli dlsite manga",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "product_id",
+            "title",
+            "maker",
+            "maker_id",
+            "work_type",
+            "age",
+            "price_jpy",
+            "sales",
+            "rating",
+            "reviews",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "release, hot, rating, reviews, price, title"
+            }
+          ]
+        },
+        {
+          "name": "cg",
+          "description": "Search DLsite CG and illustration works",
+          "when_to_use": "Search DLsite CG and illustration works",
+          "command": "unicli dlsite cg",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "product_id",
+            "title",
+            "maker",
+            "maker_id",
+            "work_type",
+            "age",
+            "price_jpy",
+            "sales",
+            "rating",
+            "reviews",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "release, hot, rating, reviews, price, title"
+            }
+          ]
+        },
+        {
+          "name": "game",
+          "description": "Search DLsite game and ADV works",
+          "when_to_use": "Search DLsite game and ADV works",
+          "command": "unicli dlsite game",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "product_id",
+            "title",
+            "maker",
+            "maker_id",
+            "work_type",
+            "age",
+            "price_jpy",
+            "sales",
+            "rating",
+            "reviews",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "release, hot, rating, reviews, price, title"
+            }
+          ]
+        },
+        {
+          "name": "maker",
+          "description": "Search DLsite works from a circle or maker id such as RG01012594 or VG02994",
+          "when_to_use": "Search DLsite works from a circle or maker id such as RG01012594 or VG02994",
+          "command": "unicli dlsite maker",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "product_id",
+            "title",
+            "maker",
+            "maker_id",
+            "work_type",
+            "age",
+            "price_jpy",
+            "sales",
+            "rating",
+            "reviews",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "maker_id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "release, hot, rating, reviews, price, title"
+            }
+          ]
+        },
+        {
+          "name": "creator",
+          "description": "Search DLsite works by creator, author, illustrator, or voice actor name",
+          "when_to_use": "Search DLsite works by creator, author, illustrator, or voice actor name",
+          "command": "unicli dlsite creator",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "product_id",
+            "title",
+            "maker",
+            "maker_id",
+            "work_type",
+            "age",
+            "price_jpy",
+            "sales",
+            "rating",
+            "reviews",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "creator",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "release, hot, rating, reviews, price, title"
+            }
+          ]
+        },
+        {
+          "name": "genre",
+          "description": "Search DLsite works by DLsite genre tag id",
+          "when_to_use": "Search DLsite works by DLsite genre tag id",
+          "command": "unicli dlsite genre",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "product_id",
+            "title",
+            "maker",
+            "maker_id",
+            "work_type",
+            "age",
+            "price_jpy",
+            "sales",
+            "rating",
+            "reviews",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "genre",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "release, hot, rating, reviews, price, title"
+            }
+          ]
+        },
+        {
+          "name": "work",
+          "description": "Get DLsite public work detail by product id",
+          "when_to_use": "Get DLsite public work detail by product id",
+          "command": "unicli dlsite work",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "product_id",
+            "title",
+            "maker",
+            "maker_id",
+            "work_type",
+            "release_date",
+            "age",
+            "file_format",
+            "pages",
+            "file_size",
+            "price_jpy",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "service",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "DLsite service path, for example maniax or books"
             }
           ]
         }
@@ -9958,6 +11102,457 @@
               "required": false,
               "positional": false,
               "description": "返回数量"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "ehentai",
+      "type": "web-api",
+      "domain": "e-hentai.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search public E-Hentai galleries with category and structured tag filters",
+          "when_to_use": "When you need to search ehentai for a specific query.",
+          "command": "unicli ehentai search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "gid",
+            "token",
+            "title",
+            "category",
+            "published",
+            "pages",
+            "uploader",
+            "torrent_available",
+            "tags",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": false,
+              "positional": true,
+              "description": "Free text search. Can be omitted when structured tag filters are supplied."
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "cursor",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Next cursor GID from E-Hentai navigation URLs"
+            },
+            {
+              "name": "category",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Comma-separated categories: doujinshi,manga,artistcg,gamecg,cg,imageset,cosplay,asianporn,nonh,western,misc"
+            },
+            {
+              "name": "tags",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Comma-separated namespaced tags, for example artist:tony taka,language:chinese,other:full color"
+            },
+            {
+              "name": "artist",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "group",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "parody",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "character",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "language",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "female",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "male",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "mixed",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "other",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "exact_tags",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "require_torrent",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "include_expunged",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "min_pages",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "max_pages",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "min_rating",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "artist",
+          "description": "Search public E-Hentai galleries by exact artist tag",
+          "when_to_use": "Search public E-Hentai galleries by exact artist tag",
+          "command": "unicli ehentai artist",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "gid",
+            "token",
+            "title",
+            "category",
+            "published",
+            "pages",
+            "uploader",
+            "torrent_available",
+            "tags",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "artist",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Artist tag, for example tony taka"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "cursor",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Next cursor GID from E-Hentai navigation URLs"
+            },
+            {
+              "name": "category",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Comma-separated categories: doujinshi,manga,artistcg,gamecg,cg,imageset,cosplay,asianporn,nonh,western,misc"
+            },
+            {
+              "name": "exact_tags",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "require_torrent",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "include_expunged",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "min_pages",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "max_pages",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "min_rating",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "tag",
+          "description": "Search public E-Hentai galleries by exact namespaced tag such as artist, group, parody, language, or character",
+          "when_to_use": "Search public E-Hentai galleries by exact namespaced tag such as artist, group, parody, language, or character",
+          "command": "unicli ehentai tag",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "gid",
+            "token",
+            "title",
+            "category",
+            "published",
+            "pages",
+            "uploader",
+            "torrent_available",
+            "tags",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "namespace",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Tag namespace: artist, group, parody, character, language, female, male, mixed, or other"
+            },
+            {
+              "name": "name",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Tag value; spaces are normalized to underscores"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "cursor",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Next cursor GID from E-Hentai navigation URLs"
+            },
+            {
+              "name": "category",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Comma-separated categories: doujinshi,manga,artistcg,gamecg,cg,imageset,cosplay,asianporn,nonh,western,misc"
+            },
+            {
+              "name": "exact_tags",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "require_torrent",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "include_expunged",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "min_pages",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "max_pages",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "min_rating",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "gallery",
+          "description": "Get E-Hentai gallery metadata through the official API",
+          "when_to_use": "Get E-Hentai gallery metadata through the official API",
+          "command": "unicli ehentai gallery",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "gid",
+            "token",
+            "title",
+            "title_jpn",
+            "category",
+            "uploader",
+            "posted",
+            "filecount",
+            "filesize",
+            "rating",
+            "torrentcount",
+            "tags",
+            "thumb",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "input",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Gallery URL or gid/token pair"
+            }
+          ]
+        },
+        {
+          "name": "torrents",
+          "description": "List E-Hentai gallery torrent metadata from the official API",
+          "when_to_use": "List E-Hentai gallery torrent metadata from the official API",
+          "command": "unicli ehentai torrents",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "gid",
+            "title",
+            "hash",
+            "added",
+            "name",
+            "tsize",
+            "fsize"
+          ],
+          "args": [
+            {
+              "name": "input",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Gallery URL or gid/token pair"
+            }
+          ]
+        },
+        {
+          "name": "pages",
+          "description": "List public E-Hentai gallery image page URLs and thumbnail sprites",
+          "when_to_use": "List public E-Hentai gallery image page URLs and thumbnail sprites",
+          "command": "unicli ehentai pages",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "page",
+            "gid",
+            "title",
+            "filename",
+            "page_url",
+            "thumb_sprite_url",
+            "gallery_url"
+          ],
+          "args": [
+            {
+              "name": "input",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Gallery URL or gid/token pair"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -16706,6 +18301,153 @@
       ]
     },
     {
+      "site": "konachan",
+      "type": "web-api",
+      "domain": "konachan.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "detail",
+          "description": "Get Konachan post detail by post id",
+          "when_to_use": "When you need details about a specific item on konachan.",
+          "command": "unicli konachan detail",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "rating",
+            "score",
+            "author",
+            "width",
+            "height",
+            "tags",
+            "source",
+            "sample_url",
+            "file_url",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "download",
+          "description": "Download Konachan post image by post id",
+          "when_to_use": "When you need to download media or files from konachan.",
+          "command": "unicli konachan download",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["id", "rating", "tags", "url", "_download"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory"
+            },
+            {
+              "name": "quality",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "sample or original"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search Konachan illustration posts by Japanese, romaji, or Moebooru tag query",
+          "when_to_use": "When you need to search konachan for a specific query.",
+          "command": "unicli konachan search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "rating",
+            "score",
+            "author",
+            "width",
+            "height",
+            "tags",
+            "source",
+            "sample_url",
+            "file_url",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "tags",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Tag query, for example \"rating:safe\" or \"sparkle_(honkai:_star_rail)\""
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "tags",
+          "description": "Search Konachan tags by Japanese name, romaji, or tag prefix",
+          "when_to_use": "Search Konachan tags by Japanese name, romaji, or tag prefix",
+          "command": "unicli konachan tags",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "name",
+            "count",
+            "type",
+            "ambiguous",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "krita",
       "type": "desktop",
       "auth": false,
@@ -19419,6 +21161,97 @@
       ]
     },
     {
+      "site": "mangadex",
+      "type": "web-api",
+      "domain": "mangadex.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "manga",
+          "description": "Search MangaDex manga by Japanese title, romaji, alias, or keyword",
+          "when_to_use": "Search MangaDex manga by Japanese title, romaji, alias, or keyword",
+          "command": "unicli mangadex manga",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "title",
+            "status",
+            "year",
+            "content_rating",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "content-rating",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "authors",
+          "description": "Search MangaDex authors and artists by public name or romaji",
+          "when_to_use": "Search MangaDex authors and artists by public name or romaji",
+          "command": "unicli mangadex authors",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "name",
+            "twitter",
+            "pixiv",
+            "website",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "maoyan",
       "type": "web-api",
       "domain": "www.maoyan.com",
@@ -20058,6 +21891,102 @@
               "required": false,
               "positional": false,
               "description": "Output file path"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "moegirl",
+      "type": "web-api",
+      "domain": "zh.moegirl.org.cn",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Moegirl ACG wiki articles for characters, works, songs, games, and studios",
+          "when_to_use": "When you need to search moegirl for a specific query.",
+          "command": "unicli moegirl search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["rank", "title", "description", "url"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "page",
+          "description": "Read a Moegirl article as plain text with metadata",
+          "when_to_use": "Read a Moegirl article as plain text with metadata",
+          "command": "unicli moegirl page",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "title",
+            "description",
+            "categories",
+            "paragraphs",
+            "extract",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "title",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "paragraphs",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Paragraph cap, 0 means full"
+            }
+          ]
+        },
+        {
+          "name": "links",
+          "description": "Extract internal Moegirl article links from a page, useful for disambiguation pages",
+          "when_to_use": "Extract internal Moegirl article links from a page, useful for disambiguation pages",
+          "command": "unicli moegirl links",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["rank", "title", "url"],
+          "args": [
+            {
+              "name": "title",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "contains",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Only return links whose title contains this text"
             }
           ]
         }
@@ -23720,6 +25649,47 @@
       ]
     },
     {
+      "site": "pdf",
+      "type": "desktop",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "read",
+          "description": "Extract text from a local PDF file",
+          "when_to_use": "Extract text from a local PDF file",
+          "command": "unicli pdf read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [],
+          "args": [
+            {
+              "name": "file",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Local PDF file path"
+            },
+            {
+              "name": "first_page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "First page to read"
+            },
+            {
+              "name": "last_page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Last page to read"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "perplexity",
       "type": "web-api",
       "domain": "api.perplexity.ai",
@@ -24011,7 +25981,7 @@
           "auth": true,
           "strategy": "intercept",
           "browser": true,
-          "columns": ["illust_id", "page", "url"],
+          "columns": ["illust_id", "page", "url", "_download"],
           "args": [
             {
               "name": "id",
@@ -26748,6 +28718,153 @@
               "required": true,
               "positional": true,
               "description": "Gem name"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "safebooru",
+      "type": "web-api",
+      "domain": "safebooru.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "detail",
+          "description": "Get Safebooru post detail by post id",
+          "when_to_use": "When you need details about a specific item on safebooru.",
+          "command": "unicli safebooru detail",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "rating",
+            "score",
+            "owner",
+            "width",
+            "height",
+            "tags",
+            "source",
+            "sample_url",
+            "file_url",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "download",
+          "description": "Download Safebooru post image by post id",
+          "when_to_use": "When you need to download media or files from safebooru.",
+          "command": "unicli safebooru download",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["id", "rating", "tags", "url", "_download"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory"
+            },
+            {
+              "name": "quality",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "sample or original"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search Safebooru illustration posts by Moebooru tag query such as blue_archive rating:safe",
+          "when_to_use": "When you need to search safebooru for a specific query.",
+          "command": "unicli safebooru search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "rating",
+            "score",
+            "owner",
+            "width",
+            "height",
+            "tags",
+            "source",
+            "sample_url",
+            "file_url",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "tags",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Moebooru tag query, for example \"blue_archive rating:safe\""
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "tags",
+          "description": "Search Safebooru tags by exact tag name or ASCII tag prefix such as blue_archive",
+          "when_to_use": "Search Safebooru tags by exact tag name or ASCII tag prefix such as blue_archive",
+          "command": "unicli safebooru tags",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "name",
+            "count",
+            "type",
+            "ambiguous",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -31263,6 +33380,255 @@
       ]
     },
     {
+      "site": "vndb",
+      "type": "web-api",
+      "domain": "api.vndb.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search VNDB visual novels by title, alias, tag, or keyword",
+          "when_to_use": "When you need to search vndb for a specific query.",
+          "command": "unicli vndb search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "title",
+            "alttitle",
+            "released",
+            "languages",
+            "platforms",
+            "rating",
+            "votecount",
+            "developers",
+            "tags",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "relevance, rating, votes, released, time, title"
+            },
+            {
+              "name": "reverse",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "vn",
+          "description": "Get VNDB visual novel details by v-id",
+          "when_to_use": "Get VNDB visual novel details by v-id",
+          "command": "unicli vndb vn",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "title",
+            "alttitle",
+            "released",
+            "languages",
+            "platforms",
+            "rating",
+            "votecount",
+            "developers",
+            "tags",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "releases",
+          "description": "Search VNDB releases by title or visual novel keyword",
+          "when_to_use": "Search VNDB releases by title or visual novel keyword",
+          "command": "unicli vndb releases",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "title",
+            "released",
+            "platforms",
+            "producers",
+            "vns",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "released, time, title"
+            },
+            {
+              "name": "reverse",
+              "type": "bool",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "tags",
+          "description": "Search VNDB game tags and genres",
+          "when_to_use": "Search VNDB game tags and genres",
+          "command": "unicli vndb tags",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["rank", "id", "name", "category", "description", "url"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "staff",
+          "description": "Search VNDB creators and staff",
+          "when_to_use": "Search VNDB creators and staff",
+          "command": "unicli vndb staff",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "name",
+            "original",
+            "lang",
+            "description",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "producers",
+          "description": "Search VNDB producers, studios, brands, makers, circles, companies, and visual novel publishers such as Yuzusoft",
+          "when_to_use": "Search VNDB producers, studios, brands, makers, circles, companies, and visual novel publishers such as Yuzusoft",
+          "command": "unicli vndb producers",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "name",
+            "aliases",
+            "lang",
+            "type",
+            "description",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "characters",
+          "description": "Search VNDB characters and traits",
+          "when_to_use": "Search VNDB characters and traits",
+          "command": "unicli vndb characters",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["rank", "id", "name", "original", "description", "url"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "vscode",
       "type": "desktop",
       "auth": false,
@@ -34144,6 +36510,155 @@
               "required": false,
               "positional": false,
               "description": "Market region (US, HK, etc.)"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "yandere",
+      "type": "web-api",
+      "domain": "yande.re",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "detail",
+          "description": "Get yande.re post detail by post id",
+          "when_to_use": "When you need details about a specific item on yandere.",
+          "command": "unicli yandere detail",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "rating",
+            "score",
+            "author",
+            "width",
+            "height",
+            "file_ext",
+            "file_size",
+            "tags",
+            "source",
+            "sample_url",
+            "file_url",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "download",
+          "description": "Download yande.re post image by post id",
+          "when_to_use": "When you need to download media or files from yandere.",
+          "command": "unicli yandere download",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["id", "rating", "tags", "url", "_download"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory"
+            },
+            {
+              "name": "quality",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "sample or original"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search yande.re illustration posts by Moebooru tag query",
+          "when_to_use": "When you need to search yandere for a specific query.",
+          "command": "unicli yandere search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "rating",
+            "score",
+            "author",
+            "width",
+            "height",
+            "tags",
+            "source",
+            "sample_url",
+            "file_url",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "tags",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Tag query, for example \"hanabi rating:safe\" or \"order:score\""
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "tags",
+          "description": "Search yande.re tags by name prefix",
+          "when_to_use": "Search yande.re tags by name prefix",
+          "command": "unicli yandere tags",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "name",
+            "count",
+            "type",
+            "ambiguous",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
             },
             {
               "name": "limit",
@@ -38253,6 +40768,252 @@
               "required": false,
               "positional": false,
               "description": "Comma-separated modifiers such as meta,shift"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "jikan",
+      "type": "web-api",
+      "domain": "api.jikan.moe",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "anime",
+          "description": "Search MyAnimeList anime through Jikan by Japanese name, romaji, or alias",
+          "when_to_use": "Search MyAnimeList anime through Jikan by Japanese name, romaji, or alias",
+          "command": "unicli jikan anime",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "kind",
+            "title",
+            "title_japanese",
+            "type",
+            "score",
+            "members",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "manga",
+          "description": "Search MyAnimeList manga through Jikan by Japanese name, romaji, or alias",
+          "when_to_use": "Search MyAnimeList manga through Jikan by Japanese name, romaji, or alias",
+          "command": "unicli jikan manga",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "kind",
+            "title",
+            "title_japanese",
+            "type",
+            "score",
+            "members",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "characters",
+          "description": "Search MyAnimeList characters through Jikan by Japanese name, romaji, or alias",
+          "when_to_use": "Search MyAnimeList characters through Jikan by Japanese name, romaji, or alias",
+          "command": "unicli jikan characters",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "kind",
+            "title",
+            "title_japanese",
+            "type",
+            "score",
+            "members",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "people",
+          "description": "Search MyAnimeList people through Jikan by Japanese name, romaji, or alias",
+          "when_to_use": "Search MyAnimeList people through Jikan by Japanese name, romaji, or alias",
+          "command": "unicli jikan people",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "kind",
+            "title",
+            "title_japanese",
+            "type",
+            "score",
+            "members",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "kitsu",
+      "type": "web-api",
+      "domain": "kitsu.io",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "anime",
+          "description": "Search Kitsu anime by Japanese title, romaji, alias, or keyword",
+          "when_to_use": "Search Kitsu anime by Japanese title, romaji, alias, or keyword",
+          "command": "unicli kitsu anime",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "type",
+            "title",
+            "subtype",
+            "status",
+            "start_date",
+            "average_rating",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "manga",
+          "description": "Search Kitsu manga by Japanese title, romaji, alias, or keyword",
+          "when_to_use": "Search Kitsu manga by Japanese title, romaji, alias, or keyword",
+          "command": "unicli kitsu manga",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "type",
+            "title",
+            "subtype",
+            "status",
+            "start_date",
+            "average_rating",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
             }
           ]
         }

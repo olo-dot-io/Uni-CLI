@@ -132,7 +132,7 @@ unicli linear issue-update "$ID" --state "Done" -f json
 [
   {
     "identifier": "ENG-123",
-    "title": "Ship Phase 5 adapters",
+    "title": "Ship adapter coverage",
     "url": "https://linear.app/my-team/issue/ENG-123"
   }
 ]
@@ -188,9 +188,122 @@ summarises in 3-5 bullets.
   databases (>100K messages) a query takes 1-3 seconds. Avoid running
   it in a tight loop with >50 iterations.
 
+## 5. Paper workflow — search, download, and read a PDF locally
+
+**Use-case.** An agent needs to collect a paper, keep the PDF on disk,
+and read only the relevant pages before summarizing or comparing it.
+
+### Command sequence
+
+```bash
+# Step 1 — search arXiv for a topic
+unicli arxiv search "retrieval augmented generation" --limit 5 -f json > /tmp/arxiv.json
+
+# Step 2 — choose an ID and download the PDF locally
+ID=$(jq -r '.[0].id' /tmp/arxiv.json)
+unicli arxiv download "$ID" --output ./papers -f json
+
+# Step 3 — read the opening pages from the local PDF
+unicli pdf read "./papers/$ID.pdf" --first_page 1 --last_page 3 -f json
+```
+
+### Troubleshooting
+
+- If the downloaded filename differs from `<id>.pdf`, inspect the
+  `arxiv download` JSON output and pass that path to `pdf read`.
+- `pdf read` works on local files. If the remote site only exposes a
+  landing page, download the actual PDF first instead of passing the web
+  URL to the reader.
+
+## 6. ACG character discovery — from intent to wiki and catalog sources
+
+**Use-case.** The user asks for a character such as `Sparkle`, meaning
+the Honkai: Star Rail character rather than a generic word. The agent
+should search by entity intent, then verify on structured ACG sources.
+
+### Command sequence
+
+```bash
+# Step 1 — let the catalog rank likely command surfaces
+unicli search "Sparkle Honkai Star Rail character" --limit 8
+
+# Step 2 — check a general anime/character index
+unicli anilist characters "Sparkle" --limit 5 -f json
+
+# Step 3 — check a Chinese ACG wiki surface
+unicli moegirl search "Sparkle Honkai Star Rail" --limit 5 -f json
+
+# Step 4 — inspect booru tag vocabulary for image search follow-up
+unicli danbooru tags sparkle --limit 10 -f json
+```
+
+### Troubleshooting
+
+- Use source names or franchise terms (`Honkai Star Rail`, `Star Rail`,
+  `Sparkle character`) when a character name is ambiguous.
+- Prefer tag commands before post searches on booru sites; they reveal the
+  canonical tag spelling that search commands expect.
+
+## 7. Booru tag workflow — confirm tags, then search posts
+
+**Use-case.** The agent needs tagged illustration results and should
+avoid guessing the exact tag form.
+
+### Command sequence
+
+```bash
+# Confirm the tag spelling first
+unicli safebooru tags blue_archive --limit 5 -f json
+unicli danbooru tags blue_archive --limit 5 -f json
+
+# Then search posts with an explicit tag query
+unicli safebooru search "blue_archive rating:safe" --limit 10 -f json
+unicli danbooru search "blue_archive rating:safe" --limit 10 -f json
+
+# Use detail/download commands only after selecting a concrete post ID
+unicli danbooru detail 123456 -f json
+```
+
+### Troubleshooting
+
+- Safebooru search expects Moebooru-style tag syntax such as
+  `blue_archive rating:safe`; it is not a free-form Japanese sentence
+  search.
+- Some booru sources use underscores and romanized tags. Let `tags` or
+  `wiki` commands confirm the spelling before fetching posts.
+
+## 8. Visual novel and 2024-2026 media lookup
+
+**Use-case.** The user asks for a studio, game, or recent ACG trend such
+as `Yuzusoft` or a 2024-2026 title. The agent should combine catalog
+search with source-native filters and sort orders.
+
+### Command sequence
+
+```bash
+# Discover the best source first
+unicli search "Yuzusoft visual novel games" --limit 8
+
+# Query visual-novel and anime/game catalogs directly
+unicli vndb search "Yuzusoft" --limit 10 -f json
+unicli bangumi game "Gakuen Idolmaster" --year 2024 --sort rank -f json
+unicli anilist anime "2026" --year 2026 --sort trending --limit 10 -f json
+
+# Cross-check wiki-style context when the entity is ambiguous
+unicli moegirl search "Yuzusoft" --limit 5 -f json
+```
+
+### Troubleshooting
+
+- Search with Japanese, romaji, Chinese, and English aliases when a source
+  has localized titles.
+- Use source-supported sort values. If a command rejects a sort, run
+  `unicli describe <site> <command> -f json` and use the enum in
+  `args_schema`.
+
 ## Common flags
 
-All Phase 5 adapters support:
+All current adapters support:
 
 | Flag             | What it does                                      |
 | ---------------- | ------------------------------------------------- |

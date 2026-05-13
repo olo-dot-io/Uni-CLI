@@ -4,9 +4,9 @@ This file is generated from the same VitePress site map as the public docs.
 
 ## Snapshot
 
-- Sites: 268
-- Commands: 1616
-- Adapters: 1113
+- Sites: 282
+- Commands: 1680
+- Adapters: 1144
 - Pipeline steps: 101
 
 ---
@@ -53,10 +53,10 @@ Agent execution needs an auditable, repairable, reusable command contract. Catal
 
 ## Coverage
 
-- Sites and tools: 268
-- Commands: 1616
+- Sites and tools: 282
+- Commands: 1680
 - Pipeline steps: 101
-- Tests: 8188
+- Tests: 8393
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -359,6 +359,12 @@ Every Uni-CLI command runs through the same four phases. Agents can stop at any 
 
 This contract holds across all five adapter types: web-api, browser, desktop, bridge, and service.
 
+## Domain-aware discovery
+
+The catalog search layer is not a plain site-name lookup. It combines bilingual BM25 with command metadata, aliases, and domain vocabulary so an agent can search for an entity first and only then pick the right surface. For example, a query such as `Sparkle Honkai Star Rail character` can route toward character/wiki/anime sources, while `blue_archive rating:safe` can route toward booru tag search. Japanese names, romaji variants, Chinese names, and English titles are represented as aliases on the relevant adapter surfaces rather than hard-coded as one-off site shortcuts.
+
+The same rule keeps broad searches honest. Domain boosts only apply when the query uses explicit ACG, paper, wiki, tag, game, anime, manga, or visual-novel vocabulary; generic queries still rank the normal web, developer, finance, or app commands by their own evidence.
+
 ## The YAML adapter format
 
 The unit of integration is a 20-line YAML file. Here's a complete adapter for a public RSS feed:
@@ -416,7 +422,7 @@ The cascade order is `public → cookie → header → intercept → ui`. On the
 
 Every command returns a v2 AgentEnvelope — the same shape on success or failure.
 Agents parse one schema across
-<span><!-- STATS:command_count -->1616<!-- /STATS --></span> commands.
+<span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands.
 
 ```json
 {
@@ -507,8 +513,8 @@ $ unicli hackernews top -n 10 -f json \
 ```
 
 That is the entire interaction model. One command shape across
-<span><!-- STATS:site_count -->268<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1616<!-- /STATS --></span> commands. One error
+<span><!-- STATS:site_count -->282<!-- /STATS --></span> sites and
+<span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands. One error
 envelope across every failure. One self-repair path across every adapter.
 
 ## Further reading
@@ -912,7 +918,7 @@ unicli linear issue-update "$ID" --state "Done" -f json
 [
   {
     "identifier": "ENG-123",
-    "title": "Ship Phase 5 adapters",
+    "title": "Ship adapter coverage",
     "url": "https://linear.app/my-team/issue/ENG-123"
   }
 ]
@@ -968,9 +974,122 @@ summarises in 3-5 bullets.
   databases (>100K messages) a query takes 1-3 seconds. Avoid running
   it in a tight loop with >50 iterations.
 
+## 5. Paper workflow — search, download, and read a PDF locally
+
+**Use-case.** An agent needs to collect a paper, keep the PDF on disk,
+and read only the relevant pages before summarizing or comparing it.
+
+### Command sequence
+
+```bash
+# Step 1 — search arXiv for a topic
+unicli arxiv search "retrieval augmented generation" --limit 5 -f json > /tmp/arxiv.json
+
+# Step 2 — choose an ID and download the PDF locally
+ID=$(jq -r '.[0].id' /tmp/arxiv.json)
+unicli arxiv download "$ID" --output ./papers -f json
+
+# Step 3 — read the opening pages from the local PDF
+unicli pdf read "./papers/$ID.pdf" --first_page 1 --last_page 3 -f json
+```
+
+### Troubleshooting
+
+- If the downloaded filename differs from `<id>.pdf`, inspect the
+  `arxiv download` JSON output and pass that path to `pdf read`.
+- `pdf read` works on local files. If the remote site only exposes a
+  landing page, download the actual PDF first instead of passing the web
+  URL to the reader.
+
+## 6. ACG character discovery — from intent to wiki and catalog sources
+
+**Use-case.** The user asks for a character such as `Sparkle`, meaning
+the Honkai: Star Rail character rather than a generic word. The agent
+should search by entity intent, then verify on structured ACG sources.
+
+### Command sequence
+
+```bash
+# Step 1 — let the catalog rank likely command surfaces
+unicli search "Sparkle Honkai Star Rail character" --limit 8
+
+# Step 2 — check a general anime/character index
+unicli anilist characters "Sparkle" --limit 5 -f json
+
+# Step 3 — check a Chinese ACG wiki surface
+unicli moegirl search "Sparkle Honkai Star Rail" --limit 5 -f json
+
+# Step 4 — inspect booru tag vocabulary for image search follow-up
+unicli danbooru tags sparkle --limit 10 -f json
+```
+
+### Troubleshooting
+
+- Use source names or franchise terms (`Honkai Star Rail`, `Star Rail`,
+  `Sparkle character`) when a character name is ambiguous.
+- Prefer tag commands before post searches on booru sites; they reveal the
+  canonical tag spelling that search commands expect.
+
+## 7. Booru tag workflow — confirm tags, then search posts
+
+**Use-case.** The agent needs tagged illustration results and should
+avoid guessing the exact tag form.
+
+### Command sequence
+
+```bash
+# Confirm the tag spelling first
+unicli safebooru tags blue_archive --limit 5 -f json
+unicli danbooru tags blue_archive --limit 5 -f json
+
+# Then search posts with an explicit tag query
+unicli safebooru search "blue_archive rating:safe" --limit 10 -f json
+unicli danbooru search "blue_archive rating:safe" --limit 10 -f json
+
+# Use detail/download commands only after selecting a concrete post ID
+unicli danbooru detail 123456 -f json
+```
+
+### Troubleshooting
+
+- Safebooru search expects Moebooru-style tag syntax such as
+  `blue_archive rating:safe`; it is not a free-form Japanese sentence
+  search.
+- Some booru sources use underscores and romanized tags. Let `tags` or
+  `wiki` commands confirm the spelling before fetching posts.
+
+## 8. Visual novel and 2024-2026 media lookup
+
+**Use-case.** The user asks for a studio, game, or recent ACG trend such
+as `Yuzusoft` or a 2024-2026 title. The agent should combine catalog
+search with source-native filters and sort orders.
+
+### Command sequence
+
+```bash
+# Discover the best source first
+unicli search "Yuzusoft visual novel games" --limit 8
+
+# Query visual-novel and anime/game catalogs directly
+unicli vndb search "Yuzusoft" --limit 10 -f json
+unicli bangumi game "Gakuen Idolmaster" --year 2024 --sort rank -f json
+unicli anilist anime "2026" --year 2026 --sort trending --limit 10 -f json
+
+# Cross-check wiki-style context when the entity is ambiguous
+unicli moegirl search "Yuzusoft" --limit 5 -f json
+```
+
+### Troubleshooting
+
+- Search with Japanese, romaji, Chinese, and English aliases when a source
+  has localized titles.
+- Use source-supported sort values. If a command rejects a sort, run
+  `unicli describe <site> <command> -f json` and use the enum in
+  `args_schema`.
+
 ## Common flags
 
-All Phase 5 adapters support:
+All current adapters support:
 
 | Flag             | What it does                                      |
 | ---------------- | ------------------------------------------------- |
@@ -1011,7 +1130,7 @@ Quick answers to the questions agents and developers ask most often. Each answer
 
 ## What is Uni-CLI?
 
-Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across <span><!-- STATS:site_count -->268<!-- /STATS --></span> sites and tools, returning a stable v2 AgentEnvelope on every call.
+Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across <span><!-- STATS:site_count -->282<!-- /STATS --></span> sites and tools, returning a stable v2 AgentEnvelope on every call.
 
 ## How is Uni-CLI different from a browser automation library?
 
@@ -1031,7 +1150,15 @@ Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, and any runtime that can spa
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.220.0 covers <span><!-- STATS:site_count -->268<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1616<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1113<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8188<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, government policy, podcasts, and macOS apps.
+v0.220.0 covers <span><!-- STATS:site_count -->282<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1144<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8393<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, paper/PDF workflows, ACG/anime/manga/wiki sources, booru tag search, government policy, podcasts, and macOS apps.
+
+## Can Uni-CLI download papers and read local PDFs?
+
+Yes. `unicli arxiv download <id> --output ./papers -f json` downloads a paper PDF, and `unicli pdf read ./papers/<id>.pdf --first_page 1 --last_page 3 -f json` extracts local text into the same structured envelope shape as web adapters. Agents can search arXiv, download the PDF, read selected pages, and summarize the result without leaving the CLI contract.
+
+## How should agents search ACG, anime, manga, and booru content?
+
+Start with intent search, then narrow by the domain-specific command: `unicli search "Sparkle Honkai Star Rail character"`, `unicli anilist characters "Sparkle" -f json`, `unicli moegirl search "Sparkle Honkai Star Rail" -f json`, or `unicli danbooru tags sparkle -f json`. Booru adapters expose explicit tag workflows, while anime/game/wiki adapters expose entity search, media catalogs, year filters, and popularity/rank/trending sort options where the source supports them.
 
 ## Can I add a new site without writing TypeScript?
 
@@ -1856,7 +1983,7 @@ running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 268 sites, 1616 commands.
+This catalog is generated from the adapter manifest: 282 sites, 1680 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -1867,16 +1994,18 @@ This catalog is generated from the adapter manifest: 268 sites, 1616 commands.
 | adguardhome | service | 5 | no | unicli adguardhome add-rule<br>unicli adguardhome rules<br>unicli adguardhome stats |
 | aibase | web-api | 1 | no | unicli aibase news |
 | amazon | web-api | 8 | yes | unicli amazon bestsellers<br>unicli amazon discussion<br>unicli amazon movers-shakers |
+| anilist | web-api | 5 | no | unicli anilist anime<br>unicli anilist manga<br>unicli anilist characters |
 | antigravity | web-api | 16 | no | unicli antigravity extract-code<br>unicli antigravity watch<br>unicli antigravity ask |
 | apple-notes | desktop | 3 | no | unicli apple-notes list<br>unicli apple-notes read<br>unicli apple-notes search |
 | apple-podcasts | web-api | 3 | no | unicli apple-podcasts episodes<br>unicli apple-podcasts search<br>unicli apple-podcasts top |
-| arxiv | web-api | 5 | no | unicli arxiv paper<br>unicli arxiv search<br>unicli arxiv trending |
+| arxiv | web-api | 6 | no | unicli arxiv download<br>unicli arxiv paper<br>unicli arxiv search |
 | audacity | desktop | 8 | no | unicli audacity convert<br>unicli audacity effects<br>unicli audacity info |
 | autoagent | bridge | 1 | no | unicli autoagent eval-run |
 | aws | bridge | 1 | no | unicli aws s3-ls |
 | baidu | web-api | 2 | yes | unicli baidu hot<br>unicli baidu search |
 | baidu-scholar | web-api | 1 | no | unicli baidu-scholar search |
 | band | web-api | 4 | yes | unicli band bands<br>unicli band mentions<br>unicli band post |
+| bangumi | web-api | 5 | no | unicli bangumi characters<br>unicli bangumi subject<br>unicli bangumi anime |
 | barchart | web-api | 4 | yes | unicli barchart flow<br>unicli barchart greeks<br>unicli barchart options |
 | bbc | web-api | 5 | no | unicli bbc news<br>unicli bbc technology<br>unicli bbc top |
 | bilibili | web-api | 20 | yes | unicli bilibili coin<br>unicli bilibili dynamic<br>unicli bilibili favorites |
@@ -1906,6 +2035,7 @@ This catalog is generated from the adapter manifest: 268 sites, 1616 commands.
 | ctrip | web-api | 4 | yes | unicli ctrip search<br>unicli ctrip hotel-suggest<br>unicli ctrip hotel-search |
 | cua | bridge | 2 | no | unicli cua bench-list<br>unicli cua bench-run |
 | cursor | web-api | 18 | no | unicli cursor composer<br>unicli cursor extract-code<br>unicli cursor export |
+| danbooru | web-api | 8 | no | unicli danbooru artists<br>unicli danbooru comments<br>unicli danbooru detail |
 | dangdang | web-api | 2 | yes | unicli dangdang hot<br>unicli dangdang search |
 | dblp | web-api | 4 | no | unicli dblp search<br>unicli dblp paper<br>unicli dblp venue |
 | deepseek | web-api | 9 | yes | unicli deepseek chat<br>unicli deepseek models<br>unicli deepseek ask |
@@ -1915,6 +2045,7 @@ This catalog is generated from the adapter manifest: 268 sites, 1616 commands.
 | dictionary | web-api | 3 | no | unicli dictionary examples<br>unicli dictionary search<br>unicli dictionary synonyms |
 | dingtalk | bridge | 8 | no | unicli dingtalk version<br>unicli dingtalk open-app<br>unicli dingtalk status-app |
 | discord-app | web-api | 15 | no | unicli discord-app servers<br>unicli discord-app channels<br>unicli discord-app read |
+| dlsite | web-api | 8 | no | unicli dlsite search<br>unicli dlsite manga<br>unicli dlsite cg |
 | docker | desktop | 7 | no | unicli docker build<br>unicli docker images<br>unicli docker logs |
 | docker-hub | web-api | 3 | no | unicli docker-hub info<br>unicli docker-hub search<br>unicli docker-hub tags |
 | dockerhub | web-api | 2 | no | unicli dockerhub search<br>unicli dockerhub image |
@@ -1926,6 +2057,7 @@ This catalog is generated from the adapter manifest: 268 sites, 1616 commands.
 | douyu | web-api | 2 | yes | unicli douyu hot<br>unicli douyu search |
 | drawio | desktop | 1 | no | unicli drawio export |
 | eastmoney | web-api | 18 | no | unicli eastmoney fund<br>unicli eastmoney hot<br>unicli eastmoney market |
+| ehentai | web-api | 6 | no | unicli ehentai search<br>unicli ehentai artist<br>unicli ehentai tag |
 | ele | web-api | 2 | yes | unicli ele hot<br>unicli ele search |
 | endoflife | web-api | 1 | no | unicli endoflife product |
 | excel | desktop | 7 | no | unicli excel insert-image<br>unicli excel insert-link<br>unicli excel list |
@@ -1975,6 +2107,7 @@ This catalog is generated from the adapter manifest: 268 sites, 1616 commands.
 | juejin | web-api | 2 | no | unicli juejin hot<br>unicli juejin search |
 | kdenlive | desktop | 3 | no | unicli kdenlive effects<br>unicli kdenlive info<br>unicli kdenlive render |
 | ke | browser | 4 | yes | unicli ke ershoufang<br>unicli ke xiaoqu<br>unicli ke zufang |
+| konachan | web-api | 4 | no | unicli konachan detail<br>unicli konachan download<br>unicli konachan search |
 | krita | desktop | 4 | no | unicli krita batch<br>unicli krita convert<br>unicli krita export |
 | kuaishou | web-api | 2 | yes | unicli kuaishou hot<br>unicli kuaishou search |
 | lark | bridge | 8 | no | unicli lark version<br>unicli lark open-app<br>unicli lark status-app |
@@ -1988,6 +2121,7 @@ This catalog is generated from the adapter manifest: 268 sites, 1616 commands.
 | lobsters | web-api | 7 | no | unicli lobsters active<br>unicli lobsters hot<br>unicli lobsters newest |
 | macos | desktop | 60 | no | unicli macos active-app<br>unicli macos apps-list<br>unicli macos apps |
 | maimai | browser | 2 | yes | unicli maimai search<br>unicli maimai search-talents |
+| mangadex | web-api | 2 | no | unicli mangadex manga<br>unicli mangadex authors |
 | maoyan | web-api | 2 | yes | unicli maoyan hot<br>unicli maoyan search |
 | mastodon | web-api | 4 | no | unicli mastodon search<br>unicli mastodon timeline<br>unicli mastodon trending |
 | maven | web-api | 3 | no | unicli maven info<br>unicli maven search<br>unicli maven artifact |
@@ -1996,6 +2130,7 @@ This catalog is generated from the adapter manifest: 268 sites, 1616 commands.
 | meituan | web-api | 1 | yes | unicli meituan search |
 | mermaid | desktop | 1 | no | unicli mermaid render |
 | minimax | web-api | 3 | yes | unicli minimax chat<br>unicli minimax models<br>unicli minimax tts |
+| moegirl | web-api | 3 | no | unicli moegirl search<br>unicli moegirl page<br>unicli moegirl links |
 | motion-studio | web-api | 1 | no | unicli motion-studio component-get |
 | mubu | web-api | 6 | yes | unicli mubu list<br>unicli mubu search<br>unicli mubu docs |
 | musescore | desktop | 5 | no | unicli musescore convert<br>unicli musescore export<br>unicli musescore info |
@@ -2026,6 +2161,7 @@ This catalog is generated from the adapter manifest: 268 sites, 1616 commands.
 | packagist | web-api | 3 | no | unicli packagist info<br>unicli packagist search<br>unicli packagist package |
 | pandoc | desktop | 1 | no | unicli pandoc convert |
 | paperreview | web-api | 3 | no | unicli paperreview feedback<br>unicli paperreview review<br>unicli paperreview submit |
+| pdf | desktop | 1 | no | unicli pdf read |
 | perplexity | web-api | 8 | yes | unicli perplexity ask<br>unicli perplexity open-app<br>unicli perplexity status-app |
 | pexels | web-api | 2 | yes | unicli pexels curated<br>unicli pexels search |
 | pinduoduo | web-api | 2 | yes | unicli pinduoduo hot<br>unicli pinduoduo search |
@@ -2049,6 +2185,7 @@ This catalog is generated from the adapter manifest: 268 sites, 1616 commands.
 | reuters | web-api | 5 | no | unicli reuters article<br>unicli reuters latest<br>unicli reuters search |
 | rfc | web-api | 1 | no | unicli rfc rfc |
 | rubygems | web-api | 3 | no | unicli rubygems info<br>unicli rubygems search<br>unicli rubygems gem |
+| safebooru | web-api | 4 | no | unicli safebooru detail<br>unicli safebooru download<br>unicli safebooru search |
 | shotcut | desktop | 3 | no | unicli shotcut effects<br>unicli shotcut info<br>unicli shotcut render |
 | sinablog | browser | 4 | no | unicli sinablog article<br>unicli sinablog hot<br>unicli sinablog search |
 | sinafinance | web-api | 5 | no | unicli sinafinance market<br>unicli sinafinance news<br>unicli sinafinance rolling-news |
@@ -2081,6 +2218,7 @@ This catalog is generated from the adapter manifest: 268 sites, 1616 commands.
 | unsplash | web-api | 2 | no | unicli unsplash random<br>unicli unsplash search |
 | v2ex | web-api | 12 | yes | unicli v2ex daily<br>unicli v2ex hot<br>unicli v2ex latest |
 | vercel | bridge | 1 | no | unicli vercel list |
+| vndb | web-api | 7 | no | unicli vndb search<br>unicli vndb vn<br>unicli vndb releases |
 | vscode | desktop | 10 | no | unicli vscode extensions<br>unicli vscode install-ext<br>unicli vscode open |
 | wanfang | web-api | 1 | no | unicli wanfang search |
 | web | web-api | 1 | no | unicli web read |
@@ -2100,6 +2238,7 @@ This catalog is generated from the adapter manifest: 268 sites, 1616 commands.
 | xiaoyuzhou | web-api | 5 | yes | unicli xiaoyuzhou episode<br>unicli xiaoyuzhou podcast-episodes<br>unicli xiaoyuzhou podcast |
 | xueqiu | web-api | 14 | yes | unicli xueqiu comments<br>unicli xueqiu earnings-date<br>unicli xueqiu feed |
 | yahoo-finance | web-api | 3 | no | unicli yahoo-finance quote<br>unicli yahoo-finance search<br>unicli yahoo-finance trending |
+| yandere | web-api | 4 | no | unicli yandere detail<br>unicli yandere download<br>unicli yandere search |
 | ycombinator | web-api | 1 | no | unicli ycombinator launches |
 | yollomi | web-api | 12 | yes | unicli yollomi background<br>unicli yollomi edit<br>unicli yollomi face-swap |
 | youtube | web-api | 16 | yes | unicli youtube playlist<br>unicli youtube shorts<br>unicli youtube trending |
@@ -2128,6 +2267,8 @@ This catalog is generated from the adapter manifest: 268 sites, 1616 commands.
 | wechat-work | web-api | 7 | no | unicli wechat-work open-app<br>unicli wechat-work status-app<br>unicli wechat-work dump |
 | zoom-app | web-api | 7 | no | unicli zoom-app open-app<br>unicli zoom-app status-app<br>unicli zoom-app dump |
 | evernote-app | web-api | 7 | no | unicli evernote-app open-app<br>unicli evernote-app status-app<br>unicli evernote-app dump |
+| jikan | web-api | 4 | no | unicli jikan anime<br>unicli jikan manga<br>unicli jikan characters |
+| kitsu | web-api | 2 | no | unicli kitsu anime<br>unicli kitsu manga |
 
 ---
 
@@ -4015,11 +4156,11 @@ Uni-CLI exposes one searchable command surface across:
   shell commands or protocol servers.
 
 The generated catalog is the source of truth:
-**<span><!-- STATS:site_count -->268<!-- /STATS --></span> sites**,
-**<span><!-- STATS:command_count -->1616<!-- /STATS --></span> commands**,
-**<span><!-- STATS:adapter_count_total -->1113<!-- /STATS --></span> adapters**,
+**<span><!-- STATS:site_count -->282<!-- /STATS --></span> sites**,
+**<span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands**,
+**<span><!-- STATS:adapter_count_total -->1144<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->8188<!-- /STATS --></span> tests** in v0.220.0.
+and **<span><!-- STATS:test_count -->8393<!-- /STATS --></span> tests** in v0.220.0.
 
 ## Execution Contract
 
@@ -4257,8 +4398,8 @@ enough.
 bench shows representative `--limit 5` adapter responses at **357-415
 tokens**, with total invocation-plus-response budgets at **364-423 tokens**.
 The full catalog command is intentionally much larger because it emits all
-<span><!-- STATS:site_count -->268<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1616<!-- /STATS --></span> commands; agents
+<span><!-- STATS:site_count -->282<!-- /STATS --></span> sites and
+<span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands; agents
 should search and describe before asking for the full registry.
 
 ## Direction
@@ -4465,9 +4606,9 @@ $$
 - `errors` are normalized into a v2 `AgentEnvelope`.
 
 The current public catalog has
-**<span><!-- STATS:site_count -->268<!-- /STATS --></span> sites**,
-**<span><!-- STATS:command_count -->1616<!-- /STATS --></span> commands**,
-**<span><!-- STATS:adapter_count_total -->1113<!-- /STATS --></span> adapters**,
+**<span><!-- STATS:site_count -->282<!-- /STATS --></span> sites**,
+**<span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands**,
+**<span><!-- STATS:adapter_count_total -->1144<!-- /STATS --></span> adapters**,
 and **<span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline
 steps**. Those numbers are generated from the repo by `scripts/count-stats.ts`,
 not hand-maintained marketing copy.
@@ -4534,8 +4675,8 @@ envelope. In the current fixture suite:
 - representative invocation strings: **7-11 tokens**;
 - representative total budgets: **364-423 tokens**;
 - full catalog output: **73242 tokens** because it intentionally lists all
-  <span><!-- STATS:site_count -->268<!-- /STATS --></span> sites and
-  <span><!-- STATS:command_count -->1616<!-- /STATS --></span> commands.
+  <span><!-- STATS:site_count -->282<!-- /STATS --></span> sites and
+  <span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands.
 
 The operational rule follows directly: agents should search and describe first,
 then execute the smallest matching command. Full catalog output is available,
@@ -4578,7 +4719,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Current: v0.220.0 — Apollo · Lovell. <!-- STATS:site_count -->268<!-- /STATS --> sites, <!-- STATS:command_count -->1616<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps.
+> Current: v0.220.0 — Apollo · Lovell. <!-- STATS:site_count -->282<!-- /STATS --> sites, <!-- STATS:command_count -->1680<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction. Historical release notes live in
 `CHANGELOG.md`; they do not belong in the roadmap.

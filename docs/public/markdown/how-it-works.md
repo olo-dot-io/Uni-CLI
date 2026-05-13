@@ -20,6 +20,12 @@ Every Uni-CLI command runs through the same four phases. Agents can stop at any 
 
 This contract holds across all five adapter types: web-api, browser, desktop, bridge, and service.
 
+## Domain-aware discovery
+
+The catalog search layer is not a plain site-name lookup. It combines bilingual BM25 with command metadata, aliases, and domain vocabulary so an agent can search for an entity first and only then pick the right surface. For example, a query such as `Sparkle Honkai Star Rail character` can route toward character/wiki/anime sources, while `blue_archive rating:safe` can route toward booru tag search. Japanese names, romaji variants, Chinese names, and English titles are represented as aliases on the relevant adapter surfaces rather than hard-coded as one-off site shortcuts.
+
+The same rule keeps broad searches honest. Domain boosts only apply when the query uses explicit ACG, paper, wiki, tag, game, anime, manga, or visual-novel vocabulary; generic queries still rank the normal web, developer, finance, or app commands by their own evidence.
+
 ## The YAML adapter format
 
 The unit of integration is a 20-line YAML file. Here's a complete adapter for a public RSS feed:
@@ -77,7 +83,7 @@ The cascade order is `public → cookie → header → intercept → ui`. On the
 
 Every command returns a v2 AgentEnvelope — the same shape on success or failure.
 Agents parse one schema across
-<span><!-- STATS:command_count -->1616<!-- /STATS --></span> commands.
+<span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands.
 
 ```json
 {
@@ -168,8 +174,8 @@ $ unicli hackernews top -n 10 -f json \
 ```
 
 That is the entire interaction model. One command shape across
-<span><!-- STATS:site_count -->268<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1616<!-- /STATS --></span> commands. One error
+<span><!-- STATS:site_count -->282<!-- /STATS --></span> sites and
+<span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands. One error
 envelope across every failure. One self-repair path across every adapter.
 
 ## Further reading

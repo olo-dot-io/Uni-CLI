@@ -94,6 +94,52 @@ unicli list --category desktop
 unicli search "office insert image"
 ```
 
+## 论文工作流：搜索、下载、读取 PDF
+
+```bash
+unicli arxiv search "retrieval augmented generation" --limit 5 -f json > /tmp/arxiv.json
+ID=$(jq -r '.[0].id' /tmp/arxiv.json)
+unicli arxiv download "$ID" --output ./papers -f json
+unicli pdf read "./papers/$ID.pdf" --first_page 1 --last_page 3 -f json
+```
+
+如果下载后的文件名不是 `<id>.pdf`，以 `arxiv download` JSON 输出里的实际路径为准，再传给 `pdf read`。
+
+## ACG 角色发现：先搜意图，再落来源
+
+```bash
+unicli search "花火 星穹铁道 character" --limit 8
+unicli anilist characters "Sparkle" --limit 5 -f json
+unicli moegirl search "花火 星穹铁道" --limit 5 -f json
+unicli danbooru tags sparkle --limit 10 -f json
+```
+
+角色名容易撞词时，把作品名、日文名、英文名、罗马音一起放进查询。booru 搜索前先跑 `tags` 或 `wiki`，确认目标站点采用的标准 tag 写法。
+
+## Booru tag 工作流
+
+```bash
+unicli safebooru tags blue_archive --limit 5 -f json
+unicli danbooru tags blue_archive --limit 5 -f json
+unicli safebooru search "blue_archive rating:safe" --limit 10 -f json
+unicli danbooru search "blue_archive rating:safe" --limit 10 -f json
+unicli danbooru detail 123456 -f json
+```
+
+Safebooru 搜索使用 `blue_archive rating:safe` 这种 Moebooru tag 语法，不是任意日文句子搜索。遇到下划线、罗马音、别名差异时，先查 tag 再查 post。
+
+## 美少女游戏与 2024-2026 媒体检索
+
+```bash
+unicli search "Yuzusoft visual novel games" --limit 8
+unicli vndb search "Yuzusoft" --limit 10 -f json
+unicli bangumi game "学園アイドルマスター" --year 2024 --sort rank -f json
+unicli anilist anime "2026" --year 2026 --sort trending --limit 10 -f json
+unicli moegirl search "柚子社" --limit 5 -f json
+```
+
+同一个作品在不同来源里可能是日文、罗马音、中文译名或英文名。排序和筛选以 `unicli describe <site> <command> -f json` 里的 `args_schema` 为准。
+
 ## 检查项目健康
 
 ```bash

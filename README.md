@@ -40,13 +40,15 @@ unicli hackernews top --limit 5 -f json
 npx @zenalexa/unicli mcp serve
 ```
 
-| Need                         | Command                                     |
-| ---------------------------- | ------------------------------------------- |
-| Find a capability            | `unicli search "summarize reddit thread"`   |
-| Inspect installed coverage   | `unicli list`, `unicli list --site macos`   |
-| Run with a machine contract  | `unicli <site> <command> -f json`           |
-| Fix a broken adapter locally | `unicli repair <site> <command>`            |
-| Serve tools to agents        | `npx @zenalexa/unicli mcp serve --expanded` |
+| Need                         | Command                                                |
+| ---------------------------- | ------------------------------------------------------ |
+| Find a capability            | `unicli search "summarize reddit thread"`              |
+| Inspect installed coverage   | `unicli list`, `unicli list --site macos`              |
+| Run with a machine contract  | `unicli <site> <command> -f json`                      |
+| Download and read papers     | `unicli arxiv download <id> && unicli pdf read <file>` |
+| Find ACG/tagged media        | `unicli search "Sparkle Honkai Star Rail character"`   |
+| Fix a broken adapter locally | `unicli repair <site> <command>`                       |
+| Serve tools to agents        | `npx @zenalexa/unicli mcp serve --expanded`            |
 
 <!-- IF YOU ARE AN AI AGENT: Start here.
 Install: npm install -g @zenalexa/unicli
@@ -79,6 +81,10 @@ Use search first, then run the smallest matching command.
 ```bash
 unicli search "connect slack messages" --limit 5
 unicli slack search "deploy incident" -f json
+unicli anilist characters "Sparkle" --limit 5 -f json
+unicli danbooru tags sparkle --limit 5 -f json
+unicli arxiv download 1706.03762 --output ./papers -f json
+unicli pdf read ./papers/1706.03762.pdf --first_page 1 --last_page 3 -f json
 unicli macos app-actions --app WhatsApp -f json
 unicli macos automation-smoke -f json
 unicli repair slack search
@@ -132,7 +138,7 @@ Start with [Compute](docs/operate/compute.md), [Electron App Control](docs/opera
 
 ## Coverage
 
-The catalog is intentionally broad. Every command is discoverable, typed, and repairable.
+The catalog is intentionally broad. Every command is discoverable, typed, and repairable. Recent coverage includes scholarly paper download/read workflows, ACG/anime/manga/wiki discovery, booru tag search, visual-novel catalogs, and Japanese/romaji-aware entity lookup.
 
 The wall below is generated from active manifest sites with real logo support. Badge counts exclude quarantined commands. The full generated catalog stays in `unicli list` and the docs site.
 

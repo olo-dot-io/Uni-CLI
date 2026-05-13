@@ -1,7 +1,7 @@
 {
-  "generated": "2026-05-12T16:44:27.511Z",
-  "total_sites": 268,
-  "total_commands": 1616,
+  "generated": "2026-05-13T17:08:30.044Z",
+  "total_sites": 282,
+  "total_commands": 1680,
   "sites": [
     {
       "site": "1688",
@@ -258,6 +258,41 @@
       ]
     },
     {
+      "site": "anilist",
+      "type": "web-api",
+      "domain": "anilist.co",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 5,
+      "commands": [
+        {
+          "name": "anime",
+          "description": "Search AniList anime by Japanese title, native title, romaji, alias, or keyword",
+          "command": "unicli anilist anime"
+        },
+        {
+          "name": "manga",
+          "description": "Search AniList manga by Japanese title, native title, romaji, alias, or keyword",
+          "command": "unicli anilist manga"
+        },
+        {
+          "name": "characters",
+          "description": "Search AniList characters by Japanese name, native name, romaji, or alias",
+          "command": "unicli anilist characters"
+        },
+        {
+          "name": "staff",
+          "description": "Search AniList staff by Japanese name, native name, romaji, or alias",
+          "command": "unicli anilist staff"
+        },
+        {
+          "name": "studios",
+          "description": "Search AniList studios by Japanese name, native name, romaji, or alias",
+          "command": "unicli anilist studios"
+        }
+      ]
+    },
+    {
       "site": "antigravity",
       "type": "web-api",
       "auth": false,
@@ -400,8 +435,13 @@
       "domain": "export.arxiv.org",
       "auth": false,
       "strategy": "public",
-      "command_count": 5,
+      "command_count": 6,
       "commands": [
+        {
+          "name": "download",
+          "description": "Download an arXiv paper PDF by ID",
+          "command": "unicli arxiv download"
+        },
         {
           "name": "paper",
           "description": "Get arXiv paper details by ID",
@@ -567,6 +607,41 @@
           "name": "posts",
           "description": "List BAND posts from a group",
           "command": "unicli band posts"
+        }
+      ]
+    },
+    {
+      "site": "bangumi",
+      "type": "web-api",
+      "domain": "bgm.tv",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 5,
+      "commands": [
+        {
+          "name": "characters",
+          "description": "Search Bangumi characters by Japanese name, Chinese name, romaji, or alias",
+          "command": "unicli bangumi characters"
+        },
+        {
+          "name": "subject",
+          "description": "Get Bangumi subject details by subject id",
+          "command": "unicli bangumi subject"
+        },
+        {
+          "name": "anime",
+          "description": "Search Bangumi anime subjects by Japanese title, Chinese title, romaji, or alias",
+          "command": "unicli bangumi anime"
+        },
+        {
+          "name": "book",
+          "description": "Search Bangumi book subjects by Japanese title, Chinese title, romaji, or alias",
+          "command": "unicli bangumi book"
+        },
+        {
+          "name": "game",
+          "description": "Search Bangumi game subjects by Japanese title, Chinese title, romaji, or alias",
+          "command": "unicli bangumi game"
         }
       ]
     },
@@ -1935,6 +2010,56 @@
       ]
     },
     {
+      "site": "danbooru",
+      "type": "web-api",
+      "domain": "danbooru.donmai.us",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 8,
+      "commands": [
+        {
+          "name": "artists",
+          "description": "Search Danbooru artist records",
+          "command": "unicli danbooru artists"
+        },
+        {
+          "name": "comments",
+          "description": "List Danbooru comments for a post",
+          "command": "unicli danbooru comments"
+        },
+        {
+          "name": "detail",
+          "description": "Get Danbooru post details by ID",
+          "command": "unicli danbooru detail"
+        },
+        {
+          "name": "download",
+          "description": "Download original media for a Danbooru post",
+          "command": "unicli danbooru download"
+        },
+        {
+          "name": "pools",
+          "description": "Search Danbooru pools",
+          "command": "unicli danbooru pools"
+        },
+        {
+          "name": "search",
+          "description": "Search Danbooru posts by tag query",
+          "command": "unicli danbooru search"
+        },
+        {
+          "name": "tags",
+          "description": "Search Danbooru tags",
+          "command": "unicli danbooru tags"
+        },
+        {
+          "name": "wiki",
+          "description": "Search Danbooru wiki pages",
+          "command": "unicli danbooru wiki"
+        }
+      ]
+    },
+    {
       "site": "dangdang",
       "type": "web-api",
       "domain": "www.dangdang.com",
@@ -2279,6 +2404,56 @@
           "name": "press",
           "description": "Press a key in Discord, with optional comma-separated modifiers.",
           "command": "unicli discord-app press"
+        }
+      ]
+    },
+    {
+      "site": "dlsite",
+      "type": "web-api",
+      "domain": "www.dlsite.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 8,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search DLsite doujin works by keyword, type, and sort order",
+          "command": "unicli dlsite search"
+        },
+        {
+          "name": "manga",
+          "description": "Search DLsite manga works",
+          "command": "unicli dlsite manga"
+        },
+        {
+          "name": "cg",
+          "description": "Search DLsite CG and illustration works",
+          "command": "unicli dlsite cg"
+        },
+        {
+          "name": "game",
+          "description": "Search DLsite game and ADV works",
+          "command": "unicli dlsite game"
+        },
+        {
+          "name": "maker",
+          "description": "Search DLsite works from a circle or maker id such as RG01012594 or VG02994",
+          "command": "unicli dlsite maker"
+        },
+        {
+          "name": "creator",
+          "description": "Search DLsite works by creator, author, illustrator, or voice actor name",
+          "command": "unicli dlsite creator"
+        },
+        {
+          "name": "genre",
+          "description": "Search DLsite works by DLsite genre tag id",
+          "command": "unicli dlsite genre"
+        },
+        {
+          "name": "work",
+          "description": "Get DLsite public work detail by product id",
+          "command": "unicli dlsite work"
         }
       ]
     },
@@ -2770,6 +2945,46 @@
           "name": "hot-rank",
           "description": "hot-rank",
           "command": "unicli eastmoney hot-rank"
+        }
+      ]
+    },
+    {
+      "site": "ehentai",
+      "type": "web-api",
+      "domain": "e-hentai.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 6,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search public E-Hentai galleries with category and structured tag filters",
+          "command": "unicli ehentai search"
+        },
+        {
+          "name": "artist",
+          "description": "Search public E-Hentai galleries by exact artist tag",
+          "command": "unicli ehentai artist"
+        },
+        {
+          "name": "tag",
+          "description": "Search public E-Hentai galleries by exact namespaced tag such as artist, group, parody, language, or character",
+          "command": "unicli ehentai tag"
+        },
+        {
+          "name": "gallery",
+          "description": "Get E-Hentai gallery metadata through the official API",
+          "command": "unicli ehentai gallery"
+        },
+        {
+          "name": "torrents",
+          "description": "List E-Hentai gallery torrent metadata from the official API",
+          "command": "unicli ehentai torrents"
+        },
+        {
+          "name": "pages",
+          "description": "List public E-Hentai gallery image page URLs and thumbnail sprites",
+          "command": "unicli ehentai pages"
         }
       ]
     },
@@ -4492,6 +4707,36 @@
       ]
     },
     {
+      "site": "konachan",
+      "type": "web-api",
+      "domain": "konachan.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 4,
+      "commands": [
+        {
+          "name": "detail",
+          "description": "Get Konachan post detail by post id",
+          "command": "unicli konachan detail"
+        },
+        {
+          "name": "download",
+          "description": "Download Konachan post image by post id",
+          "command": "unicli konachan download"
+        },
+        {
+          "name": "search",
+          "description": "Search Konachan illustration posts by Japanese, romaji, or Moebooru tag query",
+          "command": "unicli konachan search"
+        },
+        {
+          "name": "tags",
+          "description": "Search Konachan tags by Japanese name, romaji, or tag prefix",
+          "command": "unicli konachan tags"
+        }
+      ]
+    },
+    {
       "site": "krita",
       "type": "desktop",
       "auth": false,
@@ -5257,6 +5502,26 @@
       ]
     },
     {
+      "site": "mangadex",
+      "type": "web-api",
+      "domain": "mangadex.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "manga",
+          "description": "Search MangaDex manga by Japanese title, romaji, alias, or keyword",
+          "command": "unicli mangadex manga"
+        },
+        {
+          "name": "authors",
+          "description": "Search MangaDex authors and artists by public name or romaji",
+          "command": "unicli mangadex authors"
+        }
+      ]
+    },
+    {
       "site": "maoyan",
       "type": "web-api",
       "domain": "www.maoyan.com",
@@ -5437,6 +5702,31 @@
           "name": "tts",
           "description": "MiniMax text-to-speech generation",
           "command": "unicli minimax tts"
+        }
+      ]
+    },
+    {
+      "site": "moegirl",
+      "type": "web-api",
+      "domain": "zh.moegirl.org.cn",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Moegirl ACG wiki articles for characters, works, songs, games, and studios",
+          "command": "unicli moegirl search"
+        },
+        {
+          "name": "page",
+          "description": "Read a Moegirl article as plain text with metadata",
+          "command": "unicli moegirl page"
+        },
+        {
+          "name": "links",
+          "description": "Extract internal Moegirl article links from a page, useful for disambiguation pages",
+          "command": "unicli moegirl links"
         }
       ]
     },
@@ -6498,6 +6788,20 @@
       ]
     },
     {
+      "site": "pdf",
+      "type": "desktop",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "read",
+          "description": "Extract text from a local PDF file",
+          "command": "unicli pdf read"
+        }
+      ]
+    },
+    {
       "site": "perplexity",
       "type": "web-api",
       "domain": "api.perplexity.ai",
@@ -7270,6 +7574,36 @@
           "name": "gem",
           "description": "Fetch RubyGems gem metadata",
           "command": "unicli rubygems gem"
+        }
+      ]
+    },
+    {
+      "site": "safebooru",
+      "type": "web-api",
+      "domain": "safebooru.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 4,
+      "commands": [
+        {
+          "name": "detail",
+          "description": "Get Safebooru post detail by post id",
+          "command": "unicli safebooru detail"
+        },
+        {
+          "name": "download",
+          "description": "Download Safebooru post image by post id",
+          "command": "unicli safebooru download"
+        },
+        {
+          "name": "search",
+          "description": "Search Safebooru illustration posts by Moebooru tag query such as blue_archive rating:safe",
+          "command": "unicli safebooru search"
+        },
+        {
+          "name": "tags",
+          "description": "Search Safebooru tags by exact tag name or ASCII tag prefix such as blue_archive",
+          "command": "unicli safebooru tags"
         }
       ]
     },
@@ -8551,6 +8885,51 @@
       ]
     },
     {
+      "site": "vndb",
+      "type": "web-api",
+      "domain": "api.vndb.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 7,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search VNDB visual novels by title, alias, tag, or keyword",
+          "command": "unicli vndb search"
+        },
+        {
+          "name": "vn",
+          "description": "Get VNDB visual novel details by v-id",
+          "command": "unicli vndb vn"
+        },
+        {
+          "name": "releases",
+          "description": "Search VNDB releases by title or visual novel keyword",
+          "command": "unicli vndb releases"
+        },
+        {
+          "name": "tags",
+          "description": "Search VNDB game tags and genres",
+          "command": "unicli vndb tags"
+        },
+        {
+          "name": "staff",
+          "description": "Search VNDB creators and staff",
+          "command": "unicli vndb staff"
+        },
+        {
+          "name": "producers",
+          "description": "Search VNDB producers, studios, brands, makers, circles, companies, and visual novel publishers such as Yuzusoft",
+          "command": "unicli vndb producers"
+        },
+        {
+          "name": "characters",
+          "description": "Search VNDB characters and traits",
+          "command": "unicli vndb characters"
+        }
+      ]
+    },
+    {
       "site": "vscode",
       "type": "desktop",
       "auth": false,
@@ -9312,6 +9691,36 @@
           "name": "trending",
           "description": "Yahoo Finance trending tickers",
           "command": "unicli yahoo-finance trending"
+        }
+      ]
+    },
+    {
+      "site": "yandere",
+      "type": "web-api",
+      "domain": "yande.re",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 4,
+      "commands": [
+        {
+          "name": "detail",
+          "description": "Get yande.re post detail by post id",
+          "command": "unicli yandere detail"
+        },
+        {
+          "name": "download",
+          "description": "Download yande.re post image by post id",
+          "command": "unicli yandere download"
+        },
+        {
+          "name": "search",
+          "description": "Search yande.re illustration posts by Moebooru tag query",
+          "command": "unicli yandere search"
+        },
+        {
+          "name": "tags",
+          "description": "Search yande.re tags by name prefix",
+          "command": "unicli yandere tags"
         }
       ]
     },
@@ -10656,6 +11065,56 @@
           "name": "press",
           "description": "Press a key in Evernote, with optional comma-separated modifiers.",
           "command": "unicli evernote-app press"
+        }
+      ]
+    },
+    {
+      "site": "jikan",
+      "type": "web-api",
+      "domain": "api.jikan.moe",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 4,
+      "commands": [
+        {
+          "name": "anime",
+          "description": "Search MyAnimeList anime through Jikan by Japanese name, romaji, or alias",
+          "command": "unicli jikan anime"
+        },
+        {
+          "name": "manga",
+          "description": "Search MyAnimeList manga through Jikan by Japanese name, romaji, or alias",
+          "command": "unicli jikan manga"
+        },
+        {
+          "name": "characters",
+          "description": "Search MyAnimeList characters through Jikan by Japanese name, romaji, or alias",
+          "command": "unicli jikan characters"
+        },
+        {
+          "name": "people",
+          "description": "Search MyAnimeList people through Jikan by Japanese name, romaji, or alias",
+          "command": "unicli jikan people"
+        }
+      ]
+    },
+    {
+      "site": "kitsu",
+      "type": "web-api",
+      "domain": "kitsu.io",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "anime",
+          "description": "Search Kitsu anime by Japanese title, romaji, alias, or keyword",
+          "command": "unicli kitsu anime"
+        },
+        {
+          "name": "manga",
+          "description": "Search Kitsu manga by Japanese title, romaji, alias, or keyword",
+          "command": "unicli kitsu manga"
         }
       ]
     }

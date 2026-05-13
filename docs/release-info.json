@@ -8,14 +8,16 @@
   "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02200--2026-05-12--apollo--lovell",
   "highlights": {
     "root": [
-      "Release surfaces are generated from the live catalog: README, README.zh-CN, VitePress docs, public Markdown, AGENTS.md, and the AI-readable docs now agree on 268 sites, 1616 commands, 1113 adapters, 101 pipeline steps, and 8188 tests.",
+      "Release surfaces are generated from the live catalog: README, README.zh-CN, VitePress docs, public Markdown, AGENTS.md, and the AI-readable docs now agree on 282 sites, 1680 commands, 1144 adapters, 101 pipeline steps, and 8393 tests.",
       "The README entry path is rebuilt around fast install, intent search, machine-readable execution, MCP serving, and a generated logo-backed coverage wall with no placeholder badges.",
+      "Documentation now covers paper PDF download/read workflows plus ACG, anime, manga, wiki, booru tag, and visual-novel discovery patterns.",
       "Release metadata now stays synchronized across package manifests, server registry metadata, skills, docs, public Markdown, and the generated catalog assets.",
       "Archived-command checks now use command-boundary matching so active commands such as `ctrip hotel-suggest` do not mask real archive leaks or trigger false positives."
     ],
     "zh": [
-      "README、README.zh-CN、VitePress 文档、public Markdown、AGENTS.md 和 Agent 可读文档都从真实目录生成，统一显示 268 个站点、1616 条命令、1113 个适配器、101 个 pipeline step、8188 个测试。",
+      "README、README.zh-CN、VitePress 文档、public Markdown、AGENTS.md 和 Agent 可读文档都从真实目录生成，统一显示 282 个站点、1680 条命令、1144 个适配器、101 个 pipeline step、8393 个测试。",
       "README 入口重写为安装、意图搜索、机器可读执行、MCP 服务和真实 logo 覆盖墙，去掉占位 badge 噪音。",
+      "文档已覆盖论文 PDF 下载/读取，以及 ACG、动画、漫画、wiki、booru tag、美少女游戏发现路径。",
       "发布 metadata 已同步到 package manifest、server registry metadata、skills、docs、public Markdown 和生成目录资产。",
       "归档命令检查改为命令边界匹配，避免 `ctrip hotel-suggest` 这类 active command 误触发，也不会掩盖真实 archive 泄漏。"
     ]

@@ -4,11 +4,11 @@ Uni-CLI is the CLI-native command surface for AI agents to discover, run, and re
 
 ## Catalog Snapshot
 
-- Sites: 268
-- Commands: 1616
-- Adapters: 1113 (925 YAML + 188 TypeScript)
+- Sites: 282
+- Commands: 1680
+- Adapters: 1144 (946 YAML + 198 TypeScript)
 - Pipeline steps: 101
-- Tests: 8188
+- Tests: 8393
 
 ## Agent Contract
 
