@@ -1,0 +1,63 @@
+site: safebooru
+name: detail
+description: Get Safebooru post detail by post id
+domain: safebooru.org
+type: web-api
+strategy: public
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+
+pipeline:
+  - fetch:
+      url: "https://safebooru.org/index.php"
+      params:
+        page: dapi
+        s: post
+        q: index
+        json: 1
+        id: "${{ args.id }}"
+
+  - assert:
+      condition: "data.length > 0"
+      message: "No Safebooru post found for this id."
+
+  - map:
+      id: "${{ item.id }}"
+      rating: "${{ item.rating }}"
+      score: "${{ item.score }}"
+      owner: "${{ item.owner }}"
+      width: "${{ item.width }}"
+      height: "${{ item.height }}"
+      file_size: "${{ item.file_size }}"
+      tags: "${{ item.tags }}"
+      source: "${{ item.source }}"
+      preview_url: "${{ item.preview_url }}"
+      sample_url: "${{ item.sample_url }}"
+      file_url: "${{ item.file_url }}"
+      url: "${{ 'https://safebooru.org/index.php?page=post&s=view&id=' + item.id }}"
+
+columns:
+  [
+    id,
+    rating,
+    score,
+    owner,
+    width,
+    height,
+    tags,
+    source,
+    sample_url,
+    file_url,
+    url,
+  ]
+
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

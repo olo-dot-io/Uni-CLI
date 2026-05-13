@@ -1,0 +1,65 @@
+site: konachan
+name: search
+description: Search Konachan illustration posts by Japanese, romaji, or Moebooru tag query
+domain: konachan.com
+type: web-api
+strategy: public
+
+args:
+  tags:
+    type: str
+    required: true
+    positional: true
+    description: Tag query, for example "rating:safe" or "sparkle_(honkai:_star_rail)"
+  limit:
+    type: int
+    default: 20
+  page:
+    type: int
+    default: 1
+
+pipeline:
+  - fetch:
+      url: "https://konachan.com/post.json"
+      params:
+        tags: "${{ args.tags }}"
+        limit: "${{ args.limit }}"
+        page: "${{ args.page }}"
+
+  - map:
+      rank: "${{ index + 1 }}"
+      id: "${{ item.id }}"
+      rating: "${{ item.rating }}"
+      score: "${{ item.score }}"
+      author: "${{ item.author }}"
+      width: "${{ item.width }}"
+      height: "${{ item.height }}"
+      tags: "${{ item.tags }}"
+      source: "${{ item.source }}"
+      preview_url: "${{ item.preview_url }}"
+      sample_url: "${{ item.sample_url }}"
+      file_url: "${{ item.file_url }}"
+      url: "${{ 'https://konachan.com/post/show/' + item.id }}"
+
+columns:
+  [
+    rank,
+    id,
+    rating,
+    score,
+    author,
+    width,
+    height,
+    tags,
+    source,
+    sample_url,
+    file_url,
+    url,
+  ]
+
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

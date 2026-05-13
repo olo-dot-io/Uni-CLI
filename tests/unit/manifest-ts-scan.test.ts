@@ -3,6 +3,54 @@ import { describe, expect, it } from "vitest";
 import { extractTsRegistrations } from "../../scripts/manifest-ts-scan.js";
 
 describe("manifest TS scanner", () => {
+  it("expands literal for-of cli registrations without emitting fallback web commands", () => {
+    const source = `
+      import { cli, Strategy } from "../../src/registry.js";
+
+      const ARGS = [
+        { name: "query", type: "str" as const, required: true, positional: true },
+        { name: "limit", type: "int" as const, default: 10 },
+      ];
+      const COLUMNS = ["rank", "title", "url"];
+
+      for (const name of ["anime", "manga"] as const) {
+        cli({
+          site: "kitsu",
+          name,
+          description: \`Search Kitsu \${name} by Japanese title, romaji, or alias\`,
+          domain: "kitsu.io",
+          strategy: Strategy.PUBLIC,
+          browser: false,
+          args: ARGS,
+          columns: COLUMNS,
+        });
+      }
+    `;
+
+    const registrations = extractTsRegistrations(source, "kitsu", "web");
+    const commands = registrations
+      .filter((registration) => registration.site === "kitsu")
+      .flatMap((registration) => registration.commands);
+
+    expect(commands.map((command) => command.name).sort()).toEqual([
+      "anime",
+      "manga",
+    ]);
+    expect(commands).not.toContainEqual(
+      expect.objectContaining({ name: "web" }),
+    );
+    expect(commands.find((command) => command.name === "anime")).toEqual(
+      expect.objectContaining({
+        description: "Search Kitsu anime by Japanese title, romaji, or alias",
+        args: [
+          expect.objectContaining({ name: "query", required: true }),
+          expect.objectContaining({ name: "limit", default: 10 }),
+        ],
+        columns: ["rank", "title", "url"],
+      }),
+    );
+  });
+
   it("emits argument schemas for generated Electron desktop commands", () => {
     const source = `
       import { registerElectronDesktopCommands } from "../_electron/desktop-shared.js";

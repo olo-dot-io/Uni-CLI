@@ -1,0 +1,62 @@
+site: konachan
+name: detail
+description: Get Konachan post detail by post id
+domain: konachan.com
+type: web-api
+strategy: public
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+
+pipeline:
+  - fetch:
+      url: "https://konachan.com/post.json"
+      params:
+        tags: "${{ 'id:' + args.id }}"
+        limit: 1
+
+  - assert:
+      condition: "data.length > 0"
+      message: "No Konachan post found for this id."
+
+  - map:
+      id: "${{ item.id }}"
+      rating: "${{ item.rating }}"
+      score: "${{ item.score }}"
+      author: "${{ item.author }}"
+      created_at: "${{ item.created_at }}"
+      width: "${{ item.width }}"
+      height: "${{ item.height }}"
+      file_ext: "${{ item.file_ext }}"
+      file_size: "${{ item.file_size }}"
+      tags: "${{ item.tags }}"
+      source: "${{ item.source }}"
+      preview_url: "${{ item.preview_url }}"
+      sample_url: "${{ item.sample_url }}"
+      file_url: "${{ item.file_url }}"
+      url: "${{ 'https://konachan.com/post/show/' + item.id }}"
+
+columns:
+  [
+    id,
+    rating,
+    score,
+    author,
+    width,
+    height,
+    tags,
+    source,
+    sample_url,
+    file_url,
+    url,
+  ]
+
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

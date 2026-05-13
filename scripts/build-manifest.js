@@ -166,6 +166,11 @@ const CATEGORIES = {
     "google",
     "wikipedia",
     "moegirl",
+    "anilist",
+    "jikan",
+    "bangumi",
+    "kitsu",
+    "mangadex",
     "arxiv",
     "dictionary",
     "cnki",
@@ -186,6 +191,8 @@ const CATEGORIES = {
     "dlsite",
     "vndb",
     "yandere",
+    "konachan",
+    "safebooru",
   ],
   productivity: [
     "notion",
@@ -391,9 +398,9 @@ const DOC_STOPWORDS = new Set([
   "my",
 ]);
 
-// Keep alphanumeric, CJK (all planes incl. supplementary), and whitespace
+// Keep alphanumeric, CJK (all planes incl. supplementary), Japanese kana, and whitespace
 const DOC_CLEAN_REGEX =
-  /[^a-z0-9\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u{20000}-\u{2a6df}\u{2a700}-\u{2b73f}\u{2b740}-\u{2b81f}\u{2b820}-\u{2ceaf}\u{2ceb0}-\u{2ebef}\u{30000}-\u{3134f}\u{31350}-\u{323af}\s]/gu;
+  /[^a-z0-9\u3040-\u30ff\u31f0-\u31ff\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u{20000}-\u{2a6df}\u{2a700}-\u{2b73f}\u{2b740}-\u{2b81f}\u{2b820}-\u{2ceaf}\u{2ceb0}-\u{2ebef}\u{30000}-\u{3134f}\u{31350}-\u{323af}\s]/gu;
 
 function tokenizeDoc(site, command, description) {
   const terms = [];

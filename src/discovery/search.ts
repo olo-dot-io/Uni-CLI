@@ -379,10 +379,10 @@ const DOC_STOPWORDS = new Set([
   "my",
 ]);
 
-// Regex to keep alphanumeric, CJK (all planes), and whitespace.
+// Regex to keep alphanumeric, CJK (all planes), Japanese kana, and whitespace.
 // Uses the `u` flag for supplementary plane support.
 const DOC_CLEAN_REGEX =
-  /[^a-z0-9\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u{20000}-\u{2a6df}\u{2a700}-\u{2b73f}\u{2b740}-\u{2b81f}\u{2b820}-\u{2ceaf}\u{2ceb0}-\u{2ebef}\u{30000}-\u{3134f}\u{31350}-\u{323af}\s]/gu;
+  /[^a-z0-9\u3040-\u30ff\u31f0-\u31ff\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u{20000}-\u{2a6df}\u{2a700}-\u{2b73f}\u{2b740}-\u{2b81f}\u{2b820}-\u{2ceaf}\u{2ceb0}-\u{2ebef}\u{30000}-\u{3134f}\u{31350}-\u{323af}\s]/gu;
 
 /**
  * Tokenize a document (site + command + description) into search terms.

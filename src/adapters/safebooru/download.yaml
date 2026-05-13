@@ -1,0 +1,58 @@
+site: safebooru
+name: download
+description: Download Safebooru post image by post id
+domain: safebooru.org
+type: web-api
+strategy: public
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+  output:
+    type: str
+    default: "./downloads/safebooru"
+    description: Output directory
+    x-unicli-kind: path
+  quality:
+    type: str
+    default: sample
+    description: sample or original
+
+columns: [id, rating, tags, url, _download]
+
+pipeline:
+  - fetch:
+      url: "https://safebooru.org/index.php"
+      params:
+        page: dapi
+        s: post
+        q: index
+        json: 1
+        id: "${{ args.id }}"
+
+  - assert:
+      condition: "data.length > 0"
+      message: "No Safebooru post found for this id."
+
+  - download:
+      url: "${{ args.quality === 'original' ? item.file_url : item.sample_url }}"
+      dir: "${{ args.output }}"
+      filename: "${{ item.id }}.${{ (args.quality === 'original' ? item.file_url : item.sample_url) | ext | default('jpg') }}"
+      type: image
+      concurrency: 1
+
+  - map:
+      id: "${{ item.id }}"
+      rating: "${{ item.rating }}"
+      tags: "${{ item.tags }}"
+      url: "${{ 'https://safebooru.org/index.php?page=post&s=view&id=' + item.id }}"
+      _download: "${{ item._download }}"
+
+capabilities: ["http.fetch", "http.download"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

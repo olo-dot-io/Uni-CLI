@@ -179,7 +179,21 @@ function extractElectronDesktopRegistrations(
   return out;
 }
 
+function unwrapExpression(node) {
+  let current = node;
+  while (
+    current &&
+    (ts.isAsExpression(current) ||
+      ts.isTypeAssertionExpression(current) ||
+      ts.isParenthesizedExpression(current))
+  ) {
+    current = current.expression;
+  }
+  return current;
+}
+
 function literalText(node) {
+  node = unwrapExpression(node);
   if (!node) return "";
   if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
     return node.text;
@@ -195,14 +209,37 @@ function propertyNameText(name) {
 
 function getObjectProperty(obj, prop) {
   for (const p of obj.properties) {
-    if (!ts.isPropertyAssignment(p)) continue;
-    if (propertyNameText(p.name) === prop) return p.initializer;
+    if (ts.isPropertyAssignment(p) && propertyNameText(p.name) === prop) {
+      return p.initializer;
+    }
+    if (ts.isShorthandPropertyAssignment(p) && p.name.text === prop) {
+      return p.name;
+    }
   }
   return undefined;
 }
 
-function getObjectString(obj, prop) {
-  return literalText(getObjectProperty(obj, prop));
+function literalTextWithBindings(node, bindings = new Map()) {
+  node = unwrapExpression(node);
+  if (!node) return "";
+  if (ts.isIdentifier(node)) return bindings.get(node.text) ?? "";
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+    return node.text;
+  }
+  if (ts.isTemplateExpression(node)) {
+    let text = node.head.text;
+    for (const span of node.templateSpans) {
+      const value = literalTextWithBindings(span.expression, bindings);
+      if (!value) return "";
+      text += value + span.literal.text;
+    }
+    return text;
+  }
+  return "";
+}
+
+function getObjectString(obj, prop, bindings) {
+  return literalTextWithBindings(getObjectProperty(obj, prop), bindings);
 }
 
 function getObjectBoolean(obj, prop) {
@@ -214,6 +251,7 @@ function getObjectBoolean(obj, prop) {
 }
 
 function literalValue(node) {
+  node = unwrapExpression(node);
   if (!node) return undefined;
   if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
     return node.text;
@@ -233,8 +271,16 @@ function literalValue(node) {
   return undefined;
 }
 
-function getStringArray(obj, prop) {
-  const value = literalValue(getObjectProperty(obj, prop));
+function resolveConstArray(node, constArrays) {
+  node = unwrapExpression(node);
+  if (node && ts.isIdentifier(node)) return constArrays.get(node.text) ?? node;
+  return node;
+}
+
+function getStringArray(obj, prop, constArrays = new Map()) {
+  const value = literalValue(
+    resolveConstArray(getObjectProperty(obj, prop), constArrays),
+  );
   if (!Array.isArray(value)) return undefined;
   const strings = value.filter((item) => typeof item === "string");
   return strings.length === value.length ? strings : undefined;
@@ -252,8 +298,8 @@ function getObjectStrategy(obj) {
   return "public";
 }
 
-function getObjectArgs(obj) {
-  const node = getObjectProperty(obj, "args");
+function getObjectArgs(obj, constArrays = new Map()) {
+  const node = resolveConstArray(getObjectProperty(obj, "args"), constArrays);
   if (!node || !ts.isArrayLiteralExpression(node)) return undefined;
 
   const args = [];
@@ -348,31 +394,84 @@ export function extractTsRegistrations(source, fallbackSite, fallbackCommand) {
     ts.ScriptKind.TS,
   );
 
-  function visit(node) {
+  const constArrays = new Map();
+  for (const statement of sf.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name)) continue;
+      const initializer = unwrapExpression(declaration.initializer);
+      if (initializer && ts.isArrayLiteralExpression(initializer)) {
+        constArrays.set(declaration.name.text, initializer);
+      }
+    }
+  }
+
+  function stringLiteralArrayValues(node) {
+    node = unwrapExpression(node);
+    if (!node || !ts.isArrayLiteralExpression(node)) return undefined;
+    const values = [];
+    for (const element of node.elements) {
+      const text = literalText(element);
+      if (!text) return undefined;
+      values.push(text);
+    }
+    return values;
+  }
+
+  function visit(node, bindings = new Map()) {
+    if (ts.isForOfStatement(node)) {
+      const initializer = node.initializer;
+      if (
+        ts.isVariableDeclarationList(initializer) &&
+        initializer.declarations.length === 1
+      ) {
+        const declaration = initializer.declarations[0];
+        if (ts.isIdentifier(declaration.name)) {
+          const values = stringLiteralArrayValues(node.expression);
+          if (values) {
+            for (const value of values) {
+              const nextBindings = new Map(bindings);
+              nextBindings.set(declaration.name.text, value);
+              visit(node.statement, nextBindings);
+            }
+            return;
+          }
+        }
+      }
+    }
+
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
       const callee = node.expression.text;
       const first = node.arguments[0];
       const second = node.arguments[1];
 
       if (callee === "cli" && first && ts.isObjectLiteralExpression(first)) {
-        const site = getObjectString(first, "site") || fallbackSite;
-        const name = getObjectString(first, "name") || fallbackCommand;
+        const site = getObjectString(first, "site", bindings) || fallbackSite;
+        const name = getObjectString(first, "name", bindings);
+        if (!name) {
+          ts.forEachChild(node, (child) => visit(child, bindings));
+          return;
+        }
         out.push({
           site,
           commands: [
             {
               name,
-              description: getObjectString(first, "description"),
+              description: getObjectString(first, "description", bindings),
               strategy: getObjectStrategy(first),
               type: "web-api",
-              domain: getObjectString(first, "domain") || undefined,
-              base: getObjectString(first, "base") || undefined,
+              domain: getObjectString(first, "domain", bindings) || undefined,
+              base: getObjectString(first, "base", bindings) || undefined,
               browser: getObjectBoolean(first, "browser"),
-              columns: getStringArray(first, "columns"),
-              args: getObjectArgs(first),
+              columns: getStringArray(first, "columns", constArrays),
+              args: getObjectArgs(first, constArrays),
               pipeline_steps: 0,
               adapter_path: `src/adapters/${fallbackSite}/${fallbackCommand}.ts`,
-              target_surface: getObjectString(first, "target_surface"),
+              target_surface: getObjectString(
+                first,
+                "target_surface",
+                bindings,
+              ),
             },
           ],
         });
@@ -401,7 +500,7 @@ export function extractTsRegistrations(source, fallbackSite, fallbackCommand) {
         });
       }
     }
-    ts.forEachChild(node, visit);
+    ts.forEachChild(node, (child) => visit(child, bindings));
   }
 
   visit(sf);

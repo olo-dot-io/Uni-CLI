@@ -1,0 +1,55 @@
+site: konachan
+name: download
+description: Download Konachan post image by post id
+domain: konachan.com
+type: web-api
+strategy: public
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+  output:
+    type: str
+    default: "./downloads/konachan"
+    description: Output directory
+    x-unicli-kind: path
+  quality:
+    type: str
+    default: sample
+    description: sample or original
+
+columns: [id, rating, tags, url, _download]
+
+pipeline:
+  - fetch:
+      url: "https://konachan.com/post.json"
+      params:
+        tags: "${{ 'id:' + args.id }}"
+        limit: 1
+
+  - assert:
+      condition: "data.length > 0"
+      message: "No Konachan post found for this id."
+
+  - download:
+      url: "${{ args.quality === 'original' ? item.file_url : item.sample_url }}"
+      dir: "${{ args.output }}"
+      filename: "${{ item.id }}.${{ (args.quality === 'original' ? item.file_url : item.sample_url) | ext | default('jpg') }}"
+      type: image
+      concurrency: 1
+
+  - map:
+      id: "${{ item.id }}"
+      rating: "${{ item.rating }}"
+      tags: "${{ item.tags }}"
+      url: "${{ 'https://konachan.com/post/show/' + item.id }}"
+      _download: "${{ item._download }}"
+
+capabilities: ["http.fetch", "http.download"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

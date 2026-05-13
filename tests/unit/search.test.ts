@@ -39,6 +39,13 @@ describe("tokenizeQuery", () => {
     expect(tokens).toContain("视频");
   });
 
+  it("keeps Japanese kana tokens for ACG search", () => {
+    const tokens = tokenizeQuery("ゆずソフト 花火 スパークル");
+    expect(tokens).toContain("ゆずソフト");
+    expect(tokens).toContain("花火");
+    expect(tokens).toContain("スパークル");
+  });
+
   it("handles delimiters", () => {
     const tokens = tokenizeQuery("search, trending");
     expect(tokens).toContain("search");
@@ -89,11 +96,15 @@ describe("isCJKChar", () => {
     expect(isCJKChar("\uF900")).toBe(true);
   });
 
-  it("rejects non-CJK characters", () => {
+  it("detects Japanese kana for ACG query grouping", () => {
+    expect(isCJKChar("あ")).toBe(true);
+    expect(isCJKChar("ア")).toBe(true);
+  });
+
+  it("rejects non-CJK/Japanese characters", () => {
     expect(isCJKChar("A")).toBe(false);
     expect(isCJKChar("1")).toBe(false);
     expect(isCJKChar(" ")).toBe(false);
-    expect(isCJKChar("あ")).toBe(false); // Hiragana
   });
 });
 
@@ -115,6 +126,11 @@ describe("expandToken", () => {
     const expanded = expandToken("股票");
     expect(expanded).toContain("stock");
     expect(expanded).toContain("finance");
+  });
+
+  it("expands Japanese ACG aliases", () => {
+    expect(expandToken("ゆずソフト")).toContain("yuzusoft");
+    expect(expandToken("スパークル")).toContain("hanabi");
   });
 
   it("returns original for unknown tokens", () => {
@@ -261,5 +277,15 @@ describe("search", () => {
     expect(pubDev.map((r) => `${r.site}/${r.command}`)).toContain(
       "pub-dev/info",
     );
+  });
+
+  it("routes romaji and Japanese ACG entity queries to ACG sources", () => {
+    const hanabi = search("hanabi sparkle star rail", 8);
+    expect(hanabi.map((r) => r.site)).toEqual(
+      expect.arrayContaining(["moegirl", "anilist"]),
+    );
+
+    const yuzusoft = search("ゆずソフト visual novel", 8);
+    expect(yuzusoft.map((r) => r.site)).toContain("vndb");
   });
 });
