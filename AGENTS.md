@@ -83,7 +83,7 @@ project ships at high cadence, written counts go stale fast.
 
 ## Version
 
-0.220.0 — Apollo · Lovell
+0.220.1 — Apollo · Lovell Patch
 
 ## MCP one-liner (Claude Desktop / Cursor / Continue)
 

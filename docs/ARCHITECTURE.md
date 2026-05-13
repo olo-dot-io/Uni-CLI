@@ -24,7 +24,7 @@ The generated catalog is the source of truth:
 **<span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands**,
 **<span><!-- STATS:adapter_count_total -->1144<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->8393<!-- /STATS --></span> tests** in v0.220.0.
+and **<span><!-- STATS:test_count -->8393<!-- /STATS --></span> tests** in v0.220.1.
 
 ## Execution Contract
 

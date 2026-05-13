@@ -1,15 +1,11 @@
 # Changelog
 
-## [0.220.0] — 2026-05-12 — Apollo · Lovell
-
-### Minor Changes
-
-- 02bb048: Expand command coverage with Rednote, 1Point3Acres, travel, marketplace, AI chat, and social command surfaces plus release-signal coverage gates.
-
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 
 ## [Unreleased]
+
+## [0.220.1] — 2026-05-14 — Apollo · Lovell Patch
 
 ### Added
 
@@ -37,6 +33,12 @@ Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributin
 - Regenerated public docs, `llms.txt`, `llms-full.txt`, and catalog indexes
   from the current source docs and manifest data so agent-facing references
   do not retain the old 268-site / 1616-command inventory.
+
+## [0.220.0] — 2026-05-12 — Apollo · Lovell
+
+### Minor Changes
+
+- 02bb048: Expand command coverage with Rednote, 1Point3Acres, travel, marketplace, AI chat, and social command surfaces plus release-signal coverage gates.
 
 ## [0.219.0] — 2026-05-05 — Vostok · Gagarin
 

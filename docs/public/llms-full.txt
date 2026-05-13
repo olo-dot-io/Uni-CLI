@@ -69,7 +69,7 @@ These numbers come from the current generated repo artifacts: adapters, commands
 
 ## Current Version
 
-Latest: v0.220.0 · Apollo · Lovell.
+Latest: v0.220.1 · Apollo · Lovell Patch.
 
 ## Agent Index
 
@@ -1150,7 +1150,7 @@ Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, and any runtime that can spa
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.220.0 covers <span><!-- STATS:site_count -->282<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1144<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8393<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, paper/PDF workflows, ACG/anime/manga/wiki sources, booru tag search, government policy, podcasts, and macOS apps.
+v0.220.1 covers <span><!-- STATS:site_count -->282<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1144<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8393<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, paper/PDF workflows, ACG/anime/manga/wiki sources, booru tag search, government policy, podcasts, and macOS apps.
 
 ## Can Uni-CLI download papers and read local PDFs?
 
@@ -3939,10 +3939,11 @@ If the maintainer has not explicitly asked to release, development stays under
 
 ## Versioning
 
-Uni-CLI follows semver. The `0.217.x` line is a minor execution-substrate
-release line: command-first discovery and execution, v2 `AgentEnvelope` output,
-repairable adapter errors, operation-policy metadata, and optional run
-recording. It is not a major-version compatibility boundary.
+Uni-CLI follows semver. The `0.220.x` line is a patch release line on top of
+the current execution substrate: command-first discovery and execution, v2
+`AgentEnvelope` output, repairable adapter errors, operation-policy metadata,
+optional run recording, scholarly PDF workflows, and expanded ACG/anime/manga
+discovery. It is not a major-version compatibility boundary.
 
 | Change                                                            | Version bump |
 | ----------------------------------------------------------------- | ------------ |
@@ -4017,8 +4018,8 @@ RELEASE_CODENAME="Vostok · Gagarin" npm run release
 npm run release:check -- --strict-codename
 ```
 
-For the 0.217 line, the release label format is unchanged. The current release
-label is `Apollo · Swigert`.
+For the 0.220 line, the release label format is unchanged. The current release
+label is `Apollo · Lovell Patch`.
 
 ## Substantive Commits
 
@@ -4160,7 +4161,7 @@ The generated catalog is the source of truth:
 **<span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands**,
 **<span><!-- STATS:adapter_count_total -->1144<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->8393<!-- /STATS --></span> tests** in v0.220.0.
+and **<span><!-- STATS:test_count -->8393<!-- /STATS --></span> tests** in v0.220.1.
 
 ## Execution Contract
 
@@ -4719,7 +4720,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Current: v0.220.0 — Apollo · Lovell. <!-- STATS:site_count -->282<!-- /STATS --> sites, <!-- STATS:command_count -->1680<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps.
+> Current: v0.220.1 — Apollo · Lovell Patch. <!-- STATS:site_count -->282<!-- /STATS --> sites, <!-- STATS:command_count -->1680<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction. Historical release notes live in
 `CHANGELOG.md`; they do not belong in the roadmap.

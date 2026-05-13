@@ -2,7 +2,7 @@
 
 发布不是固定节奏，而是取决于社区需要和实际开发状态。版本号必须表达真实变化：小修复走 patch，能力扩展走 minor，稳定合同或破坏性变化才走 major。
 
-`0.217.x` 线是执行底座小版本线：命令优先发现和执行、v2 `AgentEnvelope` 输出、可修复 adapter 错误、operation-policy metadata、可选 run recording。它不是大版本稳定兼容边界。
+`0.220.x` 线是当前执行底座上的 patch 发布线：命令优先发现和执行、v2 `AgentEnvelope` 输出、可修复 adapter 错误、operation-policy metadata、可选 run recording、论文 PDF 工作流，以及扩展后的 ACG/动画/漫画发现能力。它不是大版本稳定兼容边界。
 
 ## 发布前检查
 
@@ -51,7 +51,7 @@ npm run changeset
 | `0.200-0.213` | Vostok  |
 | `0.216+`      | Apollo  |
 
-`0.217.2` 的发布 label 是 `Apollo · Swigert`。
+`0.220.1` 的发布 label 是 `Apollo · Lovell Patch`。
 
 ## 发布步骤
 

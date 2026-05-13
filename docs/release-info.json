@@ -1,11 +1,11 @@
 {
-  "version": "0.220.0",
-  "codename": "Apollo · Lovell",
-  "date": "2026-05-12",
+  "version": "0.220.1",
+  "codename": "Apollo · Lovell Patch",
+  "date": "2026-05-14",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.220.0",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02200--2026-05-12--apollo--lovell",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.220.1",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02201--2026-05-14--apollo--lovell-patch",
   "highlights": {
     "root": [
       "Release surfaces are generated from the live catalog: README, README.zh-CN, VitePress docs, public Markdown, AGENTS.md, and the AI-readable docs now agree on 282 sites, 1680 commands, 1144 adapters, 101 pipeline steps, and 8393 tests.",

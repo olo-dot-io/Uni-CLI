@@ -29,10 +29,11 @@ If the maintainer has not explicitly asked to release, development stays under
 
 ## Versioning
 
-Uni-CLI follows semver. The `0.217.x` line is a minor execution-substrate
-release line: command-first discovery and execution, v2 `AgentEnvelope` output,
-repairable adapter errors, operation-policy metadata, and optional run
-recording. It is not a major-version compatibility boundary.
+Uni-CLI follows semver. The `0.220.x` line is a patch release line on top of
+the current execution substrate: command-first discovery and execution, v2
+`AgentEnvelope` output, repairable adapter errors, operation-policy metadata,
+optional run recording, scholarly PDF workflows, and expanded ACG/anime/manga
+discovery. It is not a major-version compatibility boundary.
 
 | Change                                                            | Version bump |
 | ----------------------------------------------------------------- | ------------ |
@@ -107,8 +108,8 @@ RELEASE_CODENAME="Vostok · Gagarin" npm run release
 npm run release:check -- --strict-codename
 ```
 
-For the 0.217 line, the release label format is unchanged. The current release
-label is `Apollo · Swigert`.
+For the 0.220 line, the release label format is unchanged. The current release
+label is `Apollo · Lovell Patch`.
 
 ## Substantive Commits
 
