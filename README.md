@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->268<!-- /STATS --> sites · <!-- STATS:command_count -->1616<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->8188<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->268<!-- /STATS --> sites · <!-- STATS:command_count -->1616<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->8212<!-- /STATS --> tests</sub>
 </p>
 
 ## Start In 30 Seconds
