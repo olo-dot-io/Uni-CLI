@@ -52,6 +52,7 @@ ref/
 # but is not tracked.
 .claude/plans/
 .claude/worktrees/
+.claude/scheduled_tasks.lock
 .claude/settings.local.json
 .claude/skills/
 .superpowers/
@@ -96,3 +97,4 @@ docs/.vitepress/cache/
 
 # Bench agent per-trial emissions (retain locally as debug artifacts)
 bench/agent/emissions-*.jsonl
+.paper-lab/

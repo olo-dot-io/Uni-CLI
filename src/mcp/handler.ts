@@ -131,7 +131,29 @@ async function handleExpandedTool(
   if (!toolName.startsWith("unicli_")) return undefined;
   const entry = expandedRegistry.get(toolName);
   if (!entry) return undefined;
-  return runResolvedCommand(entry.adapter, entry.cmd, entry.cmdName, args);
+  return runResolvedCommand(
+    entry.adapter,
+    entry.cmd,
+    entry.cmdName,
+    expandedToolArgs(args),
+  );
+}
+
+function expandedToolArgs(
+  args: Record<string, unknown>,
+): Record<string, unknown> {
+  const deferredArgs = args._args;
+  if (
+    deferredArgs === null ||
+    typeof deferredArgs !== "object" ||
+    Array.isArray(deferredArgs)
+  ) {
+    return args;
+  }
+  const directArgs = Object.fromEntries(
+    Object.entries(args).filter(([key]) => key !== "_args"),
+  );
+  return { ...(deferredArgs as Record<string, unknown>), ...directArgs };
 }
 
 function initializeResponse(

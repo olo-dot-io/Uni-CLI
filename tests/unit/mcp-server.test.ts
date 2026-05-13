@@ -425,6 +425,65 @@ describe("MCP server — computer-use profile", () => {
   });
 });
 
+describe("MCP server — deferred profile", () => {
+  let proc: ChildProcess;
+
+  beforeAll(async () => {
+    const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
+    proc = spawn(npxBin, ["tsx", SERVER_PATH, "--profile", "deferred"], {
+      stdio: ["pipe", "pipe", "pipe"],
+      cwd: join(__dirname, "..", ".."),
+      shell: process.platform === "win32",
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(
+        () => reject(new Error("Deferred MCP server start timeout")),
+        15_000,
+      );
+      proc.stderr!.on("data", (chunk: Buffer) => {
+        const text = chunk.toString();
+        if (text.includes("MCP server") && text.includes("mode=deferred")) {
+          clearTimeout(timeout);
+          resolve();
+        }
+      });
+      proc.on("error", (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+    });
+
+    return () => {
+      proc.kill();
+    };
+  });
+
+  it("lists deferred stubs with compact schemas over stdio", async () => {
+    const response = await sendRequest(proc, {
+      jsonrpc: "2.0",
+      id: 201,
+      method: "tools/list",
+      params: {},
+    });
+
+    const result = response.result as {
+      tools: Array<{
+        name: string;
+        inputSchema: { properties?: Record<string, unknown> };
+        _meta?: Record<string, unknown>;
+      }>;
+    };
+    expect(result.tools.length).toBeGreaterThan(50);
+    const hnTop = result.tools.find((tool) => {
+      return tool.name === "unicli_hackernews_top";
+    });
+    expect(hnTop).toBeDefined();
+    expect(Object.keys(hnTop!.inputSchema.properties ?? {})).toEqual(["_args"]);
+    expect(hnTop!._meta?.["anthropic/searchHint"]).toContain("hackernews");
+  });
+});
+
 describe("MCP server — stdio shutdown", () => {
   it("drains an in-flight async tools/call before exiting on stdin close", async () => {
     const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";

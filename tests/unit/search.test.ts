@@ -247,4 +247,19 @@ describe("search", () => {
     expect(commands).toContain("runs/list");
     expect(commands).toContain("runs/show");
   });
+
+  it("keeps multi-word site names ahead of broader sibling sites", () => {
+    const scholar = search("Fetch a Google Scholar citation for a paper", 5);
+    const pubDev = search(
+      "Use pub dev to Get Dart and Flutter package metadata from pub.dev",
+      5,
+    );
+
+    expect(scholar.map((r) => `${r.site}/${r.command}`)).toContain(
+      "google-scholar/cite",
+    );
+    expect(pubDev.map((r) => `${r.site}/${r.command}`)).toContain(
+      "pub-dev/info",
+    );
+  });
 });

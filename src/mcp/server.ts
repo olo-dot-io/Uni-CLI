@@ -13,8 +13,8 @@
  *
  * Three modes:
  *   - default   (~200 tokens)  — 4 meta-tools only
- *   - expanded  (~160K tokens) — one tool per adapter command
  *   - deferred  (~8K tokens)   — stubs for ToolSearch-aware clients
+ *   - expanded  (~160K tokens) — one tool per adapter command
  *
  * Three transports:
  *   - stdio (default) — newline-delimited JSON over stdin/stdout

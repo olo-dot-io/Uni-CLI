@@ -9,6 +9,8 @@
 export * from "./types.js";
 export * from "./envelope.js";
 export * from "./schema-v2.js";
+export * from "./command-contract.js";
+export * from "./command-contract-lint.js";
 export {
   cli,
   getCommandMetadataV2,

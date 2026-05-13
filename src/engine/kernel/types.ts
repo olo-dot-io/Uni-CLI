@@ -59,7 +59,9 @@ export interface InvocationResult {
   diagnostics?: InvocationDiagnostic[];
 }
 
-export type InvocationDiagnostic = RuntimePermissionDeniedDiagnostic;
+export type InvocationDiagnostic =
+  | RuntimePermissionDeniedDiagnostic
+  | BrowserCommandDiagnostic;
 
 export interface RuntimePermissionDeniedDiagnostic {
   kind: "runtime_permission_denied";
@@ -70,4 +72,25 @@ export interface RuntimePermissionDeniedDiagnostic {
   rule_id?: string;
   resource_buckets: string[];
   resources?: Record<string, string[]>;
+}
+
+export interface BrowserCommandDiagnostic {
+  kind: "browser_command";
+  site: string;
+  command: string;
+  adapter_path: string;
+  target_surface: string;
+  evidence: {
+    session: string;
+    network: string;
+    verify: string;
+  };
+  site_memory: {
+    endpoints: string;
+    field_map: string;
+    notes: string;
+    fixtures_dir: string;
+    verify_dir: string;
+  };
+  authoring_loop: string[];
 }

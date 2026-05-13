@@ -27,6 +27,7 @@ import {
   resolveOperationAdapterPath,
   resolveOperationTargetSurface,
 } from "../engine/operation-policy.js";
+import { buildCommandContract } from "../core/command-contract.js";
 import { ExitCode } from "../types.js";
 import type {
   AdapterArg,
@@ -199,6 +200,9 @@ export function describeCommand(
   adapter?: AdapterManifest,
 ): Record<string, unknown> {
   const args = cmd.adapterArgs ?? [];
+  const contract = adapter
+    ? buildCommandContract({ adapter, commandName: cmdName, command: cmd })
+    : undefined;
   const strategy = adapter ? commandStrategy(adapter, cmd) : undefined;
   const targetSurface = resolveOperationTargetSurface({
     adapterType: adapter?.type,
@@ -238,6 +242,7 @@ export function describeCommand(
     output_schema: serializeOutputSchema(cmd.output),
     channels: buildChannels(site, cmdName, args),
     next_actions: defaultNextActions(site, cmdName),
+    ...(contract ? { contract } : {}),
   };
 }
 

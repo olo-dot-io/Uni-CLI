@@ -31,3 +31,11 @@ export {
   execute,
   KernelLookupError,
 } from "./kernel/execute.js";
+
+export {
+  KERNEL_STAGE_ORDER,
+  authorizeKernelInvocation,
+  hardenKernelInput,
+  resolveKernelCommandContext,
+  validateKernelInput,
+} from "./kernel/stages.js";

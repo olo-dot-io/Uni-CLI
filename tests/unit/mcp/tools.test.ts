@@ -11,6 +11,7 @@ import {
   buildExpandedTools,
   DEFAULT_TOOL_NAMES,
 } from "../../../src/mcp/tools.js";
+import { buildHandler } from "../../../src/mcp/handler.js";
 import { registerAdapter } from "../../../src/registry.js";
 import { primeKernelCache } from "../../../src/discovery/loader.js";
 import { AdapterType } from "../../../src/types.js";
@@ -48,9 +49,26 @@ const ADAPTER_B: AdapterManifest = {
   },
 };
 
+const ADAPTER_C: AdapterManifest = {
+  name: "contract-write",
+  type: AdapterType.WEB_API,
+  strategy: "public",
+  version: "1.0.0",
+  domain: "write.example.com",
+  commands: {
+    delete: {
+      name: "delete",
+      description: "Delete a remote record",
+      adapter_path: "src/adapters/contract-write/delete.yaml",
+      func: async () => [{ ok: true }],
+    },
+  },
+};
+
 beforeAll(() => {
   registerAdapter(ADAPTER_A);
   registerAdapter(ADAPTER_B);
+  registerAdapter(ADAPTER_C);
   primeKernelCache();
 });
 
@@ -215,6 +233,55 @@ describe("computer-use profile", () => {
 });
 
 describe("collision warnings — expanded vs deferred parity", () => {
+  it("expanded tools derive safety annotations from CommandContract", () => {
+    const tools = buildExpandedTools();
+    const tool = tools.find(
+      (candidate) => candidate.name === "unicli_contract_write_delete",
+    );
+
+    expect(tool?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    });
+  });
+
+  it("deferred tools derive safety annotations from CommandContract", () => {
+    const tools = buildDeferredTools();
+    const tool = tools.find(
+      (candidate) => candidate.name === "unicli_contract_write_delete",
+    );
+
+    expect(tool?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    });
+  });
+
+  it("deferred tool calls unwrap _args before invoking the kernel", async () => {
+    const handler = buildHandler(buildDeferredTools());
+    const response = await handler({
+      jsonrpc: "2.0",
+      id: 301,
+      method: "tools/call",
+      params: {
+        name: "unicli_contract_write_delete",
+        arguments: { _args: {} },
+      },
+    });
+
+    expect(response?.error).toBeUndefined();
+    const result = response?.result as {
+      structuredContent?: { data?: { count?: number } };
+      isError?: boolean;
+    };
+    expect(result.isError).toBeUndefined();
+    expect(result.structuredContent?.data?.count).toBe(1);
+  });
+
   it("buildDeferredTools warns on collisions (parity with buildExpandedTools)", () => {
     const spy = vi.spyOn(process.stderr, "write").mockReturnValue(true);
     buildDeferredTools();

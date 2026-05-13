@@ -101,6 +101,7 @@ const ALPHA_TFIDF = 0.8;
 
 const BOOST_SITE_EXACT = 15.0; // Query token exactly matches site name
 const BOOST_SITE_ALIAS = 12.0; // Query token's alias matches site name
+const BOOST_SITE_PHRASE = 28.0; // Query phrase matches hyphenated site name
 const BOOST_CMD_EXACT = 8.0; // Query token exactly matches command name
 const BOOST_CMD_PARTIAL = 3.0; // Query token is substring of command name
 const BOOST_CATEGORY = 2.0; // Query token matches site's category
@@ -587,6 +588,7 @@ function searchIndex(
   // Step 2: Expand via aliases
   const expandedTerms: string[] = [];
   const siteHints: string[] = []; // Directly matched site names
+  const sitePhraseHints = deriveSitePhraseHints(index, query);
   const categoryHints: string[] = []; // Matched categories
 
   for (const token of rawTokens) {
@@ -630,6 +632,13 @@ function searchIndex(
       }
     }
   }
+  if (sitePhraseHints.length > 0) {
+    for (let i = 0; i < index.documents.length; i++) {
+      if (sitePhraseHints.includes(index.documents[i].site)) {
+        candidateSet.add(i);
+      }
+    }
+  }
 
   if (candidateSet.size === 0) return [];
 
@@ -649,6 +658,9 @@ function searchIndex(
     // Boost: exact site name match
     if (siteHints.includes(doc.site)) {
       score += BOOST_SITE_EXACT;
+    }
+    if (sitePhraseHints.includes(doc.site)) {
+      score += BOOST_SITE_PHRASE;
     }
 
     // Boost: alias-resolved site match
@@ -685,6 +697,34 @@ function searchIndex(
       category,
     };
   });
+}
+
+function deriveSitePhraseHints(index: SearchIndex, query: string): string[] {
+  const normalizedQuery = normalizeSitePhrase(query);
+  if (normalizedQuery.length === 0) return [];
+
+  const sites = new Set(index.documents.map((doc) => doc.site));
+  const hints: string[] = [];
+  for (const site of sites) {
+    const phrase = normalizeSitePhrase(site);
+    if (phrase.includes(" ") && hasPhrase(normalizedQuery, phrase)) {
+      hints.push(site);
+    }
+  }
+  return hints;
+}
+
+function normalizeSitePhrase(value: string): string {
+  return value
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function hasPhrase(haystack: string, phrase: string): boolean {
+  return ` ${haystack} `.includes(` ${phrase} `);
 }
 
 /**

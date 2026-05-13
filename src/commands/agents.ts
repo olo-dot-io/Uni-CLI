@@ -24,6 +24,7 @@ import chalk from "chalk";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { registerAgentBackendCommands } from "./agents-backends.js";
+import { buildCodexPack, formatCodexPack } from "../agents/codex-pack.js";
 import {
   commandRequiresAuth,
   commandStrategy,
@@ -219,60 +220,13 @@ function formatClaude(ctx: TemplateContext): string {
 }
 
 function formatCodex(ctx: TemplateContext): string {
-  const lines: string[] = [];
-
-  // TOML MCP config snippet
-  lines.push("# .codex/config.toml — MCP server configuration");
-  lines.push("");
-  lines.push("[mcp_servers.unicli]");
-  lines.push('command = "npx"');
-  lines.push('args = ["-y", "@zenalexa/unicli", "mcp", "serve"]');
-  lines.push("");
-  lines.push("# ---");
-  lines.push("");
-
-  // AGENTS.md portion
-  lines.push(`# unicli — ${ctx.sites} sites, ${ctx.commands} commands`);
-  lines.push("");
-  lines.push("## Installation");
-  lines.push("");
-  lines.push("```bash");
-  lines.push("npm i -g @zenalexa/unicli");
-  lines.push("```");
-  lines.push("");
-  lines.push("## Usage");
-  lines.push("");
-  lines.push("```");
-  lines.push("unicli <site> <command> [args] [--json]");
-  lines.push("```");
-  lines.push("");
-  lines.push(
-    "Piped output auto-switches to JSON. Exit codes follow sysexits.h.",
+  return formatCodexPack(
+    buildCodexPack({
+      version: ctx.version,
+      date: ctx.date,
+      adapters: ctx.adapters,
+    }),
   );
-  lines.push("");
-
-  lines.push("## Sites");
-  lines.push("");
-  for (const adapter of ctx.adapters) {
-    lines.push(`### ${adapter.name}`);
-    for (const [cmd, info] of Object.entries(adapter.commands)) {
-      const desc = info.description ?? "";
-      lines.push(`- \`unicli ${adapter.name} ${cmd}\` — ${desc}`);
-    }
-  }
-  lines.push("");
-
-  lines.push("## Self-Repair");
-  lines.push("");
-  lines.push(
-    "On failure, structured JSON errors include `adapter_path` and `suggestion`.",
-  );
-  lines.push(
-    "Read the adapter file, fix, and retry. Automated: `unicli repair <site> <command>`.",
-  );
-  lines.push("");
-
-  return lines.join("\n");
 }
 
 function formatOpenclaw(ctx: TemplateContext): string {

@@ -10,6 +10,7 @@ import {
   captureRenderAwareBrowserEvidence,
   installBrowserEvidenceHooks,
 } from "../../src/engine/browser/evidence.js";
+import { buildBrowserCommandDiagnostic } from "../../src/engine/browser/diagnostics.js";
 import { createBrowserSessionLease } from "../../src/engine/browser/session-lease.js";
 import type { IPage } from "../../src/types.js";
 
@@ -271,6 +272,38 @@ describe("browser operator evidence", () => {
       timeout_ms: 3000,
       poll_ms: 100,
     });
+  });
+
+  it("projects browser-backed commands into repairable kernel diagnostics", () => {
+    const diagnostic = buildBrowserCommandDiagnostic({
+      site: "example",
+      command: "search",
+      adapterPath: "src/adapters/example/search.yaml",
+      targetSurface: "web",
+      browser: true,
+    });
+
+    expect(diagnostic).toMatchObject({
+      kind: "browser_command",
+      site: "example",
+      command: "search",
+      adapter_path: "src/adapters/example/search.yaml",
+      target_surface: "web",
+      evidence: {
+        session: "unicli browser evidence --render-aware",
+        network: "unicli browser network --raw",
+        verify: "unicli browser verify example/search --strict-memory",
+      },
+    });
+    expect(diagnostic?.site_memory.endpoints).toContain(
+      ".unicli/sites/example/endpoints.json",
+    );
+    expect(diagnostic?.authoring_loop).toEqual([
+      "unicli browser analyze https://example.com",
+      "unicli browser network --filter id,title",
+      "unicli browser verify example/search --write-fixture",
+      "unicli repair example search",
+    ]);
   });
 
   it("counts numeric, Playwright-style, and structured snapshot refs", async () => {

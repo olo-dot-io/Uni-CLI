@@ -11,6 +11,7 @@
  */
 
 import { getAllAdapters } from "../registry.js";
+import { buildCommandContract } from "../core/command-contract.js";
 import type { AdapterManifest, AdapterCommand } from "../types.js";
 import type { McpToolResult } from "./dispatch.js";
 import {
@@ -73,6 +74,24 @@ const RESERVED_TOOL_NAMES: ReadonlySet<string> = new Set([
   ...DEFAULT_TOOL_NAMES,
   "unicli_discover",
 ]);
+
+function annotationsForCommand(
+  adapter: AdapterManifest,
+  cmdName: string,
+  cmd: AdapterCommand,
+): McpToolAnnotations {
+  const contract = buildCommandContract({
+    adapter,
+    commandName: cmdName,
+    command: cmd,
+  });
+  return {
+    readOnlyHint: contract.effect.read_only,
+    destructiveHint: contract.effect.safety_class === "destructive",
+    idempotentHint: contract.effect.idempotent,
+    openWorldHint: contract.effect.open_world,
+  };
+}
 
 export function buildDefaultTools(): McpTool[] {
   return [
@@ -202,6 +221,8 @@ export function selectTools(profile: string): McpTool[] {
   switch (profile) {
     case "computer-use":
       return COMPUTER_USE_TOOLS;
+    case "deferred":
+      return buildDeferredTools();
     case "expanded":
       return buildExpandedTools();
     case "default":
@@ -256,11 +277,7 @@ export function buildExpandedTools(): McpTool[] {
         _meta: {
           "anthropic/searchHint": `${adapter.name}: ${rawDesc}`,
         },
-        annotations: {
-          readOnlyHint: true,
-          idempotentHint: true,
-          openWorldHint: true,
-        },
+        annotations: annotationsForCommand(adapter, cmdName, cmd),
       });
     }
   }
@@ -320,11 +337,7 @@ export function buildDeferredTools(): McpTool[] {
         _meta: {
           "anthropic/searchHint": `${adapter.name}: ${rawDesc}`,
         },
-        annotations: {
-          readOnlyHint: true,
-          idempotentHint: true,
-          openWorldHint: true,
-        },
+        annotations: annotationsForCommand(adapter, cmdName, cmd),
       });
     }
   }

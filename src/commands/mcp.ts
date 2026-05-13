@@ -1,7 +1,7 @@
 /**
  * MCP gateway CLI — wrapper around src/mcp/server.ts.
  *
- *   unicli mcp serve [--transport stdio|http] [--port 19826] [--expanded]
+ *   unicli mcp serve [--transport stdio|http] [--port 19826] [--profile deferred]
  *   unicli mcp health                       # pre-flight check (no server)
  *
  * `serve` shells out to the same `src/mcp/server.ts` entry point as
@@ -71,7 +71,7 @@ export function registerMcpCommand(program: Command): void {
     )
     .option(
       "--profile <name>",
-      "Tool profile: default, expanded, or computer-use",
+      "Tool profile: default, deferred, expanded, or computer-use",
       "default",
     )
     .action((opts: ServeOptions) => {
@@ -128,13 +128,18 @@ export function registerMcpCommand(program: Command): void {
 
         const defaultToolNames = buildDefaultTools().map((tool) => tool.name);
         const defaultToolCount = defaultToolNames.length;
+        const deferredToolCount = commands.length + defaultToolCount;
         const expandedToolCount = commands.length + defaultToolCount;
 
         const data = {
           status: "ok" as const,
           adapters: adapters.length,
           commands: commands.length,
-          tools: { default: defaultToolCount, expanded: expandedToolCount },
+          tools: {
+            default: defaultToolCount,
+            deferred: deferredToolCount,
+            expanded: expandedToolCount,
+          },
           version: VERSION,
         };
 
@@ -147,14 +152,14 @@ export function registerMcpCommand(program: Command): void {
           console.error(`    adapters: ${chalk.green(adapters.length)}`);
           console.error(`    commands: ${chalk.green(commands.length)}`);
           console.error(
-            `    tools:    ${chalk.green(String(defaultToolCount))} default, ${chalk.green(expandedToolCount)} expanded`,
+            `    tools:    ${chalk.green(String(defaultToolCount))} default, ${chalk.green(deferredToolCount)} deferred, ${chalk.green(expandedToolCount)} expanded`,
           );
           console.error(
             chalk.dim(`\n  Default tools: ${defaultToolNames.join(", ")}`),
           );
           console.error(
             chalk.dim(
-              "  To start: unicli mcp serve [--expanded] [--transport http]",
+              "  To start: unicli mcp serve [--profile deferred] [--transport http]",
             ),
           );
         }
