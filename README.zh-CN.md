@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->271<!-- /STATS --> 个站点 · <!-- STATS:command_count -->1632<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->101<!-- /STATS --> 个 pipeline step · <!-- STATS:test_count -->8279<!-- /STATS --> 个测试</sub>
+  <sub><!-- STATS:site_count -->275<!-- /STATS --> 个站点 · <!-- STATS:command_count -->1654<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->101<!-- /STATS --> 个 pipeline step · <!-- STATS:test_count -->8314<!-- /STATS --> 个测试</sub>
 </p>
 
 ## 30 秒开始

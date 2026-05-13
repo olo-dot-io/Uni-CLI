@@ -1,0 +1,41 @@
+site: yandere
+name: tags
+description: Search yande.re tags by name prefix
+domain: yande.re
+type: web-api
+strategy: public
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: "https://yande.re/tag.json"
+      params:
+        name: "${{ args.query }}"
+        limit: "${{ args.limit }}"
+
+  - map:
+      rank: "${{ index + 1 }}"
+      id: "${{ item.id }}"
+      name: "${{ item.name }}"
+      count: "${{ item.count }}"
+      type: "${{ item.type }}"
+      ambiguous: "${{ item.ambiguous }}"
+      url: "${{ 'https://yande.re/post?tags=' + item.name }}"
+
+columns: [rank, id, name, count, type, ambiguous, url]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

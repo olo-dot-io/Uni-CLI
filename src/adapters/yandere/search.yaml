@@ -1,0 +1,67 @@
+site: yandere
+name: search
+description: Search yande.re illustration posts by Moebooru tag query
+domain: yande.re
+type: web-api
+strategy: public
+
+args:
+  tags:
+    type: str
+    required: true
+    positional: true
+    description: Tag query, for example "hanabi rating:safe" or "order:score"
+  limit:
+    type: int
+    default: 20
+  page:
+    type: int
+    default: 1
+
+pipeline:
+  - fetch:
+      url: "https://yande.re/post.json"
+      params:
+        tags: "${{ args.tags }}"
+        limit: "${{ args.limit }}"
+        page: "${{ args.page }}"
+
+  - map:
+      rank: "${{ index + 1 }}"
+      id: "${{ item.id }}"
+      rating: "${{ item.rating }}"
+      score: "${{ item.score }}"
+      author: "${{ item.author }}"
+      width: "${{ item.width }}"
+      height: "${{ item.height }}"
+      file_ext: "${{ item.file_ext }}"
+      tags: "${{ item.tags }}"
+      source: "${{ item.source }}"
+      preview_url: "${{ item.preview_url }}"
+      sample_url: "${{ item.sample_url }}"
+      file_url: "${{ item.file_url }}"
+      url: "${{ 'https://yande.re/post/show/' + item.id }}"
+
+columns:
+  [
+    rank,
+    id,
+    rating,
+    score,
+    author,
+    width,
+    height,
+    tags,
+    source,
+    sample_url,
+    file_url,
+    url,
+  ]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

@@ -1,0 +1,56 @@
+site: yandere
+name: download
+description: Download yande.re post image by post id
+domain: yande.re
+type: web-api
+strategy: public
+
+args:
+  id:
+    type: str
+    required: true
+    positional: true
+  output:
+    type: str
+    default: "./downloads/yandere"
+    description: Output directory
+    x-unicli-kind: path
+  quality:
+    type: str
+    default: sample
+    description: sample or original
+
+columns: [id, rating, tags, url, _download]
+
+pipeline:
+  - fetch:
+      url: "https://yande.re/post.json"
+      params:
+        tags: "${{ 'id:' + args.id }}"
+        limit: 1
+
+  - assert:
+      condition: "data.length > 0"
+      message: "No yande.re post found for this id."
+
+  - download:
+      url: "${{ args.quality === 'original' ? item.file_url : item.sample_url }}"
+      dir: "${{ args.output }}"
+      filename: "${{ item.id }}.${{ (args.quality === 'original' ? item.file_url : item.sample_url) | ext | default('jpg') }}"
+      type: image
+      concurrency: 1
+
+  - map:
+      id: "${{ item.id }}"
+      rating: "${{ item.rating }}"
+      tags: "${{ item.tags }}"
+      url: "${{ 'https://yande.re/post/show/' + item.id }}"
+      _download: "${{ item._download }}"
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch", "http.download"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

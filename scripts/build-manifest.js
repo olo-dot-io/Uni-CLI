@@ -165,6 +165,7 @@ const CATEGORIES = {
   reference: [
     "google",
     "wikipedia",
+    "moegirl",
     "arxiv",
     "dictionary",
     "cnki",
@@ -182,6 +183,9 @@ const CATEGORIES = {
     "pixiv",
     "danbooru",
     "ehentai",
+    "dlsite",
+    "vndb",
+    "yandere",
   ],
   productivity: [
     "notion",
