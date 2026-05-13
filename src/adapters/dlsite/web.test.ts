@@ -29,6 +29,20 @@ describe("dlsite public commands", () => {
   });
 
   it("builds search URLs with sort and work type filters", () => {
+    const args = resolveCommand("dlsite", "search")!.command.adapterArgs;
+    expect(args).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "sort",
+          choices: ["release", "hot", "rating", "reviews", "price", "title"],
+        }),
+        expect.objectContaining({
+          name: "type",
+          choices: ["all", "manga", "cg", "game", "novel", "voice", "video"],
+        }),
+      ]),
+    );
+
     expect(
       dlsiteSearchUrl({
         query: "花火",
@@ -43,6 +57,9 @@ describe("dlsite public commands", () => {
       dlsiteMakerUrl({ maker_id: "RG01012594", sort: "hot", page: 1 }),
     ).toBe(
       "https://www.dlsite.com/maniax/circle/profile/=/page/1/maker_id/RG01012594.html/order/dl_d",
+    );
+    expect(dlsiteMakerUrl({ maker_id: "VG02994" })).toBe(
+      "https://www.dlsite.com/maniax/circle/profile/=/page/1/maker_id/VG02994.html/order/release",
     );
     expect(dlsiteCreatorUrl({ creator: "わかなはなび" })).toBe(
       "https://www.dlsite.com/maniax/fsr/=/keyword_creater/%22%E3%82%8F%E3%81%8B%E3%81%AA%E3%81%AF%E3%81%AA%E3%81%B3%22/ana_flg/all/order/release/page/1",
@@ -59,7 +76,7 @@ describe("dlsite public commands", () => {
           :thumb-candidates="['//img.dlsite.jp/resize/images2/work/doujin/RJ006000/RJ005751_img_main_240x240.webp']"></thumb-with-ng-filter-block>
         <dd class="work_category_free_sample"><div class="work_category type_MNG"><a>マンガ</a></div></dd>
         <dd class="work_name"><div><a href="https://www.dlsite.com/maniax/work/=/product_id/RJ005751.html" title="Komm.susser Tod.">Komm.susser Tod.</a></div></dd>
-        <dd class="maker_name"><a>スタジオきゃうん</a></dd>
+        <dd class="maker_name"><a href="https://www.dlsite.com/maniax/circle/profile/=/maker_id/RG01444.html">スタジオきゃうん</a></dd>
         <span class="work_price_base">770</span>
         <dd class="work_genre"><span class="icon_ADL" title="R18">R18</span></dd>
         <dd class="work_dl">販売数:&nbsp;<span>745</span></dd>
@@ -73,6 +90,7 @@ describe("dlsite public commands", () => {
         product_id: "RJ005751",
         title: "Komm.susser Tod.",
         maker: "スタジオきゃうん",
+        maker_id: "RG01444",
         work_type: "マンガ",
         age: "R18",
         price_jpy: "770",

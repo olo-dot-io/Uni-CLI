@@ -1,6 +1,6 @@
 site: safebooru
 name: search
-description: Search Safebooru illustration posts by Japanese, romaji, or tag query
+description: Search Safebooru illustration posts by Moebooru tag query such as blue_archive rating:safe
 domain: safebooru.org
 type: web-api
 strategy: public
@@ -10,7 +10,7 @@ args:
     type: str
     required: true
     positional: true
-    description: Tag query, for example "hanabi rating:safe"
+    description: Moebooru tag query, for example "blue_archive rating:safe"
   limit:
     type: int
     default: 20

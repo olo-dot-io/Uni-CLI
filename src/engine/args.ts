@@ -221,6 +221,24 @@ function coerce(value: string, type: AdapterArg["type"]): unknown {
   }
 }
 
+function commanderOptionName(name: string): string {
+  return name.replace(/-([a-z])/g, (_match, letter: string) =>
+    letter.toUpperCase(),
+  );
+}
+
+function shellOptionValue(
+  opts: Record<string, unknown>,
+  arg: AdapterArg,
+): unknown {
+  const direct = opts[arg.name];
+  if (direct !== undefined && direct !== null) return direct;
+  const commanderName = commanderOptionName(arg.name);
+  if (commanderName === arg.name) return undefined;
+  const camel = opts[commanderName];
+  return camel === null ? undefined : camel;
+}
+
 /**
  * Merge shell-derived args (opts + positionals) into an ArgBag using the
  * adapter schema for naming, coercion, and defaults.
@@ -245,7 +263,7 @@ function mergeShellArgs(
 
   for (const arg of schema) {
     if (arg.positional) continue;
-    const raw = opts[arg.name];
+    const raw = shellOptionValue(opts, arg);
     if (raw !== undefined && raw !== null) {
       out[arg.name] = typeof raw === "string" ? coerce(raw, arg.type) : raw;
     } else if (arg.default !== undefined) {
@@ -255,7 +273,12 @@ function mergeShellArgs(
 
   // Pass through `limit` and any non-schema opts so existing adapters keep
   // working while the schema evolves.
+  const schemaNames = new Set(schema.map((arg) => arg.name));
+  const commanderAliases = new Set(
+    schema.map((arg) => commanderOptionName(arg.name)),
+  );
   for (const key of Object.keys(opts)) {
+    if (schemaNames.has(key) || commanderAliases.has(key)) continue;
     if (out[key] === undefined && opts[key] !== undefined) {
       out[key] = opts[key];
     }

@@ -83,7 +83,7 @@ export function argsToJsonSchema(args: ManifestArg[]): Record<string, unknown> {
     type: "object",
     properties,
     required,
-    additionalProperties: true,
+    additionalProperties: false,
   };
 }
 

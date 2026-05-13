@@ -61,6 +61,34 @@ describe("TypeScript adapter registry", () => {
     ]);
   });
 
+  it("preserves loader-discovered adapter_path when TS registration supplies the runtime func", () => {
+    registerAdapter({
+      name: "unit-ts-path",
+      type: AdapterType.WEB_API,
+      commands: {
+        search: {
+          name: "search",
+          description: "Static TS stub",
+          adapter_path: "src/adapters/unit-ts-path/web.ts",
+          adapterArgs: [{ name: "query", type: "str", positional: true }],
+        },
+      },
+    });
+
+    cli({
+      site: "unit-ts-path",
+      name: "search",
+      description: "Runtime TS command",
+      strategy: Strategy.PUBLIC,
+      args: [{ name: "query", type: "str", positional: true }],
+      func: async () => [],
+    });
+
+    expect(getAdapter("unit-ts-path")?.commands.search.adapter_path).toBe(
+      "src/adapters/unit-ts-path/web.ts",
+    );
+  });
+
   it("carries command-level strategy and browser metadata into discovery surfaces", () => {
     const adapter = {
       name: "unit-command-scope",

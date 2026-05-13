@@ -26,10 +26,10 @@ npm run bench:gate
 这些数字来自仓库生成的 `stats.json` 和 manifest：
 
 - <span><!-- STATS:site_count -->282<!-- /STATS --></span> 个站点。
-- <span><!-- STATS:command_count -->1678<!-- /STATS --></span> 条命令。
+- <span><!-- STATS:command_count -->1680<!-- /STATS --></span> 条命令。
 - <span><!-- STATS:adapter_count_yaml -->946<!-- /STATS --></span> 个 schema-v2 YAML adapter。
 - <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> 个 pipeline steps。
-- <span><!-- STATS:test_count -->8374<!-- /STATS --></span> 个测试。
+- <span><!-- STATS:test_count -->8393<!-- /STATS --></span> 个测试。
 
 数字随开发更新，以 `npm run stats` 生成结果为准。
 

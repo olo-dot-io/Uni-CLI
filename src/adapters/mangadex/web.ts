@@ -30,6 +30,52 @@ function requireLimit(value: unknown): number {
   return n;
 }
 
+function optionalYear(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1900 || n > 2100) {
+    throw new Error("mangadex year must be an integer in [1900, 2100].");
+  }
+  return n;
+}
+
+const SORT_PARAMS: Record<string, [string, string] | undefined> = {
+  relevance: undefined,
+  latest: ["order[latestUploadedChapter]", "desc"],
+  followed: ["order[followedCount]", "desc"],
+  year: ["order[year]", "desc"],
+};
+
+function applySort(url: URL, value: unknown): void {
+  const key = String(value ?? "relevance").trim();
+  const spec = SORT_PARAMS[key];
+  if (!(key in SORT_PARAMS)) {
+    throw new Error(
+      `mangadex sort must be one of: ${Object.keys(SORT_PARAMS).join(", ")}.`,
+    );
+  }
+  if (spec) url.searchParams.set(spec[0], spec[1]);
+}
+
+const CONTENT_RATINGS = new Set([
+  "safe",
+  "suggestive",
+  "erotica",
+  "pornographic",
+  "all",
+]);
+
+function applyContentRating(url: URL, value: unknown): void {
+  if (value === undefined || value === null || value === "") return;
+  const rating = String(value).trim();
+  if (!CONTENT_RATINGS.has(rating)) {
+    throw new Error(
+      `mangadex content_rating must be one of: ${Array.from(CONTENT_RATINGS).join(", ")}.`,
+    );
+  }
+  if (rating !== "all") url.searchParams.append("contentRating[]", rating);
+}
+
 async function getJson(url: URL): Promise<unknown[]> {
   const response = await fetch(url, {
     headers: { Accept: "application/json", "User-Agent": USER_AGENT },
@@ -93,6 +139,10 @@ async function searchManga(kwargs: Record<string, unknown>) {
   const url = new URL(`${API}/manga`);
   url.searchParams.set("title", query);
   url.searchParams.set("limit", String(requireLimit(kwargs.limit)));
+  const year = optionalYear(kwargs.year);
+  if (year) url.searchParams.set("year", String(year));
+  applySort(url, kwargs.sort);
+  applyContentRating(url, kwargs["content-rating"]);
   url.searchParams.append("includes[]", "author");
   url.searchParams.append("includes[]", "artist");
   const rows = mapMangaDexManga(await getJson(url));
@@ -112,9 +162,26 @@ async function searchAuthors(kwargs: Record<string, unknown>) {
   return rows;
 }
 
-const ARGS = [
+const SEARCH_ARGS = [
   { name: "query", type: "str" as const, required: true, positional: true },
   { name: "limit", type: "int" as const, default: 10 },
+];
+
+const MANGA_ARGS = [
+  { name: "query", type: "str" as const, required: true, positional: true },
+  { name: "limit", type: "int" as const, default: 10 },
+  { name: "year", type: "int" as const },
+  {
+    name: "sort",
+    type: "str" as const,
+    default: "relevance",
+    choices: ["relevance", "latest", "followed", "year"],
+  },
+  {
+    name: "content-rating",
+    type: "str" as const,
+    choices: ["safe", "suggestive", "erotica", "pornographic", "all"],
+  },
 ];
 
 cli({
@@ -125,7 +192,7 @@ cli({
   domain: "mangadex.org",
   strategy: Strategy.PUBLIC,
   browser: false,
-  args: ARGS,
+  args: MANGA_ARGS,
   columns: ["rank", "id", "title", "status", "year", "content_rating", "url"],
   func: async (_page, kwargs) => searchManga(kwargs),
 });
@@ -133,11 +200,11 @@ cli({
 cli({
   site: "mangadex",
   name: "authors",
-  description: "Search MangaDex authors and artists by Japanese name or romaji",
+  description: "Search MangaDex authors and artists by public name or romaji",
   domain: "mangadex.org",
   strategy: Strategy.PUBLIC,
   browser: false,
-  args: ARGS,
+  args: SEARCH_ARGS,
   columns: ["rank", "id", "name", "twitter", "pixiv", "website", "url"],
   func: async (_page, kwargs) => searchAuthors(kwargs),
 });

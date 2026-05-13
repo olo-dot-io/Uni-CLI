@@ -17,6 +17,7 @@ interface DlsiteSearchRow {
   product_id: string;
   title: string;
   maker: string;
+  maker_id: string;
   work_type: string;
   age: string;
   price_jpy: string;
@@ -78,7 +79,7 @@ function normalizeService(value: unknown): string {
 
 function normalizeMakerId(value: unknown): string {
   const raw = str(value).trim().toUpperCase();
-  const match = raw.match(/RG\d+/);
+  const match = raw.match(/[A-Z]{2}\d+/);
   if (!match) throw new Error("DLsite maker id must look like RG01012594.");
   return match[0];
 }
@@ -138,8 +139,8 @@ function normalizeType(value: unknown): string {
     video: "MOV",
     movie: "MOV",
   };
-  const type = map[key] ?? key.toUpperCase();
-  if (!/^[A-Z0-9]{3}$/.test(type)) {
+  const type = map[key];
+  if (!type) {
     throw new Error(`Unsupported DLsite work type: ${value}.`);
   }
   return type;
@@ -245,6 +246,7 @@ export function parseDlsiteSearchHtml(
       chunk,
       /<dd class="maker_name"[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/,
     );
+    const makerId = rawMatch(chunk, /maker_id\/([A-Z]{2}\d+)\.html/i);
     const workType = firstMatch(
       chunk,
       /<div class="work_category[^"]*"[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/,
@@ -273,6 +275,7 @@ export function parseDlsiteSearchHtml(
       product_id: productId,
       title,
       maker,
+      maker_id: makerId.toUpperCase(),
       work_type: workType,
       age,
       price_jpy: price,
@@ -358,13 +361,14 @@ const SEARCH_ARGS = [
     name: "sort",
     type: "str" as const,
     default: "release",
+    choices: ["release", "hot", "rating", "reviews", "price", "title"],
     description: "release, hot, rating, reviews, price, title",
   },
   {
     name: "type",
     type: "str" as const,
-    description:
-      "manga, cg, game, novel, voice, video, or DLsite work type code",
+    choices: ["all", "manga", "cg", "game", "novel", "voice", "video"],
+    description: "all, manga, cg, game, novel, voice, video",
   },
 ];
 
@@ -373,6 +377,7 @@ const SEARCH_COLUMNS = [
   "product_id",
   "title",
   "maker",
+  "maker_id",
   "work_type",
   "age",
   "price_jpy",
@@ -434,7 +439,7 @@ cli({
   site: "dlsite",
   name: "maker",
   description:
-    "Search DLsite works from a circle or maker id such as RG01012594",
+    "Search DLsite works from a circle or maker id such as RG01012594 or VG02994",
   domain: "www.dlsite.com",
   strategy: Strategy.PUBLIC,
   browser: false,
@@ -451,6 +456,7 @@ cli({
       name: "sort",
       type: "str" as const,
       default: "release",
+      choices: ["release", "hot", "rating", "reviews", "price", "title"],
       description: "release, hot, rating, reviews, price, title",
     },
   ],
@@ -474,6 +480,7 @@ cli({
       name: "sort",
       type: "str" as const,
       default: "release",
+      choices: ["release", "hot", "rating", "reviews", "price", "title"],
       description: "release, hot, rating, reviews, price, title",
     },
   ],
@@ -496,6 +503,7 @@ cli({
       name: "sort",
       type: "str" as const,
       default: "release",
+      choices: ["release", "hot", "rating", "reviews", "price", "title"],
       description: "release, hot, rating, reviews, price, title",
     },
   ],

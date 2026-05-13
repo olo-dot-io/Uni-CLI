@@ -139,6 +139,12 @@ describe("errorTypeToCode — generic Error message matching", () => {
     );
   });
 
+  it("does not classify words containing auth as auth_required", () => {
+    expect(
+      errorTypeToCode(new Error('No MangaDex authors found for "藤本タツキ".')),
+    ).toBe("internal_error");
+  });
+
   it("maps 404 text to not_found", () => {
     expect(errorTypeToCode(new Error("HTTP 404 Not Found"))).toBe("not_found");
   });

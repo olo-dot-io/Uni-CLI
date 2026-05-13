@@ -159,10 +159,11 @@ export function cli(config: CliRegistration): void {
     if (config.browser !== undefined) adapter.browser = config.browser;
   }
 
+  const existing = adapter!.commands[config.name];
   adapter!.commands[config.name] = {
     name: config.name,
     description: config.description,
-    adapter_path: config.adapter_path,
+    adapter_path: config.adapter_path ?? existing?.adapter_path,
     target_surface: config.target_surface,
     adapterArgs: config.args,
     strategy: config.strategy,

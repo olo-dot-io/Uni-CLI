@@ -9,6 +9,22 @@ describe("mangadex public commands", () => {
     ).toEqual(expect.arrayContaining(["manga", "authors"]));
   });
 
+  it("exposes year, sort, and content rating controls for recent manga lookup", () => {
+    expect(resolveCommand("mangadex", "manga")!.command.adapterArgs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "year", type: "int" }),
+        expect.objectContaining({
+          name: "sort",
+          choices: expect.arrayContaining(["latest", "followed", "relevance"]),
+        }),
+        expect.objectContaining({
+          name: "content-rating",
+          choices: expect.arrayContaining(["safe", "suggestive", "erotica"]),
+        }),
+      ]),
+    );
+  });
+
   it("maps manga rows", () => {
     expect(
       mapMangaDexManga([

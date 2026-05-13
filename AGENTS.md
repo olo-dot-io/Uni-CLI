@@ -13,7 +13,7 @@ self-repairing — agents can fix them by editing one file. See
 
 <!-- BEGIN COUNTS -->
 
-> <!-- STATS:site_count -->282<!-- /STATS --> sites, <!-- STATS:command_count -->1678<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> <!-- STATS:site_count -->282<!-- /STATS --> sites, <!-- STATS:command_count -->1680<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 

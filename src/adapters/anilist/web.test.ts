@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { resolveCommand } from "../../registry.js";
-import { mapAniListMedia, mapAniListNamed } from "./web.js";
+import { mapAniListMedia, mapAniListNamed, rerankAniListNamed } from "./web.js";
 
 describe("anilist public commands", () => {
   it("registers anime, manga, and entity commands", () => {
@@ -13,6 +13,18 @@ describe("anilist public commands", () => {
         "characters",
         "staff",
         "studios",
+      ]),
+    );
+  });
+
+  it("exposes year and sort controls for recent media search", () => {
+    expect(resolveCommand("anilist", "anime")!.command.adapterArgs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "year", type: "int" }),
+        expect.objectContaining({
+          name: "sort",
+          choices: expect.arrayContaining(["popular", "trending", "recent"]),
+        }),
       ]),
     );
   });
@@ -57,5 +69,25 @@ describe("anilist public commands", () => {
         "studios",
       ),
     ).toMatchObject([{ rank: 1, id: 1, kind: "studios", name: "Yuzusoft" }]);
+  });
+
+  it("reranks native character matches ahead of popularity-only hits", () => {
+    const rows = rerankAniListNamed(
+      [
+        {
+          id: 1,
+          name: { full: "Levi", native: "リヴァイ" },
+          favourites: 40000,
+        },
+        {
+          id: 2,
+          name: { full: "Hanabi Yasuraoka", native: "安楽岡花火" },
+          favourites: 1500,
+        },
+      ],
+      "花火",
+    );
+
+    expect((rows[0] as { id: number }).id).toBe(2);
   });
 });

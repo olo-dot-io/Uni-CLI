@@ -288,4 +288,66 @@ describe("search", () => {
     const yuzusoft = search("ゆずソフト visual novel", 8);
     expect(yuzusoft.map((r) => r.site)).toContain("vndb");
   });
+
+  it("does not treat ACG entity names as hard site aliases", () => {
+    const results = search("weather sparkle forecast", 5);
+    expect(`${results[0].site}/${results[0].command}`).toBe("wttr/forecast");
+  });
+
+  it("keeps anime freshness queries on ACG media sources", () => {
+    const results = search("2026 anime trending", 8);
+    const commands = results.map((r) => `${r.site}/${r.command}`);
+
+    expect(commands.slice(0, 4)).toEqual(
+      expect.arrayContaining(["anilist/anime", "jikan/anime"]),
+    );
+    expect(commands.slice(0, 4)).not.toEqual(
+      expect.arrayContaining(["sinablog/hot", "coupang/hot"]),
+    );
+  });
+
+  it("does not route generic game trend queries to ACG media sources", () => {
+    const results = search("hot game", 5);
+    const commands = results.map((r) => `${r.site}/${r.command}`);
+
+    expect(results[0].site).toBe("steam");
+    expect(commands.slice(0, 3)).not.toEqual(
+      expect.arrayContaining(["dlsite/game", "bangumi/game"]),
+    );
+  });
+
+  it("routes Japanese booru illustration tag queries to booru sources", () => {
+    const results = search("ブルーアーカイブ tag イラスト booru", 8);
+    const commands = results.map((r) => `${r.site}/${r.command}`);
+
+    expect(commands.slice(0, 5)).toEqual(
+      expect.arrayContaining(["danbooru/tags"]),
+    );
+    expect(commands).toEqual(
+      expect.arrayContaining(["safebooru/search", "konachan/tags"]),
+    );
+  });
+
+  it("routes recent Japanese idol game queries to ACG game sources", () => {
+    const results = search("学園アイドルマスター 2024 character", 8);
+    const commands = results.map((r) => `${r.site}/${r.command}`);
+
+    expect(commands).toContain("bangumi/game");
+    expect(commands).not.toContain("indeed/job");
+  });
+
+  it("routes Japanese ACG creator queries to manga and anime creator sources", () => {
+    const results = search("藤本タツキ author manga", 8);
+    const commands = results.map((r) => `${r.site}/${r.command}`);
+
+    expect(commands.slice(0, 5)).toEqual(
+      expect.arrayContaining(["mangadex/authors"]),
+    );
+    expect(commands).toEqual(
+      expect.arrayContaining(["anilist/staff", "jikan/people"]),
+    );
+    expect(commands.slice(0, 5)).not.toEqual(
+      expect.arrayContaining(["pubmed/author", "arxiv/author"]),
+    );
+  });
 });

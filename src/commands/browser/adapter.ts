@@ -108,9 +108,21 @@ function resolveBrowserVerifyArgs(
   schema: AdapterArg[],
 ): ResolvedArgs {
   if (args === undefined) return { args: {}, source: "internal" };
-  const parsed = Array.isArray(args)
-    ? parseFixtureCliArgs(expandFixtureArgs(args), schema)
-    : { opts: args, positionals: [] };
+  if (!Array.isArray(args)) {
+    const merged: Record<string, unknown> = {};
+    for (const arg of schema) {
+      if (args[arg.name] !== undefined) {
+        merged[arg.name] = args[arg.name];
+      } else if (arg.default !== undefined) {
+        merged[arg.name] = arg.default;
+      }
+    }
+    for (const [key, value] of Object.entries(args)) {
+      if (merged[key] === undefined) merged[key] = value;
+    }
+    return { args: merged, source: "internal" };
+  }
+  const parsed = parseFixtureCliArgs(expandFixtureArgs(args), schema);
   const resolved = resolveArgs({
     opts: parsed.opts,
     positionals: parsed.positionals,

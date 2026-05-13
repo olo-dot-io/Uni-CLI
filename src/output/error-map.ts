@@ -29,7 +29,9 @@ export const REF_LOCATOR_CODES = new Set<string>([
 ]);
 
 function isAuthMessage(message: string): boolean {
-  return /401|403|auth|No cookies found|auth setup/i.test(message);
+  return /(?:\b(?:401|403)\b|\bunauthori[sz]ed\b|\bforbidden\b|\bnot[_ -]?authenticated\b|\bauth[_ -]?required\b|\bauth(?:entication|orization|orized)?\b|No cookies found|auth setup)/i.test(
+    message,
+  );
 }
 
 function isRetryableMessage(message: string): boolean {

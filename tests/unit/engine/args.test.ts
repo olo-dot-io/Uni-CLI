@@ -66,6 +66,24 @@ describe("resolveArgs — shell channel (baseline)", () => {
     expect(r.args.ratio).toBeCloseTo(0.5);
     expect(r.args.flag).toBe(true);
   });
+
+  it("maps Commander camelCase options back to dashed schema names", () => {
+    const s: AdapterArg[] = [
+      { name: "query", type: "str", positional: true, required: true },
+      { name: "content-rating", type: "str" },
+    ];
+    const r = resolveArgs({
+      opts: { contentRating: "safe" },
+      positionals: ["blue archive"],
+      schema: s,
+      stdinIsTTY: true,
+    });
+    expect(r.args).toEqual({
+      query: "blue archive",
+      "content-rating": "safe",
+    });
+    expect(r.args.contentRating).toBeUndefined();
+  });
 });
 
 describe("resolveArgs — args-file channel", () => {

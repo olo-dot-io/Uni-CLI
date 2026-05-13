@@ -127,6 +127,7 @@ describe("CLI fast path", () => {
       args_schema: {
         properties: Record<string, { type: string }>;
         required: string[];
+        additionalProperties: boolean;
       };
       channels: { shell: string };
     };
@@ -134,6 +135,7 @@ describe("CLI fast path", () => {
       type: "string",
     });
     expect(payload.args_schema.required).toContain("query");
+    expect(payload.args_schema.additionalProperties).toBe(false);
     expect(payload.channels.shell).toContain("<query>");
   });
 

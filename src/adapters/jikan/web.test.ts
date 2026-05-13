@@ -11,6 +11,18 @@ describe("jikan public commands", () => {
     );
   });
 
+  it("exposes year and sort controls for 2024-2026 media lookup", () => {
+    expect(resolveCommand("jikan", "anime")!.command.adapterArgs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "year", type: "int" }),
+        expect.objectContaining({
+          name: "sort",
+          choices: expect.arrayContaining(["score", "popularity", "recent"]),
+        }),
+      ]),
+    );
+  });
+
   it("maps rows", () => {
     expect(
       mapJikanRows(
