@@ -12,6 +12,8 @@ import type {
   AdapterCommand,
   AdapterArg,
   TargetSurface,
+  SocialCapability,
+  BrowserSessionPreference,
 } from "./types.js";
 
 export { Strategy };
@@ -132,10 +134,12 @@ export interface CliRegistration {
   base?: string;
   strategy?: Strategy;
   browser?: boolean;
+  browserSession?: BrowserSessionPreference;
   adapter_path?: string;
   target_surface?: TargetSurface;
   args?: AdapterArg[];
   columns?: string[];
+  socialCapabilities?: SocialCapability[];
   func: (page: unknown, kwargs: Record<string, unknown>) => Promise<unknown>;
 }
 
@@ -168,9 +172,11 @@ export function cli(config: CliRegistration): void {
     adapterArgs: config.args,
     strategy: config.strategy,
     browser: config.browser,
+    browserSession: config.browserSession,
     domain: config.domain,
     base: config.base,
     columns: config.columns,
+    socialCapabilities: config.socialCapabilities,
     func: config.func as AdapterCommand["func"],
   };
 }

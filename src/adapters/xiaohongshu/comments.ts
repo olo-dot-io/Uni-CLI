@@ -7,6 +7,7 @@
 
 import { cli, Strategy } from "../../registry.js";
 import type { IPage } from "../../types.js";
+import { normalizeCommentRows } from "../../social/comments.js";
 import { buildNoteUrl } from "./note-helpers.js";
 
 function parseCommentLimit(raw: unknown, fallback = 20): number {
@@ -42,7 +43,23 @@ cli({
       description: "Include nested replies",
     },
   ],
-  columns: ["rank", "author", "text", "likes", "time", "is_reply", "reply_to"],
+  columns: [
+    "rank",
+    "platform",
+    "content_id",
+    "comment_id",
+    "parent_id",
+    "depth",
+    "path",
+    "author",
+    "text",
+    "likes",
+    "replies",
+    "created",
+    "time",
+    "is_reply",
+    "reply_to",
+  ],
   func: async (page, kwargs) => {
     const p = page as IPage;
     const limit = parseCommentLimit(kwargs.limit);
@@ -100,7 +117,7 @@ cli({
           const likes = parseLikes(item.querySelector('.count'))
           const time = clean(item.querySelector('.date, .time'))
           if (!text) continue
-          results.push({ author, text, likes, time, is_reply: false, reply_to: '' })
+          results.push({ author, text, likes, replies: 0, created: time, time, is_reply: false, reply_to: '' })
           if (withReplies) {
             await expandReplyThreads(p)
             p.querySelectorAll('.reply-container .comment-item-sub, .sub-comment-list .comment-item').forEach(sub => {
@@ -109,7 +126,7 @@ cli({
               const sLikes = parseLikes(sub.querySelector('.count'))
               const sTime = clean(sub.querySelector('.date, .time'))
               if (!sText) return
-              results.push({ author: sAuthor, text: sText, likes: sLikes, time: sTime, is_reply: true, reply_to: author })
+              results.push({ author: sAuthor, text: sText, likes: sLikes, replies: 0, created: sTime, time: sTime, is_reply: true, reply_to: author })
             })
           }
         }
@@ -125,7 +142,7 @@ cli({
       throw new Error("Note comments require login to www.xiaohongshu.com");
     }
 
-    interface CommentRow {
+    interface CommentRow extends Record<string, unknown> {
       author: string;
       text: string;
       likes: number;
@@ -144,9 +161,15 @@ cli({
         if (topCount > limit) break;
         limited.push(c);
       }
-      return limited.map((c, i) => ({ rank: i + 1, ...c }));
+      return normalizeCommentRows(limited, {
+        platform: "xiaohongshu",
+        contentId: raw,
+      }).map((c, i) => ({ rank: i + 1, ...c }));
     }
 
-    return all.slice(0, limit).map((c, i) => ({ rank: i + 1, ...c }));
+    return normalizeCommentRows(all.slice(0, limit), {
+      platform: "xiaohongshu",
+      contentId: raw,
+    }).map((c, i) => ({ rank: i + 1, ...c }));
   },
 });

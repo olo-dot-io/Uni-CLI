@@ -1,10 +1,13 @@
 import { cli, Strategy } from "../../registry.js";
-import { loadCookies, formatCookieHeader } from "../../engine/cookies.js";
+import {
+  loadCookiesWithCDP,
+  formatCookieHeader,
+} from "../../engine/cookies.js";
 import { USER_AGENT } from "../../constants.js";
 import { intArg, str } from "../_shared/browser-tools.js";
 
 async function bilibiliJson(url: string): Promise<Record<string, unknown>> {
-  const cookies = loadCookies("bilibili");
+  const cookies = await loadCookiesWithCDP("bilibili", "bilibili.com");
   const headers: Record<string, string> = {
     "user-agent": USER_AGENT,
     referer: "https://www.bilibili.com",

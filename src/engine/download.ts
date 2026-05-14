@@ -145,17 +145,13 @@ export async function httpDownload(
 export async function ytdlpDownload(
   url: string,
   dir: string,
-  opts?: { cookieFile?: string },
+  opts?: { cookieFile?: string; cookiesFromBrowser?: string },
 ): Promise<DownloadResult> {
   const t0 = Date.now();
   try {
     mkdirSync(dir, { recursive: true });
 
-    const args = [url, "-o", `${dir}/%(title)s.%(ext)s`, "--no-warnings"];
-
-    if (opts?.cookieFile) {
-      args.push("--cookies", opts.cookieFile);
-    }
+    const args = buildYtdlpDownloadArgs(url, dir, opts);
 
     const { stdout } = await execFileAsync("yt-dlp", args, {
       timeout: 5 * 60 * 1000, // 5 min
@@ -196,6 +192,21 @@ export async function ytdlpDownload(
       error: err instanceof Error ? err.message : String(err),
     };
   }
+}
+
+export function buildYtdlpDownloadArgs(
+  url: string,
+  dir: string,
+  opts?: { cookieFile?: string; cookiesFromBrowser?: string },
+): string[] {
+  const args = [url, "-o", `${dir}/%(title)s.%(ext)s`, "--no-warnings"];
+  if (opts?.cookieFile) {
+    args.push("--cookies", opts.cookieFile);
+  }
+  if (opts?.cookiesFromBrowser) {
+    args.push("--cookies-from-browser", opts.cookiesFromBrowser);
+  }
+  return args;
 }
 
 // ---------------------------------------------------------------------------

@@ -54,6 +54,7 @@ import { registerTestGenCommand } from "./commands/test-gen.js";
 import { registerStatusCommand } from "./commands/status.js";
 import { registerSchemaCommand } from "./commands/schema.js";
 import { registerSearchCommand } from "./commands/search.js";
+import { registerSocialCommand } from "./commands/social.js";
 import { registerLintCommand } from "./commands/lint.js";
 import { registerMigrateCommand } from "./commands/migrate.js";
 import { registerMigrateSchemaCommand } from "./commands/migrate-schema.js";
@@ -373,6 +374,7 @@ export async function createCli(): Promise<Command> {
   // Register schema command — JSON Schema for adapter input/output
   registerSchemaCommand(program);
   registerSearchCommand(program);
+  registerSocialCommand(program);
 
   // Register lint command — schema-v2 static validation
   registerLintCommand(program);

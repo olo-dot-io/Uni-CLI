@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  buildYtdlpDownloadArgs,
   sanitizeFilename,
   generateFilename,
   requiresYtdlp,
@@ -27,6 +28,21 @@ describe("download utilities", () => {
     expect(requiresYtdlp("https://www.bilibili.com/video/BV1xx")).toBe(true);
     expect(requiresYtdlp("https://vimeo.com/123456")).toBe(true);
     expect(requiresYtdlp("https://example.com/file.mp4")).toBe(false);
+  });
+
+  it("buildYtdlpDownloadArgs supports browser-cookie reuse", () => {
+    expect(
+      buildYtdlpDownloadArgs("https://www.tiktok.com/@u/video/1", "/tmp/out", {
+        cookiesFromBrowser: "chrome",
+      }),
+    ).toEqual([
+      "https://www.tiktok.com/@u/video/1",
+      "-o",
+      "/tmp/out/%(title)s.%(ext)s",
+      "--no-warnings",
+      "--cookies-from-browser",
+      "chrome",
+    ]);
   });
 
   it("mapConcurrent preserves order", async () => {

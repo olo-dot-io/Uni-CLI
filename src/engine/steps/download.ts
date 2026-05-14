@@ -26,6 +26,7 @@ export interface DownloadStepConfig {
   concurrency?: number;
   skip_existing?: boolean;
   use_ytdlp?: boolean;
+  cookies_from_browser?: string;
   type?: "auto" | "image" | "video" | "document";
   content?: string;
 }
@@ -95,7 +96,9 @@ export async function stepDownload(
         duration: 0,
       };
     } else if (useYtdlp) {
-      result = await ytdlpDownload(url, dir);
+      result = await ytdlpDownload(url, dir, {
+        cookiesFromBrowser: config.cookies_from_browser,
+      });
     } else {
       const headers: Record<string, string> = {};
       for (const [key, value] of Object.entries(config.headers ?? {})) {

@@ -7,6 +7,11 @@
 
 import { cli, Strategy } from "../../registry.js";
 import type { IPage } from "../../types.js";
+import {
+  socialAuthError,
+  socialEmptyError,
+} from "../../social/browser-errors.js";
+import { assertXhsReadable } from "./browser-state.js";
 
 /**
  * Wait for search results or login wall using MutationObserver (max 5 s).
@@ -52,6 +57,7 @@ cli({
   domain: "www.xiaohongshu.com",
   strategy: Strategy.COOKIE,
   browser: true,
+  browserSession: "user",
   args: [
     {
       name: "query",
@@ -70,19 +76,19 @@ cli({
   func: async (page, kwargs) => {
     const p = page as IPage;
     const keyword = encodeURIComponent(String(kwargs.query));
+    const limit = Number(kwargs.limit) || 20;
     await p.goto(
       `https://www.xiaohongshu.com/search_result?keyword=${keyword}&source=web_search_result_notes`,
+      { settleMs: 2500 },
     );
 
     const waitResult = await p.evaluate(WAIT_FOR_CONTENT_JS);
+    await assertXhsReadable(p, "search");
 
     if (waitResult === "login_wall") {
-      throw new Error(
-        "Xiaohongshu search results are blocked behind a login wall",
-      );
+      throw socialAuthError("xiaohongshu", "search");
     }
 
-    // Scroll a couple of times to load more results
     await p.autoScroll({ maxScrolls: 2, delay: 1500 });
 
     const payload = await p.evaluate(`
@@ -121,11 +127,10 @@ cli({
       })()
     `);
 
-    const limit = Number(kwargs.limit) || 20;
     const data: Record<string, unknown>[] = Array.isArray(payload)
       ? (payload as Record<string, unknown>[])
       : [];
-    return data
+    const rows = data
       .filter((item) => item.title)
       .slice(0, limit)
       .map((item, i) => ({
@@ -133,5 +138,12 @@ cli({
         ...item,
         published_at: noteIdToDate(String(item.url ?? "")),
       }));
+    if (rows.length > 0) return rows;
+
+    throw socialEmptyError(
+      "xiaohongshu",
+      "search",
+      `Xiaohongshu search loaded no parseable notes for "${String(kwargs.query)}".`,
+    );
   },
 });

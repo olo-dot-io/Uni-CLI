@@ -1,13 +1,13 @@
 {
   "adapter_count_yaml": 946,
-  "adapter_count_ts": 198,
-  "adapter_count_total": 1144,
+  "adapter_count_ts": 204,
+  "adapter_count_total": 1150,
   "site_count": 282,
-  "command_count": 1680,
-  "test_count": 8393,
+  "command_count": 1683,
+  "test_count": 8427,
   "pipeline_step_count": 101,
   "transport_count": 3,
   "app_transport_count": 7,
   "category_count": 15,
-  "built_at": "2026-05-13"
+  "built_at": "2026-05-14"
 }

@@ -26,6 +26,24 @@ export enum Strategy {
 }
 
 export type TargetSurface = "web" | "desktop" | "system" | "mobile";
+export type BrowserSessionPreference = "auto" | "user" | "cdp";
+
+export type SocialCapability =
+  | "read"
+  | "search"
+  | "trends"
+  | "comments"
+  | "comment_replies"
+  | "write_comment"
+  | "write_post"
+  | "media"
+  | "download"
+  | "subtitles"
+  | "author"
+  | "user_content"
+  | "relations"
+  | "notifications"
+  | "analytics";
 
 export interface AdapterArg {
   name: string;
@@ -125,6 +143,7 @@ export interface AdapterCommand {
   adapterArgs?: AdapterArg[];
   strategy?: Strategy;
   browser?: boolean;
+  browserSession?: BrowserSessionPreference;
   domain?: string;
   base?: string;
   func?: (page: IPage, kwargs: Record<string, unknown>) => Promise<unknown>;
@@ -148,6 +167,7 @@ export interface AdapterCommand {
   // Output
   output?: string | OutputSchema;
   columns?: string[];
+  socialCapabilities?: SocialCapability[];
   defaultFormat?: "table" | "json" | "yaml" | "csv" | "md";
   stream?: boolean;
 }

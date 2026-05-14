@@ -6,7 +6,10 @@
  */
 
 import { createHash } from "node:crypto";
-import { loadCookies, formatCookieHeader } from "../../engine/cookies.js";
+import {
+  loadCookiesWithCDP,
+  formatCookieHeader,
+} from "../../engine/cookies.js";
 import { USER_AGENT } from "../../constants.js";
 
 const MIXIN_KEY_ENC_TAB = [
@@ -31,7 +34,7 @@ async function fetchWbiKeys(): Promise<string> {
   const now = Date.now();
   if (cachedMixinKey && now - cachedAt < CACHE_TTL) return cachedMixinKey;
 
-  const cookies = loadCookies("bilibili");
+  const cookies = await loadCookiesWithCDP("bilibili", "bilibili.com");
   const headers: Record<string, string> = { "User-Agent": USER_AGENT };
   if (cookies) headers["Cookie"] = formatCookieHeader(cookies);
 
@@ -76,7 +79,7 @@ export async function wbiFetch(
   const query = await signWbi(params);
   const url = `${baseUrl}?${query}`;
 
-  const cookies = loadCookies("bilibili");
+  const cookies = await loadCookiesWithCDP("bilibili", "bilibili.com");
   const headers: Record<string, string> = {
     "User-Agent": USER_AGENT,
     Accept: "application/json",

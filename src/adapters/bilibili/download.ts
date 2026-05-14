@@ -8,7 +8,10 @@
  */
 
 import { cli, Strategy } from "../../registry.js";
-import { loadCookies, formatCookieHeader } from "../../engine/cookies.js";
+import {
+  loadCookiesWithCDP,
+  formatCookieHeader,
+} from "../../engine/cookies.js";
 import { USER_AGENT } from "../../constants.js";
 
 interface ViewResponse {
@@ -47,8 +50,8 @@ interface PlayurlResponse {
 }
 
 /** Build authenticated headers for Bilibili API calls. */
-function buildHeaders(): Record<string, string> {
-  const cookies = loadCookies("bilibili");
+async function buildHeaders(): Promise<Record<string, string>> {
+  const cookies = await loadCookiesWithCDP("bilibili", "bilibili.com");
   const headers: Record<string, string> = {
     "User-Agent": USER_AGENT,
     Accept: "application/json",
@@ -75,7 +78,7 @@ cli({
   columns: ["type", "quality", "codecs", "size", "url"],
   func: async (_page, kwargs) => {
     const bvid = String(kwargs.bvid);
-    const headers = buildHeaders();
+    const headers = await buildHeaders();
 
     // Step 1: resolve cid from bvid
     const viewResp = await fetch(

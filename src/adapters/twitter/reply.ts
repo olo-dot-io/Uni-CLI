@@ -15,6 +15,7 @@ cli({
   description: "Reply to a tweet",
   domain: "x.com",
   strategy: Strategy.COOKIE,
+  socialCapabilities: ["write_comment"],
   args: [
     {
       name: "tweet_id",

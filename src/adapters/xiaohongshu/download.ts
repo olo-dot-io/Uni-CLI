@@ -7,14 +7,54 @@
 
 import { cli, Strategy } from "../../registry.js";
 import type { IPage } from "../../types.js";
-import { loadCookies, formatCookieHeader } from "../../engine/cookies.js";
+import {
+  loadCookiesWithCDP,
+  formatCookieHeader,
+} from "../../engine/cookies.js";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { USER_AGENT } from "../../constants.js";
 import { parseNoteId, buildNoteUrl } from "./note-helpers.js";
 
 /** Build authenticated headers for Xiaohongshu downloads. */
-function buildCookieHeader(): string {
-  const cookies = loadCookies("xiaohongshu");
+async function buildCookieHeader(): Promise<string> {
+  const cookies = await loadCookiesWithCDP(
+    "xiaohongshu",
+    "www.xiaohongshu.com",
+  );
   if (cookies) return formatCookieHeader(cookies);
   return "";
+}
+
+function extensionForMedia(type: string, url: string): string {
+  try {
+    const pathname = new URL(url).pathname;
+    const match = /\.[a-zA-Z0-9]{2,5}$/.exec(pathname);
+    if (match) return match[0].toLowerCase();
+  } catch {
+    return type === "video" ? ".mp4" : ".jpg";
+  }
+  return type === "video" ? ".mp4" : ".jpg";
+}
+
+async function downloadMedia(
+  url: string,
+  path: string,
+  cookieHeader: string,
+): Promise<void> {
+  const headers: Record<string, string> = {
+    "User-Agent": USER_AGENT,
+    Referer: "https://www.xiaohongshu.com/",
+  };
+  if (cookieHeader) headers.Cookie = cookieHeader;
+  const response = await fetch(url, { headers });
+  if (!response.ok) {
+    throw new Error(
+      `Xiaohongshu media download failed: HTTP ${response.status}`,
+    );
+  }
+  const bytes = Buffer.from(await response.arrayBuffer());
+  await writeFile(path, bytes);
 }
 
 cli({
@@ -37,11 +77,12 @@ cli({
       description: "Output directory",
     },
   ],
-  columns: ["index", "type", "url"],
+  columns: ["index", "type", "path", "url"],
   func: async (page, kwargs) => {
     const p = page as IPage;
     const rawInput = String(kwargs["note-id"]);
     const noteId = parseNoteId(rawInput);
+    const outputDir = String(kwargs.output ?? "./xiaohongshu-downloads");
 
     await p.goto(buildNoteUrl(rawInput));
     await p.wait(3);
@@ -158,13 +199,21 @@ cli({
       return [{ index: 0, type: "-", url: "No media found" }];
     }
 
-    // Cookie header available for authenticated downloads when media pipeline is wired
-    void buildCookieHeader();
+    await mkdir(outputDir, { recursive: true });
+    const cookieHeader = await buildCookieHeader();
 
-    return data.media.map((m: { type: string; url: string }, idx: number) => ({
-      index: idx + 1,
-      type: m.type,
-      url: m.url,
-    }));
+    const rows = [];
+    for (const [idx, media] of data.media.entries()) {
+      const ext = extensionForMedia(media.type, media.url);
+      const path = join(outputDir, `${noteId}-${idx + 1}${ext}`);
+      await downloadMedia(media.url, path, cookieHeader);
+      rows.push({
+        index: idx + 1,
+        type: media.type,
+        path,
+        url: media.url,
+      });
+    }
+    return rows;
   },
 });
