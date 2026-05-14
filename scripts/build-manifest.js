@@ -310,6 +310,7 @@ if (existsSync(ADAPTERS_DIR)) {
             quarantined: parsed.quarantine === true,
             args: serializeArgs(parsed.args),
             columns: serializeColumns(parsed.columns),
+            defaultFormat: parsed.defaultFormat,
             pipeline_steps: Array.isArray(parsed.pipeline)
               ? parsed.pipeline.length
               : 0,

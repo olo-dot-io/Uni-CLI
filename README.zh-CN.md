@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->282<!-- /STATS --> 个站点 · <!-- STATS:command_count -->1686<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->101<!-- /STATS --> 个 pipeline step · <!-- STATS:test_count -->8455<!-- /STATS --> 个测试</sub>
+  <sub><!-- STATS:site_count -->282<!-- /STATS --> 个站点 · <!-- STATS:command_count -->1692<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->101<!-- /STATS --> 个 pipeline step · <!-- STATS:test_count -->8453<!-- /STATS --> 个测试</sub>
 </p>
 
 ## 30 秒开始
@@ -134,9 +134,9 @@ ACP 作为编辑器和桥接兼容层保留。真正跑任务时，优先 native
   <a data-site="dingtalk" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="dingtalk: 8 commands"><img alt="dingtalk" src="https://img.shields.io/static/v1?label=dingtalk&message=8+cmds&color=2563eb&style=flat-square&logo=dingtalk&logoColor=white"></a>
   <a data-site="discord-app" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="discord-app: 15 commands"><img alt="discord-app" src="https://img.shields.io/static/v1?label=discord-app&message=15+cmds&color=2563eb&style=flat-square&logo=discord&logoColor=white"></a>
   <a data-site="douban" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="douban: 9 commands"><img alt="douban" src="https://img.shields.io/static/v1?label=douban&message=9+cmds&color=2563eb&style=flat-square&logo=douban&logoColor=white"></a>
-  <a data-site="instagram" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="instagram: 28 commands"><img alt="instagram" src="https://img.shields.io/static/v1?label=instagram&message=28+cmds&color=2563eb&style=flat-square&logo=instagram&logoColor=white"></a>
+  <a data-site="instagram" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="instagram: 29 commands"><img alt="instagram" src="https://img.shields.io/static/v1?label=instagram&message=29+cmds&color=2563eb&style=flat-square&logo=instagram&logoColor=white"></a>
   <a data-site="lark" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="lark: 8 commands"><img alt="lark" src="https://img.shields.io/static/v1?label=lark&message=8+cmds&color=2563eb&style=flat-square&logo=lark&logoColor=white"></a>
-  <a data-site="mastodon" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="mastodon: 3 commands"><img alt="mastodon" src="https://img.shields.io/static/v1?label=mastodon&message=3+cmds&color=2563eb&style=flat-square&logo=mastodon&logoColor=white"></a>
+  <a data-site="mastodon" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="mastodon: 4 commands"><img alt="mastodon" src="https://img.shields.io/static/v1?label=mastodon&message=4+cmds&color=2563eb&style=flat-square&logo=mastodon&logoColor=white"></a>
   <a data-site="reddit" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="reddit: 24 commands"><img alt="reddit" src="https://img.shields.io/static/v1?label=reddit&message=24+cmds&color=2563eb&style=flat-square&logo=reddit&logoColor=white"></a>
   <a data-site="signal" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="signal: 7 commands"><img alt="signal" src="https://img.shields.io/static/v1?label=signal&message=7+cmds&color=2563eb&style=flat-square&logo=signal&logoColor=white"></a>
   <a data-site="slack" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="slack: 14 commands"><img alt="slack" src="https://img.shields.io/static/v1?label=slack&message=14+cmds&color=2563eb&style=flat-square&logo=slack&logoColor=white"></a>
@@ -152,9 +152,9 @@ ACP 作为编辑器和桥接兼容层保留。真正跑任务时，优先 native
 <p><strong>视频</strong><br>
   <a data-site="bilibili" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="bilibili: 14 commands"><img alt="bilibili" src="https://img.shields.io/static/v1?label=bilibili&message=14+cmds&color=dc2626&style=flat-square&logo=bilibili&logoColor=white"></a>
   <a data-site="douyin" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="douyin: 13 commands"><img alt="douyin" src="https://img.shields.io/static/v1?label=douyin&message=13+cmds&color=dc2626&style=flat-square&logo=tiktok&logoColor=white"></a>
-  <a data-site="tiktok" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="tiktok: 17 commands"><img alt="tiktok" src="https://img.shields.io/static/v1?label=tiktok&message=17+cmds&color=dc2626&style=flat-square&logo=tiktok&logoColor=white"></a>
+  <a data-site="tiktok" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="tiktok: 18 commands"><img alt="tiktok" src="https://img.shields.io/static/v1?label=tiktok&message=18+cmds&color=dc2626&style=flat-square&logo=tiktok&logoColor=white"></a>
   <a data-site="twitch" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="twitch: 4 commands"><img alt="twitch" src="https://img.shields.io/static/v1?label=twitch&message=4+cmds&color=dc2626&style=flat-square&logo=twitch&logoColor=white"></a>
-  <a data-site="youtube" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="youtube: 16 commands"><img alt="youtube" src="https://img.shields.io/static/v1?label=youtube&message=16+cmds&color=dc2626&style=flat-square&logo=youtube&logoColor=white"></a>
+  <a data-site="youtube" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="youtube: 17 commands"><img alt="youtube" src="https://img.shields.io/static/v1?label=youtube&message=17+cmds&color=dc2626&style=flat-square&logo=youtube&logoColor=white"></a>
 </p>
 <p><strong>新闻</strong><br>
   <a data-site="bbc" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="bbc: 5 commands"><img alt="bbc" src="https://img.shields.io/static/v1?label=bbc&message=5+cmds&color=b45309&style=flat-square&logo=bbc&logoColor=white"></a>

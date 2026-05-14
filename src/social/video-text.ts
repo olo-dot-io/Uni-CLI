@@ -7,8 +7,15 @@
  */
 
 import { execFile } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync } from "node:fs";
-import { dirname } from "node:path";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
@@ -27,6 +34,19 @@ export interface ExtractVideoSubtitlesOptions extends YtdlpSubtitleArgsOptions {
 export interface ExtractedSubtitleFile {
   path: string;
   language: string;
+  text: string;
+}
+
+export function parseSubtitleLanguages(raw: unknown): string[] {
+  const value = String(raw ?? "zh-Hans,zh,en");
+  const languages = value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (languages.length === 0) {
+    throw new Error("at least one subtitle language is required");
+  }
+  return languages;
 }
 
 export function buildYtdlpSubtitleArgs(
@@ -36,7 +56,9 @@ export function buildYtdlpSubtitleArgs(
   if (!url) throw new Error("url is required");
   const outputTemplate = options.outputTemplate.trim();
   if (!outputTemplate) throw new Error("outputTemplate is required");
-  const languages = options.languages ?? ["zh-Hans", "zh", "en"];
+  const languages = options.languages
+    ? options.languages.map((item) => item.trim()).filter(Boolean)
+    : parseSubtitleLanguages(undefined);
   if (languages.length === 0) {
     throw new Error("at least one subtitle language is required");
   }
@@ -66,6 +88,72 @@ function languageFromSubtitlePath(path: string): string {
   return parts.length >= 3 ? parts[parts.length - 2] : "";
 }
 
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&#x([0-9a-f]+);/gi, (_match, code: string) =>
+      String.fromCodePoint(Number.parseInt(code, 16)),
+    )
+    .replace(/&#(\d+);/g, (_match, code: string) =>
+      String.fromCodePoint(Number.parseInt(code, 10)),
+    )
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
+export function parseVttPlainText(vtt: string): string {
+  const output: string[] = [];
+  const lines = vtt.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+  let skipBlock = false;
+  let seenCueTiming = false;
+
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index]?.trim() ?? "";
+    if (!line) {
+      skipBlock = false;
+      continue;
+    }
+    if (skipBlock) continue;
+    if (line.startsWith("WEBVTT")) continue;
+    if (line.includes("-->")) {
+      seenCueTiming = true;
+      continue;
+    }
+    if (/^(NOTE|STYLE|REGION)(\s|$)/.test(line)) {
+      skipBlock = true;
+      continue;
+    }
+    if ((lines[index + 1] ?? "").includes("-->")) continue;
+    if (!seenCueTiming) continue;
+
+    const cleaned = decodeHtmlEntities(line.replace(/<[^>]*>/g, ""))
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!cleaned || output[output.length - 1] === cleaned) continue;
+    output.push(cleaned);
+  }
+
+  return output.join("\n");
+}
+
+export async function runVideoSubtitleExtraction(
+  kwargs: Record<string, unknown>,
+): Promise<ExtractedSubtitleFile[]> {
+  const url = String(kwargs.url ?? "");
+  const dir = mkdtempSync(join(tmpdir(), "unicli-subtitles-"));
+  return extractVideoSubtitles({
+    url,
+    outputTemplate: join(dir, "%(id)s.%(ext)s"),
+    languages: parseSubtitleLanguages(kwargs.languages),
+    cookiesFromBrowser: kwargs["cookies-from-browser"]
+      ? String(kwargs["cookies-from-browser"])
+      : undefined,
+  });
+}
+
 export async function extractVideoSubtitles(
   options: ExtractVideoSubtitlesOptions,
 ): Promise<ExtractedSubtitleFile[]> {
@@ -83,8 +171,9 @@ export async function extractVideoSubtitles(
     .filter((name) => !before.has(name) && name.endsWith(".vtt"))
     .sort()
     .map((name) => ({
-      path: `${dir}/${name}`,
+      path: join(dir, name),
       language: languageFromSubtitlePath(name),
+      text: parseVttPlainText(readFileSync(join(dir, name), "utf-8")),
     }));
 
   if (files.length === 0) {

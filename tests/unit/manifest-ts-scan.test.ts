@@ -23,6 +23,7 @@ describe("manifest TS scanner", () => {
           browser: false,
           args: ARGS,
           columns: COLUMNS,
+          defaultFormat: "json",
         });
       }
     `;
@@ -47,6 +48,7 @@ describe("manifest TS scanner", () => {
           expect.objectContaining({ name: "limit", default: 10 }),
         ],
         columns: ["rank", "title", "url"],
+        defaultFormat: "json",
       }),
     );
   });

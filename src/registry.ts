@@ -140,6 +140,7 @@ export interface CliRegistration {
   args?: AdapterArg[];
   columns?: string[];
   socialCapabilities?: SocialCapability[];
+  defaultFormat?: AdapterCommand["defaultFormat"];
   func: (page: unknown, kwargs: Record<string, unknown>) => Promise<unknown>;
 }
 
@@ -177,6 +178,7 @@ export function cli(config: CliRegistration): void {
     base: config.base,
     columns: config.columns,
     socialCapabilities: config.socialCapabilities,
+    defaultFormat: config.defaultFormat,
     func: config.func as AdapterCommand["func"],
   };
 }

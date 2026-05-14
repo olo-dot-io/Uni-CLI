@@ -29,7 +29,7 @@ Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, and any runtime that can spa
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.220.1 covers <span><!-- STATS:site_count -->282<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1686<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1153<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8455<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, paper/PDF workflows, ACG/anime/manga/wiki sources, booru tag search, government policy, podcasts, and macOS apps.
+v0.220.1 covers <span><!-- STATS:site_count -->282<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1692<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1157<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8453<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, paper/PDF workflows, ACG/anime/manga/wiki sources, booru tag search, government policy, podcasts, and macOS apps.
 
 ## Can Uni-CLI download papers and read local PDFs?
 

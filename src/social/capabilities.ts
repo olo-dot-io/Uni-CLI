@@ -39,6 +39,12 @@ export const SOCIAL_CAPABILITY_ORDER: SocialCapability[] = [
   "comment_replies",
   "write_comment",
   "write_post",
+  "reactions",
+  "shares",
+  "saves",
+  "messages",
+  "lists",
+  "moderation",
   "media",
   "download",
   "subtitles",
@@ -58,6 +64,8 @@ export const SOCIAL_PLATFORM_REQUIREMENTS: Record<string, SocialCapability[]> =
       "comments",
       "comment_replies",
       "write_post",
+      "reactions",
+      "saves",
       "media",
       "download",
       "author",
@@ -70,6 +78,8 @@ export const SOCIAL_PLATFORM_REQUIREMENTS: Record<string, SocialCapability[]> =
       "trends",
       "comments",
       "comment_replies",
+      "reactions",
+      "saves",
       "media",
       "download",
       "subtitles",
@@ -82,6 +92,8 @@ export const SOCIAL_PLATFORM_REQUIREMENTS: Record<string, SocialCapability[]> =
       "trends",
       "comments",
       "comment_replies",
+      "reactions",
+      "saves",
       "media",
       "subtitles",
       "author",
@@ -95,6 +107,12 @@ export const SOCIAL_PLATFORM_REQUIREMENTS: Record<string, SocialCapability[]> =
       "comment_replies",
       "write_comment",
       "write_post",
+      "reactions",
+      "shares",
+      "saves",
+      "messages",
+      "lists",
+      "moderation",
       "media",
       "download",
       "author",
@@ -109,6 +127,8 @@ export const SOCIAL_PLATFORM_REQUIREMENTS: Record<string, SocialCapability[]> =
       "comments",
       "comment_replies",
       "write_comment",
+      "reactions",
+      "saves",
       "author",
       "user_content",
       "relations",
@@ -120,6 +140,8 @@ export const SOCIAL_PLATFORM_REQUIREMENTS: Record<string, SocialCapability[]> =
       "comments",
       "comment_replies",
       "write_comment",
+      "reactions",
+      "saves",
       "download",
       "author",
       "user_content",
@@ -133,7 +155,10 @@ export const SOCIAL_PLATFORM_REQUIREMENTS: Record<string, SocialCapability[]> =
       "trends",
       "comments",
       "write_comment",
+      "reactions",
+      "saves",
       "media",
+      "subtitles",
       "author",
       "user_content",
       "relations",
@@ -146,6 +171,8 @@ export const SOCIAL_PLATFORM_REQUIREMENTS: Record<string, SocialCapability[]> =
       "trends",
       "comments",
       "write_post",
+      "reactions",
+      "saves",
       "media",
       "download",
       "author",
@@ -159,8 +186,11 @@ export const SOCIAL_PLATFORM_REQUIREMENTS: Record<string, SocialCapability[]> =
       "comments",
       "write_comment",
       "write_post",
+      "reactions",
+      "saves",
       "media",
       "download",
+      "subtitles",
       "author",
       "relations",
       "notifications",
@@ -171,12 +201,14 @@ export const SOCIAL_PLATFORM_REQUIREMENTS: Record<string, SocialCapability[]> =
       "search",
       "comments",
       "write_post",
+      "media",
+      "subtitles",
       "author",
       "user_content",
       "relations",
       "notifications",
     ],
-    threads: ["read", "search", "trends", "author"],
+    threads: ["read", "search", "trends", "author", "user_content"],
   };
 
 const READ_NAMES = new Set([
@@ -221,6 +253,7 @@ const USER_CONTENT_NAMES = new Set([
   "creator-videos",
   "feed",
   "timeline",
+  "user",
   "user-posts",
   "user-videos",
   "videos",
@@ -239,10 +272,58 @@ const ANALYTICS_NAMES = new Set([
   "creator-stats",
   "stats",
 ]);
+const REACTION_NAMES = new Set([
+  "coin",
+  "favorite",
+  "like",
+  "likes",
+  "unlike",
+  "upvote",
+  "upvoted",
+]);
+const SHARE_NAMES = new Set([
+  "quote",
+  "quotes",
+  "retweet",
+  "retweets",
+  "share",
+  "unretweet",
+]);
+const SAVE_NAMES = new Set([
+  "bookmark",
+  "bookmark-folder",
+  "bookmark-folders",
+  "bookmarks",
+  "collection",
+  "collections",
+  "favorite",
+  "favorites",
+  "later",
+  "save",
+  "saved",
+  "unsave",
+  "unbookmark",
+  "watch-later",
+]);
+const MESSAGE_NAMES = new Set([
+  "accept",
+  "inbox",
+  "marketplace-inbox",
+  "messages",
+  "reply-dm",
+]);
+const LIST_NAMES = new Set(["list-add", "list-remove", "list-tweets", "lists"]);
+const MODERATION_NAMES = new Set([
+  "block",
+  "delete",
+  "hide-reply",
+  "mute",
+  "unblock",
+  "unmute",
+]);
 const WRITE_POST_NAMES = new Set([
   "create-draft",
   "draft",
-  "post",
   "publish",
   "reel",
   "story",
@@ -314,9 +395,48 @@ export function inferSocialCapabilities(
   }
   if (
     WRITE_POST_NAMES.has(commandName) ||
-    /\b(publish|create draft|upload)\b/.test(text)
+    /\b(publish|create draft|upload)\b/.test(text) ||
+    /\bpost (a |new |your )(post|tweet|thread|status|video|reel|story)\b/.test(
+      text,
+    )
   ) {
     capabilities.add("write_post");
+  }
+  if (
+    REACTION_NAMES.has(commandName) ||
+    /\b(like|unlike|upvote|reaction|favorite|coin)\b/.test(text)
+  ) {
+    capabilities.add("reactions");
+  }
+  if (
+    SHARE_NAMES.has(commandName) ||
+    /\b(quote|retweet|repost|share)\b/.test(text)
+  ) {
+    capabilities.add("shares");
+  }
+  if (
+    SAVE_NAMES.has(commandName) ||
+    /\b(bookmark|saved|watch later|collection|favorite)\b/.test(text)
+  ) {
+    capabilities.add("saves");
+  }
+  if (
+    MESSAGE_NAMES.has(commandName) ||
+    /\b(dm|direct message|inbox|message request)\b/.test(text)
+  ) {
+    capabilities.add("messages");
+  }
+  if (
+    LIST_NAMES.has(commandName) ||
+    /\b(list member|list timeline|twitter\/x list)\b/.test(text)
+  ) {
+    capabilities.add("lists");
+  }
+  if (
+    MODERATION_NAMES.has(commandName) ||
+    /\b(block|mute|hide reply|delete your own)\b/.test(text)
+  ) {
+    capabilities.add("moderation");
   }
   if (/\b(video|image|media|photo|reel|shorts|story)\b/.test(text)) {
     addCapability(capabilities, "media");
@@ -335,7 +455,7 @@ export function inferSocialCapabilities(
   }
   if (
     USER_CONTENT_NAMES.has(commandName) ||
-    /\b(user videos|creator content|timeline|feed)\b/.test(text)
+    /\b(user videos|creator content|recent posts|timeline|feed)\b/.test(text)
   ) {
     addCapability(capabilities, "user_content");
   }

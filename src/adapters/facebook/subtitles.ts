@@ -1,19 +1,20 @@
 /**
- * @owner   yt-dlp subtitle adapter.
- * @does    Extracts subtitle files from any yt-dlp-supported video URL.
- * @needs   Local yt-dlp binary and optional browser cookies for private or rate-limited videos.
- * @feeds   Unified social video-text workflows across YouTube, Bilibili, TikTok, Douyin, X, Instagram, and other sites.
- * @breaks  Returns an error when yt-dlp cannot produce subtitle files for the requested URL and languages.
+ * @owner   Facebook subtitle adapter.
+ * @does    Extracts LLM-readable subtitle text from public Facebook video URLs.
+ * @needs   `yt-dlp` on PATH and an accessible video subtitle track.
+ * @feeds   Social video evidence gathering without browser-security bypasses.
+ * @breaks  Facebook or yt-dlp extractor changes can alter subtitle availability.
  */
 
 import { cli, Strategy } from "../../registry.js";
 import { runVideoSubtitleExtraction } from "../../social/video-text.js";
 
 cli({
-  site: "yt-dlp",
+  site: "facebook",
   name: "subtitles",
   description:
-    "Extract subtitles from any yt-dlp-supported video URL with optional browser-cookie reuse",
+    "Extract LLM-readable subtitles from a Facebook video URL with optional browser-cookie reuse",
+  domain: "www.facebook.com",
   strategy: Strategy.PUBLIC,
   args: [
     {
@@ -21,7 +22,7 @@ cli({
       type: "str",
       required: true,
       positional: true,
-      description: "Video URL",
+      description: "Facebook video URL",
       format: "uri",
     },
     {

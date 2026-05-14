@@ -40,6 +40,46 @@ describe("social capability inference", () => {
     ).toEqual(expect.arrayContaining(["write_comment"]));
   });
 
+  it("infers client-grade actions for agent social workflows", () => {
+    expect(
+      inferSocialCapabilities("retweet", {
+        name: "retweet",
+        description: "Retweet a specific tweet",
+      }),
+    ).toEqual(expect.arrayContaining(["shares"]));
+
+    expect(
+      inferSocialCapabilities("bookmark", {
+        name: "bookmark",
+        description: "Bookmark a tweet",
+      }),
+    ).toEqual(expect.arrayContaining(["saves"]));
+
+    expect(
+      inferSocialCapabilities("reply-dm", {
+        name: "reply-dm",
+        description: "Reply to a DM conversation",
+      }),
+    ).toEqual(expect.arrayContaining(["messages"]));
+
+    expect(
+      inferSocialCapabilities("hide-reply", {
+        name: "hide-reply",
+        description: "Hide a reply on your tweet",
+      }),
+    ).toEqual(expect.arrayContaining(["moderation"]));
+  });
+
+  it("does not classify a read-only post detail command as posting", () => {
+    expect(
+      inferSocialCapabilities("post", {
+        name: "post",
+        description: "Get a public Threads post from its metadata",
+        socialCapabilities: ["read", "author", "media"],
+      }),
+    ).not.toEqual(expect.arrayContaining(["write_post"]));
+  });
+
   it("builds coverage rows for every adapter and highlights named social platforms", () => {
     const adapters: AdapterManifest[] = [
       {
@@ -115,5 +155,12 @@ describe("social capability inference", () => {
       status: "gap",
       missing: expect.arrayContaining(["trends", "author"]),
     });
+  });
+
+  it("treats video subtitle extraction as required on major short-video platforms", () => {
+    expect(SOCIAL_PLATFORM_REQUIREMENTS.youtube).toContain("subtitles");
+    expect(SOCIAL_PLATFORM_REQUIREMENTS.tiktok).toContain("subtitles");
+    expect(SOCIAL_PLATFORM_REQUIREMENTS.instagram).toContain("subtitles");
+    expect(SOCIAL_PLATFORM_REQUIREMENTS.facebook).toContain("subtitles");
   });
 });

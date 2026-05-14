@@ -151,6 +151,7 @@ interface YamlAdapter {
   minimum_capability?: string;
   trust?: string;
   confidentiality?: string;
+  defaultFormat?: AdapterCommand["defaultFormat"];
 }
 
 interface YamlArg {
@@ -462,6 +463,7 @@ export function loadAdaptersFromDir(dir: string): number {
           domain: parsed.domain,
           base: parsed.base,
           columns: parsed.columns,
+          defaultFormat: parsed.defaultFormat,
           method: parsed.method as AdapterCommand["method"],
           path: parsed.path,
           url: parsed.url,

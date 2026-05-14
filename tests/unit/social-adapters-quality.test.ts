@@ -118,4 +118,24 @@ describe("high-value social adapter quality gates", () => {
       ).toBe(false);
     }
   });
+
+  it("exposes platform-specific subtitle extraction for major video social sites", async () => {
+    loadAllAdapters();
+    await loadTsAdapters();
+
+    for (const site of ["youtube", "facebook", "instagram", "tiktok"]) {
+      const command = getAdapter(site)?.commands.subtitles;
+      expect(command, `${site} subtitles command`).toBeDefined();
+      expect(command?.adapterArgs?.map((arg) => arg.name)).toEqual([
+        "url",
+        "languages",
+        "cookies-from-browser",
+      ]);
+      expect(command?.columns).toEqual(["language", "text", "path"]);
+      expect(command?.defaultFormat).toBe("json");
+      expect(command?.socialCapabilities).toEqual(
+        expect.arrayContaining(["read", "media", "subtitles"]),
+      );
+    }
+  });
 });

@@ -36,6 +36,7 @@ export type ManifestCommand = {
   quarantined?: boolean;
   args?: ManifestArg[];
   columns?: string[];
+  defaultFormat?: string;
   pipeline_steps?: number;
   adapter_path?: string;
   target_surface?: TargetSurface;

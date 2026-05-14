@@ -464,6 +464,8 @@ export function extractTsRegistrations(source, fallbackSite, fallbackCommand) {
               base: getObjectString(first, "base", bindings) || undefined,
               browser: getObjectBoolean(first, "browser"),
               columns: getStringArray(first, "columns", constArrays),
+              defaultFormat:
+                getObjectString(first, "defaultFormat", bindings) || undefined,
               args: getObjectArgs(first, constArrays),
               pipeline_steps: 0,
               adapter_path: `src/adapters/${fallbackSite}/${fallbackCommand}.ts`,
