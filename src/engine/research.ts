@@ -1,11 +1,9 @@
 /**
- * AutoResearch Engine — Karpathy-style self-improvement loop.
- *
- * 8-phase loop: precondition → review → modify (Claude Code) →
- * commit → verify (eval) → guard → decide (keep/discard) → log.
- *
- * Adapted from Open-CLI's autoresearch concept, scoped to YAML
- * adapter modification and integrated with Uni-CLI's eval harness.
+ * @owner   src/engine/research.ts
+ * @does    Runs the adapter research loop for scoped YAML modifications.
+ * @needs   local CLI tooling, adapter eval configuration, and file-system access.
+ * @feeds   research command automation and adapter quality experiments.
+ * @breaks  Missing local tooling or invalid scope config stops the research run.
  */
 
 import { execFileSync, type ExecFileSyncOptions } from "node:child_process";
@@ -278,8 +276,7 @@ ${scopeContents}
 
 function invokeClaudeCode(prompt: string): string | null {
   try {
-    // Use execFileSync (no shell) to avoid injection — safer than Open-CLI's
-    // execSync approach which requires manual quote escaping.
+    // REASON: execFileSync avoids shell interpolation for generated prompts.
     const result = execFileSync(
       "claude",
       [

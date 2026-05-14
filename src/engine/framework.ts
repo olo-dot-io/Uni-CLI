@@ -1,9 +1,9 @@
 /**
- * Frontend Framework Detection + Store Discovery.
- *
- * Returns JS source strings for page.evaluate() — the caller executes them.
- * Ported from Open-CLI's scripts/store.ts + detectFramework, adapted for
- * Uni-CLI's evaluate API.
+ * @owner   src/engine/framework.ts
+ * @does    Generates browser-evaluated JavaScript for framework and store discovery.
+ * @needs   page.evaluate-compatible JavaScript runtime.
+ * @feeds   browser analysis and site exploration commands.
+ * @breaks  DOM framework marker changes can reduce detection confidence.
  */
 
 export interface FrameworkInfo {
