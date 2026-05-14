@@ -43,8 +43,8 @@ $$
 
 The current public catalog has
 **<span><!-- STATS:site_count -->282<!-- /STATS --></span> sites**,
-**<span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands**,
-**<span><!-- STATS:adapter_count_total -->1144<!-- /STATS --></span> adapters**,
+**<span><!-- STATS:command_count -->1683<!-- /STATS --></span> commands**,
+**<span><!-- STATS:adapter_count_total -->1150<!-- /STATS --></span> adapters**,
 and **<span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline
 steps**. Those numbers are generated from the repo by `scripts/count-stats.ts`,
 not hand-maintained marketing copy.
@@ -112,7 +112,7 @@ envelope. In the current fixture suite:
 - representative total budgets: **364-423 tokens**;
 - full catalog output: **73242 tokens** because it intentionally lists all
   <span><!-- STATS:site_count -->282<!-- /STATS --></span> sites and
-  <span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands.
+  <span><!-- STATS:command_count -->1683<!-- /STATS --></span> commands.
 
 The operational rule follows directly: agents should search and describe first,
 then execute the smallest matching command. Full catalog output is available,

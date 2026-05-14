@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->282<!-- /STATS --> 个站点 · <!-- STATS:command_count -->1680<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->101<!-- /STATS --> 个 pipeline step · <!-- STATS:test_count -->8393<!-- /STATS --> 个测试</sub>
+  <sub><!-- STATS:site_count -->282<!-- /STATS --> 个站点 · <!-- STATS:command_count -->1683<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->101<!-- /STATS --> 个 pipeline step · <!-- STATS:test_count -->8427<!-- /STATS --> 个测试</sub>
 </p>
 
 ## 30 秒开始
@@ -146,7 +146,7 @@ ACP 作为编辑器和桥接兼容层保留。真正跑任务时，优先 native
   <a data-site="weibo" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="weibo: 12 commands"><img alt="weibo" src="https://img.shields.io/static/v1?label=weibo&message=12+cmds&color=2563eb&style=flat-square&logo=sinaweibo&logoColor=white"></a>
   <a data-site="whatsapp" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="whatsapp: 7 commands"><img alt="whatsapp" src="https://img.shields.io/static/v1?label=whatsapp&message=7+cmds&color=2563eb&style=flat-square&logo=whatsapp&logoColor=white"></a>
   <a data-site="xiaohongshu" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="xiaohongshu: 22 commands"><img alt="xiaohongshu" src="https://img.shields.io/static/v1?label=xiaohongshu&message=22+cmds&color=2563eb&style=flat-square&logo=xiaohongshu&logoColor=white"></a>
-  <a data-site="zhihu" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="zhihu: 25 commands"><img alt="zhihu" src="https://img.shields.io/static/v1?label=zhihu&message=25+cmds&color=2563eb&style=flat-square&logo=zhihu&logoColor=white"></a>
+  <a data-site="zhihu" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="zhihu: 27 commands"><img alt="zhihu" src="https://img.shields.io/static/v1?label=zhihu&message=27+cmds&color=2563eb&style=flat-square&logo=zhihu&logoColor=white"></a>
   <a data-site="zoom-app" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="zoom-app: 7 commands"><img alt="zoom-app" src="https://img.shields.io/static/v1?label=zoom-app&message=7+cmds&color=2563eb&style=flat-square&logo=zoom&logoColor=white"></a>
 </p>
 <p><strong>视频</strong><br>
@@ -271,7 +271,7 @@ ACP 作为编辑器和桥接兼容层保留。真正跑任务时，优先 native
   <a data-site="unsplash" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="unsplash: 2 commands"><img alt="unsplash" src="https://img.shields.io/static/v1?label=unsplash&message=2+cmds&color=64748b&style=flat-square&logo=unsplash&logoColor=white"></a>
   <a data-site="vercel" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="vercel: 1 command"><img alt="vercel" src="https://img.shields.io/static/v1?label=vercel&message=1+cmds&color=64748b&style=flat-square&logo=vercel&logoColor=white"></a>
   <a data-site="wechat-channels" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="wechat-channels: 2 commands"><img alt="wechat-channels" src="https://img.shields.io/static/v1?label=wechat-channels&message=2+cmds&color=64748b&style=flat-square&logo=wechat&logoColor=white"></a>
-  <a data-site="yt-dlp" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="yt-dlp: 4 commands"><img alt="yt-dlp" src="https://img.shields.io/static/v1?label=yt-dlp&message=4+cmds&color=64748b&style=flat-square&logo=youtube&logoColor=white"></a>
+  <a data-site="yt-dlp" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="yt-dlp: 5 commands"><img alt="yt-dlp" src="https://img.shields.io/static/v1?label=yt-dlp&message=5+cmds&color=64748b&style=flat-square&logo=youtube&logoColor=white"></a>
   <a data-site="zoom" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="zoom: 2 commands"><img alt="zoom" src="https://img.shields.io/static/v1?label=zoom&message=2+cmds&color=64748b&style=flat-square&logo=zoom&logoColor=white"></a>
   <a data-site="zotero" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="zotero: 8 commands"><img alt="zotero" src="https://img.shields.io/static/v1?label=zotero&message=8+cmds&color=64748b&style=flat-square&logo=zotero&logoColor=white"></a>
 </p>
