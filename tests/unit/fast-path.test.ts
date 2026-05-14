@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { tryRunFastPath } from "../../src/fast-path.js";
@@ -506,6 +506,67 @@ describe("CLI fast path", () => {
           decision: "not_approved",
         },
       });
+    } finally {
+      if (originalApprovalsPath === undefined) {
+        delete process.env.UNICLI_APPROVALS_PATH;
+      } else {
+        process.env.UNICLI_APPROVALS_PATH = originalApprovalsPath;
+      }
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects approvals clear with missing --store value without touching the default store", () => {
+    const originalApprovalsPath = process.env.UNICLI_APPROVALS_PATH;
+    const tmp = mkdtempSync(join(tmpdir(), "unicli-fast-path-approvals-"));
+    const store = createApprovalStore({ path: join(tmp, "approvals.jsonl") });
+    const policy = evaluateOperationPolicy({
+      site: "slack",
+      command: "send",
+      args: [{ name: "text", required: true }],
+      profile: "confirm",
+      approved: true,
+    });
+    writeFileSync(
+      store.path,
+      `${JSON.stringify({
+        schema_version: "1",
+        key: policy.approval_memory.key,
+        decision: "allow",
+        profile: policy.profile,
+        created_at: "2026-05-14T00:00:00.000Z",
+        command: {
+          site: "slack",
+          command: "send",
+          effect: policy.effect,
+        },
+        scope: policy.approval_memory.scope,
+      })}\n`,
+      "utf-8",
+    );
+    process.env.UNICLI_APPROVALS_PATH = store.path;
+
+    try {
+      const { stdout, stderr, io } = makeIo();
+      const handled = tryRunFastPath(
+        ["node", "unicli", "-f", "json", "approvals", "clear", "--store"],
+        io,
+      );
+
+      expect(handled).toBe(true);
+      expect(stdout).toEqual([]);
+      expect(process.exitCode).toBe(ExitCode.USAGE_ERROR);
+      const envelope = JSON.parse(stderr.join("")) as {
+        error: { code: string; message: string };
+      };
+      expect(envelope.error).toMatchObject({
+        code: "invalid_input",
+        message: "Option --store requires a path value.",
+      });
+      expect(readFileSync(store.path, "utf-8")).toContain('"decision":"allow"');
+      expect(readFileSync(store.path, "utf-8")).not.toContain(
+        '"decision":"revoke"',
+      );
     } finally {
       if (originalApprovalsPath === undefined) {
         delete process.env.UNICLI_APPROVALS_PATH;

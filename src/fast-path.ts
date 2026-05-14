@@ -12,6 +12,7 @@ import {
   handleAdapterPolicyGate,
   handleSiteHelp,
 } from "./fast-path/handlers/adapter.js";
+import { handleApprovals } from "./fast-path/handlers/approvals.js";
 import {
   handleDescribe,
   handleList,
@@ -142,6 +143,8 @@ export function tryRunFastPath(
         return handleDescribe(parsed, io);
       case "repair":
         return handleRepair(parsed, io);
+      case "approvals":
+        return handleApprovals(parsed, io);
       default:
         return (
           handleAdapterPolicyGate(parsed, io) ||

@@ -1,4 +1,10 @@
-import { existsSync } from "node:fs";
+import {
+  appendFileSync,
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+} from "node:fs";
 import { appendFile, chmod, mkdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type {
@@ -119,15 +125,13 @@ export async function findStoredApproval(
 export async function listActiveStoredApprovals(
   store: ApprovalStore,
 ): Promise<StoredApproval[]> {
-  const byKey = new Map<string, StoredApproval>();
-  for (const entry of await listStoredApprovals(store)) {
-    if (entry.decision === "allow") {
-      byKey.set(entry.key, entry);
-    } else {
-      byKey.delete(entry.key);
-    }
-  }
-  return Array.from(byKey.values());
+  return activeApprovalsFromEntries(await listStoredApprovals(store));
+}
+
+export function listActiveStoredApprovalsSync(
+  store: ApprovalStore,
+): StoredApproval[] {
+  return activeApprovalsFromEntries(listStoredApprovalsSync(store));
 }
 
 export async function revokeStoredApproval(
@@ -147,6 +151,23 @@ export async function revokeStoredApproval(
   return entry;
 }
 
+export function revokeStoredApprovalSync(
+  store: ApprovalStore,
+  key: string,
+  options: ApprovalMutationOptions = {},
+): StoredApproval | undefined {
+  const active = findStoredApprovalSync(store, key);
+  if (!active) return undefined;
+
+  const entry: StoredApproval = {
+    ...active,
+    decision: "revoke",
+    created_at: (options.now ?? (() => new Date()))().toISOString(),
+  };
+  appendApprovalEntrySync(store, entry);
+  return entry;
+}
+
 export async function clearStoredApprovals(
   store: ApprovalStore,
   options: ApprovalMutationOptions = {},
@@ -155,6 +176,22 @@ export async function clearStoredApprovals(
   const now = (options.now ?? (() => new Date()))().toISOString();
   for (const entry of active) {
     await appendApprovalEntry(store, {
+      ...entry,
+      decision: "revoke",
+      created_at: now,
+    });
+  }
+  return active.length;
+}
+
+export function clearStoredApprovalsSync(
+  store: ApprovalStore,
+  options: ApprovalMutationOptions = {},
+): number {
+  const active = listActiveStoredApprovalsSync(store);
+  const now = (options.now ?? (() => new Date()))().toISOString();
+  for (const entry of active) {
+    appendApprovalEntrySync(store, {
       ...entry,
       decision: "revoke",
       created_at: now,
@@ -181,6 +218,59 @@ export async function listStoredApprovals(
     return [];
   }
 
+  return parseStoredApprovalLines(raw);
+}
+
+export function listStoredApprovalsSync(
+  store: ApprovalStore,
+): StoredApproval[] {
+  if (!existsSync(store.path)) return [];
+
+  let raw: string;
+  try {
+    raw = readFileSync(store.path, "utf-8");
+  } catch (error) {
+    if (process.env.UNICLI_DEBUG === "1") {
+      console.error(
+        `Failed to read approval store at ${store.path}; treating as empty.`,
+        error,
+      );
+    }
+    return [];
+  }
+
+  return parseStoredApprovalLines(raw);
+}
+
+function findStoredApprovalSync(
+  store: ApprovalStore,
+  key: string,
+): StoredApproval | undefined {
+  const entries = listStoredApprovalsSync(store);
+  for (let i = entries.length - 1; i >= 0; i -= 1) {
+    const entry = entries[i];
+    if (entry.key !== key) continue;
+    if (entry.decision === "revoke") return undefined;
+    return entry;
+  }
+  return undefined;
+}
+
+function activeApprovalsFromEntries(
+  entries: StoredApproval[],
+): StoredApproval[] {
+  const byKey = new Map<string, StoredApproval>();
+  for (const entry of entries) {
+    if (entry.decision === "allow") {
+      byKey.set(entry.key, entry);
+    } else {
+      byKey.delete(entry.key);
+    }
+  }
+  return Array.from(byKey.values());
+}
+
+function parseStoredApprovalLines(raw: string): StoredApproval[] {
   const entries: StoredApproval[] = [];
   for (const line of raw.split(/\r?\n/)) {
     if (line.trim().length === 0) continue;
@@ -210,6 +300,24 @@ async function appendApprovalEntry(
   });
   if (process.platform !== "win32") {
     await chmod(store.path, 0o600);
+  }
+}
+
+function appendApprovalEntrySync(
+  store: ApprovalStore,
+  entry: StoredApproval,
+): void {
+  const dir = dirname(store.path);
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  if (process.platform !== "win32") {
+    chmodSync(dir, 0o700);
+  }
+  appendFileSync(store.path, `${JSON.stringify(entry)}\n`, {
+    encoding: "utf-8",
+    mode: 0o600,
+  });
+  if (process.platform !== "win32") {
+    chmodSync(store.path, 0o600);
   }
 }
 
