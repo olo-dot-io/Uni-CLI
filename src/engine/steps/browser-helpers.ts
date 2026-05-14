@@ -1,12 +1,46 @@
 import type { PipelineContext } from "../executor.js";
 import type { BrowserPage } from "../../browser/page.js";
 
+async function acquireDaemonPage(timeout: number): Promise<BrowserPage | null> {
+  try {
+    const { BrowserBridge } = await import("../../browser/bridge.js");
+    const bridge = new BrowserBridge();
+    return (await bridge.connect({ timeout })) as unknown as BrowserPage;
+  } catch {
+    // REASON: Browser acquisition has ordered transports; a failed daemon attempt is diagnosed by the final acquisition error.
+    return null;
+  }
+}
+
+async function acquireConnectedDaemonPage(): Promise<BrowserPage | null> {
+  try {
+    const { checkDaemonStatus } = await import("../../browser/discover.js");
+    const status = await checkDaemonStatus({ timeout: 300 });
+    if (!status.running || !status.extensionConnected) return null;
+    return acquireDaemonPage(5000);
+  } catch {
+    // REASON: Browser acquisition has ordered transports; a failed daemon status probe only selects the next transport.
+    return null;
+  }
+}
+
 /**
- * Lazily acquire a BrowserPage: direct CDP → daemon → auto-launch Chrome.
- * Imports stay dynamic so non-browser pipelines pay no load cost.
+ * Lazily acquire a BrowserPage.
+ * User-session commands prefer Uni-CLI's daemon/extension bridge before CDP.
  */
 export async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
   if (ctx.page) return ctx.page;
+
+  if (ctx.browserSession === "user") {
+    const daemonPage =
+      process.env.UNICLI_BROWSER_SPAWN_DAEMON === "1"
+        ? await acquireDaemonPage(3000)
+        : await acquireConnectedDaemonPage();
+    if (daemonPage) return daemonPage;
+  } else if (ctx.browserSession !== "cdp") {
+    const daemonPage = await acquireConnectedDaemonPage();
+    if (daemonPage) return daemonPage;
+  }
 
   let port = 9222;
   const rawPort = process.env.UNICLI_CDP_PORT;
@@ -24,19 +58,7 @@ export async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
     await injectStealth(page.sendCDP.bind(page));
     return page;
   } catch {
-    /* CDP not available — try daemon */
-  }
-  try {
-    const { checkDaemonStatus } = await import("../../browser/discover.js");
-    const status = await checkDaemonStatus({ timeout: 300 });
-    if (status.running && status.extensionConnected) {
-      const { BrowserBridge } = await import("../../browser/bridge.js");
-      const bridge = new BrowserBridge();
-      const page = await bridge.connect({ timeout: 5000 });
-      return page as unknown as BrowserPage;
-    }
-  } catch {
-    /* daemon not available either */
+    // REASON: Browser acquisition has ordered transports; CDP failure falls through to auto-start Chrome.
   }
   try {
     const { launchChrome } = await import("../../browser/launcher.js");

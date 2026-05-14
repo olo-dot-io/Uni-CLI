@@ -17,6 +17,7 @@ import WebSocket, { WebSocketServer } from "ws";
 
 import {
   DAEMON_PORT,
+  DAEMON_PORT_CANDIDATES,
   DAEMON_HOST,
   DAEMON_IDLE_TIMEOUT,
   DAEMON_WS_PATH,
@@ -33,10 +34,7 @@ import { IdleManager } from "./idle-manager.js";
 
 // ── Configuration ──────────────────────────────────────────────────
 
-const PORT = parseInt(
-  process.env.UNICLI_DAEMON_PORT ?? String(DAEMON_PORT),
-  10,
-);
+let PORT = parseInt(process.env.UNICLI_DAEMON_PORT ?? String(DAEMON_PORT), 10);
 const IDLE_TIMEOUT = Number(
   process.env.UNICLI_DAEMON_TIMEOUT ?? DAEMON_IDLE_TIMEOUT,
 );
@@ -136,7 +134,12 @@ async function handleRequest(
 
   // GET /ping — no auth required, used by extension to probe
   if (req.method === "GET" && path === "/ping") {
-    json(res, 200, { ok: true });
+    json(res, 200, {
+      ok: true,
+      product: "unicli",
+      protocol: "unicli-browser-bridge",
+      port: PORT,
+    });
     return;
   }
 
@@ -403,17 +406,40 @@ process.on("SIGINT", shutdown);
 
 // ── Start ──────────────────────────────────────────────────────────
 
-httpServer.listen(PORT, DAEMON_HOST, () => {
-  console.error(`[daemon] Listening on http://${DAEMON_HOST}:${PORT}`);
-  console.error(`[daemon] PID ${process.pid} | idle timeout ${IDLE_TIMEOUT}ms`);
-  idleManager.onCliRequest();
-});
+function daemonCandidatePorts(): number[] {
+  if (process.env.UNICLI_DAEMON_PORT) return [PORT];
+  return DAEMON_PORT_CANDIDATES;
+}
 
-httpServer.on("error", (err: NodeJS.ErrnoException) => {
-  if (err.code === "EADDRINUSE") {
-    console.error(`[daemon] Port ${PORT} already in use`);
-    process.exit(69); // SERVICE_UNAVAILABLE
+function listenOnCandidate(index = 0): void {
+  const ports = daemonCandidatePorts();
+  const nextPort = ports[index];
+  if (nextPort === undefined) {
+    console.error("[daemon] No available daemon port");
+    process.exit(69);
   }
-  console.error("[daemon] Server error:", err);
-  process.exit(1);
-});
+
+  PORT = nextPort;
+  httpServer.once("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE" && index < ports.length - 1) {
+      listenOnCandidate(index + 1);
+      return;
+    }
+    if (err.code === "EADDRINUSE") {
+      console.error(`[daemon] Port ${String(PORT)} already in use`);
+      process.exit(69);
+    }
+    console.error("[daemon] Server error:", err);
+    process.exit(1);
+  });
+
+  httpServer.listen(PORT, DAEMON_HOST, () => {
+    console.error(`[daemon] Listening on http://${DAEMON_HOST}:${PORT}`);
+    console.error(
+      `[daemon] PID ${process.pid} | idle timeout ${IDLE_TIMEOUT}ms`,
+    );
+    idleManager.onCliRequest();
+  });
+}
+
+listenOnCandidate();

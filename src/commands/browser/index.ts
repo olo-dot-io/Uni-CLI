@@ -17,6 +17,7 @@ import {
 import { CDPClient, getRemoteEndpoint } from "../../browser/cdp-client.js";
 import {
   bindCurrentTab,
+  fetchDaemonPortConflict,
   fetchDaemonStatus,
   listSessions,
 } from "../../browser/daemon-client.js";
@@ -114,7 +115,14 @@ export function registerBrowserCommands(program: Command): void {
       await withBrowserOperatorEnv(browser, async () => {
         const daemon = await fetchDaemonStatus({ timeout: 1000 });
         if (!daemon) {
-          console.log(chalk.dim("Daemon: not running"));
+          const conflict = await fetchDaemonPortConflict({ timeout: 1000 });
+          console.log(
+            chalk.dim(
+              conflict
+                ? `Daemon: unavailable (${conflict})`
+                : "Daemon: not running",
+            ),
+          );
           return;
         }
         console.log(
@@ -124,6 +132,7 @@ export function registerBrowserCommands(program: Command): void {
             }`,
           ),
         );
+        if (!daemon.extensionConnected) return;
         const sessions = await listSessions();
         if (sessions.length > 0) {
           console.log(chalk.dim(`Sessions: ${String(sessions.length)}`));

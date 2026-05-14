@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  fetchDaemonPortConflict,
   fetchDaemonStatus,
+  selectDaemonSpawnPort,
   sendCommand,
 } from "../../src/browser/daemon-client.js";
 
@@ -81,5 +83,57 @@ describe("daemon client compatibility", () => {
 
     await expect(result).resolves.toEqual({ clicked: true });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports incompatible daemon responses on the configured port", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: false,
+      status: 403,
+      json: async () => ({
+        ok: false,
+        error: "Forbidden: missing X-External-Daemon header",
+      }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchDaemonPortConflict({ timeout: 50 })).resolves.toContain(
+      "non-Uni-CLI browser daemon",
+    );
+  });
+
+  it("selects the next daemon port when the default port belongs to another product", async () => {
+    const fetchMock = vi.fn(async (url: string) => ({
+      ok: true,
+      json: async () =>
+        url.includes(":19825")
+          ? { ok: true, product: "external-daemon" }
+          : { ok: true, product: "unicli" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(selectDaemonSpawnPort({ timeout: 50 })).resolves.toBe(19826);
+  });
+
+  it("does not treat an occupied non-OK ping port as free", async () => {
+    const fetchMock = vi.fn(async (url: string) => ({
+      ok: !url.includes(":19825"),
+      status: url.includes(":19825") ? 403 : 200,
+      json: async () => ({ ok: true, product: "unicli" }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(selectDaemonSpawnPort({ timeout: 50 })).resolves.toBe(19826);
+  });
+
+  it("rejects when every daemon candidate port is occupied by another product", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ ok: true, product: "external-daemon" }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(selectDaemonSpawnPort({ timeout: 50 })).rejects.toThrow(
+      "No available Uni-CLI daemon port",
+    );
   });
 });

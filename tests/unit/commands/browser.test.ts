@@ -146,6 +146,7 @@ vi.mock("../../../src/browser/bridge.js", () => ({
 }));
 
 vi.mock("../../../src/browser/daemon-client.js", () => ({
+  fetchDaemonPortConflict: vi.fn().mockResolvedValue(null),
   fetchDaemonStatus: vi.fn().mockResolvedValue({
     pid: 999,
     uptime: 10,

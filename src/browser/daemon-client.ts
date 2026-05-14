@@ -8,6 +8,7 @@
 import { randomBytes } from "node:crypto";
 import {
   DAEMON_PORT,
+  DAEMON_PORT_CANDIDATES,
   DAEMON_HOST,
   type DaemonAction,
   type DaemonCommand,
@@ -32,8 +33,19 @@ function getPort(): number {
   );
 }
 
-function baseUrl(): string {
-  return `http://${DAEMON_HOST}:${getPort()}`;
+function baseUrl(port = getPort()): string {
+  return `http://${DAEMON_HOST}:${port}`;
+}
+
+function hasExplicitPort(): boolean {
+  return Boolean(
+    process.env.UNICLI_DAEMON_PORT || process.env[COMPAT_DAEMON_PORT_ENV],
+  );
+}
+
+function candidatePorts(): number[] {
+  if (hasExplicitPort()) return [getPort()];
+  return DAEMON_PORT_CANDIDATES;
 }
 
 function daemonHeader(): Record<string, string> {
@@ -63,16 +75,70 @@ export async function fetchDaemonStatus(opts?: {
   timeout?: number;
 }): Promise<DaemonStatus | null> {
   const timeout = opts?.timeout ?? 2000;
-  try {
-    const resp = await fetch(`${baseUrl()}/status`, {
-      headers: daemonHeader(),
-      signal: AbortSignal.timeout(timeout),
-    });
-    if (!resp.ok) return null;
-    return (await resp.json()) as DaemonStatus;
-  } catch {
-    return null;
+  for (const port of candidatePorts()) {
+    try {
+      const resp = await fetch(`${baseUrl(port)}/status`, {
+        headers: daemonHeader(),
+        signal: AbortSignal.timeout(timeout),
+      });
+      if (!resp.ok) continue;
+      return (await resp.json()) as DaemonStatus;
+    } catch {
+      continue;
+    }
   }
+  return null;
+}
+
+export async function fetchDaemonPortConflict(opts?: {
+  timeout?: number;
+}): Promise<string | null> {
+  const timeout = opts?.timeout ?? 1000;
+  for (const port of candidatePorts()) {
+    try {
+      const resp = await fetch(`${baseUrl(port)}/status`, {
+        headers: daemonHeader(),
+        signal: AbortSignal.timeout(timeout),
+      });
+      if (resp.ok) return null;
+      const body = (await resp.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      const message = body?.error ?? `HTTP ${String(resp.status)}`;
+      if (/missing X-[A-Za-z-]+|Forbidden/i.test(message)) {
+        return `port ${String(port)} is occupied by a non-Uni-CLI browser daemon (${message})`;
+      }
+      return `port ${String(port)} responded but rejected Uni-CLI daemon status (${message})`;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+export async function selectDaemonSpawnPort(opts?: {
+  timeout?: number;
+}): Promise<number> {
+  const timeout = opts?.timeout ?? 300;
+  if (hasExplicitPort()) return getPort();
+  for (const port of DAEMON_PORT_CANDIDATES) {
+    try {
+      const resp = await fetch(`${baseUrl(port)}/ping`, {
+        signal: AbortSignal.timeout(timeout),
+      });
+      if (!resp.ok) continue;
+      const body = (await resp.json().catch(() => null)) as {
+        product?: string;
+      } | null;
+      if (body?.product === "unicli") return port;
+      continue;
+    } catch {
+      return port;
+    }
+  }
+  throw new Error(
+    `No available Uni-CLI daemon port. Candidate ports ${DAEMON_PORT_CANDIDATES.join(", ")} are occupied or reject Uni-CLI daemon ping.`,
+  );
 }
 
 export async function requestDaemonShutdown(opts?: {
@@ -80,7 +146,9 @@ export async function requestDaemonShutdown(opts?: {
 }): Promise<boolean> {
   const timeout = opts?.timeout ?? 5000;
   try {
-    const resp = await fetch(`${baseUrl()}/shutdown`, {
+    const status = await fetchDaemonStatus({ timeout: 500 });
+    const port = status?.port ?? getPort();
+    const resp = await fetch(`${baseUrl(port)}/shutdown`, {
       method: "POST",
       headers: daemonHeader(),
       signal: AbortSignal.timeout(timeout),
@@ -106,6 +174,8 @@ export async function sendCommand(
   params: Omit<DaemonCommand, "id" | "action"> = {},
 ): Promise<unknown> {
   const timeout = (params.timeout ?? DEFAULT_COMMAND_TIMEOUT / 1000) * 1000;
+  const status = await fetchDaemonStatus({ timeout: 500 });
+  const port = status?.port ?? getPort();
   const focusEnv = process.env.UNICLI_WINDOW_FOCUSED;
   const windowFocused =
     focusEnv === "1" || focusEnv === "true"
@@ -117,7 +187,7 @@ export async function sendCommand(
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     const id = generateId(); // Fresh ID per attempt
     try {
-      const resp = await fetch(`${baseUrl()}/command`, {
+      const resp = await fetch(`${baseUrl(port)}/command`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

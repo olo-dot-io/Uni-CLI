@@ -126,7 +126,13 @@ async function startBackgroundHarness(runtimeOnInstalled: {
       return socket;
     }),
   );
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, product: "unicli" }),
+    }),
+  );
 
   await import("../../../extension/src/background.js");
   runtimeOnInstalled.emit();
@@ -521,6 +527,46 @@ describe("background network capture routing", () => {
           },
         ],
       }),
+    );
+  });
+
+  it("skips a non-Uni daemon on the default port and connects to the next Uni daemon", async () => {
+    const { runtimeOnInstalled } = installChromeMock();
+    const socketUrls: string[] = [];
+    class FakeWebSocket {
+      static OPEN = 1;
+      readyState = FakeWebSocket.OPEN;
+      onopen: (() => void) | null = null;
+      onmessage: ((event: { data: string }) => void) | null = null;
+      onclose: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      send = vi.fn();
+      close = vi.fn();
+      constructor(url: string) {
+        socketUrls.push(url);
+        setTimeout(() => this.onopen?.(), 0);
+      }
+    }
+    vi.stubGlobal(
+      "WebSocket",
+      vi.fn((url: string) => new FakeWebSocket(url)),
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => ({
+        ok: true,
+        json: async () =>
+          url.includes(":19825")
+            ? { ok: true, product: "external-daemon" }
+            : { ok: true, product: "unicli" },
+      })),
+    );
+
+    await import("../../../extension/src/background.js");
+    runtimeOnInstalled.emit();
+
+    await vi.waitFor(() =>
+      expect(socketUrls).toEqual(["ws://localhost:19826/ext"]),
     );
   });
 

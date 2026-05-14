@@ -2,10 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 
 const browserMock = vi.hoisted(() => ({
   page: { marker: "browser-page" },
+  calls: [] as Array<Record<string, unknown>>,
 }));
 
 vi.mock("../../src/engine/steps/browser-helpers.js", () => ({
-  acquirePage: async () => browserMock.page,
+  acquirePage: async (ctx: Record<string, unknown>) => {
+    browserMock.calls.push(ctx);
+    return browserMock.page;
+  },
 }));
 
 import {
@@ -43,6 +47,38 @@ describe("kernel func execution", () => {
 
     expect(result.exitCode).toBe(0);
     expect(receivedPage).toBe(browserMock.page);
+  });
+
+  it("passes browser session preference to browser-backed TypeScript commands", async () => {
+    loadAllAdapters();
+    browserMock.calls.length = 0;
+
+    cli({
+      site: "unit-user-browser-func",
+      name: "inspect",
+      description: "Inspect via user browser page",
+      strategy: Strategy.COOKIE,
+      browser: true,
+      browserSession: "user",
+      func: async () => [{ ok: true }],
+    });
+    primeKernelCache();
+
+    const invocation = buildInvocation(
+      "cli",
+      "unit-user-browser-func",
+      "inspect",
+      {
+        args: {},
+        source: "internal",
+      },
+    );
+    expect(invocation).not.toBeNull();
+
+    const result = await execute(invocation!);
+
+    expect(result.exitCode).toBe(0);
+    expect(browserMock.calls.at(-1)?.browserSession).toBe("user");
   });
 
   it("keeps TypeScript adapter host metadata on each command", () => {

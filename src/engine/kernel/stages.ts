@@ -459,6 +459,7 @@ export async function executeKernelCommand(
           source: inv.bag.source,
           surface: inv.surface,
           trace_id: inv.trace_id,
+          browserSession: inv.command.browserSession,
         });
       }
       const raw = await inv.command.func(page as never, inv.bag.args);
@@ -511,7 +512,12 @@ export function executionErrorResult(
   warnings: string[],
   err: unknown,
 ): KernelStageFailure {
-  const fields = errorToAgentFields(err, ctx.adapterPath, inv.adapter.name);
+  const fields = errorToAgentFields(
+    err,
+    ctx.adapterPath,
+    inv.adapter.name,
+    inv.cmdName,
+  );
   const error: AgentError = {
     code: errorTypeToCode(err),
     message: err instanceof Error ? err.message : String(err),

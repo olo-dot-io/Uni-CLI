@@ -7,9 +7,14 @@
  */
 
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { fetchDaemonStatus, sendCommand } from "./daemon-client.js";
+import {
+  fetchDaemonStatus,
+  selectDaemonSpawnPort,
+  sendCommand,
+} from "./daemon-client.js";
 import { getRemoteEndpoint, CDPClient } from "./cdp-client.js";
 import { BrowserPage } from "./page.js";
 import {
@@ -222,13 +227,20 @@ export class BrowserBridge {
     if (existing) return existing;
 
     // Not running — spawn daemon
-    const daemonPath = join(
-      dirname(fileURLToPath(import.meta.url)),
-      "daemon.js",
-    );
-    const proc = spawn(process.execPath, [daemonPath], {
+    const daemonDir = dirname(fileURLToPath(import.meta.url));
+    const daemonJsPath = join(daemonDir, "daemon.js");
+    const daemonTsPath = join(daemonDir, "daemon.ts");
+    const daemonArgs = existsSync(daemonJsPath)
+      ? [daemonJsPath]
+      : [...process.execArgv, daemonTsPath];
+    const port = await selectDaemonSpawnPort({ timeout: 300 });
+    const proc = spawn(process.execPath, daemonArgs, {
       detached: true,
       stdio: "ignore",
+      env: {
+        ...process.env,
+        UNICLI_DAEMON_PORT: String(port),
+      },
     });
     proc.unref();
 

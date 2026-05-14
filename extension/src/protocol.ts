@@ -4,9 +4,10 @@
  */
 
 export const DAEMON_PORT = 19825;
+export const DAEMON_PORT_CANDIDATES = [19825, 19826, 19827, 19828, 19829];
 export const DAEMON_HOST = "localhost";
-export const DAEMON_WS_URL = `ws://${DAEMON_HOST}:${DAEMON_PORT}/ext`;
-export const DAEMON_PING_URL = `http://${DAEMON_HOST}:${DAEMON_PORT}/ping`;
+export const DAEMON_WS_PATH = "/ext";
+export const DAEMON_PING_PATH = "/ping";
 export const WS_RECONNECT_BASE_DELAY = 2000;
 export const WS_RECONNECT_MAX_DELAY = 5000;
 export const MAX_EAGER_ATTEMPTS = 6;

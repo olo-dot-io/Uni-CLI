@@ -6,6 +6,7 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import {
+  fetchDaemonPortConflict,
   fetchDaemonStatus,
   listSessions,
   requestDaemonShutdown,
@@ -25,14 +26,15 @@ export function registerDaemonCommands(program: Command): void {
       const restore = applyDaemonPortOverride(opts.port);
       const status = await fetchDaemonStatus();
       if (!status) {
-        console.log(chalk.yellow("Daemon is not running."));
+        const conflict = await fetchDaemonPortConflict();
+        console.log(chalk.yellow(conflict ?? "Daemon is not running."));
         restore();
         process.exitCode = 1;
         return;
       }
       console.log(chalk.bold("Daemon Status"));
       console.log(`  PID:        ${status.pid}`);
-      console.log(`  Uptime:     ${Math.round(status.uptime)}s`);
+      console.log(`  Uptime:     ${Math.round(status.uptime / 1000)}s`);
       console.log(
         `  Extension:  ${
           status.extensionConnected
@@ -116,6 +118,8 @@ export function registerDaemonCommands(program: Command): void {
           ),
         );
         process.exitCode = 1;
+      } finally {
+        await bridge.close().catch(() => undefined);
       }
       restore();
     });

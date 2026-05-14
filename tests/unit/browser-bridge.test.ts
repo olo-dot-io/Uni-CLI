@@ -6,6 +6,7 @@ const childProcessMock = vi.hoisted(() => ({
 
 const daemonMock = vi.hoisted(() => ({
   fetchDaemonStatus: vi.fn(),
+  selectDaemonSpawnPort: vi.fn(),
   sendCommand: vi.fn(),
 }));
 
@@ -26,6 +27,7 @@ vi.mock("node:child_process", () => ({
 
 vi.mock("../../src/browser/daemon-client.js", () => ({
   fetchDaemonStatus: daemonMock.fetchDaemonStatus,
+  selectDaemonSpawnPort: daemonMock.selectDaemonSpawnPort,
   sendCommand: daemonMock.sendCommand,
 }));
 
@@ -49,6 +51,7 @@ beforeEach(() => {
   childProcessMock.spawn.mockReturnValue({ unref: vi.fn() });
   launcherMock.getCDPPort.mockReturnValue(9222);
   launcherMock.isRemoteBrowser.mockReturnValue(false);
+  daemonMock.selectDaemonSpawnPort.mockResolvedValue(19825);
 });
 
 afterEach(() => {
@@ -157,5 +160,26 @@ describe("BrowserBridge auto-start behavior", () => {
     await expect(pendingStatus).resolves.toMatchObject({ ok: true });
     expect(childProcessMock.spawn).toHaveBeenCalled();
     expect(statusChecks).toBeGreaterThanOrEqual(12);
+  });
+
+  it("starts the daemon on the selected Uni-CLI port when the default port is occupied", async () => {
+    vi.useFakeTimers();
+    daemonMock.selectDaemonSpawnPort.mockResolvedValueOnce(19826);
+    daemonMock.fetchDaemonStatus.mockResolvedValue(null);
+
+    const bridge = new BrowserBridge() as unknown as {
+      ensureDaemonBestEffort: (timeout: number) => Promise<unknown>;
+    };
+    const pendingStatus = bridge.ensureDaemonBestEffort(500);
+    await vi.advanceTimersByTimeAsync(600);
+    await pendingStatus;
+
+    expect(childProcessMock.spawn).toHaveBeenCalledWith(
+      process.execPath,
+      expect.any(Array),
+      expect.objectContaining({
+        env: expect.objectContaining({ UNICLI_DAEMON_PORT: "19826" }),
+      }),
+    );
   });
 });

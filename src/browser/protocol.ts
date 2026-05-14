@@ -6,6 +6,7 @@
 // ── Constants ───────────────────────────────────────────────────────
 
 export const DAEMON_PORT = 19825;
+export const DAEMON_PORT_CANDIDATES = [19825, 19826, 19827, 19828, 19829];
 export const DAEMON_HOST = "127.0.0.1";
 export const DAEMON_IDLE_TIMEOUT = 4 * 60 * 60 * 1000; // 4 hours default
 export const DAEMON_WS_PATH = "/ext";

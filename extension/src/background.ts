@@ -6,8 +6,10 @@
  */
 
 import {
-  DAEMON_WS_URL,
-  DAEMON_PING_URL,
+  DAEMON_HOST,
+  DAEMON_PORT_CANDIDATES,
+  DAEMON_WS_PATH,
+  DAEMON_PING_PATH,
   WS_RECONNECT_BASE_DELAY,
   WS_RECONNECT_MAX_DELAY,
   MAX_EAGER_ATTEMPTS,
@@ -46,6 +48,25 @@ function createWebSocket(url: string): WebSocket {
       throw err;
     }
   }
+}
+
+async function findUniCliDaemonPort(): Promise<number | null> {
+  for (const port of DAEMON_PORT_CANDIDATES) {
+    try {
+      const resp = await fetch(
+        `http://${DAEMON_HOST}:${port}${DAEMON_PING_PATH}`,
+        { signal: AbortSignal.timeout(1000) },
+      );
+      if (!resp.ok) continue;
+      const body = (await resp.json().catch(() => null)) as {
+        product?: string;
+      } | null;
+      if (body?.product === "unicli") return port;
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 interface AutomationSession {
@@ -95,25 +116,19 @@ async function connect(): Promise<void> {
   )
     return;
 
-  // Pre-probe daemon reachability
-  try {
-    const resp = await fetch(DAEMON_PING_URL, {
-      signal: AbortSignal.timeout(1000),
-    });
-    if (!resp.ok) return;
-  } catch {
+  const daemonPort = await findUniCliDaemonPort();
+  if (daemonPort === null) {
     return; // Daemon not running — skip WS attempt
   }
-
   try {
-    ws = createWebSocket(DAEMON_WS_URL);
+    ws = createWebSocket(`ws://${DAEMON_HOST}:${daemonPort}${DAEMON_WS_PATH}`);
   } catch {
     scheduleReconnect();
     return;
   }
 
   ws.onopen = () => {
-    console.log("[bridge] Connected to daemon");
+    console.log(`[bridge] Connected to daemon on port ${daemonPort}`);
     reconnectAttempts = 0;
     ws!.send(
       JSON.stringify({
