@@ -350,25 +350,6 @@
       ]
     },
     {
-      "title": "Theory",
-      "locale": "root",
-      "routePath": "/THEORY",
-      "markdownPath": "/markdown/THEORY.md",
-      "sourceLink": "/THEORY",
-      "sourcePath": "docs/THEORY.md",
-      "section": "Explanation",
-      "parent": {
-        "text": "Explanation",
-        "link": "/ARCHITECTURE"
-      },
-      "breadcrumbs": [
-        {
-          "text": "Explanation",
-          "link": "/ARCHITECTURE"
-        }
-      ]
-    },
-    {
       "title": "Roadmap",
       "locale": "root",
       "routePath": "/ROADMAP",
@@ -723,25 +704,6 @@
       "markdownPath": "/markdown/zh/BENCHMARK.md",
       "sourceLink": "/BENCHMARK",
       "sourcePath": "docs/zh/BENCHMARK.md",
-      "section": "解释",
-      "parent": {
-        "text": "解释",
-        "link": "/zh/ARCHITECTURE"
-      },
-      "breadcrumbs": [
-        {
-          "text": "解释",
-          "link": "/zh/ARCHITECTURE"
-        }
-      ]
-    },
-    {
-      "title": "理论",
-      "locale": "zh",
-      "routePath": "/zh/THEORY",
-      "markdownPath": "/markdown/zh/THEORY.md",
-      "sourceLink": "/THEORY",
-      "sourcePath": "docs/zh/THEORY.md",
       "section": "解释",
       "parent": {
         "text": "解释",

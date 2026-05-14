@@ -27,10 +27,10 @@ Uni-CLI exposes one searchable command surface across:
 
 The generated catalog is the source of truth:
 **<span><!-- STATS:site_count -->282<!-- /STATS --></span> sites**,
-**<span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands**,
-**<span><!-- STATS:adapter_count_total -->1144<!-- /STATS --></span> adapters**,
+**<span><!-- STATS:command_count -->1683<!-- /STATS --></span> commands**,
+**<span><!-- STATS:adapter_count_total -->1150<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->8393<!-- /STATS --></span> tests** in v0.220.1.
+and **<span><!-- STATS:test_count -->8427<!-- /STATS --></span> tests** in v0.220.1.
 
 ## Execution Contract
 
@@ -269,7 +269,7 @@ bench shows representative `--limit 5` adapter responses at **357-415
 tokens**, with total invocation-plus-response budgets at **364-423 tokens**.
 The full catalog command is intentionally much larger because it emits all
 <span><!-- STATS:site_count -->282<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands; agents
+<span><!-- STATS:command_count -->1683<!-- /STATS --></span> commands; agents
 should search and describe before asking for the full registry.
 
 ## Direction

@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
   "name": "io.github.olo-dot-io/Uni-CLI",
-  "description": "Self-repairing CLI catalog that exposes 282 websites, desktop apps, and external CLIs as one MCP server. 946 declarative YAML adapters and 1680 commands; structured error envelopes let agents fix failing adapters at runtime and retry.",
+  "description": "Self-repairing CLI catalog that exposes 282 websites, desktop apps, and external CLIs as one MCP server. 949 declarative YAML adapters and 1686 commands; structured error envelopes let agents fix failing adapters at runtime and retry.",
   "version": "0.220.1",
   "repository": {
     "url": "https://github.com/olo-dot-io/Uni-CLI",

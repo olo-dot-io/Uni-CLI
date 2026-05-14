@@ -145,4 +145,4 @@ An adapter that hits HTTP APIs directly, with no browser involvement. The most c
 
 ## YAML adapter
 
-The preferred adapter format. A 20-30 line file declaring site, name, type, strategy, args, pipeline, and columns. Agent-readable, agent-editable, and decidable (no Turing-complete logic) per Rice's restriction. Lives at `~/.unicli/adapters/<site>/<name>.yaml`.
+The preferred adapter format. A 20-30 line file declaring site, name, type, strategy, args, pipeline, and columns. Agent-readable, agent-editable, and free of Turing-complete logic so agents can patch it deterministically. Lives at `~/.unicli/adapters/<site>/<name>.yaml`.

@@ -5,10 +5,10 @@ Uni-CLI is the CLI-native command surface for AI agents to discover, run, and re
 ## Catalog Snapshot
 
 - Sites: 282
-- Commands: 1680
-- Adapters: 1144 (946 YAML + 198 TypeScript)
+- Commands: 1683
+- Adapters: 1150 (946 YAML + 204 TypeScript)
 - Pipeline steps: 101
-- Tests: 8393
+- Tests: 8427
 
 ## Agent Contract
 
@@ -52,7 +52,6 @@ Every public page below has a clean Markdown companion. Fetch Markdown first; fe
 
 - [Architecture](https://olo-dot-io.github.io/Uni-CLI/ARCHITECTURE) — explanation page for architecture. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ARCHITECTURE.md
 - [Benchmarks](https://olo-dot-io.github.io/Uni-CLI/BENCHMARK) — explanation page for benchmarks. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/BENCHMARK.md
-- [Theory](https://olo-dot-io.github.io/Uni-CLI/THEORY) — explanation page for theory. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/THEORY.md
 - [Roadmap](https://olo-dot-io.github.io/Uni-CLI/ROADMAP) — explanation page for roadmap. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 
 ## Full Context

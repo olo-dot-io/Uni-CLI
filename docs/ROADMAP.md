@@ -1,6 +1,6 @@
 # Uni-CLI Roadmap
 
-> Current: v0.220.1 — Apollo · Lovell Patch. <!-- STATS:site_count -->282<!-- /STATS --> sites, <!-- STATS:command_count -->1683<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps.
+> Current: v0.220.1 — Apollo · Lovell Patch. <!-- STATS:site_count -->282<!-- /STATS --> sites, <!-- STATS:command_count -->1686<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction. Historical release notes live in
 `CHANGELOG.md`; they do not belong in the roadmap.

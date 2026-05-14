@@ -79,7 +79,7 @@ Pipeline 自上而下走，共享一个 context 对象。每步读 `ctx.data`、
 
 ## v2 AgentEnvelope
 
-每条命令都返回 v2 AgentEnvelope——成功失败同一个形状。Agent 用一份 schema 解析 <span><!-- STATS:command_count -->1683<!-- /STATS --></span> 条命令。
+每条命令都返回 v2 AgentEnvelope——成功失败同一个形状。Agent 用一份 schema 解析 <span><!-- STATS:command_count -->1686<!-- /STATS --></span> 条命令。
 
 ```json
 {
@@ -169,13 +169,12 @@ $ unicli hackernews top -n 10 -f json \
 # 4. Agent 改 YAML，跑 `unicli repair` 重新验证
 ```
 
-这就是整套交互模型。一种命令形状跨 <span><!-- STATS:site_count -->282<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1683<!-- /STATS --></span> 条命令。一种错误回执跨每一次失败。一条 self-repair 路径跨每一个适配器。
+这就是整套交互模型。一种命令形状跨 <span><!-- STATS:site_count -->282<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1686<!-- /STATS --></span> 条命令。一种错误回执跨每一次失败。一条 self-repair 路径跨每一个适配器。
 
 ## 延伸阅读
 
 - [适配器格式](/zh/ADAPTER-FORMAT) — YAML 适配器 schema 的完整 reference。
 - [Pipeline 参考](/zh/reference/pipeline) — 每一步的参数。
 - [Self-Repair 指南](/zh/guide/self-repair) — 修复闭环的细节。
-- [理论](/zh/THEORY) — CS 理论支撑 (Rice 限制、Lehman 命令、Banach 收敛、Agent 工具三难)。
 - [FAQ](/zh/faq) — 常见问题速答。
 - [Glossary](/zh/glossary) — 本文用到的术语定义。

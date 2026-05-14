@@ -5,8 +5,8 @@ This file is generated from the same VitePress site map as the public docs.
 ## Snapshot
 
 - Sites: 282
-- Commands: 1680
-- Adapters: 1144
+- Commands: 1683
+- Adapters: 1150
 - Pipeline steps: 101
 
 ---
@@ -54,9 +54,9 @@ Agent execution needs an auditable, repairable, reusable command contract. Catal
 ## Coverage
 
 - Sites and tools: 282
-- Commands: 1680
+- Commands: 1683
 - Pipeline steps: 101
-- Tests: 8393
+- Tests: 8427
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -422,7 +422,7 @@ The cascade order is `public → cookie → header → intercept → ui`. On the
 
 Every command returns a v2 AgentEnvelope — the same shape on success or failure.
 Agents parse one schema across
-<span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands.
+<span><!-- STATS:command_count -->1683<!-- /STATS --></span> commands.
 
 ```json
 {
@@ -514,7 +514,7 @@ $ unicli hackernews top -n 10 -f json \
 
 That is the entire interaction model. One command shape across
 <span><!-- STATS:site_count -->282<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands. One error
+<span><!-- STATS:command_count -->1683<!-- /STATS --></span> commands. One error
 envelope across every failure. One self-repair path across every adapter.
 
 ## Further reading
@@ -522,7 +522,6 @@ envelope across every failure. One self-repair path across every adapter.
 - [Adapter Format](/ADAPTER-FORMAT) — full reference for the YAML adapter schema.
 - [Pipeline Reference](/reference/pipeline) — every pipeline step and its parameters.
 - [Self-Repair Guide](/guide/self-repair) — the repair loop in detail.
-- [Theory](/THEORY) — the CS-theoretical grounding (Rice's restriction, Lehman's mandate, Banach convergence, the agent-tool trilemma).
 - [FAQ](/faq) — quick answers to the most common questions.
 - [Glossary](/glossary) — definitions for every term used in this guide.
 
@@ -1150,7 +1149,7 @@ Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, and any runtime that can spa
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.220.1 covers <span><!-- STATS:site_count -->282<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1144<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8393<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, paper/PDF workflows, ACG/anime/manga/wiki sources, booru tag search, government policy, podcasts, and macOS apps.
+v0.220.1 covers <span><!-- STATS:site_count -->282<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1683<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1150<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8427<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, paper/PDF workflows, ACG/anime/manga/wiki sources, booru tag search, government policy, podcasts, and macOS apps.
 
 ## Can Uni-CLI download papers and read local PDFs?
 
@@ -1340,7 +1339,7 @@ An adapter that hits HTTP APIs directly, with no browser involvement. The most c
 
 ## YAML adapter
 
-The preferred adapter format. A 20-30 line file declaring site, name, type, strategy, args, pipeline, and columns. Agent-readable, agent-editable, and decidable (no Turing-complete logic) per Rice's restriction. Lives at `~/.unicli/adapters/<site>/<name>.yaml`.
+The preferred adapter format. A 20-30 line file declaring site, name, type, strategy, args, pipeline, and columns. Agent-readable, agent-editable, and free of Turing-complete logic so agents can patch it deterministically. Lives at `~/.unicli/adapters/<site>/<name>.yaml`.
 
 ---
 
@@ -1983,7 +1982,7 @@ running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 282 sites, 1680 commands.
+This catalog is generated from the adapter manifest: 282 sites, 1683 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -2242,9 +2241,9 @@ This catalog is generated from the adapter manifest: 282 sites, 1680 commands.
 | ycombinator | web-api | 1 | no | unicli ycombinator launches |
 | yollomi | web-api | 12 | yes | unicli yollomi background<br>unicli yollomi edit<br>unicli yollomi face-swap |
 | youtube | web-api | 16 | yes | unicli youtube playlist<br>unicli youtube shorts<br>unicli youtube trending |
-| yt-dlp | bridge | 4 | no | unicli yt-dlp download<br>unicli yt-dlp extract-audio<br>unicli yt-dlp info |
+| yt-dlp | bridge | 5 | no | unicli yt-dlp download<br>unicli yt-dlp extract-audio<br>unicli yt-dlp info |
 | yuanbao | web-api | 8 | yes | unicli yuanbao ask<br>unicli yuanbao new<br>unicli yuanbao shared |
-| zhihu | web-api | 25 | yes | unicli zhihu answer<br>unicli zhihu answers<br>unicli zhihu article |
+| zhihu | web-api | 27 | yes | unicli zhihu answer<br>unicli zhihu answers<br>unicli zhihu article |
 | zlibrary | web-api | 2 | yes | unicli zlibrary search<br>unicli zlibrary info |
 | zoom | desktop | 3 | no | unicli zoom join<br>unicli zoom start<br>unicli zoom toggle-mute |
 | zotero | service | 8 | no | unicli zotero add-note<br>unicli zotero add-tag<br>unicli zotero collections |
@@ -4158,10 +4157,10 @@ Uni-CLI exposes one searchable command surface across:
 
 The generated catalog is the source of truth:
 **<span><!-- STATS:site_count -->282<!-- /STATS --></span> sites**,
-**<span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands**,
-**<span><!-- STATS:adapter_count_total -->1144<!-- /STATS --></span> adapters**,
+**<span><!-- STATS:command_count -->1683<!-- /STATS --></span> commands**,
+**<span><!-- STATS:adapter_count_total -->1150<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->8393<!-- /STATS --></span> tests** in v0.220.1.
+and **<span><!-- STATS:test_count -->8427<!-- /STATS --></span> tests** in v0.220.1.
 
 ## Execution Contract
 
@@ -4400,7 +4399,7 @@ bench shows representative `--limit 5` adapter responses at **357-415
 tokens**, with total invocation-plus-response budgets at **364-423 tokens**.
 The full catalog command is intentionally much larger because it emits all
 <span><!-- STATS:site_count -->282<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands; agents
+<span><!-- STATS:command_count -->1683<!-- /STATS --></span> commands; agents
 should search and describe before asking for the full registry.
 
 ## Direction
@@ -4551,161 +4550,6 @@ _Last reviewed: 2026-04-28._
 
 ---
 
-# Page: Theory
-
-Canonical: https://olo-dot-io.github.io/Uni-CLI/THEORY
-Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/THEORY.md
-
-<!-- Generated from docs/THEORY.md. Do not edit this copy directly. -->
-
-# Theory
-
-- Canonical: https://olo-dot-io.github.io/Uni-CLI/THEORY
-- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/THEORY.md
-- Section: Explanation
-- Parent: Explanation (/ARCHITECTURE)
-
-> Agents are probabilistic. Software execution should be deterministic. Uni-CLI
-> is the layer that compiles an agent's intent into a small, typed, repairable
-> command.
-
-This page explains Uni-CLI's design. Claims here are tied to Uni-CLI's own code,
-catalog, and benchmark harness.
-
-## Core Thesis
-
-An agent starts with intent. A software surface requires exact actions. The
-system boundary is the compiler:
-
-$$
-D: I \times C \to A
-$$
-
-Where:
-
-- $I$ is the user's intent.
-- $C$ is the current execution context.
-- $A$ is the concrete action sequence.
-- $D$ is correct when $A$ achieves $I$ under the observed context.
-
-In Uni-CLI, $D$ is implemented as a searchable adapter catalog plus a typed
-pipeline engine. Most adapters are YAML because finite declarative pipelines are
-cheap for agents to read, patch, and verify. TypeScript remains an escape hatch
-for surfaces that exceed the pipeline grammar.
-
-## Adapter Contract
-
-An adapter is intentionally small:
-
-$$
-S = (args, pipeline, output, errors)
-$$
-
-- `args` names the accepted inputs.
-- `pipeline` declares the deterministic steps.
-- `output` defines the fields returned to the agent.
-- `errors` are normalized into a v2 `AgentEnvelope`.
-
-The current public catalog has
-**<span><!-- STATS:site_count -->282<!-- /STATS --></span> sites**,
-**<span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands**,
-**<span><!-- STATS:adapter_count_total -->1144<!-- /STATS --></span> adapters**,
-and **<span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline
-steps**. Those numbers are generated from the repo by `scripts/count-stats.ts`,
-not hand-maintained marketing copy.
-
-## Self-Repair
-
-Self-repair is a bounded search problem. A failing adapter returns structured
-feedback:
-
-$$
-E = (path, step, code, message, suggestion, alternatives)
-$$
-
-The repair function is:
-
-$$
-R: S \times E \to S'
-$$
-
-The verification function is:
-
-$$
-V: S \to \{\mathrm{pass}, \mathrm{fail}\}
-$$
-
-The loop is useful only when each iteration reduces ambiguity. That is why
-Uni-CLI errors include `adapter_path`, `step`, `retryable`, `suggestion`, and
-`alternatives`. A generic error asks the agent to search the whole problem
-space; a Uni-CLI error points to one file and one failing step.
-
-## Tool-Surface Tradeoff
-
-Every agent tool surface balances three constraints:
-
-1. **Coverage**: how many intents can be executed.
-2. **Accuracy**: how often the selected operation does exactly what the user
-   meant.
-3. **Performance**: how little context, latency, and runtime state the operation
-   consumes.
-
-Uni-CLI optimizes the hot path for accuracy and performance, then expands
-coverage through adapters. The strategy is:
-
-1. Discover or operate a surface once.
-2. Compile the reliable path into an adapter.
-3. Reuse the adapter as a command.
-4. Repair the adapter when upstream behavior changes.
-
-That gives agents a narrow deterministic path for repeated work without losing
-the ability to add new surfaces.
-
-## Information Budget
-
-The public benchmark target is not an abstract claim. It is a budget:
-
-$$
-B = T_{invoke} + T_{response}
-$$
-
-Where $T_{invoke}$ is the command string and $T_{response}$ is the returned
-envelope. In the current fixture suite:
-
-- representative response bodies: **357-415 tokens**;
-- representative invocation strings: **7-11 tokens**;
-- representative total budgets: **364-423 tokens**;
-- full catalog output: **73242 tokens** because it intentionally lists all
-  <span><!-- STATS:site_count -->282<!-- /STATS --></span> sites and
-  <span><!-- STATS:command_count -->1680<!-- /STATS --></span> commands.
-
-The operational rule follows directly: agents should search and describe first,
-then execute the smallest matching command. Full catalog output is available,
-but it should be explicit.
-
-## Public Design Rules
-
-Uni-CLI's public contract follows five rules:
-
-1. **Search first.** Natural-language intent maps to a small set of commands.
-2. **Run narrow.** Use the smallest transport that can finish the task.
-3. **Return structure.** Success and failure share the same v2 envelope shape.
-4. **Repair locally.** The error tells the agent where to patch and how to
-   verify.
-5. **Publish measured numbers.** Counts and benchmark tables come from scripts,
-   fixtures, and CI-verifiable commands.
-
-## Direction
-
-The goal is to make CLI-native execution the default interface between agents
-and software. Protocol servers and editor integrations remain useful
-compatibility layers, but the fastest and most inspectable path is a command an
-agent can search, execute, compose, and repair.
-
-_Last reviewed: 2026-04-26._
-
----
-
 # Page: Roadmap
 
 Canonical: https://olo-dot-io.github.io/Uni-CLI/ROADMAP
@@ -4720,7 +4564,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Current: v0.220.1 — Apollo · Lovell Patch. <!-- STATS:site_count -->282<!-- /STATS --> sites, <!-- STATS:command_count -->1680<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps.
+> Current: v0.220.1 — Apollo · Lovell Patch. <!-- STATS:site_count -->282<!-- /STATS --> sites, <!-- STATS:command_count -->1683<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction. Historical release notes live in
 `CHANGELOG.md`; they do not belong in the roadmap.

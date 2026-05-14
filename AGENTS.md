@@ -13,7 +13,7 @@ self-repairing — agents can fix them by editing one file. See
 
 <!-- BEGIN COUNTS -->
 
-> <!-- STATS:site_count -->282<!-- /STATS --> sites, <!-- STATS:command_count -->1683<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> <!-- STATS:site_count -->282<!-- /STATS --> sites, <!-- STATS:command_count -->1686<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 
@@ -76,10 +76,32 @@ Uni-CLI is adapter-heavy; patch-rot is the failure mode that kills us fastest.
 | Adapter format              | `docs/ADAPTER-FORMAT.md` |
 | Pipeline steps (live count) | `unicli list`            |
 | Strategy semantics          | `src/types.ts`           |
-| Theory / citations          | `docs/THEORY.md`         |
 
 `unicli list` is more authoritative than any inventory in this file — the
 project ships at high cadence, written counts go stale fast.
+
+## Public surface boundary (machine-enforced)
+
+This repo's public surface is a pure engineering tool. Theoretical framing,
+formal-proof scaffolding, and academic identity bridges are blocked from
+public files by `scripts/boundary-guard.ts` (runs on `npm run verify` and on
+`lefthook` pre-commit). Run `npm run boundary:check` to verify locally.
+
+Banned in public files: `Banach`, `Rice's restriction`, `Lehman's mandate`,
+`Hellman–Cover`, `sequential-Fano`, `agent-tool trilemma`,
+`Deterministic Compilation Thesis`, `triple-intersection`,
+`envelope-to-operator mapping`, `|A|=5`, `Cox PH cloglog DTH GLMM`,
+`Theorem 1/2`, `Author: Claude`, `docs/superpowers/`, `internal/refs.bib`.
+Allowlist: `ref/**`, `archive/**`, `CHANGELOG.md` (frozen history).
+
+Public OSS idiom that stays on the public surface: `structured error
+envelope`, `envelope completeness`, `agent self-repair`, `repair loop`,
+`agent-readable YAML`. These read as engineering on the public surface.
+
+If `boundary-guard` flags a file, the fix is either to rewrite the term in
+engineering vocabulary or to move the file under `ref/`. Do not add an
+allowlist entry without a one-line `// REASON:` justification in
+`scripts/boundary-guard.ts` patterns array.
 
 ## Version
 

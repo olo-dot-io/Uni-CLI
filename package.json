@@ -172,8 +172,9 @@
     "lint:schema-v2": "tsx scripts/lint-schema-v2.ts",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "validate:agents-size": "tsx scripts/validate-agents-size.ts",
-    "verify": "npm run format:check && npm run typecheck && npm run lint && npm run lint:context && npm run build:manifest && npm run lint:adapters && npm run lint:schema-v2 && npm run build && npm run test && npm run test:adapter && npm run test:perf && npm run coverage:compute-snapshot && npm run coverage:adapter-test && npm run validate:agents-size && npm run stats:check && npm run conformance && npm run check:exports && npm run verify:changesets",
-    "verify:full": "npm run verify && npm run refs:verify && npm run adapter:health",
+    "boundary:check": "tsx scripts/boundary-guard.ts",
+    "verify": "npm run format:check && npm run typecheck && npm run lint && npm run lint:context && npm run build:manifest && npm run lint:adapters && npm run lint:schema-v2 && npm run build && npm run test && npm run test:adapter && npm run test:perf && npm run coverage:compute-snapshot && npm run coverage:adapter-test && npm run validate:agents-size && npm run stats:check && npm run conformance && npm run check:exports && npm run verify:changesets && npm run boundary:check",
+    "verify:full": "npm run verify && npm run adapter:health",
     "verify:clean": "npm run clean && npm run verify",
     "docs:prepare": "tsx scripts/generate-catalog.ts && tsx scripts/generate-docs-agent-assets.ts",
     "docs:dev": "npm run docs:prepare && vitepress dev docs",
@@ -193,7 +194,6 @@
     "bench:quick": "tsx bench/agent/report.ts",
     "bench:agent": "tsx bench/agent/sdk-runner.ts",
     "bench:gate": "node scripts/bench/check-ship-gate.js",
-    "refs:verify": "tsx scripts/verify-refs.ts",
     "sync:ref": "bash scripts/sync-ref.sh"
   },
   "keywords": [

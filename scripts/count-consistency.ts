@@ -21,7 +21,6 @@ const TARGETS = [
   join("docs", "ROADMAP.md"),
   join("docs", "zh", "ROADMAP.md"),
   join("docs", "ARCHITECTURE.md"),
-  join("docs", "THEORY.md"),
   join("docs", "glossary.md"),
   join("docs", "how-it-works.md"),
   join("docs", "faq.md"),

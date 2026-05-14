@@ -78,7 +78,6 @@ const rootSidebarGroups: SiteGroup[] = [
     items: [
       { text: "Architecture", link: "/ARCHITECTURE" },
       { text: "Benchmarks", link: "/BENCHMARK" },
-      { text: "Theory", link: "/THEORY" },
       { text: "Roadmap", link: "/ROADMAP" },
     ],
   },
@@ -135,7 +134,6 @@ const zhSidebarGroups: SiteGroup[] = [
     items: [
       { text: "架构", link: "/ARCHITECTURE" },
       { text: "基准", link: "/BENCHMARK" },
-      { text: "理论", link: "/THEORY" },
       { text: "路线图", link: "/ROADMAP" },
     ],
   },

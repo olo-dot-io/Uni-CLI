@@ -22,7 +22,7 @@
  *      args stay permissive until then).
  *
  * Violations throw `InputHardeningError` with a directional suggestion
- * that completes the self-repair contract (Banach convergence principle).
+ * so that the agent can patch the failing call deterministically.
  *
  * NOTE: kept the `InputHardeningError` class and its `{argName, suggestion}`
  * fields intact — MCP/ACP surfaces depend on them for `structuredContent`.

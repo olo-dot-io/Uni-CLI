@@ -10,6 +10,14 @@ pre-commit:
     lint:
       glob: "*.{ts,tsx,js,jsx}"
       run: npx oxlint {staged_files}
+    # Public/private boundary — public repo surface must not expose paper-
+    # private theoretical framing or identity-bridge signals. See
+    # scripts/boundary-guard.ts for patterns and rationale, and the
+    # "Public/Private Boundary" section in CLAUDE.md / AGENTS.md.
+    # Cheap (<1s on 2000+ tracked files); always runs on full repo because
+    # the violation may live in a file the current commit didn't touch.
+    boundary-guard:
+      run: npx tsx scripts/boundary-guard.ts
 
 # Commit message gate. Subjects must be conventional commits, and commit logs
 # must describe the product change instead of the work session that produced it.

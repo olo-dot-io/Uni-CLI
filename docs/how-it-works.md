@@ -81,7 +81,7 @@ The cascade order is `public → cookie → header → intercept → ui`. On the
 
 Every command returns a v2 AgentEnvelope — the same shape on success or failure.
 Agents parse one schema across
-<span><!-- STATS:command_count -->1683<!-- /STATS --></span> commands.
+<span><!-- STATS:command_count -->1686<!-- /STATS --></span> commands.
 
 ```json
 {
@@ -173,7 +173,7 @@ $ unicli hackernews top -n 10 -f json \
 
 That is the entire interaction model. One command shape across
 <span><!-- STATS:site_count -->282<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1683<!-- /STATS --></span> commands. One error
+<span><!-- STATS:command_count -->1686<!-- /STATS --></span> commands. One error
 envelope across every failure. One self-repair path across every adapter.
 
 ## Further reading
@@ -181,6 +181,5 @@ envelope across every failure. One self-repair path across every adapter.
 - [Adapter Format](/ADAPTER-FORMAT) — full reference for the YAML adapter schema.
 - [Pipeline Reference](/reference/pipeline) — every pipeline step and its parameters.
 - [Self-Repair Guide](/guide/self-repair) — the repair loop in detail.
-- [Theory](/THEORY) — the CS-theoretical grounding (Rice's restriction, Lehman's mandate, Banach convergence, the agent-tool trilemma).
 - [FAQ](/faq) — quick answers to the most common questions.
 - [Glossary](/glossary) — definitions for every term used in this guide.

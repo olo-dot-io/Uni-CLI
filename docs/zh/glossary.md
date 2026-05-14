@@ -145,4 +145,4 @@ Anthropic 牵头的协议，让 AI 助手通过有状态服务调用工具。Uni
 
 ## YAML adapter (YAML 适配器)
 
-推荐的适配器格式。20-30 行声明 site、name、type、strategy、args、pipeline、columns。Agent 可读、Agent 可改、可判定 (无图灵完备逻辑) ——遵守 Rice 限制。存在 `~/.unicli/adapters/<site>/<name>.yaml`。
+推荐的适配器格式。20-30 行声明 site、name、type、strategy、args、pipeline、columns。Agent 可读、Agent 可改、无图灵完备逻辑，因此 Agent 可以确定性地 patch。存在 `~/.unicli/adapters/<site>/<name>.yaml`。
