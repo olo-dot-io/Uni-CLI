@@ -156,53 +156,14 @@ jobs:
             target/${{ matrix.target }}/release-sidecar/unicli-uia*
             target/${{ matrix.target }}/release-sidecar/unicli-atspi*
 
-  adapter-tests:
-    name: Adapter Tests
-    runs-on: ubuntu-latest
-    needs:
-      - verify
-      - rust-sidecars
-
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Use Node.js 22
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build search manifest
-        run: npm run build:manifest
-
-      - name: Adapter integration tests
-        run: npm run test:adapter
-
-  docs-build:
-    name: Docs Build
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-
-      - name: Use Node.js 22
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build VitePress
-        env:
-          UNICLI_DOCS_BASE: /Uni-CLI/
-        run: npm run docs:build
+  # adapter-tests subjob removed 2026-05-14: it ran `npm run test:adapter`
+  # against live third-party APIs and was the dominant source of CI flakiness
+  # (the spec gate that protects main is `adapter-health-strict` below;
+  # `adapter-health` provides the PR soft-signal). Local `npm run test:adapter`
+  # remains available via `npm run verify`.
+  #
+  # docs-build subjob removed 2026-05-14: it duplicated the VitePress build in
+  # docs.yml, which already runs on push to main with the right path filter.
 
   adapter-health:
     name: Adapter Health (PR signal)
