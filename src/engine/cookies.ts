@@ -136,6 +136,88 @@ export async function loadCookiesWithCDP(
   return null;
 }
 
+export interface CookieRefreshResult {
+  ok: boolean;
+  site: string;
+  domain: string;
+  source?: "browser" | "cdp";
+  cookieCount?: number;
+  cookies?: string[];
+  suggestion?: string;
+}
+
+function persistCookies(site: string, cookies: Record<string, string>): void {
+  try {
+    saveCookiesToDisk(site, cookies);
+  } catch {
+    // Non-fatal: callers can still retry because browser/CDP remains readable.
+  }
+}
+
+export async function refreshCookiesFromBrowser(
+  site: string,
+  domain?: string,
+): Promise<CookieRefreshResult> {
+  if (!/^[a-zA-Z0-9._-]+$/.test(site)) {
+    return {
+      ok: false,
+      site,
+      domain: domain ?? site,
+      suggestion:
+        "Site names must contain only letters, digits, dot, dash, or underscore.",
+    };
+  }
+
+  let cookieDomain = domain ?? site.replace(/_/g, ".");
+  if (!cookieDomain.includes(".")) {
+    cookieDomain = `${cookieDomain}.com`;
+  }
+
+  if (process.env.UNICLI_COOKIE_NO_BROWSER !== "1") {
+    const browserCookies = await loadFromInstalledBrowser(cookieDomain);
+    if (browserCookies && Object.keys(browserCookies).length > 0) {
+      persistCookies(site, browserCookies);
+      return {
+        ok: true,
+        site,
+        domain: cookieDomain,
+        source: "browser",
+        cookieCount: Object.keys(browserCookies).length,
+        cookies: Object.keys(browserCookies),
+      };
+    }
+  }
+
+  try {
+    const cdpCookies = await extractCookiesViaCDP(cookieDomain);
+    if (Object.keys(cdpCookies).length > 0) {
+      persistCookies(site, cdpCookies);
+      return {
+        ok: true,
+        site,
+        domain: cookieDomain,
+        source: "cdp",
+        cookieCount: Object.keys(cdpCookies).length,
+        cookies: Object.keys(cdpCookies),
+      };
+    }
+  } catch {
+    return {
+      ok: false,
+      site,
+      domain: cookieDomain,
+      suggestion: `Open https://${cookieDomain} in the browser, complete login or challenge, then run: unicli auth import ${site} --domain ${cookieDomain}`,
+    };
+  }
+
+  return {
+    ok: false,
+    site,
+    domain: cookieDomain,
+    suggestion: `No cookies found for ${cookieDomain}. Sign in to https://${cookieDomain}, then run: unicli auth import ${site} --domain ${cookieDomain}`,
+  };
+}
+
 /**
  * Try each installed Chromium browser in priority order until one yields
  * cookies for the domain. Failures (browser not installed, Keychain denied,

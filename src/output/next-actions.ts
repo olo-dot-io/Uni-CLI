@@ -10,6 +10,11 @@
  */
 
 import type { AgentNextAction } from "./envelope.js";
+import {
+  authImportCommand,
+  authLoginUrl,
+  authRetryCommand,
+} from "./auth-guidance.js";
 
 /** Hints shown alongside a successful result for site-<cmd>. */
 export function defaultSuccessNextActions(
@@ -69,10 +74,31 @@ export function defaultErrorNextActions(
     });
   }
 
-  if (errCode === "auth_required" || errCode === "not_authenticated") {
+  if (
+    errCode === "auth_required" ||
+    errCode === "not_authenticated" ||
+    errCode === "challenge_required"
+  ) {
     actions.push({
-      command: `unicli auth setup ${site}`,
-      description: "Save cookies / token for this site",
+      command: authImportCommand(site),
+      description:
+        "Import cookies from an installed browser profile without launching a new login flow",
+    });
+    actions.push({
+      command: `unicli browser open ${authLoginUrl(site)}`,
+      description:
+        "Open the site in the shared browser profile so the user or agent can complete login/challenge, then retry",
+    });
+    actions.push({
+      command: authRetryCommand(site, cmdName),
+      description:
+        "Refresh browser cookies and retry this command once using an args-file payload",
+      params: {
+        path: {
+          description:
+            "Absolute path to the JSON args used for the failed call",
+        },
+      },
     });
   }
 

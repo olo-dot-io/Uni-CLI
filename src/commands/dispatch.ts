@@ -40,6 +40,7 @@ import {
 } from "../output/projection.js";
 import { recordUsage } from "../runtime/usage-ledger.js";
 import { ExitCode } from "../types.js";
+import { refreshCookiesFromBrowser } from "../engine/cookies.js";
 import type { AdapterArg, OutputFormat } from "../types.js";
 import type { AgentContext } from "../output/envelope.js";
 
@@ -196,6 +197,7 @@ export function registerAdapterDispatch(program: Command): void {
           permissionProfile?: string;
           yes?: boolean;
           rememberApproval?: boolean;
+          authRetry?: boolean;
           record?: boolean;
           select?: string;
           fields?: string;
@@ -316,12 +318,45 @@ export function registerAdapterDispatch(program: Command): void {
           process.exit(ExitCode.SUCCESS);
         }
 
-        const result =
+        const runInvocation = () =>
           rootOpts.record === true || process.env.UNICLI_RECORD_RUN === "1"
-            ? await executeWithRunRecording(inv, {
+            ? executeWithRunRecording(inv, {
                 enabled: rootOpts.record === true ? true : undefined,
               })
-            : await execute(inv);
+            : execute(inv);
+
+        let result = await runInvocation();
+        if (
+          rootOpts.authRetry === true &&
+          result.error?.code === "auth_required"
+        ) {
+          const refresh = await refreshCookiesFromBrowser(
+            adapter.name,
+            cmd.domain ?? adapter.domain,
+          );
+          if (refresh.ok) {
+            process.stderr.write(
+              chalk.yellow(
+                `[auth] refreshed ${refresh.cookieCount ?? 0} cookie(s) from ${refresh.source}; retrying ${adapter.name}.${cmdName}\n`,
+              ),
+            );
+            result = await runInvocation();
+          } else if (result.error) {
+            result.error.suggestion = [
+              result.error.suggestion,
+              refresh.suggestion,
+            ]
+              .filter(Boolean)
+              .join(" ");
+            result.error.remedy = {
+              message:
+                refresh.suggestion ??
+                "Refresh browser login state, then retry.",
+              command: `unicli auth import ${adapter.name}`,
+            };
+            result.envelope.error = result.error;
+          }
+        }
 
         // Surface harden warnings the same way the pre-R2 path did —
         // yellow `[harden] …` lines on stderr, above any output envelope.

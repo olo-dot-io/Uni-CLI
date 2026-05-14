@@ -5,7 +5,10 @@
  * Requires ct0 (CSRF token) and auth_token cookies in ~/.unicli/cookies/twitter.json
  */
 
-import { loadCookies, formatCookieHeader } from "../../engine/cookies.js";
+import {
+  loadCookiesWithCDP,
+  formatCookieHeader,
+} from "../../engine/cookies.js";
 import { USER_AGENT } from "../../constants.js";
 
 // Public bearer token — same for all Twitter web clients, not a secret
@@ -13,6 +16,45 @@ const BEARER_TOKEN =
   "AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA";
 
 const GRAPHQL_BASE = "https://x.com/i/api/graphql";
+
+function throwTwitterApiError(
+  label: string,
+  status: number,
+  preview: string,
+): never {
+  const err = new Error(
+    `Twitter API error: HTTP ${status} on ${label}\n${preview.slice(0, 200)}`,
+  ) as Error & {
+    code?: string;
+    suggestion?: string;
+    retryable?: boolean;
+    alternatives?: string[];
+  };
+  err.code =
+    status === 401 || status === 403
+      ? "auth_required"
+      : status === 404
+        ? "upstream_error"
+        : status === 429
+          ? "rate_limited"
+          : status >= 500
+            ? "upstream_error"
+            : "api_error";
+  err.retryable = status === 429 || status >= 500;
+  err.suggestion =
+    status === 404
+      ? "Twitter/X changed or removed this web API operation. Run `unicli repair twitter <command>` or use a browser-backed command while the GraphQL operation is refreshed."
+      : status === 401 || status === 403
+        ? "Refresh X login state with `unicli --auth-retry twitter <command> --args-file <path.json>`, or open https://x.com in Chrome and sign in."
+        : status === 429
+          ? "Twitter/X rate-limited the request. Wait, reduce limit, then retry."
+          : "Twitter/X API returned an upstream error. Retry once; if it persists, run `unicli repair twitter <command>`.";
+  err.alternatives = [
+    "unicli auth import twitter --domain x.com",
+    "unicli browser open https://x.com",
+  ];
+  throw err;
+}
 
 /** Standard Twitter GraphQL feature flags */
 export const FEATURES: Record<string, boolean> = {
@@ -56,7 +98,7 @@ export async function twitterFetch(
   variables: Record<string, unknown>,
   features: Record<string, boolean> = FEATURES,
 ): Promise<unknown> {
-  const cookies = loadCookies("twitter");
+  const cookies = await loadCookiesWithCDP("twitter", "x.com");
   if (!cookies) {
     throw new Error(
       'No cookies found for "twitter". Run: unicli auth setup twitter',
@@ -92,10 +134,7 @@ export async function twitterFetch(
 
   if (!resp.ok) {
     const preview = await resp.text().catch(() => "");
-    throw new Error(
-      `Twitter API error: HTTP ${resp.status} on ${endpoint}\n` +
-        `${preview.slice(0, 200)}`,
-    );
+    throwTwitterApiError(endpoint, resp.status, preview);
   }
 
   return resp.json();
@@ -110,7 +149,7 @@ export async function twitterPostFetch(
   variables: Record<string, unknown>,
   features: Record<string, boolean> = FEATURES,
 ): Promise<unknown> {
-  const cookies = loadCookies("twitter");
+  const cookies = await loadCookiesWithCDP("twitter", "x.com");
   if (!cookies) {
     throw new Error(
       'No cookies found for "twitter". Run: unicli auth setup twitter',
@@ -143,10 +182,7 @@ export async function twitterPostFetch(
 
   if (!resp.ok) {
     const preview = await resp.text().catch(() => "");
-    throw new Error(
-      `Twitter API error: HTTP ${resp.status} on ${endpoint}\n` +
-        `${preview.slice(0, 200)}`,
-    );
+    throwTwitterApiError(endpoint, resp.status, preview);
   }
 
   return resp.json();
@@ -163,7 +199,7 @@ export async function twitterRestFetch(
   path: string,
   params: Record<string, string> = {},
 ): Promise<unknown> {
-  const cookies = loadCookies("twitter");
+  const cookies = await loadCookiesWithCDP("twitter", "x.com");
   if (!cookies) {
     throw new Error(
       'No cookies found for "twitter". Run: unicli auth setup twitter',
@@ -195,10 +231,7 @@ export async function twitterRestFetch(
 
   if (!resp.ok) {
     const preview = await resp.text().catch(() => "");
-    throw new Error(
-      `Twitter REST API error: HTTP ${resp.status} on ${path}\n` +
-        `${preview.slice(0, 200)}`,
-    );
+    throwTwitterApiError(path, resp.status, preview);
   }
 
   return resp.json();
@@ -215,7 +248,7 @@ export async function twitterGuideFetch(
   url: string,
   params: Record<string, string> = {},
 ): Promise<unknown> {
-  const cookies = loadCookies("twitter");
+  const cookies = await loadCookiesWithCDP("twitter", "x.com");
   if (!cookies) {
     throw new Error(
       'No cookies found for "twitter". Run: unicli auth setup twitter',
@@ -247,10 +280,7 @@ export async function twitterGuideFetch(
 
   if (!resp.ok) {
     const preview = await resp.text().catch(() => "");
-    throw new Error(
-      `Twitter Guide API error: HTTP ${resp.status}\n` +
-        `${preview.slice(0, 200)}`,
-    );
+    throwTwitterApiError("guide", resp.status, preview);
   }
 
   return resp.json();

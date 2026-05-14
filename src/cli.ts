@@ -102,6 +102,10 @@ export async function createCli(): Promise<Command> {
       "remember this --yes approval for the same command capability scope",
     )
     .option(
+      "--auth-retry",
+      "on auth_required, refresh cookies from the local browser and retry once",
+    )
+    .option(
       "--record",
       "record an append-only run trace under ~/.unicli/runs (experimental)",
     )

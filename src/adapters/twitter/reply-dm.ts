@@ -6,7 +6,10 @@
 
 import { cli } from "../../registry.js";
 import { Strategy } from "../../types.js";
-import { loadCookies, formatCookieHeader } from "../../engine/cookies.js";
+import {
+  loadCookiesWithCDP,
+  formatCookieHeader,
+} from "../../engine/cookies.js";
 import { USER_AGENT } from "../../constants.js";
 
 const BEARER_TOKEN =
@@ -36,7 +39,7 @@ cli({
     const conversationId = String(kwargs.conversation_id);
     const text = kwargs.text as string;
 
-    const cookies = loadCookies("twitter");
+    const cookies = await loadCookiesWithCDP("twitter", "x.com");
     if (!cookies) {
       throw new Error(
         'No cookies found for "twitter". Run: unicli auth setup twitter',

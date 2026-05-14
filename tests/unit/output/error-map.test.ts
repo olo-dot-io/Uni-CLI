@@ -50,6 +50,19 @@ describe("errorTypeToCode — PipelineError branches", () => {
     expect(errorTypeToCode(err)).toBe("auth_required");
   });
 
+  it("maps anti-bot challenge messages to challenge_required", () => {
+    const err = new PipelineError("Cloudflare challenge page returned", {
+      step: 2,
+      action: "fetch",
+      config: { url: "https://example.com" },
+      errorType: "http_error",
+      statusCode: 403,
+      suggestion: "Complete challenge in browser",
+    });
+    expect(errorTypeToCode(err)).toBe("challenge_required");
+    expect(mapErrorToExitCode(err)).toBe(ExitCode.AUTH_REQUIRED);
+  });
+
   it("maps missing cookie PipelineError to auth_required", () => {
     const err = new PipelineError(
       'No cookies found for "zhihu". Run: unicli auth setup zhihu',
@@ -73,6 +86,11 @@ describe("errorTypeToCode — PipelineError branches", () => {
   it("maps statusCode 429 to rate_limited", () => {
     const err = makePipelineError({ statusCode: 429 });
     expect(errorTypeToCode(err)).toBe("rate_limited");
+  });
+
+  it("maps statusCode 500 to upstream_error", () => {
+    const err = makePipelineError({ statusCode: 500 });
+    expect(errorTypeToCode(err)).toBe("upstream_error");
   });
 
   it("maps stale_ref errorType through verbatim", () => {
@@ -151,6 +169,29 @@ describe("errorTypeToCode — generic Error message matching", () => {
 
   it("maps rate-limit text to rate_limited", () => {
     expect(errorTypeToCode(new Error("429 rate-limited"))).toBe("rate_limited");
+  });
+
+  it("honors actionable error code fields from adapters", () => {
+    const err = new Error("Twitter API error: HTTP 404") as Error & {
+      code?: string;
+    };
+    err.code = "upstream_error";
+    expect(errorTypeToCode(err)).toBe("upstream_error");
+  });
+
+  it("maps generic captcha messages to challenge_required with browser guidance", () => {
+    const err = new Error("site returned captcha challenge");
+    expect(errorTypeToCode(err)).toBe("challenge_required");
+    const fields = errorToAgentFields(
+      err,
+      "src/adapters/xiaohongshu/search.yaml",
+      "xiaohongshu",
+      "search",
+    );
+    expect(fields.suggestion).toContain("complete the login, captcha");
+    expect(fields.suggestion).toContain(
+      "unicli --auth-retry xiaohongshu search",
+    );
   });
 
   it("marks generic rate-limit errors as retryable", () => {

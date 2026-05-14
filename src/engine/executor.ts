@@ -73,6 +73,7 @@ export type PipelineContext = {
   temp?: Record<string, string>;
   tempDir?: string;
   page?: BrowserPage;
+  browserSession?: "auto" | "user" | "cdp";
   /** Provenance of `args` — seeded from `ResolvedArgs.source`. */
   source?: ArgSource;
   /** Surface that dispatched this pipeline. Mirrors `PipelineOptions.surface`. */
@@ -339,6 +340,34 @@ export async function runPipeline(
           });
         }
         const errMsg = err instanceof Error ? err.message : String(err);
+        const httpStatus = /\bHTTP\s+(\d{3})\b/i.exec(errMsg)?.[1];
+        if (httpStatus) {
+          const statusCode = Number(httpStatus);
+          const retryable =
+            statusCode === 429 ||
+            statusCode === 500 ||
+            statusCode === 502 ||
+            statusCode === 503 ||
+            statusCode === 504;
+          throw new PipelineError(`Step ${i} (${action}) failed: ${errMsg}`, {
+            step: i,
+            action,
+            config,
+            errorType: "http_error",
+            statusCode,
+            suggestion:
+              statusCode === 401 || statusCode === 403
+                ? `Refresh login state with \`unicli --auth-retry ${options?.site ?? "<site>"} <command> --args-file <path.json>\`, or open the site in Chrome and complete login/challenge.`
+                : statusCode === 429
+                  ? "The upstream site rate-limited the request. Wait, lower --limit, then retry."
+                  : `The browser-side request returned HTTP ${statusCode}. Retry once; if it persists, inspect the adapter endpoint with \`unicli repair ${options?.site ?? "<site>"} <command>\`.`,
+            retryable,
+            alternatives:
+              statusCode === 401 || statusCode === 403
+                ? [`unicli auth import ${options?.site ?? "<site>"}`]
+                : [],
+          });
+        }
         const isTransient =
           /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|socket hang up/i.test(
             errMsg,

@@ -15,6 +15,10 @@ import { PipelineError } from "../engine/executor.js";
 import { BridgeConnectionError } from "../browser/bridge.js";
 import { isTargetError } from "../browser/target-errors.js";
 import { ExitCode } from "../types.js";
+import {
+  authFailureSuggestion,
+  challengeFailureSuggestion,
+} from "./auth-guidance.js";
 
 /**
  * Ref-locator error codes that pass through to the v2 envelope verbatim
@@ -28,6 +32,13 @@ export const REF_LOCATOR_CODES = new Set<string>([
   "ref_not_found",
 ]);
 
+type ActionableError = Error & {
+  code?: string;
+  suggestion?: string;
+  retryable?: boolean;
+  alternatives?: string[];
+};
+
 function isAuthMessage(message: string): boolean {
   return /(?:\b(?:401|403)\b|\bunauthori[sz]ed\b|\bforbidden\b|\bnot[_ -]?authenticated\b|\bauth[_ -]?required\b|\bauth(?:entication|orization|orized)?\b|No cookies found|auth setup)/i.test(
     message,
@@ -40,6 +51,12 @@ function isRetryableMessage(message: string): boolean {
   );
 }
 
+function isChallengeMessage(message: string): boolean {
+  return /captcha|cloudflare|challenge|verify you are human|human verification|risk.?control|风控|验证码|人机验证|安全验证/i.test(
+    message,
+  );
+}
+
 /**
  * Map a caught error to an AgentError code string following the self-repair
  * contract. Covers the most common pipeline / network / HTTP failure modes.
@@ -48,6 +65,7 @@ export function errorTypeToCode(err: unknown): string {
   if (isTargetError(err)) return err.detail.code;
   if (err instanceof PipelineError) {
     const { errorType, statusCode } = err.detail;
+    if (isChallengeMessage(err.message)) return "challenge_required";
     if (
       statusCode === 401 ||
       statusCode === 403 ||
@@ -59,6 +77,13 @@ export function errorTypeToCode(err: unknown): string {
       return "auth_required";
     if (statusCode === 404) return "not_found";
     if (statusCode === 429) return "rate_limited";
+    if (
+      statusCode === 500 ||
+      statusCode === 502 ||
+      statusCode === 503 ||
+      statusCode === 504
+    )
+      return "upstream_error";
     if (REF_LOCATOR_CODES.has(errorType)) return errorType;
     if (errorType === "permission_denied") return "permission_denied";
     if (errorType === "selector_miss") return "selector_miss";
@@ -67,7 +92,10 @@ export function errorTypeToCode(err: unknown): string {
     if (errorType === "timeout") return "network_error";
     return "internal_error";
   }
+  if (err instanceof Error && typeof (err as ActionableError).code === "string")
+    return (err as ActionableError).code!;
   const message = err instanceof Error ? err.message : String(err);
+  if (isChallengeMessage(message)) return "challenge_required";
   if (
     /ETIMEDOUT|ENOTFOUND|ECONNREFUSED|ECONNRESET|socket hang up/i.test(message)
   )
@@ -104,6 +132,7 @@ export function mapErrorToExitCode(err: unknown): number {
     )
   )
     return ExitCode.TEMP_FAILURE;
+  if (isChallengeMessage(message)) return ExitCode.AUTH_REQUIRED;
   return ExitCode.GENERIC_ERROR;
 }
 
@@ -122,6 +151,7 @@ export function errorToAgentFields(
   err: unknown,
   adapterPath: string,
   siteName: string,
+  cmdName = "<command>",
 ): {
   adapter_path: string | undefined;
   step: number | undefined;
@@ -161,11 +191,20 @@ export function errorToAgentFields(
     };
   }
   const message = err instanceof Error ? err.message : String(err);
+  const actionable =
+    err instanceof Error ? (err as ActionableError) : undefined;
+  const code = errorTypeToCode(err);
   return {
     adapter_path: undefined,
     step: undefined,
-    suggestion: `Run 'unicli test ${siteName}' to diagnose, or report this error.`,
-    retryable: isRetryableMessage(message),
-    alternatives: [],
+    suggestion:
+      actionable?.suggestion ??
+      (code === "auth_required"
+        ? authFailureSuggestion(siteName, cmdName)
+        : code === "challenge_required"
+          ? challengeFailureSuggestion(siteName, cmdName)
+          : `Run 'unicli test ${siteName}' to diagnose, or report this error.`),
+    retryable: actionable?.retryable ?? isRetryableMessage(message),
+    alternatives: actionable?.alternatives ?? [],
   };
 }

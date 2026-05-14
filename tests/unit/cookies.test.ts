@@ -14,6 +14,7 @@ import {
   formatCookieHeader,
   validateCookies,
   getCookieDir,
+  refreshCookiesFromBrowser,
 } from "../../src/engine/cookies.js";
 
 beforeAll(() => {
@@ -104,5 +105,17 @@ describe("getCookieDir", () => {
   it("returns the cookie directory path", () => {
     const dir = getCookieDir();
     expect(dir).toBe(TEST_COOKIE_DIR);
+  });
+});
+
+describe("refreshCookiesFromBrowser", () => {
+  it("rejects invalid site names before touching browser state", async () => {
+    const result = await refreshCookiesFromBrowser("../bad", "example.com");
+    expect(result).toMatchObject({
+      ok: false,
+      site: "../bad",
+      domain: "example.com",
+    });
+    expect(result.suggestion).toContain("Site names");
   });
 });

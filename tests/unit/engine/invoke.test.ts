@@ -62,6 +62,13 @@ function mkAdapter(overrides?: Partial<AdapterManifest>): AdapterManifest {
         adapterArgs: [],
         func: async () => ({ ok: true }),
       },
+      authfail: {
+        name: "authfail",
+        adapterArgs: [],
+        func: async () => {
+          throw new Error('No cookies found for "inv-site".');
+        },
+      },
     },
     ...overrides,
   };
@@ -76,10 +83,11 @@ describe("compileAll", () => {
   it("produces one CompiledCommand per (adapter, command) in the registry", () => {
     const a = mkAdapter();
     const cache = compileAll([a]);
-    expect(cache.size).toBe(3);
+    expect(cache.size).toBe(4);
     expect(cache.has("inv-site.hello")).toBe(true);
     expect(cache.has("inv-site.fail")).toBe(true);
     expect(cache.has("inv-site.paged")).toBe(true);
+    expect(cache.has("inv-site.authfail")).toBe(true);
   });
 
   it("multiple adapters accumulate", () => {
@@ -95,7 +103,7 @@ describe("compileAll", () => {
       },
     });
     const cache = compileAll([a, b]);
-    expect(cache.size).toBe(4);
+    expect(cache.size).toBe(5);
     expect(cache.has("other-site.one")).toBe(true);
   });
 
@@ -284,6 +292,24 @@ describe("execute (end-to-end)", () => {
     const res = await execute(inv);
     const cmds = (res.envelope.next_actions ?? []).map((a) => a.command);
     expect(cmds.every((c) => !c.includes("--cursor"))).toBe(true);
+  });
+
+  it("auth failures return terminal-ready import and retry next_actions", async () => {
+    const inv = buildInvocation("cli", "inv-site", "authfail", {
+      args: {},
+      source: "shell",
+    })!;
+    const res = await execute(inv);
+    expect(res.error?.code).toBe("auth_required");
+    expect(res.error?.suggestion).toContain(
+      "unicli --auth-retry inv-site authfail",
+    );
+    const cmds = (res.envelope.next_actions ?? []).map((a) => a.command);
+    expect(cmds).toContain("unicli auth import inv-site --domain inv-site.com");
+    expect(cmds).toContain("unicli browser open https://inv-site.com");
+    expect(cmds).toContain(
+      "unicli --auth-retry inv-site authfail --args-file <path.json>",
+    );
   });
 
   it("rejects an invalid bag.args with a structured error matching the schema", async () => {
