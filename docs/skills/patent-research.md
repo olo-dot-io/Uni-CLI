@@ -39,13 +39,39 @@ credentials or upstream returns an unexpected shape.
 
 **Install** (once): `npm install -g @zenalexa/unicli`
 
+> **No API key? Start here.** See [docs/skills/patent-cookbook.md](./patent-cookbook.md)
+> for copy-pastable recipes that run on day zero against keyless web adapters
+> (`google-patents-web`, `freepatentsonline-web`) with no credential setup.
+
 ---
 
 ## TL;DR
 
 - `unicli patent search "<query>"` — fan-out across default sources (USPTO, EPO, JPO) with reciprocal-rank fusion.
+- `unicli patent search "<query>" --sources google-patents-web,freepatentsonline-web` — keyless day-zero search; no API key, no Chrome.
 - `unicli patent get <publication-number>` — route by ST.16 country prefix (US, EP, JP, KR, CN, DE, FR, GB, CA, AU, BR, RU).
 - `unicli patent prior-art --abstract "<text>"` — semantic + keyword + CPC fusion across PQAI, Google Patents BigQuery, and EPO.
+
+---
+
+## Day-zero with no key
+
+The `google-patents-web` and `freepatentsonline-web` adapters require **zero
+credentials and zero browser session**. They hit the public XHR endpoint that
+drives `patents.google.com` and the SSR listing pages on
+`www.freepatentsonline.com` directly with a real-browser `User-Agent`. Use them
+as the first thing you try when a fresh user wants results before configuring
+any API keys.
+
+```
+unicli patent search "<query>" --sources google-patents-web,freepatentsonline-web --limit 10
+```
+
+Both adapters emit canonical `PatentRecord` rows that flow through the same
+fan-out and dedupe logic the rest of the vertical uses. When Google's anti-bot
+gate kicks in (HTTP 503), the meta-command transparently falls through to
+FreePatentsOnline. Detailed recipes are in
+[docs/skills/patent-cookbook.md](./patent-cookbook.md).
 
 ---
 
