@@ -5,6 +5,65 @@ Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributin
 
 ## [Unreleased]
 
+## [0.221.0] — 2026-05-18 — Apollo · Anders
+
+### Added
+
+- Patent search vertical: 20 site adapters across L0 keyless web,
+  L1 free-tier APIs, L2 paid aggregators, L3 browser-driven fallback,
+  and L4 placeholder for forthcoming public APIs. Covers USPTO ODP,
+  EPO OPS, JPO, KIPRIS, INPI-FR, DPMA, IP Australia, Lens.org, Google
+  Patents BigQuery, Project PQAI, PatSnap Eureka, CNIPA, Espacenet,
+  CIPO, INPI Brasil, Rospatent FIPS, WIPO PATENTSCOPE, UK IPO, plus
+  the two keyless web adapters Google Patents and FreePatentsOnline.
+- Top-level `unicli patent` meta-command with seven subcommands:
+  `search`, `get`, `family`, `citations`, `legal-status`, `prior-art`,
+  and `doctor`. Cross-source fan-out with family-id dedupe, reciprocal
+  rank fusion across PQAI semantic search and Google Patents BigQuery
+  keyword search, prefix-routed publication-number lookup, and an
+  honesty-gated health checker that reads adapter `@verification`
+  headers.
+- Public TypeScript surface at `@zenalexa/unicli/index` re-exporting
+  nine patent types (`PatentRecord`, `PatentCommand`, `PatentSearchQuery`,
+  `PatentParty`, `PatentClassification`, `PatentFamilyMember`,
+  `PatentEnvelope`, `PatentErrorCode`, `PatentVerificationStatus`)
+  plus three helpers (`canonicalizePublicationNumber`,
+  `extractKindCode`, `dedupeByFamily`).
+- Four engine extensions enabling the vertical: OAuth 2.0
+  client-credentials broker with LRU token cache, `oauth2-token`
+  pipeline step, `select-xml` XPath-subset step, and the
+  `mcp-browser` transport with an installable resolver injection
+  point for hosts that wire an outbound MCP client.
+- Patent envelope normalizer (`assemblePatentRecord`,
+  `buildPatentEnvelope`, `dedupeByFamily`, `canonicalizePublicationNumber`,
+  `extractKindCode`) with a ten-code structured error taxonomy.
+- `docs/skills/patent-research.md` skill doc and
+  `docs/skills/patent-cookbook.md` with five recipes covering the
+  day-zero keyless flow, authenticated multi-source search,
+  cross-jurisdiction family resolution, AI-driven prior art, and the
+  doctor pre-flight check.
+- Output extensions to the meta-command: `--detailed`,
+  `--include-raw`, and `-f json|jsonl|csv|md`.
+
+### Changed
+
+- Adapter map steps across uspto, epo, jpo, kipris, inpi-fr, dpma,
+  ipaustralia, lens, google-patents-bq, pqai, and patsnap now emit
+  every available PatentRecord field rather than just publication
+  number and title; per-adapter field counts roughly doubled.
+
+### Fixed
+
+- `src/engine/template.ts buildScope()` now binds `process.env` into
+  the template scope. The pre-existing `${{ env.X || '' }}` idiom
+  used by approximately 38 adapters previously resolved to undefined
+  and short-circuited every authenticated request to an empty
+  credential header.
+- Office adapter capability arrays now carry the corresponding
+  `patent.<command>` token so the meta-command's discovery filter
+  picks them up; without the fix `unicli patent doctor` only saw four
+  of eleven HTTP adapters.
+
 ## [0.220.1] — 2026-05-14 — Apollo · Lovell Patch
 
 ### Added
