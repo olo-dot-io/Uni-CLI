@@ -27,7 +27,10 @@ import type { AdapterTrust, AdapterConfidentiality } from "./schema-v2.js";
  * schema-v2 validators + the upcoming migration tool can introspect
  * them without touching the `AdapterManifest` runtime shape.
  */
-export interface CliRegistrationV2 extends CliRegistration {
+export interface CliRegistrationV2 extends Omit<
+  CliRegistration,
+  "capabilities" | "minimum_capability"
+> {
   /** Pipeline step names this command may invoke at runtime. */
   capabilities?: Capability | readonly string[];
   /** The single step the dispatcher MUST support to run this command. */
@@ -87,12 +90,22 @@ export function cli(config: CliRegistrationV2): void {
     ...legacy
   } = config;
 
-  legacyCli(legacy);
+  // Forward the normalised capabilities + minimum_capability to the legacy
+  // registry so the underlying AdapterCommand carries them too — the
+  // patent meta-command and other downstream readers look at
+  // `command.capabilities` rather than the v2 side table.
+  const normalisedCapabilities = normalizeCapabilities(capabilities);
+  legacyCli({
+    ...legacy,
+    capabilities:
+      normalisedCapabilities.length > 0 ? normalisedCapabilities : undefined,
+    minimum_capability,
+  });
 
   metadata.set(metadataKey(config.site, config.name), {
     site: config.site,
     name: config.name,
-    capabilities: normalizeCapabilities(capabilities),
+    capabilities: normalisedCapabilities,
     minimum_capability: minimum_capability ?? "http.fetch",
     trust: trust ?? "public",
     confidentiality: confidentiality ?? "public",

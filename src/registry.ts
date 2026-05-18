@@ -141,6 +141,20 @@ export interface CliRegistration {
   columns?: string[];
   socialCapabilities?: SocialCapability[];
   defaultFormat?: AdapterCommand["defaultFormat"];
+  /**
+   * Capability tokens this command can execute. Carries both pipeline-step
+   * names (e.g. `mcp-browser.evaluate`) and vertical capability tags
+   * (e.g. `patent.search`). Vertical tags let meta-commands like
+   * `unicli patent` discover the adapter without hard-coding a site list.
+   *
+   * Typed `readonly` so it stays compatible with the v2 registration
+   * helper at src/core/registry.ts which can pass a richer `Capability`
+   * shape; the legacy registry copies the array into a mutable field on
+   * the underlying AdapterCommand at call time.
+   */
+  capabilities?: readonly string[];
+  /** Schema-v2 minimum-capability token; defaults to `http.fetch`. */
+  minimum_capability?: string;
   func: (page: unknown, kwargs: Record<string, unknown>) => Promise<unknown>;
 }
 
@@ -179,6 +193,8 @@ export function cli(config: CliRegistration): void {
     columns: config.columns,
     socialCapabilities: config.socialCapabilities,
     defaultFormat: config.defaultFormat,
+    capabilities: config.capabilities ? [...config.capabilities] : undefined,
+    minimum_capability: config.minimum_capability,
     func: config.func as AdapterCommand["func"],
   };
 }
