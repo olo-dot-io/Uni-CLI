@@ -26,7 +26,7 @@ args:
     description: Maximum results returned (Yahoo paginates at ~10 per page)
 
 pipeline:
-  - fetch-text:
+  - fetch_text:
       url: "https://search.yahoo.com/search?p=${{ args.query | url_encode }}"
       headers:
         User-Agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
