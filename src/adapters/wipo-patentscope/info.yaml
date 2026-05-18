@@ -1,0 +1,43 @@
+# @owner       src::adapters::wipo-patentscope::info
+# @does        Registry placeholder for WIPO PATENTSCOPE — surfaces a structured PATENT_API_DEPRECATED envelope so `unicli patent doctor` and `unicli list` advertise the gap, without claiming false coverage.
+# @needs       src/engine/steps/assert.ts
+# @feeds       src/commands/patent.ts (meta-command discovery via `patent.*` capability)
+# @breaks      always throws PipelineError carrying a PATENT_API_DEPRECATED message; never silently returns rows
+# @invariants  no HTTPS egress; no env reads; no caller-visible state beyond the error envelope
+# @side-effects none — the assertion is purely local
+# @perf        n/a — fails before any I/O
+# @concurrency safe (pure local assertion)
+# @test        none yet
+# @stability   experimental — replace with a real adapter when WIPO ships a token-based REST/GraphQL API
+# @since       2026-05-18
+# @verification blocked-by-subscription — PATENTSCOPE exposes only a SOAP web service that requires a paid subscription (~CHF 600/year per third-party gem README; see https://patentscope.wipo.int/search/en/sub_user.jsf). Until WIPO ships a token-based REST/GraphQL surface, this adapter is a registry placeholder.
+site: wipo-patentscope
+name: info
+description: WIPO PATENTSCOPE registry placeholder — no public REST API; SOAP requires subscription
+domain: patentscope.wipo.int
+type: web-api
+strategy: public
+lint_listing_detail: skip
+
+args: {}
+
+pipeline:
+  # Fail closed with a structured envelope that the agent can read and act on.
+  # The message names the upstream channel and the subscription URL so the
+  # caller has a concrete next step — no silent fallback, no fake row.
+  - assert:
+      condition: "false"
+      message: "PATENT_API_DEPRECATED: WIPO PATENTSCOPE exposes only a SOAP web service that requires a paid subscription. Subscribe at https://patentscope.wipo.int/search/en/sub_user.jsf, or fall back to Espacenet for WO-prefixed publications (EPO brokers PCT family lookups)."
+
+columns: []
+
+# schema-v2 metadata
+# The patent.* capability is what makes `unicli patent doctor` discover this
+# adapter so the gap is reported in the doctor table; assert.fail is the
+# step the dispatcher actually invokes at runtime.
+capabilities: ["assert", "patent.search", "patent.get"]
+minimum_capability: assert
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2
