@@ -30,16 +30,35 @@ export class NormalizerError extends Error {
   }
 }
 
+const SEGMENTED_PUBLICATION_RE = /^[A-Z]{2}-[A-Z0-9]+-[A-Z]\d?$/;
+const COMPACT_PUBLICATION_RE = /^([A-Z]{2})[-]?([A-Z0-9]+?)[-]?([A-Z]\d?)$/;
+
 /**
  * Canonicalize a publication number to ST.16-style segments separated by `-`.
  * Examples: `US20240123456A1` → `US-20240123456-A1`; `EP4123456A1` → `EP-4123456-A1`.
  * Inputs already in segmented form pass through unchanged.
  */
 export function canonicalizePublicationNumber(raw: string): string {
-  void raw;
-  throw new Error(
-    "patent-envelope: canonicalizePublicationNumber not yet implemented (M0 stub — wave-1-subagent-A will fill body)",
-  );
+  if (typeof raw !== "string" || raw.length === 0) {
+    throw new NormalizerError(
+      "unknown",
+      ["publication_number"],
+      "publication_number is empty or not a string",
+    );
+  }
+  const trimmed = raw.trim().toUpperCase();
+  if (SEGMENTED_PUBLICATION_RE.test(trimmed)) return trimmed;
+
+  const match = COMPACT_PUBLICATION_RE.exec(trimmed);
+  if (!match) {
+    throw new NormalizerError(
+      "unknown",
+      ["publication_number"],
+      `cannot parse publication_number "${raw}"; expected ST.16 form (CC + serial + kind)`,
+    );
+  }
+  const [, cc, serial, kind] = match;
+  return `${cc}-${serial}-${kind}`;
 }
 
 /**
@@ -53,11 +72,38 @@ export function assemblePatentRecord(
     source_adapter: string;
   },
 ): PatentRecord {
-  void partial;
-  throw new Error(
-    "patent-envelope: assemblePatentRecord not yet implemented (M0 stub — wave-1-subagent-A will fill body)",
-  );
+  const missing: string[] = [];
+  if (!partial.publication_number) missing.push("publication_number");
+  if (!partial.source_adapter) missing.push("source_adapter");
+  if (missing.length > 0) {
+    throw new NormalizerError(
+      partial.source_adapter ?? "unknown",
+      missing,
+      `assemblePatentRecord missing required field(s): ${missing.join(", ")}`,
+    );
+  }
+  return {
+    ...partial,
+    publication_number: canonicalizePublicationNumber(
+      partial.publication_number,
+    ),
+    source_adapter: partial.source_adapter,
+    retrieved_at: new Date().toISOString(),
+  };
 }
+
+const EXIT_CODE_BY_CLASS: Record<PatentErrorCode, number> = {
+  PATENT_AUTH_REQUIRED: 77,
+  PATENT_RATE_LIMIT: 75,
+  PATENT_NOT_FOUND: 66,
+  PATENT_API_DEPRECATED: 69,
+  PATENT_REGION_BLOCKED: 77,
+  PATENT_INVALID_NUMBER: 65,
+  PATENT_FAMILY_BROKER_DOWN: 1,
+  PATENT_BROWSER_CAPTCHA: 1,
+  PATENT_UNSUPPORTED_QUERY: 1,
+  PATENT_SCHEMA_DRIFT: 1,
+};
 
 /**
  * Build a structured error envelope for stderr surfacing. The exit_code is
@@ -72,10 +118,15 @@ export function buildPatentEnvelope(input: {
   alternatives?: string[];
   retryable?: boolean;
 }): PatentEnvelope {
-  void input;
-  throw new Error(
-    "patent-envelope: buildPatentEnvelope not yet implemented (M0 stub — wave-1-subagent-A will fill body)",
-  );
+  return {
+    code: input.code,
+    adapter_path: input.adapter_path,
+    step: input.step,
+    suggestion: input.suggestion,
+    retryable: input.retryable ?? false,
+    alternatives: input.alternatives ?? [],
+    exit_code: EXIT_CODE_BY_CLASS[input.code] ?? 1,
+  };
 }
 
 /**
@@ -83,8 +134,15 @@ export function buildPatentEnvelope(input: {
  * to canonical publication_number. Preserves first-seen ordering.
  */
 export function dedupeByFamily(records: PatentRecord[]): PatentRecord[] {
-  void records;
-  throw new Error(
-    "patent-envelope: dedupeByFamily not yet implemented (M0 stub — wave-1-subagent-A will fill body)",
-  );
+  const seen = new Set<string>();
+  const out: PatentRecord[] = [];
+  for (const record of records) {
+    const key =
+      record.family_id ??
+      canonicalizePublicationNumber(record.publication_number);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(record);
+  }
+  return out;
 }
