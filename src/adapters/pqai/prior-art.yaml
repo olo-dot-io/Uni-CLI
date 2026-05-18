@@ -1,0 +1,55 @@
+# Project PQAI — semantic prior-art retrieval.
+#
+# verification_status: blocked-by-key
+#
+# PQAI publishes a permanent free tier for non-commercial use, but rate limits
+# beyond ~100 queries / day require their USD 20 / month plan. The token is a
+# single string passed as a `token=` query param (the only auth scheme PQAI
+# offers today). Set $PQAI_API_TOKEN.
+site: pqai
+name: prior-art
+description: Semantic prior-art retrieval via PQAI's embedding-based ranker
+domain: api.projectpq.ai
+type: web-api
+strategy: public
+
+args:
+  abstract:
+    type: str
+    required: true
+    description: Candidate abstract or claim text
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://api.projectpq.ai/search/102
+      params:
+        q: "${{ args.abstract }}"
+        n: "${{ args.limit }}"
+        type: patent
+        token: "${{ env.PQAI_API_TOKEN || '' }}"
+
+  - select: results
+
+  - map:
+      publication_number: "${{ item.id }}"
+      title: "${{ item.title }}"
+      abstract: "${{ item.abstract }}"
+      publication_date: "${{ item.publication_date || '' }}"
+      filing_date: "${{ item.filing_date || '' }}"
+      source_adapter: pqai
+      source_url: "https://search.projectpq.ai/patent/${{ item.id }}"
+      retrieved_at: "${{ now }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [publication_number, title, abstract]
+
+capabilities: ["http.fetch", "patent.prior-art"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

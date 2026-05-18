@@ -1,0 +1,55 @@
+# PatSnap Eureka — single-record fetch.
+#
+# verification_status: blocked-by-subscription
+#
+# Maps to PatSnap's /patent/biblio/{publication_number} endpoint. The same
+# OAuth2 token resolution pattern as `patsnap/search.yaml`.
+site: patsnap
+name: get
+description: Retrieve one PatSnap patent record by publication number
+domain: connect.zhihuiya.com
+type: web-api
+strategy: header
+
+args:
+  publication_number:
+    type: str
+    required: true
+    positional: true
+
+pipeline:
+  - oauth2-token:
+      token_url: https://connect.zhihuiya.com/oauth/token
+      client_id_env: PATSNAP_CLIENT_ID
+      client_secret_env: PATSNAP_CLIENT_SECRET
+      site: patsnap
+      destination: auth.bearer
+
+  - fetch:
+      url: "https://connect.zhihuiya.com/patent/biblio"
+      params:
+        patent_number: "${{ args.publication_number }}"
+      headers:
+        Authorization: "Bearer ${{ auth.bearer }}"
+
+  - select: data
+
+  - map:
+      publication_number: "${{ item.pn }}"
+      title: "${{ item.title }}"
+      abstract: "${{ item.abstract }}"
+      filing_date: "${{ item.apdt || '' }}"
+      publication_date: "${{ item.pbdt || '' }}"
+      family_id: "${{ item.simple_family_id || '' }}"
+      legal_status: "${{ item.legal_status || '' }}"
+      source_adapter: patsnap
+      retrieved_at: "${{ now }}"
+
+columns: [publication_number, title, legal_status, source_adapter]
+
+capabilities: ["http.fetch", "patent.get"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

@@ -55,6 +55,7 @@ import { registerStatusCommand } from "./commands/status.js";
 import { registerSchemaCommand } from "./commands/schema.js";
 import { registerSearchCommand } from "./commands/search.js";
 import { registerSocialCommand } from "./commands/social.js";
+import { registerPatentCommand } from "./commands/patent.js";
 import { registerLintCommand } from "./commands/lint.js";
 import { registerMigrateCommand } from "./commands/migrate.js";
 import { registerMigrateSchemaCommand } from "./commands/migrate-schema.js";
@@ -379,6 +380,9 @@ export async function createCli(): Promise<Command> {
   registerSchemaCommand(program);
   registerSearchCommand(program);
   registerSocialCommand(program);
+
+  // Register patent command — patent-vertical meta-command across L0/L1/L2 adapters
+  registerPatentCommand(program);
 
   // Register lint command — schema-v2 static validation
   registerLintCommand(program);

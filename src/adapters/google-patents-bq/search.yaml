@@ -1,0 +1,79 @@
+# Google Patents Public Datasets via BigQuery REST.
+#
+# verification_status: blocked-by-key
+#
+# The dataset `patents-public-data.patents.publications` is free to query but
+# requires a Google Cloud project with billing enabled (queries are billed at
+# the standard BigQuery rate; the 1 TB / month free tier covers exploratory
+# work). Auth path is OAuth2 — read $GCLOUD_ACCESS_TOKEN first; the adapter
+# self-repair sequence asks the user to run `gcloud auth print-access-token`
+# and re-export the value.
+#
+# The query template uses standard SQL against the public publications table.
+# `args.query` is interpolated as a substring match on title/abstract — adapt
+# the template for richer CQL when needed.
+site: google-patents-bq
+name: search
+description: BigQuery search over the Google Patents Public Datasets corpus
+domain: bigquery.googleapis.com
+type: web-api
+strategy: header
+lint_listing_detail: skip
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Substring matched against title and abstract (case-insensitive)
+  limit:
+    type: int
+    default: 20
+  project:
+    type: str
+    default: ""
+    description: GCP project ID — falls back to $GCLOUD_PROJECT
+
+pipeline:
+  - fetch:
+      url: "https://bigquery.googleapis.com/bigquery/v2/projects/${{ args.project || env.GCLOUD_PROJECT || '' }}/queries"
+      method: POST
+      headers:
+        Authorization: "Bearer ${{ env.GCLOUD_ACCESS_TOKEN || '' }}"
+        Content-Type: application/json
+      body:
+        query: |-
+          SELECT
+            publication_number,
+            ANY_VALUE(title_localized)[OFFSET(0)].text AS title,
+            ANY_VALUE(abstract_localized)[OFFSET(0)].text AS abstract,
+            ANY_VALUE(publication_date) AS publication_date,
+            ANY_VALUE(filing_date) AS filing_date,
+            ANY_VALUE(family_id) AS family_id
+          FROM `patents-public-data.patents.publications`
+          WHERE LOWER(title_localized[OFFSET(0)].text) LIKE LOWER('%${{ args.query }}%')
+             OR LOWER(abstract_localized[OFFSET(0)].text) LIKE LOWER('%${{ args.query }}%')
+          GROUP BY publication_number
+          LIMIT ${{ args.limit }}
+        useLegacySql: false
+
+  - select: rows
+
+  - map:
+      publication_number: "${{ item.f[0].v }}"
+      title: "${{ item.f[1].v }}"
+      abstract: "${{ item.f[2].v }}"
+      publication_date: "${{ item.f[3].v }}"
+      filing_date: "${{ item.f[4].v }}"
+      family_id: "${{ item.f[5].v }}"
+      source_adapter: google-patents-bq
+      retrieved_at: "${{ now }}"
+
+columns: [publication_number, title, publication_date, source_adapter]
+
+capabilities: ["http.fetch", "patent.search"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

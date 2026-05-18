@@ -13,7 +13,7 @@ self-repairing — agents can fix them by editing one file. See
 
 <!-- BEGIN COUNTS -->
 
-> <!-- STATS:site_count -->282<!-- /STATS --> sites, <!-- STATS:command_count -->1692<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> <!-- STATS:site_count -->286<!-- /STATS --> sites, <!-- STATS:command_count -->1700<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 
@@ -25,7 +25,7 @@ self-repairing — agents can fix them by editing one file. See
 
 **Chinese**: zhihu (27), xiaohongshu (22), bilibili (20), douyin (13), douban (12), v2ex (12), weibo (12), linux-do (11), +31 more (`unicli list`)
 
-**International**: twitter (44), instagram (29), reddit (24), tiktok (18), youtube (17), nowcoder (16), discord-app (15), facebook (15), +86 more (`unicli list`)
+**International**: twitter (44), instagram (29), reddit (24), tiktok (18), youtube (17), nowcoder (16), discord-app (15), facebook (15), +90 more (`unicli list`)
 
 **AI / ML**: chatgpt (17), antigravity (16), chatwise (16), notebooklm (15), claude (14), doubao-app (13), deepseek (9), doubao (9), +13 more (`unicli list`)
 

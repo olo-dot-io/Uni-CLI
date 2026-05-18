@@ -1,0 +1,69 @@
+# Google Patents BigQuery — keyword-based prior-art fan-out.
+#
+# verification_status: blocked-by-key
+#
+# This command is the keyword arm of `unicli patent prior-art`. It tokenises
+# the abstract argument into noun phrases (handled by the substring LIKE
+# template) and joins against the publication table, returning the top-N
+# candidates by recency. The full fusion happens in `unicli patent prior-art`,
+# which combines this with PQAI semantic embedding and EPO CPC classification.
+site: google-patents-bq
+name: prior-art
+description: Keyword-arm of the prior-art fusion against BigQuery public dataset
+domain: bigquery.googleapis.com
+type: web-api
+strategy: header
+
+args:
+  abstract:
+    type: str
+    required: true
+    description: Candidate abstract — long-form natural language
+  limit:
+    type: int
+    default: 20
+  project:
+    type: str
+    default: ""
+
+pipeline:
+  - fetch:
+      url: "https://bigquery.googleapis.com/bigquery/v2/projects/${{ args.project || env.GCLOUD_PROJECT || '' }}/queries"
+      method: POST
+      headers:
+        Authorization: "Bearer ${{ env.GCLOUD_ACCESS_TOKEN || '' }}"
+        Content-Type: application/json
+      body:
+        query: |-
+          SELECT
+            publication_number,
+            ANY_VALUE(title_localized)[OFFSET(0)].text AS title,
+            ANY_VALUE(abstract_localized)[OFFSET(0)].text AS abstract,
+            ANY_VALUE(publication_date) AS publication_date,
+            ANY_VALUE(family_id) AS family_id
+          FROM `patents-public-data.patents.publications`
+          WHERE LOWER(abstract_localized[OFFSET(0)].text) LIKE LOWER('%${{ args.abstract | truncate(80) }}%')
+          GROUP BY publication_number
+          ORDER BY ANY_VALUE(publication_date) DESC
+          LIMIT ${{ args.limit }}
+        useLegacySql: false
+
+  - select: rows
+
+  - map:
+      publication_number: "${{ item.f[0].v }}"
+      title: "${{ item.f[1].v }}"
+      abstract: "${{ item.f[2].v }}"
+      publication_date: "${{ item.f[3].v }}"
+      family_id: "${{ item.f[4].v }}"
+      source_adapter: google-patents-bq
+      retrieved_at: "${{ now }}"
+
+columns: [publication_number, title, abstract]
+
+capabilities: ["http.fetch", "patent.prior-art"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

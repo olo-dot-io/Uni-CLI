@@ -138,6 +138,15 @@ export interface AdapterCommand {
   minimum_capability?: string;
 
   /**
+   * Schema-v2 capability tokens this command can execute. Carries pipeline
+   * step names (`http.fetch`, `cdp-browser.evaluate`, …) and vertical
+   * capability tags (`patent.search`, `patent.family`, …). The vertical
+   * tags allow meta-commands to discover relevant adapters via the registry
+   * without each meta-command hard-coding a site list.
+   */
+  capabilities?: string[];
+
+  /**
    * When true, the command accepts `--cursor <next_cursor>` for pagination
    * and surfaces `meta.pagination.next_cursor` in its envelope. The kernel
    * uses this flag to add a pagination hint to the success `next_actions`.

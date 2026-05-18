@@ -475,6 +475,11 @@ export function loadAdaptersFromDir(dir: string): number {
           quarantine: parsed.quarantine === true ? true : undefined,
           quarantineReason: parsed.quarantineReason,
           minimum_capability: parsed.minimum_capability,
+          capabilities: Array.isArray(parsed.capabilities)
+            ? parsed.capabilities.filter(
+                (cap): cap is string => typeof cap === "string",
+              )
+            : undefined,
           paginated: parsed.paginated === true ? true : undefined,
         };
         count++;

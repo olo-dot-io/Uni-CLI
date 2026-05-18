@@ -1,0 +1,54 @@
+# Project PQAI — free-text keyword search.
+#
+# verification_status: blocked-by-key
+#
+# PQAI ships a `/search/102` endpoint that accepts both natural-language and
+# Boolean queries. This adapter exposes it as the standard patent.search
+# capability; the prior-art-specific tuning lives in pqai/prior-art.yaml.
+site: pqai
+name: search
+description: Keyword + semantic patent search through PQAI's hybrid index
+domain: api.projectpq.ai
+type: web-api
+strategy: public
+lint_listing_detail: skip
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://api.projectpq.ai/search/102
+      params:
+        q: "${{ args.query }}"
+        n: "${{ args.limit }}"
+        type: patent
+        token: "${{ env.PQAI_API_TOKEN || '' }}"
+
+  - select: results
+
+  - map:
+      publication_number: "${{ item.id }}"
+      title: "${{ item.title }}"
+      abstract: "${{ item.abstract }}"
+      publication_date: "${{ item.publication_date || '' }}"
+      source_adapter: pqai
+      source_url: "https://search.projectpq.ai/patent/${{ item.id }}"
+      retrieved_at: "${{ now }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [publication_number, title, publication_date]
+
+capabilities: ["http.fetch", "patent.search"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

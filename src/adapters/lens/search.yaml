@@ -1,0 +1,70 @@
+# Lens.org Patent API — POST JSON DSL search.
+#
+# verification_status: blocked-by-subscription
+#
+# Lens.org Patents is a free-to-search, paid-to-API service from Cambia.
+# Institutional / commercial users get tokens via the Lens Toolkit subscription
+# (https://www.lens.org/lens/user/subscriptions). The token is static once
+# issued; no refresh dance, no rotation — set $LENS_API_TOKEN and the adapter
+# works. Until the env var is present, every command emits a structured
+# blocked-by-key envelope so agents can repair by guiding the user through
+# subscription setup rather than retrying the API.
+site: lens
+name: search
+description: Search Lens.org's combined patent corpus via the Scholarly Works DSL
+domain: api.lens.org
+type: web-api
+strategy: header
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Free-text query — mapped to the Lens DSL `query_string`
+  limit:
+    type: int
+    default: 20
+    description: Maximum records returned (Lens caps at 1000)
+  date_from:
+    type: str
+    default: ""
+    description: ISO date — minimum publication date
+
+pipeline:
+  - fetch:
+      url: https://api.lens.org/patent/search
+      method: POST
+      headers:
+        Authorization: "Bearer ${{ env.LENS_API_TOKEN || '' }}"
+        Content-Type: application/json
+      body:
+        query:
+          query_string:
+            query: "${{ args.query }}"
+        size: "${{ args.limit }}"
+        from: 0
+
+  - select: data
+
+  - map:
+      publication_number: "${{ item.doc_key || item.lens_id }}"
+      title: "${{ item.biblio ? (item.biblio.invention_title ? item.biblio.invention_title[0].text : '') : '' }}"
+      publication_date: "${{ item.date_published || '' }}"
+      filing_date: "${{ item.biblio ? (item.biblio.application_reference ? item.biblio.application_reference.date : '') : '' }}"
+      family_id: "${{ item.families ? item.families.simple_family.family_id : '' }}"
+      source_url: "https://www.lens.org/lens/patent/${{ item.lens_id }}"
+      source_adapter: lens
+      retrieved_at: "${{ now }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [publication_number, title, publication_date, source_adapter]
+
+# schema-v2 metadata
+capabilities: ["http.fetch", "patent.search"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2
