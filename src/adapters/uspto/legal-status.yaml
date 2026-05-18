@@ -36,10 +36,12 @@ pipeline:
 
   - select: eventDataBag
 
+  # Each row is a transaction event; the ODP `transactions` endpoint returns
+  # eventCode + eventDescriptionText + eventDate per transaction.
   - map:
       publication_number: "${{ 'US-' + (args.application_number || '') }}"
       application_number: "${{ args.application_number }}"
-      legal_status: "${{ item.eventDescriptionText || '' }}"
+      legal_status: "${{ (item.eventCode || '') + (item.eventDescriptionText ? (' ' + item.eventDescriptionText) : '') }}"
       filing_date: "${{ item.eventDate || '' }}"
       source_adapter: uspto
       source_url: "${{ 'https://ppubs.uspto.gov/dirsearch-public/patents/' + (args.application_number || '') }}"

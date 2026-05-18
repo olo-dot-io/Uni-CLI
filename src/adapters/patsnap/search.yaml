@@ -43,14 +43,26 @@ pipeline:
 
   - select: data.results
 
+  # PatSnap Eureka response carries inventors / assignees / classifications
+  # under documented field names.
   - map:
       publication_number: "${{ item.pn || item.pbd_number }}"
       title: "${{ item.title }}"
       abstract: "${{ item.abstract }}"
+      kind_code: "${{ item.kind_code || item.kindcode || '' }}"
       filing_date: "${{ item.apdt || '' }}"
       publication_date: "${{ item.pbdt || '' }}"
+      grant_date: "${{ item.grant_date || item.granted || '' }}"
+      priority_date: "${{ item.priority_date || item.prdate || '' }}"
+      application_number: "${{ item.application_number || item.an || '' }}"
       family_id: "${{ item.simple_family_id || '' }}"
+      inventors: "${{ JSON.stringify((function(){ var i=item.inventor || item.inventors; if(!i) return []; if(typeof i === 'string') return i.split(/\\s*[\\|;,]\\s*/).filter(s => s).map(name => ({ name: name })); return Array.isArray(i) ? i.map(n => ({ name: typeof n === 'string' ? n : (n.name || ''), country: n.country || undefined })) : []; })()) }}"
+      assignees: "${{ JSON.stringify((function(){ var a=item.current_assignee || item.assignee || item.assignees; if(!a) return []; if(typeof a === 'string') return a.split(/\\s*[\\|;,]\\s*/).filter(s => s).map(name => ({ name: name })); return Array.isArray(a) ? a.map(n => ({ name: typeof n === 'string' ? n : (n.name || ''), country: n.country || undefined })) : []; })()) }}"
+      classifications: "${{ JSON.stringify((function(){ var out=[]; var ipc=item.ipc; if(ipc){ var arr = Array.isArray(ipc) ? ipc : String(ipc).split(/[\\|;,]/); for (var i=0;i<arr.length;i++){ var c = arr[i]; var code = typeof c === 'string' ? c.trim() : (c.code || ''); if(code) out.push({ scheme: 'ipc', code: code }); } } var cpc=item.cpc; if(cpc){ var arr2 = Array.isArray(cpc) ? cpc : String(cpc).split(/[\\|;,]/); for (var j=0;j<arr2.length;j++){ var c2 = arr2[j]; var code2 = typeof c2 === 'string' ? c2.trim() : (c2.code || ''); if(code2) out.push({ scheme: 'cpc', code: code2 }); } } return out; })()) }}"
+      cited_by_count: "${{ item.cited_by !== undefined ? item.cited_by : (item.citation_count !== undefined ? item.citation_count : '') }}"
+      cites_count: "${{ item.cites !== undefined ? item.cites : '' }}"
       source_adapter: patsnap
+      source_url: "${{ 'https://analytics.zhihuiya.com/patent/' + (item.pn || item.pbd_number || '') }}"
       retrieved_at: "${{ now }}"
 
   - limit: ${{ args.limit }}

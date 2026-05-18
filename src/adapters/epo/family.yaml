@@ -45,8 +45,14 @@ pipeline:
       namespaces:
         ops: "http://ops.epo.org"
 
+  # Family endpoint returns ops:family-member nodes with publication-reference,
+  # application-reference, and a `@family-id` attribute on each.
   - map:
       publication_number: "${{ ((item['publication-reference'] && item['publication-reference']['document-id']) ? (item['publication-reference']['document-id'].country + '-' + item['publication-reference']['document-id']['doc-number'] + '-' + (item['publication-reference']['document-id'].kind || '')) : '') }}"
+      application_number: "${{ ((item['application-reference'] && item['application-reference']['document-id']) ? (item['application-reference']['document-id'].country + '-' + item['application-reference']['document-id']['doc-number'] + '-' + (item['application-reference']['document-id'].kind || '')) : '') }}"
+      kind_code: "${{ (item['publication-reference'] && item['publication-reference']['document-id']) ? (item['publication-reference']['document-id'].kind || '') : '' }}"
+      publication_date: "${{ (function(d){ if(!d) return ''; var s=String(d); return s.length===8 ? (s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8)) : s; })((item['publication-reference'] && item['publication-reference']['document-id']) ? item['publication-reference']['document-id'].date : '') }}"
+      filing_date: "${{ (function(d){ if(!d) return ''; var s=String(d); return s.length===8 ? (s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8)) : s; })((item['application-reference'] && item['application-reference']['document-id']) ? item['application-reference']['document-id'].date : '') }}"
       family_id: "${{ item['@_family-id'] || '' }}"
       source_adapter: epo
       source_url: "${{ 'https://worldwide.espacenet.com/patent/search/family/' + (item['@_family-id'] || '') }}"

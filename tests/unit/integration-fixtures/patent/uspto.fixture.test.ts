@@ -37,9 +37,28 @@ interface UsptoFixture {
     applicationMetaData?: {
       earliestPublicationNumber?: string;
       inventionTitle?: string;
+      // FIELD: abstractText — documented at data.uspto.gov/api/v1/patent/applications/{appId}; OpenAPI 3.x schema `abstract` synonym
+      abstractText?: string;
       filingDate?: string;
       earliestPublicationDate?: string;
       grantDate?: string | null;
+      // FIELD: applicationStatusDescriptionText — documented ODP application status field
+      applicationStatusDescriptionText?: string;
+      // FIELD: inventorBag[] — documented ODP inventor list per application
+      inventorBag?: Array<{
+        firstName?: string;
+        lastName?: string;
+        inventorNameText?: string;
+        countryCode?: string;
+      }>;
+      // FIELD: applicantBag[] — documented ODP applicant list per application
+      applicantBag?: Array<{
+        applicantNameText?: string;
+        organizationNameText?: string;
+        countryCode?: string;
+      }>;
+      // FIELD: cpcClassificationBag[] — documented ODP Cooperative Patent Classification array
+      cpcClassificationBag?: Array<{ cpcSymbol?: string } | string>;
     };
   }>;
 }
@@ -84,5 +103,56 @@ describe("uspto fixture — adapter normalisation contract", () => {
         source_adapter: "uspto",
       }),
     ).toThrow(NormalizerError);
+  });
+
+  it("normaliser preserves the enriched USPTO field set on assembly", () => {
+    // FIELD CROSS-REFERENCE: every assertion below maps to a documented
+    // path on the ODP applications schema (data.uspto.gov/swagger). The
+    // adapter map step is what extracts these; this assertion is the
+    // contract that the normaliser does not drop them on the floor.
+    const raw = readFileSync(fixturePath, "utf-8");
+    const data = JSON.parse(raw) as UsptoFixture;
+    const row = data.patentFileWrapperDataBag[0];
+    const meta = row.applicationMetaData!;
+    const record = assemblePatentRecord({
+      publication_number: `US-${meta.earliestPublicationNumber!}`,
+      application_number: row.applicationNumberText,
+      source_adapter: "uspto",
+      title: meta.inventionTitle,
+      abstract: meta.abstractText,
+      legal_status: meta.applicationStatusDescriptionText,
+      kind_code: "A1",
+      inventors: meta.inventorBag!.map((p) => ({
+        name: p.inventorNameText!,
+        country: p.countryCode,
+      })),
+      assignees: meta.applicantBag!.map((p) => ({
+        name: p.organizationNameText ?? p.applicantNameText!,
+        country: p.countryCode,
+      })),
+      classifications: meta.cpcClassificationBag!.map((c) =>
+        typeof c === "string"
+          ? { scheme: "cpc", code: c }
+          : { scheme: "cpc", code: c.cpcSymbol ?? "" },
+      ),
+    });
+    // FIELD: abstract — ODP applicationMetaData.abstractText
+    expect(record.abstract).toMatch(/optical computing/i);
+    // FIELD: legal_status — ODP applicationMetaData.applicationStatusDescriptionText
+    expect(record.legal_status).toContain("Docketed");
+    // FIELD: kind_code — derived from the trailing A1/A2/B1/B2 of earliestPublicationNumber
+    expect(record.kind_code).toBe("A1");
+    // FIELD: inventors — ODP applicationMetaData.inventorBag[]
+    expect(record.inventors).toHaveLength(2);
+    expect(record.inventors?.[0].name).toBe("Alice Photon");
+    expect(record.inventors?.[0].country).toBe("US");
+    // FIELD: assignees — ODP applicationMetaData.applicantBag[]
+    expect(record.assignees?.[0].name).toBe("Acme Photonics Inc.");
+    // FIELD: classifications — ODP applicationMetaData.cpcClassificationBag[]
+    expect(record.classifications).toHaveLength(2);
+    expect(record.classifications?.[0]).toEqual({
+      scheme: "cpc",
+      code: "G06N3/067",
+    });
   });
 });

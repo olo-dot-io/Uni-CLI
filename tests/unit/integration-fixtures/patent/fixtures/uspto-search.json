@@ -6,13 +6,35 @@
       "applicationMetaData": {
         "earliestPublicationNumber": "20240123456A1",
         "inventionTitle": "Optical computing apparatus and methods",
+        "abstractText": "An optical computing apparatus performing matrix-vector multiplication on a photonic chip.",
         "filingDate": "2023-06-15",
         "earliestPublicationDate": "2024-04-18",
         "grantDate": null,
-        "applicantName": [
+        "applicationStatusDescriptionText": "Docketed New Case - Ready for Examination",
+        "inventorBag": [
           {
-            "fullName": "Acme Photonics Inc."
+            "firstName": "Alice",
+            "lastName": "Photon",
+            "inventorNameText": "Alice Photon",
+            "countryCode": "US"
+          },
+          {
+            "firstName": "Bob",
+            "lastName": "Modulator",
+            "inventorNameText": "Bob Modulator",
+            "countryCode": "US"
           }
+        ],
+        "applicantBag": [
+          {
+            "applicantNameText": "Acme Photonics Inc.",
+            "organizationNameText": "Acme Photonics Inc.",
+            "countryCode": "US"
+          }
+        ],
+        "cpcClassificationBag": [
+          { "cpcSymbol": "G06N3/067" },
+          { "cpcSymbol": "G02B6/12" }
         ]
       }
     }

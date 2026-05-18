@@ -45,11 +45,21 @@ pipeline:
         query: |-
           SELECT
             publication_number,
+            ANY_VALUE(country_code) AS country_code,
+            ANY_VALUE(kind_code) AS kind_code,
             ANY_VALUE(title_localized)[OFFSET(0)].text AS title,
             ANY_VALUE(abstract_localized)[OFFSET(0)].text AS abstract,
             ANY_VALUE(publication_date) AS publication_date,
             ANY_VALUE(filing_date) AS filing_date,
-            ANY_VALUE(family_id) AS family_id
+            ANY_VALUE(grant_date) AS grant_date,
+            ANY_VALUE(priority_date) AS priority_date,
+            ANY_VALUE(application_number) AS application_number,
+            ANY_VALUE(family_id) AS family_id,
+            TO_JSON_STRING(ANY_VALUE(inventor_harmonized)) AS inventors,
+            TO_JSON_STRING(ANY_VALUE(assignee_harmonized)) AS assignees,
+            TO_JSON_STRING(ANY_VALUE(cpc)) AS cpc,
+            TO_JSON_STRING(ANY_VALUE(ipc)) AS ipc,
+            ANY_VALUE(claims_localized_html)[OFFSET(0)].text AS claims_text
           FROM `patents-public-data.patents.publications`
           WHERE LOWER(title_localized[OFFSET(0)].text) LIKE LOWER('%${{ args.query }}%')
              OR LOWER(abstract_localized[OFFSET(0)].text) LIKE LOWER('%${{ args.query }}%')
@@ -61,12 +71,20 @@ pipeline:
 
   - map:
       publication_number: "${{ item.f[0].v }}"
-      title: "${{ item.f[1].v }}"
-      abstract: "${{ item.f[2].v }}"
-      publication_date: "${{ item.f[3].v }}"
-      filing_date: "${{ item.f[4].v }}"
-      family_id: "${{ item.f[5].v }}"
+      kind_code: "${{ item.f[2].v || '' }}"
+      title: "${{ item.f[3].v }}"
+      abstract: "${{ item.f[4].v }}"
+      publication_date: "${{ item.f[5].v }}"
+      filing_date: "${{ item.f[6].v }}"
+      grant_date: "${{ item.f[7].v }}"
+      priority_date: "${{ item.f[8].v }}"
+      application_number: "${{ item.f[9].v }}"
+      family_id: "${{ item.f[10].v }}"
+      inventors: "${{ JSON.stringify((function(){ try { var arr = JSON.parse(item.f[11].v || '[]'); return Array.isArray(arr) ? arr.map(i => ({ name: i.name || i, country: i.country_code || undefined })) : []; } catch(e) { return []; } })()) }}"
+      assignees: "${{ JSON.stringify((function(){ try { var arr = JSON.parse(item.f[12].v || '[]'); return Array.isArray(arr) ? arr.map(a => ({ name: a.name || a, country: a.country_code || undefined })) : []; } catch(e) { return []; } })()) }}"
+      classifications: "${{ JSON.stringify((function(){ var out = []; try { var cpc = JSON.parse(item.f[13].v || '[]'); if(Array.isArray(cpc)){ for (var i=0;i<cpc.length;i++) out.push({ scheme: 'cpc', code: cpc[i].code || cpc[i] }); } } catch(e){} try { var ipc = JSON.parse(item.f[14].v || '[]'); if(Array.isArray(ipc)){ for (var j=0;j<ipc.length;j++) out.push({ scheme: 'ipc', code: ipc[j].code || ipc[j] }); } } catch(e){} return out.filter(x => x.code); })()) }}"
       source_adapter: google-patents-bq
+      source_url: "${{ 'https://patents.google.com/patent/' + (item.f[0].v || '') }}"
       retrieved_at: "${{ now }}"
 
 columns: [publication_number, title, publication_date, source_adapter]

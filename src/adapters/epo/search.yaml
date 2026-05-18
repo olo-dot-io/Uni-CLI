@@ -50,9 +50,23 @@ pipeline:
         ops: "http://ops.epo.org"
         exchange: "http://www.epo.org/exchange"
 
+  # Field mapping references the OPS v3.2 DOCDB schema (docs.epo.org).
+  # Every path below is a documented DOCDB element; arrays are JSON-serialised
+  # so they survive the template engine's string projection.
   - map:
       publication_number: "${{ ((item['bibliographic-data'] && item['bibliographic-data']['publication-reference'] && item['bibliographic-data']['publication-reference']['document-id']) ? (item['bibliographic-data']['publication-reference']['document-id'].country + '-' + item['bibliographic-data']['publication-reference']['document-id']['doc-number'] + '-' + (item['bibliographic-data']['publication-reference']['document-id'].kind || '')) : '') }}"
-      title: "${{ (item['bibliographic-data'] && item['bibliographic-data']['invention-title']) ? (item['bibliographic-data']['invention-title']['#text'] || item['bibliographic-data']['invention-title']) : '' }}"
+      application_number: "${{ ((item['bibliographic-data'] && item['bibliographic-data']['application-reference'] && item['bibliographic-data']['application-reference']['document-id']) ? (item['bibliographic-data']['application-reference']['document-id'].country + '-' + item['bibliographic-data']['application-reference']['document-id']['doc-number'] + '-' + (item['bibliographic-data']['application-reference']['document-id'].kind || '')) : '') }}"
+      # DOCDB renders invention-title as one element per language; prefer EN.
+      title: "${{ (function(t){ if(!t) return ''; if(Array.isArray(t)){ var en=t.find(x=>x['@_lang']==='en'); return en ? (en['#text']||en) : (t[0]['#text']||t[0]); } return t['#text']||t; })(item['bibliographic-data'] ? item['bibliographic-data']['invention-title'] : null) }}"
+      abstract: "${{ (function(a){ if(!a) return ''; if(Array.isArray(a)){ var en=a.find(x=>x['@_lang']==='en'); return en ? ((en.p ? (en.p['#text']||en.p) : (en['#text']||en))) : ''; } return a.p ? (a.p['#text']||a.p) : (a['#text']||a); })(item.abstract) }}"
+      kind_code: "${{ (item['bibliographic-data'] && item['bibliographic-data']['publication-reference'] && item['bibliographic-data']['publication-reference']['document-id']) ? (item['bibliographic-data']['publication-reference']['document-id'].kind || '') : '' }}"
+      publication_date: "${{ (function(d){ if(!d) return ''; var s=String(d); return s.length===8 ? (s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8)) : s; })((item['bibliographic-data'] && item['bibliographic-data']['publication-reference'] && item['bibliographic-data']['publication-reference']['document-id']) ? item['bibliographic-data']['publication-reference']['document-id'].date : '') }}"
+      # DOCDB `parties.inventors.inventor[]` carries `inventor-name.name`.
+      inventors: "${{ JSON.stringify((function(){ var p=item['bibliographic-data'] && item['bibliographic-data'].parties; if(!p || !p.inventors || !p.inventors.inventor) return []; var arr = Array.isArray(p.inventors.inventor) ? p.inventors.inventor : [p.inventors.inventor]; return arr.map(i => ({ name: (i['inventor-name'] && (i['inventor-name'].name || i['inventor-name']['#text'])) || '' })).filter(x => x.name); })()) }}"
+      assignees: "${{ JSON.stringify((function(){ var p=item['bibliographic-data'] && item['bibliographic-data'].parties; if(!p || !p.applicants || !p.applicants.applicant) return []; var arr = Array.isArray(p.applicants.applicant) ? p.applicants.applicant : [p.applicants.applicant]; return arr.map(i => ({ name: (i['applicant-name'] && (i['applicant-name'].name || i['applicant-name']['#text'])) || '' })).filter(x => x.name); })()) }}"
+      # `classifications-ipcr.classification-ipcr[].text` is IPC; `patent-classifications.patent-classification[]` is CPC + others.
+      classifications: "${{ JSON.stringify((function(){ var bd = item['bibliographic-data']; if(!bd) return []; var out = []; var ipcr = bd['classifications-ipcr'] && bd['classifications-ipcr']['classification-ipcr']; if(ipcr){ var arr = Array.isArray(ipcr) ? ipcr : [ipcr]; for (var i=0;i<arr.length;i++) out.push({ scheme: 'ipc', code: arr[i].text || arr[i]['#text'] || '' }); } var pc = bd['patent-classifications'] && bd['patent-classifications']['patent-classification']; if(pc){ var arr2 = Array.isArray(pc) ? pc : [pc]; for (var i=0;i<arr2.length;i++){ var c=arr2[i]; var scheme=(c['classification-scheme'] && (c['classification-scheme']['@_scheme']||'')).toLowerCase()||'cpc'; var section=(c.section||'')+(c.class||'')+(c.subclass||''); var main=(c['main-group']||'')+(c['subgroup']?'/'+c.subgroup:''); out.push({ scheme: scheme, code: (section+main) }); } } return out.filter(x => x.code); })()) }}"
+      family_id: "${{ item['@_family-id'] || '' }}"
       source_adapter: epo
       source_url: "${{ 'https://worldwide.espacenet.com/patent/search?q=' + (args.query || '') }}"
       retrieved_at: ""

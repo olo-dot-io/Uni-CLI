@@ -6,13 +6,19 @@
       "patent_id": "US10000001",
       "title": "Photonic neural network with reconfigurable couplers",
       "abstract": "A photonic neural network architecture that uses thermally tunable couplers for low-power inference.",
-      "score": 0.873
+      "score": 0.873,
+      "publication_date": "2018-06-19",
+      "filing_date": "2016-07-12",
+      "kind_code": "B2"
     },
     {
       "patent_id": "EP3500000A1",
       "title": "Optical matrix-multiplier with on-chip modulators",
       "abstract": "An optical computing apparatus performing matrix-vector multiplication on chip.",
-      "score": 0.831
+      "score": 0.831,
+      "publication_date": "2019-06-26",
+      "filing_date": "2017-12-22",
+      "kind_code": "A1"
     }
   ]
 }

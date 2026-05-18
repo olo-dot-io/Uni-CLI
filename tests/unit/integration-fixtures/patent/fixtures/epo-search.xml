@@ -3,7 +3,7 @@
                        xmlns:exchange="http://www.epo.org/exchange">
   <ops:biblio-search total-result-count="1">
     <ops:search-result>
-      <ops:exchange-document country="EP" doc-number="4123456" kind="A1">
+      <ops:exchange-document country="EP" doc-number="4123456" kind="A1" family-id="68000000">
         <bibliographic-data>
           <publication-reference>
             <document-id document-id-type="docdb">
@@ -18,10 +18,61 @@
               <country>EP</country>
               <doc-number>22123456</doc-number>
               <kind>A</kind>
+              <date>20221001</date>
             </document-id>
           </application-reference>
+          <priority-claims>
+            <priority-claim sequence="1" kind="national">
+              <document-id document-id-type="docdb">
+                <country>US</country>
+                <doc-number>63234567</doc-number>
+                <kind>P</kind>
+                <date>20210930</date>
+              </document-id>
+            </priority-claim>
+          </priority-claims>
           <invention-title lang="en">Quantum computing apparatus</invention-title>
+          <invention-title lang="de">Quantenrechnervorrichtung</invention-title>
+          <classifications-ipcr>
+            <classification-ipcr sequence="1">
+              <text>G06N  10/00       20220101AFI20240418BHEP</text>
+            </classification-ipcr>
+          </classifications-ipcr>
+          <patent-classifications>
+            <patent-classification sequence="1">
+              <classification-scheme office="EP" scheme="CPCI"/>
+              <section>G</section>
+              <class>06</class>
+              <subclass>N</subclass>
+              <main-group>10</main-group>
+              <subgroup>00</subgroup>
+            </patent-classification>
+          </patent-classifications>
+          <parties>
+            <applicants>
+              <applicant sequence="1" data-format="docdb">
+                <applicant-name>
+                  <name>QUANTUM RESEARCH GMBH</name>
+                </applicant-name>
+              </applicant>
+            </applicants>
+            <inventors>
+              <inventor sequence="1" data-format="docdb">
+                <inventor-name>
+                  <name>SMITH, JOHN</name>
+                </inventor-name>
+              </inventor>
+              <inventor sequence="2" data-format="docdb">
+                <inventor-name>
+                  <name>JONES, JANE</name>
+                </inventor-name>
+              </inventor>
+            </inventors>
+          </parties>
         </bibliographic-data>
+        <abstract lang="en">
+          <p>A quantum computing apparatus comprising a plurality of qubits and a coupling structure.</p>
+        </abstract>
       </ops:exchange-document>
     </ops:search-result>
   </ops:biblio-search>

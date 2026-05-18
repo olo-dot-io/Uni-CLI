@@ -34,13 +34,24 @@ pipeline:
         Accept: application/json
         X-API-KEY: "${{ env.USPTO_ODP_API_KEY || '' }}"
 
+  # ODP single-record detail endpoint returns the same `applicationMetaData`
+  # envelope as search, plus a richer `patentTermAdjustment` / `inventor` /
+  # `applicant` set on the detail path. Every field reference below maps to a
+  # documented ODP path; adapters do not synthesise.
   - map:
       publication_number: "${{ item.applicationMetaData && item.applicationMetaData.earliestPublicationNumber ? ('US-' + item.applicationMetaData.earliestPublicationNumber) : ('US-' + (item.applicationNumberText || '')) }}"
       application_number: "${{ item.applicationNumberText || '' }}"
       title: "${{ item.applicationMetaData ? (item.applicationMetaData.inventionTitle || '') : '' }}"
+      abstract: "${{ item.applicationMetaData ? (item.applicationMetaData.abstractText || '') : '' }}"
       filing_date: "${{ item.applicationMetaData ? (item.applicationMetaData.filingDate || '') : '' }}"
       publication_date: "${{ item.applicationMetaData ? (item.applicationMetaData.earliestPublicationDate || '') : '' }}"
       grant_date: "${{ item.applicationMetaData ? (item.applicationMetaData.grantDate || '') : '' }}"
+      priority_date: "${{ item.applicationMetaData ? (item.applicationMetaData.firstInventorToFileIndicator ? item.applicationMetaData.filingDate : (item.applicationMetaData.earliestPriorityDate || '')) : '' }}"
+      kind_code: "${{ (item.applicationMetaData && item.applicationMetaData.earliestPublicationNumber) ? (item.applicationMetaData.earliestPublicationNumber.match(/[A-Z]\\d?$/) || [''])[0] : '' }}"
+      inventors: "${{ JSON.stringify((item.applicationMetaData && item.applicationMetaData.inventorBag) ? item.applicationMetaData.inventorBag.map(p => ({ name: p.inventorNameText || ((p.firstName || '') + ' ' + (p.lastName || '')).trim(), country: p.countryCode || undefined })) : []) }}"
+      assignees: "${{ JSON.stringify((item.applicationMetaData && item.applicationMetaData.applicantBag) ? item.applicationMetaData.applicantBag.map(p => ({ name: p.applicantNameText || p.organizationNameText || '', country: p.countryCode || undefined })) : []) }}"
+      classifications: "${{ JSON.stringify((item.applicationMetaData && item.applicationMetaData.cpcClassificationBag) ? item.applicationMetaData.cpcClassificationBag.map(c => ({ scheme: 'cpc', code: c.cpcSymbol || c })) : []) }}"
+      legal_status: "${{ item.applicationMetaData ? (item.applicationMetaData.applicationStatusDescriptionText || '') : '' }}"
       source_adapter: uspto
       source_url: "${{ 'https://ppubs.uspto.gov/dirsearch-public/patents/' + (item.applicationNumberText || '') }}"
       retrieved_at: ""

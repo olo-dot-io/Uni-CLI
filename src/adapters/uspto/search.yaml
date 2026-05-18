@@ -48,13 +48,28 @@ pipeline:
 
   - select: patentFileWrapperDataBag
 
+  # Field mapping references data.uspto.gov/swagger v1 patent applications schema.
+  # Every field below maps to a documented ODP response path — adapters must
+  # not synthesise values upstream did not return.
   - map:
       publication_number: "${{ item.applicationMetaData && item.applicationMetaData.earliestPublicationNumber ? ('US-' + item.applicationMetaData.earliestPublicationNumber) : ('US-' + (item.applicationNumberText || '')) }}"
       application_number: "${{ item.applicationNumberText || '' }}"
       title: "${{ item.applicationMetaData ? (item.applicationMetaData.inventionTitle || '') : '' }}"
+      abstract: "${{ item.applicationMetaData ? (item.applicationMetaData.abstractText || '') : '' }}"
       filing_date: "${{ item.applicationMetaData ? (item.applicationMetaData.filingDate || '') : '' }}"
       publication_date: "${{ item.applicationMetaData ? (item.applicationMetaData.earliestPublicationDate || '') : '' }}"
       grant_date: "${{ item.applicationMetaData ? (item.applicationMetaData.grantDate || '') : '' }}"
+      # ODP `applicationMetaData.earliestPublicationNumber` is the compact form
+      # (`20240123456A1`); the trailing A1/A2/B1/B2 IS the ST.16 kind code.
+      kind_code: "${{ (item.applicationMetaData && item.applicationMetaData.earliestPublicationNumber) ? (item.applicationMetaData.earliestPublicationNumber.match(/[A-Z]\\d?$/) || [''])[0] : '' }}"
+      # ODP `inventorBag[]` and `applicantBag[]` carry per-party records.
+      # We serialise via JSON.stringify so the array survives the template
+      # engine's string projection; coerceToPatentRecords parses it back.
+      inventors: "${{ JSON.stringify((item.applicationMetaData && item.applicationMetaData.inventorBag) ? item.applicationMetaData.inventorBag.map(p => ({ name: p.inventorNameText || ((p.firstName || '') + ' ' + (p.lastName || '')).trim(), country: p.countryCode || undefined })) : []) }}"
+      assignees: "${{ JSON.stringify((item.applicationMetaData && item.applicationMetaData.applicantBag) ? item.applicationMetaData.applicantBag.map(p => ({ name: p.applicantNameText || p.organizationNameText || '', country: p.countryCode || undefined })) : []) }}"
+      # `cpcClassificationBag[]` is the ODP path for Cooperative Patent Classification codes.
+      classifications: "${{ JSON.stringify((item.applicationMetaData && item.applicationMetaData.cpcClassificationBag) ? item.applicationMetaData.cpcClassificationBag.map(c => ({ scheme: 'cpc', code: c.cpcSymbol || c })) : []) }}"
+      legal_status: "${{ item.applicationMetaData ? (item.applicationMetaData.applicationStatusDescriptionText || '') : '' }}"
       source_adapter: uspto
       source_url: "${{ 'https://ppubs.uspto.gov/dirsearch-public/patents/' + (item.applicationNumberText || '') }}"
       # retrieved_at is stamped by assemblePatentRecord in the normalizer; YAML emits the empty string

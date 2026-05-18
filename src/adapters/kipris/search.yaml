@@ -45,14 +45,23 @@ pipeline:
   - select-xml:
       xpath: "//item"
 
+  # KIPRIS Plus XML preserves the native Korean script for title / abstract.
   - map:
       publication_number: "${{ 'KR-' + (item.openNumber || item.applicationNumber || '') + '-' + (item.openType || '') }}"
       application_number: "${{ item.applicationNumber || '' }}"
       title: "${{ item.inventionTitle || '' }}"
       abstract: "${{ item.astrtCont || '' }}"
+      kind_code: "${{ item.openType || '' }}"
       filing_date: "${{ item.applicationDate || '' }}"
       publication_date: "${{ item.openDate || '' }}"
       grant_date: "${{ item.registerDate || '' }}"
+      priority_date: "${{ item.priorityNumber ? (item.priorityDate || '') : '' }}"
+      legal_status: "${{ item.registerStatus || '' }}"
+      # KIPRIS exposes inventor / applicant as a single concatenated string;
+      # preserve the format the office returns and treat it as one party.
+      inventors: "${{ JSON.stringify(item.inventor ? [{ name: item.inventor, country: 'KR' }] : []) }}"
+      assignees: "${{ JSON.stringify(item.applicant ? [{ name: item.applicant, country: 'KR' }] : []) }}"
+      classifications: "${{ JSON.stringify((function(){ var c=item.ipcNumber; if(!c) return []; var arr = String(c).split('|').map(s => s.trim()).filter(s => s); return arr.map(code => ({ scheme: 'ipc', code: code })); })()) }}"
       source_adapter: kipris
       source_url: "${{ 'https://kpat.kipris.or.kr/kpat/biblioa.do?method=biblioFrame&applno=' + (item.applicationNumber || '') }}"
       retrieved_at: ""

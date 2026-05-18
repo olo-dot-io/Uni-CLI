@@ -43,12 +43,22 @@ pipeline:
 
   - select: results
 
+  # JPO Patent Information Retrieval JSON; preserve Japanese script in title,
+  # surface English title when JPO returns one, expose IPC + applicant fields.
   - map:
       publication_number: "${{ 'JP-' + (item.publicationNumber || item.applicationNumber || '') + '-' + (item.publicationKindCode || '') }}"
       application_number: "${{ item.applicationNumber || '' }}"
       title: "${{ item.inventionTitleJapanese || item.inventionTitleEnglish || '' }}"
+      abstract: "${{ item.abstractJapanese || item.abstractEnglish || '' }}"
+      kind_code: "${{ item.publicationKindCode || '' }}"
       filing_date: "${{ item.applicationDate || '' }}"
       publication_date: "${{ item.publicationDate || '' }}"
+      grant_date: "${{ item.registrationDate || '' }}"
+      priority_date: "${{ item.priorityDate || '' }}"
+      # JPO returns inventor / applicant as either string or string[]; coerce to array.
+      inventors: "${{ JSON.stringify((function(){ var i=item.inventorName; if(!i) return []; var arr = Array.isArray(i) ? i : [i]; return arr.map(n => ({ name: typeof n === 'string' ? n : (n.name || ''), country: 'JP' })).filter(x => x.name); })()) }}"
+      assignees: "${{ JSON.stringify((function(){ var a=item.applicantName; if(!a) return []; var arr = Array.isArray(a) ? a : [a]; return arr.map(n => ({ name: typeof n === 'string' ? n : (n.name || ''), country: 'JP' })).filter(x => x.name); })()) }}"
+      classifications: "${{ JSON.stringify((function(){ var c=item.ipcClassification; if(!c) return []; var arr = Array.isArray(c) ? c : [c]; return arr.map(x => ({ scheme: 'ipc', code: typeof x === 'string' ? x : (x.code || '') })).filter(x => x.code); })()) }}"
       source_adapter: jpo
       source_url: "${{ 'https://www.j-platpat.inpit.go.jp/p0200' }}"
       retrieved_at: ""

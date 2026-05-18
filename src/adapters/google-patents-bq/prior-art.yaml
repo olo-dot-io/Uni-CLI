@@ -37,10 +37,15 @@ pipeline:
         query: |-
           SELECT
             publication_number,
+            ANY_VALUE(kind_code) AS kind_code,
             ANY_VALUE(title_localized)[OFFSET(0)].text AS title,
             ANY_VALUE(abstract_localized)[OFFSET(0)].text AS abstract,
             ANY_VALUE(publication_date) AS publication_date,
-            ANY_VALUE(family_id) AS family_id
+            ANY_VALUE(filing_date) AS filing_date,
+            ANY_VALUE(family_id) AS family_id,
+            TO_JSON_STRING(ANY_VALUE(inventor_harmonized)) AS inventors,
+            TO_JSON_STRING(ANY_VALUE(assignee_harmonized)) AS assignees,
+            TO_JSON_STRING(ANY_VALUE(cpc)) AS cpc
           FROM `patents-public-data.patents.publications`
           WHERE LOWER(abstract_localized[OFFSET(0)].text) LIKE LOWER('%${{ args.abstract | truncate(80) }}%')
           GROUP BY publication_number
@@ -52,11 +57,17 @@ pipeline:
 
   - map:
       publication_number: "${{ item.f[0].v }}"
-      title: "${{ item.f[1].v }}"
-      abstract: "${{ item.f[2].v }}"
-      publication_date: "${{ item.f[3].v }}"
-      family_id: "${{ item.f[4].v }}"
+      kind_code: "${{ item.f[1].v || '' }}"
+      title: "${{ item.f[2].v }}"
+      abstract: "${{ item.f[3].v }}"
+      publication_date: "${{ item.f[4].v }}"
+      filing_date: "${{ item.f[5].v }}"
+      family_id: "${{ item.f[6].v }}"
+      inventors: "${{ JSON.stringify((function(){ try { var arr = JSON.parse(item.f[7].v || '[]'); return Array.isArray(arr) ? arr.map(i => ({ name: i.name || i, country: i.country_code || undefined })) : []; } catch(e) { return []; } })()) }}"
+      assignees: "${{ JSON.stringify((function(){ try { var arr = JSON.parse(item.f[8].v || '[]'); return Array.isArray(arr) ? arr.map(a => ({ name: a.name || a, country: a.country_code || undefined })) : []; } catch(e) { return []; } })()) }}"
+      classifications: "${{ JSON.stringify((function(){ try { var cpc = JSON.parse(item.f[9].v || '[]'); return Array.isArray(cpc) ? cpc.map(c => ({ scheme: 'cpc', code: c.code || c })).filter(x => x.code) : []; } catch(e){ return []; } })()) }}"
       source_adapter: google-patents-bq
+      source_url: "${{ 'https://patents.google.com/patent/' + (item.f[0].v || '') }}"
       retrieved_at: "${{ now }}"
 
 columns: [publication_number, title, abstract]

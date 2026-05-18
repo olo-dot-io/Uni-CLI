@@ -43,12 +43,20 @@ pipeline:
 
   - select: results
 
+  # INPI open-data JSON; field names mirror INPI's documented schema.
   - map:
       publication_number: "${{ 'FR-' + (item.publicationNumber || item.applicationNumber || '') + '-' + (item.kindCode || '') }}"
       application_number: "${{ item.applicationNumber || '' }}"
       title: "${{ item.title || item.titleFr || item.titleEn || '' }}"
+      abstract: "${{ item.abstract || item.abstractFr || item.abstractEn || '' }}"
+      kind_code: "${{ item.kindCode || '' }}"
       filing_date: "${{ item.filingDate || item.applicationDate || '' }}"
       publication_date: "${{ item.publicationDate || '' }}"
+      grant_date: "${{ item.grantDate || '' }}"
+      priority_date: "${{ item.priorityDate || '' }}"
+      inventors: "${{ JSON.stringify((function(){ var i=item.inventors; if(!i) return []; var arr = Array.isArray(i) ? i : [i]; return arr.map(n => ({ name: typeof n === 'string' ? n : (n.name || n.fullName || ''), country: 'FR' })).filter(x => x.name); })()) }}"
+      assignees: "${{ JSON.stringify((function(){ var a=item.applicants || item.holders; if(!a) return []; var arr = Array.isArray(a) ? a : [a]; return arr.map(n => ({ name: typeof n === 'string' ? n : (n.name || n.fullName || ''), country: 'FR' })).filter(x => x.name); })()) }}"
+      classifications: "${{ JSON.stringify((function(){ var c=item.ipc || item.classifications; if(!c) return []; var arr = Array.isArray(c) ? c : [c]; return arr.map(x => ({ scheme: 'ipc', code: typeof x === 'string' ? x : (x.code || '') })).filter(x => x.code); })()) }}"
       source_adapter: inpi-fr
       source_url: "${{ 'https://data.inpi.fr/brevets/' + (item.publicationNumber || item.applicationNumber || '') }}"
       retrieved_at: ""

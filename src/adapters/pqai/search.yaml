@@ -33,11 +33,17 @@ pipeline:
 
   - select: results
 
+  # PQAI returns `score` (∈ [0, 1] semantic relevance) alongside the patent
+  # record. Surface it as relevance_score so the downstream RRF stage can
+  # consult the per-engine ranking.
   - map:
       publication_number: "${{ item.id }}"
       title: "${{ item.title }}"
       abstract: "${{ item.abstract }}"
       publication_date: "${{ item.publication_date || '' }}"
+      filing_date: "${{ item.filing_date || '' }}"
+      kind_code: "${{ item.kind_code || '' }}"
+      relevance_score: "${{ item.score !== undefined ? item.score : '' }}"
       source_adapter: pqai
       source_url: "https://search.projectpq.ai/patent/${{ item.id }}"
       retrieved_at: "${{ now }}"

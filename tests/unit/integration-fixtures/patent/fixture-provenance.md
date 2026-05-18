@@ -45,6 +45,18 @@ curl -H "X-API-KEY: $USPTO_ODP_API_KEY" \
      "https://api.uspto.gov/api/v1/patent/applications/search?q=optical&limit=1"
 ```
 
+Wave-2 enrichments (2026-05-18, this session): the fixture was extended to
+include `applicationMetaData.abstractText`,
+`applicationMetaData.applicationStatusDescriptionText`,
+`applicationMetaData.inventorBag[]` (with `firstName` / `lastName` /
+`inventorNameText` / `countryCode`), `applicationMetaData.applicantBag[]`,
+and `applicationMetaData.cpcClassificationBag[]`. Each field name is
+sourced from data.uspto.gov/swagger v1; this is still synthetic-shape-only
+because no live key was present. The contract surfaced in
+`uspto.fixture.test.ts` is that the normaliser preserves every field
+verbatim; the contract surfaced in `src/adapters/uspto/{search,get}.yaml`
+is that the map step extracts each field from the documented ODP path.
+
 ### `fixtures/epo-search.xml`
 
 Provenance: `synthetic-shape-only — recorded shape from docs.epo.org/3.2/api 2026-05-18`
@@ -56,6 +68,17 @@ minimal but namespace-correct slice that the `select-xml` step can walk;
 because the step is generic over XPath rather than EPO-specific, the
 fixture stays small.
 
+Wave-2 enrichments (2026-05-18, this session): the fixture was extended to
+include `parties.inventors.inventor[]` with `inventor-name.name`,
+`parties.applicants.applicant[]` with `applicant-name.name`,
+`classifications-ipcr.classification-ipcr[].text` (IPC),
+`patent-classifications.patent-classification[]` (CPC tree),
+`priority-claims.priority-claim[].document-id.date`, the `@family-id`
+attribute on `<ops:exchange-document>`, and an `<abstract lang="en">`
+block. Each path is documented in the OPS v3.2 DOCDB schema
+(docs.epo.org). Still synthetic-shape-only — no live OAuth2 token was
+present during this session.
+
 ### `fixtures/pqai-prior-art.json`
 
 Provenance: `synthetic-shape-only — recorded shape from projectpq.ai/about/api 2026-05-18`
@@ -66,3 +89,10 @@ score. The fixture exercises the normaliser's handling of PQAI's compact
 publication-number format (no kind code) and confirms the prior-art path
 can still produce a canonical PatentRecord when only the bare minimum
 fields are present.
+
+Wave-2 enrichments (2026-05-18, this session): the fixture rows were
+extended with `publication_date`, `filing_date`, and `kind_code` so the
+adapter's enriched map step has every field to extract; the `score` field
+was already present and is now surfaced via `PatentRecord.relevance_score`
+through the meta-command's `coerceToPatentRecords`. Still
+synthetic-shape-only — no live `PQAI_API_TOKEN` was present.
