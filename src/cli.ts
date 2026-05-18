@@ -54,6 +54,8 @@ import { registerTestGenCommand } from "./commands/test-gen.js";
 import { registerStatusCommand } from "./commands/status.js";
 import { registerSchemaCommand } from "./commands/schema.js";
 import { registerSearchCommand } from "./commands/search.js";
+import { registerExtractCommand } from "./commands/extract.js";
+import { registerDoCommand } from "./commands/do.js";
 import { registerSocialCommand } from "./commands/social.js";
 import { registerPatentCommand } from "./commands/patent.js";
 import { registerLintCommand } from "./commands/lint.js";
@@ -379,6 +381,10 @@ export async function createCli(): Promise<Command> {
   // Register schema command — JSON Schema for adapter input/output
   registerSchemaCommand(program);
   registerSearchCommand(program);
+  // One-shot URL → Markdown extraction (no browser session, no auth)
+  registerExtractCommand(program);
+  // Natural-language → best-fit adapter plan (HATEOAS; agent invokes next_actions[0])
+  registerDoCommand(program);
   registerSocialCommand(program);
 
   // Register patent command — patent-vertical meta-command across L0/L1/L2 adapters

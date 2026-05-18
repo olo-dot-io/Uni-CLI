@@ -5,6 +5,22 @@ Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributin
 
 ## [Unreleased]
 
+### Added
+
+- `unicli extract <url>` — one-call URL → cleaned Markdown (also `--as text|html`)
+  with structured envelope, configurable `--max-chars` truncation, and SSRF
+  guard. Pure stateless verb; no browser session, no auth, and no adapter
+  awareness required, so agents can fetch any HTTP(S) page in a single CLI
+  call. Errors map to the standard sysexits-aligned exit codes (`77` auth,
+  `75` transient, `69` 5xx, `2` invalid input).
+- `unicli do <intent>` — natural-language intent → top-ranked adapter plan
+  with the agent-invocable command surfaced in `next_actions[0]` along with
+  the matched adapter's full `args_schema` and `example_stdin`. Plan-only by
+  design: the agent runs the suggested command on the second hop (mirrors
+  REST HATEOAS; avoids ambiguous-intent triggering irreversible writes).
+  `--top <n>` clamps to 1–25; `--no-schema` slims the payload for context
+  budgets.
+
 ## [0.221.0] — 2026-05-18 — Apollo · Anders
 
 ### Added
