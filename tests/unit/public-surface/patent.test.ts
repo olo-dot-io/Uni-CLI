@@ -20,6 +20,7 @@ const PUBLIC_NAMES: readonly string[] = [
   // Helpers
   "canonicalizePublicationNumber",
   "dedupeByFamily",
+  "extractKindCode",
 ];
 
 describe("public surface — patent vertical", () => {
@@ -40,6 +41,13 @@ describe("public surface — patent vertical", () => {
     expect(pkg.canonicalizePublicationNumber("US20240123456A1")).toBe(
       "US-20240123456-A1",
     );
+  });
+
+  it("extractKindCode is callable", () => {
+    expect(typeof pkg.extractKindCode).toBe("function");
+    expect(pkg.extractKindCode("US-20240123456-A1")).toBe("A1");
+    expect(pkg.extractKindCode("EP4123456A1")).toBe("A1");
+    expect(pkg.extractKindCode("???")).toBeUndefined();
   });
 
   it("dedupeByFamily is callable", () => {

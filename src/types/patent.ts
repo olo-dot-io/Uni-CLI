@@ -98,10 +98,23 @@ export interface PatentRecord {
   // Identity
   publication_number: string;
   application_number?: string;
+  /**
+   * Two-character ST.16 kind code (A1, A2, B1, B2, U1, …) parsed off the
+   * publication number. Adapters may set this explicitly; otherwise consumers
+   * can derive it via `extractKindCode(publication_number)`.
+   */
+  kind_code?: string;
 
   // Bibliographic
   title?: string;
   abstract?: string;
+  /**
+   * Short matched-context snippet for search results. Distinct from the full
+   * abstract: search engines often return a windowed extract around the
+   * matched terms; consumers display this in result lists and fetch the full
+   * abstract on demand.
+   */
+  snippet?: string;
   inventors?: PatentParty[];
   assignees?: PatentParty[];
   filing_date?: string;
@@ -116,6 +129,25 @@ export interface PatentRecord {
   family_id?: string;
   family_members?: PatentFamilyMember[];
   legal_status?: string;
+
+  // Citation graph
+  /** Number of claims (independent + dependent) when the upstream exposes it. */
+  claims_count?: number;
+  /** Forward-citation count — patents that cite this record. */
+  cited_by_count?: number;
+  /** Backward-citation count — references this record cites. */
+  cites_count?: number;
+
+  // Resources
+  /** Direct PDF URL when the upstream supplies one (USPTO Image File Wrapper, Lens.org, Patsnap, …). */
+  pdf_url?: string;
+
+  // Search-time scoring
+  /**
+   * Float in [0, 1] populated by semantic / text-rank engines (PQAI,
+   * Lens.org `_score`). Absent when the upstream does not rank results.
+   */
+  relevance_score?: number;
 
   // Provenance
   source_adapter: string;

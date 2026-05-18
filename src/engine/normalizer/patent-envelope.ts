@@ -1,6 +1,6 @@
 /**
  * @owner       src::engine::normalizer::patent-envelope
- * @does        Helpers that convert per-site raw responses into the canonical PatentRecord shape; each upstream office is mapped through a dedicated normalizer (uspto / epo / jpo / kipris / inpi-fr / dpma / ipaustralia / lens / google-patents-bq / pqai / patsnap / cnipa / espacenet / cipo / inpi-br / fips).
+ * @does        Helpers that convert per-site raw responses into the canonical PatentRecord shape; each upstream office is mapped through a dedicated normalizer (uspto / epo / jpo / kipris / inpi-fr / dpma / ipaustralia / lens / google-patents-bq / pqai / patsnap / cnipa / espacenet / cipo / inpi-br / fips); also exposes `extractKindCode` for callers that need to derive the ST.16 kind suffix from an already-segmented publication number.
  * @needs       src/types/patent.ts
  * @feeds       src/adapters/**, src/commands/patent.ts (cross-source fan-out + dedupe), src/engine/steps/map.ts when adapters declare `map: { _normalizer: <site> }`
  * @breaks      throws NormalizerError on missing identity fields (publication_number) — adapters must surface a structured PATENT_SCHEMA_DRIFT envelope rather than yield a half-built PatentRecord
@@ -32,6 +32,7 @@ export class NormalizerError extends Error {
 
 const SEGMENTED_PUBLICATION_RE = /^[A-Z]{2}-[A-Z0-9]+-[A-Z]\d?$/;
 const COMPACT_PUBLICATION_RE = /^([A-Z]{2})[-]?([A-Z0-9]+?)[-]?([A-Z]\d?)$/;
+const TRAILING_KIND_RE = /-([A-Z]\d?)$/;
 
 /**
  * Canonicalize a publication number to ST.16-style segments separated by `-`.
@@ -59,6 +60,24 @@ export function canonicalizePublicationNumber(raw: string): string {
   }
   const [, cc, serial, kind] = match;
   return `${cc}-${serial}-${kind}`;
+}
+
+/**
+ * Extract the ST.16 kind code (A1, A2, B1, B2, U1, …) from a publication
+ * number. Accepts both segmented (`US-20240123456-A1`) and compact
+ * (`US20240123456A1`) inputs. Returns `undefined` when the input cannot be
+ * parsed — callers must not synthesise a kind code from nothing.
+ */
+export function extractKindCode(publicationNumber: string): string | undefined {
+  if (typeof publicationNumber !== "string" || publicationNumber.length === 0) {
+    return undefined;
+  }
+  const trimmed = publicationNumber.trim().toUpperCase();
+  const segmentedMatch = TRAILING_KIND_RE.exec(trimmed);
+  if (segmentedMatch) return segmentedMatch[1];
+  const compactMatch = COMPACT_PUBLICATION_RE.exec(trimmed);
+  if (compactMatch) return compactMatch[3];
+  return undefined;
 }
 
 /**

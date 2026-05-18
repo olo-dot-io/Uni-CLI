@@ -43,6 +43,12 @@ export { canonicalizePublicationNumber } from "./engine/normalizer/patent-envelo
 //   third-party caller fans out across multiple sources before yielding.
 export { dedupeByFamily } from "./engine/normalizer/patent-envelope.js";
 
+// extractKindCode — pull the ST.16 kind suffix (A1, A2, B1, …) off either a
+//   segmented (`US-20240123456-A1`) or compact (`US20240123456A1`) publication
+//   number. Returns `undefined` when the input cannot be parsed — callers
+//   should not invent a kind value.
+export { extractKindCode } from "./engine/normalizer/patent-envelope.js";
+
 // Note: `assemblePatentRecord` and `buildPatentEnvelope` are intentionally
 // internal-by-default. They stamp `retrieved_at` from system time and
 // translate between error codes and exit codes — surfaces the package owns
