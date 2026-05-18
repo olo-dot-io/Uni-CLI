@@ -24,7 +24,7 @@ import { describe, expect, it } from "vitest";
 import {
   assemblePatentRecord,
   canonicalizePublicationNumber,
-} from "../../../src/engine/normalizer/patent-envelope.js";
+} from "../../../../src/engine/normalizer/patent-envelope.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = join(here, "fixtures", "epo-search.xml");

@@ -21,7 +21,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { assemblePatentRecord } from "../../../src/engine/normalizer/patent-envelope.js";
+import { assemblePatentRecord } from "../../../../src/engine/normalizer/patent-envelope.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = join(here, "fixtures", "pqai-prior-art.json");
@@ -53,7 +53,7 @@ describe("pqai fixture — prior-art normalisation contract", () => {
     // when present, or (b) surface PATENT_SCHEMA_DRIFT — never to invent
     // a kind value.
     const { NormalizerError } =
-      await import("../../../src/engine/normalizer/patent-envelope.js");
+      await import("../../../../src/engine/normalizer/patent-envelope.js");
     expect(() =>
       assemblePatentRecord({
         publication_number: "US10000001",
