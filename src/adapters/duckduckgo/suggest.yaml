@@ -1,0 +1,52 @@
+# DuckDuckGo Autocomplete — keyless JSON endpoint.
+#
+# verification_status: keyless-best-effort
+#
+# The autocomplete endpoint at https://duckduckgo.com/ac is the JSON used
+# by the DDG search box. No auth, no rate-limit gate at low volumes, and
+# returns a flat list of suggested completions for a prefix.
+site: duckduckgo
+name: suggest
+description: Get query autocompletion suggestions from DuckDuckGo
+type: web-api
+domain: duckduckgo.com
+strategy: public
+lint_listing_detail: skip
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Partial query prefix to autocomplete
+  limit:
+    type: int
+    default: 10
+    description: Maximum suggestions returned
+
+pipeline:
+  - fetch:
+      url: "https://duckduckgo.com/ac/"
+      params:
+        q: "${{ args.query }}"
+        type: list
+      headers:
+        User-Agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
+        Accept: "application/json"
+
+  - select: "1"
+
+  - map:
+      phrase: "${{ item }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [phrase]
+
+# schema-v2 metadata
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

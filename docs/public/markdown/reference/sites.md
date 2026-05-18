@@ -14,7 +14,7 @@ running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 302 sites, 1738 commands.
+This catalog is generated from the adapter manifest: 305 sites, 1742 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -45,6 +45,7 @@ This catalog is generated from the adapter manifest: 302 sites, 1738 commands.
 | bloomberg | web-api | 10 | no | unicli bloomberg businessweek<br>unicli bloomberg economics<br>unicli bloomberg feeds |
 | bluesky | web-api | 12 | yes | unicli bluesky feeds<br>unicli bluesky followers<br>unicli bluesky following |
 | boss | web-api | 14 | yes | unicli boss batchgreet<br>unicli boss chatlist<br>unicli boss chatmsg |
+| brave | web-api | 1 | no | unicli brave search |
 | chaoxing | web-api | 2 | yes | unicli chaoxing assignments<br>unicli chaoxing exams |
 | chatgpt | web-api | 17 | yes | unicli chatgpt image<br>unicli chatgpt history<br>unicli chatgpt detail |
 | chatwise | web-api | 16 | no | unicli chatwise history<br>unicli chatwise export<br>unicli chatwise ask |
@@ -90,6 +91,7 @@ This catalog is generated from the adapter manifest: 302 sites, 1738 commands.
 | douyu | web-api | 2 | yes | unicli douyu hot<br>unicli douyu search |
 | dpma | web-api | 2 | no | unicli dpma get<br>unicli dpma search |
 | drawio | desktop | 1 | no | unicli drawio export |
+| duckduckgo | web-api | 2 | no | unicli duckduckgo search<br>unicli duckduckgo suggest |
 | eastmoney | web-api | 18 | no | unicli eastmoney fund<br>unicli eastmoney hot<br>unicli eastmoney market |
 | ehentai | web-api | 6 | no | unicli ehentai search<br>unicli ehentai artist<br>unicli ehentai tag |
 | ele | web-api | 2 | yes | unicli ele hot<br>unicli ele search |
@@ -288,6 +290,7 @@ This catalog is generated from the adapter manifest: 302 sites, 1738 commands.
 | xiaohongshu | web-api | 22 | yes | unicli xiaohongshu feed<br>unicli xiaohongshu follow<br>unicli xiaohongshu hashtag |
 | xiaoyuzhou | web-api | 5 | yes | unicli xiaoyuzhou episode<br>unicli xiaoyuzhou podcast-episodes<br>unicli xiaoyuzhou podcast |
 | xueqiu | web-api | 14 | yes | unicli xueqiu comments<br>unicli xueqiu earnings-date<br>unicli xueqiu feed |
+| yahoo | web-api | 1 | no | unicli yahoo search |
 | yahoo-finance | web-api | 3 | no | unicli yahoo-finance quote<br>unicli yahoo-finance search<br>unicli yahoo-finance trending |
 | yandere | web-api | 4 | no | unicli yandere detail<br>unicli yandere download<br>unicli yandere search |
 | ycombinator | web-api | 1 | no | unicli ycombinator launches |

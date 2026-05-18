@@ -11,7 +11,7 @@
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：302 个站点，1738 条命令。
+这个目录来自适配器 manifest：305 个站点，1742 条命令。
 
 | 站点 | 接口类型 | 命令数 | 认证 | 示例命令 |
 | --- | --- | ---: | --- | --- |
@@ -42,6 +42,7 @@
 | bloomberg | web-api | 10 | 否 | unicli bloomberg businessweek<br>unicli bloomberg economics<br>unicli bloomberg feeds |
 | bluesky | web-api | 12 | 是 | unicli bluesky feeds<br>unicli bluesky followers<br>unicli bluesky following |
 | boss | web-api | 14 | 是 | unicli boss batchgreet<br>unicli boss chatlist<br>unicli boss chatmsg |
+| brave | web-api | 1 | 否 | unicli brave search |
 | chaoxing | web-api | 2 | 是 | unicli chaoxing assignments<br>unicli chaoxing exams |
 | chatgpt | web-api | 17 | 是 | unicli chatgpt image<br>unicli chatgpt history<br>unicli chatgpt detail |
 | chatwise | web-api | 16 | 否 | unicli chatwise history<br>unicli chatwise export<br>unicli chatwise ask |
@@ -87,6 +88,7 @@
 | douyu | web-api | 2 | 是 | unicli douyu hot<br>unicli douyu search |
 | dpma | web-api | 2 | 否 | unicli dpma get<br>unicli dpma search |
 | drawio | desktop | 1 | 否 | unicli drawio export |
+| duckduckgo | web-api | 2 | 否 | unicli duckduckgo search<br>unicli duckduckgo suggest |
 | eastmoney | web-api | 18 | 否 | unicli eastmoney fund<br>unicli eastmoney hot<br>unicli eastmoney market |
 | ehentai | web-api | 6 | 否 | unicli ehentai search<br>unicli ehentai artist<br>unicli ehentai tag |
 | ele | web-api | 2 | 是 | unicli ele hot<br>unicli ele search |
@@ -285,6 +287,7 @@
 | xiaohongshu | web-api | 22 | 是 | unicli xiaohongshu feed<br>unicli xiaohongshu follow<br>unicli xiaohongshu hashtag |
 | xiaoyuzhou | web-api | 5 | 是 | unicli xiaoyuzhou episode<br>unicli xiaoyuzhou podcast-episodes<br>unicli xiaoyuzhou podcast |
 | xueqiu | web-api | 14 | 是 | unicli xueqiu comments<br>unicli xueqiu earnings-date<br>unicli xueqiu feed |
+| yahoo | web-api | 1 | 否 | unicli yahoo search |
 | yahoo-finance | web-api | 3 | 否 | unicli yahoo-finance quote<br>unicli yahoo-finance search<br>unicli yahoo-finance trending |
 | yandere | web-api | 4 | 否 | unicli yandere detail<br>unicli yandere download<br>unicli yandere search |
 | ycombinator | web-api | 1 | 否 | unicli ycombinator launches |

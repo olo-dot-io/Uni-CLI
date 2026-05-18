@@ -11,7 +11,7 @@ Quick answers to the questions agents and developers ask most often. Each answer
 
 ## What is Uni-CLI?
 
-Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across <span><!-- STATS:site_count -->302<!-- /STATS --></span> sites and tools, returning a stable v2 AgentEnvelope on every call.
+Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across <span><!-- STATS:site_count -->305<!-- /STATS --></span> sites and tools, returning a stable v2 AgentEnvelope on every call.
 
 ## How is Uni-CLI different from a browser automation library?
 
@@ -31,7 +31,7 @@ Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, and any runtime that can spa
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.221.0 covers <span><!-- STATS:site_count -->302<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1738<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1203<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8773<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, paper/PDF workflows, ACG/anime/manga/wiki sources, booru tag search, government policy, podcasts, and macOS apps.
+v0.221.0 covers <span><!-- STATS:site_count -->305<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1742<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1207<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8797<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, paper/PDF workflows, ACG/anime/manga/wiki sources, booru tag search, government policy, podcasts, and macOS apps.
 
 ## Can Uni-CLI download papers and read local PDFs?
 

@@ -35,10 +35,10 @@ Agent execution needs an auditable, repairable, reusable command contract. Catal
 
 ## Coverage
 
-- Sites and tools: 302
-- Commands: 1738
+- Sites and tools: 305
+- Commands: 1742
 - Pipeline steps: 101
-- Tests: 8773
+- Tests: 8797
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 

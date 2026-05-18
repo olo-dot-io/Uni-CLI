@@ -7,7 +7,7 @@
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Current: v0.221.0 — Apollo · Anders. <!-- STATS:site_count -->302<!-- /STATS --> sites, <!-- STATS:command_count -->1738<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps.
+> Current: v0.221.0 — Apollo · Anders. <!-- STATS:site_count -->305<!-- /STATS --> sites, <!-- STATS:command_count -->1742<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction. Historical release notes live in
 `CHANGELOG.md`; they do not belong in the roadmap.

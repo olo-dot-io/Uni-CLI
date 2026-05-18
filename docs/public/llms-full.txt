@@ -4,9 +4,9 @@ This file is generated from the same VitePress site map as the public docs.
 
 ## Snapshot
 
-- Sites: 302
-- Commands: 1738
-- Adapters: 1203
+- Sites: 305
+- Commands: 1742
+- Adapters: 1207
 - Pipeline steps: 101
 
 ---
@@ -53,10 +53,10 @@ Agent execution needs an auditable, repairable, reusable command contract. Catal
 
 ## Coverage
 
-- Sites and tools: 302
-- Commands: 1738
+- Sites and tools: 305
+- Commands: 1742
 - Pipeline steps: 101
-- Tests: 8773
+- Tests: 8797
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -422,7 +422,7 @@ The cascade order is `public → cookie → header → intercept → ui`. On the
 
 Every command returns a v2 AgentEnvelope — the same shape on success or failure.
 Agents parse one schema across
-<span><!-- STATS:command_count -->1738<!-- /STATS --></span> commands.
+<span><!-- STATS:command_count -->1742<!-- /STATS --></span> commands.
 
 ```json
 {
@@ -513,8 +513,8 @@ $ unicli hackernews top -n 10 -f json \
 ```
 
 That is the entire interaction model. One command shape across
-<span><!-- STATS:site_count -->302<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1738<!-- /STATS --></span> commands. One error
+<span><!-- STATS:site_count -->305<!-- /STATS --></span> sites and
+<span><!-- STATS:command_count -->1742<!-- /STATS --></span> commands. One error
 envelope across every failure. One self-repair path across every adapter.
 
 ## Further reading
@@ -1129,7 +1129,7 @@ Quick answers to the questions agents and developers ask most often. Each answer
 
 ## What is Uni-CLI?
 
-Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across <span><!-- STATS:site_count -->302<!-- /STATS --></span> sites and tools, returning a stable v2 AgentEnvelope on every call.
+Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across <span><!-- STATS:site_count -->305<!-- /STATS --></span> sites and tools, returning a stable v2 AgentEnvelope on every call.
 
 ## How is Uni-CLI different from a browser automation library?
 
@@ -1149,7 +1149,7 @@ Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, and any runtime that can spa
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.221.0 covers <span><!-- STATS:site_count -->302<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1738<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1203<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8773<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, paper/PDF workflows, ACG/anime/manga/wiki sources, booru tag search, government policy, podcasts, and macOS apps.
+v0.221.0 covers <span><!-- STATS:site_count -->305<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1742<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1207<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8797<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, paper/PDF workflows, ACG/anime/manga/wiki sources, booru tag search, government policy, podcasts, and macOS apps.
 
 ## Can Uni-CLI download papers and read local PDFs?
 
@@ -1982,7 +1982,7 @@ running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 302 sites, 1738 commands.
+This catalog is generated from the adapter manifest: 305 sites, 1742 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -2013,6 +2013,7 @@ This catalog is generated from the adapter manifest: 302 sites, 1738 commands.
 | bloomberg | web-api | 10 | no | unicli bloomberg businessweek<br>unicli bloomberg economics<br>unicli bloomberg feeds |
 | bluesky | web-api | 12 | yes | unicli bluesky feeds<br>unicli bluesky followers<br>unicli bluesky following |
 | boss | web-api | 14 | yes | unicli boss batchgreet<br>unicli boss chatlist<br>unicli boss chatmsg |
+| brave | web-api | 1 | no | unicli brave search |
 | chaoxing | web-api | 2 | yes | unicli chaoxing assignments<br>unicli chaoxing exams |
 | chatgpt | web-api | 17 | yes | unicli chatgpt image<br>unicli chatgpt history<br>unicli chatgpt detail |
 | chatwise | web-api | 16 | no | unicli chatwise history<br>unicli chatwise export<br>unicli chatwise ask |
@@ -2058,6 +2059,7 @@ This catalog is generated from the adapter manifest: 302 sites, 1738 commands.
 | douyu | web-api | 2 | yes | unicli douyu hot<br>unicli douyu search |
 | dpma | web-api | 2 | no | unicli dpma get<br>unicli dpma search |
 | drawio | desktop | 1 | no | unicli drawio export |
+| duckduckgo | web-api | 2 | no | unicli duckduckgo search<br>unicli duckduckgo suggest |
 | eastmoney | web-api | 18 | no | unicli eastmoney fund<br>unicli eastmoney hot<br>unicli eastmoney market |
 | ehentai | web-api | 6 | no | unicli ehentai search<br>unicli ehentai artist<br>unicli ehentai tag |
 | ele | web-api | 2 | yes | unicli ele hot<br>unicli ele search |
@@ -2256,6 +2258,7 @@ This catalog is generated from the adapter manifest: 302 sites, 1738 commands.
 | xiaohongshu | web-api | 22 | yes | unicli xiaohongshu feed<br>unicli xiaohongshu follow<br>unicli xiaohongshu hashtag |
 | xiaoyuzhou | web-api | 5 | yes | unicli xiaoyuzhou episode<br>unicli xiaoyuzhou podcast-episodes<br>unicli xiaoyuzhou podcast |
 | xueqiu | web-api | 14 | yes | unicli xueqiu comments<br>unicli xueqiu earnings-date<br>unicli xueqiu feed |
+| yahoo | web-api | 1 | no | unicli yahoo search |
 | yahoo-finance | web-api | 3 | no | unicli yahoo-finance quote<br>unicli yahoo-finance search<br>unicli yahoo-finance trending |
 | yandere | web-api | 4 | no | unicli yandere detail<br>unicli yandere download<br>unicli yandere search |
 | ycombinator | web-api | 1 | no | unicli ycombinator launches |
@@ -4176,11 +4179,11 @@ Uni-CLI exposes one searchable command surface across:
   shell commands or protocol servers.
 
 The generated catalog is the source of truth:
-**<span><!-- STATS:site_count -->302<!-- /STATS --></span> sites**,
-**<span><!-- STATS:command_count -->1738<!-- /STATS --></span> commands**,
-**<span><!-- STATS:adapter_count_total -->1203<!-- /STATS --></span> adapters**,
+**<span><!-- STATS:site_count -->305<!-- /STATS --></span> sites**,
+**<span><!-- STATS:command_count -->1742<!-- /STATS --></span> commands**,
+**<span><!-- STATS:adapter_count_total -->1207<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->8773<!-- /STATS --></span> tests** in v0.221.0.
+and **<span><!-- STATS:test_count -->8797<!-- /STATS --></span> tests** in v0.221.0.
 
 ## Execution Contract
 
@@ -4418,8 +4421,8 @@ enough.
 bench shows representative `--limit 5` adapter responses at **357-415
 tokens**, with total invocation-plus-response budgets at **364-423 tokens**.
 The full catalog command is intentionally much larger because it emits all
-<span><!-- STATS:site_count -->302<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1738<!-- /STATS --></span> commands; agents
+<span><!-- STATS:site_count -->305<!-- /STATS --></span> sites and
+<span><!-- STATS:command_count -->1742<!-- /STATS --></span> commands; agents
 should search and describe before asking for the full registry.
 
 ## Direction
@@ -4584,7 +4587,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Current: v0.221.0 — Apollo · Anders. <!-- STATS:site_count -->302<!-- /STATS --> sites, <!-- STATS:command_count -->1738<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps.
+> Current: v0.221.0 — Apollo · Anders. <!-- STATS:site_count -->305<!-- /STATS --> sites, <!-- STATS:command_count -->1742<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction. Historical release notes live in
 `CHANGELOG.md`; they do not belong in the roadmap.

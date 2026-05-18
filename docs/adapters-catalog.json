@@ -1,8 +1,8 @@
 {
   "source": "unicli@0.221.0",
-  "generated": "2026-05-18T13:53:58.500Z",
-  "total_sites": 302,
-  "total_commands": 1738,
+  "generated": "2026-05-18T14:07:52.088Z",
+  "total_sites": 305,
+  "total_commands": 1742,
   "adapters": [
     {
       "site": "1688",
@@ -4771,6 +4771,41 @@
           "strategy": "intercept",
           "browser": true,
           "columns": ["metric", "value"]
+        }
+      ]
+    },
+    {
+      "site": "brave",
+      "type": "web-api",
+      "domain": "search.brave.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search the public web via Brave Search (no API key needed)",
+          "when_to_use": "When you need to search brave for a specific query.",
+          "command": "unicli brave search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["title", "url", "snippet"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Free-text web search query"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum results returned (page caps around 20)"
+            }
+          ]
         }
       ]
     },
@@ -10841,6 +10876,67 @@
               "required": false,
               "positional": false,
               "description": "Export format"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "duckduckgo",
+      "type": "web-api",
+      "domain": "duckduckgo.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search the public web via DuckDuckGo (no API key needed)",
+          "when_to_use": "When you need to search duckduckgo for a specific query.",
+          "command": "unicli duckduckgo search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["title", "url", "snippet"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Free-text web search query"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum results returned (DDG lite caps at ~30 per page)"
+            }
+          ]
+        },
+        {
+          "name": "suggest",
+          "description": "Get query autocompletion suggestions from DuckDuckGo",
+          "when_to_use": "Get query autocompletion suggestions from DuckDuckGo",
+          "command": "unicli duckduckgo suggest",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["phrase"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Partial query prefix to autocomplete"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum suggestions returned"
             }
           ]
         }
@@ -38126,6 +38222,41 @@
               "type": "int",
               "required": false,
               "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "yahoo",
+      "type": "web-api",
+      "domain": "search.yahoo.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search the public web via Yahoo Search (no API key needed)",
+          "when_to_use": "When you need to search yahoo for a specific query.",
+          "command": "unicli yahoo search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["title", "url", "snippet"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Free-text web search query"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum results returned (Yahoo paginates at ~10 per page)"
             }
           ]
         }

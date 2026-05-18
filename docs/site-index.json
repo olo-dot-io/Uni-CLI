@@ -1,7 +1,7 @@
 {
-  "generated": "2026-05-18T13:53:58.500Z",
-  "total_sites": 302,
-  "total_commands": 1738,
+  "generated": "2026-05-18T14:07:52.088Z",
+  "total_sites": 305,
+  "total_commands": 1742,
   "sites": [
     {
       "site": "1688",
@@ -1175,6 +1175,21 @@
           "name": "stats",
           "description": "Get BOSS Zhipin account statistics",
           "command": "unicli boss stats"
+        }
+      ]
+    },
+    {
+      "site": "brave",
+      "type": "web-api",
+      "domain": "search.brave.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search the public web via Brave Search (no API key needed)",
+          "command": "unicli brave search"
         }
       ]
     },
@@ -2915,6 +2930,26 @@
           "name": "export",
           "description": "Export a Draw.io diagram to png, jpg, svg, pdf, or vsdx",
           "command": "unicli drawio export"
+        }
+      ]
+    },
+    {
+      "site": "duckduckgo",
+      "type": "web-api",
+      "domain": "duckduckgo.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search the public web via DuckDuckGo (no API key needed)",
+          "command": "unicli duckduckgo search"
+        },
+        {
+          "name": "suggest",
+          "description": "Get query autocompletion suggestions from DuckDuckGo",
+          "command": "unicli duckduckgo suggest"
         }
       ]
     },
@@ -10136,6 +10171,21 @@
           "name": "groups",
           "description": "Read visible Xueqiu portfolio or group lists",
           "command": "unicli xueqiu groups"
+        }
+      ]
+    },
+    {
+      "site": "yahoo",
+      "type": "web-api",
+      "domain": "search.yahoo.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search the public web via Yahoo Search (no API key needed)",
+          "command": "unicli yahoo search"
         }
       ]
     },

@@ -1,0 +1,52 @@
+# Yahoo Search — keyless HTML scrape.
+#
+# verification_status: keyless-best-effort
+#
+# Yahoo Search at https://search.yahoo.com/search returns SSR HTML
+# with a result list. No token, no API key, no JS gate on first paint.
+# Yahoo's anti-bot does throttle rapid loops; this adapter is sized for
+# interactive use, not high-volume crawling.
+site: yahoo
+name: search
+description: Search the public web via Yahoo Search (no API key needed)
+type: web-api
+domain: search.yahoo.com
+strategy: public
+lint_listing_detail: skip
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Free-text web search query
+  limit:
+    type: int
+    default: 10
+    description: Maximum results returned (Yahoo paginates at ~10 per page)
+
+pipeline:
+  - fetch-text:
+      url: "https://search.yahoo.com/search?p=${{ args.query | url_encode }}"
+      headers:
+        User-Agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
+        Accept: "text/html,application/xhtml+xml"
+
+  - extract:
+      selector: "div.algo"
+      fields:
+        title: "h3.title"
+        url: "h3.title a@href"
+        snippet: "div.compText"
+
+  - limit: ${{ args.limit }}
+
+columns: [title, url, snippet]
+
+# schema-v2 metadata
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2
