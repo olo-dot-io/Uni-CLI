@@ -45,6 +45,26 @@ describe("evalTemplate — surface scope branching", () => {
     const ctx = makeCtx({ source: "stdin" });
     expect(evalTemplate("${{ source }}", ctx)).toBe("stdin");
   });
+
+  it("env.X resolves to process.env.X for credential templating", () => {
+    const ctx = makeCtx();
+    const key = "UNICLI_TEMPLATE_ENV_TEST_KEY_8473";
+    const value = "secret-token-fixture";
+    process.env[key] = value;
+    try {
+      expect(evalTemplate(`\${{ env.${key} }}`, ctx)).toBe(value);
+      expect(evalTemplate(`\${{ env.${key} || 'fallback' }}`, ctx)).toBe(value);
+    } finally {
+      delete process.env[key];
+    }
+  });
+
+  it("env.X falls back via || when the variable is unset (adapter idiom)", () => {
+    const ctx = makeCtx();
+    const key = "UNICLI_TEMPLATE_ENV_UNSET_KEY_8473";
+    delete process.env[key];
+    expect(evalTemplate(`\${{ env.${key} || 'absent' }}`, ctx)).toBe("absent");
+  });
 });
 
 describe("evalExpression — || logical-OR is not split as a pipe filter", () => {

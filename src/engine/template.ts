@@ -409,6 +409,13 @@ export function buildScope(ctx: PipelineContext): Record<string, unknown> {
     vars: ctx.vars ?? {},
     base: ctx.base,
     temp: ctx.temp ?? {},
+    // Process environment exposed for credential templating —
+    // ~38 adapters read keys via `${{ env.X || '' }}` (USPTO ODP, EPO OPS,
+    // PatSnap, Lens, PQAI, KIPRIS, DPMA, IP-AU, Pexels, NYTimes, Linear,
+    // Perplexity, MiniMax, QWeather, Novita, GCloud, etc.). Bind to
+    // process.env so the template engine resolves rather than coercing to
+    // empty string (which sent unauthenticated requests silently).
+    env: process.env,
     // Kernel-plumbed surface metadata (v0.213.3 P3): available to YAML as
     // ${{ source }} / ${{ surface }} / ${{ trace_id }}. All three are
     // optional — legacy callers that pass a bare bag with no options get
