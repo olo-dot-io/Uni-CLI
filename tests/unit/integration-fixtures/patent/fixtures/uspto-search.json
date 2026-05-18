@@ -1,0 +1,20 @@
+{
+  "count": 1,
+  "patentFileWrapperDataBag": [
+    {
+      "applicationNumberText": "17/123456",
+      "applicationMetaData": {
+        "earliestPublicationNumber": "20240123456A1",
+        "inventionTitle": "Optical computing apparatus and methods",
+        "filingDate": "2023-06-15",
+        "earliestPublicationDate": "2024-04-18",
+        "grantDate": null,
+        "applicantName": [
+          {
+            "fullName": "Acme Photonics Inc."
+          }
+        ]
+      }
+    }
+  ]
+}

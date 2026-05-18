@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ops:world-patent-data xmlns:ops="http://ops.epo.org"
+                       xmlns:exchange="http://www.epo.org/exchange">
+  <ops:biblio-search total-result-count="1">
+    <ops:search-result>
+      <ops:exchange-document country="EP" doc-number="4123456" kind="A1">
+        <bibliographic-data>
+          <publication-reference>
+            <document-id document-id-type="docdb">
+              <country>EP</country>
+              <doc-number>4123456</doc-number>
+              <kind>A1</kind>
+              <date>20240418</date>
+            </document-id>
+          </publication-reference>
+          <application-reference>
+            <document-id document-id-type="docdb">
+              <country>EP</country>
+              <doc-number>22123456</doc-number>
+              <kind>A</kind>
+            </document-id>
+          </application-reference>
+          <invention-title lang="en">Quantum computing apparatus</invention-title>
+        </bibliographic-data>
+      </ops:exchange-document>
+    </ops:search-result>
+  </ops:biblio-search>
+</ops:world-patent-data>

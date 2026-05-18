@@ -1,0 +1,18 @@
+{
+  "query": "optical computing apparatus using photonic neural networks",
+  "n_results": 2,
+  "results": [
+    {
+      "patent_id": "US10000001",
+      "title": "Photonic neural network with reconfigurable couplers",
+      "abstract": "A photonic neural network architecture that uses thermally tunable couplers for low-power inference.",
+      "score": 0.873
+    },
+    {
+      "patent_id": "EP3500000A1",
+      "title": "Optical matrix-multiplier with on-chip modulators",
+      "abstract": "An optical computing apparatus performing matrix-vector multiplication on chip.",
+      "score": 0.831
+    }
+  ]
+}
