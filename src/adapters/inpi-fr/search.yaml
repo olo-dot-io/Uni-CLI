@@ -1,0 +1,66 @@
+# @owner       src::adapters::inpi-fr::search
+# @does        Search French patents (FR brevets) via the public INPI search API (open subset, no login).
+# @needs       src/engine/steps/fetch.ts, src/engine/steps/select.ts, src/engine/steps/map.ts, src/engine/steps/limit.ts
+# @feeds       src/commands/patent.ts
+# @breaks      throws PipelineError on 5xx or rate limit; INPI's full-feature endpoints require an authenticated session — this adapter implements only the public open-data subset
+# @invariants  output rows conform to PatentRecord; publication_number is `FR-<doc>-<kind>`
+# @side-effects HTTPS egress to api.inpi.fr / api-recherche.inpi.fr; no env reads
+# @perf        single request
+# @concurrency safe
+# @test        none yet
+# @stability   stable
+# @since       2026-05-18
+# @verification blocked-by-key — INPI public search API throttles anonymous traffic and the full record endpoints require a session cookie. Session-cookie login flow is not implemented in this adapter; the search endpoint exercised here is the open subset documented at data.inpi.fr.
+site: inpi-fr
+name: search
+description: Search French patents via the INPI public open-data search API
+domain: api.inpi.fr
+type: web-api
+strategy: public
+lint_listing_detail: skip
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Free-text query
+  limit:
+    type: int
+    default: 25
+    description: Maximum results
+
+pipeline:
+  - fetch:
+      url: "https://api-recherche.inpi.fr/services/patents/search"
+      method: GET
+      headers:
+        Accept: application/json
+      params:
+        q: "${{ args.query }}"
+        nbResultsParPage: "${{ args.limit }}"
+        page: "1"
+
+  - select: results
+
+  - map:
+      publication_number: "${{ 'FR-' + (item.publicationNumber || item.applicationNumber || '') + '-' + (item.kindCode || '') }}"
+      application_number: "${{ item.applicationNumber || '' }}"
+      title: "${{ item.title || item.titleFr || item.titleEn || '' }}"
+      filing_date: "${{ item.filingDate || item.applicationDate || '' }}"
+      publication_date: "${{ item.publicationDate || '' }}"
+      source_adapter: inpi-fr
+      source_url: "${{ 'https://data.inpi.fr/brevets/' + (item.publicationNumber || item.applicationNumber || '') }}"
+      retrieved_at: ""
+
+  - limit: "${{ args.limit }}"
+
+columns: [publication_number, title, filing_date, publication_date]
+
+# schema-v2 metadata
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

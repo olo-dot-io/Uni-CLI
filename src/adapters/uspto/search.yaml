@@ -1,0 +1,73 @@
+# @owner       src::adapters::uspto::search
+# @does        Search USPTO patents/applications via the Open Data Portal (ODP) `applications/search` endpoint.
+# @needs       src/engine/steps/fetch.ts, src/engine/steps/select.ts, src/engine/steps/map.ts, src/engine/steps/limit.ts
+# @feeds       src/commands/patent.ts (meta-command aggregator)
+# @breaks      throws PipelineError on 401/403 (missing/invalid X-API-KEY) or 5xx; ODP enforces a 6 MB response cap — narrow the query if hit
+# @invariants  output rows conform to PatentRecord; publication_number is canonicalized to ST.16 form `US-<doc>-<kind>`
+# @side-effects reads env USPTO_ODP_API_KEY; HTTPS egress to api.uspto.gov
+# @perf        single request, ODP returns up to 500 records per page
+# @concurrency single-call; no shared mutable state
+# @test        none yet (adapter ships; live verification gated on key)
+# @stability   stable
+# @since       2026-05-18
+# @verification blocked-by-key — needs USPTO_ODP_API_KEY (free tier at developer.uspto.gov)
+site: uspto
+name: search
+description: Search USPTO patents/applications via the Open Data Portal (ODP)
+domain: api.uspto.gov
+type: web-api
+strategy: public
+lint_listing_detail: skip
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Free-text query (mapped to ODP `q` field, matches title/abstract/claims)
+  limit:
+    type: int
+    default: 25
+    description: Maximum results to return (ODP allows up to 500 per page)
+  offset:
+    type: int
+    default: 0
+    description: Result offset for pagination
+
+pipeline:
+  - fetch:
+      url: "https://api.uspto.gov/api/v1/patent/applications/search"
+      method: GET
+      headers:
+        Accept: application/json
+        X-API-KEY: "${{ env.USPTO_ODP_API_KEY || '' }}"
+      params:
+        q: "${{ args.query }}"
+        limit: "${{ args.limit }}"
+        offset: "${{ args.offset }}"
+
+  - select: patentFileWrapperDataBag
+
+  - map:
+      publication_number: "${{ item.applicationMetaData && item.applicationMetaData.earliestPublicationNumber ? ('US-' + item.applicationMetaData.earliestPublicationNumber) : ('US-' + (item.applicationNumberText || '')) }}"
+      application_number: "${{ item.applicationNumberText || '' }}"
+      title: "${{ item.applicationMetaData ? (item.applicationMetaData.inventionTitle || '') : '' }}"
+      filing_date: "${{ item.applicationMetaData ? (item.applicationMetaData.filingDate || '') : '' }}"
+      publication_date: "${{ item.applicationMetaData ? (item.applicationMetaData.earliestPublicationDate || '') : '' }}"
+      grant_date: "${{ item.applicationMetaData ? (item.applicationMetaData.grantDate || '') : '' }}"
+      source_adapter: uspto
+      source_url: "${{ 'https://ppubs.uspto.gov/dirsearch-public/patents/' + (item.applicationNumberText || '') }}"
+      # retrieved_at is stamped by assemblePatentRecord in the normalizer; YAML emits the empty string
+      retrieved_at: ""
+
+  - limit: "${{ args.limit }}"
+
+columns: [publication_number, title, filing_date, publication_date]
+
+# schema-v2 metadata
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

@@ -1,0 +1,68 @@
+# @owner       src::adapters::dpma::search
+# @does        Search German patents via the DPMAconnectPlus REST API (XML / OAI-PMH-style envelope).
+# @needs       src/engine/steps/fetch.ts, src/engine/steps/select-xml.ts, src/engine/steps/map.ts, src/engine/steps/limit.ts
+# @feeds       src/commands/patent.ts
+# @breaks      throws PipelineError on 401/403 (missing DPMA_AUTHORIZATION precomputed `Basic <base64>` header), 4xx, 5xx
+# @invariants  output rows conform to PatentRecord; publication_number is `DE-<doc>-<kind>`
+# @side-effects reads env DPMA_AUTHORIZATION (precomputed `Basic <base64(user:pass)>`); HTTPS egress to dpmaconnect.dpma.de
+# @perf        single request
+# @concurrency safe
+# @test        none yet
+# @stability   stable
+# @since       2026-05-18
+# @verification blocked-by-subscription — DPMAconnectPlus requires a paid connection contract (~200 EUR setup). Adapter ships so contracted users can run it; precompute `DPMA_AUTHORIZATION="Basic $(printf '%s:%s' "$USER" "$PASS" | base64)"` before invocation.
+site: dpma
+name: search
+description: Search German patents via DPMAconnectPlus REST (subscription)
+domain: dpmaconnect.dpma.de
+type: web-api
+strategy: public
+lint_listing_detail: skip
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: DPMA query (free-text, mapped to title/abstract)
+  limit:
+    type: int
+    default: 25
+    description: Maximum results
+
+pipeline:
+  - fetch:
+      url: "https://dpmaconnect.dpma.de/dpmaconnectplus/rest/search/published"
+      method: GET
+      headers:
+        Accept: application/xml
+        Authorization: "${{ env.DPMA_AUTHORIZATION || '' }}"
+      params:
+        query: "${{ args.query }}"
+        maximumRecords: "${{ args.limit }}"
+        startRecord: "1"
+
+  - select-xml:
+      xpath: "//record"
+
+  - map:
+      publication_number: "${{ 'DE-' + (item.publicationNumber || '') + '-' + (item.kindCode || '') }}"
+      application_number: "${{ item.applicationNumber || '' }}"
+      title: "${{ item.title || item.titleDe || item.titleEn || '' }}"
+      filing_date: "${{ item.filingDate || '' }}"
+      publication_date: "${{ item.publicationDate || '' }}"
+      source_adapter: dpma
+      source_url: "${{ 'https://register.dpma.de/DPMAregister/pat/register?AKZ=' + (item.applicationNumber || '') }}"
+      retrieved_at: ""
+
+  - limit: "${{ args.limit }}"
+
+columns: [publication_number, title, filing_date, publication_date]
+
+# schema-v2 metadata
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

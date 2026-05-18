@@ -1,0 +1,70 @@
+# @owner       src::adapters::epo::search
+# @does        Search EPO Open Patent Services v3.2 published-data via CQL — returns DOCDB exchange-document records (St.36 XML).
+# @needs       src/engine/steps/oauth2-token.ts, src/engine/steps/fetch.ts, src/engine/steps/select-xml.ts, src/engine/steps/map.ts, src/engine/steps/limit.ts
+# @feeds       src/commands/patent.ts
+# @breaks      throws PipelineError on token-endpoint failure, 401/403 (auth) or 5xx; EPO OPS rate-limits free tier at 4 GB/week
+# @invariants  output rows conform to PatentRecord; publication_number is canonicalized to `<CC>-<doc>-<kind>`
+# @side-effects reads env EPO_OPS_CLIENT_ID / EPO_OPS_CLIENT_SECRET (or ~/.unicli/auth/epo.json); HTTPS to ops.epo.org
+# @perf        two HTTPS requests per call (token + data); token is cached via oauth2-cc broker
+# @concurrency safe; token cache deduplicates concurrent token fetches
+# @test        none yet
+# @stability   stable
+# @since       2026-05-18
+# @verification blocked-by-key — needs EPO_OPS_CLIENT_ID / EPO_OPS_CLIENT_SECRET (free tier at developers.epo.org)
+site: epo
+name: search
+description: Search EPO published patents via Open Patent Services v3.2 (CQL)
+domain: ops.epo.org
+type: web-api
+strategy: public
+lint_listing_detail: skip
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: EPO CQL query (e.g. "ti=quantum and pa=ibm")
+  limit:
+    type: int
+    default: 25
+    description: Maximum results (OPS caps at 100 per page)
+
+pipeline:
+  - oauth2-token:
+      site: epo
+      token_url: https://ops.epo.org/3.2/auth/accesstoken
+      client_id_env: EPO_OPS_CLIENT_ID
+      client_secret_env: EPO_OPS_CLIENT_SECRET
+
+  - fetch:
+      url: "https://ops.epo.org/3.2/rest-services/published-data/search?q=${{ args.query | urlencode }}&Range=1-${{ args.limit }}"
+      method: GET
+      headers:
+        Authorization: "Bearer ${{ auth.bearer || '' }}"
+        Accept: application/xml
+
+  - select-xml:
+      xpath: "//ops:exchange-document"
+      namespaces:
+        ops: "http://ops.epo.org"
+        exchange: "http://www.epo.org/exchange"
+
+  - map:
+      publication_number: "${{ ((item['bibliographic-data'] && item['bibliographic-data']['publication-reference'] && item['bibliographic-data']['publication-reference']['document-id']) ? (item['bibliographic-data']['publication-reference']['document-id'].country + '-' + item['bibliographic-data']['publication-reference']['document-id']['doc-number'] + '-' + (item['bibliographic-data']['publication-reference']['document-id'].kind || '')) : '') }}"
+      title: "${{ (item['bibliographic-data'] && item['bibliographic-data']['invention-title']) ? (item['bibliographic-data']['invention-title']['#text'] || item['bibliographic-data']['invention-title']) : '' }}"
+      source_adapter: epo
+      source_url: "${{ 'https://worldwide.espacenet.com/patent/search?q=' + (args.query || '') }}"
+      retrieved_at: ""
+
+  - limit: "${{ args.limit }}"
+
+columns: [publication_number, title]
+
+# schema-v2 metadata
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

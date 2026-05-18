@@ -1,0 +1,56 @@
+# @owner       src::adapters::uspto::get
+# @does        Fetch a single USPTO patent/application by application number via the ODP detail endpoint.
+# @needs       src/engine/steps/fetch.ts, src/engine/steps/map.ts
+# @feeds       src/commands/patent.ts
+# @breaks      throws PipelineError on 401/403 (missing/invalid X-API-KEY), 404 (number not found) or 5xx
+# @invariants  output row conforms to PatentRecord; publication_number is canonicalized to ST.16 form
+# @side-effects reads env USPTO_ODP_API_KEY; HTTPS egress to api.uspto.gov
+# @perf        single request
+# @concurrency safe
+# @test        none yet
+# @stability   stable
+# @since       2026-05-18
+# @verification blocked-by-key — needs USPTO_ODP_API_KEY
+site: uspto
+name: get
+description: Fetch a USPTO patent/application by application number
+domain: api.uspto.gov
+type: web-api
+strategy: public
+lint_listing_detail: skip
+
+args:
+  application_number:
+    type: str
+    required: true
+    positional: true
+    description: USPTO application number (e.g. 16/123,456 with or without slash)
+
+pipeline:
+  - fetch:
+      url: "https://api.uspto.gov/api/v1/patent/applications/${{ args.application_number | replace('/', '') | replace(',', '') }}"
+      method: GET
+      headers:
+        Accept: application/json
+        X-API-KEY: "${{ env.USPTO_ODP_API_KEY || '' }}"
+
+  - map:
+      publication_number: "${{ item.applicationMetaData && item.applicationMetaData.earliestPublicationNumber ? ('US-' + item.applicationMetaData.earliestPublicationNumber) : ('US-' + (item.applicationNumberText || '')) }}"
+      application_number: "${{ item.applicationNumberText || '' }}"
+      title: "${{ item.applicationMetaData ? (item.applicationMetaData.inventionTitle || '') : '' }}"
+      filing_date: "${{ item.applicationMetaData ? (item.applicationMetaData.filingDate || '') : '' }}"
+      publication_date: "${{ item.applicationMetaData ? (item.applicationMetaData.earliestPublicationDate || '') : '' }}"
+      grant_date: "${{ item.applicationMetaData ? (item.applicationMetaData.grantDate || '') : '' }}"
+      source_adapter: uspto
+      source_url: "${{ 'https://ppubs.uspto.gov/dirsearch-public/patents/' + (item.applicationNumberText || '') }}"
+      retrieved_at: ""
+
+columns: [publication_number, title, filing_date, publication_date]
+
+# schema-v2 metadata
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

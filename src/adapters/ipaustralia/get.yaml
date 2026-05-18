@@ -1,0 +1,60 @@
+# @owner       src::adapters::ipaustralia::get
+# @does        Fetch an Australian patent record by application number via the IP Australia API portal.
+# @needs       src/engine/steps/fetch.ts, src/engine/steps/select-xml.ts, src/engine/steps/map.ts
+# @feeds       src/commands/patent.ts
+# @breaks      throws PipelineError on 401/403, 404, 5xx
+# @invariants  output row conforms to PatentRecord
+# @side-effects reads env IPAUSTRALIA_API_KEY; HTTPS egress to api.ipaustralia.gov.au
+# @perf        single request
+# @concurrency safe
+# @test        none yet
+# @stability   stable
+# @since       2026-05-18
+# @verification blocked-by-key
+site: ipaustralia
+name: get
+description: Fetch an Australian patent by application number
+domain: api.ipaustralia.gov.au
+type: web-api
+strategy: public
+lint_listing_detail: skip
+
+args:
+  application_number:
+    type: str
+    required: true
+    positional: true
+    description: Australian application number (e.g. 2023000123)
+
+pipeline:
+  - fetch:
+      url: "https://api.ipaustralia.gov.au/patents/v1/patent/${{ args.application_number | urlencode }}"
+      method: GET
+      headers:
+        Accept: application/xml
+        x-api-key: "${{ env.IPAUSTRALIA_API_KEY || '' }}"
+
+  - select-xml:
+      xpath: "//patent"
+      unwrap_single: true
+
+  - map:
+      publication_number: "${{ 'AU-' + (item.publicationNumber || args.application_number || '') + '-' + (item.kindCode || '') }}"
+      application_number: "${{ item.applicationNumber || args.application_number || '' }}"
+      title: "${{ item.title || item.inventionTitle || '' }}"
+      filing_date: "${{ item.filingDate || item.applicationDate || '' }}"
+      publication_date: "${{ item.publicationDate || '' }}"
+      grant_date: "${{ item.grantDate || '' }}"
+      source_adapter: ipaustralia
+      source_url: "${{ 'https://search.ipaustralia.gov.au/patents/' + (args.application_number || '') }}"
+      retrieved_at: ""
+
+columns: [publication_number, title, filing_date, publication_date]
+
+# schema-v2 metadata
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

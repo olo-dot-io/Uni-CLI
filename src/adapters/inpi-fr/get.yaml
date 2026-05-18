@@ -1,0 +1,54 @@
+# @owner       src::adapters::inpi-fr::get
+# @does        Fetch a French patent record by publication number via the INPI public open-data API.
+# @needs       src/engine/steps/fetch.ts, src/engine/steps/map.ts
+# @feeds       src/commands/patent.ts
+# @breaks      throws PipelineError on 404 or 5xx; some legal-status / inventor fields require an INPI session-login this adapter does not perform
+# @invariants  output row conforms to PatentRecord
+# @side-effects HTTPS egress to api-recherche.inpi.fr
+# @perf        single request
+# @concurrency safe
+# @test        none yet
+# @stability   stable
+# @since       2026-05-18
+# @verification blocked-by-key — session-cookie auth not implemented; only the open public-record subset is reachable
+site: inpi-fr
+name: get
+description: Fetch a French patent record by publication number (open subset)
+domain: api.inpi.fr
+type: web-api
+strategy: public
+lint_listing_detail: skip
+
+args:
+  publication_number:
+    type: str
+    required: true
+    positional: true
+    description: French publication number (e.g. FR3098765)
+
+pipeline:
+  - fetch:
+      url: "https://api-recherche.inpi.fr/services/patents/${{ args.publication_number | urlencode }}"
+      method: GET
+      headers:
+        Accept: application/json
+
+  - map:
+      publication_number: "${{ 'FR-' + (item.publicationNumber || args.publication_number || '') + '-' + (item.kindCode || '') }}"
+      application_number: "${{ item.applicationNumber || '' }}"
+      title: "${{ item.title || item.titleFr || item.titleEn || '' }}"
+      filing_date: "${{ item.filingDate || item.applicationDate || '' }}"
+      publication_date: "${{ item.publicationDate || '' }}"
+      source_adapter: inpi-fr
+      source_url: "${{ 'https://data.inpi.fr/brevets/' + (args.publication_number || '') }}"
+      retrieved_at: ""
+
+columns: [publication_number, title, filing_date, publication_date]
+
+# schema-v2 metadata
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

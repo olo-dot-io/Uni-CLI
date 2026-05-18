@@ -1,0 +1,56 @@
+# @owner       src::adapters::uspto::legal-status
+# @does        Fetch USPTO transaction history (PAIR) for an application — used to derive legal-status (issued, abandoned, pending, etc.).
+# @needs       src/engine/steps/fetch.ts, src/engine/steps/select.ts, src/engine/steps/map.ts
+# @feeds       src/commands/patent.ts
+# @breaks      throws PipelineError on 401/403/404
+# @invariants  output rows conform to PatentRecord; legal_status carries the latest transaction description
+# @side-effects reads env USPTO_ODP_API_KEY; HTTPS egress to api.uspto.gov
+# @perf        single request
+# @concurrency safe
+# @test        none yet
+# @stability   stable
+# @since       2026-05-18
+# @verification blocked-by-key — needs USPTO_ODP_API_KEY
+site: uspto
+name: legal-status
+description: Legal-status / transaction history of a USPTO application
+domain: api.uspto.gov
+type: web-api
+strategy: public
+lint_listing_detail: skip
+
+args:
+  application_number:
+    type: str
+    required: true
+    positional: true
+    description: USPTO application number
+
+pipeline:
+  - fetch:
+      url: "https://api.uspto.gov/api/v1/patent/applications/${{ args.application_number | replace('/', '') | replace(',', '') }}/transactions"
+      method: GET
+      headers:
+        Accept: application/json
+        X-API-KEY: "${{ env.USPTO_ODP_API_KEY || '' }}"
+
+  - select: eventDataBag
+
+  - map:
+      publication_number: "${{ 'US-' + (args.application_number || '') }}"
+      application_number: "${{ args.application_number }}"
+      legal_status: "${{ item.eventDescriptionText || '' }}"
+      filing_date: "${{ item.eventDate || '' }}"
+      source_adapter: uspto
+      source_url: "${{ 'https://ppubs.uspto.gov/dirsearch-public/patents/' + (args.application_number || '') }}"
+      retrieved_at: ""
+
+columns: [publication_number, legal_status, filing_date]
+
+# schema-v2 metadata
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

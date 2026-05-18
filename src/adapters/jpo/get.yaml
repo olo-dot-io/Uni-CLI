@@ -1,0 +1,56 @@
+# @owner       src::adapters::jpo::get
+# @does        Fetch a single Japanese patent record from JPO Patent Information Retrieval API by application number.
+# @needs       src/engine/steps/fetch.ts, src/engine/steps/map.ts
+# @feeds       src/commands/patent.ts
+# @breaks      throws PipelineError on 401/403, 404, 5xx
+# @invariants  output row conforms to PatentRecord
+# @side-effects reads env JPO_API_TOKEN; HTTPS egress to ip-data.jpo.go.jp
+# @perf        single request
+# @concurrency safe
+# @test        none yet
+# @stability   stable
+# @since       2026-05-18
+# @verification blocked-by-key
+site: jpo
+name: get
+description: Fetch a JPO application by application number
+domain: ip-data.jpo.go.jp
+type: web-api
+strategy: public
+lint_listing_detail: skip
+
+args:
+  application_number:
+    type: str
+    required: true
+    positional: true
+    description: JPO application number (e.g. 特願2024-012345 numeric form 2024012345)
+
+pipeline:
+  - fetch:
+      url: "https://ip-data.jpo.go.jp/api/v2/patent/applications/${{ args.application_number | urlencode }}"
+      method: GET
+      headers:
+        Accept: application/json
+        Authorization: "Bearer ${{ env.JPO_API_TOKEN || '' }}"
+
+  - map:
+      publication_number: "${{ 'JP-' + (item.publicationNumber || item.applicationNumber || '') + '-' + (item.publicationKindCode || '') }}"
+      application_number: "${{ item.applicationNumber || args.application_number || '' }}"
+      title: "${{ item.inventionTitleJapanese || item.inventionTitleEnglish || '' }}"
+      filing_date: "${{ item.applicationDate || '' }}"
+      publication_date: "${{ item.publicationDate || '' }}"
+      grant_date: "${{ item.registrationDate || '' }}"
+      source_adapter: jpo
+      source_url: "${{ 'https://www.j-platpat.inpit.go.jp/p0200' }}"
+      retrieved_at: ""
+
+columns: [publication_number, title, filing_date, publication_date]
+
+# schema-v2 metadata
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

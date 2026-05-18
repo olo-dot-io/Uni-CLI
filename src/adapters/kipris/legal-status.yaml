@@ -1,0 +1,58 @@
+# @owner       src::adapters::kipris::legal-status
+# @does        Fetch Korean patent legal-status (right-trans/registration events) from KIPRIS Plus REST.
+# @needs       src/engine/steps/fetch.ts, src/engine/steps/select-xml.ts, src/engine/steps/map.ts
+# @feeds       src/commands/patent.ts
+# @breaks      throws PipelineError on missing key, 4xx, 5xx
+# @invariants  output rows carry legal_status from rightTransRegInfo
+# @side-effects reads env KIPRIS_ACCESS_KEY; HTTPS egress
+# @perf        single request
+# @concurrency safe
+# @test        none yet
+# @stability   stable
+# @since       2026-05-18
+# @verification blocked-by-key
+site: kipris
+name: legal-status
+description: KIPRIS right-trans / registration events for a Korean application
+domain: plus.kipris.or.kr
+type: web-api
+strategy: public
+lint_listing_detail: skip
+
+args:
+  application_number:
+    type: str
+    required: true
+    positional: true
+    description: Korean application number
+
+pipeline:
+  - fetch:
+      url: "https://plus.kipris.or.kr/openapi/rest/patUtiModInfoSearchSevice/getRightTransRegInfoSearchInfo"
+      method: GET
+      headers:
+        Accept: application/xml
+      params:
+        applicationNumber: "${{ args.application_number }}"
+        accessKey: "${{ env.KIPRIS_ACCESS_KEY || '' }}"
+
+  - select-xml:
+      xpath: "//item"
+
+  - map:
+      publication_number: "${{ 'KR-' + (args.application_number || '') }}"
+      application_number: "${{ args.application_number }}"
+      legal_status: "${{ (item.rightCode || '') + ' ' + (item.contents || '') }}"
+      source_adapter: kipris
+      source_url: "${{ 'https://kpat.kipris.or.kr/kpat/biblioa.do?method=biblioFrame&applno=' + (args.application_number || '') }}"
+      retrieved_at: ""
+
+columns: [publication_number, legal_status]
+
+# schema-v2 metadata
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

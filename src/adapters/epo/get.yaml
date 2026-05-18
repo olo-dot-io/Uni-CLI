@@ -1,0 +1,63 @@
+# @owner       src::adapters::epo::get
+# @does        Fetch DOCDB biblio for a single EPO publication number via Open Patent Services v3.2.
+# @needs       src/engine/steps/oauth2-token.ts, src/engine/steps/fetch.ts, src/engine/steps/select-xml.ts, src/engine/steps/map.ts
+# @feeds       src/commands/patent.ts
+# @breaks      throws PipelineError on token failure, 404 (unknown publication), 401/403, 5xx
+# @invariants  output row conforms to PatentRecord
+# @side-effects reads EPO OAuth2 credentials; HTTPS to ops.epo.org
+# @perf        two HTTPS requests (token + data); cached token
+# @concurrency safe
+# @test        none yet
+# @stability   stable
+# @since       2026-05-18
+# @verification blocked-by-key
+site: epo
+name: get
+description: Fetch EPO DOCDB biblio for a single publication number
+domain: ops.epo.org
+type: web-api
+strategy: public
+lint_listing_detail: skip
+
+args:
+  publication_number:
+    type: str
+    required: true
+    positional: true
+    description: Publication number in epodoc format (e.g. EP.4123456.A1 or US.20240123456.A1)
+
+pipeline:
+  - oauth2-token:
+      site: epo
+      token_url: https://ops.epo.org/3.2/auth/accesstoken
+      client_id_env: EPO_OPS_CLIENT_ID
+      client_secret_env: EPO_OPS_CLIENT_SECRET
+
+  - fetch:
+      url: "https://ops.epo.org/3.2/rest-services/published-data/publication/epodoc/${{ args.publication_number | urlencode }}/biblio"
+      method: GET
+      headers:
+        Authorization: "Bearer ${{ auth.bearer || '' }}"
+        Accept: application/xml
+
+  - select-xml:
+      xpath: "//ops:exchange-document"
+      namespaces:
+        ops: "http://ops.epo.org"
+
+  - map:
+      publication_number: "${{ ((item['bibliographic-data'] && item['bibliographic-data']['publication-reference'] && item['bibliographic-data']['publication-reference']['document-id']) ? (item['bibliographic-data']['publication-reference']['document-id'].country + '-' + item['bibliographic-data']['publication-reference']['document-id']['doc-number'] + '-' + (item['bibliographic-data']['publication-reference']['document-id'].kind || '')) : (args.publication_number || '')) }}"
+      title: "${{ (item['bibliographic-data'] && item['bibliographic-data']['invention-title']) ? (item['bibliographic-data']['invention-title']['#text'] || item['bibliographic-data']['invention-title']) : '' }}"
+      source_adapter: epo
+      source_url: "${{ 'https://worldwide.espacenet.com/patent/search/publication/' + (args.publication_number || '') }}"
+      retrieved_at: ""
+
+columns: [publication_number, title]
+
+# schema-v2 metadata
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

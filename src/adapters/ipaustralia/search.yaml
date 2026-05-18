@@ -1,0 +1,68 @@
+# @owner       src::adapters::ipaustralia::search
+# @does        Search Australian patents via the IP Australia API Portal (Open Data services).
+# @needs       src/engine/steps/fetch.ts, src/engine/steps/select-xml.ts, src/engine/steps/map.ts, src/engine/steps/limit.ts
+# @feeds       src/commands/patent.ts
+# @breaks      throws PipelineError on 401/403 (missing IPAUSTRALIA_API_KEY), 4xx, 5xx
+# @invariants  output rows conform to PatentRecord; publication_number is `AU-<doc>-<kind>`
+# @side-effects reads env IPAUSTRALIA_API_KEY; HTTPS egress to api.ipaustralia.gov.au
+# @perf        single request
+# @concurrency safe
+# @test        none yet
+# @stability   stable
+# @since       2026-05-18
+# @verification blocked-by-key — needs IPAUSTRALIA_API_KEY (free registration at api.ipaustralia.gov.au)
+site: ipaustralia
+name: search
+description: Search Australian patents via the IP Australia API portal
+domain: api.ipaustralia.gov.au
+type: web-api
+strategy: public
+lint_listing_detail: skip
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Free-text query (title/abstract)
+  limit:
+    type: int
+    default: 25
+    description: Maximum results
+
+pipeline:
+  - fetch:
+      url: "https://api.ipaustralia.gov.au/patents/v1/search"
+      method: GET
+      headers:
+        Accept: application/xml
+        x-api-key: "${{ env.IPAUSTRALIA_API_KEY || '' }}"
+      params:
+        q: "${{ args.query }}"
+        size: "${{ args.limit }}"
+
+  - select-xml:
+      xpath: "//patent"
+
+  - map:
+      publication_number: "${{ 'AU-' + (item.publicationNumber || item.applicationNumber || '') + '-' + (item.kindCode || '') }}"
+      application_number: "${{ item.applicationNumber || '' }}"
+      title: "${{ item.title || item.inventionTitle || '' }}"
+      filing_date: "${{ item.filingDate || item.applicationDate || '' }}"
+      publication_date: "${{ item.publicationDate || '' }}"
+      grant_date: "${{ item.grantDate || '' }}"
+      source_adapter: ipaustralia
+      source_url: "${{ 'https://search.ipaustralia.gov.au/patents/' + (item.applicationNumber || '') }}"
+      retrieved_at: ""
+
+  - limit: "${{ args.limit }}"
+
+columns: [publication_number, title, filing_date, publication_date]
+
+# schema-v2 metadata
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

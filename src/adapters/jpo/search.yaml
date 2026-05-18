@@ -1,0 +1,66 @@
+# @owner       src::adapters::jpo::search
+# @does        Search JPO Patent Information Retrieval API for Japanese patent applications.
+# @needs       src/engine/steps/fetch.ts, src/engine/steps/select.ts, src/engine/steps/map.ts, src/engine/steps/limit.ts
+# @feeds       src/commands/patent.ts
+# @breaks      throws PipelineError on 401/403 (missing JPO_API_TOKEN), 404, 5xx; rate-limited per terms-of-use
+# @invariants  output rows conform to PatentRecord; publication_number is `JP-<doc>-<kind>`
+# @side-effects reads env JPO_API_TOKEN; HTTPS egress to ip-data.jpo.go.jp
+# @perf        single request
+# @concurrency safe
+# @test        none yet
+# @stability   stable
+# @since       2026-05-18
+# @verification blocked-by-key — needs JPO_API_TOKEN (registration at jpo.go.jp/e/system/laws/koho/internet/api-patent_info.html); exact path verified at live exercise time
+site: jpo
+name: search
+description: Search JPO Patent Information Retrieval API
+domain: ip-data.jpo.go.jp
+type: web-api
+strategy: public
+lint_listing_detail: skip
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Free-text query (JPO maps to title/abstract/applicant fields)
+  limit:
+    type: int
+    default: 25
+    description: Maximum results
+
+pipeline:
+  - fetch:
+      url: "https://ip-data.jpo.go.jp/api/v2/patent/applications/search"
+      method: GET
+      headers:
+        Accept: application/json
+        Authorization: "Bearer ${{ env.JPO_API_TOKEN || '' }}"
+      params:
+        q: "${{ args.query }}"
+        size: "${{ args.limit }}"
+
+  - select: results
+
+  - map:
+      publication_number: "${{ 'JP-' + (item.publicationNumber || item.applicationNumber || '') + '-' + (item.publicationKindCode || '') }}"
+      application_number: "${{ item.applicationNumber || '' }}"
+      title: "${{ item.inventionTitleJapanese || item.inventionTitleEnglish || '' }}"
+      filing_date: "${{ item.applicationDate || '' }}"
+      publication_date: "${{ item.publicationDate || '' }}"
+      source_adapter: jpo
+      source_url: "${{ 'https://www.j-platpat.inpit.go.jp/p0200' }}"
+      retrieved_at: ""
+
+  - limit: "${{ args.limit }}"
+
+columns: [publication_number, title, filing_date, publication_date]
+
+# schema-v2 metadata
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

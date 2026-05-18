@@ -1,0 +1,63 @@
+# @owner       src::adapters::epo::legal-status
+# @does        Fetch INPADOC legal-status events for a publication via EPO Open Patent Services v3.2.
+# @needs       src/engine/steps/oauth2-token.ts, src/engine/steps/fetch.ts, src/engine/steps/select-xml.ts, src/engine/steps/map.ts
+# @feeds       src/commands/patent.ts
+# @breaks      throws PipelineError on token failure, 404, 401/403, 5xx
+# @invariants  output rows are legal-status events in PatentRecord shape; legal_status holds the latest event code/description
+# @side-effects reads EPO OAuth2 credentials; HTTPS to ops.epo.org
+# @perf        two HTTPS requests
+# @concurrency safe
+# @test        none yet
+# @stability   stable
+# @since       2026-05-18
+# @verification blocked-by-key
+site: epo
+name: legal-status
+description: INPADOC legal-status events for an EPO publication
+domain: ops.epo.org
+type: web-api
+strategy: public
+lint_listing_detail: skip
+
+args:
+  publication_number:
+    type: str
+    required: true
+    positional: true
+    description: Publication number in epodoc format
+
+pipeline:
+  - oauth2-token:
+      site: epo
+      token_url: https://ops.epo.org/3.2/auth/accesstoken
+      client_id_env: EPO_OPS_CLIENT_ID
+      client_secret_env: EPO_OPS_CLIENT_SECRET
+
+  - fetch:
+      url: "https://ops.epo.org/3.2/rest-services/legal/publication/epodoc/${{ args.publication_number | urlencode }}"
+      method: GET
+      headers:
+        Authorization: "Bearer ${{ auth.bearer || '' }}"
+        Accept: application/xml
+
+  - select-xml:
+      xpath: "//ops:legal"
+      namespaces:
+        ops: "http://ops.epo.org"
+
+  - map:
+      publication_number: "${{ args.publication_number || '' }}"
+      legal_status: "${{ (item['legal-event-code'] || '') + ' ' + (item['L007EP'] || item['L008EP'] || '') }}"
+      source_adapter: epo
+      source_url: "${{ 'https://worldwide.espacenet.com/patent/search/publication/' + (args.publication_number || '') }}"
+      retrieved_at: ""
+
+columns: [publication_number, legal_status]
+
+# schema-v2 metadata
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

@@ -1,0 +1,70 @@
+# @owner       src::adapters::kipris::search
+# @does        Search KIPRIS Plus REST patent search endpoint for Korean patents/utility models.
+# @needs       src/engine/steps/fetch.ts, src/engine/steps/select-xml.ts, src/engine/steps/map.ts, src/engine/steps/limit.ts
+# @feeds       src/commands/patent.ts
+# @breaks      throws PipelineError on missing/invalid accessKey, 4xx, 5xx
+# @invariants  output rows conform to PatentRecord; publication_number is `KR-<doc>-<kind>`
+# @side-effects reads env KIPRIS_ACCESS_KEY; HTTPS egress to plus.kipris.or.kr
+# @perf        single request
+# @concurrency safe
+# @test        none yet
+# @stability   stable
+# @since       2026-05-18
+# @verification blocked-by-key — needs KIPRIS_ACCESS_KEY (registration at plus.kipris.or.kr)
+site: kipris
+name: search
+description: Search KIPRIS Plus REST for Korean patents/utility models
+domain: plus.kipris.or.kr
+type: web-api
+strategy: public
+lint_listing_detail: skip
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Free-text query (KIPRIS `word` param)
+  limit:
+    type: int
+    default: 25
+    description: Maximum results (numOfRows)
+
+pipeline:
+  - fetch:
+      url: "https://plus.kipris.or.kr/openapi/rest/patUtiModInfoSearchSevice/getWordSearch"
+      method: GET
+      headers:
+        Accept: application/xml
+      params:
+        word: "${{ args.query }}"
+        numOfRows: "${{ args.limit }}"
+        pageNo: "1"
+        accessKey: "${{ env.KIPRIS_ACCESS_KEY || '' }}"
+
+  - select-xml:
+      xpath: "//item"
+
+  - map:
+      publication_number: "${{ 'KR-' + (item.openNumber || item.applicationNumber || '') + '-' + (item.openType || '') }}"
+      application_number: "${{ item.applicationNumber || '' }}"
+      title: "${{ item.inventionTitle || '' }}"
+      abstract: "${{ item.astrtCont || '' }}"
+      filing_date: "${{ item.applicationDate || '' }}"
+      publication_date: "${{ item.openDate || '' }}"
+      grant_date: "${{ item.registerDate || '' }}"
+      source_adapter: kipris
+      source_url: "${{ 'https://kpat.kipris.or.kr/kpat/biblioa.do?method=biblioFrame&applno=' + (item.applicationNumber || '') }}"
+      retrieved_at: ""
+
+  - limit: "${{ args.limit }}"
+
+columns: [publication_number, title, filing_date, publication_date]
+
+# schema-v2 metadata
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

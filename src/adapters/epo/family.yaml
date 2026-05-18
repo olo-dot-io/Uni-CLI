@@ -1,0 +1,63 @@
+# @owner       src::adapters::epo::family
+# @does        Fetch INPADOC simple family for a publication via EPO Open Patent Services v3.2.
+# @needs       src/engine/steps/oauth2-token.ts, src/engine/steps/fetch.ts, src/engine/steps/select-xml.ts, src/engine/steps/map.ts
+# @feeds       src/commands/patent.ts
+# @breaks      throws PipelineError on token failure, 404, 401/403, 5xx
+# @invariants  output rows are family members in PatentRecord shape with `family_id` populated
+# @side-effects reads EPO OAuth2 credentials; HTTPS to ops.epo.org
+# @perf        two HTTPS requests
+# @concurrency safe
+# @test        none yet
+# @stability   stable
+# @since       2026-05-18
+# @verification blocked-by-key
+site: epo
+name: family
+description: INPADOC simple family for an EPO publication
+domain: ops.epo.org
+type: web-api
+strategy: public
+lint_listing_detail: skip
+
+args:
+  publication_number:
+    type: str
+    required: true
+    positional: true
+    description: Publication number in epodoc format
+
+pipeline:
+  - oauth2-token:
+      site: epo
+      token_url: https://ops.epo.org/3.2/auth/accesstoken
+      client_id_env: EPO_OPS_CLIENT_ID
+      client_secret_env: EPO_OPS_CLIENT_SECRET
+
+  - fetch:
+      url: "https://ops.epo.org/3.2/rest-services/family/publication/epodoc/${{ args.publication_number | urlencode }}"
+      method: GET
+      headers:
+        Authorization: "Bearer ${{ auth.bearer || '' }}"
+        Accept: application/xml
+
+  - select-xml:
+      xpath: "//ops:family-member"
+      namespaces:
+        ops: "http://ops.epo.org"
+
+  - map:
+      publication_number: "${{ ((item['publication-reference'] && item['publication-reference']['document-id']) ? (item['publication-reference']['document-id'].country + '-' + item['publication-reference']['document-id']['doc-number'] + '-' + (item['publication-reference']['document-id'].kind || '')) : '') }}"
+      family_id: "${{ item['@_family-id'] || '' }}"
+      source_adapter: epo
+      source_url: "${{ 'https://worldwide.espacenet.com/patent/search/family/' + (item['@_family-id'] || '') }}"
+      retrieved_at: ""
+
+columns: [publication_number, family_id]
+
+# schema-v2 metadata
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2
