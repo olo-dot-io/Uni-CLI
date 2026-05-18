@@ -62,7 +62,7 @@ pipeline:
 columns: [publication_number, title, filing_date, publication_date]
 
 # schema-v2 metadata
-capabilities: ["http.fetch"]
+capabilities: ["http.fetch", "patent.search"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

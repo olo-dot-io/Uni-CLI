@@ -48,7 +48,7 @@ pipeline:
 columns: [publication_number, legal_status, filing_date]
 
 # schema-v2 metadata
-capabilities: ["http.fetch"]
+capabilities: ["http.fetch", "patent.legal-status"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

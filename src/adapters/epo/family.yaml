@@ -55,7 +55,7 @@ pipeline:
 columns: [publication_number, family_id]
 
 # schema-v2 metadata
-capabilities: ["http.fetch"]
+capabilities: ["http.fetch", "patent.family"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public
