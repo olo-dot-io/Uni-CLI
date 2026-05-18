@@ -14,7 +14,7 @@ running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 282 sites, 1680 commands.
+This catalog is generated from the adapter manifest: 302 sites, 1738 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -49,9 +49,11 @@ This catalog is generated from the adapter manifest: 282 sites, 1680 commands.
 | chatgpt | web-api | 17 | yes | unicli chatgpt image<br>unicli chatgpt history<br>unicli chatgpt detail |
 | chatwise | web-api | 16 | no | unicli chatwise history<br>unicli chatwise export<br>unicli chatwise ask |
 | chrome | desktop | 2 | no | unicli chrome bookmarks<br>unicli chrome tabs |
+| cipo | web-api | 3 | no | unicli cipo get<br>unicli cipo legal-status<br>unicli cipo search |
 | claude | web-api | 14 | yes | unicli claude ask<br>unicli claude send<br>unicli claude new |
 | claude-code | bridge | 1 | no | unicli claude-code version |
 | cloudcompare | desktop | 4 | no | unicli cloudcompare compare<br>unicli cloudcompare convert<br>unicli cloudcompare info |
+| cnipa | web-api | 3 | no | unicli cnipa get<br>unicli cnipa legal-status<br>unicli cnipa search |
 | cnki | web-api | 1 | no | unicli cnki search |
 | cnn | web-api | 2 | no | unicli cnn technology<br>unicli cnn top |
 | cocoapods | web-api | 2 | no | unicli cocoapods info<br>unicli cocoapods search |
@@ -86,20 +88,25 @@ This catalog is generated from the adapter manifest: 282 sites, 1680 commands.
 | doubao-web | web-api | 9 | yes | unicli doubao-web ask<br>unicli doubao-web detail<br>unicli doubao-web history |
 | douyin | web-api | 13 | yes | unicli douyin activities<br>unicli douyin collections<br>unicli douyin delete |
 | douyu | web-api | 2 | yes | unicli douyu hot<br>unicli douyu search |
+| dpma | web-api | 2 | no | unicli dpma get<br>unicli dpma search |
 | drawio | desktop | 1 | no | unicli drawio export |
 | eastmoney | web-api | 18 | no | unicli eastmoney fund<br>unicli eastmoney hot<br>unicli eastmoney market |
 | ehentai | web-api | 6 | no | unicli ehentai search<br>unicli ehentai artist<br>unicli ehentai tag |
 | ele | web-api | 2 | yes | unicli ele hot<br>unicli ele search |
 | endoflife | web-api | 1 | no | unicli endoflife product |
+| epo | web-api | 4 | no | unicli epo family<br>unicli epo get<br>unicli epo legal-status |
+| espacenet | web-api | 4 | no | unicli espacenet family<br>unicli espacenet get<br>unicli espacenet legal-status |
 | excel | desktop | 7 | no | unicli excel insert-image<br>unicli excel insert-link<br>unicli excel list |
 | exchangerate | web-api | 2 | no | unicli exchangerate convert<br>unicli exchangerate list |
-| facebook | web-api | 14 | yes | unicli facebook add-friend<br>unicli facebook events<br>unicli facebook feed |
+| facebook | web-api | 15 | yes | unicli facebook add-friend<br>unicli facebook events<br>unicli facebook feed |
 | feishu | bridge | 4 | no | unicli feishu calendar<br>unicli feishu docs<br>unicli feishu send |
 | ffmpeg | desktop | 11 | no | unicli ffmpeg compress<br>unicli ffmpeg concat<br>unicli ffmpeg convert |
 | figma | browser | 8 | yes | unicli figma export-selected<br>unicli figma open-app<br>unicli figma status-app |
+| fips | web-api | 2 | no | unicli fips get<br>unicli fips search |
 | flathub | web-api | 2 | no | unicli flathub search<br>unicli flathub app |
 | flyctl | bridge | 1 | no | unicli flyctl apps |
 | freecad | desktop | 15 | no | unicli freecad assembly<br>unicli freecad bom<br>unicli freecad boolean |
+| freepatentsonline-web | web-api | 2 | no | unicli freepatentsonline-web get<br>unicli freepatentsonline-web search |
 | futu | web-api | 2 | yes | unicli futu hot<br>unicli futu quote |
 | gemini | web-api | 5 | yes | unicli gemini ask<br>unicli gemini deep-research-result<br>unicli gemini deep-research |
 | gh | bridge | 6 | no | unicli gh issue<br>unicli gh pr<br>unicli gh release |
@@ -109,6 +116,8 @@ This catalog is generated from the adapter manifest: 282 sites, 1680 commands.
 | gitlab | web-api | 3 | no | unicli gitlab projects<br>unicli gitlab search<br>unicli gitlab trending |
 | godot | desktop | 2 | no | unicli godot project-run<br>unicli godot scene-export |
 | google | web-api | 4 | no | unicli google news<br>unicli google search<br>unicli google suggest |
+| google-patents-bq | web-api | 2 | yes | unicli google-patents-bq prior-art<br>unicli google-patents-bq search |
+| google-patents-web | web-api | 2 | no | unicli google-patents-web get<br>unicli google-patents-web search |
 | google-scholar | web-api | 3 | no | unicli google-scholar cite<br>unicli google-scholar profile<br>unicli google-scholar search |
 | goproxy | web-api | 2 | no | unicli goproxy module<br>unicli goproxy versions |
 | gov-law | web-api | 2 | no | unicli gov-law search<br>unicli gov-law recent |
@@ -126,23 +135,29 @@ This catalog is generated from the adapter manifest: 282 sites, 1680 commands.
 | indeed | web-api | 2 | yes | unicli indeed search<br>unicli indeed job |
 | infoq | web-api | 2 | no | unicli infoq articles<br>unicli infoq latest |
 | inkscape | desktop | 3 | no | unicli inkscape convert<br>unicli inkscape export<br>unicli inkscape optimize |
-| instagram | web-api | 28 | yes | unicli instagram activity<br>unicli instagram comment<br>unicli instagram explore |
+| inpi-br | web-api | 2 | no | unicli inpi-br get<br>unicli inpi-br search |
+| inpi-fr | web-api | 2 | no | unicli inpi-fr get<br>unicli inpi-fr search |
+| instagram | web-api | 29 | yes | unicli instagram activity<br>unicli instagram comment<br>unicli instagram explore |
 | ip-info | web-api | 1 | no | unicli ip-info lookup |
+| ipaustralia | web-api | 2 | no | unicli ipaustralia get<br>unicli ipaustralia search |
 | itch-io | web-api | 3 | no | unicli itch-io popular<br>unicli itch-io search<br>unicli itch-io top |
 | ithome | web-api | 3 | no | unicli ithome hot<br>unicli ithome latest<br>unicli ithome news |
 | jd | web-api | 7 | yes | unicli jd hot<br>unicli jd item<br>unicli jd search |
 | jianyu | browser | 2 | yes | unicli jianyu search<br>unicli jianyu detail |
 | jike | browser | 10 | yes | unicli jike feed<br>unicli jike notifications<br>unicli jike post |
 | jimeng | web-api | 4 | yes | unicli jimeng generate<br>unicli jimeng history<br>unicli jimeng new |
+| jpo | web-api | 2 | no | unicli jpo get<br>unicli jpo search |
 | jq | bridge | 2 | no | unicli jq format<br>unicli jq query |
 | juejin | web-api | 2 | no | unicli juejin hot<br>unicli juejin search |
 | kdenlive | desktop | 3 | no | unicli kdenlive effects<br>unicli kdenlive info<br>unicli kdenlive render |
 | ke | browser | 4 | yes | unicli ke ershoufang<br>unicli ke xiaoqu<br>unicli ke zufang |
+| kipris | web-api | 3 | no | unicli kipris get<br>unicli kipris legal-status<br>unicli kipris search |
 | konachan | web-api | 4 | no | unicli konachan detail<br>unicli konachan download<br>unicli konachan search |
 | krita | desktop | 4 | no | unicli krita batch<br>unicli krita convert<br>unicli krita export |
 | kuaishou | web-api | 2 | yes | unicli kuaishou hot<br>unicli kuaishou search |
 | lark | bridge | 8 | no | unicli lark version<br>unicli lark open-app<br>unicli lark status-app |
 | leetcode | web-api | 1 | no | unicli leetcode discuss-search |
+| lens | web-api | 2 | yes | unicli lens get<br>unicli lens search |
 | lesswrong | web-api | 15 | no | unicli lesswrong comments<br>unicli lesswrong curated<br>unicli lesswrong frontpage |
 | libreoffice | desktop | 2 | no | unicli libreoffice convert<br>unicli libreoffice print |
 | lichess | web-api | 2 | no | unicli lichess top<br>unicli lichess user |
@@ -154,7 +169,7 @@ This catalog is generated from the adapter manifest: 282 sites, 1680 commands.
 | maimai | browser | 2 | yes | unicli maimai search<br>unicli maimai search-talents |
 | mangadex | web-api | 2 | no | unicli mangadex manga<br>unicli mangadex authors |
 | maoyan | web-api | 2 | yes | unicli maoyan hot<br>unicli maoyan search |
-| mastodon | web-api | 4 | no | unicli mastodon search<br>unicli mastodon timeline<br>unicli mastodon trending |
+| mastodon | web-api | 5 | no | unicli mastodon search<br>unicli mastodon timeline<br>unicli mastodon trending |
 | maven | web-api | 3 | no | unicli maven info<br>unicli maven search<br>unicli maven artifact |
 | mdn | web-api | 1 | no | unicli mdn search |
 | medium | web-api | 6 | no | unicli medium article<br>unicli medium feed<br>unicli medium search |
@@ -192,6 +207,7 @@ This catalog is generated from the adapter manifest: 282 sites, 1680 commands.
 | packagist | web-api | 3 | no | unicli packagist info<br>unicli packagist search<br>unicli packagist package |
 | pandoc | desktop | 1 | no | unicli pandoc convert |
 | paperreview | web-api | 3 | no | unicli paperreview feedback<br>unicli paperreview review<br>unicli paperreview submit |
+| patsnap | web-api | 2 | yes | unicli patsnap get<br>unicli patsnap search |
 | pdf | desktop | 1 | no | unicli pdf read |
 | perplexity | web-api | 8 | yes | unicli perplexity ask<br>unicli perplexity open-app<br>unicli perplexity status-app |
 | pexels | web-api | 2 | yes | unicli pexels curated<br>unicli pexels search |
@@ -199,6 +215,7 @@ This catalog is generated from the adapter manifest: 282 sites, 1680 commands.
 | pixiv | web-api | 6 | yes | unicli pixiv detail<br>unicli pixiv download<br>unicli pixiv illusts |
 | powerchina | web-api | 1 | yes | unicli powerchina search |
 | powerpoint | desktop | 7 | no | unicli powerpoint add-slide<br>unicli powerpoint insert-image<br>unicli powerpoint insert-link |
+| pqai | web-api | 2 | no | unicli pqai prior-art<br>unicli pqai search |
 | producthunt | web-api | 5 | no | unicli producthunt browse<br>unicli producthunt hot<br>unicli producthunt posts |
 | pscale | bridge | 1 | no | unicli pscale databases |
 | pub-dev | web-api | 2 | no | unicli pub-dev info<br>unicli pub-dev search |
@@ -236,17 +253,19 @@ This catalog is generated from the adapter manifest: 282 sites, 1680 commands.
 | tdx | web-api | 1 | yes | unicli tdx hot-rank |
 | techcrunch | web-api | 2 | no | unicli techcrunch latest<br>unicli techcrunch search |
 | theverge | web-api | 2 | no | unicli theverge latest<br>unicli theverge search |
-| threads | web-api | 2 | yes | unicli threads hot<br>unicli threads search |
+| threads | web-api | 6 | yes | unicli threads hot<br>unicli threads search<br>unicli threads user |
 | ths | web-api | 1 | yes | unicli ths hot-rank |
 | tieba | web-api | 4 | no | unicli tieba hot<br>unicli tieba posts<br>unicli tieba read |
-| tiktok | web-api | 17 | yes | unicli tiktok comment<br>unicli tiktok explore<br>unicli tiktok follow |
+| tiktok | web-api | 18 | yes | unicli tiktok comment<br>unicli tiktok explore<br>unicli tiktok follow |
 | toutiao | web-api | 3 | yes | unicli toutiao hot<br>unicli toutiao search<br>unicli toutiao articles |
 | tvmaze | web-api | 2 | no | unicli tvmaze search<br>unicli tvmaze show |
 | twitch | web-api | 4 | yes | unicli twitch games<br>unicli twitch search<br>unicli twitch streams |
 | twitter | web-api | 44 | yes | unicli twitter lists<br>unicli twitter media<br>unicli twitter mentions |
 | uisdc | web-api | 1 | no | unicli uisdc news |
 | uiverse | web-api | 2 | no | unicli uiverse code<br>unicli uiverse preview |
+| ukipo | web-api | 1 | no | unicli ukipo info |
 | unsplash | web-api | 2 | no | unicli unsplash random<br>unicli unsplash search |
+| uspto | web-api | 3 | no | unicli uspto get<br>unicli uspto legal-status<br>unicli uspto search |
 | v2ex | web-api | 12 | yes | unicli v2ex daily<br>unicli v2ex hot<br>unicli v2ex latest |
 | vercel | bridge | 1 | no | unicli vercel list |
 | vndb | web-api | 7 | no | unicli vndb search<br>unicli vndb vn<br>unicli vndb releases |
@@ -259,6 +278,7 @@ This catalog is generated from the adapter manifest: 282 sites, 1680 commands.
 | weread | web-api | 8 | yes | unicli weread book<br>unicli weread highlights<br>unicli weread notebooks |
 | wikidata | web-api | 2 | no | unicli wikidata search<br>unicli wikidata entity |
 | wikipedia | web-api | 6 | no | unicli wikipedia random<br>unicli wikipedia search<br>unicli wikipedia summary |
+| wipo-patentscope | web-api | 1 | no | unicli wipo-patentscope info |
 | wiremock | service | 5 | no | unicli wiremock create-stub<br>unicli wiremock delete-stub<br>unicli wiremock reset |
 | word | desktop | 7 | no | unicli word insert-image<br>unicli word insert-link<br>unicli word insert-text |
 | wrangler | bridge | 1 | no | unicli wrangler list |
@@ -272,10 +292,10 @@ This catalog is generated from the adapter manifest: 282 sites, 1680 commands.
 | yandere | web-api | 4 | no | unicli yandere detail<br>unicli yandere download<br>unicli yandere search |
 | ycombinator | web-api | 1 | no | unicli ycombinator launches |
 | yollomi | web-api | 12 | yes | unicli yollomi background<br>unicli yollomi edit<br>unicli yollomi face-swap |
-| youtube | web-api | 16 | yes | unicli youtube playlist<br>unicli youtube shorts<br>unicli youtube trending |
-| yt-dlp | bridge | 4 | no | unicli yt-dlp download<br>unicli yt-dlp extract-audio<br>unicli yt-dlp info |
+| youtube | web-api | 17 | yes | unicli youtube playlist<br>unicli youtube shorts<br>unicli youtube trending |
+| yt-dlp | bridge | 5 | no | unicli yt-dlp download<br>unicli yt-dlp extract-audio<br>unicli yt-dlp info |
 | yuanbao | web-api | 8 | yes | unicli yuanbao ask<br>unicli yuanbao new<br>unicli yuanbao shared |
-| zhihu | web-api | 25 | yes | unicli zhihu answer<br>unicli zhihu answers<br>unicli zhihu article |
+| zhihu | web-api | 27 | yes | unicli zhihu answer<br>unicli zhihu answers<br>unicli zhihu article |
 | zlibrary | web-api | 2 | yes | unicli zlibrary search<br>unicli zlibrary info |
 | zoom | desktop | 3 | no | unicli zoom join<br>unicli zoom start<br>unicli zoom toggle-mute |
 | zotero | service | 8 | no | unicli zotero add-note<br>unicli zotero add-tag<br>unicli zotero collections |

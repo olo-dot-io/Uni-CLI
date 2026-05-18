@@ -9,7 +9,7 @@ description: >
   asks for related records; when the task is prior-art discovery against
   a candidate abstract; or when the user says "find patents on", "patent
   family", "prior art", "查专利", "专利族".
-version: 0.220.1
+version: 0.221.0
 category: research
 depends-on:
   - unicli

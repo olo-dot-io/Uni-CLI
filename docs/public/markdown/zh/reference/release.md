@@ -58,7 +58,7 @@ npm run changeset
 | `0.200-0.213` | Vostok  |
 | `0.216+`      | Apollo  |
 
-`0.220.1` 的发布 label 是 `Apollo · Lovell Patch`。
+`0.221.0` 的发布 label 是 `Apollo · Anders`。
 
 ## 发布步骤
 

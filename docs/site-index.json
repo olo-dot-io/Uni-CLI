@@ -1,7 +1,7 @@
 {
-  "generated": "2026-05-13T17:22:37.627Z",
-  "total_sites": 282,
-  "total_commands": 1680,
+  "generated": "2026-05-18T13:53:58.500Z",
+  "total_sites": 302,
+  "total_commands": 1738,
   "sites": [
     {
       "site": "1688",
@@ -1402,6 +1402,31 @@
       ]
     },
     {
+      "site": "cipo",
+      "type": "web-api",
+      "domain": "cipo.ic.gc.ca",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve a single Canadian patent document (CIPO, browser)",
+          "command": "unicli cipo get"
+        },
+        {
+          "name": "legal-status",
+          "description": "CIPO Canadian patent administrative-status lookup (browser)",
+          "command": "unicli cipo legal-status"
+        },
+        {
+          "name": "search",
+          "description": "Search the Canadian Patents Database (CIPO, browser, no API)",
+          "command": "unicli cipo search"
+        }
+      ]
+    },
+    {
       "site": "claude",
       "type": "web-api",
       "domain": "claude.ai",
@@ -1520,6 +1545,31 @@
           "name": "subsample",
           "description": "Subsample (reduce) a point cloud by minimum distance or random",
           "command": "unicli cloudcompare subsample"
+        }
+      ]
+    },
+    {
+      "site": "cnipa",
+      "type": "web-api",
+      "domain": "pss-system.cponline.cnipa.gov.cn",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve a single CNIPA patent document by publication number",
+          "command": "unicli cnipa get"
+        },
+        {
+          "name": "legal-status",
+          "description": "CNIPA legal-status / prosecution timeline lookup (browser)",
+          "command": "unicli cnipa legal-status"
+        },
+        {
+          "name": "search",
+          "description": "Search CNIPA via the public",
+          "command": "unicli cnipa search"
         }
       ]
     },
@@ -2836,6 +2886,26 @@
       ]
     },
     {
+      "site": "dpma",
+      "type": "web-api",
+      "domain": "dpmaconnect.dpma.de",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "get",
+          "description": "Fetch a German patent record by publication number (subscription)",
+          "command": "unicli dpma get"
+        },
+        {
+          "name": "search",
+          "description": "Search German patents via DPMAconnectPlus REST (subscription)",
+          "command": "unicli dpma search"
+        }
+      ]
+    },
+    {
       "site": "drawio",
       "type": "desktop",
       "auth": false,
@@ -3024,6 +3094,66 @@
       ]
     },
     {
+      "site": "epo",
+      "type": "web-api",
+      "domain": "ops.epo.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 4,
+      "commands": [
+        {
+          "name": "family",
+          "description": "INPADOC simple family for an EPO publication",
+          "command": "unicli epo family"
+        },
+        {
+          "name": "get",
+          "description": "Fetch EPO DOCDB biblio for a single publication number",
+          "command": "unicli epo get"
+        },
+        {
+          "name": "legal-status",
+          "description": "INPADOC legal-status events for an EPO publication",
+          "command": "unicli epo legal-status"
+        },
+        {
+          "name": "search",
+          "description": "Search EPO published patents via Open Patent Services v3.2 (CQL)",
+          "command": "unicli epo search"
+        }
+      ]
+    },
+    {
+      "site": "espacenet",
+      "type": "web-api",
+      "domain": "worldwide.espacenet.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 4,
+      "commands": [
+        {
+          "name": "family",
+          "description": "Espacenet DOCDB simple-family lookup (browser)",
+          "command": "unicli espacenet family"
+        },
+        {
+          "name": "get",
+          "description": "Retrieve a single Espacenet publication detail (browser, no key)",
+          "command": "unicli espacenet get"
+        },
+        {
+          "name": "legal-status",
+          "description": "Espacenet INPADOC legal-status lookup (browser)",
+          "command": "unicli espacenet legal-status"
+        },
+        {
+          "name": "search",
+          "description": "Search Espacenet (EPO public no-key front end) for worldwide patents",
+          "command": "unicli espacenet search"
+        }
+      ]
+    },
+    {
       "site": "excel",
       "type": "desktop",
       "auth": false,
@@ -3092,8 +3222,8 @@
       "type": "web-api",
       "domain": "www.facebook.com",
       "auth": true,
-      "strategy": "cookie",
-      "command_count": 14,
+      "strategy": "public",
+      "command_count": 15,
       "commands": [
         {
           "name": "add-friend",
@@ -3164,6 +3294,11 @@
           "name": "marketplace-inbox",
           "description": "List recent Facebook Marketplace buyer and seller conversations",
           "command": "unicli facebook marketplace-inbox"
+        },
+        {
+          "name": "subtitles",
+          "description": "Extract LLM-readable subtitles from a Facebook video URL with optional browser-cookie reuse",
+          "command": "unicli facebook subtitles"
         }
       ]
     },
@@ -3312,6 +3447,26 @@
       ]
     },
     {
+      "site": "fips",
+      "type": "web-api",
+      "domain": "www.fips.ru",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve a single Rospatent FIPS document (browser-only)",
+          "command": "unicli fips get"
+        },
+        {
+          "name": "search",
+          "description": "Search Rospatent FIPS Russian patent database (browser, no API)",
+          "command": "unicli fips search"
+        }
+      ]
+    },
+    {
       "site": "flathub",
       "type": "web-api",
       "domain": "flathub.org",
@@ -3425,6 +3580,26 @@
           "name": "sketch",
           "description": "Export 2D sketch geometry to SVG or DXF",
           "command": "unicli freecad sketch"
+        }
+      ]
+    },
+    {
+      "site": "freepatentsonline-web",
+      "type": "web-api",
+      "domain": "www.freepatentsonline.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve a single FreePatentsOnline bibliographic record (keyless, no Chrome)",
+          "command": "unicli freepatentsonline-web get"
+        },
+        {
+          "name": "search",
+          "description": "Keyless FreePatentsOnline search via the public SSR listing (no API key, no Chrome)",
+          "command": "unicli freepatentsonline-web search"
         }
       ]
     },
@@ -3715,6 +3890,46 @@
           "name": "trends",
           "description": "Google Trends daily trending searches",
           "command": "unicli google trends"
+        }
+      ]
+    },
+    {
+      "site": "google-patents-bq",
+      "type": "web-api",
+      "domain": "bigquery.googleapis.com",
+      "auth": true,
+      "strategy": "header",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "prior-art",
+          "description": "Keyword-arm of the prior-art fusion against BigQuery public dataset",
+          "command": "unicli google-patents-bq prior-art"
+        },
+        {
+          "name": "search",
+          "description": "BigQuery search over the Google Patents Public Datasets corpus",
+          "command": "unicli google-patents-bq search"
+        }
+      ]
+    },
+    {
+      "site": "google-patents-web",
+      "type": "web-api",
+      "domain": "patents.google.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve a single Google Patents bibliographic record (keyless, no Chrome)",
+          "command": "unicli google-patents-web get"
+        },
+        {
+          "name": "search",
+          "description": "Keyless Google Patents search via the public XHR endpoint (no API key, no Chrome required)",
+          "command": "unicli google-patents-web search"
         }
       ]
     },
@@ -4249,12 +4464,52 @@
       ]
     },
     {
+      "site": "inpi-br",
+      "type": "web-api",
+      "domain": "busca.inpi.gov.br",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve a single INPI Brasil patent record (browser-only)",
+          "command": "unicli inpi-br get"
+        },
+        {
+          "name": "search",
+          "description": "Search INPI Brasil patents (browser-only, no upstream API)",
+          "command": "unicli inpi-br search"
+        }
+      ]
+    },
+    {
+      "site": "inpi-fr",
+      "type": "web-api",
+      "domain": "api.inpi.fr",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "get",
+          "description": "Fetch a French patent record by publication number (open subset)",
+          "command": "unicli inpi-fr get"
+        },
+        {
+          "name": "search",
+          "description": "Search French patents via the INPI public open-data search API",
+          "command": "unicli inpi-fr search"
+        }
+      ]
+    },
+    {
       "site": "instagram",
       "type": "web-api",
       "domain": "www.instagram.com",
       "auth": true,
-      "strategy": "ui",
-      "command_count": 28,
+      "strategy": "public",
+      "command_count": 29,
       "commands": [
         {
           "name": "activity",
@@ -4395,6 +4650,11 @@
           "name": "story",
           "description": "Post a single Instagram story image or video",
           "command": "unicli instagram story"
+        },
+        {
+          "name": "subtitles",
+          "description": "Extract LLM-readable subtitles from an Instagram reel or video URL with optional browser-cookie reuse",
+          "command": "unicli instagram subtitles"
         }
       ]
     },
@@ -4410,6 +4670,26 @@
           "name": "lookup",
           "description": "IP geolocation lookup (free, no key)",
           "command": "unicli ip-info lookup"
+        }
+      ]
+    },
+    {
+      "site": "ipaustralia",
+      "type": "web-api",
+      "domain": "api.ipaustralia.gov.au",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "get",
+          "description": "Fetch an Australian patent by application number",
+          "command": "unicli ipaustralia get"
+        },
+        {
+          "name": "search",
+          "description": "Search Australian patents via the IP Australia API portal",
+          "command": "unicli ipaustralia search"
         }
       ]
     },
@@ -4619,6 +4899,26 @@
       ]
     },
     {
+      "site": "jpo",
+      "type": "web-api",
+      "domain": "ip-data.jpo.go.jp",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "get",
+          "description": "Fetch a JPO application by application number",
+          "command": "unicli jpo get"
+        },
+        {
+          "name": "search",
+          "description": "Search JPO Patent Information Retrieval API",
+          "command": "unicli jpo search"
+        }
+      ]
+    },
+    {
       "site": "jq",
       "type": "bridge",
       "auth": false,
@@ -4703,6 +5003,31 @@
           "name": "chengjiao",
           "description": "Browse Ke.com recent transaction records",
           "command": "unicli ke chengjiao"
+        }
+      ]
+    },
+    {
+      "site": "kipris",
+      "type": "web-api",
+      "domain": "plus.kipris.or.kr",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "get",
+          "description": "Fetch a KIPRIS biblio record by application number",
+          "command": "unicli kipris get"
+        },
+        {
+          "name": "legal-status",
+          "description": "KIPRIS right-trans / registration events for a Korean application",
+          "command": "unicli kipris legal-status"
+        },
+        {
+          "name": "search",
+          "description": "Search KIPRIS Plus REST for Korean patents/utility models",
+          "command": "unicli kipris search"
         }
       ]
     },
@@ -4845,6 +5170,26 @@
           "name": "discuss-search",
           "description": "LeetCode Discuss",
           "command": "unicli leetcode discuss-search"
+        }
+      ]
+    },
+    {
+      "site": "lens",
+      "type": "web-api",
+      "domain": "api.lens.org",
+      "auth": true,
+      "strategy": "header",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve a single Lens.org patent record by publication number",
+          "command": "unicli lens get"
+        },
+        {
+          "name": "search",
+          "description": "Search Lens.org's combined patent corpus via the Scholarly Works DSL",
+          "command": "unicli lens search"
         }
       ]
     },
@@ -5547,7 +5892,7 @@
       "domain": "mastodon.social",
       "auth": false,
       "strategy": "public",
-      "command_count": 4,
+      "command_count": 5,
       "commands": [
         {
           "name": "search",
@@ -5568,6 +5913,11 @@
           "name": "user",
           "description": "Get Mastodon user profile",
           "command": "unicli mastodon user"
+        },
+        {
+          "name": "statuses",
+          "description": "Get recent public statuses from a Mastodon account",
+          "command": "unicli mastodon statuses"
         }
       ]
     },
@@ -6788,6 +7138,26 @@
       ]
     },
     {
+      "site": "patsnap",
+      "type": "web-api",
+      "domain": "connect.zhihuiya.com",
+      "auth": true,
+      "strategy": "header",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve one PatSnap patent record by publication number",
+          "command": "unicli patsnap get"
+        },
+        {
+          "name": "search",
+          "description": "PatSnap Eureka patent search via OAuth2 client_credentials",
+          "command": "unicli patsnap search"
+        }
+      ]
+    },
+    {
       "site": "pdf",
       "type": "desktop",
       "auth": false,
@@ -6987,6 +7357,26 @@
           "name": "status",
           "description": "Check Microsoft PowerPoint running state without enumerating presentations",
           "command": "unicli powerpoint status"
+        }
+      ]
+    },
+    {
+      "site": "pqai",
+      "type": "web-api",
+      "domain": "api.projectpq.ai",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "prior-art",
+          "description": "Semantic prior-art retrieval via PQAI's embedding-based ranker",
+          "command": "unicli pqai prior-art"
+        },
+        {
+          "name": "search",
+          "description": "Keyword + semantic patent search through PQAI's hybrid index",
+          "command": "unicli pqai search"
         }
       ]
     },
@@ -7278,7 +7668,7 @@
         },
         {
           "name": "comments",
-          "description": "Reddit post comments",
+          "description": "Reddit post comments with nested reply hierarchy",
           "command": "unicli reddit comments"
         },
         {
@@ -8285,8 +8675,8 @@
       "type": "web-api",
       "domain": "threads.net",
       "auth": true,
-      "strategy": "intercept",
-      "command_count": 2,
+      "strategy": "public",
+      "command_count": 6,
       "commands": [
         {
           "name": "hot",
@@ -8297,6 +8687,26 @@
           "name": "search",
           "description": "Search Threads for posts matching a query",
           "command": "unicli threads search"
+        },
+        {
+          "name": "user",
+          "description": "Get recent posts from a Threads user profile",
+          "command": "unicli threads user"
+        },
+        {
+          "name": "profile",
+          "description": "Get public Threads profile metadata",
+          "command": "unicli threads profile"
+        },
+        {
+          "name": "post",
+          "description": "Get a public Threads post from its metadata",
+          "command": "unicli threads post"
+        },
+        {
+          "name": "media",
+          "description": "List public media exposed by a Threads post",
+          "command": "unicli threads media"
         }
       ]
     },
@@ -8350,8 +8760,8 @@
       "type": "web-api",
       "domain": "www.tiktok.com",
       "auth": true,
-      "strategy": "cookie",
-      "command_count": 17,
+      "strategy": "public",
+      "command_count": 18,
       "commands": [
         {
           "name": "comment",
@@ -8437,6 +8847,11 @@
           "name": "creator-videos",
           "description": "Read TikTok Studio creator content metrics",
           "command": "unicli tiktok creator-videos"
+        },
+        {
+          "name": "subtitles",
+          "description": "Extract LLM-readable subtitles from a TikTok video URL with optional browser-cookie reuse",
+          "command": "unicli tiktok subtitles"
         }
       ]
     },
@@ -8781,6 +9196,21 @@
       ]
     },
     {
+      "site": "ukipo",
+      "type": "web-api",
+      "domain": "search-for-intellectual-property.service.gov.uk",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "info",
+          "description": "UK IPO registry placeholder — Ipsum retired 2025-01; OneIPO API on 2026 roadmap",
+          "command": "unicli ukipo info"
+        }
+      ]
+    },
+    {
       "site": "unsplash",
       "type": "web-api",
       "domain": "unsplash.com",
@@ -8797,6 +9227,31 @@
           "name": "search",
           "description": "Search free photos on Unsplash",
           "command": "unicli unsplash search"
+        }
+      ]
+    },
+    {
+      "site": "uspto",
+      "type": "web-api",
+      "domain": "api.uspto.gov",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "get",
+          "description": "Fetch a USPTO patent/application by application number",
+          "command": "unicli uspto get"
+        },
+        {
+          "name": "legal-status",
+          "description": "Legal-status / transaction history of a USPTO application",
+          "command": "unicli uspto legal-status"
+        },
+        {
+          "name": "search",
+          "description": "Search USPTO patents/applications via the Open Data Portal (ODP)",
+          "command": "unicli uspto search"
         }
       ]
     },
@@ -9258,6 +9713,21 @@
       ]
     },
     {
+      "site": "wipo-patentscope",
+      "type": "web-api",
+      "domain": "patentscope.wipo.int",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "info",
+          "description": "WIPO PATENTSCOPE registry placeholder — no public REST API; SOAP requires subscription",
+          "command": "unicli wipo-patentscope info"
+        }
+      ]
+    },
+    {
       "site": "wiremock",
       "type": "service",
       "auth": false,
@@ -9489,7 +9959,7 @@
         },
         {
           "name": "trending",
-          "description": "Xiaohongshu trending searches",
+          "description": "Xiaohongshu trending searches and visible hot notes",
           "command": "unicli xiaohongshu trending"
         },
         {
@@ -9815,7 +10285,7 @@
       "domain": "www.youtube.com",
       "auth": true,
       "strategy": "public",
-      "command_count": 16,
+      "command_count": 17,
       "commands": [
         {
           "name": "playlist",
@@ -9888,6 +10358,11 @@
           "command": "unicli youtube search"
         },
         {
+          "name": "subtitles",
+          "description": "Extract LLM-readable subtitles from a YouTube video URL with optional browser-cookie reuse",
+          "command": "unicli youtube subtitles"
+        },
+        {
           "name": "transcript",
           "description": "Get YouTube video transcript/subtitles",
           "command": "unicli youtube transcript"
@@ -9904,7 +10379,7 @@
       "type": "bridge",
       "auth": false,
       "strategy": "public",
-      "command_count": 4,
+      "command_count": 5,
       "commands": [
         {
           "name": "download",
@@ -9925,6 +10400,11 @@
           "name": "search",
           "description": "Search YouTube and return video metadata",
           "command": "unicli yt-dlp search"
+        },
+        {
+          "name": "subtitles",
+          "description": "Extract subtitles from any yt-dlp-supported video URL with optional browser-cookie reuse",
+          "command": "unicli yt-dlp subtitles"
         }
       ]
     },
@@ -9984,7 +10464,7 @@
       "domain": "www.zhihu.com",
       "auth": true,
       "strategy": "cookie",
-      "command_count": 25,
+      "command_count": 27,
       "commands": [
         {
           "name": "answer",
@@ -10018,7 +10498,7 @@
         },
         {
           "name": "comment",
-          "description": "Get comments on a Zhihu answer or article",
+          "description": "Get Zhihu comments with normalized nested reply hierarchy",
           "command": "unicli zhihu comment"
         },
         {
@@ -10107,9 +10587,19 @@
           "command": "unicli zhihu favorite"
         },
         {
+          "name": "answer-detail",
+          "description": "answer-detail",
+          "command": "unicli zhihu answer-detail"
+        },
+        {
           "name": "collection",
           "description": "List items in a Zhihu collection",
           "command": "unicli zhihu collection"
+        },
+        {
+          "name": "recommend",
+          "description": "recommend",
+          "command": "unicli zhihu recommend"
         }
       ]
     },

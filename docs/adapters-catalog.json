@@ -1,8 +1,8 @@
 {
-  "source": "unicli@0.220.1",
-  "generated": "2026-05-13T17:22:37.627Z",
-  "total_sites": 282,
-  "total_commands": 1680,
+  "source": "unicli@0.221.0",
+  "generated": "2026-05-18T13:53:58.500Z",
+  "total_sites": 302,
+  "total_commands": 1738,
   "adapters": [
     {
       "site": "1688",
@@ -3080,7 +3080,21 @@
           "auth": true,
           "strategy": "cookie",
           "browser": false,
-          "columns": ["user", "content", "likes", "replies"],
+          "columns": [
+            "platform",
+            "content_id",
+            "comment_id",
+            "parent_id",
+            "depth",
+            "path",
+            "author",
+            "text",
+            "likes",
+            "replies",
+            "created",
+            "user",
+            "content"
+          ],
           "args": [
             {
               "name": "bvid",
@@ -3094,6 +3108,13 @@
               "required": false,
               "positional": false,
               "description": "Number of comments"
+            },
+            {
+              "name": "with-replies",
+              "type": "bool",
+              "required": false,
+              "positional": false,
+              "description": "Include nested replies for each root comment"
             }
           ]
         },
@@ -5323,6 +5344,95 @@
       ]
     },
     {
+      "site": "cipo",
+      "type": "web-api",
+      "domain": "cipo.ic.gc.ca",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve a single Canadian patent document (CIPO, browser)",
+          "when_to_use": "When you need details about a specific item on cipo.",
+          "command": "unicli cipo get",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "publication_date",
+            "grant_date",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "publication_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "CA publication number (with or without CA prefix)"
+            }
+          ]
+        },
+        {
+          "name": "legal-status",
+          "description": "CIPO Canadian patent administrative-status lookup (browser)",
+          "when_to_use": "CIPO Canadian patent administrative-status lookup (browser)",
+          "command": "unicli cipo legal-status",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "legal_status",
+            "status_date",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "publication_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "CA publication number"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search the Canadian Patents Database (CIPO, browser, no API)",
+          "when_to_use": "When you need to search cipo for a specific query.",
+          "command": "unicli cipo search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "publication_date",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Free-text query — matched on title/abstract/applicant"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max results (1-100)"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "claude",
       "type": "web-api",
       "domain": "claude.ai",
@@ -5696,6 +5806,102 @@
               "required": false,
               "positional": false,
               "description": "Method parameter (min distance for SPATIAL, ratio for RANDOM, level for OCTREE)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "cnipa",
+      "type": "web-api",
+      "domain": "pss-system.cponline.cnipa.gov.cn",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve a single CNIPA patent document by publication number",
+          "when_to_use": "When you need details about a specific item on cnipa.",
+          "command": "unicli cnipa get",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "publication_date",
+            "legal_status",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "publication_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "ST.16 publication number (e.g. CN114123456A)"
+            }
+          ]
+        },
+        {
+          "name": "legal-status",
+          "description": "CNIPA legal-status / prosecution timeline lookup (browser)",
+          "when_to_use": "CNIPA legal-status / prosecution timeline lookup (browser)",
+          "command": "unicli cnipa legal-status",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "legal_status",
+            "status_date",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "publication_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "ST.16 publication number"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search CNIPA via the public 公众查询 browser interface (no API)",
+          "when_to_use": "When you need to search cnipa for a specific query.",
+          "command": "unicli cnipa search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "publication_date",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Free-text query — matched against title/abstract/claims"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum results to return (1-100)"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Result offset for pagination"
             }
           ]
         }
@@ -10539,6 +10745,70 @@
       ]
     },
     {
+      "site": "dpma",
+      "type": "web-api",
+      "domain": "dpmaconnect.dpma.de",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "get",
+          "description": "Fetch a German patent record by publication number (subscription)",
+          "when_to_use": "When you need details about a specific item on dpma.",
+          "command": "unicli dpma get",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "filing_date",
+            "publication_date"
+          ],
+          "args": [
+            {
+              "name": "publication_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "German publication number (e.g. DE102023012345)"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search German patents via DPMAconnectPlus REST (subscription)",
+          "when_to_use": "When you need to search dpma for a specific query.",
+          "command": "unicli dpma search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "filing_date",
+            "publication_date"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "DPMA query (free-text, mapped to title/abstract)"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum results"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "drawio",
       "type": "desktop",
       "auth": false,
@@ -11668,6 +11938,210 @@
       ]
     },
     {
+      "site": "epo",
+      "type": "web-api",
+      "domain": "ops.epo.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "family",
+          "description": "INPADOC simple family for an EPO publication",
+          "when_to_use": "INPADOC simple family for an EPO publication",
+          "command": "unicli epo family",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["publication_number", "family_id"],
+          "args": [
+            {
+              "name": "publication_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Publication number in epodoc format"
+            }
+          ]
+        },
+        {
+          "name": "get",
+          "description": "Fetch EPO DOCDB biblio for a single publication number",
+          "when_to_use": "When you need details about a specific item on epo.",
+          "command": "unicli epo get",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["publication_number", "title"],
+          "args": [
+            {
+              "name": "publication_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Publication number in epodoc format (e.g. EP.4123456.A1 or US.20240123456.A1)"
+            }
+          ]
+        },
+        {
+          "name": "legal-status",
+          "description": "INPADOC legal-status events for an EPO publication",
+          "when_to_use": "INPADOC legal-status events for an EPO publication",
+          "command": "unicli epo legal-status",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["publication_number", "legal_status"],
+          "args": [
+            {
+              "name": "publication_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Publication number in epodoc format"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search EPO published patents via Open Patent Services v3.2 (CQL)",
+          "when_to_use": "When you need to search epo for a specific query.",
+          "command": "unicli epo search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["publication_number", "title"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "EPO CQL query (e.g. \"ti=quantum and pa=ibm\")"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum results (OPS caps at 100 per page)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "espacenet",
+      "type": "web-api",
+      "domain": "worldwide.espacenet.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "family",
+          "description": "Espacenet DOCDB simple-family lookup (browser)",
+          "when_to_use": "Espacenet DOCDB simple-family lookup (browser)",
+          "command": "unicli espacenet family",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "jurisdiction",
+            "relationship",
+            "publication_date"
+          ],
+          "args": [
+            {
+              "name": "publication_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "ST.16 publication number"
+            }
+          ]
+        },
+        {
+          "name": "get",
+          "description": "Retrieve a single Espacenet publication detail (browser, no key)",
+          "when_to_use": "When you need details about a specific item on espacenet.",
+          "command": "unicli espacenet get",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "publication_date",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "publication_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "ST.16 publication number (e.g. EP4123456A1)"
+            }
+          ]
+        },
+        {
+          "name": "legal-status",
+          "description": "Espacenet INPADOC legal-status lookup (browser)",
+          "when_to_use": "Espacenet INPADOC legal-status lookup (browser)",
+          "command": "unicli espacenet legal-status",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "legal_status",
+            "status_date",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "publication_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "ST.16 publication number"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search Espacenet (EPO public no-key front end) for worldwide patents",
+          "when_to_use": "When you need to search espacenet for a specific query.",
+          "command": "unicli espacenet search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "publication_date",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Espacenet smart-search query (CQL-lite syntax)"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max results (1-100)"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "excel",
       "type": "desktop",
       "auth": false,
@@ -11899,7 +12373,7 @@
       "type": "web-api",
       "domain": "www.facebook.com",
       "auth": true,
-      "strategy": "cookie",
+      "strategy": "public",
       "commands": [
         {
           "name": "add-friend",
@@ -12190,6 +12664,39 @@
               "type": "int",
               "required": false,
               "positional": false
+            }
+          ]
+        },
+        {
+          "name": "subtitles",
+          "description": "Extract LLM-readable subtitles from a Facebook video URL with optional browser-cookie reuse",
+          "when_to_use": "Extract LLM-readable subtitles from a Facebook video URL with optional browser-cookie reuse",
+          "command": "unicli facebook subtitles",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["language", "text", "path"],
+          "args": [
+            {
+              "name": "url",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Facebook video URL"
+            },
+            {
+              "name": "languages",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Comma-separated subtitle languages"
+            },
+            {
+              "name": "cookies-from-browser",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Browser name for yt-dlp --cookies-from-browser"
             }
           ]
         }
@@ -12813,6 +13320,71 @@
       ]
     },
     {
+      "site": "fips",
+      "type": "web-api",
+      "domain": "www.fips.ru",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve a single Rospatent FIPS document (browser-only)",
+          "when_to_use": "When you need details about a specific item on fips.",
+          "command": "unicli fips get",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "publication_date",
+            "filing_date",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "publication_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Russian patent publication number"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search Rospatent FIPS Russian patent database (browser, no API)",
+          "when_to_use": "When you need to search fips for a specific query.",
+          "command": "unicli fips search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "publication_date",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Free-text query for FIPS Russian patent search"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max results (1-100)"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "flathub",
       "type": "web-api",
       "domain": "flathub.org",
@@ -13315,6 +13887,66 @@
               "required": true,
               "positional": false,
               "description": "Output file path (SVG or DXF)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "freepatentsonline-web",
+      "type": "web-api",
+      "domain": "www.freepatentsonline.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve a single FreePatentsOnline bibliographic record (keyless, no Chrome)",
+          "when_to_use": "When you need details about a specific item on freepatentsonline-web.",
+          "command": "unicli freepatentsonline-web get",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "publication_date",
+            "assignees",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "publication_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "ST.16 publication number, compact or segmented (e.g. US20240220787 or EP3716153A1)"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Keyless FreePatentsOnline search via the public SSR listing (no API key, no Chrome)",
+          "when_to_use": "When you need to search freepatentsonline-web for a specific query.",
+          "command": "unicli freepatentsonline-web search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["publication_number", "title", "abstract", "source_url"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Free-text query (FreePatentsOnline xprtsrch syntax)"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max results to return (1-50, FPO paginates at 50)"
             }
           ]
         }
@@ -14592,6 +15224,156 @@
               "required": false,
               "positional": false,
               "description": "Number of trends"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "google-patents-bq",
+      "type": "web-api",
+      "domain": "bigquery.googleapis.com",
+      "auth": true,
+      "strategy": "header",
+      "commands": [
+        {
+          "name": "prior-art",
+          "description": "Keyword-arm of the prior-art fusion against BigQuery public dataset",
+          "when_to_use": "Keyword-arm of the prior-art fusion against BigQuery public dataset",
+          "command": "unicli google-patents-bq prior-art",
+          "auth": true,
+          "strategy": "header",
+          "browser": false,
+          "columns": ["publication_number", "title", "abstract"],
+          "args": [
+            {
+              "name": "abstract",
+              "type": "str",
+              "required": true,
+              "positional": false,
+              "description": "Candidate abstract — long-form natural language"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "project",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "BigQuery search over the Google Patents Public Datasets corpus",
+          "when_to_use": "When you need to search google-patents-bq for a specific query.",
+          "command": "unicli google-patents-bq search",
+          "auth": true,
+          "strategy": "header",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "publication_date",
+            "source_adapter"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Substring matched against title and abstract (case-insensitive)"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "project",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "GCP project ID — falls back to $GCLOUD_PROJECT"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "google-patents-web",
+      "type": "web-api",
+      "domain": "patents.google.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve a single Google Patents bibliographic record (keyless, no Chrome)",
+          "when_to_use": "When you need details about a specific item on google-patents-web.",
+          "command": "unicli google-patents-web get",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "publication_date",
+            "assignees",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "publication_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "ST.16 publication number, compact or segmented (e.g. US11741188B2 or US-11741188-B2)"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Keyless Google Patents search via the public XHR endpoint (no API key, no Chrome required)",
+          "when_to_use": "When you need to search google-patents-web for a specific query.",
+          "command": "unicli google-patents-web search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "publication_date",
+            "assignees",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Free-text query (Google Patents smart-search syntax)"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max results to return (1-100)"
+            },
+            {
+              "name": "since",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Earliest publication year (YYYY); translated to after:publication:YYYY0101"
             }
           ]
         }
@@ -16634,11 +17416,140 @@
       ]
     },
     {
+      "site": "inpi-br",
+      "type": "web-api",
+      "domain": "busca.inpi.gov.br",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve a single INPI Brasil patent record (browser-only)",
+          "when_to_use": "When you need details about a specific item on inpi-br.",
+          "command": "unicli inpi-br get",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "publication_date",
+            "filing_date",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "publication_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Brazil patent application/publication number"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search INPI Brasil patents (browser-only, no upstream API)",
+          "when_to_use": "When you need to search inpi-br for a specific query.",
+          "command": "unicli inpi-br search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "publication_date",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Free-text query for INPI Brasil patent search"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max results (1-100)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "inpi-fr",
+      "type": "web-api",
+      "domain": "api.inpi.fr",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "get",
+          "description": "Fetch a French patent record by publication number (open subset)",
+          "when_to_use": "When you need details about a specific item on inpi-fr.",
+          "command": "unicli inpi-fr get",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "filing_date",
+            "publication_date"
+          ],
+          "args": [
+            {
+              "name": "publication_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "French publication number (e.g. FR3098765)"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search French patents via the INPI public open-data search API",
+          "when_to_use": "When you need to search inpi-fr for a specific query.",
+          "command": "unicli inpi-fr search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "filing_date",
+            "publication_date"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Free-text query"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum results"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "instagram",
       "type": "web-api",
       "domain": "www.instagram.com",
       "auth": true,
-      "strategy": "ui",
+      "strategy": "public",
       "commands": [
         {
           "name": "activity",
@@ -17267,6 +18178,39 @@
               "description": "Path to story image or video file"
             }
           ]
+        },
+        {
+          "name": "subtitles",
+          "description": "Extract LLM-readable subtitles from an Instagram reel or video URL with optional browser-cookie reuse",
+          "when_to_use": "Extract LLM-readable subtitles from an Instagram reel or video URL with optional browser-cookie reuse",
+          "command": "unicli instagram subtitles",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["language", "text", "path"],
+          "args": [
+            {
+              "name": "url",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Instagram reel or video URL"
+            },
+            {
+              "name": "languages",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Comma-separated subtitle languages"
+            },
+            {
+              "name": "cookies-from-browser",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Browser name for yt-dlp --cookies-from-browser"
+            }
+          ]
         }
       ]
     },
@@ -17302,6 +18246,70 @@
               "required": false,
               "positional": true,
               "description": "IP address (omit for your own IP)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "ipaustralia",
+      "type": "web-api",
+      "domain": "api.ipaustralia.gov.au",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "get",
+          "description": "Fetch an Australian patent by application number",
+          "when_to_use": "When you need details about a specific item on ipaustralia.",
+          "command": "unicli ipaustralia get",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "filing_date",
+            "publication_date"
+          ],
+          "args": [
+            {
+              "name": "application_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Australian application number (e.g. 2023000123)"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search Australian patents via the IP Australia API portal",
+          "when_to_use": "When you need to search ipaustralia for a specific query.",
+          "command": "unicli ipaustralia search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "filing_date",
+            "publication_date"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Free-text query (title/abstract)"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum results"
             }
           ]
         }
@@ -17960,6 +18968,70 @@
       ]
     },
     {
+      "site": "jpo",
+      "type": "web-api",
+      "domain": "ip-data.jpo.go.jp",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "get",
+          "description": "Fetch a JPO application by application number",
+          "when_to_use": "When you need details about a specific item on jpo.",
+          "command": "unicli jpo get",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "filing_date",
+            "publication_date"
+          ],
+          "args": [
+            {
+              "name": "application_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "JPO application number (e.g. 特願2024-012345 numeric form 2024012345)"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search JPO Patent Information Retrieval API",
+          "when_to_use": "When you need to search jpo for a specific query.",
+          "command": "unicli jpo search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "filing_date",
+            "publication_date"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Free-text query (JPO maps to title/abstract/applicant fields)"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum results"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "jq",
       "type": "bridge",
       "auth": false,
@@ -18295,6 +19367,89 @@
               "type": "int",
               "required": false,
               "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "kipris",
+      "type": "web-api",
+      "domain": "plus.kipris.or.kr",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "get",
+          "description": "Fetch a KIPRIS biblio record by application number",
+          "when_to_use": "When you need details about a specific item on kipris.",
+          "command": "unicli kipris get",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "filing_date",
+            "publication_date"
+          ],
+          "args": [
+            {
+              "name": "application_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Korean application number (e.g. 1020230012345)"
+            }
+          ]
+        },
+        {
+          "name": "legal-status",
+          "description": "KIPRIS right-trans / registration events for a Korean application",
+          "when_to_use": "KIPRIS right-trans / registration events for a Korean application",
+          "command": "unicli kipris legal-status",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["publication_number", "legal_status"],
+          "args": [
+            {
+              "name": "application_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Korean application number"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search KIPRIS Plus REST for Korean patents/utility models",
+          "when_to_use": "When you need to search kipris for a specific query.",
+          "command": "unicli kipris search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "filing_date",
+            "publication_date"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Free-text query (KIPRIS `word` param)"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum results (numOfRows)"
             }
           ]
         }
@@ -18771,6 +19926,71 @@
               "required": false,
               "positional": false,
               "description": "Sort order — MOST_RECENT or HOTTEST"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "lens",
+      "type": "web-api",
+      "domain": "api.lens.org",
+      "auth": true,
+      "strategy": "header",
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve a single Lens.org patent record by publication number",
+          "when_to_use": "When you need details about a specific item on lens.",
+          "command": "unicli lens get",
+          "auth": true,
+          "strategy": "header",
+          "browser": false,
+          "columns": ["publication_number", "title", "publication_date"],
+          "args": [
+            {
+              "name": "publication_number",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search Lens.org's combined patent corpus via the Scholarly Works DSL",
+          "when_to_use": "When you need to search lens for a specific query.",
+          "command": "unicli lens search",
+          "auth": true,
+          "strategy": "header",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "publication_date",
+            "source_adapter"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Free-text query — mapped to the Lens DSL `query_string`"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum records returned (Lens caps at 1000)"
+            },
+            {
+              "name": "date_from",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "ISO date — minimum publication date"
             }
           ]
         }
@@ -21429,6 +22649,48 @@
               "type": "str",
               "required": false,
               "positional": false
+            }
+          ]
+        },
+        {
+          "name": "statuses",
+          "description": "Get recent public statuses from a Mastodon account",
+          "when_to_use": "Get recent public statuses from a Mastodon account",
+          "command": "unicli mastodon statuses",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "author",
+            "handle",
+            "content",
+            "reblogs",
+            "favorites",
+            "replies",
+            "url",
+            "date"
+          ],
+          "args": [
+            {
+              "name": "account",
+              "required": true,
+              "positional": true,
+              "description": "Account handle, e.g. gargron@mastodon.social"
+            },
+            {
+              "name": "instance",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Mastodon instance domain used when account omits one"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of statuses, 1-40"
             }
           ]
         }
@@ -25649,6 +26911,67 @@
       ]
     },
     {
+      "site": "patsnap",
+      "type": "web-api",
+      "domain": "connect.zhihuiya.com",
+      "auth": true,
+      "strategy": "header",
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve one PatSnap patent record by publication number",
+          "when_to_use": "When you need details about a specific item on patsnap.",
+          "command": "unicli patsnap get",
+          "auth": true,
+          "strategy": "header",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "legal_status",
+            "source_adapter"
+          ],
+          "args": [
+            {
+              "name": "publication_number",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "PatSnap Eureka patent search via OAuth2 client_credentials",
+          "when_to_use": "When you need to search patsnap for a specific query.",
+          "command": "unicli patsnap search",
+          "auth": true,
+          "strategy": "header",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "publication_date",
+            "source_adapter"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "pdf",
       "type": "desktop",
       "auth": false,
@@ -26313,6 +27636,64 @@
           "strategy": "public",
           "browser": false,
           "columns": ["app", "bundle_id", "running"]
+        }
+      ]
+    },
+    {
+      "site": "pqai",
+      "type": "web-api",
+      "domain": "api.projectpq.ai",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "prior-art",
+          "description": "Semantic prior-art retrieval via PQAI's embedding-based ranker",
+          "when_to_use": "Semantic prior-art retrieval via PQAI's embedding-based ranker",
+          "command": "unicli pqai prior-art",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["publication_number", "title", "abstract"],
+          "args": [
+            {
+              "name": "abstract",
+              "type": "str",
+              "required": true,
+              "positional": false,
+              "description": "Candidate abstract or claim text"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Keyword + semantic patent search through PQAI's hybrid index",
+          "when_to_use": "When you need to search pqai for a specific query.",
+          "command": "unicli pqai search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["publication_number", "title", "publication_date"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
         }
       ]
     },
@@ -27371,27 +28752,46 @@
         },
         {
           "name": "comments",
-          "description": "Reddit post comments",
+          "description": "Reddit post comments with nested reply hierarchy",
           "when_to_use": "When you need to read comments/replies from reddit.",
           "command": "unicli reddit comments",
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["author", "body", "score", "created"],
+          "columns": [
+            "platform",
+            "content_id",
+            "comment_id",
+            "parent_id",
+            "depth",
+            "path",
+            "author",
+            "text",
+            "likes",
+            "replies",
+            "created",
+            "body",
+            "score"
+          ],
           "args": [
             {
               "name": "url",
-              "type": "str",
               "required": true,
               "positional": true,
-              "description": "Reddit post URL or ID (e.g. /r/sub/comments/id/title)"
+              "description": "Reddit post URL, path, or comments ID"
+            },
+            {
+              "name": "sort",
+              "required": false,
+              "positional": false,
+              "description": "Comment sort order"
             },
             {
               "name": "limit",
               "type": "int",
               "required": false,
               "positional": false,
-              "description": "Number of comments"
+              "description": "Number of top-level comments"
             }
           ]
         },
@@ -31143,7 +32543,7 @@
       "type": "web-api",
       "domain": "threads.net",
       "auth": true,
-      "strategy": "intercept",
+      "strategy": "public",
       "commands": [
         {
           "name": "hot",
@@ -31187,6 +32587,113 @@
               "required": false,
               "positional": false,
               "description": "Number of results"
+            }
+          ]
+        },
+        {
+          "name": "user",
+          "description": "Get recent posts from a Threads user profile",
+          "when_to_use": "When you need user/profile info from threads.",
+          "command": "unicli threads user",
+          "auth": true,
+          "strategy": "intercept",
+          "browser": true,
+          "columns": ["rank", "author", "text", "likes", "replies", "url"],
+          "args": [
+            {
+              "name": "handle",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Threads handle without leading @"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of posts"
+            }
+          ]
+        },
+        {
+          "name": "profile",
+          "description": "Get public Threads profile metadata",
+          "when_to_use": "When you need user/profile info from threads.",
+          "command": "unicli threads profile",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "name",
+            "handle",
+            "followers",
+            "threads",
+            "bio",
+            "url",
+            "avatar_url"
+          ],
+          "args": [
+            {
+              "name": "handle",
+              "required": true,
+              "positional": true,
+              "description": "Threads handle or profile URL, e.g. zuck"
+            }
+          ]
+        },
+        {
+          "name": "post",
+          "description": "Get a public Threads post from its metadata",
+          "when_to_use": "When you need to post content to threads.",
+          "command": "unicli threads post",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "author",
+            "handle",
+            "text",
+            "url",
+            "image_url",
+            "image_width",
+            "image_height",
+            "shortcode",
+            "activity_json_url"
+          ],
+          "args": [
+            {
+              "name": "url",
+              "required": true,
+              "positional": true,
+              "description": "Threads post URL, e.g. https://www.threads.net/@zuck/post/DYSAIo_FL77"
+            }
+          ]
+        },
+        {
+          "name": "media",
+          "description": "List public media exposed by a Threads post",
+          "when_to_use": "List public media exposed by a Threads post",
+          "command": "unicli threads media",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "type",
+            "url",
+            "width",
+            "height",
+            "post_url",
+            "shortcode",
+            "source"
+          ],
+          "args": [
+            {
+              "name": "url",
+              "required": true,
+              "positional": true,
+              "description": "Threads post URL, e.g. https://www.threads.net/@zuck/post/DYSAIo_FL77"
             }
           ]
         }
@@ -31330,7 +32837,7 @@
       "type": "web-api",
       "domain": "www.tiktok.com",
       "auth": true,
-      "strategy": "cookie",
+      "strategy": "public",
       "commands": [
         {
           "name": "comment",
@@ -31714,6 +33221,39 @@
               "required": false,
               "positional": false,
               "description": "Non-negative TikTok Studio pagination cursor"
+            }
+          ]
+        },
+        {
+          "name": "subtitles",
+          "description": "Extract LLM-readable subtitles from a TikTok video URL with optional browser-cookie reuse",
+          "when_to_use": "Extract LLM-readable subtitles from a TikTok video URL with optional browser-cookie reuse",
+          "command": "unicli tiktok subtitles",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["language", "text", "path"],
+          "args": [
+            {
+              "name": "url",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "TikTok video URL"
+            },
+            {
+              "name": "languages",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Comma-separated subtitle languages"
+            },
+            {
+              "name": "cookies-from-browser",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Browser name for yt-dlp --cookies-from-browser"
             }
           ]
         }
@@ -32761,7 +34301,7 @@
           "command": "unicli twitter search",
           "auth": true,
           "strategy": "cookie",
-          "browser": false,
+          "browser": true,
           "columns": [
             "id",
             "author",
@@ -32777,6 +34317,13 @@
               "required": true,
               "positional": true,
               "description": "Search query"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of tweets"
             }
           ]
         },
@@ -32790,12 +34337,15 @@
           "browser": false,
           "columns": [
             "id",
+            "parent_id",
             "author",
             "text",
             "likes",
             "retweets",
             "views",
-            "url"
+            "url",
+            "depth",
+            "path"
           ],
           "args": [
             {
@@ -32831,8 +34381,17 @@
           "command": "unicli twitter trending",
           "auth": true,
           "strategy": "cookie",
-          "browser": false,
-          "columns": ["name", "tweet_count", "description", "url"]
+          "browser": true,
+          "columns": ["name", "tweet_count", "description", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of trends"
+            }
+          ]
         },
         {
           "name": "unlike",
@@ -33037,6 +34596,26 @@
       ]
     },
     {
+      "site": "ukipo",
+      "type": "web-api",
+      "domain": "search-for-intellectual-property.service.gov.uk",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "info",
+          "description": "UK IPO registry placeholder — Ipsum retired 2025-01; OneIPO API on 2026 roadmap",
+          "when_to_use": "When you need details about a specific item on ukipo.",
+          "command": "unicli ukipo info",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [],
+          "args": []
+        }
+      ]
+    },
+    {
       "site": "unsplash",
       "type": "web-api",
       "domain": "unsplash.com",
@@ -33084,6 +34663,96 @@
               "type": "str",
               "required": false,
               "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "uspto",
+      "type": "web-api",
+      "domain": "api.uspto.gov",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "get",
+          "description": "Fetch a USPTO patent/application by application number",
+          "when_to_use": "When you need details about a specific item on uspto.",
+          "command": "unicli uspto get",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "filing_date",
+            "publication_date"
+          ],
+          "args": [
+            {
+              "name": "application_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "USPTO application number (e.g. 16/123,456 with or without slash)"
+            }
+          ]
+        },
+        {
+          "name": "legal-status",
+          "description": "Legal-status / transaction history of a USPTO application",
+          "when_to_use": "Legal-status / transaction history of a USPTO application",
+          "command": "unicli uspto legal-status",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["publication_number", "legal_status", "filing_date"],
+          "args": [
+            {
+              "name": "application_number",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "USPTO application number"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search USPTO patents/applications via the Open Data Portal (ODP)",
+          "when_to_use": "When you need to search uspto for a specific query.",
+          "command": "unicli uspto search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "publication_number",
+            "title",
+            "filing_date",
+            "publication_date"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Free-text query (mapped to ODP `q` field, matches title/abstract/claims)"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum results to return (ODP allows up to 500 per page)"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Result offset for pagination"
             }
           ]
         }
@@ -34783,6 +36452,26 @@
       ]
     },
     {
+      "site": "wipo-patentscope",
+      "type": "web-api",
+      "domain": "patentscope.wipo.int",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "info",
+          "description": "WIPO PATENTSCOPE registry placeholder — no public REST API; SOAP requires subscription",
+          "when_to_use": "When you need details about a specific item on wipo-patentscope.",
+          "command": "unicli wipo-patentscope info",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [],
+          "args": []
+        }
+      ]
+    },
+    {
       "site": "wiremock",
       "type": "service",
       "auth": false,
@@ -35637,11 +37326,11 @@
         },
         {
           "name": "trending",
-          "description": "Xiaohongshu trending searches",
+          "description": "Xiaohongshu trending searches and visible hot notes",
           "when_to_use": "When you need the current trending items from xiaohongshu.",
           "command": "unicli xiaohongshu trending",
           "auth": true,
-          "strategy": "intercept",
+          "strategy": "cookie",
           "browser": true,
           "columns": ["rank", "keyword", "score", "url"],
           "args": [
@@ -35683,9 +37372,17 @@
           "browser": true,
           "columns": [
             "rank",
+            "platform",
+            "content_id",
+            "comment_id",
+            "parent_id",
+            "depth",
+            "path",
             "author",
             "text",
             "likes",
+            "replies",
+            "created",
             "time",
             "is_reply",
             "reply_to"
@@ -35828,7 +37525,7 @@
           "auth": true,
           "strategy": "cookie",
           "browser": true,
-          "columns": ["index", "type", "url"],
+          "columns": ["index", "type", "path", "url"],
           "args": [
             {
               "name": "note-id",
@@ -37079,7 +38776,19 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["author", "text", "likes", "replies"],
+          "columns": [
+            "platform",
+            "content_id",
+            "comment_id",
+            "parent_id",
+            "depth",
+            "path",
+            "author",
+            "text",
+            "likes",
+            "replies",
+            "created"
+          ],
           "args": [
             {
               "name": "videoId",
@@ -37094,6 +38803,13 @@
               "required": false,
               "positional": false,
               "description": "Max comments to return"
+            },
+            {
+              "name": "with-replies",
+              "type": "bool",
+              "required": false,
+              "positional": false,
+              "description": "Fetch available nested replies"
             }
           ]
         },
@@ -37268,6 +38984,39 @@
           ]
         },
         {
+          "name": "subtitles",
+          "description": "Extract LLM-readable subtitles from a YouTube video URL with optional browser-cookie reuse",
+          "when_to_use": "Extract LLM-readable subtitles from a YouTube video URL with optional browser-cookie reuse",
+          "command": "unicli youtube subtitles",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["language", "text", "path"],
+          "args": [
+            {
+              "name": "url",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "YouTube video URL"
+            },
+            {
+              "name": "languages",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Comma-separated subtitle languages"
+            },
+            {
+              "name": "cookies-from-browser",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Browser name for yt-dlp --cookies-from-browser"
+            }
+          ]
+        },
+        {
           "name": "transcript",
           "description": "Get YouTube video transcript/subtitles",
           "when_to_use": "Get YouTube video transcript/subtitles",
@@ -37433,6 +39182,39 @@
               "required": false,
               "positional": false,
               "description": "Maximum number of results to return"
+            }
+          ]
+        },
+        {
+          "name": "subtitles",
+          "description": "Extract subtitles from any yt-dlp-supported video URL with optional browser-cookie reuse",
+          "when_to_use": "Extract subtitles from any yt-dlp-supported video URL with optional browser-cookie reuse",
+          "command": "unicli yt-dlp subtitles",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["language", "text", "path"],
+          "args": [
+            {
+              "name": "url",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Video URL"
+            },
+            {
+              "name": "languages",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Comma-separated subtitle languages"
+            },
+            {
+              "name": "cookies-from-browser",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Browser name for yt-dlp --cookies-from-browser"
             }
           ]
         }
@@ -37755,24 +39537,36 @@
         },
         {
           "name": "comment",
-          "description": "Get comments on a Zhihu answer or article",
-          "when_to_use": "Get comments on a Zhihu answer or article",
+          "description": "Get Zhihu comments with normalized nested reply hierarchy",
+          "when_to_use": "Get Zhihu comments with normalized nested reply hierarchy",
           "command": "unicli zhihu comment",
           "auth": true,
           "strategy": "cookie",
           "browser": false,
-          "columns": ["author", "content", "likes", "replies", "created"],
+          "columns": [
+            "platform",
+            "content_id",
+            "comment_id",
+            "parent_id",
+            "depth",
+            "path",
+            "author",
+            "text",
+            "likes",
+            "replies",
+            "created",
+            "content",
+            "reply_to"
+          ],
           "args": [
             {
               "name": "type",
-              "type": "str",
               "required": true,
               "positional": true,
               "description": "Content type: answer or article"
             },
             {
               "name": "id",
-              "type": "str",
               "required": true,
               "positional": true,
               "description": "Answer or article ID"
@@ -37782,7 +39576,14 @@
               "type": "int",
               "required": false,
               "positional": false,
-              "description": "Number of comments"
+              "description": "Number of root comments"
+            },
+            {
+              "name": "with-replies",
+              "type": "bool",
+              "required": false,
+              "positional": false,
+              "description": "Fetch child replies for root comments that omit child_comments"
             }
           ]
         },
@@ -38199,6 +40000,43 @@
           ]
         },
         {
+          "name": "answer-detail",
+          "description": "知乎单个回答完整内容（按 answer ID 获取）",
+          "when_to_use": "知乎单个回答完整内容（按 answer ID 获取）",
+          "command": "unicli zhihu answer-detail",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "id",
+            "author",
+            "votes",
+            "comments",
+            "question_id",
+            "question_title",
+            "url",
+            "created_at",
+            "updated_at",
+            "content"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Answer ID, full Zhihu answer URL, or typed target"
+            },
+            {
+              "name": "max-content",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Optional cap on stripped content length; 0 returns full content"
+            }
+          ]
+        },
+        {
           "name": "collection",
           "description": "List items in a Zhihu collection",
           "when_to_use": "List items in a Zhihu collection",
@@ -38236,6 +40074,25 @@
               "required": false,
               "positional": false,
               "description": "Number of items"
+            }
+          ]
+        },
+        {
+          "name": "recommend",
+          "description": "知乎首页推荐",
+          "when_to_use": "知乎首页推荐",
+          "command": "unicli zhihu recommend",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": ["rank", "type", "title", "author", "votes", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of items to return (max 1000; use normal-sized requests)"
             }
           ]
         }

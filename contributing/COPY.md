@@ -1,6 +1,6 @@
 # Uni-CLI Copy Rules
 
-> Current version: v0.220.1 — Apollo · Lovell Patch.
+> Current version: v0.221.0 — Apollo · Anders.
 >
 > Current scale: <!-- STATS:site_count -->302<!-- /STATS --> sites, <!-- STATS:command_count -->1738<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->1203<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->975<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->228<!-- /STATS --> TS), <!-- STATS:test_count -->8773<!-- /STATS --> tests.
 
