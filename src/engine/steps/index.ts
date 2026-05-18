@@ -18,6 +18,8 @@ export { stepAssert, type AssertConfig } from "./assert.js";
 export { stepFetch, type FetchConfig } from "./fetch.js";
 export { stepFetchText } from "./fetch-text.js";
 export { stepParseRss, type RssConfig } from "./parse-rss.js";
+export { stepSelectXml, type SelectXmlConfig } from "./select-xml.js";
+export { stepOauth2Token, type Oauth2TokenStepConfig } from "./oauth2-token.js";
 export { stepExec, type ExecConfig } from "./exec.js";
 export { stepWriteTemp, type WriteTempConfig } from "./write-temp.js";
 export { stepNavigate, type NavigateConfig } from "./navigate.js";
