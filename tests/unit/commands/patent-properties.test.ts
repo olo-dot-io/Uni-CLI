@@ -224,24 +224,112 @@ describe("patent properties — P4: doctor exit-code contract", () => {
       "patent.ts",
     );
     const source = fs.readFileSync(sourcePath, "utf-8");
-    // The honesty contract: any single error sets `anyError = true`, which
-    // gates `process.exit(ExitCode.GENERIC_ERROR)`. Pin both pieces.
+    // The honesty contract: any single error sets `anyError = true`; the
+    // wave-2 verification-status gate adds `anyDishonesty`. Either fires
+    // a non-zero exit. Pin both pieces of the OR.
     expect(source).toMatch(/anyError\s*=\s*true/);
-    expect(source).toMatch(/if\s*\(anyError\)\s*process\.exit/);
+    expect(source).toMatch(
+      /if\s*\(anyError\s*\|\|\s*anyDishonesty\)\s*process\.exit/,
+    );
   });
 
-  it.skip("doctor surfaces dishonest verification claims (NO HACKS rule)", () => {
-    // The dispatch contract asks for: "doctor exits non-zero when any
-    // adapter's verification_status claims `verified` but a probe call
-    // fails." The verification_status field is declared in
-    // src/types/patent.ts but is not yet a runtime field on adapter
-    // manifests — adapters carry it as a `@verification` header comment
-    // only. Reading file headers is subagent F's documentation surface;
-    // wiring that into `runDoctor` is therefore out of scope for E.
-    //
-    // This test is a registered expectation: when F lands a verification
-    // header parser and `runDoctor` learns to read it, drop the `.skip`
-    // and the test will exercise the honesty gate end-to-end.
+  it("header parser reads every documented verification-status value", async () => {
+    const {
+      parseVerificationStatusFromFile,
+      resolveAdapterVerificationStatus,
+    } = await import("../../../src/commands/patent-doctor.js");
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const url = await import("node:url");
+    const here = path.dirname(url.fileURLToPath(import.meta.url));
+    const repoRoot = path.resolve(here, "..", "..", "..");
+
+    // Each of these adapter YAML files carries a different verification
+    // header. Reading them at the parser layer must yield exactly the
+    // documented enum value — no synthesis, no silent collapse.
+    const cases: Array<{
+      relativePath: string;
+      expected: string;
+    }> = [
+      {
+        relativePath: "src/adapters/uspto/search.yaml",
+        expected: "blocked-by-key",
+      },
+      {
+        relativePath: "src/adapters/dpma/search.yaml",
+        expected: "blocked-by-subscription",
+      },
+      {
+        relativePath: "src/adapters/lens/search.yaml",
+        expected: "blocked-by-subscription",
+      },
+      {
+        relativePath: "src/adapters/pqai/search.yaml",
+        expected: "blocked-by-key",
+      },
+    ];
+    for (const { relativePath, expected } of cases) {
+      const full = path.join(repoRoot, relativePath);
+      // Ensure the fixture file we're asserting actually exists before
+      // claiming the parser yielded the expected value — a missing file
+      // should not pass the test by virtue of returning "unknown".
+      expect(fs.existsSync(full), `missing fixture ${relativePath}`).toBe(true);
+      expect(parseVerificationStatusFromFile(full)).toBe(expected);
+    }
+
+    // Adapter-level resolution: the same enum surfaces through the
+    // adapter-name lookup path (used by runDoctor in patent.ts).
+    expect([
+      "blocked-by-key",
+      "blocked-by-subscription",
+      "verified",
+      "unknown",
+    ]).toContain(resolveAdapterVerificationStatus("uspto", ["search"]));
+  });
+
+  it("missing header resolves to 'unknown' rather than silently 'verified'", async () => {
+    const { parseVerificationStatusFromFile } =
+      await import("../../../src/commands/patent-doctor.js");
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const url = await import("node:url");
+    const os = await import("node:os");
+    const here = path.dirname(url.fileURLToPath(import.meta.url));
+    const tmpFile = path.join(
+      fs.mkdtempSync(path.join(os.tmpdir(), "patent-doctor-")),
+      "no-header.yaml",
+    );
+    void here;
+    fs.writeFileSync(
+      tmpFile,
+      "site: nothing\nname: get\n# no @verification line\n",
+      "utf-8",
+    );
+    expect(parseVerificationStatusFromFile(tmpFile)).toBe("unknown");
+  });
+
+  it("doctor source code emits verification_status on every row", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const url = await import("node:url");
+    const here = path.dirname(url.fileURLToPath(import.meta.url));
+    const sourcePath = path.resolve(
+      here,
+      "..",
+      "..",
+      "..",
+      "src",
+      "commands",
+      "patent.ts",
+    );
+    const source = fs.readFileSync(sourcePath, "utf-8");
+    // Honesty gate wiring: each row carries verification_status, and the
+    // doctor exit-code gate fires when `anyDishonesty` is set.
+    expect(source).toContain("verification_status: verificationStatus");
+    expect(source).toMatch(/anyDishonesty\s*=\s*true/);
+    expect(source).toMatch(
+      /if\s*\(anyError\s*\|\|\s*anyDishonesty\)\s*process\.exit/,
+    );
   });
 });
 

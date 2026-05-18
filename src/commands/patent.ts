@@ -44,6 +44,10 @@ import type {
 import { ExitCode, Strategy } from "../types.js";
 import { buildInvocation, execute } from "../engine/kernel/execute.js";
 import type { PatentRecord } from "../types/patent.js";
+import {
+  resolveAdapterVerificationStatus,
+  type ResolvedVerificationStatus,
+} from "./patent-doctor.js";
 
 // ── Publication-number prefix table ─────────────────────────────────────
 //
@@ -192,7 +196,221 @@ export function reciprocalRankFusion(
   return top.map((b) => b.record);
 }
 
+// ── Output formatting (search / get / prior-art) ───────────────────────
+
+/**
+ * Column sets exposed to `--detailed`. The default set mirrors the wave-1
+ * surface (publication_number / title / publication_date / source_adapter);
+ * the detailed set adds inventors / assignees / classifications / dates
+ * and uses a per-record block in markdown rather than a 4-column table.
+ */
+const DEFAULT_SEARCH_COLUMNS = [
+  "publication_number",
+  "title",
+  "publication_date",
+  "source_adapter",
+] as const;
+
+const DETAILED_SEARCH_COLUMNS = [
+  "publication_number",
+  "title",
+  "abstract",
+  "inventors",
+  "assignees",
+  "classifications",
+  "filing_date",
+  "publication_date",
+  "grant_date",
+  "priority_date",
+  "kind_code",
+  "legal_status",
+  "family_id",
+  "cited_by_count",
+  "cites_count",
+  "claims_count",
+  "relevance_score",
+  "source_adapter",
+  "source_url",
+] as const;
+
+/**
+ * Strip the raw field from records when `--include-raw` is not set.
+ * Preserves the input shape otherwise. Uses structuredClone to avoid
+ * mutating callers' arrays.
+ */
+function stripRaw(records: PatentRecord[]): PatentRecord[] {
+  return records.map((r) => {
+    if (r.raw === undefined) return r;
+    const { raw: _raw, ...rest } = r;
+    void _raw;
+    return rest as PatentRecord;
+  });
+}
+
+/**
+ * Serialise a single PatentRecord as one CSV row given a column list. The
+ * CSV serializer escapes commas, double-quotes, and newlines per RFC 4180.
+ * Array fields are JSON-serialized inside the cell so the cell remains a
+ * single column.
+ */
+function csvCell(value: unknown): string {
+  if (value === undefined || value === null) return "";
+  const serialized =
+    Array.isArray(value) || typeof value === "object"
+      ? JSON.stringify(value)
+      : String(value);
+  if (
+    serialized.includes(",") ||
+    serialized.includes('"') ||
+    serialized.includes("\n") ||
+    serialized.includes("\r")
+  ) {
+    return `"${serialized.replace(/"/g, '""')}"`;
+  }
+  return serialized;
+}
+
+function renderCsv(
+  records: PatentRecord[],
+  columns: readonly string[],
+): string {
+  const header = columns.join(",");
+  const rows = records.map((r) =>
+    columns
+      .map((c) => csvCell((r as unknown as Record<string, unknown>)[c]))
+      .join(","),
+  );
+  return [header, ...rows].join("\n");
+}
+
+function renderJsonl(records: PatentRecord[]): string {
+  return records.map((r) => JSON.stringify(r)).join("\n");
+}
+
+function renderDetailedMarkdown(records: PatentRecord[]): string {
+  // One block per record. Skips undefined fields so the output is dense.
+  // The block separator is a horizontal rule; that keeps copy-paste into
+  // an agent prompt deterministic.
+  const blocks: string[] = [];
+  for (const r of records) {
+    const lines: string[] = [];
+    lines.push(`### ${r.publication_number}`);
+    if (r.title) lines.push(`**title**: ${r.title}`);
+    if (r.abstract) lines.push(`**abstract**: ${r.abstract}`);
+    if (r.inventors && r.inventors.length > 0)
+      lines.push(`**inventors**: ${r.inventors.map((p) => p.name).join("; ")}`);
+    if (r.assignees && r.assignees.length > 0)
+      lines.push(`**assignees**: ${r.assignees.map((p) => p.name).join("; ")}`);
+    if (r.classifications && r.classifications.length > 0)
+      lines.push(
+        `**classifications**: ${r.classifications
+          .map((c) => `${c.scheme.toUpperCase()}:${c.code}`)
+          .join(", ")}`,
+      );
+    if (r.filing_date) lines.push(`**filing_date**: ${r.filing_date}`);
+    if (r.publication_date)
+      lines.push(`**publication_date**: ${r.publication_date}`);
+    if (r.grant_date) lines.push(`**grant_date**: ${r.grant_date}`);
+    if (r.priority_date) lines.push(`**priority_date**: ${r.priority_date}`);
+    if (r.kind_code) lines.push(`**kind_code**: ${r.kind_code}`);
+    if (r.legal_status) lines.push(`**legal_status**: ${r.legal_status}`);
+    if (r.family_id) lines.push(`**family_id**: ${r.family_id}`);
+    if (r.cited_by_count !== undefined)
+      lines.push(`**cited_by_count**: ${r.cited_by_count}`);
+    if (r.cites_count !== undefined)
+      lines.push(`**cites_count**: ${r.cites_count}`);
+    if (r.claims_count !== undefined)
+      lines.push(`**claims_count**: ${r.claims_count}`);
+    if (r.relevance_score !== undefined)
+      lines.push(`**relevance_score**: ${r.relevance_score}`);
+    lines.push(`**source_adapter**: ${r.source_adapter}`);
+    if (r.source_url) lines.push(`**source_url**: ${r.source_url}`);
+    blocks.push(lines.join("\n"));
+  }
+  return blocks.join("\n\n---\n\n");
+}
+
+interface OutputOpts {
+  detailed?: boolean;
+  format?: string;
+  includeRaw?: boolean;
+}
+
+/**
+ * Resolve the output payload for the patent search / get / prior-art
+ * commands honouring `--detailed`, `--include-raw`, and `--format jsonl`
+ * (alongside json / md / csv). Returns either a rendered string (when the
+ * format is a patent-vertical-specific output like jsonl / csv / detailed
+ * md) or `null` to signal the caller should fall through to the standard
+ * envelope formatter.
+ */
+function renderPatentOutput(
+  records: PatentRecord[],
+  opts: OutputOpts,
+): { output: string; standardFormatter: false } | null {
+  const cleaned = opts.includeRaw ? records : stripRaw(records);
+  const fmt = (opts.format ?? "").toLowerCase();
+  if (fmt === "jsonl") {
+    return { output: renderJsonl(cleaned), standardFormatter: false };
+  }
+  if (fmt === "csv") {
+    const columns = opts.detailed
+      ? DETAILED_SEARCH_COLUMNS
+      : DEFAULT_SEARCH_COLUMNS;
+    return { output: renderCsv(cleaned, columns), standardFormatter: false };
+  }
+  if (opts.detailed && (fmt === "" || fmt === "md")) {
+    return {
+      output: renderDetailedMarkdown(cleaned),
+      standardFormatter: false,
+    };
+  }
+  return null;
+}
+
 // ── Pipeline-result coercion ────────────────────────────────────────────
+
+/**
+ * Coerce a YAML-emitted value that is expected to be a JSON-serialized array
+ * (the `| json` filter result). Returns `undefined` when the value is not a
+ * non-empty array after parsing — never an empty array (that would surface as
+ * "the upstream said zero inventors" when it actually said "no field").
+ */
+function parseJsonArray(value: unknown): unknown[] | undefined {
+  if (Array.isArray(value)) {
+    return value.length > 0 ? value : undefined;
+  }
+  if (typeof value !== "string" || value.length === 0) return undefined;
+  // Tolerate authors using `| json` on a missing field — the filter yields
+  // the literal string "undefined" in that case.
+  if (value === "undefined" || value === "null") return undefined;
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed) || parsed.length === 0) return undefined;
+    return parsed;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Coerce a YAML-emitted scalar into a finite number. The pipeline template
+ * engine stringifies every map output, so `42` arrives as `"42"`. Returns
+ * `undefined` when the input is not a finite number — never a NaN, never
+ * a silent zero (that would manufacture a count that did not exist
+ * upstream).
+ */
+function asFiniteNumber(value: unknown): number | undefined {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : undefined;
+  }
+  if (typeof value === "string") {
+    if (value.length === 0) return undefined;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
 
 function coerceToPatentRecords(rows: unknown, source: string): PatentRecord[] {
   if (!Array.isArray(rows)) return [];
@@ -201,29 +419,54 @@ function coerceToPatentRecords(rows: unknown, source: string): PatentRecord[] {
     if (!row || typeof row !== "object") continue;
     const r = row as Record<string, unknown>;
     if (typeof r.publication_number !== "string") continue;
+    if (r.publication_number.length === 0) continue;
     const record: PatentRecord = {
       publication_number: r.publication_number,
       source_adapter:
         typeof r.source_adapter === "string" ? r.source_adapter : source,
       retrieved_at:
-        typeof r.retrieved_at === "string"
+        typeof r.retrieved_at === "string" && r.retrieved_at.length > 0
           ? r.retrieved_at
           : new Date().toISOString(),
     };
     if (typeof r.application_number === "string")
       record.application_number = r.application_number;
+    if (typeof r.kind_code === "string") record.kind_code = r.kind_code;
     if (typeof r.title === "string") record.title = r.title;
     if (typeof r.abstract === "string") record.abstract = r.abstract;
+    if (typeof r.snippet === "string") record.snippet = r.snippet;
+    const inventors = parseJsonArray(r.inventors);
+    if (inventors) record.inventors = inventors as PatentRecord["inventors"];
+    const assignees = parseJsonArray(r.assignees);
+    if (assignees) record.assignees = assignees as PatentRecord["assignees"];
     if (typeof r.filing_date === "string") record.filing_date = r.filing_date;
     if (typeof r.publication_date === "string")
       record.publication_date = r.publication_date;
     if (typeof r.grant_date === "string") record.grant_date = r.grant_date;
     if (typeof r.priority_date === "string")
       record.priority_date = r.priority_date;
+    const classifications = parseJsonArray(r.classifications);
+    if (classifications)
+      record.classifications =
+        classifications as PatentRecord["classifications"];
     if (typeof r.family_id === "string") record.family_id = r.family_id;
+    const familyMembers = parseJsonArray(r.family_members);
+    if (familyMembers)
+      record.family_members = familyMembers as PatentRecord["family_members"];
     if (typeof r.legal_status === "string")
       record.legal_status = r.legal_status;
+    const claimsCount = asFiniteNumber(r.claims_count);
+    if (claimsCount !== undefined) record.claims_count = claimsCount;
+    const citedByCount = asFiniteNumber(r.cited_by_count);
+    if (citedByCount !== undefined) record.cited_by_count = citedByCount;
+    const citesCount = asFiniteNumber(r.cites_count);
+    if (citesCount !== undefined) record.cites_count = citesCount;
+    if (typeof r.pdf_url === "string" && r.pdf_url.length > 0)
+      record.pdf_url = r.pdf_url;
+    const relevanceScore = asFiniteNumber(r.relevance_score);
+    if (relevanceScore !== undefined) record.relevance_score = relevanceScore;
     if (typeof r.source_url === "string") record.source_url = r.source_url;
+    if (r.raw !== undefined) record.raw = r.raw;
     out.push(record);
   }
   return out;
@@ -305,6 +548,9 @@ interface SearchOpts {
   limit?: string;
   since?: string;
   cpc?: string;
+  detailed?: boolean;
+  format?: string;
+  includeRaw?: boolean;
 }
 
 async function runSearch(
@@ -313,7 +559,16 @@ async function runSearch(
   opts: SearchOpts,
 ): Promise<void> {
   const startedAt = Date.now();
-  const fmt = detectFormat(program.opts().format as OutputFormat | undefined);
+  // Resolve format precedence: explicit `--format` on the patent subcommand
+  // wins over the global `-f` (it can name `jsonl`, which the global formatter
+  // does not understand).
+  const requestedFormat =
+    opts.format ?? (program.opts().format as string | undefined);
+  const fmt = detectFormat(
+    requestedFormat === "jsonl"
+      ? "json"
+      : (requestedFormat as OutputFormat | undefined),
+  );
   const ctx = makeCtx("patent.search", startedAt);
 
   const sources = resolveSources(opts.sources);
@@ -346,22 +601,43 @@ async function runSearch(
     console.error(format(null, undefined, fmt, ctx));
     process.exit(ExitCode.EMPTY_RESULT);
   }
-  console.log(
-    format(
-      fused,
-      ["publication_number", "title", "publication_date", "source_adapter"],
-      fmt,
-      ctx,
-    ),
-  );
+
+  const patentOutput = renderPatentOutput(fused, {
+    detailed: opts.detailed,
+    format: requestedFormat,
+    includeRaw: opts.includeRaw,
+  });
+  if (patentOutput) {
+    console.log(patentOutput.output);
+    return;
+  }
+
+  const columns = opts.detailed
+    ? [...DETAILED_SEARCH_COLUMNS]
+    : [...DEFAULT_SEARCH_COLUMNS];
+  const records = opts.includeRaw ? fused : stripRaw(fused);
+  console.log(format(records, columns, fmt, ctx));
+}
+
+interface GetOpts {
+  detailed?: boolean;
+  format?: string;
+  includeRaw?: boolean;
 }
 
 async function runGet(
   program: Command,
   publicationNumber: string,
+  opts: GetOpts = {},
 ): Promise<void> {
   const startedAt = Date.now();
-  const fmt = detectFormat(program.opts().format as OutputFormat | undefined);
+  const requestedFormat =
+    opts.format ?? (program.opts().format as string | undefined);
+  const fmt = detectFormat(
+    requestedFormat === "jsonl"
+      ? "json"
+      : (requestedFormat as OutputFormat | undefined),
+  );
   const ctx = makeCtx("patent.get", startedAt);
 
   const source = routeByPublicationPrefix(publicationNumber);
@@ -395,7 +671,17 @@ async function runGet(
     console.error(format(null, undefined, fmt, ctx));
     process.exit(ExitCode.EMPTY_RESULT);
   }
-  console.log(format(outcome.records, undefined, fmt, ctx));
+  const patentOutput = renderPatentOutput(outcome.records, {
+    detailed: opts.detailed,
+    format: requestedFormat,
+    includeRaw: opts.includeRaw,
+  });
+  if (patentOutput) {
+    console.log(patentOutput.output);
+    return;
+  }
+  const records = opts.includeRaw ? outcome.records : stripRaw(outcome.records);
+  console.log(format(records, undefined, fmt, ctx));
 }
 
 async function runFamily(
@@ -539,12 +825,27 @@ async function runLegalStatus(
   );
 }
 
+interface PriorArtOpts {
+  abstract?: string;
+  sources?: string;
+  top?: string;
+  detailed?: boolean;
+  format?: string;
+  includeRaw?: boolean;
+}
+
 async function runPriorArt(
   program: Command,
-  opts: { abstract?: string; sources?: string; top?: string },
+  opts: PriorArtOpts,
 ): Promise<void> {
   const startedAt = Date.now();
-  const fmt = detectFormat(program.opts().format as OutputFormat | undefined);
+  const requestedFormat =
+    opts.format ?? (program.opts().format as string | undefined);
+  const fmt = detectFormat(
+    requestedFormat === "jsonl"
+      ? "json"
+      : (requestedFormat as OutputFormat | undefined),
+  );
   const ctx = makeCtx("patent.prior-art", startedAt);
 
   if (!opts.abstract) {
@@ -592,14 +893,20 @@ async function runPriorArt(
     console.error(format(null, undefined, fmt, ctx));
     process.exit(ExitCode.EMPTY_RESULT);
   }
-  console.log(
-    format(
-      fused,
-      ["publication_number", "title", "abstract", "source_adapter"],
-      fmt,
-      ctx,
-    ),
-  );
+  const patentOutput = renderPatentOutput(fused, {
+    detailed: opts.detailed,
+    format: requestedFormat,
+    includeRaw: opts.includeRaw,
+  });
+  if (patentOutput) {
+    console.log(patentOutput.output);
+    return;
+  }
+  const columns = opts.detailed
+    ? [...DETAILED_SEARCH_COLUMNS]
+    : ["publication_number", "title", "abstract", "source_adapter"];
+  const records = opts.includeRaw ? fused : stripRaw(fused);
+  console.log(format(records, columns, fmt, ctx));
 }
 
 // ── doctor ──────────────────────────────────────────────────────────────
@@ -608,6 +915,7 @@ interface DoctorRow {
   source: string;
   capabilities: string[];
   health: "ok" | "skipped" | "blocked" | "error";
+  verification_status: ResolvedVerificationStatus;
   detail: string;
 }
 
@@ -629,6 +937,7 @@ async function runDoctor(
 
   const rows: DoctorRow[] = [];
   let anyError = false;
+  let anyDishonesty = false;
   for (const adapter of adapters) {
     const caps = new Set<string>();
     for (const cmd of Object.values(adapter.commands)) {
@@ -636,14 +945,26 @@ async function runDoctor(
         if (cap.startsWith("patent.")) caps.add(cap);
       }
     }
+    const commandNames = Object.keys(adapter.commands);
+    const verificationStatus = resolveAdapterVerificationStatus(
+      adapter.name,
+      commandNames,
+    );
     const healthCmd = resolveCommand(adapter.name, "health");
     if (!healthCmd) {
       rows.push({
         source: adapter.name,
         capabilities: [...caps].sort(),
         health: "skipped",
+        verification_status: verificationStatus,
         detail: "no `health` command — adapter passes by introspection only",
       });
+      // Honesty gate: an adapter claiming "verified" must own a reachable
+      // health probe. Without one, the claim is unfalsifiable in this
+      // session — surface the mismatch as an error.
+      if (verificationStatus === "verified") {
+        anyDishonesty = true;
+      }
       continue;
     }
     const strategy = commandStrategy(adapter, healthCmd.command);
@@ -652,8 +973,14 @@ async function runDoctor(
         source: adapter.name,
         capabilities: [...caps].sort(),
         health: "blocked",
+        verification_status: verificationStatus,
         detail: `health probe requires ${strategy} auth — skipped`,
       });
+      // A `verified` header must not co-exist with a strategy gate; the
+      // probe could not have run in CI without auth. Flag the mismatch.
+      if (verificationStatus === "verified") {
+        anyDishonesty = true;
+      }
       continue;
     }
     const inv = buildInvocation(
@@ -668,6 +995,7 @@ async function runDoctor(
         source: adapter.name,
         capabilities: [...caps].sort(),
         health: "error",
+        verification_status: verificationStatus,
         detail: "could not build invocation for health command",
       });
       anyError = true;
@@ -679,24 +1007,34 @@ async function runDoctor(
         source: adapter.name,
         capabilities: [...caps].sort(),
         health: "error",
+        verification_status: verificationStatus,
         detail: result.error.message ?? result.error.code ?? "health failed",
       });
       anyError = true;
+      if (verificationStatus === "verified") {
+        anyDishonesty = true;
+      }
       continue;
     }
     rows.push({
       source: adapter.name,
       capabilities: [...caps].sort(),
       health: "ok",
+      verification_status: verificationStatus,
       detail: "health probe returned successfully",
     });
   }
   ctx.duration_ms = Date.now() - startedAt;
   ctx.surface = "web";
   console.log(
-    format(rows, ["source", "capabilities", "health", "detail"], fmt, ctx),
+    format(
+      rows,
+      ["source", "capabilities", "health", "verification_status", "detail"],
+      fmt,
+      ctx,
+    ),
   );
-  if (anyError) process.exit(ExitCode.GENERIC_ERROR);
+  if (anyError || anyDishonesty) process.exit(ExitCode.GENERIC_ERROR);
 }
 
 // ── Registration ────────────────────────────────────────────────────────
@@ -718,6 +1056,18 @@ export function registerPatentCommand(program: Command): void {
     .option("--limit <n>", "maximum fused result count", "20")
     .option("--since <YYYY>", "earliest filing year")
     .option("--cpc <csv>", "Cooperative Patent Classification filter")
+    .option(
+      "-D, --detailed",
+      "emit every PatentRecord field (rich block / wide table)",
+    )
+    .option(
+      "--include-raw",
+      "preserve the upstream `raw` payload on each record",
+    )
+    .option(
+      "-f, --format <fmt>",
+      "output format: md (default), json, jsonl, csv — overrides global -f",
+    )
     .action(async (query: string, opts: SearchOpts) => {
       await runSearch(program, query, opts);
     });
@@ -725,8 +1075,14 @@ export function registerPatentCommand(program: Command): void {
   patent
     .command("get <publication-number>")
     .description("Retrieve one patent record by ST.16 publication number")
-    .action(async (publicationNumber: string) => {
-      await runGet(program, publicationNumber);
+    .option("-D, --detailed", "emit every PatentRecord field (rich block)")
+    .option("--include-raw", "preserve the upstream `raw` payload")
+    .option(
+      "-f, --format <fmt>",
+      "output format: md (default), json, jsonl, csv",
+    )
+    .action(async (publicationNumber: string, opts: GetOpts) => {
+      await runGet(program, publicationNumber, opts);
     });
 
   patent
@@ -768,11 +1124,15 @@ export function registerPatentCommand(program: Command): void {
       "comma-separated source list (default: pqai,google-patents-bq,epo)",
     )
     .option("--top <n>", "top-N fused results to return", "20")
-    .action(
-      async (opts: { abstract?: string; sources?: string; top?: string }) => {
-        await runPriorArt(program, opts);
-      },
-    );
+    .option("-D, --detailed", "emit every PatentRecord field (rich block)")
+    .option("--include-raw", "preserve the upstream `raw` payload")
+    .option(
+      "-f, --format <fmt>",
+      "output format: md (default), json, jsonl, csv",
+    )
+    .action(async (opts: PriorArtOpts) => {
+      await runPriorArt(program, opts);
+    });
 
   patent
     .command("doctor")
