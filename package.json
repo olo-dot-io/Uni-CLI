@@ -40,6 +40,10 @@
       "types": "./dist/main.d.ts",
       "import": "./dist/main.js"
     },
+    "./index": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
     "./registry": {
       "types": "./dist/registry.d.ts",
       "import": "./dist/registry.js"
