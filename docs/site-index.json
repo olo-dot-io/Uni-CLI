@@ -1,7 +1,7 @@
 {
-  "generated": "2026-05-18T14:07:52.088Z",
-  "total_sites": 305,
-  "total_commands": 1742,
+  "generated": "2026-05-19T15:30:55.191Z",
+  "total_sites": 312,
+  "total_commands": 1756,
   "sites": [
     {
       "site": "1688",
@@ -155,6 +155,26 @@
           "name": "company",
           "description": "51job",
           "command": "unicli 51job company"
+        }
+      ]
+    },
+    {
+      "site": "acl-anthology",
+      "type": "web-api",
+      "domain": "aclanthology.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search ACL Anthology papers",
+          "command": "unicli acl-anthology search"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch an ACL Anthology paper by anthology id",
+          "command": "unicli acl-anthology paper"
         }
       ]
     },
@@ -1927,6 +1947,26 @@
       ]
     },
     {
+      "site": "crossref",
+      "type": "web-api",
+      "domain": "api.crossref.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Crossref Works by title, author, DOI, or bibliographic text",
+          "command": "unicli crossref search"
+        },
+        {
+          "name": "work",
+          "description": "Fetch one Crossref Work by DOI",
+          "command": "unicli crossref work"
+        }
+      ]
+    },
+    {
       "site": "ctrip",
       "type": "web-api",
       "domain": "flights.ctrip.com",
@@ -2071,6 +2111,21 @@
           "name": "press",
           "description": "Press a key in Cursor, with optional comma-separated modifiers.",
           "command": "unicli cursor press"
+        }
+      ]
+    },
+    {
+      "site": "cvf",
+      "type": "web-api",
+      "domain": "openaccess.thecvf.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search CVF OpenAccess proceedings (CVPR/ICCV/ECCV/WACV)",
+          "command": "unicli cvf search"
         }
       ]
     },
@@ -6327,6 +6382,21 @@
       ]
     },
     {
+      "site": "neurips",
+      "type": "web-api",
+      "domain": "proceedings.neurips.cc",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search NeurIPS proceedings by year",
+          "command": "unicli neurips search"
+        }
+      ]
+    },
+    {
       "site": "notebooklm",
       "type": "web-api",
       "domain": "notebooklm.google.com",
@@ -7337,6 +7407,26 @@
       ]
     },
     {
+      "site": "pmlr",
+      "type": "web-api",
+      "domain": "proceedings.mlr.press",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search a PMLR proceedings volume (e.g. v235 for ICML 2024)",
+          "command": "unicli pmlr search"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch a PMLR paper by id inside a proceedings volume",
+          "command": "unicli pmlr paper"
+        }
+      ]
+    },
+    {
       "site": "powerchina",
       "type": "web-api",
       "domain": "bid.powerchina.cn",
@@ -8029,6 +8119,41 @@
           "name": "tags",
           "description": "Search Safebooru tags by exact tag name or ASCII tag prefix such as blue_archive",
           "command": "unicli safebooru tags"
+        }
+      ]
+    },
+    {
+      "site": "semantic-scholar",
+      "type": "web-api",
+      "domain": "api.semanticscholar.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 5,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Semantic Scholar papers",
+          "command": "unicli semantic-scholar search"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch one Semantic Scholar paper by paperId, DOI, or arXiv id",
+          "command": "unicli semantic-scholar paper"
+        },
+        {
+          "name": "id",
+          "description": "List Semantic Scholar paper ${name}",
+          "command": "unicli semantic-scholar id"
+        },
+        {
+          "name": "citations",
+          "description": "List Semantic Scholar paper citations",
+          "command": "unicli semantic-scholar citations"
+        },
+        {
+          "name": "references",
+          "description": "List Semantic Scholar paper references",
+          "command": "unicli semantic-scholar references"
         }
       ]
     },
@@ -9242,6 +9367,21 @@
           "name": "info",
           "description": "UK IPO registry placeholder — Ipsum retired 2025-01; OneIPO API on 2026 roadmap",
           "command": "unicli ukipo info"
+        }
+      ]
+    },
+    {
+      "site": "unpaywall",
+      "type": "web-api",
+      "domain": "api.unpaywall.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "oa",
+          "description": "Find open-access PDF availability for a DOI via Unpaywall",
+          "command": "unicli unpaywall oa"
         }
       ]
     },

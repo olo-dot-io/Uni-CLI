@@ -1,8 +1,8 @@
 {
-  "source": "unicli@0.221.0",
-  "generated": "2026-05-18T14:07:52.088Z",
-  "total_sites": 305,
-  "total_commands": 1742,
+  "source": "unicli@0.221.1",
+  "generated": "2026-05-19T15:30:55.191Z",
+  "total_sites": 312,
+  "total_commands": 1756,
   "adapters": [
     {
       "site": "1688",
@@ -751,6 +751,73 @@
               "required": false,
               "positional": false,
               "description": "返回职位数"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "acl-anthology",
+      "type": "web-api",
+      "domain": "aclanthology.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search ACL Anthology papers",
+          "when_to_use": "When you need to search acl-anthology for a specific query.",
+          "command": "unicli acl-anthology search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "paper",
+          "description": "Fetch an ACL Anthology paper by anthology id",
+          "when_to_use": "Fetch an ACL Anthology paper by anthology id",
+          "command": "unicli acl-anthology paper",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
             }
           ]
         }
@@ -7004,6 +7071,73 @@
       ]
     },
     {
+      "site": "crossref",
+      "type": "web-api",
+      "domain": "api.crossref.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Crossref Works by title, author, DOI, or bibliographic text",
+          "when_to_use": "When you need to search crossref for a specific query.",
+          "command": "unicli crossref search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "doi",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "work",
+          "description": "Fetch one Crossref Work by DOI",
+          "when_to_use": "Fetch one Crossref Work by DOI",
+          "command": "unicli crossref work",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "doi",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "doi",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "ctrip",
       "type": "web-api",
       "domain": "flights.ctrip.com",
@@ -7473,6 +7607,59 @@
               "required": false,
               "positional": false,
               "description": "Comma-separated modifiers such as meta,shift"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "cvf",
+      "type": "web-api",
+      "domain": "openaccess.thecvf.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search CVF OpenAccess proceedings (CVPR/ICCV/ECCV/WACV)",
+          "when_to_use": "When you need to search cvf for a specific query.",
+          "command": "unicli cvf search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "venue",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "year",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -23976,6 +24163,53 @@
       ]
     },
     {
+      "site": "neurips",
+      "type": "web-api",
+      "domain": "proceedings.neurips.cc",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search NeurIPS proceedings by year",
+          "when_to_use": "When you need to search neurips for a specific query.",
+          "command": "unicli neurips search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "year",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "notebooklm",
       "type": "web-api",
       "domain": "notebooklm.google.com",
@@ -27555,6 +27789,85 @@
       ]
     },
     {
+      "site": "pmlr",
+      "type": "web-api",
+      "domain": "proceedings.mlr.press",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search a PMLR proceedings volume (e.g. v235 for ICML 2024)",
+          "when_to_use": "When you need to search pmlr for a specific query.",
+          "command": "unicli pmlr search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "volume",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "paper",
+          "description": "Fetch a PMLR paper by id inside a proceedings volume",
+          "when_to_use": "Fetch a PMLR paper by id inside a proceedings volume",
+          "command": "unicli pmlr paper",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "volume",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "powerchina",
       "type": "web-api",
       "domain": "bid.powerchina.cn",
@@ -30352,6 +30665,174 @@
           "args": [
             {
               "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "semantic-scholar",
+      "type": "web-api",
+      "domain": "api.semanticscholar.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Semantic Scholar papers",
+          "when_to_use": "When you need to search semantic-scholar for a specific query.",
+          "command": "unicli semantic-scholar search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "doi",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "paper",
+          "description": "Fetch one Semantic Scholar paper by paperId, DOI, or arXiv id",
+          "when_to_use": "Fetch one Semantic Scholar paper by paperId, DOI, or arXiv id",
+          "command": "unicli semantic-scholar paper",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "doi",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "id",
+          "description": "List Semantic Scholar paper ${name}",
+          "when_to_use": "List Semantic Scholar paper ${name}",
+          "command": "unicli semantic-scholar id",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "doi",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "citations",
+          "description": "List Semantic Scholar paper citations",
+          "when_to_use": "List Semantic Scholar paper citations",
+          "command": "unicli semantic-scholar citations",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "doi",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "references",
+          "description": "List Semantic Scholar paper references",
+          "when_to_use": "List Semantic Scholar paper references",
+          "command": "unicli semantic-scholar references",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "doi",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "id",
               "type": "str",
               "required": true,
               "positional": true
@@ -34708,6 +35189,48 @@
           "browser": false,
           "columns": [],
           "args": []
+        }
+      ]
+    },
+    {
+      "site": "unpaywall",
+      "type": "web-api",
+      "domain": "api.unpaywall.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "oa",
+          "description": "Find open-access PDF availability for a DOI via Unpaywall",
+          "when_to_use": "Find open-access PDF availability for a DOI via Unpaywall",
+          "command": "unicli unpaywall oa",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "doi",
+            "is_open_access",
+            "oa_status",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "doi",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "email",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Unpaywall requester email"
+            }
+          ]
         }
       ]
     },

@@ -11,7 +11,7 @@
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：305 个站点，1742 条命令。
+这个目录来自适配器 manifest：312 个站点，1756 条命令。
 
 | 站点 | 接口类型 | 命令数 | 认证 | 示例命令 |
 | --- | --- | ---: | --- | --- |
@@ -19,6 +19,7 @@
 | 1point3acres | web-api | 9 | 是 | unicli 1point3acres hot<br>unicli 1point3acres latest<br>unicli 1point3acres digest |
 | 36kr | web-api | 5 | 否 | unicli 36kr article<br>unicli 36kr hot<br>unicli 36kr latest |
 | 51job | web-api | 4 | 是 | unicli 51job search<br>unicli 51job hot<br>unicli 51job detail |
+| acl-anthology | web-api | 2 | 否 | unicli acl-anthology search<br>unicli acl-anthology paper |
 | adguardhome | service | 5 | 否 | unicli adguardhome add-rule<br>unicli adguardhome rules<br>unicli adguardhome stats |
 | aibase | web-api | 1 | 否 | unicli aibase news |
 | amazon | web-api | 8 | 是 | unicli amazon bestsellers<br>unicli amazon discussion<br>unicli amazon movers-shakers |
@@ -63,9 +64,11 @@
 | coupang | web-api | 4 | 是 | unicli coupang add-to-cart<br>unicli coupang hot<br>unicli coupang search |
 | crates | web-api | 2 | 否 | unicli crates search<br>unicli crates crate |
 | crates-io | web-api | 3 | 否 | unicli crates-io info<br>unicli crates-io search<br>unicli crates-io versions |
+| crossref | web-api | 2 | 否 | unicli crossref search<br>unicli crossref work |
 | ctrip | web-api | 4 | 是 | unicli ctrip search<br>unicli ctrip hotel-suggest<br>unicli ctrip hotel-search |
 | cua | bridge | 2 | 否 | unicli cua bench-list<br>unicli cua bench-run |
 | cursor | web-api | 18 | 否 | unicli cursor composer<br>unicli cursor extract-code<br>unicli cursor export |
+| cvf | web-api | 1 | 否 | unicli cvf search |
 | danbooru | web-api | 8 | 否 | unicli danbooru artists<br>unicli danbooru comments<br>unicli danbooru detail |
 | dangdang | web-api | 2 | 是 | unicli dangdang hot<br>unicli dangdang search |
 | dblp | web-api | 4 | 否 | unicli dblp search<br>unicli dblp paper<br>unicli dblp venue |
@@ -182,6 +185,7 @@
 | neonctl | bridge | 1 | 否 | unicli neonctl projects |
 | netease-music | web-api | 17 | 否 | unicli netease-music hot<br>unicli netease-music playlist<br>unicli netease-music search |
 | netlify | bridge | 1 | 否 | unicli netlify sites |
+| neurips | web-api | 1 | 否 | unicli neurips search |
 | notebooklm | web-api | 15 | 是 | unicli notebooklm current<br>unicli notebooklm get<br>unicli notebooklm history |
 | notion | web-api | 18 | 是 | unicli notion databases<br>unicli notion pages<br>unicli notion search |
 | novita | service | 3 | 否 | unicli novita generate<br>unicli novita models<br>unicli novita status |
@@ -212,6 +216,7 @@
 | pexels | web-api | 2 | 是 | unicli pexels curated<br>unicli pexels search |
 | pinduoduo | web-api | 2 | 是 | unicli pinduoduo hot<br>unicli pinduoduo search |
 | pixiv | web-api | 6 | 是 | unicli pixiv detail<br>unicli pixiv download<br>unicli pixiv illusts |
+| pmlr | web-api | 2 | 否 | unicli pmlr search<br>unicli pmlr paper |
 | powerchina | web-api | 1 | 是 | unicli powerchina search |
 | powerpoint | desktop | 7 | 否 | unicli powerpoint add-slide<br>unicli powerpoint insert-image<br>unicli powerpoint insert-link |
 | pqai | web-api | 2 | 否 | unicli pqai prior-art<br>unicli pqai search |
@@ -233,6 +238,7 @@
 | rfc | web-api | 1 | 否 | unicli rfc rfc |
 | rubygems | web-api | 3 | 否 | unicli rubygems info<br>unicli rubygems search<br>unicli rubygems gem |
 | safebooru | web-api | 4 | 否 | unicli safebooru detail<br>unicli safebooru download<br>unicli safebooru search |
+| semantic-scholar | web-api | 5 | 否 | unicli semantic-scholar search<br>unicli semantic-scholar paper<br>unicli semantic-scholar id |
 | shotcut | desktop | 3 | 否 | unicli shotcut effects<br>unicli shotcut info<br>unicli shotcut render |
 | sinablog | browser | 4 | 否 | unicli sinablog article<br>unicli sinablog hot<br>unicli sinablog search |
 | sinafinance | web-api | 5 | 否 | unicli sinafinance market<br>unicli sinafinance news<br>unicli sinafinance rolling-news |
@@ -263,6 +269,7 @@
 | uisdc | web-api | 1 | 否 | unicli uisdc news |
 | uiverse | web-api | 2 | 否 | unicli uiverse code<br>unicli uiverse preview |
 | ukipo | web-api | 1 | 否 | unicli ukipo info |
+| unpaywall | web-api | 1 | 否 | unicli unpaywall oa |
 | unsplash | web-api | 2 | 否 | unicli unsplash random<br>unicli unsplash search |
 | uspto | web-api | 3 | 否 | unicli uspto get<br>unicli uspto legal-status<br>unicli uspto search |
 | v2ex | web-api | 12 | 是 | unicli v2ex daily<br>unicli v2ex hot<br>unicli v2ex latest |

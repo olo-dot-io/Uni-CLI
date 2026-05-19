@@ -14,7 +14,7 @@ running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 305 sites, 1742 commands.
+This catalog is generated from the adapter manifest: 312 sites, 1756 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -22,6 +22,7 @@ This catalog is generated from the adapter manifest: 305 sites, 1742 commands.
 | 1point3acres | web-api | 9 | yes | unicli 1point3acres hot<br>unicli 1point3acres latest<br>unicli 1point3acres digest |
 | 36kr | web-api | 5 | no | unicli 36kr article<br>unicli 36kr hot<br>unicli 36kr latest |
 | 51job | web-api | 4 | yes | unicli 51job search<br>unicli 51job hot<br>unicli 51job detail |
+| acl-anthology | web-api | 2 | no | unicli acl-anthology search<br>unicli acl-anthology paper |
 | adguardhome | service | 5 | no | unicli adguardhome add-rule<br>unicli adguardhome rules<br>unicli adguardhome stats |
 | aibase | web-api | 1 | no | unicli aibase news |
 | amazon | web-api | 8 | yes | unicli amazon bestsellers<br>unicli amazon discussion<br>unicli amazon movers-shakers |
@@ -66,9 +67,11 @@ This catalog is generated from the adapter manifest: 305 sites, 1742 commands.
 | coupang | web-api | 4 | yes | unicli coupang add-to-cart<br>unicli coupang hot<br>unicli coupang search |
 | crates | web-api | 2 | no | unicli crates search<br>unicli crates crate |
 | crates-io | web-api | 3 | no | unicli crates-io info<br>unicli crates-io search<br>unicli crates-io versions |
+| crossref | web-api | 2 | no | unicli crossref search<br>unicli crossref work |
 | ctrip | web-api | 4 | yes | unicli ctrip search<br>unicli ctrip hotel-suggest<br>unicli ctrip hotel-search |
 | cua | bridge | 2 | no | unicli cua bench-list<br>unicli cua bench-run |
 | cursor | web-api | 18 | no | unicli cursor composer<br>unicli cursor extract-code<br>unicli cursor export |
+| cvf | web-api | 1 | no | unicli cvf search |
 | danbooru | web-api | 8 | no | unicli danbooru artists<br>unicli danbooru comments<br>unicli danbooru detail |
 | dangdang | web-api | 2 | yes | unicli dangdang hot<br>unicli dangdang search |
 | dblp | web-api | 4 | no | unicli dblp search<br>unicli dblp paper<br>unicli dblp venue |
@@ -185,6 +188,7 @@ This catalog is generated from the adapter manifest: 305 sites, 1742 commands.
 | neonctl | bridge | 1 | no | unicli neonctl projects |
 | netease-music | web-api | 17 | no | unicli netease-music hot<br>unicli netease-music playlist<br>unicli netease-music search |
 | netlify | bridge | 1 | no | unicli netlify sites |
+| neurips | web-api | 1 | no | unicli neurips search |
 | notebooklm | web-api | 15 | yes | unicli notebooklm current<br>unicli notebooklm get<br>unicli notebooklm history |
 | notion | web-api | 18 | yes | unicli notion databases<br>unicli notion pages<br>unicli notion search |
 | novita | service | 3 | no | unicli novita generate<br>unicli novita models<br>unicli novita status |
@@ -215,6 +219,7 @@ This catalog is generated from the adapter manifest: 305 sites, 1742 commands.
 | pexels | web-api | 2 | yes | unicli pexels curated<br>unicli pexels search |
 | pinduoduo | web-api | 2 | yes | unicli pinduoduo hot<br>unicli pinduoduo search |
 | pixiv | web-api | 6 | yes | unicli pixiv detail<br>unicli pixiv download<br>unicli pixiv illusts |
+| pmlr | web-api | 2 | no | unicli pmlr search<br>unicli pmlr paper |
 | powerchina | web-api | 1 | yes | unicli powerchina search |
 | powerpoint | desktop | 7 | no | unicli powerpoint add-slide<br>unicli powerpoint insert-image<br>unicli powerpoint insert-link |
 | pqai | web-api | 2 | no | unicli pqai prior-art<br>unicli pqai search |
@@ -236,6 +241,7 @@ This catalog is generated from the adapter manifest: 305 sites, 1742 commands.
 | rfc | web-api | 1 | no | unicli rfc rfc |
 | rubygems | web-api | 3 | no | unicli rubygems info<br>unicli rubygems search<br>unicli rubygems gem |
 | safebooru | web-api | 4 | no | unicli safebooru detail<br>unicli safebooru download<br>unicli safebooru search |
+| semantic-scholar | web-api | 5 | no | unicli semantic-scholar search<br>unicli semantic-scholar paper<br>unicli semantic-scholar id |
 | shotcut | desktop | 3 | no | unicli shotcut effects<br>unicli shotcut info<br>unicli shotcut render |
 | sinablog | browser | 4 | no | unicli sinablog article<br>unicli sinablog hot<br>unicli sinablog search |
 | sinafinance | web-api | 5 | no | unicli sinafinance market<br>unicli sinafinance news<br>unicli sinafinance rolling-news |
@@ -266,6 +272,7 @@ This catalog is generated from the adapter manifest: 305 sites, 1742 commands.
 | uisdc | web-api | 1 | no | unicli uisdc news |
 | uiverse | web-api | 2 | no | unicli uiverse code<br>unicli uiverse preview |
 | ukipo | web-api | 1 | no | unicli ukipo info |
+| unpaywall | web-api | 1 | no | unicli unpaywall oa |
 | unsplash | web-api | 2 | no | unicli unsplash random<br>unicli unsplash search |
 | uspto | web-api | 3 | no | unicli uspto get<br>unicli uspto legal-status<br>unicli uspto search |
 | v2ex | web-api | 12 | yes | unicli v2ex daily<br>unicli v2ex hot<br>unicli v2ex latest |

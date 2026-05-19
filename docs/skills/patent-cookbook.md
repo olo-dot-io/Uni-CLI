@@ -7,7 +7,7 @@ description: >
   resolution, AI-driven prior-art retrieval, and the doctor health probe.
   Every recipe's expected output was captured live against the corresponding
   real upstream in the session that wrote this file; no synthetic output.
-version: 0.221.0
+version: 0.221.1
 category: research
 depends-on:
   - unicli

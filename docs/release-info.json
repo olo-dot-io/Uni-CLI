@@ -1,11 +1,11 @@
 {
-  "version": "0.221.0",
+  "version": "0.221.1",
   "codename": "Apollo · Anders",
-  "date": "2026-05-18",
+  "date": "2026-05-19",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.221.0",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02210--2026-05-18--apollo--anders",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.221.1",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02211--2026-05-19--apollo--anders",
   "highlights": {
     "root": [
       "Release surfaces are generated from the live catalog: README, README.zh-CN, VitePress docs, public Markdown, AGENTS.md, and the AI-readable docs now agree on 282 sites, 1680 commands, 1144 adapters, 101 pipeline steps, and 8393 tests.",

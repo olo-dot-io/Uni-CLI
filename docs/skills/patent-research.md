@@ -8,8 +8,8 @@ description: >
   PatSnap; when a user pastes a patent publication number or CPC code and
   asks for related records; when the task is prior-art discovery against
   a candidate abstract; or when the user says "find patents on", "patent
-  family", "prior art", "查专利", "专利族".
-version: 0.221.0
+  family", "prior art", or Chinese-language patent-search phrasing.
+version: 0.221.1
 category: research
 depends-on:
   - unicli
@@ -23,9 +23,9 @@ triggers:
   - "patent family"
   - "prior art"
   - "publication number"
-  - "查专利"
-  - "专利族"
-  - "申请号"
+  - "Chinese patent search"
+  - "Chinese patent family"
+  - "Chinese patent application number"
 ---
 
 # Uni-CLI Patent Research

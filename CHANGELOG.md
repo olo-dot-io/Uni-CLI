@@ -3,6 +3,39 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 
+## [0.221.1] — 2026-05-19 — Apollo · Anders
+
+### Added
+
+- `unicli scholar` meta-command for academic discovery, paper lookup, PDF
+  routing, citation traversal, reference traversal, and source doctor output.
+- First-source scholarly adapters for Semantic Scholar, Crossref, Unpaywall,
+  ACL Anthology, PMLR, CVF OpenAccess, and NeurIPS proceedings.
+- Unified scholarly work record types plus adapter tests covering source
+  mapping, DOI/PDF metadata, and proceedings parsing.
+
+### Changed
+
+- Natural-language discovery now treats category as a hard filter across
+  Commander, fast-path search, and MCP `unicli_search`, so agents can search
+  within `scholarly`, `finance`, `social`, or other verticals without mixed
+  results.
+- Search intent boosts moved out of the core BM25/TF-IDF implementation into
+  `src/discovery/intents.ts`, keeping vertical routing maintainable as the
+  catalog grows.
+- Scholarly routing now prefers canonical venue/source adapters for ICML/PMLR,
+  CVPR/CVF, ACL Anthology, NeurIPS, DOI metadata, open-access PDF, and citation
+  workflows.
+
+### Fixed
+
+- Manifest, runtime registry, fast-path list, and MCP list/search category
+  contracts now agree on category output and filtering.
+- Hugging Face paper commands remain discoverable through `scholar.*`
+  capabilities without misclassifying the full `hf` adapter as scholarly.
+- Stats generation preserves existing test counts when Vitest list enumeration
+  cannot complete under local load.
+
 ## [Unreleased]
 
 ### Added
