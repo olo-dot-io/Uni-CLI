@@ -18,6 +18,8 @@
  *     CLI binary (spawn ENOENT), platform-gated step on wrong OS, SSRF
  *     guard blocking a loopback/private target. These are legitimate
  *     deferrals — the adapter is healthy, it just can't run in this host.
+ *   - intentional placeholder adapters that fail closed with a structured
+ *     upstream-deprecated message instead of pretending coverage exists.
  *
  * Network failures against real endpoints count as probe failures. To park
  * a flaky adapter, add `quarantine: true` to its YAML.
@@ -181,6 +183,13 @@ function isEnvironmentMissing(message: string): string | undefined {
     /authentication required/i.test(message)
   ) {
     return "auth required (HTTP 401/403)";
+  }
+  // Registry placeholders intentionally fail closed when an upstream public
+  // API has been retired or is subscription-only. Runtime users still get the
+  // actionable PATENT_API_DEPRECATED envelope; the health probe should not
+  // classify that deliberate product signal as adapter drift.
+  if (/PATENT_API_DEPRECATED/i.test(message)) {
+    return "upstream API deprecated (intentional placeholder)";
   }
   // macOS-only paths and binaries that a Linux runner obviously lacks.
   // Apple's own tooling emits `osascript` / AppleScript / `caffeinate` /

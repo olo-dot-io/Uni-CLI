@@ -148,7 +148,7 @@
     "stats": "tsx scripts/build-manifest.js && tsx scripts/count-stats.ts && tsx scripts/build-readme.ts && tsx scripts/build-agents.ts",
     "stats:check": "tsx scripts/count-consistency.ts",
     "build:agents": "tsx scripts/build-agents.ts",
-    "test": "vitest run --project unit",
+    "test": "vitest run --project unit --maxWorkers=1 --reporter=dot",
     "test:adapter": "vitest run --project adapter",
     "test:perf": "vitest run --project perf",
     "compute:smoke": "tsx scripts/compute-live-smoke.ts",

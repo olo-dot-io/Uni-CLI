@@ -58,10 +58,19 @@ jobs:
           npm --version
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --include=dev
 
-      - name: Verify
-        run: npm run verify
+      - name: Verify release package surface
+        run: |
+          npm run format:check
+          npm run typecheck
+          npm run lint
+          npm run lint:adapters
+          npm run lint:schema-v2
+          npm run build
+          npm run test
+          npm run stats:check
+          npm run boundary:check
 
       - name: Validate release metadata
         id: release_metadata
@@ -98,6 +107,9 @@ jobs:
             echo "::notice title=npm auth::No NPM_TOKEN secret — publish MUST succeed via OIDC Trusted Publishers (npmjs.com > Settings > Trusted Publishers)"
           fi
 
+      - name: Pack dry run
+        run: npm pack --dry-run
+
       # --provenance attaches a signed SLSA v1 attestation to the tarball.
       # --access public is required for scoped packages (@zenalexa/*).
       # NODE_AUTH_TOKEN is ONLY consumed when the Trusted Publishers OIDC
@@ -111,6 +123,10 @@ jobs:
       - name: Publish to npm with provenance
         run: |
           VERSION=$(node -p "require('./package.json').version")
+          if npm view "@zenalexa/unicli@$VERSION" version >/dev/null 2>&1; then
+            echo "::notice title=npm publish::@zenalexa/unicli@$VERSION already exists — skipping npm publish"
+            exit 0
+          fi
           if [[ "$VERSION" == *-* ]]; then
             # Semver prerelease: extract channel from "0.216.0-beta.2" → "beta"
             CHANNEL=$(echo "$VERSION" | sed -E 's/^[^-]+-([^.]+).*/\1/')

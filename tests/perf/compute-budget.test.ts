@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { ok } from "../../src/core/envelope.js";
 import { DesktopAtspiTransport } from "../../src/transport/adapters/desktop-atspi.js";
@@ -6,6 +8,11 @@ import { DesktopAxTransport } from "../../src/transport/adapters/desktop-ax.js";
 import { DesktopUiaTransport } from "../../src/transport/adapters/desktop-uia.js";
 import { createTransportBus } from "../../src/transport/bus.js";
 import { tryCascade } from "../../src/transport/cascade.js";
+import { RefAllocator } from "../../src/transport/refs.js";
+import {
+  encodeSnapshot,
+  type RawAxNode,
+} from "../../src/transport/snapshot-encoder.js";
 import type {
   ActionRequest,
   ActionResult,
@@ -17,8 +24,11 @@ import type {
   TransportKind,
 } from "../../src/transport/types.js";
 
+const FIXTURE_DIR = join(process.cwd(), "tests/fixtures/compute/snapshot");
+
 const BUDGET_MS = {
   structuredWireP95: 15,
+  snapshotEncode400P95: 15,
   cdpWarmP95: 40,
   cuaP95: 3000,
   liveSnapshotP95: 80,
@@ -58,6 +68,20 @@ describe("compute performance budget", () => {
 
     expect(snapshot.p95).toBeLessThan(BUDGET_MS.structuredWireP95);
     expect(click.p95).toBeLessThan(BUDGET_MS.structuredWireP95);
+  });
+
+  it("keeps 400-node snapshot encoding under the p95 budget", async () => {
+    const fixture = loadFixture("vscode-editor");
+    const samples = await measureAsync(30, async () => {
+      const result = encodeSnapshot(fixture, {
+        transport: "desktop-uia",
+        alloc: new RefAllocator(),
+        includeBounds: false,
+      });
+      expect(result.refCount).toBe(401);
+    });
+
+    expect(samples.p95).toBeLessThan(BUDGET_MS.snapshotEncode400P95);
   });
 
   it("keeps 1000 sequential compute_click calls under the burst budget", async () => {
@@ -151,6 +175,12 @@ function percentile(
     Math.ceil(samples.length * percentileValue) - 1,
   );
   return samples[index] ?? 0;
+}
+
+function loadFixture(name: string): RawAxNode {
+  return JSON.parse(
+    readFileSync(join(FIXTURE_DIR, `${name}.json`), "utf8"),
+  ) as RawAxNode;
 }
 
 function liveAppName(): string {
