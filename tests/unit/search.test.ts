@@ -279,6 +279,70 @@ describe("search", () => {
     );
   });
 
+  it("routes generic academic-paper discovery to scholarly sources", () => {
+    const english = search("academic papers", 8);
+    const chinese = search("论文搜索", 8);
+    const subjectQuery = search("find papers about LLM agents", 8);
+
+    expect(english.slice(0, 5).map((r) => r.category)).toContain("scholarly");
+    expect(chinese.slice(0, 5).map((r) => r.category)).toContain("scholarly");
+    expect(subjectQuery[0].category).toBe("scholarly");
+    expect(english[0].site).not.toBe("nowcoder");
+    expect(chinese[0].site).not.toBe("ip-info");
+    expect(subjectQuery[0].site).not.toBe("agents");
+  });
+
+  it("hard-filters natural-language results when a category is requested", () => {
+    const scholarly = search("open access pdf doi citations", 12, {
+      category: "scholarly",
+    });
+    const finance = search("stock price quote market", 12, {
+      category: "finance",
+    });
+
+    expect(scholarly.length).toBeGreaterThan(0);
+    expect(finance.length).toBeGreaterThan(0);
+    expect(scholarly.every((result) => result.category === "scholarly")).toBe(
+      true,
+    );
+    expect(finance.every((result) => result.category === "finance")).toBe(true);
+    expect(scholarly.map((result) => result.site)).toContain("unpaywall");
+    expect(finance.map((result) => result.site)).not.toContain("unpaywall");
+  });
+
+  it("keeps paper PDF workflows on scholarly download and PDF readers", () => {
+    const results = search("download academic paper pdf", 8);
+    const commands = results.slice(0, 5).map((r) => `${r.site}/${r.command}`);
+
+    expect(commands).toEqual(
+      expect.arrayContaining(["arxiv/download", "pdf/read"]),
+    );
+    expect(results.slice(0, 5).map((r) => r.site)).not.toContain("yt-dlp");
+    expect(results.slice(0, 5).map((r) => r.site)).not.toContain("nowcoder");
+  });
+
+  it("routes top-conference proceedings queries to scholarly sources", () => {
+    const pmlr = search("PMLR ICML proceedings", 8);
+    const cvpr = search("CVPR 2024 papers", 8);
+    const acl = search("ACL anthology paper", 8);
+
+    expect(pmlr.length).toBeGreaterThan(0);
+    expect(pmlr[0].category).toBe("scholarly");
+    expect(cvpr[0].category).toBe("scholarly");
+    expect(acl[0].category).toBe("scholarly");
+    expect(pmlr[0].site).toBe("pmlr");
+    expect(cvpr[0].site).toBe("cvf");
+    expect(acl[0].site).toBe("acl-anthology");
+  });
+
+  it("routes DOI and open-access PDF queries to DOI-aware scholarly sources", () => {
+    const doi = search("doi metadata for 10.1038/nature12373", 8);
+    const pdf = search("open access pdf for doi", 8);
+
+    expect(doi[0].site).toBe("crossref");
+    expect(pdf.slice(0, 3).map((r) => r.site)).toContain("unpaywall");
+  });
+
   it("routes romaji and Japanese ACG entity queries to ACG sources", () => {
     const hanabi = search("hanabi sparkle star rail", 8);
     expect(hanabi.map((r) => r.site)).toEqual(

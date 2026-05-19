@@ -304,6 +304,7 @@ cli({
     { name: "limit", type: "int", default: 20, description: "Max results" },
   ],
   columns: SUMMARY_COLUMNS,
+  capabilities: ["http.fetch", "scholar.search"],
   func: async (_page, kwargs) => {
     const query = requirePubMedText(kwargs.query, "query");
     const limit = requirePubMedLimit(kwargs.limit);
@@ -345,6 +346,7 @@ cli({
     },
   ],
   columns: ["field", "value"],
+  capabilities: ["http.fetch", "scholar.get"],
   func: async (_page, kwargs) => {
     const pmid = requirePmid(kwargs.pmid);
     const xml = String(
@@ -371,6 +373,7 @@ cli({
     { name: "limit", type: "int", default: 20, description: "Max results" },
   ],
   columns: SUMMARY_COLUMNS,
+  capabilities: ["http.fetch", "scholar.author", "scholar.search"],
   func: async (_page, kwargs) => {
     const name = requirePubMedText(kwargs.name, "author");
     const limit = requirePubMedLimit(kwargs.limit);
@@ -414,6 +417,7 @@ cli({
     { name: "limit", type: "int", default: 20, description: "Max results" },
   ],
   columns: SUMMARY_COLUMNS,
+  capabilities: ["http.fetch", "scholar.citations", "scholar.references"],
   func: async (_page, kwargs) => {
     const pmid = requirePmid(kwargs.pmid);
     const direction = requireChoice(
@@ -459,6 +463,7 @@ cli({
     { name: "limit", type: "int", default: 20, description: "Max results" },
   ],
   columns: RELATED_COLUMNS,
+  capabilities: ["http.fetch", "scholar.search"],
   func: async (_page, kwargs) => {
     const pmid = requirePmid(kwargs.pmid);
     const limit = requirePubMedLimit(kwargs.limit);

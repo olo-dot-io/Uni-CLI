@@ -9,7 +9,11 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { inject } from "../../scripts/build-readme.js";
 import { findViolations } from "../../scripts/count-consistency.js";
-import { computeStats } from "../../scripts/count-stats.js";
+import {
+  computeStats,
+  resolveVitestListTimeoutMs,
+} from "../../scripts/count-stats.js";
+import { SITE_CATEGORIES } from "../../src/discovery/aliases.js";
 import {
   mkdirSync,
   mkdtempSync,
@@ -24,6 +28,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..", "..");
 const STATS_PATH = join(ROOT, "stats.json");
+const MANIFEST_PATH = join(ROOT, "dist", "manifest.json");
 
 // findViolations() resolves paths relative to the repo root, so fixture files
 // must live inside ROOT. We create them under tests/fixtures/stats-tmp/ and
@@ -95,6 +100,30 @@ describe("stats SSOT", () => {
       false,
     );
     expect(computeStats().transport_count).toBe(3);
+  });
+
+  it("bounds vitest test-list enumeration time", () => {
+    expect(resolveVitestListTimeoutMs({})).toBe(45_000);
+    expect(
+      resolveVitestListTimeoutMs({ UNICLI_STATS_VITEST_TIMEOUT_MS: "5000" }),
+    ).toBe(5000);
+    expect(
+      resolveVitestListTimeoutMs({ UNICLI_STATS_VITEST_TIMEOUT_MS: "999" }),
+    ).toBe(45_000);
+    expect(
+      resolveVitestListTimeoutMs({ UNICLI_STATS_VITEST_TIMEOUT_MS: "oops" }),
+    ).toBe(45_000);
+  });
+
+  it("keeps generated manifest categories aligned with runtime search categories", () => {
+    const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf-8")) as {
+      sites: Record<string, { category?: string }>;
+    };
+
+    for (const [site, category] of SITE_CATEGORIES) {
+      if (!manifest.sites[site]) continue;
+      expect(manifest.sites[site].category).toBe(category);
+    }
   });
 
   it("inject rewrites a STATS marker to match stats.json", () => {

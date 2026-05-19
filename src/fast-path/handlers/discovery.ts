@@ -33,6 +33,7 @@ export function handleList(parsed: ParsedArgv, io: Io): boolean {
   const startedAt = Date.now();
   let siteFilter: string | undefined;
   let typeFilter: string | undefined;
+  let categoryFilter: string | undefined;
 
   for (let i = 0; i < parsed.rest.length; i += 1) {
     const arg = parsed.rest[i];
@@ -54,6 +55,15 @@ export function handleList(parsed: ParsedArgv, io: Io): boolean {
       typeFilter = arg.slice("--type=".length);
       continue;
     }
+    if (arg === "--category") {
+      categoryFilter = parsed.rest[i + 1];
+      i += 1;
+      continue;
+    }
+    if (arg.startsWith("--category=")) {
+      categoryFilter = arg.slice("--category=".length);
+      continue;
+    }
     return false;
   }
 
@@ -61,6 +71,7 @@ export function handleList(parsed: ParsedArgv, io: Io): boolean {
   const rows = Object.entries(manifest.sites)
     .flatMap(([site, info]) =>
       info.commands.map((command) => {
+        const category = info.category ?? "other";
         const strategy = command.strategy ?? "public";
         const tags: string[] = [];
         if (strategy !== "public") tags.push("[auth]");
@@ -69,6 +80,7 @@ export function handleList(parsed: ParsedArgv, io: Io): boolean {
           site,
           command: command.name,
           description: command.description ?? "",
+          category,
           type: command.type ?? "web-api",
           auth: tags.join(" "),
         };
@@ -76,6 +88,7 @@ export function handleList(parsed: ParsedArgv, io: Io): boolean {
     )
     .concat(dynamicListRows())
     .filter((row) => !siteFilter || row.site.includes(siteFilter))
+    .filter((row) => !categoryFilter || row.category === categoryFilter)
     .filter((row) => !typeFilter || row.type === typeFilter)
     .sort(
       (a, b) =>
@@ -85,7 +98,7 @@ export function handleList(parsed: ParsedArgv, io: Io): boolean {
   emit(
     io,
     rows,
-    ["site", "command", "description", "type", "auth"],
+    ["site", "command", "description", "category", "type", "auth"],
     parsed.format,
     "core.list",
     startedAt,
@@ -97,6 +110,7 @@ function dynamicListRows(): Array<{
   site: string;
   command: string;
   description: string;
+  category: string;
   type: string;
   auth: string;
 }> {
@@ -108,6 +122,7 @@ function dynamicListRows(): Array<{
     site: "macos",
     command: command.name,
     description: command.description ?? "",
+    category: "desktop",
     type: "desktop",
     auth: "",
   }));
@@ -151,8 +166,8 @@ export function handleSearch(parsed: ParsedArgv, io: Io): boolean {
     return true;
   }
 
-  const effectiveQuery = category ? `${category} ${query}`.trim() : query;
-  const results = search(effectiveQuery, limit);
+  const effectiveQuery = [category, query].filter(Boolean).join(" ");
+  const results = search(query, limit, { category });
   if (results.length === 0) {
     io.stderr(`No commands found for: ${effectiveQuery}`);
     process.exitCode = 66;

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { getAdapter } from "../../registry.js";
 import { hfEndpoint, mapHfPaperRow, requireHfPaperId } from "./paper.js";
 
 describe("hf agent-facing paper command", () => {
@@ -44,5 +45,14 @@ describe("hf agent-facing paper command", () => {
 
   it("rejects empty HF paper payloads", () => {
     expect(() => mapHfPaperRow({})).toThrow("no paper data");
+  });
+
+  it("advertises scholarly capabilities for meta-command discovery", () => {
+    expect(getAdapter("hf")?.commands.paper?.capabilities).toEqual([
+      "http.fetch",
+      "scholar.get",
+      "scholar.pdf",
+      "scholar.code",
+    ]);
   });
 });

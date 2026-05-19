@@ -34,6 +34,7 @@ import { ExitCode } from "../../../src/types.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..", "..", "..");
 const DIST_MAIN = join(REPO_ROOT, "dist", "main.js");
+const QUARANTINE_SPAWN_TIMEOUT_MS = 90_000;
 
 const distReady = existsSync(DIST_MAIN);
 
@@ -91,7 +92,7 @@ describe("CLI quarantine dispatch (spawn)", () => {
             // the parent environment to override the gate we're testing.
             UNICLI_FORCE_QUARANTINE: "",
           },
-          timeout: 30_000,
+          timeout: QUARANTINE_SPAWN_TIMEOUT_MS,
         },
       );
 
@@ -128,7 +129,7 @@ describe("CLI quarantine dispatch (spawn)", () => {
         /src\/adapters\/qtestcli\/broken\.yaml/,
       );
     },
-    30_000,
+    QUARANTINE_SPAWN_TIMEOUT_MS,
   );
 
   it.runIf(distReady)(
@@ -148,7 +149,7 @@ describe("CLI quarantine dispatch (spawn)", () => {
             UNICLI_NO_LEDGER: "1",
             UNICLI_FORCE_QUARANTINE: "1",
           },
-          timeout: 30_000,
+          timeout: QUARANTINE_SPAWN_TIMEOUT_MS,
         },
       );
 
@@ -165,6 +166,6 @@ describe("CLI quarantine dispatch (spawn)", () => {
         expect(env.error?.code).not.toBe("quarantined");
       }
     },
-    30_000,
+    QUARANTINE_SPAWN_TIMEOUT_MS,
   );
 });

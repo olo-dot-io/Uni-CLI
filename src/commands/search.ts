@@ -39,15 +39,13 @@ export function registerSearchCommand(program: Command): void {
           return;
         }
 
-        const effectiveQuery = opts.category
-          ? `${opts.category} ${query}`.trim()
-          : query;
-
-        const results = search(effectiveQuery, limit);
+        const results = search(query, limit, { category: opts.category });
 
         if (results.length === 0) {
           console.error(
-            chalk.yellow(`No commands found for: ${effectiveQuery}`),
+            chalk.yellow(
+              `No commands found for: ${[opts.category, query].filter(Boolean).join(" ")}`,
+            ),
           );
           process.exitCode = 66; // EX_EMPTY
           return;

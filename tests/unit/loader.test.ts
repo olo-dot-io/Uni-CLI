@@ -29,6 +29,16 @@ describe("adapter loader", () => {
     }
   });
 
+  it("surfaces adapter categories in registry command rows", () => {
+    loadAdaptersFromDir(ADAPTERS_DIR);
+
+    const arxivCommands = listCommands().filter((cmd) => cmd.site === "arxiv");
+    expect(arxivCommands.length).toBeGreaterThan(0);
+    expect(arxivCommands.every((cmd) => cmd.category === "scholarly")).toBe(
+      true,
+    );
+  });
+
   it("loads hackernews adapter with all 11 commands", () => {
     const adapters = getAllAdapters();
     const hn = adapters.find((a) => a.name === "hackernews");

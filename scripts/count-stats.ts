@@ -1,6 +1,6 @@
 /**
  * @owner   scripts/count-stats.ts
- * @does    Compute stats.json counts used by README, docs, AGENTS, and release copy.
+ * @does    Compute stats.json counts used by README, docs, AGENTS, and release copy with bounded test enumeration.
  * @needs   repo adapters/tests/manifest/MCP/capability files, vitest list, build-manifest category declarations
  * @feeds   stats.json, scripts/build-readme.ts, scripts/build-agents.ts, npm run build, npm run stats:check
  * @breaks  Missing or malformed repo count sources produce zero counts or explicit test-count degradation warnings.
@@ -30,6 +30,7 @@ const STATS_JSON = join(ROOT, "stats.json");
 const ELECTRON_DESKTOP_BASE_COMMAND_COUNT = 7;
 const ELECTRON_DESKTOP_MEDIA_COMMAND_COUNT = 6;
 const AI_CHAT_BASE_COMMAND_COUNT = 6;
+const DEFAULT_VITEST_LIST_TIMEOUT_MS = 45_000;
 
 export interface Stats {
   adapter_count_yaml: number;
@@ -232,6 +233,7 @@ function countTestsViaVitest(): number | null {
   const projects = ["unit", "adapter"];
   let total = 0;
   for (const project of projects) {
+    const timeout = resolveVitestListTimeoutMs(process.env);
     const result = spawnSync(
       "npx",
       ["vitest", "list", "--json", `--project=${project}`],
@@ -241,6 +243,7 @@ function countTestsViaVitest(): number | null {
         env: { ...process.env, UNICLI_STATS_PUBLIC: "1" },
         maxBuffer: 64 * 1024 * 1024,
         stdio: ["ignore", "pipe", "pipe"],
+        timeout,
       },
     );
     if (result.status !== 0) return null;
@@ -253,6 +256,15 @@ function countTestsViaVitest(): number | null {
     }
   }
   return total;
+}
+
+export function resolveVitestListTimeoutMs(env: NodeJS.ProcessEnv): number {
+  const raw = env.UNICLI_STATS_VITEST_TIMEOUT_MS;
+  if (raw === undefined || raw === "") return DEFAULT_VITEST_LIST_TIMEOUT_MS;
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 1_000 && n <= 300_000
+    ? n
+    : DEFAULT_VITEST_LIST_TIMEOUT_MS;
 }
 
 function readCommittedTestCount(): number | null {
@@ -284,8 +296,11 @@ function isInsideVitest(): boolean {
  *      on slower CI runners.
  *   3. Otherwise try `vitest list --json` per project in public-stats mode; it
  *      expands parametrised tests while excluding ignored local references.
- *   4. On vitest failure, fall back to the regex counter with a stderr
- *      note so the drift is visible.
+ *   4. On vitest failure, preserve committed stats.json's test_count if
+ *      present; this avoids publishing a lower regex count when one project
+ *      hangs or times out.
+ *   5. Only without committed stats, fall back to the regex counter with a
+ *      stderr note so the drift is visible.
  */
 function countTests(): number {
   if (process.env.UNICLI_STATS_TEST_STRATEGY === "regex") {
@@ -297,6 +312,13 @@ function countTests(): number {
   }
   const fromVitest = countTestsViaVitest();
   if (fromVitest !== null) return fromVitest;
+  const committed = readCommittedTestCount();
+  if (committed !== null) {
+    console.error(
+      "count-stats: vitest list failed, preserving stats.json test_count",
+    );
+    return committed;
+  }
   console.error(
     "count-stats: vitest list failed, falling back to regex counter",
   );

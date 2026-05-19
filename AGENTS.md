@@ -13,7 +13,7 @@ self-repairing — agents can fix them by editing one file. See
 
 <!-- BEGIN COUNTS -->
 
-> <!-- STATS:site_count -->305<!-- /STATS --> sites, <!-- STATS:command_count -->1742<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> <!-- STATS:site_count -->312<!-- /STATS --> sites, <!-- STATS:command_count -->1753<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 
@@ -21,21 +21,21 @@ self-repairing — agents can fix them by editing one file. See
 
 ## What You Can Do
 
-### Web (156+ sites)
+### Web (181+ sites)
 
-**Chinese**: zhihu (27), xiaohongshu (22), bilibili (20), douyin (13), douban (12), v2ex (12), weibo (12), linux-do (11), +31 more (`unicli list`)
+**Chinese**: zhihu (27), xiaohongshu (22), bilibili (20), douyin (13), douban (12), v2ex (12), weibo (12), linux-do (11), +29 more (`unicli list`)
 
-**International**: twitter (44), instagram (29), reddit (24), tiktok (18), youtube (17), nowcoder (16), discord-app (15), facebook (15), +109 more (`unicli list`)
+**International**: twitter (44), instagram (29), reddit (24), tiktok (18), youtube (17), nowcoder (16), discord-app (15), facebook (15), +73 more (`unicli list`)
 
-**AI / ML**: chatgpt (17), antigravity (16), chatwise (16), notebooklm (15), claude (14), doubao-app (13), deepseek (9), doubao (9), +13 more (`unicli list`)
+**AI / ML**: chatgpt (17), antigravity (16), chatwise (16), notebooklm (15), claude (14), doubao-app (13), yollomi (12), deepseek (9), +16 more (`unicli list`)
 
-**Finance**: eastmoney (18), xueqiu (14), binance (13), sinafinance (5), barchart (4), yahoo-finance (3), coinbase (2), futu (2)
+**Finance**: eastmoney (18), xueqiu (14), binance (13), coingecko (7), sinafinance (5), barchart (4), yahoo-finance (3), coinbase (2), +2 more (`unicli list`)
 
-**Developer**: codex (18), cursor (18), stackoverflow (10), vscode (10), docker-desktop (7), github-desktop (7), gitkraken (7), insomnia (7), +21 more (`unicli list`)
+**Developer**: codex (18), cursor (18), stackoverflow (10), vscode (10), docker-desktop (7), github-desktop (7), gitkraken (7), insomnia (7), +29 more (`unicli list`)
 
 **News**: hackernews (11), bloomberg (10), 36kr (5), bbc (5), reuters (5), ithome (3), cnn (2), infoq (2), +3 more (`unicli list`)
 
-**Reference**: spotify (23), netease-music (17), linear (10), imdb (7), bitwarden (7), todoist (7), arxiv (6), wikipedia (6), +17 more (`unicli list`)
+**Reference**: spotify (23), netease-music (17), linear (10), imdb (7), bitwarden (7), todoist (7), wikipedia (6), anilist (5), +14 more (`unicli list`)
 
 ### macOS (60 cmds)
 
@@ -43,11 +43,11 @@ active-app, app-actions, apps, apps-list, automation-smoke, battery, bluetooth, 
 
 ### Desktop (28 apps)
 
-freecad (15 cmds), blender (13 cmds), gimp (12 cmds), ffmpeg (11 cmds), audacity (8 cmds), figma (8 cmds), docker (7 cmds), excel (7 cmds), +20 more (`unicli list --category desktop`)
+freecad (15 cmds), blender (13 cmds), gimp (12 cmds), ffmpeg (11 cmds), audacity (8 cmds), figma (8 cmds), obs (8 cmds), docker (7 cmds), +20 more (`unicli list --category desktop`)
 
-### Bridge (3 CLIs)
+### Bridge (1 CLIs)
 
-gh (6 cmds), jq (2 cmds), yt-dlp (5 cmds)
+jq (2 cmds)
 
 <!-- END ADAPTERS -->
 

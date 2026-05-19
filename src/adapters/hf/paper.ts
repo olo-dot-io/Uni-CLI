@@ -131,6 +131,7 @@ cli({
     "aiSummary",
     "url",
   ],
+  capabilities: ["http.fetch", "scholar.get", "scholar.pdf", "scholar.code"],
   func: async (_page, kwargs) => {
     const id = requireHfPaperId(kwargs.id);
     return [mapHfPaperRow(await fetchHfPaper(id), hfEndpoint())];

@@ -332,6 +332,7 @@ cli({
     "doi",
     "url",
   ],
+  capabilities: ["http.fetch", "scholar.search"],
   func: async (_page, kwargs) => {
     const query = requireDblpQuery(kwargs.query);
     const limit = requireDblpLimit(kwargs.limit, 20, 100);
@@ -375,6 +376,7 @@ cli({
     "open_access_url",
     "dblp_url",
   ],
+  capabilities: ["http.fetch", "scholar.get", "scholar.pdf"],
   func: async (_page, kwargs) => {
     const key = requireRecordKey(kwargs.key);
     const xml = await fetchDblpXml(
@@ -406,6 +408,7 @@ cli({
     { name: "limit", type: "int", default: 20, description: "Max venues" },
   ],
   columns: ["rank", "acronym", "venue", "type", "url"],
+  capabilities: ["http.fetch", "scholar.venue"],
   func: async (_page, kwargs) => {
     const query = requireDblpQuery(kwargs.query);
     const limit = requireDblpLimit(kwargs.limit, 20, 100);
@@ -455,6 +458,7 @@ cli({
     "pid",
     "url",
   ],
+  capabilities: ["http.fetch", "scholar.author", "scholar.search"],
   func: async (_page, kwargs) => {
     const limit = requireDblpLimit(kwargs.limit, 20, 200);
     let pid = kwargs.pid ? requirePid(kwargs.pid) : "";

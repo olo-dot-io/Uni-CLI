@@ -38,7 +38,7 @@ pipeline:
 columns: [key, title, type, date, creators]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["http.fetch"]
+capabilities: ["http.fetch", "scholar.search"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

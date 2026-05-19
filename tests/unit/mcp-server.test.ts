@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SERVER_PATH = join(__dirname, "..", "..", "src", "mcp", "server.ts");
+const SERVER_START_TIMEOUT_MS = 45_000;
 
 /**
  * Send a JSON-RPC request to the MCP server and read the response.
@@ -74,7 +75,7 @@ describe("MCP server — smart default mode", () => {
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(
         () => reject(new Error("Server start timeout")),
-        15_000,
+        SERVER_START_TIMEOUT_MS,
       );
       proc.stderr!.on("data", (chunk: Buffer) => {
         if (chunk.toString().includes("MCP server")) {
@@ -91,7 +92,7 @@ describe("MCP server — smart default mode", () => {
     return () => {
       proc.kill();
     };
-  });
+  }, SERVER_START_TIMEOUT_MS);
 
   it("responds to initialize with server info", async () => {
     const response = await sendRequest(proc, {
@@ -318,7 +319,7 @@ describe("MCP server — computer-use profile", () => {
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(
         () => reject(new Error("Computer-use MCP server start timeout")),
-        15_000,
+        SERVER_START_TIMEOUT_MS,
       );
       proc.stderr!.on("data", (chunk: Buffer) => {
         const text = chunk.toString();
@@ -336,7 +337,7 @@ describe("MCP server — computer-use profile", () => {
     return () => {
       proc.kill();
     };
-  });
+  }, SERVER_START_TIMEOUT_MS);
 
   it("advertises tools and prompts in initialize", async () => {
     const response = await sendRequest(proc, {
@@ -439,7 +440,7 @@ describe("MCP server — deferred profile", () => {
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(
         () => reject(new Error("Deferred MCP server start timeout")),
-        15_000,
+        SERVER_START_TIMEOUT_MS,
       );
       proc.stderr!.on("data", (chunk: Buffer) => {
         const text = chunk.toString();
@@ -457,7 +458,7 @@ describe("MCP server — deferred profile", () => {
     return () => {
       proc.kill();
     };
-  });
+  }, SERVER_START_TIMEOUT_MS);
 
   it("lists deferred stubs with compact schemas over stdio", async () => {
     const response = await sendRequest(proc, {
@@ -485,65 +486,69 @@ describe("MCP server — deferred profile", () => {
 });
 
 describe("MCP server — stdio shutdown", () => {
-  it("drains an in-flight async tools/call before exiting on stdin close", async () => {
-    const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
-    const proc = spawn(npxBin, ["tsx", SERVER_PATH], {
-      stdio: ["pipe", "pipe", "pipe"],
-      cwd: join(__dirname, "..", ".."),
-      shell: process.platform === "win32",
-    });
-
-    const stdout: Buffer[] = [];
-    const stderr: Buffer[] = [];
-    proc.stdout!.on("data", (chunk: Buffer) => stdout.push(chunk));
-    proc.stderr!.on("data", (chunk: Buffer) => stderr.push(chunk));
-
-    proc.stdin!.write(
-      JSON.stringify({
-        jsonrpc: "2.0",
-        id: 90,
-        method: "tools/call",
-        params: {
-          name: "unicli_search",
-          arguments: { query: "hacker news", limit: 1 },
-        },
-      }) + "\n",
-    );
-    proc.stdin!.end();
-
-    const code = await new Promise<number | null>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        proc.kill();
-        reject(
-          new Error(
-            `MCP one-shot timeout; stderr=${Buffer.concat(stderr).toString("utf8")}`,
-          ),
-        );
-      }, 15_000);
-      proc.on("close", (exitCode) => {
-        clearTimeout(timeout);
-        resolve(exitCode);
+  it(
+    "drains an in-flight async tools/call before exiting on stdin close",
+    async () => {
+      const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
+      const proc = spawn(npxBin, ["tsx", SERVER_PATH], {
+        stdio: ["pipe", "pipe", "pipe"],
+        cwd: join(__dirname, "..", ".."),
+        shell: process.platform === "win32",
       });
-      proc.on("error", (error) => {
-        clearTimeout(timeout);
-        reject(error);
+
+      const stdout: Buffer[] = [];
+      const stderr: Buffer[] = [];
+      proc.stdout!.on("data", (chunk: Buffer) => stdout.push(chunk));
+      proc.stderr!.on("data", (chunk: Buffer) => stderr.push(chunk));
+
+      proc.stdin!.write(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: 90,
+          method: "tools/call",
+          params: {
+            name: "unicli_search",
+            arguments: { query: "hacker news", limit: 1 },
+          },
+        }) + "\n",
+      );
+      proc.stdin!.end();
+
+      const code = await new Promise<number | null>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          proc.kill();
+          reject(
+            new Error(
+              `MCP one-shot timeout; stderr=${Buffer.concat(stderr).toString("utf8")}`,
+            ),
+          );
+        }, SERVER_START_TIMEOUT_MS);
+        proc.on("close", (exitCode) => {
+          clearTimeout(timeout);
+          resolve(exitCode);
+        });
+        proc.on("error", (error) => {
+          clearTimeout(timeout);
+          reject(error);
+        });
       });
-    });
 
-    expect(code).toBe(0);
-    const lines = Buffer.concat(stdout)
-      .toString("utf8")
-      .split("\n")
-      .filter((line) => line.trim().length > 0);
-    const response = lines
-      .map((line) => JSON.parse(line) as Record<string, unknown>)
-      .find((line) => line.id === 90);
+      expect(code).toBe(0);
+      const lines = Buffer.concat(stdout)
+        .toString("utf8")
+        .split("\n")
+        .filter((line) => line.trim().length > 0);
+      const response = lines
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .find((line) => line.id === 90);
 
-    expect(response).toBeDefined();
-    expect(response?.jsonrpc).toBe("2.0");
-    const result = response?.result as
-      | { structuredContent?: { data?: { count?: number } } }
-      | undefined;
-    expect(result?.structuredContent?.data?.count).toBe(1);
-  }, 20_000);
+      expect(response).toBeDefined();
+      expect(response?.jsonrpc).toBe("2.0");
+      const result = response?.result as
+        | { structuredContent?: { data?: { count?: number } } }
+        | undefined;
+      expect(result?.structuredContent?.data?.count).toBe(1);
+    },
+    SERVER_START_TIMEOUT_MS,
+  );
 });

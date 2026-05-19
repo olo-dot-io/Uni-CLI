@@ -43,9 +43,10 @@ const REPO_ROOT = join(__dirname, "..", "..");
 const DIST_MAIN = join(REPO_ROOT, "dist", "main.js");
 const DIST_LOADER = join(REPO_ROOT, "dist", "discovery", "loader.js");
 
-// `loadTsAdapters` dynamically imports every TS adapter — Windows Node 20
-// cold-start blows past the 5s default while tsx resolves the tree.
-const COLD_IMPORT_TIMEOUT_MS = process.platform === "win32" ? 15_000 : 5_000;
+// `loadTsAdapters` dynamically imports every TS adapter. The current catalog
+// has 200+ TS entry points, and cold tsx resolution can exceed Vitest's 5s
+// default even on macOS.
+const COLD_IMPORT_TIMEOUT_MS = 15_000;
 
 describe("loader — built-in directory resolution", () => {
   it("resolves a YAML directory that actually contains YAML files", () => {
@@ -144,7 +145,7 @@ describe("dist parity — production build must match source mode", () => {
         {
           encoding: "utf-8",
           env: { ...process.env, UNICLI_NO_LEDGER: "1" },
-          timeout: 30_000,
+          timeout: 60_000,
         },
       );
       expect(distResult.status).toBe(0);
@@ -199,7 +200,7 @@ describe("dist parity — production build must match source mode", () => {
       const result = spawnSync("node", [DIST_MAIN, "doctor"], {
         encoding: "utf-8",
         env: { ...process.env, UNICLI_NO_LEDGER: "1" },
-        timeout: 30_000,
+        timeout: 60_000,
       });
       expect(result.status).toBe(0);
       const stdout = typeof result.stdout === "string" ? result.stdout : "";

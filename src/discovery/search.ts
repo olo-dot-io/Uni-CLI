@@ -24,6 +24,7 @@ import {
   SITE_CATEGORIES,
   CATEGORY_ALIASES,
 } from "./aliases.js";
+import { intentBoost } from "./intents.js";
 import {
   buildMacosDynamicSearchDocuments,
   discoverMacosDynamicData,
@@ -39,6 +40,10 @@ export interface SearchResult {
   score: number;
   usage: string;
   category: string;
+}
+
+export interface SearchOptions {
+  category?: string;
 }
 
 /** One document in the search corpus: a single adapter command. */
@@ -105,10 +110,6 @@ const BOOST_SITE_PHRASE = 28.0; // Query phrase matches hyphenated site name
 const BOOST_CMD_EXACT = 8.0; // Query token exactly matches command name
 const BOOST_CMD_PARTIAL = 3.0; // Query token is substring of command name
 const BOOST_CATEGORY = 2.0; // Query token matches site's category
-const BOOST_RUN_TRACE_INTENT = 45.0; // Recorded trace/replay/audit queries
-const BOOST_ACG_CREATOR_INTENT = 36.0; // ACG author/artist queries
-const BOOST_ACG_MEDIA_TREND_INTENT = 42.0; // ACG media/year/trending queries
-const BOOST_WEATHER_INTENT = 30.0; // Weather/forecast queries
 
 const CORE_SEARCH_DOCUMENTS: readonly CoreSearchDocument[] = [
   {
@@ -535,9 +536,13 @@ function tfidfCosine(
  * @param query - Natural language query (Chinese or English)
  * @param limit - Maximum results to return (default 5)
  */
-export function search(query: string, limit = 5): SearchResult[] {
-  const staticResults = searchIndex(loadIndex(), query, limit);
-  const dynamicResults = searchDynamicMacosIndex(query, limit);
+export function search(
+  query: string,
+  limit = 5,
+  options: SearchOptions = {},
+): SearchResult[] {
+  const staticResults = searchIndex(loadIndex(), query, limit, options);
+  const dynamicResults = searchDynamicMacosIndex(query, limit, options);
 
   if (dynamicResults.length === 0) return staticResults;
 
@@ -555,8 +560,13 @@ export function search(query: string, limit = 5): SearchResult[] {
     .slice(0, limit);
 }
 
-function searchDynamicMacosIndex(query: string, limit: number): SearchResult[] {
+function searchDynamicMacosIndex(
+  query: string,
+  limit: number,
+  options: SearchOptions,
+): SearchResult[] {
   if (!dynamicMacosDiscoveryEnabled()) return [];
+  if (options.category && options.category !== "desktop") return [];
 
   const docs = buildMacosDynamicSearchDocuments(discoverMacosDynamicData());
   if (docs.length === 0) return [];
@@ -575,13 +585,14 @@ function searchDynamicMacosIndex(query: string, limit: number): SearchResult[] {
     });
   }
 
-  return searchIndex(buildIndex(manifest), query, limit);
+  return searchIndex(buildIndex(manifest), query, limit, options);
 }
 
 function searchIndex(
   index: SearchIndex,
   query: string,
   limit: number,
+  options: SearchOptions,
 ): SearchResult[] {
   if (index.N === 0) return [];
 
@@ -615,6 +626,7 @@ function searchIndex(
   }
 
   const queryTerms = [...new Set(expandedTerms.map((t) => t.toLowerCase()))];
+  const categoryFilter = options.category;
 
   // Step 3: Find candidate documents (union of posting lists)
   const candidateSet = new Set<number>();
@@ -642,6 +654,13 @@ function searchIndex(
       }
     }
   }
+  if (queryTerms.length === 0 && categoryFilter) {
+    for (let i = 0; i < index.documents.length; i++) {
+      if (documentCategory(index.documents[i]) === categoryFilter) {
+        candidateSet.add(i);
+      }
+    }
+  }
 
   if (candidateSet.size === 0) return [];
 
@@ -650,6 +669,8 @@ function searchIndex(
 
   for (const idx of candidateSet) {
     const doc = index.documents[idx];
+    const docCategory = documentCategory(doc);
+    if (categoryFilter && docCategory !== categoryFilter) continue;
 
     // Hybrid base: alpha-blend BM25 and TF-IDF cosine similarity.
     // BM25 scores are unbounded; cosine is [0,1]. We scale cosine by the
@@ -674,15 +695,12 @@ function searchIndex(
     }
 
     // Boost: category match
-    const docCategory = SITE_CATEGORIES.get(doc.site);
-    if (docCategory && categoryHints.includes(docCategory)) {
+    if (categoryHints.includes(docCategory)) {
       score += BOOST_CATEGORY;
     }
 
-    score += architectureIntentBoost(doc, queryTerms);
-    score += acgCreatorIntentBoost(doc, queryTerms);
-    score += acgMediaTrendIntentBoost(doc, queryTerms);
-    score += weatherIntentBoost(doc, queryTerms);
+    score += intentBoost(doc, queryTerms, [...siteHints, ...sitePhraseHints]);
+    if (categoryFilter && queryTerms.length === 0) score += BOOST_CATEGORY;
 
     if (score > 0) scored.push({ idx, score });
   }
@@ -693,16 +711,19 @@ function searchIndex(
 
   return topK.map(({ idx, score }) => {
     const doc = index.documents[idx];
-    const category = SITE_CATEGORIES.get(doc.site) ?? "other";
     return {
       site: doc.site,
       command: doc.command,
       description: doc.description,
       score: Math.round(score * 100) / 100,
       usage: buildUsageExample(doc.site, doc.command),
-      category,
+      category: documentCategory(doc),
     };
   });
+}
+
+function documentCategory(doc: SearchIndex["documents"][number]): string {
+  return SITE_CATEGORIES.get(doc.site) ?? "other";
 }
 
 function deriveSitePhraseHints(index: SearchIndex, query: string): string[] {
@@ -738,154 +759,6 @@ function hasPhrase(haystack: string, phrase: string): boolean {
  */
 function buildUsageExample(site: string, command: string): string {
   return `unicli ${site} ${command}`;
-}
-
-function architectureIntentBoost(
-  doc: SearchIndex["documents"][number],
-  queryTerms: string[],
-): number {
-  const terms = new Set(queryTerms);
-  const runTraceIntent =
-    (hasAny(terms, ["run", "runs"]) &&
-      hasAny(terms, [
-        "trace",
-        "traces",
-        "recorded",
-        "record",
-        "replay",
-        "probe",
-      ])) ||
-    (terms.has("trace") && hasAny(terms, ["evidence", "audit", "lease"]));
-  if (runTraceIntent && doc.site === "runs") {
-    return BOOST_RUN_TRACE_INTENT;
-  }
-  return 0;
-}
-
-function acgCreatorIntentBoost(
-  doc: SearchIndex["documents"][number],
-  queryTerms: string[],
-): number {
-  const terms = new Set(queryTerms);
-  const creatorIntent = hasAny(terms, [
-    "author",
-    "authors",
-    "artist",
-    "artists",
-    "creator",
-    "creators",
-    "mangaka",
-    "illustrator",
-    "staff",
-    "people",
-  ]);
-  const acgIntent = hasAny(terms, [
-    "acg",
-    "anime",
-    "manga",
-    "comic",
-    "doujin",
-    "illustration",
-    "pixiv",
-    "danbooru",
-    "mangadex",
-    "anilist",
-    "jikan",
-    "bangumi",
-    "vndb",
-    "dlsite",
-  ]);
-  const acgCreatorCommand =
-    (doc.site === "mangadex" && doc.command === "authors") ||
-    (doc.site === "dlsite" && doc.command === "creator") ||
-    (doc.site === "anilist" && doc.command === "staff") ||
-    (doc.site === "jikan" && doc.command === "people") ||
-    (doc.site === "vndb" && doc.command === "staff");
-
-  return creatorIntent && acgIntent && acgCreatorCommand
-    ? BOOST_ACG_CREATOR_INTENT
-    : 0;
-}
-
-function acgMediaTrendIntentBoost(
-  doc: SearchIndex["documents"][number],
-  queryTerms: string[],
-): number {
-  const terms = new Set(queryTerms);
-  const acgMediaIntent =
-    hasAny(terms, [
-      "acg",
-      "anime",
-      "manga",
-      "comic",
-      "doujin",
-      "galgame",
-      "bishoujo",
-      "eroge",
-      "vn",
-      "bangumi",
-      "anilist",
-      "jikan",
-      "kitsu",
-      "vndb",
-      "mangadex",
-      "dlsite",
-      "pixiv",
-      "danbooru",
-    ]) ||
-    (terms.has("visual") && terms.has("novel"));
-  const rankingOrFreshnessIntent =
-    hasAny(terms, [
-      "trending",
-      "hot",
-      "popular",
-      "top",
-      "rank",
-      "ranking",
-      "recent",
-      "latest",
-      "newest",
-      "year",
-    ]) || [...terms].some((term) => /^20[0-9]{2}$/.test(term));
-  const acgMediaCommand =
-    (doc.site === "anilist" &&
-      (doc.command === "anime" || doc.command === "manga")) ||
-    (doc.site === "jikan" &&
-      (doc.command === "anime" || doc.command === "manga")) ||
-    (doc.site === "kitsu" &&
-      (doc.command === "anime" || doc.command === "manga")) ||
-    (doc.site === "bangumi" &&
-      (doc.command === "anime" ||
-        doc.command === "book" ||
-        doc.command === "game")) ||
-    (doc.site === "mangadex" && doc.command === "manga") ||
-    (doc.site === "vndb" &&
-      (doc.command === "search" || doc.command === "releases")) ||
-    (doc.site === "dlsite" &&
-      ["search", "manga", "cg", "game"].includes(doc.command));
-
-  return acgMediaIntent && rankingOrFreshnessIntent && acgMediaCommand
-    ? BOOST_ACG_MEDIA_TREND_INTENT
-    : 0;
-}
-
-function weatherIntentBoost(
-  doc: SearchIndex["documents"][number],
-  queryTerms: string[],
-): number {
-  const terms = new Set(queryTerms);
-  const weatherIntent = hasAny(terms, ["weather", "forecast", "temperature"]);
-  const weatherCommand =
-    (doc.site === "wttr" &&
-      (doc.command === "forecast" || doc.command === "now")) ||
-    (doc.site === "qweather" &&
-      (doc.command === "forecast" || doc.command === "now"));
-
-  return weatherIntent && weatherCommand ? BOOST_WEATHER_INTENT : 0;
-}
-
-function hasAny(terms: Set<string>, values: string[]): boolean {
-  return values.some((value) => terms.has(value));
 }
 
 /**

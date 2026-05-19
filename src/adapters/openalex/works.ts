@@ -164,6 +164,14 @@ function authors(work: OpenAlexWork): string {
     : "";
 }
 
+function authorList(work: OpenAlexWork): string[] {
+  return Array.isArray(work.authorships)
+    ? work.authorships
+        .map((item) => stringField(item.author?.display_name).trim())
+        .filter(Boolean)
+    : [];
+}
+
 function venue(work: OpenAlexWork): string {
   return stringField(work.primary_location?.source?.display_name).trim();
 }
@@ -181,10 +189,17 @@ export function mapOpenAlexSearchRows(
       year: numberField(work.publication_year),
       citations: numberField(work.cited_by_count),
       firstAuthor: firstAuthor(work),
+      authors: authorList(work),
       venue: venue(work),
       openAccess: Boolean(work.open_access?.is_oa),
+      is_open_access: Boolean(work.open_access?.is_oa),
       type: stringField(work.type).trim(),
       doi: bareDoi(work.doi),
+      pdf_url: stringField(work.open_access?.oa_url).trim(),
+      openalex_id: id,
+      source_adapter: "openalex",
+      source_url: id ? `https://openalex.org/${id}` : "",
+      retrieved_at: new Date().toISOString(),
       url: id ? `https://openalex.org/${id}` : "",
     };
   });
@@ -203,15 +218,26 @@ export function mapOpenAlexWorkRow(
     date: stringField(work.publication_date).trim(),
     language: stringField(work.language).trim(),
     authors: authors(work),
+    author_list: authorList(work),
     venue: venue(work),
     citations: numberField(work.cited_by_count),
+    cited_by_count: numberField(work.cited_by_count),
     openAccess: Boolean(work.open_access?.is_oa),
+    is_open_access: Boolean(work.open_access?.is_oa),
     openAccessUrl: stringField(work.open_access?.oa_url).trim(),
+    pdf_url: stringField(work.open_access?.oa_url).trim(),
     referencedCount: Array.isArray(work.referenced_works)
+      ? work.referenced_works.length
+      : null,
+    references_count: Array.isArray(work.referenced_works)
       ? work.referenced_works.length
       : null,
     doi: bareDoi(work.doi),
     abstract: reconstructOpenAlexAbstract(work.abstract_inverted_index),
+    openalex_id: id,
+    source_adapter: "openalex",
+    source_url: `https://openalex.org/${id}`,
+    retrieved_at: new Date().toISOString(),
     url: `https://openalex.org/${id}`,
   };
 }
@@ -259,6 +285,7 @@ cli({
     "doi",
     "url",
   ],
+  capabilities: ["http.fetch", "scholar.search"],
   func: async (_page, kwargs) => {
     const query = requireOpenAlexString(kwargs.query, "query");
     const limit = requireOpenAlexLimit(kwargs.limit);
@@ -307,6 +334,12 @@ cli({
     "doi",
     "abstract",
     "url",
+  ],
+  capabilities: [
+    "http.fetch",
+    "scholar.get",
+    "scholar.pdf",
+    "scholar.references",
   ],
   func: async (_page, kwargs) => {
     const ref = requireOpenAlexWorkRef(kwargs.id);

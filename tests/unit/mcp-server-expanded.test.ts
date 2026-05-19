@@ -18,10 +18,11 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SERVER_PATH = join(__dirname, "..", "..", "src", "mcp", "server.ts");
 
-// Windows Node 20 spawns `npx tsx` ~3x slower than Linux/macOS; the tools/list
-// JSON-RPC round-trip here then blows past the 5s vitest default. Give the
-// expanded-mode tests Windows headroom; keep other platforms tight.
-const MCP_CALL_TIMEOUT_MS = process.platform === "win32" ? 15_000 : 5_000;
+// Expanded mode imports the full adapter catalog before accepting JSON-RPC.
+// Keep the call timeout moderate, but give server startup room for cold tsx
+// resolution and 200+ TS adapter entry points.
+const MCP_CALL_TIMEOUT_MS = 15_000;
+const SERVER_START_TIMEOUT_MS = 90_000;
 
 function sendRequest(
   proc: ChildProcess,
@@ -77,7 +78,7 @@ describe("MCP server — expanded mode (--expanded)", () => {
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(
         () => reject(new Error("Server start timeout")),
-        20_000,
+        SERVER_START_TIMEOUT_MS,
       );
       proc.stderr!.on("data", (chunk: Buffer) => {
         if (chunk.toString().includes("MCP server")) {
@@ -90,7 +91,7 @@ describe("MCP server — expanded mode (--expanded)", () => {
         reject(err);
       });
     });
-  });
+  }, SERVER_START_TIMEOUT_MS);
 
   afterAll(() => {
     proc.kill();

@@ -52,6 +52,7 @@ const ADAPTER_B: AdapterManifest = {
 const ADAPTER_C: AdapterManifest = {
   name: "contract-write",
   type: AdapterType.WEB_API,
+  category: "dev",
   strategy: "public",
   version: "1.0.0",
   domain: "write.example.com",
@@ -82,6 +83,84 @@ describe("DEFAULT_TOOL_NAMES registry", () => {
     for (const n of names) {
       expect(DEFAULT_TOOL_NAMES.has(n)).toBe(true);
     }
+  });
+
+  it("unicli_list exposes category filtering in the MCP schema", () => {
+    const listTool = buildDefaultTools().find(
+      (candidate) => candidate.name === "unicli_list",
+    );
+
+    expect(listTool?.inputSchema.properties).toHaveProperty("category");
+    expect(listTool?.description).toContain("category");
+  });
+
+  it("unicli_search exposes category filtering in the MCP schema", () => {
+    const searchTool = buildDefaultTools().find(
+      (candidate) => candidate.name === "unicli_search",
+    );
+
+    expect(searchTool?.inputSchema.properties).toHaveProperty("category");
+    expect(searchTool?.description).toContain("category");
+  });
+
+  it("unicli_list filters and returns adapter categories", async () => {
+    const handler = buildHandler(buildDefaultTools());
+
+    const response = await handler({
+      jsonrpc: "2.0",
+      id: 301,
+      method: "tools/call",
+      params: {
+        name: "unicli_list",
+        arguments: { category: "dev" },
+      },
+    });
+
+    const payload = response?.result as {
+      structuredContent?: {
+        data?: {
+          adapters?: Array<{ site: string; category: string }>;
+        };
+      };
+    };
+    const adapters = payload.structuredContent?.data?.adapters ?? [];
+    expect(adapters.length).toBeGreaterThan(0);
+    expect(adapters.every((adapter) => adapter.category === "dev")).toBe(true);
+    expect(adapters.some((adapter) => adapter.site === "contract-write")).toBe(
+      true,
+    );
+  });
+
+  it("unicli_search hard-filters results by category", async () => {
+    const handler = buildHandler(buildDefaultTools());
+
+    const response = await handler({
+      jsonrpc: "2.0",
+      id: 302,
+      method: "tools/call",
+      params: {
+        name: "unicli_search",
+        arguments: {
+          query: "open access pdf doi",
+          category: "scholarly",
+          limit: 8,
+        },
+      },
+    });
+
+    const payload = response?.result as {
+      structuredContent?: {
+        data?: {
+          results?: Array<{ site: string; category: string }>;
+        };
+      };
+    };
+    const results = payload.structuredContent?.data?.results ?? [];
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.every((result) => result.category === "scholarly")).toBe(
+      true,
+    );
+    expect(results.map((result) => result.site)).toContain("unpaywall");
   });
 });
 

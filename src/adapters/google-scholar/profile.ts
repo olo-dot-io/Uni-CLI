@@ -18,6 +18,11 @@ cli({
     { name: "limit", type: "int", default: 10 },
   ],
   columns: ["rank", "kind", "title", "authors", "year", "cited", "url"],
+  capabilities: [
+    "mcp-browser.navigate",
+    "mcp-browser.evaluate",
+    "scholar.author",
+  ],
   func: async (page, kwargs) => {
     const p = page as IPage;
     const author = str(kwargs.author).trim();

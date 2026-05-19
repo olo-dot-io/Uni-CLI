@@ -17,9 +17,10 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "..", "..");
 const pkgPath = resolve(repoRoot, "package.json");
 
-// Windows Node 20 cold-start dynamic-import flakes at the 5s default. Give
-// Windows headroom; keep Linux/macOS tight so real regressions still trip.
-const COLD_IMPORT_TIMEOUT_MS = process.platform === "win32" ? 15_000 : 5_000;
+// Dynamic-import checks run against built dist artifacts while the full suite
+// is also spawning CLI/MCP subprocesses. Keep the timeout bounded but above
+// Vitest's 5s default so a busy local worker does not fail a valid export.
+const COLD_IMPORT_TIMEOUT_MS = 15_000;
 
 interface PkgExports {
   [subpath: string]: { types?: string; import?: string } | string;

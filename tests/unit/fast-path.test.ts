@@ -50,6 +50,39 @@ describe("CLI fast path", () => {
     expect(env.data.every((row) => row.site.includes("twitter"))).toBe(true);
   });
 
+  it("includes manifest categories in list output", () => {
+    const { stdout, io } = makeIo();
+
+    const handled = tryRunFastPath(
+      ["node", "unicli", "-f", "json", "list", "--site", "arxiv"],
+      io,
+    );
+
+    expect(handled).toBe(true);
+    const env = JSON.parse(stdout.join("")) as {
+      data: Array<{ site: string; command: string; category: string }>;
+    };
+    expect(env.data.length).toBeGreaterThan(0);
+    expect(env.data.every((row) => row.category === "scholarly")).toBe(true);
+  });
+
+  it("filters list output by manifest category", () => {
+    const { stdout, io } = makeIo();
+
+    const handled = tryRunFastPath(
+      ["node", "unicli", "-f", "json", "list", "--category", "scholarly"],
+      io,
+    );
+
+    expect(handled).toBe(true);
+    const env = JSON.parse(stdout.join("")) as {
+      data: Array<{ site: string; command: string; category: string }>;
+    };
+    expect(env.data.length).toBeGreaterThan(0);
+    expect(env.data.every((row) => row.category === "scholarly")).toBe(true);
+    expect(env.data.some((row) => row.site === "arxiv")).toBe(true);
+  });
+
   it("preserves quarantine tags in list output", () => {
     const { stdout, io } = makeIo();
 
@@ -112,6 +145,35 @@ describe("CLI fast path", () => {
     expect(env.data.some((row) => row.command === "twitter trending")).toBe(
       true,
     );
+  });
+
+  it("hard-filters fast-path search results by category", () => {
+    const { stdout, io } = makeIo();
+
+    const handled = tryRunFastPath(
+      [
+        "node",
+        "unicli",
+        "-f",
+        "json",
+        "search",
+        "--category",
+        "scholarly",
+        "open",
+        "access",
+        "pdf",
+        "doi",
+      ],
+      io,
+    );
+
+    expect(handled).toBe(true);
+    const env = JSON.parse(stdout.join("")) as {
+      data: Array<{ command: string; category: string }>;
+    };
+    expect(env.data.length).toBeGreaterThan(0);
+    expect(env.data.every((row) => row.category === "scholarly")).toBe(true);
+    expect(env.data.map((row) => row.command)).toContain("unpaywall oa");
   });
 
   it("serves describe command schemas from manifest metadata", () => {

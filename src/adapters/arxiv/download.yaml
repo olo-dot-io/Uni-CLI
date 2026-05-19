@@ -45,7 +45,7 @@ pipeline:
 columns: [id, title, pdf, _download]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["http.fetch", "http.download"]
+capabilities: ["http.fetch", "http.download", "scholar.pdf"]
 minimum_capability: http.download
 trust: public
 confidentiality: public

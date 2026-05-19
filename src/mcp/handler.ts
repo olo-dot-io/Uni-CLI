@@ -39,21 +39,31 @@ function handleListAdapters(params: Record<string, unknown>): McpToolResult {
 
   const site = params.site as string | undefined;
   const type = params.type as string | undefined;
+  const category = params.category as string | undefined;
 
   if (site) commands = commands.filter((c) => c.site.includes(site));
   if (type) commands = commands.filter((c) => c.type === type);
+  if (category) commands = commands.filter((c) => c.category === category);
 
   const adapters = getAllAdapters();
   const siteMap = new Map<
     string,
-    { type: string; commands: Array<{ name: string; description: string }> }
+    {
+      category: string;
+      type: string;
+      commands: Array<{ name: string; description: string }>;
+    }
   >();
 
   for (const cmd of commands) {
     let entry = siteMap.get(cmd.site);
     if (!entry) {
       const adapter = adapters.find((a) => a.name === cmd.site);
-      entry = { type: adapter?.type ?? cmd.type, commands: [] };
+      entry = {
+        category: adapter?.category ?? cmd.category,
+        type: adapter?.type ?? cmd.type,
+        commands: [],
+      };
       siteMap.set(cmd.site, entry);
     }
     entry.commands.push({ name: cmd.command, description: cmd.description });
@@ -61,6 +71,7 @@ function handleListAdapters(params: Record<string, unknown>): McpToolResult {
 
   const result = Array.from(siteMap.entries()).map(([name, info]) => ({
     site: name,
+    category: info.category,
     type: info.type,
     commands: info.commands,
   }));
@@ -259,6 +270,7 @@ async function dispatchSearch(
 ): Promise<JsonRpcResponse> {
   const searchQuery = toolArgs.query as string;
   const searchLimit = (toolArgs.limit as number) || 5;
+  const searchCategory = toolArgs.category as string | undefined;
   if (!searchQuery) {
     return {
       jsonrpc: "2.0",
@@ -267,9 +279,12 @@ async function dispatchSearch(
     };
   }
   const { search: searchFn } = await import("../discovery/search.js");
-  const results = searchFn(searchQuery, searchLimit);
+  const results = searchFn(searchQuery, searchLimit, {
+    category: searchCategory,
+  });
   const data = {
     query: searchQuery,
+    category: searchCategory,
     count: results.length,
     results: results.map((r) => ({
       command: `unicli ${r.site} ${r.command}`,

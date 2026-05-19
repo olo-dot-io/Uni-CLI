@@ -58,6 +58,7 @@ import { registerExtractCommand } from "./commands/extract.js";
 import { registerDoCommand } from "./commands/do.js";
 import { registerSocialCommand } from "./commands/social.js";
 import { registerPatentCommand } from "./commands/patent.js";
+import { registerScholarCommand } from "./commands/scholar.js";
 import { registerLintCommand } from "./commands/lint.js";
 import { registerMigrateCommand } from "./commands/migrate.js";
 import { registerMigrateSchemaCommand } from "./commands/migrate-schema.js";
@@ -139,6 +140,7 @@ export async function createCli(): Promise<Command> {
     .command("list")
     .description("List all available commands")
     .option("--site <site>", "filter by site name")
+    .option("--category <cat>", "filter by site category")
     .option("--type <type>", "filter by adapter type")
     .action((opts) => {
       const listStarted = Date.now();
@@ -146,6 +148,9 @@ export async function createCli(): Promise<Command> {
 
       if (opts.site) {
         commands = commands.filter((c) => c.site.includes(opts.site));
+      }
+      if (opts.category) {
+        commands = commands.filter((c) => c.category === opts.category);
       }
       if (opts.type) {
         commands = commands.filter((c) => c.type === opts.type);
@@ -162,17 +167,23 @@ export async function createCli(): Promise<Command> {
           site: c.site,
           command: c.command,
           description: c.description,
+          category: c.category,
           type: c.type,
           auth: tags.join(" "),
         };
       });
 
       console.log(
-        format(rows, ["site", "command", "description", "type", "auth"], fmt, {
-          command: "core.list",
-          duration_ms: Date.now() - listStarted,
-          surface: "web",
-        }),
+        format(
+          rows,
+          ["site", "command", "description", "category", "type", "auth"],
+          fmt,
+          {
+            command: "core.list",
+            duration_ms: Date.now() - listStarted,
+            surface: "web",
+          },
+        ),
       );
     });
 
@@ -386,6 +397,9 @@ export async function createCli(): Promise<Command> {
   // Natural-language → best-fit adapter plan (HATEOAS; agent invokes next_actions[0])
   registerDoCommand(program);
   registerSocialCommand(program);
+
+  // Register scholar command — academic vertical meta-command across first-source adapters
+  registerScholarCommand(program);
 
   // Register patent command — patent-vertical meta-command across L0/L1/L2 adapters
   registerPatentCommand(program);

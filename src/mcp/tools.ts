@@ -131,13 +131,19 @@ export function buildDefaultTools(): McpTool[] {
     },
     {
       name: "unicli_list",
-      description: "List available commands. Filter by site or adapter type.",
+      description:
+        "List available commands. Filter by site, category, or adapter type.",
       inputSchema: {
         type: "object",
         properties: {
           site: {
             type: "string",
             description: "Filter by site name (partial match)",
+          },
+          category: {
+            type: "string",
+            description:
+              "Filter by site category (e.g. scholarly, social, finance, dev)",
           },
           type: {
             type: "string",
@@ -148,7 +154,7 @@ export function buildDefaultTools(): McpTool[] {
       },
       _meta: {
         "anthropic/searchHint":
-          "Browse available Uni-CLI sites and commands. Filter by site name or adapter type.",
+          "Browse available Uni-CLI sites and commands. Filter by site name, category, or adapter type.",
         "anthropic/alwaysLoad": true,
       },
       annotations: {
@@ -160,7 +166,7 @@ export function buildDefaultTools(): McpTool[] {
     {
       name: "unicli_search",
       description:
-        "Search the Uni-CLI command catalog by intent. Bilingual (EN/ZH). Returns top matches with usage examples.",
+        "Search the Uni-CLI command catalog by intent and optional category. Bilingual (EN/ZH). Returns top matches with usage examples.",
       inputSchema: {
         type: "object",
         properties: {
@@ -173,6 +179,11 @@ export function buildDefaultTools(): McpTool[] {
             type: "integer",
             description: "Max results (default 5)",
             default: 5,
+          },
+          category: {
+            type: "string",
+            description:
+              "Hard-filter results by site category (e.g. scholarly, social, finance, dev)",
           },
         },
         required: ["query"],

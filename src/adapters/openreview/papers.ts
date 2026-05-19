@@ -303,6 +303,7 @@ cli({
     { name: "limit", type: "int", default: 25, description: "Max results" },
   ],
   columns: ["rank", "id", "title", "authors", "venue", "pdate", "url"],
+  capabilities: ["http.fetch", "scholar.search", "scholar.review"],
   func: async (_page, kwargs) => {
     const query = String(kwargs.query ?? "").trim();
     if (!query) throw new Error("openreview search query cannot be empty.");
@@ -363,6 +364,7 @@ cli({
     "pdf",
     "url",
   ],
+  capabilities: ["http.fetch", "scholar.get", "scholar.pdf", "scholar.review"],
   func: async (_page, kwargs) => {
     const id = requireForumId(kwargs.id);
     const notes = notesFromEnvelope(
@@ -409,6 +411,7 @@ cli({
     { name: "limit", type: "int", default: 50, description: "Max submissions" },
   ],
   columns: ["rank", "id", "title", "authors", "venue", "pdate", "url"],
+  capabilities: ["http.fetch", "scholar.author", "scholar.search"],
   func: async (_page, kwargs) => {
     const profile = requireProfileId(kwargs.profile);
     const limit = requireOpenReviewLimit(kwargs.limit, 50, 1000);
@@ -473,6 +476,7 @@ cli({
     "pdf",
     "url",
   ],
+  capabilities: ["http.fetch", "scholar.venue", "scholar.search"],
   func: async (_page, kwargs) => {
     const venue = String(kwargs.venue ?? "").trim();
     if (!venue) throw new Error("openreview venue cannot be empty.");
@@ -531,6 +535,7 @@ cli({
     },
   ],
   columns: ["type", "author", "rating", "confidence", "text"],
+  capabilities: ["http.fetch", "scholar.review"],
   func: async (_page, kwargs) => {
     const forum = requireForumId(kwargs.forum, "forum");
     const maxLength = coerceOpenReviewInt(

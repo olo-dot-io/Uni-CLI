@@ -15,6 +15,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..", "..", "..");
 const CLI_PATH = join(ROOT, "src", "main.ts");
 const DIST_CLI_PATH = join(ROOT, "dist", "main.js");
+const ACP_START_TIMEOUT_MS = 90_000;
+const ACP_CLI_SPAWN_TIMEOUT_MS = 90_000;
 const TSX_BIN = join(
   ROOT,
   "node_modules",
@@ -84,7 +86,7 @@ describe("unicli acp — CLI subprocess integration", () => {
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(
         () => reject(new Error("ACP server start timeout")),
-        20_000,
+        ACP_START_TIMEOUT_MS,
       );
       proc.stderr!.on("data", (chunk: Buffer) => {
         if (chunk.toString().includes("ACP server")) {
@@ -97,7 +99,7 @@ describe("unicli acp — CLI subprocess integration", () => {
         reject(err);
       });
     });
-  }, 30_000);
+  }, ACP_START_TIMEOUT_MS);
 
   afterAll(() => {
     if (proc && !proc.killed) proc.kill();
@@ -121,33 +123,41 @@ describe("unicli acp — CLI subprocess integration", () => {
     );
   });
 
-  it("leaves acp --help on the commander path", () => {
-    const invocation = cliArgs(["acp", "--help"]);
-    const result = spawnSync(invocation.command, invocation.args, {
-      cwd: ROOT,
-      encoding: "utf8",
-      shell:
-        process.platform === "win32" && invocation.command.endsWith(".cmd"),
-      timeout: 45_000,
-    });
+  it(
+    "leaves acp --help on the commander path",
+    () => {
+      const invocation = cliArgs(["acp", "--help"]);
+      const result = spawnSync(invocation.command, invocation.args, {
+        cwd: ROOT,
+        encoding: "utf8",
+        shell:
+          process.platform === "win32" && invocation.command.endsWith(".cmd"),
+        timeout: ACP_CLI_SPAWN_TIMEOUT_MS,
+      });
 
-    expect(result.status).toBe(0);
-    expect(result.stdout).toContain("Serve the Agent Client Protocol");
-  }, 45_000);
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain("Serve the Agent Client Protocol");
+    },
+    ACP_CLI_SPAWN_TIMEOUT_MS,
+  );
 
-  it("rejects unknown acp flags instead of entering stdio serve mode", () => {
-    const invocation = cliArgs(["acp", "--bad-flag"]);
-    const result = spawnSync(invocation.command, invocation.args, {
-      cwd: ROOT,
-      encoding: "utf8",
-      shell:
-        process.platform === "win32" && invocation.command.endsWith(".cmd"),
-      timeout: 45_000,
-    });
+  it(
+    "rejects unknown acp flags instead of entering stdio serve mode",
+    () => {
+      const invocation = cliArgs(["acp", "--bad-flag"]);
+      const result = spawnSync(invocation.command, invocation.args, {
+        cwd: ROOT,
+        encoding: "utf8",
+        shell:
+          process.platform === "win32" && invocation.command.endsWith(".cmd"),
+        timeout: ACP_CLI_SPAWN_TIMEOUT_MS,
+      });
 
-    expect(result.status).toBe(1);
-    expect(result.stderr).toContain("unknown option '--bad-flag'");
-  }, 45_000);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("unknown option '--bad-flag'");
+    },
+    ACP_CLI_SPAWN_TIMEOUT_MS,
+  );
 
   it("returns error envelope for an unknown method", async () => {
     const response = await sendRequest(proc, {

@@ -174,6 +174,7 @@ cli({
     { name: "limit", type: "int", default: 20, description: "Max papers" },
   ],
   columns: ["id", "title", "authors", "published", "primary_category", "url"],
+  capabilities: ["http.fetch", "scholar.author", "scholar.search"],
   func: async (_page, kwargs) => {
     const author = requireArxivAuthor(kwargs.author);
     const limit = requireArxivLimit(kwargs.limit, 20);
@@ -208,6 +209,7 @@ cli({
     { name: "limit", type: "int", default: 10, description: "Max papers" },
   ],
   columns: ["id", "title", "authors", "published", "primary_category", "url"],
+  capabilities: ["http.fetch", "scholar.search", "scholar.venue"],
   func: async (_page, kwargs) => {
     const category = requireArxivCategory(kwargs.category);
     const limit = requireArxivLimit(kwargs.limit, 10);

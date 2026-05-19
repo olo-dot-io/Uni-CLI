@@ -27,6 +27,7 @@ cli({
     { name: "index", type: "int", default: 1 },
   ],
   columns: ["title", "format", "citation"],
+  capabilities: ["mcp-browser.navigate", "mcp-browser.evaluate", "scholar.get"],
   func: async (page, kwargs) => {
     const p = page as IPage;
     const query = str(kwargs.query).trim();

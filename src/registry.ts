@@ -7,6 +7,7 @@
  */
 
 import { AdapterType, Strategy } from "./types.js";
+import { SITE_CATEGORIES } from "./discovery/aliases.js";
 import type {
   AdapterManifest,
   AdapterCommand,
@@ -85,11 +86,16 @@ export function commandUsesBrowser(
   );
 }
 
+function adapterCategory(adapter: AdapterManifest): string {
+  return adapter.category ?? SITE_CATEGORIES.get(adapter.name) ?? "other";
+}
+
 /** List all available commands across all adapters */
 export function listCommands(): Array<{
   site: string;
   command: string;
   description: string;
+  category: string;
   type: string;
   auth: boolean;
   quarantined: boolean;
@@ -99,6 +105,7 @@ export function listCommands(): Array<{
     site: string;
     command: string;
     description: string;
+    category: string;
     type: string;
     auth: boolean;
     quarantined: boolean;
@@ -111,6 +118,7 @@ export function listCommands(): Array<{
         site: adapter.name,
         command: name,
         description: cmd.description ?? "",
+        category: adapterCategory(adapter),
         type: adapter.type,
         auth: commandRequiresAuth(adapter, cmd),
         quarantined: cmd.quarantine === true,

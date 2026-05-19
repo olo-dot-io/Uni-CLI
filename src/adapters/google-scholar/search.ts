@@ -14,6 +14,11 @@ cli({
     { name: "limit", type: "int", default: 10 },
   ],
   columns: ["rank", "title", "authors", "source", "year", "cited", "url"],
+  capabilities: [
+    "mcp-browser.navigate",
+    "mcp-browser.evaluate",
+    "scholar.search",
+  ],
   func: async (page, kwargs) => {
     const p = page as IPage;
     const limit = intArg(kwargs.limit, 10, 20);
