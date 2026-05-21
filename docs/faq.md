@@ -9,7 +9,7 @@ Quick answers to the questions agents and developers ask most often. Each answer
 
 ## What is Uni-CLI?
 
-Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across <span><!-- STATS:site_count -->311<!-- /STATS --></span> sites and tools, returning a stable v2 AgentEnvelope on every call.
+Uni-CLI is an agent-native control plane for real software operation. It turns websites, browser sessions, desktop apps, local CLIs, MCP servers, and system capabilities into one searchable command runtime. One path discovers, executes with policy, returns evidence, and self-repairs operations across <span><!-- STATS:site_count -->311<!-- /STATS --></span> sites and tools.
 
 ## How is Uni-CLI different from a browser automation library?
 
@@ -29,7 +29,7 @@ Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, and any runtime that can spa
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.222.0 covers <span><!-- STATS:site_count -->311<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1751<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1212<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8845<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, paper/PDF workflows, ACG/anime/manga/wiki sources, booru tag search, government policy, podcasts, and macOS apps.
+v0.222.0 ships a generated catalog with <span><!-- STATS:site_count -->311<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1753<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1212<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8847<!-- /STATS --></span> tests. The headline is the contract: search, policy, evidence, repair, and the same AgentEnvelope across web, browser, desktop, local tools, and protocols.
 
 ## Can Uni-CLI download papers and read local PDFs?
 

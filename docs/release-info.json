@@ -11,14 +11,14 @@
       "Uni-CLI 0.222.0 promotes local computer use into the core compute substrate: native accessibility first, CDP where available, and owned visual fallback when semantic APIs are insufficient.",
       "macOS desktop-ax now supports background click, type, and key press into non-frontmost windows with per-process focus suppression, AppKit activation priming, and pid/window-addressed event delivery.",
       "The old upstream-named visual adapter surface has been removed from public product exports, docs, tests, generated MCP assets, and repair references in favor of the owned `visual` vocabulary.",
-      "Agent-facing documentation, focus behavior docs, architecture docs, generated public Markdown, README, README.zh-CN, AGENTS.md, server registry metadata, and skills now agree on v0.222.0 and the 311-site / 1751-command catalog.",
+      "Agent-facing documentation, focus behavior docs, architecture docs, generated public Markdown, README, README.zh-CN, AGENTS.md, server registry metadata, and skills now agree on v0.222.0 and the 311-site / 1753-command catalog.",
       "`unicli extract` and `unicli do` ship as lightweight agent primitives for one-hop URL extraction and plan-only intent routing."
     ],
     "zh": [
       "Uni-CLI 0.222.0 把本地 computer use 提升为核心 compute 基础设施：优先使用原生 accessibility，能走 CDP 时走 CDP，语义 API 不够时使用我们自己的 visual fallback。",
       "macOS desktop-ax 已支持对非前台窗口后台点击、输入文字、发送快捷键，包含 per-process focus suppression、AppKit activation primer、pid/window 定向事件投递。",
       "旧的上游命名视觉适配器已从公开产品 exports、文档、测试、生成 MCP 资产和 repair 参考中移除，统一改为我们自己的 `visual` 词汇。",
-      "Agent 文档、focus behavior、架构文档、public Markdown、README、README.zh-CN、AGENTS.md、server registry metadata 和 skills 已统一到 v0.222.0，并同步 311 个站点 / 1751 条命令目录。",
+      "Agent 文档、focus behavior、架构文档、public Markdown、README、README.zh-CN、AGENTS.md、server registry metadata 和 skills 已统一到 v0.222.0，并同步 311 个站点 / 1753 条命令目录。",
       "`unicli extract` 和 `unicli do` 作为轻量 Agent 原语发布：分别覆盖一跳 URL 提取和只规划不执行的意图路由。"
     ]
   }

@@ -5,19 +5,20 @@
 <h1 align="center">Uni-CLI</h1>
 
 <p align="center">
-  <strong>面向真实软件的 Agent 执行底座。</strong>
+  <strong>面向 Agent 原生软件操作的控制平面。</strong>
+</p>
+
+<p align="center">
+  一套可搜索的运行时，把网站、浏览器会话、桌面应用、本地 CLI 和系统能力收进同一个入口。
+  Agent 按意图发现能力，按策略执行，带证据返回，并能定位和修复失败的 adapter。
 </p>
 
 <p align="center">
   <a href="https://olo-dot-io.github.io/Uni-CLI/">文档站</a>
   ·
-  <a href="https://olo-dot-io.github.io/Uni-CLI/reference/sites">站点目录</a>
+  <a href="https://olo-dot-io.github.io/Uni-CLI/reference/sites">命令目录</a>
   ·
-  <a href="https://olo-dot-io.github.io/Uni-CLI/llms.txt">llms.txt</a>
-</p>
-
-<p align="center">
-  按意图发现命令，跨 Web、应用、本地工具和系统能力执行可治理操作，再返回带证据的 AgentEnvelope，方便智能体检查和修复。
+  <a href="https://olo-dot-io.github.io/Uni-CLI/llms.txt">Agent 索引</a>
 </p>
 
 <p align="center">
@@ -25,30 +26,33 @@
   <a href="./LICENSE"><img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square"></a>
   <img alt="Node 20+" src="https://img.shields.io/badge/node-20%2B-339933?style=flat-square&logo=node.js&logoColor=white">
   <img alt="MCP" src="https://img.shields.io/badge/MCP-2025--11--25-6f42c1?style=flat-square">
+  <img alt="AgentEnvelope v2" src="https://img.shields.io/badge/AgentEnvelope-v2-0f766e?style=flat-square">
+  <img alt="本地 computer use" src="https://img.shields.io/badge/local_computer_use-macOS_AX-111827?style=flat-square">
+  <img alt="自修复" src="https://img.shields.io/badge/self--repair-adapter_aware-f97316?style=flat-square">
+  <img alt="策略执行" src="https://img.shields.io/badge/policy-open_%7C_confirm_%7C_locked-2563eb?style=flat-square">
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->311<!-- /STATS --> 个站点 · <!-- STATS:command_count -->1751<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->103<!-- /STATS --> 个 pipeline step · <!-- STATS:test_count -->8845<!-- /STATS --> 个测试</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · visual fallback · macOS desktop AX · <!-- STATS:site_count -->311<!-- /STATS --> 个 surface · <!-- STATS:test_count -->8847<!-- /STATS --> 个测试</sub>
 </p>
 
 ## 30 秒开始
 
 ```bash
 npm install -g @zenalexa/unicli
-unicli search "微博热搜"
-unicli hackernews top --limit 5 -f json
+unicli do "找 Hacker News 首页"
+unicli extract https://example.com --max-chars 1200
 npx @zenalexa/unicli mcp serve
 ```
 
-| 目标              | 命令                                                   |
-| ----------------- | ------------------------------------------------------ |
-| 按意图找能力      | `unicli search "总结 reddit 讨论"`                     |
-| 查看已安装覆盖    | `unicli list`, `unicli list --site macos`              |
-| 用机器契约执行    | `unicli <site> <command> -f json`                      |
-| 下载并读取论文    | `unicli arxiv download <id> && unicli pdf read <file>` |
-| 查 ACG/tag 内容   | `unicli search "花火 星穹铁道 character"`              |
-| 本地修复 adapter  | `unicli repair <site> <command>`                       |
-| 给 Agent 暴露工具 | `npx @zenalexa/unicli mcp serve --expanded`            |
+| Agent 遇到的问题       | Uni-CLI 给的答案                                                                |
+| ---------------------- | ------------------------------------------------------------------------------- |
+| "哪个工具能做这个？"   | `unicli search` 和 `unicli do` 把意图转成可检查、可执行的命令计划               |
+| "能不能安全地跑？"     | permission profile 暴露 `open`、`confirm`、`locked` 三种执行模式                |
+| "刚才发生了什么？"     | 每次运行都返回带 data、context、retryability 和证据钩子的 AgentEnvelope         |
+| "页面又改版了。"       | 结构化错误直接指向 adapter 文件和失败的 pipeline step                           |
+| "目标是本地应用。"     | desktop transport 覆盖 macOS AX、UIA/AT-SPI sidecar、subprocess 和 visual input |
+| "把它接给我的 Agent。" | `unicli mcp serve`、ACP、native CLI、JSON stream 共享同一个目录                 |
 
 <!-- IF YOU ARE AN AI AGENT: Start here.
 Install: npm install -g @zenalexa/unicli
@@ -60,7 +64,7 @@ Prefer native CLI / JSON stream / MCP for agent runtimes. Use ACP as an editor c
 
 ## 它解决什么
 
-Uni-CLI 位于 Agent 应用之下，把软件表面收敛成 Agent 能发现、能执行、能记录、能修的命令。
+Uni-CLI 不是又一个 scraper 包，而是 Agent 底下的执行层：命令图谱、策略闸门、证据记录、本地 computer-use bridge 和自修复 loop，都包在同一个 CLI 合同里。
 
 | 表面         | 能力                                                                                                                                                                       |
 | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

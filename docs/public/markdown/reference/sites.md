@@ -14,7 +14,7 @@ running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 311 sites, 1754 commands.
+This catalog is generated from the adapter manifest: 311 sites, 1753 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -240,7 +240,7 @@ This catalog is generated from the adapter manifest: 311 sites, 1754 commands.
 | rfc | web-api | 1 | no | unicli rfc rfc |
 | rubygems | web-api | 3 | no | unicli rubygems info<br>unicli rubygems search<br>unicli rubygems gem |
 | safebooru | web-api | 4 | no | unicli safebooru detail<br>unicli safebooru download<br>unicli safebooru search |
-| semantic-scholar | web-api | 5 | no | unicli semantic-scholar search<br>unicli semantic-scholar paper<br>unicli semantic-scholar id |
+| semantic-scholar | web-api | 4 | no | unicli semantic-scholar search<br>unicli semantic-scholar paper<br>unicli semantic-scholar citations |
 | shotcut | desktop | 3 | no | unicli shotcut effects<br>unicli shotcut info<br>unicli shotcut render |
 | sinablog | browser | 4 | no | unicli sinablog article<br>unicli sinablog hot<br>unicli sinablog search |
 | sinafinance | web-api | 5 | no | unicli sinafinance market<br>unicli sinafinance news<br>unicli sinafinance rolling-news |

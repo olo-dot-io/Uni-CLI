@@ -5,7 +5,7 @@ This file is generated from the same VitePress site map as the public docs.
 ## Snapshot
 
 - Sites: 311
-- Commands: 1754
+- Commands: 1753
 - Adapters: 1212
 - Pipeline steps: 103
 
@@ -24,39 +24,50 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
 - Section: Start
 
-## Command-grade software access for agents
+## Agent-native control plane for real software
 
-Uni-CLI puts sites, apps, local tools, MCP, and external CLIs into one searchable catalog. Agents use one command path to search, run, record, repair, and hand results to any client.
+Uni-CLI puts websites, browser sessions, desktop apps, local CLIs, MCP, and system capabilities into one searchable runtime. Agents use one command path to discover, plan, execute, record, review, and repair.
+
+## Capability Wall
+
+- Intent search
+- Policy-gated execution
+- AgentEnvelope v2
+- MCP + ACP
+- Desktop AX
+- Visual fallback
+- Adapter self-repair
 
 ## First Command
 
 ```bash
 npm install -g @zenalexa/unicli
-unicli search "connect slack messages"
-unicli agents recommend codex
+unicli do "find the Hacker News frontpage"
+unicli extract https://example.com --max-chars 1200
 unicli mcp serve --transport streamable --port 19826
 ```
 
 ## Positioning
 
-Agent execution needs an auditable, repairable, reusable command contract. Catalog search handles discovery. The v2 AgentEnvelope stabilizes output. Operation policy exposes permissions and risk. Run evidence supports review. The repair loop points failures to adapters and pipeline steps.
+Agent execution does not need a longer tool list. It needs an auditable, repairable, reusable control plane. Catalog search handles discovery. Operation policy exposes permissions and risk. The v2 AgentEnvelope stabilizes output. Run evidence supports review. The repair loop points failures to adapters and pipeline steps.
 
-- **Discover.** Bilingual BM25 search turns a natural-language task into a site, command, arguments, and auth strategy.
-- **Execute.** HTTP, cookies, browser CDP, desktop AX, subprocess, service, and Visual all return the same envelope.
-- **Recover.** Structured errors include adapter path, step, retryable, suggestion, and alternatives.
+- **Discover.** Bilingual BM25 search turns a natural-language task into a site, command, arguments, auth strategy, and risk fields.
+- **Execute.** HTTP, cookies, browser CDP, macOS AX, subprocess, service, and visual fallback return the same envelope.
+- **Evidence.** Markdown is the agent-friendly default; JSON, YAML, CSV, and compact formats serve programs.
+- **Repair.** Structured errors include adapter path, step, retryable, suggestion, and alternatives.
 
 ## Common Tasks
 
-- `unicli search` reads the local catalog first, then execution can inspect command, args, auth, risk, and output fields.
+- `unicli search` and `unicli do` read the local catalog first, then execution can inspect command, args, auth, risk, and output fields.
 - When a page or API changes, the error envelope names the adapter file and failing pipeline step.
-- Web APIs, browser automation, macOS, desktop apps, external CLIs, MCP, ACP, HTTP API, and agent backend routes share the catalog.
+- Web APIs, browser automation, macOS, desktop apps, external CLIs, MCP, ACP, HTTP API, and agent backend routes share the same catalog and receipt.
 
 ## Coverage
 
 - Sites and tools: 311
-- Commands: 1754
+- Commands: 1753
 - Pipeline steps: 103
-- Tests: 8845
+- Tests: 8847
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -422,7 +433,7 @@ The cascade order is `public → cookie → header → intercept → ui`. On the
 
 Every command returns a v2 AgentEnvelope — the same shape on success or failure.
 Agents parse one schema across
-<span><!-- STATS:command_count -->1751<!-- /STATS --></span> commands.
+<span><!-- STATS:command_count -->1753<!-- /STATS --></span> commands.
 
 ```json
 {
@@ -514,7 +525,7 @@ $ unicli hackernews top -n 10 -f json \
 
 That is the entire interaction model. One command shape across
 <span><!-- STATS:site_count -->311<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1751<!-- /STATS --></span> commands. One error
+<span><!-- STATS:command_count -->1753<!-- /STATS --></span> commands. One error
 envelope across every failure. One self-repair path across every adapter.
 
 ## Further reading
@@ -1129,7 +1140,7 @@ Quick answers to the questions agents and developers ask most often. Each answer
 
 ## What is Uni-CLI?
 
-Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across <span><!-- STATS:site_count -->311<!-- /STATS --></span> sites and tools, returning a stable v2 AgentEnvelope on every call.
+Uni-CLI is an agent-native control plane for real software operation. It turns websites, browser sessions, desktop apps, local CLIs, MCP servers, and system capabilities into one searchable command runtime. One path discovers, executes with policy, returns evidence, and self-repairs operations across <span><!-- STATS:site_count -->311<!-- /STATS --></span> sites and tools.
 
 ## How is Uni-CLI different from a browser automation library?
 
@@ -1149,7 +1160,7 @@ Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, and any runtime that can spa
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.222.0 covers <span><!-- STATS:site_count -->311<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1751<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1212<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8845<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, paper/PDF workflows, ACG/anime/manga/wiki sources, booru tag search, government policy, podcasts, and macOS apps.
+v0.222.0 ships a generated catalog with <span><!-- STATS:site_count -->311<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1753<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1212<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8847<!-- /STATS --></span> tests. The headline is the contract: search, policy, evidence, repair, and the same AgentEnvelope across web, browser, desktop, local tools, and protocols.
 
 ## Can Uni-CLI download papers and read local PDFs?
 
@@ -1982,7 +1993,7 @@ running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 311 sites, 1754 commands.
+This catalog is generated from the adapter manifest: 311 sites, 1753 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -2208,7 +2219,7 @@ This catalog is generated from the adapter manifest: 311 sites, 1754 commands.
 | rfc | web-api | 1 | no | unicli rfc rfc |
 | rubygems | web-api | 3 | no | unicli rubygems info<br>unicli rubygems search<br>unicli rubygems gem |
 | safebooru | web-api | 4 | no | unicli safebooru detail<br>unicli safebooru download<br>unicli safebooru search |
-| semantic-scholar | web-api | 5 | no | unicli semantic-scholar search<br>unicli semantic-scholar paper<br>unicli semantic-scholar id |
+| semantic-scholar | web-api | 4 | no | unicli semantic-scholar search<br>unicli semantic-scholar paper<br>unicli semantic-scholar citations |
 | shotcut | desktop | 3 | no | unicli shotcut effects<br>unicli shotcut info<br>unicli shotcut render |
 | sinablog | browser | 4 | no | unicli sinablog article<br>unicli sinablog hot<br>unicli sinablog search |
 | sinafinance | web-api | 5 | no | unicli sinafinance market<br>unicli sinafinance news<br>unicli sinafinance rolling-news |
@@ -2374,23 +2385,23 @@ columns: [id, title]
 
 ### All fields
 
-| Field                | Required    | Type                                                                                                 | Notes                                                                                                      |
-| -------------------- | ----------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `site`               | yes         | string                                                                                               | Adapter site/service key, kebab-case. Used as `unicli SITE CMD`.                                           |
-| `name`               | yes         | string                                                                                               | Command name; unique per site.                                                                             |
-| `description`        | recommended | string                                                                                               | One-line description for `unicli list` and for agents.                                                     |
-| `type`               | optional    | `web-api` \| `browser` \| `bridge` \| `desktop` \| `service`                                         | Omit for implicit `web-api`. Historical; the `transport` field is the v2 source of truth.                  |
+| Field                | Required    | Type                                                                                                    | Notes                                                                                                      |
+| -------------------- | ----------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `site`               | yes         | string                                                                                                  | Adapter site/service key, kebab-case. Used as `unicli SITE CMD`.                                           |
+| `name`               | yes         | string                                                                                                  | Command name; unique per site.                                                                             |
+| `description`        | recommended | string                                                                                                  | One-line description for `unicli list` and for agents.                                                     |
+| `type`               | optional    | `web-api` \| `browser` \| `bridge` \| `desktop` \| `service`                                            | Omit for implicit `web-api`. Historical; the `transport` field is the v2 source of truth.                  |
 | `transport`          | yes (v2)    | `http` \| `cdp-browser` \| `subprocess` \| `desktop-ax` \| `desktop-uia` \| `desktop-atspi` \| `visual` | The runtime dispatcher key.                                                                                |
-| `strategy`           | optional    | `public` \| `cookie` \| `header` \| `intercept` \| `ui`                                              | Kept for 1 release as alias; see migration table below.                                                    |
-| `capabilities`       | yes (v2)    | `string[]`                                                                                           | List of pipeline step names this command may invoke (e.g. `[fetch, map, limit]`).                          |
-| `minimum_capability` | yes (v2)    | string                                                                                               | Single dispatcher capability required (e.g. `http.fetch`, `cdp-browser.navigate`).                         |
-| `trust`              | yes (v2)    | `public` \| `user` \| `system`                                                                       | Provenance trust level. Default for committed YAML: `public`.                                              |
-| `confidentiality`    | yes (v2)    | `public` \| `internal` \| `private`                                                                  | Data sensitivity. Default: `public`. Auth-required adapters: `internal` or `private`.                      |
-| `quarantine`         | yes (v2)    | boolean                                                                                              | If `true`, command is skipped by `unicli test` and marked `[quarantined]` in `unicli list` until repaired. |
-| `args`               | optional    | list                                                                                                 | Named + positional command arguments.                                                                      |
-| `pipeline`           | yes         | list of step objects                                                                                 | Ordered sequence of pipeline steps.                                                                        |
-| `columns`            | recommended | `string[]`                                                                                           | Default column order for the `md` / `csv` formatters.                                                      |
-| `rate_limit`         | optional    | object                                                                                               | Per-domain token bucket config; see `src/engine/steps/rate-limit.ts`.                                      |
+| `strategy`           | optional    | `public` \| `cookie` \| `header` \| `intercept` \| `ui`                                                 | Kept for 1 release as alias; see migration table below.                                                    |
+| `capabilities`       | yes (v2)    | `string[]`                                                                                              | List of pipeline step names this command may invoke (e.g. `[fetch, map, limit]`).                          |
+| `minimum_capability` | yes (v2)    | string                                                                                                  | Single dispatcher capability required (e.g. `http.fetch`, `cdp-browser.navigate`).                         |
+| `trust`              | yes (v2)    | `public` \| `user` \| `system`                                                                          | Provenance trust level. Default for committed YAML: `public`.                                              |
+| `confidentiality`    | yes (v2)    | `public` \| `internal` \| `private`                                                                     | Data sensitivity. Default: `public`. Auth-required adapters: `internal` or `private`.                      |
+| `quarantine`         | yes (v2)    | boolean                                                                                                 | If `true`, command is skipped by `unicli test` and marked `[quarantined]` in `unicli list` until repaired. |
+| `args`               | optional    | list                                                                                                    | Named + positional command arguments.                                                                      |
+| `pipeline`           | yes         | list of step objects                                                                                    | Ordered sequence of pipeline steps.                                                                        |
+| `columns`            | recommended | `string[]`                                                                                              | Default column order for the `md` / `csv` formatters.                                                      |
+| `rate_limit`         | optional    | object                                                                                                  | Per-domain token bucket config; see `src/engine/steps/rate-limit.ts`.                                      |
 
 ### Args
 
@@ -2410,20 +2421,20 @@ Types: `string`, `int`, `float`, `bool`, `string[]`. Positional args populate
 Pipeline steps are documented in `docs/reference/pipeline.md`.
 The most common ones:
 
-| Step         | Transport                      | Purpose                                                |
-| ------------ | ------------------------------ | ------------------------------------------------------ |
-| `fetch`      | http                           | HTTP request with retry, cookie injection, JSON parse. |
-| `fetch_text` | http                           | HTTP request returning raw text (RSS, HTML).           |
-| `select`     | pure                           | JSONPath-style navigation into the response.           |
-| `map`        | pure                           | Transform each item via template with `${{ item.x }}`. |
-| `filter`     | pure                           | Keep items matching a predicate.                       |
-| `sort`       | pure                           | Sort by field.                                         |
-| `limit`      | pure                           | Cap result count.                                      |
-| `navigate`   | cdp-browser                    | Navigate a Chrome page via CDP.                        |
-| `intercept`  | cdp-browser                    | Capture matching XHR/fetch responses.                  |
-| `exec`       | subprocess                     | Run a subprocess with stdin/env/timeout.               |
-| `snapshot`   | cdp-browser + desktop-ax + visual | DOM/AX tree snapshot with `ref` numbers.               |
-| `visual_click`  | visual                            | Coordinate-level click via Visual backend.                |
+| Step           | Transport                         | Purpose                                                |
+| -------------- | --------------------------------- | ------------------------------------------------------ |
+| `fetch`        | http                              | HTTP request with retry, cookie injection, JSON parse. |
+| `fetch_text`   | http                              | HTTP request returning raw text (RSS, HTML).           |
+| `select`       | pure                              | JSONPath-style navigation into the response.           |
+| `map`          | pure                              | Transform each item via template with `${{ item.x }}`. |
+| `filter`       | pure                              | Keep items matching a predicate.                       |
+| `sort`         | pure                              | Sort by field.                                         |
+| `limit`        | pure                              | Cap result count.                                      |
+| `navigate`     | cdp-browser                       | Navigate a Chrome page via CDP.                        |
+| `intercept`    | cdp-browser                       | Capture matching XHR/fetch responses.                  |
+| `exec`         | subprocess                        | Run a subprocess with stdin/env/timeout.               |
+| `snapshot`     | cdp-browser + desktop-ax + visual | DOM/AX tree snapshot with `ref` numbers.               |
+| `visual_click` | visual                            | Coordinate-level click via Visual backend.             |
 
 Each step has a typed schema; unknown fields are rejected at load time.
 
@@ -2527,7 +2538,7 @@ only as a short-lived alias for the auth hint.
 | `intercept`       | `cdp-browser`                                    | `intercept`                                      |
 | `ui`              | `cdp-browser`                                    | `ui`                                             |
 | _(new)_ `desktop` | `desktop-ax` \| `desktop-uia` \| `desktop-atspi` | none                                             |
-| _(new)_ `visual`     | `visual`                                            | none                                             |
+| _(new)_ `visual`  | `visual`                                         | none                                             |
 
 The `unicli migrate` tool handles the split. For a hand-written adapter,
 set both fields explicitly and do not rely on legacy alias inference.
@@ -2731,7 +2742,7 @@ command could have been expressed as intercept.
 | `Strategy 'legacy-xyz' unknown`                           | Typo or dropped strategy                                                    | Consult the Strategy migration table; `legacy-xyz` is probably replaced by a named transport.             |
 | `HTTP 403 Forbidden` on cookie strategy                   | Cookie file stale                                                           | `unicli auth setup SITE` to re-authenticate; run `unicli repair SITE/CMD` for directed patch suggestions. |
 | `Interception timed out after 8000ms`                     | Selector/URL pattern changed upstream                                       | Inspect page network panel, update the `pattern` in `intercept` step, re-run.                             |
-| `visual_backend: remote not configured`                      | Visual backend endpoint or API key is missing                                  | Set `VISUAL_BACKEND_ENDPOINT` and `VISUAL_BACKEND_API_KEY`, or disable visual fallback.                   |
+| `visual_backend: remote not configured`                   | Visual backend endpoint or API key is missing                               | Set `VISUAL_BACKEND_ENDPOINT` and `VISUAL_BACKEND_API_KEY`, or disable visual fallback.                   |
 | `quarantine: true` but command still tries to run         | You called the command directly; quarantine only affects CI + `unicli test` | Remove `quarantine` once repaired, or run `unicli repair SITE/CMD` to auto-patch + lift the flag.         |
 | `trust: user` adapter refuses to run                      | CI safety gate rejects user-trust adapters when `UNICLI_TRUST_FLOOR=public` | Set `trust: public` and get the file reviewed, or run with `UNICLI_TRUST_FLOOR=user` locally.             |
 
@@ -3736,7 +3747,7 @@ quickly we may break the API.
 | `@zenalexa/unicli/pipeline`              | alias of `engine`                       | Stable       |
 | `@zenalexa/unicli/download`              | `src/engine/download.ts`                | Stable       |
 | `@zenalexa/unicli/engine/steps`          | `src/engine/steps/index.ts`             | Beta         |
-| `@zenalexa/unicli/transport/visual`         | `src/transport/adapters/visual.ts`         | Beta         |
+| `@zenalexa/unicli/transport/visual`      | `src/transport/adapters/visual.ts`      | Beta         |
 | `@zenalexa/unicli/transport/desktop-ax`  | `src/transport/adapters/desktop-ax.ts`  | Beta         |
 | `@zenalexa/unicli/transport/subprocess`  | `src/transport/adapters/subprocess.ts`  | Beta         |
 | `@zenalexa/unicli/transport/cdp-browser` | `src/transport/adapters/cdp-browser.ts` | Beta         |
@@ -4186,10 +4197,10 @@ Uni-CLI exposes one searchable command surface across:
 
 The generated catalog is the source of truth:
 **<span><!-- STATS:site_count -->311<!-- /STATS --></span> sites**,
-**<span><!-- STATS:command_count -->1751<!-- /STATS --></span> commands**,
+**<span><!-- STATS:command_count -->1753<!-- /STATS --></span> commands**,
 **<span><!-- STATS:adapter_count_total -->1212<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->8845<!-- /STATS --></span> tests** in v0.222.0.
+and **<span><!-- STATS:test_count -->8847<!-- /STATS --></span> tests** in v0.222.0.
 
 ## Execution Contract
 
@@ -4261,7 +4272,7 @@ command without guessing.
 | `subprocess`      | Local CLIs, media tools, desktop applications, file workflows |
 | `desktop-*`       | Native desktop automation surfaces                            |
 | `a11y`            | Accessibility tree inspection and semantic UI actions         |
-| `visual`             | Last-mile UI control when no narrower interface exists        |
+| `visual`          | Last-mile UI control when no narrower interface exists        |
 | `bridge`          | Reuse of existing installed tools                             |
 
 This lets Uni-CLI be broad without turning every operation into a full browser
@@ -4428,7 +4439,7 @@ bench shows representative `--limit 5` adapter responses at **357-415
 tokens**, with total invocation-plus-response budgets at **364-423 tokens**.
 The full catalog command is intentionally much larger because it emits all
 <span><!-- STATS:site_count -->311<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1751<!-- /STATS --></span> commands; agents
+<span><!-- STATS:command_count -->1753<!-- /STATS --></span> commands; agents
 should search and describe before asking for the full registry.
 
 ## Direction
@@ -4593,7 +4604,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Current: v0.222.0 — Apollo · Armstrong. <!-- STATS:site_count -->311<!-- /STATS --> sites, <!-- STATS:command_count -->1751<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps.
+> Current: v0.222.0 — Apollo · Armstrong. <!-- STATS:site_count -->311<!-- /STATS --> sites, <!-- STATS:command_count -->1753<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction. Historical release notes live in
 `CHANGELOG.md`; they do not belong in the roadmap.

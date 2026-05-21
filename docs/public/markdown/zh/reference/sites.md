@@ -11,7 +11,7 @@
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：311 个站点，1754 条命令。
+这个目录来自适配器 manifest：311 个站点，1753 条命令。
 
 | 站点 | 接口类型 | 命令数 | 认证 | 示例命令 |
 | --- | --- | ---: | --- | --- |
@@ -237,7 +237,7 @@
 | rfc | web-api | 1 | 否 | unicli rfc rfc |
 | rubygems | web-api | 3 | 否 | unicli rubygems info<br>unicli rubygems search<br>unicli rubygems gem |
 | safebooru | web-api | 4 | 否 | unicli safebooru detail<br>unicli safebooru download<br>unicli safebooru search |
-| semantic-scholar | web-api | 5 | 否 | unicli semantic-scholar search<br>unicli semantic-scholar paper<br>unicli semantic-scholar id |
+| semantic-scholar | web-api | 4 | 否 | unicli semantic-scholar search<br>unicli semantic-scholar paper<br>unicli semantic-scholar citations |
 | shotcut | desktop | 3 | 否 | unicli shotcut effects<br>unicli shotcut info<br>unicli shotcut render |
 | sinablog | browser | 4 | 否 | unicli sinablog article<br>unicli sinablog hot<br>unicli sinablog search |
 | sinafinance | web-api | 5 | 否 | unicli sinafinance market<br>unicli sinafinance news<br>unicli sinafinance rolling-news |

@@ -24,52 +24,62 @@ unicli mcp serve --transport streamable --port 19826`,
 const copy = computed(() =>
   isZh.value
     ? {
-        label: "给 Agent 的软件启动台",
-        lead: "先搜一下，网站、桌面应用、本机工具就能变成一条能跑的命令。",
-        body: "Uni-CLI 把 235 个站点和工具做成一本文档化的命令图鉴。Agent 可以查目录、看参数、带认证执行、拿 Markdown 或 JSON，出错时还能定位到 adapter 和 pipeline step。写文档、抓资料、跑本机工具、接 MCP，走同一套路径。",
-        primary: "5 分钟跑起来",
+        label: "Agent-native software control plane",
+        lead: "让 Agent 用一条命令路径操作真实软件。",
+        body: `Uni-CLI 把 ${siteIndex.total_sites} 个网站、浏览器会话、桌面应用、本地 CLI 和系统能力收进一个可搜索运行时。Agent 按意图找能力，按策略执行，拿证据回执，并把失败定位到 adapter 与 pipeline step。`,
+        primary: "30 秒跑起来",
         secondary: "看命令图鉴",
+        badgesTitle: "能力墙",
+        badges: [
+          "Intent search",
+          "Policy gated",
+          "AgentEnvelope v2",
+          "MCP + ACP",
+          "Desktop AX",
+          "Visual fallback",
+          "Self-repair",
+        ],
         commandTitle: "第一条命令",
         copy: "复制",
         copied: "已复制",
-        thesisTitle: "Agent 的技能图鉴。",
+        thesisTitle: "不是工具列表，是执行控制平面。",
         thesis:
-          "普通人打开 App 找按钮，Agent 需要一个更稳定的入口：先按意图搜技能，再按参数执行，最后拿到结构化回执。Uni-CLI 做的就是这层入口。",
+          "普通人打开 App 找按钮，Agent 需要更稳定的入口：先按意图搜能力，再带权限和参数执行，最后拿到结构化回执。Uni-CLI 把这条链路变成可复用的基础设施。",
         principles: [
           {
-            name: "找技能",
-            text: "BM25 双语搜索把一句任务话收敛到站点、命令、参数、认证方式和样例。",
+            name: "发现能力",
+            text: "BM25 双语搜索把一句任务话收敛到站点、命令、参数、认证方式、风险和样例。",
           },
           {
-            name: "跑任务",
-            text: "Web API、浏览器 CDP、macOS、桌面应用、外部 CLI 和 CUA 都走同一套 envelope。",
+            name: "执行动作",
+            text: "Web API、Cookie 会话、浏览器 CDP、macOS AX、外部 CLI 和 visual fallback 走同一套 envelope。",
           },
           {
-            name: "交回执",
-            text: "默认给 Agent 友好的 Markdown，也能输出 JSON、YAML、CSV 和 compact。",
+            name: "返回证据",
+            text: "默认给 Agent 友好的 Markdown，也能输出 JSON、YAML、CSV 和 compact，并保留 run evidence。",
           },
           {
-            name: "修现场",
-            text: "错误会带 adapter path、失败 step、retryable、suggestion 和 alternatives。",
+            name: "修复现场",
+            text: "错误会带 adapter path、失败 step、retryable、suggestion 和 alternatives，方便本地 override 后验证。",
           },
         ],
-        questionsTitle: "几个直白问题",
+        questionsTitle: "为什么需要它",
         questions: [
           {
-            q: "这东西到底帮 Agent 做什么？",
-            a: "帮它找到可执行入口。网页、桌面应用、本机命令和协议服务都能变成 catalog 里的命令。",
+            q: "它到底给 Agent 增加了什么？",
+            a: "一个稳定入口。网页、桌面应用、本机命令和协议服务都能变成 catalog 里的命令，而不是每次临场猜 API、猜 selector、猜输出格式。",
           },
           {
-            q: "为什么要先搜目录？",
-            a: "因为目录里有参数、认证、风险和输出字段。Agent 先看清楚，再执行。",
+            q: "为什么不是直接让 Agent 操作网页？",
+            a: "直接操作适合最后一公里。Uni-CLI 先把可复用路径编成命令，必要时再落到浏览器、桌面 AX 或 visual fallback。",
           },
           {
-            q: "页面改版了怎么办？",
-            a: "错误 envelope 会给出 adapter 文件、失败 step 和建议。Agent 可以改本地 override，再跑 repair 验证。",
+            q: "页面改版或本地应用不配合怎么办？",
+            a: "错误 envelope 会给出 adapter 文件、失败 step 和建议。Agent 可以改本地 override，再跑 repair 验证；本地应用走平台 transport 和视觉 fallback。",
           },
           {
             q: "和 MCP 是什么关系？",
-            a: "MCP 是接入方式之一。Uni-CLI 的核心还是命令目录、运行时、输出合同和修复 loop。",
+            a: "MCP 是接入方式之一。Uni-CLI 的核心是命令目录、运行时、输出合同、权限策略和修复 loop。",
           },
         ],
         workflowTitle: "一条任务怎么跑起来",
@@ -94,7 +104,7 @@ const copy = computed(() =>
           },
           {
             name: "桌面和本机",
-            text: "macOS、Office、设计工具、音视频工具、容器、本地 subprocess。",
+            text: "macOS AX、后台输入、Office、设计工具、音视频工具、容器、本地 subprocess。",
           },
           {
             name: "Agent 协议",
@@ -128,52 +138,62 @@ const copy = computed(() =>
         version: `v${releaseInfo.version} · ${releaseInfo.codename}`,
       }
     : {
-        label: "A software launchpad for agents",
-        lead: "Search once, then turn sites, apps, and local tools into commands an agent can run.",
-        body: "Uni-CLI turns 235 sites and tools into a documented command catalog. Agents can inspect arguments, run with auth, receive Markdown or JSON, and trace failures to adapters and pipeline steps. Research, docs work, local tools, and MCP integrations all use the same path.",
-        primary: "Start in 5 minutes",
+        label: "Agent-native software control plane",
+        lead: "One command path for agents to operate real software.",
+        body: `Uni-CLI turns ${siteIndex.total_sites} websites, browser sessions, desktop apps, local CLIs, and system capabilities into one searchable runtime. Agents discover by intent, execute with policy, return evidence, and trace failures to adapters and pipeline steps.`,
+        primary: "Start in 30 seconds",
         secondary: "Browse the catalog",
+        badgesTitle: "Capability wall",
+        badges: [
+          "Intent search",
+          "Policy gated",
+          "AgentEnvelope v2",
+          "MCP + ACP",
+          "Desktop AX",
+          "Visual fallback",
+          "Self-repair",
+        ],
         commandTitle: "First command",
         copy: "Copy",
         copied: "Copied",
-        thesisTitle: "An executable skill catalog.",
+        thesisTitle: "Not a tool list. An execution control plane.",
         thesis:
-          "People open apps and look for buttons. Agents need a steadier path: search by intent, inspect the command, run with clear inputs, and receive a structured receipt. Uni-CLI is that execution layer.",
+          "People open apps and look for buttons. Agents need a steadier path: search by intent, inspect permissions and arguments, execute through a governed runtime, and receive a structured receipt. Uni-CLI turns that chain into infrastructure.",
         principles: [
           {
-            name: "Find",
-            text: "Bilingual BM25 search maps a task to the site, command, arguments, auth mode, and examples.",
+            name: "Discover",
+            text: "Bilingual BM25 search maps a task to the site, command, arguments, auth mode, risk, and examples.",
           },
           {
-            name: "Run",
-            text: "Web APIs, browser CDP, macOS, desktop apps, external CLIs, and CUA share one envelope.",
+            name: "Execute",
+            text: "Web APIs, cookie sessions, browser CDP, macOS AX, external CLIs, and visual fallback share one envelope.",
           },
           {
-            name: "Return",
-            text: "Markdown is the agent-friendly default, with JSON, YAML, CSV, and compact formats for programs.",
+            name: "Evidence",
+            text: "Markdown is the agent-friendly default, with JSON, YAML, CSV, compact output, and run evidence for review.",
           },
           {
             name: "Repair",
-            text: "Errors carry adapter path, failed step, retryability, suggestions, and alternatives.",
+            text: "Errors carry adapter path, failed step, retryability, suggestions, and alternatives for local override verification.",
           },
         ],
-        questionsTitle: "Plain questions",
+        questionsTitle: "Why it matters",
         questions: [
           {
-            q: "What does this give an agent?",
-            a: "Executable entrypoints. Sites, desktop apps, local commands, and protocol servers become commands in a catalog.",
+            q: "What does this add for an agent?",
+            a: "A stable entrypoint. Sites, desktop apps, local commands, and protocol servers become catalog commands instead of one-off API guesses, selector guesses, and output guesses.",
           },
           {
-            q: "Why start with search?",
-            a: "The catalog shows arguments, auth, risk, and output fields before execution.",
+            q: "Why not just drive the browser directly?",
+            a: "Direct operation is the last mile. Uni-CLI compiles reusable paths into commands first, then falls back to browser, desktop AX, or visual input when the semantic path is not enough.",
           },
           {
-            q: "What happens when a site changes?",
-            a: "The error envelope gives the adapter file, failed step, and suggestion. Agents can patch a local override and verify with repair.",
+            q: "What happens when a site or app changes?",
+            a: "The error envelope gives the adapter file, failed step, and suggestion. Agents can patch a local override and verify with repair; local apps route through platform transports and visual fallback.",
           },
           {
             q: "How does MCP fit?",
-            a: "MCP is one integration path. The core pieces are the command catalog, runtime, output contract, and repair loop.",
+            a: "MCP is one integration path. The core pieces are the command catalog, runtime, output contract, permission policy, and repair loop.",
           },
         ],
         workflowTitle: "How a task moves through it",
@@ -198,7 +218,7 @@ const copy = computed(() =>
           },
           {
             name: "Desktop and local",
-            text: "macOS, Office, design tools, media tools, containers, and local subprocesses.",
+            text: "macOS AX, background input, Office, design tools, media tools, containers, and local subprocesses.",
           },
           {
             name: "Agent protocols",
@@ -257,6 +277,10 @@ async function copyFirstCommand() {
       <h1 id="uni-home-title">Uni-CLI</h1>
       <p class="uni-hero-lead">{{ copy.lead }}</p>
       <p class="uni-hero-body">{{ copy.body }}</p>
+
+      <div class="uni-hero-badges" :aria-label="copy.badgesTitle">
+        <span v-for="badge in copy.badges" :key="badge">{{ badge }}</span>
+      </div>
 
       <div class="uni-hero-actions">
         <a

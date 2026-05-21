@@ -7,7 +7,7 @@
 - 栏目: 解释
 - 上级: 解释 (/zh/ARCHITECTURE)
 
-> Current: v0.222.0 — Apollo · Armstrong. <!-- STATS:site_count -->311<!-- /STATS --> 个站点，<!-- STATS:command_count -->1751<!-- /STATS --> 条命令，<!-- STATS:pipeline_step_count -->103<!-- /STATS --> 个 pipeline step。
+> Current: v0.222.0 — Apollo · Armstrong. <!-- STATS:site_count -->311<!-- /STATS --> 个站点，<!-- STATS:command_count -->1753<!-- /STATS --> 条命令，<!-- STATS:pipeline_step_count -->103<!-- /STATS --> 个 pipeline step。
 
 路线图按能力成熟度推进，不按固定周节奏发布。发布节奏取决于社区反馈和实际开发状态。
 
@@ -41,9 +41,9 @@
 | Run/event kernel        | 扩大证据覆盖，但保持默认不记录隐私状态。                                           |
 | Manifest/runtime parity | 生成型 TypeScript 命令、`describe`、`--dry-run`、MCP、ACP 参数一致。               |
 | Operation policy        | 默认 open；继续补 effect/risk/capability/resource scope，并支持 scope 级审批记忆。 |
-| Transport bus           | HTTP、CDP、a11y、subprocess、service、Visual 共享调用内核和证据模型。                 |
-| Desktop control         | 按 API/CDP/a11y/后台动作/Visual 的层级控制桌面应用。                                  |
-| Visual truthfulness        | 没有可见、可行动、可验证后端时不把 Visual 标成 live。                                 |
+| Transport bus           | HTTP、CDP、a11y、subprocess、service、Visual 共享调用内核和证据模型。              |
+| Desktop control         | 按 API/CDP/a11y/后台动作/Visual 的层级控制桌面应用。                               |
+| Visual truthfulness     | 没有可见、可行动、可验证后端时不把 Visual 标成 live。                              |
 | Agent-loop alignment    | 支持并行/后台 agent、隔离 worktree、reviewable evidence。                          |
 | Industry positioning    | 作为执行底座，不做 IDE、聊天壳、模型壳、scraper 或协议壳。                         |
 | Adapter quality         | 更少“假成功”，更多结构化错误和可修复建议。                                         |

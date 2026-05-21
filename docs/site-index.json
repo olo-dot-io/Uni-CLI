@@ -1,7 +1,7 @@
 {
-  "generated": "2026-05-21T13:26:34.053Z",
+  "generated": "2026-05-21T14:12:54.731Z",
   "total_sites": 311,
-  "total_commands": 1754,
+  "total_commands": 1753,
   "sites": [
     {
       "site": "1688",
@@ -8109,7 +8109,7 @@
       "domain": "api.semanticscholar.org",
       "auth": false,
       "strategy": "public",
-      "command_count": 5,
+      "command_count": 4,
       "commands": [
         {
           "name": "search",
@@ -8120,11 +8120,6 @@
           "name": "paper",
           "description": "Fetch one Semantic Scholar paper by paperId, DOI, or arXiv id",
           "command": "unicli semantic-scholar paper"
-        },
-        {
-          "name": "id",
-          "description": "List Semantic Scholar paper ${name}",
-          "command": "unicli semantic-scholar id"
         },
         {
           "name": "citations",

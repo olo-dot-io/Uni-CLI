@@ -5,19 +5,21 @@
 <h1 align="center">Uni-CLI</h1>
 
 <p align="center">
-  <strong>The agent execution substrate for the world's software.</strong>
+  <strong>The control plane for agent-native software operation.</strong>
+</p>
+
+<p align="center">
+  One searchable runtime for websites, browser sessions, desktop apps,
+  local CLIs, and system capabilities. Agents discover by intent, execute with
+  policy, return evidence, and repair the adapter that failed.
 </p>
 
 <p align="center">
   <a href="https://olo-dot-io.github.io/Uni-CLI/">Docs</a>
   ·
-  <a href="https://olo-dot-io.github.io/Uni-CLI/reference/sites">Sites catalog</a>
+  <a href="https://olo-dot-io.github.io/Uni-CLI/reference/sites">Command catalog</a>
   ·
-  <a href="https://olo-dot-io.github.io/Uni-CLI/llms.txt">llms.txt</a>
-</p>
-
-<p align="center">
-  Search by intent, execute governed commands across web, apps, local tools, and system capabilities, then return evidence-rich AgentEnvelopes that agents can inspect and repair.
+  <a href="https://olo-dot-io.github.io/Uni-CLI/llms.txt">Agent index</a>
 </p>
 
 <p align="center">
@@ -25,30 +27,33 @@
   <a href="./LICENSE"><img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square"></a>
   <img alt="Node 20+" src="https://img.shields.io/badge/node-20%2B-339933?style=flat-square&logo=node.js&logoColor=white">
   <img alt="MCP" src="https://img.shields.io/badge/MCP-2025--11--25-6f42c1?style=flat-square">
+  <img alt="AgentEnvelope v2" src="https://img.shields.io/badge/AgentEnvelope-v2-0f766e?style=flat-square">
+  <img alt="local computer use" src="https://img.shields.io/badge/local_computer_use-macOS_AX-111827?style=flat-square">
+  <img alt="self repair" src="https://img.shields.io/badge/self--repair-adapter_aware-f97316?style=flat-square">
+  <img alt="policy gated" src="https://img.shields.io/badge/policy-open_%7C_confirm_%7C_locked-2563eb?style=flat-square">
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->311<!-- /STATS --> sites · <!-- STATS:command_count -->1751<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->8845<!-- /STATS --> tests</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · visual fallback · macOS desktop AX · <!-- STATS:site_count -->311<!-- /STATS --> surfaces · <!-- STATS:test_count -->8847<!-- /STATS --> tests</sub>
 </p>
 
 ## Start In 30 Seconds
 
 ```bash
 npm install -g @zenalexa/unicli
-unicli search "hacker news frontpage"
-unicli hackernews top --limit 5 -f json
+unicli do "find the Hacker News frontpage"
+unicli extract https://example.com --max-chars 1200
 npx @zenalexa/unicli mcp serve
 ```
 
-| Need                         | Command                                                |
-| ---------------------------- | ------------------------------------------------------ |
-| Find a capability            | `unicli search "summarize reddit thread"`              |
-| Inspect installed coverage   | `unicli list`, `unicli list --site macos`              |
-| Run with a machine contract  | `unicli <site> <command> -f json`                      |
-| Download and read papers     | `unicli arxiv download <id> && unicli pdf read <file>` |
-| Find ACG/tagged media        | `unicli search "Sparkle Honkai Star Rail character"`   |
-| Fix a broken adapter locally | `unicli repair <site> <command>`                       |
-| Serve tools to agents        | `npx @zenalexa/unicli mcp serve --expanded`            |
+| Agent problem            | Uni-CLI answer                                                                          |
+| ------------------------ | --------------------------------------------------------------------------------------- |
+| "What tool can do this?" | `unicli search` and `unicli do` turn intent into ranked, inspectable command plans      |
+| "Can I run it safely?"   | permission profiles expose `open`, `confirm`, and `locked` execution modes              |
+| "What happened?"         | every run returns an AgentEnvelope with data, context, retryability, and evidence hooks |
+| "The site changed."      | structured errors point at the adapter file and failing pipeline step                   |
+| "The app is local."      | desktop transports cover macOS AX, UIA/AT-SPI sidecars, subprocesses, and visual input  |
+| "Expose it to my agent." | `unicli mcp serve`, ACP, native CLI, and JSON streams share the same catalog            |
 
 <!-- IF YOU ARE AN AI AGENT: Start here.
 Install: npm install -g @zenalexa/unicli
@@ -60,7 +65,9 @@ Prefer native CLI / JSON stream / MCP for agent runtimes. Use ACP as an editor c
 
 ## What It Does
 
-Uni-CLI sits under agent applications and turns software surfaces into commands that agents can discover, execute, record, and repair.
+Uni-CLI is not another scraper bundle. It is the execution layer underneath an
+agent: a command graph, policy gate, evidence recorder, local computer-use
+bridge, and repair loop wrapped behind one CLI contract.
 
 | Surface            | What you get                                                                                                                                                                                             |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

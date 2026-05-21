@@ -1,7 +1,7 @@
 ---
 layout: home
 title: Uni-CLI
-description: 给 Agent 的命令级软件入口。
+description: 面向 Agent 原生软件操作的控制平面。
 ---
 
 <HomePage />

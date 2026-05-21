@@ -198,7 +198,7 @@ function escapeMustacheInFence(md: any) {
 const homeFaqs: { q: string; a: string }[] = [
   {
     q: "What is Uni-CLI?",
-    a: `Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across ${siteStats.site_count} sites and tools.`,
+    a: `Uni-CLI is an agent-native control plane that turns websites, browser sessions, desktop apps, local CLIs, MCP servers, and system capabilities into one searchable command runtime. One path discovers, executes with policy, returns evidence, and self-repairs operations across ${siteStats.site_count} sites and tools.`,
   },
   {
     q: "How is Uni-CLI different from a browser automation library?",
@@ -218,7 +218,7 @@ const homeFaqs: { q: string; a: string }[] = [
   },
   {
     q: "How many sites and commands does Uni-CLI ship?",
-    a: `${releaseLabel} covers ${siteStats.site_count} sites with ${commandCount} commands across ${adapterCount} adapters, ${siteStats.pipeline_step_count} pipeline steps, and ${testCount} tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, government policy, podcasts, and macOS apps.`,
+    a: `${releaseLabel} ships a generated catalog with ${siteStats.site_count} sites, ${commandCount} commands, ${adapterCount} adapters, ${siteStats.pipeline_step_count} pipeline steps, and ${testCount} tests. The headline is the contract: search, policy, evidence, repair, and the same AgentEnvelope across web, browser, desktop, local tools, and protocols.`,
   },
   {
     q: "Can I add a new site to Uni-CLI without writing TypeScript?",
@@ -244,7 +244,7 @@ const softwareApplicationLdJson = {
   name: "Uni-CLI",
   applicationCategory: "DeveloperApplication",
   operatingSystem: "macOS, Linux, Windows",
-  description: `Command-grade software access for AI agents. Turns ${siteStats.site_count} websites, desktop apps, MCP servers, and external CLIs into a single searchable, self-repairing command catalog.`,
+  description: `Agent-native control plane for real software operation. Turns ${siteStats.site_count} websites, desktop apps, MCP servers, local CLIs, and system capabilities into a searchable, governed, self-repairing command runtime.`,
   url: publicSiteUrl,
   downloadUrl: npmPackageUrl,
   softwareVersion: releaseInfo.version,
@@ -396,7 +396,7 @@ const howToLdJson = {
 export default defineConfig({
   title: "Uni-CLI",
   lang: localizedSiteMaps.root.lang,
-  description: "Command-grade software access for agents.",
+  description: "Agent-native control plane for real software operation.",
   base: siteBase,
   srcExclude: ["public/markdown/**/*.md", "demo/README.md"],
   cleanUrls: true,

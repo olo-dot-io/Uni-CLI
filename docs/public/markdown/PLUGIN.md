@@ -39,7 +39,7 @@ quickly we may break the API.
 | `@zenalexa/unicli/pipeline`              | alias of `engine`                       | Stable       |
 | `@zenalexa/unicli/download`              | `src/engine/download.ts`                | Stable       |
 | `@zenalexa/unicli/engine/steps`          | `src/engine/steps/index.ts`             | Beta         |
-| `@zenalexa/unicli/transport/visual`         | `src/transport/adapters/visual.ts`         | Beta         |
+| `@zenalexa/unicli/transport/visual`      | `src/transport/adapters/visual.ts`      | Beta         |
 | `@zenalexa/unicli/transport/desktop-ax`  | `src/transport/adapters/desktop-ax.ts`  | Beta         |
 | `@zenalexa/unicli/transport/subprocess`  | `src/transport/adapters/subprocess.ts`  | Beta         |
 | `@zenalexa/unicli/transport/cdp-browser` | `src/transport/adapters/cdp-browser.ts` | Beta         |

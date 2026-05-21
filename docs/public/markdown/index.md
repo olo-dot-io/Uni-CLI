@@ -6,39 +6,50 @@
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
 - Section: Start
 
-## Command-grade software access for agents
+## Agent-native control plane for real software
 
-Uni-CLI puts sites, apps, local tools, MCP, and external CLIs into one searchable catalog. Agents use one command path to search, run, record, repair, and hand results to any client.
+Uni-CLI puts websites, browser sessions, desktop apps, local CLIs, MCP, and system capabilities into one searchable runtime. Agents use one command path to discover, plan, execute, record, review, and repair.
+
+## Capability Wall
+
+- Intent search
+- Policy-gated execution
+- AgentEnvelope v2
+- MCP + ACP
+- Desktop AX
+- Visual fallback
+- Adapter self-repair
 
 ## First Command
 
 ```bash
 npm install -g @zenalexa/unicli
-unicli search "connect slack messages"
-unicli agents recommend codex
+unicli do "find the Hacker News frontpage"
+unicli extract https://example.com --max-chars 1200
 unicli mcp serve --transport streamable --port 19826
 ```
 
 ## Positioning
 
-Agent execution needs an auditable, repairable, reusable command contract. Catalog search handles discovery. The v2 AgentEnvelope stabilizes output. Operation policy exposes permissions and risk. Run evidence supports review. The repair loop points failures to adapters and pipeline steps.
+Agent execution does not need a longer tool list. It needs an auditable, repairable, reusable control plane. Catalog search handles discovery. Operation policy exposes permissions and risk. The v2 AgentEnvelope stabilizes output. Run evidence supports review. The repair loop points failures to adapters and pipeline steps.
 
-- **Discover.** Bilingual BM25 search turns a natural-language task into a site, command, arguments, and auth strategy.
-- **Execute.** HTTP, cookies, browser CDP, desktop AX, subprocess, service, and Visual all return the same envelope.
-- **Recover.** Structured errors include adapter path, step, retryable, suggestion, and alternatives.
+- **Discover.** Bilingual BM25 search turns a natural-language task into a site, command, arguments, auth strategy, and risk fields.
+- **Execute.** HTTP, cookies, browser CDP, macOS AX, subprocess, service, and visual fallback return the same envelope.
+- **Evidence.** Markdown is the agent-friendly default; JSON, YAML, CSV, and compact formats serve programs.
+- **Repair.** Structured errors include adapter path, step, retryable, suggestion, and alternatives.
 
 ## Common Tasks
 
-- `unicli search` reads the local catalog first, then execution can inspect command, args, auth, risk, and output fields.
+- `unicli search` and `unicli do` read the local catalog first, then execution can inspect command, args, auth, risk, and output fields.
 - When a page or API changes, the error envelope names the adapter file and failing pipeline step.
-- Web APIs, browser automation, macOS, desktop apps, external CLIs, MCP, ACP, HTTP API, and agent backend routes share the catalog.
+- Web APIs, browser automation, macOS, desktop apps, external CLIs, MCP, ACP, HTTP API, and agent backend routes share the same catalog and receipt.
 
 ## Coverage
 
 - Sites and tools: 311
-- Commands: 1754
+- Commands: 1753
 - Pipeline steps: 103
-- Tests: 8845
+- Tests: 8847
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 

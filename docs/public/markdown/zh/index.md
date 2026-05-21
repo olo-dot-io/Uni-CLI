@@ -6,39 +6,50 @@
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/zh/index.md
 - 栏目: 上手
 
-## 给 Agent 的命令级软件入口
+## 面向 Agent 原生软件操作的控制平面
 
-Uni-CLI 把网站、桌面应用、本机工具、MCP 和外部 CLI 放进同一个可搜索目录。Agent 通过一条命令路径完成搜索、执行、记录、修复，再把结果交给任意客户端消费。
+Uni-CLI 把网站、浏览器会话、桌面应用、本机 CLI、MCP 和系统能力收进同一个可搜索运行时。Agent 用一条命令路径完成发现、规划、执行、记录、复盘和修复。
+
+## 能力墙
+
+- Intent search
+- Policy-gated execution
+- AgentEnvelope v2
+- MCP + ACP
+- Desktop AX
+- Visual fallback
+- Adapter self-repair
 
 ## 第一条命令
 
 ```bash
 npm install -g @zenalexa/unicli
-unicli search "connect slack messages"
-unicli agents recommend codex
+unicli do "找 Hacker News 首页"
+unicli extract https://example.com --max-chars 1200
 unicli mcp serve --transport streamable --port 19826
 ```
 
 ## 定位
 
-Agent 执行需要一层可审计、可修复、可复用的命令合同。目录搜索负责发现能力，v2 AgentEnvelope 负责稳定输出，operation policy 负责权限和风险，run evidence 负责复盘，自修复 loop 负责把失败指向 adapter 与 pipeline step。
+Agent 执行需要的不是更长的工具列表，而是一层可审计、可修复、可复用的控制平面。目录搜索负责发现能力，operation policy 负责权限和风险，v2 AgentEnvelope 负责稳定输出，run evidence 负责复盘，自修复 loop 负责把失败指向 adapter 与 pipeline step。
 
-- **发现。** BM25 双语搜索把自然语言意图收敛到具体站点、命令、参数和认证策略。
-- **执行。** HTTP、Cookie、浏览器 CDP、桌面 AX、subprocess、service 和 Visual 走同一套 envelope。
-- **恢复。** 结构化错误带上 adapter path、step、retryable、suggestion 和 alternatives。
+- **发现能力。** BM25 双语搜索把自然语言意图收敛到具体站点、命令、参数、认证策略和风险字段。
+- **执行动作。** HTTP、Cookie、浏览器 CDP、macOS AX、subprocess、service 和 visual fallback 走同一套 envelope。
+- **返回证据。** Markdown 是 Agent 默认友好的输出，JSON、YAML、CSV 和 compact 负责程序接入。
+- **修复现场。** 结构化错误带上 adapter path、step、retryable、suggestion 和 alternatives。
 
 ## 常见任务
 
-- `unicli search` 只查本地目录，命令选定后再读取参数、认证、风险和输出字段。
+- `unicli search` 和 `unicli do` 先查本地目录，命令选定后再读取参数、认证、风险和输出字段。
 - 页面改版或接口失效时，错误 envelope 指出 adapter 文件和失败的 pipeline step。
-- Web API、浏览器、macOS、本地桌面应用、外部 CLI、MCP、ACP、HTTP API 和 agent backend routes 共享目录。
+- Web API、浏览器、macOS、本地桌面应用、外部 CLI、MCP、ACP、HTTP API 和 agent backend routes 共享同一套目录与回执。
 
 ## 覆盖范围
 
 - 站点和工具：311
-- 命令：1754
+- 命令：1753
 - Pipeline step：103
-- 测试：8845
+- 测试：8847
 
 能力规模来自当前仓库生成物：adapter、命令、pipeline step、测试和 transport 都在本地构建流程里计数。
 

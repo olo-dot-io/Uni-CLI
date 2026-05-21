@@ -353,6 +353,29 @@ html[lang="zh-CN"] .vp-doc .uni-hero-lead {
   overflow-wrap: normal;
 }
 
+.uni-hero-badges {
+  display: flex;
+  max-width: 860px;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 26px;
+}
+
+.uni-hero-badges span {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  padding: 0 11px;
+  border: 1px solid var(--uni-border-strong);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vp-c-bg-elv) 74%, transparent);
+  color: var(--vp-c-text-2);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .uni-hero-actions {
   display: flex;
   flex-wrap: wrap;
@@ -756,6 +779,18 @@ html[lang="zh-CN"] .vp-doc .uni-hero-lead {
     font-size: 16px;
     overflow-wrap: anywhere;
     word-break: break-word;
+  }
+
+  .uni-hero-badges {
+    max-width: 100%;
+    gap: 8px;
+  }
+
+  .uni-hero-badges span {
+    min-height: 28px;
+    padding-right: 9px;
+    padding-left: 9px;
+    font-size: 12px;
   }
 
   .uni-command-strip > div {
