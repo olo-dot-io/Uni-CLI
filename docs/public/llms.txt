@@ -1,6 +1,6 @@
 # Uni-CLI
 
-Uni-CLI is the CLI-native command surface for AI agents to discover, run, and repair operations across websites, desktop apps, local tools, external CLIs, and agent backends.
+Uni-CLI is one CLI surface for AI agents to discover, run, prove, and repair operations across websites, logged-in browsers, desktop apps, local tools, external CLIs, MCP servers, and agent backends.
 
 ## Catalog Snapshot
 
@@ -14,7 +14,7 @@ Uni-CLI is the CLI-native command surface for AI agents to discover, run, and re
 
 - Start with `unicli search "your intent"`, then run `unicli <site> <command> [args]`.
 - Prefer `-f json` for scripts and `-f md` for agent-readable prose.
-- On failure, read the v2 error envelope, open `error.adapter_path`, patch the YAML, then run `unicli repair <site> <command>`.
+- On failure, read the v2 error envelope, open `error.adapter_path`, patch the named step, then run `unicli repair <site> <command>`.
 - MCP and ACP are compatibility gateways; the native contract is a shell command plus a structured AgentEnvelope.
 
 ## Markdown Companions

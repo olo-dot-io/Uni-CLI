@@ -24,9 +24,9 @@ unicli mcp serve --transport streamable --port 19826`,
 const copy = computed(() =>
   isZh.value
     ? {
-        label: "Command-grade agent software control plane",
-        lead: "把世界上的软件变成 Agent 可以调用的能力。",
-        body: `Uni-CLI 把 ${siteIndex.total_sites} 个网站、登录态浏览器、桌面应用、本地 CLI、MCP server 和系统能力收进一个可搜索运行时。Agent 按意图找能力，按策略执行，拿证据回执，并把失败定位到 adapter 与 pipeline step。`,
+        label: "AI Agent 的软件命令层",
+        lead: "让 Agent 像调用 API 一样调用真实软件。",
+        body: `Uni-CLI 把 ${siteIndex.total_sites} 个网站、登录态浏览器、桌面应用、本地命令、MCP 服务和系统能力收进一个可搜索运行时。Agent 先按意图找能力，再按策略执行，拿到证据回执；失败时还能定位到具体 adapter 和 pipeline step 继续修。`,
         primary: "30 秒跑起来",
         secondary: "看命令图鉴",
         badgesTitle: "能力墙",
@@ -42,9 +42,9 @@ const copy = computed(() =>
         commandTitle: "第一条命令",
         copy: "复制",
         copied: "已复制",
-        thesisTitle: "不是工具列表，是软件操作控制平面。",
+        thesisTitle: "不是工具列表，是执行底座。",
         thesis:
-          "普通人打开 App 找按钮，Agent 需要更稳定的入口：先按意图搜能力，再带权限和参数执行，最后拿到结构化回执。Uni-CLI 把这条链路变成可复用的基础设施。",
+          "普通人打开 App 找按钮，Agent 需要更稳定的入口：先按意图搜能力，再带权限和参数执行，最后拿到结构化回执。Uni-CLI 把这条链路沉到基础设施里，让同一份能力可以反复调用、复盘和修复。",
         principles: [
           {
             name: "发现能力",
@@ -67,11 +67,11 @@ const copy = computed(() =>
         questions: [
           {
             q: "它到底给 Agent 增加了什么？",
-            a: "一个稳定入口。网页、桌面应用、本机命令和协议服务都能变成 catalog 里的命令，而不是每次临场猜 API、猜 selector、猜输出格式。",
+            a: "一个稳定入口。网页、桌面应用、本机命令和协议服务都能变成 catalog 里的命令，而不是每次临场猜 API、selector 和输出格式。",
           },
           {
             q: "为什么不是直接让 Agent 操作网页？",
-            a: "直接操作适合最后一公里。Uni-CLI 先把可复用路径编成命令，必要时再落到浏览器、桌面 AX 或 visual fallback。",
+            a: "直接操作适合最后一公里。Uni-CLI 先把可复用路径整理成命令，必要时再落到浏览器、桌面 AX 或 visual fallback。",
           },
           {
             q: "页面改版或本地应用不配合怎么办？",
@@ -138,9 +138,9 @@ const copy = computed(() =>
         version: `v${releaseInfo.version} · ${releaseInfo.codename}`,
       }
     : {
-        label: "Command-grade agent software control plane",
-        lead: "Make the world's software callable by agents.",
-        body: `Uni-CLI turns ${siteIndex.total_sites} websites, logged-in browsers, desktop apps, local CLIs, MCP servers, and system capabilities into one searchable runtime. Agents discover by intent, execute with policy, return evidence, and trace failures to adapters and pipeline steps.`,
+        label: "CLI surface for real software operations",
+        lead: "Search. Execute. Prove. Repair. Reuse.",
+        body: `Uni-CLI gives agents a governed command layer over ${siteIndex.total_sites} websites and tools: logged-in browsers, desktop apps, local CLIs, MCP servers, and system capabilities. Agents discover by intent, execute with policy, return evidence, and trace failures to adapters and pipeline steps.`,
         primary: "Start in 30 seconds",
         secondary: "Browse the catalog",
         badgesTitle: "Capability wall",
@@ -156,7 +156,7 @@ const copy = computed(() =>
         commandTitle: "First command",
         copy: "Copy",
         copied: "Copied",
-        thesisTitle: "Not a tool list. A software operation control plane.",
+        thesisTitle: "Not a tool list. An execution substrate.",
         thesis:
           "People open apps and look for buttons. Agents need a steadier path: search by intent, inspect permissions and arguments, execute through a governed runtime, and receive a structured receipt. Uni-CLI turns that chain into infrastructure.",
         principles: [

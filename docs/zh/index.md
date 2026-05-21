@@ -1,7 +1,7 @@
 ---
 layout: home
 title: Uni-CLI
-description: 面向 Agent 原生软件操作的命令级控制平面。
+description: 给 AI Agent 调用真实软件的一层命令接口。
 ---
 
 <HomePage />

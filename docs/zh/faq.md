@@ -9,7 +9,7 @@ description: 关于 Uni-CLI 的高频问题汇总——它是什么、为什么�
 
 ## Uni-CLI 是什么？
 
-Uni-CLI 是面向 Agent 原生软件操作的控制平面。它把网站、浏览器会话、桌面应用、本地 CLI、MCP 服务和系统能力收进同一个可搜索运行时；一条路径完成发现、按策略执行、带证据返回和自修复。当前覆盖 <span><!-- STATS:site_count -->311<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1753<!-- /STATS --></span> 条命令。
+Uni-CLI 是给 AI Agent 调用真实软件的一层命令接口。它把网站、登录态浏览器、桌面应用、本地命令、MCP 服务和系统能力收进同一个可搜索运行时；一条路径完成发现、按策略执行、带证据返回和自修复。当前覆盖 <span><!-- STATS:site_count -->311<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1753<!-- /STATS --></span> 条命令。
 
 ## 和浏览器自动化库有什么区别？
 

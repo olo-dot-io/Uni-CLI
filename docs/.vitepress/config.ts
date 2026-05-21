@@ -39,7 +39,7 @@ const siteBase = configuredSiteBase
     : "/";
 const siteOrigin = "https://olo-dot-io.github.io";
 const publicSiteUrl = `${siteOrigin}${siteBase}`;
-const zhDescription = "给 Agent 的命令级软件控制平面。";
+const zhDescription = "给 AI Agent 调用真实软件的一层命令接口。";
 const npmPackageUrl = "https://www.npmjs.com/package/@zenalexa/unicli";
 const npmIcon = `<svg viewBox="0 0 48 24" aria-hidden="true"><rect x="1" y="5" width="46" height="15" rx="1" fill="#cb3837"/><text x="6" y="17" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" letter-spacing="-1">npm</text></svg>`;
 
@@ -244,7 +244,7 @@ const softwareApplicationLdJson = {
   name: "Uni-CLI",
   applicationCategory: "DeveloperApplication",
   operatingSystem: "macOS, Linux, Windows",
-  description: `Command-grade control plane for agent-native software. Turns ${siteStats.site_count} websites, browser sessions, desktop apps, MCP servers, local CLIs, and system capabilities into a searchable, governed, self-repairing runtime.`,
+  description: `One CLI surface for real software operations. Turns ${siteStats.site_count} websites, logged-in browsers, desktop apps, MCP servers, local CLIs, and system capabilities into a searchable, governed, self-repairing runtime for agents.`,
   url: publicSiteUrl,
   downloadUrl: npmPackageUrl,
   softwareVersion: releaseInfo.version,
@@ -396,7 +396,7 @@ const howToLdJson = {
 export default defineConfig({
   title: "Uni-CLI",
   lang: localizedSiteMaps.root.lang,
-  description: "Command-grade control plane for agent-native software.",
+  description: "One CLI surface for real software operations.",
   base: siteBase,
   srcExclude: ["public/markdown/**/*.md", "demo/README.md"],
   cleanUrls: true,

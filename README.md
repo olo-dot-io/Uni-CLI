@@ -5,13 +5,18 @@
 <h1 align="center">Uni-CLI</h1>
 
 <p align="center">
-  <strong>The command-grade control plane for agent-native software.</strong>
+  English · <a href="./README.zh-CN.md">简体中文</a>
 </p>
 
 <p align="center">
-  One runtime where agents can discover, operate, verify, and repair real
-  software: websites, logged-in browsers, desktop apps, local CLIs, MCP servers,
-  and system capabilities behind the same searchable command contract.
+  <strong>One CLI surface for real software operations.</strong>
+</p>
+
+<p align="center">
+  Uni-CLI gives agents a governed command layer over websites, logged-in
+  browsers, desktop apps, local CLIs, MCP servers, and system capabilities.
+  Search by intent, execute with policy, collect evidence, and repair the exact
+  integration that failed.
 </p>
 
 <p align="center">
@@ -38,10 +43,16 @@
 </p>
 
 <p align="center">
-  <strong>Make the world's software callable by agents.</strong><br>
-  Search it. Run it. Gate it. Record it. Fix it. Expose it again through CLI,
-  MCP, ACP, and skills without rewriting the integration.
+  <strong>Search. Execute. Prove. Repair. Reuse.</strong><br>
+  The same capability can run from a terminal, an agent loop, MCP, ACP, CI, or a
+  generated skill without rebuilding the integration.
 </p>
+
+## 中文简介
+
+Uni-CLI 把真实软件整理成一套可搜索、可治理、可修复的命令层：网页、登录态浏览器、桌面应用、本地命令、MCP 服务和系统能力，都可以用同一种运行回执交给 Agent 调用。它不是更长的工具列表，而是给 Agent 准备的执行底座：先按意图找能力，再按策略执行，最后拿到证据；如果失败，错误会指向具体的 adapter 和 pipeline step，方便继续修复。
+
+完整中文 README 见 [README.zh-CN.md](./README.zh-CN.md)。
 
 ## Start In 30 Seconds
 
@@ -69,10 +80,10 @@ task, a context window, a permission budget, and a need for evidence. A raw
 browser driver gives the agent pixels and selectors. A one-off script gives it
 an island. A giant resident tool list burns context before the task starts.
 
-Uni-CLI is the middle layer: command-grade access to real software. It turns
-useful operations into typed, searchable commands, keeps dangerous actions
-behind policy, returns machine-readable receipts, and makes failures repairable
-by pointing at the exact adapter and pipeline step that broke.
+Uni-CLI is the execution layer in between. It turns useful operations into
+typed, searchable commands, keeps dangerous actions behind policy, returns
+machine-readable receipts, and makes failures repairable by pointing at the
+exact adapter and pipeline step that broke.
 
 This is why the project combines pieces that usually live apart:
 

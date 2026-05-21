@@ -1,7 +1,7 @@
 {
   "name": "Uni-CLI",
   "short_name": "Uni-CLI",
-  "description": "Command-grade control plane for agent-native software.",
+  "description": "One CLI surface for real software operations.",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#11100f",

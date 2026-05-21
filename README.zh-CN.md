@@ -5,12 +5,16 @@
 <h1 align="center">Uni-CLI</h1>
 
 <p align="center">
-  <strong>面向 Agent 原生软件操作的命令级控制平面。</strong>
+  <a href="./README.md">English</a> · 简体中文
 </p>
 
 <p align="center">
-  一套运行时，让 Agent 用同一个可搜索命令合同发现、操作、验证、修复真实软件：
-  网站、登录态浏览器、桌面应用、本地 CLI、MCP server 和系统能力都在一个入口里。
+  <strong>给 AI Agent 调用真实软件的一层命令接口。</strong>
+</p>
+
+<p align="center">
+  Uni-CLI 把网站、登录态浏览器、桌面应用、本地命令、MCP 服务和系统能力收进同一个运行时。
+  Agent 可以先按意图找能力，再按策略执行，拿到证据回执；失败时还能定位到具体的 adapter 和 pipeline step 继续修。
 </p>
 
 <p align="center">
@@ -37,8 +41,8 @@
 </p>
 
 <p align="center">
-  <strong>把世界上的软件变成 Agent 可以调用的能力。</strong><br>
-  搜索它、执行它、拦住危险动作、记录证据、修复失败，再通过 CLI、MCP、ACP 和 skills 暴露出去。
+  <strong>搜索、执行、留证、修复、复用。</strong><br>
+  同一份能力可以从终端、Agent loop、MCP、ACP、CI 或生成的 skill 里调用，不需要为每个入口重写一遍集成。
 </p>
 
 ## 30 秒开始
@@ -62,15 +66,14 @@ npx @zenalexa/unicli mcp serve
 
 ## 为什么需要它
 
-下一代软件用户不只是拿鼠标的人，也会是带着任务、上下文窗口、权限预算和证据需求的 Agent。
-直接给浏览器驱动，Agent 得临场猜 selector。写一个脚本，只能解决一个孤岛。把巨大工具列表常驻到上下文里，还没开始任务就先烧 token。
+下一代软件用户不只是拿鼠标的人，也会是带着任务、上下文窗口、权限预算和证据需求的 Agent。直接给浏览器驱动，Agent 得临场猜 selector；写一个脚本，只能解决一个孤岛；把巨大工具列表常驻到上下文里，还没开始任务就先烧掉一截 token。
 
-Uni-CLI 是中间层：给真实软件加上命令级入口。它把可复用操作编成 typed、可搜索的命令，把危险动作放在策略闸门后面，把结果变成机器可读回执，并在失败时指出具体坏掉的 adapter 和 pipeline step。
+Uni-CLI 做的是中间那层执行底座：把可复用操作整理成 typed、可搜索的命令；把危险动作放到策略闸门后面；把结果变成机器可读回执；失败时明确指出坏掉的 adapter 和 pipeline step。
 
 所以这个项目把通常分散的几块放在一起：
 
-- 网站 adapter catalog：公开 API、登录态 session、浏览器 intercept、下载、发布、搜索；
-- 浏览器自动化层：ad-hoc 导航、DOM snapshot、网络捕获、点击、输入、截图、render-aware 证据；
+- 网站 adapter catalog：公开 API、登录态会话、浏览器 intercept、下载、发布、搜索；
+- 浏览器自动化层：临场导航、DOM snapshot、网络捕获、点击、输入、截图、render-aware 证据；
 - 本地 computer-use 层：桌面应用、macOS Accessibility、后台输入、subprocess、visual fallback；
 - CLI hub：外部二进制、开发者工具、Agent coding tools；
 - 协议层：MCP、ACP、native CLI、JSON stream、skills。
@@ -79,24 +82,24 @@ Uni-CLI 是中间层：给真实软件加上命令级入口。它把可复用操
 
 严肃的 Agent 操作基本都走同一条链路。
 
-| 步骤   | Uni-CLI 给 Agent 的东西                                                          |
-| ------ | -------------------------------------------------------------------------------- |
-| 发现   | `unicli search` 和 `unicli do` 把意图映射成命令、参数、认证方式、样例和风险信号  |
-| 执行   | Web、browser、desktop、subprocess、protocol transport 走同一个 runtime           |
-| 治理   | `open`、`confirm`、`locked` profile 在请求、写入、启动进程前拦截高风险动作       |
-| 观察   | AgentEnvelope v2 返回 data、context、retryability、耗时和证据 hook               |
-| 修复   | 结构化错误带 `adapter_path`、失败 `step`、suggestion、alternative 和 repair 流程 |
-| 再暴露 | 同一条命令可以给人、Agent、MCP client、ACP client 和脚本调用                     |
+| 步骤   | Uni-CLI 给 Agent 的东西                                                               |
+| ------ | ------------------------------------------------------------------------------------- |
+| 发现   | `unicli search` 和 `unicli do` 把一句任务话映射成命令、参数、认证方式、样例和风险信号 |
+| 执行   | Web、browser、desktop、subprocess、protocol transport 走同一个 runtime                |
+| 治理   | `open`、`confirm`、`locked` profile 在请求、写入、启动进程前拦住高风险动作            |
+| 观察   | AgentEnvelope v2 返回 data、context、retryability、耗时和证据 hook                    |
+| 修复   | 结构化错误带 `adapter_path`、失败 `step`、suggestion、alternative 和 repair 流程      |
+| 再暴露 | 同一条命令可以给人、Agent、MCP client、ACP client 和脚本调用                          |
 
 ## 和常见路径的区别
 
-| 如果从...开始       | 通常会得到...                         | Uni-CLI 补上的东西                                                        |
-| ------------------- | ------------------------------------- | ------------------------------------------------------------------------- |
-| 浏览器自动化        | 强大的临场网页控制                    | 命令目录、输出合同、登录态姿态、运行证据和修复路径                        |
-| 生成某个 App 的 CLI | 对单个应用的深访问                    | 横跨 web、desktop、本地工具和 Agent 协议的一套可搜索 runtime              |
-| MCP server 集合     | 接 Agent 很方便，但常驻工具上下文很重 | 低 token 的 CLI 主路径，以及运行时需要时才启用的 MCP profile              |
-| 爬虫脚本            | 快速提取数据                          | 权限策略、结构化错误、typed args、测试、文档和本地 override               |
-| 手动 computer use   | 灵活的最后一公里控制                  | 先走 native accessibility，再落到 browser/visual fallback，并共享同一回执 |
+| 如果从...开始       | 通常会得到...                         | Uni-CLI 补上的东西                                                            |
+| ------------------- | ------------------------------------- | ----------------------------------------------------------------------------- |
+| 浏览器自动化        | 强大的临场网页控制                    | 命令目录、输出合同、登录态姿态、运行证据和修复路径                            |
+| 生成某个 App 的 CLI | 对单个应用的深访问                    | 横跨 web、desktop、本地工具和 Agent 协议的一套可搜索 runtime                  |
+| MCP server 集合     | 接 Agent 很方便，但常驻工具上下文很重 | 低 token 的 CLI 主路径，以及运行时需要时才启用的 MCP profile                  |
+| 爬虫脚本            | 快速提取数据                          | 权限策略、结构化错误、typed args、测试、文档和本地 override                   |
+| 手动 computer use   | 灵活的最后一公里控制                  | 优先走 native accessibility，必要时落到 browser/visual fallback，回执仍然统一 |
 
 <!-- IF YOU ARE AN AI AGENT: Start here.
 Install: npm install -g @zenalexa/unicli
@@ -108,7 +111,7 @@ Prefer native CLI / JSON stream / MCP for agent runtimes. Use ACP as an editor c
 
 ## 它解决什么
 
-Uni-CLI 不是又一个 scraper 包，而是 Agent 底下的执行层：命令图谱、策略闸门、证据记录、本地 computer-use bridge 和自修复 loop，都包在同一个 CLI 合同里。
+Uni-CLI 不是又一个 scraper 包，而是 Agent 底下的执行层：命令图谱、策略闸门、证据记录、本地 computer-use bridge 和自修复 loop，都收在同一个 CLI 合同里。
 
 | 表面         | 能力                                                                                                                                                                       |
 | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -124,7 +127,7 @@ Uni-CLI 不是又一个 scraper 包，而是 Agent 底下的执行层：命令�
 
 ## 为 Agent Runtime 设计
 
-Uni-CLI 在边界上刻意使用朴素接口：进程、文件、JSON、Markdown 和标准协议。Codex、Claude Code、Cursor、OpenCode、OpenClaw、shell 脚本、CI，以及任何能启动 subprocess 或接 MCP server 的 host 都能用。
+Uni-CLI 在边界上刻意保持朴素：进程、文件、JSON、Markdown 和标准协议。Codex、Claude Code、Cursor、OpenCode、OpenClaw、shell 脚本、CI，以及任何能启动 subprocess 或接 MCP server 的 host 都能用。
 
 长期任务里，这些细节比 demo 更重要：
 

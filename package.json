@@ -1,7 +1,7 @@
 {
   "name": "@zenalexa/unicli",
   "version": "0.222.0",
-  "description": "Command-grade control plane for agent-native software: web, browsers, desktop apps, local CLIs, MCP, policy, evidence, and self-repair.",
+  "description": "One CLI surface for agent software operations: web, browsers, desktop apps, local CLIs, MCP, policy, evidence, and self-repair.",
   "packageManager": "npm@11.14.0",
   "type": "module",
   "main": "dist/main.js",

@@ -24,9 +24,9 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
 - Section: Start
 
-## Agent-native control plane for real software
+## CLI surface for real software operations
 
-Uni-CLI puts websites, browser sessions, desktop apps, local CLIs, MCP, and system capabilities into one searchable runtime. Agents use one command path to discover, plan, execute, record, review, and repair.
+Uni-CLI gives agents a governed command layer over websites, logged-in browsers, desktop apps, local CLIs, MCP servers, and system capabilities. Agents use one path to discover capabilities, inspect risk, execute with policy, return evidence, and repair the exact adapter or pipeline step that failed.
 
 ## Capability Wall
 
@@ -44,12 +44,13 @@ Uni-CLI puts websites, browser sessions, desktop apps, local CLIs, MCP, and syst
 npm install -g @zenalexa/unicli
 unicli do "find the Hacker News frontpage"
 unicli extract https://example.com --max-chars 1200
+unicli compute snapshot --app Calculator --format compact
 unicli mcp serve --transport streamable --port 19826
 ```
 
 ## Positioning
 
-Agent execution does not need a longer tool list. It needs an auditable, repairable, reusable control plane. Catalog search handles discovery. Operation policy exposes permissions and risk. The v2 AgentEnvelope stabilizes output. Run evidence supports review. The repair loop points failures to adapters and pipeline steps.
+Agent execution does not need a longer resident tool list. It needs a small, auditable command surface over real software. Catalog search handles discovery. Operation policy exposes permissions and risk. The v2 AgentEnvelope stabilizes output. Run evidence supports review. The repair loop points failures to adapters and pipeline steps.
 
 - **Discover.** Bilingual BM25 search turns a natural-language task into a site, command, arguments, auth strategy, and risk fields.
 - **Execute.** HTTP, cookies, browser CDP, macOS AX, subprocess, service, and visual fallback return the same envelope.
@@ -1140,7 +1141,7 @@ Quick answers to the questions agents and developers ask most often. Each answer
 
 ## What is Uni-CLI?
 
-Uni-CLI is an agent-native control plane for real software operation. It turns websites, browser sessions, desktop apps, local CLIs, MCP servers, and system capabilities into one searchable command runtime. One path discovers, executes with policy, returns evidence, and self-repairs operations across <span><!-- STATS:site_count -->311<!-- /STATS --></span> sites and tools.
+Uni-CLI is one CLI surface for real software operations. It turns websites, logged-in browsers, desktop apps, local CLIs, MCP servers, and system capabilities into one searchable command runtime. One path discovers capabilities, executes with policy, returns evidence, and self-repairs operations across <span><!-- STATS:site_count -->311<!-- /STATS --></span> sites and tools.
 
 ## How is Uni-CLI different from a browser automation library?
 
