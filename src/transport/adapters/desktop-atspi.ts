@@ -54,7 +54,7 @@ export interface DesktopAtspiTransportOptions {
 }
 
 const LINUX_ONLY_SUGGESTION =
-  "run on Linux with the native AT-SPI backend available, or fall back to CUA";
+  "run on Linux with the native AT-SPI backend available, or fall back to Visual";
 
 export class DesktopAtspiTransport implements TransportAdapter {
   readonly kind: TransportKind = "desktop-atspi";

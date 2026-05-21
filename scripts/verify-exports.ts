@@ -28,7 +28,7 @@ import { err, ok, EnvelopeExit, exitCodeFor } from "../src/core/envelope.js";
 import * as cdpBrowser from "../src/transport/adapters/cdp-browser.js";
 import * as subprocess from "../src/transport/adapters/subprocess.js";
 import * as desktopAx from "../src/transport/adapters/desktop-ax.js";
-import * as cua from "../src/transport/adapters/cua.js";
+import * as visual from "../src/transport/adapters/visual.js";
 import * as cdpClient from "../src/browser/cdp-client.js";
 import * as browserPage from "../src/browser/page.js";
 import * as daemon from "../src/browser/daemon-client.js";
@@ -61,7 +61,7 @@ const symbols: Array<[string, unknown]> = [
   ["cdpBrowser", cdpBrowser],
   ["subprocess", subprocess],
   ["desktopAx", desktopAx],
-  ["cua", cua],
+  ["visual", visual],
   ["cdpClient", cdpClient],
   ["browserPage", browserPage],
   ["daemon", daemon],

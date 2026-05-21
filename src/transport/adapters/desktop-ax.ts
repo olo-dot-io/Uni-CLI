@@ -12,7 +12,7 @@
  *  - `action()` NEVER throws
  *  - every platform-gated call emits a `69` (EX_UNAVAILABLE) envelope on
  *    Linux/Windows — the agent sees `minimum_capability: "desktop-ax.<v>"`
- *    and knows to route to desktop-uia / desktop-atspi / cua
+ *    and knows to route to desktop-uia / desktop-atspi / visual
  *  - the `execFile`-backed runner is replaceable via constructor injection
  *    so unit tests can mock it without spawning real osascript
  */
@@ -27,7 +27,11 @@ import { resolveAppControlPolicy } from "../../electron-apps.js";
 import type { Envelope } from "../../core/envelope.js";
 import { RefAllocator } from "../refs.js";
 import { encodeSnapshot, type SnapshotEncoding } from "../snapshot-encoder.js";
-import { runAxBackgroundClick } from "./desktop-ax-background-click.js";
+import {
+  runAxBackgroundClick,
+  runAxBackgroundPress,
+  runAxBackgroundType,
+} from "./desktop-ax-background-input.js";
 import {
   ensureSwiftScriptBinary,
   escapeAs,
@@ -79,6 +83,8 @@ const AX_STEPS = [
   "ax_scroll",
   "ax_screenshot",
   "ax_background_click",
+  "ax_background_type",
+  "ax_background_press",
   "clipboard_read",
   "clipboard_write",
   "launch_app",
@@ -164,6 +170,10 @@ interface CachedAxSession {
 
 const AX_SESSION_TTL_MS = 30_000;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export class DesktopAxTransport implements TransportAdapter {
   readonly kind: TransportKind = "desktop-ax";
   readonly capability: Capability = AX_CAPABILITY;
@@ -236,9 +246,9 @@ export class DesktopAxTransport implements TransportAdapter {
           reason: `desktop-ax.${req.kind} is not available on ${this.platform}`,
           suggestion:
             this.platform === "win32"
-              ? "route to desktop-uia or cua on Windows"
+              ? "route to desktop-uia or visual on Windows"
               : this.platform === "linux"
-                ? "route to desktop-atspi or cua on Linux"
+                ? "route to desktop-atspi or visual on Linux"
                 : "run on macOS (darwin) for native AX + AppleScript",
           minimum_capability: `desktop-ax.${req.kind}`,
           exit_code: exitCodeFor("service_unavailable"),
@@ -400,6 +410,10 @@ export class DesktopAxTransport implements TransportAdapter {
         return this.doAxScreenshot<T>(req.params);
       case "ax_background_click":
         return this.doAxBackgroundClick<T>(req.params);
+      case "ax_background_type":
+        return this.doAxBackgroundType<T>(req.params);
+      case "ax_background_press":
+        return this.doAxBackgroundPress<T>(req.params);
       case "clipboard_read":
         return this.doClipboardRead<T>();
       case "clipboard_write":
@@ -592,10 +606,24 @@ export class DesktopAxTransport implements TransportAdapter {
           : "AXValue",
       value,
     };
-    return this.runSwiftAxAction<T>(
+    const semantic = await this.runSwiftAxAction<T>(
       "ax_set_value",
       target,
       buildAxSetValueScript(target, query),
+    );
+    if (
+      semantic.ok ||
+      params.focus === true ||
+      (typeof params.text !== "string" && typeof params.value !== "string") ||
+      typeof params.x !== "number" ||
+      typeof params.y !== "number"
+    ) {
+      return semantic;
+    }
+    return this.backgroundFallback<T>(
+      semantic,
+      await this.doAxBackgroundType<T>({ ...params, text: value }),
+      "ax_set_value",
     );
   }
 
@@ -612,10 +640,38 @@ export class DesktopAxTransport implements TransportAdapter {
           ? params.action.trim()
           : "AXPress",
     };
-    return this.runSwiftAxAction<T>(
+    const keyCombo =
+      typeof params.combo === "string"
+        ? params.combo
+        : typeof params.key === "string"
+          ? params.key
+          : undefined;
+    if (
+      keyCombo &&
+      !hasMatcher &&
+      params.action === undefined &&
+      params.focus !== true
+    ) {
+      return this.doAxBackgroundPress<T>({ ...params, key: keyCombo });
+    }
+
+    const semantic = await this.runSwiftAxAction<T>(
       "ax_press",
       target,
       buildAxPressScript(target, query),
+    );
+    if (
+      semantic.ok ||
+      params.focus === true ||
+      typeof params.x !== "number" ||
+      typeof params.y !== "number"
+    ) {
+      return semantic;
+    }
+    return this.backgroundFallback<T>(
+      semantic,
+      await this.doAxBackgroundClick<T>(params),
+      "ax_press",
     );
   }
 
@@ -677,6 +733,18 @@ export class DesktopAxTransport implements TransportAdapter {
     params: Record<string, unknown>,
   ): Promise<Envelope<T>> {
     return runAxBackgroundClick<T>(this.shell, params);
+  }
+
+  private async doAxBackgroundType<T>(
+    params: Record<string, unknown>,
+  ): Promise<Envelope<T>> {
+    return runAxBackgroundType<T>(this.shell, params);
+  }
+
+  private async doAxBackgroundPress<T>(
+    params: Record<string, unknown>,
+  ): Promise<Envelope<T>> {
+    return runAxBackgroundPress<T>(this.shell, params);
   }
 
   private async doClipboardRead<T>(): Promise<Envelope<T>> {
@@ -807,6 +875,21 @@ export class DesktopAxTransport implements TransportAdapter {
     } catch (e) {
       return this.envelopeFromShellError(action, e);
     }
+  }
+
+  private backgroundFallback<T>(
+    semantic: Envelope<T>,
+    fallback: Envelope<T>,
+    semanticAction: string,
+  ): Envelope<T> {
+    if (semantic.ok || !fallback.ok || !isRecord(fallback.data)) {
+      return fallback;
+    }
+    return ok({
+      ...fallback.data,
+      semanticFallback: semanticAction,
+      semanticError: semantic.error.reason,
+    } as unknown as T);
   }
 
   private envelopeFromShellError<T>(action: string, e: unknown): Envelope<T> {

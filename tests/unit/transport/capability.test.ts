@@ -25,7 +25,7 @@ describe("CAPABILITY_MATRIX shape", () => {
       "desktop-ax",
       "desktop-uia",
       "desktop-atspi",
-      "cua",
+      "visual",
     ]);
   });
 
@@ -73,13 +73,13 @@ describe("stepSupportedBy", () => {
     expect(stepSupportedBy("wait")).toEqual(["cdp-browser", "subprocess"]);
   });
 
-  it("compute_screenshot advertises CUA as the last visual fallback", () => {
+  it("compute_screenshot advertises Visual as the last visual fallback", () => {
     expect(stepSupportedBy("compute_screenshot")).toEqual([
       "cdp-browser",
       "desktop-ax",
       "desktop-uia",
       "desktop-atspi",
-      "cua",
+      "visual",
     ]);
   });
 
@@ -97,6 +97,8 @@ describe("stepSupportedBy", () => {
     expect(stepSupportedBy("ax_scroll")).toEqual(["desktop-ax"]);
     expect(stepSupportedBy("ax_screenshot")).toEqual(["desktop-ax"]);
     expect(stepSupportedBy("ax_background_click")).toEqual(["desktop-ax"]);
+    expect(stepSupportedBy("ax_background_type")).toEqual(["desktop-ax"]);
+    expect(stepSupportedBy("ax_background_press")).toEqual(["desktop-ax"]);
   });
 
   it("direct UIA actions stay desktop-uia-only", () => {
@@ -141,21 +143,21 @@ describe("stepSupportedBy", () => {
     expect(stepSupportedBy("atspi_activate")).toEqual([]);
   });
 
-  it("direct CUA actions stay cua-only", () => {
+  it("direct Visual actions stay visual-only", () => {
     for (const step of [
-      "cua_snapshot",
-      "cua_click",
-      "cua_type",
-      "cua_key",
-      "cua_scroll",
-      "cua_drag",
-      "cua_wait",
-      "cua_assert",
-      "cua_ask",
-      "cua_backend",
-      "cua_launch",
+      "visual_snapshot",
+      "visual_click",
+      "visual_type",
+      "visual_key",
+      "visual_scroll",
+      "visual_drag",
+      "visual_wait",
+      "visual_assert",
+      "visual_ask",
+      "visual_backend",
+      "visual_launch",
     ]) {
-      expect(stepSupportedBy(step), step).toEqual(["cua"]);
+      expect(stepSupportedBy(step), step).toEqual(["visual"]);
     }
   });
 
@@ -203,6 +205,8 @@ describe("stepPlatform", () => {
     expect(stepPlatform("ax_scroll")).toEqual(["darwin"]);
     expect(stepPlatform("ax_screenshot")).toEqual(["darwin"]);
     expect(stepPlatform("ax_background_click")).toEqual(["darwin"]);
+    expect(stepPlatform("ax_background_type")).toEqual(["darwin"]);
+    expect(stepPlatform("ax_background_press")).toEqual(["darwin"]);
   });
 
   it("direct UIA actions are win32-gated", () => {

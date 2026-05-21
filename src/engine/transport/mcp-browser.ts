@@ -14,7 +14,7 @@
  *
  * Integration status: the existing TransportBus at src/transport/bus.ts exposes
  * a fixed set of seven TransportKind values (http, cdp-browser, subprocess,
- * desktop-ax, desktop-uia, desktop-atspi, cua). There is NO outbound MCP
+ * desktop-ax, desktop-uia, desktop-atspi, visual). There is NO outbound MCP
  * client wired into the bus — src/mcp/* implements Uni-CLI AS an MCP server,
  * not as an MCP client. Per rule 02 / Priority Zero NO HACKS, this module
  * does NOT invent a fake transport; every entry point returns a structured

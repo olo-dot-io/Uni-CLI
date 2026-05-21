@@ -109,15 +109,15 @@ describe("migrateToV2 — v1 → v2 defaults", () => {
   it("preserves existing v2 fields when already set", () => {
     const existing = {
       name: "shiny",
-      capabilities: ["cua.click"],
-      minimum_capability: "cua.click",
+      capabilities: ["visual.click"],
+      minimum_capability: "visual.click",
       trust: "system" as const,
       confidentiality: "private" as const,
       quarantine: true,
     };
     const v2 = migrateToV2(existing);
-    expect(v2.capabilities).toEqual(["cua.click"]);
-    expect(v2.minimum_capability).toBe("cua.click");
+    expect(v2.capabilities).toEqual(["visual.click"]);
+    expect(v2.minimum_capability).toBe("visual.click");
     expect(v2.trust).toBe("system");
     expect(v2.confidentiality).toBe("private");
     expect(v2.quarantine).toBe(true);

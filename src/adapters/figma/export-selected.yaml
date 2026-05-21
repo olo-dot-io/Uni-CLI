@@ -1,21 +1,21 @@
-# CUA+AX demo — export the currently-selected Figma frame.
+# Visual+AX demo — export the currently-selected Figma frame.
 #
 # Composes three transports:
 #   1. desktop-ax    → launch & focus the desktop Figma app
-#   2. cua           → VLM confirms the export dialog is visible
+#   2. visual           → VLM confirms the export dialog is visible
 #   3. desktop-ax    → click through the File > Export menu path
 #
-# Quarantined because the Figma desktop app and a VLM backend
-# (ANTHROPIC_API_KEY | TRYCUA_API_KEY | …) are both required.
+# Quarantined because the Figma desktop app and a visual backend are both
+# required.
 site: figma
 name: export-selected
-description: Export the currently-selected Figma frame via CUA + macOS AX
+description: Export the currently-selected Figma frame via Visual + macOS AX
 type: browser
 strategy: ui
 domain: figma.com
 browser: false
 quarantine: true
-quarantineReason: Requires macOS + Figma desktop app + a CUA backend (ANTHROPIC_API_KEY etc.) (quarantined 2026-04-15)
+quarantineReason: Requires macOS + Figma desktop app + a visual backend (quarantined 2026-04-15)
 args:
   format:
     type: str
@@ -30,12 +30,12 @@ pipeline:
   - ax_focus:
       app: Figma
 
-  - cua_wait:
+  - visual_wait:
       ms: 500
 
-  - cua_snapshot: {}
+  - visual_snapshot: {}
 
-  - cua_ask:
+  - visual_ask:
       question: Is a frame currently selected on the Figma canvas?
 
   - ax_menu_select:
@@ -44,10 +44,10 @@ pipeline:
         - File
         - Export ${{ args.format }}
 
-  - cua_wait:
+  - visual_wait:
       ms: 800
 
-  - cua_assert:
+  - visual_assert:
       predicate: The Figma export dialog is visible with a Save button
 
 columns: [backend, ok]
@@ -55,15 +55,15 @@ columns: [backend, ok]
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
 capabilities:
   [
-    "cua.ask",
-    "cua.assert",
-    "cua.snapshot",
-    "cua.wait",
+    "visual.ask",
+    "visual.assert",
+    "visual.snapshot",
+    "visual.wait",
     "desktop-ax.focus",
     "desktop-ax.launch_app",
     "desktop-ax.menu_select",
   ]
-minimum_capability: cua.snapshot
+minimum_capability: visual.snapshot
 trust: user
 confidentiality: public
 schema_version: v2

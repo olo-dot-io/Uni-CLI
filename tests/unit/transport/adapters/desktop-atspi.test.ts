@@ -55,7 +55,7 @@ describe("DesktopAtspiTransport", () => {
       expect(res.error.transport).toBe("desktop-atspi");
       expect(res.error.exit_code).toBe(69);
       expect(res.error.minimum_capability).toBe("desktop-atspi.atspi_invoke");
-      expect(res.error.suggestion).toMatch(/Linux|CUA/i);
+      expect(res.error.suggestion).toMatch(/Linux|Visual/i);
     }
   });
 

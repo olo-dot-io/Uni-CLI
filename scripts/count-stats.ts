@@ -42,7 +42,7 @@ export interface Stats {
   /**
    * Distinct pipeline step names declared in the capability matrix
    * (src/transport/capability.ts). This counts every step the runner
-   * knows about — API, browser, CUA, desktop-ax — not just the root
+   * knows about — API, browser, Visual, desktop-ax — not just the root
    * `executeStep` switch arms, so the number matches the spec promise.
    */
   pipeline_step_count: number;
@@ -54,7 +54,7 @@ export interface Stats {
   /**
    * Application-layer transports registered on the TransportBus
    * (http, cdp-browser, subprocess, desktop-ax, desktop-uia,
-   * desktop-atspi, cua). Derived from `TRANSPORT_KINDS` in
+   * desktop-atspi, visual). Derived from `TRANSPORT_KINDS` in
    * src/transport/capability.ts so it tracks the bus capability surface.
    */
   app_transport_count: number;
@@ -350,7 +350,7 @@ function extractBalancedObject(
 function countPipelineSteps(): number {
   // Source of truth: the capability matrix. Every step the runner can
   // possibly dispatch — http, cdp-browser, subprocess, desktop-ax,
-  // desktop-uia, desktop-atspi, cua — lives as a top-level key of
+  // desktop-uia, desktop-atspi, visual — lives as a top-level key of
   // `CAPABILITY_MATRIX`. Counting this file rather than the root switch
   // captures steps that moved into `src/engine/steps/*` modules as part
   // of the v0.212 rewrite.

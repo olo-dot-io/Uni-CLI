@@ -3,6 +3,11 @@ export {
   buildAxBackgroundClickScript,
   type AxBackgroundClickScriptOptions,
 } from "./desktop-ax-background-click-swift.js";
+export {
+  buildAxBackgroundInputScript,
+  type AxBackgroundInputAction,
+  type AxBackgroundInputScriptOptions,
+} from "./desktop-ax-background-input-swift.js";
 
 export interface ResolvedAxTarget {
   appName: string;

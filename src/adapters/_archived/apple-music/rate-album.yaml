@@ -1,17 +1,17 @@
 # @owner   src/adapters/_archived/apple-music/rate-album.yaml
-# @does    Preserve the archived Apple Music CUA rating demo outside active discovery.
-# @needs   macOS Music app, desktop AX transport, CUA backend, caller-provided star coordinates
+# @does    Preserve the archived Apple Music Visual rating demo outside active discovery.
+# @needs   macOS Music app, desktop AX transport, Visual backend, caller-provided star coordinates
 # @feeds   src/adapters/_archived/archive.json provenance, historical adapter review
 # @breaks  Moving back under an active site would reintroduce an archive-only discovered site.
 site: apple-music
 name: rate-album
-description: Rate the currently-playing Apple Music album via AX menu + CUA click
+description: Rate the currently-playing Apple Music album via AX menu + Visual click
 type: browser
 strategy: ui
 domain: music.apple.com
 browser: false
 quarantine: true
-quarantineReason: Requires macOS + Apple Music desktop app + a CUA backend (quarantined 2026-04-15)
+quarantineReason: Requires macOS + Apple Music desktop app + a Visual backend (quarantined 2026-04-15)
 args:
   stars:
     type: int
@@ -33,34 +33,34 @@ pipeline:
   - ax_focus:
       app: Music
 
-  - cua_wait:
+  - visual_wait:
       ms: 300
 
-  - cua_snapshot: {}
+  - visual_snapshot: {}
 
-  - cua_ask:
+  - visual_ask:
       question: Is an album currently displayed with a star-rating row visible?
 
-  - cua_click:
+  - visual_click:
       x: ${{ args.x }}
       y: ${{ args.y }}
 
-  - cua_assert:
+  - visual_assert:
       predicate: The album now shows ${{ args.stars }} filled stars
 
 columns: [backend, stars]
 
 capabilities:
   [
-    "cua.ask",
-    "cua.assert",
-    "cua.click",
-    "cua.snapshot",
-    "cua.wait",
+    "visual.ask",
+    "visual.assert",
+    "visual.click",
+    "visual.snapshot",
+    "visual.wait",
     "desktop-ax.focus",
     "desktop-ax.launch_app",
   ]
-minimum_capability: cua.click
+minimum_capability: visual.click
 trust: user
 confidentiality: public
 schema_version: v2

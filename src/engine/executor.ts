@@ -4,7 +4,7 @@
  * Dispatches pipeline steps through `step-registry`. Per-step bodies live
  * in `steps/*.ts` and self-register on import. This file owns:
  *   - PipelineError shape
- *   - `executeStep` dispatch (registry → cua/ax bus → plugin registry)
+ *   - `executeStep` dispatch (registry → visual/ax bus → plugin registry)
  *   - `runPipeline` orchestration (cookies, retry, fallback, auto-fix,
  *     diagnostic, cookie refresh, temp-dir cleanup)
  *
@@ -16,7 +16,7 @@ import type { PipelineStep } from "../types.js";
 import type { BrowserPage } from "../browser/page.js";
 import { isTargetError } from "../browser/target-errors.js";
 import { formatCookieHeader, loadCookiesWithCDP } from "./cookies.js";
-import { CUA_STEP_HANDLERS, type CuaStepKind } from "./steps/cua.js";
+import { VISUAL_STEP_HANDLERS, type VisualStepKind } from "./steps/visual.js";
 import {
   DESKTOP_AX_STEP_HANDLERS,
   type DesktopAxStepKind,
@@ -139,8 +139,8 @@ const SIBLING_KEYS = new Set([
   "backoff",
 ]);
 
-function isCuaStep(action: string): action is CuaStepKind {
-  return action in CUA_STEP_HANDLERS;
+function isVisualStep(action: string): action is VisualStepKind {
+  return action in VISUAL_STEP_HANDLERS;
 }
 
 function isDesktopAxStep(action: string): action is DesktopAxStepKind {
@@ -174,7 +174,7 @@ export async function executeStep(
   if (handler) return handler(ctx, config, stepIndex, fullStep, depth);
 
   if (
-    isCuaStep(action) ||
+    isVisualStep(action) ||
     isDesktopAxStep(action) ||
     isDesktopSidecarStep(action)
   ) {
@@ -208,8 +208,8 @@ async function dispatchBusStep(
       ? (config as Record<string, unknown>)
       : {};
   const busCtx = { bus: getBus(), transportCtx: buildTransportCtx(ctx) };
-  const handlerFn = isCuaStep(action)
-    ? CUA_STEP_HANDLERS[action]
+  const handlerFn = isVisualStep(action)
+    ? VISUAL_STEP_HANDLERS[action]
     : isDesktopSidecarStep(action)
       ? DESKTOP_SIDECAR_STEP_HANDLERS[action]
       : DESKTOP_AX_STEP_HANDLERS[action as DesktopAxStepKind];

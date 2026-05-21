@@ -96,9 +96,9 @@ const REMEDIES: Readonly<Record<string, EnvelopeRemedy>> = {
     command: "unicli compute launch <app> --debug-port 9229",
     doc: "docs/operate/troubleshooting.md#cdp-browserelectron_running_without_debug_port",
   },
-  "cua.no_backend": {
-    message: "Configure a CUA backend key for screenshot/VLM fallback.",
-    doc: "docs/operate/troubleshooting.md#cuano_backend",
+  "visual.no_backend": {
+    message: "Configure a Visual backend key for screenshot/VLM fallback.",
+    doc: "docs/operate/troubleshooting.md#visualno_backend",
   },
   "compute.compute_find.ref-store": {
     message: "Run a fresh snapshot so refs are available, then retry find.",

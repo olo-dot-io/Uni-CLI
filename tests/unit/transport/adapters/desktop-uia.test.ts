@@ -55,7 +55,7 @@ describe("DesktopUiaTransport", () => {
       expect(res.error.transport).toBe("desktop-uia");
       expect(res.error.exit_code).toBe(69);
       expect(res.error.minimum_capability).toBe("desktop-uia.uia_invoke");
-      expect(res.error.suggestion).toMatch(/Windows|CUA/i);
+      expect(res.error.suggestion).toMatch(/Windows|Visual/i);
     }
   });
 

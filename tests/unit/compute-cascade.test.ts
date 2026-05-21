@@ -65,17 +65,17 @@ describe("compute cascade", () => {
     expect(preferenceFor("compute_click", "darwin")).toEqual([
       "desktop-ax",
       "cdp-browser",
-      "cua",
+      "visual",
     ]);
     expect(preferenceFor("compute_click", "win32")).toEqual([
       "cdp-browser",
       "desktop-uia",
-      "cua",
+      "visual",
     ]);
     expect(preferenceFor("compute_click", "linux")).toEqual([
       "cdp-browser",
       "desktop-atspi",
-      "cua",
+      "visual",
     ]);
   });
 
@@ -88,13 +88,13 @@ describe("compute cascade", () => {
         transport: "desktop-ax",
       }),
     );
-    const cua = new StubTransport(
-      "cua",
-      ["cua_click"],
-      ok({ transport: "cua" }),
+    const visual = new StubTransport(
+      "visual",
+      ["visual_click"],
+      ok({ transport: "visual" }),
     );
     bus.register(ax);
-    bus.register(cua);
+    bus.register(visual);
 
     const result = await tryCascade(
       bus,
@@ -105,7 +105,7 @@ describe("compute cascade", () => {
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.data).toEqual({ transport: "desktop-ax" });
     expect(ax.calls.map((call) => call.kind)).toEqual(["ax_press"]);
-    expect(cua.calls).toHaveLength(0);
+    expect(visual.calls).toHaveLength(0);
   });
 
   it("defaults mutating compute actions to non-focusing mode", async () => {
@@ -134,13 +134,13 @@ describe("compute cascade", () => {
       ["ax_scroll"],
       ok({ transport: "desktop-ax" }),
     );
-    const cua = new StubTransport(
-      "cua",
-      ["cua_scroll"],
-      ok({ transport: "cua" }),
+    const visual = new StubTransport(
+      "visual",
+      ["visual_scroll"],
+      ok({ transport: "visual" }),
     );
     bus.register(ax);
-    bus.register(cua);
+    bus.register(visual);
 
     const result = await tryCascade(
       bus,
@@ -155,23 +155,53 @@ describe("compute cascade", () => {
       kind: "ax_scroll",
       params: { direction: "down", focus: false },
     });
-    expect(cua.calls).toHaveLength(0);
+    expect(visual.calls).toHaveLength(0);
   });
 
-  it("uses CDP screenshots before CUA visual fallback", async () => {
+  it("routes macOS compute_press to pid-addressed background press before Visual", async () => {
+    const bus = createTransportBus();
+    const ax = new StubTransport(
+      "desktop-ax",
+      ["ax_background_press"],
+      ok({ transport: "desktop-ax" }),
+    );
+    const visual = new StubTransport(
+      "visual",
+      ["visual_key"],
+      ok({ transport: "visual" }),
+    );
+    bus.register(ax);
+    bus.register(visual);
+
+    const result = await tryCascade(
+      bus,
+      { kind: "compute_press", params: { app: "TextEdit", combo: "cmd+s" } },
+      "darwin",
+    );
+
+    expect(result.ok).toBe(true);
+    expect(ax.calls).toHaveLength(1);
+    expect(ax.calls[0]).toMatchObject({
+      kind: "ax_background_press",
+      params: { app: "TextEdit", combo: "cmd+s", focus: false },
+    });
+    expect(visual.calls).toHaveLength(0);
+  });
+
+  it("uses CDP screenshots before Visual visual fallback", async () => {
     const bus = createTransportBus();
     const cdp = new StubTransport(
       "cdp-browser",
       ["screenshot"],
       ok({ transport: "cdp-browser" }),
     );
-    const cua = new StubTransport(
-      "cua",
-      ["cua_snapshot"],
-      ok({ transport: "cua" }),
+    const visual = new StubTransport(
+      "visual",
+      ["visual_snapshot"],
+      ok({ transport: "visual" }),
     );
     bus.register(cdp);
-    bus.register(cua);
+    bus.register(visual);
 
     const result = await tryCascade(
       bus,
@@ -182,23 +212,23 @@ describe("compute cascade", () => {
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.data).toEqual({ transport: "cdp-browser" });
     expect(cdp.calls.map((call) => call.kind)).toEqual(["screenshot"]);
-    expect(cua.calls).toHaveLength(0);
+    expect(visual.calls).toHaveLength(0);
   });
 
-  it("uses macOS AX screenshots before CUA visual fallback", async () => {
+  it("uses macOS AX screenshots before Visual visual fallback", async () => {
     const bus = createTransportBus();
     const ax = new StubTransport(
       "desktop-ax",
       ["ax_screenshot"],
       ok({ transport: "desktop-ax" }),
     );
-    const cua = new StubTransport(
-      "cua",
-      ["cua_snapshot"],
-      ok({ transport: "cua" }),
+    const visual = new StubTransport(
+      "visual",
+      ["visual_snapshot"],
+      ok({ transport: "visual" }),
     );
     bus.register(ax);
-    bus.register(cua);
+    bus.register(visual);
 
     const result = await tryCascade(
       bus,
@@ -209,7 +239,7 @@ describe("compute cascade", () => {
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.data).toEqual({ transport: "desktop-ax" });
     expect(ax.calls.map((call) => call.kind)).toEqual(["ax_screenshot"]);
-    expect(cua.calls).toHaveLength(0);
+    expect(visual.calls).toHaveLength(0);
   });
 
   it("maps compute_assert to native desktop sidecar assert verbs", async () => {
@@ -1075,20 +1105,20 @@ describe("compute cascade", () => {
     }
   });
 
-  it("falls through from failed UIA to CUA on win32", async () => {
+  it("falls through from failed UIA to Visual on win32", async () => {
     const bus = createTransportBus();
     const uia = new StubTransport(
       "desktop-uia",
       ["uia_invoke"],
       failure("desktop-uia", "uia_invoke"),
     );
-    const cua = new StubTransport(
-      "cua",
-      ["cua_click"],
-      ok({ transport: "cua" }),
+    const visual = new StubTransport(
+      "visual",
+      ["visual_click"],
+      ok({ transport: "visual" }),
     );
     bus.register(uia);
-    bus.register(cua);
+    bus.register(visual);
 
     const result = await tryCascade(
       bus,
@@ -1097,25 +1127,25 @@ describe("compute cascade", () => {
     );
 
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.data).toEqual({ transport: "cua" });
+    if (result.ok) expect(result.data).toEqual({ transport: "visual" });
     expect(uia.calls.map((call) => call.kind)).toEqual(["uia_invoke"]);
-    expect(cua.calls.map((call) => call.kind)).toEqual(["cua_click"]);
+    expect(visual.calls.map((call) => call.kind)).toEqual(["visual_click"]);
   });
 
-  it("defaults CUA fallback actions to focusing mode", async () => {
+  it("defaults Visual fallback actions to focusing mode", async () => {
     const bus = createTransportBus();
     const uia = new StubTransport(
       "desktop-uia",
       ["uia_invoke"],
       failure("desktop-uia", "uia_invoke"),
     );
-    const cua = new StubTransport(
-      "cua",
-      ["cua_click"],
-      ok({ transport: "cua" }),
+    const visual = new StubTransport(
+      "visual",
+      ["visual_click"],
+      ok({ transport: "visual" }),
     );
     bus.register(uia);
-    bus.register(cua);
+    bus.register(visual);
 
     const result = await tryCascade(
       bus,
@@ -1125,7 +1155,7 @@ describe("compute cascade", () => {
 
     expect(result.ok).toBe(true);
     expect(uia.calls[0]?.params).toMatchObject({ focus: false });
-    expect(cua.calls[0]?.params).toMatchObject({ focus: true });
+    expect(visual.calls[0]?.params).toMatchObject({ focus: true });
   });
 
   it("returns a merged failure envelope when every transport fails", async () => {
@@ -1138,7 +1168,11 @@ describe("compute cascade", () => {
       ),
     );
     bus.register(
-      new StubTransport("cua", ["cua_click"], failure("cua", "cua_click")),
+      new StubTransport(
+        "visual",
+        ["visual_click"],
+        failure("visual", "visual_click"),
+      ),
     );
 
     const result = await tryCascade(
@@ -1151,7 +1185,7 @@ describe("compute cascade", () => {
     if (!result.ok) {
       expect(result.error.reason).toContain("all transports failed");
       expect(result.error.reason).toContain("desktop-uia");
-      expect(result.error.reason).toContain("cua");
+      expect(result.error.reason).toContain("visual");
       expect(result.error.minimum_capability).toBe(
         "compute.compute_click.no-transport-available",
       );

@@ -4,7 +4,7 @@
  * Contract we care about:
  *   1. A v1 YAML adapter gains the five required schema-v2 fields.
  *   2. Capabilities are inferred from pipeline step names.
- *   3. Trust bumps to "user" for desktop / exec / ax_* / cua_* steps.
+ *   3. Trust bumps to "user" for desktop / exec / ax_* / visual_* steps.
  *   4. Confidentiality bumps to "private" for dir names matching the
  *      private-data patterns (mail, imessage, auth, ...).
  *   5. Re-running the migration over already-v2 YAML is a no-op.
@@ -49,11 +49,17 @@ describe("inferCapabilities", () => {
   });
 
   it("ignores control-flow steps (if, each, set, filter)", () => {
-    const caps = inferCapabilities([
-      { set: { x: 1 } },
-      { filter: "item.ok" },
-      { if: { condition: "true", then: [{ fetch: { url: "u" } }] } },
-    ]);
+    const steps = yaml.load(`
+- set:
+    x: 1
+- filter: item.ok
+- if:
+    condition: "true"
+    then:
+      - fetch:
+          url: u
+`);
+    const caps = inferCapabilities(steps);
     // The nested fetch should still be picked up.
     expect(caps).toEqual(["http.fetch"]);
   });
@@ -134,19 +140,19 @@ describe("migrateYamlText — injection", () => {
     expect(parsed.trust).toBe("user");
   });
 
-  it("bumps trust to 'user' for cua_* steps", () => {
+  it("bumps trust to 'user' for visual_* steps", () => {
     const raw = [
       "site: example",
       "name: task",
       "type: desktop",
       "pipeline:",
-      "  - cua_click: { selector: 'button' }",
+      "  - visual_click: { selector: 'button' }",
     ].join("\n");
     const result = migrateYamlText(raw, "src/adapters/example/task.yaml");
     if (result.status !== "migrated") throw new Error("expected migrated");
     const parsed = loadBack(result.content);
     expect(parsed.trust).toBe("user");
-    expect(parsed.capabilities).toContain("cua.click");
+    expect(parsed.capabilities).toContain("visual.click");
   });
 
   it("bumps confidentiality to 'private' for mail-like site dirs", () => {
@@ -266,23 +272,23 @@ describe("migrateYamlText — schema_version injection by transport tier", () =>
     expect(parsed.minimum_capability).toMatch(/^cdp-browser\./);
   });
 
-  it("CUA tier: cua_* steps yield cua.* + trust=user", () => {
+  it("Visual tier: visual_* steps yield visual.* + trust=user", () => {
     const raw = [
       "site: screen",
       "name: ocr",
       "type: desktop",
       "pipeline:",
-      "  - cua_snapshot: {}",
-      "  - cua_click: { x: 100, y: 200 }",
+      "  - visual_snapshot: {}",
+      "  - visual_click: { x: 100, y: 200 }",
     ].join("\n");
     const result = migrateYamlText(raw, "src/adapters/screen/ocr.yaml");
     if (result.status !== "migrated") throw new Error("expected migrated");
     const parsed = loadBack(result.content);
     expect(parsed.schema_version).toBe("v2");
     expect(parsed.capabilities).toEqual(
-      expect.arrayContaining(["cua.snapshot", "cua.click"]),
+      expect.arrayContaining(["visual.snapshot", "visual.click"]),
     );
-    expect(parsed.minimum_capability).toMatch(/^cua\./);
+    expect(parsed.minimum_capability).toMatch(/^visual\./);
     expect(parsed.trust).toBe("user");
   });
 });

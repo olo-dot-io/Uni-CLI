@@ -17,6 +17,7 @@ import {
 } from "../../../../src/transport/adapters/desktop-ax.js";
 import {
   buildAxBackgroundClickScript,
+  buildAxBackgroundInputScript,
   buildAxPressScript,
   buildAxScrollScript,
   buildAxSetValueScript,
@@ -113,7 +114,7 @@ describe("DesktopAxTransport", () => {
       "cdp-dom",
       "desktop-ax",
       "background-click",
-      "cua",
+      "visual",
     ]);
     expect(policy.axEmptyTreeFallback).toBe("cdp-dom");
     expect(policy.backgroundClick.enabled).toBe(true);
@@ -154,7 +155,7 @@ describe("DesktopAxTransport", () => {
     }
   });
 
-  it("generates background-click Swift with postToPid field writes and command flag", () => {
+  it("generates background-click Swift with activation primer, event taps, and window field writes", () => {
     const target = resolveAxTarget({ app: "netease music app" });
     expect(target).not.toBeNull();
     const script = buildAxBackgroundClickScript(target!, {
@@ -166,14 +167,51 @@ describe("DesktopAxTransport", () => {
     });
 
     expect(script).toContain("postToPid");
+    expect(script).toContain(".appKitDefined");
+    expect(script).toContain("tapCreateForPid");
+    expect(script).toContain("if !wasFrontmost {");
+    expect(script).toContain("ScopedWindowActivationSession.activateWindow");
+    expect(script).toContain("NSEvent.mouseEvent(");
+    expect(script).toContain("nextSyntheticMouseEventNumber");
+    expect(script).toContain("? [] : [.command]");
     expect(script).toContain("CGEventSetWindowLocation");
-    expect(script).toContain("CGEventField(rawValue: 3)");
+    expect(script).toContain(".mouseEventButtonNumber");
     expect(script).toContain("CGEventField(rawValue: 7)");
-    expect(script).toContain("CGEventField(rawValue: 91)");
-    expect(script).toContain("CGEventField(rawValue: 92)");
-    expect(script).toContain("CGEventFlags.maskCommand");
+    expect(script).toContain("CGEventField(rawValue: 51)");
+    expect(script).toContain("CGEventField(rawValue: 58)");
+    expect(script).toContain(".mouseEventWindowUnderMousePointer");
+    expect(script).toContain(
+      ".mouseEventWindowUnderMousePointerThatCanHandleThisEvent",
+    );
     expect(script).not.toContain("activateIgnoringOtherApps");
     expect(script).not.toContain("kAXFrontmostAttribute");
+  });
+
+  it("generates background type and press Swift through the shared input session", () => {
+    const target = resolveAxTarget({ app: "TextEdit" });
+    expect(target).not.toBeNull();
+
+    const typeScript = buildAxBackgroundInputScript(target!, {
+      action: "type_text",
+      x: 20,
+      y: 30,
+      coordinateSpace: "window",
+      button: 0,
+      clickCount: 1,
+      text: "hello",
+    });
+    const pressScript = buildAxBackgroundInputScript(target!, {
+      action: "press_key",
+      coordinateSpace: "window",
+      button: 0,
+      clickCount: 1,
+      key: "cmd+s",
+    });
+
+    expect(typeScript).toContain(`let requestedAction = "type_text"`);
+    expect(typeScript).toContain("keyboardSetUnicodeString");
+    expect(pressScript).toContain(`let requestedAction = "press_key"`);
+    expect(pressScript).toContain("KeyCombination.parse");
   });
 
   it("generated AX snapshots include bounds and screen index metadata", () => {
@@ -224,6 +262,22 @@ describe("DesktopAxTransport", () => {
         button: 0,
         clickCount: 1,
       }),
+      backgroundType: buildAxBackgroundInputScript(target!, {
+        action: "type_text",
+        x: 120,
+        y: 80,
+        coordinateSpace: "window",
+        button: 0,
+        clickCount: 1,
+        text: "hello",
+      }),
+      backgroundPress: buildAxBackgroundInputScript(target!, {
+        action: "press_key",
+        coordinateSpace: "window",
+        button: 0,
+        clickCount: 1,
+        key: "cmd+s",
+      }),
     };
     const dir = mkdtempSync(join(tmpdir(), "unicli-ax-"));
     for (const [name, script] of Object.entries(scripts)) {
@@ -247,6 +301,8 @@ describe("DesktopAxTransport", () => {
     expect(t.capability.steps).toContain("ax_scroll");
     expect(t.capability.steps).toContain("ax_screenshot");
     expect(t.capability.steps).toContain("ax_background_click");
+    expect(t.capability.steps).toContain("ax_background_type");
+    expect(t.capability.steps).toContain("ax_background_press");
     expect(t.capability.steps).toContain("ax_apps");
     expect(t.capability.steps).toContain("ax_windows");
   });
@@ -733,13 +789,14 @@ describe("DesktopAxTransport", () => {
     const shell = new FakeShell();
     shell.respondMatch(
       "swift",
-      `let commandMode = "background_click"`,
+      `let commandMode = "background_input"`,
       JSON.stringify({
         found: true,
         posted: true,
+        action: "click",
         pid: 48133,
         windowNumber: 42,
-        commandFlagApplied: true,
+        backgroundActivated: true,
       }),
     );
     const t = new DesktopAxTransport({ shell, platform: "darwin" });
@@ -759,8 +816,150 @@ describe("DesktopAxTransport", () => {
       expect(res.data.windowNumber).toBe(42);
     }
     const script = shell.calls.at(-1)?.args[1] ?? "";
-    expect(script).toContain(`let commandMode = "background_click"`);
+    expect(script).toContain(`let commandMode = "background_input"`);
+    expect(script).toContain(`let requestedAction = "click"`);
     expect(script).toContain("postToPid");
+  });
+
+  it("ax_background_type posts text through the background input session", async () => {
+    const shell = new FakeShell();
+    shell.respondMatch(
+      "swift",
+      `let requestedAction = "type_text"`,
+      JSON.stringify({
+        found: true,
+        posted: true,
+        action: "type_text",
+        typedCharacters: 5,
+        pid: 48133,
+        windowNumber: 42,
+      }),
+    );
+    const t = new DesktopAxTransport({ shell, platform: "darwin" });
+    await t.open(makeCtx());
+    const res = await t.action<{ typedCharacters: number }>({
+      kind: "ax_background_type",
+      params: {
+        app: "TextEdit",
+        text: "hello",
+        x: 12,
+        y: 24,
+        coordinateSpace: "window",
+      },
+    });
+
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.data.typedCharacters).toBe(5);
+    const script = shell.calls.at(-1)?.args[1] ?? "";
+    expect(script).toContain("keyboardSetUnicodeString");
+  });
+
+  it("ax_background_press posts a key combo through the background input session", async () => {
+    const shell = new FakeShell();
+    shell.respondMatch(
+      "swift",
+      `let requestedAction = "press_key"`,
+      JSON.stringify({
+        found: true,
+        posted: true,
+        action: "press_key",
+        key: "cmd+s",
+        pid: 48133,
+        windowNumber: 42,
+      }),
+    );
+    const t = new DesktopAxTransport({ shell, platform: "darwin" });
+    await t.open(makeCtx());
+    const res = await t.action<{ key: string }>({
+      kind: "ax_background_press",
+      params: {
+        app: "TextEdit",
+        combo: "cmd+s",
+      },
+    });
+
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.data.key).toBe("cmd+s");
+    const script = shell.calls.at(-1)?.args[1] ?? "";
+    expect(script).toContain("KeyCombination.parse");
+  });
+
+  it("falls back from failed AXValue set to background text when scoped to an app", async () => {
+    const shell = new FakeShell();
+    shell.respondMatch(
+      "swift",
+      `let commandMode = "set_value"`,
+      JSON.stringify({
+        found: true,
+        matched: true,
+        mode: "set_value",
+        result: -25205,
+      }),
+    );
+    shell.respondMatch(
+      "swift",
+      `let requestedAction = "type_text"`,
+      JSON.stringify({
+        found: true,
+        posted: true,
+        action: "type_text",
+        typedCharacters: 5,
+        pid: 48133,
+        windowNumber: 42,
+      }),
+    );
+    const t = new DesktopAxTransport({ shell, platform: "darwin" });
+    await t.open(makeCtx());
+
+    const res = await t.action<{
+      typedCharacters: number;
+      semanticFallback: string;
+    }>({
+      kind: "ax_set_value",
+      params: {
+        app: "TextEdit",
+        role: "AXTextField",
+        value: "hello",
+        x: 10,
+        y: 20,
+        coordinateSpace: "screen",
+      },
+    });
+
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.data.typedCharacters).toBe(5);
+      expect(res.data.semanticFallback).toBe("ax_set_value");
+    }
+    expect(shell.calls).toHaveLength(2);
+  });
+
+  it("does not background-type after failed AXValue set without coordinates", async () => {
+    const shell = new FakeShell();
+    shell.respondMatch(
+      "swift",
+      `let commandMode = "set_value"`,
+      JSON.stringify({
+        found: true,
+        matched: true,
+        mode: "set_value",
+        result: -25205,
+      }),
+    );
+    const t = new DesktopAxTransport({ shell, platform: "darwin" });
+    await t.open(makeCtx());
+
+    const res = await t.action({
+      kind: "ax_set_value",
+      params: {
+        app: "TextEdit",
+        role: "AXTextField",
+        value: "hello",
+      },
+    });
+
+    expect(res.ok).toBe(false);
+    expect(shell.calls).toHaveLength(1);
   });
 
   it("applescript with an Electron target fails clearly when Accessibility is missing", async () => {

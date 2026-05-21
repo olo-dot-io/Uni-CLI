@@ -7,7 +7,7 @@
       "commands": ["rate-album"],
       "original_paths": ["src/adapters/apple-music/rate-album.yaml"],
       "archived_paths": ["src/adapters/_archived/apple-music/rate-album.yaml"],
-      "reason": "Host-app CUA demo requires the macOS Music app and a CUA backend; active Apple Music controls remain under the macos adapter.",
+      "reason": "Host-app Visual demo requires the macOS Music app and a Visual backend; active Apple Music controls remain under the macos adapter.",
       "replacement": "unicli macos music-now; unicli macos music-control <action>"
     },
     {
@@ -30,7 +30,7 @@
         "src/adapters/_archived/ctrip/search.yaml"
       ],
       "reason": "Public Ctrip endpoints were verified broken or CAPTCHA-gated on 2026-05-05, with no stable public replacement captured.",
-      "replacement": "Use the web adapter or browser/CUA flow against an authenticated Ctrip session."
+      "replacement": "Use the web adapter or browser/Visual flow against an authenticated Ctrip session."
     },
     {
       "site": "gcloud",

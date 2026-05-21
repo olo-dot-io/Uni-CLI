@@ -1,9 +1,9 @@
 /**
- * @owner   tests/adapter/cua-samples.test.ts
- * @does    Validate active CUA sample adapters without exercising host apps or VLM backends.
+ * @owner   tests/adapter/visual-samples.test.ts
+ * @does    Validate active Visual sample adapters without exercising host apps or VLM backends.
  * @needs   src/adapters/figma/export-selected.yaml, src/adapters/zoom/toggle-mute.yaml, CAPABILITY_MATRIX
- * @feeds   npm run test:adapter, CUA sample adapter contract
- * @breaks  Unknown CUA or desktop step names can ship without matching transports.
+ * @feeds   npm run test:adapter, Visual sample adapter contract
+ * @breaks  Unknown Visual or desktop step names can ship without matching transports.
  */
 
 import { describe, it, expect } from "vitest";
@@ -46,7 +46,7 @@ function stepAction(step: Record<string, unknown>): string {
   return "";
 }
 
-describe("CUA sample adapters", () => {
+describe("Visual sample adapters", () => {
   for (const { rel } of SAMPLES) {
     const absPath = join(ADAPTERS_DIR, rel);
     const raw = readFileSync(absPath, "utf-8");
@@ -78,27 +78,27 @@ describe("CUA sample adapters", () => {
     });
   }
 
-  it("figma sample composes cua + desktop-ax", () => {
+  it("figma sample composes visual + desktop-ax", () => {
     const raw = readFileSync(
       join(ADAPTERS_DIR, "figma/export-selected.yaml"),
       "utf-8",
     );
     const parsed = yaml.load(raw) as Adapter;
     const actions = parsed.pipeline.map(stepAction);
-    expect(actions.some((a) => a.startsWith("cua_"))).toBe(true);
+    expect(actions.some((a) => a.startsWith("visual_"))).toBe(true);
     expect(actions.some((a) => a.startsWith("ax_") || a === "launch_app")).toBe(
       true,
     );
   });
 
-  it("zoom sample is pure AX — no cua_* verbs", () => {
+  it("zoom sample is pure AX — no visual_* verbs", () => {
     const raw = readFileSync(
       join(ADAPTERS_DIR, "zoom/toggle-mute.yaml"),
       "utf-8",
     );
     const parsed = yaml.load(raw) as Adapter;
     const actions = parsed.pipeline.map(stepAction);
-    expect(actions.some((a) => a.startsWith("cua_"))).toBe(false);
+    expect(actions.some((a) => a.startsWith("visual_"))).toBe(false);
     expect(actions).toContain("applescript");
   });
 });

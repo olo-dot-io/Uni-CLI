@@ -29,7 +29,7 @@ import {
   stepPlatform,
   stepSupportedBy,
 } from "./capability.js";
-import { CuaTransport } from "./adapters/cua.js";
+import { VisualTransport } from "./adapters/visual.js";
 import { DesktopAxTransport } from "./adapters/desktop-ax.js";
 import { DesktopUiaTransport } from "./adapters/desktop-uia.js";
 import { DesktopAtspiTransport } from "./adapters/desktop-atspi.js";
@@ -189,7 +189,7 @@ let sharedBus: TransportBus | undefined;
  * plugins for registering additional {@link TransportAdapter}s.
  *
  * First call constructs a bus pre-populated with the seven built-in
- * transports (HTTP, CDP, subprocess, desktop AX/UIA/AT-SPI, CUA).
+ * transports (HTTP, CDP, subprocess, desktop AX/UIA/AT-SPI, Visual).
  * Subsequent calls return the same instance. Calling `register()` on
  * the returned bus is the supported plugin extension point:
  *
@@ -207,7 +207,7 @@ export function getBus(): TransportBus {
   bus.register(new DesktopAxTransport());
   bus.register(new DesktopUiaTransport());
   bus.register(new DesktopAtspiTransport());
-  bus.register(new CuaTransport());
+  bus.register(new VisualTransport());
   sharedBus = bus;
   return bus;
 }

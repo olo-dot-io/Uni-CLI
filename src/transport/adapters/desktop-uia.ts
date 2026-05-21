@@ -54,7 +54,7 @@ export interface DesktopUiaTransportOptions {
 }
 
 const WINDOWS_ONLY_SUGGESTION =
-  "run on Windows with the native UIA backend available, or fall back to CUA";
+  "run on Windows with the native UIA backend available, or fall back to Visual";
 
 export class DesktopUiaTransport implements TransportAdapter {
   readonly kind: TransportKind = "desktop-uia";

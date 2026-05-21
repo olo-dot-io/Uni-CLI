@@ -224,7 +224,7 @@ function main(): void {
     "slock",
     "stagehand",
     "autoagent",
-    "cua",
+    "visual",
     "hermes",
     "openharness",
   ]);

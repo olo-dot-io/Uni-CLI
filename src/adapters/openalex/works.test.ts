@@ -31,38 +31,46 @@ describe("openalex agent-facing commands", () => {
   });
 
   it("maps search rows", () => {
-    expect(
-      mapOpenAlexSearchRows(
-        [
-          {
-            id: "https://openalex.org/W1234",
-            doi: "https://doi.org/10.1/example",
-            title: "A paper",
-            publication_year: 2026,
-            cited_by_count: 5,
-            authorships: [{ author: { display_name: "Ada" } }],
-            primary_location: { source: { display_name: "Journal" } },
-            open_access: { is_oa: true },
-            type: "article",
-          },
-        ],
-        20,
-      ),
-    ).toEqual([
-      {
-        rank: 1,
-        id: "W1234",
-        title: "A paper",
-        year: 2026,
-        citations: 5,
-        firstAuthor: "Ada",
-        venue: "Journal",
-        openAccess: true,
-        type: "article",
-        doi: "10.1/example",
-        url: "https://openalex.org/W1234",
-      },
-    ]);
+    const rows = mapOpenAlexSearchRows(
+      [
+        {
+          id: "https://openalex.org/W1234",
+          doi: "https://doi.org/10.1/example",
+          title: "A paper",
+          publication_year: 2026,
+          cited_by_count: 5,
+          authorships: [{ author: { display_name: "Ada" } }],
+          primary_location: { source: { display_name: "Journal" } },
+          open_access: { is_oa: true },
+          type: "article",
+        },
+      ],
+      20,
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      rank: 1,
+      id: "W1234",
+      title: "A paper",
+      year: 2026,
+      citations: 5,
+      firstAuthor: "Ada",
+      authors: ["Ada"],
+      venue: "Journal",
+      openAccess: true,
+      is_open_access: true,
+      type: "article",
+      doi: "10.1/example",
+      pdf_url: "",
+      openalex_id: "W1234",
+      source_adapter: "openalex",
+      source_url: "https://openalex.org/W1234",
+      url: "https://openalex.org/W1234",
+    });
+    expect(rows[0]?.retrieved_at).toEqual(
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
+    );
   });
 
   it("maps work detail rows", () => {

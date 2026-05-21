@@ -26,7 +26,7 @@ export const TRANSPORT_KINDS: readonly TransportKind[] = [
   "desktop-ax",
   "desktop-uia",
   "desktop-atspi",
-  "cua",
+  "visual",
 ] as const;
 
 /** One row in the matrix. */
@@ -102,34 +102,34 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
   },
   retry: { transports: [...TRANSPORT_KINDS] },
 
-  // --- CUA family (screenshot + VLM coord action) ---
-  cua_snapshot: { transports: ["cua"] },
-  cua_click: {
-    transports: ["cua"],
+  // --- Visual family (screenshot + VLM coord action) ---
+  visual_snapshot: { transports: ["visual"] },
+  visual_click: {
+    transports: ["visual"],
   },
-  cua_type: {
-    transports: ["cua"],
+  visual_type: {
+    transports: ["visual"],
   },
-  cua_key: {
-    transports: ["cua"],
+  visual_key: {
+    transports: ["visual"],
   },
-  cua_scroll: {
-    transports: ["cua"],
+  visual_scroll: {
+    transports: ["visual"],
   },
-  cua_drag: {
-    transports: ["cua"],
+  visual_drag: {
+    transports: ["visual"],
   },
-  cua_wait: {
-    transports: ["cua"],
+  visual_wait: {
+    transports: ["visual"],
   },
-  cua_assert: {
-    transports: ["cua"],
+  visual_assert: {
+    transports: ["visual"],
   },
-  cua_ask: { transports: ["cua"] },
-  cua_backend: { transports: ["cua"] },
-  cua_launch: { transports: ["cua"] },
+  visual_ask: { transports: ["visual"] },
+  visual_backend: { transports: ["visual"] },
+  visual_launch: { transports: ["visual"] },
 
-  // --- Unified compute family (AX/UIA/AT-SPI/CDP/CUA cascade) ---
+  // --- Unified compute family (AX/UIA/AT-SPI/CDP/Visual cascade) ---
   compute_apps: {
     transports: ["desktop-ax", "desktop-uia", "desktop-atspi", "subprocess"],
   },
@@ -142,7 +142,7 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
       "desktop-uia",
       "desktop-atspi",
       "cdp-browser",
-      "cua",
+      "visual",
     ],
   },
   compute_find: {
@@ -151,7 +151,7 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
       "desktop-uia",
       "desktop-atspi",
       "cdp-browser",
-      "cua",
+      "visual",
     ],
   },
   compute_click: {
@@ -160,7 +160,7 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
       "cdp-browser",
       "desktop-uia",
       "desktop-atspi",
-      "cua",
+      "visual",
     ],
   },
   compute_type: {
@@ -169,7 +169,7 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
       "cdp-browser",
       "desktop-uia",
       "desktop-atspi",
-      "cua",
+      "visual",
     ],
   },
   compute_press: {
@@ -178,7 +178,7 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
       "cdp-browser",
       "desktop-uia",
       "desktop-atspi",
-      "cua",
+      "visual",
     ],
   },
   compute_scroll: {
@@ -187,7 +187,7 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
       "cdp-browser",
       "desktop-uia",
       "desktop-atspi",
-      "cua",
+      "visual",
     ],
   },
   compute_launch: {
@@ -199,7 +199,7 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
       "desktop-ax",
       "desktop-uia",
       "desktop-atspi",
-      "cua",
+      "visual",
     ],
   },
   compute_cdp_attach: { transports: ["cdp-browser"] },
@@ -210,7 +210,7 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
       "cdp-browser",
       "desktop-uia",
       "desktop-atspi",
-      "cua",
+      "visual",
       "subprocess",
     ],
   },
@@ -223,7 +223,7 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
       "cdp-browser",
       "desktop-uia",
       "desktop-atspi",
-      "cua",
+      "visual",
       "subprocess",
     ],
   },
@@ -241,6 +241,8 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
   ax_scroll: { transports: ["desktop-ax"], platforms: ["darwin"] },
   ax_screenshot: { transports: ["desktop-ax"], platforms: ["darwin"] },
   ax_background_click: { transports: ["desktop-ax"], platforms: ["darwin"] },
+  ax_background_type: { transports: ["desktop-ax"], platforms: ["darwin"] },
+  ax_background_press: { transports: ["desktop-ax"], platforms: ["darwin"] },
   uia_apps: { transports: ["desktop-uia"], platforms: ["win32"] },
   uia_windows: { transports: ["desktop-uia"], platforms: ["win32"] },
   uia_snapshot: { transports: ["desktop-uia"], platforms: ["win32"] },

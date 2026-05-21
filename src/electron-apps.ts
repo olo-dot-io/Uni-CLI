@@ -14,7 +14,7 @@ export type AppInspectionSurface =
   | "cdp-dom"
   | "desktop-ax"
   | "background-click"
-  | "cua";
+  | "visual";
 
 export interface AppBackgroundClickPolicy {
   enabled: boolean;
@@ -54,7 +54,7 @@ export interface ElectronAppEntry {
 }
 
 const DEFAULT_CONTROL_POLICY: AppControlPolicy = {
-  inspectionOrder: ["desktop-ax", "cdp-dom", "cua"],
+  inspectionOrder: ["desktop-ax", "cdp-dom", "visual"],
   axEmptyTreeFallback: "cdp-dom",
   backgroundClick: {
     enabled: false,
@@ -149,7 +149,7 @@ const BUILTIN_APPS: Record<string, ElectronAppEntry> = {
     kind: "media",
     contentHints: ["music", "song", "playlist", "liked songs", "我喜欢的音乐"],
     control: {
-      inspectionOrder: ["cdp-dom", "desktop-ax", "background-click", "cua"],
+      inspectionOrder: ["cdp-dom", "desktop-ax", "background-click", "visual"],
       axEmptyTreeFallback: "cdp-dom",
       backgroundClick: {
         enabled: true,

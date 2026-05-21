@@ -24,21 +24,21 @@ export const COMPUTE_PREFERENCE: Readonly<
     "desktop-uia",
     "desktop-atspi",
     "cdp-browser",
-    "cua",
+    "visual",
   ],
   compute_find: [
     "desktop-ax",
     "desktop-uia",
     "desktop-atspi",
     "cdp-browser",
-    "cua",
+    "visual",
   ],
   compute_screenshot: [
     "cdp-browser",
     "desktop-ax",
     "desktop-uia",
     "desktop-atspi",
-    "cua",
+    "visual",
   ],
   compute_observe: [
     "desktop-ax",
@@ -51,7 +51,7 @@ export const COMPUTE_PREFERENCE: Readonly<
     "cdp-browser",
     "desktop-uia",
     "desktop-atspi",
-    "cua",
+    "visual",
     "subprocess",
   ],
   compute_assert: [
@@ -59,7 +59,7 @@ export const COMPUTE_PREFERENCE: Readonly<
     "cdp-browser",
     "desktop-uia",
     "desktop-atspi",
-    "cua",
+    "visual",
     "subprocess",
   ],
   compute_click: [
@@ -67,28 +67,28 @@ export const COMPUTE_PREFERENCE: Readonly<
     "cdp-browser",
     "desktop-uia",
     "desktop-atspi",
-    "cua",
+    "visual",
   ],
   compute_type: [
     "desktop-ax",
     "cdp-browser",
     "desktop-uia",
     "desktop-atspi",
-    "cua",
+    "visual",
   ],
   compute_press: [
     "desktop-ax",
     "cdp-browser",
     "desktop-uia",
     "desktop-atspi",
-    "cua",
+    "visual",
   ],
   compute_scroll: [
     "desktop-ax",
     "cdp-browser",
     "desktop-uia",
     "desktop-atspi",
-    "cua",
+    "visual",
   ],
   compute_launch: ["subprocess", "desktop-ax", "desktop-uia", "desktop-atspi"],
   compute_cdp_attach: ["cdp-browser"],
@@ -182,7 +182,7 @@ export async function tryCascade(
   if (order.length === 0) {
     return withRemedy(
       err({
-        transport: "cua",
+        transport: "visual",
         step: 0,
         action: normalizedReq.kind,
         reason: `no transport advertises step ${normalizedReq.kind}`,
@@ -230,7 +230,7 @@ export async function tryCascade(
 
   return withRemedy(
     err({
-      transport: order[0] ?? "cua",
+      transport: order[0] ?? "visual",
       step: 0,
       action: normalizedReq.kind,
       reason: `all transports failed: ${failures.join("; ")}`,
@@ -258,7 +258,7 @@ function normalizeFocusForTransport(
   transport: TransportKind,
   computeKind: string,
 ): ActionRequest {
-  if (transport !== "cua" || !MUTATING_COMPUTE_STEPS.has(computeKind)) {
+  if (transport !== "visual" || !MUTATING_COMPUTE_STEPS.has(computeKind)) {
     return req;
   }
   if (req.params.focus === true) return req;
@@ -322,7 +322,7 @@ function refExpired(
 ): ActionResult<unknown> {
   return withRemedy(
     err({
-      transport: "cua",
+      transport: "visual",
       step: 0,
       action,
       reason: `${reason}: ${ref}`,
@@ -340,7 +340,7 @@ function elementDisabled(
 ): ActionResult<unknown> {
   return withRemedy(
     err({
-      transport: "cua",
+      transport: "visual",
       step: 0,
       action,
       reason: `target element is disabled: ${ref}${element.name ? ` (${element.name})` : ""}`,
@@ -369,7 +369,7 @@ function elementOffScreen(
 ): ActionResult<unknown> {
   return withRemedy(
     err({
-      transport: "cua",
+      transport: "visual",
       step: 0,
       action,
       reason: `target element is off screen: ${ref}${element.name ? ` (${element.name})` : ""}`,
@@ -398,7 +398,7 @@ function windowMinimized(
 ): ActionResult<unknown> {
   return withRemedy(
     err({
-      transport: "cua",
+      transport: "visual",
       step: 0,
       action,
       reason: `target window is minimized or hidden: ${ref}${element.name ? ` (${element.name})` : ""}`,
@@ -488,7 +488,7 @@ function findAmbiguous(
 ): ActionResult<unknown> {
   return withRemedy(
     err({
-      transport: "cua",
+      transport: "visual",
       step: 0,
       action: "compute_find",
       reason: `multiple refs matched ${JSON.stringify(params)} across ${matches.length} targets`,
@@ -503,7 +503,7 @@ function findAmbiguous(
 function findEmpty(params: Record<string, unknown>): ActionResult<unknown> {
   return withRemedy(
     err({
-      transport: "cua",
+      transport: "visual",
       step: 0,
       action: "compute_find",
       reason: `no refs matched ${JSON.stringify(params)}`,
@@ -627,7 +627,7 @@ const STEP_ADAPTERS: Readonly<
     compute_snapshot: "ax_snapshot",
     compute_click: "ax_press",
     compute_type: "ax_set_value",
-    compute_press: "ax_press",
+    compute_press: "ax_background_press",
     compute_scroll: "ax_scroll",
     compute_screenshot: "ax_screenshot",
     compute_launch: "launch_app",
@@ -673,14 +673,14 @@ const STEP_ADAPTERS: Readonly<
     compute_evaluate: "evaluate",
     compute_wait: "wait",
   },
-  cua: {
-    compute_snapshot: "cua_snapshot",
-    compute_click: "cua_click",
-    compute_type: "cua_type",
-    compute_press: "cua_key",
-    compute_scroll: "cua_scroll",
-    compute_screenshot: "cua_snapshot",
-    compute_wait: "cua_wait",
+  visual: {
+    compute_snapshot: "visual_snapshot",
+    compute_click: "visual_click",
+    compute_type: "visual_type",
+    compute_press: "visual_key",
+    compute_scroll: "visual_scroll",
+    compute_screenshot: "visual_snapshot",
+    compute_wait: "visual_wait",
   },
   subprocess: {
     compute_apps: "exec",

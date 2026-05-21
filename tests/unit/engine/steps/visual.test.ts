@@ -1,25 +1,25 @@
 /**
- * CUA step handler tests.
+ * Visual step handler tests.
  *
  * These handlers are thin — they ask the bus for an adapter, open it,
- * and forward an ActionRequest. Tests register a CuaTransport against
+ * and forward an ActionRequest. Tests register a VisualTransport against
  * a MockBackend so the full path exercises the bus dispatch + envelope
  * contract without any network.
  */
 
 import { describe, it, expect } from "vitest";
 import {
-  handleCuaSnapshot,
-  handleCuaClick,
-  handleCuaType,
-  handleCuaAssert,
-  CUA_STEP_HANDLERS,
-} from "../../../../src/engine/steps/cua.js";
+  handleVisualSnapshot,
+  handleVisualClick,
+  handleVisualType,
+  handleVisualAssert,
+  VISUAL_STEP_HANDLERS,
+} from "../../../../src/engine/steps/visual.js";
 import { createTransportBus } from "../../../../src/transport/bus.js";
 import {
-  CuaTransport,
+  VisualTransport,
   MockBackend,
-} from "../../../../src/transport/adapters/cua.js";
+} from "../../../../src/transport/adapters/visual.js";
 import type { TransportBus } from "../../../../src/transport/types.js";
 
 function makeBus(backend = new MockBackend()): {
@@ -27,32 +27,32 @@ function makeBus(backend = new MockBackend()): {
   backend: MockBackend;
 } {
   const bus = createTransportBus();
-  bus.register(new CuaTransport({ backend }));
+  bus.register(new VisualTransport({ backend }));
   return { bus, backend };
 }
 
-describe("CUA step handlers", () => {
-  it("CUA_STEP_HANDLERS covers all 11 cua_* verbs", () => {
-    expect(Object.keys(CUA_STEP_HANDLERS).sort()).toEqual(
+describe("Visual step handlers", () => {
+  it("VISUAL_STEP_HANDLERS covers all 11 visual_* verbs", () => {
+    expect(Object.keys(VISUAL_STEP_HANDLERS).sort()).toEqual(
       [
-        "cua_ask",
-        "cua_assert",
-        "cua_backend",
-        "cua_click",
-        "cua_drag",
-        "cua_key",
-        "cua_launch",
-        "cua_scroll",
-        "cua_snapshot",
-        "cua_type",
-        "cua_wait",
+        "visual_ask",
+        "visual_assert",
+        "visual_backend",
+        "visual_click",
+        "visual_drag",
+        "visual_key",
+        "visual_launch",
+        "visual_scroll",
+        "visual_snapshot",
+        "visual_type",
+        "visual_wait",
       ].sort(),
     );
   });
 
-  it("handleCuaSnapshot routes through the bus to the mock backend", async () => {
+  it("handleVisualSnapshot routes through the bus to the mock backend", async () => {
     const { bus, backend } = makeBus();
-    const envelope = await handleCuaSnapshot(
+    const envelope = await handleVisualSnapshot(
       { bus, transportCtx: { vars: {}, bus } },
       {},
     );
@@ -60,9 +60,9 @@ describe("CUA step handlers", () => {
     expect(backend.history.at(-1)?.verb).toBe("snapshot");
   });
 
-  it("handleCuaClick records click on the backend", async () => {
+  it("handleVisualClick records click on the backend", async () => {
     const { bus, backend } = makeBus();
-    const envelope = await handleCuaClick(
+    const envelope = await handleVisualClick(
       { bus, transportCtx: { vars: {}, bus } },
       { x: 10, y: 20 },
     );
@@ -71,9 +71,9 @@ describe("CUA step handlers", () => {
     expect(backend.history.at(-1)?.args.slice(0, 2)).toEqual([10, 20]);
   });
 
-  it("handleCuaType forwards the typed text", async () => {
+  it("handleVisualType forwards the typed text", async () => {
     const { bus, backend } = makeBus();
-    const envelope = await handleCuaType(
+    const envelope = await handleVisualType(
       { bus, transportCtx: { vars: {}, bus } },
       { text: "search query" },
     );
@@ -81,20 +81,20 @@ describe("CUA step handlers", () => {
     expect(backend.history.at(-1)?.args?.[0]).toBe("search query");
   });
 
-  it("handleCuaAssert with mock backend always passes", async () => {
+  it("handleVisualAssert with mock backend always passes", async () => {
     const { bus } = makeBus();
-    const envelope = await handleCuaAssert(
+    const envelope = await handleVisualAssert(
       { bus, transportCtx: { vars: {}, bus } },
       { predicate: "screen is ready" },
     );
     expect(envelope.ok).toBe(true);
   });
 
-  it("bus returns typed envelope when no cua transport is registered", async () => {
+  it("bus returns typed envelope when no visual transport is registered", async () => {
     const bus = createTransportBus();
-    // Deliberately do NOT register CuaTransport.
+    // Deliberately do NOT register VisualTransport.
     await expect(
-      handleCuaSnapshot({ bus, transportCtx: { vars: {}, bus } }, {}),
+      handleVisualSnapshot({ bus, transportCtx: { vars: {}, bus } }, {}),
     ).rejects.toThrow(/no transport/i);
   });
 });

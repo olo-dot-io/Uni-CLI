@@ -1,6 +1,6 @@
 # Pure AX demo — toggle microphone mute in an in-progress Zoom meeting.
 #
-# No CUA involved. Zoom's "Meeting > Mute/Unmute Audio" menu item is
+# No Visual involved. Zoom's "Meeting > Mute/Unmute Audio" menu item is
 # deterministic and driven entirely through the Accessibility API.
 site: zoom
 name: toggle-mute

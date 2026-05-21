@@ -113,6 +113,20 @@ export async function handleAxBackgroundClick(
   return dispatch(ctx, "ax_background_click", params);
 }
 
+export async function handleAxBackgroundType(
+  ctx: DesktopAxStepContext,
+  params: Record<string, unknown>,
+): Promise<Envelope<unknown>> {
+  return dispatch(ctx, "ax_background_type", params);
+}
+
+export async function handleAxBackgroundPress(
+  ctx: DesktopAxStepContext,
+  params: Record<string, unknown>,
+): Promise<Envelope<unknown>> {
+  return dispatch(ctx, "ax_background_press", params);
+}
+
 export async function handleClipboardRead(
   ctx: DesktopAxStepContext,
   params: Record<string, unknown> = {},
@@ -154,6 +168,8 @@ export const DESKTOP_AX_STEP_HANDLERS = {
   ax_scroll: handleAxScroll,
   ax_screenshot: handleAxScreenshot,
   ax_background_click: handleAxBackgroundClick,
+  ax_background_type: handleAxBackgroundType,
+  ax_background_press: handleAxBackgroundPress,
   clipboard_read: handleClipboardRead,
   clipboard_write: handleClipboardWrite,
   launch_app: handleLaunchApp,

@@ -58,7 +58,7 @@ describe("TransportBus.register + get", () => {
 
   it("throws when retrieving an unregistered kind", () => {
     const bus = createTransportBus();
-    expect(() => bus.get("cua")).toThrow();
+    expect(() => bus.get("visual")).toThrow();
   });
 
   it("replaces a transport when re-registering the same kind", () => {

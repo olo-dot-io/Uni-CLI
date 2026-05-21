@@ -1,7 +1,7 @@
 /**
  * Windows UIA and Linux AT-SPI direct pipeline step handlers.
  *
- * These handlers mirror the CUA/AX bus-dispatch shape: the YAML runner can use
+ * These handlers mirror the Visual/AX bus-dispatch shape: the YAML runner can use
  * low-level `uia_*` / `atspi_*` actions directly, while transport availability,
  * platform gates, and sidecar errors remain owned by the transport bus.
  */

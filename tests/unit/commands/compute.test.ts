@@ -112,10 +112,10 @@ describe("unicli compute", () => {
   it("click emits a structured error and preserves the transport exit code", async () => {
     cascadeMock.tryCascade.mockResolvedValue(
       err({
-        transport: "cua",
+        transport: "visual",
         step: 0,
         action: "compute_click",
-        reason: "all transports failed: cua unavailable",
+        reason: "all transports failed: visual unavailable",
         suggestion: "inspect each transport: unicli doctor compute",
         minimum_capability: "compute.compute_click.no-transport-available",
         exit_code: 69,
@@ -137,7 +137,7 @@ describe("unicli compute", () => {
     expect(env.command).toBe("compute.click");
     expect(env.error).toMatchObject({
       code: "compute_failed",
-      message: "all transports failed: cua unavailable",
+      message: "all transports failed: visual unavailable",
       suggestion: "inspect each transport: unicli doctor compute",
       retryable: false,
     });

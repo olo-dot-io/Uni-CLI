@@ -30,7 +30,7 @@ const BUDGET_MS = {
   structuredWireP95: 15,
   snapshotEncode400P95: 15,
   cdpWarmP95: 40,
-  cuaP95: 3000,
+  visualP95: 3000,
   liveSnapshotP95: 80,
   clickBurst1000: 30_000,
 } as const;

@@ -16,7 +16,7 @@
  *     humans to bootstrap a new fixture against a live endpoint.
  *
  * The harness intentionally handles HTTP-strategy adapters only. Browser /
- * desktop / CUA strategies are skipped with a clear exception — their
+ * desktop / Visual strategies are skipped with a clear exception — their
  * fixture shape is different enough to deserve its own phase.
  */
 

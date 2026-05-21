@@ -89,7 +89,7 @@ export async function runComputeDoctor(): Promise<ComputeDoctorReport> {
     await checkLinuxAtspi(),
     await checkSubprocessLauncher(),
     await checkCdp(),
-    checkCuaBackend(),
+    checkVisualBackend(),
   ];
   const issueCount = checks.filter((check) => check.status === "fail").length;
   return {
@@ -367,16 +367,24 @@ function launcherForPlatform(hostPlatform: NodeJS.Platform): {
   };
 }
 
-function checkCuaBackend(): ComputeDoctorCheck {
-  const keys = ["ANTHROPIC_API_KEY", "TRYCUA_API_KEY", "OPENAI_API_KEY"];
+function checkVisualBackend(): ComputeDoctorCheck {
+  const keys = [
+    "VISUAL_BACKEND",
+    "VISUAL_BACKEND_ENDPOINT",
+    "VISUAL_BACKEND_API_KEY",
+  ];
   const present = keys.filter((key) => Boolean(process.env[key]));
   if (present.length > 0) {
-    return pass("cua", "backend", `backend env present: ${present.join(", ")}`);
+    return pass(
+      "visual",
+      "backend",
+      `backend env present: ${present.join(", ")}`,
+    );
   }
-  return warn("cua", "backend", "no CUA backend API key found", {
+  return warn("visual", "backend", "no visual backend configuration found", {
     message:
-      "Set a supported backend key if screenshot/VLM fallback is needed.",
-    doc: "docs/operate/troubleshooting.md#cuano_backend",
+      "Set VISUAL_BACKEND_ENDPOINT and VISUAL_BACKEND_API_KEY if screenshot/VLM fallback is needed.",
+    doc: "docs/operate/troubleshooting.md#visualno_backend",
   });
 }
 

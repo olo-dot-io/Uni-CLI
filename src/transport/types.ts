@@ -2,7 +2,7 @@
  * Transport types — the v0.212 "operate anything" contract.
  *
  * A `TransportAdapter` is a physical execution channel (HTTP, Chrome CDP,
- * subprocess, macOS AX, Windows UIA, Linux AT-SPI, screenshot-based CUA)
+ * subprocess, macOS AX, Windows UIA, Linux AT-SPI, screenshot-based Visual)
  * behind a uniform 5-method interface: open / snapshot / action / stream /
  * close.
  *
@@ -32,7 +32,7 @@ export type TransportKind =
   | "desktop-ax"
   | "desktop-uia"
   | "desktop-atspi"
-  | "cua";
+  | "visual";
 
 /**
  * The snapshot encodings a transport may return. A single transport can
@@ -102,18 +102,18 @@ export interface Capability {
  *  - subprocess: stdout / stderr chunks
  *  - cdp-browser: raw CDP events
  *  - desktop-ax / uia / atspi: platform accessibility events
- *  - cua: VLM trace (model, tokens, reasoning)
+ *  - visual: VLM trace (model, tokens, reasoning)
  */
 export interface TransportEvent {
   ts: number;
-  kind: "stdout" | "stderr" | "cdp" | "ax-event" | "uia-event" | "cua-trace";
+  kind: "stdout" | "stderr" | "cdp" | "ax-event" | "uia-event" | "visual-trace";
   payload: unknown;
 }
 
 /**
  * Dispatcher surface injected into every transport so transports can
  * compose (e.g. `cdp-browser` delegates `snapshot(format:"screenshot")`
- * to `cua` on non-trivial perception tasks).
+ * to `visual` on non-trivial perception tasks).
  */
 export interface TransportBus {
   refs: RefStore;

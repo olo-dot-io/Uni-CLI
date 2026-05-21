@@ -12,7 +12,9 @@ import type { OutputFormat } from "../types.js";
 export function registerComputeCommand(program: Command): void {
   const compute = program
     .command("compute")
-    .description("Operate installed apps through AX/UIA/AT-SPI/CDP/CUA");
+    .description(
+      "Operate installed apps through native accessibility, CDP, and visual fallback transports",
+    );
 
   compute
     .command("apps")

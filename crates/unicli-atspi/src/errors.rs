@@ -17,7 +17,7 @@ impl AtspiError {
         Self {
             reason: reason.into(),
             suggestion:
-                "run on Linux with the native AT-SPI backend available, or fall back to CUA".into(),
+                "run on Linux with the native AT-SPI backend available, or fall back to Visual".into(),
             minimum_capability: None,
             r#ref: None,
             exit_code: 69,
@@ -52,7 +52,7 @@ impl AtspiError {
         let r#ref = r#ref.into();
         Self {
             reason: format!("AT-SPI element {ref} does not expose a native action"),
-            suggestion: "try CUA fallback, set-value, press, or focus before retrying".into(),
+            suggestion: "try Visual fallback, set-value, press, or focus before retrying".into(),
             minimum_capability: Some("desktop-atspi.not_invokable".into()),
             r#ref: Some(r#ref),
             exit_code: 69,

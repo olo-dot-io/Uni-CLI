@@ -27,7 +27,7 @@ import {
 } from "../core/schema-v2.js";
 import "../engine/steps/index.js";
 import { listSteps } from "../engine/step-registry.js";
-import { CUA_STEP_HANDLERS } from "../engine/steps/cua.js";
+import { VISUAL_STEP_HANDLERS } from "../engine/steps/visual.js";
 import { DESKTOP_AX_STEP_HANDLERS } from "../engine/steps/desktop-ax.js";
 import { DESKTOP_SIDECAR_STEP_HANDLERS } from "../engine/steps/desktop-sidecar.js";
 import { format, detectFormat } from "../output/formatter.js";
@@ -40,13 +40,13 @@ import { makeCtx } from "../output/envelope.js";
 // import above guarantees the registry is fully populated before lint runs.
 //
 // `rate_limit` is dispatched directly by the executor and does not
-// self-register. CUA and native desktop steps route through dispatch tables
+// self-register. Visual and native desktop steps route through dispatch tables
 // instead of the registry, so we add their kinds explicitly.
 
 const KNOWN_STEPS = new Set<string>([
   ...listSteps(),
   "rate_limit",
-  ...Object.keys(CUA_STEP_HANDLERS),
+  ...Object.keys(VISUAL_STEP_HANDLERS),
   ...Object.keys(DESKTOP_AX_STEP_HANDLERS),
   ...Object.keys(DESKTOP_SIDECAR_STEP_HANDLERS),
 ]);

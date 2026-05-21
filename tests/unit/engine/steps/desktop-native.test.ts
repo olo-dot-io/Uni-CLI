@@ -74,6 +74,8 @@ describe("desktop native step handlers", () => {
         "applescript",
         "ax_apps",
         "ax_background_click",
+        "ax_background_press",
+        "ax_background_type",
         "ax_focus",
         "ax_focused_read",
         "ax_menu_select",

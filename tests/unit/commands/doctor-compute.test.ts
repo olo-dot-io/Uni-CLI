@@ -15,7 +15,7 @@ describe("doctor compute", () => {
         "desktop-atspi",
         "subprocess",
         "cdp-browser",
-        "cua",
+        "visual",
       ]),
     );
     for (const check of report.checks) {

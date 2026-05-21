@@ -63,6 +63,8 @@ const STEP_CAPABILITY: Record<string, string> = {
   ax_set_value: "desktop-ax.ax_set_value",
   ax_press: "desktop-ax.ax_press",
   ax_background_click: "desktop-ax.ax_background_click",
+  ax_background_type: "desktop-ax.ax_background_type",
+  ax_background_press: "desktop-ax.ax_background_press",
   clipboard_read: "desktop-ax.clipboard",
   clipboard_write: "desktop-ax.clipboard",
   launch_app: "desktop-ax.launch_app",
@@ -74,16 +76,16 @@ const STEP_CAPABILITY: Record<string, string> = {
   // Linux AT-SPI
   atspi_focus: "desktop-atspi.focus",
   atspi_click: "desktop-atspi.click",
-  // Computer Use Agent (CUA)
-  cua_snapshot: "cua.snapshot",
-  cua_click: "cua.click",
-  cua_type: "cua.type",
-  cua_key: "cua.key",
-  cua_scroll: "cua.scroll",
-  cua_drag: "cua.drag",
-  cua_wait: "cua.wait",
-  cua_ask: "cua.ask",
-  cua_assert: "cua.assert",
+  // Computer Use Agent (Visual)
+  visual_snapshot: "visual.snapshot",
+  visual_click: "visual.click",
+  visual_type: "visual.type",
+  visual_key: "visual.key",
+  visual_scroll: "visual.scroll",
+  visual_drag: "visual.drag",
+  visual_wait: "visual.wait",
+  visual_ask: "visual.ask",
+  visual_assert: "visual.assert",
   // Media
   download: "http.download",
   // Service
@@ -121,23 +123,25 @@ const CAPABILITY_PRIORITY = [
   "desktop-ax.ax_set_value",
   "desktop-ax.ax_press",
   "desktop-ax.ax_background_click",
+  "desktop-ax.ax_background_type",
+  "desktop-ax.ax_background_press",
   "desktop-ax.applescript",
   "desktop-uia.focus",
   "desktop-uia.click",
   "desktop-uia.type",
   "desktop-atspi.focus",
   "desktop-atspi.click",
-  // CUA — model-in-the-loop screen automation, most privileged
-  "cua.wait",
-  "cua.snapshot",
-  "cua.scroll",
-  "cua.key",
-  "cua.type",
-  "cua.click",
-  "cua.drag",
-  "cua.ask",
-  "cua.assert",
-  // Subprocess mutates host — just below CUA
+  // Visual — model-in-the-loop screen automation, most privileged
+  "visual.wait",
+  "visual.snapshot",
+  "visual.scroll",
+  "visual.key",
+  "visual.type",
+  "visual.click",
+  "visual.drag",
+  "visual.ask",
+  "visual.assert",
+  // Subprocess mutates host — just below Visual
   "subprocess.exec",
 ];
 
@@ -277,7 +281,7 @@ function mutatesHost(parsed: ParsedYaml): boolean {
       s.startsWith("ax_") ||
       s.startsWith("uia_") ||
       s.startsWith("atspi_") ||
-      s.startsWith("cua_") ||
+      s.startsWith("visual_") ||
       s === "applescript" ||
       s === "clipboard_read" ||
       s === "clipboard_write" ||
