@@ -239,12 +239,6 @@
     "ws": "^8.20.0",
     "zod": "^4.3.6"
   },
-  "optionalDependencies": {
-    "@zenalexa/unicli-atspi-linux-arm64": "0.218.1",
-    "@zenalexa/unicli-atspi-linux-x64": "0.218.1",
-    "@zenalexa/unicli-uia-win32-arm64": "0.218.1",
-    "@zenalexa/unicli-uia-win32-x64": "0.218.1"
-  },
   "devDependencies": {
     "@ai-sdk/openai-compatible": "^2.0.41",
     "@base-ui/react": "^1.4.1",
