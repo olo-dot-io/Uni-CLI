@@ -5,13 +5,13 @@
 <h1 align="center">Uni-CLI</h1>
 
 <p align="center">
-  <strong>The control plane for agent-native software operation.</strong>
+  <strong>The command-grade control plane for agent-native software.</strong>
 </p>
 
 <p align="center">
-  One searchable runtime for websites, browser sessions, desktop apps,
-  local CLIs, and system capabilities. Agents discover by intent, execute with
-  policy, return evidence, and repair the adapter that failed.
+  One runtime where agents can discover, operate, verify, and repair real
+  software: websites, logged-in browsers, desktop apps, local CLIs, MCP servers,
+  and system capabilities behind the same searchable command contract.
 </p>
 
 <p align="center">
@@ -34,7 +34,13 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · visual fallback · macOS desktop AX · <!-- STATS:site_count -->311<!-- /STATS --> surfaces · <!-- STATS:test_count -->8847<!-- /STATS --> tests</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->311<!-- /STATS --> surfaces · <!-- STATS:test_count -->8847<!-- /STATS --> tests</sub>
+</p>
+
+<p align="center">
+  <strong>Make the world's software callable by agents.</strong><br>
+  Search it. Run it. Gate it. Record it. Fix it. Expose it again through CLI,
+  MCP, ACP, and skills without rewriting the integration.
 </p>
 
 ## Start In 30 Seconds
@@ -43,6 +49,7 @@
 npm install -g @zenalexa/unicli
 unicli do "find the Hacker News frontpage"
 unicli extract https://example.com --max-chars 1200
+unicli compute snapshot --app Calculator --format compact
 npx @zenalexa/unicli mcp serve
 ```
 
@@ -54,6 +61,52 @@ npx @zenalexa/unicli mcp serve
 | "The site changed."      | structured errors point at the adapter file and failing pipeline step                   |
 | "The app is local."      | desktop transports cover macOS AX, UIA/AT-SPI sidecars, subprocesses, and visual input  |
 | "Expose it to my agent." | `unicli mcp serve`, ACP, native CLI, and JSON streams share the same catalog            |
+
+## Why It Exists
+
+The next software user is not only a person with a mouse. It is an agent with a
+task, a context window, a permission budget, and a need for evidence. A raw
+browser driver gives the agent pixels and selectors. A one-off script gives it
+an island. A giant resident tool list burns context before the task starts.
+
+Uni-CLI is the middle layer: command-grade access to real software. It turns
+useful operations into typed, searchable commands, keeps dangerous actions
+behind policy, returns machine-readable receipts, and makes failures repairable
+by pointing at the exact adapter and pipeline step that broke.
+
+This is why the project combines pieces that usually live apart:
+
+- a website adapter catalog for public APIs, logged-in sessions, browser
+  intercepts, downloads, publishing, and search;
+- a browser automation layer for ad-hoc navigation, DOM snapshots, network
+  capture, clicks, typing, screenshots, and render-aware evidence;
+- a local computer-use layer for desktop apps, macOS Accessibility, background
+  input, subprocesses, and visual fallback;
+- a CLI hub for external binaries and agent coding tools;
+- protocol adapters for MCP, ACP, native CLI, JSON streams, and skills.
+
+## The Operating Model
+
+Every serious agent operation follows the same loop.
+
+| Step      | What Uni-CLI gives the agent                                                                        |
+| --------- | --------------------------------------------------------------------------------------------------- |
+| Discover  | `unicli search` and `unicli do` map intent to command, args, auth mode, examples, and risk signals  |
+| Execute   | Web, browser, desktop, subprocess, and protocol transports run behind one runtime                   |
+| Govern    | `open`, `confirm`, and `locked` profiles block risky effects before requests, writes, or spawns     |
+| Observe   | AgentEnvelope v2 returns data, context, retryability, timing, and evidence hooks                    |
+| Repair    | Structured errors include `adapter_path`, failed `step`, suggestions, alternatives, and repair flow |
+| Re-expose | The same command can be called by humans, agents, MCP clients, ACP clients, and scripts             |
+
+## What Makes It Different
+
+| If you start from...     | You usually get...                                  | Uni-CLI adds...                                                                 |
+| ------------------------ | --------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Browser automation       | powerful ad-hoc page control                        | catalog commands, output contracts, auth posture, run evidence, and repair      |
+| A generated app CLI      | deep access to one application                      | one searchable runtime across web, desktop, local tools, and agent protocols    |
+| An MCP server collection | easy agent attachment but high resident tool weight | a low-token CLI path plus MCP profiles when the runtime requires MCP            |
+| A scraper script         | quick data extraction                               | policy gates, structured errors, typed args, tests, docs, and local overrides   |
+| Manual computer use      | flexible last-mile control                          | native accessibility first, then browser/visual fallback under the same receipt |
 
 <!-- IF YOU ARE AN AI AGENT: Start here.
 Install: npm install -g @zenalexa/unicli
@@ -80,6 +133,37 @@ bridge, and repair loop wrapped behind one CLI contract.
 | Evidence           | Run traces with environment snapshots, probe/replay/compare scores, structured gate results, browser session leases with tab/auth posture, render-aware evidence, movement checks, and stale-ref details |
 | Output             | v2 `AgentEnvelope` in Markdown, JSON, YAML, CSV, or compact format                                                                                                                                       |
 | Repair             | Structured errors with `adapter_path`, failing `step`, retryability, suggestions, and alternatives                                                                                                       |
+
+## Built For Agent Runtimes
+
+Uni-CLI is intentionally boring at the boundary. It speaks processes, files,
+JSON, Markdown, and standard protocols. That makes it usable from Codex,
+Claude Code, Cursor, OpenCode, OpenClaw, shell scripts, CI, and any host that
+can spawn a subprocess or attach an MCP server.
+
+The runtime is agent-friendly in ways that matter during long tasks:
+
+- commands are discoverable by intent, not by memorizing names;
+- outputs are stable enough to pipe to `jq`, save as evidence, or feed back into
+  another tool call;
+- auth failures, empty results, timeouts, and blocked actions are distinct exit
+  states;
+- repair instructions point to the owned file instead of asking the agent to
+  guess what changed upstream;
+- generated docs, `llms.txt`, AGENTS.md, MCP profiles, and skills all describe
+  the same command catalog.
+
+## Capability Map
+
+| Layer                | Examples                                                                                 |
+| -------------------- | ---------------------------------------------------------------------------------------- |
+| Search and discovery | `search`, `do`, generated command catalog, docs index, compact catalog, AGENTS surface   |
+| Web adapters         | HTTP, RSS, cookie, header, browser-intercept, download, upload, publish, extract         |
+| Browser sessions     | CDP open/click/type/fill/select/wait/network/screenshot/snapshot/evidence                |
+| Local computer use   | `compute apps`, `snapshot`, `find`, `click`, `type`, `press`, `scroll`, `doctor compute` |
+| Desktop/system       | macOS, Office, design/media tools, Docker, app actions, subprocess bridges               |
+| Policy and evidence  | permission profiles, deny rules, approvals, run recording, replay, probe, compare        |
+| Integration          | native CLI, MCP stdio, MCP Streamable HTTP, ACP, package exports, agent skills           |
 
 ## For Agents
 

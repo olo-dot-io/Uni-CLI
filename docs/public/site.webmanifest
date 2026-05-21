@@ -1,7 +1,7 @@
 {
   "name": "Uni-CLI",
   "short_name": "Uni-CLI",
-  "description": "Agent execution substrate for web, apps, local tools, and system capabilities.",
+  "description": "Command-grade control plane for agent-native software.",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#11100f",

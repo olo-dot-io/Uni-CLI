@@ -24,9 +24,9 @@ unicli mcp serve --transport streamable --port 19826`,
 const copy = computed(() =>
   isZh.value
     ? {
-        label: "Agent-native software control plane",
-        lead: "让 Agent 用一条命令路径操作真实软件。",
-        body: `Uni-CLI 把 ${siteIndex.total_sites} 个网站、浏览器会话、桌面应用、本地 CLI 和系统能力收进一个可搜索运行时。Agent 按意图找能力，按策略执行，拿证据回执，并把失败定位到 adapter 与 pipeline step。`,
+        label: "Command-grade agent software control plane",
+        lead: "把世界上的软件变成 Agent 可以调用的能力。",
+        body: `Uni-CLI 把 ${siteIndex.total_sites} 个网站、登录态浏览器、桌面应用、本地 CLI、MCP server 和系统能力收进一个可搜索运行时。Agent 按意图找能力，按策略执行，拿证据回执，并把失败定位到 adapter 与 pipeline step。`,
         primary: "30 秒跑起来",
         secondary: "看命令图鉴",
         badgesTitle: "能力墙",
@@ -42,7 +42,7 @@ const copy = computed(() =>
         commandTitle: "第一条命令",
         copy: "复制",
         copied: "已复制",
-        thesisTitle: "不是工具列表，是执行控制平面。",
+        thesisTitle: "不是工具列表，是软件操作控制平面。",
         thesis:
           "普通人打开 App 找按钮，Agent 需要更稳定的入口：先按意图搜能力，再带权限和参数执行，最后拿到结构化回执。Uni-CLI 把这条链路变成可复用的基础设施。",
         principles: [
@@ -138,9 +138,9 @@ const copy = computed(() =>
         version: `v${releaseInfo.version} · ${releaseInfo.codename}`,
       }
     : {
-        label: "Agent-native software control plane",
-        lead: "One command path for agents to operate real software.",
-        body: `Uni-CLI turns ${siteIndex.total_sites} websites, browser sessions, desktop apps, local CLIs, and system capabilities into one searchable runtime. Agents discover by intent, execute with policy, return evidence, and trace failures to adapters and pipeline steps.`,
+        label: "Command-grade agent software control plane",
+        lead: "Make the world's software callable by agents.",
+        body: `Uni-CLI turns ${siteIndex.total_sites} websites, logged-in browsers, desktop apps, local CLIs, MCP servers, and system capabilities into one searchable runtime. Agents discover by intent, execute with policy, return evidence, and trace failures to adapters and pipeline steps.`,
         primary: "Start in 30 seconds",
         secondary: "Browse the catalog",
         badgesTitle: "Capability wall",
@@ -156,7 +156,7 @@ const copy = computed(() =>
         commandTitle: "First command",
         copy: "Copy",
         copied: "Copied",
-        thesisTitle: "Not a tool list. An execution control plane.",
+        thesisTitle: "Not a tool list. A software operation control plane.",
         thesis:
           "People open apps and look for buttons. Agents need a steadier path: search by intent, inspect permissions and arguments, execute through a governed runtime, and receive a structured receipt. Uni-CLI turns that chain into infrastructure.",
         principles: [

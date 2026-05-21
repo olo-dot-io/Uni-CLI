@@ -1,7 +1,7 @@
 ---
 layout: home
 title: Uni-CLI
-description: Agent-native control plane for real software operation.
+description: Command-grade control plane for agent-native software.
 ---
 
 <HomePage />

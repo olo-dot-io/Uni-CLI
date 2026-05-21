@@ -5,12 +5,12 @@
 <h1 align="center">Uni-CLI</h1>
 
 <p align="center">
-  <strong>面向 Agent 原生软件操作的控制平面。</strong>
+  <strong>面向 Agent 原生软件操作的命令级控制平面。</strong>
 </p>
 
 <p align="center">
-  一套可搜索的运行时，把网站、浏览器会话、桌面应用、本地 CLI 和系统能力收进同一个入口。
-  Agent 按意图发现能力，按策略执行，带证据返回，并能定位和修复失败的 adapter。
+  一套运行时，让 Agent 用同一个可搜索命令合同发现、操作、验证、修复真实软件：
+  网站、登录态浏览器、桌面应用、本地 CLI、MCP server 和系统能力都在一个入口里。
 </p>
 
 <p align="center">
@@ -33,7 +33,12 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · visual fallback · macOS desktop AX · <!-- STATS:site_count -->311<!-- /STATS --> 个 surface · <!-- STATS:test_count -->8847<!-- /STATS --> 个测试</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->311<!-- /STATS --> 个 surface · <!-- STATS:test_count -->8847<!-- /STATS --> 个测试</sub>
+</p>
+
+<p align="center">
+  <strong>把世界上的软件变成 Agent 可以调用的能力。</strong><br>
+  搜索它、执行它、拦住危险动作、记录证据、修复失败，再通过 CLI、MCP、ACP 和 skills 暴露出去。
 </p>
 
 ## 30 秒开始
@@ -42,6 +47,7 @@
 npm install -g @zenalexa/unicli
 unicli do "找 Hacker News 首页"
 unicli extract https://example.com --max-chars 1200
+unicli compute snapshot --app Calculator --format compact
 npx @zenalexa/unicli mcp serve
 ```
 
@@ -53,6 +59,44 @@ npx @zenalexa/unicli mcp serve
 | "页面又改版了。"       | 结构化错误直接指向 adapter 文件和失败的 pipeline step                           |
 | "目标是本地应用。"     | desktop transport 覆盖 macOS AX、UIA/AT-SPI sidecar、subprocess 和 visual input |
 | "把它接给我的 Agent。" | `unicli mcp serve`、ACP、native CLI、JSON stream 共享同一个目录                 |
+
+## 为什么需要它
+
+下一代软件用户不只是拿鼠标的人，也会是带着任务、上下文窗口、权限预算和证据需求的 Agent。
+直接给浏览器驱动，Agent 得临场猜 selector。写一个脚本，只能解决一个孤岛。把巨大工具列表常驻到上下文里，还没开始任务就先烧 token。
+
+Uni-CLI 是中间层：给真实软件加上命令级入口。它把可复用操作编成 typed、可搜索的命令，把危险动作放在策略闸门后面，把结果变成机器可读回执，并在失败时指出具体坏掉的 adapter 和 pipeline step。
+
+所以这个项目把通常分散的几块放在一起：
+
+- 网站 adapter catalog：公开 API、登录态 session、浏览器 intercept、下载、发布、搜索；
+- 浏览器自动化层：ad-hoc 导航、DOM snapshot、网络捕获、点击、输入、截图、render-aware 证据；
+- 本地 computer-use 层：桌面应用、macOS Accessibility、后台输入、subprocess、visual fallback；
+- CLI hub：外部二进制、开发者工具、Agent coding tools；
+- 协议层：MCP、ACP、native CLI、JSON stream、skills。
+
+## 操作模型
+
+严肃的 Agent 操作基本都走同一条链路。
+
+| 步骤   | Uni-CLI 给 Agent 的东西                                                          |
+| ------ | -------------------------------------------------------------------------------- |
+| 发现   | `unicli search` 和 `unicli do` 把意图映射成命令、参数、认证方式、样例和风险信号  |
+| 执行   | Web、browser、desktop、subprocess、protocol transport 走同一个 runtime           |
+| 治理   | `open`、`confirm`、`locked` profile 在请求、写入、启动进程前拦截高风险动作       |
+| 观察   | AgentEnvelope v2 返回 data、context、retryability、耗时和证据 hook               |
+| 修复   | 结构化错误带 `adapter_path`、失败 `step`、suggestion、alternative 和 repair 流程 |
+| 再暴露 | 同一条命令可以给人、Agent、MCP client、ACP client 和脚本调用                     |
+
+## 和常见路径的区别
+
+| 如果从...开始       | 通常会得到...                         | Uni-CLI 补上的东西                                                        |
+| ------------------- | ------------------------------------- | ------------------------------------------------------------------------- |
+| 浏览器自动化        | 强大的临场网页控制                    | 命令目录、输出合同、登录态姿态、运行证据和修复路径                        |
+| 生成某个 App 的 CLI | 对单个应用的深访问                    | 横跨 web、desktop、本地工具和 Agent 协议的一套可搜索 runtime              |
+| MCP server 集合     | 接 Agent 很方便，但常驻工具上下文很重 | 低 token 的 CLI 主路径，以及运行时需要时才启用的 MCP profile              |
+| 爬虫脚本            | 快速提取数据                          | 权限策略、结构化错误、typed args、测试、文档和本地 override               |
+| 手动 computer use   | 灵活的最后一公里控制                  | 先走 native accessibility，再落到 browser/visual fallback，并共享同一回执 |
 
 <!-- IF YOU ARE AN AI AGENT: Start here.
 Install: npm install -g @zenalexa/unicli
@@ -77,6 +121,30 @@ Uni-CLI 不是又一个 scraper 包，而是 Agent 底下的执行层：命令�
 | 执行证据     | run trace 会记录环境快照，也能 probe/replay/compare 打分并输出结构化 gate 结果；浏览器 session lease 带 tab/auth 姿态，还支持 render-aware 证据、移动检测和 stale-ref 细节 |
 | 输出         | v2 `AgentEnvelope`，支持 Markdown、JSON、YAML、CSV、compact                                                                                                                |
 | 修复         | 错误里带 `adapter_path`、失败 `step`、是否可重试、修复建议和替代命令                                                                                                       |
+
+## 为 Agent Runtime 设计
+
+Uni-CLI 在边界上刻意使用朴素接口：进程、文件、JSON、Markdown 和标准协议。Codex、Claude Code、Cursor、OpenCode、OpenClaw、shell 脚本、CI，以及任何能启动 subprocess 或接 MCP server 的 host 都能用。
+
+长期任务里，这些细节比 demo 更重要：
+
+- 按意图发现命令，不要求 Agent 背站点名和参数名；
+- 输出足够稳定，可以 pipe 给 `jq`、存为证据，或者继续喂给下一步工具；
+- auth failure、empty result、timeout、blocked action 是不同 exit state；
+- repair instruction 指向我们拥有的文件，而不是让 Agent 猜 upstream 哪儿变了；
+- 生成文档、`llms.txt`、AGENTS.md、MCP profile 和 skills 描述的是同一份命令目录。
+
+## 能力地图
+
+| 层级              | 例子                                                                                     |
+| ----------------- | ---------------------------------------------------------------------------------------- |
+| 搜索和发现        | `search`、`do`、生成命令目录、docs index、compact catalog、AGENTS surface                |
+| Web adapter       | HTTP、RSS、cookie、header、browser-intercept、download、upload、publish、extract         |
+| 浏览器 session    | CDP open/click/type/fill/select/wait/network/screenshot/snapshot/evidence                |
+| 本地 computer use | `compute apps`、`snapshot`、`find`、`click`、`type`、`press`、`scroll`、`doctor compute` |
+| 桌面和系统        | macOS、Office、设计/音视频工具、Docker、App actions、subprocess bridge                   |
+| 策略和证据        | permission profile、deny rule、approval、run recording、replay、probe、compare           |
+| 集成              | native CLI、MCP stdio、MCP Streamable HTTP、ACP、package export、agent skills            |
 
 ## 给 Agent 的入口
 
