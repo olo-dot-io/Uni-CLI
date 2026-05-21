@@ -11,7 +11,7 @@
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：312 个站点，1756 条命令。
+这个目录来自适配器 manifest：311 个站点，1754 条命令。
 
 | 站点 | 接口类型 | 命令数 | 认证 | 示例命令 |
 | --- | --- | ---: | --- | --- |
@@ -66,7 +66,6 @@
 | crates-io | web-api | 3 | 否 | unicli crates-io info<br>unicli crates-io search<br>unicli crates-io versions |
 | crossref | web-api | 2 | 否 | unicli crossref search<br>unicli crossref work |
 | ctrip | web-api | 4 | 是 | unicli ctrip search<br>unicli ctrip hotel-suggest<br>unicli ctrip hotel-search |
-| cua | bridge | 2 | 否 | unicli cua bench-list<br>unicli cua bench-run |
 | cursor | web-api | 18 | 否 | unicli cursor composer<br>unicli cursor extract-code<br>unicli cursor export |
 | cvf | web-api | 1 | 否 | unicli cvf search |
 | danbooru | web-api | 8 | 否 | unicli danbooru artists<br>unicli danbooru comments<br>unicli danbooru detail |

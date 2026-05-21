@@ -1,7 +1,7 @@
 {
-  "generated": "2026-05-19T15:30:55.191Z",
-  "total_sites": 312,
-  "total_commands": 1756,
+  "generated": "2026-05-21T13:26:34.053Z",
+  "total_sites": 311,
+  "total_commands": 1754,
   "sites": [
     {
       "site": "1688",
@@ -1997,25 +1997,6 @@
       ]
     },
     {
-      "site": "cua",
-      "type": "bridge",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "bench-list",
-          "description": "List trycua/cua computer-use benchmarks",
-          "command": "unicli cua bench-list"
-        },
-        {
-          "name": "bench-run",
-          "description": "Run a trycua/cua computer-use benchmark",
-          "command": "unicli cua bench-run"
-        }
-      ]
-    },
-    {
       "site": "cursor",
       "type": "web-api",
       "auth": false,
@@ -3496,7 +3477,7 @@
       "commands": [
         {
           "name": "export-selected",
-          "description": "Export the currently-selected Figma frame via CUA + macOS AX",
+          "description": "Export the currently-selected Figma frame via Visual + macOS AX",
           "command": "unicli figma export-selected"
         },
         {

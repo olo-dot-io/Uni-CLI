@@ -26,11 +26,11 @@ Uni-CLI exposes one searchable command surface across:
   shell commands or protocol servers.
 
 The generated catalog is the source of truth:
-**<span><!-- STATS:site_count -->312<!-- /STATS --></span> sites**,
-**<span><!-- STATS:command_count -->1753<!-- /STATS --></span> commands**,
-**<span><!-- STATS:adapter_count_total -->1214<!-- /STATS --></span> adapters**,
-**<span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->8853<!-- /STATS --></span> tests** in v0.221.1.
+**<span><!-- STATS:site_count -->311<!-- /STATS --></span> sites**,
+**<span><!-- STATS:command_count -->1751<!-- /STATS --></span> commands**,
+**<span><!-- STATS:adapter_count_total -->1212<!-- /STATS --></span> adapters**,
+**<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps**,
+and **<span><!-- STATS:test_count -->8845<!-- /STATS --></span> tests** in v0.222.0.
 
 ## Execution Contract
 
@@ -63,7 +63,7 @@ tools, files, and system capabilities. The kernel stays small and auditable:
 2. **Invocation kernel**: one path that validates args, evaluates permissions,
    runs the adapter, records evidence, and returns an `AgentEnvelope`.
 3. **Transport bus**: adapters choose HTTP, CDP, accessibility, subprocess,
-   service, or CUA without changing the user-facing command contract.
+   service, or Visual without changing the user-facing command contract.
 4. **Permission profile**: commands stay open by default, while users can opt
    into `confirm` or `locked` profiles for high-impact writes.
 5. **Repair and evaluation loop**: failures point to one adapter and one step;
@@ -102,7 +102,7 @@ command without guessing.
 | `subprocess`      | Local CLIs, media tools, desktop applications, file workflows |
 | `desktop-*`       | Native desktop automation surfaces                            |
 | `a11y`            | Accessibility tree inspection and semantic UI actions         |
-| `cua`             | Last-mile UI control when no narrower interface exists        |
+| `visual`             | Last-mile UI control when no narrower interface exists        |
 | `bridge`          | Reuse of existing installed tools                             |
 
 This lets Uni-CLI be broad without turning every operation into a full browser
@@ -116,9 +116,9 @@ accessibility trees, dispatch should escalate in this order:
 2. CDP or application debug protocol.
 3. Accessibility tree with text/role matching.
 4. Background click/type primitives when the target can be identified.
-5. CUA screenshot planning plus action verification.
+5. Visual screenshot planning plus action verification.
 
-CUA is a real capability only when a configured backend can see, act, and verify
+Visual is a real capability only when a configured backend can see, act, and verify
 state. A declaration without an action bridge must stay unavailable rather than
 silently pretending to control the app.
 
@@ -197,8 +197,8 @@ Use:
 
 - Native CLI and shell channels as the primary agent interface.
 - YAML adapters for durable website/app operations.
-- CDP, accessibility, subprocess, and app APIs before CUA.
-- CUA only when it can see, act, and verify.
+- CDP, accessibility, subprocess, and app APIs before Visual.
+- Visual only when it can see, act, and verify.
 - Probeable, replayable, and comparable run traces, browser session leases with
   tab/auth posture, render-aware evidence, and watchdog movement checks when an
   operation needs reviewable proof.
@@ -207,7 +207,7 @@ Use:
 Do not use:
 
 - ACP or MCP as the core semantic model.
-- CUA as the first transport when API/CDP/a11y/subprocess exists.
+- Visual as the first transport when API/CDP/a11y/subprocess exists.
 - Static privacy labels as the only safety mechanism.
 - Unobserved browser actions as successful side effects.
 - Thick SDKs that hide the adapter path, failing step, and repair evidence.
@@ -268,8 +268,8 @@ enough.
 bench shows representative `--limit 5` adapter responses at **357-415
 tokens**, with total invocation-plus-response budgets at **364-423 tokens**.
 The full catalog command is intentionally much larger because it emits all
-<span><!-- STATS:site_count -->312<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1753<!-- /STATS --></span> commands; agents
+<span><!-- STATS:site_count -->311<!-- /STATS --></span> sites and
+<span><!-- STATS:command_count -->1751<!-- /STATS --></span> commands; agents
 should search and describe before asking for the full registry.
 
 ## Direction

@@ -11,7 +11,7 @@ path.
 
 Remedy: run `unicli doctor compute --install`, then retry the compute command.
 
-Fallback: use CDP-backed Electron/browser control or CUA screenshot fallback if
+Fallback: use CDP-backed Electron/browser control or visual fallback if
 configured.
 
 ## desktop-uia.startup_failed
@@ -46,7 +46,7 @@ Cause: the target element does not expose the UIA Invoke pattern.
 Remedy: use `unicli compute type`, `unicli compute press`, or focus the control
 first and retry.
 
-Fallback: use CUA when no structured pattern is exposed.
+Fallback: use visual fallback when no structured pattern is exposed.
 
 ## desktop-uia.timeout
 
@@ -92,7 +92,7 @@ expected path.
 
 Remedy: run `unicli doctor compute --install`, then retry.
 
-Fallback: use CDP-backed Electron/browser control or CUA screenshot fallback if
+Fallback: use CDP-backed Electron/browser control or visual fallback if
 configured.
 
 ## desktop-atspi.dbus_blocked
@@ -110,7 +110,7 @@ Cause: the target app does not expose a usable AT-SPI tree.
 Remedy: enable accessibility support for the app. Electron apps may need an
 accessibility flag at launch.
 
-Fallback: use CDP for Electron/browser targets or CUA screenshot fallback.
+Fallback: use CDP for Electron/browser targets or visual fallback.
 
 ## desktop-atspi.atspi_apps
 
@@ -120,7 +120,7 @@ Remedy: ensure the AT-SPI bus is running. Uni-CLI prefers `wmctrl -lG -p` for
 real X11 window ids and geometry, but can fall back to AT-SPI-only registry
 roots when `wmctrl` is missing or empty.
 
-Fallback: target an Electron/browser app through CDP, or use CUA fallback.
+Fallback: target an Electron/browser app through CDP, or use visual fallback.
 
 ## desktop-atspi.atspi_windows
 
@@ -130,7 +130,7 @@ Remedy: install `wmctrl` when real X11 window ids are needed. On Wayland or
 minimal environments, verify the AT-SPI bus is running so Uni-CLI can use
 synthetic `atspi-root-N` windows from the accessibility registry.
 
-Fallback: use `compute snapshot` on another transport or CUA fallback.
+Fallback: use `compute snapshot` on another transport or visual fallback.
 
 ## desktop-atspi.wayland-input
 
@@ -157,7 +157,7 @@ Remedy: install ImageMagick `import` for X11 top-level window capture, or
 install `grim` for Wayland top-level bounds capture. Install
 `gnome-screenshot` / `grim` for display-server fallback capture.
 
-Fallback: use CDP for Electron/browser targets or CUA screenshot fallback.
+Fallback: use CDP for Electron/browser targets or visual fallback.
 
 ## desktop-atspi.invalid_input
 
@@ -275,13 +275,18 @@ for example `sudo apt-get install libgtk-3-bin`.
 Fallback: start the app manually, then use `compute attach`, `compute snapshot`,
 or the native desktop transport for follow-up actions.
 
-## cua.no_backend
+## visual.no_backend
 
-Cause: screenshot/VLM fallback is enabled in the cascade, but no backend API key
-is configured.
+Cause: visual fallback is enabled in the cascade, but no backend endpoint or
+credential is configured.
 
-Remedy: set a supported backend environment variable such as
-`ANTHROPIC_API_KEY`, `TRYCUA_API_KEY`, or `OPENAI_API_KEY`.
+Remedy: set the generic visual backend environment:
+
+```bash
+export VISUAL_BACKEND=remote
+export VISUAL_BACKEND_ENDPOINT=http://localhost:8800
+export VISUAL_BACKEND_API_KEY=...
+```
 
 Fallback: use structured AX/UIA/AT-SPI/CDP control where possible.
 

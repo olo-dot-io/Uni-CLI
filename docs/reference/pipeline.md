@@ -1,6 +1,6 @@
 # Pipeline Steps
 
-Uni-CLI adapters execute a sequence of pipeline steps. Each step performs one action: fetch data, transform it, interact with a browser, or control execution flow. The current registry has <!-- STATS:pipeline_step_count -->101<!-- /STATS --> step names; the table below lists the common author-facing families.
+Uni-CLI adapters execute a sequence of pipeline steps. Each step performs one action: fetch data, transform it, interact with a browser, or control execution flow. The current registry has <!-- STATS:pipeline_step_count -->103<!-- /STATS --> step names; the table below lists the common author-facing families.
 
 ## Overview
 

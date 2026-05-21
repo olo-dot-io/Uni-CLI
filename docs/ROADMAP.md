@@ -1,6 +1,6 @@
 # Uni-CLI Roadmap
 
-> Current: v0.221.1 — Apollo · Anders. <!-- STATS:site_count -->312<!-- /STATS --> sites, <!-- STATS:command_count -->1753<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps.
+> Current: v0.222.0 — Apollo · Armstrong. <!-- STATS:site_count -->311<!-- /STATS --> sites, <!-- STATS:command_count -->1751<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction. Historical release notes live in
 `CHANGELOG.md`; they do not belong in the roadmap.
@@ -44,17 +44,17 @@ This file tracks current engineering direction. Historical release notes live in
      same command capability scope without storing raw args.
 
 4. **Transport bus**
-   - Make HTTP, CDP, accessibility, subprocess, service, and CUA dispatch share
+   - Make HTTP, CDP, accessibility, subprocess, service, and Visual dispatch share
      one invocation kernel and one evidence model.
    - Keep ACP/MCP/HTTP as wrappers over the same catalog rather than separate
      behavior definitions.
    - Surface unavailable transports as structured errors with install/setup
      suggestions.
 
-5. **Desktop and CUA stack**
+5. **Desktop and Visual stack**
    - Build repeatable control paths for WeChat, WeCom, DingTalk, Lark, Mail,
      Notes, Word, PowerPoint, Excel, and common Electron apps.
-   - Prefer app APIs, CDP, and accessibility before CUA.
+   - Prefer app APIs, CDP, and accessibility before Visual.
    - For partial accessibility shells, add screenshot planning, background
      action primitives, and post-action verification before marking commands
      live.
@@ -96,7 +96,7 @@ This file tracks current engineering direction. Historical release notes live in
 11. **Backend honesty**
     - Keep ACP as compatibility.
     - Prefer native CLI, JSON stream, and MCP when a backend exposes them.
-    - Do not mark CUA as live unless a configured backend performs real actions.
+    - Do not mark Visual as live unless a configured backend performs real actions.
 
 12. **Docs as product surface**
     - README stays install-first and capability-first.

@@ -22,7 +22,7 @@
    inputs and upstream state. No wall-clock randomness, no hidden
    subprocess state.
 4. **Minimum capability.** Declare the smallest transport surface the
-   command needs (`http.fetch`, not `cua.anything`). Dispatchers use this
+   command needs (`http.fetch`, not `visual.anything`). Dispatchers use this
    to route calls safely.
 
 ## Table of Contents
@@ -73,7 +73,7 @@ columns: [id, title]
 | `name`               | yes         | string                                                                                               | Command name; unique per site.                                                                             |
 | `description`        | recommended | string                                                                                               | One-line description for `unicli list` and for agents.                                                     |
 | `type`               | optional    | `web-api` \| `browser` \| `bridge` \| `desktop` \| `service`                                         | Omit for implicit `web-api`. Historical; the `transport` field is the v2 source of truth.                  |
-| `transport`          | yes (v2)    | `http` \| `cdp-browser` \| `subprocess` \| `desktop-ax` \| `desktop-uia` \| `desktop-atspi` \| `cua` | The runtime dispatcher key.                                                                                |
+| `transport`          | yes (v2)    | `http` \| `cdp-browser` \| `subprocess` \| `desktop-ax` \| `desktop-uia` \| `desktop-atspi` \| `visual` | The runtime dispatcher key.                                                                                |
 | `strategy`           | optional    | `public` \| `cookie` \| `header` \| `intercept` \| `ui`                                              | Kept for 1 release as alias; see migration table below.                                                    |
 | `capabilities`       | yes (v2)    | `string[]`                                                                                           | List of pipeline step names this command may invoke (e.g. `[fetch, map, limit]`).                          |
 | `minimum_capability` | yes (v2)    | string                                                                                               | Single dispatcher capability required (e.g. `http.fetch`, `cdp-browser.navigate`).                         |
@@ -115,8 +115,8 @@ The most common ones:
 | `navigate`   | cdp-browser                    | Navigate a Chrome page via CDP.                        |
 | `intercept`  | cdp-browser                    | Capture matching XHR/fetch responses.                  |
 | `exec`       | subprocess                     | Run a subprocess with stdin/env/timeout.               |
-| `snapshot`   | cdp-browser + desktop-ax + cua | DOM/AX tree snapshot with `ref` numbers.               |
-| `cua_click`  | cua                            | Coordinate-level click via CUA backend.                |
+| `snapshot`   | cdp-browser + desktop-ax + visual | DOM/AX tree snapshot with `ref` numbers.               |
+| `visual_click`  | visual                            | Coordinate-level click via Visual backend.                |
 
 Each step has a typed schema; unknown fields are rejected at load time.
 
@@ -220,7 +220,7 @@ only as a short-lived alias for the auth hint.
 | `intercept`       | `cdp-browser`                                    | `intercept`                                      |
 | `ui`              | `cdp-browser`                                    | `ui`                                             |
 | _(new)_ `desktop` | `desktop-ax` \| `desktop-uia` \| `desktop-atspi` | none                                             |
-| _(new)_ `cua`     | `cua`                                            | none                                             |
+| _(new)_ `visual`     | `visual`                                            | none                                             |
 
 The `unicli migrate` tool handles the split. For a hand-written adapter,
 set both fields explicitly and do not rely on legacy alias inference.
@@ -369,7 +369,7 @@ are skipped by `unicli test`, and emit an informative error envelope
 when invoked directly. The `quarantineReason` is free-form text shown in
 `unicli doctor`.
 
-### 5. YAML, CUA pipeline (computer-use agent transport)
+### 5. YAML, Visual pipeline (computer-use agent transport)
 
 ```yaml
 # src/adapters/figma/click-through.yaml
@@ -377,10 +377,10 @@ site: figma
 name: click-through
 description: "Click a canvas element by natural-language description"
 type: browser
-transport: cua
+transport: visual
 strategy: ui
-capabilities: [cua_snapshot, cua_click, cua_wait, cua_ask, assert]
-minimum_capability: cua.snapshot
+capabilities: [visual_snapshot, visual_click, visual_wait, visual_ask, assert]
+minimum_capability: visual.snapshot
 trust: public
 confidentiality: internal
 quarantine: false
@@ -390,15 +390,15 @@ args:
   - { name: backend, type: string, default: "anthropic" }
 
 pipeline:
-  - cua_backend:
+  - visual_backend:
       name: "${{ args.backend }}"
-  - cua_snapshot: {}
-  - cua_ask:
+  - visual_snapshot: {}
+  - visual_ask:
       prompt: "Find the UI element matching: ${{ args.target }}"
       returns: { ref: string }
-  - cua_click:
+  - visual_click:
       ref: "${{ vars.ref }}"
-  - cua_wait:
+  - visual_wait:
       for: "idle"
       timeout: 3000
   - assert:
@@ -407,9 +407,9 @@ pipeline:
 columns: [ok, url]
 ```
 
-CUA commands are expensive because screenshot and LLM inference cost scales
-with backend complexity. Do not default to CUA when a
-`cdp-browser` adapter is feasible; the dispatcher will warn if a CUA
+Visual commands are expensive because screenshot and LLM inference cost scales
+with backend complexity. Do not default to Visual when a
+`cdp-browser` adapter is feasible; the dispatcher will warn if a Visual
 command could have been expressed as intercept.
 
 ---
@@ -424,7 +424,7 @@ command could have been expressed as intercept.
 | `Strategy 'legacy-xyz' unknown`                           | Typo or dropped strategy                                                    | Consult the Strategy migration table; `legacy-xyz` is probably replaced by a named transport.             |
 | `HTTP 403 Forbidden` on cookie strategy                   | Cookie file stale                                                           | `unicli auth setup SITE` to re-authenticate; run `unicli repair SITE/CMD` for directed patch suggestions. |
 | `Interception timed out after 8000ms`                     | Selector/URL pattern changed upstream                                       | Inspect page network panel, update the `pattern` in `intercept` step, re-run.                             |
-| `cua_backend: anthropic not configured`                   | `ANTHROPIC_API_KEY` unset or CUA backend sidecar not running                | `unicli daemon status` to check; `export ANTHROPIC_API_KEY=...`.                                          |
+| `visual_backend: remote not configured`                      | Visual backend endpoint or API key is missing                                  | Set `VISUAL_BACKEND_ENDPOINT` and `VISUAL_BACKEND_API_KEY`, or disable visual fallback.                   |
 | `quarantine: true` but command still tries to run         | You called the command directly; quarantine only affects CI + `unicli test` | Remove `quarantine` once repaired, or run `unicli repair SITE/CMD` to auto-patch + lift the flag.         |
 | `trust: user` adapter refuses to run                      | CI safety gate rejects user-trust adapters when `UNICLI_TRUST_FLOOR=public` | Set `trust: public` and get the file reviewed, or run with `UNICLI_TRUST_FLOOR=user` locally.             |
 

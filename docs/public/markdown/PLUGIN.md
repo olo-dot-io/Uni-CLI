@@ -39,7 +39,7 @@ quickly we may break the API.
 | `@zenalexa/unicli/pipeline`              | alias of `engine`                       | Stable       |
 | `@zenalexa/unicli/download`              | `src/engine/download.ts`                | Stable       |
 | `@zenalexa/unicli/engine/steps`          | `src/engine/steps/index.ts`             | Beta         |
-| `@zenalexa/unicli/transport/cua`         | `src/transport/adapters/cua.ts`         | Beta         |
+| `@zenalexa/unicli/transport/visual`         | `src/transport/adapters/visual.ts`         | Beta         |
 | `@zenalexa/unicli/transport/desktop-ax`  | `src/transport/adapters/desktop-ax.ts`  | Beta         |
 | `@zenalexa/unicli/transport/subprocess`  | `src/transport/adapters/subprocess.ts`  | Beta         |
 | `@zenalexa/unicli/transport/cdp-browser` | `src/transport/adapters/cdp-browser.ts` | Beta         |
@@ -192,7 +192,7 @@ One-line summary of what a plugin can legitimately do with each subpath.
 - `transport/cdp-browser` — access CDP-backed browser transport for custom steps.
 - `transport/subprocess` — spawn helper binaries under the subprocess transport.
 - `transport/desktop-ax` — drive native UI via the macOS AX / Windows UIA bridge.
-- `transport/cua` — access the Computer-Use Agent transport surface.
+- `transport/visual` — access the Computer-Use Agent transport surface.
 - `browser/cdp` — low-level raw CDP client (experimental — prefer `browser/page`).
 - `browser/page` — high-level `BrowserPage` API (navigate, click, evaluate, snapshot).
 - `browser/daemon` — talk to the standalone daemon HTTP+WS server.

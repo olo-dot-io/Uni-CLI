@@ -11,7 +11,7 @@ Uni-CLI 文档、源码、YAML 适配器里用到的术语标准定义。每条�
 
 ## Adapter (适配器)
 
-把一个站点或工具映射到一组 CLI 命令的 YAML 或 TypeScript 文件。声明 site、命令名、type、strategy、args、pipeline、columns。推荐格式是 YAML；TypeScript 留给那些超出 <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> 步 pipeline 的命令式控制流场景。
+把一个站点或工具映射到一组 CLI 命令的 YAML 或 TypeScript 文件。声明 site、命令名、type、strategy、args、pipeline、columns。推荐格式是 YAML；TypeScript 留给那些超出 <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> 步 pipeline 的命令式控制流场景。
 
 ## Adapter type (适配器类型)
 
@@ -45,7 +45,7 @@ Uni-CLI 把自然语言意图映射到站点、命令、参数的目录发现算
 
 Uni-CLI 用来控制真实 Chrome 实例的 wire protocol。在 `src/browser/cdp-client.ts` 里以原生 WebSocket 客户端实现，没有第三方浏览器库依赖。支持完整的 Page、Network、DOM、Runtime domain。
 
-## Compute (CUA)
+## Compute (Visual)
 
 视觉兜底的适配器家族。当结构化传输 (web-api、desktop AX、browser CDP) 都够不到目标时，Compute 通过视觉 (点击、输入、截屏) 走统一的执行动作集驱动屏幕。
 

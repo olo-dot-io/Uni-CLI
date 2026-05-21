@@ -1,25 +1,25 @@
 {
-  "version": "0.221.1",
-  "codename": "Apollo · Anders",
-  "date": "2026-05-19",
+  "version": "0.222.0",
+  "codename": "Apollo · Armstrong",
+  "date": "2026-05-21",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.221.1",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02211--2026-05-19--apollo--anders",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.222.0",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02220--2026-05-21--apollo--armstrong",
   "highlights": {
     "root": [
-      "Release surfaces are generated from the live catalog: README, README.zh-CN, VitePress docs, public Markdown, AGENTS.md, and the AI-readable docs now agree on 282 sites, 1680 commands, 1144 adapters, 101 pipeline steps, and 8393 tests.",
-      "The README entry path is rebuilt around fast install, intent search, machine-readable execution, MCP serving, and a generated logo-backed coverage wall with no placeholder badges.",
-      "Documentation now covers paper PDF download/read workflows plus ACG, anime, manga, wiki, booru tag, and visual-novel discovery patterns.",
-      "Release metadata now stays synchronized across package manifests, server registry metadata, skills, docs, public Markdown, and the generated catalog assets.",
-      "Archived-command checks now use command-boundary matching so active commands such as `ctrip hotel-suggest` do not mask real archive leaks or trigger false positives."
+      "Uni-CLI 0.222.0 promotes local computer use into the core compute substrate: native accessibility first, CDP where available, and owned visual fallback when semantic APIs are insufficient.",
+      "macOS desktop-ax now supports background click, type, and key press into non-frontmost windows with per-process focus suppression, AppKit activation priming, and pid/window-addressed event delivery.",
+      "The old upstream-named visual adapter surface has been removed from public product exports, docs, tests, generated MCP assets, and repair references in favor of the owned `visual` vocabulary.",
+      "Agent-facing documentation, focus behavior docs, architecture docs, generated public Markdown, README, README.zh-CN, AGENTS.md, server registry metadata, and skills now agree on v0.222.0 and the 311-site / 1751-command catalog.",
+      "`unicli extract` and `unicli do` ship as lightweight agent primitives for one-hop URL extraction and plan-only intent routing."
     ],
     "zh": [
-      "README、README.zh-CN、VitePress 文档、public Markdown、AGENTS.md 和 Agent 可读文档都从真实目录生成，统一显示 282 个站点、1680 条命令、1144 个适配器、101 个 pipeline step、8393 个测试。",
-      "README 入口重写为安装、意图搜索、机器可读执行、MCP 服务和真实 logo 覆盖墙，去掉占位 badge 噪音。",
-      "文档已覆盖论文 PDF 下载/读取，以及 ACG、动画、漫画、wiki、booru tag、美少女游戏发现路径。",
-      "发布 metadata 已同步到 package manifest、server registry metadata、skills、docs、public Markdown 和生成目录资产。",
-      "归档命令检查改为命令边界匹配，避免 `ctrip hotel-suggest` 这类 active command 误触发，也不会掩盖真实 archive 泄漏。"
+      "Uni-CLI 0.222.0 把本地 computer use 提升为核心 compute 基础设施：优先使用原生 accessibility，能走 CDP 时走 CDP，语义 API 不够时使用我们自己的 visual fallback。",
+      "macOS desktop-ax 已支持对非前台窗口后台点击、输入文字、发送快捷键，包含 per-process focus suppression、AppKit activation primer、pid/window 定向事件投递。",
+      "旧的上游命名视觉适配器已从公开产品 exports、文档、测试、生成 MCP 资产和 repair 参考中移除，统一改为我们自己的 `visual` 词汇。",
+      "Agent 文档、focus behavior、架构文档、public Markdown、README、README.zh-CN、AGENTS.md、server registry metadata 和 skills 已统一到 v0.222.0，并同步 311 个站点 / 1751 条命令目录。",
+      "`unicli extract` 和 `unicli do` 作为轻量 Agent 原语发布：分别覆盖一跳 URL 提取和只规划不执行的意图路由。"
     ]
   }
 }

@@ -160,7 +160,7 @@ unicli agents generate --for opencode
 ```
 
 Backend recommendations model native CLI, JSON stream, MCP, ACP, HTTP API,
-OpenAI-compatible routes, bridge CLIs, and CUA candidates explicitly.
+OpenAI-compatible routes, bridge CLIs, and Visual candidates explicitly.
 
 ## Skills
 

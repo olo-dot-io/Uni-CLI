@@ -21,7 +21,7 @@ Adapter registry
   ↓
 Pipeline engine
   ↓
-Transports: HTTP, browser/CDP, desktop, subprocess, service, CUA
+Transports: HTTP, browser/CDP, desktop, subprocess, service, Visual
   ↓
 Websites, desktop apps, local tools, system capabilities, external CLIs
 ```
@@ -40,11 +40,11 @@ Websites, desktop apps, local tools, system capabilities, external CLIs
 
 ## 控制内核
 
-Uni-CLI 不是 scraper、协议外壳或 CUA-first 产品，而是智能体控制网站、桌面应用、本地工具、文件和系统能力的控制内核。内核要保持小、可审计、可验证：
+Uni-CLI 不是 scraper、协议外壳或 visual-first 产品，而是智能体控制网站、桌面应用、本地工具、文件和系统能力的控制内核。内核要保持小、可审计、可验证：
 
 - **命令注册表**：manifest 是运行时合同，包含命令名、参数、能力需求、输出形状、鉴权和推断出的操作策略。
 - **调用内核**：统一完成参数校验、权限判断、adapter 执行、证据记录和 `AgentEnvelope` 返回。
-- **传输总线**：HTTP、CDP、a11y、subprocess、service、CUA 都是同一命令合同下的传输选择。
+- **传输总线**：HTTP、CDP、a11y、subprocess、service、Visual 都是同一命令合同下的传输选择。
 - **权限 profile**：命令默认开放；用户可以选择 `confirm` 或 `locked` 对高影响写操作加确认。
 - **修复和评测闭环**：失败必须落到一个 adapter、一个 step、一个可复现验证命令。
 
@@ -62,7 +62,7 @@ MCP、ACP、HTTP API 和 agent 配置都是这个内核的兼容面，不应该�
 
 MCP、ACP 等协议接口仍然提供，但它们是兼容层，不是核心运行时。
 
-## 桌面和 CUA 分层
+## 桌面和 Visual 分层
 
 Adapter 应声明最小需要的能力。桌面应用尤其是中国常见 Electron 应用经常只有不完整的 AX 壳，控制路径要按层级升级：
 
@@ -70,9 +70,9 @@ Adapter 应声明最小需要的能力。桌面应用尤其是中国常见 Elect
 2. CDP 或应用调试协议。
 3. a11y 树的文本、角色、层级匹配。
 4. 能确认目标时使用后台 click/type/press 原语。
-5. CUA 截图规划、执行和执行后验证。
+5. Visual 截图规划、执行和执行后验证。
 
-CUA 只有在后端真的能看见、行动、验证时才算 live。没有动作桥时，应返回明确的 unavailable/setup 错误，而不是假装成功。
+Visual 只有在后端真的能看见、行动、验证时才算 live。没有动作桥时，应返回明确的 unavailable/setup 错误，而不是假装成功。
 
 ## 操作策略
 
@@ -135,7 +135,7 @@ Uni-CLI 位于 agent 应用之下、真实网站/桌面应用/本地工具/系�
 - 原生 CLI 和 shell 作为第一 agent 接口。
 - YAML adapter 承载可持久修复的网站和应用操作。
 - API、CDP、a11y、subprocess、应用协议优先。
-- 只有能看见、能行动、能验证时才使用 CUA。
+- 只有能看见、能行动、能验证时才使用 Visual。
 - 操作需要审查时记录可 probe/replay/compare 的 run trace、带 tab/auth 姿态的
   browser session lease、render-aware evidence 和 watchdog 移动检查。
 - MCP、ACP、HTTP 作为由同一 catalog 生成的兼容面。
@@ -143,7 +143,7 @@ Uni-CLI 位于 agent 应用之下、真实网站/桌面应用/本地工具/系�
 不采用：
 
 - 把 ACP 或 MCP 当作核心语义模型。
-- API/CDP/a11y/subprocess 可用时不先用 CUA。
+- API/CDP/a11y/subprocess 可用时不先用 Visual。
 - 把静态隐私标签当作唯一安全机制。
 - 把没有观察证据的浏览器动作当作成功副作用。
 - 引入隐藏 adapter 路径、失败 step、修复证据的厚 SDK。

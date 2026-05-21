@@ -4,10 +4,10 @@ This file is generated from the same VitePress site map as the public docs.
 
 ## Snapshot
 
-- Sites: 312
-- Commands: 1756
-- Adapters: 1214
-- Pipeline steps: 101
+- Sites: 311
+- Commands: 1754
+- Adapters: 1212
+- Pipeline steps: 103
 
 ---
 
@@ -42,7 +42,7 @@ unicli mcp serve --transport streamable --port 19826
 Agent execution needs an auditable, repairable, reusable command contract. Catalog search handles discovery. The v2 AgentEnvelope stabilizes output. Operation policy exposes permissions and risk. Run evidence supports review. The repair loop points failures to adapters and pipeline steps.
 
 - **Discover.** Bilingual BM25 search turns a natural-language task into a site, command, arguments, and auth strategy.
-- **Execute.** HTTP, cookies, browser CDP, desktop AX, subprocess, service, and CUA all return the same envelope.
+- **Execute.** HTTP, cookies, browser CDP, desktop AX, subprocess, service, and Visual all return the same envelope.
 - **Recover.** Structured errors include adapter path, step, retryable, suggestion, and alternatives.
 
 ## Common Tasks
@@ -53,10 +53,10 @@ Agent execution needs an auditable, repairable, reusable command contract. Catal
 
 ## Coverage
 
-- Sites and tools: 312
-- Commands: 1756
-- Pipeline steps: 101
-- Tests: 8853
+- Sites and tools: 311
+- Commands: 1754
+- Pipeline steps: 103
+- Tests: 8845
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -69,7 +69,7 @@ These numbers come from the current generated repo artifacts: adapters, commands
 
 ## Current Version
 
-Latest: v0.221.1 · Apollo · Anders.
+Latest: v0.222.0 · Apollo · Armstrong.
 
 ## Agent Index
 
@@ -132,7 +132,7 @@ The common path has four steps:
    suggestion, and alternatives.
 
 Browser automation, CDP, accessibility trees, subprocesses, service APIs, MCP,
-ACP, and CUA are transport choices. The stable layer is the command catalog,
+ACP, and Visual are transport choices. The stable layer is the command catalog,
 adapter, and v2 `AgentEnvelope`.
 
 ## Find A Command
@@ -390,7 +390,7 @@ Five fields define the contract: `site` (the integration name), `name` (the comm
 
 ## The pipeline registry
 
-Every adapter runs through the same <!-- STATS:pipeline_step_count -->101<!-- /STATS -->-step pipeline registry. Steps are grouped by purpose: API fetch, transform, browser, desktop, media, control flow, and assertion. Each step is deterministic — same inputs produce same outputs — so adapters compose into reliable execution graphs.
+Every adapter runs through the same <!-- STATS:pipeline_step_count -->103<!-- /STATS -->-step pipeline registry. Steps are grouped by purpose: API fetch, transform, browser, desktop, media, control flow, and assertion. Each step is deterministic — same inputs produce same outputs — so adapters compose into reliable execution graphs.
 
 | Group     | Examples                                                            | Purpose                                  |
 | --------- | ------------------------------------------------------------------- | ---------------------------------------- |
@@ -422,7 +422,7 @@ The cascade order is `public → cookie → header → intercept → ui`. On the
 
 Every command returns a v2 AgentEnvelope — the same shape on success or failure.
 Agents parse one schema across
-<span><!-- STATS:command_count -->1753<!-- /STATS --></span> commands.
+<span><!-- STATS:command_count -->1751<!-- /STATS --></span> commands.
 
 ```json
 {
@@ -513,8 +513,8 @@ $ unicli hackernews top -n 10 -f json \
 ```
 
 That is the entire interaction model. One command shape across
-<span><!-- STATS:site_count -->312<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1753<!-- /STATS --></span> commands. One error
+<span><!-- STATS:site_count -->311<!-- /STATS --></span> sites and
+<span><!-- STATS:command_count -->1751<!-- /STATS --></span> commands. One error
 envelope across every failure. One self-repair path across every adapter.
 
 ## Further reading
@@ -701,7 +701,7 @@ unicli agents generate --for opencode
 ```
 
 Backend recommendations model native CLI, JSON stream, MCP, ACP, HTTP API,
-OpenAI-compatible routes, bridge CLIs, and CUA candidates explicitly.
+OpenAI-compatible routes, bridge CLIs, and Visual candidates explicitly.
 
 ## Skills
 
@@ -1129,7 +1129,7 @@ Quick answers to the questions agents and developers ask most often. Each answer
 
 ## What is Uni-CLI?
 
-Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across <span><!-- STATS:site_count -->312<!-- /STATS --></span> sites and tools, returning a stable v2 AgentEnvelope on every call.
+Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. One command path discovers, runs, and self-repairs operations across <span><!-- STATS:site_count -->311<!-- /STATS --></span> sites and tools, returning a stable v2 AgentEnvelope on every call.
 
 ## How is Uni-CLI different from a browser automation library?
 
@@ -1149,7 +1149,7 @@ Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, and any runtime that can spa
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.221.1 covers <span><!-- STATS:site_count -->312<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1753<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1214<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8853<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, paper/PDF workflows, ACG/anime/manga/wiki sources, booru tag search, government policy, podcasts, and macOS apps.
+v0.222.0 covers <span><!-- STATS:site_count -->311<!-- /STATS --></span> sites with <span><!-- STATS:command_count -->1751<!-- /STATS --></span> commands across <span><!-- STATS:adapter_count_total -->1212<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8845<!-- /STATS --></span> tests. Coverage spans social platforms, developer tools, Chinese platforms, scholarly databases, paper/PDF workflows, ACG/anime/manga/wiki sources, booru tag search, government policy, podcasts, and macOS apps.
 
 ## Can Uni-CLI download papers and read local PDFs?
 
@@ -1237,7 +1237,7 @@ The local index of all sites, commands, arguments, strategies, and output schema
 
 The wire protocol Uni-CLI uses to control a real Chrome instance for browser adapters. Implemented as a raw WebSocket client in `src/browser/cdp-client.ts` with no third-party browser library. Supports the full Page, Network, DOM, and Runtime domains.
 
-## Compute (CUA)
+## Compute (Visual)
 
 The visual fallback adapter family. When structured transports (web-api, desktop AX, browser CDP) cannot reach a target, Compute drives the screen via vision — clicks, types, screenshots — through a unified actuating verb set.
 
@@ -1283,7 +1283,7 @@ The Anthropic-led protocol for letting AI assistants invoke tools through a stat
 
 ## Pipeline
 
-The ordered list of steps an adapter runs to produce its result. Drawn from the <!-- STATS:pipeline_step_count -->101<!-- /STATS -->-step registry covering API fetch, transform, browser, desktop, media, control flow, and assertion. Steps share a context object — each step reads `ctx.data` and writes back.
+The ordered list of steps an adapter runs to produce its result. Drawn from the <!-- STATS:pipeline_step_count -->103<!-- /STATS -->-step registry covering API fetch, transform, browser, desktop, media, control flow, and assertion. Steps share a context object — each step reads `ctx.data` and writes back.
 
 ## Pipeline step
 
@@ -1982,7 +1982,7 @@ running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 312 sites, 1756 commands.
+This catalog is generated from the adapter manifest: 311 sites, 1754 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -2037,7 +2037,6 @@ This catalog is generated from the adapter manifest: 312 sites, 1756 commands.
 | crates-io | web-api | 3 | no | unicli crates-io info<br>unicli crates-io search<br>unicli crates-io versions |
 | crossref | web-api | 2 | no | unicli crossref search<br>unicli crossref work |
 | ctrip | web-api | 4 | yes | unicli ctrip search<br>unicli ctrip hotel-suggest<br>unicli ctrip hotel-search |
-| cua | bridge | 2 | no | unicli cua bench-list<br>unicli cua bench-run |
 | cursor | web-api | 18 | no | unicli cursor composer<br>unicli cursor extract-code<br>unicli cursor export |
 | cvf | web-api | 1 | no | unicli cvf search |
 | danbooru | web-api | 8 | no | unicli danbooru artists<br>unicli danbooru comments<br>unicli danbooru detail |
@@ -2330,7 +2329,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ADAPTER-FORMAT.md
    inputs and upstream state. No wall-clock randomness, no hidden
    subprocess state.
 4. **Minimum capability.** Declare the smallest transport surface the
-   command needs (`http.fetch`, not `cua.anything`). Dispatchers use this
+   command needs (`http.fetch`, not `visual.anything`). Dispatchers use this
    to route calls safely.
 
 ## Table of Contents
@@ -2381,7 +2380,7 @@ columns: [id, title]
 | `name`               | yes         | string                                                                                               | Command name; unique per site.                                                                             |
 | `description`        | recommended | string                                                                                               | One-line description for `unicli list` and for agents.                                                     |
 | `type`               | optional    | `web-api` \| `browser` \| `bridge` \| `desktop` \| `service`                                         | Omit for implicit `web-api`. Historical; the `transport` field is the v2 source of truth.                  |
-| `transport`          | yes (v2)    | `http` \| `cdp-browser` \| `subprocess` \| `desktop-ax` \| `desktop-uia` \| `desktop-atspi` \| `cua` | The runtime dispatcher key.                                                                                |
+| `transport`          | yes (v2)    | `http` \| `cdp-browser` \| `subprocess` \| `desktop-ax` \| `desktop-uia` \| `desktop-atspi` \| `visual` | The runtime dispatcher key.                                                                                |
 | `strategy`           | optional    | `public` \| `cookie` \| `header` \| `intercept` \| `ui`                                              | Kept for 1 release as alias; see migration table below.                                                    |
 | `capabilities`       | yes (v2)    | `string[]`                                                                                           | List of pipeline step names this command may invoke (e.g. `[fetch, map, limit]`).                          |
 | `minimum_capability` | yes (v2)    | string                                                                                               | Single dispatcher capability required (e.g. `http.fetch`, `cdp-browser.navigate`).                         |
@@ -2423,8 +2422,8 @@ The most common ones:
 | `navigate`   | cdp-browser                    | Navigate a Chrome page via CDP.                        |
 | `intercept`  | cdp-browser                    | Capture matching XHR/fetch responses.                  |
 | `exec`       | subprocess                     | Run a subprocess with stdin/env/timeout.               |
-| `snapshot`   | cdp-browser + desktop-ax + cua | DOM/AX tree snapshot with `ref` numbers.               |
-| `cua_click`  | cua                            | Coordinate-level click via CUA backend.                |
+| `snapshot`   | cdp-browser + desktop-ax + visual | DOM/AX tree snapshot with `ref` numbers.               |
+| `visual_click`  | visual                            | Coordinate-level click via Visual backend.                |
 
 Each step has a typed schema; unknown fields are rejected at load time.
 
@@ -2528,7 +2527,7 @@ only as a short-lived alias for the auth hint.
 | `intercept`       | `cdp-browser`                                    | `intercept`                                      |
 | `ui`              | `cdp-browser`                                    | `ui`                                             |
 | _(new)_ `desktop` | `desktop-ax` \| `desktop-uia` \| `desktop-atspi` | none                                             |
-| _(new)_ `cua`     | `cua`                                            | none                                             |
+| _(new)_ `visual`     | `visual`                                            | none                                             |
 
 The `unicli migrate` tool handles the split. For a hand-written adapter,
 set both fields explicitly and do not rely on legacy alias inference.
@@ -2677,7 +2676,7 @@ are skipped by `unicli test`, and emit an informative error envelope
 when invoked directly. The `quarantineReason` is free-form text shown in
 `unicli doctor`.
 
-### 5. YAML, CUA pipeline (computer-use agent transport)
+### 5. YAML, Visual pipeline (computer-use agent transport)
 
 ```yaml
 # src/adapters/figma/click-through.yaml
@@ -2685,10 +2684,10 @@ site: figma
 name: click-through
 description: "Click a canvas element by natural-language description"
 type: browser
-transport: cua
+transport: visual
 strategy: ui
-capabilities: [cua_snapshot, cua_click, cua_wait, cua_ask, assert]
-minimum_capability: cua.snapshot
+capabilities: [visual_snapshot, visual_click, visual_wait, visual_ask, assert]
+minimum_capability: visual.snapshot
 trust: public
 confidentiality: internal
 quarantine: false
@@ -2698,15 +2697,15 @@ args:
   - { name: backend, type: string, default: "anthropic" }
 
 pipeline:
-  - cua_backend:
+  - visual_backend:
       name: "${{ args.backend }}"
-  - cua_snapshot: {}
-  - cua_ask:
+  - visual_snapshot: {}
+  - visual_ask:
       prompt: "Find the UI element matching: ${{ args.target }}"
       returns: { ref: string }
-  - cua_click:
+  - visual_click:
       ref: "${{ vars.ref }}"
-  - cua_wait:
+  - visual_wait:
       for: "idle"
       timeout: 3000
   - assert:
@@ -2715,9 +2714,9 @@ pipeline:
 columns: [ok, url]
 ```
 
-CUA commands are expensive because screenshot and LLM inference cost scales
-with backend complexity. Do not default to CUA when a
-`cdp-browser` adapter is feasible; the dispatcher will warn if a CUA
+Visual commands are expensive because screenshot and LLM inference cost scales
+with backend complexity. Do not default to Visual when a
+`cdp-browser` adapter is feasible; the dispatcher will warn if a Visual
 command could have been expressed as intercept.
 
 ---
@@ -2732,7 +2731,7 @@ command could have been expressed as intercept.
 | `Strategy 'legacy-xyz' unknown`                           | Typo or dropped strategy                                                    | Consult the Strategy migration table; `legacy-xyz` is probably replaced by a named transport.             |
 | `HTTP 403 Forbidden` on cookie strategy                   | Cookie file stale                                                           | `unicli auth setup SITE` to re-authenticate; run `unicli repair SITE/CMD` for directed patch suggestions. |
 | `Interception timed out after 8000ms`                     | Selector/URL pattern changed upstream                                       | Inspect page network panel, update the `pattern` in `intercept` step, re-run.                             |
-| `cua_backend: anthropic not configured`                   | `ANTHROPIC_API_KEY` unset or CUA backend sidecar not running                | `unicli daemon status` to check; `export ANTHROPIC_API_KEY=...`.                                          |
+| `visual_backend: remote not configured`                      | Visual backend endpoint or API key is missing                                  | Set `VISUAL_BACKEND_ENDPOINT` and `VISUAL_BACKEND_API_KEY`, or disable visual fallback.                   |
 | `quarantine: true` but command still tries to run         | You called the command directly; quarantine only affects CI + `unicli test` | Remove `quarantine` once repaired, or run `unicli repair SITE/CMD` to auto-patch + lift the flag.         |
 | `trust: user` adapter refuses to run                      | CI safety gate rejects user-trust adapters when `UNICLI_TRUST_FLOOR=public` | Set `trust: public` and get the file reviewed, or run with `UNICLI_TRUST_FLOOR=user` locally.             |
 
@@ -2767,7 +2766,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/pipeline.md
 - Section: Reference
 - Parent: Reference (/reference/)
 
-Uni-CLI adapters execute a sequence of pipeline steps. Each step performs one action: fetch data, transform it, interact with a browser, or control execution flow. The current registry has <!-- STATS:pipeline_step_count -->101<!-- /STATS --> step names; the table below lists the common author-facing families.
+Uni-CLI adapters execute a sequence of pipeline steps. Each step performs one action: fetch data, transform it, interact with a browser, or control execution flow. The current registry has <!-- STATS:pipeline_step_count -->103<!-- /STATS --> step names; the table below lists the common author-facing families.
 
 ## Overview
 
@@ -3737,7 +3736,7 @@ quickly we may break the API.
 | `@zenalexa/unicli/pipeline`              | alias of `engine`                       | Stable       |
 | `@zenalexa/unicli/download`              | `src/engine/download.ts`                | Stable       |
 | `@zenalexa/unicli/engine/steps`          | `src/engine/steps/index.ts`             | Beta         |
-| `@zenalexa/unicli/transport/cua`         | `src/transport/adapters/cua.ts`         | Beta         |
+| `@zenalexa/unicli/transport/visual`         | `src/transport/adapters/visual.ts`         | Beta         |
 | `@zenalexa/unicli/transport/desktop-ax`  | `src/transport/adapters/desktop-ax.ts`  | Beta         |
 | `@zenalexa/unicli/transport/subprocess`  | `src/transport/adapters/subprocess.ts`  | Beta         |
 | `@zenalexa/unicli/transport/cdp-browser` | `src/transport/adapters/cdp-browser.ts` | Beta         |
@@ -3890,7 +3889,7 @@ One-line summary of what a plugin can legitimately do with each subpath.
 - `transport/cdp-browser` — access CDP-backed browser transport for custom steps.
 - `transport/subprocess` — spawn helper binaries under the subprocess transport.
 - `transport/desktop-ax` — drive native UI via the macOS AX / Windows UIA bridge.
-- `transport/cua` — access the Computer-Use Agent transport surface.
+- `transport/visual` — access the Computer-Use Agent transport surface.
 - `browser/cdp` — low-level raw CDP client (experimental — prefer `browser/page`).
 - `browser/page` — high-level `BrowserPage` API (navigate, click, evaluate, snapshot).
 - `browser/daemon` — talk to the standalone daemon HTTP+WS server.
@@ -4186,11 +4185,11 @@ Uni-CLI exposes one searchable command surface across:
   shell commands or protocol servers.
 
 The generated catalog is the source of truth:
-**<span><!-- STATS:site_count -->312<!-- /STATS --></span> sites**,
-**<span><!-- STATS:command_count -->1753<!-- /STATS --></span> commands**,
-**<span><!-- STATS:adapter_count_total -->1214<!-- /STATS --></span> adapters**,
-**<span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->8853<!-- /STATS --></span> tests** in v0.221.1.
+**<span><!-- STATS:site_count -->311<!-- /STATS --></span> sites**,
+**<span><!-- STATS:command_count -->1751<!-- /STATS --></span> commands**,
+**<span><!-- STATS:adapter_count_total -->1212<!-- /STATS --></span> adapters**,
+**<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps**,
+and **<span><!-- STATS:test_count -->8845<!-- /STATS --></span> tests** in v0.222.0.
 
 ## Execution Contract
 
@@ -4223,7 +4222,7 @@ tools, files, and system capabilities. The kernel stays small and auditable:
 2. **Invocation kernel**: one path that validates args, evaluates permissions,
    runs the adapter, records evidence, and returns an `AgentEnvelope`.
 3. **Transport bus**: adapters choose HTTP, CDP, accessibility, subprocess,
-   service, or CUA without changing the user-facing command contract.
+   service, or Visual without changing the user-facing command contract.
 4. **Permission profile**: commands stay open by default, while users can opt
    into `confirm` or `locked` profiles for high-impact writes.
 5. **Repair and evaluation loop**: failures point to one adapter and one step;
@@ -4262,7 +4261,7 @@ command without guessing.
 | `subprocess`      | Local CLIs, media tools, desktop applications, file workflows |
 | `desktop-*`       | Native desktop automation surfaces                            |
 | `a11y`            | Accessibility tree inspection and semantic UI actions         |
-| `cua`             | Last-mile UI control when no narrower interface exists        |
+| `visual`             | Last-mile UI control when no narrower interface exists        |
 | `bridge`          | Reuse of existing installed tools                             |
 
 This lets Uni-CLI be broad without turning every operation into a full browser
@@ -4276,9 +4275,9 @@ accessibility trees, dispatch should escalate in this order:
 2. CDP or application debug protocol.
 3. Accessibility tree with text/role matching.
 4. Background click/type primitives when the target can be identified.
-5. CUA screenshot planning plus action verification.
+5. Visual screenshot planning plus action verification.
 
-CUA is a real capability only when a configured backend can see, act, and verify
+Visual is a real capability only when a configured backend can see, act, and verify
 state. A declaration without an action bridge must stay unavailable rather than
 silently pretending to control the app.
 
@@ -4357,8 +4356,8 @@ Use:
 
 - Native CLI and shell channels as the primary agent interface.
 - YAML adapters for durable website/app operations.
-- CDP, accessibility, subprocess, and app APIs before CUA.
-- CUA only when it can see, act, and verify.
+- CDP, accessibility, subprocess, and app APIs before Visual.
+- Visual only when it can see, act, and verify.
 - Probeable, replayable, and comparable run traces, browser session leases with
   tab/auth posture, render-aware evidence, and watchdog movement checks when an
   operation needs reviewable proof.
@@ -4367,7 +4366,7 @@ Use:
 Do not use:
 
 - ACP or MCP as the core semantic model.
-- CUA as the first transport when API/CDP/a11y/subprocess exists.
+- Visual as the first transport when API/CDP/a11y/subprocess exists.
 - Static privacy labels as the only safety mechanism.
 - Unobserved browser actions as successful side effects.
 - Thick SDKs that hide the adapter path, failing step, and repair evidence.
@@ -4428,8 +4427,8 @@ enough.
 bench shows representative `--limit 5` adapter responses at **357-415
 tokens**, with total invocation-plus-response budgets at **364-423 tokens**.
 The full catalog command is intentionally much larger because it emits all
-<span><!-- STATS:site_count -->312<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1753<!-- /STATS --></span> commands; agents
+<span><!-- STATS:site_count -->311<!-- /STATS --></span> sites and
+<span><!-- STATS:command_count -->1751<!-- /STATS --></span> commands; agents
 should search and describe before asking for the full registry.
 
 ## Direction
@@ -4594,7 +4593,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Current: v0.221.1 — Apollo · Anders. <!-- STATS:site_count -->312<!-- /STATS --> sites, <!-- STATS:command_count -->1753<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps.
+> Current: v0.222.0 — Apollo · Armstrong. <!-- STATS:site_count -->311<!-- /STATS --> sites, <!-- STATS:command_count -->1751<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction. Historical release notes live in
 `CHANGELOG.md`; they do not belong in the roadmap.
@@ -4638,17 +4637,17 @@ This file tracks current engineering direction. Historical release notes live in
      same command capability scope without storing raw args.
 
 4. **Transport bus**
-   - Make HTTP, CDP, accessibility, subprocess, service, and CUA dispatch share
+   - Make HTTP, CDP, accessibility, subprocess, service, and Visual dispatch share
      one invocation kernel and one evidence model.
    - Keep ACP/MCP/HTTP as wrappers over the same catalog rather than separate
      behavior definitions.
    - Surface unavailable transports as structured errors with install/setup
      suggestions.
 
-5. **Desktop and CUA stack**
+5. **Desktop and Visual stack**
    - Build repeatable control paths for WeChat, WeCom, DingTalk, Lark, Mail,
      Notes, Word, PowerPoint, Excel, and common Electron apps.
-   - Prefer app APIs, CDP, and accessibility before CUA.
+   - Prefer app APIs, CDP, and accessibility before Visual.
    - For partial accessibility shells, add screenshot planning, background
      action primitives, and post-action verification before marking commands
      live.
@@ -4690,7 +4689,7 @@ This file tracks current engineering direction. Historical release notes live in
 11. **Backend honesty**
     - Keep ACP as compatibility.
     - Prefer native CLI, JSON stream, and MCP when a backend exposes them.
-    - Do not mark CUA as live unless a configured backend performs real actions.
+    - Do not mark Visual as live unless a configured backend performs real actions.
 
 12. **Docs as product surface**
     - README stays install-first and capability-first.

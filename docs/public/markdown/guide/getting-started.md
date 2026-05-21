@@ -47,7 +47,7 @@ The common path has four steps:
    suggestion, and alternatives.
 
 Browser automation, CDP, accessibility trees, subprocesses, service APIs, MCP,
-ACP, and CUA are transport choices. The stable layer is the command catalog,
+ACP, and Visual are transport choices. The stable layer is the command catalog,
 adapter, and v2 `AgentEnvelope`.
 
 ## Find A Command

@@ -11,7 +11,7 @@
 
 ## Uni-CLI 是什么？
 
-Uni-CLI 是给 AI Agent 用的命令行执行层。它把网站、桌面应用、MCP 服务和外部 CLI 编译成一份可搜索的命令目录，所有调用都走同一条命令路径，返回稳定的 v2 AgentEnvelope。当前覆盖 <span><!-- STATS:site_count -->312<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1753<!-- /STATS --></span> 条命令。
+Uni-CLI 是给 AI Agent 用的命令行执行层。它把网站、桌面应用、MCP 服务和外部 CLI 编译成一份可搜索的命令目录，所有调用都走同一条命令路径，返回稳定的 v2 AgentEnvelope。当前覆盖 <span><!-- STATS:site_count -->311<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1751<!-- /STATS --></span> 条命令。
 
 ## 和浏览器自动化库有什么区别？
 
@@ -31,7 +31,7 @@ Claude Code、Codex CLI、OpenCode、Cursor、OpenClaw，以及任何能 spawn �
 
 ## 一共有多少站点和命令？
 
-v0.221.1 覆盖 <span><!-- STATS:site_count -->312<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1753<!-- /STATS --></span> 条命令、<span><!-- STATS:adapter_count_total -->1214<!-- /STATS --></span> 个适配器、<span><!-- STATS:pipeline_step_count -->101<!-- /STATS --></span> 个 pipeline step、<span><!-- STATS:test_count -->8853<!-- /STATS --></span> 个测试。社交平台、开发者工具、中文站点、学术数据库、论文/PDF 工作流、ACG/动画/漫画/wiki 来源、booru tag 搜索、政府政策、播客、macOS 应用都覆盖了。
+v0.222.0 覆盖 <span><!-- STATS:site_count -->311<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1751<!-- /STATS --></span> 条命令、<span><!-- STATS:adapter_count_total -->1212<!-- /STATS --></span> 个适配器、<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> 个 pipeline step、<span><!-- STATS:test_count -->8845<!-- /STATS --></span> 个测试。社交平台、开发者工具、中文站点、学术数据库、论文/PDF 工作流、ACG/动画/漫画/wiki 来源、booru tag 搜索、政府政策、播客、macOS 应用都覆盖了。
 
 ## 能下载论文并读取本地 PDF 吗？
 

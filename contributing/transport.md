@@ -2,7 +2,7 @@
 
 A **TransportAdapter** is a delivery channel for agent↔Uni-CLI traffic —
 CLI stdio, MCP stdio, MCP streamable HTTP, ACP (Agent Client Protocol),
-CUA (Computer Use API) backends, and plugin extensions. Each transport
+Visual (Computer Use API) backends, and plugin extensions. Each transport
 translates between an external wire format and Uni-CLI's internal
 `resolveCommand` + `runPipeline` core.
 

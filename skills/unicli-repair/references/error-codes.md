@@ -12,7 +12,7 @@ type Envelope<T> =
   | { ok: false; error: EnvelopeError; elapsedMs?: number };
 
 interface EnvelopeError {
-  transport: TransportKind; // "fetch" | "cdp-browser" | "subprocess" | "cua" | "http" | "desktop-*" | ...
+  transport: TransportKind; // "fetch" | "cdp-browser" | "subprocess" | "visual" | "http" | "desktop-*" | ...
   adapter_path?: string; // relative to repo or ~/.unicli/adapters
   step: number; // 0-indexed pipeline step
   action: string; // step kind: "fetch", "select", "map", "click", ...
@@ -110,13 +110,13 @@ automatically; surfaces here as a quick map. Full doc anchors live under
 | `cdp-browser.attach_failed`                       | Check the CDP port; relaunch with remote debugging |
 | `cdp-browser.electron_running_without_debug_port` | `unicli compute launch <app> --debug-port 9229`    |
 
-### CUA / Compute
+### Visual / Compute
 
-| Capability                              | Fix                                          |
-| --------------------------------------- | -------------------------------------------- |
-| `cua.no_backend`                        | Configure a CUA backend key for VLM fallback |
-| `compute.<step>.no-transport-available` | `unicli doctor compute`                      |
-| `compute.compute_find.ref-store`        | `unicli compute snapshot`, then retry find   |
+| Capability                              | Fix                                                              |
+| --------------------------------------- | ---------------------------------------------------------------- |
+| `visual.no_backend`                     | Configure `VISUAL_BACKEND_ENDPOINT` and `VISUAL_BACKEND_API_KEY` |
+| `compute.<step>.no-transport-available` | `unicli doctor compute`                                          |
+| `compute.compute_find.ref-store`        | `unicli compute snapshot`, then retry find                       |
 
 ### Compute edge cases (suffix on `minimum_capability`)
 

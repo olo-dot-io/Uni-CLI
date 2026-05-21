@@ -1,8 +1,8 @@
 {
-  "source": "unicli@0.221.1",
-  "generated": "2026-05-19T15:30:55.191Z",
-  "total_sites": 312,
-  "total_commands": 1756,
+  "source": "unicli@0.222.0",
+  "generated": "2026-05-21T13:26:34.053Z",
+  "total_sites": 311,
+  "total_commands": 1754,
   "adapters": [
     {
       "site": "1688",
@@ -7328,50 +7328,6 @@
       ]
     },
     {
-      "site": "cua",
-      "type": "bridge",
-      "auth": false,
-      "strategy": "public",
-      "commands": [
-        {
-          "name": "bench-list",
-          "description": "List trycua/cua computer-use benchmarks",
-          "when_to_use": "List trycua/cua computer-use benchmarks",
-          "command": "unicli cua bench-list",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "columns": ["name", "description"]
-        },
-        {
-          "name": "bench-run",
-          "description": "Run a trycua/cua computer-use benchmark",
-          "when_to_use": "Run a trycua/cua computer-use benchmark",
-          "command": "unicli cua bench-run",
-          "auth": false,
-          "strategy": "public",
-          "browser": false,
-          "columns": ["task", "score", "duration", "agent"],
-          "args": [
-            {
-              "name": "benchmark",
-              "type": "str",
-              "required": true,
-              "positional": true,
-              "description": "Benchmark name from `cua bench/list`"
-            },
-            {
-              "name": "agent",
-              "type": "str",
-              "required": false,
-              "positional": false,
-              "description": "Agent backend (e.g. unicli, browser-use, claude)"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "site": "cursor",
       "type": "web-api",
       "auth": false,
@@ -13476,8 +13432,8 @@
       "commands": [
         {
           "name": "export-selected",
-          "description": "Export the currently-selected Figma frame via CUA + macOS AX",
-          "when_to_use": "Export the currently-selected Figma frame via CUA + macOS AX",
+          "description": "Export the currently-selected Figma frame via Visual + macOS AX",
+          "when_to_use": "Export the currently-selected Figma frame via Visual + macOS AX",
           "command": "unicli figma export-selected",
           "auth": true,
           "strategy": "ui",

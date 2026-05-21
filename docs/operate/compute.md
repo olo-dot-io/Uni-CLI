@@ -7,11 +7,11 @@ broader transports when needed.
 Transport order is selected per verb and host platform:
 
 - macOS: Accessibility first for app control, CDP for browser/Electron renderers,
-  CUA as the visual fallback.
-- Windows: UIA first once the sidecar is present, CDP next where available, CUA
-  as fallback.
+  then visual fallback.
+- Windows: UIA first once the sidecar is present, CDP next where available, then
+  visual fallback.
 - Linux: AT-SPI first once the sidecar is present, CDP next where available,
-  CUA as fallback.
+  then visual fallback.
 
 ## Snapshot, Find, Click
 
@@ -109,9 +109,22 @@ evidence.
 
 Actuating commands prefer background mode: `compute click`, `compute type`,
 `compute press`, and `compute scroll` pass `focus: false` to structured
-transports unless `--focus` is set. CUA remains the visual last-resort fallback;
-when the cascade reaches CUA, Uni-CLI treats the action as focus-taking because
-the backend may move the cursor or active surface.
+transports unless `--focus` is set. The visual last-resort fallback is treated
+as focus-taking because it may move the cursor or active surface.
+
+On macOS, desktop-ax now has a bounded background input session for cases where
+plain AX actions are not enough. The transport still tries semantic AX first:
+`AXPress`, `AXValue`, and AX scroll actions run without activating the app. If a
+click or text action has a target app plus ref/window coordinates and the
+semantic action fails, desktop-ax can prime that non-frontmost window, suppress
+the previous app's focus-deactivation event, and post pid/window-addressed
+`CGEvent` mouse or keyboard events. `compute press --app <name> <combo>` uses
+the same window-addressed path before visual fallback.
+
+The background path is scoped to a running app and an on-screen window. It does
+not claim support for minimized, hidden, disabled, or security-hardened windows,
+and failures are returned as structured envelopes instead of silently
+foregrounding the target.
 
 See [Compute Focus Behavior](focus-behavior.md) for the transport matrix and
 source links.

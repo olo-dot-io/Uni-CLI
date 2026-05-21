@@ -30,7 +30,7 @@ Uni-CLI 的常用路径分成四步：
 3. **记录**：`--record` 或 `UNICLI_RECORD_RUN=1` 可以把 append-only run trace 写到 `~/.unicli/runs`，方便复盘和调试。
 4. **修复**：命令坏掉时，结构化错误会给出 adapter 路径、pipeline step、建议和替代命令。
 
-浏览器、CDP、a11y、本地命令、服务接口、MCP、ACP 和 CUA 都是传输层；稳定层是命令目录、adapter 和 v2 `AgentEnvelope`。
+浏览器、CDP、a11y、本地命令、服务接口、MCP、ACP 和 Visual 都是传输层；稳定层是命令目录、adapter 和 v2 `AgentEnvelope`。
 
 ## 找命令
 

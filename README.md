@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->312<!-- /STATS --> sites · <!-- STATS:command_count -->1753<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->101<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->8853<!-- /STATS --> tests</sub>
+  <sub><!-- STATS:site_count -->311<!-- /STATS --> sites · <!-- STATS:command_count -->1751<!-- /STATS --> commands · <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps · <!-- STATS:test_count -->8845<!-- /STATS --> tests</sub>
 </p>
 
 ## Start In 30 Seconds
@@ -418,7 +418,7 @@ Docs:
   request, write, or process spawn happens.
 - Run recording is opt-in. Use `--record` or `UNICLI_RECORD_RUN=1` when you need
   append-only evidence under `~/.unicli/runs`.
-- CUA routes require a configured real backend. Declared-but-unavailable providers fail closed with structured errors.
+- Visual fallback routes require a configured real backend. Declared-but-unavailable providers fail closed with structured errors.
 - User adapters and repairs live in `~/.unicli/adapters/`; committed adapters remain the package baseline.
 - If a site blocks automation or changes a private API, Uni-CLI returns a clear failure envelope.
 
@@ -436,5 +436,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v0.221.1 — Apollo · Anders</sub>
+  <sub>v0.222.0 — Apollo · Armstrong</sub>
 </p>

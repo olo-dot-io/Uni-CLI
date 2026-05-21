@@ -24,7 +24,7 @@ unicli mcp serve --transport streamable --port 19826
 Agent execution needs an auditable, repairable, reusable command contract. Catalog search handles discovery. The v2 AgentEnvelope stabilizes output. Operation policy exposes permissions and risk. Run evidence supports review. The repair loop points failures to adapters and pipeline steps.
 
 - **Discover.** Bilingual BM25 search turns a natural-language task into a site, command, arguments, and auth strategy.
-- **Execute.** HTTP, cookies, browser CDP, desktop AX, subprocess, service, and CUA all return the same envelope.
+- **Execute.** HTTP, cookies, browser CDP, desktop AX, subprocess, service, and Visual all return the same envelope.
 - **Recover.** Structured errors include adapter path, step, retryable, suggestion, and alternatives.
 
 ## Common Tasks
@@ -35,10 +35,10 @@ Agent execution needs an auditable, repairable, reusable command contract. Catal
 
 ## Coverage
 
-- Sites and tools: 312
-- Commands: 1756
-- Pipeline steps: 101
-- Tests: 8853
+- Sites and tools: 311
+- Commands: 1754
+- Pipeline steps: 103
+- Tests: 8845
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -51,7 +51,7 @@ These numbers come from the current generated repo artifacts: adapters, commands
 
 ## Current Version
 
-Latest: v0.221.1 · Apollo · Anders.
+Latest: v0.222.0 · Apollo · Armstrong.
 
 ## Agent Index
 

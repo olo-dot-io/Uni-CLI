@@ -3,6 +3,69 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 
+## [0.222.0] — 2026-05-21 — Apollo · Armstrong
+
+### Major Changes
+
+- Uni-CLI's local computer-use stack is now a first-class compute substrate:
+  native accessibility remains the primary semantic path, macOS can click,
+  type, and press keys into non-frontmost windows, and visual fallback is now
+  product-owned rather than exposed through upstream project naming.
+
+### Added
+
+- `visual` transport and `visual_*` pipeline steps as the owned fallback for
+  screenshot-plus-coordinate operation across compute cascades.
+- macOS `desktop-ax` background input session covering `ax_background_click`,
+  `ax_background_type`, and `ax_background_press`, with per-process focus
+  suppression taps, AppKit activation priming, window-addressed events, and
+  structured success metadata such as `wasFrontmost` and
+  `backgroundActivated`.
+- Background fallback from failed semantic `AXValue` writes to scoped
+  pid/window-addressed text input when the request includes target
+  coordinates and does not ask to focus the app.
+- `unicli extract <url>` — one-call URL → cleaned Markdown (also
+  `--as text|html`) with structured envelope, configurable `--max-chars`
+  truncation, and SSRF guard.
+- `unicli do <intent>` — natural-language intent → top-ranked adapter plan
+  with the agent-invocable command, args schema, and example stdin surfaced
+  without executing ambiguous writes.
+
+### Changed
+
+- `compute press` on macOS now routes to pid/window-addressed background key
+  dispatch before visual fallback when an app target is supplied and `--focus`
+  is not requested.
+- Public exports, capability matrices, migration helpers, generated docs, MCP
+  assets, repair references, and samples now use the `visual` vocabulary.
+- Compute docs, focus-behavior docs, architecture docs, roadmap material, and
+  public Markdown assets now describe native accessibility, CDP, and visual
+  fallback as the long-lived operating model.
+- Cross-platform desktop error wording now points agents toward native
+  platform transports first and visual fallback second.
+
+### Fixed
+
+- macOS background mouse events now use AppKit `NSEvent.mouseEvent` generation
+  before explicit pid/window/local-coordinate stamping, filling additional
+  AppKit routing fields that bare `CGEvent` creation left sparse.
+- Background `AXValue` fallback is bounded to coordinate-scoped requests, so a
+  failed semantic text write without a target point returns the original AX
+  error instead of guessing where to type.
+- Boundary and leak checks now keep upstream project names and deprecated
+  capability names out of product-facing source, tests, generated docs, and
+  shipped agent assets.
+
+### Removed
+
+- Deprecated upstream-named transport adapter, sample adapters, unit tests, and
+  docs were removed from the public product surface in favor of the owned
+  `visual` abstraction.
+
+## [Unreleased]
+
+_No changes yet._
+
 ## [0.221.1] — 2026-05-19 — Apollo · Anders
 
 ### Added
@@ -35,24 +98,6 @@ Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributin
   capabilities without misclassifying the full `hf` adapter as scholarly.
 - Stats generation preserves existing test counts when Vitest list enumeration
   cannot complete under local load.
-
-## [Unreleased]
-
-### Added
-
-- `unicli extract <url>` — one-call URL → cleaned Markdown (also `--as text|html`)
-  with structured envelope, configurable `--max-chars` truncation, and SSRF
-  guard. Pure stateless verb; no browser session, no auth, and no adapter
-  awareness required, so agents can fetch any HTTP(S) page in a single CLI
-  call. Errors map to the standard sysexits-aligned exit codes (`77` auth,
-  `75` transient, `69` 5xx, `2` invalid input).
-- `unicli do <intent>` — natural-language intent → top-ranked adapter plan
-  with the agent-invocable command surfaced in `next_actions[0]` along with
-  the matched adapter's full `args_schema` and `example_stdin`. Plan-only by
-  design: the agent runs the suggested command on the second hop (mirrors
-  REST HATEOAS; avoids ambiguous-intent triggering irreversible writes).
-  `--top <n>` clamps to 1–25; `--no-schema` slims the payload for context
-  budgets.
 
 ## [0.221.0] — 2026-05-18 — Apollo · Anders
 
@@ -436,7 +481,7 @@ unicli-atspi}` with rust-toolchain pinned to 1.82.0 and a 6-target CI
 ### Changed
 
 - Public positioning now describes Uni-CLI as an agent execution substrate, not a
-  scraper, protocol wrapper, or CUA-first product.
+  scraper, protocol wrapper, or visual-first product.
 - CLI, README, VitePress homepage, architecture, roadmap, release metadata, app
   manifest, and generated docs now use the same slogan and capability framing.
 - Browser-backed adapter execution uses shared browser/kernel plumbing,
@@ -816,7 +861,7 @@ v0.213.4 once OpenRouter credit is restored.
 >
 > **Ref-Backed Locator diagnostics.** Snapshot-driven numbered refs, interactive-only filtering, scroll markers, iframe/shadow-DOM crossing all ship since v0.211. The verification-layer diagnostics on top — window-level fingerprint map, `stale_ref` / `ambiguous` / `not_found` structured errors with candidate lists — are scoped for v0.213.1 (~2–3 days).
 >
-> **Remaining v0.213 runway → v0.214 Nikolayev**: workflow adapters (gmail/gcal/drive/spotify/apple-notes/imessage), Chrome extension full pipeline, `generate --verify` closed loop, CUA backend drivers, dual JS adapter format, `unicli inbox`, `unicli shop`, and the full 25-adapter compatibility harness.
+> **Remaining v0.213 runway → v0.214 Nikolayev**: workflow adapters (gmail/gcal/drive/spotify/apple-notes/imessage), Chrome extension full pipeline, `generate --verify` closed loop, visual backend drivers, dual JS adapter format, `unicli inbox`, `unicli shop`, and the full 25-adapter compatibility harness.
 
 ### Breaking
 
@@ -865,7 +910,7 @@ v0.213.4 once OpenRouter credit is restored.
 - **clipboard step names aligned** — the capability matrix referenced `clipboard_get` / `clipboard_set` while every handler, adapter, lint engine, and migrator used `clipboard_read` / `clipboard_write`. Matrix renamed to match, so `bus.require("clipboard_read")` resolves.
 - **Quarantine enforcement** — `unicli <site> <cmd>` for a command flagged `quarantine: true` now emits a structured envelope to stderr and exits-78 (CONFIG_ERROR) with a `unicli repair` hint. Bypass flag `UNICLI_FORCE_QUARANTINE=1` for debugging.
 - **TransportBus registers all 7 transports** — `HttpTransport`, `CdpBrowserTransport`, `SubprocessTransport` previously not registered on the shared bus (capability queries lied). Now every transport is visible to `bus.require`.
-- **AnthropicBackend stub honesty** — error messages now say "v0.213-deferred" explicitly and explain that a production Anthropic backend MUST compose with a screen capture source. `ANTHROPIC_CUA_TOOL_VERSION` env overrides the tool identifier so operators can follow the Sonnet 4.6 rollout.
+- **Visual backend stub honesty** — error messages now say "v0.213-deferred" explicitly and explain that a production visual backend MUST compose with a screen capture source. `VISUAL_BACKEND` selects the fallback mode.
 
 ### Fixed — Robustness
 
@@ -883,13 +928,13 @@ v0.213.4 once OpenRouter credit is restored.
 ## [0.212.0] — 2026-04-15 — Vostok · Shatalov
 
 > The execution layer for agent skills. Deterministic, editable, cross-vendor.
-> 200 sites · 968 commands · 7-transport architecture · CUA · ACP · 1134 tests.
+> 200 sites · 968 commands · 7-transport architecture · Visual · ACP · 1134 tests.
 
 ### Minor Changes
 
 - e456a01: v0.212.0 "Shatalov" — the execution layer for agent skills.
 
-  Destructive architecture rewrite introducing a unified `TransportAdapter` interface over 7 transports (http, cdp-browser, subprocess, desktop-ax, desktop-uia, desktop-atspi, cua), CUA integration with 4 backends (anthropic/trycua/opencua/scrapybara), ACP JSON-RPC distribution for avante.nvim and OpenCode, Changesets + OIDC npm publishing, Node×OS CI matrix, schema-v2 with `capabilities`/`minimum_capability`/`trust`/`confidentiality`/`quarantine` fields, and the retirement of the ~80-tokens claim in favor of measured p50/p95 benchmarks.
+  Destructive architecture rewrite introducing a unified `TransportAdapter` interface over 7 transports (http, cdp-browser, subprocess, desktop-ax, desktop-uia, desktop-atspi, visual), visual fallback backend integration behind an owned interface, ACP JSON-RPC distribution for avante.nvim and OpenCode, Changesets + OIDC npm publishing, Node×OS CI matrix, schema-v2 with `capabilities`/`minimum_capability`/`trust`/`confidentiality`/`quarantine` fields, and the retirement of the ~80-tokens claim in favor of measured p50/p95 benchmarks.
 
   ### Added
   - `src/core/` (envelope, schema-v2, registry-v2), `src/transport/` (TransportAdapter + 46×7 capability matrix + bus), `src/protocol/` (acp, skill)
@@ -903,7 +948,7 @@ v0.213.4 once OpenRouter credit is restored.
   - `docs/BENCHMARK.md` + `bench/` harness with measured p50/p95
   - `docs/ADAPTER-FORMAT.md` v2 and adapter migration tooling
   - `docs/guide/integrations.md` integration guide
-  - `contributing/` per-domain guides (adapter, transport, cua, mcp, acp, release, schema, branch-protection)
+  - `contributing/` per-domain guides (adapter, transport, visual, mcp, acp, release, schema, branch-protection)
   - `.claude/commands/` and `skills/` committed as cross-vendor workflow surface
   - Changesets workflow + `verify-changesets` CI gate
   - `adapter-health` (PR-soft) + `adapter-health-strict` (push/nightly) gates
@@ -1030,7 +1075,7 @@ v0.213.4 once OpenRouter credit is restored.
 - **`unicli eval` (deliverable C)** — declarative regression suites. 15 starter eval files ship under `evals/`: 12 smoke (hackernews, bilibili, github, reddit, weibo, zhihu, xiaohongshu, douyin, youtube, twitter, instagram, linkedin, hupu, douban, producthunt) + 3 regression (auth-rotation, selector-drift, api-versioning). Subcommands: `eval list`, `eval run [--all]`, `eval ci --since 7d`. Output format: `SCORE=N/M` plus structured JSON for CI.
 - **Per-call cost ledger (deliverable D)** — append-only JSONL at `~/.unicli/usage.jsonl` capturing `{ts, site, cmd, strategy, tokens, ms, bytes, exit}` for every CLI invocation. `unicli usage report [--since 7d] [--slow] [--failing]` aggregates by site+cmd with median, p95, error rate, and bytes. Opt out with `UNICLI_NO_LEDGER=1`.
 - **`unicli operate observe <query>` (deliverable I)** — Preview verb. Snapshots the page, ranks interactive elements against the natural-language query (token overlap, exact label, role/aria bonuses), returns `{action, ref, selector, confidence, reason}` candidates. Caches every observation to `~/.unicli/observe-cache.jsonl` for self-healing audits.
-- **8 strategic adapters (deliverable F)** — `hermes`, `openharness`, `motion-studio`, `stagehand`, `godot`, `renderdoc`, `autoagent`, `cua`. +14 commands total.
+- **8 strategic adapters (deliverable F)** — `hermes`, `openharness`, `motion-studio`, `stagehand`, `godot`, `renderdoc`, `autoagent`, `visual`. +14 commands total.
 - **AgentLint integration (deliverable E)** — `scripts/lint-context.sh` runs Agent Lint against the workspace and gates `npm run verify` on context quality. Default threshold 60/100, override with `UNICLI_LINT_THRESHOLD`. Disable with `UNICLI_LINT_DISABLE=1`.
 - **Documentation (deliverable H)** — maintenance and integration docs now live in `docs/reference/maintenance.md` and `docs/guide/integrations.md`.
 

@@ -1,8 +1,8 @@
 # Uni-CLI Copy Rules
 
-> Current version: v0.221.1 — Apollo · Anders.
+> Current version: v0.222.0 — Apollo · Armstrong.
 >
-> Current scale: <!-- STATS:site_count -->312<!-- /STATS --> sites, <!-- STATS:command_count -->1753<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->1214<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->979<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->235<!-- /STATS --> TS), <!-- STATS:test_count -->8853<!-- /STATS --> tests.
+> Current scale: <!-- STATS:site_count -->311<!-- /STATS --> sites, <!-- STATS:command_count -->1751<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->1212<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->977<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->235<!-- /STATS --> TS), <!-- STATS:test_count -->8845<!-- /STATS --> tests.
 
 This file keeps docs and user-facing copy consistent. Public pages should expose
 install, command, output, and repair facts with the fewest words needed.
@@ -36,7 +36,7 @@ not belong in README.
 4. Output contract and error contract.
 5. Self-repair loop.
 6. Adapter authoring example.
-7. Trust, auth, browser, evidence, operation policy, and CUA limits.
+7. Trust, auth, browser, evidence, operation policy, and Visual limits.
 8. Development and license.
 
 No scrolling animation. No Mermaid hero diagram. No theory section.
@@ -71,7 +71,7 @@ page.
 ## Honesty Bar
 
 - ACP is compatibility unless the client gives us real session/tool event semantics.
-- CUA is only live when a real configured backend performs the action.
+- Visual is only live when a real configured backend performs the action.
 - Browser automation requires a reachable browser runtime.
 - Run recording is opt-in and local; do not imply all commands are recorded by default.
 - Operation policy defaults to `open`; stricter profiles are user-selected.

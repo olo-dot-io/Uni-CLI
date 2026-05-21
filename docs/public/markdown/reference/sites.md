@@ -14,7 +14,7 @@ running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 312 sites, 1756 commands.
+This catalog is generated from the adapter manifest: 311 sites, 1754 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -69,7 +69,6 @@ This catalog is generated from the adapter manifest: 312 sites, 1756 commands.
 | crates-io | web-api | 3 | no | unicli crates-io info<br>unicli crates-io search<br>unicli crates-io versions |
 | crossref | web-api | 2 | no | unicli crossref search<br>unicli crossref work |
 | ctrip | web-api | 4 | yes | unicli ctrip search<br>unicli ctrip hotel-suggest<br>unicli ctrip hotel-search |
-| cua | bridge | 2 | no | unicli cua bench-list<br>unicli cua bench-run |
 | cursor | web-api | 18 | no | unicli cursor composer<br>unicli cursor extract-code<br>unicli cursor export |
 | cvf | web-api | 1 | no | unicli cvf search |
 | danbooru | web-api | 8 | no | unicli danbooru artists<br>unicli danbooru comments<br>unicli danbooru detail |

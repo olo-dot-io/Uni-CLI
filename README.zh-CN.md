@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <sub><!-- STATS:site_count -->312<!-- /STATS --> 个站点 · <!-- STATS:command_count -->1753<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->101<!-- /STATS --> 个 pipeline step · <!-- STATS:test_count -->8853<!-- /STATS --> 个测试</sub>
+  <sub><!-- STATS:site_count -->311<!-- /STATS --> 个站点 · <!-- STATS:command_count -->1751<!-- /STATS --> 条命令 · <!-- STATS:pipeline_step_count -->103<!-- /STATS --> 个 pipeline step · <!-- STATS:test_count -->8845<!-- /STATS --> 个测试</sub>
 </p>
 
 ## 30 秒开始
@@ -398,7 +398,7 @@ columns: [title, url]
   启动进程之前停下。
 - Run recording 是显式启用能力。需要可审查证据时使用 `--record` 或
   `UNICLI_RECORD_RUN=1`，追加写入 `~/.unicli/runs`。
-- CUA 路由必须配置真实 backend。声明了但不可用的 provider 会失败关闭，并返回结构化错误。
+- Visual 路由必须配置真实 backend。声明了但不可用的 provider 会失败关闭，并返回结构化错误。
 - 用户 adapter 和修复放在 `~/.unicli/adapters/`；包内 adapter 是基线。
 - 如果网站阻止自动化或私有 API 变了，Uni-CLI 会返回清楚的失败 envelope。
 
@@ -416,5 +416,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v0.221.1 — Apollo · Anders</sub>
+  <sub>v0.222.0 — Apollo · Armstrong</sub>
 </p>

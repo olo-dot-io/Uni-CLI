@@ -141,7 +141,7 @@ unicli agents generate --for codex
 unicli agents generate --for opencode
 ```
 
-后端推荐会显式建模 native CLI、JSON stream、MCP、ACP、HTTP API、OpenAI-compatible routes、bridge CLIs 和 CUA candidates。
+后端推荐会显式建模 native CLI、JSON stream、MCP、ACP、HTTP API、OpenAI-compatible routes、bridge CLIs 和 Visual candidates。
 
 ## Skills
 

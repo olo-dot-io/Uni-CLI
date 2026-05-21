@@ -45,7 +45,7 @@ The local index of all sites, commands, arguments, strategies, and output schema
 
 The wire protocol Uni-CLI uses to control a real Chrome instance for browser adapters. Implemented as a raw WebSocket client in `src/browser/cdp-client.ts` with no third-party browser library. Supports the full Page, Network, DOM, and Runtime domains.
 
-## Compute (CUA)
+## Compute (Visual)
 
 The visual fallback adapter family. When structured transports (web-api, desktop AX, browser CDP) cannot reach a target, Compute drives the screen via vision — clicks, types, screenshots — through a unified actuating verb set.
 
@@ -91,7 +91,7 @@ The Anthropic-led protocol for letting AI assistants invoke tools through a stat
 
 ## Pipeline
 
-The ordered list of steps an adapter runs to produce its result. Drawn from the <!-- STATS:pipeline_step_count -->101<!-- /STATS -->-step registry covering API fetch, transform, browser, desktop, media, control flow, and assertion. Steps share a context object — each step reads `ctx.data` and writes back.
+The ordered list of steps an adapter runs to produce its result. Drawn from the <!-- STATS:pipeline_step_count -->103<!-- /STATS -->-step registry covering API fetch, transform, browser, desktop, media, control flow, and assertion. Steps share a context object — each step reads `ctx.data` and writes back.
 
 ## Pipeline step
 
