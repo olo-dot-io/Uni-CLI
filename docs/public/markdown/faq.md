@@ -11,7 +11,7 @@ Quick answers to the questions agents and developers ask most often. Each answer
 
 ## What is Uni-CLI?
 
-Uni-CLI is one CLI surface for real software operations. It turns websites, logged-in browsers, desktop apps, local CLIs, MCP servers, and system capabilities into one searchable command runtime. One path discovers capabilities, executes with policy, returns evidence, and self-repairs operations across <span><!-- STATS:site_count -->311<!-- /STATS --></span> sites and tools.
+Uni-CLI is the operations substrate for agents that use real software. It turns websites, logged-in browsers, desktop apps, local tools, MCP servers, and system capabilities into searchable, governed, repairable operations. One path discovers capabilities, executes with policy, returns evidence, and self-repairs operations across <span><!-- STATS:site_count -->311<!-- /STATS --></span> sites and tools.
 
 ## How is Uni-CLI different from a browser automation library?
 

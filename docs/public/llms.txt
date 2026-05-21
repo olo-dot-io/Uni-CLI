@@ -1,6 +1,6 @@
 # Uni-CLI
 
-Uni-CLI is one CLI surface for AI agents to discover, run, prove, and repair operations across websites, logged-in browsers, desktop apps, local tools, external CLIs, MCP servers, and agent backends.
+Uni-CLI is the operations substrate for AI agents to discover, run, prove, and repair work across websites, logged-in browsers, desktop apps, local tools, external CLIs, MCP servers, and agent backends.
 
 ## Catalog Snapshot
 

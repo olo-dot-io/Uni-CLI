@@ -9,12 +9,12 @@
 </p>
 
 <p align="center">
-  <strong>给 AI Agent 调用真实软件的一层命令接口。</strong>
+  <strong>给 AI Agent 操作真实软件的执行底座。</strong>
 </p>
 
 <p align="center">
-  Uni-CLI 把网站、登录态浏览器、桌面应用、本地命令、MCP 服务和系统能力收进同一个运行时。
-  Agent 可以先按意图找能力，再按策略执行，拿到证据回执；失败时还能定位到具体的 adapter 和 pipeline step 继续修。
+  Uni-CLI 把网站、登录态浏览器、桌面应用、本地工具、MCP 服务和系统能力收进一套可搜索、可治理、可修复的操作层。
+  它不是又一个网页 wrapper，也不是生成一堆 CLI；它是 Agent 在不同 runtime 里反复复用的执行层。
 </p>
 
 <p align="center">
@@ -41,7 +41,7 @@
 </p>
 
 <p align="center">
-  <strong>搜索、执行、留证、修复、复用。</strong><br>
+  <strong>按意图发现，按策略执行，带证据返回，坏在哪一步就修哪一步。</strong><br>
   同一份能力可以从终端、Agent loop、MCP、ACP、CI 或生成的 skill 里调用，不需要为每个入口重写一遍集成。
 </p>
 
@@ -68,7 +68,7 @@ npx @zenalexa/unicli mcp serve
 
 下一代软件用户不只是拿鼠标的人，也会是带着任务、上下文窗口、权限预算和证据需求的 Agent。直接给浏览器驱动，Agent 得临场猜 selector；写一个脚本，只能解决一个孤岛；把巨大工具列表常驻到上下文里，还没开始任务就先烧掉一截 token。
 
-Uni-CLI 做的是中间那层执行底座：把可复用操作整理成 typed、可搜索的命令；把危险动作放到策略闸门后面；把结果变成机器可读回执；失败时明确指出坏掉的 adapter 和 pipeline step。
+Uni-CLI 做的是中间那层执行底座：把可复用操作整理成 typed、可搜索的命令；把危险动作放到策略闸门后面；把结果变成机器可读回执；失败时明确指出坏掉的 adapter 和 pipeline step。网页只是其中一个 surface，真正的 Agent 任务会同时跨过 browser、desktop、subprocess、protocol 和 OS 边界。
 
 所以这个项目把通常分散的几块放在一起：
 

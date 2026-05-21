@@ -1,7 +1,7 @@
 ---
 layout: home
 title: Uni-CLI
-description: One CLI surface for real software operations.
+description: Operations substrate for agents that use real software.
 ---
 
 <HomePage />

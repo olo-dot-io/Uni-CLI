@@ -9,14 +9,14 @@
 </p>
 
 <p align="center">
-  <strong>One CLI surface for real software operations.</strong>
+  <strong>The operations substrate for agents that use real software.</strong>
 </p>
 
 <p align="center">
-  Uni-CLI gives agents a governed command layer over websites, logged-in
-  browsers, desktop apps, local CLIs, MCP servers, and system capabilities.
-  Search by intent, execute with policy, collect evidence, and repair the exact
-  integration that failed.
+  Uni-CLI turns websites, logged-in browsers, desktop apps, local tools, MCP
+  servers, and system capabilities into searchable, governed, repairable
+  operations. It is not another website wrapper or generated CLI pile; it is the
+  execution layer agents can reuse across runtimes.
 </p>
 
 <p align="center">
@@ -43,16 +43,10 @@
 </p>
 
 <p align="center">
-  <strong>Search. Execute. Prove. Repair. Reuse.</strong><br>
-  The same capability can run from a terminal, an agent loop, MCP, ACP, CI, or a
+  <strong>Search by intent. Execute with policy. Return evidence. Repair the failing step.</strong><br>
+  Reuse the same capability from a terminal, an agent loop, MCP, ACP, CI, or a
   generated skill without rebuilding the integration.
 </p>
-
-## 中文简介
-
-Uni-CLI 把真实软件整理成一套可搜索、可治理、可修复的命令层：网页、登录态浏览器、桌面应用、本地命令、MCP 服务和系统能力，都可以用同一种运行回执交给 Agent 调用。它不是更长的工具列表，而是给 Agent 准备的执行底座：先按意图找能力，再按策略执行，最后拿到证据；如果失败，错误会指向具体的 adapter 和 pipeline step，方便继续修复。
-
-完整中文 README 见 [README.zh-CN.md](./README.zh-CN.md)。
 
 ## Start In 30 Seconds
 
@@ -83,7 +77,8 @@ an island. A giant resident tool list burns context before the task starts.
 Uni-CLI is the execution layer in between. It turns useful operations into
 typed, searchable commands, keeps dangerous actions behind policy, returns
 machine-readable receipts, and makes failures repairable by pointing at the
-exact adapter and pipeline step that broke.
+exact adapter and pipeline step that broke. Websites are just one surface; real
+agent work crosses browser, desktop, subprocess, protocol, and OS boundaries.
 
 This is why the project combines pieces that usually live apart:
 

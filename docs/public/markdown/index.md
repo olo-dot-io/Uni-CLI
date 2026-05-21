@@ -6,9 +6,9 @@
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
 - Section: Start
 
-## CLI surface for real software operations
+## Operations substrate for agents that use real software
 
-Uni-CLI gives agents a governed command layer over websites, logged-in browsers, desktop apps, local CLIs, MCP servers, and system capabilities. Agents use one path to discover capabilities, inspect risk, execute with policy, return evidence, and repair the exact adapter or pipeline step that failed.
+Uni-CLI turns websites, logged-in browsers, desktop apps, local tools, MCP servers, and system capabilities into searchable, governed, repairable operations. Agents use one path to discover capabilities, inspect risk, execute with policy, return evidence, and repair the exact adapter or pipeline step that failed.
 
 ## Capability Wall
 
@@ -32,7 +32,7 @@ unicli mcp serve --transport streamable --port 19826
 
 ## Positioning
 
-Agent execution does not need a longer resident tool list. It needs a small, auditable command surface over real software. Catalog search handles discovery. Operation policy exposes permissions and risk. The v2 AgentEnvelope stabilizes output. Run evidence supports review. The repair loop points failures to adapters and pipeline steps.
+Agent execution does not need a longer resident tool list or another website wrapper. It needs a small, auditable operations substrate over real software. Catalog search handles discovery. Operation policy exposes permissions and risk. The v2 AgentEnvelope stabilizes output. Run evidence supports review. The repair loop points failures to adapters and pipeline steps.
 
 - **Discover.** Bilingual BM25 search turns a natural-language task into a site, command, arguments, auth strategy, and risk fields.
 - **Execute.** HTTP, cookies, browser CDP, macOS AX, subprocess, service, and visual fallback return the same envelope.

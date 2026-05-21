@@ -6,9 +6,9 @@
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/zh/index.md
 - 栏目: 上手
 
-## AI Agent 的软件命令层
+## Agent 操作真实软件的执行底座
 
-Uni-CLI 把网站、登录态浏览器、桌面应用、本地命令、MCP 服务和系统能力收进同一个可搜索运行时。Agent 先按意图找能力，再按策略执行，拿到证据回执；失败时还能定位到具体的 adapter 和 pipeline step 继续修。
+Uni-CLI 把网站、登录态浏览器、桌面应用、本地工具、MCP 服务和系统能力收进一套可搜索、可治理、可修复的操作层。Agent 先按意图找能力，再按策略执行，拿到证据回执；失败时还能定位到具体的 adapter 和 pipeline step 继续修。
 
 ## 能力墙
 
@@ -32,7 +32,7 @@ unicli mcp serve --transport streamable --port 19826
 
 ## 定位
 
-Agent 执行需要的不是更长的常驻工具列表，而是一层小而稳定、可审计、可修复的命令接口。目录搜索负责发现能力，operation policy 负责权限和风险，v2 AgentEnvelope 负责稳定输出，run evidence 负责复盘，自修复 loop 负责把失败指向 adapter 与 pipeline step。
+Agent 执行需要的不是更长的常驻工具列表，也不是又一个网页 wrapper。它需要一层小而稳定、可审计、可修复的执行底座。目录搜索负责发现能力，operation policy 负责权限和风险，v2 AgentEnvelope 负责稳定输出，run evidence 负责复盘，自修复 loop 负责把失败指向 adapter 与 pipeline step。
 
 - **发现能力。** BM25 双语搜索把自然语言意图收敛到具体站点、命令、参数、认证策略和风险字段。
 - **执行动作。** HTTP、Cookie、浏览器 CDP、macOS AX、subprocess、service 和 visual fallback 走同一套 envelope。
