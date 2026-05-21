@@ -418,6 +418,45 @@ export function extractTsRegistrations(source, fallbackSite, fallbackCommand) {
     return values;
   }
 
+  function stringTupleArrayValues(node) {
+    node = unwrapExpression(node);
+    if (!node || !ts.isArrayLiteralExpression(node)) return undefined;
+    const rows = [];
+    for (const element of node.elements) {
+      const tuple = unwrapExpression(element);
+      if (!tuple || !ts.isArrayLiteralExpression(tuple)) return undefined;
+      const values = [];
+      for (const item of tuple.elements) {
+        const text = literalText(item);
+        if (!text) return undefined;
+        values.push(text);
+      }
+      rows.push(values);
+    }
+    return rows;
+  }
+
+  function bindForOfValues(pattern, values, bindings) {
+    const nextBindings = new Map(bindings);
+    if (ts.isIdentifier(pattern)) {
+      if (values.length !== 1) return undefined;
+      nextBindings.set(pattern.text, values[0]);
+      return nextBindings;
+    }
+    if (!ts.isArrayBindingPattern(pattern)) return undefined;
+
+    for (let index = 0; index < pattern.elements.length; index++) {
+      const element = pattern.elements[index];
+      if (!ts.isBindingElement(element) || !ts.isIdentifier(element.name)) {
+        return undefined;
+      }
+      const value = values[index];
+      if (!value) return undefined;
+      nextBindings.set(element.name.text, value);
+    }
+    return nextBindings;
+  }
+
   function visit(node, bindings = new Map()) {
     if (ts.isForOfStatement(node)) {
       const initializer = node.initializer;
@@ -430,8 +469,27 @@ export function extractTsRegistrations(source, fallbackSite, fallbackCommand) {
           const values = stringLiteralArrayValues(node.expression);
           if (values) {
             for (const value of values) {
-              const nextBindings = new Map(bindings);
-              nextBindings.set(declaration.name.text, value);
+              const nextBindings = bindForOfValues(
+                declaration.name,
+                [value],
+                bindings,
+              );
+              if (!nextBindings) continue;
+              visit(node.statement, nextBindings);
+            }
+            return;
+          }
+        }
+        if (ts.isArrayBindingPattern(declaration.name)) {
+          const rows = stringTupleArrayValues(node.expression);
+          if (rows) {
+            for (const row of rows) {
+              const nextBindings = bindForOfValues(
+                declaration.name,
+                row,
+                bindings,
+              );
+              if (!nextBindings) continue;
               visit(node.statement, nextBindings);
             }
             return;

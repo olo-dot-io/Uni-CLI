@@ -122,6 +122,25 @@ describe("loader runs from src directly without crashing", () => {
     const sites = new Set(cmds.map((c) => c.site));
     expect(sites.size).toBeGreaterThan(100);
   });
+
+  it(
+    "does not turn nested TS adapter arg names into command stubs",
+    async () => {
+      loadAllAdapters();
+      await loadTsAdapters();
+
+      const semanticScholar = getAllAdapters().find(
+        (adapter) => adapter.name === "semantic-scholar",
+      );
+      expect(Object.keys(semanticScholar?.commands ?? {}).sort()).toEqual([
+        "citations",
+        "paper",
+        "references",
+        "search",
+      ]);
+    },
+    COLD_IMPORT_TIMEOUT_MS,
+  );
 });
 
 describe("dist parity — production build must match source mode", () => {

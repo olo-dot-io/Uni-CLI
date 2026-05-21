@@ -202,8 +202,54 @@ function extractBalancedLiteral(
 }
 
 function objectStringProp(body: string, prop: string): string | undefined {
-  const re = new RegExp(`${prop}\\s*:\\s*["'\`]([^"'\`]+)["'\`]`);
-  return re.exec(body)?.[1];
+  for (const segment of topLevelObjectSegments(body)) {
+    const re = new RegExp(`^\\s*${prop}\\s*:\\s*["'\`]([^"'\`]+)["'\`]`);
+    const match = re.exec(segment);
+    if (match) return match[1];
+  }
+  return undefined;
+}
+
+function topLevelObjectSegments(body: string): string[] {
+  const segments: string[] = [];
+  let depth = 0;
+  let quote: string | null = null;
+  let escaped = false;
+  let start = 0;
+
+  for (let i = 0; i < body.length; i++) {
+    const ch = body[i];
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === "\\") {
+        escaped = true;
+      } else if (ch === quote) {
+        quote = null;
+      }
+      continue;
+    }
+
+    if (ch === '"' || ch === "'" || ch === "`") {
+      quote = ch;
+      continue;
+    }
+    if (ch === "{" || ch === "[" || ch === "(") {
+      depth++;
+      continue;
+    }
+    if (ch === "}" || ch === "]" || ch === ")") {
+      depth = Math.max(0, depth - 1);
+      continue;
+    }
+    if (ch === "," && depth === 0) {
+      segments.push(body.slice(start, i));
+      start = i + 1;
+    }
+  }
+
+  segments.push(body.slice(start));
+  return segments;
 }
 
 function objectStrategyProp(body: string): AdapterCommand["strategy"] {

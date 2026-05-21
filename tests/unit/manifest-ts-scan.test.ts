@@ -53,6 +53,44 @@ describe("manifest TS scanner", () => {
     );
   });
 
+  it("expands tuple for-of cli registrations", () => {
+    const source = `
+      import { cli, Strategy } from "../../src/registry.js";
+
+      for (const [name, label] of [
+        ["citations", "paper citations"],
+        ["references", "paper references"],
+      ] as const) {
+        cli({
+          site: "semantic-scholar",
+          name,
+          description: \`List Semantic Scholar \${label}\`,
+          domain: "api.semanticscholar.org",
+          strategy: Strategy.PUBLIC,
+        });
+      }
+    `;
+
+    const registrations = extractTsRegistrations(
+      source,
+      "semantic-scholar",
+      "papers",
+    );
+    const commands = registrations
+      .filter((registration) => registration.site === "semantic-scholar")
+      .flatMap((registration) => registration.commands);
+
+    expect(commands.map((command) => command.name).sort()).toEqual([
+      "citations",
+      "references",
+    ]);
+    expect(commands.find((command) => command.name === "citations")).toEqual(
+      expect.objectContaining({
+        description: "List Semantic Scholar paper citations",
+      }),
+    );
+  });
+
   it("emits argument schemas for generated Electron desktop commands", () => {
     const source = `
       import { registerElectronDesktopCommands } from "../_electron/desktop-shared.js";
