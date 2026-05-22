@@ -21,7 +21,7 @@ The structured response shape returned by every Uni-CLI command. Contains `ok`, 
 
 ## AGENTS.md
 
-A discovery file that agent runtimes (Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, Hermes) read at startup to learn about available tools. Uni-CLI is registered in `AGENTS.md` so agents pick it up without per-runtime configuration.
+A discovery file that agent runtimes read at startup to learn about available tools. Uni-CLI is registered in `AGENTS.md` so agents pick it up without per-runtime configuration.
 
 ## Bilingual BM25 search
 

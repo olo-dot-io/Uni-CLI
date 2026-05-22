@@ -148,7 +148,7 @@ CLI 不是万能替代。MCP 在这几类场景仍然更好：
 
 ## 目录是一等公民
 
-按意图搜索比按 prompt 枚举更省。`unicli search "find AI agent discussions on reddit"` 返回排序好的命令清单，附带参数、认证、示例输出。Agent 选一条跑，永远不需要枚举整个目录。Apideck CLI 和 OnlyCLI 报告 96-99% 的 token 节省都是这个套路——加载目录索引，不是目录本身。
+按意图搜索比按 prompt 枚举更省。`unicli search "find AI agent discussions on reddit"` 返回排序好的命令清单，附带参数、认证、示例输出。Agent 选一条跑，永远不需要枚举整个目录。token 开销保持低，是因为运行时加载目录索引，而不是加载目录正文。
 
 ## 串起来跑
 

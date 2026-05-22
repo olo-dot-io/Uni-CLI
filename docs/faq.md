@@ -23,9 +23,9 @@ A measured Uni-CLI list-style call lands at a 364-423 token total budget (median
 
 When a command fails, Uni-CLI emits a structured error JSON containing the adapter path, failing pipeline step, action, and a one-line suggestion. An agent reads the YAML at that path, edits the selector or auth header, then runs `unicli repair <site> <command>` to verify the fix. Patches persist in `~/.unicli/adapters/` so they survive `npm update`.
 
-## Which AI agent platforms work with Uni-CLI?
+## Which AI agent runtimes work with Uni-CLI?
 
-Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, and any runtime that can spawn a subprocess. Uni-CLI also exposes an MCP server, an ACP gateway, and an `AGENTS.md` discovery surface so agents pick it up without manual configuration.
+Any runtime that can spawn a subprocess can use Uni-CLI directly. Uni-CLI also exposes an MCP server, an ACP gateway, and an `AGENTS.md` discovery surface so agents pick it up without manual configuration.
 
 ## How many sites and commands does Uni-CLI ship?
 

@@ -143,9 +143,9 @@ bridge, and repair loop wrapped behind one CLI contract.
 ## Built For Agent Runtimes
 
 Uni-CLI is intentionally boring at the boundary. It speaks processes, files,
-JSON, Markdown, and standard protocols. That makes it usable from Codex,
-Claude Code, Cursor, OpenCode, OpenClaw, shell scripts, CI, and any host that
-can spawn a subprocess or attach an MCP server.
+JSON, Markdown, and standard protocols. That makes it usable from agent
+runtimes, shell scripts, CI, and any host that can spawn a subprocess or attach
+an MCP server.
 
 The runtime is agent-friendly in ways that matter during long tasks:
 

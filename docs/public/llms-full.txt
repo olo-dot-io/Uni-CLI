@@ -503,7 +503,7 @@ Most production agent stacks need both. Uni-CLI ships an MCP gateway (`unicli mc
 
 ## The catalog as a first-class artifact
 
-Search beats discovery-by-prompt. `unicli search "find AI agent discussions on reddit"` returns a ranked list of matching commands with arguments, auth, and example output. The agent picks one, runs it, and never has to enumerate the catalog. This is the same pattern Apideck CLI and OnlyCLI report 96-99% token savings on — load the catalog index, not the catalog body.
+Search beats discovery-by-prompt. `unicli search "find AI agent discussions on reddit"` returns a ranked list of matching commands with arguments, auth, and example output. The agent picks one, runs it, and never has to enumerate the catalog. The token budget stays low because the runtime loads the catalog index, not the catalog body.
 
 ## Putting it together
 
@@ -1155,9 +1155,9 @@ A measured Uni-CLI list-style call lands at a 364-423 token total budget (median
 
 When a command fails, Uni-CLI emits a structured error JSON containing the adapter path, failing pipeline step, action, and a one-line suggestion. An agent reads the YAML at that path, edits the selector or auth header, then runs `unicli repair <site> <command>` to verify the fix. Patches persist in `~/.unicli/adapters/` so they survive `npm update`.
 
-## Which AI agent platforms work with Uni-CLI?
+## Which AI agent runtimes work with Uni-CLI?
 
-Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, and any runtime that can spawn a subprocess. Uni-CLI also exposes an MCP server, an ACP gateway, and an `AGENTS.md` discovery surface so agents pick it up without manual configuration.
+Any runtime that can spawn a subprocess can use Uni-CLI directly. Uni-CLI also exposes an MCP server, an ACP gateway, and an `AGENTS.md` discovery surface so agents pick it up without manual configuration.
 
 ## How many sites and commands does Uni-CLI ship?
 
@@ -1227,7 +1227,7 @@ The structured response shape returned by every Uni-CLI command. Contains `ok`, 
 
 ## AGENTS.md
 
-A discovery file that agent runtimes (Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, Hermes) read at startup to learn about available tools. Uni-CLI is registered in `AGENTS.md` so agents pick it up without per-runtime configuration.
+A discovery file that agent runtimes read at startup to learn about available tools. Uni-CLI is registered in `AGENTS.md` so agents pick it up without per-runtime configuration.
 
 ## Bilingual BM25 search
 

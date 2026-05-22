@@ -2,7 +2,7 @@
  * validate-agents-size — Fail the build when AGENTS.md exceeds its budget.
  *
  * AGENTS.md is the agent discovery surface. It is consumed at every agent
- * cold start (Claude Code, Codex, OpenCode, Cursor), so every byte is a
+ * cold start, so every byte is a
  * per-request tax. The project keeps it ≤ 8192 bytes — roughly 2K
  * tokens — which fits comfortably in a system-prompt preamble.
  *

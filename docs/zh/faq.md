@@ -23,9 +23,9 @@ Uni-CLI 用 YAML 适配器把站点编译成确定性命令，而不是图灵完
 
 命令失败时 Uni-CLI 会吐出结构化的错误 JSON，里面有 `adapter_path`、失败的 pipeline step、动作描述和一句话建议。Agent 读那个路径下的 YAML，改选择器或认证头，然后跑 `unicli repair <site> <command>` 验证。修好的版本会保存在 `~/.unicli/adapters/`，`npm update` 不会冲掉。
 
-## 支持哪些 AI Agent 平台？
+## 支持哪些 AI Agent 运行时？
 
-Claude Code、Codex CLI、OpenCode、Cursor、OpenClaw，以及任何能 spawn 子进程的运行时都行。Uni-CLI 同时也跑 MCP 服务、ACP 网关，并通过 `AGENTS.md` 让 Agent 自动发现能力，不用手动配置。
+任何能 spawn 子进程的运行时都能直接使用 Uni-CLI。Uni-CLI 同时也跑 MCP 服务、ACP 网关，并通过 `AGENTS.md` 让 Agent 自动发现能力，不用手动配置。
 
 ## 一共有多少站点和命令？
 

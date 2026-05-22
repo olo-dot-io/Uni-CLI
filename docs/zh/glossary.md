@@ -21,7 +21,7 @@ Uni-CLI 每条命令返回的结构化回执。包含 `ok`、`version`、`data`�
 
 ## AGENTS.md
 
-Agent 运行时 (Claude Code、Codex CLI、OpenCode、Cursor、OpenClaw、Hermes) 启动时读的发现文件。Uni-CLI 在 `AGENTS.md` 注册自己，Agent 不用做单独配置就能识别。
+Agent 运行时启动时读取的发现文件，用来了解可用工具。Uni-CLI 在 `AGENTS.md` 注册自己，Agent 不用做单独配置就能识别。
 
 ## Bilingual BM25 search (双语 BM25 搜索)
 

@@ -152,7 +152,7 @@ Most production agent stacks need both. Uni-CLI ships an MCP gateway (`unicli mc
 
 ## The catalog as a first-class artifact
 
-Search beats discovery-by-prompt. `unicli search "find AI agent discussions on reddit"` returns a ranked list of matching commands with arguments, auth, and example output. The agent picks one, runs it, and never has to enumerate the catalog. This is the same pattern Apideck CLI and OnlyCLI report 96-99% token savings on — load the catalog index, not the catalog body.
+Search beats discovery-by-prompt. `unicli search "find AI agent discussions on reddit"` returns a ranked list of matching commands with arguments, auth, and example output. The agent picks one, runs it, and never has to enumerate the catalog. The token budget stays low because the runtime loads the catalog index, not the catalog body.
 
 ## Putting it together
 

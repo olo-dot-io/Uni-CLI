@@ -127,7 +127,7 @@ Uni-CLI 不是又一个 scraper 包，而是 Agent 底下的执行层：命令�
 
 ## 为 Agent Runtime 设计
 
-Uni-CLI 在边界上刻意保持朴素：进程、文件、JSON、Markdown 和标准协议。Codex、Claude Code、Cursor、OpenCode、OpenClaw、shell 脚本、CI，以及任何能启动 subprocess 或接 MCP server 的 host 都能用。
+Uni-CLI 在边界上刻意保持朴素：进程、文件、JSON、Markdown 和标准协议。Agent 运行时、shell 脚本、CI，以及任何能启动 subprocess 或接 MCP server 的 host 都能用。
 
 长期任务里，这些细节比 demo 更重要：
 

@@ -143,8 +143,8 @@ function manualHealthReason(site: string, command: string): string | undefined {
  * a fail.
  */
 function isEnvironmentMissing(message: string): string | undefined {
-  // Missing external CLI binary (bridge + desktop adapters rely on aws,
-  // osascript, claude, codex, docker, etc. which CI doesn't pre-install).
+  // Missing external CLI binary for bridge or desktop adapters that CI does
+  // not pre-install.
   const spawnEnoent = message.match(/spawn ([^\s]+) ENOENT/);
   if (spawnEnoent) {
     return `missing binary: ${spawnEnoent[1]}`;
