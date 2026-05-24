@@ -1,25 +1,25 @@
 {
-  "version": "0.222.1",
-  "codename": "Apollo · Young",
+  "version": "0.222.2",
+  "codename": "Apollo · Duke",
   "date": "2026-05-24",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.222.1",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02221--2026-05-24--apollo--young",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.222.2",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02222--2026-05-24--apollo--duke",
   "highlights": {
     "root": [
-      "Uni-CLI 0.222.1 turns delivery into an executable closed loop: objective assessment, trajectory planning, safe command execution, diagnosis, repair candidates, and verification history share one delivery kernel.",
+      "Uni-CLI 0.222.2 is the complete closed-loop delivery release: objective assessment, trajectory planning, safe command execution, diagnosis, repair candidates, and verification history share one delivery kernel.",
       "`unicli delivery run <spec>` executes the next evidence-gated strategy through the existing run recorder and returns an updated trajectory, so experiments no longer live outside the product path.",
       "Delivery strategies now accept command args and are discoverable through search as `delivery/assess`, `delivery/run`, `delivery/trajectory`, and `delivery/repair-candidate`.",
       "Structured command failures from do, extract, runs, and delivery now flow through a shared stderr envelope writer for cleaner agent repair loops.",
-      "Adapter health probing now respects adapter defaults, WeRead shelf uses the current sync endpoint, and Instagram reels fails closed under quarantine instead of shipping a stale route."
+      "Adapter health probing now respects adapter defaults, WeRead shelf uses the current sync endpoint, Instagram reels fails closed under quarantine, and the npm lockfile is in sync for clean CI installs."
     ],
     "zh": [
-      "Uni-CLI 0.222.1 把 delivery 做成可执行闭环：objective assessment、trajectory planning、安全命令执行、diagnosis、repair candidate 和 verification history 共享同一个 delivery kernel。",
+      "Uni-CLI 0.222.2 是完整的 closed-loop delivery 发布版：objective assessment、trajectory planning、安全命令执行、diagnosis、repair candidate 和 verification history 共享同一个 delivery kernel。",
       "`unicli delivery run <spec>` 会通过现有 run recorder 执行下一步有证据约束的 strategy，并返回更新后的 trajectory，让实验不再游离在产品路径之外。",
       "Delivery strategy 现在支持 command args，并且 `delivery/assess`、`delivery/run`、`delivery/trajectory`、`delivery/repair-candidate` 都能被 search 发现。",
       "do、extract、runs、delivery 的结构化失败现在统一通过 shared stderr envelope writer 输出，让 Agent repair loop 更容易观测。",
-      "Adapter health probe 现在尊重 adapter 默认参数，WeRead shelf 使用当前 sync endpoint，Instagram reels 对 stale route 选择 quarantine fail-closed。"
+      "Adapter health probe 现在尊重 adapter 默认参数，WeRead shelf 使用当前 sync endpoint，Instagram reels 对 stale route 选择 quarantine fail-closed，npm lockfile 也已恢复到 clean CI install 可用状态。"
     ]
   }
 }

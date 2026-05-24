@@ -63,7 +63,7 @@ These numbers come from the current generated repo artifacts: adapters, commands
 
 ## Current Version
 
-Latest: v0.222.1 · Apollo · Young.
+Latest: v0.222.2 · Apollo · Duke.
 
 ## Agent Index
 

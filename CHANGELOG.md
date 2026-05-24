@@ -3,6 +3,29 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 
+## [0.222.2] — 2026-05-24 — Apollo · Duke
+
+### Changed
+
+- Release metadata now points at the final 0.222.2 tag so the published
+  package, public docs, skills, server manifest, and changelog all describe the
+  same delivery-substrate build.
+
+### Fixed
+
+- Restored npm lockfile entries for DocSearch's optional React peer tree so
+  `npm ci --include=dev` succeeds in CI and Docs workflows on clean runners.
+- Supersedes 0.222.1 as the complete published release for the closed-loop
+  delivery substrate, because 0.222.1 was published before the lockfile repair
+  commit reached the release tag.
+
+### Verified
+
+- `npm ci --include=dev --dry-run`
+- `npm run verify:clean`
+- `npm run release:check -- --strict-codename`
+- `npm run docs:check-public`
+
 ## [0.222.1] — 2026-05-24 — Apollo · Young
 
 ### Added

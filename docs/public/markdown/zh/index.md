@@ -63,7 +63,7 @@ Agent 执行需要的不是更长的常驻工具列表，也不是又一个网�
 
 ## 当前版本
 
-当前 latest：v0.222.1 · Apollo · Young。
+当前 latest：v0.222.2 · Apollo · Duke。
 
 ## Agent 索引
 
