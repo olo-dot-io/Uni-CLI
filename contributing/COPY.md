@@ -1,6 +1,6 @@
 # Uni-CLI Copy Rules
 
-> Current version: v0.222.2 — Apollo · Duke.
+> Current version: v0.222.3 — Apollo · Scott.
 >
 > Current scale: <!-- STATS:site_count -->311<!-- /STATS --> sites, <!-- STATS:command_count -->1753<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->1212<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->977<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->235<!-- /STATS --> TS), <!-- STATS:test_count -->8874<!-- /STATS --> tests.
 

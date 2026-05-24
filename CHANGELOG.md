@@ -3,6 +3,18 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 
+## [0.222.3] — 2026-05-24 — Apollo · Scott
+
+### Fixed
+
+- Applied `cargo fmt` to native sidecar error constructors so Rust Sidecars CI
+  format checks pass on Linux, macOS, and Windows targets.
+
+### Verified
+
+- `cargo fmt --check`
+- `npm run verify:clean`
+
 ## [0.222.2] — 2026-05-24 — Apollo · Duke
 
 ### Changed

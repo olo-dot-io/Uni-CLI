@@ -1,6 +1,6 @@
 # 路线图
 
-> Current: v0.222.2 — Apollo · Duke. <!-- STATS:site_count -->311<!-- /STATS --> 个站点，<!-- STATS:command_count -->1753<!-- /STATS --> 条命令，<!-- STATS:pipeline_step_count -->103<!-- /STATS --> 个 pipeline step。
+> Current: v0.222.3 — Apollo · Scott. <!-- STATS:site_count -->311<!-- /STATS --> 个站点，<!-- STATS:command_count -->1753<!-- /STATS --> 条命令，<!-- STATS:pipeline_step_count -->103<!-- /STATS --> 个 pipeline step。
 
 路线图按能力成熟度推进，不按固定周节奏发布。发布节奏取决于社区反馈和实际开发状态。
 
