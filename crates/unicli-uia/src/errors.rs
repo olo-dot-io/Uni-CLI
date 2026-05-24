@@ -16,8 +16,9 @@ impl UiaError {
     pub fn unavailable(reason: impl Into<String>) -> Self {
         Self {
             reason: reason.into(),
-            suggestion: "run on Windows with the native UIA backend available, or fall back to Visual"
-                .into(),
+            suggestion:
+                "run on Windows with the native UIA backend available, or fall back to Visual"
+                    .into(),
             minimum_capability: None,
             r#ref: None,
             exit_code: 69,

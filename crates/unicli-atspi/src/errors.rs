@@ -17,7 +17,8 @@ impl AtspiError {
         Self {
             reason: reason.into(),
             suggestion:
-                "run on Linux with the native AT-SPI backend available, or fall back to Visual".into(),
+                "run on Linux with the native AT-SPI backend available, or fall back to Visual"
+                    .into(),
             minimum_capability: None,
             r#ref: None,
             exit_code: 69,
