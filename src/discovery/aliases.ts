@@ -989,6 +989,7 @@ export const SITE_CATEGORIES: ReadonlyMap<string, string> = new Map([
   ["agents", "agent"],
   ["mcp", "agent"],
   ["runs", "agent"],
+  ["delivery", "agent"],
 
   // AI
   ["ollama", "ai"],

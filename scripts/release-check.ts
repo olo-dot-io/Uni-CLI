@@ -50,6 +50,17 @@ function hasFinalCodename(value: string): boolean {
   );
 }
 
+function releaseLineForVersion(
+  content: string,
+  currentVersion: string,
+): string {
+  return (
+    content
+      .split(/\r?\n/)
+      .find((line) => line.includes(currentVersion) && line.includes("—")) ?? ""
+  );
+}
+
 // --- Check 1: Version string present in tracked release files ---
 
 const versionFiles = [
@@ -150,13 +161,14 @@ if (strictCodename) {
       continue;
     }
     const content = readFileSync(filePath, "utf-8");
-    const pass = content.includes(version) && hasFinalCodename(content);
+    const releaseLine = releaseLineForVersion(content, version);
+    const pass = releaseLine.length > 0 && hasFinalCodename(releaseLine);
     results.push({
       name: `${file} release codename`,
       pass,
       detail: pass
-        ? `Found final codename for v${version}`
-        : `Missing final Program · Astronaut codename for v${version}`,
+        ? `Found final codename in "${releaseLine.trim()}"`
+        : `Missing final Program · Astronaut codename on a v${version} release line`,
     });
   }
 }

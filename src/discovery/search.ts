@@ -196,6 +196,30 @@ const CORE_SEARCH_DOCUMENTS: readonly CoreSearchDocument[] = [
     description:
       "Compare two recorded run traces for behavior drift, context drift, score gates, result envelope differences, repair verification, and reproducible agent audit checks.",
   },
+  {
+    site: "delivery",
+    command: "assess",
+    description:
+      "Assess an objective delivery spec from recorded run evidence, classify failure state, and choose the next action for agent self-repair, retry, auth, permission, or stop.",
+  },
+  {
+    site: "delivery",
+    command: "run",
+    description:
+      "Execute the next delivery experiment from an objective spec through the shared command kernel, record the new run trace, and return the updated trajectory.",
+  },
+  {
+    site: "delivery",
+    command: "trajectory",
+    description:
+      "Build a reviewable objective trajectory from run evidence with failed gates, diagnosis, hypothesis, verification status, and the next executable experiment for closed-loop agents.",
+  },
+  {
+    site: "delivery",
+    command: "repair-candidate",
+    description:
+      "Compile a delivery trajectory into one bounded adapter repair candidate with adapter path, diagnosis, verify command, and repair safety constraints.",
+  },
 ];
 
 // ── Index Management ────────────────────────────────────────────────────────

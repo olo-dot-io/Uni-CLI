@@ -50,7 +50,7 @@ Agent execution does not need a longer resident tool list or another website wra
 - Sites and tools: 311
 - Commands: 1753
 - Pipeline steps: 103
-- Tests: 8847
+- Tests: 8874
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -63,7 +63,7 @@ These numbers come from the current generated repo artifacts: adapters, commands
 
 ## Current Version
 
-Latest: v0.222.0 · Apollo · Armstrong.
+Latest: v0.222.1 · Apollo · Young.
 
 ## Agent Index
 

@@ -20,17 +20,25 @@ beforeAll(() => {
 
 function captureStdout(): {
   getStdout: () => string;
+  getStderr: () => string;
   restore: () => void;
 } {
   let out = "";
+  let err = "";
   const origLog = console.log;
+  const origError = console.error;
   console.log = ((...args: unknown[]) => {
     out += args.map(String).join(" ") + "\n";
   }) as typeof console.log;
+  console.error = ((...args: unknown[]) => {
+    err += args.map(String).join(" ") + "\n";
+  }) as typeof console.error;
   return {
     getStdout: () => out,
+    getStderr: () => err,
     restore: () => {
       console.log = origLog;
+      console.error = origError;
     },
   };
 }
@@ -194,7 +202,8 @@ describe("unicli do — empty path", () => {
     } finally {
       cap.restore();
     }
-    const env = JSON.parse(cap.getStdout());
+    const env = JSON.parse(cap.getStderr());
+    expect(cap.getStdout()).toBe("");
     validateEnvelope(env);
     expect(env.ok).toBe(false);
     expect(env.error.code).toBe("empty_result");
@@ -225,7 +234,8 @@ describe("unicli do — invalid input", () => {
     } finally {
       cap.restore();
     }
-    const env = JSON.parse(cap.getStdout());
+    const env = JSON.parse(cap.getStderr());
+    expect(cap.getStdout()).toBe("");
     validateEnvelope(env);
     expect(env.ok).toBe(false);
     expect(env.error.code).toBe("invalid_input");
@@ -251,7 +261,8 @@ describe("unicli do — invalid input", () => {
     } finally {
       cap.restore();
     }
-    const env = JSON.parse(cap.getStdout());
+    const env = JSON.parse(cap.getStderr());
+    expect(cap.getStdout()).toBe("");
     validateEnvelope(env);
     expect(env.ok).toBe(false);
     expect(env.error.code).toBe("invalid_input");

@@ -655,10 +655,11 @@ describe("unicli runs command", () => {
       cap.restore();
     }
 
-    const env = JSON.parse(cap.getStdout().trim()) as {
+    const env = JSON.parse(cap.getStderr().trim()) as {
       ok: boolean;
       error: { code: string; message: string };
     };
+    expect(cap.getStdout()).toBe("");
     expect(env.ok).toBe(false);
     expect(env.error).toMatchObject({
       code: "invalid_input",
@@ -1104,10 +1105,11 @@ describe("unicli runs command", () => {
       cap.restore();
     }
 
-    const env = JSON.parse(cap.getStdout().trim()) as {
+    const env = JSON.parse(cap.getStderr().trim()) as {
       ok: boolean;
       error: { code: string; message: string };
     };
+    expect(cap.getStdout()).toBe("");
     expect(env.ok).toBe(false);
     expect(env.error).toMatchObject({
       code: "invalid_input",
@@ -1369,10 +1371,11 @@ describe("unicli runs command", () => {
       cap.restore();
     }
 
-    const env = JSON.parse(cap.getStdout().trim()) as {
+    const env = JSON.parse(cap.getStderr().trim()) as {
       ok: boolean;
       error: { code: string; message: string };
     };
+    expect(cap.getStdout()).toBe("");
     expect(env.ok).toBe(false);
     expect(env.error).toMatchObject({
       code: "invalid_input",
@@ -1540,10 +1543,11 @@ describe("unicli runs command", () => {
       cap.restore();
     }
 
-    const env = JSON.parse(cap.getStdout().trim()) as {
+    const env = JSON.parse(cap.getStderr().trim()) as {
       ok: boolean;
       error: { code: string; message: string };
     };
+    expect(cap.getStdout()).toBe("");
     expect(env.ok).toBe(false);
     expect(env.error).toMatchObject({
       code: "invalid_input",
@@ -1577,10 +1581,11 @@ describe("unicli runs command", () => {
       cap.restore();
     }
 
-    const env = JSON.parse(cap.getStdout().trim()) as {
+    const env = JSON.parse(cap.getStderr().trim()) as {
       ok: boolean;
       error: { code: string; message: string };
     };
+    expect(cap.getStdout()).toBe("");
     expect(env.ok).toBe(false);
     expect(env.error).toMatchObject({
       code: "invalid_input",
@@ -1614,10 +1619,11 @@ describe("unicli runs command", () => {
       cap.restore();
     }
 
-    const env = JSON.parse(cap.getStdout().trim()) as {
+    const env = JSON.parse(cap.getStderr().trim()) as {
       ok: boolean;
       error: { code: string; message: string };
     };
+    expect(cap.getStdout()).toBe("");
     expect(env.ok).toBe(false);
     expect(env.error).toMatchObject({
       code: "invalid_input",

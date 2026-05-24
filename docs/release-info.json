@@ -1,25 +1,25 @@
 {
-  "version": "0.222.0",
-  "codename": "Apollo · Armstrong",
-  "date": "2026-05-21",
+  "version": "0.222.1",
+  "codename": "Apollo · Young",
+  "date": "2026-05-24",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.222.0",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02220--2026-05-21--apollo--armstrong",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.222.1",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02221--2026-05-24--apollo--young",
   "highlights": {
     "root": [
-      "Uni-CLI 0.222.0 promotes local computer use into the core compute substrate: native accessibility first, CDP where available, and owned visual fallback when semantic APIs are insufficient.",
-      "macOS desktop-ax now supports background click, type, and key press into non-frontmost windows with per-process focus suppression, AppKit activation priming, and pid/window-addressed event delivery.",
-      "The old upstream-named visual adapter surface has been removed from public product exports, docs, tests, generated MCP assets, and repair references in favor of the owned `visual` vocabulary.",
-      "Agent-facing documentation, focus behavior docs, architecture docs, generated public Markdown, README, README.zh-CN, AGENTS.md, server registry metadata, and skills now agree on v0.222.0 and the 311-site / 1753-command catalog.",
-      "`unicli extract` and `unicli do` ship as lightweight agent primitives for one-hop URL extraction and plan-only intent routing."
+      "Uni-CLI 0.222.1 turns delivery into an executable closed loop: objective assessment, trajectory planning, safe command execution, diagnosis, repair candidates, and verification history share one delivery kernel.",
+      "`unicli delivery run <spec>` executes the next evidence-gated strategy through the existing run recorder and returns an updated trajectory, so experiments no longer live outside the product path.",
+      "Delivery strategies now accept command args and are discoverable through search as `delivery/assess`, `delivery/run`, `delivery/trajectory`, and `delivery/repair-candidate`.",
+      "Structured command failures from do, extract, runs, and delivery now flow through a shared stderr envelope writer for cleaner agent repair loops.",
+      "Adapter health probing now respects adapter defaults, WeRead shelf uses the current sync endpoint, and Instagram reels fails closed under quarantine instead of shipping a stale route."
     ],
     "zh": [
-      "Uni-CLI 0.222.0 把本地 computer use 提升为核心 compute 基础设施：优先使用原生 accessibility，能走 CDP 时走 CDP，语义 API 不够时使用我们自己的 visual fallback。",
-      "macOS desktop-ax 已支持对非前台窗口后台点击、输入文字、发送快捷键，包含 per-process focus suppression、AppKit activation primer、pid/window 定向事件投递。",
-      "旧的上游命名视觉适配器已从公开产品 exports、文档、测试、生成 MCP 资产和 repair 参考中移除，统一改为我们自己的 `visual` 词汇。",
-      "Agent 文档、focus behavior、架构文档、public Markdown、README、README.zh-CN、AGENTS.md、server registry metadata 和 skills 已统一到 v0.222.0，并同步 311 个站点 / 1753 条命令目录。",
-      "`unicli extract` 和 `unicli do` 作为轻量 Agent 原语发布：分别覆盖一跳 URL 提取和只规划不执行的意图路由。"
+      "Uni-CLI 0.222.1 把 delivery 做成可执行闭环：objective assessment、trajectory planning、安全命令执行、diagnosis、repair candidate 和 verification history 共享同一个 delivery kernel。",
+      "`unicli delivery run <spec>` 会通过现有 run recorder 执行下一步有证据约束的 strategy，并返回更新后的 trajectory，让实验不再游离在产品路径之外。",
+      "Delivery strategy 现在支持 command args，并且 `delivery/assess`、`delivery/run`、`delivery/trajectory`、`delivery/repair-candidate` 都能被 search 发现。",
+      "do、extract、runs、delivery 的结构化失败现在统一通过 shared stderr envelope writer 输出，让 Agent repair loop 更容易观测。",
+      "Adapter health probe 现在尊重 adapter 默认参数，WeRead shelf 使用当前 sync endpoint，Instagram reels 对 stale route 选择 quarantine fail-closed。"
     ]
   }
 }

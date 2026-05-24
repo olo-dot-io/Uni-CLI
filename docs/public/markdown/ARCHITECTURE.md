@@ -30,7 +30,7 @@ The generated catalog is the source of truth:
 **<span><!-- STATS:command_count -->1753<!-- /STATS --></span> commands**,
 **<span><!-- STATS:adapter_count_total -->1212<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->8847<!-- /STATS --></span> tests** in v0.222.0.
+and **<span><!-- STATS:test_count -->8874<!-- /STATS --></span> tests** in v0.222.1.
 
 ## Execution Contract
 
@@ -66,7 +66,10 @@ tools, files, and system capabilities. The kernel stays small and auditable:
    service, or Visual without changing the user-facing command contract.
 4. **Permission profile**: commands stay open by default, while users can opt
    into `confirm` or `locked` profiles for high-impact writes.
-5. **Repair and evaluation loop**: failures point to one adapter and one step;
+5. **Delivery trajectory kernel**: objective attempts are evaluated against
+   evidence gates, classified into repair/retry/block states, and projected into
+   the next experiment an agent can run.
+6. **Repair and evaluation loop**: failures point to one adapter and one step;
    health checks and fixtures prove the repair.
 
 MCP, ACP, HTTP, and agent-specific setup files are generated surfaces over this
@@ -76,6 +79,96 @@ The manifest is therefore a runtime contract, not just documentation. Generated
 commands must preserve the same argument schema in `search`, `describe`,
 `--dry-run`, MCP, ACP, and direct CLI execution. Drift between generated TypeScript
 registrations and fast-path discovery is treated as a correctness bug.
+
+## Delivery Trajectory Model
+
+The invocation kernel proves what happened during one command. The delivery
+kernel sits above it and asks whether an objective is actually satisfied. Its
+unit of work is not a website, adapter, or model call; it is an objective with
+strategies, attempts, evidence gates, diagnoses, hypotheses, and a next
+experiment.
+
+This layer keeps the state model pure and makes execution an explicit bridge.
+The planner consumes existing `RunSummary` evidence and structured `AgentError`
+diagnostics, then emits a `DeliveryTrajectory` that records:
+
+- each attempt's strategy, run id, failed evidence gates, and verification
+  status;
+- whether failure is product drift, missing auth/context, user or policy block,
+  upstream/environment trouble, or still inconclusive;
+- the current hypothesis and the next executable experiment when one is safe;
+- no new persistence target: the public operator surface reads explicit JSON
+  specs and existing run traces; `delivery run` writes only through the existing
+  append-only run store.
+
+That separation keeps the existing command surface compatible while giving
+future `repair`, replay, eval, browser, and desktop flows a shared loop contract.
+The repair command can remain adapter-scoped, but it should become one executor
+under delivery rather than the root abstraction.
+
+The first repair bridge is intentionally candidate-only. A delivery trajectory
+can emit a `DeliveryRepairCandidate` only when the latest assessment is
+`needs_repair`, the next action is `repair_adapter`, the diagnosis is repairable,
+and both an adapter file path and verification command are present. Auth gaps,
+permission denials, transient upstream failures, and unverifiable ideas remain
+blocked or active delivery states rather than code-edit tasks. This preserves
+the existing repair loop's safety boundary: one adapter path, one failing
+diagnosis, one verification command.
+
+### Delivery Operator CLI
+
+`unicli delivery` is the public operator surface over the delivery kernel. Most
+subcommands are stateless: they read a JSON spec, optionally resolve recorded
+run ids from the existing run store, and emit a v2 `AgentEnvelope`.
+`delivery run` is the execution bridge: it computes the next safe experiment,
+executes the selected `strategy.command` through the shared kernel, records the
+attempt through the existing run recorder, and returns the updated trajectory.
+
+The spec shape is:
+
+```json
+{
+  "objective": {
+    "id": "deliver-twitter-search",
+    "goal": "Return current search results with reviewable evidence",
+    "evidence_gates": [
+      { "kind": "run_completed" },
+      { "kind": "required_evidence_type", "evidence_type": "result-envelope" }
+    ]
+  },
+  "strategies": [
+    {
+      "id": "api-adapter",
+      "kind": "adapter",
+      "label": "Use bundled adapter",
+      "priority": 10,
+      "command": "twitter.search",
+      "args": { "query": "agentic delivery", "limit": 5 },
+      "adapter_path": "src/adapters/twitter/search.yaml",
+      "verify_command": "unicli test twitter search"
+    }
+  ],
+  "runs": [{ "run_id": "run-abc", "strategy_id": "api-adapter" }]
+}
+```
+
+The commands are:
+
+- `unicli delivery assess spec.json`: emit the current delivery assessment and
+  next action.
+- `unicli delivery run spec.json`: execute the next safe `run_strategy`,
+  `retry_strategy`, or `switch_strategy` experiment through the shared command
+  kernel, record the new run trace, and emit the updated trajectory.
+- `unicli delivery trajectory spec.json`: emit the full attempt trajectory,
+  failed evidence gates, diagnosis, hypothesis, and next experiment.
+- `unicli delivery repair-candidate spec.json`: emit one bounded adapter repair
+  candidate, or `null` when the trajectory is blocked, retryable, exhausted, or
+  unverifiable.
+
+This command does not edit adapters, create worktrees, invoke a model, or choose
+a new storage layer. Repair-only, auth-blocked, permission-blocked, exhausted,
+and verified states are not executed as normal experiments; they remain explicit
+trajectory states or repair candidates behind verification boundaries.
 
 ## Run And Evidence Model
 

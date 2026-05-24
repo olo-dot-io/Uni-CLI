@@ -264,6 +264,25 @@ describe("search", () => {
     expect(commands).toContain("runs/show");
   });
 
+  it("routes self-repair delivery loop queries to delivery operator commands", () => {
+    const results = search(
+      "closed loop delivery trajectory self repair next experiment",
+      8,
+    );
+    const commands = results.map((r) => `${r.site}/${r.command}`);
+
+    expect(commands[0]).toBe("delivery/trajectory");
+    expect(commands).toContain("delivery/assess");
+    expect(commands).toContain("delivery/repair-candidate");
+  });
+
+  it("routes executable next-experiment queries to delivery run", () => {
+    const results = search("execute the next delivery experiment", 5);
+    const commands = results.map((r) => `${r.site}/${r.command}`);
+
+    expect(commands[0]).toBe("delivery/run");
+  });
+
   it("keeps multi-word site names ahead of broader sibling sites", () => {
     const scholar = search("Fetch a Google Scholar citation for a paper", 5);
     const pubDev = search(

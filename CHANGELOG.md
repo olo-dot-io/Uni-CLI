@@ -3,6 +3,48 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 
+## [0.222.1] — 2026-05-24 — Apollo · Young
+
+### Added
+
+- `unicli delivery run <spec>` executes the next evidence-gated delivery
+  action from a delivery spec, records the underlying command through the
+  existing run recorder, and returns the updated trajectory instead of leaving
+  experiment execution as a separate side path.
+- Delivery strategy specs now accept command `args`, so objective-level
+  strategies can call the same adapter commands users already run manually.
+- Delivery commands are indexed by search as first-class agent capabilities:
+  `delivery/assess`, `delivery/run`, `delivery/trajectory`, and
+  `delivery/repair-candidate`.
+
+### Changed
+
+- The delivery substrate now links objective assessment, trajectory planning,
+  safe command execution, structured diagnosis, repair candidates, and
+  verification history through one kernel under `src/engine/delivery/`.
+- `do`, `extract`, `runs`, and `delivery` command failures now write structured
+  error envelopes to stderr through the shared error writer while preserving
+  JSON output for successful stdout payloads.
+- Public README, Chinese README, architecture docs, release metadata, roadmap
+  pages, skills, server manifest, and generated stats now describe Uni-CLI as a
+  self-repairing operations substrate for agents using real software.
+
+### Fixed
+
+- Adapter health probing now respects adapter argument defaults before applying
+  bounded smoke-test limits, preventing false negatives on commands whose
+  required arguments are declared in the adapter.
+- WeRead shelf probing uses the current sync endpoint.
+- Instagram reels now fails closed under quarantine instead of pretending the
+  retired unauthenticated route is still a reliable delivery path.
+- Structured failures from delivery and run-oriented commands now surface the
+  real envelope on stderr, which keeps agent repair loops observable.
+
+### Verified
+
+- `npm run verify`
+- `npm run adapter:health`
+
 ## [0.222.0] — 2026-05-21 — Apollo · Armstrong
 
 ### Major Changes

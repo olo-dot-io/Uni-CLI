@@ -14,7 +14,7 @@ args:
 
 pipeline:
   - fetch:
-      url: https://weread.qq.com/web/shelf/sync
+      url: https://i.weread.qq.com/shelf/sync
       method: POST
       headers:
         Content-Type: application/json

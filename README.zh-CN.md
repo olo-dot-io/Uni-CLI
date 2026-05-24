@@ -14,7 +14,7 @@
 
 <p align="center">
   Uni-CLI 把网站、登录态浏览器、桌面应用、本地工具、MCP 服务和系统能力收进一套可搜索、可治理、可修复的操作层。
-  它不是又一个网页 wrapper，也不是生成一堆 CLI；它是 Agent 在不同 runtime 里反复复用的执行层。
+  它不是又一个网页 wrapper，也不是生成一堆 CLI；它是 Agent 在真实软件持续漂移时仍能复用的执行层。
 </p>
 
 <p align="center">
@@ -32,16 +32,16 @@
   <img alt="MCP" src="https://img.shields.io/badge/MCP-2025--11--25-6f42c1?style=flat-square">
   <img alt="AgentEnvelope v2" src="https://img.shields.io/badge/AgentEnvelope-v2-0f766e?style=flat-square">
   <img alt="本地 computer use" src="https://img.shields.io/badge/local_computer_use-macOS_AX-111827?style=flat-square">
-  <img alt="自修复" src="https://img.shields.io/badge/self--repair-adapter_aware-f97316?style=flat-square">
+  <img alt="交付 operator" src="https://img.shields.io/badge/delivery--operator-trajectory-f97316?style=flat-square">
   <img alt="策略执行" src="https://img.shields.io/badge/policy-open_%7C_confirm_%7C_locked-2563eb?style=flat-square">
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->311<!-- /STATS --> 个 surface · <!-- STATS:test_count -->8846<!-- /STATS --> 个测试</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->311<!-- /STATS --> 个 surface · <!-- STATS:test_count -->8874<!-- /STATS --> 个测试</sub>
 </p>
 
 <p align="center">
-  <strong>按意图发现，按策略执行，带证据返回，坏在哪一步就修哪一步。</strong><br>
+  <strong>按意图发现，按策略执行，记录证据，修复路径，交付结果。</strong><br>
   同一份能力可以从终端、Agent loop、MCP、ACP、CI 或生成的 skill 里调用，不需要为每个入口重写一遍集成。
 </p>
 
@@ -60,7 +60,7 @@ npx @zenalexa/unicli mcp serve
 | "哪个工具能做这个？"   | `unicli search` 和 `unicli do` 把意图转成可检查、可执行的命令计划               |
 | "能不能安全地跑？"     | permission profile 暴露 `open`、`confirm`、`locked` 三种执行模式                |
 | "刚才发生了什么？"     | 每次运行都返回带 data、context、retryability 和证据钩子的 AgentEnvelope         |
-| "页面又改版了。"       | 结构化错误直接指向 adapter 文件和失败的 pipeline step                           |
+| "这条路径失败了。"     | `unicli delivery` 把运行证据转成诊断、下一次实验、执行和修复边界                |
 | "目标是本地应用。"     | desktop transport 覆盖 macOS AX、UIA/AT-SPI sidecar、subprocess 和 visual input |
 | "把它接给我的 Agent。" | `unicli mcp serve`、ACP、native CLI、JSON stream 共享同一个目录                 |
 
@@ -68,7 +68,7 @@ npx @zenalexa/unicli mcp serve
 
 下一代软件用户不只是拿鼠标的人，也会是带着任务、上下文窗口、权限预算和证据需求的 Agent。直接给浏览器驱动，Agent 得临场猜 selector；写一个脚本，只能解决一个孤岛；把巨大工具列表常驻到上下文里，还没开始任务就先烧掉一截 token。
 
-Uni-CLI 做的是中间那层执行底座：把可复用操作整理成 typed、可搜索的命令；把危险动作放到策略闸门后面；把结果变成机器可读回执；失败时明确指出坏掉的 adapter 和 pipeline step。网页只是其中一个 surface，真正的 Agent 任务会同时跨过 browser、desktop、subprocess、protocol 和 OS 边界。
+Uni-CLI 做的是中间那层执行底座：把可复用操作整理成 typed、可搜索的命令；把危险动作放到策略闸门后面；把结果变成机器可读回执；失败时明确指出坏掉的 adapter 和 pipeline step。交付 operator 补上 repair 上方缺失的模型：判断一个目标为什么没交付，选择重试、换路径、补认证、请求权限或进入有边界的修复，并让下一次尝试继续绑定证据。网页只是其中一个 surface，真正的 Agent 任务会同时跨过 browser、desktop、subprocess、protocol 和 OS 边界。
 
 所以这个项目把通常分散的几块放在一起：
 
@@ -88,7 +88,10 @@ Uni-CLI 做的是中间那层执行底座：把可复用操作整理成 typed、
 | 执行   | Web、browser、desktop、subprocess、protocol transport 走同一个 runtime                |
 | 治理   | `open`、`confirm`、`locked` profile 在请求、写入、启动进程前拦住高风险动作            |
 | 观察   | AgentEnvelope v2 返回 data、context、retryability、耗时和证据 hook                    |
-| 修复   | 结构化错误带 `adapter_path`、失败 `step`、suggestion、alternative 和 repair 流程      |
+| 诊断   | `unicli delivery assess` 把失败归为产品漂移、缺少上下文、策略阻断或上游/环境问题      |
+| 调整   | `unicli delivery trajectory` 记录假设和下一次可执行实验                               |
+| 重试   | `unicli delivery run` 通过共享 kernel 执行下一次安全实验，并记录新的 attempt          |
+| 交付   | evidence gate 判断目标已交付、仍在进行、被阻断，还是已经耗尽                          |
 | 再暴露 | 同一条命令可以给人、Agent、MCP client、ACP client 和脚本调用                          |
 
 ## 和常见路径的区别
@@ -106,6 +109,7 @@ Install: npm install -g @zenalexa/unicli
 Discover: unicli search "your intent"
 Run: unicli <site> <command> [args] [-f json|md|yaml|csv|compact]
 Repair: read the error envelope, edit the adapter_path, run unicli repair <site> <command>
+Delivery: write an objective spec, run unicli delivery run spec.json -f json
 Prefer native CLI / JSON stream / MCP for agent runtimes. Use ACP as an editor compatibility gateway.
 -->
 
@@ -113,17 +117,18 @@ Prefer native CLI / JSON stream / MCP for agent runtimes. Use ACP as an editor c
 
 Uni-CLI 不是又一个 scraper 包，而是 Agent 底下的执行层：命令图谱、策略闸门、证据记录、本地 computer-use bridge 和自修复 loop，都收在同一个 CLI 合同里。
 
-| 表面         | 能力                                                                                                                                                                       |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 网站和 API   | public、cookie、header、browser-intercept 等 adapter                                                                                                                       |
-| 浏览器自动化 | CDP 的 navigate、click、type、intercept、snapshot、extract、wait 等步骤                                                                                                    |
-| 桌面和 macOS | 系统命令、App adapter、实时 Shortcuts/App Intent 发现、截图、剪贴板、日历、亮度、本地工具                                                                                  |
-| 外部 CLI     | 58 个已登记的 passthrough bridge，支持安装和状态发现                                                                                                                       |
-| Agent 后端   | native CLI、JSON stream、MCP、ACP、HTTP API、OpenAI-compatible、bridge 路由矩阵                                                                                            |
-| 操作策略     | `open`、`confirm`、`locked` profile，暴露 effect/risk scope、本地 deny 规则、`--yes` 和持久审批记忆                                                                        |
-| 执行证据     | run trace 会记录环境快照，也能 probe/replay/compare 打分并输出结构化 gate 结果；浏览器 session lease 带 tab/auth 姿态，还支持 render-aware 证据、移动检测和 stale-ref 细节 |
-| 输出         | v2 `AgentEnvelope`，支持 Markdown、JSON、YAML、CSV、compact                                                                                                                |
-| 修复         | 错误里带 `adapter_path`、失败 `step`、是否可重试、修复建议和替代命令                                                                                                       |
+| 表面          | 能力                                                                                                                                                                       |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 网站和 API    | public、cookie、header、browser-intercept 等 adapter                                                                                                                       |
+| 浏览器自动化  | CDP 的 navigate、click、type、intercept、snapshot、extract、wait 等步骤                                                                                                    |
+| 桌面和 macOS  | 系统命令、App adapter、实时 Shortcuts/App Intent 发现、截图、剪贴板、日历、亮度、本地工具                                                                                  |
+| 外部 CLI      | 58 个已登记的 passthrough bridge，支持安装和状态发现                                                                                                                       |
+| Agent 后端    | native CLI、JSON stream、MCP、ACP、HTTP API、OpenAI-compatible、bridge 路由矩阵                                                                                            |
+| 操作策略      | `open`、`confirm`、`locked` profile，暴露 effect/risk scope、本地 deny 规则、`--yes` 和持久审批记忆                                                                        |
+| 执行证据      | run trace 会记录环境快照，也能 probe/replay/compare 打分并输出结构化 gate 结果；浏览器 session lease 带 tab/auth 姿态，还支持 render-aware 证据、移动检测和 stale-ref 细节 |
+| 交付 operator | `unicli delivery assess`、`run`、`trajectory`、`repair-candidate`，覆盖 objective-level evidence gate、diagnosis、hypothesis、已执行尝试和有边界修复                       |
+| 输出          | v2 `AgentEnvelope`，支持 Markdown、JSON、YAML、CSV、compact                                                                                                                |
+| 修复          | 错误里带 `adapter_path`、失败 `step`、是否可重试、修复建议和替代命令                                                                                                       |
 
 ## 为 Agent Runtime 设计
 
@@ -209,7 +214,7 @@ ACP 作为编辑器和桥接兼容层保留。真正跑任务时，优先 native
   <a data-site="dingtalk" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="dingtalk: 8 commands"><img alt="dingtalk" src="https://img.shields.io/static/v1?label=dingtalk&message=8+cmds&color=2563eb&style=flat-square&logo=dingtalk&logoColor=white"></a>
   <a data-site="discord-app" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="discord-app: 15 commands"><img alt="discord-app" src="https://img.shields.io/static/v1?label=discord-app&message=15+cmds&color=2563eb&style=flat-square&logo=discord&logoColor=white"></a>
   <a data-site="douban" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="douban: 9 commands"><img alt="douban" src="https://img.shields.io/static/v1?label=douban&message=9+cmds&color=2563eb&style=flat-square&logo=douban&logoColor=white"></a>
-  <a data-site="instagram" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="instagram: 29 commands"><img alt="instagram" src="https://img.shields.io/static/v1?label=instagram&message=29+cmds&color=2563eb&style=flat-square&logo=instagram&logoColor=white"></a>
+  <a data-site="instagram" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="instagram: 28 commands"><img alt="instagram" src="https://img.shields.io/static/v1?label=instagram&message=28+cmds&color=2563eb&style=flat-square&logo=instagram&logoColor=white"></a>
   <a data-site="lark" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="lark: 8 commands"><img alt="lark" src="https://img.shields.io/static/v1?label=lark&message=8+cmds&color=2563eb&style=flat-square&logo=lark&logoColor=white"></a>
   <a data-site="mastodon" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="mastodon: 4 commands"><img alt="mastodon" src="https://img.shields.io/static/v1?label=mastodon&message=4+cmds&color=2563eb&style=flat-square&logo=mastodon&logoColor=white"></a>
   <a data-site="reddit" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="reddit: 24 commands"><img alt="reddit" src="https://img.shields.io/static/v1?label=reddit&message=24+cmds&color=2563eb&style=flat-square&logo=reddit&logoColor=white"></a>
@@ -491,5 +496,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v0.222.0 — Apollo · Armstrong</sub>
+  <sub>v0.222.1 — Apollo · Young</sub>
 </p>

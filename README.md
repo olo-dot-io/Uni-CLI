@@ -16,7 +16,7 @@
   Uni-CLI turns websites, logged-in browsers, desktop apps, local tools, MCP
   servers, and system capabilities into searchable, governed, repairable
   operations. It is not another website wrapper or generated CLI pile; it is the
-  execution layer agents can reuse across runtimes.
+  execution layer agents can reuse across runtimes when real software drifts.
 </p>
 
 <p align="center">
@@ -34,16 +34,16 @@
   <img alt="MCP" src="https://img.shields.io/badge/MCP-2025--11--25-6f42c1?style=flat-square">
   <img alt="AgentEnvelope v2" src="https://img.shields.io/badge/AgentEnvelope-v2-0f766e?style=flat-square">
   <img alt="local computer use" src="https://img.shields.io/badge/local_computer_use-macOS_AX-111827?style=flat-square">
-  <img alt="self repair" src="https://img.shields.io/badge/self--repair-adapter_aware-f97316?style=flat-square">
+  <img alt="delivery operator" src="https://img.shields.io/badge/delivery--operator-trajectory-f97316?style=flat-square">
   <img alt="policy gated" src="https://img.shields.io/badge/policy-open_%7C_confirm_%7C_locked-2563eb?style=flat-square">
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->311<!-- /STATS --> surfaces · <!-- STATS:test_count -->8846<!-- /STATS --> tests</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->311<!-- /STATS --> surfaces · <!-- STATS:test_count -->8874<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
-  <strong>Search by intent. Execute with policy. Return evidence. Repair the failing step.</strong><br>
+  <strong>Search by intent. Execute with policy. Record evidence. Repair the path. Deliver the result.</strong><br>
   Reuse the same capability from a terminal, an agent loop, MCP, ACP, CI, or a
   generated skill without rebuilding the integration.
 </p>
@@ -58,14 +58,14 @@ unicli compute snapshot --app Calculator --format compact
 npx @zenalexa/unicli mcp serve
 ```
 
-| Agent problem            | Uni-CLI answer                                                                          |
-| ------------------------ | --------------------------------------------------------------------------------------- |
-| "What tool can do this?" | `unicli search` and `unicli do` turn intent into ranked, inspectable command plans      |
-| "Can I run it safely?"   | permission profiles expose `open`, `confirm`, and `locked` execution modes              |
-| "What happened?"         | every run returns an AgentEnvelope with data, context, retryability, and evidence hooks |
-| "The site changed."      | structured errors point at the adapter file and failing pipeline step                   |
-| "The app is local."      | desktop transports cover macOS AX, UIA/AT-SPI sidecars, subprocesses, and visual input  |
-| "Expose it to my agent." | `unicli mcp serve`, ACP, native CLI, and JSON streams share the same catalog            |
+| Agent problem            | Uni-CLI answer                                                                                     |
+| ------------------------ | -------------------------------------------------------------------------------------------------- |
+| "What tool can do this?" | `unicli search` and `unicli do` turn intent into ranked, inspectable command plans                 |
+| "Can I run it safely?"   | permission profiles expose `open`, `confirm`, and `locked` execution modes                         |
+| "What happened?"         | every run returns an AgentEnvelope with data, context, retryability, and evidence hooks            |
+| "The path failed."       | `unicli delivery` turns run evidence into diagnosis, next experiment, execution, and repair bounds |
+| "The app is local."      | desktop transports cover macOS AX, UIA/AT-SPI sidecars, subprocesses, and visual input             |
+| "Expose it to my agent." | `unicli mcp serve`, ACP, native CLI, and JSON streams share the same catalog                       |
 
 ## Why It Exists
 
@@ -77,8 +77,11 @@ an island. A giant resident tool list burns context before the task starts.
 Uni-CLI is the execution layer in between. It turns useful operations into
 typed, searchable commands, keeps dangerous actions behind policy, returns
 machine-readable receipts, and makes failures repairable by pointing at the
-exact adapter and pipeline step that broke. Websites are just one surface; real
-agent work crosses browser, desktop, subprocess, protocol, and OS boundaries.
+exact adapter and pipeline step that broke. The delivery operator now adds the
+missing model above repair: it classifies why an objective failed, chooses
+retry, route switch, auth, permission, or repair, and keeps the next attempt tied
+to evidence. Websites are just one surface; real agent work crosses browser,
+desktop, subprocess, protocol, and OS boundaries.
 
 This is why the project combines pieces that usually live apart:
 
@@ -95,14 +98,17 @@ This is why the project combines pieces that usually live apart:
 
 Every serious agent operation follows the same loop.
 
-| Step      | What Uni-CLI gives the agent                                                                        |
-| --------- | --------------------------------------------------------------------------------------------------- |
-| Discover  | `unicli search` and `unicli do` map intent to command, args, auth mode, examples, and risk signals  |
-| Execute   | Web, browser, desktop, subprocess, and protocol transports run behind one runtime                   |
-| Govern    | `open`, `confirm`, and `locked` profiles block risky effects before requests, writes, or spawns     |
-| Observe   | AgentEnvelope v2 returns data, context, retryability, timing, and evidence hooks                    |
-| Repair    | Structured errors include `adapter_path`, failed `step`, suggestions, alternatives, and repair flow |
-| Re-expose | The same command can be called by humans, agents, MCP clients, ACP clients, and scripts             |
+| Step      | What Uni-CLI gives the agent                                                                                      |
+| --------- | ----------------------------------------------------------------------------------------------------------------- |
+| Discover  | `unicli search` and `unicli do` map intent to command, args, auth mode, examples, and risk signals                |
+| Execute   | Web, browser, desktop, subprocess, and protocol transports run behind one runtime                                 |
+| Govern    | `open`, `confirm`, and `locked` profiles block risky effects before requests, writes, or spawns                   |
+| Observe   | AgentEnvelope v2 returns data, context, retryability, timing, and evidence hooks                                  |
+| Diagnose  | `unicli delivery assess` classifies failures as product drift, missing context, policy block, or upstream trouble |
+| Adapt     | `unicli delivery trajectory` records the hypothesis and next executable experiment                                |
+| Retry     | `unicli delivery run` executes the next safe experiment through the shared kernel and records the new attempt     |
+| Deliver   | Evidence gates decide whether the objective is satisfied, still active, blocked, or exhausted                     |
+| Re-expose | The same command can be called by humans, agents, MCP clients, ACP clients, and scripts                           |
 
 ## What Makes It Different
 
@@ -119,6 +125,7 @@ Install: npm install -g @zenalexa/unicli
 Discover: unicli search "your intent"
 Run: unicli <site> <command> [args] [-f json|md|yaml|csv|compact]
 Repair: read the error envelope, edit the adapter_path, run unicli repair <site> <command>
+Delivery: write an objective spec, run unicli delivery run spec.json -f json
 Prefer native CLI / JSON stream / MCP for agent runtimes. Use ACP as an editor compatibility gateway.
 -->
 
@@ -137,6 +144,7 @@ bridge, and repair loop wrapped behind one CLI contract.
 | Agent backends     | Route matrix for native CLI, JSON stream, MCP, ACP, HTTP API, OpenAI-compatible, and bridge routes                                                                                                       |
 | Operation policy   | `open`, `confirm`, and `locked` profiles with effect/risk scopes, local deny rules, `--yes`, and persisted approval memory                                                                               |
 | Evidence           | Run traces with environment snapshots, probe/replay/compare scores, structured gate results, browser session leases with tab/auth posture, render-aware evidence, movement checks, and stale-ref details |
+| Delivery operator  | `unicli delivery assess`, `run`, `trajectory`, and `repair-candidate` for objective-level evidence gates, diagnoses, hypotheses, executed attempts, and bounded repairs                                  |
 | Output             | v2 `AgentEnvelope` in Markdown, JSON, YAML, CSV, or compact format                                                                                                                                       |
 | Repair             | Structured errors with `adapter_path`, failing `step`, retryability, suggestions, and alternatives                                                                                                       |
 
@@ -247,7 +255,7 @@ The wall below is generated from active manifest sites with real logo support. B
   <a data-site="dingtalk" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="dingtalk: 8 commands"><img alt="dingtalk" src="https://img.shields.io/static/v1?label=dingtalk&message=8+cmds&color=2563eb&style=flat-square&logo=dingtalk&logoColor=white"></a>
   <a data-site="discord-app" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="discord-app: 15 commands"><img alt="discord-app" src="https://img.shields.io/static/v1?label=discord-app&message=15+cmds&color=2563eb&style=flat-square&logo=discord&logoColor=white"></a>
   <a data-site="douban" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="douban: 9 commands"><img alt="douban" src="https://img.shields.io/static/v1?label=douban&message=9+cmds&color=2563eb&style=flat-square&logo=douban&logoColor=white"></a>
-  <a data-site="instagram" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="instagram: 29 commands"><img alt="instagram" src="https://img.shields.io/static/v1?label=instagram&message=29+cmds&color=2563eb&style=flat-square&logo=instagram&logoColor=white"></a>
+  <a data-site="instagram" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="instagram: 28 commands"><img alt="instagram" src="https://img.shields.io/static/v1?label=instagram&message=28+cmds&color=2563eb&style=flat-square&logo=instagram&logoColor=white"></a>
   <a data-site="lark" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="lark: 8 commands"><img alt="lark" src="https://img.shields.io/static/v1?label=lark&message=8+cmds&color=2563eb&style=flat-square&logo=lark&logoColor=white"></a>
   <a data-site="mastodon" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="mastodon: 4 commands"><img alt="mastodon" src="https://img.shields.io/static/v1?label=mastodon&message=4+cmds&color=2563eb&style=flat-square&logo=mastodon&logoColor=white"></a>
   <a data-site="reddit" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="reddit: 24 commands"><img alt="reddit" src="https://img.shields.io/static/v1?label=reddit&message=24+cmds&color=2563eb&style=flat-square&logo=reddit&logoColor=white"></a>
@@ -533,5 +541,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v0.222.0 — Apollo · Armstrong</sub>
+  <sub>v0.222.1 — Apollo · Young</sub>
 </p>

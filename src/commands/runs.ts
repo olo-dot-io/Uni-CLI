@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import type { Command } from "commander";
 import { detectFormat, format } from "../output/formatter.js";
 import { makeCtx, type AgentError } from "../output/envelope.js";
+import { printErrorEnvelope } from "../output/error-writer.js";
 import { ExitCode, type OutputFormat } from "../types.js";
 import {
   createRunStore,
@@ -97,13 +98,14 @@ function printRunError(
   startedAt: number,
   error: AgentError,
 ): void {
-  process.exitCode = ExitCode.USAGE_ERROR;
-  console.log(
-    format(null, undefined, fmt(program), {
+  printErrorEnvelope({
+    fmt: fmt(program),
+    exitCode: ExitCode.USAGE_ERROR,
+    ctx: {
       ...makeCtx(command, startedAt),
       error,
-    }),
-  );
+    },
+  });
 }
 
 function nonNegativeInteger(

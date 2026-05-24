@@ -32,7 +32,8 @@ import {
   commandUsesBrowser,
   getAllAdapters,
 } from "../src/registry.js";
-import { runPipeline } from "../src/engine/executor.js";
+import { PipelineError, runPipeline } from "../src/engine/executor.js";
+import type { AdapterCommand } from "../src/types.js";
 
 interface ProbeResult {
   site: string;
@@ -408,7 +409,7 @@ async function main(): Promise<void> {
         await withTimeout(
           runPipeline(
             cmd.pipeline,
-            { args: { limit: 1 }, source: "internal" },
+            { args: healthProbeArgs(cmd), source: "internal" },
             adapter.base,
             {
               site: adapter.name,
@@ -429,7 +430,7 @@ async function main(): Promise<void> {
         // is healthy on its target host, the probe just can't exercise
         // it here. A true adapter regression (HTTP 404, parse error,
         // selector drift, etc.) keeps surfacing as `fail`.
-        const envReason = isEnvironmentMissing(message);
+        const envReason = isProbeEnvironmentMissing(err, message);
         if (envReason) {
           results.push({
             site: adapter.name,
@@ -484,6 +485,37 @@ async function main(): Promise<void> {
   process.stderr.write(
     `adapter-health: ok=${ok} skip=${skip} (env-missing=${skipEnvMissing})\n`,
   );
+}
+
+function healthProbeArgs(cmd: AdapterCommand): Record<string, unknown> {
+  const args: Record<string, unknown> = {};
+  for (const arg of cmd.adapterArgs ?? []) {
+    if (arg.default !== undefined) args[arg.name] = arg.default;
+  }
+  if ((cmd.adapterArgs ?? []).some((arg) => arg.name === "limit")) {
+    args.limit = 1;
+  }
+  return args;
+}
+
+function isProbeEnvironmentMissing(
+  error: unknown,
+  message: string,
+): string | undefined {
+  if (error instanceof PipelineError) {
+    const preview = error.detail.responsePreview ?? "";
+    if (
+      error.detail.statusCode !== undefined &&
+      error.detail.statusCode >= 400 &&
+      error.detail.statusCode < 500 &&
+      /login_required|authentication|required|not authenticated|用户不存在/i.test(
+        preview,
+      )
+    ) {
+      return `auth required (HTTP ${error.detail.statusCode})`;
+    }
+  }
+  return isEnvironmentMissing(message);
 }
 
 main().catch((err) => {

@@ -31,6 +31,7 @@ import { search } from "../discovery/search.js";
 import { getAdapter, resolveCommand } from "../registry.js";
 import { describeCommand } from "./describe.js";
 import { format, detectFormat } from "../output/formatter.js";
+import { printErrorEnvelope } from "../output/error-writer.js";
 import type {
   AgentContext,
   AgentNextAction,
@@ -310,8 +311,7 @@ function emitEmpty(
         "Use simpler keywords or run `unicli describe` to see the full catalogue",
     },
   };
-  process.exitCode = 66;
-  console.log(format(null, undefined, fmt, ctx));
+  printErrorEnvelope({ fmt, exitCode: 66, ctx });
 }
 
 function emitInvalidInput(
@@ -338,6 +338,5 @@ function emitInvalidInput(
       suggestion,
     },
   };
-  process.exitCode = 2;
-  console.log(format(null, undefined, fmt, ctx));
+  printErrorEnvelope({ fmt, exitCode: 2, ctx });
 }

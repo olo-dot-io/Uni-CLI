@@ -36,6 +36,7 @@ import { assertSafeRequestUrl } from "../engine/ssrf.js";
 import { getProxyAgent } from "../engine/proxy.js";
 import { USER_AGENT } from "../constants.js";
 import { format, detectFormat } from "../output/formatter.js";
+import { printErrorEnvelope } from "../output/error-writer.js";
 import type {
   AgentContext,
   AgentError,
@@ -385,8 +386,11 @@ function emitError(
     next_actions: errorNextActions(url, err.code),
     error: err,
   };
-  process.exitCode = mapExitCode(err.code);
-  console.log(format(null, undefined, fmt, ctx));
+  printErrorEnvelope({
+    fmt,
+    exitCode: mapExitCode(err.code),
+    ctx,
+  });
 }
 
 function mapExitCode(code: string): number {

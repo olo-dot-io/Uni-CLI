@@ -13,13 +13,10 @@ args:
 
 pipeline:
   - fetch:
-      url: https://www.instagram.com/api/v1/clips/trending/
-      method: POST
-      body:
-        max_id: ""
-        page_size: "${{ args.limit }}"
+      url: https://www.instagram.com/api/v1/clips/discover/
       headers:
-        X-CSRFToken: "${{ cookies.csrftoken }}"
+        X-IG-App-ID: "936619743392459"
+        User-Agent: "Instagram 219.0.0.12.117 Android"
 
   - select: items
 
@@ -38,5 +35,6 @@ capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public
-quarantine: false
+quarantine: true
+quarantineReason: "2026-05-24: Instagram retired /api/v1/clips/trending/; /api/v1/clips/discover/ requires live authenticated browser validation before this web-api route can be trusted."
 schema_version: v2
