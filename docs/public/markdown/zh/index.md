@@ -63,7 +63,7 @@ Agent 执行需要的不是更长的常驻工具列表，也不是又一个网�
 
 ## 当前版本
 
-当前 latest：v0.223.3 · Apollo · Lovell。
+当前 latest：v0.223.4 · Apollo · Lovell。
 
 ## Agent 索引
 

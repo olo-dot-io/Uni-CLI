@@ -3,6 +3,20 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 
+## [0.223.4] — 2026-05-25 — Apollo · Lovell
+
+### Fixed
+
+- Compute capture reference tests now parse fallback JSON content before
+  asserting screenshot paths, so Windows escaped path separators do not break
+  CI while preserving the externalized-image contract.
+
+### Verified
+
+- `npx vitest run --project unit tests/unit/compute-capture-reference.test.ts --maxWorkers=1 --reporter=dot`
+- `npx oxlint tests/unit/compute-capture-reference.test.ts`
+- `npm run verify`
+
 ## [0.223.3] — 2026-05-25 — Apollo · Lovell
 
 ### Fixed

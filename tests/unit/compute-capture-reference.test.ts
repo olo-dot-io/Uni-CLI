@@ -193,7 +193,21 @@ describe("compute capture references", () => {
     const content = readFileSync(reference.files.content, "utf-8");
     expect(content).not.toContain(screenshotBase64);
     expect(content).not.toContain('"base64"');
-    expect(content).toContain(reference.files.image);
+    const contentPacket = JSON.parse(content) as ComputeCapturePacket;
+    expect(
+      (
+        contentPacket.screenshot?.data as
+          | { base64?: string; path?: string }
+          | undefined
+      )?.base64,
+    ).toBeUndefined();
+    expect(
+      (
+        contentPacket.screenshot?.data as
+          | { base64?: string; path?: string }
+          | undefined
+      )?.path,
+    ).toBe(reference.files.image);
   });
 
   it("copies reference markup through the host clipboard command", async () => {

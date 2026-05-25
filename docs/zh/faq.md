@@ -29,7 +29,7 @@ Uni-CLI 用 YAML 适配器把站点编译成确定性命令，而不是图灵完
 
 ## 一共有多少站点和命令？
 
-v0.223.3 生成目录包含 <span><!-- STATS:site_count -->311<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1753<!-- /STATS --></span> 条命令、<span><!-- STATS:adapter_count_total -->1212<!-- /STATS --></span> 个适配器、<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> 个 pipeline step、<span><!-- STATS:test_count -->8915<!-- /STATS --></span> 个测试。真正重要的不是数字，而是一套合同：搜索、策略、证据、修复，以及跨 web、browser、desktop、本地工具和协议的同一种 AgentEnvelope。
+v0.223.4 生成目录包含 <span><!-- STATS:site_count -->311<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1753<!-- /STATS --></span> 条命令、<span><!-- STATS:adapter_count_total -->1212<!-- /STATS --></span> 个适配器、<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> 个 pipeline step、<span><!-- STATS:test_count -->8915<!-- /STATS --></span> 个测试。真正重要的不是数字，而是一套合同：搜索、策略、证据、修复，以及跨 web、browser、desktop、本地工具和协议的同一种 AgentEnvelope。
 
 ## 能下载论文并读取本地 PDF 吗？
 
