@@ -26,4 +26,4 @@ Linux require the platform accessibility services used by UIA and AT-SPI.
 npx -y @zenalexa/unicli mcp serve --profile computer-use
 ```
 
-The server banner should report `15 tools registered, mode=computer-use`.
+The server banner should report `16 tools registered, mode=computer-use`.

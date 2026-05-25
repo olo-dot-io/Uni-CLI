@@ -362,7 +362,7 @@ describe("MCP server — computer-use profile", () => {
     );
   });
 
-  it("lists the 15 computer-use tools over stdio", async () => {
+  it("lists the 16 computer-use tools over stdio", async () => {
     const response = await sendRequest(proc, {
       jsonrpc: "2.0",
       id: 102,
@@ -374,6 +374,7 @@ describe("MCP server — computer-use profile", () => {
     expect(result.tools.map((tool) => tool.name)).toEqual([
       "computer-use.apps",
       "computer-use.windows",
+      "computer-use.capture",
       "computer-use.snapshot",
       "computer-use.find",
       "computer-use.click",

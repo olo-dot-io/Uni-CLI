@@ -14,6 +14,7 @@ import {
 import { loadExternalClis, isInstalled } from "./hub/index.js";
 import { executeExternal } from "./hub/passthrough.js";
 import { format, detectFormat } from "./output/formatter.js";
+import { listCoreDiscoveryCommands } from "./discovery/core-catalog.js";
 import { runPipeline } from "./engine/executor.js";
 import { verifyRowShape } from "./engine/verify-row-shape.js";
 import { ExitCode } from "./types.js";
@@ -145,7 +146,18 @@ export async function createCli(): Promise<Command> {
     .option("--type <type>", "filter by adapter type")
     .action((opts) => {
       const listStarted = Date.now();
-      let commands = listCommands();
+      let commands = [
+        ...listCommands(),
+        ...listCoreDiscoveryCommands().map((command) => ({
+          site: command.site,
+          command: command.command,
+          description: command.description,
+          category: command.category,
+          type: command.type,
+          auth: false,
+          quarantined: false,
+        })),
+      ];
 
       if (opts.site) {
         commands = commands.filter((c) => c.site.includes(opts.site));
@@ -156,6 +168,10 @@ export async function createCli(): Promise<Command> {
       if (opts.type) {
         commands = commands.filter((c) => c.type === opts.type);
       }
+      commands = commands.sort(
+        (a, b) =>
+          a.site.localeCompare(b.site) || a.command.localeCompare(b.command),
+      );
 
       const fmt = detectFormat(
         program.opts().format as OutputFormat | undefined,

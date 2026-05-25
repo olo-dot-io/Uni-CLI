@@ -30,6 +30,10 @@ import {
   discoverMacosDynamicData,
   dynamicMacosDiscoveryEnabled,
 } from "./macos-dynamic.js";
+import {
+  coreDiscoveryCategory,
+  listCoreDiscoveryCommands,
+} from "./core-catalog.js";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -52,16 +56,11 @@ interface Document {
   site: string;
   command: string;
   description: string;
+  category?: string;
   /** Pre-tokenized terms from site + command + description */
   terms: string[];
   /** Total term count for BM25 length normalization */
   termCount: number;
-}
-
-interface CoreSearchDocument {
-  site: string;
-  command: string;
-  description: string;
 }
 
 /** Serialized search index (generated at build time, loaded at runtime). */
@@ -76,12 +75,23 @@ export interface SearchIndex {
     site: string;
     command: string;
     description: string;
+    category?: string;
     terms: string[];
   }>;
   /** Average document length (term count) across the corpus */
   avgDl: number;
   /** Total document count */
   N: number;
+}
+
+interface SearchManifest {
+  sites: Record<
+    string,
+    {
+      category?: string;
+      commands: Array<{ name: string; description: string }>;
+    }
+  >;
 }
 
 // ── BM25 Parameters ─────────────────────────────────────────────────────────
@@ -110,117 +120,6 @@ const BOOST_SITE_PHRASE = 28.0; // Query phrase matches hyphenated site name
 const BOOST_CMD_EXACT = 8.0; // Query token exactly matches command name
 const BOOST_CMD_PARTIAL = 3.0; // Query token is substring of command name
 const BOOST_CATEGORY = 2.0; // Query token matches site's category
-
-const CORE_SEARCH_DOCUMENTS: readonly CoreSearchDocument[] = [
-  {
-    site: "browser",
-    command: "evidence",
-    description:
-      "Capture browser operator evidence for web automation, website control, agent workflows, MCP/CLI debugging, DOM snapshots, screenshots, network summaries, render-aware observation, session leases, and audit trails.",
-  },
-  {
-    site: "browser",
-    command: "extract",
-    description:
-      "Extract rendered website text through the browser operator with render-aware waiting, session lease metadata, DOM evidence, and agent-friendly structured output.",
-  },
-  {
-    site: "browser",
-    command: "state",
-    description:
-      "Read the current browser page state, accessibility tree, refs, URL, and DOM snapshot for website control and agent browser automation.",
-  },
-  {
-    site: "browser",
-    command: "click",
-    description:
-      "Click a browser page ref with stale-ref checks, session lease ownership, action evidence, watchdog movement checks, and recorded run traces.",
-  },
-  {
-    site: "browser",
-    command: "bind",
-    description:
-      "Bind the current visible browser tab into a named workspace with domain and path guards for profile reuse and multi-command automation.",
-  },
-  {
-    site: "operate",
-    command: "state",
-    description:
-      "Inspect the current browser automation workspace for agent operation, website control, page refs, and accessibility tree state.",
-  },
-  {
-    site: "operate",
-    command: "click",
-    description:
-      "Operate a browser page by clicking refs with recorded evidence and session lease metadata.",
-  },
-  {
-    site: "mcp",
-    command: "serve",
-    description:
-      "Serve Uni-CLI through MCP for agents, exposing command search, command run, browser/web capabilities, structured envelopes, and protocol integration.",
-  },
-  {
-    site: "agents",
-    command: "recommend",
-    description:
-      "Recommend the right agent backend or CLI for a task, including Codex, Claude Code, OpenCode, MCP, ACP, browser, desktop, and tool workflows.",
-  },
-  {
-    site: "runs",
-    command: "list",
-    description:
-      "List recorded Uni-CLI run traces, browser session leases, evidence events, watchdog outcomes, command status, and replay/index metadata.",
-  },
-  {
-    site: "runs",
-    command: "show",
-    description:
-      "Show recorded run trace events for debugging, replay preparation, browser lease evidence, render stability, and agent audit review.",
-  },
-  {
-    site: "runs",
-    command: "probe",
-    description:
-      "Probe a recorded run trace for exact replay readiness, private args availability, command metadata, and evidence-backed reproducibility.",
-  },
-  {
-    site: "runs",
-    command: "replay",
-    description:
-      "Replay a recorded command through the native execution kernel, write a fresh replay trace, and gate behavior, context, or overall scores.",
-  },
-  {
-    site: "runs",
-    command: "compare",
-    description:
-      "Compare two recorded run traces for behavior drift, context drift, score gates, result envelope differences, repair verification, and reproducible agent audit checks.",
-  },
-  {
-    site: "delivery",
-    command: "assess",
-    description:
-      "Assess an objective delivery spec from recorded run evidence, classify failure state, and choose the next action for agent self-repair, retry, auth, permission, or stop.",
-  },
-  {
-    site: "delivery",
-    command: "run",
-    description:
-      "Execute the next delivery experiment from an objective spec through the shared command kernel, record the new run trace, and return the updated trajectory.",
-  },
-  {
-    site: "delivery",
-    command: "trajectory",
-    description:
-      "Build a reviewable objective trajectory from run evidence with failed gates, diagnosis, hypothesis, verification status, and the next executable experiment for closed-loop agents.",
-  },
-  {
-    site: "delivery",
-    command: "repair-candidate",
-    description:
-      "Compile a delivery trajectory into one bounded adapter repair candidate with adapter path, diagnosis, verify command, and repair safety constraints.",
-  },
-];
 
 // ── Index Management ────────────────────────────────────────────────────────
 
@@ -256,16 +155,14 @@ function loadIndex(): SearchIndex {
 }
 
 function augmentIndexWithCoreDocs(index: SearchIndex): SearchIndex {
-  const manifest: {
-    sites: Record<
-      string,
-      { commands: Array<{ name: string; description: string }> }
-    >;
-  } = { sites: {} };
+  const manifest: SearchManifest = { sites: {} };
   const seen = new Set<string>();
 
   for (const doc of index.documents) {
-    manifest.sites[doc.site] ??= { commands: [] };
+    manifest.sites[doc.site] ??= {
+      ...(doc.category ? { category: doc.category } : {}),
+      commands: [],
+    };
     manifest.sites[doc.site].commands.push({
       name: doc.command,
       description: doc.description,
@@ -273,10 +170,10 @@ function augmentIndexWithCoreDocs(index: SearchIndex): SearchIndex {
     seen.add(doc.id);
   }
 
-  for (const doc of CORE_SEARCH_DOCUMENTS) {
+  for (const doc of listCoreDiscoveryCommands()) {
     const id = `${doc.site}/${doc.command}`;
     if (seen.has(id)) continue;
-    manifest.sites[doc.site] ??= { commands: [] };
+    manifest.sites[doc.site] ??= { category: doc.category, commands: [] };
     manifest.sites[doc.site].commands.push({
       name: doc.command,
       description: doc.description,
@@ -304,12 +201,9 @@ function buildIndexFromManifest(): SearchIndex {
     return { postings: {}, idf: {}, documents: [], avgDl: 0, N: 0 };
   }
 
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf-8")) as {
-    sites: Record<
-      string,
-      { commands: Array<{ name: string; description: string }> }
-    >;
-  };
+  const manifest = JSON.parse(
+    readFileSync(manifestPath, "utf-8"),
+  ) as SearchManifest;
 
   return buildIndex(manifest);
 }
@@ -318,22 +212,23 @@ function buildIndexFromManifest(): SearchIndex {
  * Build a search index from a manifest object.
  * Exported for use by the build script.
  */
-export function buildIndex(manifest: {
-  sites: Record<
-    string,
-    { commands: Array<{ name: string; description: string }> }
-  >;
-}): SearchIndex {
+export function buildIndex(manifest: SearchManifest): SearchIndex {
   const documents: Document[] = [];
 
   for (const [site, info] of Object.entries(manifest.sites)) {
     for (const cmd of info.commands) {
-      const terms = tokenizeDocument(site, cmd.name, cmd.description ?? "");
+      const terms = tokenizeDocument(
+        site,
+        cmd.name,
+        cmd.description ?? "",
+        info.category,
+      );
       documents.push({
         id: `${site}/${cmd.name}`,
         site,
         command: cmd.name,
         description: cmd.description ?? "",
+        ...(info.category ? { category: info.category } : {}),
         terms,
         termCount: terms.length,
       });
@@ -372,6 +267,7 @@ export function buildIndex(manifest: {
       site: d.site,
       command: d.command,
       description: d.description,
+      ...(d.category ? { category: d.category } : {}),
       terms: d.terms,
     })),
     avgDl,
@@ -422,6 +318,7 @@ function tokenizeDocument(
   site: string,
   command: string,
   description: string,
+  category?: string,
 ): string[] {
   const terms: string[] = [];
 
@@ -445,8 +342,8 @@ function tokenizeDocument(
   terms.push(...descWords);
 
   // Category as a term
-  const category = SITE_CATEGORIES.get(site);
-  if (category) terms.push(category);
+  const categoryTerm = category ?? SITE_CATEGORIES.get(site);
+  if (categoryTerm) terms.push(categoryTerm);
 
   return terms;
 }
@@ -595,12 +492,9 @@ function searchDynamicMacosIndex(
   const docs = buildMacosDynamicSearchDocuments(discoverMacosDynamicData());
   if (docs.length === 0) return [];
 
-  const manifest: {
-    sites: Record<
-      string,
-      { commands: Array<{ name: string; description: string }> }
-    >;
-  } = { sites: { macos: { commands: [] } } };
+  const manifest: SearchManifest = {
+    sites: { macos: { category: "desktop", commands: [] } },
+  };
 
   for (const doc of docs) {
     manifest.sites.macos.commands.push({
@@ -747,7 +641,12 @@ function searchIndex(
 }
 
 function documentCategory(doc: SearchIndex["documents"][number]): string {
-  return SITE_CATEGORIES.get(doc.site) ?? "other";
+  return (
+    doc.category ??
+    coreDiscoveryCategory(doc.site) ??
+    SITE_CATEGORIES.get(doc.site) ??
+    "other"
+  );
 }
 
 function deriveSitePhraseHints(index: SearchIndex, query: string): string[] {

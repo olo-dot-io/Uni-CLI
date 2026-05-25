@@ -105,7 +105,7 @@ allowlist entry without a one-line `// REASON:` justification in
 
 ## Version
 
-0.222.3 — Apollo · Scott
+0.223.0 — Apollo · Worden
 
 ## MCP one-liner (Claude Desktop / Cursor / Continue)
 

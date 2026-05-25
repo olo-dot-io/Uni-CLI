@@ -856,6 +856,19 @@ export const DOMAIN_ALIASES: ReadonlyMap<string, readonly string[]> = new Map([
   ["日历", ["calendar", "event", "schedule"]],
   ["定时", ["schedule", "timer", "cron"]],
   ["screenshot", ["screenshot", "capture"]],
+  [
+    "appshots",
+    [
+      "app",
+      "shots",
+      "capture",
+      "compute",
+      "desktop",
+      "accessibility",
+      "screenshot",
+      "reference",
+    ],
+  ],
   ["clipboard", ["clipboard", "copy", "paste"]],
 ]);
 

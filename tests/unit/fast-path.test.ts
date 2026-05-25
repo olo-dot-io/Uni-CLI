@@ -83,6 +83,41 @@ describe("CLI fast path", () => {
     expect(env.data.some((row) => row.site === "arxiv")).toBe(true);
   });
 
+  it("lists core compute commands from the same discovery surface as adapters", () => {
+    const { stdout, io } = makeIo();
+
+    const handled = tryRunFastPath(
+      ["node", "unicli", "-f", "json", "list", "--site", "compute"],
+      io,
+    );
+
+    expect(handled).toBe(true);
+    const env = JSON.parse(stdout.join("")) as {
+      data: Array<{
+        site: string;
+        command: string;
+        category: string;
+        type: string;
+      }>;
+    };
+    expect(env.data.length).toBeGreaterThan(0);
+    expect(env.data.every((row) => row.site === "compute")).toBe(true);
+    expect(env.data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          command: "capture",
+          category: "desktop",
+          type: "desktop",
+        }),
+        expect.objectContaining({
+          command: "snapshot",
+          category: "desktop",
+          type: "desktop",
+        }),
+      ]),
+    );
+  });
+
   it("preserves quarantine tags in list output", () => {
     const { stdout, io } = makeIo();
 
@@ -275,6 +310,41 @@ describe("CLI fast path", () => {
         process: { access: "write" },
       },
     });
+  });
+
+  it("describes core compute capture with a machine-readable schema", () => {
+    const { stdout, io } = makeIo();
+
+    const handled = tryRunFastPath(
+      ["node", "unicli", "describe", "compute", "capture"],
+      io,
+    );
+
+    expect(handled).toBe(true);
+    const payload = JSON.parse(stdout.join("")) as {
+      command: string;
+      args_schema: {
+        properties: Record<
+          string,
+          { type: string; default?: unknown; enum?: string[] }
+        >;
+      };
+      channels: { shell: string };
+    };
+    expect(payload.command).toBe("unicli compute capture");
+    expect(payload.args_schema.properties.format).toMatchObject({
+      type: "string",
+      default: "compact",
+      enum: ["compact", "json", "tree"],
+    });
+    expect(payload.args_schema.properties.include).toMatchObject({
+      type: "string",
+      default: "snapshot,screenshot",
+    });
+    expect(payload.args_schema.properties.copyReference).toMatchObject({
+      type: "boolean",
+    });
+    expect(payload.channels.shell).toContain("unicli compute capture");
   });
 
   it("serves repair dry-run without entering the repair loop", () => {

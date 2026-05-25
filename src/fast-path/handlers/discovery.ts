@@ -8,6 +8,13 @@
 
 import { search } from "../../discovery/search.js";
 import {
+  getCoreDiscoveryCommand,
+  listCoreDiscoveryCommands,
+  listCoreDiscoverySites,
+  type CoreDiscoveryArg,
+  type CoreDiscoveryCommand,
+} from "../../discovery/core-catalog.js";
+import {
   buildMacosDynamicCommands,
   discoverMacosDynamicData,
   dynamicMacosDiscoveryEnabled,
@@ -86,6 +93,7 @@ export function handleList(parsed: ParsedArgv, io: Io): boolean {
         };
       }),
     )
+    .concat(coreListRows())
     .concat(dynamicListRows())
     .filter((row) => !siteFilter || row.site.includes(siteFilter))
     .filter((row) => !categoryFilter || row.category === categoryFilter)
@@ -124,6 +132,24 @@ function dynamicListRows(): Array<{
     description: command.description ?? "",
     category: "desktop",
     type: "desktop",
+    auth: "",
+  }));
+}
+
+function coreListRows(): Array<{
+  site: string;
+  command: string;
+  description: string;
+  category: string;
+  type: string;
+  auth: string;
+}> {
+  return listCoreDiscoveryCommands().map((command) => ({
+    site: command.site,
+    command: command.command,
+    description: command.description,
+    category: command.category,
+    type: command.type,
     auth: "",
   }));
 }
@@ -199,7 +225,7 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
   const [site, cmdName] = parsed.rest;
 
   if (!site) {
-    const sites = Object.entries(manifest.sites).map(([name, info]) => ({
+    const adapterSites = Object.entries(manifest.sites).map(([name, info]) => ({
       name,
       display_name: name,
       type: info.commands[0]?.type ?? "web-api",
@@ -207,12 +233,58 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
       commands_count: info.commands.length,
       description: "",
     }));
+    const sites = adapterSites
+      .concat(
+        listCoreDiscoverySites().map((coreSite) => ({
+          name: coreSite.site,
+          display_name: coreSite.site,
+          type: coreSite.type,
+          strategy: "public",
+          commands_count: coreSite.commands.length,
+          description: "Core Uni-CLI command group",
+        })),
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
     io.stdout(JSON.stringify({ sites, total: sites.length }, null, 2));
     return true;
   }
 
   const info = manifest.sites[site];
   if (!info) {
+    const coreSite = listCoreDiscoverySites().find(
+      (candidate) => candidate.site === site,
+    );
+    if (coreSite && !cmdName) {
+      io.stdout(
+        JSON.stringify(
+          {
+            site,
+            display_name: site,
+            type: coreSite.type,
+            strategy: "public",
+            commands: coreSite.commands.map((command) => ({
+              name: command.command,
+              description: command.description,
+              quarantined: false,
+              strategy: "public",
+              auth: false,
+              browser: command.type === "browser",
+              args: summarizeArgs([...(command.args ?? [])]),
+            })),
+          },
+          null,
+          2,
+        ),
+      );
+      return true;
+    }
+    if (cmdName) {
+      const coreCommand = getCoreDiscoveryCommand(site, cmdName);
+      if (coreCommand) {
+        io.stdout(JSON.stringify(describeCoreCommand(coreCommand), null, 2));
+        return true;
+      }
+    }
     io.stdout(JSON.stringify({ error: `unknown site: ${site}` }, null, 2));
     process.exitCode = 64;
     return true;
@@ -316,6 +388,41 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
     ),
   );
   return true;
+}
+
+function describeCoreCommand(
+  command: CoreDiscoveryCommand,
+): Record<string, unknown> {
+  const args = [...(command.args ?? [])] as CoreDiscoveryArg[];
+  return {
+    command: `unicli ${command.site} ${command.command}`,
+    description: command.description,
+    quarantined: false,
+    strategy: "public",
+    auth: false,
+    browser: command.type === "browser",
+    target_surface: command.target_surface,
+    adapter_path: coreCommandSourcePath(command.site),
+    args_schema: argsToJsonSchema(args),
+    example_stdin: buildExample(args),
+    channels:
+      command.channels ?? buildChannels(command.site, command.command, args),
+    next_actions: [
+      {
+        command: `unicli ${command.site} ${command.command} --help`,
+        description: "Inspect the Commander help for exact shell flags",
+      },
+      {
+        command: `unicli ${command.site} ${command.command}`,
+        description: "Run the core command",
+      },
+    ],
+  };
+}
+
+function coreCommandSourcePath(site: string): string {
+  if (site === "browser") return "src/commands/browser/index.ts";
+  return `src/commands/${site}.ts`;
 }
 
 export function handleRepair(parsed: ParsedArgv, io: Io): boolean {

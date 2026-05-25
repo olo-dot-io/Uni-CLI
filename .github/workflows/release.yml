@@ -37,6 +37,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
@@ -74,12 +75,20 @@ jobs:
 
       - name: Validate release metadata
         id: release_metadata
+        env:
+          REQUESTED_TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
           RELEASE_REQUIRE_CODENAME=1 npm run release:check
           node <<'NODE'
           const fs = require("node:fs");
           const version = require("./package.json").version;
+          const expectedTag = `v${version}`;
+          const requestedTag = process.env.REQUESTED_TAG;
+          if (requestedTag && requestedTag !== expectedTag) {
+            console.error(`Release tag/version mismatch: tag ${requestedTag} does not match package version ${expectedTag}`);
+            process.exit(1);
+          }
           const changelog = fs.readFileSync("CHANGELOG.md", "utf8");
           const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
           const heading = changelog.match(new RegExp(`^## \\[${escaped}\\].*$`, "m"))?.[0] ?? "";
@@ -89,6 +98,7 @@ jobs:
           }
           const title = heading.replace(/^## \[([^\]]+)\]\s+—\s+/, "v$1 — ");
           fs.appendFileSync(process.env.GITHUB_OUTPUT, `title=${title}\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `tag=${expectedTag}\n`);
           NODE
 
       # Surface which auth path the publish will take BEFORE it runs so a
@@ -144,5 +154,5 @@ jobs:
         with:
           generate_release_notes: true
           name: ${{ steps.release_metadata.outputs.title }}
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          prerelease: ${{ contains(steps.release_metadata.outputs.tag, '-') }}
+          tag_name: ${{ steps.release_metadata.outputs.tag }}

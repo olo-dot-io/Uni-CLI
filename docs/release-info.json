@@ -1,25 +1,27 @@
 {
-  "version": "0.222.3",
-  "codename": "Apollo · Scott",
+  "version": "0.223.0",
+  "codename": "Apollo · Worden",
   "date": "2026-05-24",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.222.3",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02223--2026-05-24--apollo--scott",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.223.0",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02230--2026-05-24--apollo--worden",
   "highlights": {
     "root": [
-      "Uni-CLI 0.222.3 is the complete closed-loop delivery release: objective assessment, trajectory planning, safe command execution, diagnosis, repair candidates, and verification history share one delivery kernel.",
-      "`unicli delivery run <spec>` executes the next evidence-gated strategy through the existing run recorder and returns an updated trajectory, so experiments no longer live outside the product path.",
-      "Delivery strategies now accept command args and are discoverable through search as `delivery/assess`, `delivery/run`, `delivery/trajectory`, and `delivery/repair-candidate`.",
-      "Structured command failures from do, extract, runs, and delivery now flow through a shared stderr envelope writer for cleaner agent repair loops.",
-      "Adapter health probing now respects adapter defaults, WeRead shelf uses the current sync endpoint, Instagram reels fails closed under quarantine, npm lockfile installs cleanly, and Rust sidecar formatting is CI-clean."
+      "Uni-CLI 0.223.0 is the local computer-use context release: `compute capture` combines accessibility refs, screenshot evidence, image metadata, and replayable capture trajectory into one packet.",
+      "`compute capture --save-reference` writes local app-shot artifacts, while `--copy-reference` copies `[app-shots ...]` markup for agent-to-agent handoff.",
+      "The `computer-use.capture` MCP tool exposes the same capture/reference workflow, bringing the computer-use profile to 16 tools.",
+      "`compute capture` is discoverable through `unicli search \"Appshots\"`, `unicli list --site compute`, `unicli describe compute capture`, and MCP `unicli_list`.",
+      "Capture metadata now externalizes image bytes, keeps SHA-256/dimensions/coordinate-space evidence, and strips geometry/raw accessibility object pointers from agent handoff text.",
+      "`doctor compute --providers` adds neutral optional provider discovery for external/platform provider commands and visual-model fallback configuration."
     ],
     "zh": [
-      "Uni-CLI 0.222.3 是完整的 closed-loop delivery 发布版：objective assessment、trajectory planning、安全命令执行、diagnosis、repair candidate 和 verification history 共享同一个 delivery kernel。",
-      "`unicli delivery run <spec>` 会通过现有 run recorder 执行下一步有证据约束的 strategy，并返回更新后的 trajectory，让实验不再游离在产品路径之外。",
-      "Delivery strategy 现在支持 command args，并且 `delivery/assess`、`delivery/run`、`delivery/trajectory`、`delivery/repair-candidate` 都能被 search 发现。",
-      "do、extract、runs、delivery 的结构化失败现在统一通过 shared stderr envelope writer 输出，让 Agent repair loop 更容易观测。",
-      "Adapter health probe 现在尊重 adapter 默认参数，WeRead shelf 使用当前 sync endpoint，Instagram reels 对 stale route 选择 quarantine fail-closed，npm lockfile 可 clean install，Rust sidecar 格式也已通过 CI 要求。"
+      "Uni-CLI 0.223.0 是 local computer-use context 发布版：`compute capture` 把 accessibility refs、截图证据、图片元数据和可回放 capture trajectory 合成一个 packet。",
+      "`compute capture --save-reference` 会写入本地 app-shot artifacts，`--copy-reference` 会复制 `[app-shots ...]` markup，方便 Agent 之间交接上下文。",
+      "`computer-use.capture` MCP tool 暴露同一套 capture/reference workflow，computer-use profile 增至 16 个工具。",
+      "`compute capture` 现在可通过 `unicli search \"Appshots\"`、`unicli list --site compute`、`unicli describe compute capture` 和 MCP `unicli_list` 发现。",
+      "Capture metadata 现在外置图片字节，保留 SHA-256、尺寸和 coordinate-space 证据，同时从 handoff 文本中去掉坐标和 raw accessibility object 指针。",
+      "`doctor compute --providers` 新增中性的 optional provider discovery，用于外部/平台 provider command 和 visual-model fallback 配置。"
     ]
   }
 }

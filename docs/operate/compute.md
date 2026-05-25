@@ -32,6 +32,49 @@ refs preserve it, and `compute find --text <text>` can match that value. This is
 useful for calculator displays, address fields, editors, and status labels
 whose value is not part of the accessible name.
 
+## Capture Context
+
+`compute capture` combines a structured snapshot and screenshot evidence into
+one reusable context packet for agents. Use it when the next step needs both
+addressable refs and pixels, or when you want to hand a compact state packet to
+another tool without making it re-read the app.
+
+```bash
+unicli compute capture --app Calculator --format compact
+unicli compute capture --app Figma --include snapshot,screenshot --screenshot-path /tmp/figma.png
+unicli compute capture --app Calculator --save-reference
+unicli compute capture --app Calculator --copy-reference
+unicli compute capture --app Calculator --reference-root /tmp/captures --save-reference
+```
+
+The command reuses the same `compute snapshot` and `compute screenshot` cascade
+paths, so it inherits the platform transport order, ref persistence, and
+structured error envelopes. The packet succeeds when at least one requested part
+is captured and records per-part errors when the other part is unavailable.
+When screenshot bytes are available, the screenshot part includes `image`
+metadata with byte count, SHA-256, dimensions, and an image-pixel coordinate
+space whose origin is the top-left corner. Packets also include a replayable
+trajectory listing the `compute_snapshot` and `compute_screenshot` actions,
+params, ordering, and per-step success state that produced the packet.
+`--save-reference` writes a local artifact directory under
+`~/.unicli/app-shots` and returns `[app-shots ...]` markup with image, content,
+and metadata file paths. Use `--reference-root` to choose a different artifact
+root for CI, handoff directories, or isolated experiments. `--copy-reference`
+saves the same artifact and copies the markup to the host clipboard. The
+content and metadata files are optimized for agent handoff: element refs remain,
+but geometry strings and raw accessibility object pointers are stripped from
+the text copy so the packet does not encourage coordinate-string matching.
+
+The compute family is also part of the normal command discovery surface. Agents
+can find it without knowing the exact subcommand:
+
+```bash
+unicli search "Appshots"
+unicli search "local computer use capture"
+unicli list --site compute
+unicli describe compute capture
+```
+
 ## Commands
 
 | Command                                           | Purpose                                            |
@@ -39,6 +82,8 @@ whose value is not part of the accessible name.
 | `compute apps`                                    | List running apps                                  |
 | `compute windows --app <name>`                    | List windows                                       |
 | `compute snapshot --app <name> --format compact`  | Capture a compact/tree/json accessibility snapshot |
+| `compute capture --app <name>`                    | Capture snapshot refs and screenshot evidence      |
+| `compute capture --copy-reference`                | Save and copy `[app-shots ...]` handoff markup     |
 | `compute find --role <role> --name/--text <text>` | Find matching refs by label or value               |
 | `compute click <ref>`                             | Click a ref                                        |
 | `compute type <ref> <text>`                       | Set or type text                                   |
@@ -104,6 +149,19 @@ duration, stdout, and stderr instead of aborting at the first failed command, so
 cross-OS smoke artifacts keep enough evidence for repair. `--output` writes the
 same schema-versioned report to disk for CI artifacts or manual release
 evidence.
+
+## Provider Discovery
+
+`doctor compute --providers` adds non-blocking discovery checks for optional
+local computer-use provider commands and configured visual-model backends. These
+checks are reported as `ok`, `warn`, or `skip` and do not make the base doctor
+fail. Set `UNICLI_COMPUTE_PROVIDER_COMMAND` or the platform-specific
+`UNICLI_<PLATFORM>_COMPUTE_PROVIDER_COMMAND` environment variable when you want
+Uni-CLI to probe an installed provider.
+
+```bash
+unicli doctor compute --providers
+```
 
 ## Focus Stealing
 

@@ -1,8 +1,15 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { Command } from "commander";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
 import { ok, err } from "../../../src/core/envelope.js";
 import { validateEnvelope } from "../../../src/output/envelope.js";
 
@@ -56,12 +63,14 @@ describe("unicli compute", () => {
     process.exitCode = undefined;
     delete process.env.UNICLI_COMPUTE_REFS_PATH;
     delete process.env.UNICLI_COMPUTE_CDP_SESSION_PATH;
+    delete process.env.UNICLI_APP_SHOTS_ROOT;
   });
 
   afterEach(() => {
     process.exitCode = undefined;
     delete process.env.UNICLI_COMPUTE_REFS_PATH;
     delete process.env.UNICLI_COMPUTE_CDP_SESSION_PATH;
+    delete process.env.UNICLI_APP_SHOTS_ROOT;
   });
 
   it("snapshot forwards normalized options and emits a desktop envelope", async () => {
@@ -107,6 +116,320 @@ describe("unicli compute", () => {
     expect((env.meta as { surface?: string }).surface).toBe("desktop");
     expect(env.data).toEqual({ text: '@e1 window "Calculator"' });
     validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
+  });
+
+  it("capture combines snapshot and screenshot into one context packet", async () => {
+    cascadeMock.tryCascade
+      .mockResolvedValueOnce(
+        ok({
+          format: "text",
+          encoding: "compact",
+          data: '@e1 button "5"',
+          refs: { count: 1, scope: "Calculator" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        ok({
+          path: "/tmp/calculator.png",
+          mime: "image/png",
+        }),
+      );
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        [
+          "-f",
+          "json",
+          "compute",
+          "capture",
+          "--app",
+          "Calculator",
+          "--format",
+          "compact",
+          "--max-depth",
+          "4",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(cascadeMock.tryCascade).toHaveBeenCalledTimes(2);
+    expect(cascadeMock.tryCascade.mock.calls[0]?.[1]).toEqual({
+      kind: "compute_snapshot",
+      params: {
+        app: "Calculator",
+        format: "compact",
+        maxDepth: 4,
+      },
+    });
+    expect(cascadeMock.tryCascade.mock.calls[1]?.[1]).toEqual({
+      kind: "compute_screenshot",
+      params: {
+        app: "Calculator",
+      },
+    });
+
+    const env = JSON.parse(cap.getStdout()) as Record<string, unknown>;
+    expect(env.ok).toBe(true);
+    expect(env.command).toBe("compute.capture");
+    expect((env.meta as { surface?: string }).surface).toBe("desktop");
+    expect(env.data).toMatchObject({
+      schema_version: 1,
+      app: "Calculator",
+      includes: ["snapshot", "screenshot"],
+      snapshot: {
+        ok: true,
+        data: {
+          encoding: "compact",
+          data: '@e1 button "5"',
+          refs: { count: 1, scope: "Calculator" },
+        },
+      },
+      screenshot: {
+        ok: true,
+        data: {
+          path: "/tmp/calculator.png",
+          mime: "image/png",
+        },
+      },
+      trajectory: {
+        replayable: true,
+        steps: [
+          {
+            index: 0,
+            action: "compute_snapshot",
+            params: { app: "Calculator", format: "compact", maxDepth: 4 },
+            ok: true,
+          },
+          {
+            index: 1,
+            action: "compute_screenshot",
+            params: { app: "Calculator" },
+            ok: true,
+          },
+        ],
+      },
+    });
+    expect(typeof (env.data as Record<string, unknown>).captured_at).toBe(
+      "string",
+    );
+    validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
+  });
+
+  it("capture enriches screenshot evidence with image metadata and coordinate space", async () => {
+    const onePixelPngBase64 =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
+    const onePixelPng = Buffer.from(onePixelPngBase64, "base64");
+    cascadeMock.tryCascade.mockResolvedValueOnce(
+      ok({
+        base64: onePixelPngBase64,
+        mime: "image/png",
+      }),
+    );
+
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        ["-f", "json", "compute", "capture", "--include", "screenshot"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout()) as Record<string, unknown>;
+    expect(env.ok).toBe(true);
+    expect(env.data).toMatchObject({
+      schema_version: 1,
+      includes: ["screenshot"],
+      screenshot: {
+        ok: true,
+        data: {
+          base64: onePixelPngBase64,
+          mime: "image/png",
+          image: {
+            mime: "image/png",
+            bytes: onePixelPng.length,
+            sha256: createHash("sha256").update(onePixelPng).digest("hex"),
+            width: 1,
+            height: 1,
+            coordinate_space: {
+              kind: "image-pixels",
+              origin: "top-left",
+            },
+          },
+        },
+      },
+    });
+    validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
+  });
+
+  it("capture rejects invalid include parts instead of falling back silently", async () => {
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        ["-f", "json", "compute", "capture", "--include", "snapshot,screen"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(cascadeMock.tryCascade).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(2);
+    const env = JSON.parse(cap.getStderr()) as Record<string, unknown>;
+    expect(env.ok).toBe(false);
+    expect(env.command).toBe("compute.capture");
+    expect((env.error as { message?: string }).message).toContain(
+      "invalid capture include part: screen",
+    );
+    validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
+  });
+
+  it("capture rejects invalid snapshot format instead of falling back silently", async () => {
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        ["-f", "json", "compute", "capture", "--format", "text"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(cascadeMock.tryCascade).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(2);
+    const env = JSON.parse(cap.getStderr()) as Record<string, unknown>;
+    expect(env.ok).toBe(false);
+    expect(env.command).toBe("compute.capture");
+    expect((env.error as { message?: string }).message).toContain(
+      "invalid snapshot format: text",
+    );
+    validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
+  });
+
+  it("snapshot rejects invalid format instead of falling back silently", async () => {
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        ["-f", "json", "compute", "snapshot", "--format", "text"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(cascadeMock.tryCascade).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(2);
+    const env = JSON.parse(cap.getStderr()) as Record<string, unknown>;
+    expect(env.ok).toBe(false);
+    expect(env.command).toBe("compute.snapshot");
+    expect((env.error as { message?: string }).message).toContain(
+      "invalid snapshot format: text",
+    );
+    validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
+  });
+
+  it("capture can persist an app-shots reference for agent handoff", async () => {
+    const referenceRoot = mkdtempSync(join(tmpdir(), "unicli-app-shots-root-"));
+    process.env.UNICLI_APP_SHOTS_ROOT = referenceRoot;
+    const onePixelPngBase64 =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
+    cascadeMock.tryCascade
+      .mockResolvedValueOnce(
+        ok({
+          encoding: "compact",
+          data: '@e1 button "5"',
+          refs: { count: 1, scope: "Calculator" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        ok({
+          base64: onePixelPngBase64,
+          mime: "image/png",
+        }),
+      );
+
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        [
+          "-f",
+          "json",
+          "compute",
+          "capture",
+          "--app",
+          "Calculator",
+          "--save-reference",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout()) as {
+      ok?: boolean;
+      data?: {
+        reference?: {
+          markup?: string;
+          files?: { content?: string; image?: string; metadata?: string };
+        };
+      };
+    };
+    expect(env.ok).toBe(true);
+    expect(env.data?.reference?.markup).toMatch(/^\[app-shots image="/);
+    expect(env.data?.reference?.markup).toContain(' content="');
+    expect(env.data?.reference?.markup).toContain(' metadata="');
+    expect(existsSync(env.data?.reference?.files?.content ?? "")).toBe(true);
+    expect(existsSync(env.data?.reference?.files?.image ?? "")).toBe(true);
+    expect(existsSync(env.data?.reference?.files?.metadata ?? "")).toBe(true);
+    expect(
+      readFileSync(env.data?.reference?.files?.content ?? "", "utf-8"),
+    ).toContain('@e1 button "5"');
+    rmSync(referenceRoot, { recursive: true, force: true });
+    validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
+  });
+
+  it("capture can persist a reference under an explicit root", async () => {
+    const referenceRoot = mkdtempSync(join(tmpdir(), "unicli-explicit-root-"));
+    cascadeMock.tryCascade.mockResolvedValueOnce(
+      ok({
+        encoding: "compact",
+        data: '@e1 window "Calculator"',
+      }),
+    );
+
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        [
+          "-f",
+          "json",
+          "compute",
+          "capture",
+          "--include",
+          "snapshot",
+          "--reference-root",
+          referenceRoot,
+          "--save-reference",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout()) as {
+      ok?: boolean;
+      data?: { reference?: { root?: string; files?: { metadata?: string } } };
+    };
+    expect(env.ok).toBe(true);
+    expect(env.data?.reference?.root?.startsWith(referenceRoot)).toBe(true);
+    expect(existsSync(env.data?.reference?.files?.metadata ?? "")).toBe(true);
+    rmSync(referenceRoot, { recursive: true, force: true });
   });
 
   it("click emits a structured error and preserves the transport exit code", async () => {

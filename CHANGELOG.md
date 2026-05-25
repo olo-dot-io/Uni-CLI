@@ -3,6 +3,64 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 
+## [0.223.0] — 2026-05-24 — Apollo · Worden
+
+### Added
+
+- `unicli compute capture` now creates reusable desktop context packets that
+  combine accessibility refs, screenshot evidence, image metadata, and a
+  replayable capture trajectory.
+- `compute capture --save-reference` and `--copy-reference` persist local
+  app-shot artifacts and copy `[app-shots ...]` handoff markup for agent-to-agent
+  context transfer.
+- The `computer-use.capture` MCP tool exposes the same capture packet and
+  reference-save/copy path, bringing the computer-use MCP profile to 16 tools.
+- Core compute commands are now first-class discovery entries: `unicli search
+"Appshots"`, `unicli list --site compute`, `unicli describe compute capture`,
+  and MCP `unicli_list` all surface `compute capture`.
+- `doctor compute --providers` adds neutral, environment-configured discovery
+  checks for optional external/platform provider commands and visual-model
+  fallback configuration.
+
+### Changed
+
+- Saved capture metadata and fallback content now externalize screenshot bytes
+  into an image file instead of duplicating base64 in handoff artifacts, while
+  retaining SHA-256, byte count, dimensions, and top-left image-pixel
+  coordinate-space metadata.
+- Capture reference text and metadata normalize app state for agent handoff by
+  preserving refs while stripping geometry strings, screen ids, and raw
+  accessibility object pointers.
+- The MCP `computer-use.capture` safety annotations now reflect its optional
+  local file and clipboard side effects instead of marking it read-only and
+  idempotent.
+- The release SOP now treats GitHub Actions as the authoritative npm publish
+  path when local npm auth is unavailable, and manual dispatch now checks out
+  the requested release tag before publishing.
+- Public compute docs now describe the capture/reference workflow, explicit
+  `--reference-root` artifact roots, replayable capture trajectory, and the
+  search/list/describe discovery path.
+
+### Fixed
+
+- Repeated capture saves now generate distinct artifact directories instead of
+  overwriting an identical prior capture.
+- Clipboard-copy failures now surface structured `compute_failed` envelopes
+  with a safe `--save-reference` recovery path.
+- Invalid `compute capture --include ...` values now fail with a structured
+  usage error instead of silently falling back to the default parts.
+- Invalid snapshot formats for `compute snapshot`, `compute capture`, and
+  `computer-use.capture` now fail with structured usage errors instead of
+  silently coercing to `compact`.
+
+### Verified
+
+- `npx vitest run tests/unit/compute-capture-reference.test.ts tests/unit/commands/compute.test.ts tests/unit/mcp/tools.test.ts`
+- `npx vitest run tests/unit/search.test.ts tests/unit/fast-path.test.ts tests/unit/mcp/tools.test.ts`
+- `npm run typecheck`
+- Live `compute capture --app Finder --copy-reference` with clipboard and
+  artifact inspection.
+
 ## [0.222.3] — 2026-05-24 — Apollo · Scott
 
 ### Fixed

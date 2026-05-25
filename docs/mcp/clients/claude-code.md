@@ -7,12 +7,13 @@ claude mcp add computer-use \
   -- npx -y @zenalexa/unicli mcp serve --profile computer-use
 ```
 
-The profile exposes only the 15 local computer-control tools:
-`computer-use.apps`, `computer-use.windows`, `computer-use.snapshot`,
-`computer-use.find`, `computer-use.click`, `computer-use.type`,
-`computer-use.press`, `computer-use.scroll`, `computer-use.launch`,
-`computer-use.screenshot`, `computer-use.attach`, `computer-use.evaluate`,
-`computer-use.wait`, `computer-use.observe`, and `computer-use.assert`.
+The profile exposes only the 16 local computer-control tools:
+`computer-use.apps`, `computer-use.windows`, `computer-use.capture`,
+`computer-use.snapshot`, `computer-use.find`, `computer-use.click`,
+`computer-use.type`, `computer-use.press`, `computer-use.scroll`,
+`computer-use.launch`, `computer-use.screenshot`, `computer-use.attach`,
+`computer-use.evaluate`, `computer-use.wait`, `computer-use.observe`, and
+`computer-use.assert`.
 
 ## Permissions
 
@@ -26,4 +27,4 @@ the UIA and AT-SPI sidecars respectively.
 npx -y @zenalexa/unicli mcp serve --profile computer-use
 ```
 
-The server banner should report `15 tools registered, mode=computer-use`.
+The server banner should report `16 tools registered, mode=computer-use`.

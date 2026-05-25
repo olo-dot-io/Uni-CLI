@@ -4,6 +4,12 @@ import { getBus } from "../transport/bus.js";
 import { tryCascade } from "../transport/cascade.js";
 import { loadCdpSession, saveCdpSession } from "../transport/cdp-session.js";
 import { loadRefStore, saveRefStore } from "../transport/refs.js";
+import { captureComputeContext } from "../compute/capture.js";
+import {
+  copyReferenceMarkupToClipboard,
+  saveComputeCaptureReference,
+} from "../compute/capture-reference.js";
+import { err, exitCodeFor } from "../core/envelope.js";
 import type { ActionResult } from "../transport/types.js";
 import { detectFormat, format } from "../output/formatter.js";
 import { makeCtx } from "../output/envelope.js";
@@ -39,12 +45,45 @@ export function registerComputeCommand(program: Command): void {
     .option("--interactive-only", "Only include interactive elements")
     .option("--max-depth <n>", "Maximum tree depth", "64")
     .action(async (opts: Record<string, unknown>) => {
-      const snapshotFormat = readSnapshotFormat(program, opts.format);
+      const snapshotFormat = readSnapshotFormat(
+        program,
+        opts.format,
+        "snapshot",
+      );
+      if (!snapshotFormat.ok) {
+        print(
+          program,
+          "compute.snapshot",
+          Date.now(),
+          invalidOptionResult(
+            "compute_snapshot",
+            `invalid snapshot format: ${snapshotFormat.value}`,
+            "use --format compact, tree, or json",
+            "compute.snapshot",
+          ),
+        );
+        return;
+      }
       await run(program, "compute.snapshot", "compute_snapshot", {
         ...opts,
-        format: snapshotFormat,
+        format: snapshotFormat.value,
         maxDepth: parseInt(String(opts.maxDepth ?? "64"), 10),
       });
+    });
+
+  compute
+    .command("capture")
+    .description("Capture a reusable app context packet")
+    .option("--app <name>", "Target app")
+    .option("--format <fmt>", "compact | tree | json", "compact")
+    .option("--include <parts>", "snapshot,screenshot", "snapshot,screenshot")
+    .option("--max-depth <n>", "Maximum snapshot tree depth", "64")
+    .option("--screenshot-path <path>", "Optional screenshot output path")
+    .option("--save-reference", "Persist an app-shots reference for handoff")
+    .option("--copy-reference", "Persist and copy the app-shots reference")
+    .option("--reference-root <dir>", "Directory for saved app-shots artifacts")
+    .action(async (opts: Record<string, unknown>) => {
+      await runCapture(program, opts);
     });
 
   compute
@@ -218,6 +257,94 @@ async function run(
   }
 }
 
+async function runCapture(
+  program: Command,
+  opts: Record<string, unknown>,
+): Promise<void> {
+  const startedAt = Date.now();
+  const bus = getBus();
+  try {
+    loadPersistedRefs(bus);
+    const app = typeof opts.app === "string" ? opts.app : undefined;
+    const snapshotFormat = readSnapshotFormat(program, opts.format, "capture");
+    if (!snapshotFormat.ok) {
+      print(
+        program,
+        "compute.capture",
+        startedAt,
+        invalidOptionResult(
+          "compute_capture",
+          `invalid snapshot format: ${snapshotFormat.value}`,
+          "use --format compact, tree, or json",
+          "compute.capture",
+        ),
+      );
+      return;
+    }
+    const maxDepth = parseInt(String(opts.maxDepth ?? "64"), 10);
+    const screenshotPath =
+      typeof opts.screenshotPath === "string" && opts.screenshotPath
+        ? opts.screenshotPath
+        : undefined;
+    const result = await captureComputeContext(
+      bus,
+      {
+        ...(app ? { app } : {}),
+        ...(typeof opts.include === "string" ? { include: opts.include } : {}),
+        format: snapshotFormat.value,
+        maxDepth,
+        ...(screenshotPath ? { screenshotPath } : {}),
+      },
+      { onSnapshotSuccess: () => saveRefStore(bus.refs) },
+    );
+    const shouldSaveReference =
+      opts.saveReference === true || opts.copyReference === true;
+    let printableResult: ActionResult<unknown> = result;
+    if (result.ok && shouldSaveReference) {
+      const referenceRoot =
+        typeof opts.referenceRoot === "string" && opts.referenceRoot
+          ? opts.referenceRoot
+          : undefined;
+      const reference = await saveComputeCaptureReference(
+        result.data,
+        referenceRoot ? { rootDir: referenceRoot } : {},
+      );
+      if (opts.copyReference === true) {
+        try {
+          await copyReferenceMarkupToClipboard(reference.markup);
+        } catch (error) {
+          printableResult = err({
+            transport: "subprocess",
+            step: 0,
+            action: "compute_capture.copy_reference",
+            reason: errorMessage(error),
+            suggestion:
+              "inspect the clipboard command or rerun with --save-reference",
+            minimum_capability: "compute.capture.copy-reference",
+            exit_code: exitCodeFor("service_unavailable"),
+          });
+          print(program, "compute.capture", startedAt, printableResult);
+          return;
+        }
+      }
+      printableResult = {
+        ...result,
+        data: {
+          ...result.data,
+          reference: {
+            ...reference,
+            ...(opts.copyReference === true ? { clipboard: { ok: true } } : {}),
+          },
+        },
+      };
+    }
+
+    print(program, "compute.capture", startedAt, printableResult);
+  } finally {
+    await closeTransports(bus);
+  }
+}
+
 function loadPersistedRefs(bus: ReturnType<typeof getBus>): void {
   const loaded = loadRefStore();
   bus.refs.clear();
@@ -322,6 +449,27 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function invalidOptionResult(
+  action: string,
+  reason: string,
+  suggestion: string,
+  minimumCapability: string,
+): ActionResult<never> {
+  return err({
+    transport: "subprocess",
+    step: 0,
+    action,
+    reason,
+    suggestion,
+    minimum_capability: minimumCapability,
+    exit_code: exitCodeFor("usage_error"),
+  });
+}
+
 function normalizeFocusOptions(
   opts: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -352,24 +500,34 @@ function readRootFormat(program: Command): OutputFormat | undefined {
 function readSnapshotFormat(
   program: Command,
   fallback: unknown,
-): "compact" | "tree" | "json" {
+  subcommand: "snapshot" | "capture",
+):
+  | { ok: true; value: "compact" | "tree" | "json" }
+  | { ok: false; value: string } {
   const args =
     (program as Command & { rawArgs?: readonly string[] }).rawArgs ?? [];
-  const snapshotIndex = args.indexOf("snapshot");
-  if (snapshotIndex >= 0) {
-    for (let i = snapshotIndex + 1; i < args.length; i++) {
+  const subcommandIndex = args.indexOf(subcommand);
+  if (subcommandIndex >= 0) {
+    for (let i = subcommandIndex + 1; i < args.length; i++) {
       const arg = args[i];
       if (arg === "--format") {
         const value = args[i + 1];
-        if (isSnapshotFormat(value)) return value;
+        return isSnapshotFormat(value)
+          ? { ok: true, value }
+          : { ok: false, value: String(value ?? "") };
       }
       if (arg.startsWith("--format=")) {
         const value = arg.slice("--format=".length);
-        if (isSnapshotFormat(value)) return value;
+        return isSnapshotFormat(value)
+          ? { ok: true, value }
+          : { ok: false, value };
       }
     }
   }
-  return isSnapshotFormat(fallback) ? fallback : "compact";
+  if (fallback === undefined) return { ok: true, value: "compact" };
+  return isSnapshotFormat(fallback)
+    ? { ok: true, value: fallback }
+    : { ok: false, value: String(fallback) };
 }
 
 function isSnapshotFormat(

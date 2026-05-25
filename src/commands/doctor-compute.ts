@@ -58,6 +58,7 @@ interface ComputeDoctorInstallAction {
 interface ComputeDoctorOptions {
   json?: boolean;
   install?: boolean;
+  providers?: boolean;
 }
 
 export function registerDoctorComputeCommand(doctor: Command): void {
@@ -66,8 +67,9 @@ export function registerDoctorComputeCommand(doctor: Command): void {
     .description("Per-transport health probe for the compute family")
     .option("--json", "Machine-readable output")
     .option("--install", "Install the matching native sidecar when missing")
+    .option("--providers", "Include optional external provider discovery")
     .action(async (opts: ComputeDoctorOptions) => {
-      const report = await runComputeDoctor();
+      const report = await runComputeDoctor({ providers: opts.providers });
       if (opts.install) {
         report.installActions = await installMissingSidecars(report);
       }
@@ -80,7 +82,9 @@ export function registerDoctorComputeCommand(doctor: Command): void {
     });
 }
 
-export async function runComputeDoctor(): Promise<ComputeDoctorReport> {
+export async function runComputeDoctor(
+  options: { providers?: boolean } = {},
+): Promise<ComputeDoctorReport> {
   const checks = [
     await checkSwift(),
     await checkMacAccessibility(),
@@ -91,6 +95,9 @@ export async function runComputeDoctor(): Promise<ComputeDoctorReport> {
     await checkCdp(),
     checkVisualBackend(),
   ];
+  if (options.providers) {
+    checks.push(...(await checkExternalProviders()));
+  }
   const issueCount = checks.filter((check) => check.status === "fail").length;
   return {
     status: issueCount === 0 ? "ok" : "issues",
@@ -102,6 +109,106 @@ export async function runComputeDoctor(): Promise<ComputeDoctorReport> {
     checks,
     issueCount,
   };
+}
+
+async function checkExternalProviders(): Promise<ComputeDoctorCheck[]> {
+  return [
+    await checkConfiguredProvider({
+      name: "external-provider",
+      commandEnv: "UNICLI_COMPUTE_PROVIDER_COMMAND",
+      argsEnv: "UNICLI_COMPUTE_PROVIDER_ARGS",
+    }),
+    await checkPlatformProvider(),
+    checkVisualModelProvider(),
+  ];
+}
+
+async function checkConfiguredProvider(opts: {
+  name: string;
+  commandEnv: string;
+  argsEnv: string;
+}): Promise<ComputeDoctorCheck> {
+  const command = process.env[opts.commandEnv]?.trim();
+  if (!command) {
+    return skip(
+      "provider",
+      opts.name,
+      `set ${opts.commandEnv} to enable this optional provider probe`,
+    );
+  }
+  const args = parseProviderArgs(process.env[opts.argsEnv]);
+  try {
+    await execFileP(command, args, { timeout: 5_000 });
+    return pass(
+      "provider",
+      opts.name,
+      `${opts.commandEnv} target is available`,
+    );
+  } catch (error) {
+    return warn(
+      "provider",
+      opts.name,
+      `${opts.commandEnv} target is not available: ${errorMessage(error)}`,
+      {
+        message:
+          "Fix the configured provider command or unset it to skip this optional probe.",
+        command: `${opts.commandEnv}=<command> ${opts.argsEnv}='["--version"]' unicli doctor compute --providers`,
+      },
+    );
+  }
+}
+
+async function checkPlatformProvider(): Promise<ComputeDoctorCheck> {
+  const host = platform();
+  const envByPlatform: Partial<Record<NodeJS.Platform, string>> = {
+    darwin: "UNICLI_MACOS_COMPUTE_PROVIDER_COMMAND",
+    win32: "UNICLI_WINDOWS_COMPUTE_PROVIDER_COMMAND",
+    linux: "UNICLI_LINUX_COMPUTE_PROVIDER_COMMAND",
+  };
+  const commandEnv = envByPlatform[host];
+  if (!commandEnv) {
+    return skip("provider", "platform-provider", `host ${host} is unsupported`);
+  }
+  return checkConfiguredProvider({
+    name: "platform-provider",
+    commandEnv,
+    argsEnv: commandEnv.replace(/_COMMAND$/, "_ARGS"),
+  });
+}
+
+function parseProviderArgs(value: string | undefined): string[] {
+  if (!value?.trim()) return ["--version"];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (
+      Array.isArray(parsed) &&
+      parsed.every((item) => typeof item === "string")
+    ) {
+      return parsed;
+    }
+  } catch {
+    // Fall through to whitespace splitting for simple probes.
+  }
+  return value.split(/\s+/).filter(Boolean);
+}
+
+function checkVisualModelProvider(): ComputeDoctorCheck {
+  const provider =
+    process.env.UNICLI_VISUAL_MODEL ??
+    process.env.VISUAL_MODEL ??
+    process.env.VISUAL_BACKEND;
+  if (provider?.trim()) {
+    return pass(
+      "provider",
+      "visual-model",
+      `visual model provider configured: ${provider}`,
+    );
+  }
+  return warn("provider", "visual-model", "no visual model provider selected", {
+    message:
+      "Set UNICLI_VISUAL_MODEL when structured transports need a model fallback.",
+    doc: "docs/operate/troubleshooting.md#visualno_backend",
+  });
 }
 
 async function checkMacScreenRecording(): Promise<ComputeDoctorCheck> {

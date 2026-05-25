@@ -48,4 +48,23 @@ describe("doctor compute", () => {
       detail: "host is not macOS",
     });
   });
+
+  it("can include non-blocking external provider discovery", async () => {
+    const report = await runComputeDoctor({ providers: true });
+    const providerChecks = report.checks.filter(
+      (check) => check.transport === "provider",
+    );
+
+    expect(providerChecks.map((check) => check.name)).toEqual([
+      "external-provider",
+      "platform-provider",
+      "visual-model",
+    ]);
+    expect(
+      providerChecks.every((check) =>
+        ["ok", "warn", "skip"].includes(check.status),
+      ),
+    ).toBe(true);
+    expect(providerChecks.some((check) => check.status === "fail")).toBe(false);
+  });
 });

@@ -11,11 +11,11 @@ or no release yet.
 Only the maintainer decides when a release is cut. Automation prepares and
 verifies a candidate; it does not decide that a release should exist.
 
-| Path              | Workflow                                      | Behavior                                                         |
-| ----------------- | --------------------------------------------- | ---------------------------------------------------------------- |
-| Candidate prepare | `.github/workflows/release-candidate.yml`     | Consume changesets, verify, apply release metadata, tag, push.   |
-| npm publish       | `.github/workflows/release.yml` on `v*` tags  | Publish the already-tagged version with provenance.              |
-| Manual dispatch   | `workflow_dispatch` with `force` + `codename` | Maintainer-triggered release even when the commit filter is dry. |
+| Path              | Workflow                                            | Behavior                                                                    |
+| ----------------- | --------------------------------------------------- | --------------------------------------------------------------------------- |
+| Candidate prepare | local maintainer commit on `main`                   | Apply version metadata, changelog, docs, generated assets, and tests.       |
+| npm publish       | `.github/workflows/release.yml` on pushed `v*` tags | Check out the tag, verify the package, publish to npm with provenance.      |
+| Manual dispatch   | `.github/workflows/release.yml` with `tag=vX.Y.Z`   | Re-run the same GitHub publish path for an existing tag if tag push missed. |
 
 If the maintainer has not explicitly asked to release, development stays under
 `[Unreleased]` in `CHANGELOG.md` plus `.changeset/*.md` files.
@@ -122,7 +122,11 @@ requiring a maintainer decision.
 ## Publishing
 
 The publish workflow publishes `@zenalexa/unicli` from
-`.github/workflows/release.yml` when a `v*` tag is pushed.
+`.github/workflows/release.yml` when a `v*` tag is pushed. Local machines should
+not be treated as the npm publishing authority. A local `npm whoami` failure is
+not a release blocker if the candidate commit and tag can be pushed to GitHub:
+the real publish step runs in GitHub Actions through Trusted Publishers or the
+`NPM_TOKEN` fallback in the `npm-publish` environment.
 
 Release authority is scoped to the publish job:
 
@@ -162,14 +166,45 @@ To ship a release:
 1. Confirm the intended version bump and release label.
 2. Confirm `codex/macos-dynamic-actions` is merged to `main` with
    `npm run verify:release-mainline`.
-3. Open GitHub Actions.
-4. Run **Release Candidate**.
-5. Set `codename` to the final `Program · Astronaut` label.
-6. Set `force: true` only when the release should happen even if the commit
-   filter found no substantive changes.
+3. Run `npm run verify`, `npm run release:check -- --strict-codename`,
+   `npm publish --dry-run`, and `npm run docs:check-public`.
+4. Commit the release candidate to `main`.
+5. Push `main`.
+6. Create the release tag with `git tag vX.Y.Z`.
+7. Push the tag with `git push origin vX.Y.Z`.
+8. Watch **Actions → Release**. The workflow checks out the tag, verifies the
+   package surface, publishes to npm with provenance, and creates the GitHub
+   Release.
 
-The dispatch path consumes changesets, verifies, commits release metadata, tags,
-and lets `release.yml` publish from the tag.
+If the tag already exists and the push event did not run or was cancelled,
+re-run the same publish path instead of publishing locally:
+
+```bash
+gh workflow run release.yml --ref main -f tag=vX.Y.Z
+gh run watch --repo olo-dot-io/Uni-CLI
+```
+
+The dispatch path requires the tag to exist. It checks out that tag and fails if
+the tag does not match `package.json`'s `vX.Y.Z`, preventing an accidental
+publish from the wrong branch head.
+
+## Local Auth Failure SOP
+
+Use this branch when the maintainer-approved release is ready but the local npm
+or GitHub session is unreliable:
+
+1. Treat `npm publish --dry-run` as the local npm check. Do not run a real local
+   `npm publish`.
+2. Confirm `npm view @zenalexa/unicli version` before and after the GitHub run.
+3. If `npm whoami` returns `E401`, continue with GitHub Actions; the local npm
+   session is not used by the release workflow.
+4. If `gh auth status` is healthy, push `main` and `vX.Y.Z`, or dispatch
+   `release.yml` for an existing tag.
+5. If `gh` is unhealthy but `git push` still works, push the tag with Git and
+   use the GitHub Actions web UI to monitor or re-run **Release**.
+6. If neither `gh` nor `git push` works, stop after local verification and hand
+   off the exact commit SHA, tag name, dry-run shasum, and failed auth command.
+   Do not publish from an unverified local workaround.
 
 ## Cancel A Release
 

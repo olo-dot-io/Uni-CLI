@@ -131,6 +131,45 @@ describe("DEFAULT_TOOL_NAMES registry", () => {
     );
   });
 
+  it("unicli_list exposes core compute commands alongside adapters", async () => {
+    const handler = buildHandler(buildDefaultTools());
+
+    const response = await handler({
+      jsonrpc: "2.0",
+      id: 303,
+      method: "tools/call",
+      params: {
+        name: "unicli_list",
+        arguments: { site: "compute" },
+      },
+    });
+
+    const payload = response?.result as {
+      structuredContent?: {
+        data?: {
+          adapters?: Array<{
+            site: string;
+            category: string;
+            type: string;
+            commands: Array<{ name: string }>;
+          }>;
+        };
+      };
+    };
+    const adapters = payload.structuredContent?.data?.adapters ?? [];
+    expect(adapters).toEqual([
+      expect.objectContaining({
+        site: "compute",
+        category: "desktop",
+        type: "desktop",
+        commands: expect.arrayContaining([
+          expect.objectContaining({ name: "capture" }),
+          expect.objectContaining({ name: "snapshot" }),
+        ]),
+      }),
+    ]);
+  });
+
   it("unicli_search hard-filters results by category", async () => {
     const handler = buildHandler(buildDefaultTools());
 
@@ -165,7 +204,7 @@ describe("DEFAULT_TOOL_NAMES registry", () => {
 });
 
 describe("computer-use profile", () => {
-  it("selectTools returns exactly the 15 computer-use tools", async () => {
+  it("selectTools returns exactly the 16 computer-use tools", async () => {
     const toolsModule = await import("../../../src/mcp/tools.js");
     const selectTools = (
       toolsModule as unknown as {
@@ -179,6 +218,7 @@ describe("computer-use profile", () => {
     expect(tools.map((tool) => tool.name)).toEqual([
       "computer-use.apps",
       "computer-use.windows",
+      "computer-use.capture",
       "computer-use.snapshot",
       "computer-use.find",
       "computer-use.click",
@@ -193,6 +233,26 @@ describe("computer-use profile", () => {
       "computer-use.observe",
       "computer-use.assert",
     ]);
+    const capture = tools.find(
+      (candidate) => candidate.name === "computer-use.capture",
+    );
+    expect(capture?.annotations).toMatchObject({
+      readOnlyHint: false,
+      idempotentHint: false,
+      destructiveHint: false,
+    });
+    expect(capture?.inputSchema.properties).toMatchObject({
+      app: { type: "string" },
+      include: { type: "string", default: "snapshot,screenshot" },
+      format: {
+        type: "string",
+        enum: ["compact", "tree", "json"],
+        default: "compact",
+      },
+      saveReference: { type: "boolean", default: false },
+      copyReference: { type: "boolean", default: false },
+      referenceRoot: { type: "string" },
+    });
     for (const name of [
       "computer-use.click",
       "computer-use.type",
@@ -228,7 +288,29 @@ describe("computer-use profile", () => {
       description: expect.stringContaining("desktop"),
     });
     expect(prompts[0]?.text).toContain("compact accessibility snapshots");
+    expect(prompts[0]?.text).toContain("app-shot references");
     expect(prompts[0]?.text).toContain("re-snapshot after actions");
+  });
+
+  it("computer-use.capture rejects invalid format at the MCP boundary", async () => {
+    const toolsModule = await import("../../../src/mcp/tools.js");
+    const tools = toolsModule.selectTools("computer-use");
+    const capture = tools.find((tool) => tool.name === "computer-use.capture");
+
+    const result = await capture?.handler?.({ format: "text" });
+
+    expect(result?.isError).toBe(true);
+    expect(result?.structuredContent?.data).toMatchObject({
+      minimum_capability: "compute.capture",
+      exit_code: 2,
+      reason: "invalid snapshot format: text",
+    });
+    expect(result?._meta?.evidence).toMatchObject({
+      evidence_type: "computer-use-action",
+      tool: "computer-use.capture",
+      action: "compute_capture",
+      ok: false,
+    });
   });
 
   it("MCP handler serves the computer-use prompt through prompts/list and prompts/get", async () => {

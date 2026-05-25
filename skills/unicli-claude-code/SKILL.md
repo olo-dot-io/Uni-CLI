@@ -6,7 +6,7 @@ description: >
   newlines, or inline JSON — shell-quoted invocations hit TC0 circuit
   limits and drop to <50% success above ICS=4. Also covers --describe
   introspection and next_actions-driven navigation.
-version: 0.222.3
+version: 0.223.0
 depends-on:
   - talk-normal
 triggers:

@@ -11,6 +11,7 @@
  */
 
 import { getAllAdapters, listCommands, resolveCommand } from "../registry.js";
+import { listCoreDiscoveryCommands } from "../discovery/core-catalog.js";
 import {
   annotateIfLarge,
   runResolvedCommand,
@@ -35,7 +36,18 @@ export interface JsonRpcResponse {
 }
 
 function handleListAdapters(params: Record<string, unknown>): McpToolResult {
-  let commands = listCommands();
+  let commands = [
+    ...listCommands(),
+    ...listCoreDiscoveryCommands().map((command) => ({
+      site: command.site,
+      command: command.command,
+      description: command.description,
+      category: command.category,
+      type: command.type,
+      auth: false,
+      quarantined: false,
+    })),
+  ];
 
   const site = params.site as string | undefined;
   const type = params.type as string | undefined;
@@ -44,6 +56,10 @@ function handleListAdapters(params: Record<string, unknown>): McpToolResult {
   if (site) commands = commands.filter((c) => c.site.includes(site));
   if (type) commands = commands.filter((c) => c.type === type);
   if (category) commands = commands.filter((c) => c.category === category);
+  commands = commands.sort(
+    (a, b) =>
+      a.site.localeCompare(b.site) || a.command.localeCompare(b.command),
+  );
 
   const adapters = getAllAdapters();
   const siteMap = new Map<
@@ -69,12 +85,14 @@ function handleListAdapters(params: Record<string, unknown>): McpToolResult {
     entry.commands.push({ name: cmd.command, description: cmd.description });
   }
 
-  const result = Array.from(siteMap.entries()).map(([name, info]) => ({
-    site: name,
-    category: info.category,
-    type: info.type,
-    commands: info.commands,
-  }));
+  const result = Array.from(siteMap.entries())
+    .map(([name, info]) => ({
+      site: name,
+      category: info.category,
+      type: info.type,
+      commands: info.commands.sort((a, b) => a.name.localeCompare(b.name)),
+    }))
+    .sort((a, b) => a.site.localeCompare(b.site));
 
   const data = {
     total_sites: result.length,

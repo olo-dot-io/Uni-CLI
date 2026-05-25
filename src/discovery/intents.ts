@@ -17,6 +17,7 @@ const BOOST_SCHOLARLY_INTENT = 34.0;
 const BOOST_SCHOLARLY_SEARCH = 12.0;
 const BOOST_SCHOLARLY_PDF = 10.0;
 const BOOST_SCHOLARLY_VENUE_SOURCE = 38.0;
+const BOOST_COMPUTE_CONTEXT = 52.0;
 
 const SCHOLARLY_WORKFLOW_COMMANDS = new Set([
   "pdf/read",
@@ -37,6 +38,7 @@ export function intentBoost(
     acgCreatorIntentBoost(doc, queryTerms) +
     acgMediaTrendIntentBoost(doc, queryTerms) +
     weatherIntentBoost(doc, queryTerms) +
+    computeContextIntentBoost(doc, queryTerms) +
     scholarlyIntentBoost(doc, queryTerms, siteHints)
   );
 }
@@ -183,6 +185,64 @@ function weatherIntentBoost(
       (doc.command === "forecast" || doc.command === "now"));
 
   return weatherIntent && weatherCommand ? BOOST_WEATHER_INTENT : 0;
+}
+
+function computeContextIntentBoost(
+  doc: SearchIndex["documents"][number],
+  queryTerms: string[],
+): number {
+  if (doc.site !== "compute") return 0;
+
+  const terms = new Set(queryTerms);
+  const localComputerUseIntent =
+    hasAny(terms, [
+      "computer",
+      "desktop",
+      "app",
+      "apps",
+      "window",
+      "windows",
+      "local",
+      "accessibility",
+      "ax",
+    ]) ||
+    (terms.has("app") && terms.has("shots"));
+  const evidenceIntent = hasAny(terms, [
+    "capture",
+    "snapshot",
+    "screenshot",
+    "reference",
+    "refs",
+    "shots",
+    "appshots",
+    "handoff",
+    "trajectory",
+  ]);
+  if (!localComputerUseIntent || !evidenceIntent) return 0;
+
+  if (
+    doc.command === "capture" &&
+    hasAny(terms, [
+      "capture",
+      "reference",
+      "shots",
+      "appshots",
+      "handoff",
+      "trajectory",
+    ])
+  ) {
+    return BOOST_COMPUTE_CONTEXT;
+  }
+  if (
+    doc.command === "snapshot" &&
+    hasAny(terms, ["snapshot", "accessibility", "refs"])
+  ) {
+    return BOOST_COMPUTE_CONTEXT * 0.72;
+  }
+  if (doc.command === "screenshot" && terms.has("screenshot")) {
+    return BOOST_COMPUTE_CONTEXT * 0.58;
+  }
+  return BOOST_COMPUTE_CONTEXT * 0.35;
 }
 
 function scholarlyIntentBoost(

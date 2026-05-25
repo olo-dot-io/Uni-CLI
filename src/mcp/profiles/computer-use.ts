@@ -1,4 +1,10 @@
 import { getBus } from "../../transport/bus.js";
+import { captureComputeContext } from "../../compute/capture.js";
+import {
+  copyReferenceMarkupToClipboard,
+  saveComputeCaptureReference,
+} from "../../compute/capture-reference.js";
+import { err, exitCodeFor } from "../../core/envelope.js";
 import { tryCascade } from "../../transport/cascade.js";
 import type { ActionResult } from "../../transport/types.js";
 import type { McpToolResult } from "../dispatch.js";
@@ -26,6 +32,7 @@ interface ToolDef {
   inputSchema: McpTool["inputSchema"];
   readOnly?: boolean;
   transform?: (input: Params) => Params;
+  handler?: (input: Params, def: ToolDef) => Promise<McpToolResult>;
 }
 
 const DEFINITIONS: ToolDef[] = [
@@ -43,6 +50,107 @@ const DEFINITIONS: ToolDef[] = [
     kind: "compute_windows",
     inputSchema: { type: "object", properties: { app: APP } },
     readOnly: true,
+  },
+  {
+    suffix: "capture",
+    description:
+      "Capture a reusable app context packet with snapshot refs and/or screenshot evidence.",
+    kind: "compute_capture",
+    inputSchema: {
+      type: "object",
+      properties: {
+        app: APP,
+        include: { type: "string", default: "snapshot,screenshot" },
+        format: {
+          type: "string",
+          enum: ["compact", "tree", "json"],
+          default: "compact",
+        },
+        maxDepth: { type: "integer", default: 64 },
+        screenshotPath: { type: "string" },
+        saveReference: { type: "boolean", default: false },
+        copyReference: { type: "boolean", default: false },
+        referenceRoot: { type: "string" },
+      },
+    },
+    handler: async (input, def) => {
+      const format = readCaptureFormat(input.format);
+      if (!format.ok) {
+        return actionResultToMcp(
+          err({
+            transport: "subprocess",
+            step: 0,
+            action: "compute_capture",
+            reason: `invalid snapshot format: ${format.value}`,
+            suggestion: "use format compact, tree, or json",
+            minimum_capability: "compute.capture",
+            exit_code: exitCodeFor("usage_error"),
+          }),
+          def,
+        );
+      }
+      const result = await captureComputeContext(getBus(), {
+        ...(typeof input.app === "string" ? { app: input.app } : {}),
+        ...(typeof input.include === "string"
+          ? { include: input.include }
+          : {}),
+        format: format.value,
+        maxDepth:
+          typeof input.maxDepth === "number" && Number.isFinite(input.maxDepth)
+            ? input.maxDepth
+            : 64,
+        ...(typeof input.screenshotPath === "string"
+          ? { screenshotPath: input.screenshotPath }
+          : {}),
+      });
+      const shouldSaveReference =
+        input.saveReference === true || input.copyReference === true;
+      if (!result.ok || !shouldSaveReference) {
+        return actionResultToMcp(result, def);
+      }
+      const referenceRoot =
+        typeof input.referenceRoot === "string" && input.referenceRoot
+          ? input.referenceRoot
+          : undefined;
+      const reference = await saveComputeCaptureReference(
+        result.data,
+        referenceRoot ? { rootDir: referenceRoot } : {},
+      );
+      if (input.copyReference === true) {
+        try {
+          await copyReferenceMarkupToClipboard(reference.markup);
+        } catch (error) {
+          return actionResultToMcp(
+            err({
+              transport: "subprocess",
+              step: 0,
+              action: "compute_capture.copy_reference",
+              reason: errorMessage(error),
+              suggestion:
+                "inspect the clipboard command or retry with saveReference only",
+              minimum_capability: "compute.capture.copy-reference",
+              exit_code: exitCodeFor("service_unavailable"),
+            }),
+            def,
+          );
+        }
+      }
+      return actionResultToMcp(
+        {
+          ...result,
+          data: {
+            ...result.data,
+            reference: {
+              ...reference,
+              ...(input.copyReference === true
+                ? { clipboard: { ok: true } }
+                : {}),
+            },
+          },
+        },
+        def,
+      );
+    },
   },
   {
     suffix: "snapshot",
@@ -283,6 +391,7 @@ export const COMPUTER_USE_PROMPTS: McpPrompt[] = [
       "You are operating a real desktop through Uni-CLI.",
       "Start with compact accessibility snapshots and use the returned refs for actions.",
       "Use screenshots when accessibility data is empty or the UI is canvas-rendered.",
+      "Use capture to package snapshot refs, screenshot evidence, image metadata, and app-shot references for handoff.",
       "Always re-snapshot after actions that may have changed the UI.",
       "Prefer background actions. Set focus only when the target app needs keyboard focus.",
       "Attach CDP to Electron apps when desktop accessibility misses renderer content.",
@@ -300,13 +409,15 @@ export const COMPUTER_USE_TOOLS: McpTool[] = DEFINITIONS.map((def) => ({
     idempotentHint: def.readOnly ?? false,
   },
   handler: async (args) =>
-    actionResultToMcp(
-      await tryCascade(getBus(), {
-        kind: def.kind,
-        params: def.transform ? def.transform(args) : args,
-      }),
-      def,
-    ),
+    def.handler
+      ? def.handler(args, def)
+      : actionResultToMcp(
+          await tryCascade(getBus(), {
+            kind: def.kind,
+            params: def.transform ? def.transform(args) : args,
+          }),
+          def,
+        ),
 }));
 
 function actionResultToMcp(
@@ -335,4 +446,20 @@ function actionResultToMcp(
     },
     ...(result.ok ? {} : { isError: true }),
   };
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function readCaptureFormat(
+  value: unknown,
+):
+  | { ok: true; value: "compact" | "tree" | "json" }
+  | { ok: false; value: string } {
+  if (value === undefined) return { ok: true, value: "compact" };
+  if (value === "compact" || value === "tree" || value === "json") {
+    return { ok: true, value };
+  }
+  return { ok: false, value: String(value) };
 }

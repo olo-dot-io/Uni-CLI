@@ -283,6 +283,26 @@ describe("search", () => {
     expect(commands[0]).toBe("delivery/run");
   });
 
+  it("routes local computer-use context capture queries to compute capture", () => {
+    const results = search(
+      "local computer use capture accessibility screenshot app shots reference",
+      8,
+    );
+    const commands = results.map((r) => `${r.site}/${r.command}`);
+
+    expect(commands[0]).toBe("compute/capture");
+    expect(commands).toContain("compute/snapshot");
+    expect(commands).toContain("compute/screenshot");
+    expect(results[0].category).toBe("desktop");
+  });
+
+  it("routes app-shot handoff queries to compute capture", () => {
+    const results = search("app shots", 5);
+    const commands = results.map((r) => `${r.site}/${r.command}`);
+
+    expect(commands[0]).toBe("compute/capture");
+  });
+
   it("keeps multi-word site names ahead of broader sibling sites", () => {
     const scholar = search("Fetch a Google Scholar citation for a paper", 5);
     const pubDev = search(
