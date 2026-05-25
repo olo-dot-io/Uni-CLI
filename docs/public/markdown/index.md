@@ -63,7 +63,7 @@ These numbers come from the current generated repo artifacts: adapters, commands
 
 ## Current Version
 
-Latest: v0.223.2 · Apollo · Lovell.
+Latest: v0.223.3 · Apollo · Lovell.
 
 ## Agent Index
 

@@ -3,6 +3,20 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 
+## [0.223.3] — 2026-05-25 — Apollo · Lovell
+
+### Fixed
+
+- Browser command tests now isolate Windows `USERPROFILE`, `APPDATA`, and
+  `LOCALAPPDATA` alongside `HOME`, so CI runner Edge profiles cannot leak into
+  local profile discovery fixtures.
+
+### Verified
+
+- `npx vitest run --project unit tests/unit/commands/browser.test.ts --maxWorkers=1 --reporter=dot`
+- `npm test`
+- `npm run verify`
+
 ## [0.223.2] — 2026-05-25 — Apollo · Lovell
 
 ### Added

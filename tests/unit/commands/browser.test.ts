@@ -285,6 +285,9 @@ function createProgram(): Command {
 describe("unicli browser operator surface", () => {
   let tmpHome: string | null = null;
   let origHome: string | undefined;
+  let origUserProfile: string | undefined;
+  let origAppData: string | undefined;
+  let origLocalAppData: string | undefined;
   let origRecordRun: string | undefined;
   let origRunRoot: string | undefined;
   let origBrowserWatchdog: string | undefined;
@@ -297,6 +300,9 @@ describe("unicli browser operator surface", () => {
     resetMockPage();
     process.exitCode = undefined;
     origHome = process.env.HOME;
+    origUserProfile = process.env.USERPROFILE;
+    origAppData = process.env.APPDATA;
+    origLocalAppData = process.env.LOCALAPPDATA;
     origRecordRun = process.env.UNICLI_RECORD_RUN;
     origRunRoot = process.env.UNICLI_RUN_ROOT;
     origBrowserWatchdog = process.env.UNICLI_BROWSER_WATCHDOG;
@@ -375,11 +381,20 @@ describe("unicli browser operator surface", () => {
     }
     if (origHome === undefined) delete process.env.HOME;
     else process.env.HOME = origHome;
+    if (origUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = origUserProfile;
+    if (origAppData === undefined) delete process.env.APPDATA;
+    else process.env.APPDATA = origAppData;
+    if (origLocalAppData === undefined) delete process.env.LOCALAPPDATA;
+    else process.env.LOCALAPPDATA = origLocalAppData;
   });
 
   function useTempHome(): string {
     tmpHome = mkdtempSync(join(tmpdir(), "unicli-browser-cmd-"));
     process.env.HOME = tmpHome;
+    process.env.USERPROFILE = tmpHome;
+    process.env.APPDATA = join(tmpHome, "AppData", "Roaming");
+    process.env.LOCALAPPDATA = join(tmpHome, "AppData", "Local");
     return tmpHome;
   }
 
@@ -2455,13 +2470,10 @@ describe("unicli browser operator surface", () => {
         ),
       }),
     );
-    expect(
-      (
-        launcherMocks.launchChrome.mock.calls[0]?.[1] as {
-          profileDirectory?: string;
-        }
-      ).profileDirectory,
-    ).toBeUndefined();
+    const launchOptions = launcherMocks.launchChrome.mock.calls[0]?.[1] as
+      | { profileDirectory?: string }
+      | undefined;
+    expect(launchOptions?.profileDirectory).toBeUndefined();
     expect(cap.getStdout()).toContain("Chrome CDP ready on port 9333");
   });
 
@@ -2516,13 +2528,10 @@ describe("unicli browser operator surface", () => {
         ),
       }),
     );
-    expect(
-      (
-        launcherMocks.launchChrome.mock.calls[0]?.[1] as {
-          profileDirectory?: string;
-        }
-      ).profileDirectory,
-    ).toBeUndefined();
+    const launchOptions = launcherMocks.launchChrome.mock.calls[0]?.[1] as
+      | { profileDirectory?: string }
+      | undefined;
+    expect(launchOptions?.profileDirectory).toBeUndefined();
   });
 
   it("browser upload rejects paths that only share the home prefix", async () => {

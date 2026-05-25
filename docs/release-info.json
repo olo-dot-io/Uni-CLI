@@ -1,11 +1,11 @@
 {
-  "version": "0.223.2",
+  "version": "0.223.3",
   "codename": "Apollo · Lovell",
   "date": "2026-05-25",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.223.2",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02232--2026-05-25--apollo--lovell",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.223.3",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02233--2026-05-25--apollo--lovell",
   "highlights": {
     "root": [
       "Uni-CLI 0.223.0 is the local computer-use context release: `compute capture` combines accessibility refs, screenshot evidence, image metadata, and replayable capture trajectory into one packet.",
