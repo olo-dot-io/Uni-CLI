@@ -39,7 +39,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->311<!-- /STATS --> surfaces · <!-- STATS:test_count -->8892<!-- /STATS --> tests</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->311<!-- /STATS --> surfaces · <!-- STATS:test_count -->8915<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -140,7 +140,7 @@ bridge, and repair loop wrapped behind one CLI contract.
 | Websites and APIs  | Declarative adapters for public, cookie, header, and browser-intercept workflows                                                                                                                         |
 | Browser automation | CDP steps for navigate, click, type, intercept, snapshot, extract, wait, and related browser work                                                                                                        |
 | Desktop and macOS  | System commands, app adapters, real-time Shortcuts/App Intent discovery, screenshots, clipboard, calendar, brightness, and local tools                                                                   |
-| External CLIs      | 58 registered pass-through bridges with install/status discovery                                                                                                                                         |
+| External CLIs      | 59 registered pass-through bridges with install/status discovery                                                                                                                                         |
 | Agent backends     | Route matrix for native CLI, JSON stream, MCP, ACP, HTTP API, OpenAI-compatible, and bridge routes                                                                                                       |
 | Operation policy   | `open`, `confirm`, and `locked` profiles with effect/risk scopes, local deny rules, `--yes`, and persisted approval memory                                                                               |
 | Evidence           | Run traces with environment snapshots, probe/replay/compare scores, structured gate results, browser session leases with tab/auth posture, render-aware evidence, movement checks, and stale-ref details |
@@ -504,8 +504,19 @@ Docs:
 
 ## Trust And Limits
 
-- Auth-required sites use local cookie files under `~/.unicli/cookies/<site>.json`.
-- Browser adapters require a reachable Chrome/CDP session.
+- Auth-required sites use local cookie files under
+  `~/.unicli/cookies/<site>.json`, with local browser profile import as the
+  first repair path.
+- Browser adapters use background-first daemon/CDP sessions. Chrome/CDP runs
+  against Uni-CLI automation profiles under `~/.unicli/`; Chrome 136+ blocks
+  remote debugging on the default user-data-dir. `RemoteDebuggingAllowed`
+  policy can disable remote debugging entirely, but it cannot make default
+  profile CDP supported again.
+- `unicli browser doctor --json` reports `default_path`, per-check
+  `next_step` commands, `chrome_remote_debugging`, and
+  `self_repair.safe_command`; run
+  `unicli browser doctor --repair` for the safe local CDP repair without
+  touching the user's default Chrome profile.
 - Permission profiles are user-selected runtime policy. The default is `open`;
   stricter `confirm` and `locked` profiles require `--yes` or `UNICLI_APPROVE=1`
   for blocked operations. Add `--remember-approval` with `--yes` to store the
@@ -541,5 +552,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v0.223.0 — Apollo · Worden</sub>
+  <sub>v0.223.1 — Apollo · Lovell</sub>
 </p>

@@ -126,6 +126,67 @@ describe("CDPClient.selectTarget", () => {
   });
 });
 
+describe("CDPClient.connectToChrome", () => {
+  it("creates a page target when Chrome starts without a startup window", async () => {
+    let createdTarget = false;
+    const wsServer = new WebSocketServer({ noServer: true });
+    const server = http.createServer((req, res) => {
+      if (req.url === "/json") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end("[]");
+        return;
+      }
+      if (req.url?.startsWith("/json/new")) {
+        createdTarget = true;
+        const address = server.address();
+        const serverPort =
+          typeof address === "object" && address !== null ? address.port : 0;
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            id: "created",
+            type: "page",
+            title: "",
+            url: "about:blank",
+            webSocketDebuggerUrl: `ws://localhost:${String(serverPort)}/devtools/page/created`,
+          }),
+        );
+        return;
+      }
+      res.writeHead(404);
+      res.end();
+    });
+    server.on("upgrade", (req, socket, head) => {
+      if (req.url === "/devtools/page/created") {
+        wsServer.handleUpgrade(req, socket, head, (ws) => {
+          wsServer.emit("connection", ws, req);
+        });
+        return;
+      }
+      socket.destroy();
+    });
+    wsServer.on("connection", (ws) => {
+      ws.on("message", (data) => {
+        const msg = JSON.parse(data.toString()) as { id: number };
+        ws.send(JSON.stringify({ id: msg.id, result: {} }));
+      });
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, resolve));
+    const address = server.address();
+    const serverPort =
+      typeof address === "object" && address !== null ? address.port : 0;
+    const client = await CDPClient.connectToChrome(serverPort);
+
+    expect(createdTarget).toBe(true);
+    expect(client.getConnectedTarget()?.id).toBe("created");
+
+    await client.close();
+    await new Promise<void>((resolve) => wsServer.close(() => resolve()));
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  });
+});
+
 describe("scoreTarget", () => {
   it("gives positive score to page type with URL and title", () => {
     const score = scoreTarget({

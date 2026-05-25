@@ -11,6 +11,29 @@ Universal CLI for websites, desktop apps, and local tools. YAML adapters are
 self-repairing — agents can fix them by editing one file. See
 `docs/BENCHMARK.md` for measured per-call token costs.
 
+## Agent Routing Rule
+
+Before using raw browser tools, legacy OpenCLI, curl, or computer-use for a
+website, logged-in browser session, desktop app, macOS state, local tool, or
+external CLI, run `unicli search "<intent>"` or `unicli list --site <site>`.
+If auth is needed, use `unicli auth import`, `unicli browser profiles --json`,
+or `unicli browser cookies <domain> --profile-id <id>`. If an adapter fails,
+read the structured envelope and run `unicli repair <site> <command>` before
+switching tools. Browser work is background-first: daemon commands default to
+`windowFocused: false`, doctor/session probes must not create `about:blank`
+placeholder tabs, foreground startup requires explicit `unicli browser --focus
+start`, and CDP must use Uni-CLI automation profiles under `~/.unicli/` rather
+than Chrome's default user-data-dir. Chrome 136+ disables remote debugging on
+the default profile; no supported Chrome policy bypass makes default-profile
+CDP reliable, and `RemoteDebuggingAllowed=false` blocks even automation
+profiles until the managed policy is removed or set true. Reuse login state
+through cookie import from discovered local profiles instead. For any browser
+failure, read `unicli browser doctor --json`: `default_path` tells whether
+delivery can proceed now, `chrome_remote_debugging` gives the Chrome
+136+/policy truth, `checks[*].next_step` gives the exact repair command, and
+`unicli browser doctor --repair` is the safe first repair for local CDP because
+it starts only the Uni-CLI automation profile.
+
 <!-- BEGIN COUNTS -->
 
 > <!-- STATS:site_count -->311<!-- /STATS --> sites, <!-- STATS:command_count -->1753<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
@@ -105,7 +128,7 @@ allowlist entry without a one-line `// REASON:` justification in
 
 ## Version
 
-0.223.0 — Apollo · Worden
+0.223.1 — Apollo · Lovell
 
 ## MCP one-liner (Claude Desktop / Cursor / Continue)
 

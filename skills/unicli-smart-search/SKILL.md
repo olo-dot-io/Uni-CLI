@@ -22,7 +22,8 @@ Commands return a v2 AgentEnvelope; pass `-f json` when you need JSON for parsin
 ## Pre-Check
 
 ```bash
-unicli <site> --help                  # Verify subcommands exist
+unicli search "<intent>"              # Discover from live registry first
+unicli list --site <site>             # Verify subcommands exist
 unicli <site> <command> --help        # Check args and output columns
 ```
 
@@ -64,15 +65,16 @@ unicli hackernews search "startup" --limit 10
 ## Output Handling
 
 ```bash
-unicli hackernews top --limit 5 | jq '.[].title'
-unicli xueqiu hot | jq '.[] | {name, change}'
+unicli hackernews top --limit 5 -f json | jq '.data[].title'
+unicli xueqiu hot -f json | jq '.data[] | {name, change}'
 ```
 
 ## Fallback
 
-- Exit 77 -> `unicli auth setup <site>` then retry
-- Exit 69 -> `unicli browser start` then retry
+- Exit 77 -> `unicli auth import <site> --domain <domain>` or `unicli browser cookies <domain> --profile-id <id>` then retry
+- Exit 69 -> `unicli browser doctor --json`, `unicli browser doctor --repair`, then retry
 - Exit 66 -> try different query terms
+- Adapter failure -> read stderr envelope and run `unicli repair <site> <command>`
 - Site down -> switch to alternative from routing table
 
 ## Budget

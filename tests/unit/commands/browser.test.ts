@@ -1,9 +1,11 @@
 import {
   existsSync,
   mkdtempSync,
+  mkdirSync,
   readdirSync,
   readFileSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
@@ -121,6 +123,15 @@ function resetMockPage(): void {
 }
 
 const daemonClientMocks = vi.hoisted(() => ({
+  fetchDaemonPortConflict: vi.fn().mockResolvedValue(null),
+  fetchDaemonStatus: vi.fn().mockResolvedValue({
+    pid: 999,
+    uptime: 10,
+    extensionConnected: true,
+    pending: 0,
+    memoryMB: 32,
+    port: 19825,
+  }),
   sendCommand: vi.fn(),
   listSessions: vi.fn().mockResolvedValue([
     {
@@ -137,7 +148,79 @@ const daemonClientMocks = vi.hoisted(() => ({
   }),
 }));
 
+const launcherMocks = vi.hoisted(() => ({
+  findChrome: vi.fn(
+    () => "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  ),
+  getCDPPort: vi.fn(() => Number(process.env.UNICLI_CDP_PORT ?? 9222)),
+  isCDPAvailable: vi.fn().mockResolvedValue(false),
+  findAvailableCDPPort: vi.fn(async (port: number) => port),
+  launchChrome: vi.fn().mockResolvedValue(9222),
+}));
+
+const cookieExtractorMocks = vi.hoisted(() => ({
+  extractCookiesViaCDP: vi.fn().mockResolvedValue({ sid: "cookie" }),
+  saveCookies: vi.fn().mockReturnValue("/tmp/unicli-cookies/example.json"),
+}));
+
+const chromiumCookieMocks = vi.hoisted(() => {
+  class ChromiumCookieError extends Error {
+    constructor(
+      public readonly code: string,
+      message: string,
+      public readonly suggestion?: string,
+    ) {
+      super(message);
+      this.name = "ChromiumCookieError";
+    }
+  }
+  return {
+    ChromiumCookieError,
+    readCookiesAsRecord: vi.fn().mockReturnValue({}),
+  };
+});
+
+const chromePolicyMocks = vi.hoisted(() => ({
+  buildChrome136RemoteDebuggingGuidance: vi.fn(() => ({
+    default_user_data_dir_cdp_supported: false,
+    policy_can_bypass_default_user_data_dir: false,
+    automatic_fix: "custom-user-data-dir",
+    safe_command: "unicli browser doctor --repair",
+    supported_paths: [
+      "Launch Chrome with a Uni-CLI-owned non-default --user-data-dir under ~/.unicli.",
+      "Use Chrome for Testing or Chromium when a fully automation-owned browser is acceptable.",
+    ],
+    unsupported_paths: [
+      "Do not retry Google Chrome --remote-debugging-port against the browser default user-data-dir.",
+      "Do not rely on RemoteDebuggingAllowed policy to bypass the Chrome 136+ default-directory restriction.",
+    ],
+    user_visible_warning:
+      "Chrome 136+ ignores remote debugging switches for the default user-data-dir; Uni-CLI repairs this by starting a separate automation profile and reusing auth through cookie import.",
+    official_docs: [
+      "https://developer.chrome.com/blog/remote-debugging-port",
+      "https://support.google.com/chrome/a/answer/10314655",
+      "https://chromeenterprise.google/policies/remote-debugging-allowed/",
+    ],
+  })),
+  detectChromeRemoteDebuggingPolicy: vi.fn(() => ({
+    name: "RemoteDebuggingAllowed",
+    state: "not-configured",
+    source: "not-found",
+    detail:
+      "RemoteDebuggingAllowed is not configured, so Chrome allows remote debugging except for the Chrome 136+ default data-dir restriction.",
+    next_step: "Use `unicli browser doctor --repair` for local CDP.",
+    commands: ["unicli browser doctor --repair"],
+    official_docs: [
+      "https://developer.chrome.com/blog/remote-debugging-port",
+      "https://support.google.com/chrome/a/answer/10314655",
+      "https://chromeenterprise.google/policies/remote-debugging-allowed/",
+    ],
+  })),
+}));
+
 vi.mock("../../../src/browser/bridge.js", () => ({
+  BROWSER_REMOTE_CONNECT_MAX_ATTEMPTS: 3,
+  BROWSER_REMOTE_RETRY_DELAY_MS: 1000,
   BrowserBridge: vi.fn().mockImplementation(() => ({
     connect: vi.fn().mockResolvedValue(mockPage),
   })),
@@ -145,20 +228,24 @@ vi.mock("../../../src/browser/bridge.js", () => ({
   DaemonPage: vi.fn(),
 }));
 
+vi.mock("../../../src/browser/launcher.js", () => launcherMocks);
+
 vi.mock("../../../src/browser/daemon-client.js", () => ({
-  fetchDaemonPortConflict: vi.fn().mockResolvedValue(null),
-  fetchDaemonStatus: vi.fn().mockResolvedValue({
-    pid: 999,
-    uptime: 10,
-    extensionConnected: true,
-    pending: 0,
-    memoryMB: 32,
-    port: 19825,
-  }),
+  BROWSER_DAEMON_COMMAND_MAX_ATTEMPTS: 4,
+  BROWSER_DAEMON_EXTENSION_RETRY_DELAY_MS: 1500,
+  BROWSER_DAEMON_NETWORK_RETRY_DELAY_MS: 500,
+  fetchDaemonPortConflict: daemonClientMocks.fetchDaemonPortConflict,
+  fetchDaemonStatus: daemonClientMocks.fetchDaemonStatus,
   listSessions: daemonClientMocks.listSessions,
   bindCurrentTab: daemonClientMocks.bindCurrentTab,
   sendCommand: daemonClientMocks.sendCommand,
 }));
+
+vi.mock("../../../src/engine/cookie-extractor.js", () => cookieExtractorMocks);
+
+vi.mock("../../../src/engine/chromium-cookies.js", () => chromiumCookieMocks);
+
+vi.mock("../../../src/browser/chrome-policy.js", () => chromePolicyMocks);
 
 import { registerBrowserCommands } from "../../../src/commands/browser/index.js";
 
@@ -201,6 +288,9 @@ describe("unicli browser operator surface", () => {
   let origRecordRun: string | undefined;
   let origRunRoot: string | undefined;
   let origBrowserWatchdog: string | undefined;
+  let origCdpEndpoint: string | undefined;
+  let origCdpHeaders: string | undefined;
+  let origCdpPort: string | undefined;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -210,6 +300,58 @@ describe("unicli browser operator surface", () => {
     origRecordRun = process.env.UNICLI_RECORD_RUN;
     origRunRoot = process.env.UNICLI_RUN_ROOT;
     origBrowserWatchdog = process.env.UNICLI_BROWSER_WATCHDOG;
+    origCdpEndpoint = process.env.UNICLI_CDP_ENDPOINT;
+    origCdpHeaders = process.env.UNICLI_CDP_HEADERS;
+    origCdpPort = process.env.UNICLI_CDP_PORT;
+    daemonClientMocks.fetchDaemonPortConflict.mockResolvedValue(null);
+    daemonClientMocks.fetchDaemonStatus.mockResolvedValue({
+      pid: 999,
+      uptime: 10,
+      extensionConnected: true,
+      pending: 0,
+      memoryMB: 32,
+      port: 19825,
+    });
+    daemonClientMocks.listSessions.mockResolvedValue([
+      {
+        workspace: "browser:default",
+        windowId: 41,
+        tabCount: 2,
+        idleMsRemaining: 12_000,
+      },
+    ]);
+    launcherMocks.findChrome.mockReturnValue(
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    );
+    launcherMocks.getCDPPort.mockImplementation(() =>
+      Number(process.env.UNICLI_CDP_PORT ?? 9222),
+    );
+    launcherMocks.isCDPAvailable.mockResolvedValue(false);
+    launcherMocks.findAvailableCDPPort.mockImplementation(
+      async (port: number) => port,
+    );
+    launcherMocks.launchChrome.mockResolvedValue(9222);
+    cookieExtractorMocks.extractCookiesViaCDP.mockResolvedValue({
+      sid: "cookie",
+    });
+    cookieExtractorMocks.saveCookies.mockReturnValue(
+      "/tmp/unicli-cookies/example.json",
+    );
+    chromiumCookieMocks.readCookiesAsRecord.mockReturnValue({});
+    chromePolicyMocks.detectChromeRemoteDebuggingPolicy.mockReturnValue({
+      name: "RemoteDebuggingAllowed",
+      state: "not-configured",
+      source: "not-found",
+      detail:
+        "RemoteDebuggingAllowed is not configured, so Chrome allows remote debugging except for the Chrome 136+ default data-dir restriction.",
+      next_step: "Use `unicli browser doctor --repair` for local CDP.",
+      commands: ["unicli browser doctor --repair"],
+      official_docs: [
+        "https://developer.chrome.com/blog/remote-debugging-port",
+        "https://support.google.com/chrome/a/answer/10314655",
+        "https://chromeenterprise.google/policies/remote-debugging-allowed/",
+      ],
+    });
   });
 
   afterEach(() => {
@@ -221,6 +363,12 @@ describe("unicli browser operator surface", () => {
     if (origBrowserWatchdog === undefined)
       delete process.env.UNICLI_BROWSER_WATCHDOG;
     else process.env.UNICLI_BROWSER_WATCHDOG = origBrowserWatchdog;
+    if (origCdpEndpoint === undefined) delete process.env.UNICLI_CDP_ENDPOINT;
+    else process.env.UNICLI_CDP_ENDPOINT = origCdpEndpoint;
+    if (origCdpHeaders === undefined) delete process.env.UNICLI_CDP_HEADERS;
+    else process.env.UNICLI_CDP_HEADERS = origCdpHeaders;
+    if (origCdpPort === undefined) delete process.env.UNICLI_CDP_PORT;
+    else process.env.UNICLI_CDP_PORT = origCdpPort;
     if (tmpHome) {
       rmSync(tmpHome, { recursive: true, force: true });
       tmpHome = null;
@@ -1446,6 +1594,935 @@ describe("unicli browser operator surface", () => {
     expect(process.exitCode).toBe(0);
     expect(env.data.rowCount).toBe(1);
     expect(env.data.fixtureFailures).toEqual([]);
+  });
+
+  it("browser profiles lists local Chromium-family profiles with stable ids", async () => {
+    const home = useTempHome();
+    const chromeRoot = join(
+      home,
+      "Library",
+      "Application Support",
+      "Google",
+      "Chrome",
+    );
+    mkdirSync(join(chromeRoot, "Default"), { recursive: true });
+    writeFileSync(
+      join(chromeRoot, "Local State"),
+      JSON.stringify({
+        profile: { info_cache: { Default: { name: "Personal" } } },
+      }),
+    );
+    writeFileSync(join(chromeRoot, "Default", "Preferences"), "{}");
+    process.env.UNICLI_OUTPUT = "json";
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "profiles"], { from: "user" });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      command: string;
+      data: {
+        source: string;
+        profiles: Array<{
+          id: string;
+          browser_name: string;
+          profile_dir: string;
+          profile_name: string;
+          display_name: string;
+          profile_path: string;
+          debug_port: { state: string };
+        }>;
+      };
+    };
+    expect(env.command).toBe("browser.profiles");
+    expect(env.data.source).toBe("local-filesystem");
+    expect(env.data.profiles).toEqual([
+      expect.objectContaining({
+        id: "google-chrome:Default",
+        browser_name: "Google Chrome",
+        profile_dir: "Default",
+        profile_name: "Personal",
+        display_name: "Google Chrome - Personal",
+        profile_path: join(chromeRoot, "Default"),
+        debug_port: { state: "not-recorded" },
+      }),
+    ]);
+  });
+
+  it("browser doctor reports the browser reliability contract", async () => {
+    const home = useTempHome();
+    const chromeRoot = join(
+      home,
+      "Library",
+      "Application Support",
+      "Google",
+      "Chrome",
+    );
+    mkdirSync(join(chromeRoot, "Default"), { recursive: true });
+    writeFileSync(
+      join(chromeRoot, "Local State"),
+      JSON.stringify({
+        profile: { info_cache: { Default: { name: "Personal" } } },
+      }),
+    );
+    writeFileSync(join(chromeRoot, "Default", "Preferences"), "{}");
+    process.env.UNICLI_OUTPUT = "json";
+    process.env.UNICLI_CDP_ENDPOINT =
+      "wss://user:secret@remote.example/devtools/browser/secret-id?token=hidden#fragsecret";
+    process.env.UNICLI_CDP_HEADERS = JSON.stringify({
+      Authorization: "Bearer secret",
+    });
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "doctor", "--json"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      command: string;
+      data: {
+        status: string;
+        cookie_reuse: {
+          status: string;
+          profiles_count: number;
+          raw_cookie_values_returned: boolean;
+          raw_cookie_export_supported: boolean;
+          direct_browser_cookie_import_supported: boolean;
+          command: string;
+          direct_browser_cookie_import_command: string;
+          explicit_cookie_export_command: string;
+          reuse_paths: string[];
+        };
+        background_operation: {
+          status: string;
+          daemon: { status: string; extension_connected: boolean };
+          sessions_count: number;
+          controls: string[];
+        };
+        browser_use: {
+          modes: string[];
+          layers: Array<{ name: string }>;
+        };
+        direct_connect: {
+          local_cdp: { port: number; command: string };
+          remote_cdp: {
+            configured: boolean;
+            endpoint: string;
+            header_count: number;
+          };
+        };
+        chrome_remote_debugging: {
+          chrome_136: {
+            default_user_data_dir_cdp_supported: boolean;
+            policy_can_bypass_default_user_data_dir: boolean;
+            safe_command: string;
+          };
+          policy: { name: string; state: string };
+        };
+        stability_reliability: {
+          guards: string[];
+          evidence: string[];
+        };
+        repair_retry: {
+          retry_policy: Array<{
+            surface: string;
+            max_attempts: number;
+            retry_delay_ms?: number;
+            network_retry_delay_ms?: number;
+            extension_retry_delay_ms?: number;
+          }>;
+          recovery_commands: string[];
+        };
+        default_path: {
+          status: string;
+          mode: string;
+          ready: boolean;
+          next_step: string;
+          commands: string[];
+        };
+        checks: Array<{
+          name: string;
+          ok: boolean;
+          status: string;
+          next_step: string;
+          commands?: string[];
+          auto_repairable?: boolean;
+        }>;
+        self_repair: {
+          safe_command: string;
+          actions: Array<{
+            id: string;
+            status: string;
+            command: string;
+            safe: boolean;
+          }>;
+        };
+        completeness: {
+          complete: boolean;
+          required_capabilities: string[];
+          missing: string[];
+          matrix: Record<
+            string,
+            {
+              status: string;
+              evidence: string[];
+              repair_commands: string[];
+              diagnostics?: string[];
+            }
+          >;
+        };
+      };
+    };
+
+    expect(env.command).toBe("browser.doctor");
+    expect(env.data.status).toBe("ready");
+    expect(env.data.cookie_reuse).toMatchObject({
+      status: "ready",
+      profiles_count: 1,
+      raw_cookie_values_returned: false,
+      raw_cookie_export_supported: true,
+      direct_browser_cookie_import_supported: true,
+      command: "unicli browser profiles --json",
+      direct_browser_cookie_import_command:
+        "unicli auth import <site> --domain <domain> --browser <id> --profile <name>",
+      explicit_cookie_export_command:
+        "unicli browser cookies <domain> --profile-id <id>",
+    });
+    expect(env.data.cookie_reuse.reuse_paths).toEqual(
+      expect.arrayContaining([
+        "direct browser DB cookie import",
+        "profile DevToolsActivePort",
+        "automation profile launch under ~/.unicli",
+        "selected profile cookie injection into CDP automation profile",
+        "explicit raw cookie export through browser cookies",
+      ]),
+    );
+    expect(env.data.background_operation).toMatchObject({
+      status: "ready",
+      daemon: { status: "running", extension_connected: true },
+      sessions_count: 1,
+    });
+    expect(env.data.background_operation.controls).toEqual(
+      expect.arrayContaining([
+        "default windowFocused=false",
+        "browser start uses --no-startup-window by default",
+        "--background",
+        "--focus",
+        "--workspace",
+        "--isolated",
+      ]),
+    );
+    expect(env.data.browser_use.modes).toEqual(
+      expect.arrayContaining(["logged-in Chrome", "headless Chrome"]),
+    );
+    expect(env.data.browser_use.layers.map((layer) => layer.name)).toEqual([
+      "runtime-control",
+      "browser-session",
+      "page-state",
+      "evidence-repair",
+    ]);
+    expect(env.data.direct_connect.local_cdp).toMatchObject({
+      port: 9222,
+      command: "unicli browser start",
+    });
+    expect(env.data.direct_connect.remote_cdp).toEqual({
+      configured: true,
+      endpoint: "wss://remote.example/devtools/browser/...?...",
+      header_count: 1,
+    });
+    expect(env.data.chrome_remote_debugging.chrome_136).toMatchObject({
+      default_user_data_dir_cdp_supported: false,
+      policy_can_bypass_default_user_data_dir: false,
+      safe_command: "unicli browser doctor --repair",
+    });
+    expect(env.data.chrome_remote_debugging.policy).toMatchObject({
+      name: "RemoteDebuggingAllowed",
+      state: "not-configured",
+    });
+    expect(env.data.stability_reliability.guards).toEqual(
+      expect.arrayContaining([
+        "non-focusing daemon command default",
+        "no-startup-window local Chrome launch",
+        "doctor sessions probe does not create placeholder tabs",
+        "workspace lease",
+        "target lease",
+        "domain/path guard",
+        "render stability probe",
+      ]),
+    );
+    expect(env.data.stability_reliability.evidence).toEqual(
+      expect.arrayContaining(["DOM snapshot", "screenshot", "network"]),
+    );
+    expect(env.data.repair_retry.retry_policy).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          surface: "daemon-command",
+          max_attempts: 4,
+          network_retry_delay_ms: 500,
+          extension_retry_delay_ms: 1500,
+        }),
+        expect.objectContaining({
+          surface: "remote-cdp",
+          max_attempts: 3,
+          retry_delay_ms: 1000,
+        }),
+      ]),
+    );
+    expect(env.data.repair_retry.recovery_commands).toEqual(
+      expect.arrayContaining([
+        "unicli auth import <site> --domain <domain>",
+        "unicli browser start",
+        "unicli browser bind",
+        "unicli repair <site> <command>",
+      ]),
+    );
+    expect(env.data.default_path).toMatchObject({
+      status: "ready",
+      mode: "remote-cdp",
+      ready: true,
+      next_step: "Run the requested Uni-CLI command.",
+    });
+    expect(env.data.default_path.commands).toEqual(
+      expect.arrayContaining([
+        "unicli browser remote --status",
+        "unicli <site> <command> -f json",
+      ]),
+    );
+    expect(env.data.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "Chrome 136+ remote debugging hardening",
+          ok: true,
+          status: "ready",
+        }),
+        expect.objectContaining({
+          name: "remote debugging policy",
+          ok: true,
+          status: "ready",
+        }),
+        expect.objectContaining({
+          name: "local automation CDP",
+          ok: false,
+          status: "needs-action",
+          next_step: "unicli browser doctor --repair",
+          auto_repairable: true,
+        }),
+        expect.objectContaining({
+          name: "default profile CDP trap",
+          ok: true,
+          status: "ready",
+          next_step: "No action.",
+        }),
+      ]),
+    );
+    expect(env.data.self_repair.safe_command).toBe(
+      "unicli browser doctor --repair",
+    );
+    expect(env.data.self_repair.actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "start-local-automation-cdp",
+          status: "available",
+          command: "unicli browser doctor --repair",
+          safe: true,
+        }),
+      ]),
+    );
+    expect(env.data.completeness.complete).toBe(true);
+    expect(env.data.completeness.missing).toEqual([]);
+    expect(env.data.completeness.required_capabilities).toEqual([
+      "cookie_reuse",
+      "background_operation",
+      "browser_use",
+      "page_layering",
+      "direct_connect",
+      "stability",
+      "reliability",
+      "repair",
+      "retry",
+    ]);
+    expect(env.data.completeness.matrix.cookie_reuse).toMatchObject({
+      status: "ready",
+      repair_commands: [
+        "unicli browser profiles --json",
+        "unicli auth import <site> --domain <domain> --browser <id> --profile <name>",
+        "unicli browser cookies <domain> --profile-id <id>",
+      ],
+    });
+    expect(env.data.completeness.matrix.cookie_reuse.evidence).toEqual(
+      expect.arrayContaining([
+        "raw_cookie_export_supported=true",
+        "direct_browser_cookie_import_supported=true",
+        "unicli auth import <site> --domain <domain> --browser <id> --profile <name>",
+        "unicli browser cookies <domain> --profile-id <id>",
+      ]),
+    );
+    expect(env.data.completeness.matrix.direct_connect.evidence).toEqual(
+      expect.arrayContaining(["remote CDP configured"]),
+    );
+    expect(env.data.completeness.matrix.retry.evidence).toEqual(
+      expect.arrayContaining([
+        "daemon-command max_attempts=4",
+        "remote-cdp max_attempts=3",
+      ]),
+    );
+    expect(cap.getStdout()).not.toContain("secret");
+    expect(cap.getStdout()).not.toContain("secret-id");
+    expect(cap.getStdout()).not.toContain("hidden");
+    expect(cap.getStdout()).not.toContain("fragsecret");
+    expect(cap.getStdout()).not.toContain("Authorization");
+  });
+
+  it("browser doctor reports missing browser capability surfaces", async () => {
+    useTempHome();
+    daemonClientMocks.fetchDaemonStatus.mockResolvedValue(null);
+    daemonClientMocks.fetchDaemonPortConflict.mockResolvedValue(
+      "port 19825 is occupied by a non-Uni-CLI browser daemon",
+    );
+    delete process.env.UNICLI_CDP_ENDPOINT;
+    delete process.env.UNICLI_CDP_HEADERS;
+    process.env.UNICLI_CDP_PORT = "9";
+    process.env.UNICLI_OUTPUT = "json";
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "doctor", "--json"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: {
+        status: string;
+        background_operation: {
+          status: string;
+          daemon: { status: string; conflict?: string };
+        };
+        direct_connect: {
+          local_cdp: { port: number; reachable: boolean };
+          remote_cdp: { configured: boolean; header_count: number };
+        };
+        completeness: {
+          complete: boolean;
+          missing: string[];
+          matrix: Record<
+            string,
+            {
+              status: string;
+              diagnostics?: string[];
+              repair_commands: string[];
+            }
+          >;
+        };
+      };
+    };
+
+    expect(env.data.status).toBe("needs-action");
+    expect(process.exitCode).toBe(1);
+    expect(env.data.background_operation).toMatchObject({
+      status: "blocked",
+      daemon: {
+        status: "blocked",
+        conflict: "port 19825 is occupied by a non-Uni-CLI browser daemon",
+      },
+    });
+    expect(env.data.direct_connect).toMatchObject({
+      local_cdp: { port: 9, reachable: false },
+      remote_cdp: { configured: false, header_count: 0 },
+    });
+    expect(env.data.completeness.complete).toBe(false);
+    expect(env.data.completeness.missing).toEqual(
+      expect.arrayContaining([
+        "cookie_reuse",
+        "background_operation",
+        "direct_connect",
+        "reliability",
+      ]),
+    );
+    expect(
+      env.data.completeness.matrix.background_operation.diagnostics,
+    ).toEqual(
+      expect.arrayContaining([
+        "port 19825 is occupied by a non-Uni-CLI browser daemon",
+      ]),
+    );
+    expect(env.data.completeness.matrix.direct_connect.repair_commands).toEqual(
+      expect.arrayContaining([
+        "unicli browser start",
+        "unicli browser remote --status",
+      ]),
+    );
+    expect(env.data.completeness.matrix.repair.status).toBe("ready");
+    expect(env.data.completeness.matrix.retry.status).toBe("ready");
+  });
+
+  it("browser doctor --repair starts the safe local automation CDP path", async () => {
+    useTempHome();
+    launcherMocks.isCDPAvailable
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+    process.env.UNICLI_OUTPUT = "json";
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "doctor", "--repair", "--json"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: {
+        repair_attempt?: {
+          status: string;
+          actions: Array<{ id: string; status: string; command: string }>;
+        };
+        direct_connect: { local_cdp: { reachable: boolean } };
+      };
+    };
+    expect(launcherMocks.launchChrome).toHaveBeenCalledWith(9222);
+    expect(env.data.repair_attempt).toMatchObject({
+      status: "repaired",
+      actions: [
+        {
+          id: "start-local-automation-cdp",
+          status: "repaired",
+          command: "unicli browser start",
+        },
+      ],
+    });
+    expect(env.data.direct_connect.local_cdp.reachable).toBe(true);
+  });
+
+  it("browser doctor --repair refuses unsupported policy bypasses when remote debugging is disabled", async () => {
+    useTempHome();
+    launcherMocks.isCDPAvailable.mockResolvedValue(false);
+    chromePolicyMocks.detectChromeRemoteDebuggingPolicy.mockReturnValue({
+      name: "RemoteDebuggingAllowed",
+      state: "disabled",
+      value: false,
+      source: "mac-defaults",
+      source_path: "/Library/Managed Preferences/com.google.Chrome",
+      detail:
+        "Chrome policy RemoteDebuggingAllowed=false blocks all remote-debugging switches, including Uni-CLI automation profiles.",
+      next_step:
+        "Remove the false Chrome policy or set RemoteDebuggingAllowed=true, then fully restart Chrome.",
+      commands: ["open chrome://policy"],
+      official_docs: [
+        "https://developer.chrome.com/blog/remote-debugging-port",
+        "https://chromeenterprise.google/policies/remote-debugging-allowed/",
+      ],
+    });
+    process.env.UNICLI_OUTPUT = "json";
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "doctor", "--repair", "--json"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: {
+        repair_attempt?: {
+          status: string;
+          actions: Array<{ id: string; status: string; command: string }>;
+        };
+        checks: Array<{ name: string; ok: boolean; next_step: string }>;
+        self_repair: { actions: Array<{ id: string; status: string }> };
+      };
+    };
+    expect(launcherMocks.launchChrome).not.toHaveBeenCalled();
+    expect(env.data.repair_attempt).toMatchObject({
+      status: "failed",
+      actions: [
+        {
+          id: "enable-remote-debugging-policy",
+          status: "failed",
+          command:
+            "Remove the false Chrome policy or set RemoteDebuggingAllowed=true, then fully restart Chrome.",
+        },
+      ],
+    });
+    expect(env.data.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "remote debugging policy",
+          ok: false,
+          next_step:
+            "Remove the false Chrome policy or set RemoteDebuggingAllowed=true, then fully restart Chrome.",
+        }),
+      ]),
+    );
+    expect(env.data.self_repair.actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "start-local-automation-cdp",
+          status: "blocked",
+        }),
+      ]),
+    );
+  });
+
+  it("browser cookies uses a selected profile's live DevTools port before launching", async () => {
+    const home = useTempHome();
+    const chromeRoot = join(
+      home,
+      "Library",
+      "Application Support",
+      "Google",
+      "Chrome",
+    );
+    mkdirSync(join(chromeRoot, "Default"), { recursive: true });
+    writeFileSync(
+      join(chromeRoot, "Local State"),
+      JSON.stringify({
+        profile: { info_cache: { Default: { name: "Personal" } } },
+      }),
+    );
+    writeFileSync(join(chromeRoot, "Default", "Preferences"), "{}");
+    writeFileSync(
+      join(chromeRoot, "DevToolsActivePort"),
+      "9444\n/devtools/browser/live\n",
+    );
+    launcherMocks.isCDPAvailable.mockImplementation(async (port: number) => {
+      return port === 9444;
+    });
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "browser",
+          "cookies",
+          "example.com",
+          "--profile-id",
+          "google-chrome:Default",
+          "--port",
+          "9333",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(launcherMocks.launchChrome).not.toHaveBeenCalled();
+    expect(cookieExtractorMocks.extractCookiesViaCDP).toHaveBeenCalledWith(
+      "example.com",
+      9444,
+    );
+    expect(cookieExtractorMocks.saveCookies).toHaveBeenCalledWith(
+      "example-com",
+      { sid: "cookie" },
+    );
+    expect(cap.getStdout()).toContain("Extracted 1 cookies for example.com");
+  });
+
+  it("browser cookies imports raw cookies from the selected local browser profile before CDP", async () => {
+    const home = useTempHome();
+    const chromeRoot = join(
+      home,
+      "Library",
+      "Application Support",
+      "Google",
+      "Chrome",
+    );
+    mkdirSync(join(chromeRoot, "Default"), { recursive: true });
+    writeFileSync(
+      join(chromeRoot, "Local State"),
+      JSON.stringify({
+        profile: { info_cache: { Default: { name: "Personal" } } },
+      }),
+    );
+    writeFileSync(join(chromeRoot, "Default", "Preferences"), "{}");
+    chromiumCookieMocks.readCookiesAsRecord.mockReturnValue({
+      sid: "raw-cookie",
+    });
+    launcherMocks.isCDPAvailable.mockResolvedValue(true);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "browser",
+          "cookies",
+          "example.com",
+          "--profile-id",
+          "google-chrome:Default",
+          "--port",
+          "9333",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(chromiumCookieMocks.readCookiesAsRecord).toHaveBeenCalledWith({
+      browser: "chrome",
+      domain: "example.com",
+      profile: "Default",
+    });
+    expect(launcherMocks.findAvailableCDPPort).not.toHaveBeenCalled();
+    expect(launcherMocks.launchChrome).not.toHaveBeenCalled();
+    expect(cookieExtractorMocks.extractCookiesViaCDP).not.toHaveBeenCalled();
+    expect(cookieExtractorMocks.saveCookies).toHaveBeenCalledWith(
+      "example-com",
+      { sid: "raw-cookie" },
+    );
+    expect(cap.getStdout()).toContain("Extracted 1 cookies for example.com");
+  });
+
+  it("browser cookies reuses a selected profile only when its recorded CDP port is live", async () => {
+    const home = useTempHome();
+    const chromeRoot = join(
+      home,
+      "Library",
+      "Application Support",
+      "Google",
+      "Chrome",
+    );
+    mkdirSync(join(chromeRoot, "Default"), { recursive: true });
+    writeFileSync(
+      join(chromeRoot, "Local State"),
+      JSON.stringify({
+        profile: { info_cache: { Default: { name: "Personal" } } },
+      }),
+    );
+    writeFileSync(join(chromeRoot, "Default", "Preferences"), "{}");
+    chromiumCookieMocks.readCookiesAsRecord.mockImplementation(() => {
+      throw new chromiumCookieMocks.ChromiumCookieError(
+        "keychain_denied",
+        "keychain denied",
+      );
+    });
+    writeFileSync(
+      join(chromeRoot, "DevToolsActivePort"),
+      "9444\n/devtools/browser/live\n",
+    );
+    launcherMocks.isCDPAvailable.mockImplementation(async (port: number) => {
+      return port === 9444;
+    });
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "browser",
+          "cookies",
+          "example.com",
+          "--profile-id",
+          "google-chrome:Default",
+          "--port",
+          "9333",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(launcherMocks.findAvailableCDPPort).not.toHaveBeenCalled();
+    expect(launcherMocks.launchChrome).not.toHaveBeenCalled();
+    expect(cookieExtractorMocks.extractCookiesViaCDP).toHaveBeenCalledWith(
+      "example.com",
+      9444,
+    );
+  });
+
+  it("browser cookies fails closed instead of launching the default profile with CDP when direct import is unavailable", async () => {
+    const home = useTempHome();
+    const chromeRoot = join(
+      home,
+      "Library",
+      "Application Support",
+      "Google",
+      "Chrome",
+    );
+    mkdirSync(join(chromeRoot, "Default"), { recursive: true });
+    writeFileSync(
+      join(chromeRoot, "Local State"),
+      JSON.stringify({
+        profile: { info_cache: { Default: { name: "Personal" } } },
+      }),
+    );
+    writeFileSync(join(chromeRoot, "Default", "Preferences"), "{}");
+    chromiumCookieMocks.readCookiesAsRecord.mockImplementation(() => {
+      throw new chromiumCookieMocks.ChromiumCookieError(
+        "keychain_denied",
+        "keychain denied",
+      );
+    });
+    launcherMocks.isCDPAvailable.mockResolvedValue(false);
+    launcherMocks.launchChrome.mockResolvedValue(9333);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "browser",
+          "cookies",
+          "example.com",
+          "--profile-id",
+          "google-chrome:Default",
+          "--port",
+          "9333",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(launcherMocks.findAvailableCDPPort).not.toHaveBeenCalled();
+    expect(launcherMocks.launchChrome).not.toHaveBeenCalled();
+    expect(cookieExtractorMocks.extractCookiesViaCDP).not.toHaveBeenCalled();
+    expect(cap.getStderr()).toContain("Direct cookie DB import unavailable");
+    expect(cap.getStderr()).toContain(
+      "Chrome blocks CDP on its default profile",
+    );
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("browser start launches a selected logged-in profile with CDP", async () => {
+    const home = useTempHome();
+    const chromeRoot = join(
+      home,
+      "Library",
+      "Application Support",
+      "Google",
+      "Chrome",
+    );
+    mkdirSync(join(chromeRoot, "Default"), { recursive: true });
+    writeFileSync(
+      join(chromeRoot, "Local State"),
+      JSON.stringify({
+        profile: { info_cache: { Default: { name: "Personal" } } },
+      }),
+    );
+    writeFileSync(join(chromeRoot, "Default", "Preferences"), "{}");
+    launcherMocks.isCDPAvailable.mockResolvedValue(false);
+    launcherMocks.launchChrome.mockResolvedValue(9333);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "browser",
+          "start",
+          "--profile-id",
+          "google-chrome:Default",
+          "--port",
+          "9333",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(launcherMocks.launchChrome).toHaveBeenCalledWith(
+      9333,
+      expect.objectContaining({
+        userDataDir: join(
+          home,
+          ".unicli",
+          "browser-profiles",
+          "google-chrome_Default",
+        ),
+      }),
+    );
+    expect(
+      (
+        launcherMocks.launchChrome.mock.calls[0]?.[1] as {
+          profileDirectory?: string;
+        }
+      ).profileDirectory,
+    ).toBeUndefined();
+    expect(cap.getStdout()).toContain("Chrome CDP ready on port 9333");
+  });
+
+  it("browser start only allows a foreground startup window when --focus is explicit", async () => {
+    const home = useTempHome();
+    const chromeRoot = join(
+      home,
+      "Library",
+      "Application Support",
+      "Google",
+      "Chrome",
+    );
+    mkdirSync(join(chromeRoot, "Default"), { recursive: true });
+    writeFileSync(
+      join(chromeRoot, "Local State"),
+      JSON.stringify({
+        profile: { info_cache: { Default: { name: "Personal" } } },
+      }),
+    );
+    writeFileSync(join(chromeRoot, "Default", "Preferences"), "{}");
+    launcherMocks.isCDPAvailable.mockResolvedValue(false);
+    launcherMocks.launchChrome.mockResolvedValue(9333);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "browser",
+          "--focus",
+          "start",
+          "--profile-id",
+          "google-chrome:Default",
+          "--port",
+          "9333",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(launcherMocks.launchChrome).toHaveBeenCalledWith(
+      9333,
+      expect.objectContaining({
+        background: false,
+        userDataDir: join(
+          home,
+          ".unicli",
+          "browser-profiles",
+          "google-chrome_Default",
+        ),
+      }),
+    );
+    expect(
+      (
+        launcherMocks.launchChrome.mock.calls[0]?.[1] as {
+          profileDirectory?: string;
+        }
+      ).profileDirectory,
+    ).toBeUndefined();
   });
 
   it("browser upload rejects paths that only share the home prefix", async () => {

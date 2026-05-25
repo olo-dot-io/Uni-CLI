@@ -250,7 +250,9 @@ export class CDPClient {
    */
   static async connectToChrome(port?: number): Promise<CDPClient> {
     const targets = await CDPClient.discoverTargets(port);
-    const target = CDPClient.selectTarget(targets);
+    const target =
+      CDPClient.selectTarget(targets) ??
+      (await CDPClient.createTarget(port, "about:blank"));
     if (!target) {
       throw new Error("No suitable Chrome target found");
     }
@@ -267,6 +269,29 @@ export class CDPClient {
     }
 
     return client;
+  }
+
+  /**
+   * Create a page target through Chrome's DevTools HTTP endpoint.
+   * Used when Chrome was launched with --no-startup-window and /json is empty.
+   */
+  static async createTarget(
+    port?: number,
+    url: string = "about:blank",
+  ): Promise<CDPTarget | null> {
+    const p = port ?? CDP_DEFAULT_PORT;
+    const raw = await fetchJson(
+      `http://localhost:${String(p)}/json/new?${encodeURIComponent(url)}`,
+      { method: "PUT" },
+    );
+    if (
+      typeof raw === "object" &&
+      raw !== null &&
+      typeof (raw as Record<string, unknown>).webSocketDebuggerUrl === "string"
+    ) {
+      return raw as CDPTarget;
+    }
+    return null;
   }
 
   /**
@@ -427,29 +452,38 @@ export function getRemoteEndpoint(): RemoteEndpoint | null {
 
 // ── HTTP fetch helper ────────────────────────────────────────────────
 
-function fetchJson(url: string): Promise<unknown> {
+function fetchJson(
+  url: string,
+  options?: { method?: "GET" | "PUT" },
+): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const parsed = new URL(url);
-    const req = httpRequest(parsed, (res) => {
-      const statusCode = res.statusCode ?? 0;
-      if (statusCode < 200 || statusCode >= 300) {
-        res.resume();
-        reject(
-          new Error(`Failed to fetch CDP targets: HTTP ${String(statusCode)}`),
-        );
-        return;
-      }
-
-      const chunks: Buffer[] = [];
-      res.on("data", (chunk: Buffer) => chunks.push(chunk));
-      res.on("end", () => {
-        try {
-          resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")));
-        } catch (error) {
-          reject(error instanceof Error ? error : new Error(String(error)));
+    const req = httpRequest(
+      parsed,
+      { method: options?.method ?? "GET" },
+      (res) => {
+        const statusCode = res.statusCode ?? 0;
+        if (statusCode < 200 || statusCode >= 300) {
+          res.resume();
+          reject(
+            new Error(
+              `Failed to fetch CDP targets: HTTP ${String(statusCode)}`,
+            ),
+          );
+          return;
         }
-      });
-    });
+
+        const chunks: Buffer[] = [];
+        res.on("data", (chunk: Buffer) => chunks.push(chunk));
+        res.on("end", () => {
+          try {
+            resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+          } catch (error) {
+            reject(error instanceof Error ? error : new Error(String(error)));
+          }
+        });
+      },
+    );
 
     req.on("error", reject);
     req.setTimeout(CDP_FETCH_TIMEOUT, () =>

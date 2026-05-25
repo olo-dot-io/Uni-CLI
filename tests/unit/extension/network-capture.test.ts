@@ -530,6 +530,66 @@ describe("background network capture routing", () => {
     );
   });
 
+  it("creates automation windows without focus unless the command opts in", async () => {
+    const { chrome, runtimeOnInstalled } = installChromeMock();
+    const { sockets, sentMessages } =
+      await startBackgroundHarness(runtimeOnInstalled);
+
+    sockets[0]!.onmessage?.({
+      data: JSON.stringify({
+        id: "background",
+        action: "exec",
+        workspace: "default",
+        code: "document.title",
+      }),
+    });
+    await vi.waitFor(() =>
+      expect(sentMessages).toContainEqual({ id: "background", ok: true }),
+    );
+    expect(chrome.windows.create).toHaveBeenCalledWith(
+      expect.objectContaining({ focused: false }),
+    );
+
+    sockets[0]!.onmessage?.({
+      data: JSON.stringify({
+        id: "foreground",
+        action: "exec",
+        workspace: "foreground",
+        code: "document.title",
+        windowFocused: true,
+      }),
+    });
+    await vi.waitFor(() =>
+      expect(sentMessages).toContainEqual({ id: "foreground", ok: true }),
+    );
+    expect(chrome.windows.create).toHaveBeenLastCalledWith(
+      expect.objectContaining({ focused: true }),
+    );
+  });
+
+  it("reports sessions without creating an about:blank placeholder window", async () => {
+    const { chrome, runtimeOnInstalled } = installChromeMock();
+    const { sockets, sentMessages } =
+      await startBackgroundHarness(runtimeOnInstalled);
+
+    sockets[0]!.onmessage?.({
+      data: JSON.stringify({
+        id: "sessions",
+        action: "sessions",
+        workspace: "__doctor__",
+      }),
+    });
+
+    await vi.waitFor(() =>
+      expect(sentMessages).toContainEqual({
+        id: "sessions",
+        ok: true,
+        data: { sessions: [] },
+      }),
+    );
+    expect(chrome.windows.create).not.toHaveBeenCalled();
+  });
+
   it("skips a non-Uni daemon on the default port and connects to the next Uni daemon", async () => {
     const { runtimeOnInstalled } = installChromeMock();
     const socketUrls: string[] = [];

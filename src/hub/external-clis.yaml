@@ -56,6 +56,12 @@
   install:
     default: "npm install -g @openai/codex"
 
+- name: browser-use-terminal
+  binary: browser
+  description: "Browser Use Terminal — Rust TUI browser agent with local, headless, and cloud CDP control"
+  homepage: "https://github.com/browser-use/terminal"
+  tags: [ai, agent, browser, automation, cdp, tui]
+
 - name: opencode-cli
   binary: opencode
   description: "OpenCode — coding agent CLI with ACP and native TUI surfaces"

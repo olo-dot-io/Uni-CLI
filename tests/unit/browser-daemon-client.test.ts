@@ -9,6 +9,7 @@ import {
 
 const originalCompatPort = process.env.UNICLI_COMPAT_DAEMON_PORT;
 const originalUniCliPort = process.env.UNICLI_DAEMON_PORT;
+const originalWindowFocused = process.env.UNICLI_WINDOW_FOCUSED;
 const compatPortEnv = "UNICLI_COMPAT_DAEMON_PORT";
 const compatHeader = "X-Unicli-Compat";
 
@@ -23,6 +24,11 @@ afterEach(() => {
     delete process.env.UNICLI_DAEMON_PORT;
   } else {
     process.env.UNICLI_DAEMON_PORT = originalUniCliPort;
+  }
+  if (originalWindowFocused === undefined) {
+    delete process.env.UNICLI_WINDOW_FOCUSED;
+  } else {
+    process.env.UNICLI_WINDOW_FOCUSED = originalWindowFocused;
   }
   vi.unstubAllGlobals();
 });
@@ -83,6 +89,46 @@ describe("daemon client compatibility", () => {
 
     await expect(result).resolves.toEqual({ clicked: true });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("sends daemon commands in non-focusing mode by default", async () => {
+    delete process.env.UNICLI_WINDOW_FOCUSED;
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        data: { navigated: true },
+      }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      sendCommand("navigate", { url: "https://example.com" }),
+    ).resolves.toEqual({ navigated: true });
+
+    const commandBody = JSON.parse(
+      (fetchMock.mock.calls[1]?.[1] as { body: string }).body,
+    ) as { windowFocused?: boolean };
+    expect(commandBody.windowFocused).toBe(false);
+  });
+
+  it("honors an explicit foreground daemon command override", async () => {
+    process.env.UNICLI_WINDOW_FOCUSED = "1";
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        data: { navigated: true },
+      }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await sendCommand("navigate", { url: "https://example.com" });
+
+    const commandBody = JSON.parse(
+      (fetchMock.mock.calls[1]?.[1] as { body: string }).body,
+    ) as { windowFocused?: boolean };
+    expect(commandBody.windowFocused).toBe(true);
   });
 
   it("reports incompatible daemon responses on the configured port", async () => {

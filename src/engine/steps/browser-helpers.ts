@@ -56,6 +56,7 @@ export async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
     const { injectStealth } = await import("../../browser/stealth.js");
     const page = await BP.connect(port);
     await injectStealth(page.sendCDP.bind(page));
+    await syncUserSessionCookies(page, ctx);
     return page;
   } catch {
     // REASON: Browser acquisition has ordered transports; CDP failure falls through to auto-start Chrome.
@@ -64,7 +65,7 @@ export async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
     const { launchChrome } = await import("../../browser/launcher.js");
     const { BrowserPage: BP } = await import("../../browser/page.js");
     const { injectStealth } = await import("../../browser/stealth.js");
-    await launchChrome(port);
+    await launchChrome(port, await launchOptionsForContext(ctx));
     let page: BrowserPage | undefined;
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
@@ -76,10 +77,51 @@ export async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
     }
     if (!page) throw new Error("Chrome launched but no page target available");
     await injectStealth(page.sendCDP.bind(page));
+    await syncUserSessionCookies(page, ctx);
     return page;
   } catch (err) {
     throw new Error(
       `Cannot connect to Chrome. Run "unicli browser start" first. (${err instanceof Error ? err.message : String(err)})`,
+    );
+  }
+}
+
+async function launchOptionsForContext(
+  ctx: PipelineContext,
+): Promise<
+  Parameters<typeof import("../../browser/launcher.js").launchChrome>[1]
+> {
+  if (ctx.browserSession !== "user") return undefined;
+
+  const {
+    automationUserDataDirForProfile,
+    resolvePreferredLocalBrowserProfile,
+  } = await import("../../browser/local-profiles.js");
+  const profile = resolvePreferredLocalBrowserProfile();
+  if (!profile) return undefined;
+
+  return {
+    ...(profile.browser_path_exists
+      ? { browserPath: profile.browser_path }
+      : {}),
+    userDataDir: automationUserDataDirForProfile(profile),
+  };
+}
+
+async function syncUserSessionCookies(
+  page: BrowserPage,
+  ctx: PipelineContext,
+): Promise<void> {
+  if (ctx.browserSession !== "user") return;
+  const { syncLocalProfileCookiesToPage } =
+    await import("../../browser/auth-sync.js");
+  const sync = await syncLocalProfileCookiesToPage(page, {
+    site: ctx.site,
+    domain: ctx.domain,
+  });
+  if (sync.status === "failed") {
+    throw new Error(
+      `Failed to bootstrap browser cookies for ${ctx.domain ?? ctx.site ?? "site"}: ${sync.reason}`,
     );
   }
 }

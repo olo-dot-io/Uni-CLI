@@ -441,6 +441,7 @@ export async function executeKernelCommand(
       command: inv.cmdName,
       strategy: ctx.strategy,
       domain: inv.command.domain ?? inv.adapter.domain,
+      browserSession: inv.command.browserSession,
       surface: inv.surface,
       trace_id: inv.trace_id,
     });
@@ -459,6 +460,9 @@ export async function executeKernelCommand(
           source: inv.bag.source,
           surface: inv.surface,
           trace_id: inv.trace_id,
+          site: inv.adapter.name,
+          command: inv.cmdName,
+          domain: inv.command.domain ?? inv.adapter.domain,
           browserSession: inv.command.browserSession,
         });
       }

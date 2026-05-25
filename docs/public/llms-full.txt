@@ -68,7 +68,7 @@ Agent execution does not need a longer resident tool list or another website wra
 - Sites and tools: 311
 - Commands: 1753
 - Pipeline steps: 103
-- Tests: 8892
+- Tests: 8915
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -81,7 +81,7 @@ These numbers come from the current generated repo artifacts: adapters, commands
 
 ## Current Version
 
-Latest: v0.223.0 · Apollo · Worden.
+Latest: v0.223.1 · Apollo · Lovell.
 
 ## Agent Index
 
@@ -1161,7 +1161,7 @@ Any runtime that can spawn a subprocess can use Uni-CLI directly. Uni-CLI also e
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.223.0 ships a generated catalog with <span><!-- STATS:site_count -->311<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1753<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1212<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8892<!-- /STATS --></span> tests. The headline is the contract: search, policy, evidence, repair, and the same AgentEnvelope across web, browser, desktop, local tools, and protocols.
+v0.223.1 ships a generated catalog with <span><!-- STATS:site_count -->311<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1753<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1212<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8915<!-- /STATS --></span> tests. The headline is the contract: search, policy, evidence, repair, and the same AgentEnvelope across web, browser, desktop, local tools, and protocols.
 
 ## Can Uni-CLI download papers and read local PDFs?
 
@@ -4236,7 +4236,7 @@ The generated catalog is the source of truth:
 **<span><!-- STATS:command_count -->1753<!-- /STATS --></span> commands**,
 **<span><!-- STATS:adapter_count_total -->1212<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->8892<!-- /STATS --></span> tests** in v0.223.0.
+and **<span><!-- STATS:test_count -->8915<!-- /STATS --></span> tests** in v0.223.1.
 
 ## Execution Contract
 
@@ -4733,7 +4733,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Current: v0.223.0 — Apollo · Worden. <!-- STATS:site_count -->311<!-- /STATS --> sites, <!-- STATS:command_count -->1753<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps.
+> Current: v0.223.1 — Apollo · Lovell. <!-- STATS:site_count -->311<!-- /STATS --> sites, <!-- STATS:command_count -->1753<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction. Historical release notes live in
 `CHANGELOG.md`; they do not belong in the roadmap.

@@ -5,6 +5,15 @@ verbs. Use `--focus` or `focus: true` only when the target app must be brought
 forward before the action can succeed. The visual fallback is treated as
 focus-taking when the cascade reaches it.
 
+The browser bridge follows the same rule. Daemon commands send
+`windowFocused: false` by default, extension session/doctor probes are
+read-only and must not create `about:blank` placeholder tabs, and headed local
+Chrome launches use `--no-startup-window` unless the caller explicitly opts
+into foreground startup with `unicli browser --focus start`. Chrome/CDP
+launches use Uni-CLI-owned automation profiles under `~/.unicli/`; logged-in
+state is reused by importing cookies from the selected local browser profile
+instead of launching CDP against Chrome's default user-data-dir.
+
 ## Defaults
 
 | Verb                 | desktop-ax (macOS)                                                                                                                                                                                                                                                                                                                                                              | desktop-uia (Windows)                                                                                                                                                                                                               | desktop-atspi (Linux)                                                                                                                                                                                                                                                             | cdp-browser                                                                                                                                     | visual fallback                                                                       |
@@ -20,6 +29,22 @@ focus-taking when the cascade reaches it.
 - `compute click`, `compute type`, `compute press`, and `compute scroll` pass
   `focus: false` to AX, UIA, AT-SPI, and CDP unless the caller sets `--focus`
   or `focus: true`.
+- `browser open`, `browser state`, `browser click`, `browser type`,
+  `browser screenshot`, and daemon-backed browser commands pass
+  `windowFocused: false` unless `--focus` or `UNICLI_WINDOW_FOCUSED=1` is set.
+  `browser doctor` and `browser sessions` inspect existing sessions without
+  allocating a placeholder window.
+- Chrome 136+ disables remote debugging for the browser's default
+  user-data-dir. Treat a process with `--remote-debugging-port` but no listening
+  port as a default-profile launch defect, not a retryable CDP race. The
+  correct repair is an automation profile plus cookie import from
+  `unicli browser profiles --json`. `unicli browser doctor --json` reports this
+  as the `default profile CDP trap` check, and `unicli browser doctor --repair`
+  starts the safe Uni-CLI automation CDP profile when needed. The
+  `chrome_remote_debugging` section also reports `RemoteDebuggingAllowed`:
+  `false` blocks every local CDP path until the managed Chrome policy is
+  removed or set true, while `true` still does not bypass the Chrome 136+
+  default-directory restriction.
 - macOS background input is not a global HID path. It resolves a running app
   and on-screen window, installs per-process event taps for the previous and
   target apps, sends an AppKit activation primer plus a center primer only when

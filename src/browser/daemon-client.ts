@@ -18,9 +18,9 @@ import {
 } from "./protocol.js";
 
 const DEFAULT_COMMAND_TIMEOUT = 30_000;
-const MAX_RETRIES = 4;
-const NETWORK_RETRY_DELAY = 500;
-const EXTENSION_RETRY_DELAY = 1500;
+export const BROWSER_DAEMON_COMMAND_MAX_ATTEMPTS = 4;
+export const BROWSER_DAEMON_NETWORK_RETRY_DELAY_MS = 500;
+export const BROWSER_DAEMON_EXTENSION_RETRY_DELAY_MS = 1500;
 const COMPAT_DAEMON_PORT_ENV = "UNICLI_COMPAT_DAEMON_PORT";
 const COMPAT_DAEMON_HEADER = "X-Unicli-Compat";
 
@@ -177,14 +177,13 @@ export async function sendCommand(
   const status = await fetchDaemonStatus({ timeout: 500 });
   const port = status?.port ?? getPort();
   const focusEnv = process.env.UNICLI_WINDOW_FOCUSED;
-  const windowFocused =
-    focusEnv === "1" || focusEnv === "true"
-      ? true
-      : focusEnv === "0" || focusEnv === "false"
-        ? false
-        : undefined;
+  const windowFocused = focusEnv === "1" || focusEnv === "true" ? true : false;
 
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+  for (
+    let attempt = 1;
+    attempt <= BROWSER_DAEMON_COMMAND_MAX_ATTEMPTS;
+    attempt++
+  ) {
     const id = generateId(); // Fresh ID per attempt
     try {
       const resp = await fetch(`${baseUrl(port)}/command`, {
@@ -197,7 +196,7 @@ export async function sendCommand(
           id,
           action,
           ...params,
-          ...(windowFocused !== undefined ? { windowFocused } : {}),
+          windowFocused,
         }),
         signal: AbortSignal.timeout(timeout),
       });
@@ -205,17 +204,27 @@ export async function sendCommand(
       const result = (await resp.json()) as DaemonResult;
       if (!result.ok) {
         const err = new Error(result.error ?? `Command failed: ${action}`);
-        if (isTransientBrowserError(err) && attempt < MAX_RETRIES) {
-          await new Promise((r) => setTimeout(r, EXTENSION_RETRY_DELAY));
+        if (
+          isTransientBrowserError(err) &&
+          attempt < BROWSER_DAEMON_COMMAND_MAX_ATTEMPTS
+        ) {
+          await new Promise((r) =>
+            setTimeout(r, BROWSER_DAEMON_EXTENSION_RETRY_DELAY_MS),
+          );
           continue;
         }
         throw err;
       }
       return result.data ?? result;
     } catch (err) {
-      if (err instanceof TypeError && attempt < MAX_RETRIES) {
+      if (
+        err instanceof TypeError &&
+        attempt < BROWSER_DAEMON_COMMAND_MAX_ATTEMPTS
+      ) {
         // Network error (daemon unreachable)
-        await new Promise((r) => setTimeout(r, NETWORK_RETRY_DELAY));
+        await new Promise((r) =>
+          setTimeout(r, BROWSER_DAEMON_NETWORK_RETRY_DELAY_MS),
+        );
         continue;
       }
       if (err instanceof DOMException && err.name === "AbortError") {
@@ -225,7 +234,9 @@ export async function sendCommand(
     }
   }
 
-  throw new Error(`Command failed after ${MAX_RETRIES} retries: ${action}`);
+  throw new Error(
+    `Command failed after ${String(BROWSER_DAEMON_COMMAND_MAX_ATTEMPTS)} attempts: ${action}`,
+  );
 }
 
 export async function listSessions(): Promise<BrowserSessionInfo[]> {

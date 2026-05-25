@@ -1,4 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { join } from "node:path";
+
+const childProcessMocks = vi.hoisted(() => ({
+  execSync: vi.fn(),
+  spawn: vi.fn(() => ({ unref: vi.fn() })),
+}));
+
+vi.mock("node:child_process", () => ({
+  execSync: childProcessMocks.execSync,
+  spawn: childProcessMocks.spawn,
+}));
+
 import { findChrome, getCDPPort } from "../../src/browser/launcher.js";
 
 // ── findChrome tests ────────────────────────────────────────────────
@@ -56,5 +68,56 @@ describe("getCDPPort", () => {
   it("parses numeric strings correctly", () => {
     process.env.UNICLI_CDP_PORT = "12345";
     expect(getCDPPort()).toBe(12345);
+  });
+});
+
+describe("launchChrome", () => {
+  const originalChromePath = process.env.CHROME_PATH;
+
+  afterEach(() => {
+    vi.resetModules();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    childProcessMocks.spawn.mockReturnValue({ unref: vi.fn() });
+    if (originalChromePath === undefined) delete process.env.CHROME_PATH;
+    else process.env.CHROME_PATH = originalChromePath;
+  });
+
+  it("starts headed Chrome without creating a foreground startup window by default", async () => {
+    process.env.CHROME_PATH = "/Applications/Google Chrome.app/test";
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockRejectedValueOnce(new Error("not running"))
+        .mockResolvedValue({ ok: true }),
+    );
+
+    const { launchChrome } = await import("../../src/browser/launcher.js");
+
+    await expect(launchChrome(9444)).resolves.toBe(9444);
+    const args = childProcessMocks.spawn.mock.calls[0]?.[1] as string[];
+    expect(args).toContain(
+      `--user-data-dir=${join(process.env.HOME ?? "~", ".unicli", "chrome-profile")}`,
+    );
+    expect(args).toContain("--no-startup-window");
+    expect(args).not.toContain("--headless=new");
+  });
+
+  it("allows an explicit foreground startup window for interactive login", async () => {
+    process.env.CHROME_PATH = "/Applications/Google Chrome.app/test";
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockRejectedValueOnce(new Error("not running"))
+        .mockResolvedValue({ ok: true }),
+    );
+
+    const { launchChrome } = await import("../../src/browser/launcher.js");
+
+    await expect(launchChrome(9444, { background: false })).resolves.toBe(9444);
+    const args = childProcessMocks.spawn.mock.calls[0]?.[1] as string[];
+    expect(args).not.toContain("--no-startup-window");
   });
 });

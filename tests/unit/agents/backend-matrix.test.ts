@@ -125,12 +125,23 @@ describe("agent backend matrix", () => {
       new URL("../../../src/hub/external-clis.yaml", import.meta.url),
       "utf8",
     );
-    const entries = yaml.load(raw) as Array<{ binary: string; name: string }>;
+    const entries = yaml.load(raw) as Array<{
+      binary: string;
+      name: string;
+      tags?: string[];
+    }>;
     const duplicateBinaries = entries
       .map((entry) => entry.binary)
       .filter((binary, index, binaries) => binaries.indexOf(binary) !== index);
 
-    expect(entries).toHaveLength(58);
+    expect(entries).toHaveLength(59);
     expect(duplicateBinaries).toEqual([]);
+    expect(entries).toContainEqual(
+      expect.objectContaining({
+        name: "browser-use-terminal",
+        binary: "browser",
+        tags: expect.arrayContaining(["browser", "cdp", "tui"]),
+      }),
+    );
   });
 });

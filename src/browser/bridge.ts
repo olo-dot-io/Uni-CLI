@@ -95,8 +95,9 @@ export class RemoteConnectionError extends Error {
 const DAEMON_SPAWN_TIMEOUT = 10_000; // 10s to start daemon
 const DAEMON_POLL_INTERVAL = 200;
 const EXTENSION_FAST_WAIT_MS = 2_000;
-const REMOTE_CONNECT_RETRIES = 2;
-const REMOTE_RETRY_DELAY = 1000;
+export const BROWSER_REMOTE_CONNECT_MAX_ATTEMPTS = 3;
+export const BROWSER_REMOTE_RETRY_DELAY_MS = 1000;
+const REMOTE_CONNECT_RETRIES = BROWSER_REMOTE_CONNECT_MAX_ATTEMPTS - 1;
 
 // ── BrowserBridge ──────────────────────────────────────────────────
 
@@ -189,7 +190,9 @@ export class BrowserBridge {
       } catch (err) {
         lastError = err instanceof Error ? err : new Error(String(err));
         if (attempt < REMOTE_CONNECT_RETRIES) {
-          await new Promise((r) => setTimeout(r, REMOTE_RETRY_DELAY));
+          await new Promise((r) =>
+            setTimeout(r, BROWSER_REMOTE_RETRY_DELAY_MS),
+          );
         }
       }
     }

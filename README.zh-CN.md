@@ -37,7 +37,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->311<!-- /STATS --> 个 surface · <!-- STATS:test_count -->8892<!-- /STATS --> 个测试</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->311<!-- /STATS --> 个 surface · <!-- STATS:test_count -->8915<!-- /STATS --> 个测试</sub>
 </p>
 
 <p align="center">
@@ -496,5 +496,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v0.223.0 — Apollo · Worden</sub>
+  <sub>v0.223.1 — Apollo · Lovell</sub>
 </p>

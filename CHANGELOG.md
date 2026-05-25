@@ -3,6 +3,44 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 
+## [0.223.1] — 2026-05-25 — Apollo · Lovell
+
+### Added
+
+- `unicli browser doctor --json` now reports a delivery-oriented
+  `default_path`, per-check `next_step` repair commands, safe
+  `self_repair.safe_command`, and a `chrome_remote_debugging` section for
+  Chrome 136+ and `RemoteDebuggingAllowed` policy state.
+- Local browser profile discovery, explicit profile cookie export, direct
+  Chromium cookie DB import, and user-session cookie injection now give agents
+  multiple authenticated reuse paths without emitting raw cookie values in
+  doctor output.
+
+### Changed
+
+- Browser/CDP startup is background-first by default and uses Uni-CLI-owned
+  automation profiles under `~/.unicli/`, with foreground startup reserved for
+  explicit `browser --focus start`.
+- Agent-facing docs and skills now route browser failures through
+  `unicli browser doctor --json` / `--repair` before falling back to lower-level
+  browser, OpenCLI, or computer-use paths.
+
+### Fixed
+
+- Chrome 136+ default-profile CDP failures are now diagnosed as a hard browser
+  policy/runtime boundary instead of a transient port race; `doctor --repair`
+  starts a non-default automation profile and refuses unsupported feature-flag
+  bypasses.
+- Browser session and doctor probes stay read-only and avoid creating reusable
+  `about:blank` placeholder tabs while checking daemon/extension health.
+
+### Verified
+
+- `npm run verify`
+- `timeout 30 npm run --silent dev -- browser doctor --json`
+- `timeout 30 npm run --silent dev -- browser doctor --repair --json`
+- `timeout 60 npm run --silent dev -- twitter trending -f json`
+
 ## [0.223.0] — 2026-05-24 — Apollo · Worden
 
 ### Added

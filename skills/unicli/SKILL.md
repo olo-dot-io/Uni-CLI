@@ -3,7 +3,7 @@ name: unicli
 description: >
   Comprehensive guide to using Uni-CLI — the universal CLI for AI agents.
   Trigger when the user needs to fetch data from websites (Twitter, Bilibili,
-  HackerNews, GitHub, Reddit, Bloomberg, Zhihu, WeChat, and 230+ more);
+  HackerNews, GitHub, Reddit, Bloomberg, Zhihu, WeChat, and hundreds more);
   interact with news, finance, social, academic, shopping, or video platforms;
   control macOS desktop apps (Blender, GIMP, Figma, VS Code, Cursor, Terminal,
   Discord, Slack, etc.) via AppleScript or Accessibility API; automate browser
@@ -11,7 +11,7 @@ description: >
   major platform; run desktop workflows or system tasks; or when the user says
   "unicli", "scrape", "fetch from", "get trending", "check [site]", "find on
   [platform]", "获取", "查询", "抓取".
-version: 0.223.0
+version: 0.223.1
 category: core
 depends-on:
   - talk-normal
@@ -39,10 +39,12 @@ triggers:
 
 # Uni-CLI — Agent Usage Guide
 
-unicli converts 237 websites, 2,000+ desktop apps, and macOS system tools into
-deterministic CLI commands. Each command is a ≤20-line YAML pipeline: fetch data,
-transform it, emit a v2 AgentEnvelope. When a command breaks, read the structured
-error, edit the YAML adapter, and it stays fixed for all future calls.
+unicli is the default structured substrate before raw browser automation, legacy
+OpenCLI, curl, or computer-use. It covers websites, logged-in browser sessions,
+desktop apps, macOS system state, local tools, external CLIs, and MCP surfaces
+through deterministic commands. Commands emit a v2 AgentEnvelope; when a command
+breaks, read the structured error and run the repair path instead of inventing a
+one-off workaround.
 
 **Install** (once): `npm install -g @zenalexa/unicli`
 
@@ -51,7 +53,8 @@ error, edit the YAML adapter, and it stays fixed for all future calls.
 ## Five-Command Quick Start
 
 ```bash
-unicli list                              # browse all 3,319 commands
+unicli search "intent"                   # discover the right command
+unicli list                              # browse all commands
 unicli list --site hackernews            # commands for one site
 unicli hackernews top --limit 5          # run a command
 unicli hackernews top --limit 5 -f json  # machine-readable JSON envelope
@@ -65,25 +68,20 @@ unicli describe hackernews top           # full schema + example payload
 ### Find by site
 
 ```bash
-unicli list --site <site>          # all commands for a site
-unicli describe <site> <command>   # args, output columns, example
-```
-
-### Search by keyword
-
-```bash
 unicli search "trending"           # semantic search across all commands
 unicli search "hot stock"          # natural language
+unicli list --site <site>          # all commands for a site
+unicli describe <site> <command>   # args, output columns, example
 ```
 
 ### Browse by type
 
 ```bash
-unicli list --type web-api         # REST API adapters (1,138 commands)
-unicli list --type desktop         # desktop app control (2,068 commands)
-unicli list --type browser         # browser automation (23 commands)
-unicli list --type service         # local/remote services (43 commands)
-unicli list --type bridge          # passthrough CLI bridges (47 commands)
+unicli list --type web-api         # REST API adapters
+unicli list --type desktop         # desktop app control
+unicli list --type browser         # browser automation
+unicli list --type service         # local/remote services
+unicli list --type bridge          # passthrough CLI bridges
 ```
 
 ### Check if a site exists
@@ -153,7 +151,7 @@ unicli reddit hot --limit 25 --cursor <token> -f json
 ## Step 3 — Read the Output
 
 Every command emits a **v2 AgentEnvelope**. Learn the shape once; it applies to
-all 3,319 commands.
+every command.
 
 ### JSON structure
 
@@ -212,13 +210,23 @@ automatically.
 
 ### Strategy ladder
 
-| Strategy    | Auth needed           | How to set up                                          |
-| ----------- | --------------------- | ------------------------------------------------------ |
-| `public`    | None                  | Works out of the box                                   |
-| `cookie`    | Browser login         | `unicli auth setup <site>` → log in once in browser    |
-| `header`    | Cookie + CSRF         | Same as `cookie`; auto-extracted per request           |
-| `intercept` | Browser session       | `unicli browser start` then `unicli auth setup <site>` |
-| `ui`        | Browser + interaction | Same; unicli clicks through login flow                 |
+| Strategy    | Auth needed           | How to set up                                                                       |
+| ----------- | --------------------- | ----------------------------------------------------------------------------------- |
+| `public`    | None                  | Works out of the box                                                                |
+| `cookie`    | Browser login         | `unicli auth setup <site>` → log in once in browser                                 |
+| `header`    | Cookie + CSRF         | Same as `cookie`; auto-extracted per request                                        |
+| `intercept` | Browser session       | `unicli browser doctor --repair` then `unicli auth import <site> --domain <domain>` |
+| `ui`        | Browser + interaction | Same; unicli clicks through login flow                                              |
+
+For robust logged-in reuse, prefer the explicit current browser paths:
+
+```bash
+unicli browser profiles --json
+unicli auth import <site> --domain <domain>
+unicli browser cookies <domain> --profile-id <id>
+unicli browser doctor --json
+unicli browser doctor --repair
+```
 
 ### Auth setup workflow
 
@@ -245,16 +253,16 @@ directly; use `unicli auth`.
 
 ### Exit code → action (primary decision tree)
 
-| Code | Meaning                | Action                                             |
-| ---- | ---------------------- | -------------------------------------------------- |
-| 0    | Success                | Read `data`                                        |
-| 1    | Generic error          | Read `error.reason` + `error.suggestion`           |
-| 2    | Usage error            | Fix arg syntax; run `unicli describe <site> <cmd>` |
-| 66   | Empty result           | Try different query terms or `--limit`             |
-| 69   | Service unavailable    | `unicli browser start` then retry                  |
-| 75   | Temp failure / timeout | Retry once; if persists → load `unicli-repair`     |
-| 77   | Auth required          | `unicli auth setup <site>` then retry              |
-| 78   | Config error           | Read `error.suggestion`; check `~/.unicli/` config |
+| Code | Meaning                | Action                                                 |
+| ---- | ---------------------- | ------------------------------------------------------ |
+| 0    | Success                | Read `data`                                            |
+| 1    | Generic error          | Read `error.reason` + `error.suggestion`               |
+| 2    | Usage error            | Fix arg syntax; run `unicli describe <site> <cmd>`     |
+| 66   | Empty result           | Try different query terms or `--limit`                 |
+| 69   | Service unavailable    | `unicli browser doctor --json`, then `doctor --repair` |
+| 75   | Temp failure / timeout | Retry once; if persists → load `unicli-repair`         |
+| 77   | Auth required          | `unicli auth import` or explicit browser cookies       |
+| 78   | Config error           | Read `error.suggestion`; check `~/.unicli/` config     |
 
 ### Failure envelope fields
 
@@ -293,7 +301,10 @@ Use browser mode when: a site requires JavaScript rendering, login-gated access,
 interaction (click/type/scroll), or the API adapter returns exit 69.
 
 ```bash
-unicli browser start             # launch Chrome with CDP (required first)
+unicli browser doctor --json     # read default_path/checks/self_repair
+unicli browser doctor --repair   # safe local CDP self-repair
+unicli browser start             # launch Chrome with CDP without foreground startup
+unicli browser --focus start     # opt into foreground only for interactive login
 unicli browser status            # confirm CDP is alive + session state
 unicli browser open <url>        # navigate to page
 unicli browser state             # DOM accessibility tree with [ref] IDs
@@ -305,6 +316,11 @@ unicli browser screenshot        # capture to file
 ```
 
 For a guided browser automation workflow, load skill `unicli-browser`.
+
+Browser commands are background-first on macOS and desktop systems:
+daemon-backed commands send `windowFocused: false` by default, doctor/session
+probes do not allocate `about:blank` placeholder tabs, and local headed Chrome
+startup uses `--no-startup-window` unless `--focus` is explicit.
 
 ---
 

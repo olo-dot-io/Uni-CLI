@@ -13,6 +13,7 @@
 
 import { rmSync } from "node:fs";
 import type { PipelineStep } from "../types.js";
+import type { BrowserSessionPreference } from "../types.js";
 import type { BrowserPage } from "../browser/page.js";
 import { isTargetError } from "../browser/target-errors.js";
 import { formatCookieHeader, loadCookiesWithCDP } from "./cookies.js";
@@ -62,6 +63,8 @@ export interface PipelineOptions {
    * for callers that do not route through the kernel.
    */
   trace_id?: string;
+  /** Browser transport preference declared by a browser command. */
+  browserSession?: BrowserSessionPreference;
 }
 
 export type PipelineContext = {
@@ -73,7 +76,9 @@ export type PipelineContext = {
   temp?: Record<string, string>;
   tempDir?: string;
   page?: BrowserPage;
-  browserSession?: "auto" | "user" | "cdp";
+  browserSession?: BrowserSessionPreference;
+  /** Adapter auth domain used for browser cookie bootstrap. */
+  domain?: string;
   /** Provenance of `args` — seeded from `ResolvedArgs.source`. */
   source?: ArgSource;
   /** Surface that dispatched this pipeline. Mirrors `PipelineOptions.surface`. */
@@ -259,6 +264,8 @@ export async function runPipeline(
     trace_id: options?.trace_id,
     site: options?.site,
     command: options?.command,
+    domain: options?.domain,
+    browserSession: options?.browserSession,
   };
   let tempDir: string | undefined;
 

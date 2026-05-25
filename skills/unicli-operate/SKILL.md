@@ -107,7 +107,7 @@ unicli operate network                # See captured JSON APIs
 
 | Problem                | Fix                                     |
 | ---------------------- | --------------------------------------- |
-| Browser not connected  | `unicli browser start`                  |
+| Browser not connected  | `unicli browser doctor --repair`        |
 | Element not found      | `scroll down` then `state`              |
 | Stale refs after click | `state` to refresh                      |
 | eval returns undefined | Wrap: `"(function(){ return ...; })()"` |

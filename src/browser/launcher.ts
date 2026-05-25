@@ -1,16 +1,32 @@
 /**
- * Chrome browser launcher and discovery.
- *
- * Finds an existing Chrome instance with CDP enabled, or launches one.
- * Supports macOS, Linux, and Windows.
+ * @owner   src/browser/launcher.ts
+ * @does    Discover Chrome-family executables, probe local CDP ports, find free debug ports, and launch Chrome with optional profile binding.
+ * @needs   node:child_process, node:fs, node:net, node:path, src/electron-apps
+ * @feeds   src/browser/bridge.ts, src/commands/browser/index.ts, src/commands/status.ts, transport CDP browser adapter
+ * @breaks  Missing Chrome, occupied ports, and CDP startup timeouts throw explicit errors; callers decide repair or fallback.
  */
 
 import { execSync, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { createServer } from "node:net";
 import { getElectronApp, type ElectronAppEntry } from "../electron-apps.js";
+import {
+  automationDefaultUserDataDir,
+  knownLocalBrowserInstalls,
+} from "./local-profiles.js";
 
 const DEFAULT_CDP_PORT = 9222;
+
+export interface ChromeLaunchOptions {
+  profile?: boolean;
+  headless?: boolean;
+  background?: boolean;
+  browserPath?: string;
+  userDataDir?: string;
+  profileDirectory?: string;
+  reuseExisting?: boolean;
+  allowDefaultUserDataDir?: boolean;
+}
 
 /**
  * Check if a remote browser is configured via UNICLI_CDP_ENDPOINT.
@@ -73,16 +89,46 @@ export async function isCDPAvailable(port: number): Promise<boolean> {
   }
 }
 
+export async function findAvailableCDPPort(
+  preferredPort: number = DEFAULT_CDP_PORT,
+  maxAttempts = 20,
+): Promise<number> {
+  if (!Number.isInteger(preferredPort) || preferredPort < 1) {
+    throw new Error(`Invalid CDP port: ${String(preferredPort)}`);
+  }
+  for (let offset = 0; offset < maxAttempts; offset++) {
+    const candidate = preferredPort + offset;
+    if (candidate > 65535) break;
+    if (await isTcpPortFree(candidate)) return candidate;
+  }
+  throw new Error(
+    `No free local CDP port found from ${String(preferredPort)} after ${String(maxAttempts)} attempts`,
+  );
+}
+
+async function isTcpPortFree(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = createServer();
+    server.unref();
+    server.once("error", () => resolve(false));
+    server.listen(port, "127.0.0.1", () => {
+      server.close(() => resolve(true));
+    });
+  });
+}
+
 /**
  * Launch Chrome with CDP enabled.
  * Returns the port number.
  */
 export async function launchChrome(
   port: number = DEFAULT_CDP_PORT,
-  options?: { profile?: boolean; headless?: boolean },
+  options?: ChromeLaunchOptions,
 ): Promise<number> {
   const chromePath = findChrome();
-  if (!chromePath) {
+  const actualPath =
+    process.env.CHROME_PATH ?? options?.browserPath ?? chromePath;
+  if (!actualPath) {
     throw new Error(
       "Chrome not found. Install Google Chrome or set CHROME_PATH env var.",
     );
@@ -90,6 +136,9 @@ export async function launchChrome(
 
   // Check if already running with CDP
   if (await isCDPAvailable(port)) {
+    if (options?.reuseExisting === false) {
+      throw new Error(`CDP port ${String(port)} is already in use`);
+    }
     return port;
   }
 
@@ -100,23 +149,29 @@ export async function launchChrome(
     "--no-default-browser-check",
   ];
 
-  // Dedicated automation profile — avoids polluting user's default Chrome profile
-  if (options?.profile) {
-    const profileDir = join(
-      process.env.HOME ?? "~",
-      ".unicli",
-      "chrome-profile",
+  // Dedicated automation profile or selected logged-in Chromium profile.
+  const profileDir = options?.userDataDir ?? automationDefaultUserDataDir();
+  if (
+    options?.allowDefaultUserDataDir !== true &&
+    isKnownDefaultUserDataDir(profileDir)
+  ) {
+    throw new Error(
+      `Chrome disables remote debugging for the default user-data-dir: ${profileDir}. Use a Uni-CLI automation profile and import cookies from the logged-in profile instead.`,
     );
+  }
+  if (profileDir) {
     args.push(`--user-data-dir=${profileDir}`);
+  }
+  if (options?.profileDirectory) {
+    args.push(`--profile-directory=${options.profileDirectory}`);
   }
 
   // Chrome's new headless mode (for CI / server environments)
   if (options?.headless) {
     args.push("--headless=new");
+  } else if (options?.background !== false) {
+    args.push("--no-startup-window");
   }
-
-  // Use env override if set
-  const actualPath = process.env.CHROME_PATH ?? chromePath;
 
   const child = spawn(actualPath, args, {
     detached: true,
@@ -135,6 +190,12 @@ export async function launchChrome(
 
   throw new Error(
     `Chrome launched but CDP not available on port ${String(port)} after 10s`,
+  );
+}
+
+function isKnownDefaultUserDataDir(userDataDir: string): boolean {
+  return knownLocalBrowserInstalls().some(
+    (install) => install.user_data_dir === userDataDir,
   );
 }
 
