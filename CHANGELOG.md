@@ -3,6 +3,29 @@
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 
+## [0.223.2] — 2026-05-25 — Apollo · Lovell
+
+### Added
+
+### Changed
+
+- Regenerated `package-lock.json` with the same npm 10 resolver used by GitHub
+  hosted runners so local and CI installs agree on VitePress/DocSearch peer
+  dependency placement.
+
+### Fixed
+
+- `npm ci --include=dev` now succeeds on Node 20/22 runners that ship npm 10,
+  unblocking the CI and Docs workflows after the 0.223.1 browser-hardening
+  release.
+
+### Verified
+
+- `npx -y npm@10 ci --include=dev`
+- `npm run verify`
+- `npm run release:check -- --strict-codename`
+- `npm run docs:build`
+
 ## [0.223.1] — 2026-05-25 — Apollo · Lovell
 
 ### Added
