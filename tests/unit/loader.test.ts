@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { loadAdaptersFromDir } from "../../src/discovery/loader.js";
+import {
+  loadAdaptersFromDir,
+  loadTsAdapters,
+} from "../../src/discovery/loader.js";
 import { getAllAdapters, listCommands } from "../../src/registry.js";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -88,6 +91,38 @@ describe("adapter loader", () => {
     expect(queryArg).toBeDefined();
     expect(queryArg!.required).toBe(true);
     expect(queryArg!.positional).toBe(true);
+  });
+
+  it("stamps YAML and TypeScript commands with repairable source paths", () => {
+    loadAdaptersFromDir(ADAPTERS_DIR);
+
+    const adapters = getAllAdapters();
+    const hackernews = adapters.find(
+      (adapter) => adapter.name === "hackernews",
+    );
+
+    expect(hackernews?.commands["top"].adapter_path).toBe(
+      "src/adapters/hackernews/top.yaml",
+    );
+    expect(hackernews?.commands["read"].adapter_path).toBe(
+      "src/adapters/hackernews/read.ts",
+    );
+  });
+
+  it("stamps dynamically registered TypeScript commands with repairable source paths", async () => {
+    loadAdaptersFromDir(ADAPTERS_DIR);
+    await loadTsAdapters();
+
+    const adapters = getAllAdapters();
+    const anilist = adapters.find((adapter) => adapter.name === "anilist");
+    const notion = adapters.find((adapter) => adapter.name === "notion");
+
+    expect(anilist?.commands["characters"].adapter_path).toBe(
+      "src/adapters/anilist/web.ts",
+    );
+    expect(notion?.commands["read"].adapter_path).toBe(
+      "src/adapters/notion-app/notion-app.ts",
+    );
   });
 
   it("detects adapter types correctly", () => {

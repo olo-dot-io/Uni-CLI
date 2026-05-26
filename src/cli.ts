@@ -66,6 +66,7 @@ import { registerMigrateCommand } from "./commands/migrate.js";
 import { registerMigrateSchemaCommand } from "./commands/migrate-schema.js";
 import { registerAdapterDispatch } from "./commands/dispatch.js";
 import { registerDescribeCommand } from "./commands/describe.js";
+import { registerArchitectureCommand } from "./commands/architecture.js";
 import { emitHook } from "./hooks.js";
 import { checkForUpdates } from "./engine/update-check.js";
 import type { OutputFormat } from "./types.js";
@@ -426,6 +427,9 @@ export async function createCli(): Promise<Command> {
 
   // Register lint command — schema-v2 static validation
   registerLintCommand(program);
+
+  // Register architecture command — callable system tree + rewrite audit
+  registerArchitectureCommand(program);
 
   // Register describe command — runtime schema introspection for agents
   registerDescribeCommand(program);

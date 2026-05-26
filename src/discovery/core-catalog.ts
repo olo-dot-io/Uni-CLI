@@ -228,6 +228,22 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
       "Compile a delivery trajectory into one bounded adapter repair candidate with adapter path, diagnosis, verify command, and repair safety constraints.",
   },
   {
+    site: "architecture",
+    command: "tree",
+    category: "dev",
+    type: "service",
+    description:
+      "Emit Uni-CLI's callable architecture tree for agents, including first-class command contracts, invocation kernel, local computer use, evidence loop, command lifecycle, second-class surfaces, and verification roots.",
+  },
+  {
+    site: "architecture",
+    command: "audit",
+    category: "dev",
+    type: "service",
+    description:
+      "Audit Uni-CLI command lifecycle readiness before restructuring, including command counts, local computer-use coverage, missing source paths, second-class surfaces, and full rewrite readiness.",
+  },
+  {
     site: "compute",
     command: "apps",
     category: "desktop",

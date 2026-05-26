@@ -1,17 +1,27 @@
 /**
- * Adapter loader — discovers and registers YAML + TS adapters.
- *
- * Scan order:
- *   1. Built-in adapters from src/adapters/
- *   2. User adapters from ~/.unicli/adapters/
- *   3. Plugin adapters from ~/.unicli/plugins/
+ * @owner src/discovery/loader.ts
+ * @does Discovers YAML and TypeScript adapters, validates adapter metadata, stamps source paths, and registers commands.
+ * @needs fs, path, js-yaml, src/registry, src/core/schema-v2, src/engine/kernel/compile, src/discovery/macos-dynamic
+ * @feeds src/cli.ts, src/discovery/search.ts, MCP and ACP command surfaces, tests/unit/loader.test.ts
+ * @breaks Emits schema-v2/config warnings or exits with code 78 for strict adapter violations; import failures are surfaced in debug mode.
+ * @invariants Registered file-backed commands carry repairable source paths; YAML files are size bounded before parsing.
+ * @side-effects Reads adapter files, imports TS/JS adapter modules, mutates the registry, primes the invocation kernel cache, writes warnings to stderr.
+ * @perf O(adapter files) startup scan; YAML parsing is capped by MAX_YAML_BYTES.
+ * @concurrency Loader imports TS adapters sequentially so registry source-path context cannot cross-contaminate commands.
+ * @test tests/unit/loader.test.ts, tests/unit/loader-parity.test.ts
+ * @stability stable
+ * @since 2026-05-26
  */
 
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
-import { join, extname, basename, dirname } from "node:path";
+import { join, extname, basename, dirname, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import yaml from "js-yaml";
-import { getAllAdapters, registerAdapter } from "../registry.js";
+import {
+  getAllAdapters,
+  registerAdapter,
+  withAdapterSourcePath,
+} from "../registry.js";
 import { validateAdapterV2 } from "../core/schema-v2.js";
 import { compileAll } from "../engine/kernel/compile.js";
 import { registerMacosDynamicCommands } from "./macos-dynamic.js";
@@ -103,6 +113,26 @@ function findAdapterDirs(): { yamlDir: string; tsDir: string } {
 
 const { yamlDir: BUILTIN_YAML_DIR, tsDir: BUILTIN_TS_DIR } = findAdapterDirs();
 const USER_DIR = join(process.env.HOME ?? "~", ".unicli", "adapters");
+
+function adapterSourcePath(absPath: string): string {
+  const normalized = absPath.split(sep).join("/");
+  const sourceMarker = "/src/adapters/";
+  const sourceIndex = normalized.lastIndexOf(sourceMarker);
+  if (sourceIndex >= 0) {
+    return `src/adapters/${normalized.slice(sourceIndex + sourceMarker.length)}`;
+  }
+  const distMarker = "/dist/adapters/";
+  const distIndex = normalized.lastIndexOf(distMarker);
+  if (distIndex >= 0) {
+    return `dist/adapters/${normalized.slice(distIndex + distMarker.length)}`;
+  }
+  const userMarker = "/.unicli/adapters/";
+  const userIndex = normalized.lastIndexOf(userMarker);
+  if (userIndex >= 0) {
+    return normalized;
+  }
+  return absPath;
+}
 
 // detect: field is stored on the adapter manifest for informational purposes.
 // It does NOT gate registration. All adapters are always visible and available.
@@ -307,6 +337,7 @@ function extractTsCommandStubs(
   for (const file of readdirSync(siteDir)) {
     if (!file.endsWith(".ts")) continue;
     if (file.endsWith(".d.ts") || file.endsWith(".test.ts")) continue;
+    const sourcePath = adapterSourcePath(join(siteDir, file));
     const source = readFileSync(join(siteDir, file), "utf-8");
     let index = 0;
     while (true) {
@@ -332,7 +363,7 @@ function extractTsCommandStubs(
       commands[name] = {
         name,
         description: objectStringProp(body, "description"),
-        adapter_path: objectStringProp(body, "adapter_path"),
+        adapter_path: objectStringProp(body, "adapter_path") ?? sourcePath,
         target_surface: objectStringProp(
           body,
           "target_surface",
@@ -502,6 +533,7 @@ export function loadAdaptersFromDir(dir: string): number {
         commands[cmdName] = {
           name: cmdName,
           description: parsed.description,
+          adapter_path: adapterSourcePath(absPath),
           pipeline: parsed.pipeline,
           adapterArgs,
           strategy: parsed.strategy as AdapterCommand["strategy"],
@@ -623,8 +655,12 @@ export async function loadTsAdapters(): Promise<number> {
   let count = 0;
   for (const file of files) {
     try {
-      await import(
-        `${pathToFileURL(file).href}?unicli_ts_load=${tsAdapterLoadGeneration}`
+      await withAdapterSourcePath(
+        adapterSourcePath(file),
+        () =>
+          import(
+            `${pathToFileURL(file).href}?unicli_ts_load=${tsAdapterLoadGeneration}`
+          ),
       );
       count++;
     } catch (err) {

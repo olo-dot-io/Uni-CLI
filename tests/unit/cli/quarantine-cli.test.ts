@@ -26,7 +26,7 @@ import {
   writeFileSync,
   rmSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import { ExitCode } from "../../../src/types.js";
@@ -125,8 +125,10 @@ describe("CLI quarantine dispatch (spawn)", () => {
       expect(envelope.error.code).toBe("quarantined");
       expect(envelope.error.message).toMatch(/quarantined/);
       expect(envelope.error.suggestion ?? "").toMatch(/unicli repair/);
-      expect(envelope.error.adapter_path ?? "").toMatch(
-        /src\/adapters\/qtestcli\/broken\.yaml/,
+      expect(envelope.error.adapter_path).toBe(
+        join(fakeHome, ".unicli", "adapters", "qtestcli", "broken.yaml")
+          .split(sep)
+          .join("/"),
       );
     },
     QUARANTINE_SPAWN_TIMEOUT_MS,

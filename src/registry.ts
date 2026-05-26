@@ -1,9 +1,16 @@
 /**
- * Adapter registry — the central hub for all registered adapters.
- *
- * Supports two registration paths:
- *   1. YAML adapters — loaded from src/adapters/<site>/<command>.yaml
- *   2. TS adapters   — registered via cli() function call
+ * @owner src/registry.ts
+ * @does Owns the in-process adapter registry and TypeScript adapter registration helper.
+ * @needs src/types, src/discovery/aliases
+ * @feeds src/discovery/loader.ts, src/commands/dispatch.ts, src/discovery/search.ts, MCP and ACP command surfaces
+ * @breaks Propagates malformed adapter command metadata to command resolution and invocation callers.
+ * @invariants Every registered command is keyed by stable site and command names; loader-provided source paths are preserved unless the adapter sets one explicitly.
+ * @side-effects Mutates the process-local adapter registry map.
+ * @perf O(1) registration and command lookup; O(commands) listing.
+ * @concurrency Not thread-safe; Node module registry is process-local and loader imports TS adapters sequentially.
+ * @test tests/unit/registry.test.ts, tests/unit/loader.test.ts
+ * @stability stable
+ * @since 2026-05-26
  */
 
 import { AdapterType, Strategy } from "./types.js";
@@ -20,6 +27,20 @@ import type {
 export { Strategy };
 
 const adapters = new Map<string, AdapterManifest>();
+let activeAdapterSourcePath: string | undefined;
+
+export async function withAdapterSourcePath<T>(
+  sourcePath: string | undefined,
+  run: () => Promise<T>,
+): Promise<T> {
+  const previousSourcePath = activeAdapterSourcePath;
+  activeAdapterSourcePath = sourcePath;
+  try {
+    return await run();
+  } finally {
+    activeAdapterSourcePath = previousSourcePath;
+  }
+}
 
 /** Register a full adapter manifest (typically from YAML) */
 export function registerAdapter(manifest: AdapterManifest): void {
@@ -190,7 +211,8 @@ export function cli(config: CliRegistration): void {
   adapter!.commands[config.name] = {
     name: config.name,
     description: config.description,
-    adapter_path: config.adapter_path ?? existing?.adapter_path,
+    adapter_path:
+      config.adapter_path ?? existing?.adapter_path ?? activeAdapterSourcePath,
     target_surface: config.target_surface,
     adapterArgs: config.args,
     strategy: config.strategy,
