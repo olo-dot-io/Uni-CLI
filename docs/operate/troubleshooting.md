@@ -382,3 +382,45 @@ Remedy: run `unicli doctor compute` and fix the first failing host transport.
 
 Fallback: choose a narrower transport directly when possible, such as CDP for a
 debuggable Electron renderer.
+
+## overlaymacos_appkit
+
+Cause: the macOS system HUD helper could not be parsed or launched. The overlay
+path needs Swift, AppKit, a graphical desktop session, and the normal compute
+permissions for app control and screenshot evidence.
+
+Remedy: install Xcode command line tools with `xcode-select --install`, then
+rerun `unicli doctor compute --json`. For real desktop app control, also grant
+Accessibility and Screen Recording permissions to the terminal or host app.
+
+Fallback: run without `--overlay`; the compute action can still use AX/CDP and
+return protocol-level `visual_timeline` replay evidence.
+
+## overlaywindows_win32
+
+Cause: the Windows system HUD helper could not be parsed or started. The overlay
+path needs PowerShell, .NET Windows Forms, and an interactive desktop session so
+Uni-CLI can create topmost click-through Win32 windows.
+
+Remedy: rerun from a normal desktop session, then inspect
+`unicli doctor compute --json`. If the UIA action transport is also failing,
+install or repair the UIA sidecar package reported by doctor.
+
+Fallback: run without `--overlay`; Windows UIA actions and screenshot evidence
+remain available when the sidecar and permissions are healthy.
+
+## overlaylinux_gtk
+
+Cause: the Linux system HUD helper could not be parsed or started. The overlay
+path needs Python 3, PyGObject GTK 3, pycairo, and a graphical display session
+where GTK can create keep-above input-shaped windows.
+
+Remedy: install the GTK Python bindings for the distribution, then verify with:
+
+```bash
+python3 -c 'import cairo, gi; gi.require_version("Gtk", "3.0"); from gi.repository import Gtk'
+unicli doctor compute --json
+```
+
+Fallback: run without `--overlay`; Linux AT-SPI actions and screenshot evidence
+remain available when the AT-SPI sidecar and display helpers are healthy.

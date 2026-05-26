@@ -16,9 +16,15 @@ import { validateEnvelope } from "../../../src/output/envelope.js";
 const cascadeMock = vi.hoisted(() => ({
   tryCascade: vi.fn(),
 }));
+const actionExecutionMock = vi.hoisted(() => ({
+  executeComputeAction: vi.fn(),
+}));
 
 vi.mock("../../../src/transport/cascade.js", () => ({
   tryCascade: cascadeMock.tryCascade,
+}));
+vi.mock("../../../src/compute/action-execution.js", () => ({
+  executeComputeAction: actionExecutionMock.executeComputeAction,
 }));
 
 const { registerComputeCommand } =
@@ -60,6 +66,7 @@ function newProgram(): Command {
 describe("unicli compute", () => {
   beforeEach(() => {
     cascadeMock.tryCascade.mockReset();
+    actionExecutionMock.executeComputeAction.mockReset();
     process.exitCode = undefined;
     delete process.env.UNICLI_COMPUTE_REFS_PATH;
     delete process.env.UNICLI_COMPUTE_CDP_SESSION_PATH;
@@ -211,6 +218,17 @@ describe("unicli compute", () => {
           },
         ],
       },
+      visual_timeline: {
+        schema_version: 1,
+        replayable: true,
+        subject: { app: "Calculator" },
+        events: [
+          expect.objectContaining({ index: 0, state: "observe" }),
+          expect.objectContaining({ index: 1, state: "wait" }),
+          expect.objectContaining({ index: 2, state: "target" }),
+          expect.objectContaining({ index: 3, state: "success" }),
+        ],
+      },
     });
     expect(typeof (env.data as Record<string, unknown>).captured_at).toBe(
       "string",
@@ -261,6 +279,29 @@ describe("unicli compute", () => {
             },
           },
         },
+      },
+      visual_timeline: {
+        coordinate_space: {
+          kind: "image-pixels",
+          origin: "top-left",
+          width: 1,
+          height: 1,
+        },
+        events: [
+          expect.objectContaining({
+            point: {
+              x: 1,
+              y: 1,
+              coordinate_space: {
+                kind: "image-pixels",
+                origin: "top-left",
+                width: 1,
+                height: 1,
+              },
+            },
+          }),
+          expect.objectContaining({ state: "success" }),
+        ],
       },
     });
     validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
@@ -465,6 +506,74 @@ describe("unicli compute", () => {
       retryable: false,
     });
     validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
+  });
+
+  it("click can opt into the system overlay executor and returns visual action evidence", async () => {
+    actionExecutionMock.executeComputeAction.mockResolvedValue({
+      result: ok({ transport: "desktop-ax" }),
+      evidence: {
+        visual_timeline: {
+          schema_version: 1,
+          replayable: true,
+          theme: {
+            name: "mac-glass-pointer-v1",
+            prefers_reduced_motion: "collapse-durations",
+          },
+          events: [],
+        },
+        visual_action: {
+          schema_version: 2,
+          action_id: "computer-use.click:compute_click:@e7:60,40",
+          tool: "compute.click",
+          action: "compute_click",
+          overlay: {
+            provider: "macos-appkit",
+            status: "arrived",
+            acknowledged_at_ms: 240,
+          },
+          dispatch: {
+            status: "succeeded",
+            transport: "desktop-ax",
+          },
+        },
+      },
+    });
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        ["-f", "json", "compute", "click", "@e7", "--overlay"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(cascadeMock.tryCascade).not.toHaveBeenCalled();
+    expect(actionExecutionMock.executeComputeAction).toHaveBeenCalledTimes(1);
+    expect(actionExecutionMock.executeComputeAction.mock.calls[0]?.[1]).toEqual(
+      {
+        kind: "compute_click",
+        params: { ref: "@e7", focus: false },
+      },
+    );
+    expect(
+      actionExecutionMock.executeComputeAction.mock.calls[0]?.[2],
+    ).toMatchObject({
+      tool: "compute.click",
+      overlayProvider: { provider: "macos-appkit" },
+    });
+    const env = JSON.parse(cap.getStdout()) as Record<string, unknown>;
+    expect(env.ok).toBe(true);
+    expect(env.data).toMatchObject({
+      transport: "desktop-ax",
+      visual_action: {
+        schema_version: 2,
+        overlay: {
+          provider: "macos-appkit",
+          status: "arrived",
+        },
+      },
+    });
   });
 
   it("normalizes focus options for mutating commands", async () => {

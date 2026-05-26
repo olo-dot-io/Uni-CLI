@@ -197,7 +197,10 @@ export async function tryCascade(
   for (const kind of order) {
     try {
       const adapter = bus.get(kind);
-      const adapted = adaptStep(enrichFromRef(bus, normalizedReq), kind);
+      const adapted = adaptStep(
+        enrichComputeRequestFromRefs(bus, normalizedReq),
+        kind,
+      );
       const dispatchReq = normalizeFocusForTransport(
         adapted,
         kind,
@@ -587,7 +590,10 @@ function resolveParamRefWithBucket(
   return undefined;
 }
 
-function enrichFromRef(bus: TransportBus, req: ActionRequest): ActionRequest {
+export function enrichComputeRequestFromRefs(
+  bus: TransportBus,
+  req: ActionRequest,
+): ActionRequest {
   const refValue = req.params.ref;
   const ref = resolveParamRef(bus, refValue);
   if (!ref) return req;

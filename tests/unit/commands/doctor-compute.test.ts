@@ -16,6 +16,7 @@ describe("doctor compute", () => {
         "subprocess",
         "cdp-browser",
         "visual",
+        "overlay",
       ]),
     );
     for (const check of report.checks) {
@@ -66,5 +67,48 @@ describe("doctor compute", () => {
       ),
     ).toBe(true);
     expect(providerChecks.some((check) => check.status === "fail")).toBe(false);
+  });
+
+  it("reports the macOS AppKit overlay provider status", async () => {
+    const report = await runComputeDoctor();
+    const check = report.checks.find(
+      (candidate) =>
+        candidate.transport === "overlay" && candidate.name === "macos-appkit",
+    );
+
+    expect(check).toBeDefined();
+    if (process.platform === "darwin") {
+      expect(["ok", "fail"]).toContain(check?.status);
+      expect(check?.detail).toContain("AppKit overlay");
+      return;
+    }
+    expect(check).toMatchObject({
+      status: "skip",
+      detail: "host is not macOS",
+    });
+  });
+
+  it("reports every native system overlay provider with platform-gated status", async () => {
+    const report = await runComputeDoctor();
+    const overlayChecks = report.checks.filter(
+      (candidate) => candidate.transport === "overlay",
+    );
+
+    expect(overlayChecks.map((check) => check.name)).toEqual([
+      "macos-appkit",
+      "windows-win32",
+      "linux-gtk",
+    ]);
+    for (const check of overlayChecks) {
+      if (
+        (check.name === "macos-appkit" && process.platform === "darwin") ||
+        (check.name === "windows-win32" && process.platform === "win32") ||
+        (check.name === "linux-gtk" && process.platform === "linux")
+      ) {
+        expect(["ok", "fail"]).toContain(check.status);
+      } else {
+        expect(check.status).toBe("skip");
+      }
+    }
   });
 });

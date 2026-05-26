@@ -1,0 +1,124 @@
+{
+  "visual_action": {
+    "schema_version": 2,
+    "action_id": "compute.click:compute_click:@demo:360,280",
+    "tool": "compute.click",
+    "action": "compute_click",
+    "target": {
+      "ref": "@demo",
+      "point": {
+        "x": 360,
+        "y": 280,
+        "coordinate_space": {
+          "kind": "screen-pixels",
+          "origin": "top-left"
+        }
+      }
+    },
+    "pointer_plan": {
+      "curve": "spring-bezier-v1",
+      "duration_ms": 240,
+      "from": {
+        "x": 128,
+        "y": 112,
+        "coordinate_space": {
+          "kind": "screen-pixels",
+          "origin": "top-left"
+        }
+      },
+      "to": {
+        "x": 360,
+        "y": 280,
+        "coordinate_space": {
+          "kind": "screen-pixels",
+          "origin": "top-left"
+        }
+      },
+      "samples": [
+        {
+          "at_ms": 0,
+          "x": 128,
+          "y": 112,
+          "coordinate_space": {
+            "kind": "screen-pixels",
+            "origin": "top-left"
+          }
+        },
+        {
+          "at_ms": 48,
+          "x": 154.1,
+          "y": 130.9,
+          "coordinate_space": {
+            "kind": "screen-pixels",
+            "origin": "top-left"
+          }
+        },
+        {
+          "at_ms": 96,
+          "x": 210.7,
+          "y": 171.9,
+          "coordinate_space": {
+            "kind": "screen-pixels",
+            "origin": "top-left"
+          }
+        },
+        {
+          "at_ms": 144,
+          "x": 281.3,
+          "y": 223.0,
+          "coordinate_space": {
+            "kind": "screen-pixels",
+            "origin": "top-left"
+          }
+        },
+        {
+          "at_ms": 192,
+          "x": 337.9,
+          "y": 264.1,
+          "coordinate_space": {
+            "kind": "screen-pixels",
+            "origin": "top-left"
+          }
+        },
+        {
+          "at_ms": 240,
+          "x": 360,
+          "y": 280,
+          "coordinate_space": {
+            "kind": "screen-pixels",
+            "origin": "top-left"
+          }
+        }
+      ]
+    },
+    "overlay": {
+      "provider": "macos-appkit",
+      "status": "arrived",
+      "acknowledged_at_ms": 240
+    },
+    "dispatch": {
+      "status": "succeeded",
+      "transport": "desktop-ax",
+      "target": {
+        "x": 360,
+        "y": 280,
+        "coordinate_space": {
+          "kind": "screen-pixels",
+          "origin": "top-left"
+        }
+      }
+    },
+    "post_capture": {
+      "ok": true,
+      "transport": "desktop-ax",
+      "data": {
+        "path": "/tmp/unicli-compute-overlay-after.png",
+        "image": {
+          "sha256": "demo-post-capture",
+          "width": 800,
+          "height": 600
+        }
+      }
+    }
+  }
+}

@@ -16,6 +16,8 @@
 import { err, exitCodeFor, ok } from "../core/envelope.js";
 import { tryCascade } from "../transport/cascade.js";
 import type { ActionResult, TransportBus } from "../transport/types.js";
+import { buildCaptureVisualTimeline } from "./visual-timeline.js";
+import type { ComputeVisualTimeline } from "./visual-timeline.js";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
@@ -74,6 +76,7 @@ export interface ComputeCapturePacket {
     replayable: true;
     steps: ComputeCaptureTrajectoryStep[];
   };
+  visual_timeline: ComputeVisualTimeline;
 }
 
 export async function captureComputeContext(
@@ -150,7 +153,7 @@ export async function captureComputeContext(
     });
   }
 
-  return ok({
+  const packet: Omit<ComputeCapturePacket, "visual_timeline"> = {
     schema_version: 1,
     captured_at: new Date().toISOString(),
     ...(options.app ? { app: options.app } : {}),
@@ -160,6 +163,11 @@ export async function captureComputeContext(
       replayable: true,
       steps: trajectory,
     },
+  };
+
+  return ok({
+    ...packet,
+    visual_timeline: buildCaptureVisualTimeline(packet),
   });
 }
 

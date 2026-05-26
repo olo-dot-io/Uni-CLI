@@ -1,5 +1,10 @@
 import { Command } from "commander";
 
+import {
+  executeComputeAction,
+  type ComputeActionExecution,
+} from "../compute/action-execution.js";
+import { createPlatformComputeOverlayProvider } from "../compute/platform-overlays.js";
 import { getBus } from "../transport/bus.js";
 import { tryCascade } from "../transport/cascade.js";
 import { loadCdpSession, saveCdpSession } from "../transport/cdp-session.js";
@@ -103,11 +108,18 @@ export function registerComputeCommand(program: Command): void {
     .description("Click an element ref")
     .option("--background", "Avoid focusing the target app")
     .option("--focus", "Focus the target app first")
+    .option("--overlay", "Render the system-level virtual cursor HUD")
     .action(async (ref: string, opts: Record<string, unknown>) => {
-      await run(program, "compute.click", "compute_click", {
-        ref,
-        ...normalizeFocusOptions(opts),
-      });
+      await run(
+        program,
+        "compute.click",
+        "compute_click",
+        {
+          ref,
+          ...normalizeFocusOptions(opts),
+        },
+        { overlay: opts.overlay === true },
+      );
     });
 
   compute
@@ -115,13 +127,20 @@ export function registerComputeCommand(program: Command): void {
     .description("Set or type text into an element ref")
     .option("--clear", "Clear field first")
     .option("--focus", "Focus the target app first")
+    .option("--overlay", "Render the system-level virtual cursor HUD")
     .action(
       async (ref: string, text: string, opts: Record<string, unknown>) => {
-        await run(program, "compute.type", "compute_type", {
-          ref,
-          text,
-          ...normalizeFocusOptions(opts),
-        });
+        await run(
+          program,
+          "compute.type",
+          "compute_type",
+          {
+            ref,
+            text,
+            ...normalizeFocusOptions(opts),
+          },
+          { overlay: opts.overlay === true },
+        );
       },
     );
 
@@ -143,13 +162,20 @@ export function registerComputeCommand(program: Command): void {
     .option("--direction <direction>", "up | down | left | right", "down")
     .option("--amount <px>", "Pixels", "300")
     .option("--focus", "Focus the target app first")
+    .option("--overlay", "Render the system-level virtual cursor HUD")
     .action(async (ref: string, opts: Record<string, unknown>) => {
       const normalized = normalizeFocusOptions(opts);
-      await run(program, "compute.scroll", "compute_scroll", {
-        ref,
-        ...normalized,
-        amount: parseInt(String(normalized.amount ?? "300"), 10),
-      });
+      await run(
+        program,
+        "compute.scroll",
+        "compute_scroll",
+        {
+          ref,
+          ...normalized,
+          amount: parseInt(String(normalized.amount ?? "300"), 10),
+        },
+        { overlay: opts.overlay === true },
+      );
     });
 
   compute
@@ -238,13 +264,28 @@ async function run(
   command: string,
   kind: string,
   params: Record<string, unknown>,
+  opts: { overlay?: boolean } = {},
 ): Promise<void> {
   const startedAt = Date.now();
   const bus = getBus();
+  const overlayProvider =
+    opts.overlay === true ? createPlatformComputeOverlayProvider() : undefined;
   try {
     loadPersistedRefs(bus);
     const dispatchParams = enrichWithPersistedCdpSession(kind, params);
-    const result = await tryCascade(bus, { kind, params: dispatchParams });
+    const result = overlayProvider
+      ? resultWithVisualEvidence(
+          await executeComputeAction(
+            bus,
+            { kind, params: dispatchParams },
+            {
+              tool: command,
+              overlayProvider,
+              postActionCapture: true,
+            },
+          ),
+        )
+      : await tryCascade(bus, { kind, params: dispatchParams });
     if (result.ok && kind === "compute_snapshot") {
       saveRefStore(bus.refs);
     }
@@ -253,6 +294,7 @@ async function run(
     }
     print(program, command, startedAt, result);
   } finally {
+    await overlayProvider?.close?.();
     await closeTransports(bus);
   }
 }
@@ -445,6 +487,20 @@ function formatData(data: unknown): unknown[] | Record<string, unknown> {
   return { value: data };
 }
 
+function resultWithVisualEvidence(
+  execution: ComputeActionExecution,
+): ActionResult<unknown> {
+  if (!execution.result.ok) return execution.result;
+  return {
+    ...execution.result,
+    data: {
+      ...formatData(execution.result.data),
+      visual_timeline: execution.evidence.visual_timeline,
+      visual_action: execution.evidence.visual_action,
+    },
+  };
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -473,7 +529,7 @@ function invalidOptionResult(
 function normalizeFocusOptions(
   opts: Record<string, unknown>,
 ): Record<string, unknown> {
-  const { background: _background, focus, ...rest } = opts;
+  const { background: _background, focus, overlay: _overlay, ...rest } = opts;
   return { ...rest, focus: focus === true };
 }
 

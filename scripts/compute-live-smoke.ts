@@ -23,6 +23,7 @@ export interface ComputeSmokeReport {
   platform: string;
   app: string;
   buttonName: string;
+  overlay: boolean;
   startedAt: string;
   finishedAt: string;
   summary: {
@@ -51,6 +52,7 @@ export interface ComputeSmokePlan {
   platform: string;
   app: string;
   buttonName: string;
+  overlay: boolean;
   commands: ComputeSmokeCommand[];
 }
 
@@ -58,6 +60,7 @@ interface SmokeOptions {
   platform?: string;
   app?: string;
   buttonName?: string;
+  overlay?: boolean;
 }
 
 const PLATFORM_DEFAULTS: Record<string, { app: string; buttonName: string }> = {
@@ -73,11 +76,13 @@ export function computeLiveSmokePlan(
   const defaults = PLATFORM_DEFAULTS[platform] ?? PLATFORM_DEFAULTS.darwin;
   const app = opts.app ?? defaults.app;
   const buttonName = opts.buttonName ?? defaults.buttonName;
+  const overlay = opts.overlay === true;
 
   return {
     platform,
     app,
     buttonName,
+    overlay,
     commands: [
       {
         id: "doctor",
@@ -172,6 +177,7 @@ export function computeLiveSmokePlan(
           "click",
           "<ref-from-find>",
           "--background",
+          ...(overlay ? ["--overlay"] : []),
         ],
         mutatesHost: true,
         refFromPreviousFind: true,
@@ -188,6 +194,7 @@ export function computeLiveSmokePlan(
           "<ref-from-find>",
           "1",
           "--focus",
+          ...(overlay ? ["--overlay"] : []),
         ],
         mutatesHost: true,
         refFromPreviousFind: true,
@@ -206,6 +213,7 @@ export function computeLiveSmokePlan(
           "down",
           "--amount",
           "120",
+          ...(overlay ? ["--overlay"] : []),
         ],
         mutatesHost: true,
         refFromPreviousFind: true,
@@ -248,6 +256,7 @@ export function buildComputeSmokeReport(
     platform: plan.platform,
     app: plan.app,
     buttonName: plan.buttonName,
+    overlay: plan.overlay,
     startedAt: times.startedAt,
     finishedAt: times.finishedAt,
     summary: {
@@ -275,6 +284,7 @@ function renderPlan(plan: ComputeSmokePlan): string {
     "",
     `App: ${plan.app}`,
     `Button: ${plan.buttonName}`,
+    `Overlay: ${plan.overlay ? "enabled" : "disabled"}`,
     "",
   ];
   for (const command of plan.commands) {
@@ -392,6 +402,7 @@ async function main(): Promise<void> {
   const plan = computeLiveSmokePlan(readOption("--platform", args), {
     app: readOption("--app", args),
     buttonName: readOption("--button", args),
+    overlay: readFlag("--overlay", args),
   });
 
   if (!readFlag("--run", args)) {

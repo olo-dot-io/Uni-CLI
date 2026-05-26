@@ -1,11 +1,16 @@
 import { getBus } from "../../transport/bus.js";
+import {
+  executeComputeAction,
+  type ComputeActionExecution,
+} from "../../compute/action-execution.js";
 import { captureComputeContext } from "../../compute/capture.js";
 import {
   copyReferenceMarkupToClipboard,
   saveComputeCaptureReference,
 } from "../../compute/capture-reference.js";
+import { createPlatformComputeOverlayProvider } from "../../compute/platform-overlays.js";
+import { buildComputeActionVisualEvidence } from "../../compute/visual-timeline.js";
 import { err, exitCodeFor } from "../../core/envelope.js";
-import { tryCascade } from "../../transport/cascade.js";
 import type { ActionResult } from "../../transport/types.js";
 import type { McpToolResult } from "../dispatch.js";
 import type { McpPrompt, McpTool } from "../tools.js";
@@ -22,6 +27,11 @@ const APP = {
 };
 
 const FOCUS = { type: "boolean", default: false };
+const OVERLAY = {
+  type: "boolean",
+  default: false,
+  description: "Render the system-level virtual cursor HUD for this action.",
+};
 
 type Params = Record<string, unknown>;
 
@@ -224,6 +234,7 @@ const DEFINITIONS: ToolDef[] = [
         button: { type: "string", enum: ["left", "right", "middle"] },
         double: { type: "boolean", default: false },
         focus: FOCUS,
+        overlay: OVERLAY,
       },
       required: ["ref"],
     },
@@ -239,6 +250,7 @@ const DEFINITIONS: ToolDef[] = [
         text: { type: "string" },
         clear: { type: "boolean", default: false },
         focus: FOCUS,
+        overlay: OVERLAY,
       },
       required: ["ref", "text"],
     },
@@ -272,6 +284,7 @@ const DEFINITIONS: ToolDef[] = [
         },
         amount: { type: "integer", default: 300 },
         focus: FOCUS,
+        overlay: OVERLAY,
       },
     },
   },
@@ -408,23 +421,62 @@ export const COMPUTER_USE_TOOLS: McpTool[] = DEFINITIONS.map((def) => ({
     destructiveHint: false,
     idempotentHint: def.readOnly ?? false,
   },
-  handler: async (args) =>
-    def.handler
-      ? def.handler(args, def)
-      : actionResultToMcp(
-          await tryCascade(getBus(), {
-            kind: def.kind,
-            params: def.transform ? def.transform(args) : args,
-          }),
-          def,
-        ),
+  handler: async (args) => {
+    if (def.handler) return def.handler(args, def);
+    const rawParams = def.transform ? def.transform(args) : args;
+    const { params, overlay } = splitOverlayParams(rawParams);
+    const overlayProvider =
+      overlay === true ? createPlatformComputeOverlayProvider() : undefined;
+    try {
+      const execution = await executeComputeAction(
+        getBus(),
+        {
+          kind: def.kind,
+          params,
+        },
+        {
+          tool: `computer-use.${def.suffix}`,
+          ...(overlayProvider ? { overlayProvider } : {}),
+          ...(overlayProvider ? { postActionCapture: true } : {}),
+        },
+      );
+      return actionResultToMcp(
+        execution.result,
+        def,
+        params,
+        execution.evidence,
+      );
+    } finally {
+      await overlayProvider?.close?.();
+    }
+  },
 }));
 
 function actionResultToMcp(
   result: ActionResult<unknown>,
   def: ToolDef,
+  params: Params = {},
+  evidence?: ComputeActionExecution["evidence"],
 ): McpToolResult {
   const data = result.ok ? result.data : result.error;
+  const transport = result.ok
+    ? readResultTransport(result.data)
+    : result.error.transport;
+  const generatedEvidence = buildComputeActionVisualEvidence({
+    tool: `computer-use.${def.suffix}`,
+    action: def.kind,
+    params,
+    ok: result.ok,
+    ...(transport ? { transport } : {}),
+  });
+  const visualTimeline =
+    readResultVisualTimeline(data) ??
+    evidence?.visual_timeline ??
+    generatedEvidence.visual_timeline;
+  const visualAction =
+    readResultVisualAction(data) ??
+    evidence?.visual_action ??
+    generatedEvidence.visual_action;
   return {
     content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
     structuredContent: { type: "json", data },
@@ -434,6 +486,8 @@ function actionResultToMcp(
         tool: `computer-use.${def.suffix}`,
         action: def.kind,
         ok: result.ok,
+        visual_timeline: visualTimeline,
+        visual_action: visualAction,
         ...(result.ok
           ? {}
           : {
@@ -445,6 +499,32 @@ function actionResultToMcp(
       },
     },
     ...(result.ok ? {} : { isError: true }),
+  };
+}
+
+function readResultTransport(data: unknown): string | undefined {
+  if (!isRecord(data) || typeof data.transport !== "string") return undefined;
+  return data.transport;
+}
+
+function readResultVisualTimeline(data: unknown): unknown {
+  if (!isRecord(data) || !isRecord(data.visual_timeline)) return undefined;
+  return data.visual_timeline;
+}
+
+function readResultVisualAction(data: unknown): unknown {
+  if (!isRecord(data) || !isRecord(data.visual_action)) return undefined;
+  return data.visual_action;
+}
+
+function splitOverlayParams(params: Params): {
+  params: Params;
+  overlay: boolean;
+} {
+  const { overlay, ...rest } = params;
+  return {
+    params: rest,
+    overlay: overlay === true,
   };
 }
 
@@ -462,4 +542,8 @@ function readCaptureFormat(
     return { ok: true, value };
   }
   return { ok: false, value: String(value) };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

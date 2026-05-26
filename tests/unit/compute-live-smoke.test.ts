@@ -95,6 +95,22 @@ describe("compute live smoke harness", () => {
     ).toContain("gnome-calculator");
   });
 
+  it("can generate an overlay-enabled live smoke plan", async () => {
+    const mod = await import("../../scripts/compute-live-smoke.js");
+    const plan = mod.computeLiveSmokePlan("linux", { overlay: true });
+
+    expect(plan.overlay).toBe(true);
+    expect(
+      plan.commands.find((command) => command.id === "click-button")?.argv,
+    ).toContain("--overlay");
+    expect(
+      plan.commands.find((command) => command.id === "type-button")?.argv,
+    ).toContain("--overlay");
+    expect(
+      plan.commands.find((command) => command.id === "scroll-button")?.argv,
+    ).toContain("--overlay");
+  });
+
   it("records failed steps and continues collecting evidence", async () => {
     const mod = await import("../../scripts/compute-live-smoke.js");
     const plan = mod.computeLiveSmokePlan("darwin");

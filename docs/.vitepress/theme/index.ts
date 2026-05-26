@@ -2,6 +2,7 @@ import DefaultTheme from "vitepress/theme";
 import type { Theme } from "vitepress";
 import Layout from "./components/Layout.vue";
 import CommandLifecycleIsland from "./components/CommandLifecycleIsland.vue";
+import ComputeCursorDemo from "./components/ComputeCursorDemo.vue";
 import HomePage from "./components/HomePage.vue";
 import SiteCatalog from "./components/SiteCatalog.vue";
 import SiteStats from "./components/SiteStats.vue";
@@ -14,6 +15,7 @@ export default {
   Layout,
   enhanceApp({ app }) {
     app.component("CommandLifecycleIsland", CommandLifecycleIsland);
+    app.component("ComputeCursorDemo", ComputeCursorDemo);
     app.component("HomePage", HomePage);
     app.component("SiteCatalog", SiteCatalog);
     app.component("SiteStats", SiteStats);

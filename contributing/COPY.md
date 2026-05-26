@@ -2,7 +2,7 @@
 
 > Current version: v0.223.4 — Apollo · Lovell.
 >
-> Current scale: <!-- STATS:site_count -->311<!-- /STATS --> sites, <!-- STATS:command_count -->1753<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->1212<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->977<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->235<!-- /STATS --> TS), <!-- STATS:test_count -->8915<!-- /STATS --> tests.
+> Current scale: <!-- STATS:site_count -->311<!-- /STATS --> sites, <!-- STATS:command_count -->1753<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->1212<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->977<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->235<!-- /STATS --> TS), <!-- STATS:test_count -->8951<!-- /STATS --> tests.
 
 This file keeps docs and user-facing copy consistent. Public pages should expose
 install, command, output, and repair facts with the fewest words needed.

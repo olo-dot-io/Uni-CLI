@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { err, ok } from "../../src/core/envelope.js";
 import { createTransportBus, RefAllocator } from "../../src/transport/bus.js";
-import { preferenceFor, tryCascade } from "../../src/transport/cascade.js";
+import {
+  enrichComputeRequestFromRefs,
+  preferenceFor,
+  tryCascade,
+} from "../../src/transport/cascade.js";
 import type {
   ActionRequest,
   ActionResult,
@@ -684,6 +688,40 @@ describe("compute cascade", () => {
         app: "Calculator",
         role: "AXButton",
         title: "5",
+        x: 25,
+        y: 40,
+        coordinateSpace: "screen",
+        screenIndex: 2,
+      },
+    });
+  });
+
+  it("exposes ref enrichment for evidence without adapting transport steps", () => {
+    const bus = createTransportBus();
+    const alloc = new RefAllocator();
+    alloc.alloc({
+      stable: "desktop-ax:calc:AXWindow[0]/AXButton[4]",
+      role: "AXButton",
+      name: "5",
+      app: "Calculator",
+      bounds: { x: 10, y: 20, w: 30, h: 40 },
+      screenIndex: 2,
+    });
+    bus.refs.put(alloc.freeze("desktop-ax", "calc"));
+
+    const enriched = enrichComputeRequestFromRefs(bus, {
+      kind: "compute_click",
+      params: { ref: "@e1" },
+    });
+
+    expect(enriched).toMatchObject({
+      kind: "compute_click",
+      params: {
+        ref: "@e1",
+        app: "Calculator",
+        role: "AXButton",
+        title: "5",
+        stable: "desktop-ax:calc:AXWindow[0]/AXButton[4]",
         x: 25,
         y: 40,
         coordinateSpace: "screen",

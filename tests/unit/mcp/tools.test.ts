@@ -265,6 +265,19 @@ describe("computer-use profile", () => {
         default: false,
       });
     }
+    for (const name of [
+      "computer-use.click",
+      "computer-use.type",
+      "computer-use.scroll",
+    ]) {
+      const tool = tools.find((candidate) => candidate.name === name);
+      expect(tool?.inputSchema.properties).toHaveProperty("overlay", {
+        type: "boolean",
+        default: false,
+        description:
+          "Render the system-level virtual cursor HUD for this action.",
+      });
+    }
   });
 
   it("selectPrompts returns the computer-use operating prompt", async () => {
@@ -310,6 +323,14 @@ describe("computer-use profile", () => {
       tool: "computer-use.capture",
       action: "compute_capture",
       ok: false,
+      visual_timeline: {
+        schema_version: 1,
+        replayable: true,
+        events: [
+          expect.objectContaining({ state: "observe" }),
+          expect.objectContaining({ state: "error" }),
+        ],
+      },
     });
   });
 
@@ -389,6 +410,31 @@ describe("computer-use profile", () => {
       action: "compute_find",
       ok: false,
       minimum_capability: "compute.compute_find.ref-store",
+      visual_timeline: {
+        schema_version: 1,
+        replayable: true,
+        subject: { tool: "computer-use.find" },
+        events: [
+          expect.objectContaining({ state: "observe" }),
+          expect.objectContaining({
+            state: "error",
+            transport: "visual",
+          }),
+        ],
+      },
+      visual_action: {
+        schema_version: 2,
+        tool: "computer-use.find",
+        action: "compute_find",
+        dispatch: {
+          status: "failed",
+          transport: "visual",
+        },
+        overlay: {
+          provider: "none",
+          status: "not_requested",
+        },
+      },
     });
   });
 });

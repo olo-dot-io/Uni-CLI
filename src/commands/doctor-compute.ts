@@ -2,10 +2,13 @@ import type { Command } from "commander";
 import chalk from "chalk";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { rm, stat } from "node:fs/promises";
+import { mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { arch, platform } from "node:os";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { buildLinuxOverlayPythonScript } from "../compute/linux-overlay.js";
+import { buildMacosOverlayDaemonSwiftScript } from "../compute/macos-overlay.js";
+import { buildWindowsOverlayPowerShellScript } from "../compute/windows-overlay.js";
 import { getCDPPort, isCDPAvailable } from "../browser/launcher.js";
 import { VERSION } from "../constants.js";
 import {
@@ -94,6 +97,9 @@ export async function runComputeDoctor(
     await checkSubprocessLauncher(),
     await checkCdp(),
     checkVisualBackend(),
+    await checkMacosAppKitOverlay(),
+    await checkWindowsWin32Overlay(),
+    await checkLinuxGtkOverlay(),
   ];
   if (options.providers) {
     checks.push(...(await checkExternalProviders()));
@@ -111,6 +117,120 @@ export async function runComputeDoctor(
   };
 }
 
+async function checkMacosAppKitOverlay(): Promise<ComputeDoctorCheck> {
+  if (platform() !== "darwin") {
+    return skip("overlay", "macos-appkit", "host is not macOS");
+  }
+  const root = await mkdtemp(join(tmpdir(), "unicli-overlay-doctor-"));
+  const scriptPath = join(root, "main.swift");
+  try {
+    await writeFile(scriptPath, buildMacosOverlayDaemonSwiftScript(), "utf8");
+    await execFileP("swiftc", ["-parse", scriptPath], { timeout: 5_000 });
+    return pass(
+      "overlay",
+      "macos-appkit",
+      "AppKit overlay daemon source parses successfully",
+    );
+  } catch (error) {
+    return fail(
+      "overlay",
+      "macos-appkit",
+      `AppKit overlay daemon probe failed: ${errorMessage(error)}`,
+      {
+        message:
+          "Install Xcode command line tools and verify the macOS overlay helper source.",
+        command: "xcode-select --install",
+        doc: "docs/operate/troubleshooting.md#overlaymacos_appkit",
+      },
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}
+
+async function checkWindowsWin32Overlay(): Promise<ComputeDoctorCheck> {
+  if (platform() !== "win32") {
+    return skip("overlay", "windows-win32", "host is not Windows");
+  }
+  const root = await mkdtemp(join(tmpdir(), "unicli-overlay-doctor-win-"));
+  const scriptPath = join(root, "overlay.ps1");
+  try {
+    await writeFile(scriptPath, buildWindowsOverlayPowerShellScript(), "utf8");
+    await execFileP(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        `$errors = $null; [System.Management.Automation.Language.Parser]::ParseFile('${escapePowerShellSingleQuoted(scriptPath)}', [ref]$null, [ref]$errors) | Out-Null; if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Error $_.Message }; exit 1 }; Add-Type -AssemblyName System.Windows.Forms`,
+      ],
+      { timeout: 5_000 },
+    );
+    return pass(
+      "overlay",
+      "windows-win32",
+      "Win32 overlay PowerShell daemon source parses successfully",
+    );
+  } catch (error) {
+    return fail(
+      "overlay",
+      "windows-win32",
+      `Win32 overlay daemon probe failed: ${errorMessage(error)}`,
+      {
+        message:
+          "Run from a Windows desktop session with PowerShell and .NET Windows Forms available.",
+        command: "unicli doctor compute --json",
+        doc: "docs/operate/troubleshooting.md#overlaywindows_win32",
+      },
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}
+
+async function checkLinuxGtkOverlay(): Promise<ComputeDoctorCheck> {
+  if (platform() !== "linux") {
+    return skip("overlay", "linux-gtk", "host is not Linux");
+  }
+  const root = await mkdtemp(join(tmpdir(), "unicli-overlay-doctor-linux-"));
+  const scriptPath = join(root, "overlay.py");
+  try {
+    await writeFile(scriptPath, buildLinuxOverlayPythonScript(), "utf8");
+    await execFileP("python3", ["-m", "py_compile", scriptPath], {
+      timeout: 5_000,
+    });
+    await execFileP(
+      "python3",
+      [
+        "-c",
+        'import cairo, gi; gi.require_version("Gtk", "3.0"); from gi.repository import Gtk',
+      ],
+      { timeout: 5_000 },
+    );
+    return pass(
+      "overlay",
+      "linux-gtk",
+      "GTK overlay Python daemon source parses and imports GTK successfully",
+    );
+  } catch (error) {
+    return fail(
+      "overlay",
+      "linux-gtk",
+      `GTK overlay daemon probe failed: ${errorMessage(error)}`,
+      {
+        message:
+          "Install python3, PyGObject GTK 3, and pycairo in a graphical Linux session.",
+        command:
+          'python3 -c \'import cairo, gi; gi.require_version("Gtk", "3.0"); from gi.repository import Gtk\'',
+        doc: "docs/operate/troubleshooting.md#overlaylinux_gtk",
+      },
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}
+
 async function checkExternalProviders(): Promise<ComputeDoctorCheck[]> {
   return [
     await checkConfiguredProvider({
@@ -121,6 +241,10 @@ async function checkExternalProviders(): Promise<ComputeDoctorCheck[]> {
     await checkPlatformProvider(),
     checkVisualModelProvider(),
   ];
+}
+
+function escapePowerShellSingleQuoted(value: string): string {
+  return value.replace(/'/g, "''");
 }
 
 async function checkConfiguredProvider(opts: {

@@ -100,6 +100,10 @@
       "types": "./dist/transport/adapters/visual.d.ts",
       "import": "./dist/transport/adapters/visual.js"
     },
+    "./compute/visual-timeline": {
+      "types": "./dist/compute/visual-timeline.d.ts",
+      "import": "./dist/compute/visual-timeline.js"
+    },
     "./browser/cdp": {
       "types": "./dist/browser/cdp-client.d.ts",
       "import": "./dist/browser/cdp-client.js"

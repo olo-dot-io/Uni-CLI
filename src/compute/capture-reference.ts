@@ -20,6 +20,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 import type { ComputeCapturePacket, ComputeCapturePart } from "./capture.js";
+import { buildCaptureVisualTimeline } from "./visual-timeline.js";
 
 export interface ComputeCaptureReferenceOptions {
   rootDir?: string;
@@ -265,7 +266,7 @@ function packetForMetadata(
   packet: ComputeCapturePacket,
   imagePath: string | undefined,
 ): ComputeCapturePacket {
-  return {
+  const metadataPacket: Omit<ComputeCapturePacket, "visual_timeline"> = {
     schema_version: packet.schema_version,
     captured_at: packet.captured_at,
     ...(packet.app ? { app: packet.app } : {}),
@@ -283,6 +284,10 @@ function packetForMetadata(
     ...(packet.screenshot
       ? { screenshot: screenshotPartForMetadata(packet.screenshot, imagePath) }
       : {}),
+  };
+  return {
+    ...metadataPacket,
+    visual_timeline: buildCaptureVisualTimeline(metadataPacket),
   };
 }
 

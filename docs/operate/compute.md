@@ -56,6 +56,69 @@ metadata with byte count, SHA-256, dimensions, and an image-pixel coordinate
 space whose origin is the top-left corner. Packets also include a replayable
 trajectory listing the `compute_snapshot` and `compute_screenshot` actions,
 params, ordering, and per-step success state that produced the packet.
+The packet also includes `visual_timeline`, a protocol-level replay hint for
+frontends that want to show agent motion without moving the host cursor. It is
+ordered by `index` and `at_ms`, names the cursor state (`observe`, `move`,
+`press`, `wait`, `success`, or `error`), preserves target refs and coordinate
+spaces when available, and carries visual affordances such as a click ripple or
+progress orbit. This follows the same split used by GUI-agent UIs such as
+[UI-TARS ScreenshotDisplay](https://github.com/bytedance/UI-TARS-desktop/blob/e9f3387288da4af2ad99972da2ac916cdabce093/multimodal/tarko/ui/src/components/gui-agent/ScreenshotDisplay.tsx):
+actions remain structured evidence, while the UI renders a non-invasive cursor
+overlay on top of screenshots. Browser-use Terminal's protocol similarly keeps
+session events and artifacts separate from the TUI renderer; Uni-CLI keeps this
+visual replay in the compute packet so MCP clients, docs, and future desktops
+consume one deterministic contract.
+
+<ComputeCursorDemo />
+
+## System Overlay HUD
+
+The screenshot replay above is a frontend replay inside the docs page. It does
+not draw over arbitrary desktop apps. For a real system-level virtual pointer,
+opt in to the native HUD on mutating compute actions:
+
+```bash
+unicli doctor compute --json
+unicli compute snapshot --app Calculator --format compact
+unicli -f json compute click @e13 --overlay
+```
+
+`doctor compute --json` reports the native overlay checks for each desktop
+platform: `overlay/macos-appkit`, `overlay/windows-win32`, and
+`overlay/linux-gtk`. Non-host providers are reported as `skip` rather than
+silently disappearing. On macOS, the check parses the generated Swift/AppKit
+daemon source and the normal doctor checks still verify the Accessibility and
+Screen Recording permissions. In other words, macOS arbitrary visible app
+windows require both Accessibility and Screen Recording. On
+Windows, the check parses the generated PowerShell/WinForms daemon and verifies
+that Windows Forms can load in the desktop session. On Linux, the check compiles
+the generated Python daemon and verifies the GTK/PyGObject/Cairo imports.
+
+Every provider implements the same JSONL HUD protocol: report `ready`, accept a
+`visual_action.pointer_plan` render request, draw a full-screen click-through
+pointer/halo/trail, report `arrived`, then let Uni-CLI dispatch the real compute
+action through the normal transport cascade. This keeps the rendered pointer
+target and the actual action target on the same enriched request.
+
+Successful JSON output includes both legacy `visual_timeline` and the richer
+`visual_action` record:
+
+- `visual_action.target`: resolved ref or coordinate target in screen pixels.
+- `visual_action.pointer_plan`: sampled path used by the HUD and docs replay.
+- `visual_action.overlay`: native HUD provider status such as
+  `macos-appkit/arrived`.
+- `visual_action.dispatch`: transport, status, and target used for the real
+  click/type/scroll action.
+- `visual_action.post_capture`: optional screenshot evidence captured after the
+  action when overlay mode is enabled.
+
+This is intentionally not implemented as a Chrome extension. A Chrome extension
+can draw over Chrome pages only; it cannot cover arbitrary macOS apps such as
+Calculator, Figma, Xcode, or the Codex desktop window, and it cannot cover
+native Windows/Linux apps either. The system HUD is native-provider based and
+opt-in with `--overlay`: macOS uses AppKit, Windows uses a Win32/Windows Forms
+daemon, and Linux uses a GTK/Cairo daemon with an empty input shape.
+
 `--save-reference` writes a local artifact directory under
 `~/.unicli/app-shots` and returns `[app-shots ...]` markup with image, content,
 and metadata file paths. Use `--reference-root` to choose a different artifact
@@ -135,6 +198,7 @@ To execute it on a real target machine, run:
 
 ```bash
 npm run compute:smoke -- --run --include-mutating --output smoke-report.json
+npm run compute:smoke -- --run --include-mutating --overlay --output overlay-smoke-report.json
 ```
 
 The smoke harness uses a temporary ref store, checks `doctor compute`, lists
@@ -148,7 +212,8 @@ When `--run` is used, the harness records every step's `ok`, `exit_code`,
 duration, stdout, and stderr instead of aborting at the first failed command, so
 cross-OS smoke artifacts keep enough evidence for repair. `--output` writes the
 same schema-versioned report to disk for CI artifacts or manual release
-evidence.
+evidence. Add `--overlay` to make the mutating click/type/scroll steps use the
+native system HUD provider selected by the host platform.
 
 ## Provider Discovery
 
