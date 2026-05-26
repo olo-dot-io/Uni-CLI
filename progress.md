@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-05-26 — Site Smoke and Search Complexity Audit
+
+- Used the built Uni-CLI against its own catalog: `list` reports 319 visible surfaces and 1,806 commands, including core/dynamic surfaces; `architecture audit` reports 311 adapter sites, 1,770 loaded commands, 611 local-computer-use commands, and zero missing source paths.
+- Live public-command smoke passed for `hackernews top`, `arxiv search`, `coingecko top`, and `wttr current`; earlier same-session smoke also passed for `npm package` and `wikipedia summary`.
+- Conformance result: 977 adapters across 221 adapter sites, 935 passed, 0 failed, 42 quarantined. Browser doctor reports default local CDP ready, but background extension bridge still `needs-action`, and 90 visible surfaces include auth-required commands.
+- Complexity fix: replaced per-search full registry signature generation with an O(1) registry version check, reused postings for site/category candidate expansion, cached normalized site phrases in the index, and replaced default full candidate sorting with bounded top-k insertion.
+- Result: search eval stayed unchanged at 73.49% Top-1, 83.47% Top-3, 85.76% Top-5, 71.58% Chinese Top-5, and 91.82% English Top-5. Micro-benchmark improved from 1,500 queries in 21.33s (14.2181 ms/query) to 18.89s (12.5924 ms/query).
+- Experiment ladder: `unicli search/list/architecture audit/browser doctor`, `npm run conformance`, six live public command smokes, complexity scanner, targeted search/fast-path/MCP tests, micro-benchmark before/after, and full `npm run verify`.
+- Residual risk: this does not prove every live third-party site works right now. Full live validation still needs a scheduled sweep that classifies auth-required, quarantined, browser-required, rate-limited, region-blocked, and upstream-changed commands separately.
+
 ## 2026-05-26 — Live Registry Search Rewrite
 
 - Demolished the generated runtime search-index path: `scripts/build-manifest.js` no longer writes `dist/manifest-search.json`, and runtime discovery no longer reads or falls back to generated BM25 artifacts.

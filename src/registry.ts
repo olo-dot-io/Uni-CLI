@@ -28,6 +28,15 @@ export { Strategy };
 
 const adapters = new Map<string, AdapterManifest>();
 let activeAdapterSourcePath: string | undefined;
+let registryVersion = 0;
+
+function bumpRegistryVersion(): void {
+  registryVersion += 1;
+}
+
+export function getRegistryVersion(): number {
+  return registryVersion;
+}
 
 export async function withAdapterSourcePath<T>(
   sourcePath: string | undefined,
@@ -45,6 +54,7 @@ export async function withAdapterSourcePath<T>(
 /** Register a full adapter manifest (typically from YAML) */
 export function registerAdapter(manifest: AdapterManifest): void {
   adapters.set(manifest.name, manifest);
+  bumpRegistryVersion();
 }
 
 /** Get an adapter by name */
@@ -227,4 +237,5 @@ export function cli(config: CliRegistration): void {
     minimum_capability: config.minimum_capability,
     func: config.func as AdapterCommand["func"],
   };
+  bumpRegistryVersion();
 }

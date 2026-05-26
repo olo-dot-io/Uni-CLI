@@ -30,7 +30,7 @@ import {
   coreDiscoveryCategory,
   listCoreDiscoveryCommands,
 } from "./core-catalog.js";
-import { listCommands } from "../registry.js";
+import { getRegistryVersion, listCommands } from "../registry.js";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -86,6 +86,10 @@ export interface SearchIndex {
   avgDl: number;
   /** Total document count */
   N: number;
+  /** Registered site names for O(1) query hint checks. */
+  siteLookup: Record<string, true>;
+  /** Normalized multi-token site names for phrase hint matching. */
+  sitePhrases: Array<{ site: string; phrase: string }>;
 }
 
 // ── BM25 Parameters ─────────────────────────────────────────────────────────
@@ -118,17 +122,19 @@ const BOOST_CATEGORY = 2.0; // Query token matches site's category
 // ── Index Management ────────────────────────────────────────────────────────
 
 let cachedIndex: SearchIndex | null = null;
-let cachedIndexSignature = "";
+let cachedRegistryVersion = -1;
 
 /**
  * Load the live registry search index. Called lazily on first search.
  */
 function loadIndex(): SearchIndex {
+  const registryVersion = getRegistryVersion();
+  if (cachedIndex && cachedRegistryVersion === registryVersion) {
+    return cachedIndex;
+  }
   const documents = runtimeSearchDocuments();
-  const signature = searchDocumentSignature(documents);
-  if (cachedIndex && cachedIndexSignature === signature) return cachedIndex;
   cachedIndex = buildIndexFromDocuments(documents);
-  cachedIndexSignature = signature;
+  cachedRegistryVersion = registryVersion;
   return cachedIndex;
 }
 
@@ -162,23 +168,14 @@ function runtimeSearchDocuments(): CommandSearchDocument[] {
   return documents;
 }
 
-function searchDocumentSignature(
-  documents: readonly CommandSearchDocument[],
-): string {
-  return documents
-    .map(
-      (doc) =>
-        `${doc.site}/${doc.command}\u001f${doc.category ?? ""}\u001f${doc.description}`,
-    )
-    .join("\u001e");
-}
-
 export function buildIndexFromDocuments(
   searchDocuments: readonly CommandSearchDocument[],
 ): SearchIndex {
   const documents: Document[] = [];
+  const siteSet = new Set<string>();
 
   for (const doc of searchDocuments) {
+    siteSet.add(doc.site);
     const terms = tokenizeDocument(
       doc.site,
       doc.command,
@@ -195,6 +192,14 @@ export function buildIndexFromDocuments(
       termCount: terms.length,
     });
   }
+
+  const siteLookup = Object.fromEntries(
+    Array.from(siteSet, (site) => [site, true] as const),
+  );
+  const sitePhrases = Array.from(siteSet, (site) => ({
+    site,
+    phrase: normalizeSitePhrase(site),
+  })).filter((entry) => entry.phrase.includes(" "));
 
   const N = documents.length;
   const avgDl =
@@ -233,6 +238,8 @@ export function buildIndexFromDocuments(
     })),
     avgDl,
     N,
+    siteLookup,
+    sitePhrases,
   };
 }
 
@@ -520,8 +527,9 @@ function searchIndex(
     if (siteMatch) siteHints.push(siteMatch);
 
     // Check if this token is directly a known site
-    if (index.documents.some((d) => d.site === token.toLowerCase())) {
-      siteHints.push(token.toLowerCase());
+    const lowerToken = token.toLowerCase();
+    if (index.siteLookup[lowerToken]) {
+      siteHints.push(lowerToken);
     }
 
     // Check category alias
@@ -545,32 +553,21 @@ function searchIndex(
   }
 
   // If site hints exist, also add ALL commands for those sites
-  if (siteHints.length > 0) {
-    for (let i = 0; i < index.documents.length; i++) {
-      if (siteHints.includes(index.documents[i].site)) {
-        candidateSet.add(i);
-      }
-    }
-  }
-  if (sitePhraseHints.length > 0) {
-    for (let i = 0; i < index.documents.length; i++) {
-      if (sitePhraseHints.includes(index.documents[i].site)) {
-        candidateSet.add(i);
-      }
-    }
+  for (const siteHint of new Set([...siteHints, ...sitePhraseHints])) {
+    addSiteCandidates(index, siteHint, candidateSet);
   }
   if (queryTerms.length === 0 && categoryFilter) {
-    for (let i = 0; i < index.documents.length; i++) {
-      if (documentCategory(index.documents[i]) === categoryFilter) {
-        candidateSet.add(i);
-      }
-    }
+    addCategoryCandidates(index, categoryFilter, candidateSet);
   }
 
   if (candidateSet.size === 0) return [];
 
   // Step 4: Score candidates using hybrid BM25 + TF-IDF
+  const boundedLimit = Math.max(0, Math.floor(limit));
+  if (boundedLimit === 0) return [];
+  const shouldSortAll = boundedLimit >= candidateSet.size;
   const scored: Array<{ idx: number; score: number }> = [];
+  const topScored: Array<{ idx: number; score: number }> = [];
 
   for (const idx of candidateSet) {
     const doc = index.documents[idx];
@@ -607,12 +604,18 @@ function searchIndex(
     score += intentBoost(doc, queryTerms, [...siteHints, ...sitePhraseHints]);
     if (categoryFilter && queryTerms.length === 0) score += BOOST_CATEGORY;
 
-    if (score > 0) scored.push({ idx, score });
+    if (score <= 0) continue;
+    if (shouldSortAll) {
+      scored.push({ idx, score });
+    } else {
+      pushTopScore(topScored, { idx, score }, boundedLimit);
+    }
   }
 
   // Step 5: Sort and return top-K
-  scored.sort((a, b) => b.score - a.score);
-  const topK = scored.slice(0, limit);
+  const topK = shouldSortAll
+    ? scored.sort((a, b) => b.score - a.score).slice(0, boundedLimit)
+    : topScored;
 
   return topK.map(({ idx, score }) => {
     const doc = index.documents[idx];
@@ -625,6 +628,39 @@ function searchIndex(
       category: documentCategory(doc),
     };
   });
+}
+
+function addSiteCandidates(
+  index: SearchIndex,
+  site: string,
+  candidateSet: Set<number>,
+): void {
+  for (const docIdx of index.postings[site] ?? []) {
+    if (index.documents[docIdx]?.site === site) candidateSet.add(docIdx);
+  }
+}
+
+function addCategoryCandidates(
+  index: SearchIndex,
+  category: string,
+  candidateSet: Set<number>,
+): void {
+  for (const docIdx of index.postings[category] ?? []) {
+    const doc = index.documents[docIdx];
+    if (doc && documentCategory(doc) === category) candidateSet.add(docIdx);
+  }
+}
+
+function pushTopScore(
+  topScored: Array<{ idx: number; score: number }>,
+  candidate: { idx: number; score: number },
+  limit: number,
+): void {
+  let insertAt = topScored.findIndex((entry) => candidate.score > entry.score);
+  if (insertAt === -1) insertAt = topScored.length;
+  if (insertAt >= limit) return;
+  topScored.splice(insertAt, 0, candidate);
+  if (topScored.length > limit) topScored.pop();
 }
 
 function documentCategory(doc: SearchIndex["documents"][number]): string {
@@ -640,11 +676,9 @@ function deriveSitePhraseHints(index: SearchIndex, query: string): string[] {
   const normalizedQuery = normalizeSitePhrase(query);
   if (normalizedQuery.length === 0) return [];
 
-  const sites = new Set(index.documents.map((doc) => doc.site));
   const hints: string[] = [];
-  for (const site of sites) {
-    const phrase = normalizeSitePhrase(site);
-    if (phrase.includes(" ") && hasPhrase(normalizedQuery, phrase)) {
+  for (const { site, phrase } of index.sitePhrases) {
+    if (hasPhrase(normalizedQuery, phrase)) {
       hints.push(site);
     }
   }
@@ -676,4 +710,5 @@ function buildUsageExample(site: string, command: string): string {
  */
 export function invalidateCache(): void {
   cachedIndex = null;
+  cachedRegistryVersion = -1;
 }
