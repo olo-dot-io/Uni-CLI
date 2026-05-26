@@ -63,6 +63,17 @@ function newProgram(): Command {
   return program;
 }
 
+function expectedNativeOverlayProvider():
+  | "macos-appkit"
+  | "windows-win32"
+  | "linux-gtk"
+  | undefined {
+  if (process.platform === "darwin") return "macos-appkit";
+  if (process.platform === "win32") return "windows-win32";
+  if (process.platform === "linux") return "linux-gtk";
+  return undefined;
+}
+
 describe("unicli compute", () => {
   beforeEach(() => {
     cascadeMock.tryCascade.mockReset();
@@ -509,6 +520,12 @@ describe("unicli compute", () => {
   });
 
   it("click can opt into the system overlay executor and returns visual action evidence", async () => {
+    const expectedOverlayProvider = expectedNativeOverlayProvider();
+    if (!expectedOverlayProvider) {
+      throw new Error(
+        `No native overlay provider is registered for ${process.platform}`,
+      );
+    }
     actionExecutionMock.executeComputeAction.mockResolvedValue({
       result: ok({ transport: "desktop-ax" }),
       evidence: {
@@ -527,7 +544,7 @@ describe("unicli compute", () => {
           tool: "compute.click",
           action: "compute_click",
           overlay: {
-            provider: "macos-appkit",
+            provider: expectedOverlayProvider,
             status: "arrived",
             acknowledged_at_ms: 240,
           },
@@ -560,7 +577,7 @@ describe("unicli compute", () => {
       actionExecutionMock.executeComputeAction.mock.calls[0]?.[2],
     ).toMatchObject({
       tool: "compute.click",
-      overlayProvider: { provider: "macos-appkit" },
+      overlayProvider: { provider: expectedOverlayProvider },
     });
     const env = JSON.parse(cap.getStdout()) as Record<string, unknown>;
     expect(env.ok).toBe(true);
@@ -569,7 +586,7 @@ describe("unicli compute", () => {
       visual_action: {
         schema_version: 2,
         overlay: {
-          provider: "macos-appkit",
+          provider: expectedOverlayProvider,
           status: "arrived",
         },
       },
