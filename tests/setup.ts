@@ -2,10 +2,10 @@
  * Vitest globalSetup — ensures build artifacts that the runtime depends on
  * exist before any test runs.
  *
- * Why: src/discovery/search.ts reads dist/manifest-search.json at import time.
- * Without this, tests pass locally (stale dist/ residue) but fail in CI
- * (clean checkout), producing the exact class of environment-asymmetric
- * failures that the main verify script was papering over.
+ * Why: fast-path discovery tests read dist/manifest.json without booting the
+ * full adapter loader. Without this, tests pass locally (stale dist/ residue)
+ * but fail in CI (clean checkout), producing the exact class of
+ * environment-asymmetric failures that the main verify script was papering over.
  *
  * Contract: tests must be self-contained. If a test needs a build artifact,
  * it is this hook's job to ensure it, not the human's.
@@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
-const MANIFEST = join(ROOT, "dist", "manifest-search.json");
+const MANIFEST = join(ROOT, "dist", "manifest.json");
 
 export default function setup(): void {
   // Unblock the SSRF guard (assertSafeRequestUrl in src/engine/ssrf.ts)
@@ -35,7 +35,7 @@ export default function setup(): void {
   if (existsSync(MANIFEST)) return;
 
   process.stderr.write(
-    "[vitest setup] dist/manifest-search.json missing — running build:manifest\n",
+    "[vitest setup] dist/manifest.json missing — running build:manifest\n",
   );
 
   const result = spawnSync("npm", ["run", "--silent", "build:manifest"], {
@@ -47,7 +47,7 @@ export default function setup(): void {
   if (result.status !== 0) {
     throw new Error(
       `[vitest setup] build:manifest failed (exit ${result.status}). ` +
-        `Tests cannot run without the search manifest.`,
+        `Fast-path tests cannot run without the command manifest.`,
     );
   }
 }

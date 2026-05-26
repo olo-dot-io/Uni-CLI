@@ -1,8 +1,8 @@
 /**
  * @owner   scripts/build-manifest.js
- * @does    Build adapter discovery manifests, search index, and compact catalog.
+ * @does    Build adapter discovery manifests and compact catalog artifacts.
  * @needs   src/adapters YAML files, TypeScript adapter registrations
- * @feeds   dist/manifest.json, dist/manifest-search.json, dist/manifest-compact.txt
+ * @feeds   dist/manifest.json, dist/manifest-compact.txt
  * @breaks  Stale manifest metadata hides commands from CLI and docs discovery.
  */
 
@@ -437,110 +437,7 @@ writeFileSync(
   JSON.stringify(manifest, null, 2),
 );
 
-// ── Output 2: BM25 Search Index ─────────────────────────────────────────────
-// Mirrors the buildIndex() function from src/discovery/search.ts
-// but runs at build time in plain JS (no TypeScript import).
-
-// Minimal English stopwords — same set used in src/discovery tokenizers
-const DOC_STOPWORDS = new Set([
-  "the",
-  "a",
-  "an",
-  "of",
-  "for",
-  "and",
-  "or",
-  "in",
-  "to",
-  "on",
-  "by",
-  "is",
-  "it",
-  "be",
-  "as",
-  "at",
-  "so",
-  "we",
-  "he",
-  "do",
-  "no",
-  "if",
-  "up",
-  "my",
-]);
-
-// Keep alphanumeric, CJK (all planes incl. supplementary), Japanese kana, and whitespace
-const DOC_CLEAN_REGEX =
-  /[^a-z0-9\u3040-\u30ff\u31f0-\u31ff\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u{20000}-\u{2a6df}\u{2a700}-\u{2b73f}\u{2b740}-\u{2b81f}\u{2b820}-\u{2ceaf}\u{2ceb0}-\u{2ebef}\u{30000}-\u{3134f}\u{31350}-\u{323af}\s]/gu;
-
-function tokenizeDoc(site, command, description) {
-  const terms = [];
-  const siteParts = site.toLowerCase().split(/[-_]/);
-  terms.push(site.toLowerCase(), ...siteParts);
-
-  const cmdParts = command.toLowerCase().split(/[-_]/);
-  terms.push(command.toLowerCase(), ...cmdParts);
-
-  // NFKC normalize description (full-width → half-width, etc.)
-  const normalizedDesc = description.normalize("NFKC");
-
-  const descWords = normalizedDesc
-    .toLowerCase()
-    .replace(DOC_CLEAN_REGEX, " ")
-    .split(/\s+/)
-    .filter((w) => w.length > 1 && !DOC_STOPWORDS.has(w));
-  terms.push(...descWords);
-
-  const category = getCategory(site);
-  if (category !== "other") terms.push(category);
-
-  return terms;
-}
-
-const documents = [];
-for (const [site, info] of Object.entries(manifest.sites)) {
-  for (const cmd of info.commands) {
-    const terms = tokenizeDoc(site, cmd.name, cmd.description);
-    documents.push({
-      id: `${site}/${cmd.name}`,
-      site,
-      command: cmd.name,
-      description: cmd.description,
-      terms,
-    });
-  }
-}
-
-const N = documents.length;
-const avgDl =
-  N > 0 ? documents.reduce((sum, d) => sum + d.terms.length, 0) / N : 0;
-
-// Inverted index
-const postings = {};
-for (let i = 0; i < documents.length; i++) {
-  const seen = new Set();
-  for (const term of documents[i].terms) {
-    if (seen.has(term)) continue;
-    seen.add(term);
-    if (!postings[term]) postings[term] = [];
-    postings[term].push(i);
-  }
-}
-
-// IDF values
-const idf = {};
-for (const [term, docs] of Object.entries(postings)) {
-  const df = docs.length;
-  idf[term] = Math.log((N - df + 0.5) / (df + 0.5) + 1);
-}
-
-const searchIndex = { postings, idf, documents, avgDl, N };
-writeFileSync(
-  join(DIST_DIR, "manifest-search.json"),
-  JSON.stringify(searchIndex),
-);
-
-// ── Output 3: Compact catalog ───────────────────────────────────────────────
+// ── Output 2: Compact catalog ───────────────────────────────────────────────
 // Format: "category: site(cmd1, cmd2, ...), site2(cmd1, cmd2, ...)"
 // Target: ~2-3K tokens for AGENTS.md embedding
 
@@ -566,13 +463,8 @@ const cmdCount = Object.values(manifest.sites).reduce(
   (sum, s) => sum + s.commands.length,
   0,
 );
-const indexTerms = Object.keys(postings).length;
-
 console.log(
   `Manifest: ${siteCount} sites, ${cmdCount} commands → dist/manifest.json`,
-);
-console.log(
-  `Search index: ${indexTerms} terms, ${N} documents → dist/manifest-search.json`,
 );
 console.log(
   `Compact catalog: ${compactLines.length} categories → dist/manifest-compact.txt`,

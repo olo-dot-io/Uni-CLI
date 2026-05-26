@@ -1,7 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import { Command } from "commander";
 import { registerSearchCommand } from "../../../src/commands/search.js";
 import { validateEnvelope } from "../../../src/output/envelope.js";
+import {
+  loadAllAdapters,
+  loadTsAdapters,
+} from "../../../src/discovery/loader.js";
+import { invalidateCache } from "../../../src/discovery/search.js";
 
 function captureStdout(): {
   getStdout: () => string;
@@ -21,6 +26,12 @@ function captureStdout(): {
 }
 
 describe("unicli search", () => {
+  beforeAll(async () => {
+    loadAllAdapters();
+    await loadTsAdapters();
+    invalidateCache();
+  });
+
   function newProgram(): Command {
     const program = new Command();
     program.exitOverride();

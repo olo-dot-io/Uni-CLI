@@ -8,13 +8,20 @@
  *   - Edge cases (empty query, no results, single char)
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import {
   tokenizeQuery,
   expandToken,
   isCJKChar,
 } from "../../src/discovery/aliases.js";
-import { search, buildIndex } from "../../src/discovery/search.js";
+import {
+  search,
+  buildIndexFromDocuments,
+  invalidateCache,
+} from "../../src/discovery/search.js";
+import { registerAdapter } from "../../src/registry.js";
+import { AdapterType } from "../../src/types.js";
+import { loadAllAdapters, loadTsAdapters } from "../../src/discovery/loader.js";
 
 // ── Tokenizer Tests ─────────────────────────────────────────────────────────
 
@@ -142,23 +149,22 @@ describe("expandToken", () => {
 
 // ── Build Index Tests ───────────────────────────────────────────────────────
 
-describe("buildIndex", () => {
-  it("builds a valid index from manifest", () => {
-    const manifest = {
-      sites: {
-        twitter: {
-          commands: [
-            { name: "search", description: "Search tweets" },
-            { name: "trending", description: "Get trending topics" },
-          ],
-        },
-        bilibili: {
-          commands: [{ name: "download", description: "Download video" }],
-        },
+describe("buildIndexFromDocuments", () => {
+  it("builds a valid index from command documents", () => {
+    const index = buildIndexFromDocuments([
+      { site: "twitter", command: "search", description: "Search tweets" },
+      {
+        site: "twitter",
+        command: "trending",
+        description: "Get trending topics",
       },
-    };
+      {
+        site: "bilibili",
+        command: "download",
+        description: "Download video",
+      },
+    ]);
 
-    const index = buildIndex(manifest);
     expect(index.N).toBe(3);
     expect(index.documents).toHaveLength(3);
     expect(Object.keys(index.postings).length).toBeGreaterThan(0);
@@ -166,16 +172,46 @@ describe("buildIndex", () => {
     expect(index.avgDl).toBeGreaterThan(0);
   });
 
-  it("handles empty manifest", () => {
-    const index = buildIndex({ sites: {} });
+  it("handles empty command documents", () => {
+    const index = buildIndexFromDocuments([]);
     expect(index.N).toBe(0);
     expect(index.documents).toHaveLength(0);
   });
 });
 
-// ── Search Tests (Integration — uses real manifest) ─────────────────────────
+// ── Search Tests (Integration — uses real registry) ─────────────────────────
 
 describe("search", () => {
+  beforeAll(async () => {
+    loadAllAdapters();
+    await loadTsAdapters();
+    invalidateCache();
+  });
+
+  it("discovers commands registered after build time through the live registry", () => {
+    registerAdapter({
+      name: "runtime-only-discovery",
+      type: AdapterType.WEB_API,
+      category: "dev",
+      commands: {
+        probe: {
+          name: "probe",
+          description: "Runtime-only zetaquartz command discovery probe",
+          adapter_path: "src/adapters/runtime-only-discovery/probe.yaml",
+        },
+      },
+    });
+    invalidateCache();
+
+    const results = search("zetaquartz command discovery", 3);
+
+    expect(results[0]).toMatchObject({
+      site: "runtime-only-discovery",
+      command: "probe",
+      category: "dev",
+    });
+  });
+
   it("finds twitter trending for 推特热门", () => {
     const results = search("推特热门", 5);
     expect(results.length).toBeGreaterThan(0);

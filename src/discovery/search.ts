@@ -1,22 +1,18 @@
 /**
- * BM25-based bilingual search engine for command discovery.
- *
- * Replaces the naive `String.includes()` filter with a proper information
- * retrieval algorithm. Designed for ~1000 commands across ~200 sites.
- *
- * Architecture:
- *   1. Build-time: `scripts/build-manifest.js` generates the inverted index
- *      and IDF values, shipped as `dist/manifest-search.json`.
- *   2. Runtime: this module loads the index lazily on first search call,
- *      then scores queries using BM25 with bilingual keyword expansion.
- *
- * Performance: <10ms for 1000 documents on a cold index load. The inverted
- * index is ~50KB — small enough to hold in memory permanently.
+ * @owner   src/discovery/search.ts
+ * @does    Score command-intent queries against live registry or manifest command documents.
+ * @needs   ./aliases, ./intents, ./core-catalog, ./macos-dynamic, ../registry
+ * @feeds   src/commands/search.ts, src/mcp/handler.ts, src/fast-path/handlers/discovery.ts
+ * @breaks  Returns an empty result set when the registry/manifest has no matching commands.
+ * @invariants Runtime search uses the live registry; generated search-index artifacts are not a source of truth.
+ * @side-effects Caches an in-memory index by command-document signature; reads dynamic macOS data only when enabled.
+ * @perf    Cold index build is O(commands * terms); warm searches reuse the cache until documents change.
+ * @concurrency Module cache is process-local and rebuilt synchronously inside a search call.
+ * @test    tests/unit/search.test.ts, tests/unit/search-eval.test.ts, tests/unit/commands/search.test.ts
+ * @stability Public CLI/MCP discovery behavior.
+ * @since   0.223.4
  */
 
-import { readFileSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
 import {
   expandToken,
   tokenizeQuery,
@@ -34,6 +30,7 @@ import {
   coreDiscoveryCategory,
   listCoreDiscoveryCommands,
 } from "./core-catalog.js";
+import { listCommands } from "../registry.js";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -50,6 +47,13 @@ export interface SearchOptions {
   category?: string;
 }
 
+export interface CommandSearchDocument {
+  site: string;
+  command: string;
+  description: string;
+  category?: string;
+}
+
 /** One document in the search corpus: a single adapter command. */
 interface Document {
   id: string; // "site/command"
@@ -63,7 +67,7 @@ interface Document {
   termCount: number;
 }
 
-/** Serialized search index (generated at build time, loaded at runtime). */
+/** In-memory search index built from command documents. */
 export interface SearchIndex {
   /** Mapping: term → list of document indices that contain this term */
   postings: Record<string, number[]>;
@@ -82,16 +86,6 @@ export interface SearchIndex {
   avgDl: number;
   /** Total document count */
   N: number;
-}
-
-interface SearchManifest {
-  sites: Record<
-    string,
-    {
-      category?: string;
-      commands: Array<{ name: string; description: string }>;
-    }
-  >;
 }
 
 // ── BM25 Parameters ─────────────────────────────────────────────────────────
@@ -124,115 +118,82 @@ const BOOST_CATEGORY = 2.0; // Query token matches site's category
 // ── Index Management ────────────────────────────────────────────────────────
 
 let cachedIndex: SearchIndex | null = null;
+let cachedIndexSignature = "";
 
 /**
- * Resolve the path to the pre-built search index.
- * Falls back to building one on-the-fly from the manifest if the
- * pre-built index doesn't exist.
- */
-function getIndexPath(): string {
-  const __dirname = dirname(fileURLToPath(import.meta.url));
-  return join(__dirname, "..", "..", "dist", "manifest-search.json");
-}
-
-/**
- * Load or build the search index. Called lazily on first search.
+ * Load the live registry search index. Called lazily on first search.
  */
 function loadIndex(): SearchIndex {
-  if (cachedIndex) return cachedIndex;
-
-  const indexPath = getIndexPath();
-  if (existsSync(indexPath)) {
-    cachedIndex = augmentIndexWithCoreDocs(
-      JSON.parse(readFileSync(indexPath, "utf-8")) as SearchIndex,
-    );
-    return cachedIndex;
-  }
-
-  // Fallback: build index on-the-fly from manifest.json
-  cachedIndex = augmentIndexWithCoreDocs(buildIndexFromManifest());
+  const documents = runtimeSearchDocuments();
+  const signature = searchDocumentSignature(documents);
+  if (cachedIndex && cachedIndexSignature === signature) return cachedIndex;
+  cachedIndex = buildIndexFromDocuments(documents);
+  cachedIndexSignature = signature;
   return cachedIndex;
 }
 
-function augmentIndexWithCoreDocs(index: SearchIndex): SearchIndex {
-  const manifest: SearchManifest = { sites: {} };
+function runtimeSearchDocuments(): CommandSearchDocument[] {
   const seen = new Set<string>();
+  const documents: CommandSearchDocument[] = [];
 
-  for (const doc of index.documents) {
-    manifest.sites[doc.site] ??= {
-      ...(doc.category ? { category: doc.category } : {}),
-      commands: [],
-    };
-    manifest.sites[doc.site].commands.push({
-      name: doc.command,
-      description: doc.description,
+  for (const command of listCommands()) {
+    const id = `${command.site}/${command.command}`;
+    seen.add(id);
+    documents.push({
+      site: command.site,
+      command: command.command,
+      description: command.description,
+      category: command.category,
     });
-    seen.add(doc.id);
   }
 
   for (const doc of listCoreDiscoveryCommands()) {
     const id = `${doc.site}/${doc.command}`;
     if (seen.has(id)) continue;
-    manifest.sites[doc.site] ??= { category: doc.category, commands: [] };
-    manifest.sites[doc.site].commands.push({
-      name: doc.command,
+    seen.add(id);
+    documents.push({
+      site: doc.site,
+      command: doc.command,
       description: doc.description,
+      category: doc.category,
     });
   }
 
-  return buildIndex(manifest);
+  return documents;
 }
 
-/**
- * Build a search index from the manifest.json file.
- * Used when the pre-built search index doesn't exist (dev mode).
- */
-function buildIndexFromManifest(): SearchIndex {
-  const __dirname = dirname(fileURLToPath(import.meta.url));
-  const manifestPath = join(__dirname, "..", "..", "dist", "manifest.json");
-
-  if (!existsSync(manifestPath)) {
-    // No manifest either — search will silently return zero results.
-    // Emit an actionable hint to stderr so CI/dev failures point to the fix.
-    process.stderr.write(
-      "[unicli search] Missing dist/manifest-search.json and dist/manifest.json. " +
-        "Run: npm run build:manifest\n",
-    );
-    return { postings: {}, idf: {}, documents: [], avgDl: 0, N: 0 };
-  }
-
-  const manifest = JSON.parse(
-    readFileSync(manifestPath, "utf-8"),
-  ) as SearchManifest;
-
-  return buildIndex(manifest);
+function searchDocumentSignature(
+  documents: readonly CommandSearchDocument[],
+): string {
+  return documents
+    .map(
+      (doc) =>
+        `${doc.site}/${doc.command}\u001f${doc.category ?? ""}\u001f${doc.description}`,
+    )
+    .join("\u001e");
 }
 
-/**
- * Build a search index from a manifest object.
- * Exported for use by the build script.
- */
-export function buildIndex(manifest: SearchManifest): SearchIndex {
+export function buildIndexFromDocuments(
+  searchDocuments: readonly CommandSearchDocument[],
+): SearchIndex {
   const documents: Document[] = [];
 
-  for (const [site, info] of Object.entries(manifest.sites)) {
-    for (const cmd of info.commands) {
-      const terms = tokenizeDocument(
-        site,
-        cmd.name,
-        cmd.description ?? "",
-        info.category,
-      );
-      documents.push({
-        id: `${site}/${cmd.name}`,
-        site,
-        command: cmd.name,
-        description: cmd.description ?? "",
-        ...(info.category ? { category: info.category } : {}),
-        terms,
-        termCount: terms.length,
-      });
-    }
+  for (const doc of searchDocuments) {
+    const terms = tokenizeDocument(
+      doc.site,
+      doc.command,
+      doc.description,
+      doc.category,
+    );
+    documents.push({
+      id: `${doc.site}/${doc.command}`,
+      site: doc.site,
+      command: doc.command,
+      description: doc.description,
+      ...(doc.category ? { category: doc.category } : {}),
+      terms,
+      termCount: terms.length,
+    });
   }
 
   const N = documents.length;
@@ -273,6 +234,23 @@ export function buildIndex(manifest: SearchManifest): SearchIndex {
     avgDl,
     N,
   };
+}
+
+export function searchDocuments(
+  documents: readonly CommandSearchDocument[],
+  query: string,
+  limit = 5,
+  options: SearchOptions = {},
+): SearchResult[] {
+  const staticResults = searchIndex(
+    buildIndexFromDocuments(documents),
+    query,
+    limit,
+    options,
+  );
+  const dynamicResults = searchDynamicMacosIndex(query, limit, options);
+
+  return mergeSearchResults(staticResults, dynamicResults, limit);
 }
 
 // Minimal English stopwords — same set used in query tokenization
@@ -465,6 +443,14 @@ export function search(
   const staticResults = searchIndex(loadIndex(), query, limit, options);
   const dynamicResults = searchDynamicMacosIndex(query, limit, options);
 
+  return mergeSearchResults(staticResults, dynamicResults, limit);
+}
+
+function mergeSearchResults(
+  staticResults: SearchResult[],
+  dynamicResults: SearchResult[],
+  limit: number,
+): SearchResult[] {
   if (dynamicResults.length === 0) return staticResults;
 
   const byCommand = new Map<string, SearchResult>();
@@ -492,18 +478,19 @@ function searchDynamicMacosIndex(
   const docs = buildMacosDynamicSearchDocuments(discoverMacosDynamicData());
   if (docs.length === 0) return [];
 
-  const manifest: SearchManifest = {
-    sites: { macos: { category: "desktop", commands: [] } },
-  };
-
-  for (const doc of docs) {
-    manifest.sites.macos.commands.push({
-      name: doc.command,
-      description: doc.description,
-    });
-  }
-
-  return searchIndex(buildIndex(manifest), query, limit, options);
+  return searchIndex(
+    buildIndexFromDocuments(
+      docs.map((doc) => ({
+        site: doc.site,
+        command: doc.command,
+        description: doc.description,
+        category: "desktop",
+      })),
+    ),
+    query,
+    limit,
+    options,
+  );
 }
 
 function searchIndex(

@@ -1,12 +1,22 @@
 /**
- * Fast-path discovery handlers — list / search / describe / repair.
- *
- * These respond to the agent surface from the manifest alone, with no
- * Commander tree or adapter loader involvement. Each returns true if the
- * fast path took ownership of the call, false to fall through.
+ * @owner   src/fast-path/handlers/discovery.ts
+ * @does    Serve list/search/describe/repair from the generated manifest without booting Commander or adapters.
+ * @needs   ../../discovery/search, ../../discovery/core-catalog, ../../discovery/macos-dynamic, ../manifest, ../render
+ * @feeds   src/fast-path.ts
+ * @breaks  Sets process.exitCode for invalid args or empty searches; propagates unreadable manifest errors.
+ * @invariants Fast-path search shares the canonical scorer and owns only manifest-to-document projection.
+ * @side-effects Writes CLI output through Io and may set process.exitCode.
+ * @perf    Keeps startup bounded by reading compact manifest data instead of loading adapters.
+ * @concurrency No shared mutable state beyond process.exitCode.
+ * @test    tests/unit/fast-path.test.ts, tests/unit/search.test.ts
+ * @stability Public CLI fast-path discovery behavior.
+ * @since   0.223.4
  */
 
-import { search } from "../../discovery/search.js";
+import {
+  searchDocuments,
+  type CommandSearchDocument,
+} from "../../discovery/search.js";
 import {
   getCoreDiscoveryCommand,
   listCoreDiscoveryCommands,
@@ -24,7 +34,7 @@ import {
   resolveOperationAdapterPath,
   resolveOperationTargetSurface,
 } from "../../engine/operation-policy.js";
-import { readManifest } from "../manifest.js";
+import { readManifest, type Manifest } from "../manifest.js";
 import type { ParsedArgv } from "../parsed-argv.js";
 import { evaluateManifestOperationPolicy } from "../policy.js";
 import {
@@ -193,7 +203,12 @@ export function handleSearch(parsed: ParsedArgv, io: Io): boolean {
   }
 
   const effectiveQuery = [category, query].filter(Boolean).join(" ");
-  const results = search(query, limit, { category });
+  const results = searchDocuments(
+    manifestSearchDocuments(readManifest()),
+    query,
+    limit,
+    { category },
+  );
   if (results.length === 0) {
     io.stderr(`No commands found for: ${effectiveQuery}`);
     process.exitCode = 66;
@@ -217,6 +232,37 @@ export function handleSearch(parsed: ParsedArgv, io: Io): boolean {
     startedAt,
   );
   return true;
+}
+
+function manifestSearchDocuments(manifest: Manifest): CommandSearchDocument[] {
+  const documents: CommandSearchDocument[] = [];
+  const seen = new Set<string>();
+
+  for (const [site, info] of Object.entries(manifest.sites)) {
+    for (const command of info.commands) {
+      const id = `${site}/${command.name}`;
+      seen.add(id);
+      documents.push({
+        site,
+        command: command.name,
+        description: command.description ?? "",
+        category: info.category,
+      });
+    }
+  }
+
+  for (const command of listCoreDiscoveryCommands()) {
+    const id = `${command.site}/${command.command}`;
+    if (seen.has(id)) continue;
+    documents.push({
+      site: command.site,
+      command: command.command,
+      description: command.description,
+      category: command.category,
+    });
+  }
+
+  return documents;
 }
 
 export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {

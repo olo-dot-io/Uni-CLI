@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-05-26 — Live Registry Search Rewrite
+
+- Demolished the generated runtime search-index path: `scripts/build-manifest.js` no longer writes `dist/manifest-search.json`, and runtime discovery no longer reads or falls back to generated BM25 artifacts.
+- Root cause removed: search had a second source of truth separate from command creation/invocation. Generated manifest search could miss runtime/user-registered commands that the live registry could invoke, so discovery and execution were not a closed loop.
+- Rebuilt `src/discovery/search.ts` around `CommandSearchDocument` inputs: normal CLI/MCP search indexes the live registry plus core commands, while fast-path search projects `dist/manifest.json` into the same scorer instead of owning separate search semantics.
+- Added a red regression proving a runtime-only command is discoverable after registration; updated direct search, command, and MCP tests to load the live registry boundary used by real CLI/MCP startup.
+- Experiment ladder: red runtime-only search test, targeted search/fast-path/MCP/command suites, formatter/typecheck/lint, one failed then three passing full `npm run verify` runs, `npm run docs:build`, built CLI self-use for Twitter/social search, scholarly category search, and `architecture audit`, plus `test ! -e dist/manifest-search.json`.
+- Result: `npm run verify` and `npm run docs:build` pass. Search eval reports 73.49% Top-1, 83.47% Top-3, 85.76% Top-5, 71.58% Chinese Top-5, and 91.82% English Top-5 against the live registry.
+- Residual risk: this proves in-repo command discovery, fast-path projection, MCP search, adapter conformance, generated docs, and absence of the old artifact. It does not prove every live third-party command succeeds against current upstream network/auth/UI conditions.
+
 ## 2026-05-26 — Architecture Tree and Repairability Audit
 
 - Added the callable `architecture tree` and `architecture audit` commands so agents can inspect Uni-CLI's first-class architecture roots, command lifecycle, local-computer-use coverage, second-class surfaces, and per-command repair source paths through the normal CLI envelope.

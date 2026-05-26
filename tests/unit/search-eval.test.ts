@@ -10,8 +10,9 @@
  * Target: Top-1 > 35%, Top-3 > 65%, Top-5 > 80%
  */
 
-import { describe, it, expect } from "vitest";
-import { search } from "../../src/discovery/search.js";
+import { describe, it, expect, beforeAll } from "vitest";
+import { search, invalidateCache } from "../../src/discovery/search.js";
+import { loadAllAdapters, loadTsAdapters } from "../../src/discovery/loader.js";
 
 interface EvalCase {
   query: string;
@@ -822,6 +823,12 @@ function runEval(
 
 describe("Search Engine Evaluation", () => {
   const total = EVAL_CASES.length;
+
+  beforeAll(async () => {
+    loadAllAdapters();
+    await loadTsAdapters();
+    invalidateCache();
+  });
 
   it(`has ${total} eval cases (target: 500+)`, () => {
     expect(total).toBeGreaterThanOrEqual(500);

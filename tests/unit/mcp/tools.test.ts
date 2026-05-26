@@ -13,7 +13,12 @@ import {
 } from "../../../src/mcp/tools.js";
 import { buildHandler } from "../../../src/mcp/handler.js";
 import { registerAdapter } from "../../../src/registry.js";
-import { primeKernelCache } from "../../../src/discovery/loader.js";
+import {
+  loadAllAdapters,
+  loadTsAdapters,
+  primeKernelCache,
+} from "../../../src/discovery/loader.js";
+import { invalidateCache } from "../../../src/discovery/search.js";
 import { AdapterType } from "../../../src/types.js";
 import type { AdapterManifest } from "../../../src/types.js";
 
@@ -66,11 +71,14 @@ const ADAPTER_C: AdapterManifest = {
   },
 };
 
-beforeAll(() => {
+beforeAll(async () => {
+  loadAllAdapters();
+  await loadTsAdapters();
   registerAdapter(ADAPTER_A);
   registerAdapter(ADAPTER_B);
   registerAdapter(ADAPTER_C);
   primeKernelCache();
+  invalidateCache();
 });
 
 afterEach(() => {
