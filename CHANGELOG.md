@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.224.0] — 2026-05-26 — Apollo · Armstrong
+
+### Minor Changes
+
+- cd40064: Architecture and dependency refresh release: callable architecture audit/tree, live registry-backed search with registry-version caching, local computer-use action evidence, refreshed command discovery semantics, and the latest `undici`, `ws`, and `zod` releases. The runtime floor is now Node.js 22.19+ because `undici@8` requires that engine baseline.
+
 All notable changes to Uni-CLI are documented here.
 Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributing/COPY.md) for the codename system.
 

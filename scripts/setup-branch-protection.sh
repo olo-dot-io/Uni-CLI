@@ -21,12 +21,11 @@ BRANCH="${BRANCH:-main}"
 REQUIRED_CHECKS=(
   "PR Title"
   "Verify (ubuntu-latest / Node 22)"
-  "Verify (ubuntu-latest / Node 20)"
-  "Verify (macos-14 / Node 22)"
-  "Verify (macos-14 / Node 20)"
   "Verify (windows-latest / Node 22)"
-  "Adapter Tests"
-  "Docs Build"
+  "Verify (macos-14 / Node 22)"
+  "Rust Sidecars (x86_64-apple-darwin)"
+  "Rust Sidecars (x86_64-pc-windows-msvc)"
+  "Rust Sidecars (x86_64-unknown-linux-gnu)"
   "Verify Changesets"
 )
 

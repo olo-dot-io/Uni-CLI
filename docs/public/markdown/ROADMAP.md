@@ -7,7 +7,7 @@
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Current: v0.223.4 — Apollo · Lovell. <!-- STATS:site_count -->311<!-- /STATS --> sites, <!-- STATS:command_count -->1753<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps.
+> Current: v0.224.0 — Apollo · Armstrong. <!-- STATS:site_count -->311<!-- /STATS --> sites, <!-- STATS:command_count -->1753<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction. Historical release notes live in
 `CHANGELOG.md`; they do not belong in the roadmap.

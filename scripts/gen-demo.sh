@@ -23,7 +23,7 @@ if ! command -v asciinema >/dev/null 2>&1; then
 fi
 
 if ! command -v npx >/dev/null 2>&1; then
-  echo "gen-demo: npx not found. Install Node.js 20+."
+  echo "gen-demo: npx not found. Install Node.js 22.19+."
   exit 1
 fi
 

@@ -18,7 +18,7 @@ npm install -g @zenalexa/unicli
 unicli --version
 ```
 
-需要 Node.js 20 或更高版本。
+需要 Node.js 22.19 或更高版本。
 
 所有命令都长成同一种形状：
 

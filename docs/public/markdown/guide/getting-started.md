@@ -22,7 +22,7 @@ npm install -g @zenalexa/unicli
 unicli --version
 ```
 
-Requires Node.js 20 or later.
+Requires Node.js 22.19 or later.
 
 Every command follows the same shape:
 

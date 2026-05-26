@@ -91,7 +91,7 @@ that cache the tool list aggressively.
 - `tests/unit/mcp-oauth.test.ts` — PKCE flow.
 - `tests/unit/streamable-http.test.ts` — HTTP + SSE.
 
-All four run on every CI cell (Node 20/22 x 3 OSes).
+All four run on every Node 22 CI cell across Linux, macOS, and Windows.
 
 ## Local dev
 

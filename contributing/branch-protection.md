@@ -6,32 +6,27 @@ workflow YAML — it lives on the repo's admin settings. This doc
 documents the required rules and ships a shell script
 (`scripts/setup-branch-protection.sh`) that applies them via `gh api`.
 
-## Required status checks (10 + 1 nightly)
+## Required status checks (8 + nightly signals)
 
-| #   | Check                                    | Source                                |
-| --- | ---------------------------------------- | ------------------------------------- |
-| 1   | `PR Title`                               | `.github/workflows/ci.yml`            |
-| 2   | `Verify (ubuntu-latest / Node 22)`       | `.github/workflows/ci.yml` verify job |
-| 3   | `Verify (ubuntu-latest / Node 20)`       | same, matrix cell                     |
-| 4   | `Verify (macos-14 / Node 22)`            | same, matrix cell                     |
-| 5   | `Verify (macos-14 / Node 20)`            | same, matrix cell                     |
-| 6   | `Verify (windows-latest / Node 22)`      | same, matrix cell                     |
-| 7   | `Adapter Tests`                          | `.github/workflows/ci.yml`            |
-| 8   | `Docs Build`                             | `.github/workflows/ci.yml`            |
-| 9   | `Verify Changesets`                      | `.github/workflows/ci.yml`            |
-| 10  | `unicli-lint` _(runs inside Verify job)_ | `npm run lint:adapters`               |
+| #   | Check                                      | Source                                |
+| --- | ------------------------------------------ | ------------------------------------- |
+| 1   | `PR Title`                                 | `.github/workflows/ci.yml`            |
+| 2   | `Verify (ubuntu-latest / Node 22)`         | `.github/workflows/ci.yml` verify job |
+| 3   | `Verify (windows-latest / Node 22)`        | same, matrix cell                     |
+| 4   | `Verify (macos-14 / Node 22)`              | same, matrix cell                     |
+| 5   | `Rust Sidecars (x86_64-apple-darwin)`      | `.github/workflows/ci.yml`            |
+| 6   | `Rust Sidecars (x86_64-pc-windows-msvc)`   | same, matrix cell                     |
+| 7   | `Rust Sidecars (x86_64-unknown-linux-gnu)` | same, matrix cell                     |
+| 8   | `Verify Changesets`                        | `.github/workflows/ci.yml`            |
 
 Nightly-only (not required for merge, but monitored):
 
 - `Nightly Conformance` — runs on schedule, uploads
   `conformance-report.json` as artifact. See contributing/adapter.md
   for the probe semantics.
-
-The Windows × Node 20 cell is NOT in the required set because the
-Windows runner has occasional PATH/tool flakiness on older Node
-toolchains; it still runs and blocks the PR if it fails (fail-fast
-disabled), but a transient Windows failure on Node 20 alone should
-not block a merge.
+- `Adapter Health (spec gate)` — runs on schedule or manually with retries.
+  PR adapter health remains a soft signal because live third-party surfaces
+  can drift independently of project correctness.
 
 ## Other required settings
 
@@ -94,13 +89,13 @@ exist — first entry opens the log).
   shipping to users.
 - `verify-changesets` — release hygiene; every user-facing change
   has a note.
-- `Docs Build` — VitePress routes, sidebars, and Markdown must build before
-  docs-site changes merge.
 - `PR Title` — merge commit subjects come from PR titles, so titles
   must follow the same conventional-commit contract as local commits.
-- Matrix (Node × OS) — catches platform-specific regressions early.
+- Matrix (Node 22 × OS) — catches platform-specific regressions early.
+- Rust sidecars — keep macOS, Windows, and Linux accessibility helpers
+  buildable before merge.
 - Nightly conformance — catches adapter drift across 880+ YAML files
   without blocking individual PRs.
 
 The cost is ~3 minutes of CI per PR. We keep the cost low by running
-the six verify cells in parallel.
+the verify and sidecar cells in parallel.

@@ -28,7 +28,7 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/@zenalexa/unicli"><img alt="npm" src="https://img.shields.io/npm/v/@zenalexa/unicli?style=flat-square"></a>
   <a href="./LICENSE"><img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square"></a>
-  <img alt="Node 20+" src="https://img.shields.io/badge/node-20%2B-339933?style=flat-square&logo=node.js&logoColor=white">
+  <img alt="Node 22.19+" src="https://img.shields.io/badge/node-22.19%2B-339933?style=flat-square&logo=node.js&logoColor=white">
   <img alt="MCP" src="https://img.shields.io/badge/MCP-2025--11--25-6f42c1?style=flat-square">
   <img alt="AgentEnvelope v2" src="https://img.shields.io/badge/AgentEnvelope-v2-0f766e?style=flat-square">
   <img alt="本地 computer use" src="https://img.shields.io/badge/local_computer_use-macOS_AX-111827?style=flat-square">
@@ -496,5 +496,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v0.223.4 — Apollo · Lovell</sub>
+  <sub>v0.224.0 — Apollo · Armstrong</sub>
 </p>

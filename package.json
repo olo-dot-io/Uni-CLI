@@ -1,6 +1,6 @@
 {
   "name": "@zenalexa/unicli",
-  "version": "0.223.4",
+  "version": "0.224.0",
   "description": "Operations substrate for agents that use real software: web, browsers, desktop apps, local tools, MCP, policy, evidence, and self-repair.",
   "packageManager": "npm@11.14.0",
   "type": "module",
@@ -227,7 +227,7 @@
     "url": "https://github.com/olo-dot-io/Uni-CLI/issues"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.19.0"
   },
   "dependencies": {
     "ajv": "^8.20.0",
@@ -239,9 +239,9 @@
     "js-yaml": "^4.1.1",
     "jsonpath-plus": "^10.4.0",
     "turndown": "^7.2.4",
-    "undici": "^7.25.0",
-    "ws": "^8.20.0",
-    "zod": "^4.3.6"
+    "undici": "^8.3.0",
+    "ws": "^8.21.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@ai-sdk/openai-compatible": "^2.0.41",

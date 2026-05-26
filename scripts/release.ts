@@ -3,6 +3,9 @@
  *
  * Reads version from package.json and updates ALL documentation references.
  * Run after `npm version X.Y.Z` to propagate the new version everywhere.
+ * Mainline publishing remains guarded by `npm run release` and
+ * `npm run release:check`; this script only writes deterministic metadata and
+ * must also work on release branches before they are merged.
  *
  * Usage: npx tsx scripts/release.ts --codename "Program · Astronaut" [--dry-run]
  *        RELEASE_CODENAME="Program · Astronaut" npx tsx scripts/release.ts
@@ -31,7 +34,6 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { assertReleaseMainline } from "./release-mainline-check.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -44,10 +46,6 @@ const version: string = pkg.version;
 // Parse CLI args
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
-
-if (!dryRun) {
-  assertReleaseMainline();
-}
 
 function readArgValue(name: string): string | undefined {
   const idx = args.indexOf(name);
