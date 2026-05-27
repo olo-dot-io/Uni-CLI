@@ -10,7 +10,7 @@ The current generated catalog is the source of truth:
 **<span><!-- STATS:command_count -->1756<!-- /STATS --></span> commands**,
 **<span><!-- STATS:adapter_count_total -->1212<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->8967<!-- /STATS --></span> tests** in v0.224.0.
+and **<span><!-- STATS:test_count -->8969<!-- /STATS --></span> tests** in v0.224.0.
 
 ## Architectural Thesis
 
