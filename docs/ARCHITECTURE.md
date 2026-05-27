@@ -6,11 +6,11 @@ It is a searchable command contract that can be invoked, governed, observed,
 recorded, repaired, and re-exposed through multiple agent runtimes.
 
 The current generated catalog is the source of truth:
-**<span><!-- STATS:site_count -->311<!-- /STATS --></span> sites**,
-**<span><!-- STATS:command_count -->1756<!-- /STATS --></span> commands**,
-**<span><!-- STATS:adapter_count_total -->1212<!-- /STATS --></span> adapters**,
+**<span><!-- STATS:site_count -->312<!-- /STATS --></span> sites**,
+**<span><!-- STATS:command_count -->1763<!-- /STATS --></span> commands**,
+**<span><!-- STATS:adapter_count_total -->1213<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->8969<!-- /STATS --></span> tests** in v0.224.0.
+and **<span><!-- STATS:test_count -->8978<!-- /STATS --></span> tests** in v0.224.0.
 
 ## Architectural Thesis
 

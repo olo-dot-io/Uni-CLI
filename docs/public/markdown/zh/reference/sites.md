@@ -11,7 +11,7 @@
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：311 个站点，1756 条命令。
+这个目录来自适配器 manifest：312 个站点，1763 条命令。
 
 | 站点 | 接口类型 | 命令数 | 认证 | 示例命令 |
 | --- | --- | ---: | --- | --- |
@@ -170,6 +170,7 @@
 | maimai | browser | 2 | 是 | unicli maimai search<br>unicli maimai search-talents |
 | mangadex | web-api | 2 | 否 | unicli mangadex manga<br>unicli mangadex authors |
 | maoyan | web-api | 2 | 是 | unicli maoyan hot<br>unicli maoyan search |
+| marxists-cn | web-api | 7 | 否 | unicli marxists-cn index<br>unicli marxists-cn reading-list<br>unicli marxists-cn western-marxism |
 | mastodon | web-api | 5 | 否 | unicli mastodon search<br>unicli mastodon timeline<br>unicli mastodon trending |
 | maven | web-api | 3 | 否 | unicli maven info<br>unicli maven search<br>unicli maven artifact |
 | mdn | web-api | 1 | 否 | unicli mdn search |

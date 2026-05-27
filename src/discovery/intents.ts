@@ -19,6 +19,7 @@ const BOOST_SCHOLARLY_PDF = 10.0;
 const BOOST_SCHOLARLY_VENUE_SOURCE = 38.0;
 const BOOST_COMPUTE_CONTEXT = 52.0;
 const BOOST_SOCIAL_USER_TIMELINE_INTENT = 18.0;
+const BOOST_MARXISTS_ARCHIVE_INTENT = 50.0;
 
 const SCHOLARLY_WORKFLOW_COMMANDS = new Set([
   "pdf/read",
@@ -41,6 +42,7 @@ export function intentBoost(
     weatherIntentBoost(doc, queryTerms) +
     computeContextIntentBoost(doc, queryTerms) +
     socialUserTimelineIntentBoost(doc, queryTerms) +
+    marxistsArchiveIntentBoost(doc, queryTerms) +
     scholarlyIntentBoost(doc, queryTerms, siteHints)
   );
 }
@@ -262,6 +264,125 @@ function socialUserTimelineIntentBoost(
   return userTimelineIntent && userTimelineCommand
     ? BOOST_SOCIAL_USER_TIMELINE_INTENT
     : 0;
+}
+
+function marxistsArchiveIntentBoost(
+  doc: SearchIndex["documents"][number],
+  queryTerms: string[],
+): number {
+  if (doc.site !== "marxists-cn") return 0;
+  const terms = new Set(queryTerms);
+  const marxistSubjectIntent = hasAny(terms, [
+    "marxism",
+    "marxist",
+    "marxists",
+    "marx",
+    "engels",
+    "lenin",
+    "socialism",
+    "communism",
+    "dialectics",
+    "materialism",
+    "western",
+    "western-marxism",
+    "frankfurt",
+    "gramsci",
+    "lukacs",
+    "korsch",
+    "benjamin",
+    "adorno",
+    "marcuse",
+    "althusser",
+    "mandel",
+  ]);
+  const archiveRetrievalIntent = hasAny(terms, [
+    "archive",
+    "library",
+    "reference",
+    "philosophy",
+    "theory",
+    "search",
+    "find",
+    "query",
+    "lookup",
+    "retrieve",
+    "read",
+    "content",
+    "text",
+    "book",
+    "books",
+    "work",
+    "works",
+    "author",
+    "authors",
+    "people",
+    "famous",
+    "classic",
+    "canonical",
+    "canon",
+    "reading",
+    "list",
+    "reading-list",
+  ]);
+  if (!marxistSubjectIntent || !archiveRetrievalIntent) return 0;
+
+  const westernMarxismIntent = hasAny(terms, [
+    "western",
+    "western-marxism",
+    "frankfurt",
+    "gramsci",
+    "lukacs",
+    "korsch",
+    "benjamin",
+    "adorno",
+    "marcuse",
+    "althusser",
+    "mandel",
+  ]);
+  const canonicalReadingIntent = hasAny(terms, [
+    "famous",
+    "classic",
+    "canonical",
+    "canon",
+    "reading",
+    "list",
+    "authors",
+    "people",
+    "works",
+    "books",
+  ]);
+  if (
+    westernMarxismIntent &&
+    canonicalReadingIntent &&
+    doc.command === "western-marxism"
+  ) {
+    return BOOST_MARXISTS_ARCHIVE_INTENT * 1.18;
+  }
+  if (
+    westernMarxismIntent &&
+    canonicalReadingIntent &&
+    doc.command === "reading-list"
+  ) {
+    return BOOST_MARXISTS_ARCHIVE_INTENT * 1.04;
+  }
+  if (doc.command === "search") return BOOST_MARXISTS_ARCHIVE_INTENT;
+  if (
+    hasAny(terms, ["author", "authors", "people", "marx", "engels", "lenin"]) &&
+    doc.command === "authors"
+  ) {
+    return BOOST_MARXISTS_ARCHIVE_INTENT * 0.84;
+  }
+  if (
+    hasAny(terms, ["book", "books", "work", "works", "text"]) &&
+    doc.command === "works"
+  ) {
+    return BOOST_MARXISTS_ARCHIVE_INTENT * 0.76;
+  }
+  if (hasAny(terms, ["read", "content", "text"]) && doc.command === "read") {
+    return BOOST_MARXISTS_ARCHIVE_INTENT * 0.7;
+  }
+  if (doc.command === "index") return BOOST_MARXISTS_ARCHIVE_INTENT * 0.58;
+  return 0;
 }
 
 function scholarlyIntentBoost(

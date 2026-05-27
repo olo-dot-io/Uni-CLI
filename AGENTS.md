@@ -36,7 +36,7 @@ it starts only the Uni-CLI automation profile.
 
 <!-- BEGIN COUNTS -->
 
-> <!-- STATS:site_count -->311<!-- /STATS --> sites, <!-- STATS:command_count -->1756<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> <!-- STATS:site_count -->312<!-- /STATS --> sites, <!-- STATS:command_count -->1763<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 
@@ -44,7 +44,7 @@ it starts only the Uni-CLI automation profile.
 
 ## What You Can Do
 
-### Web (181+ sites)
+### Web (182+ sites)
 
 **Chinese**: zhihu (27), xiaohongshu (22), bilibili (20), douyin (13), douban (12), v2ex (12), weibo (12), linux-do (11), +29 more (`unicli list`)
 
@@ -58,7 +58,7 @@ it starts only the Uni-CLI automation profile.
 
 **News**: hackernews (11), bloomberg (10), 36kr (5), bbc (5), reuters (5), ithome (3), cnn (2), infoq (2), +3 more (`unicli list`)
 
-**Reference**: spotify (23), netease-music (17), linear (10), imdb (7), bitwarden (7), todoist (7), wikipedia (6), anilist (5), +14 more (`unicli list`)
+**Reference**: spotify (23), netease-music (17), linear (10), imdb (7), marxists-cn (7), bitwarden (7), todoist (7), wikipedia (6), +15 more (`unicli list`)
 
 ### macOS (60 cmds)
 

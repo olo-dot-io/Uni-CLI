@@ -278,6 +278,30 @@ describe("search", () => {
     });
   });
 
+  it("routes Marxism philosophy archive queries to marxists-cn", () => {
+    const results = search("马克思主义 哲学 文库 检索", 5);
+    const commands = results.map((r) => `${r.site}/${r.command}`);
+
+    expect(commands.slice(0, 3)).toEqual(
+      expect.arrayContaining(["marxists-cn/search"]),
+    );
+    expect(results.find((r) => r.site === "marxists-cn")?.category).toBe(
+      "reference",
+    );
+  });
+
+  it("routes Western Marxism reading-list intent to marxists-cn", () => {
+    const results = search("读 西马 著名人物 著名著作", 5);
+
+    expect(results[0]).toMatchObject({
+      site: "marxists-cn",
+      command: "western-marxism",
+    });
+    expect(results.map((r) => `${r.site}/${r.command}`)).toContain(
+      "marxists-cn/reading-list",
+    );
+  });
+
   it("returns scores as numbers", () => {
     const results = search("youtube", 3);
     for (const r of results) {

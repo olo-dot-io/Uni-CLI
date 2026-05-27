@@ -4,9 +4,9 @@ This file is generated from the same VitePress site map as the public docs.
 
 ## Snapshot
 
-- Sites: 311
-- Commands: 1756
-- Adapters: 1212
+- Sites: 312
+- Commands: 1763
+- Adapters: 1213
 - Pipeline steps: 103
 
 ---
@@ -65,10 +65,10 @@ Agent execution does not need a longer resident tool list or another website wra
 
 ## Coverage
 
-- Sites and tools: 311
-- Commands: 1756
+- Sites and tools: 312
+- Commands: 1763
 - Pipeline steps: 103
-- Tests: 8967
+- Tests: 8978
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 
@@ -434,7 +434,7 @@ The cascade order is `public → cookie → header → intercept → ui`. On the
 
 Every command returns a v2 AgentEnvelope — the same shape on success or failure.
 Agents parse one schema across
-<span><!-- STATS:command_count -->1756<!-- /STATS --></span> commands.
+<span><!-- STATS:command_count -->1763<!-- /STATS --></span> commands.
 
 ```json
 {
@@ -525,8 +525,8 @@ $ unicli hackernews top -n 10 -f json \
 ```
 
 That is the entire interaction model. One command shape across
-<span><!-- STATS:site_count -->311<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1756<!-- /STATS --></span> commands. One error
+<span><!-- STATS:site_count -->312<!-- /STATS --></span> sites and
+<span><!-- STATS:command_count -->1763<!-- /STATS --></span> commands. One error
 envelope across every failure. One self-repair path across every adapter.
 
 ## Further reading
@@ -1141,7 +1141,7 @@ Quick answers to the questions agents and developers ask most often. Each answer
 
 ## What is Uni-CLI?
 
-Uni-CLI is the operations substrate for agents that use real software. It turns websites, logged-in browsers, desktop apps, local tools, MCP servers, and system capabilities into searchable, governed, repairable operations. One path discovers capabilities, executes with policy, returns evidence, and self-repairs operations across <span><!-- STATS:site_count -->311<!-- /STATS --></span> sites and tools.
+Uni-CLI is the operations substrate for agents that use real software. It turns websites, logged-in browsers, desktop apps, local tools, MCP servers, and system capabilities into searchable, governed, repairable operations. One path discovers capabilities, executes with policy, returns evidence, and self-repairs operations across <span><!-- STATS:site_count -->312<!-- /STATS --></span> sites and tools.
 
 ## How is Uni-CLI different from a browser automation library?
 
@@ -1161,7 +1161,7 @@ Any runtime that can spawn a subprocess can use Uni-CLI directly. Uni-CLI also e
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.224.0 ships a generated catalog with <span><!-- STATS:site_count -->311<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1756<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1212<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8967<!-- /STATS --></span> tests. The headline is the contract: search, policy, evidence, repair, and the same AgentEnvelope across web, browser, desktop, local tools, and protocols.
+v0.224.0 ships a generated catalog with <span><!-- STATS:site_count -->312<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1763<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1213<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8978<!-- /STATS --></span> tests. The headline is the contract: search, policy, evidence, repair, and the same AgentEnvelope across web, browser, desktop, local tools, and protocols.
 
 ## Can Uni-CLI download papers and read local PDFs?
 
@@ -1994,7 +1994,7 @@ running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 311 sites, 1756 commands.
+This catalog is generated from the adapter manifest: 312 sites, 1763 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -2153,6 +2153,7 @@ This catalog is generated from the adapter manifest: 311 sites, 1756 commands.
 | maimai | browser | 2 | yes | unicli maimai search<br>unicli maimai search-talents |
 | mangadex | web-api | 2 | no | unicli mangadex manga<br>unicli mangadex authors |
 | maoyan | web-api | 2 | yes | unicli maoyan hot<br>unicli maoyan search |
+| marxists-cn | web-api | 7 | no | unicli marxists-cn index<br>unicli marxists-cn reading-list<br>unicli marxists-cn western-marxism |
 | mastodon | web-api | 5 | no | unicli mastodon search<br>unicli mastodon timeline<br>unicli mastodon trending |
 | maven | web-api | 3 | no | unicli maven info<br>unicli maven search<br>unicli maven artifact |
 | mdn | web-api | 1 | no | unicli mdn search |
@@ -4218,11 +4219,11 @@ It is a searchable command contract that can be invoked, governed, observed,
 recorded, repaired, and re-exposed through multiple agent runtimes.
 
 The current generated catalog is the source of truth:
-**<span><!-- STATS:site_count -->311<!-- /STATS --></span> sites**,
-**<span><!-- STATS:command_count -->1756<!-- /STATS --></span> commands**,
-**<span><!-- STATS:adapter_count_total -->1212<!-- /STATS --></span> adapters**,
+**<span><!-- STATS:site_count -->312<!-- /STATS --></span> sites**,
+**<span><!-- STATS:command_count -->1763<!-- /STATS --></span> commands**,
+**<span><!-- STATS:adapter_count_total -->1213<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->8967<!-- /STATS --></span> tests** in v0.224.0.
+and **<span><!-- STATS:test_count -->8978<!-- /STATS --></span> tests** in v0.224.0.
 
 ## Architectural Thesis
 
@@ -4816,7 +4817,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Current: v0.224.0 — Apollo · Armstrong. <!-- STATS:site_count -->311<!-- /STATS --> sites, <!-- STATS:command_count -->1756<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps.
+> Current: v0.224.0 — Apollo · Armstrong. <!-- STATS:site_count -->312<!-- /STATS --> sites, <!-- STATS:command_count -->1763<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction. Historical release notes live in
 `CHANGELOG.md`; they do not belong in the roadmap.

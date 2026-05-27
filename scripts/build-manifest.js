@@ -226,6 +226,7 @@ const CATEGORIES = {
   reference: [
     "google",
     "wikipedia",
+    "marxists-cn",
     "moegirl",
     "anilist",
     "jikan",

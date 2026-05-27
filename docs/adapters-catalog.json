@@ -1,8 +1,8 @@
 {
   "source": "unicli@0.224.0",
-  "generated": "2026-05-27T16:32:04.758Z",
-  "total_sites": 311,
-  "total_commands": 1756,
+  "generated": "2026-05-27T17:37:49.371Z",
+  "total_sites": 312,
+  "total_commands": 1763,
   "adapters": [
     {
       "site": "1688",
@@ -22766,6 +22766,245 @@
               "required": false,
               "positional": false,
               "description": "Number of results"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "marxists-cn",
+      "type": "web-api",
+      "domain": "www.marxists.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "index",
+          "description": "List Chinese Marxists Internet Archive top-level people, topics, and library links",
+          "when_to_use": "List Chinese Marxists Internet Archive top-level people, topics, and library links",
+          "command": "unicli marxists-cn index",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["rank", "title", "latinName", "kind", "path", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
+            }
+          ]
+        },
+        {
+          "name": "reading-list",
+          "description": "Return curated Chinese Marxists archive reading lists with directly readable paths",
+          "when_to_use": "Return curated Chinese Marxists archive reading lists with directly readable paths",
+          "command": "unicli marxists-cn reading-list",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "preset",
+            "author",
+            "title",
+            "year",
+            "theme",
+            "path",
+            "url",
+            "readCommand",
+            "note"
+          ],
+          "args": [
+            {
+              "name": "preset",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Reading list preset, currently western-marxism"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
+            }
+          ]
+        },
+        {
+          "name": "western-marxism",
+          "description": "List famous Western Marxist authors and works from the Chinese Marxists archive with read commands",
+          "when_to_use": "List famous Western Marxist authors and works from the Chinese Marxists archive with read commands",
+          "command": "unicli marxists-cn western-marxism",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "preset",
+            "author",
+            "title",
+            "year",
+            "theme",
+            "path",
+            "url",
+            "readCommand",
+            "note"
+          ],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
+            }
+          ]
+        },
+        {
+          "name": "authors",
+          "description": "List people, authors, organizations, and topic directories in the Chinese Marxists archive",
+          "when_to_use": "List people, authors, organizations, and topic directories in the Chinese Marxists archive",
+          "command": "unicli marxists-cn authors",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["rank", "title", "latinName", "kind", "path", "url"],
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
+            }
+          ]
+        },
+        {
+          "name": "works",
+          "description": "List works/books/articles under a Chinese Marxists archive author or topic path",
+          "when_to_use": "List works/books/articles under a Chinese Marxists archive author or topic path",
+          "command": "unicli marxists-cn works",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "scope",
+            "section",
+            "title",
+            "note",
+            "format",
+            "path",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "scope",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Author/topic path, e.g. marx, lenin, georg-lukacs"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
+            }
+          ]
+        },
+        {
+          "name": "read",
+          "description": "Read a Chinese Marxists archive HTML page as clean plain text",
+          "when_to_use": "Read a Chinese Marxists archive HTML page as clean plain text",
+          "command": "unicli marxists-cn read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["title", "author", "date", "chars", "text", "url"],
+          "args": [
+            {
+              "name": "path",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Archive path or URL under /chinese/"
+            },
+            {
+              "name": "max-length",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max text characters"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search Chinese Marxists archive people, books, works, and scoped full text",
+          "when_to_use": "When you need to search marxists-cn for a specific query.",
+          "command": "unicli marxists-cn search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "type",
+            "scope",
+            "section",
+            "title",
+            "snippet",
+            "path",
+            "url",
+            "score"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Chinese or English search text"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max rows"
+            },
+            {
+              "name": "scope",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Optional author/topic path for focused search, e.g. marx"
+            },
+            {
+              "name": "scan-pages",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Top-level index pages to scan when scope is omitted"
+            },
+            {
+              "name": "full-text",
+              "type": "bool",
+              "required": false,
+              "positional": false,
+              "description": "When true, search text inside scoped HTML work pages"
+            },
+            {
+              "name": "content-pages",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Max HTML pages to read for full-text scoped search"
             }
           ]
         }

@@ -14,7 +14,7 @@ running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 311 sites, 1756 commands.
+This catalog is generated from the adapter manifest: 312 sites, 1763 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -173,6 +173,7 @@ This catalog is generated from the adapter manifest: 311 sites, 1756 commands.
 | maimai | browser | 2 | yes | unicli maimai search<br>unicli maimai search-talents |
 | mangadex | web-api | 2 | no | unicli mangadex manga<br>unicli mangadex authors |
 | maoyan | web-api | 2 | yes | unicli maoyan hot<br>unicli maoyan search |
+| marxists-cn | web-api | 7 | no | unicli marxists-cn index<br>unicli marxists-cn reading-list<br>unicli marxists-cn western-marxism |
 | mastodon | web-api | 5 | no | unicli mastodon search<br>unicli mastodon timeline<br>unicli mastodon trending |
 | maven | web-api | 3 | no | unicli maven info<br>unicli maven search<br>unicli maven artifact |
 | mdn | web-api | 1 | no | unicli mdn search |

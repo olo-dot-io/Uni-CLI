@@ -1,5 +1,14 @@
 # Progress
 
+## 2026-05-27 — Marxists.org Chinese Archive Adapter
+
+- Root cause: `unicli search` had no structured route for `https://www.marxists.org/chinese/index.html`, so agents asking for Marxist philosophy, people, books, or primary-source content were pushed toward generic web/scholarly search instead of the Chinese Marxists archive.
+- Added the public `marxists-cn` TypeScript adapter with `index`, `authors`, `works`, `search`, `read`, `reading-list`, and `western-marxism` commands. The adapter constrains all URLs to `https://www.marxists.org/chinese/`, sniffs UTF-8 vs GB18030/GBK/GB2312 pages, extracts top-level people/topic directories, parses author/topic work lists, reads HTML pages as plain text, returns a station-verified Western Marxism reading list, and supports bounded scoped full-text search.
+- Added discovery aliases and a narrow intent boost so Marxism/philosophy/archive retrieval queries route to `marxists-cn search` before generic paper search, while Western Marxism canon/reading-list queries route to `marxists-cn western-marxism`.
+- Result: `list --site marxists-cn` reports seven commands; `search "马克思主义 哲学 文库 检索"` ranks `marxists-cn search` first; `search "读 西马 著名人物 著名著作"` ranks `marxists-cn western-marxism` first and `marxists-cn reading-list` second; `marxists-cn search "共产党宣言"` returns the Marx and Engels archive entries; `marxists-cn read marx/01.htm` returns title, author, date, full character count, and clean text for 《共产党宣言》.
+- Experiment ladder: live `unicli search` showed no existing Marxists coverage; fetched and decoded the live GB2312/UTF-8 archive pages; added parser/unit tests, search routing regression, live CLI index/works/search/read probes, regenerated manifest/stats/docs, then ran targeted typecheck/lint/unit/adapter checks, `npm run docs:check-public`, `git diff --check`, and full `npm run verify`. A later Western Marxism probe first failed to route `search "读 西马 著名人物 著名著作"` to `marxists-cn`; the repair added station-verified reading-list commands, regenerated fast-path manifests, and re-ran the same search/read probes until they returned `western-marxism`, `reading-list`, and readable 卢卡奇 text.
+- Residual risk: full-text search is intentionally scoped by `--scope` to prevent unbounded crawling of the whole archive in one command. PDF/CHM/MP3 resources are listed as works/resources, but `read` only extracts HTML/text; binary document parsing remains a separate reader/download workflow.
+
 ## 2026-05-27 — Twitter/X Coverage Repair
 
 - Root cause: Twitter/X runtime had a user timeline command under `tweets`, but no natural `user-tweets` command, no direct `comments` command, URL inputs to `thread` were passed through as raw tweet IDs, and the generated manifest could drift from runtime TS registrations when commands were hidden behind helper registration.

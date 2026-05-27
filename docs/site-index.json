@@ -1,7 +1,7 @@
 {
-  "generated": "2026-05-27T16:32:04.758Z",
-  "total_sites": 311,
-  "total_commands": 1756,
+  "generated": "2026-05-27T17:37:49.371Z",
+  "total_sites": 312,
+  "total_commands": 1763,
   "sites": [
     {
       "site": "1688",
@@ -5954,6 +5954,51 @@
           "name": "search",
           "description": "Search movies on Maoyan",
           "command": "unicli maoyan search"
+        }
+      ]
+    },
+    {
+      "site": "marxists-cn",
+      "type": "web-api",
+      "domain": "www.marxists.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 7,
+      "commands": [
+        {
+          "name": "index",
+          "description": "List Chinese Marxists Internet Archive top-level people, topics, and library links",
+          "command": "unicli marxists-cn index"
+        },
+        {
+          "name": "reading-list",
+          "description": "Return curated Chinese Marxists archive reading lists with directly readable paths",
+          "command": "unicli marxists-cn reading-list"
+        },
+        {
+          "name": "western-marxism",
+          "description": "List famous Western Marxist authors and works from the Chinese Marxists archive with read commands",
+          "command": "unicli marxists-cn western-marxism"
+        },
+        {
+          "name": "authors",
+          "description": "List people, authors, organizations, and topic directories in the Chinese Marxists archive",
+          "command": "unicli marxists-cn authors"
+        },
+        {
+          "name": "works",
+          "description": "List works/books/articles under a Chinese Marxists archive author or topic path",
+          "command": "unicli marxists-cn works"
+        },
+        {
+          "name": "read",
+          "description": "Read a Chinese Marxists archive HTML page as clean plain text",
+          "command": "unicli marxists-cn read"
+        },
+        {
+          "name": "search",
+          "description": "Search Chinese Marxists archive people, books, works, and scoped full text",
+          "command": "unicli marxists-cn search"
         }
       ]
     },
