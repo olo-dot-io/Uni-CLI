@@ -18,6 +18,7 @@ const BOOST_SCHOLARLY_SEARCH = 12.0;
 const BOOST_SCHOLARLY_PDF = 10.0;
 const BOOST_SCHOLARLY_VENUE_SOURCE = 38.0;
 const BOOST_COMPUTE_CONTEXT = 52.0;
+const BOOST_SOCIAL_USER_TIMELINE_INTENT = 18.0;
 
 const SCHOLARLY_WORKFLOW_COMMANDS = new Set([
   "pdf/read",
@@ -39,6 +40,7 @@ export function intentBoost(
     acgMediaTrendIntentBoost(doc, queryTerms) +
     weatherIntentBoost(doc, queryTerms) +
     computeContextIntentBoost(doc, queryTerms) +
+    socialUserTimelineIntentBoost(doc, queryTerms) +
     scholarlyIntentBoost(doc, queryTerms, siteHints)
   );
 }
@@ -243,6 +245,23 @@ function computeContextIntentBoost(
     return BOOST_COMPUTE_CONTEXT * 0.58;
   }
   return BOOST_COMPUTE_CONTEXT * 0.35;
+}
+
+function socialUserTimelineIntentBoost(
+  doc: SearchIndex["documents"][number],
+  queryTerms: string[],
+): number {
+  const terms = new Set(queryTerms);
+  const userTimelineIntent =
+    hasAny(terms, ["user", "users", "profile", "author"]) &&
+    hasAny(terms, ["timeline", "timelines", "tweets", "posts", "feed"]);
+  const userTimelineCommand =
+    doc.site === "twitter" &&
+    (doc.command === "user-timeline" || doc.command === "user-tweets");
+
+  return userTimelineIntent && userTimelineCommand
+    ? BOOST_SOCIAL_USER_TIMELINE_INTENT
+    : 0;
 }
 
 function scholarlyIntentBoost(

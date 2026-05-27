@@ -1,7 +1,7 @@
 {
-  "generated": "2026-05-26T14:10:52.122Z",
+  "generated": "2026-05-27T16:32:04.758Z",
   "total_sites": 311,
-  "total_commands": 1753,
+  "total_commands": 1756,
   "sites": [
     {
       "site": "1688",
@@ -9072,7 +9072,7 @@
       "domain": "x.com",
       "auth": true,
       "strategy": "cookie",
-      "command_count": 44,
+      "command_count": 47,
       "commands": [
         {
           "name": "lists",
@@ -9200,8 +9200,18 @@
           "command": "unicli twitter tweets"
         },
         {
+          "name": "user-tweets",
+          "description": "Read recent tweets from a Twitter/X user profile",
+          "command": "unicli twitter user-tweets"
+        },
+        {
+          "name": "user-timeline",
+          "description": "Read a Twitter/X user's tweet timeline",
+          "command": "unicli twitter user-timeline"
+        },
+        {
           "name": "list-tweets",
-          "description": "Read tweets from a Twitter/X list",
+          "description": "Read tweets from a Twitter/X list timeline",
           "command": "unicli twitter list-tweets"
         },
         {
@@ -9253,6 +9263,11 @@
           "name": "thread",
           "description": "Get a tweet and its conversation thread",
           "command": "unicli twitter thread"
+        },
+        {
+          "name": "comments",
+          "description": "Get replies/comments for a Twitter/X tweet",
+          "command": "unicli twitter comments"
         },
         {
           "name": "timeline",

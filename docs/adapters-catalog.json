@@ -1,8 +1,8 @@
 {
   "source": "unicli@0.224.0",
-  "generated": "2026-05-26T14:10:52.122Z",
+  "generated": "2026-05-27T16:32:04.758Z",
   "total_sites": 311,
-  "total_commands": 1753,
+  "total_commands": 1756,
   "adapters": [
     {
       "site": "1688",
@@ -34564,7 +34564,79 @@
           "auth": true,
           "strategy": "cookie",
           "browser": true,
-          "columns": ["author", "text", "url"],
+          "columns": [
+            "id",
+            "author",
+            "text",
+            "likes",
+            "retweets",
+            "views",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "user",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "user-tweets",
+          "description": "Read recent tweets from a Twitter/X user profile",
+          "when_to_use": "Read recent tweets from a Twitter/X user profile",
+          "command": "unicli twitter user-tweets",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "id",
+            "author",
+            "text",
+            "likes",
+            "retweets",
+            "views",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "user",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "user-timeline",
+          "description": "Read a Twitter/X user's tweet timeline",
+          "when_to_use": "Read a Twitter/X user's tweet timeline",
+          "command": "unicli twitter user-timeline",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": true,
+          "columns": [
+            "id",
+            "author",
+            "text",
+            "likes",
+            "retweets",
+            "views",
+            "url"
+          ],
           "args": [
             {
               "name": "user",
@@ -34582,13 +34654,21 @@
         },
         {
           "name": "list-tweets",
-          "description": "Read tweets from a Twitter/X list",
+          "description": "Read tweets from a Twitter/X list timeline",
           "when_to_use": "When you need to list items from twitter.",
           "command": "unicli twitter list-tweets",
           "auth": true,
           "strategy": "cookie",
           "browser": true,
-          "columns": ["author", "text", "url"],
+          "columns": [
+            "id",
+            "author",
+            "text",
+            "likes",
+            "retweets",
+            "views",
+            "url"
+          ],
           "args": [
             {
               "name": "list",
@@ -34852,7 +34932,36 @@
               "name": "tweet_id",
               "required": true,
               "positional": true,
-              "description": "Tweet ID (numeric)"
+              "description": "Tweet ID or Twitter/X status URL"
+            }
+          ]
+        },
+        {
+          "name": "comments",
+          "description": "Get replies/comments for a Twitter/X tweet",
+          "when_to_use": "When you need to read comments/replies from twitter.",
+          "command": "unicli twitter comments",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": false,
+          "columns": [
+            "id",
+            "parent_id",
+            "author",
+            "text",
+            "likes",
+            "retweets",
+            "views",
+            "url",
+            "depth",
+            "path"
+          ],
+          "args": [
+            {
+              "name": "url",
+              "required": true,
+              "positional": true,
+              "description": "Tweet ID or Twitter/X status URL"
             }
           ]
         },

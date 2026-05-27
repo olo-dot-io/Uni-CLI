@@ -48,9 +48,9 @@ Agent execution does not need a longer resident tool list or another website wra
 ## Coverage
 
 - Sites and tools: 311
-- Commands: 1753
+- Commands: 1756
 - Pipeline steps: 103
-- Tests: 8960
+- Tests: 8967
 
 These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
 

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { resolveCommand } from "../../registry.js";
 
-import { normalizeTwitterThreadRows } from "./thread.js";
+import {
+  normalizeTwitterThreadRows,
+  resolveTwitterThreadTweetId,
+} from "./thread.js";
 
 describe("normalizeTwitterThreadRows", () => {
   it("adds normalized comment hierarchy fields to thread rows", () => {
@@ -39,5 +43,25 @@ describe("normalizeTwitterThreadRows", () => {
         path: "0001.0001",
       }),
     ]);
+  });
+});
+
+describe("twitter thread and comments commands", () => {
+  it("accepts either a numeric tweet id or a Twitter/X status URL", () => {
+    expect(resolveTwitterThreadTweetId("123")).toBe("123");
+    expect(
+      resolveTwitterThreadTweetId(
+        "https://x.com/alice/status/2040254679301718161?s=20",
+      ),
+    ).toBe("2040254679301718161");
+  });
+
+  it("registers a comments command for tweet replies", () => {
+    const comments = resolveCommand("twitter", "comments")?.command;
+
+    expect(comments?.adapterArgs?.map((arg) => arg.name)).toEqual(["url"]);
+    expect(comments?.socialCapabilities).toEqual(
+      expect.arrayContaining(["comments", "comment_replies"]),
+    );
   });
 });

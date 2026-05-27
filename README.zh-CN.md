@@ -37,7 +37,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->311<!-- /STATS --> 个 surface · <!-- STATS:test_count -->8960<!-- /STATS --> 个测试</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->311<!-- /STATS --> 个 surface · <!-- STATS:test_count -->8967<!-- /STATS --> 个测试</sub>
 </p>
 
 <p align="center">
@@ -221,7 +221,7 @@ ACP 作为编辑器和桥接兼容层保留。真正跑任务时，优先 native
   <a data-site="signal" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="signal: 7 commands"><img alt="signal" src="https://img.shields.io/static/v1?label=signal&message=7+cmds&color=2563eb&style=flat-square&logo=signal&logoColor=white"></a>
   <a data-site="slack" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="slack: 14 commands"><img alt="slack" src="https://img.shields.io/static/v1?label=slack&message=14+cmds&color=2563eb&style=flat-square&logo=slack&logoColor=white"></a>
   <a data-site="teams" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="teams: 7 commands"><img alt="teams" src="https://img.shields.io/static/v1?label=teams&message=7+cmds&color=2563eb&style=flat-square&logo=microsoftteams&logoColor=white"></a>
-  <a data-site="twitter" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="twitter: 44 commands"><img alt="twitter" src="https://img.shields.io/static/v1?label=twitter&message=44+cmds&color=2563eb&style=flat-square&logo=x&logoColor=white"></a>
+  <a data-site="twitter" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="twitter: 47 commands"><img alt="twitter" src="https://img.shields.io/static/v1?label=twitter&message=47+cmds&color=2563eb&style=flat-square&logo=x&logoColor=white"></a>
   <a data-site="wechat-work" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="wechat-work: 7 commands"><img alt="wechat-work" src="https://img.shields.io/static/v1?label=wechat-work&message=7+cmds&color=2563eb&style=flat-square&logo=wechat&logoColor=white"></a>
   <a data-site="weibo" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="weibo: 12 commands"><img alt="weibo" src="https://img.shields.io/static/v1?label=weibo&message=12+cmds&color=2563eb&style=flat-square&logo=sinaweibo&logoColor=white"></a>
   <a data-site="whatsapp" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="whatsapp: 7 commands"><img alt="whatsapp" src="https://img.shields.io/static/v1?label=whatsapp&message=7+cmds&color=2563eb&style=flat-square&logo=whatsapp&logoColor=white"></a>

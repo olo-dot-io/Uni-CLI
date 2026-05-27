@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { loadAllAdapters, loadTsAdapters } from "../../src/discovery/loader.js";
 import { getAdapter } from "../../src/registry.js";
+import { buildSocialAudit } from "../../src/social/capabilities.js";
 import { extractTsRegistrations } from "../../scripts/manifest-ts-scan.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -21,6 +22,12 @@ const REDDIT_BROWSER_TS_COMMANDS = [
   "trending",
 ];
 const LINUX_DO_BROWSER_TS_COMMANDS = ["search"];
+const TWITTER_USER_TIMELINE_TS_COMMANDS = [
+  "tweets",
+  "user-tweets",
+  "user-timeline",
+  "list-tweets",
+];
 
 describe("high-value social adapter quality gates", () => {
   it("uses a browser-backed Reddit search command instead of blocked public JSON", async () => {
@@ -96,6 +103,53 @@ describe("high-value social adapter quality gates", () => {
     }
   });
 
+  it("keeps every Twitter/X user timeline TS command visible to the generated manifest", () => {
+    const source = readFileSync(
+      join(ROOT, "src", "adapters", "twitter", "lists-extra.ts"),
+      "utf-8",
+    );
+    const commandNames = extractTsRegistrations(
+      source,
+      "twitter",
+      "lists-extra",
+    ).flatMap((registration) =>
+      registration.site === "twitter"
+        ? registration.commands.map((command) => command.name)
+        : [],
+    );
+
+    expect(commandNames).toEqual(
+      expect.arrayContaining(TWITTER_USER_TIMELINE_TS_COMMANDS),
+    );
+  });
+
+  it("keeps the Twitter/X comments command visible to the generated manifest", () => {
+    const source = readFileSync(
+      join(ROOT, "src", "adapters", "twitter", "thread.ts"),
+      "utf-8",
+    );
+    const commands = extractTsRegistrations(
+      source,
+      "twitter",
+      "thread",
+    ).flatMap((registration) =>
+      registration.site === "twitter" ? registration.commands : [],
+    );
+
+    expect(commands.map((command) => command.name)).toEqual(
+      expect.arrayContaining(["thread", "comments"]),
+    );
+    expect(commands).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "comments",
+          strategy: "cookie",
+          domain: "x.com",
+        }),
+      ]),
+    );
+  });
+
   it("uses browser-backed Linux.do search instead of rate-limited public JSON", async () => {
     loadAllAdapters();
     await loadTsAdapters();
@@ -117,6 +171,18 @@ describe("high-value social adapter quality gates", () => {
         `${command}.yaml must not shadow the browser-backed TS implementation`,
       ).toBe(false);
     }
+  });
+
+  it("keeps Twitter/X complete against the required social capability audit", async () => {
+    loadAllAdapters();
+    await loadTsAdapters();
+
+    const twitter = getAdapter("twitter");
+    const row = buildSocialAudit(twitter ? [twitter] : []).find(
+      (item) => item.site === "twitter",
+    );
+
+    expect(row?.missing).toEqual([]);
   });
 
   it("exposes platform-specific subtitle extraction for major video social sites", async () => {

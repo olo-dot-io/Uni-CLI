@@ -269,6 +269,15 @@ describe("search", () => {
     expect(results[0].category).toBe("social");
   });
 
+  it("routes Twitter/X user timeline intent to the user timeline command", () => {
+    const results = search("X user timeline", 3);
+
+    expect(results[0]).toMatchObject({
+      site: "twitter",
+      command: "user-timeline",
+    });
+  });
+
   it("returns scores as numbers", () => {
     const results = search("youtube", 3);
     for (const r of results) {

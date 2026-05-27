@@ -15,6 +15,7 @@ cli({
   description: "Post a new tweet",
   domain: "x.com",
   strategy: Strategy.COOKIE,
+  socialCapabilities: ["write_post"],
   args: [
     {
       name: "text",

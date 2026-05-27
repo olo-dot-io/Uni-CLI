@@ -5,10 +5,10 @@ Uni-CLI is the operations substrate for AI agents to discover, run, prove, and r
 ## Catalog Snapshot
 
 - Sites: 311
-- Commands: 1753
+- Commands: 1756
 - Adapters: 1212 (977 YAML + 235 TypeScript)
 - Pipeline steps: 103
-- Tests: 8960
+- Tests: 8967
 
 ## Agent Contract
 

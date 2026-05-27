@@ -7,10 +7,10 @@ recorded, repaired, and re-exposed through multiple agent runtimes.
 
 The current generated catalog is the source of truth:
 **<span><!-- STATS:site_count -->311<!-- /STATS --></span> sites**,
-**<span><!-- STATS:command_count -->1753<!-- /STATS --></span> commands**,
+**<span><!-- STATS:command_count -->1756<!-- /STATS --></span> commands**,
 **<span><!-- STATS:adapter_count_total -->1212<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->8960<!-- /STATS --></span> tests** in v0.224.0.
+and **<span><!-- STATS:test_count -->8967<!-- /STATS --></span> tests** in v0.224.0.
 
 ## Architectural Thesis
 

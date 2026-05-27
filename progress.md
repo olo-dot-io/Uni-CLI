@@ -1,5 +1,16 @@
 # Progress
 
+## 2026-05-27 — Twitter/X Coverage Repair
+
+- Root cause: Twitter/X runtime had a user timeline command under `tweets`, but no natural `user-tweets` command, no direct `comments` command, URL inputs to `thread` were passed through as raw tweet IDs, and the generated manifest could drift from runtime TS registrations when commands were hidden behind helper registration.
+- Rebuilt the Twitter/X user timeline surface so `tweets`, `user-tweets`, and `user-timeline` are explicit manifest-visible commands; they normalize `@handles`, use browser readability checks, emit the standard tweet row shape, and throw structured empty-result errors instead of silently returning `[]`.
+- Added a targeted discovery intent so `unicli search "X user timeline"` ranks `twitter user-timeline` above the home timeline command while plain `twitter timeline` remains unchanged.
+- Added `twitter comments` as a cookie-auth command over the existing TweetDetail thread reader, and made both `thread` and `comments` accept numeric tweet IDs or Twitter/X status URLs.
+- Fixed Twitter social capability coverage by marking `post` as `write_post`, and added manifest scanner regression tests so these TS commands cannot disappear from fast-path `list/search`.
+- Result: fast-path `list --site twitter` now reports 47 Twitter commands; `search "twitter comments replies"` returns `twitter comments`; `search "X user timeline"` returns `twitter user-timeline`; `twitter comments <url> --dry-run` reports `strategy: cookie` and `domain:x.com`.
+- Experiment ladder: red adapter tests for `user-tweets`, `user-timeline`, `comments`, URL/id parsing, `/i/status` extraction, and social audit; red search test for X user timeline intent; regenerated manifest/stats/docs; `npm run typecheck`, `npm run lint`, `npm test`, `npm run test:adapter`, `npm run format:check`, `npm run stats:check`, `npm run lint:schema-v2`, `npm run docs:check-public`, `git diff --check`, plus fast-path CLI discovery/dry-run probes.
+- Residual risk: this proves command registration, generated discovery, dry-run metadata, parser behavior, and DOM-extraction contracts. It does not prove live X/Twitter currently returns rows for every authenticated account, because that depends on local browser login, X anti-bot state, and live DOM/API drift.
+
 ## 2026-05-26 — Site Smoke and Search Complexity Audit
 
 - Used the built Uni-CLI against its own catalog: `list` reports 319 visible surfaces and 1,806 commands, including core/dynamic surfaces; `architecture audit` reports 311 adapter sites, 1,770 loaded commands, 611 local-computer-use commands, and zero missing source paths.

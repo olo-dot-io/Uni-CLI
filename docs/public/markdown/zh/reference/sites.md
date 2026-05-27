@@ -11,7 +11,7 @@
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：311 个站点，1753 条命令。
+这个目录来自适配器 manifest：311 个站点，1756 条命令。
 
 | 站点 | 接口类型 | 命令数 | 认证 | 示例命令 |
 | --- | --- | ---: | --- | --- |
@@ -264,7 +264,7 @@
 | toutiao | web-api | 3 | 是 | unicli toutiao hot<br>unicli toutiao search<br>unicli toutiao articles |
 | tvmaze | web-api | 2 | 否 | unicli tvmaze search<br>unicli tvmaze show |
 | twitch | web-api | 4 | 是 | unicli twitch games<br>unicli twitch search<br>unicli twitch streams |
-| twitter | web-api | 44 | 是 | unicli twitter lists<br>unicli twitter media<br>unicli twitter mentions |
+| twitter | web-api | 47 | 是 | unicli twitter lists<br>unicli twitter media<br>unicli twitter mentions |
 | uisdc | web-api | 1 | 否 | unicli uisdc news |
 | uiverse | web-api | 2 | 否 | unicli uiverse code<br>unicli uiverse preview |
 | ukipo | web-api | 1 | 否 | unicli ukipo info |

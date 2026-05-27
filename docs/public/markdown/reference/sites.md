@@ -14,7 +14,7 @@ running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 311 sites, 1753 commands.
+This catalog is generated from the adapter manifest: 311 sites, 1756 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -267,7 +267,7 @@ This catalog is generated from the adapter manifest: 311 sites, 1753 commands.
 | toutiao | web-api | 3 | yes | unicli toutiao hot<br>unicli toutiao search<br>unicli toutiao articles |
 | tvmaze | web-api | 2 | no | unicli tvmaze search<br>unicli tvmaze show |
 | twitch | web-api | 4 | yes | unicli twitch games<br>unicli twitch search<br>unicli twitch streams |
-| twitter | web-api | 44 | yes | unicli twitter lists<br>unicli twitter media<br>unicli twitter mentions |
+| twitter | web-api | 47 | yes | unicli twitter lists<br>unicli twitter media<br>unicli twitter mentions |
 | uisdc | web-api | 1 | no | unicli uisdc news |
 | uiverse | web-api | 2 | no | unicli uiverse code<br>unicli uiverse preview |
 | ukipo | web-api | 1 | no | unicli ukipo info |
