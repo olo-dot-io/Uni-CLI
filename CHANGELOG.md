@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.224.1] — 2026-05-27 — Apollo · Collins
+
+### Added
+
+- `marxists-cn` now exposes a Chinese archive reader with normalized text
+  output and search/discovery aliases for Chinese Marxists archive workflows.
+
+### Changed
+
+- Release records, public docs, skills, MCP registry metadata, and generated
+  stats now point at `0.224.1`.
+
+### Fixed
+
+- Twitter timeline/comment commands now expose user timeline and comment
+  retrieval paths through the live adapter catalog.
+
+### Verified
+
+- `npm run release`
+- `npm run release:check -- --strict-codename`
+- `npm run verify`
+- `npm publish --dry-run`
+- `npm run docs:check-public`
+
 ## [0.224.0] — 2026-05-26 — Apollo · Armstrong
 
 ### Minor Changes

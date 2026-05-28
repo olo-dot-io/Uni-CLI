@@ -1,6 +1,6 @@
 {
   "name": "@zenalexa/unicli",
-  "version": "0.224.0",
+  "version": "0.224.1",
   "description": "Operations substrate for agents that use real software: web, browsers, desktop apps, local tools, MCP, policy, evidence, and self-repair.",
   "packageManager": "npm@11.14.0",
   "type": "module",

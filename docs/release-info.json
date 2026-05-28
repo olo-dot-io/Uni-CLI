@@ -1,27 +1,23 @@
 {
-  "version": "0.224.0",
-  "codename": "Apollo · Armstrong",
-  "date": "2026-05-26",
+  "version": "0.224.1",
+  "codename": "Apollo · Collins",
+  "date": "2026-05-27",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.224.0",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02240--2026-05-26--apollo--armstrong",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.224.1",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02241--2026-05-27--apollo--collins",
   "highlights": {
     "root": [
-      "Uni-CLI 0.224.0 is the architecture and dependency refresh release for the agent-to-software bridge.",
-      "`unicli architecture audit` exposes a callable command/tree surface for catalog, runtime, and evidence-layer inspection.",
-      "`unicli search` now stays backed by the live registry and caches by registry version, removing the stale generated search-index path.",
-      "Local computer-use action results now include overlay/evidence metadata so agents can close the observe-act-verify loop more directly.",
-      "The runtime floor is Node.js 22.19+ to support `undici@8`; `undici`, `ws`, `zod`, and transitive `fast-uri` are refreshed to current secure registry resolutions.",
-      "CI and branch-protection documentation now match the Node 22 release matrix and current sidecar gates."
+      "Uni-CLI 0.224.1 is a patch release for the live adapter catalog after 0.224.0.",
+      "`marxists-cn` now exposes a Chinese archive reader with normalized text output and Chinese search/discovery aliases.",
+      "Twitter timeline/comment commands now expose user timeline and comment retrieval paths through the adapter catalog.",
+      "Release records, public docs, skills, MCP registry metadata, and generated stats now point at 0.224.1."
     ],
     "zh": [
-      "Uni-CLI 0.224.0 是面向 agent-to-software bridge 的架构与依赖刷新版本。",
-      "`unicli architecture audit` 暴露可调用的命令/树状视图，用来检查目录、运行时和 evidence layer。",
-      "`unicli search` 现在直接基于 live registry，并按 registry version 缓存，删除旧的 generated search-index 路径。",
-      "Local computer-use action 结果现在带 overlay/evidence metadata，Agent 可以更直接地闭合 observe-act-verify loop。",
-      "运行时下限提升到 Node.js 22.19+ 以支持 `undici@8`；`undici`、`ws`、`zod` 和 transitive `fast-uri` 都刷新到当前安全解析版本。",
-      "CI 和 branch-protection 文档现在与 Node 22 发布矩阵及当前 sidecar gates 对齐。"
+      "Uni-CLI 0.224.1 是 0.224.0 之后面向 live adapter catalog 的 patch release。",
+      "`marxists-cn` 现在提供中文档案阅读器，带规范化文本输出和中文搜索/发现别名。",
+      "Twitter timeline/comment 命令现在通过 adapter catalog 暴露用户时间线和评论读取路径。",
+      "Release records、public docs、skills、MCP registry metadata 和 generated stats 现在都指向 0.224.1。"
     ]
   }
 }
