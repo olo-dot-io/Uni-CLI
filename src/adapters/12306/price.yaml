@@ -1,0 +1,91 @@
+site: 12306
+name: price
+description: 12306 ticket prices by seat class for one train + segment (anonymous)
+type: web-api
+domain: kyfw.12306.cn
+strategy: public
+
+args:
+  train_no:
+    type: str
+    required: true
+    positional: true
+    description: Internal train_no from `12306 trains` (e.g. 240000G54700), not the public code G547
+  from:
+    type: str
+    required: true
+    positional: true
+    description: Origin station telecode (e.g. VNP) — from `12306 stations <name>`
+  to:
+    type: str
+    required: true
+    positional: true
+    description: Destination station telecode (e.g. AOH) — from `12306 stations <name>`
+  date:
+    type: str
+    required: true
+    positional: true
+    description: Departure date YYYY-MM-DD
+
+pipeline:
+  # 1. Mint an anonymous session.
+  - fetch_text:
+      url: https://kyfw.12306.cn/otn/leftTicket/init
+      capture_cookies: true
+
+  # 2. Resolve from/to station_no within this train's route. The price endpoint
+  #    addresses stops by station_no, not telecode.
+  - fetch:
+      url: https://kyfw.12306.cn/otn/czxx/queryByTrainNo
+      headers:
+        Referer: https://kyfw.12306.cn/otn/leftTicket/init
+      params:
+        train_no: "${{ args.train_no }}"
+        from_station_telecode: "${{ args.from }}"
+        to_station_telecode: "${{ args.to }}"
+        depart_date: "${{ args.date }}"
+
+  - set:
+      stops: "${{ item.data.data }}"
+  - set:
+      from_no: "${{ vars.stops[0].station_no }}"
+      to_no: "${{ vars.stops[vars.stops.length - 1].station_no }}"
+
+  # 3. Query prices keyed by seat letter.
+  - fetch:
+      url: https://kyfw.12306.cn/otn/leftTicket/queryTicketPrice
+      headers:
+        Referer: https://kyfw.12306.cn/otn/leftTicket/init
+      params:
+        train_no: "${{ args.train_no }}"
+        from_station_no: "${{ vars.from_no }}"
+        to_station_no: "${{ vars.to_no }}"
+        seat_types: OM9PA1A3A4FWZ
+        train_date: "${{ args.date }}"
+
+  - select: data
+
+  - to_entries:
+      key_name: seat_code
+      value_name: raw_price
+
+  # Keep only real seat-letter entries with a ¥ price string.
+  - filter: >-
+      item.seat_code != 'train_no'
+      && item.seat_code != 'OT'
+      && typeof item.raw_price == 'string'
+      && item.raw_price.indexOf('¥') >= 0
+
+  - map:
+      seat_code: ${{ item.seat_code }}
+      seat_name: ${{ ({A9:'商务座',P:'特等座',M:'一等座',O:'二等座',A1:'硬座',A3:'硬卧',A4:'软卧',F:'动卧',WZ:'无座'})[item.seat_code] || item.seat_code }}
+      price: ${{ String(item.raw_price).replace('¥','') }}
+      currency: CNY
+
+columns: [seat_name, price, currency, seat_code]
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

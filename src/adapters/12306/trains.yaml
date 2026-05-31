@@ -1,0 +1,129 @@
+site: 12306
+name: trains
+description: List trains between two 12306 stations on a date (telecodes from `12306 stations`)
+type: web-api
+domain: kyfw.12306.cn
+strategy: public
+
+args:
+  from:
+    type: str
+    required: true
+    positional: true
+    description: Origin station telecode (e.g. VNP for 北京南) — get it from `12306 stations <name>`
+  to:
+    type: str
+    required: true
+    positional: true
+    description: Destination station telecode (e.g. AOH) — get it from `12306 stations <name>`
+  date:
+    type: str
+    required: true
+    positional: true
+    description: Departure date YYYY-MM-DD
+  limit:
+    type: int
+    default: 50
+    description: Maximum rows (1-100)
+
+pipeline:
+  # 1. Mint an anonymous session — 12306 query endpoints reject cookieless requests.
+  - fetch_text:
+      url: https://kyfw.12306.cn/otn/leftTicket/init
+      capture_cookies: true
+
+  # 2. Query the left-ticket endpoint. 12306 rotates the endpoint NAME every few
+  #    weeks (queryG/queryO/queryZ/queryA) and signals the right one via `c_url`.
+  - fetch:
+      url: https://kyfw.12306.cn/otn/leftTicket/queryG
+      params:
+        "leftTicketDTO.train_date": "${{ args.date }}"
+        "leftTicketDTO.from_station": "${{ args.from }}"
+        "leftTicketDTO.to_station": "${{ args.to }}"
+        purpose_codes: ADULT
+      rotate_urls:
+        - https://kyfw.12306.cn/otn/leftTicket/queryG
+        - https://kyfw.12306.cn/otn/leftTicket/queryO
+        - https://kyfw.12306.cn/otn/leftTicket/queryZ
+        - https://kyfw.12306.cn/otn/leftTicket/queryA
+      rotate_on_field: c_url
+
+  # 3. Each row in data.result is a URL-encoded `|`-delimited record.
+  - select: data.result
+
+  - split_text:
+      mode: per_item
+      strip_each: "%0A"
+      decode: uri
+      field_separator: "|"
+      columns:
+        - sale_flag # f0
+        - bookable_flag # f1 (预订)
+        - train_no # f2 internal id
+        - code # f3 公开车次 e.g. G547
+        - start_tc # f4
+        - end_tc # f5
+        - from_tc # f6 origin telecode
+        - to_tc # f7 dest telecode
+        - start_time # f8
+        - arrive_time # f9
+        - duration # f10
+        - can_book # f11 (Y/N)
+        - f12
+        - f13
+        - f14
+        - f15
+        - f16
+        - f17
+        - f18
+        - f19
+        - f20
+        - f21
+        - f22
+        - soft_sleeper # f23 软卧
+        - f24
+        - f25
+        - no_seat # f26 无座
+        - f27
+        - hard_sleeper # f28 硬卧
+        - hard_seat # f29 硬座
+        - second_seat # f30 二等座
+        - first_seat # f31 一等座
+        - business_seat # f32 商务座
+
+  - map:
+      code: ${{ item.code }}
+      from_to: ${{ item.from_tc + '→' + item.to_tc }}
+      depart: ${{ item.start_time }}
+      arrive: ${{ item.arrive_time }}
+      duration: ${{ item.duration }}
+      business: ${{ item.business_seat }}
+      first: ${{ item.first_seat }}
+      second: ${{ item.second_seat }}
+      soft_sleeper: ${{ item.soft_sleeper }}
+      hard_sleeper: ${{ item.hard_sleeper }}
+      hard_seat: ${{ item.hard_seat }}
+      no_seat: ${{ item.no_seat }}
+      bookable: ${{ item.bookable_flag }}
+
+  - limit: ${{ args.limit }}
+
+columns:
+  [
+    code,
+    from_to,
+    depart,
+    arrive,
+    duration,
+    second,
+    first,
+    business,
+    hard_sleeper,
+    bookable,
+  ]
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

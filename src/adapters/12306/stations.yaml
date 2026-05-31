@@ -1,0 +1,52 @@
+site: 12306
+name: stations
+description: Search 12306 (China Railway) stations by Chinese name, telecode, or pinyin
+type: web-api
+domain: kyfw.12306.cn
+strategy: public
+
+args:
+  keyword:
+    type: str
+    required: true
+    positional: true
+    description: Chinese substring (北京), telecode (VAP), or pinyin (beijing)
+  limit:
+    type: int
+    default: 20
+    description: Maximum results (1-50)
+
+pipeline:
+  - fetch_text:
+      url: https://kyfw.12306.cn/otn/resources/js/framework/station_name.js
+
+  - split_text:
+      strip_prefix: "^var station_names\\s*='"
+      strip_suffix: "';?\\s*$"
+      record_separator: "@"
+      field_separator: "|"
+      columns: [abbr, name, code, pinyin, short, index, telecode, city]
+
+  - filter: >-
+      item.name.includes(args.keyword)
+      || item.code == args.keyword.toUpperCase()
+      || item.pinyin.includes(args.keyword.toLowerCase())
+      || item.short.includes(args.keyword.toLowerCase())
+      || item.city.includes(args.keyword)
+
+  - map:
+      name: ${{ item.name }}
+      code: ${{ item.code }}
+      pinyin: ${{ item.pinyin }}
+      abbr: ${{ item.short }}
+      city: ${{ item.city }}
+
+  - limit: ${{ args.limit }}
+
+columns: [name, code, pinyin, abbr, city]
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2
