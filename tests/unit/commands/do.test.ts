@@ -6,16 +6,52 @@
  * owned modules (rule 03).
  */
 
-import { describe, it, expect, beforeAll, beforeEach, afterEach } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  beforeEach,
+  afterEach,
+  vi,
+} from "vitest";
 import { Command } from "commander";
 import { registerDoCommand } from "../../../src/commands/do.js";
 import { validateEnvelope } from "../../../src/output/envelope.js";
 import { loadAllAdapters } from "../../../src/discovery/loader.js";
+import { registerAdapter } from "../../../src/registry.js";
+import { AdapterType } from "../../../src/types.js";
+
+const deliveryFixtureHandler = vi.fn(async () => [
+  { title: "delivery fixture result" },
+]);
 
 // Ensure the YAML adapter registry is populated so that `do` can enrich
 // matches with args_schema / example_stdin via describeCommand.
 beforeAll(() => {
   loadAllAdapters();
+  registerAdapter({
+    name: "do-delivery-fixture",
+    type: AdapterType.WEB_API,
+    commands: {
+      deliver: {
+        name: "deliver",
+        description:
+          "Run the do delivery spec fixture for objective delivery planning",
+        adapter_path: "src/adapters/do-delivery-fixture/deliver.ts",
+        target_surface: "web",
+        adapterArgs: [
+          {
+            name: "topic",
+            type: "str",
+            required: true,
+            description: "Fixture topic",
+          },
+        ],
+        func: deliveryFixtureHandler,
+      },
+    },
+  });
 });
 
 function captureStdout(): {
@@ -53,6 +89,7 @@ function newProgram(): Command {
 
 beforeEach(() => {
   process.exitCode = 0;
+  deliveryFixtureHandler.mockClear();
 });
 
 afterEach(() => {
@@ -183,6 +220,57 @@ describe("unicli do — happy path", () => {
         /\bunicli \S+ \S+\b/.test(a.command) && a.command.startsWith("echo"),
     );
     expect(hasStdin).toBe(true);
+  });
+
+  it("includes a delivery spec template for an executable top match without running it", async () => {
+    const cap = captureStdout();
+    try {
+      const program = newProgram();
+      await program.parseAsync([
+        "node",
+        "unicli",
+        "do",
+        "do-delivery-fixture",
+        "deliver",
+        "-f",
+        "json",
+      ]);
+    } finally {
+      cap.restore();
+    }
+    const env = JSON.parse(cap.getStdout());
+    validateEnvelope(env);
+    expect(env.ok).toBe(true);
+    expect(env.data.match).toMatchObject({
+      site: "do-delivery-fixture",
+      command: "deliver",
+      invocation: "unicli do-delivery-fixture deliver",
+    });
+    expect(env.data.delivery_spec_template).toMatchObject({
+      objective: {
+        id: "deliver-do-delivery-fixture-deliver",
+        goal: "do-delivery-fixture deliver",
+        evidence_gates: [
+          { kind: "run_completed" },
+          {
+            kind: "required_evidence_type",
+            evidence_type: "result-envelope",
+          },
+        ],
+      },
+      strategies: [
+        {
+          id: "adapter-do-delivery-fixture-deliver",
+          kind: "adapter",
+          command: "do-delivery-fixture.deliver",
+          adapter_path: "src/adapters/do-delivery-fixture/deliver.ts",
+          verify_command: "unicli test do-delivery-fixture deliver",
+        },
+      ],
+      attempts: [],
+      runs: [],
+    });
+    expect(deliveryFixtureHandler).not.toHaveBeenCalled();
   });
 });
 

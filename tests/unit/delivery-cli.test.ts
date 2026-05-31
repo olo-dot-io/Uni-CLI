@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Command } from "commander";
 
 import { registerDeliveryCommand } from "../../src/commands/delivery.js";
+import { buildDeliveryOperatorSpecTemplate } from "../../src/engine/delivery/spec.js";
 import { compileAll } from "../../src/engine/kernel/compile.js";
 import {
   createEvidenceCapturedEvent,
@@ -412,6 +413,54 @@ describe("unicli delivery command", () => {
       }),
     ]);
     expect(events.map((event) => event.name)).toContain("run.completed");
+  });
+
+  it("accepts a generated delivery spec template as an active trajectory", async () => {
+    const specPath = join(tmp, "generated-template-spec.json");
+    const spec = buildDeliveryOperatorSpecTemplate({
+      intent: "Read the deterministic delivery fixture",
+      site: "delivery-fixture",
+      command: "read",
+      description: "Read a deterministic delivery fixture",
+      adapter_type: AdapterType.WEB_API,
+      target_surface: "web",
+      args: { topic: "closed-loop" },
+    });
+    writeFileSync(specPath, JSON.stringify(spec), "utf-8");
+    const consoleCapture = captureConsole();
+    try {
+      await createProgram().parseAsync([
+        "node",
+        "test",
+        "-f",
+        "json",
+        "delivery",
+        "trajectory",
+        specPath,
+        "--root",
+        tmp,
+        "--recorded-at",
+        "2026-05-24T13:00:03.000Z",
+      ]);
+    } finally {
+      consoleCapture.restore();
+    }
+
+    const envelope = JSON.parse(consoleCapture.getStdout()) as {
+      ok: boolean;
+      command: string;
+      data: {
+        verification_status: string;
+        next_experiment: { command: string; action: string };
+      };
+    };
+    expect(envelope.ok).toBe(true);
+    expect(envelope.command).toBe("delivery.trajectory");
+    expect(envelope.data.verification_status).toBe("active");
+    expect(envelope.data.next_experiment).toMatchObject({
+      action: "run_strategy",
+      command: "delivery-fixture.read",
+    });
   });
 
   it("does not execute repair-only delivery states as normal experiments", async () => {

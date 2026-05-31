@@ -33,6 +33,8 @@ import {
   type DeliveryAttemptBudget,
   type DeliveryEvidenceGate,
   type DeliveryObjective,
+  type DeliveryOperatorSpec,
+  type DeliveryRunRef,
   type DeliveryStateInput,
   type DeliveryStrategy,
   type DeliveryStrategyKind,
@@ -46,7 +48,6 @@ import {
   RunStoreError,
 } from "../engine/session/store.js";
 import type { RunSummary, RunTraceStatus } from "../engine/session/query.js";
-import type { RunId } from "../engine/session/types.js";
 
 interface DeliveryCommandOptions {
   root?: string;
@@ -54,21 +55,6 @@ interface DeliveryCommandOptions {
   runId?: string;
   permissionProfile?: string;
   yes?: boolean;
-}
-
-interface DeliveryOperatorSpec {
-  objective: DeliveryObjective;
-  strategies: DeliveryStrategy[];
-  attempts: DeliveryAttempt[];
-  runs: DeliveryRunRef[];
-  recorded_at?: string;
-}
-
-interface DeliveryRunRef {
-  run_id: RunId;
-  strategy_id: string;
-  id?: string;
-  ordinal?: number;
 }
 
 class DeliveryCliError extends Error {

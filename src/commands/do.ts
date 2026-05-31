@@ -8,7 +8,8 @@
  *               (mirrors REST HATEOAS; avoids ambiguous-intent triggering
  *               irreversible adapter writes).
  * @needs        commander, src/discovery/search, src/registry,
- *               src/commands/describe (describeCommand), src/output/{envelope,formatter}
+ *               src/commands/describe (describeCommand),
+ *               src/engine/delivery/spec, src/output/{envelope,formatter}
  * @feeds        src/cli.ts agent entrypoint; complements `unicli search`
  *               (set semantics) with action semantics ("give me the answer").
  * @breaks       Emits `empty_result` envelope (exit 66) when no adapter
@@ -28,15 +29,17 @@
 
 import { Command } from "commander";
 import { search } from "../discovery/search.js";
-import { getAdapter, resolveCommand } from "../registry.js";
+import { commandUsesBrowser, getAdapter, resolveCommand } from "../registry.js";
 import { describeCommand } from "./describe.js";
 import { format, detectFormat } from "../output/formatter.js";
 import { printErrorEnvelope } from "../output/error-writer.js";
+import { buildDeliveryOperatorSpecTemplate } from "../engine/delivery/spec.js";
 import type {
   AgentContext,
   AgentNextAction,
   AgentNextActionParam,
 } from "../output/envelope.js";
+import type { DeliveryOperatorSpec } from "../engine/delivery/spec.js";
 import type { OutputFormat } from "../types.js";
 
 const DEFAULT_TOP = 3;
@@ -155,12 +158,25 @@ export function registerDoCommand(program: Command): void {
           : null,
         candidates: matches,
       };
+      const deliverySpecTemplate = best
+        ? deliverySpecTemplateForMatch(intent, best)
+        : undefined;
+      if (deliverySpecTemplate) {
+        data.delivery_spec_template = deliverySpecTemplate;
+      }
 
       const ctx: AgentContext = {
         command: "core.do",
         duration_ms: Date.now() - startedAt,
         surface: "web",
-        next_actions: best ? successNextActions(intent, best, matches) : [],
+        next_actions: best
+          ? successNextActions(
+              intent,
+              best,
+              matches,
+              Boolean(deliverySpecTemplate),
+            )
+          : [],
       };
       console.log(format(data, undefined, fmt, ctx));
     });
@@ -195,6 +211,7 @@ function successNextActions(
   intent: string,
   best: MatchPayload,
   matches: MatchPayload[],
+  hasDeliverySpecTemplate: boolean,
 ): AgentNextAction[] {
   const actions: AgentNextAction[] = [];
 
@@ -219,6 +236,14 @@ function successNextActions(
       "Stdin-JSON channel — use when params contain quotes/emoji/JSON",
   });
 
+  if (hasDeliverySpecTemplate) {
+    actions.push({
+      command: "unicli delivery run <delivery-spec.json>",
+      description:
+        "Execute the included delivery_spec_template after saving and filling required args",
+    });
+  }
+
   // Surface a runner-up if it scored close to the top
   if (
     matches.length > 1 &&
@@ -239,6 +264,35 @@ function successNextActions(
   });
 
   return actions;
+}
+
+function deliverySpecTemplateForMatch(
+  intent: string,
+  best: MatchPayload,
+): DeliveryOperatorSpec | undefined {
+  const resolved = resolveCommand(best.site, best.command);
+  if (!resolved) return undefined;
+  const adapterPath = resolved.command.adapter_path;
+  return buildDeliveryOperatorSpecTemplate({
+    intent,
+    site: best.site,
+    command: best.command,
+    description: best.description,
+    args: recordValue(best.example_stdin),
+    adapter_path: adapterPath,
+    adapter_type: resolved.adapter.type,
+    target_surface: resolved.command.target_surface,
+    uses_browser: commandUsesBrowser(resolved.adapter, resolved.command),
+  });
+}
+
+function recordValue(
+  value: Record<string, unknown> | string | undefined,
+): Record<string, unknown> | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return undefined;
+  }
+  return value;
 }
 
 /**
