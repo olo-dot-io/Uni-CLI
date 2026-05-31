@@ -24,6 +24,7 @@ import {
 } from "../social/capabilities.js";
 import { buildInvocation, execute } from "../engine/kernel/execute.js";
 import { refreshCookiesFromBrowser } from "../engine/cookies.js";
+import { annotateAuthRetryFailure } from "../output/auth-guidance.js";
 
 export const HIGHLIGHTED_SOCIAL_SITES = [
   "xiaohongshu",
@@ -305,20 +306,8 @@ export function registerSocialCommand(program: Command): void {
               `[auth] refreshed ${refresh.cookieCount ?? 0} cookie(s) from ${refresh.source}; retrying ${site}.${commandName}\n`,
             );
             finalResult = await execute(inv);
-          } else if (finalResult.error) {
-            finalResult.error.suggestion = [
-              finalResult.error.suggestion,
-              refresh.suggestion,
-            ]
-              .filter(Boolean)
-              .join(" ");
-            finalResult.error.remedy = {
-              message:
-                refresh.suggestion ??
-                "Refresh browser login state, then retry.",
-              command: `unicli auth import ${site}`,
-            };
-            finalResult.envelope.error = finalResult.error;
+          } else {
+            annotateAuthRetryFailure(finalResult, refresh.suggestion, site);
           }
         }
         if (finalResult.error) {

@@ -1,10 +1,14 @@
 /**
  * @owner   Auth failure guidance.
- * @does    Builds concrete commands for refreshing browser-backed login state.
- * @needs   Site name and optional domain from adapter metadata.
- * @feeds   Error envelopes, next_actions, and CLI retry messages.
+ * @does    Builds concrete commands for refreshing browser-backed login state,
+ *          and applies the canonical --auth-retry failure annotation so every
+ *          command path annotates the error envelope identically.
+ * @needs   Site name + optional domain from adapter metadata; AgentError/AgentEnvelope shapes.
+ * @feeds   Error envelopes, next_actions, CLI retry messages, dispatch/social --auth-retry.
  * @breaks  Auth failures become vague when platform login URLs or retry commands drift.
  */
+
+import type { InvocationResult } from "../engine/kernel/types.js";
 
 const SITE_DOMAINS: Record<string, string> = {
   bilibili: "bilibili.com",
@@ -55,4 +59,30 @@ export function challengeFailureSuggestion(
     `Then refresh cookies with \`${authImportCommand(site)}\`.`,
     `For one-shot recovery after the browser is clean, run \`${authRetryCommand(site, cmdName)}\`.`,
   ].join(" ");
+}
+
+/**
+ * Annotate a failed invocation after a --auth-retry cookie refresh did NOT
+ * recover it: merge the refresh suggestion into the error, attach a re-import
+ * remedy, and mirror the error onto the envelope. The single source of this
+ * annotation so the dispatch and social command paths stay byte-identical
+ * (the envelope fields are the measured IV — both paths must agree).
+ *
+ * No-ops when there is no error to annotate. Mutates `result` in place; the
+ * error/envelope field SHAPE is unchanged (only values are filled).
+ */
+export function annotateAuthRetryFailure(
+  result: Pick<InvocationResult, "error" | "envelope">,
+  refreshSuggestion: string | undefined,
+  site: string,
+): void {
+  if (!result.error) return;
+  result.error.suggestion = [result.error.suggestion, refreshSuggestion]
+    .filter(Boolean)
+    .join(" ");
+  result.error.remedy = {
+    message: refreshSuggestion ?? "Refresh browser login state, then retry.",
+    command: `unicli auth import ${site}`,
+  };
+  result.envelope.error = result.error;
 }

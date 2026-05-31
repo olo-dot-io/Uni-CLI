@@ -90,6 +90,7 @@ export function errorTypeToCode(err: unknown): string {
     if (errorType === "empty_result") return "empty_result";
     if (errorType === "network_error") return "network_error";
     if (errorType === "timeout") return "network_error";
+    if (errorType === "unknown_action") return "unknown_action";
     return "internal_error";
   }
   if (err instanceof Error && typeof (err as ActionableError).code === "string")
@@ -119,6 +120,7 @@ export function mapErrorToExitCode(err: unknown): number {
       return ExitCode.AUTH_REQUIRED;
     if (errorType === "empty_result") return ExitCode.EMPTY_RESULT;
     if (errorType === "permission_denied") return ExitCode.AUTH_REQUIRED;
+    if (errorType === "unknown_action") return ExitCode.CONFIG_ERROR;
     if (errorType === "network_error" || errorType === "timeout") {
       return ExitCode.TEMP_FAILURE;
     }

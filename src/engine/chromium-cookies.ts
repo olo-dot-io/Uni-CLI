@@ -284,7 +284,7 @@ function snapshotDb(srcDb: string): { dbPath: string; cleanup: () => void } {
   };
 }
 
-interface RawCookieRow {
+export interface RawCookieRow {
   host: string;
   name: string;
   encrypted: Buffer;
@@ -402,24 +402,73 @@ export function readCookies(opts: ReadOptions): CookieRow[] {
   const snap = snapshotDb(dbPath);
   try {
     const rows = readRowsForDomain(snap.dbPath, opts.domain);
-    return rows.map((r) => {
-      const value =
-        r.encrypted.length > 0
-          ? decryptValue(r.encrypted, key, platform)
-          : r.plain;
-      return {
-        host: r.host,
-        name: r.name,
-        value,
-        path: r.path,
-        expires: r.expires,
-        secure: r.isSecure === 1,
-        httpOnly: r.isHttpOnly === 1,
-      };
-    });
+    return decodeCookieRows(rows, (enc) => decryptValue(enc, key, platform));
   } finally {
     snap.cleanup();
   }
+}
+
+/**
+ * Decode raw cookie rows into typed CookieRows, tolerant of individual rows
+ * that cannot be decrypted (e.g. a single Chrome v20 App-Bound-Encryption row).
+ *
+ * Resilience contract (the reason this is a separate, tested function):
+ *   - a plain (unencrypted) row never calls `decrypt`;
+ *   - an encrypted row that throws is SKIPPED, not fatal — one bad row must not
+ *     wipe the whole cookie set (the prior `.map()` threw on the first failure,
+ *     and the caller swallowed it → all cookies silently vanished);
+ *   - BUT if every encrypted row fails AND nothing else survived, we THROW a
+ *     typed ChromiumCookieError instead of returning [] — so "decryption is
+ *     broken (likely v20)" is never silently indistinguishable from "no cookies".
+ *
+ * `decrypt` is injected so the resilience logic is unit-testable without a real
+ * keystore.
+ */
+export function decodeCookieRows(
+  rows: RawCookieRow[],
+  decrypt: (encrypted: Buffer) => string,
+): CookieRow[] {
+  const out: CookieRow[] = [];
+  let encryptedTotal = 0;
+  let encryptedFailed = 0;
+
+  for (const r of rows) {
+    let value: string;
+    if (r.encrypted.length > 0) {
+      encryptedTotal += 1;
+      try {
+        value = decrypt(r.encrypted);
+      } catch {
+        encryptedFailed += 1;
+        continue;
+      }
+    } else {
+      value = r.plain;
+    }
+    out.push({
+      host: r.host,
+      name: r.name,
+      value,
+      path: r.path,
+      expires: r.expires,
+      secure: r.isSecure === 1,
+      httpOnly: r.isHttpOnly === 1,
+    });
+  }
+
+  if (
+    encryptedTotal > 0 &&
+    encryptedFailed === encryptedTotal &&
+    out.length === 0
+  ) {
+    throw new ChromiumCookieError(
+      "encryption_unsupported",
+      `all ${encryptedTotal} encrypted cookie rows failed to decrypt (likely Chrome v20 App-Bound Encryption)`,
+      "Start Chrome with --remote-debugging-port to use the CDP path, or run: unicli auth import <site>",
+    );
+  }
+
+  return out;
 }
 
 /**

@@ -262,9 +262,8 @@ export async function createCli(): Promise<Command> {
 
       // 4. Cookie directory
       const { existsSync, readdirSync } = await import("node:fs");
-      const { join } = await import("node:path");
-      const { homedir } = await import("node:os");
-      const cookieDir = join(homedir(), ".unicli", "cookies");
+      const { getCookieDir } = await import("./engine/cookies.js");
+      const cookieDir = getCookieDir();
       if (existsSync(cookieDir)) {
         const cookieFiles = readdirSync(cookieDir).filter((f) =>
           f.endsWith(".json"),
@@ -297,6 +296,8 @@ export async function createCli(): Promise<Command> {
       }
 
       // 6. Plugin directory
+      const { join } = await import("node:path");
+      const { homedir } = await import("node:os");
       const pluginsDir = join(homedir(), ".unicli", "plugins");
       if (existsSync(pluginsDir)) {
         const plugins = readdirSync(pluginsDir, { withFileTypes: true }).filter(

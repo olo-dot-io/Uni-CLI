@@ -1,11 +1,14 @@
 import { cli, Strategy } from "../../registry.js";
 import type { IPage } from "../../types.js";
-import { loadCookies, formatCookieHeader } from "../../engine/cookies.js";
+import {
+  loadCookiesWithCDP,
+  formatCookieHeader,
+} from "../../engine/cookies.js";
 import { USER_AGENT } from "../../constants.js";
 import { intArg, js, str } from "../_shared/browser-tools.js";
 
 async function xueqiuJson(url: string): Promise<Record<string, unknown>> {
-  const cookies = loadCookies("xueqiu");
+  const cookies = await loadCookiesWithCDP("xueqiu", "xueqiu.com");
   const headers: Record<string, string> = {
     "user-agent": USER_AGENT,
     referer: "https://xueqiu.com",
