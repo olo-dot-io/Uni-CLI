@@ -1,6 +1,6 @@
 /**
  * @owner src/commands/architecture.ts
- * @does Exposes the callable architecture tree and lifecycle audit to agents.
+ * @does Exposes the callable computer-control architecture tree and audit to agents.
  * @needs commander, src/core/architecture-tree, src/registry, src/output/formatter, src/output/envelope
  * @feeds src/cli.ts, tests/unit/commands/architecture.test.ts
  * @breaks Propagates architecture-tree construction errors when command metadata is malformed.
@@ -18,6 +18,10 @@ import {
   auditArchitectureTree,
   buildArchitectureTree,
 } from "../core/architecture-tree.js";
+import {
+  listCoreDiscoveryCommands,
+  type CoreDiscoveryCommand,
+} from "../discovery/core-catalog.js";
 import { getAllAdapters } from "../registry.js";
 import { detectFormat, format } from "../output/formatter.js";
 import { makeCtx } from "../output/envelope.js";
@@ -25,6 +29,7 @@ import type { AdapterManifest, OutputFormat } from "../types.js";
 
 export interface RegisterArchitectureCommandOptions {
   getAdapters?: () => readonly AdapterManifest[];
+  getCoreCommands?: () => readonly CoreDiscoveryCommand[];
 }
 
 function writeArchitectureEnvelope(
@@ -44,16 +49,20 @@ export function registerArchitectureCommand(
   options: RegisterArchitectureCommandOptions = {},
 ): void {
   const readAdapters = options.getAdapters ?? getAllAdapters;
+  const readCoreCommands = options.getCoreCommands ?? listCoreDiscoveryCommands;
   const architecture = program
     .command("architecture")
-    .description("Inspect Uni-CLI's command lifecycle tree and rewrite audit");
+    .description("Inspect Uni-CLI's computer-control architecture and audit");
 
   architecture
     .command("tree")
     .description("Emit the callable Uni-CLI architecture tree")
     .action(() => {
       const startedAt = Date.now();
-      const tree = buildArchitectureTree({ adapters: readAdapters() });
+      const tree = buildArchitectureTree({
+        adapters: readAdapters(),
+        coreCommands: readCoreCommands(),
+      });
       writeArchitectureEnvelope(
         program,
         "architecture.tree",
@@ -64,10 +73,15 @@ export function registerArchitectureCommand(
 
   architecture
     .command("audit")
-    .description("Audit architecture tree readiness before restructuring")
+    .description(
+      "Audit computer-control architecture readiness before restructuring",
+    )
     .action(() => {
       const startedAt = Date.now();
-      const audit = auditArchitectureTree({ adapters: readAdapters() });
+      const audit = auditArchitectureTree({
+        adapters: readAdapters(),
+        coreCommands: readCoreCommands(),
+      });
       writeArchitectureEnvelope(
         program,
         "architecture.audit",

@@ -1,7 +1,7 @@
 /**
  * @owner Uni-CLI Core
- * @does Projects adapter registry commands into the agent-native command contract.
- * @needs AdapterManifest, AdapterCommand, operation policy metadata.
+ * @does Projects adapter and core registry commands into the agent-native command contract.
+ * @needs AdapterManifest, AdapterCommand, CoreDiscoveryCommand, operation policy metadata.
  * @feeds describe, MCP, agent packs, benchmark generation, repair tooling.
  * @breaks Missing source paths, schemas, safety metadata, or repair metadata.
  */
@@ -26,6 +26,10 @@ import type {
   Strategy,
   TargetSurface,
 } from "../types.js";
+import type {
+  CoreDiscoveryArg,
+  CoreDiscoveryCommand,
+} from "../discovery/core-catalog.js";
 
 export type CommandSafetyClass = "read" | "auth_read" | "write" | "destructive";
 
@@ -96,8 +100,10 @@ export interface CommandContractEval {
 }
 
 export interface CommandContractRepair {
+  source_kind: "adapter" | "core";
+  source_path?: string;
   adapter_path?: string;
-  repair_command: string;
+  repair_command?: string;
   quarantined: boolean;
   quarantine_reason?: string;
   minimum_capability?: string;
@@ -139,7 +145,15 @@ export interface BuildCommandContractInput {
   command: AdapterCommand;
 }
 
-function jsonTypeForArg(arg: AdapterArg): CommandContractInputProperty["type"] {
+export interface BuildCoreCommandContractInput {
+  command: CoreDiscoveryCommand;
+}
+
+type CommandContractArg = AdapterArg | CoreDiscoveryArg;
+
+function jsonTypeForArg(
+  arg: CommandContractArg,
+): CommandContractInputProperty["type"] {
   switch (arg.type) {
     case "int":
       return "integer";
@@ -153,7 +167,9 @@ function jsonTypeForArg(arg: AdapterArg): CommandContractInputProperty["type"] {
   }
 }
 
-function buildInputSchema(args: AdapterArg[]): CommandContractInputSchema {
+function buildInputSchema(
+  args: readonly CommandContractArg[],
+): CommandContractInputSchema {
   const properties: Record<string, CommandContractInputProperty> = {};
   const required: string[] = [];
 
@@ -166,11 +182,13 @@ function buildInputSchema(args: AdapterArg[]): CommandContractInputSchema {
     if (arg.choices !== undefined && arg.choices.length > 0) {
       property.enum = arg.choices;
     }
-    if (arg.format !== undefined) property.format = arg.format;
-    if (arg["x-unicli-kind"] !== undefined) {
+    if ("format" in arg && arg.format !== undefined) {
+      property.format = arg.format;
+    }
+    if ("x-unicli-kind" in arg && arg["x-unicli-kind"] !== undefined) {
       property["x-unicli-kind"] = arg["x-unicli-kind"];
     }
-    if (arg["x-unicli-accepts"] !== undefined) {
+    if ("x-unicli-accepts" in arg && arg["x-unicli-accepts"] !== undefined) {
       property["x-unicli-accepts"] = arg["x-unicli-accepts"];
     }
     properties[arg.name] = property;
@@ -217,6 +235,16 @@ function contractDisplayName(
   commandName: string,
 ): string {
   return `${adapter.displayName ?? adapter.name} ${commandName}`;
+}
+
+function coreCommandUsesBrowser(command: CoreDiscoveryCommand): boolean {
+  return command.type === "browser";
+}
+
+function tagsForCore(command: CoreDiscoveryCommand): string[] {
+  return Array.from(
+    new Set(["core", command.type, command.category].filter(Boolean)),
+  ).sort();
 }
 
 export function buildCommandContract(
@@ -298,6 +326,8 @@ export function buildCommandContract(
       health_status: quarantined ? "quarantined" : "unknown",
     },
     repair: {
+      source_kind: "adapter",
+      ...(sourcePath ? { source_path: sourcePath } : {}),
       ...(sourcePath ? { adapter_path: sourcePath } : {}),
       repair_command: repairCommand,
       quarantined,
@@ -311,6 +341,84 @@ export function buildCommandContract(
     artifacts: {
       produces_files: artifactValidators.length > 0,
       validators: artifactValidators.map((validator) => validator.kind),
+    },
+  };
+}
+
+export function buildCoreCommandContract(
+  input: BuildCoreCommandContractInput,
+): CommandContract {
+  const { command } = input;
+  const args = command.args ?? [];
+  const targetSurface = resolveOperationTargetSurface({
+    adapterType: command.type,
+    targetSurface: command.target_surface,
+  });
+  const browser = coreCommandUsesBrowser(command);
+  const policy = evaluateOperationPolicy({
+    site: command.site,
+    command: command.command,
+    description: command.description,
+    adapterType: command.type,
+    targetSurface,
+    strategy: "public",
+    browser,
+    args: [...args],
+  });
+  const sourcePath = command.source_path;
+
+  return {
+    schema_version: "command-contract.v1",
+    identity: {
+      site: command.site,
+      command: command.command,
+      display_name: `${command.site} ${command.command}`,
+      category: command.category,
+      tags: tagsForCore(command),
+      ...(sourcePath ? { source_path: sourcePath } : {}),
+    },
+    description: command.description,
+    schemas: {
+      input: buildInputSchema(args),
+    },
+    effect: {
+      operation_effect: policy.effect,
+      risk: policy.risk,
+      safety_class: safetyClassFor({
+        effect: policy.effect,
+        authRequired: false,
+      }),
+      target_surface: targetSurface,
+      browser,
+      read_only: policy.effect === "read",
+      idempotent: policy.effect === "read",
+      open_world:
+        policy.capability_scope.dimensions.network.access !== "none" ||
+        policy.capability_scope.dimensions.browser.access !== "none",
+      paginated: false,
+    },
+    auth: {
+      strategy: "public",
+      required: false,
+    },
+    governance: {
+      dimensions: policy.capability_scope.dimensions,
+      resources: policy.capability_scope.resources,
+      resource_summary: policy.capability_scope.resource_summary,
+    },
+    eval: {
+      fixture_status: "unknown",
+      live_status: "unknown",
+      health_status: "unknown",
+    },
+    repair: {
+      source_kind: "core",
+      ...(sourcePath ? { source_path: sourcePath } : {}),
+      quarantined: false,
+    },
+    artifacts: {
+      produces_files: false,
+      validators: [],
     },
   };
 }

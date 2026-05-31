@@ -25,9 +25,21 @@ export interface CoreDiscoveryCommand {
   category: string;
   type: string;
   target_surface?: TargetSurface;
+  source_path?: string;
   args?: readonly CoreDiscoveryArg[];
   channels?: Record<string, string>;
 }
+
+const CORE_COMMAND_SOURCE_PATHS: Record<string, string> = {
+  agents: "src/commands/agents.ts",
+  architecture: "src/commands/architecture.ts",
+  browser: "src/commands/browser/index.ts",
+  compute: "src/commands/compute.ts",
+  delivery: "src/commands/delivery.ts",
+  mcp: "src/commands/mcp.ts",
+  operate: "src/commands/operate.ts",
+  runs: "src/commands/runs.ts",
+};
 
 const COMPUTE_CAPTURE_ARGS: readonly CoreDiscoveryArg[] = [
   {
@@ -233,7 +245,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "dev",
     type: "service",
     description:
-      "Emit Uni-CLI's callable architecture tree for agents, including first-class command contracts, invocation kernel, local computer use, evidence loop, command lifecycle, second-class surfaces, and verification roots.",
+      "Emit Uni-CLI's callable computer-control architecture tree for agents, including operation contracts, control kernel, action substrates, evidence delivery, runtime exposure, internal authoring cycle, and verification roots.",
   },
   {
     site: "architecture",
@@ -241,7 +253,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "dev",
     type: "service",
     description:
-      "Audit Uni-CLI command lifecycle readiness before restructuring, including command counts, local computer-use coverage, missing source paths, second-class surfaces, and full rewrite readiness.",
+      "Audit Uni-CLI computer-control readiness before restructuring, including command counts, local computer-use coverage, control stages, missing source paths, substrate identity boundaries, and full rewrite readiness.",
   },
   {
     site: "compute",
@@ -396,7 +408,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
 ];
 
 export function listCoreDiscoveryCommands(): CoreDiscoveryCommand[] {
-  return [...CORE_DISCOVERY_COMMANDS].sort(
+  return CORE_DISCOVERY_COMMANDS.map(withCoreSourcePath).sort(
     (a, b) =>
       a.site.localeCompare(b.site) || a.command.localeCompare(b.command),
   );
@@ -406,9 +418,10 @@ export function getCoreDiscoveryCommand(
   site: string,
   command: string,
 ): CoreDiscoveryCommand | undefined {
-  return CORE_DISCOVERY_COMMANDS.find(
+  const coreCommand = CORE_DISCOVERY_COMMANDS.find(
     (candidate) => candidate.site === site && candidate.command === command,
   );
+  return coreCommand ? withCoreSourcePath(coreCommand) : undefined;
 }
 
 export function listCoreDiscoverySites(): Array<{
@@ -421,7 +434,7 @@ export function listCoreDiscoverySites(): Array<{
     string,
     { category: string; type: string; commands: CoreDiscoveryCommand[] }
   >();
-  for (const command of CORE_DISCOVERY_COMMANDS) {
+  for (const command of CORE_DISCOVERY_COMMANDS.map(withCoreSourcePath)) {
     const entry = sites.get(command.site) ?? {
       category: command.category,
       type: command.type,
@@ -445,4 +458,13 @@ export function listCoreDiscoverySites(): Array<{
 export function coreDiscoveryCategory(site: string): string | undefined {
   return CORE_DISCOVERY_COMMANDS.find((command) => command.site === site)
     ?.category;
+}
+
+function withCoreSourcePath(
+  command: CoreDiscoveryCommand,
+): CoreDiscoveryCommand {
+  return {
+    ...command,
+    source_path: command.source_path ?? CORE_COMMAND_SOURCE_PATHS[command.site],
+  };
 }

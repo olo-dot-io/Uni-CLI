@@ -323,6 +323,8 @@ describe("CLI fast path", () => {
     expect(handled).toBe(true);
     const payload = JSON.parse(stdout.join("")) as {
       command: string;
+      source_path?: string;
+      adapter_path?: string;
       args_schema: {
         properties: Record<
           string,
@@ -330,8 +332,20 @@ describe("CLI fast path", () => {
         >;
       };
       channels: { shell: string };
+      contract?: {
+        schema_version: string;
+        identity: { site: string; command: string; source_path?: string };
+        repair: {
+          source_kind: string;
+          source_path?: string;
+          adapter_path?: string;
+          repair_command?: string;
+        };
+      };
     };
     expect(payload.command).toBe("unicli compute capture");
+    expect(payload.source_path).toBe("src/commands/compute.ts");
+    expect(payload.adapter_path).toBeUndefined();
     expect(payload.args_schema.properties.format).toMatchObject({
       type: "string",
       default: "compact",
@@ -345,6 +359,20 @@ describe("CLI fast path", () => {
       type: "boolean",
     });
     expect(payload.channels.shell).toContain("unicli compute capture");
+    expect(payload.contract).toMatchObject({
+      schema_version: "command-contract.v1",
+      identity: {
+        site: "compute",
+        command: "capture",
+        source_path: "src/commands/compute.ts",
+      },
+      repair: {
+        source_kind: "core",
+        source_path: "src/commands/compute.ts",
+      },
+    });
+    expect(payload.contract?.repair.adapter_path).toBeUndefined();
+    expect(payload.contract?.repair.repair_command).toBeUndefined();
   });
 
   it("serves repair dry-run without entering the repair loop", () => {

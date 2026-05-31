@@ -39,7 +39,10 @@ function newProgram(): Command {
   const program = new Command();
   program.exitOverride();
   program.option("-f, --format <format>", "output format");
-  registerArchitectureCommand(program, { getAdapters: () => fixtureAdapters });
+  registerArchitectureCommand(program, {
+    getAdapters: () => fixtureAdapters,
+    getCoreCommands: () => [],
+  });
   return program;
 }
 
@@ -47,8 +50,9 @@ describe("unicli architecture", () => {
   it("registers architecture audit as a discoverable core command", () => {
     const coreCommand = getCoreDiscoveryCommand("architecture", "audit");
 
-    expect(coreCommand?.description).toContain("command lifecycle");
+    expect(coreCommand?.description).toContain("computer-control");
     expect(coreCommand?.type).toBe("service");
+    expect(coreCommand?.source_path).toBe("src/commands/architecture.ts");
   });
 
   it("emits an envelope with the callable architecture tree", async () => {
@@ -84,6 +88,22 @@ describe("unicli architecture", () => {
     expect((envelope.data as { total_commands: number }).total_commands).toBe(
       1,
     );
+    expect(
+      (
+        envelope.data as {
+          capability_matrix: Array<{ surface: string }>;
+          workflow_readiness: Array<{ id: string }>;
+        }
+      ).capability_matrix.map((entry) => entry.surface),
+    ).toContain("web");
+    expect(
+      (
+        envelope.data as {
+          capability_matrix: Array<{ surface: string }>;
+          workflow_readiness: Array<{ id: string }>;
+        }
+      ).workflow_readiness.map((entry) => entry.id),
+    ).toContain("video-search");
     validateEnvelope(envelope as Parameters<typeof validateEnvelope>[0]);
   });
 });

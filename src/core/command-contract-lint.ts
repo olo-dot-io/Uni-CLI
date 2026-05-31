@@ -38,7 +38,11 @@ export function lintCommandContract(
       message: `${label} has no target surface`,
     });
   }
-  if (contract.repair.repair_command.length === 0) {
+  if (
+    contract.repair.source_kind === "adapter" &&
+    (contract.repair.repair_command === undefined ||
+      contract.repair.repair_command.length === 0)
+  ) {
     issues.push({
       code: "missing_repair_command",
       severity: "error",

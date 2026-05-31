@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   COMMAND_LIFECYCLE_STEPS,
+  COMPUTER_CONTROL_STAGES,
   auditArchitectureTree,
   buildArchitectureTree,
 } from "../../../src/core/architecture-tree.js";
 import { AdapterType, Strategy } from "../../../src/types.js";
+import type { CoreDiscoveryCommand } from "../../../src/discovery/core-catalog.js";
 import type { AdapterManifest } from "../../../src/types.js";
 
 const fixtureAdapters: AdapterManifest[] = [
@@ -49,8 +51,34 @@ const fixtureAdapters: AdapterManifest[] = [
   },
 ];
 
+const fixtureCoreCommands: CoreDiscoveryCommand[] = [
+  {
+    site: "compute",
+    command: "snapshot",
+    description: "Capture a compact accessibility snapshot",
+    category: "desktop",
+    type: "desktop",
+    target_surface: "desktop",
+    source_path: "src/commands/compute.ts",
+  },
+];
+
 describe("architecture tree", () => {
-  it("keeps the command lifecycle order as the top-level runtime spine", () => {
+  it("keeps the computer-control loop as the product spine", () => {
+    expect(COMPUTER_CONTROL_STAGES).toEqual([
+      "intent",
+      "select",
+      "govern",
+      "act",
+      "observe",
+      "diagnose",
+      "repair-or-reroute",
+      "deliver",
+      "expose",
+    ]);
+  });
+
+  it("keeps the command lifecycle as an internal authoring cycle", () => {
     expect(COMMAND_LIFECYCLE_STEPS).toEqual([
       "create",
       "discover",
@@ -61,31 +89,109 @@ describe("architecture tree", () => {
     ]);
   });
 
-  it("builds a tree that makes command contracts and local computer use first-class", () => {
+  it("builds a tree around agent-to-computer control, not a catalog lifecycle", () => {
     const tree = buildArchitectureTree({ adapters: fixtureAdapters });
 
     expect(tree.summary.total_commands).toBe(3);
     expect(tree.summary.local_computer_use_commands).toBe(2);
     expect(tree.root.children.map((node) => node.id)).toContain(
-      "first-class-citizens",
+      "computer-control-platform",
     );
 
-    const firstClassNode = tree.root.children.find(
-      (node) => node.id === "first-class-citizens",
+    const platformNode = tree.root.children.find(
+      (node) => node.id === "computer-control-platform",
     );
-    expect(firstClassNode?.children.map((node) => node.id)).toEqual([
-      "command-contract",
-      "invocation-kernel",
-      "local-computer-use",
-      "evidence-loop",
+    expect(platformNode?.children.map((node) => node.id)).toEqual([
+      "control-intent",
+      "control-select",
+      "control-govern",
+      "control-act",
+      "control-observe",
+      "control-diagnose",
+      "control-repair-or-reroute",
+      "control-deliver",
+      "control-expose",
     ]);
+
+    const substrateNode = tree.root.children.find(
+      (node) => node.id === "action-substrates",
+    );
+    expect(substrateNode?.children.map((node) => node.id)).toEqual([
+      "web-api-substrate",
+      "browser-substrate",
+      "desktop-os-substrate",
+      "local-tool-substrate",
+      "protocol-substrate",
+      "visual-substrate",
+    ]);
+  });
+
+  it("includes core Commander commands in the computer-control inventory", () => {
+    const tree = buildArchitectureTree({
+      adapters: fixtureAdapters,
+      coreCommands: fixtureCoreCommands,
+    });
+
+    expect(tree.summary.total_commands).toBe(4);
+    expect(tree.summary.adapter_commands).toBe(3);
+    expect(tree.summary.core_commands).toBe(1);
+    expect(tree.summary.local_computer_use_commands).toBe(3);
+    expect(tree.command_inventory).toContainEqual(
+      expect.objectContaining({
+        ref: "compute.snapshot",
+        source_kind: "core",
+        source_path: "src/commands/compute.ts",
+        target_surface: "desktop",
+        safety_class: "write",
+        operation_effect: "local_file",
+        capabilities: [],
+        is_local_computer_use: true,
+      }),
+    );
+  });
+
+  it("builds a capability matrix and workflow readiness from the same inventory", () => {
+    const tree = buildArchitectureTree({
+      adapters: fixtureAdapters,
+      coreCommands: fixtureCoreCommands,
+    });
+
+    expect(tree.capability_matrix).toContainEqual(
+      expect.objectContaining({
+        surface: "desktop",
+        command_count: 3,
+        local_computer_use_commands: 3,
+      }),
+    );
+    expect(tree.workflow_readiness).toContainEqual(
+      expect.objectContaining({
+        id: "installed-app-operation",
+        readiness: "cataloged",
+        command_count: 3,
+      }),
+    );
   });
 
   it("audits missing repair source paths without hiding them behind success", () => {
     const audit = auditArchitectureTree({ adapters: fixtureAdapters });
 
     expect(audit.total_commands).toBe(3);
+    expect(audit.adapter_commands).toBe(3);
+    expect(audit.core_commands).toBe(0);
     expect(audit.missing_source_paths).toEqual(["local-app.missingSource"]);
+    expect(audit.control_stages).toEqual(COMPUTER_CONTROL_STAGES);
+    expect(audit.non_product_identities).toContain("computer-use-sandbox-only");
+    expect(audit.capability_matrix.map((entry) => entry.surface)).toEqual([
+      "web",
+      "browser",
+      "desktop",
+      "system",
+      "protocol",
+      "bridge",
+    ]);
+    expect(audit.workflow_readiness.map((entry) => entry.id)).toContain(
+      "browser-tab-control",
+    );
     expect(audit.lifecycle_steps).toEqual(COMMAND_LIFECYCLE_STEPS);
     expect(audit.ready_for_full_rewrite).toBe(false);
   });

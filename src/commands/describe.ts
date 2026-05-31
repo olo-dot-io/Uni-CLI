@@ -27,7 +27,15 @@ import {
   resolveOperationAdapterPath,
   resolveOperationTargetSurface,
 } from "../engine/operation-policy.js";
-import { buildCommandContract } from "../core/command-contract.js";
+import {
+  buildCommandContract,
+  buildCoreCommandContract,
+} from "../core/command-contract.js";
+import {
+  getCoreDiscoveryCommand,
+  listCoreDiscoverySites,
+  type CoreDiscoveryCommand,
+} from "../discovery/core-catalog.js";
 import { ExitCode } from "../types.js";
 import type {
   AdapterArg,
@@ -186,6 +194,71 @@ function defaultNextActions(
   ];
 }
 
+function coreCommandUsesBrowser(command: CoreDiscoveryCommand): boolean {
+  return command.type === "browser";
+}
+
+function describeCoreCommand(
+  command: CoreDiscoveryCommand,
+): Record<string, unknown> {
+  const args = [...(command.args ?? [])];
+  const contract = buildCoreCommandContract({ command });
+  return {
+    command: `unicli ${command.site} ${command.command}`,
+    description: command.description,
+    quarantined: false,
+    strategy: "public",
+    auth: false,
+    browser: coreCommandUsesBrowser(command),
+    target_surface: contract.effect.target_surface,
+    ...(contract.identity.source_path
+      ? { source_path: contract.identity.source_path }
+      : {}),
+    args_schema: argsToJsonSchema(args),
+    example_stdin: buildExample(args),
+    channels:
+      command.channels ?? buildChannels(command.site, command.command, args),
+    next_actions: [
+      {
+        command: `unicli ${command.site} ${command.command} --help`,
+        description: "Inspect the Commander help for exact shell flags",
+      },
+      {
+        command: `unicli ${command.site} ${command.command}`,
+        description: "Run the core command",
+      },
+    ],
+    contract,
+  };
+}
+
+function describeCoreSite(site: string): Record<string, unknown> | undefined {
+  const coreSite = listCoreDiscoverySites().find(
+    (candidate) => candidate.site === site,
+  );
+  if (!coreSite) return undefined;
+  return {
+    site,
+    display_name: site,
+    type: coreSite.type,
+    strategy: "public",
+    commands: coreSite.commands.map((command) => ({
+      name: command.command,
+      description: command.description,
+      quarantined: false,
+      strategy: "public",
+      auth: false,
+      browser: coreCommandUsesBrowser(command),
+      args: (command.args ?? []).map((arg) => ({
+        name: arg.name,
+        type: arg.type ?? "str",
+        required: arg.required === true,
+        positional: arg.positional === true,
+      })),
+    })),
+  };
+}
+
 /** Full describe payload for a single command. */
 export function describeCommand(
   site: string,
@@ -246,14 +319,35 @@ export function describe(
   cmdName: string | undefined,
 ): { payload: Record<string, unknown>; exit: number } {
   if (!site) {
-    const sites = getAllAdapters().map((a) => ({
-      name: a.name,
-      display_name: a.displayName ?? a.name,
-      type: a.type,
-      strategy: a.strategy ?? "public",
-      commands_count: Object.keys(a.commands).length,
-      description: a.description ?? "",
-    }));
+    const adapters = getAllAdapters();
+    const adapterNames = new Set(adapters.map((adapter) => adapter.name));
+    const sites: Array<{
+      name: string;
+      display_name: string;
+      type: string;
+      strategy: string;
+      commands_count: number;
+      description: string;
+    }> = [
+      ...adapters.map((a) => ({
+        name: a.name,
+        display_name: a.displayName ?? a.name,
+        type: a.type,
+        strategy: a.strategy ?? "public",
+        commands_count: Object.keys(a.commands).length,
+        description: a.description ?? "",
+      })),
+      ...listCoreDiscoverySites()
+        .filter((coreSite) => !adapterNames.has(coreSite.site))
+        .map((coreSite) => ({
+          name: coreSite.site,
+          display_name: coreSite.site,
+          type: coreSite.type,
+          strategy: "public",
+          commands_count: coreSite.commands.length,
+          description: "Core Uni-CLI commands",
+        })),
+    ];
     return {
       payload: { sites, total: sites.length },
       exit: ExitCode.SUCCESS,
@@ -262,6 +356,21 @@ export function describe(
 
   const adapter = getAdapter(site);
   if (!adapter) {
+    if (!cmdName) {
+      const corePayload = describeCoreSite(site);
+      if (corePayload) {
+        return { payload: corePayload, exit: ExitCode.SUCCESS };
+      }
+    }
+    if (cmdName) {
+      const coreCommand = getCoreDiscoveryCommand(site, cmdName);
+      if (coreCommand) {
+        return {
+          payload: describeCoreCommand(coreCommand),
+          exit: ExitCode.SUCCESS,
+        };
+      }
+    }
     return {
       payload: { error: `unknown site: ${site}` },
       exit: ExitCode.USAGE_ERROR,
@@ -297,6 +406,13 @@ export function describe(
 
   const resolved = resolveCommand(site, cmdName);
   if (!resolved) {
+    const coreCommand = getCoreDiscoveryCommand(site, cmdName);
+    if (coreCommand) {
+      return {
+        payload: describeCoreCommand(coreCommand),
+        exit: ExitCode.SUCCESS,
+      };
+    }
     return {
       payload: { error: `unknown command: ${site} ${cmdName}` },
       exit: ExitCode.USAGE_ERROR,

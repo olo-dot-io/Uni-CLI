@@ -166,7 +166,7 @@ export function buildDefaultTools(): McpTool[] {
     {
       name: "unicli_search",
       description:
-        "Search the Uni-CLI command catalog by intent and optional category. Bilingual (EN/ZH). Returns top matches with usage examples.",
+        "Search the Uni-CLI operation catalog by intent and optional category. Bilingual (EN/ZH). Returns top matches with usage examples.",
       inputSchema: {
         type: "object",
         properties: {

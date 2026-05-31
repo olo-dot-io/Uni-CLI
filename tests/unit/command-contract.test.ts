@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import { buildCommandContract } from "../../src/core/command-contract.js";
+import { buildCoreCommandContract } from "../../src/core/command-contract.js";
 import { lintCommandContract } from "../../src/core/command-contract-lint.js";
 import * as core from "../../src/core/index.js";
-import { describeCommand } from "../../src/commands/describe.js";
+import {
+  describe as describeUnicli,
+  describeCommand,
+} from "../../src/commands/describe.js";
+import { getCoreDiscoveryCommand } from "../../src/discovery/core-catalog.js";
 import {
   AdapterType,
   Strategy,
@@ -165,8 +170,76 @@ describe("CommandContract", () => {
     });
   });
 
+  it("projects core Commander metadata into the same command contract without adapter-only repair fields", () => {
+    const coreCommand = getCoreDiscoveryCommand("compute", "capture");
+    expect(coreCommand).toBeDefined();
+
+    const contract = buildCoreCommandContract({ command: coreCommand! });
+
+    expect(contract).toMatchObject({
+      schema_version: "command-contract.v1",
+      identity: {
+        site: "compute",
+        command: "capture",
+        category: "desktop",
+        tags: ["core", "desktop"],
+        source_path: "src/commands/compute.ts",
+      },
+      auth: {
+        strategy: "public",
+        required: false,
+      },
+      effect: {
+        target_surface: "desktop",
+      },
+      eval: {
+        fixture_status: "unknown",
+        live_status: "unknown",
+        health_status: "unknown",
+      },
+      repair: {
+        source_kind: "core",
+        source_path: "src/commands/compute.ts",
+        quarantined: false,
+      },
+    });
+    expect(contract.schemas.input.properties.format).toMatchObject({
+      type: "string",
+      default: "compact",
+      enum: ["compact", "json", "tree"],
+    });
+    expect(contract.repair).not.toHaveProperty("adapter_path");
+    expect(contract.repair).not.toHaveProperty("repair_command");
+  });
+
+  it("makes describe payloads expose core command contracts through the runtime describe boundary", () => {
+    const payload = describeUnicli("compute", "capture").payload as {
+      command: string;
+      source_path?: string;
+      adapter_path?: string;
+      contract?: ReturnType<typeof buildCoreCommandContract>;
+    };
+
+    expect(payload.command).toBe("unicli compute capture");
+    expect(payload.source_path).toBe("src/commands/compute.ts");
+    expect(payload.adapter_path).toBeUndefined();
+    expect(payload.contract).toMatchObject({
+      schema_version: "command-contract.v1",
+      identity: {
+        site: "compute",
+        command: "capture",
+        source_path: "src/commands/compute.ts",
+      },
+      repair: {
+        source_kind: "core",
+        source_path: "src/commands/compute.ts",
+      },
+    });
+  });
+
   it("exports the contract builders through the core barrel", () => {
     expect(typeof core.buildCommandContract).toBe("function");
+    expect(typeof core.buildCoreCommandContract).toBe("function");
     expect(typeof core.lintCommandContract).toBe("function");
   });
 });

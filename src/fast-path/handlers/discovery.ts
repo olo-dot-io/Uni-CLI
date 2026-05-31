@@ -24,6 +24,7 @@ import {
   type CoreDiscoveryArg,
   type CoreDiscoveryCommand,
 } from "../../discovery/core-catalog.js";
+import { buildCoreCommandContract } from "../../core/command-contract.js";
 import {
   buildMacosDynamicCommands,
   discoverMacosDynamicData,
@@ -440,6 +441,7 @@ function describeCoreCommand(
   command: CoreDiscoveryCommand,
 ): Record<string, unknown> {
   const args = [...(command.args ?? [])] as CoreDiscoveryArg[];
+  const contract = buildCoreCommandContract({ command });
   return {
     command: `unicli ${command.site} ${command.command}`,
     description: command.description,
@@ -447,8 +449,10 @@ function describeCoreCommand(
     strategy: "public",
     auth: false,
     browser: command.type === "browser",
-    target_surface: command.target_surface,
-    adapter_path: coreCommandSourcePath(command.site),
+    target_surface: contract.effect.target_surface,
+    ...(contract.identity.source_path
+      ? { source_path: contract.identity.source_path }
+      : {}),
     args_schema: argsToJsonSchema(args),
     example_stdin: buildExample(args),
     channels:
@@ -463,12 +467,8 @@ function describeCoreCommand(
         description: "Run the core command",
       },
     ],
+    contract,
   };
-}
-
-function coreCommandSourcePath(site: string): string {
-  if (site === "browser") return "src/commands/browser/index.ts";
-  return `src/commands/${site}.ts`;
 }
 
 export function handleRepair(parsed: ParsedArgv, io: Io): boolean {
