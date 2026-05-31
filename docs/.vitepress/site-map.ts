@@ -29,7 +29,7 @@ type LocaleSiteMap = {
 
 const rootTopNav = [
   { text: "Start", link: "/guide/getting-started" },
-  { text: "Commands", link: "/reference/sites" },
+  { text: "Operations", link: "/reference/sites" },
   { text: "Guides", link: "/guide/" },
   { text: "Reference", link: "/reference/" },
   { text: "Architecture", link: "/ARCHITECTURE" },
@@ -63,7 +63,7 @@ const rootSidebarGroups: SiteGroup[] = [
     link: "/reference/",
     items: [
       { text: "Reference Index", link: "/reference/" },
-      { text: "Command Catalog", link: "/reference/sites" },
+      { text: "Operation Catalog", link: "/reference/sites" },
       { text: "Adapter Format", link: "/ADAPTER-FORMAT" },
       { text: "Pipeline Steps", link: "/reference/pipeline" },
       { text: "Exit Codes", link: "/reference/exit-codes" },
@@ -85,7 +85,7 @@ const rootSidebarGroups: SiteGroup[] = [
 
 const zhTopNav = [
   { text: "上手", link: "/guide/getting-started" },
-  { text: "命令目录", link: "/reference/sites" },
+  { text: "操作目录", link: "/reference/sites" },
   { text: "指南", link: "/guide/" },
   { text: "参考", link: "/reference/" },
   { text: "架构", link: "/ARCHITECTURE" },
@@ -119,7 +119,7 @@ const zhSidebarGroups: SiteGroup[] = [
     link: "/reference/",
     items: [
       { text: "参考索引", link: "/reference/" },
-      { text: "命令目录", link: "/reference/sites" },
+      { text: "操作目录", link: "/reference/sites" },
       { text: "适配器格式", link: "/ADAPTER-FORMAT" },
       { text: "管线步骤", link: "/reference/pipeline" },
       { text: "退出码", link: "/reference/exit-codes" },

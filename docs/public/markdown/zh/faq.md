@@ -11,11 +11,15 @@
 
 ## Uni-CLI 是什么？
 
-Uni-CLI 是给 AI Agent 操作真实软件的执行底座。它把网站、登录态浏览器、桌面应用、本地工具、MCP 服务和系统能力收进一套可搜索、可治理、可修复的操作层；一条路径完成发现、按策略执行、带证据返回和自修复。当前覆盖 <span><!-- STATS:site_count -->312<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1763<!-- /STATS --></span> 条命令。
+Uni-CLI 是 AI Agent 控制 computer 的通用平台。它把网站、登录态浏览器、桌面应用、本地工具、文件、操作系统能力、MCP 服务、截图、无障碍树和 App wrapper 收进可治理的操作层；一条路径接受意图、选择行动 substrate、按策略执行、返回证据、诊断失败，并修复或换路。当前覆盖 <span><!-- STATS:site_count -->313<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1766<!-- /STATS --></span> 条命令。
 
 ## 和浏览器自动化库有什么区别？
 
-Uni-CLI 用 YAML 适配器把站点编译成确定性命令，而不是图灵完备脚本。每条命令返回同一种结构化回执，Agent 可以管道串联、按错误重试，页面改版时直接改 YAML 就行——不用重新编译、不用升级库、不用调 headless 浏览器。
+浏览器自动化只是一个行动 substrate。Uni-CLI 位于它之上，提供 operation contract、权限策略、证据回执、delivery assessment 和 repair/reroute 路径。无论是浏览器命令、桌面动作、subprocess bridge、MCP route 还是 App wrapper，都应该返回同一种 AgentEnvelope，并遵守同一条控制闭环。
+
+## 和 computer-use sandbox 有什么区别？
+
+computer-use sandbox 给 Agent 一个带屏幕、鼠标、键盘和 benchmark hook 的环境。Uni-CLI 可以使用这类边界，但它的类目更大：通过最小可用 substrate 控制用户真实软件环境，从 typed API、browser CDP，到桌面无障碍、subprocess、文件、协议和 visual fallback。
 
 ## 为什么是 CLI 而不是 MCP 服务？
 
@@ -23,7 +27,7 @@ Uni-CLI 用 YAML 适配器把站点编译成确定性命令，而不是图灵完
 
 ## 自修复 (self-repair) 是怎么跑的？
 
-命令失败时 Uni-CLI 会吐出结构化的错误 JSON，里面有 `adapter_path`、失败的 pipeline step、动作描述和一句话建议。Agent 读那个路径下的 YAML，改选择器或认证头，然后跑 `unicli repair <site> <command>` 验证。修好的版本会保存在 `~/.unicli/adapters/`，`npm update` 不会冲掉。
+操作失败时 Uni-CLI 会吐出结构化的错误 JSON，里面有 source path、失败 step 或边界、动作描述、是否可重试、替代路径和一句话建议。Agent 可以读那个路径下的 YAML 或代码，改选择器、认证头或边界逻辑，然后跑 `unicli repair <site> <command>` 或有界 delivery verification。用户本地修复会保存在 `~/.unicli/adapters/`，`npm update` 不会冲掉。
 
 ## 支持哪些 AI Agent 运行时？
 
@@ -31,7 +35,7 @@ Uni-CLI 用 YAML 适配器把站点编译成确定性命令，而不是图灵完
 
 ## 一共有多少站点和命令？
 
-v0.224.0 生成目录包含 <span><!-- STATS:site_count -->312<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1763<!-- /STATS --></span> 条命令、<span><!-- STATS:adapter_count_total -->1213<!-- /STATS --></span> 个适配器、<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> 个 pipeline step、<span><!-- STATS:test_count -->8978<!-- /STATS --></span> 个测试。真正重要的不是数字，而是一套合同：搜索、策略、证据、修复，以及跨 web、browser、desktop、本地工具和协议的同一种 AgentEnvelope。
+v0.225.0 生成操作目录包含 <span><!-- STATS:site_count -->313<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1766<!-- /STATS --></span> 条命令、<span><!-- STATS:adapter_count_total -->1216<!-- /STATS --></span> 个适配器、<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> 个 pipeline step、<span><!-- STATS:test_count -->9090<!-- /STATS --></span> 个测试。真正重要的不是数字，而是一套共享控制合同：意图、策略、行动 substrate、证据、交付、修复，以及跨 web、browser、desktop、本地工具、文件和协议的同一种 AgentEnvelope。
 
 ## 能下载论文并读取本地 PDF 吗？
 
@@ -43,7 +47,7 @@ v0.224.0 生成目录包含 <span><!-- STATS:site_count -->312<!-- /STATS --></s
 
 ## 不写 TypeScript 能加新站点吗？
 
-能。推荐的贡献格式是 20 行左右的 YAML 适配器，写清楚 site、command、strategy 和 pipeline。`unicli init <site> <command>` 帮你生成骨架，`unicli dev <path>` 边写边热重载。大多数适配器一行 TypeScript 都不用写。
+能。推荐的贡献格式是短 YAML 适配器，写清楚 site、command、strategy 和 pipeline。YAML 是 operation contract 下面的作者格式，不是产品身份。`unicli init <site> <command>` 帮你生成骨架，`unicli dev <path>` 边写边热重载。大多数适配器一行 TypeScript 都不用写。
 
 ## 需要登录的网站能跑吗？
 
@@ -59,7 +63,7 @@ v0.224.0 生成目录包含 <span><!-- STATS:site_count -->312<!-- /STATS --></s
 
 ## 完整命令清单在哪？
 
-完整命令目录在 [/reference/sites](/reference/sites)。Agent 可读索引: [/llms.txt](/llms.txt) 是策划过的目录，[/llms-full.txt](/llms-full.txt) 是文档全文拼接。
+完整操作目录在 [/reference/sites](/reference/sites)。Agent 可读索引: [/llms.txt](/llms.txt) 是策划过的目录，[/llms-full.txt](/llms-full.txt) 是文档全文拼接。
 
 ## 适配器坏了怎么报？
 

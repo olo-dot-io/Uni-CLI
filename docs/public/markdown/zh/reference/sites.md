@@ -1,20 +1,21 @@
 <!-- 由 docs/zh/reference/sites.md 生成。不要直接编辑此副本。 -->
 
-# 命令目录
+# 操作目录
 
 - 规范页: https://olo-dot-io.github.io/Uni-CLI/zh/reference/sites
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/zh/reference/sites.md
 - 栏目: 参考
 - 上级: 参考 (/zh/reference/)
 
-这个页面由 `docs/site-index.json` 生成，展示 Uni-CLI 当前能发现和运行的站点、桌面工具、服务和外部 CLI。
+这个页面由 `docs/site-index.json` 生成，展示 Uni-CLI 当前能发现和运行的站点、桌面工具、服务、文件/本地工具和外部 CLI 操作。
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：312 个站点，1763 条命令。
+这个目录来自适配器 manifest：313 个站点，1766 条命令。
 
 | 站点 | 接口类型 | 命令数 | 认证 | 示例命令 |
 | --- | --- | ---: | --- | --- |
+| 12306 | web-api | 3 | 否 | unicli 12306 price<br>unicli 12306 stations<br>unicli 12306 trains |
 | 1688 | web-api | 5 | 是 | unicli 1688 item<br>unicli 1688 search<br>unicli 1688 store |
 | 1point3acres | web-api | 9 | 是 | unicli 1point3acres hot<br>unicli 1point3acres latest<br>unicli 1point3acres digest |
 | 36kr | web-api | 5 | 否 | unicli 36kr article<br>unicli 36kr hot<br>unicli 36kr latest |
@@ -336,4 +337,4 @@
 - **桥接**：复用已经安装的外部 CLI。
 - **服务**：本地或云端服务接口。
 
-目录里的命令名保持英文，因为它们就是实际 CLI 命令。中文页只翻译解释文字，不改命令合同。
+目录里的命令名保持英文，因为它们就是实际 CLI 操作名。中文页只翻译解释文字，不改 operation contract。

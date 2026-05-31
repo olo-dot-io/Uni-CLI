@@ -1,5 +1,98 @@
 # Progress
 
+## 2026-05-31 — Step 2/5 Unified Operation Contracts
+
+- Root cause: adapter commands used `CommandContract`, but core Commander
+  commands (`compute`, `browser`, `delivery`, `runs`, `mcp`, `agents`, and
+  `architecture`) still exposed schemas and architecture inventory through a
+  parallel `CoreDiscoveryCommand` path. That kept the universal computer-control
+  model split at the operation boundary.
+- Added `buildCoreCommandContract()` in `src/core/command-contract.ts`. Core
+  contracts now carry identity, input schema, target surface, effect,
+  governance, explicit unknown eval status, and `repair.source_kind: "core"`
+  with `source_path`. They intentionally do not invent adapter-only
+  `adapter_path` or `repair_command` fields.
+- Updated architecture inventory to derive core command target surface and
+  safety class from the contract builder instead of hardcoding
+  `safety_class: "control"`.
+- Updated slow runtime `describe` and fast-path `describe` so
+  `describe compute capture` exposes the same core contract as adapter command
+  descriptions.
+- Experiment ladder: added failing contract/describe/fast-path/architecture
+  tests, observed missing `buildCoreCommandContract`, missing runtime core
+  describe payload, missing fast-path contract, and hardcoded core safety class;
+  implemented the core projection and reran the same suite to green.
+- Verification: focused contract/architecture/fast-path suite passed with 36
+  tests; adjacent contract/architecture/MCP fast-path suite passed with 55
+  tests; `npm run typecheck`, `npm run lint`, `describe compute capture`, and
+  `architecture audit` exited 0. The CLI describe probe confirmed core tags are
+  de-duplicated as `["core", "desktop"]`.
+- Residual risk: full `npm test` was attempted but stopped after more than ten
+  minutes without a Vitest summary, so full-suite completion remains
+  unverified. Full `npm run verify` still needs to run after this step;
+  independent subagent audit was not spawned because the available tool
+  requires an explicit delegation request.
+
+## 2026-05-31 — Universal Computer-Control Reframe
+
+- Root cause: the previous "agent control plane" wording still allowed the
+  product to be read as a better tool catalog, execution layer, MCP wrapper, or
+  adapter collection. The user clarified the intended category is larger:
+  Uni-CLI is the universal hand by which agents control computers; browser
+  automation, computer-use sandboxes, natural-language local execution, MCP, and
+  per-site wrappers are substrates below it.
+- Replaced the top-level public model across README, package metadata, docs
+  sources, VitePress homepage/config, FAQ, glossary, getting-started,
+  integrations, roadmap, and architecture docs with the computer-control loop:
+  intent -> select -> govern -> act -> observe -> diagnose -> repair/reroute ->
+  deliver -> expose.
+- Rebuilt `src/core/architecture-tree.ts` around
+  `COMPUTER_CONTROL_STAGES`, `computer-control-platform`,
+  `operation-contract`, `control-kernel`, `action-substrates`,
+  `evidence-delivery-loop`, and `runtime-exposure`. The old command lifecycle
+  stays as an internal authoring cycle, not the product root.
+- Updated `src/discovery/core-catalog.ts`, `src/commands/architecture.ts`, and
+  focused tests so `architecture tree/audit` enforce the new topology and
+  non-product identity boundaries.
+- Experiment ladder so far: wrote failing architecture tests against the new
+  topology, observed red failures for missing `COMPUTER_CONTROL_STAGES` and old
+  `first-class-citizens`, implemented the root replacement, then reran
+  `npx vitest run tests/unit/core/architecture-tree.test.ts tests/unit/commands/architecture.test.ts`
+  to green with 8 tests.
+- Verification: focused architecture tests passed with 8 tests; `npm run
+typecheck`, `npm run lint`, `npm run docs:build`, `npm run docs:check-public`,
+  `npm test`, `npm run boundary:check`, and `architecture audit` all exited 0.
+  Full `npm test` passed with 232 test files, 2656 tests, and 2 skipped after a
+  release metadata regression in FAQ version pins was fixed in
+  `scripts/release.ts`.
+
+## 2026-05-31 — Agent Control Plane Repositioning
+
+- Root cause: the architecture model treated adapter manifest commands as the
+  callable architecture, but the product's control plane also includes core
+  Commander commands such as `compute`, `browser`, `delivery`, `runs`, `mcp`,
+  `agents`, and `architecture`.
+- Reframed README/package/docs architecture thesis around Uni-CLI as the agent
+  control plane for real software: intent discovery, governed execution, state
+  observation, result delivery, diagnosis/repair, and reuse.
+- Added core command source paths in `src/discovery/core-catalog.ts`, merged core
+  commands into `src/core/architecture-tree.ts`, and wired
+  `src/commands/architecture.ts` so `architecture tree/audit` covers adapter and
+  core command inventories.
+- Result: `architecture audit` now reports 321 sites, 1819 total commands, 1783
+  adapter commands, 36 core commands, 627 local-computer-use commands, and 0
+  missing source paths. `unicli list -f json` also reports 1819 commands.
+- Experiment ladder: read README/docs/runtime structure, ran architecture/list
+  probes, added focused regression tests, then ran
+  `npx vitest run tests/unit/core/architecture-tree.test.ts tests/unit/commands/architecture.test.ts`,
+  `npm run typecheck`, `npm run lint`, and `npx tsx src/main.ts architecture audit -f json`.
+- Full `npm test` was attempted after focused verification, but the Vitest
+  process idled for about seven minutes without a final summary and was killed.
+- Residual risk: this aligns the callable architecture inventory and public
+  architecture thesis. It does not yet project core Commander commands through
+  the full `CommandContract` path, prove individual live desktop/web workflows,
+  or provide a completed full unit-suite result for this dirty worktree.
+
 ## 2026-05-27 — Marxists.org Chinese Archive Adapter
 
 - Root cause: `unicli search` had no structured route for `https://www.marxists.org/chinese/index.html`, so agents asking for Marxist philosophy, people, books, or primary-source content were pushed toward generic web/scholarly search instead of the Chinese Marxists archive.
@@ -61,3 +154,31 @@
 - Experiment ladder: red cursor-style expectations, targeted cursor/overlay/timeline suites, generated Swift parse, generated Linux Python compile, local docs screenshot inspection, live macOS `compute click --overlay` smoke, `npm run typecheck`, `npm run lint`, `npm run docs:build`, `git diff --check`, and full `npm test`.
 - Result: all listed checks passed. The live macOS smoke returned `macos-appkit` / `arrived` and evidence with `mac-glass-pointer-v1`, `mac-pointer`, `lift-shadow`, `pressure-bloom`, and `success-spark`.
 - Residual risk: PowerShell parse remains skipped because `pwsh` is not installed on this macOS host; Windows/Linux real native sidecar smoke still requires those OSes.
+
+## 2026-05-31 — 0.225.0 Computer-Control Release Candidate
+
+- Root cause: after the five-step architecture reshape, the repo still needed a
+  final release audit, stale release-doc cleanup, generated documentation sync,
+  and a semver-minor `0.xxx.0` candidate that reflected the larger
+  universal-computer-control product category.
+- Prepared `0.225.0 — Apollo · Irwin`: updated package/lock metadata, README
+  footers, AGENTS.md, skills, server.json, CHANGELOG, docs/release-info.json,
+  roadmap/FAQ version pins, generated public docs, and release reference docs.
+- Historical audit baseline: checked npm latest (`0.224.1`), latest local tag
+  (`v0.224.1`), and release history from `0.200.0` through `0.224.1`. Folded the
+  audit into tracked release reference docs rather than new ignored
+  `docs/reference/release-audit.md` files, because local `.git/info/exclude`
+  hides new paths below `reference/`.
+- Final review fix: `npm run verify` first failed on Prettier formatting. Ran
+  Prettier on the reported files, then reran the full gate to success.
+- Experiment ladder: npm registry/tag audit, stale-doc grep, release metadata
+  propagation, docs build, full `npm run verify`, strict release check,
+  architecture audit probe, `git diff --check`, and `npm publish --dry-run`.
+- Result: `npm run verify` passed; unit tests passed 233 files / 2664 tests / 2
+  skipped; adapter tests passed 168 files / 6426 tests; `docs:build` passed with
+  150 public files; `release:check -- --strict-codename` passed 23/23;
+  `npm publish --dry-run` produced `zenalexa-unicli-0.225.0.tgz` with shasum
+  `1ff26e95393ba7da147f9df77e6ff99b3cfc3a31`.
+- Residual risk: this is a verified local release candidate, not a real npm
+  publish. Tagging and publishing still require a maintainer commit on `main`,
+  `git tag v0.225.0`, and the GitHub `release.yml` workflow.

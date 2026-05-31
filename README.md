@@ -9,20 +9,22 @@
 </p>
 
 <p align="center">
-  <strong>The operations substrate for agents that use real software.</strong>
+  <strong>The universal computer-control platform for agents: an agent control plane for real software.</strong>
 </p>
 
 <p align="center">
-  Uni-CLI turns websites, logged-in browsers, desktop apps, local tools, MCP
-  servers, and system capabilities into searchable, governed, repairable
-  operations. It is not another website wrapper or generated CLI pile; it is the
-  execution layer agents can reuse across runtimes when real software drifts.
+  Install once, search by intent, and run the smallest governed operation across
+  websites, browsers, desktop apps, local tools, files, operating systems, and
+  agent protocols. Browser automation, computer-use sandboxes, MCP servers,
+  local code execution, accessibility, screenshots, app wrappers, and external
+  CLIs are action substrates below one loop: intent in, governed action out,
+  evidence back, repair or reroute until the result is delivered.
 </p>
 
 <p align="center">
   <a href="https://olo-dot-io.github.io/Uni-CLI/">Docs</a>
   ·
-  <a href="https://olo-dot-io.github.io/Uni-CLI/reference/sites">Command catalog</a>
+  <a href="https://olo-dot-io.github.io/Uni-CLI/reference/sites">Operation catalog</a>
   ·
   <a href="https://olo-dot-io.github.io/Uni-CLI/llms.txt">Agent index</a>
 </p>
@@ -39,16 +41,16 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->312<!-- /STATS --> surfaces · <!-- STATS:test_count -->8978<!-- /STATS --> tests</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->313<!-- /STATS --> surfaces · <!-- STATS:test_count -->9090<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
-  <strong>Search by intent. Execute with policy. Record evidence. Repair the path. Deliver the result.</strong><br>
-  Reuse the same capability from a terminal, an agent loop, MCP, ACP, CI, or a
-  generated skill without rebuilding the integration.
+  <strong>One agent-to-computer control loop. Many substrates. One receipt.</strong><br>
+  Search by intent, act through the best available software boundary, observe
+  the result, and keep the path repairable across CLI, MCP, ACP, CI, and skills.
 </p>
 
-## Start In 30 Seconds
+## Install And Run In 30 Seconds
 
 ```bash
 npm install -g @zenalexa/unicli
@@ -58,67 +60,67 @@ unicli compute snapshot --app Calculator --format compact
 npx @zenalexa/unicli mcp serve
 ```
 
-| Agent problem            | Uni-CLI answer                                                                                     |
-| ------------------------ | -------------------------------------------------------------------------------------------------- |
-| "What tool can do this?" | `unicli search` and `unicli do` turn intent into ranked, inspectable command plans                 |
-| "Can I run it safely?"   | permission profiles expose `open`, `confirm`, and `locked` execution modes                         |
-| "What happened?"         | every run returns an AgentEnvelope with data, context, retryability, and evidence hooks            |
-| "The path failed."       | `unicli delivery` turns run evidence into diagnosis, next experiment, execution, and repair bounds |
-| "The app is local."      | desktop transports cover macOS AX, UIA/AT-SPI sidecars, subprocesses, and visual input             |
-| "Expose it to my agent." | `unicli mcp serve`, ACP, native CLI, and JSON streams share the same catalog                       |
+| Agent problem                 | Uni-CLI answer                                                                                     |
+| ----------------------------- | -------------------------------------------------------------------------------------------------- |
+| "What can control this?"      | `unicli search` and `unicli do` turn intent into ranked operation plans                            |
+| "Which boundary should act?"  | Web, browser, desktop, subprocess, protocol, and visual substrates share one runtime               |
+| "Can I run it safely?"        | permission profiles expose `open`, `confirm`, and `locked` execution modes                         |
+| "What happened?"              | every run returns an AgentEnvelope with data, context, retryability, and evidence hooks            |
+| "The path failed."            | `unicli delivery` turns run evidence into diagnosis, next experiment, execution, and repair bounds |
+| "Expose it to my agent host." | `unicli mcp serve`, ACP, native CLI, and JSON streams expose the same operation contracts          |
 
 ## Why It Exists
 
 The next software user is not only a person with a mouse. It is an agent with a
-task, a context window, a permission budget, and a need for evidence. A raw
-browser driver gives the agent pixels and selectors. A one-off script gives it
-an island. A giant resident tool list burns context before the task starts.
+task, a context window, a permission budget, and a need for evidence. Vehicle
+assistants work because navigation, media, climate, and driving assistance sit
+behind a bounded control surface. General computers need the same idea at larger
+scale: browser state, desktop apps, local tools, files, OS services,
+accessibility trees, screenshots, protocol servers, and website-specific paths
+must become one controllable environment.
 
-Uni-CLI is the execution layer in between. It turns useful operations into
-typed, searchable commands, keeps dangerous actions behind policy, returns
-machine-readable receipts, and makes failures repairable by pointing at the
-exact adapter and pipeline step that broke. The delivery operator now adds the
-missing model above repair: it classifies why an objective failed, chooses
-retry, route switch, auth, permission, or repair, and keeps the next attempt tied
-to evidence. Websites are just one surface; real agent work crosses browser,
-desktop, subprocess, protocol, and OS boundaries.
+Uni-CLI is that control surface. It is not a browser library, a computer-use VM,
+a natural-language shell, an MCP server, or a pile of site wrappers. Those are
+all useful substrates. Uni-CLI sits above them and turns agent intent into
+governed software action with an evidence receipt and a repairable path.
 
-This is why the project combines pieces that usually live apart:
+The platform combines pieces that usually live apart, but they are not separate
+product identities:
 
-- a website adapter catalog for public APIs, logged-in sessions, browser
-  intercepts, downloads, publishing, and search;
-- a browser automation layer for ad-hoc navigation, DOM snapshots, network
-  capture, clicks, typing, screenshots, and render-aware evidence;
-- a local computer-use layer for desktop apps, macOS Accessibility, background
-  input, subprocesses, and visual fallback;
-- a CLI hub for external binaries and agent coding tools;
-- protocol adapters for MCP, ACP, native CLI, JSON streams, and skills.
+- operation contracts for reusable actions across websites, apps, OS state,
+  local tools, files, and protocols;
+- substrate adapters for HTTP, browser CDP, desktop accessibility, subprocesses,
+  visual fallback, MCP, ACP, and external CLIs;
+- an invocation kernel that validates args, evaluates policy, executes through
+  the selected substrate, and returns one envelope;
+- an evidence and delivery loop that diagnoses failure, records the next
+  hypothesis, reroutes or repairs, and decides whether the objective is done.
 
-## The Operating Model
+## The Computer-Control Loop
 
 Every serious agent operation follows the same loop.
 
-| Step      | What Uni-CLI gives the agent                                                                                      |
-| --------- | ----------------------------------------------------------------------------------------------------------------- |
-| Discover  | `unicli search` and `unicli do` map intent to command, args, auth mode, examples, and risk signals                |
-| Execute   | Web, browser, desktop, subprocess, and protocol transports run behind one runtime                                 |
-| Govern    | `open`, `confirm`, and `locked` profiles block risky effects before requests, writes, or spawns                   |
-| Observe   | AgentEnvelope v2 returns data, context, retryability, timing, and evidence hooks                                  |
-| Diagnose  | `unicli delivery assess` classifies failures as product drift, missing context, policy block, or upstream trouble |
-| Adapt     | `unicli delivery trajectory` records the hypothesis and next executable experiment                                |
-| Retry     | `unicli delivery run` executes the next safe experiment through the shared kernel and records the new attempt     |
-| Deliver   | Evidence gates decide whether the objective is satisfied, still active, blocked, or exhausted                     |
-| Re-expose | The same command can be called by humans, agents, MCP clients, ACP clients, and scripts                           |
+| Step     | What Uni-CLI gives the agent                                                                                       |
+| -------- | ------------------------------------------------------------------------------------------------------------------ |
+| Intent   | `unicli search` and `unicli do` map a task to candidate operations, args, auth mode, examples, and risk signals    |
+| Select   | operation contracts choose the smallest boundary that can act: API, browser, desktop, subprocess, protocol, visual |
+| Govern   | `open`, `confirm`, and `locked` profiles block risky effects before requests, writes, or spawns                    |
+| Act      | the shared kernel invokes the selected substrate instead of forking wrapper-specific behavior                      |
+| Observe  | AgentEnvelope v2 returns data, context, retryability, timing, and evidence hooks                                   |
+| Diagnose | `unicli delivery assess` classifies failures as product drift, missing context, policy block, or upstream trouble  |
+| Repair   | `unicli delivery trajectory` and `repair-candidate` keep the next experiment bounded by evidence                   |
+| Deliver  | evidence gates decide whether the objective is satisfied, still active, blocked, or exhausted                      |
+| Expose   | the same operation can be called by humans, agents, MCP clients, ACP clients, CI, and scripts                      |
 
 ## What Makes It Different
 
-| If you start from...     | You usually get...                                  | Uni-CLI adds...                                                                 |
-| ------------------------ | --------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Browser automation       | powerful ad-hoc page control                        | catalog commands, output contracts, auth posture, run evidence, and repair      |
-| A generated app CLI      | deep access to one application                      | one searchable runtime across web, desktop, local tools, and agent protocols    |
-| An MCP server collection | easy agent attachment but high resident tool weight | a low-token CLI path plus MCP profiles when the runtime requires MCP            |
-| A scraper script         | quick data extraction                               | policy gates, structured errors, typed args, tests, docs, and local overrides   |
-| Manual computer use      | flexible last-mile control                          | native accessibility first, then browser/visual fallback under the same receipt |
+| If you start from...             | You usually get...                                  | Uni-CLI makes it a substrate under...                                             |
+| -------------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Browser automation               | powerful page control                               | operation contracts, auth posture, evidence, delivery, and repair                 |
+| Computer-use sandboxes           | screen, mouse, keyboard, and benchmark environments | the same agent-to-computer loop used by local apps, browsers, CLIs, and protocols |
+| Natural-language local execution | flexible shell and code access                      | typed operation boundaries, policy, receipts, and reusable command contracts      |
+| MCP server collections           | easy agent attachment but high resident tool weight | a compact search-first path plus MCP profiles when the host requires MCP          |
+| Per-app or per-site wrappers     | deep access to one surface                          | one governed runtime across web, desktop, local tools, files, and agent protocols |
 
 <!-- IF YOU ARE AN AI AGENT: Start here.
 Install: npm install -g @zenalexa/unicli
@@ -129,24 +131,22 @@ Delivery: write an objective spec, run unicli delivery run spec.json -f json
 Prefer native CLI / JSON stream / MCP for agent runtimes. Use ACP as an editor compatibility gateway.
 -->
 
-## What It Does
+## What It Controls
 
-Uni-CLI is not another scraper bundle. It is the execution layer underneath an
-agent: a command graph, policy gate, evidence recorder, local computer-use
-bridge, and repair loop wrapped behind one CLI contract.
+Uni-CLI treats the computer as the environment and each controllable boundary as
+a substrate. The substrate can be high-level and typed, or low-level and visual;
+the receipt remains the same.
 
-| Surface            | What you get                                                                                                                                                                                             |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Websites and APIs  | Declarative adapters for public, cookie, header, and browser-intercept workflows                                                                                                                         |
-| Browser automation | CDP steps for navigate, click, type, intercept, snapshot, extract, wait, and related browser work                                                                                                        |
-| Desktop and macOS  | System commands, app adapters, real-time Shortcuts/App Intent discovery, screenshots, clipboard, calendar, brightness, and local tools                                                                   |
-| External CLIs      | 59 registered pass-through bridges with install/status discovery                                                                                                                                         |
-| Agent backends     | Route matrix for native CLI, JSON stream, MCP, ACP, HTTP API, OpenAI-compatible, and bridge routes                                                                                                       |
-| Operation policy   | `open`, `confirm`, and `locked` profiles with effect/risk scopes, local deny rules, `--yes`, and persisted approval memory                                                                               |
-| Evidence           | Run traces with environment snapshots, probe/replay/compare scores, structured gate results, browser session leases with tab/auth posture, render-aware evidence, movement checks, and stale-ref details |
-| Delivery operator  | `unicli delivery assess`, `run`, `trajectory`, and `repair-candidate` for objective-level evidence gates, diagnoses, hypotheses, executed attempts, and bounded repairs                                  |
-| Output             | v2 `AgentEnvelope` in Markdown, JSON, YAML, CSV, or compact format                                                                                                                                       |
-| Repair             | Structured errors with `adapter_path`, failing `step`, retryability, suggestions, and alternatives                                                                                                       |
+| Layer               | What it controls                                                                                                                                                                  |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Operation contracts | reusable actions with args, output shape, auth posture, safety metadata, source path, and repair path                                                                             |
+| Web and APIs        | public, cookie, header, browser-intercept, download, upload, publish, extract, and search workflows                                                                               |
+| Browser sessions    | CDP navigate/click/type/fill/select/wait/network/screenshot/snapshot/evidence                                                                                                     |
+| Desktop and OS      | macOS apps, Accessibility refs, screenshots, clipboard, calendar, brightness, app actions, and local system state                                                                 |
+| Local tools/files   | subprocess bridges, external binaries, PDF and paper workflows, file transforms, media tools, and developer CLIs                                                                  |
+| Agent protocols     | native CLI, JSON stream, MCP, ACP, Streamable HTTP, OpenAI-compatible routes, generated configs, and skills                                                                       |
+| Policy and evidence | permission profiles, deny rules, approvals, run recording, replay, probe, compare, browser session leases, render-aware evidence, movement checks, and stale-ref details          |
+| Delivery and repair | `unicli delivery assess`, `run`, `trajectory`, and `repair-candidate` for objective-level evidence gates, diagnoses, hypotheses, executed attempts, reroutes, and bounded repairs |
 
 ## Built For Agent Runtimes
 
@@ -165,19 +165,19 @@ The runtime is agent-friendly in ways that matter during long tasks:
 - repair instructions point to the owned file instead of asking the agent to
   guess what changed upstream;
 - generated docs, `llms.txt`, AGENTS.md, MCP profiles, and skills all describe
-  the same command catalog.
+  the same operation contracts.
 
 ## Capability Map
 
-| Layer                | Examples                                                                                 |
-| -------------------- | ---------------------------------------------------------------------------------------- |
-| Search and discovery | `search`, `do`, generated command catalog, docs index, compact catalog, AGENTS surface   |
-| Web adapters         | HTTP, RSS, cookie, header, browser-intercept, download, upload, publish, extract         |
-| Browser sessions     | CDP open/click/type/fill/select/wait/network/screenshot/snapshot/evidence                |
-| Local computer use   | `compute apps`, `snapshot`, `find`, `click`, `type`, `press`, `scroll`, `doctor compute` |
-| Desktop/system       | macOS, Office, design/media tools, Docker, app actions, subprocess bridges               |
-| Policy and evidence  | permission profiles, deny rules, approvals, run recording, replay, probe, compare        |
-| Integration          | native CLI, MCP stdio, MCP Streamable HTTP, ACP, package exports, agent skills           |
+| Layer                  | Examples                                                                                 |
+| ---------------------- | ---------------------------------------------------------------------------------------- |
+| Intent and discovery   | `search`, `do`, generated operation catalog, docs index, compact catalog, AGENTS surface |
+| Operation contract     | args, output, auth posture, effect, safety, capability, source path, repair path         |
+| Action substrates      | HTTP, RSS, CDP, AX/UIA/AT-SPI, subprocess, visual, protocol, app-specific adapters       |
+| Local computer control | `compute apps`, `snapshot`, `find`, `click`, `type`, `press`, `scroll`, `doctor compute` |
+| Policy and evidence    | permission profiles, deny rules, approvals, run recording, replay, probe, compare        |
+| Delivery and repair    | objective specs, trajectories, repair candidates, reroutes, evidence gates               |
+| Runtime exposure       | native CLI, MCP stdio, MCP Streamable HTTP, ACP, package exports, agent skills           |
 
 ## For Agents
 
@@ -552,5 +552,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v0.224.1 — Apollo · Collins</sub>
+  <sub>v0.225.0 — Apollo · Irwin</sub>
 </p>

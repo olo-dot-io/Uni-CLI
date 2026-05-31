@@ -1,8 +1,8 @@
-# Sites Catalog
+# Operation Catalog
 
-Uni-CLI publishes the same generated adapter manifest to the docs site that the
-CLI uses for discovery. This page is the human-readable catalog: filter by
-surface, search by site or command, and inspect representative commands before
-running `unicli search`.
+Uni-CLI publishes the same generated operation manifest to the docs site that
+the CLI uses for discovery. This page is the human-readable operation catalog:
+filter by substrate, search by site or command, and inspect representative
+operations before running `unicli search`.
 
 <SiteCatalog />

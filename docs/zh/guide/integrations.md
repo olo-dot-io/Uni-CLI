@@ -1,6 +1,6 @@
 # 集成方式
 
-Uni-CLI 的首选入口是 shell。只要智能体能运行命令，就可以直接使用 `unicli`。需要协议服务的客户端，可以用同一份目录通过 MCP、ACP 或生成的平台配置接入；adapter 行为保持一致。
+Uni-CLI 的首选入口是 shell。只要智能体能运行命令，就可以直接使用 `unicli`。需要协议服务的客户端，可以用同一份 operation contract 通过 MCP、ACP 或生成的平台配置接入；行为保持一致。
 
 ## 选哪条路
 

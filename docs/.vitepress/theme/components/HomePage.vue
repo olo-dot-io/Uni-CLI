@@ -24,12 +24,12 @@ unicli mcp serve --transport streamable --port 19826`,
 const copy = computed(() =>
   isZh.value
     ? {
-        label: "Agent 操作真实软件的执行底座",
-        lead: "网页只是一个 surface，真实任务会跨过整台电脑。",
-        body: `Uni-CLI 把 ${siteIndex.total_sites} 个网站和工具、登录态浏览器、桌面应用、本地命令、MCP 服务和系统能力收进一套可搜索、可治理、可修复的操作层。Agent 先按意图找能力，再按策略执行，拿到证据回执；失败时还能定位到具体 adapter 和 pipeline step 继续修。`,
+        label: "AI Agent 控制 computer 的通用平台",
+        lead: "浏览器、MCP、sandbox、桌面和本地工具，都是同一只手的不同手指。",
+        body: `Uni-CLI 把 ${siteIndex.total_sites} 个网站和工具、登录态浏览器、桌面应用、本地命令、文件、MCP 服务、无障碍树、截图和系统能力收进一套可搜索、可治理、可观察、可修复的操作层。Agent 先按意图选择行动 substrate，再按策略执行，拿到证据回执；失败时继续诊断、修复或换路，直到结果交付。`,
         primary: "30 秒跑起来",
-        secondary: "看命令图鉴",
-        badgesTitle: "能力墙",
+        secondary: "看操作目录",
+        badgesTitle: "控制面",
         badges: [
           "Intent search",
           "Policy gated",
@@ -42,32 +42,33 @@ const copy = computed(() =>
         commandTitle: "第一条命令",
         copy: "复制",
         copied: "已复制",
-        thesisTitle: "不是 wrapper，不是工具列表，是执行底座。",
+        thesisTitle:
+          "不是 wrapper，不是工具列表，是 Agent 控制 computer 的手。",
         thesis:
-          "普通人打开 App 找按钮，Agent 需要更稳定的入口：先按意图搜能力，再带权限和参数执行，最后拿到结构化回执。Uni-CLI 把这条链路沉到基础设施里，让同一份能力可以跨 CLI、MCP、ACP、skills 和本地 runtime 反复调用、复盘和修复。",
+          "普通人打开 App 找按钮，Agent 需要更稳定的手：先理解意图，再选择 API、browser、desktop、subprocess、protocol 或 visual 这类 substrate，带权限和参数行动，最后拿到结构化回执。Uni-CLI 把这条链路沉到平台里，让同一份操作可以跨 CLI、MCP、ACP、skills 和本地 runtime 反复调用、复盘、修复和交付。",
         principles: [
           {
-            name: "发现能力",
-            text: "BM25 双语搜索把一句任务话收敛到站点、命令、参数、认证方式、风险和样例。",
+            name: "理解意图",
+            text: "BM25 双语搜索把一句任务话收敛到操作、参数、认证姿态、风险和样例。",
           },
           {
-            name: "执行动作",
-            text: "Web API、Cookie 会话、浏览器 CDP、macOS AX、外部 CLI 和 visual fallback 走同一套 envelope。",
+            name: "选择 substrate",
+            text: "Web API、Cookie 会话、浏览器 CDP、macOS AX、外部 CLI、protocol 和 visual fallback 走同一套控制内核。",
           },
           {
             name: "返回证据",
             text: "默认给 Agent 友好的 Markdown，也能输出 JSON、YAML、CSV 和 compact，并保留 run evidence。",
           },
           {
-            name: "修复现场",
-            text: "错误会带 adapter path、失败 step、retryable、suggestion 和 alternatives，方便本地 override 后验证。",
+            name: "修复或换路",
+            text: "错误会带 source path、失败 step 或边界、retryable、suggestion 和 alternatives，方便本地 override 或 delivery reroute 后验证。",
           },
         ],
         questionsTitle: "为什么需要它",
         questions: [
           {
             q: "它到底给 Agent 增加了什么？",
-            a: "一个稳定入口。网页、桌面应用、本机命令和协议服务都能变成 catalog 里的命令，而不是每次临场猜 API、selector 和输出格式。",
+            a: "一只通用的 computer-control 手。网页、桌面应用、本机命令、文件和协议服务都进入同一个操作合同，而不是每次临场猜 API、selector 和输出格式。",
           },
           {
             q: "为什么不是直接让 Agent 操作网页？",
@@ -79,20 +80,20 @@ const copy = computed(() =>
           },
           {
             q: "和 MCP 是什么关系？",
-            a: "MCP 是接入方式之一。Uni-CLI 的核心是命令目录、运行时、输出合同、权限策略和修复 loop。",
+            a: "MCP 是 exposure/protocol substrate 之一。Uni-CLI 的核心是 operation contract、control kernel、输出回执、权限策略和 delivery/repair loop。",
           },
         ],
-        workflowTitle: "一条任务怎么跑起来",
+        workflowTitle: "一条任务怎样控制 computer",
         coverageTitle: "当前能力",
         coverageText:
-          "这些数字来自当前仓库生成物：adapter、命令、pipeline step、测试和 transport 都在本地构建流程里计数。",
+          "这些数字来自当前仓库生成物：operation、adapter、pipeline step、测试和 substrate 都在本地构建流程里计数。",
         stats: [
           { value: siteIndex.total_sites, label: "站点和工具" },
-          { value: siteIndex.total_commands, label: "命令" },
+          { value: siteIndex.total_commands, label: "操作" },
           { value: String(stats.pipeline_step_count), label: "pipeline step" },
           { value: String(stats.test_count), label: "测试" },
         ],
-        surfacesTitle: "它现在能接这些面",
+        surfacesTitle: "它现在能控制这些 substrate",
         surfaces: [
           {
             name: "网页和社区",
@@ -119,8 +120,8 @@ const copy = computed(() =>
             href: "/zh/guide/getting-started",
           },
           {
-            title: "命令图鉴",
-            text: "按站点、surface、认证方式和样例找能力。",
+            title: "操作目录",
+            text: "按站点、substrate、认证方式和样例找操作。",
             href: "/zh/reference/sites",
           },
           {
@@ -138,12 +139,12 @@ const copy = computed(() =>
         version: `v${releaseInfo.version} · ${releaseInfo.codename}`,
       }
     : {
-        label: "Operations substrate for agents that use real software",
-        lead: "Websites are one surface. Real agent work crosses the whole machine.",
-        body: `Uni-CLI turns ${siteIndex.total_sites} websites and tools, logged-in browsers, desktop apps, local commands, MCP servers, and system capabilities into searchable, governed, repairable operations. Agents discover by intent, execute with policy, return evidence, and trace failures to adapters and pipeline steps.`,
+        label: "Universal computer-control platform for agents",
+        lead: "Browsers, MCP, sandboxes, desktops, and local tools are fingers of one hand.",
+        body: `Uni-CLI turns ${siteIndex.total_sites} websites and tools, logged-in browsers, desktop apps, local commands, files, MCP servers, accessibility trees, screenshots, and system capabilities into searchable, governed, observable, repairable operations. Agents select an action substrate by intent, execute with policy, receive evidence, then diagnose, repair, or reroute until the result is delivered.`,
         primary: "Start in 30 seconds",
-        secondary: "Browse the catalog",
-        badgesTitle: "Capability wall",
+        secondary: "Browse operations",
+        badgesTitle: "Control surface",
         badges: [
           "Intent search",
           "Policy gated",
@@ -156,32 +157,33 @@ const copy = computed(() =>
         commandTitle: "First command",
         copy: "Copy",
         copied: "Copied",
-        thesisTitle: "Not a wrapper. Not a tool list. An execution substrate.",
+        thesisTitle:
+          "Not a wrapper. Not a tool list. The hand agents use to control computers.",
         thesis:
-          "People open apps and look for buttons. Agents need a steadier path: search by intent, inspect permissions and arguments, execute through a governed runtime, and receive a structured receipt. Uni-CLI turns that chain into infrastructure across CLI, MCP, ACP, skills, and local runtimes.",
+          "People open apps and look for buttons. Agents need a steadier hand: understand intent, choose an API, browser, desktop, subprocess, protocol, or visual substrate, act with permissions and arguments, and receive a structured receipt. Uni-CLI turns that chain into a platform across CLI, MCP, ACP, skills, and local runtimes.",
         principles: [
           {
-            name: "Discover",
-            text: "Bilingual BM25 search maps a task to the site, command, arguments, auth mode, risk, and examples.",
+            name: "Intent",
+            text: "Bilingual BM25 search maps a task to operations, arguments, auth posture, risk, and examples.",
           },
           {
-            name: "Execute",
-            text: "Web APIs, cookie sessions, browser CDP, macOS AX, external CLIs, and visual fallback share one envelope.",
+            name: "Substrate",
+            text: "Web APIs, cookie sessions, browser CDP, macOS AX, external CLIs, protocols, and visual fallback share one control kernel.",
           },
           {
             name: "Evidence",
             text: "Markdown is the agent-friendly default, with JSON, YAML, CSV, compact output, and run evidence for review.",
           },
           {
-            name: "Repair",
-            text: "Errors carry adapter path, failed step, retryability, suggestions, and alternatives for local override verification.",
+            name: "Repair or reroute",
+            text: "Errors carry source path, failed step or boundary, retryability, suggestions, and alternatives for local override or delivery reroute verification.",
           },
         ],
         questionsTitle: "Why it matters",
         questions: [
           {
             q: "What does this add for an agent?",
-            a: "A stable entrypoint. Sites, desktop apps, local commands, and protocol servers become catalog commands instead of one-off API guesses, selector guesses, and output guesses.",
+            a: "A universal computer-control hand. Sites, desktop apps, local commands, files, and protocol servers become governed operation contracts instead of one-off API guesses, selector guesses, and output guesses.",
           },
           {
             q: "Why not just drive the browser directly?",
@@ -193,20 +195,20 @@ const copy = computed(() =>
           },
           {
             q: "How does MCP fit?",
-            a: "MCP is one integration path. The core pieces are the command catalog, runtime, output contract, permission policy, and repair loop.",
+            a: "MCP is one exposure/protocol substrate. The core pieces are operation contracts, the control kernel, output receipts, permission policy, and the delivery/repair loop.",
           },
         ],
-        workflowTitle: "How a task moves through it",
+        workflowTitle: "How a task controls a computer",
         coverageTitle: "Current surface",
         coverageText:
-          "These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.",
+          "These numbers come from the current generated repo artifacts: operations, adapters, pipeline steps, tests, and substrates are counted by the build.",
         stats: [
           { value: siteIndex.total_sites, label: "sites and tools" },
-          { value: siteIndex.total_commands, label: "commands" },
+          { value: siteIndex.total_commands, label: "operations" },
           { value: String(stats.pipeline_step_count), label: "pipeline steps" },
           { value: String(stats.test_count), label: "tests" },
         ],
-        surfacesTitle: "What it can reach today",
+        surfacesTitle: "What it can control today",
         surfaces: [
           {
             name: "Web and communities",
@@ -233,8 +235,8 @@ const copy = computed(() =>
             href: "/guide/getting-started",
           },
           {
-            title: "Command catalog",
-            text: "Find capabilities by site, surface, auth mode, and examples.",
+            title: "Operation catalog",
+            text: "Find operations by site, substrate, auth mode, and examples.",
             href: "/reference/sites",
           },
           {

@@ -7,9 +7,9 @@
 - 栏目: 上手
 - 上级: 上手 (/zh/)
 
-Uni-CLI 把网站、桌面应用、服务、本地工具、协议入口和外部 CLI 变成命令。智能体可以搜索、运行、记录和修复这些命令。
+Uni-CLI 把网站、登录态浏览器、桌面应用、服务、本地工具、文件、协议入口、外部 CLI、操作系统能力和视觉证据变成可治理的操作。智能体可以搜索、运行、记录和修复这些操作。
 
-一条命令就是调用真实软件的稳定合同。参数、认证、接口类型、输出形状、权限 profile、运行证据和错误处理都在同一个地方；外部页面或 API 变了，失败结果也会指向可修复的 adapter 和 pipeline step。
+一条操作就是控制真实软件的稳定合同。参数、认证姿态、行动 substrate、输出形状、权限 profile、运行证据和错误处理都在同一个地方；外部页面、App、API 或本地边界变了，失败结果也会指向可修复的 source path 和 step。
 
 ## 安装
 
@@ -30,14 +30,16 @@ unicli SITE COMMAND [args] [-f json|md|yaml|csv|compact]
 
 ## 先理解执行链路
 
-Uni-CLI 的常用路径分成四步：
+Uni-CLI 的常用路径遵守 computer-control 闭环：
 
-1. **搜索**：`unicli search` 用自然语言找到候选命令，但不执行外部动作。
-2. **执行**：`unicli SITE COMMAND` 只运行选中的命令，参数和认证边界在执行前可检查。
-3. **记录**：`--record` 或 `UNICLI_RECORD_RUN=1` 可以把 append-only run trace 写到 `~/.unicli/runs`，方便复盘和调试。
-4. **修复**：命令坏掉时，结构化错误会给出 adapter 路径、pipeline step、建议和替代命令。
+1. **意图**：`unicli search` 用自然语言找到候选操作，但不执行外部动作。
+2. **选择**：operation contract 选择能行动的最小 substrate：API、browser、desktop、subprocess、protocol 或 visual fallback。
+3. **治理和行动**：`unicli SITE COMMAND` 只运行选中的操作，参数、认证边界和权限策略在执行前可检查。
+4. **观察**：每次结果都返回 v2 `AgentEnvelope`，带 data、context、retryability、耗时和证据。
+5. **记录**：`--record` 或 `UNICLI_RECORD_RUN=1` 可以把 append-only run trace 写到 `~/.unicli/runs`，方便复盘和调试。
+6. **修复或换路**：结构化错误会给出 source path、失败 step 或边界、建议、是否可重试和替代路径。
 
-浏览器、CDP、a11y、本地命令、服务接口、MCP、ACP 和 Visual 都是传输层；稳定层是命令目录、adapter 和 v2 `AgentEnvelope`。
+浏览器、CDP、a11y、本地命令、服务接口、MCP、ACP 和 Visual 都是行动 substrate；稳定层是 operation contract、control kernel、evidence envelope 和 delivery/repair loop。
 
 ## 找命令
 

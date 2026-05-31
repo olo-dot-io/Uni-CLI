@@ -1,48 +1,85 @@
 # 架构
 
-Uni-CLI 是面向真实软件的 Agent 执行底座。它的核心不是协议，而是一个可发现、可检查、可执行、可记录、可修复的命令层。
+Uni-CLI 是 AI Agent 控制 computer 的通用平台。它的核心不是浏览器自动化、MCP、computer-use sandbox、自然语言 shell 或单站点 wrapper，而是一条可发现、可治理、可观察、可修复、可交付的 Agent-to-computer 控制闭环。
 
 ## 分层
 
 ```text
 Agent / human
   ↓
-unicli CLI
+intent
   ↓
-Search + dispatch
+search / do / describe
   ↓
-Adapter registry
+operation contract
   ↓
-Pipeline engine
+policy + control kernel
   ↓
-Transports: HTTP, browser/CDP, desktop, subprocess, service, Visual
+substrates: HTTP, browser/CDP, desktop/a11y, subprocess, protocol, Visual
   ↓
-Websites, desktop apps, local tools, system capabilities, external CLIs
+websites, desktop apps, local tools, files, system capabilities, external CLIs
+  ↓
+evidence / delivery / repair
 ```
 
 ## 关键模块
 
-| 模块       | 职责                                                    |
-| ---------- | ------------------------------------------------------- |
-| CLI        | 解析命令、选择输出格式、返回退出码。                    |
-| Search     | 用 BM25 和别名把自然语言意图映射到命令。                |
-| Registry   | 加载 YAML/TypeScript adapter，生成 manifest。           |
-| Engine     | 执行 pipeline steps，处理变量、策略、证据、错误和输出。 |
-| Transports | 连接 HTTP、浏览器、桌面、本地命令和服务。               |
-| Output     | 把结果包装成 v2 `AgentEnvelope`。                       |
-| Repair     | 让失败结果指向可修复的 adapter 和 step。                |
+| 模块               | 职责                                                                      |
+| ------------------ | ------------------------------------------------------------------------- |
+| Intent / Search    | 用 BM25、alias 和 `do` 把自然语言任务映射到候选操作。                     |
+| Operation contract | 描述 args、输出、认证姿态、effect、risk、capability、source/repair path。 |
+| Control kernel     | 统一完成参数校验、权限判断、substrate 调用、证据记录和 envelope 返回。    |
+| Action substrates  | 连接 HTTP、浏览器、桌面、本地命令、文件、协议和 Visual。                  |
+| Output / Evidence  | 把结果包装成 v2 `AgentEnvelope`，并保留可审查证据。                       |
+| Delivery / Repair  | 诊断失败，选择重试、换路、补认证、请求权限或进入有边界修复。              |
 
 ## 控制内核
 
-Uni-CLI 不是 scraper、协议外壳或 visual-first 产品，而是智能体控制网站、桌面应用、本地工具、文件和系统能力的控制内核。内核要保持小、可审计、可验证：
+Uni-CLI 不是 scraper、协议外壳、visual-first 产品、浏览器库或 sandbox 产品，而是智能体控制网站、桌面应用、本地工具、文件和系统能力的控制平台。内核要保持小、可审计、可验证：
 
-- **命令注册表**：manifest 是运行时合同，包含命令名、参数、能力需求、输出形状、鉴权和推断出的操作策略。
+- **操作合同**：manifest 是运行时合同，包含操作名、参数、能力需求、输出形状、鉴权、source path、repair path 和推断出的操作策略。
 - **调用内核**：统一完成参数校验、权限判断、adapter 执行、证据记录和 `AgentEnvelope` 返回。
-- **传输总线**：HTTP、CDP、a11y、subprocess、service、Visual 都是同一命令合同下的传输选择。
+- **Substrate 总线**：HTTP、CDP、a11y、subprocess、service、protocol、Visual 都是同一操作合同下的行动选择。
 - **权限 profile**：命令默认开放；用户可以选择 `confirm` 或 `locked` 对高影响写操作加确认。
-- **修复和评测闭环**：失败必须落到一个 adapter、一个 step、一个可复现验证命令。
+- **交付和修复闭环**：失败必须落到一个 source path、一个 step 或边界、一个可复现验证命令。
 
-MCP、ACP、HTTP API 和 agent 配置都是这个内核的兼容面，不应该各自定义一套行为。生成型 TypeScript 命令也必须和 `search`、`describe`、`--dry-run`、直接 CLI、MCP、ACP 保持相同参数 schema；这里的漂移是正确性问题，不是文档问题。
+MCP、ACP、HTTP API 和 agent 配置都是这个内核的兼容面，不应该各自定义一套行为。生成型 TypeScript 命令、YAML adapter、core Commander 命令也必须和 `search`、`describe`、`--dry-run`、直接 CLI、MCP、ACP 保持相同 operation contract；这里的漂移是正确性问题，不是文档问题。
+
+## 产品边界与内部生命周期
+
+产品边界是 Agent-to-computer 控制闭环，不是 adapter registry、YAML 格式、命令生命周期、MCP gateway 或某一种自动化后端。命令生命周期仍然重要，但它是内部作者和维护流程：创建、发现、调用、观察、修复、发布。公开表述必须把它放在 operation contract 和 control kernel 之下，避免重新退回到 catalog-first 或 wrapper-first 叙事。
+
+## 能力矩阵与工作流就绪度
+
+`unicli architecture audit -f json` 会从 live registry 产出两张表，让“车载助手”类比落到可检查数据，而不是变成愿景口号。
+
+`capability_matrix` 按真实控制 surface 分类：
+
+- `web`：HTTP、RSS、public/cookie/header Web 路径，以及 Web target surface。
+- `browser`：CDP、browser ref、browser evidence 和浏览器后端 adapter。
+- `desktop`：installed app、无障碍、本地 UI 和 desktop target surface。
+- `system`：OS 状态、macOS 命令、本地服务和 system target surface。
+- `protocol`：MCP、ACP、delivery/runs/architecture 控制服务，以及 service/protocol 边界。
+- `bridge`：透传到成熟外部 CLI，例如 `gh`、`yt-dlp` 或 cloud CLI。
+
+每行包含 command count、adapter/core 拆分、写敏感命令数、本地 computer-use 命令数、source-path 覆盖和代表命令。同一命令可以进入多行，例如 browser-backed Web adapter，或同时控制 desktop 和 system 状态的 macOS 命令。
+
+`workflow_readiness` 对齐真实用户工作流：
+
+- 播放或检查媒体；
+- 搜索视频平台；
+- 操作浏览器 tab；
+- 操作已安装 App；
+- 读写生产力状态；
+- 打开或导航到目的地。
+
+就绪度刻意保守：
+
+- `cataloged` 表示 live catalog 已有 operation contract；需要行动的工作流还必须有 action-capable command。
+- `partial` 表示已有相关读取/发现路径，但还不足以声明完整行动能力。
+- `gap` 表示 live catalog 没有匹配操作路径。
+
+任何 workflow row 都不宣称 live 成功。每行带 `required_next_evidence`，下一步能力建设必须跑命令、捕获 envelope、验证执行后状态、记录 auth/policy 姿态，之后才能把 catalog 覆盖升级成行为声明。
 
 ## 为什么 CLI-first
 
@@ -54,7 +91,7 @@ MCP、ACP、HTTP API 和 agent 配置都是这个内核的兼容面，不应该�
 - 输出可以同时服务人和机器。
 - 本地覆盖和修复不依赖远端服务。
 
-MCP、ACP 等协议接口仍然提供，但它们是兼容层，不是核心运行时。
+MCP、ACP 等协议接口仍然提供，但它们是 exposure/protocol substrate，不是核心语义模型。
 
 ## 桌面和 Visual 分层
 
@@ -122,21 +159,23 @@ Run recording 是显式启用的本地能力。`--record` 或
 
 ## 行业位置
 
-Uni-CLI 位于 agent 应用之下、真实网站/桌面应用/本地工具/系统能力之上。它不是 IDE、不是聊天产品、不是模型托管层、不是 scraper、不是协议壳，也不是单一 agent loop；它是这些产品都应该能调用的执行底座。
+Uni-CLI 位于 agent 应用之下、真实网站/桌面应用/本地工具/文件/系统能力之上。它不是 IDE、不是聊天产品、不是模型托管层、不是浏览器库、不是 MCP wrapper、不是 computer-use sandbox、不是自然语言 shell、不是 scraper、不是协议壳，也不是单一 agent loop；它是这些产品都应该能调用的 computer-control 平台。
 
 采用：
 
 - 原生 CLI 和 shell 作为第一 agent 接口。
-- YAML adapter 承载可持久修复的网站和应用操作。
+- Operation contract 承载可持久修复的网站、应用、本地工具、文件和协议操作。
+- YAML adapter 作为低成本作者格式，而不是产品身份。
 - API、CDP、a11y、subprocess、应用协议优先。
 - 只有能看见、能行动、能验证时才使用 Visual。
 - 操作需要审查时记录可 probe/replay/compare 的 run trace、带 tab/auth 姿态的
   browser session lease、render-aware evidence 和 watchdog 移动检查。
-- MCP、ACP、HTTP 作为由同一 catalog 生成的兼容面。
+- MCP、ACP、HTTP 作为由同一 operation contract 生成的兼容面。
 
 不采用：
 
 - 把 ACP 或 MCP 当作核心语义模型。
+- 把浏览器自动化、sandbox 或 visual fallback 当作产品边界。
 - API/CDP/a11y/subprocess 可用时不先用 Visual。
 - 把静态隐私标签当作唯一安全机制。
 - 把没有观察证据的浏览器动作当作成功副作用。
@@ -144,7 +183,7 @@ Uni-CLI 位于 agent 应用之下、真实网站/桌面应用/本地工具/系�
 
 ## Adapter registry
 
-Adapter 是能力的最小单元。registry 会加载：
+Adapter 是常见的作者和运行时单元，不是产品的最小概念。产品最小概念是 operation contract。registry 会加载：
 
 - 内置 `src/adapters/**`
 - 本地覆盖 `~/.unicli/adapters/**`

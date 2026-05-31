@@ -1,12 +1,15 @@
 # Getting Started
 
-Uni-CLI turns websites, desktop apps, services, local tools, protocols, and
-external CLIs into commands that agents can search, run, record, and repair.
+Uni-CLI turns websites, logged-in browsers, desktop apps, services, local
+tools, files, protocols, external CLIs, operating-system capabilities, and
+visual evidence into governed operations agents can search, run, record, and
+repair.
 
-A command is a stable contract for real software. It keeps arguments, auth,
-surface type, output shape, permission profile, evidence, and error handling in
-one place. When an external page or API changes, the failure points back to a
-repairable adapter and pipeline step.
+An operation is a stable contract for controlling real software. It keeps
+arguments, auth posture, action substrate, output shape, permission profile,
+evidence, and error handling in one place. When an external page, app, API, or
+local boundary changes, the failure points back to a repairable source path and
+step.
 
 ## Install
 
@@ -28,20 +31,24 @@ machine-oriented consumer needs JSON.
 
 ## Understand The Flow
 
-The common path has four steps:
+The common path follows the computer-control loop:
 
-1. **Search**: `unicli search` finds candidate commands from natural language
+1. **Intent**: `unicli search` finds candidate operations from natural language
    without touching the external surface.
-2. **Execute**: `unicli SITE COMMAND` runs the selected command with inspectable
-   arguments and auth boundaries.
-3. **Record**: `--record` or `UNICLI_RECORD_RUN=1` can write append-only run
+2. **Select**: the operation contract chooses the smallest substrate that can
+   act: API, browser, desktop, subprocess, protocol, or visual fallback.
+3. **Govern and act**: `unicli SITE COMMAND` runs the selected operation with
+   inspectable arguments, auth boundaries, and permission policy.
+4. **Observe**: every result returns a v2 `AgentEnvelope` with data, context,
+   retryability, timing, and evidence.
+5. **Record**: `--record` or `UNICLI_RECORD_RUN=1` can write append-only run
    traces under `~/.unicli/runs` for review and debugging.
-4. **Repair**: structured failures include the adapter path, pipeline step,
-   suggestion, and alternatives.
+6. **Repair or reroute**: structured failures include the source path, failing
+   step or boundary, suggestion, retryability, and alternatives.
 
 Browser automation, CDP, accessibility trees, subprocesses, service APIs, MCP,
-ACP, and Visual are transport choices. The stable layer is the command catalog,
-adapter, and v2 `AgentEnvelope`.
+ACP, and Visual are action substrates. The stable layer is the operation
+contract, control kernel, evidence envelope, and delivery/repair loop.
 
 ## Find A Command
 

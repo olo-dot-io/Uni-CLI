@@ -1,22 +1,40 @@
 ---
 title: Uni-CLI 工作原理
-description: Uni-CLI 执行模型的深度解读——YAML 适配器格式、v2 AgentEnvelope、策略级联、pipeline，以及让 Agent 自己修复集成的 self-repair 闭环。
+description: Uni-CLI computer-control 模型的深度解读——意图、操作合同、行动 substrate、v2 AgentEnvelope 证据、交付和修复。
 ---
 
 # Uni-CLI 工作原理
 
-Uni-CLI 是给 AI Agent 用的命令行执行层。它把网站、桌面应用、MCP 服务、外部 CLI 编译成一份可搜索的命令目录。这一页讲清楚整套架构：YAML 适配器是怎么编译成 CLI 命令的，策略级联怎么解决认证，v2 AgentEnvelope 怎么把证据回执给 Agent，以及当站点改版时 self-repair 闭环是怎么收住的。
+Uni-CLI 是 AI Agent 控制 computer 的通用平台。它把网站、登录态浏览器、桌面应用、本地工具、文件、操作系统能力、MCP 服务、外部 CLI、无障碍树、截图和 App wrapper 收进同一套可治理的操作层。这一页讲清楚控制闭环：意图怎样变成 operation contract，Uni-CLI 怎样选择行动 substrate，v2 AgentEnvelope 怎样返回证据，以及真实软件变化时 delivery/repair 怎样维持路径。
 
-## 四段契约
+## Computer-Control 契约
 
-每条 Uni-CLI 命令都走同样的四个阶段。Agent 可以在任何阶段停下来推理。
+每条 Uni-CLI 操作都走同一条产品闭环。Agent 可以在任何阶段停下来推理。
 
-1. **发现**：`unicli search "<意图>"` 走本地双语 BM25 排序，返回站点、命令、参数、认证策略和输出 schema。
-2. **执行**：`unicli <site> <command> [args]` 跑 YAML pipeline，返回 v2 AgentEnvelope。
-3. **恢复**：失败回执是 `{ adapter_path, step, action, suggestion, retryable, alternatives }`，给 Agent 一条有界的修复路径。
-4. **修复**：Agent 改 `adapter_path` 处的 YAML，跑 `unicli repair <site> <command>` 验证补丁。
+1. **意图**：`unicli search "<意图>"` 和 `unicli do "<意图>"` 把任务映射成候选操作、参数、认证姿态、样例和风险信号。
+2. **选择**：operation contract 选择能行动的最小边界：API、browser、desktop accessibility、subprocess、protocol、visual fallback 或 App wrapper。
+3. **治理**：permission profile、deny rule、capability scope、本地策略在请求、写入、启动进程或 UI 动作前拦住高风险影响。
+4. **行动**：共享 control kernel 调用选中的 substrate，而不是让 CLI、MCP、ACP 或文档各自定义行为。
+5. **观察**：AgentEnvelope v2 用同一种形状返回 data、context、retryability、耗时和证据 hook，成功失败都一样。
+6. **诊断**：delivery assessment 把失败归为认证、策略、缺少上下文、上游漂移、环境问题或 adapter 缺陷。
+7. **修复或换路**：下一次实验受 source path、alternatives、evidence 和 verification command 约束。
+8. **交付**：evidence gate 判断目标已满足、仍在进行、被阻断，还是已经耗尽。
+9. **暴露**：同一条操作可以复用到 native CLI、JSON stream、MCP、ACP、HTTP、docs、skills、CI 和脚本。
 
-五种适配器类型 (web-api、browser、desktop、bridge、service) 都遵守同一份契约。
+这份契约横跨所有行动 substrate。adapter type 是产品边界之下的实现细节。
+
+## Substrate 不是身份
+
+浏览器自动化、computer-use sandbox、自然语言本地执行、MCP 服务和单站点 wrapper 都有价值，但它们不是 Uni-CLI 的类目。它们是 Uni-CLI 可以使用或暴露的具体技术边界。
+
+| Substrate       | 贡献什么                                           | Uni-CLI 在它上面保留什么                       |
+| --------------- | -------------------------------------------------- | ---------------------------------------------- |
+| Web/API         | typed fetch、cookie/header auth、download、extract | operation contract、policy、evidence、repair   |
+| Browser         | CDP 控制、DOM/accessibility ref、截图、网络捕获    | 选择、回执、交付、换路                         |
+| Desktop/OS      | installed app、无障碍树、截图、本地状态            | governed action、post-state evidence、平台诊断 |
+| 本地工具/文件   | subprocess、PDF、媒体工具、开发者 CLI              | typed args、output envelope、retryability      |
+| 协议            | MCP、ACP、Streamable HTTP、JSON stream             | 共享语义，不让 wrapper 各自定义行为            |
+| Visual fallback | 最后一公里屏幕交互                                 | 真实性闸门：能看见、能行动、能验证             |
 
 ## 领域感知发现
 
@@ -24,9 +42,9 @@ Uni-CLI 是给 AI Agent 用的命令行执行层。它把网站、桌面应用�
 
 同一条规则也避免泛查询被误导。只有查询里明确出现 ACG、论文、wiki、tag、游戏、动画、漫画、美少女游戏等领域词时，领域 boost 才生效；普通查询仍然按 Web、开发、财经或 App 命令自己的证据排序。
 
-## YAML 适配器格式
+## 内部作者格式：YAML adapter
 
-集成的最小单位是一份 20 行 YAML。下面是一个公开 RSS 订阅的完整适配器：
+YAML adapter 是默认的可复用 operation contract 作者格式。它不是平台身份；它是便宜、可检查的格式，让 Agent 能读、能改、能验证很多 substrate 路径。下面是一个公开 RSS 订阅的完整适配器：
 
 ```yaml
 site: techcrunch
@@ -45,9 +63,9 @@ pipeline:
 columns: [title, published, url]
 ```
 
-五个字段定义契约：`site` (集成名)、`name` (命令)、`type` (面向哪个表面 — web-api / browser / desktop / bridge / service)、`strategy` (认证路径)、`pipeline` (产出结果的步骤)。零 import、零 class、零编译——Agent 直接读、直接改选择器、几秒就验证完。
+五个字段定义作者单元：`site` (集成名)、`name` (命令)、`type` (面向哪个 substrate: web-api / browser / desktop / bridge / service)、`strategy` (认证路径)、`pipeline` (产出结果的步骤)。零 import、零 class、零编译——Agent 直接读、直接改选择器、几秒就验证完。
 
-## <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> 步 pipeline
+## 内部 pipeline 注册表
 
 所有适配器共用同一份 <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> 步 pipeline 注册表。步骤按用途分组：API 拉取、变换、浏览器、桌面、媒体、控制流、断言。每步都是确定性的——同样输入产出同样输出——所以适配器组合起来就是稳定的执行图。
 
@@ -79,7 +97,7 @@ Pipeline 自上而下走，共享一个 context 对象。每步读 `ctx.data`、
 
 ## v2 AgentEnvelope
 
-每条命令都返回 v2 AgentEnvelope——成功失败同一个形状。Agent 用一份 schema 解析 <span><!-- STATS:command_count -->1763<!-- /STATS --></span> 条命令。
+每条命令都返回 v2 AgentEnvelope——成功失败同一个形状。Agent 用一份 schema 解析 <span><!-- STATS:command_count -->1766<!-- /STATS --></span> 条命令。
 
 ```json
 {
@@ -126,9 +144,9 @@ Agent 拿到的信息很完整：要改的文件、失败的 step、一句话假
 
 人调试要 30 分钟的 bug，Agent 30 秒就闭环了。两个数量级的差距，就是把适配器写成 YAML 全部经济性论证的核心。
 
-## 为什么 CLI 是 Agent 工具的正确形状
+## 为什么 CLI 是第一运行入口
 
-三股力量让 CLI 成为 Agent 工具更便宜的主入口。
+CLI 是很多 Agent 运行里成本最低的第一暴露面，但它不是产品边界。三股力量让它适合作为第一运行入口。
 
 **Token 经济**。[docs/BENCHMARK.md](/zh/BENCHMARK) 实测 `--limit 5` 列表型适配器的总调用预算 364-423 token (中位 412)。MCP 服务把工具清单常驻在 Agent 上下文里，每个服务通常 1500-3000 token，调用与否都占着。CLI 按用量付费；MCP 服务为"可用"付费。
 
@@ -146,7 +164,7 @@ CLI 不是万能替代。MCP 在这几类场景仍然更好：
 
 生产级 Agent 栈通常两个都要。Uni-CLI 自带一个 MCP 网关 (`unicli mcp serve`) 包了同一份目录，纯 MCP 运行时不用做第二次集成就拿到同一套执行表面。
 
-## 目录是一等公民
+## 操作目录是一等公民
 
 按意图搜索比按 prompt 枚举更省。`unicli search "find AI agent discussions on reddit"` 返回排序好的命令清单，附带参数、认证、示例输出。Agent 选一条跑，永远不需要枚举整个目录。token 开销保持低，是因为运行时加载目录索引，而不是加载目录正文。
 
@@ -169,7 +187,7 @@ $ unicli hackernews top -n 10 -f json \
 # 4. Agent 改 YAML，跑 `unicli repair` 重新验证
 ```
 
-这就是整套交互模型。一种命令形状跨 <span><!-- STATS:site_count -->312<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1763<!-- /STATS --></span> 条命令。一种错误回执跨每一次失败。一条 self-repair 路径跨每一个适配器。
+这是最简单的暴露路径。同一份 operation contract 也可以通过 MCP、ACP、HTTP、skills 或 CI 运行，语义不变。一种命令形状跨 <span><!-- STATS:site_count -->313<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1766<!-- /STATS --></span> 条命令。一种错误回执跨每一次失败。一条 self-repair 路径跨每一个适配器。
 
 ## 延伸阅读
 

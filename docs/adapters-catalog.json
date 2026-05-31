@@ -1,9 +1,135 @@
 {
-  "source": "unicli@0.224.0",
-  "generated": "2026-05-27T17:37:49.371Z",
-  "total_sites": 312,
-  "total_commands": 1763,
+  "source": "unicli@0.225.0",
+  "generated": "2026-05-31T17:28:24.022Z",
+  "total_sites": 313,
+  "total_commands": 1766,
   "adapters": [
+    {
+      "site": "12306",
+      "type": "web-api",
+      "domain": "kyfw.12306.cn",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "price",
+          "description": "12306 ticket prices by seat class for one train + segment (anonymous)",
+          "when_to_use": "12306 ticket prices by seat class for one train + segment (anonymous)",
+          "command": "unicli 12306 price",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["seat_name", "price", "currency", "seat_code"],
+          "args": [
+            {
+              "name": "train_no",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Internal train_no from `12306 trains` (e.g. 240000G54700), not the public code G547"
+            },
+            {
+              "name": "from",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Origin station telecode (e.g. VNP) — from `12306 stations <name>`"
+            },
+            {
+              "name": "to",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Destination station telecode (e.g. AOH) — from `12306 stations <name>`"
+            },
+            {
+              "name": "date",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Departure date YYYY-MM-DD"
+            }
+          ]
+        },
+        {
+          "name": "stations",
+          "description": "Search 12306 (China Railway) stations by Chinese name, telecode, or pinyin",
+          "when_to_use": "Search 12306 (China Railway) stations by Chinese name, telecode, or pinyin",
+          "command": "unicli 12306 stations",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["name", "code", "pinyin", "abbr", "city"],
+          "args": [
+            {
+              "name": "keyword",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Chinese substring (北京), telecode (VAP), or pinyin (beijing)"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum results (1-50)"
+            }
+          ]
+        },
+        {
+          "name": "trains",
+          "description": "List trains between two 12306 stations on a date (telecodes from `12306 stations`)",
+          "when_to_use": "List trains between two 12306 stations on a date (telecodes from `12306 stations`)",
+          "command": "unicli 12306 trains",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "code",
+            "from_to",
+            "depart",
+            "arrive",
+            "duration",
+            "second",
+            "first",
+            "business",
+            "hard_sleeper",
+            "bookable"
+          ],
+          "args": [
+            {
+              "name": "from",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Origin station telecode (e.g. VNP for 北京南) — get it from `12306 stations <name>`"
+            },
+            {
+              "name": "to",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Destination station telecode (e.g. AOH) — get it from `12306 stations <name>`"
+            },
+            {
+              "name": "date",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Departure date YYYY-MM-DD"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum rows (1-100)"
+            }
+          ]
+        }
+      ]
+    },
     {
       "site": "1688",
       "type": "web-api",

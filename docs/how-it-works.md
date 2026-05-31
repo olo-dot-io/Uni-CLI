@@ -1,22 +1,40 @@
 ---
 title: How Uni-CLI Works
-description: A deep walkthrough of the Uni-CLI execution model — the YAML adapter format, the v2 AgentEnvelope, strategy cascade, the pipeline registry, and the self-repair loop that lets agents fix their own integrations.
+description: A deep walkthrough of the Uni-CLI computer-control model — intent, operation contracts, action substrates, v2 AgentEnvelope evidence, delivery, and repair.
 ---
 
 # How Uni-CLI Works
 
-Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. This page walks through the architecture: how a YAML adapter compiles into a CLI command, how the strategy cascade resolves authentication, how the v2 AgentEnvelope returns evidence, and how the self-repair loop closes when a site changes shape.
+Uni-CLI is the universal computer-control platform for agents. It turns websites, logged-in browsers, desktop apps, local tools, files, operating-system capabilities, MCP servers, external CLIs, accessibility trees, screenshots, and app-specific wrappers into one governed operation layer. This page walks through the control loop: how intent becomes an operation contract, how Uni-CLI chooses an action substrate, how the v2 AgentEnvelope returns evidence, and how delivery/repair keeps the path alive when real software changes.
 
-## The four-part contract
+## The computer-control contract
 
-Every Uni-CLI command runs through the same four phases. Agents can stop at any phase and reason about the result.
+Every Uni-CLI operation runs through the same product loop. Agents can stop at any phase and reason about the result.
 
-1. **Discover.** `unicli search "<intent>"` queries the local catalog with bilingual BM25 ranking and returns matching site, command, args, auth strategy, and output schema.
-2. **Execute.** `unicli <site> <command> [args]` runs the YAML pipeline and returns a v2 AgentEnvelope.
-3. **Recover.** Failures emit `{ adapter_path, step, action, suggestion, retryable, alternatives }` so the agent has a bounded fix path.
-4. **Repair.** The agent edits the YAML at `adapter_path` and runs `unicli repair <site> <command>` to verify the patch.
+1. **Intent.** `unicli search "<intent>"` and `unicli do "<intent>"` map a task into candidate operations with args, auth posture, examples, and risk signals.
+2. **Select.** The operation contract chooses the smallest boundary that can act: API, browser, desktop accessibility, subprocess, protocol, visual fallback, or app wrapper.
+3. **Govern.** Permission profiles, deny rules, capability scope, and local policy gate risky effects before requests, writes, process spawns, or UI actions.
+4. **Act.** The shared control kernel invokes the selected substrate instead of letting CLI, MCP, ACP, or docs define behavior separately.
+5. **Observe.** AgentEnvelope v2 returns data, context, retryability, timing, and evidence hooks in the same shape on success and failure.
+6. **Diagnose.** Delivery assessment classifies failure as auth, policy, missing context, upstream drift, environment trouble, or adapter defect.
+7. **Repair or reroute.** The next experiment is bounded by source path, alternatives, evidence, and verification command.
+8. **Deliver.** Evidence gates decide whether the objective is satisfied, still active, blocked, or exhausted.
+9. **Expose.** The same operation can be reused from native CLI, JSON stream, MCP, ACP, HTTP, docs, skills, CI, and scripts.
 
-This contract holds across all five adapter types: web-api, browser, desktop, bridge, and service.
+This contract holds across all action substrates. Adapter type is an implementation detail below the product boundary.
+
+## Substrates, not identities
+
+Browser automation, computer-use sandboxes, natural-language local execution, MCP servers, and per-site wrappers are useful, but they are not Uni-CLI's category. They are concrete technical boundaries that Uni-CLI can use or expose.
+
+| Substrate         | What it contributes                                               | What Uni-CLI keeps above it                                 |
+| ----------------- | ----------------------------------------------------------------- | ----------------------------------------------------------- |
+| Web/API           | typed fetch, cookie/header auth, downloads, extraction            | operation contracts, policy, evidence, repair               |
+| Browser           | CDP control, DOM/accessibility refs, screenshots, network capture | selection, receipts, delivery, reroute                      |
+| Desktop/OS        | installed apps, accessibility trees, screenshots, local state     | governed actions, post-state evidence, platform diagnostics |
+| Local tools/files | subprocesses, PDFs, media tools, developer CLIs                   | typed args, output envelopes, retryability                  |
+| Protocols         | MCP, ACP, Streamable HTTP, JSON streams                           | shared semantics instead of wrapper-specific behavior       |
+| Visual fallback   | last-mile screen interaction                                      | truthfulness gate: can see, act, and verify                 |
 
 ## Domain-aware discovery
 
@@ -24,9 +42,9 @@ The catalog search layer is not a plain site-name lookup. It combines bilingual 
 
 The same rule keeps broad searches honest. Domain boosts only apply when the query uses explicit ACG, paper, wiki, tag, game, anime, manga, or visual-novel vocabulary; generic queries still rank the normal web, developer, finance, or app commands by their own evidence.
 
-## The YAML adapter format
+## Internal authoring format: YAML adapters
 
-The unit of integration is a 20-line YAML file. Here's a complete adapter for a public RSS feed:
+YAML adapters are the default way to author reusable operation contracts. They are not the platform identity; they are the cheap, inspectable format that lets agents read, patch, and verify many substrate paths. Here's a complete adapter for a public RSS feed:
 
 ```yaml
 site: techcrunch
@@ -45,9 +63,9 @@ pipeline:
 columns: [title, published, url]
 ```
 
-Five fields define the contract: `site` (the integration name), `name` (the command), `type` (which surface — web-api, browser, desktop, bridge, service), `strategy` (auth path), and `pipeline` (the steps that produce the result). An adapter without imports, classes, or compile steps lets an agent read it, patch a selector, and verify the fix in seconds.
+Five fields define the authoring unit: `site` (the integration name), `name` (the command), `type` (which substrate: web-api, browser, desktop, bridge, service), `strategy` (auth path), and `pipeline` (the steps that produce the result). An adapter without imports, classes, or compile steps lets an agent read it, patch a selector, and verify the fix in seconds.
 
-## The pipeline registry
+## Internal pipeline registry
 
 Every adapter runs through the same <!-- STATS:pipeline_step_count -->103<!-- /STATS -->-step pipeline registry. Steps are grouped by purpose: API fetch, transform, browser, desktop, media, control flow, and assertion. Each step is deterministic — same inputs produce same outputs — so adapters compose into reliable execution graphs.
 
@@ -81,7 +99,7 @@ The cascade order is `public → cookie → header → intercept → ui`. On the
 
 Every command returns a v2 AgentEnvelope — the same shape on success or failure.
 Agents parse one schema across
-<span><!-- STATS:command_count -->1763<!-- /STATS --></span> commands.
+<span><!-- STATS:command_count -->1766<!-- /STATS --></span> commands.
 
 ```json
 {
@@ -128,9 +146,10 @@ The agent has everything it needs: the file to edit, the failing step, a one-lin
 
 A bug that would have cost 30 minutes of human debugging closes in 30 seconds of agent runtime. That two-orders-of-magnitude difference is the entire economic argument for adapters as YAML.
 
-## Why CLI is the right shape for agent tools
+## Why CLI is the first runtime surface
 
-Three forces make CLI the cheaper primary surface for agent tooling.
+CLI is the cheapest primary exposure surface for many agent runs; it is not the
+product boundary. Three forces make it the right first runtime surface.
 
 **Token economics.** [docs/BENCHMARK.md](/BENCHMARK) measures `--limit 5` list-style adapters at a 364-423 token total call budget (median 412). An MCP server keeps its tool list resident in the agent's context window — typically 1,500-3,000 tokens per server — even when the agent does not invoke it. The CLI pays for what it uses; the MCP server pays to be available.
 
@@ -148,7 +167,7 @@ CLI is not a universal replacement. MCP is the better surface for:
 
 Most production agent stacks need both. Uni-CLI ships an MCP gateway (`unicli mcp serve`) that wraps the same catalog, so a runtime that only speaks MCP gets the same execution surface without a second integration.
 
-## The catalog as a first-class artifact
+## The operation catalog as a first-class artifact
 
 Search beats discovery-by-prompt. `unicli search "find AI agent discussions on reddit"` returns a ranked list of matching commands with arguments, auth, and example output. The agent picks one, runs it, and never has to enumerate the catalog. The token budget stays low because the runtime loads the catalog index, not the catalog body.
 
@@ -171,9 +190,11 @@ $ unicli hackernews top -n 10 -f json \
 # 4. The agent edits the YAML and re-verifies with `unicli repair`
 ```
 
-That is the entire interaction model. One command shape across
-<span><!-- STATS:site_count -->312<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1763<!-- /STATS --></span> commands. One error
+That is the simplest exposure path. The same operation contract can also run
+through MCP, ACP, HTTP, skills, or CI without changing semantics. One command
+shape across
+<span><!-- STATS:site_count -->313<!-- /STATS --></span> sites and
+<span><!-- STATS:command_count -->1766<!-- /STATS --></span> commands. One error
 envelope across every failure. One self-repair path across every adapter.
 
 ## Further reading

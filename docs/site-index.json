@@ -1,8 +1,33 @@
 {
-  "generated": "2026-05-27T17:37:49.371Z",
-  "total_sites": 312,
-  "total_commands": 1763,
+  "generated": "2026-05-31T17:28:24.022Z",
+  "total_sites": 313,
+  "total_commands": 1766,
   "sites": [
+    {
+      "site": "12306",
+      "type": "web-api",
+      "domain": "kyfw.12306.cn",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "price",
+          "description": "12306 ticket prices by seat class for one train + segment (anonymous)",
+          "command": "unicli 12306 price"
+        },
+        {
+          "name": "stations",
+          "description": "Search 12306 (China Railway) stations by Chinese name, telecode, or pinyin",
+          "command": "unicli 12306 stations"
+        },
+        {
+          "name": "trains",
+          "description": "List trains between two 12306 stations on a date (telecodes from `12306 stations`)",
+          "command": "unicli 12306 trains"
+        }
+      ]
+    },
     {
       "site": "1688",
       "type": "web-api",

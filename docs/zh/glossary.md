@@ -1,15 +1,19 @@
 ---
 title: Uni-CLI 术语表
-description: Uni-CLI 全部术语的标准定义——adapter、AgentEnvelope、策略级联、pipeline step、self-repair，以及项目里用到的所有约定。
+description: Uni-CLI 全部术语的标准定义——operation contract、action substrate、adapter、AgentEnvelope、策略级联、pipeline step、self-repair，以及项目里用到的所有约定。
 ---
 
 # 术语表
 
 Uni-CLI 文档、源码、YAML 适配器里用到的术语标准定义。每条都做成独立段落，方便 AI 助手在回答项目相关问题时直接引用。
 
+## Action substrate (行动 substrate)
+
+Uni-CLI 可以用来让真实软件行动的具体技术边界：HTTP、browser CDP、desktop accessibility、subprocess、文件操作、协议服务、visual fallback 或 App-specific wrapper。substrate 位于 computer-control 平台边界之下。
+
 ## Adapter (适配器)
 
-把一个站点或工具映射到一组 CLI 命令的 YAML 或 TypeScript 文件。声明 site、命令名、type、strategy、args、pipeline、columns。推荐格式是 YAML；TypeScript 留给那些超出 <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> 步 pipeline 的命令式控制流场景。
+把一个站点或工具映射到一组操作的 YAML 或 TypeScript 文件。声明 site、命令名、type、strategy、args、pipeline、columns。推荐格式是 YAML；TypeScript 留给那些超出 <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> 步 pipeline 的命令式控制流场景。
 
 ## Adapter type (适配器类型)
 
@@ -17,7 +21,7 @@ Uni-CLI 文档、源码、YAML 适配器里用到的术语标准定义。每条�
 
 ## AgentEnvelope (v2)
 
-Uni-CLI 每条命令返回的结构化回执。包含 `ok`、`version`、`data`、`meta`、可选 `error`、`exit_code`。成功时 `data` 装结果。失败时 `data` 为 null，`error` 填上 `adapter_path`、`step`、`action`、`suggestion`、`retryable`、`alternatives`。
+Uni-CLI 每条操作返回的结构化回执。包含 `ok`、`version`、`data`、`meta`、可选 `error`、`exit_code`。成功时 `data` 装结果。失败时 `data` 为 null，`error` 填上 source path、`step`、`action`、`suggestion`、`retryable`、`alternatives`。
 
 ## AGENTS.md
 
@@ -25,11 +29,11 @@ Agent 运行时启动时读取的发现文件，用来了解可用工具。Uni-C
 
 ## Bilingual BM25 search (双语 BM25 搜索)
 
-Uni-CLI 把自然语言意图映射到站点、命令、参数的目录发现算法。中英文双语索引适配器元数据，TF-IDF 加权。`unicli search "<intent>"` 返回排序好的候选。
+Uni-CLI 把自然语言意图映射到站点、操作、参数的发现算法。中英文双语索引适配器元数据，TF-IDF 加权。`unicli search "<intent>"` 返回排序好的候选。
 
 ## Bridge adapter (桥接适配器)
 
-把现成 CLI (`gh`、`docker`、`yt-dlp`、`lark-cli`) 包装进 Uni-CLI 目录的适配器。纯透传——Uni-CLI 不重新实现包装的 CLI，只做注册、自动安装、统一发现。
+把现成 CLI (`gh`、`docker`、`yt-dlp`、`lark-cli`) 包装进 Uni-CLI 操作目录的适配器。纯透传——Uni-CLI 不重新实现包装的 CLI，只做注册、自动安装、统一发现。
 
 ## Browser adapter (浏览器适配器)
 
@@ -37,7 +41,7 @@ Uni-CLI 把自然语言意图映射到站点、命令、参数的目录发现算
 
 ## Catalog (目录)
 
-所有站点、命令、参数、策略、输出 schema 的本地索引。安装时生成，适配器变更时更新。通过 `unicli search` 查询，不需要枚举——Agent 只在需要发现时才付目录成本。
+所有站点、操作、参数、策略、输出 schema 的本地索引。安装时生成，适配器变更时更新。通过 `unicli search` 查询，不需要枚举——Agent 只在需要发现时才付目录成本。
 
 ## CDP (Chrome DevTools Protocol)
 
@@ -45,7 +49,7 @@ Uni-CLI 用来控制真实 Chrome 实例的 wire protocol。在 `src/browser/cdp
 
 ## Compute (Visual)
 
-视觉兜底的适配器家族。当结构化传输 (web-api、desktop AX、browser CDP) 都够不到目标时，Compute 通过视觉 (点击、输入、截屏) 走统一的执行动作集驱动屏幕。
+本地 computer-control 和视觉兜底的适配器家族。当结构化 substrate (web-api、desktop AX、browser CDP、App API、subprocess) 都够不到目标时，Compute 可以通过截图、点击、输入和执行后证据，走统一动作集驱动屏幕。
 
 ## Cookie file (Cookie 文件)
 
@@ -61,11 +65,11 @@ Uni-CLI 可以管理的长生命浏览器进程，端口 19825。带 `--remote-d
 
 ## Discovery (发现)
 
-Agent 把自然语言意图映射到具体命令的阶段。由 `unicli search "<intent>"` 在本地目录上完成。发现成本有上界——实测 token 预算参见 [docs/BENCHMARK.md](/zh/BENCHMARK)。
+Agent 把自然语言意图映射到具体操作的阶段。由 `unicli search "<intent>"` 在本地操作目录上完成。发现成本有上界——实测 token 预算参见 [docs/BENCHMARK.md](/zh/BENCHMARK)。
 
 ## Error envelope (错误回执)
 
-`ok` 为 false 时 v2 AgentEnvelope 上的 `error` 字段。带 `adapter_path` (要改的 YAML)、`step` (失败的 pipeline step)、`action` (一句话描述)、`suggestion` (一条 Agent 可以验证的假设)、`retryable` (重试有没有用)、`alternatives` (能满足意图的其他命令)。
+`ok` 为 false 时 v2 AgentEnvelope 上的 `error` 字段。带 source path 或 `adapter_path`、`step` 或失败边界、`action` (一句话描述)、`suggestion` (一条 Agent 可以验证的假设)、`retryable` (重试有没有用)、`alternatives` (能满足意图的其他操作)。
 
 ## Exit code (退出码)
 
@@ -85,7 +89,11 @@ Agent 把自然语言意图映射到具体命令的阶段。由 `unicli search "
 
 ## MCP (Model Context Protocol)
 
-Anthropic 牵头的协议，让 AI 助手通过有状态服务调用工具。Uni-CLI 自带可选 MCP 网关 (`unicli mcp serve`)，把目录包给只会说 MCP 的运行时。
+Anthropic 牵头的协议，让 AI 助手通过有状态服务调用工具。Uni-CLI 自带可选 MCP 网关 (`unicli mcp serve`)，把同一份 operation contract 暴露给只会说 MCP 的运行时。
+
+## Operation contract (操作合同)
+
+Uni-CLI 稳定的产品原语。operation contract 描述 identity、args、输出形状、认证姿态、行动 substrate、effect、risk、capability、source path 和 repair path。CLI、MCP、ACP、docs、skills 和生成配置都应该投影同一份合同，而不是各自定义行为。
 
 ## Pipeline
 
@@ -101,11 +109,11 @@ Anthropic 牵头的协议，让 AI 助手通过有状态服务调用工具。Uni
 
 ## Repair (修复)
 
-四段契约的第四段。错误回执指出失败的适配器和 step 后，Agent 改 YAML，跑 `unicli repair <site> <command>` 验证。补丁存在 `~/.unicli/adapters/`。
+失败操作进入有边界 source change 或换路的阶段。错误回执指出失败 source path 和 step 或边界后，Agent 改 YAML/代码或选择替代路径，然后跑 `unicli repair <site> <command>` 或 delivery verification 证明修复。用户本地补丁存在 `~/.unicli/adapters/`。
 
 ## Self-repair (自修复)
 
-让 Agent 在站点漂移时修复自己的集成的能力。由几部分组成：结构化错误回执、Agent 可读的 YAML 适配器、修复验证命令、持久化覆盖目录。让目录-即-YAML 经济上跑得通的核心设计选择。
+让 Agent 在软件漂移时修复自己的集成的能力。由几部分组成：结构化错误回执、Agent 可读 source path、修复验证命令、替代路径、持久化覆盖目录。这是让 operation-as-YAML 经济上跑得通的核心设计选择之一。
 
 ## Service adapter (服务适配器)
 

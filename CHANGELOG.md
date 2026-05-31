@@ -1,5 +1,56 @@
 # Changelog
 
+## [0.225.0] — 2026-05-31 — Apollo · Irwin
+
+### Added
+
+- Architecture audit now emits a catalog-derived `capability_matrix` for web,
+  browser, desktop, system, protocol, and bridge control surfaces.
+- Architecture audit now emits `workflow_readiness` for the vehicle-assistant
+  workflows: media playback, video search, browser tab control, installed app
+  operation, productivity state, and open/navigate destination.
+- `unicli do` now attaches a `delivery_spec_template` for executable matches so
+  intent planning can hand off to `unicli delivery run` without automatically
+  executing side effects.
+- Public release audit docs now compare the `0.225.0` candidate against the
+  historical `0.200.0` through `0.224.1` release lines.
+
+### Changed
+
+- Uni-CLI is now positioned and audited as the universal computer-control
+  platform for agents: intent, policy, action substrates, evidence, delivery,
+  and repair across real software.
+- Core Commander commands now project into the same command-contract family as
+  adapter commands, so `compute`, `browser`, `delivery`, `runs`, `mcp`,
+  `agents`, and `architecture` are first-class control operations in
+  architecture and describe surfaces.
+- README, Chinese README, architecture docs, how-it-works, roadmap, FAQ,
+  glossary, generated public Markdown, `llms.txt`, `llms-full.txt`, skills,
+  MCP registry metadata, and release metadata now point at `0.225.0`.
+- Release docs now describe the current `0.225.0` product-frame minor line
+  instead of the stale `0.220.x` execution-substrate patch line.
+
+### Fixed
+
+- Browser pipeline unit tests now force their intended CDP/mock acquisition path
+  instead of accidentally using a live Uni-CLI browser daemon.
+- Release propagation accepts the current generated operation-catalog FAQ copy,
+  avoiding stale release metadata after docs copy changes.
+- Architecture inventory no longer omits core command source paths or treats
+  core command governance as fake adapter repair metadata.
+
+### Verified
+
+- `npx vitest run tests/unit/core/capability-matrix.test.ts tests/unit/core/architecture-tree.test.ts tests/unit/commands/architecture.test.ts --maxWorkers=1 --reporter=dot`
+- `npm run typecheck`
+- `npm run lint`
+- `npm test`
+- `npm run docs:build`
+- `npm run docs:check-public`
+- `npm run boundary:check`
+- `npm run release:check -- --strict-codename`
+- `npm publish --dry-run`
+
 ## [0.224.1] — 2026-05-27 — Apollo · Collins
 
 ### Added

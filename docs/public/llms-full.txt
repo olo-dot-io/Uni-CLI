@@ -4,9 +4,9 @@ This file is generated from the same VitePress site map as the public docs.
 
 ## Snapshot
 
-- Sites: 312
-- Commands: 1763
-- Adapters: 1213
+- Sites: 313
+- Commands: 1766
+- Adapters: 1216
 - Pipeline steps: 103
 
 ---
@@ -24,11 +24,11 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
 - Section: Start
 
-## Operations substrate for agents that use real software
+## Universal computer-control platform for agents
 
-Uni-CLI turns websites, logged-in browsers, desktop apps, local tools, MCP servers, and system capabilities into searchable, governed, repairable operations. Agents use one path to discover capabilities, inspect risk, execute with policy, return evidence, and repair the exact adapter or pipeline step that failed.
+Uni-CLI turns websites, logged-in browsers, desktop apps, local tools, files, MCP servers, accessibility trees, screenshots, and system capabilities into searchable, governed, observable, repairable operations. Agents use one path to select an action substrate by intent, inspect risk, execute with policy, return evidence, and repair or reroute the failed source path.
 
-## Capability Wall
+## Control Surface
 
 - Intent search
 - Policy-gated execution
@@ -50,38 +50,38 @@ unicli mcp serve --transport streamable --port 19826
 
 ## Positioning
 
-Agent execution does not need a longer resident tool list or another website wrapper. It needs a small, auditable operations substrate over real software. Catalog search handles discovery. Operation policy exposes permissions and risk. The v2 AgentEnvelope stabilizes output. Run evidence supports review. The repair loop points failures to adapters and pipeline steps.
+Agent execution does not need a longer resident tool list or another website wrapper. It needs a universal hand for controlling the whole computer. Operation search handles discovery. Operation policy exposes permissions and risk. The control kernel chooses the substrate. The v2 AgentEnvelope stabilizes output. Run evidence supports review. The delivery/repair loop points failures to source paths, alternatives, and verification commands.
 
-- **Discover.** Bilingual BM25 search turns a natural-language task into a site, command, arguments, auth strategy, and risk fields.
-- **Execute.** HTTP, cookies, browser CDP, macOS AX, subprocess, service, and visual fallback return the same envelope.
+- **Intent.** Bilingual BM25 search turns a natural-language task into a site, operation, arguments, auth posture, and risk fields.
+- **Substrate.** HTTP, cookies, browser CDP, macOS AX, subprocess, service, protocol, and visual fallback share one control kernel.
 - **Evidence.** Markdown is the agent-friendly default; JSON, YAML, CSV, and compact formats serve programs.
-- **Repair.** Structured errors include adapter path, step, retryable, suggestion, and alternatives.
+- **Repair or reroute.** Structured errors include source path, step or boundary, retryability, suggestion, and alternatives.
 
 ## Common Tasks
 
-- `unicli search` and `unicli do` read the local catalog first, then execution can inspect command, args, auth, risk, and output fields.
-- When a page or API changes, the error envelope names the adapter file and failing pipeline step.
-- Web APIs, browser automation, macOS, desktop apps, external CLIs, MCP, ACP, HTTP API, and agent backend routes share the same catalog and receipt.
+- `unicli search` and `unicli do` read the local operation catalog first, then execution can inspect operation, args, auth, risk, and output fields.
+- When a page, API, app, or local boundary changes, the error envelope names the source path and failing step or boundary.
+- Web APIs, browser automation, macOS, desktop apps, external CLIs, files, MCP, ACP, HTTP API, and agent backend routes share the same operation contract and receipt.
 
 ## Coverage
 
-- Sites and tools: 312
-- Commands: 1763
+- Sites and tools: 313
+- Operations: 1766
 - Pipeline steps: 103
-- Tests: 8978
+- Tests: 9090
 
-These numbers come from the current generated repo artifacts: adapters, commands, pipeline steps, tests, and transports are counted by the build.
+These numbers come from the current generated repo artifacts: operations, adapters, pipeline steps, tests, and substrates are counted by the build.
 
 ## Entrypoints
 
 - [First Run](/guide/getting-started): install, search, execute, authenticate, choose output formats, and read exit codes.
-- [Command Catalog](/reference/sites): browse by site, surface, auth strategy, and examples.
+- [Operation Catalog](/reference/sites): browse by site, substrate, auth strategy, and examples.
 - [Adapters](/guide/adapters): YAML adapters, pipeline steps, self-repair, and verification.
 - [Integrations](/guide/integrations): native CLI, MCP, ACP, and output modes for agent runtimes.
 
 ## Current Version
 
-Latest: v0.224.0 · Apollo · Armstrong.
+Latest: v0.225.0 · Apollo · Irwin.
 
 ## Agent Index
 
@@ -104,13 +104,16 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/getting-started.md
 - Section: Start
 - Parent: Start (/)
 
-Uni-CLI turns websites, desktop apps, services, local tools, protocols, and
-external CLIs into commands that agents can search, run, record, and repair.
+Uni-CLI turns websites, logged-in browsers, desktop apps, services, local
+tools, files, protocols, external CLIs, operating-system capabilities, and
+visual evidence into governed operations agents can search, run, record, and
+repair.
 
-A command is a stable contract for real software. It keeps arguments, auth,
-surface type, output shape, permission profile, evidence, and error handling in
-one place. When an external page or API changes, the failure points back to a
-repairable adapter and pipeline step.
+An operation is a stable contract for controlling real software. It keeps
+arguments, auth posture, action substrate, output shape, permission profile,
+evidence, and error handling in one place. When an external page, app, API, or
+local boundary changes, the failure points back to a repairable source path and
+step.
 
 ## Install
 
@@ -132,20 +135,24 @@ machine-oriented consumer needs JSON.
 
 ## Understand The Flow
 
-The common path has four steps:
+The common path follows the computer-control loop:
 
-1. **Search**: `unicli search` finds candidate commands from natural language
+1. **Intent**: `unicli search` finds candidate operations from natural language
    without touching the external surface.
-2. **Execute**: `unicli SITE COMMAND` runs the selected command with inspectable
-   arguments and auth boundaries.
-3. **Record**: `--record` or `UNICLI_RECORD_RUN=1` can write append-only run
+2. **Select**: the operation contract chooses the smallest substrate that can
+   act: API, browser, desktop, subprocess, protocol, or visual fallback.
+3. **Govern and act**: `unicli SITE COMMAND` runs the selected operation with
+   inspectable arguments, auth boundaries, and permission policy.
+4. **Observe**: every result returns a v2 `AgentEnvelope` with data, context,
+   retryability, timing, and evidence.
+5. **Record**: `--record` or `UNICLI_RECORD_RUN=1` can write append-only run
    traces under `~/.unicli/runs` for review and debugging.
-4. **Repair**: structured failures include the adapter path, pipeline step,
-   suggestion, and alternatives.
+6. **Repair or reroute**: structured failures include the source path, failing
+   step or boundary, suggestion, retryability, and alternatives.
 
 Browser automation, CDP, accessibility trees, subprocesses, service APIs, MCP,
-ACP, and Visual are transport choices. The stable layer is the command catalog,
-adapter, and v2 `AgentEnvelope`.
+ACP, and Visual are action substrates. The stable layer is the operation
+contract, control kernel, evidence envelope, and delivery/repair loop.
 
 ## Find A Command
 
@@ -358,18 +365,36 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/how-it-works.md
 - Section: Start
 - Parent: Start (/)
 
-Uni-CLI is a command-line execution layer that turns websites, desktop apps, MCP servers, and external CLIs into a single searchable command catalog for AI agents. This page walks through the architecture: how a YAML adapter compiles into a CLI command, how the strategy cascade resolves authentication, how the v2 AgentEnvelope returns evidence, and how the self-repair loop closes when a site changes shape.
+Uni-CLI is the universal computer-control platform for agents. It turns websites, logged-in browsers, desktop apps, local tools, files, operating-system capabilities, MCP servers, external CLIs, accessibility trees, screenshots, and app-specific wrappers into one governed operation layer. This page walks through the control loop: how intent becomes an operation contract, how Uni-CLI chooses an action substrate, how the v2 AgentEnvelope returns evidence, and how delivery/repair keeps the path alive when real software changes.
 
-## The four-part contract
+## The computer-control contract
 
-Every Uni-CLI command runs through the same four phases. Agents can stop at any phase and reason about the result.
+Every Uni-CLI operation runs through the same product loop. Agents can stop at any phase and reason about the result.
 
-1. **Discover.** `unicli search "<intent>"` queries the local catalog with bilingual BM25 ranking and returns matching site, command, args, auth strategy, and output schema.
-2. **Execute.** `unicli <site> <command> [args]` runs the YAML pipeline and returns a v2 AgentEnvelope.
-3. **Recover.** Failures emit `{ adapter_path, step, action, suggestion, retryable, alternatives }` so the agent has a bounded fix path.
-4. **Repair.** The agent edits the YAML at `adapter_path` and runs `unicli repair <site> <command>` to verify the patch.
+1. **Intent.** `unicli search "<intent>"` and `unicli do "<intent>"` map a task into candidate operations with args, auth posture, examples, and risk signals.
+2. **Select.** The operation contract chooses the smallest boundary that can act: API, browser, desktop accessibility, subprocess, protocol, visual fallback, or app wrapper.
+3. **Govern.** Permission profiles, deny rules, capability scope, and local policy gate risky effects before requests, writes, process spawns, or UI actions.
+4. **Act.** The shared control kernel invokes the selected substrate instead of letting CLI, MCP, ACP, or docs define behavior separately.
+5. **Observe.** AgentEnvelope v2 returns data, context, retryability, timing, and evidence hooks in the same shape on success and failure.
+6. **Diagnose.** Delivery assessment classifies failure as auth, policy, missing context, upstream drift, environment trouble, or adapter defect.
+7. **Repair or reroute.** The next experiment is bounded by source path, alternatives, evidence, and verification command.
+8. **Deliver.** Evidence gates decide whether the objective is satisfied, still active, blocked, or exhausted.
+9. **Expose.** The same operation can be reused from native CLI, JSON stream, MCP, ACP, HTTP, docs, skills, CI, and scripts.
 
-This contract holds across all five adapter types: web-api, browser, desktop, bridge, and service.
+This contract holds across all action substrates. Adapter type is an implementation detail below the product boundary.
+
+## Substrates, not identities
+
+Browser automation, computer-use sandboxes, natural-language local execution, MCP servers, and per-site wrappers are useful, but they are not Uni-CLI's category. They are concrete technical boundaries that Uni-CLI can use or expose.
+
+| Substrate         | What it contributes                                               | What Uni-CLI keeps above it                                 |
+| ----------------- | ----------------------------------------------------------------- | ----------------------------------------------------------- |
+| Web/API           | typed fetch, cookie/header auth, downloads, extraction            | operation contracts, policy, evidence, repair               |
+| Browser           | CDP control, DOM/accessibility refs, screenshots, network capture | selection, receipts, delivery, reroute                      |
+| Desktop/OS        | installed apps, accessibility trees, screenshots, local state     | governed actions, post-state evidence, platform diagnostics |
+| Local tools/files | subprocesses, PDFs, media tools, developer CLIs                   | typed args, output envelopes, retryability                  |
+| Protocols         | MCP, ACP, Streamable HTTP, JSON streams                           | shared semantics instead of wrapper-specific behavior       |
+| Visual fallback   | last-mile screen interaction                                      | truthfulness gate: can see, act, and verify                 |
 
 ## Domain-aware discovery
 
@@ -377,9 +402,9 @@ The catalog search layer is not a plain site-name lookup. It combines bilingual 
 
 The same rule keeps broad searches honest. Domain boosts only apply when the query uses explicit ACG, paper, wiki, tag, game, anime, manga, or visual-novel vocabulary; generic queries still rank the normal web, developer, finance, or app commands by their own evidence.
 
-## The YAML adapter format
+## Internal authoring format: YAML adapters
 
-The unit of integration is a 20-line YAML file. Here's a complete adapter for a public RSS feed:
+YAML adapters are the default way to author reusable operation contracts. They are not the platform identity; they are the cheap, inspectable format that lets agents read, patch, and verify many substrate paths. Here's a complete adapter for a public RSS feed:
 
 ```yaml
 site: techcrunch
@@ -398,9 +423,9 @@ pipeline:
 columns: [title, published, url]
 ```
 
-Five fields define the contract: `site` (the integration name), `name` (the command), `type` (which surface — web-api, browser, desktop, bridge, service), `strategy` (auth path), and `pipeline` (the steps that produce the result). An adapter without imports, classes, or compile steps lets an agent read it, patch a selector, and verify the fix in seconds.
+Five fields define the authoring unit: `site` (the integration name), `name` (the command), `type` (which substrate: web-api, browser, desktop, bridge, service), `strategy` (auth path), and `pipeline` (the steps that produce the result). An adapter without imports, classes, or compile steps lets an agent read it, patch a selector, and verify the fix in seconds.
 
-## The pipeline registry
+## Internal pipeline registry
 
 Every adapter runs through the same <!-- STATS:pipeline_step_count -->103<!-- /STATS -->-step pipeline registry. Steps are grouped by purpose: API fetch, transform, browser, desktop, media, control flow, and assertion. Each step is deterministic — same inputs produce same outputs — so adapters compose into reliable execution graphs.
 
@@ -434,7 +459,7 @@ The cascade order is `public → cookie → header → intercept → ui`. On the
 
 Every command returns a v2 AgentEnvelope — the same shape on success or failure.
 Agents parse one schema across
-<span><!-- STATS:command_count -->1763<!-- /STATS --></span> commands.
+<span><!-- STATS:command_count -->1766<!-- /STATS --></span> commands.
 
 ```json
 {
@@ -481,9 +506,10 @@ The agent has everything it needs: the file to edit, the failing step, a one-lin
 
 A bug that would have cost 30 minutes of human debugging closes in 30 seconds of agent runtime. That two-orders-of-magnitude difference is the entire economic argument for adapters as YAML.
 
-## Why CLI is the right shape for agent tools
+## Why CLI is the first runtime surface
 
-Three forces make CLI the cheaper primary surface for agent tooling.
+CLI is the cheapest primary exposure surface for many agent runs; it is not the
+product boundary. Three forces make it the right first runtime surface.
 
 **Token economics.** [docs/BENCHMARK.md](/BENCHMARK) measures `--limit 5` list-style adapters at a 364-423 token total call budget (median 412). An MCP server keeps its tool list resident in the agent's context window — typically 1,500-3,000 tokens per server — even when the agent does not invoke it. The CLI pays for what it uses; the MCP server pays to be available.
 
@@ -501,7 +527,7 @@ CLI is not a universal replacement. MCP is the better surface for:
 
 Most production agent stacks need both. Uni-CLI ships an MCP gateway (`unicli mcp serve`) that wraps the same catalog, so a runtime that only speaks MCP gets the same execution surface without a second integration.
 
-## The catalog as a first-class artifact
+## The operation catalog as a first-class artifact
 
 Search beats discovery-by-prompt. `unicli search "find AI agent discussions on reddit"` returns a ranked list of matching commands with arguments, auth, and example output. The agent picks one, runs it, and never has to enumerate the catalog. The token budget stays low because the runtime loads the catalog index, not the catalog body.
 
@@ -524,9 +550,11 @@ $ unicli hackernews top -n 10 -f json \
 # 4. The agent edits the YAML and re-verifies with `unicli repair`
 ```
 
-That is the entire interaction model. One command shape across
-<span><!-- STATS:site_count -->312<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1763<!-- /STATS --></span> commands. One error
+That is the simplest exposure path. The same operation contract can also run
+through MCP, ACP, HTTP, skills, or CI without changing semantics. One command
+shape across
+<span><!-- STATS:site_count -->313<!-- /STATS --></span> sites and
+<span><!-- STATS:command_count -->1766<!-- /STATS --></span> commands. One error
 envelope across every failure. One self-repair path across every adapter.
 
 ## Further reading
@@ -554,8 +582,8 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/integrations.md
 - Parent: Start (/)
 
 Uni-CLI is designed to be called directly from a shell. Agent clients that need
-a protocol server can use the same catalog over MCP, ACP, or generated platform
-configuration while keeping adapter behavior identical.
+a protocol server can use the same operation contracts over MCP, ACP, or
+generated platform configuration while keeping behavior identical.
 
 ## Choose A Path
 
@@ -1141,11 +1169,15 @@ Quick answers to the questions agents and developers ask most often. Each answer
 
 ## What is Uni-CLI?
 
-Uni-CLI is the operations substrate for agents that use real software. It turns websites, logged-in browsers, desktop apps, local tools, MCP servers, and system capabilities into searchable, governed, repairable operations. One path discovers capabilities, executes with policy, returns evidence, and self-repairs operations across <span><!-- STATS:site_count -->312<!-- /STATS --></span> sites and tools.
+Uni-CLI is the universal computer-control platform for agents. It turns websites, logged-in browsers, desktop apps, local tools, files, operating-system capabilities, MCP servers, screenshots, accessibility trees, and app-specific wrappers into governed operations. One path accepts intent, selects an action substrate, executes with policy, returns evidence, diagnoses failure, and repairs or reroutes across <span><!-- STATS:site_count -->313<!-- /STATS --></span> sites and tools.
 
 ## How is Uni-CLI different from a browser automation library?
 
-Uni-CLI uses YAML adapters that compile sites into deterministic CLI commands rather than Turing-complete scripts. Each command returns the same structured envelope, so agents can pipe results, retry on errors, and patch the YAML directly when an upstream API changes — no recompile, no library upgrade, no headless browser flakiness.
+Browser automation is one action substrate. Uni-CLI sits above it with operation contracts, permission policy, evidence receipts, delivery assessment, and repair/reroute paths. A browser command, desktop action, subprocess bridge, MCP route, or app wrapper should all return the same AgentEnvelope and follow the same control loop.
+
+## How is Uni-CLI different from a computer-use sandbox?
+
+A computer-use sandbox gives an agent an environment with screen, mouse, keyboard, and often benchmark hooks. Uni-CLI can use that kind of boundary, but its category is broader: it controls the user's real software environment through the smallest available substrate, from typed APIs and browser CDP to desktop accessibility, subprocesses, files, protocols, and visual fallback.
 
 ## Why a CLI instead of an MCP server?
 
@@ -1153,7 +1185,7 @@ A measured Uni-CLI list-style call lands at a 364-423 token total budget (median
 
 ## How does self-repair work in Uni-CLI?
 
-When a command fails, Uni-CLI emits a structured error JSON containing the adapter path, failing pipeline step, action, and a one-line suggestion. An agent reads the YAML at that path, edits the selector or auth header, then runs `unicli repair <site> <command>` to verify the fix. Patches persist in `~/.unicli/adapters/` so they survive `npm update`.
+When an operation fails, Uni-CLI emits a structured error JSON containing the source path, failing step or boundary, action, retryability, alternatives, and a one-line suggestion. An agent can edit the YAML or code at that path, run `unicli repair <site> <command>` or a bounded delivery verification, and keep the patch in `~/.unicli/adapters/` when the repair is user-local.
 
 ## Which AI agent runtimes work with Uni-CLI?
 
@@ -1161,7 +1193,7 @@ Any runtime that can spawn a subprocess can use Uni-CLI directly. Uni-CLI also e
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.224.0 ships a generated catalog with <span><!-- STATS:site_count -->312<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1763<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1213<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8978<!-- /STATS --></span> tests. The headline is the contract: search, policy, evidence, repair, and the same AgentEnvelope across web, browser, desktop, local tools, and protocols.
+v0.225.0 ships a generated operation catalog with <span><!-- STATS:site_count -->313<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1766<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1216<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->9090<!-- /STATS --></span> tests. The headline is not the count; it is the shared control contract: intent, policy, action substrate, evidence, delivery, repair, and the same AgentEnvelope across web, browser, desktop, local tools, files, and protocols.
 
 ## Can Uni-CLI download papers and read local PDFs?
 
@@ -1173,7 +1205,7 @@ Start with intent search, then narrow by the domain-specific command: `unicli se
 
 ## Can I add a new site without writing TypeScript?
 
-Yes. The preferred contribution format is a 20-line YAML adapter that names the site, command, strategy, and pipeline. Run `unicli init <site> <command>` to scaffold one, then `unicli dev <path>` to hot-reload while iterating. Most adapters ship without a single line of TypeScript.
+Yes. The preferred contribution format is a short YAML adapter that names the site, command, strategy, and pipeline. YAML is an authoring format below the operation contract, not the product identity. Run `unicli init <site> <command>` to scaffold one, then `unicli dev <path>` to hot-reload while iterating. Most adapters ship without a single line of TypeScript.
 
 ## Does Uni-CLI handle authenticated sites?
 
@@ -1189,7 +1221,7 @@ Yes. Uni-CLI is Apache-2.0 licensed on GitHub at [olo-dot-io/Uni-CLI](https://gi
 
 ## Where can I see all commands?
 
-The full command catalog lives at [/reference/sites](/reference/sites). For agent-readable indexes, fetch [/llms.txt](/llms.txt) for a curated map or [/llms-full.txt](/llms-full.txt) for the concatenated docs.
+The full operation catalog lives at [/reference/sites](/reference/sites). For agent-readable indexes, fetch [/llms.txt](/llms.txt) for a curated map or [/llms-full.txt](/llms-full.txt) for the concatenated docs.
 
 ## How do I report a broken adapter?
 
@@ -1213,9 +1245,13 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/glossary.md
 
 Definitions for the terms used across Uni-CLI documentation, source, and YAML adapters. Each entry is a standalone explanation so AI assistants can quote it directly when answering questions about the project.
 
+## Action substrate
+
+A concrete technical boundary Uni-CLI can use to make real software act: HTTP, browser CDP, desktop accessibility, subprocess, file operation, protocol server, visual fallback, or app-specific wrapper. Substrates are below the computer-control platform boundary.
+
 ## Adapter
 
-A YAML or TypeScript file that maps one site or tool to a set of CLI commands. Adapters declare site, command name, type, strategy, arguments, pipeline steps, and column projection. The preferred contribution format is YAML; TypeScript is reserved for adapters that need imperative control flow beyond the shared pipeline registry.
+A YAML or TypeScript file that maps one site or tool to a set of operations. Adapters declare site, command name, type, strategy, arguments, pipeline steps, and column projection. The preferred contribution format is YAML; TypeScript is reserved for adapters that need imperative control flow beyond the shared pipeline registry.
 
 ## Adapter type
 
@@ -1223,7 +1259,7 @@ The integration surface an adapter targets. Five types: `web-api` for HTTP APIs,
 
 ## AgentEnvelope (v2)
 
-The structured response shape returned by every Uni-CLI command. Contains `ok`, `version`, `data`, `meta`, optional `error`, and `exit_code`. On success `data` carries the result. On failure `data` is null and `error` populates with `adapter_path`, `step`, `action`, `suggestion`, `retryable`, and `alternatives`.
+The structured response shape returned by every Uni-CLI operation. Contains `ok`, `version`, `data`, `meta`, optional `error`, and `exit_code`. On success `data` carries the result. On failure `data` is null and `error` populates with source path, `step`, `action`, `suggestion`, `retryable`, and `alternatives`.
 
 ## AGENTS.md
 
@@ -1231,11 +1267,11 @@ A discovery file that agent runtimes read at startup to learn about available to
 
 ## Bilingual BM25 search
 
-The catalog discovery algorithm Uni-CLI uses to map natural-language intent to a site, command, and arguments. Indexes adapter metadata in English and Chinese with TF-IDF weighting. Returns ranked candidates for `unicli search "<intent>"`.
+The operation discovery algorithm Uni-CLI uses to map natural-language intent to a site, operation, and arguments. Indexes adapter metadata in English and Chinese with TF-IDF weighting. Returns ranked candidates for `unicli search "<intent>"`.
 
 ## Bridge adapter
 
-An adapter that wraps an existing CLI (e.g., `gh`, `docker`, `yt-dlp`, `lark-cli`) and exposes its commands through Uni-CLI's catalog. Pure passthrough — Uni-CLI does not re-implement the wrapped CLI, only registers, auto-installs, and aggregates discovery.
+An adapter that wraps an existing CLI (e.g., `gh`, `docker`, `yt-dlp`, `lark-cli`) and exposes its operations through Uni-CLI's catalog. Pure passthrough — Uni-CLI does not re-implement the wrapped CLI, only registers, auto-installs, and aggregates discovery.
 
 ## Browser adapter
 
@@ -1243,7 +1279,7 @@ An adapter that drives Chrome via the Chrome DevTools Protocol (CDP) for sites t
 
 ## Catalog
 
-The local index of all sites, commands, arguments, strategies, and output schemas. Generated at install time and updated when adapters change. Searched via `unicli search` rather than enumerated, so agents pay catalog cost only when they need to discover.
+The local index of all sites, operations, arguments, strategies, and output schemas. Generated at install time and updated when adapters change. Searched via `unicli search` rather than enumerated, so agents pay catalog cost only when they need to discover.
 
 ## CDP (Chrome DevTools Protocol)
 
@@ -1251,7 +1287,7 @@ The wire protocol Uni-CLI uses to control a real Chrome instance for browser ada
 
 ## Compute (Visual)
 
-The visual fallback adapter family. When structured transports (web-api, desktop AX, browser CDP) cannot reach a target, Compute drives the screen via vision — clicks, types, screenshots — through a unified actuating verb set.
+The local computer-control and visual fallback adapter family. When structured substrates (web-api, desktop AX, browser CDP, app API, subprocess) cannot reach a target, Compute can drive the screen with screenshots, clicks, typing, and post-action evidence through a unified action verb set.
 
 ## Cookie file
 
@@ -1267,11 +1303,11 @@ An adapter that shells out to a local binary (e.g., `ffmpeg`, `imagemagick`, `bl
 
 ## Discovery
 
-The phase where an agent maps natural-language intent to a concrete command. Performed by `unicli search "<intent>"` against the local catalog. Discovery cost is bounded — see [docs/BENCHMARK.md](/BENCHMARK) for measured token budgets.
+The phase where an agent maps natural-language intent to concrete operations. Performed by `unicli search "<intent>"` against the local operation catalog. Discovery cost is bounded — see [docs/BENCHMARK.md](/BENCHMARK) for measured token budgets.
 
 ## Error envelope
 
-The `error` field on a v2 AgentEnvelope when `ok` is false. Carries `adapter_path` (the YAML to edit), `step` (the failing pipeline step), `action` (one-line description), `suggestion` (a hypothesis the agent can test), `retryable` (whether retry would help), and `alternatives` (other commands that might satisfy the intent).
+The `error` field on a v2 AgentEnvelope when `ok` is false. Carries source path or `adapter_path`, `step` or failing boundary, `action` (one-line description), `suggestion` (a hypothesis the agent can test), `retryable` (whether retry would help), and `alternatives` (other operations that might satisfy the intent).
 
 ## Exit code
 
@@ -1291,7 +1327,11 @@ A standardized agent-readable index file at the site root (`/llms.txt` and `/llm
 
 ## MCP (Model Context Protocol)
 
-The Anthropic-led protocol for letting AI assistants invoke tools through a stateful server. Uni-CLI ships an optional MCP gateway (`unicli mcp serve`) that wraps the catalog for runtimes that only speak MCP.
+The Anthropic-led protocol for letting AI assistants invoke tools through a stateful server. Uni-CLI ships an optional MCP gateway (`unicli mcp serve`) that exposes the same operation contracts for runtimes that only speak MCP.
+
+## Operation contract
+
+The stable product primitive in Uni-CLI. An operation contract describes identity, args, output shape, auth posture, action substrate, effect, risk, capability, source path, and repair path. CLI, MCP, ACP, docs, skills, and generated configs should all project the same contract instead of defining behavior separately.
 
 ## Pipeline
 
@@ -1307,11 +1347,11 @@ The cheapest auth strategy. Direct fetch with no credentials. Used by sites with
 
 ## Repair
 
-The fourth phase of the four-part contract. After an error envelope names a failing adapter and step, the agent edits the YAML and runs `unicli repair <site> <command>` to verify. Patches persist in `~/.unicli/adapters/`.
+The stage where a failed operation becomes a bounded source change or reroute. After an error envelope names a failing source path and step or boundary, the agent edits the YAML/code or chooses an alternative, then runs `unicli repair <site> <command>` or a delivery verification to prove the fix. User-local patches persist in `~/.unicli/adapters/`.
 
 ## Self-repair
 
-The capability that lets agents fix their own integrations when sites drift. Composed of: structured error envelopes, agent-readable YAML adapters, a repair verification command, and a persistent overlay directory. The single design choice that makes catalog-as-YAML economically viable.
+The capability that lets agents fix their own integrations when software drifts. Composed of: structured error envelopes, agent-readable source paths, a repair verification command, alternatives, and a persistent overlay directory. This is one design choice that makes operation-as-YAML economically viable.
 
 ## Service adapter
 
@@ -1973,31 +2013,32 @@ in [Guides](/guide/) and broader rationale in the explanation pages.
 
 ---
 
-# Page: Command Catalog
+# Page: Operation Catalog
 
 Canonical: https://olo-dot-io.github.io/Uni-CLI/reference/sites
 Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/sites.md
 
 <!-- Generated from docs/reference/sites.md. Do not edit this copy directly. -->
 
-# Command Catalog
+# Operation Catalog
 
 - Canonical: https://olo-dot-io.github.io/Uni-CLI/reference/sites
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/sites.md
 - Section: Reference
 - Parent: Reference (/reference/)
 
-Uni-CLI publishes the same generated adapter manifest to the docs site that the
-CLI uses for discovery. This page is the human-readable catalog: filter by
-surface, search by site or command, and inspect representative commands before
-running `unicli search`.
+Uni-CLI publishes the same generated operation manifest to the docs site that
+the CLI uses for discovery. This page is the human-readable operation catalog:
+filter by substrate, search by site or command, and inspect representative
+operations before running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 312 sites, 1763 commands.
+This catalog is generated from the adapter manifest: 313 sites, 1766 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
+| 12306 | web-api | 3 | no | unicli 12306 price<br>unicli 12306 stations<br>unicli 12306 trains |
 | 1688 | web-api | 5 | yes | unicli 1688 item<br>unicli 1688 search<br>unicli 1688 store |
 | 1point3acres | web-api | 9 | yes | unicli 1point3acres hot<br>unicli 1point3acres latest<br>unicli 1point3acres digest |
 | 36kr | web-api | 5 | no | unicli 36kr article<br>unicli 36kr hot<br>unicli 36kr latest |
@@ -3980,17 +4021,19 @@ If the maintainer has not explicitly asked to release, development stays under
 
 ## Versioning
 
-Uni-CLI follows semver. The `0.220.x` line is a patch release line on top of
-the current execution substrate: command-first discovery and execution, v2
-`AgentEnvelope` output, repairable adapter errors, operation-policy metadata,
-optional run recording, scholarly PDF workflows, and expanded ACG/anime/manga
-discovery. It is not a major-version compatibility boundary.
+Uni-CLI follows semver. The `0.225.0` line is a minor release candidate because
+it changes the public product model from execution substrate/catalog framing to
+the universal computer-control platform model: intent, policy, action
+substrates, evidence, delivery, and repair across real software. It is not a
+stable-major compatibility boundary; it preserves the CLI/package shape while
+making architecture audit, command contracts, and docs describe the larger
+category.
 
-| Change                                                            | Version bump |
-| ----------------------------------------------------------------- | ------------ |
-| Adapter fixes, docs, tests, small command additions               | Patch        |
-| New transport, new protocol surface, broad output behavior change | Minor        |
-| Explicit stable-major compatibility contract or breaking behavior | Major        |
+| Change                                                                                   | Version bump |
+| ---------------------------------------------------------------------------------------- | ------------ |
+| Adapter fixes, docs, tests, small command additions                                      | Patch        |
+| Product-frame rewrite, new transport, new protocol surface, broad output behavior change | Minor        |
+| Explicit stable-major compatibility contract or breaking behavior                        | Major        |
 
 Do not bump `package.json`, run `changeset version`, tag, publish, or create a
 GitHub Release until the maintainer explicitly says to release.
@@ -4002,6 +4045,40 @@ Before any release, the macOS dynamic discovery work from
 `main`, requiring commit `33bafa6087bf81c9b9df5cc0e996e79f6e28f030` to be an
 ancestor of `HEAD`, and checking that the first-class `macos app-actions` and
 `macos automation-smoke` manifest entries are present before publish.
+
+## Historical Release Audit
+
+The public git/tag history starts in 2026 with the `0.200.x` line. For the
+`0.225.0` candidate, the release was checked against `CHANGELOG.md`, local tags,
+npm registry state, release automation, and the current architecture audit.
+
+Candidate facts:
+
+- npm registry state: `@zenalexa/unicli@latest` is `0.224.1`;
+- local tags: latest tag is `v0.224.1`;
+- previous release metadata passes `npm run release:check -- --strict-codename`;
+- architecture audit reports 1819 commands, 1783 adapter commands, 36 core
+  commands, 627 local-computer-use commands, and 0 missing source paths;
+- capability readiness covers web, browser, desktop, system, protocol, and
+  bridge surfaces;
+- workflow readiness catalogs media playback, video search, browser tab
+  control, installed app operation, productivity state, and open/navigate
+  destination, with required next evidence before live claims.
+
+| Release line | Historical role                                                                                               | Audit lesson for `0.225.0`                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `0.200.0`    | First Vostok public adapter platform with build manifest and self-repair architecture.                        | A release must expose a machine-readable surface, not just prose.                                  |
+| `0.208.0`    | Skills export, MCP gateway, eval catalog, usage ledger, operate/observe, and documented 4-reviewer hardening. | Review findings must be explicit and fixed before tag, especially security and release wiring.     |
+| `0.213.0`    | GA for engine rigor, split executor/runtime/steps, schema-v2 adapters, and v2 `AgentEnvelope`.                | Stable behavior contracts outrank marketing claims.                                                |
+| `0.217.0`    | Execution-substrate framing with operation policy, run recording, browser evidence, and agent backend matrix. | Product framing can become too small as real control surfaces expand.                              |
+| `0.218.0`    | Cross-platform browser cookie import and auth diagnostics.                                                    | Auth and platform boundaries must be explicit; unsupported paths must fail honestly.               |
+| `0.221.0`    | Patent and scholarly verticals with typed records and source routing.                                         | Vertical breadth matters only when records, provenance, and tests stay coherent.                   |
+| `0.222.0`    | Local computer-use and compute capture entered the release surface.                                           | Desktop/computer control is a core substrate, not a sidecar demo.                                  |
+| `0.224.0`    | Callable architecture audit/tree and live registry-backed search caching.                                     | Architecture audit must not omit core control commands or reduce the product to adapter lifecycle. |
+
+`0.225.0` is a minor release because the product identity and architecture audit
+surface changed materially. It does not claim a stable-major compatibility
+contract.
 
 ## Changesets
 
@@ -4059,8 +4136,8 @@ RELEASE_CODENAME="Vostok · Gagarin" npm run release
 npm run release:check -- --strict-codename
 ```
 
-For the 0.220 line, the release label format is unchanged. The current release
-label is `Apollo · Lovell Patch`.
+For the 0.225 line, the release label format is unchanged. The current release
+candidate label is `Apollo · Irwin`.
 
 ## Substantive Commits
 
@@ -4124,13 +4201,15 @@ To ship a release:
 1. Confirm the intended version bump and release label.
 2. Confirm `codex/macos-dynamic-actions` is merged to `main` with
    `npm run verify:release-mainline`.
-3. Run `npm run verify`, `npm run release:check -- --strict-codename`,
+3. For a product-frame release, update the historical release audit section on
+   this page before tagging.
+4. Run `npm run verify`, `npm run release:check -- --strict-codename`,
    `npm publish --dry-run`, and `npm run docs:check-public`.
-4. Commit the release candidate to `main`.
-5. Push `main`.
-6. Create the release tag with `git tag vX.Y.Z`.
-7. Push the tag with `git push origin vX.Y.Z`.
-8. Watch **Actions → Release**. The workflow checks out the tag, verifies the
+5. Commit the release candidate to `main`.
+6. Push `main`.
+7. Create the release tag with `git tag vX.Y.Z`.
+8. Push the tag with `git push origin vX.Y.Z`.
+9. Watch **Actions → Release**. The workflow checks out the tag, verifies the
    package surface, publishes to npm with provenance, and creates the GitHub
    Release.
 
@@ -4213,98 +4292,163 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ARCHITECTURE.md
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ARCHITECTURE.md
 - Section: Explanation
 
-Uni-CLI is the bridge between agents and real software. The stable product
-primitive is not a browser session, a protocol server, or a generated tool list.
-It is a searchable command contract that can be invoked, governed, observed,
-recorded, repaired, and re-exposed through multiple agent runtimes.
+Uni-CLI is the universal computer-control platform for agents. The stable
+product primitive is not a browser session, a sandbox, a protocol server, a
+visual cursor, or a generated tool list. It is an operation that lets an agent
+control real software through a governed, observable, repairable path.
 
-The current generated catalog is the source of truth:
-**<span><!-- STATS:site_count -->312<!-- /STATS --></span> sites**,
-**<span><!-- STATS:command_count -->1763<!-- /STATS --></span> commands**,
-**<span><!-- STATS:adapter_count_total -->1213<!-- /STATS --></span> adapters**,
+The current generated operation catalog is the source of truth:
+**<span><!-- STATS:site_count -->313<!-- /STATS --></span> sites**,
+**<span><!-- STATS:command_count -->1766<!-- /STATS --></span> commands**,
+**<span><!-- STATS:adapter_count_total -->1216<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->8978<!-- /STATS --></span> tests** in v0.224.0.
+and **<span><!-- STATS:test_count -->9090<!-- /STATS --></span> tests** in v0.225.0.
 
-## Architectural Thesis
+## Computer-Control Thesis
 
-Agents already have a shell. Uni-CLI should make that shell an operating layer
-for websites, logged-in browser state, desktop apps, local tools, system
-capabilities, and protocol servers.
+Vehicle assistants work because the car exposes a bounded control layer above
+navigation, media, climate, and driving assistance. General computers have the
+same shape at larger scale. Browser state, desktop apps, local tools, files,
+operating-system services, accessibility trees, screenshots, protocol servers,
+and website-specific paths are the environment. Uni-CLI is the hand agents use
+to control that environment.
 
-The correct loop is:
+Adjacent projects usually own one concrete technical function: browser
+automation, a computer-use sandbox, natural-language local execution, an MCP
+server, or a per-application wrapper. Uni-CLI treats those as substrates. The
+platform boundary is larger: agent intent enters once, the system selects a
+controllable boundary, policy gates the effect, real software is acted on,
+evidence returns, failure is diagnosed, and the path is repaired or rerouted
+until the result is delivered.
 
-1. Discover the smallest useful operation by intent.
-2. Inspect its command contract, args, auth posture, effect, and risk.
-3. Execute through the shared invocation kernel.
-4. Return a structured envelope with data, evidence, retryability, and next
-   actions.
-5. Diagnose failure into auth, policy, upstream drift, missing context,
+The computer-control loop is:
+
+1. Accept human or agent intent without preloading a giant tool list.
+2. Select the smallest operation boundary that can act on the target software.
+3. Govern the operation through permission profile, risk, capability scope, and
+   local policy.
+4. Act through the selected substrate: API, browser, desktop, subprocess,
+   protocol, visual, or app-specific wrapper.
+5. Observe result data, context, retryability, timing, and evidence through one
+   envelope.
+6. Diagnose failure into auth, policy, missing context, upstream drift,
    environment trouble, or adapter defect.
-6. Repair or reroute through a bounded verification command.
-7. Reuse the repaired command from CLI, MCP, ACP, docs, skills, and scripts.
+7. Repair or reroute through a bounded verification command and alternatives.
+8. Deliver the objective state, then expose the same operation through CLI, MCP,
+   ACP, docs, skills, CI, and scripts.
 
-That loop is the product. Everything else is a wrapper, transport, authoring
-tool, or documentation surface around it.
+That loop is the product. The command lifecycle, YAML format, MCP gateway,
+browser automation, computer-use actions, and self-repair tools are internal
+machinery or substrates below it.
 
 ## Priority Model
 
-### First-Class Citizens
-
-These are product roots. They must stay small, testable, and shared by every
+These roots define product semantics and must stay shared by every runtime
 surface.
 
-| Priority | Surface             | Contract                                                                        |
-| -------- | ------------------- | ------------------------------------------------------------------------------- |
-| P0       | Command contract    | Site, command, args, output, auth, safety, capability, source path, repair path |
-| P0       | Invocation kernel   | Validate, harden, authorize, execute, observe, envelope                         |
-| P0       | Local computer use  | Native accessibility/CDP/subprocess/visual cascade for installed software       |
-| P0       | Evidence loop       | AgentEnvelope v2, run traces, post-state evidence, delivery trajectory          |
-| P1       | Discovery           | `search`, `list`, `describe`, `do`, generated catalog, docs index               |
-| P1       | Adapter authoring   | YAML first, TypeScript escape hatch, schema-v2 lint, repair verification        |
-| P1       | Governance          | Permission profiles, deny rules, approvals, safety metadata                     |
-| P1       | Repair and delivery | Adapter repair, health gates, objective-level delivery assessment               |
-| P2       | Protocol exposure   | MCP, ACP, streamable HTTP, agent packs, skills export                           |
-| P2       | Broad catalog scale | Hundreds of site commands, vertical meta-commands, external CLI hub             |
-| P2       | Public docs UI      | Homepage, catalog, lifecycle visualizations, compute evidence demo              |
+| Priority | Layer                      | Contract                                                                                   |
+| -------- | -------------------------- | ------------------------------------------------------------------------------------------ |
+| P0       | Computer-control platform  | Intent, selection, governance, action, observation, diagnosis, repair/reroute, delivery    |
+| P0       | Operation contract         | Args, output, auth posture, effect, safety, capability, source path, and repair path       |
+| P0       | Control kernel             | Validate, harden, authorize, invoke a substrate, observe, and envelope                     |
+| P0       | Action substrates          | HTTP, browser CDP, desktop accessibility, subprocess, visual fallback, protocols, wrappers |
+| P0       | Evidence and delivery loop | AgentEnvelope v2, run traces, post-state evidence, objective gates, trajectory, repair     |
+| P1       | Discovery                  | `search`, `list`, `describe`, `do`, generated catalog, docs index                          |
+| P1       | Governance                 | Permission profiles, deny rules, approvals, effect/risk/capability metadata                |
+| P1       | Authoring                  | YAML first, TypeScript escape hatch, schema-v2 lint, repair verification                   |
+| P1       | Runtime exposure           | Native CLI, JSON stream, MCP, ACP, streamable HTTP, agent packs, skills export             |
+| P2       | Broad coverage             | Hundreds of site commands, vertical meta-commands, external CLI hub                        |
+| P2       | Public docs UI             | Homepage, operation catalog, architecture, compute evidence demo                           |
 
-### Second-Class Citizens
+## Substrate Boundary
 
-Second-class does not mean unimportant. It means these surfaces must not define
-the architecture or fork semantics.
+Substrate plurality is a strength only while it remains below the platform
+boundary.
 
-- Expanded MCP mode is opt-in; the default agent surface stays compact.
-- Visual control is a real fallback only when it can see, act, and verify.
-- Browser UI automation is not the first transport when API, CDP, app API,
-  accessibility, or subprocess control exists.
-- TypeScript adapters are for cases where YAML pipeline primitives are not
-  enough.
+- Browser UI automation is one action substrate, not the architecture.
+- Computer-use sandboxing is one environment substrate, not the product category.
+- MCP is an exposure and protocol substrate; expanded MCP mode is opt-in.
+- Natural-language local execution is a useful substrate when typed command
+  contracts and policy still hold.
+- Visual control is valid only when it can see, act, and verify post-state
+  evidence.
 - External CLI passthrough is a bridge to mature tools, not a replacement for
-  command contracts.
-- Generated public files under `docs/public/` are build artifacts, not hand-edited
-  architecture sources.
+  operation contracts.
+- Generated public files under `docs/public/` are build artifacts, not
+  hand-edited architecture sources.
+
+## Capability Matrix And Workflow Readiness
+
+`unicli architecture audit -f json` emits two catalog-derived views that keep
+the vehicle-assistant analogy honest without pretending every path has already
+passed live smoke.
+
+The `capability_matrix` groups live registry commands by the real control
+surface they touch:
+
+- `web`: HTTP, RSS, public/cookie/header web paths, and web target surfaces.
+- `browser`: CDP, browser refs, browser evidence, and browser-backed adapters.
+- `desktop`: installed app, accessibility, local UI, and desktop target
+  surfaces.
+- `system`: operating-system state, macOS commands, local services, and system
+  target surfaces.
+- `protocol`: MCP, ACP, delivery/runs/architecture control services, and
+  service/protocol boundaries.
+- `bridge`: passthrough to mature external CLIs such as `gh`, `yt-dlp`, or
+  cloud CLIs.
+
+Rows include command counts, adapter/core split, write-sensitive count, local
+computer-use count, source-path coverage, and representative commands. A command
+can appear in more than one row when it genuinely crosses surfaces, for example
+a browser-backed web adapter or a macOS command that controls both desktop and
+system state.
+
+The `workflow_readiness` table tracks the real user workflows implied by the
+vehicle assistant comparison:
+
+- play or inspect media;
+- search video platforms;
+- operate browser tabs;
+- operate installed apps;
+- read and write productivity state;
+- open or navigate to a destination.
+
+Readiness is intentionally conservative:
+
+- `cataloged` means operation contracts exist in the live catalog, with at
+  least one action-capable command when the workflow requires action.
+- `partial` means the catalog has related read/discovery paths but lacks the
+  action shape needed to claim the workflow.
+- `gap` means the live catalog has no matching operation path.
+
+No workflow row claims live success. Each row carries `required_next_evidence`
+so Step 5 capability work can turn cataloged intent into behavior evidence:
+run the command, capture the envelope, verify post-state, record auth/policy
+posture, and only then promote a capability claim.
 
 ## System Tree
 
 ```text
 Uni-CLI
-|-- Product surfaces
-|   |-- Native CLI: src/cli.ts, src/main.ts, src/commands/*
-|   |-- MCP: src/mcp/*, src/mcp/profiles/computer-use.ts
-|   |-- ACP: src/commands/acp.ts, src/protocol/*
-|   |-- Streamable HTTP: src/mcp/streamable-http/*
-|   |-- Agent packs and skills: src/commands/agents.ts, scripts/build-agents.ts
-|   `-- Public docs: docs/, docs/.vitepress/theme/*
+|-- Computer-control platform
+|   |-- Intent: src/discovery/search.ts, src/commands/do.ts
+|   |-- Select: src/core/command-contract.ts, src/registry.ts
+|   |-- Govern: src/engine/permission-runtime.ts
+|   |-- Act: src/engine/kernel/*, src/engine/executor.ts
+|   |-- Observe: src/output/*, src/engine/session/*
+|   |-- Diagnose: src/engine/delivery/*, src/output/error-map.ts
+|   |-- Repair/reroute: src/commands/repair.ts, src/engine/repair/*
+|   `-- Deliver/expose: src/commands/delivery.ts, src/commands/agents.ts
 |
-|-- Discovery and catalog
+|-- Operation catalog
 |   |-- Runtime registry: src/registry.ts
-|   |-- Command contracts: src/core/command-contract.ts
-|   |-- Schema v2: src/core/schema-v2.ts
-|   |-- BM25 search: src/discovery/search.ts
 |   |-- Core catalog: src/discovery/core-catalog.ts
+|   |-- Adapter catalog: src/adapters/<site>/<command>.yaml or .ts
+|   |-- Schema v2: src/core/schema-v2.ts
 |   |-- Aliases and categories: src/discovery/aliases.ts
 |   `-- Generated manifests: registry.json, stats.json, server.json
 |
-|-- Invocation kernel
+|-- Control kernel
 |   |-- Compile and cache: src/engine/kernel/compile.ts
 |   |-- Input stages: src/engine/kernel/stages.ts
 |   |-- Execution: src/engine/kernel/execute.ts
@@ -4313,46 +4457,15 @@ Uni-CLI
 |   |-- Policy runtime: src/engine/permission-runtime.ts
 |   `-- Output envelope: src/output/*
 |
-|-- Adapter runtime
-|   |-- Loader: src/discovery/loader.ts
-|   |-- YAML pipeline executor: src/engine/executor.ts
-|   |-- Step registry: src/engine/step-registry.ts
-|   |-- Built-in steps: src/engine/steps/*
-|   |-- Repair engine: src/engine/repair/*
-|   |-- Health, lint, migrate, generate: src/commands/{health,lint,migrate*,generate}.ts
-|   `-- Catalog: src/adapters/<site>/<command>.yaml or .ts
+|-- Action substrates
+|   |-- Web/API: src/engine/steps/fetch*.ts, src/engine/steps/parse*.ts
+|   |-- Browser/CDP: src/browser/*, src/transport/adapters/cdp-browser.ts
+|   |-- Desktop/OS: src/commands/compute.ts, src/compute/*, src/transport/adapters/desktop-*.ts
+|   |-- Local tools/files: src/hub/*, src/engine/steps/exec*.ts, src/adapters/pdf/*
+|   |-- Protocols: src/mcp/*, src/commands/acp.ts, src/protocol/*
+|   `-- Visual fallback: src/transport/adapters/visual.ts, src/compute/visual-timeline.ts
 |
-|-- Transport layer
-|   |-- Transport bus: src/transport/bus.ts
-|   |-- Browser/CDP: src/transport/adapters/cdp-browser.ts
-|   |-- Desktop accessibility: src/transport/adapters/desktop-ax.ts
-|   |-- Windows UIA: src/transport/adapters/desktop-uia.ts
-|   |-- Linux AT-SPI: src/transport/adapters/desktop-atspi.ts
-|   |-- Subprocess bridge: src/transport/adapters/subprocess.ts
-|   |-- Visual fallback: src/transport/adapters/visual.ts
-|   `-- Native sidecars: crates/unicli-uia, crates/unicli-atspi
-|
-|-- Local computer use
-|   |-- CLI surface: src/commands/compute.ts, src/commands/doctor-compute.ts
-|   |-- Action executor: src/compute/action-execution.ts
-|   |-- Capture packet: src/compute/capture.ts
-|   |-- Cascade order: src/transport/cascade.ts
-|   |-- Ref store: src/transport/refs.ts
-|   |-- Platform overlays: src/compute/platform-overlays.ts
-|   |-- macOS HUD: src/compute/macos-overlay.ts
-|   |-- Windows HUD: src/compute/windows-overlay.ts
-|   |-- Linux HUD: src/compute/linux-overlay.ts
-|   `-- Visual action evidence: src/compute/visual-timeline.ts
-|
-|-- Browser operations
-|   |-- Daemon and launcher: src/browser/daemon.ts, src/browser/launcher.ts
-|   |-- Session runtime: src/browser/session-runtime.ts
-|   |-- Auth sync and cookies: src/browser/auth-sync.ts, src/engine/cookies.ts
-|   |-- Page actions and snapshots: src/browser/page.ts, src/browser/snapshot.ts
-|   |-- Network and record: src/browser/network-cache.ts, src/commands/record.ts
-|   `-- Evidence: src/engine/browser/action-evidence.ts
-|
-|-- Delivery and repair loop
+|-- Evidence, delivery, and repair
 |   |-- Run recording: src/engine/session/*
 |   |-- Replay and compare: src/commands/runs.ts, src/engine/session/replay.ts
 |   |-- Objective state: src/engine/delivery/*
@@ -4360,12 +4473,22 @@ Uni-CLI
 |   |-- Adapter repair: src/commands/repair.ts, src/engine/repair/*
 |   `-- Eval and probes: src/commands/eval.ts, tests/integration/*
 |
-|-- Extensibility
+|-- Runtime exposure
+|   |-- Native CLI: src/cli.ts, src/main.ts, src/commands/*
+|   |-- MCP: src/mcp/*, src/mcp/profiles/computer-use.ts
+|   |-- ACP: src/commands/acp.ts, src/protocol/*
+|   |-- Streamable HTTP: src/mcp/streamable-http/*
+|   |-- Agent packs and skills: src/commands/agents.ts, scripts/build-agents.ts
+|   `-- Public docs: docs/, docs/.vitepress/theme/*
+|
+|-- Authoring and repair machinery
+|   |-- Loader: src/discovery/loader.ts
+|   |-- YAML pipeline executor: src/engine/executor.ts
+|   |-- Step registry: src/engine/step-registry.ts
+|   |-- Built-in steps: src/engine/steps/*
+|   |-- Health, lint, migrate, generate: src/commands/{health,lint,migrate*,generate}.ts
 |   |-- User adapters: ~/.unicli/adapters
-|   |-- Plugins: src/plugin/*
-|   |-- Custom steps: src/plugin/step-registry.ts
-|   |-- External CLI hub: src/hub/*
-|   `-- MCP server package: src/bin/unicli-mcp.ts
+|   `-- Plugins and custom steps: src/plugin/*
 |
 `-- Verification and release
     |-- Unit tests: tests/unit/*
@@ -4382,13 +4505,11 @@ Uni-CLI
 ```mermaid
 flowchart TD
   user["Human or agent intent"] --> discover["search / list / describe / do"]
-  discover --> contract["CommandContract"]
-  contract --> kernel["Invocation kernel"]
-  kernel --> validate["validate + harden args"]
-  validate --> policy["permission policy"]
-  policy --> execute["adapter execution"]
-  execute --> transport["HTTP / CDP / a11y / subprocess / visual"]
-  transport --> envelope["AgentEnvelope v2"]
+  discover --> contract["OperationContract"]
+  contract --> policy["permission and risk policy"]
+  policy --> kernel["control kernel"]
+  kernel --> substrate["HTTP / CDP / accessibility / subprocess / visual / protocol"]
+  substrate --> envelope["AgentEnvelope v2"]
   envelope --> evidence["run evidence + post-state"]
   evidence --> delivery["delivery assessment"]
   delivery --> done["deliver"]
@@ -4396,11 +4517,16 @@ flowchart TD
   repair --> contract
 ```
 
-The invariant is that CLI, MCP, ACP, and HTTP wrappers must not implement their
-own semantics. They resolve inputs, call the same kernel, and render the same
-envelope.
+The invariant is that CLI, MCP, ACP, HTTP, docs, and skills must not implement
+their own semantics. They resolve inputs, call the same control kernel, and
+render the same envelope.
 
-## Command Lifecycle
+## Internal Command Lifecycle
+
+The command lifecycle is internal authoring and maintenance machinery. It keeps
+operations inspectable and repairable, but it is below the product boundary. The
+public product loop remains intent -> select -> govern -> act -> observe ->
+diagnose -> repair/reroute -> deliver -> expose.
 
 ### 1. Create
 
@@ -4439,7 +4565,7 @@ Discovery surfaces:
 - MCP meta-tools: `unicli_search`, `unicli_list`, `unicli_run`,
   `unicli_explore`.
 
-Discovery must optimize for a large command catalog by keeping the default
+Discovery must optimize for a large operation catalog by keeping the default
 resident surface small. The agent should search or describe before loading the
 full registry.
 
@@ -4504,8 +4630,9 @@ hand-maintained tables.
 
 ## Local Computer Use
 
-Local Computer Use is a P0 product root because agents must operate installed
-software, not only web pages.
+Local Computer Use is a P0 substrate because agents must operate installed
+software, not only web pages. It is essential, but it is still below the
+computer-control platform boundary.
 
 The preferred execution order is:
 
@@ -4530,15 +4657,15 @@ Current compute surface:
 ## Public Front-End
 
 The docs front-end is not a marketing landing page. It is an operator console
-and learning surface for the command lifecycle.
+and learning surface for the computer-control loop.
 
 First viewport priorities:
 
-1. State the product: operations substrate for agents that use real software.
+1. State the product: universal computer-control platform for agents.
 2. Show the smallest real command path.
 3. Expose catalog scale without making command count the main claim.
 4. Send users to install, catalog, repair, and agent integration routes.
-5. Show Local Computer Use as a first-class capability, including evidence.
+5. Show Local Computer Use as a first-class substrate, including evidence.
 
 The public UI should keep these components honest:
 
@@ -4576,27 +4703,31 @@ protocols, and persistence at once.
 ### Option B: Keep Adding Commands And Adapters
 
 This preserves momentum but leaves architecture pressure unresolved. Breadth
-without a stricter lifecycle makes discovery, verification, and repair harder.
+without a stricter operation model makes discovery, verification, and repair
+harder.
 
-### Option C: Rebuild Around A Command Lifecycle Spine
+### Option C: Rebuild Around The Computer-Control Platform
 
 This keeps the existing broad catalog and runtime, but makes
-create -> discover -> invoke -> observe -> repair -> publish the explicit
-architecture spine. Each subsystem can be simplified against that lifecycle.
+intent -> select -> govern -> act -> observe -> diagnose -> repair/reroute ->
+deliver -> expose the explicit architecture spine. Command lifecycle remains
+the internal authoring cycle below that product model.
 
 Chosen direction: **Option C**. It matches the current code shape and gives the
 team a safe path to remove drift without freezing feature work.
 
 ## Optimization Roadmap
 
-### Step 1: Freeze The Spine
+### Step 1: Freeze The Computer-Control Model
 
-- Treat `CommandContract` as the metadata source for docs, MCP, ACP, agent
+- Treat operation contracts as the metadata source for docs, MCP, ACP, agent
   packs, repair, and benchmarks.
 - Add parity tests whenever a wrapper gains behavior.
 - Keep default MCP compact and search-driven.
+- Keep `architecture tree` and `architecture audit` aligned with the
+  computer-control stages.
 
-### Step 2: Make Compute A Product Root
+### Step 2: Mature Local Computer Control As A Substrate
 
 - Keep `compute` independent from website adapter assumptions.
 - Preserve the action evidence contract across CLI and MCP.
@@ -4625,8 +4756,8 @@ team a safe path to remove drift without freezing feature work.
 
 ### Step 6: Raise The Public Front-End Bar
 
-- Use the docs UI to teach the command lifecycle, not just list features.
-- Keep Local Computer Use visible as a first-class bridge.
+- Use the docs UI to teach the computer-control loop, not just list features.
+- Keep Local Computer Use visible as a first-class substrate.
 - Use real fixtures for demos and catalog data.
 - Verify docs build and at least one browser screenshot after visual changes.
 
@@ -4817,29 +4948,49 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Current: v0.224.0 — Apollo · Armstrong. <!-- STATS:site_count -->312<!-- /STATS --> sites, <!-- STATS:command_count -->1763<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps.
+> Current: v0.225.0 — Apollo · Irwin. <!-- STATS:site_count -->313<!-- /STATS --> sites, <!-- STATS:command_count -->1766<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps.
 
-This file tracks current engineering direction. Historical release notes live in
-`CHANGELOG.md`; they do not belong in the roadmap.
+This file tracks current engineering direction for the agent control plane for
+real software: a universal agent-to-computer control platform. Historical
+release notes live in `CHANGELOG.md`; they do not belong in the roadmap.
 
 ## Shipped
 
-| Area                 | Status                                                                                                                      |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Adapter catalog      | Web, browser, desktop, macOS, bridge, and external CLI surfaces are discoverable through `unicli list` and `unicli search`. |
-| v2 output envelope   | Normal command surfaces return structured success and error envelopes.                                                      |
-| Operation policy     | `open`, `confirm`, and `locked` profiles expose effect/risk/capability/resource scope, plus private remembered approvals.   |
-| Run recording        | `--record` and `UNICLI_RECORD_RUN=1` write append-only run traces that agents can list, show, probe, replay, and compare.   |
-| Browser evidence     | Browser operator actions can emit pre/post evidence, movement dimensions, stale-ref details, and watchdog results.          |
-| MCP server           | Stdio, Streamable HTTP, SSE, and optional OAuth 2.1 PKCE entry points are available.                                        |
-| ACP gateway          | Supported as an editor compatibility path, not the primary runtime abstraction.                                             |
-| Self-repair loop     | Errors carry adapter path, step, retryability, suggestion, and alternatives.                                                |
-| Agent backend matrix | Native CLI, JSON stream, MCP, ACP, HTTP API, OpenAI-compatible, and bridge routes are modeled explicitly.                   |
-| Docs site            | VitePress landing page, guide/reference split, local search, and GitHub Pages deployment workflow are available.            |
+| Area                     | Status                                                                                                                         |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| Operation catalog        | Web, browser, desktop, macOS, bridge, local-tool, and protocol operations are discoverable through `list`, `search`, and `do`. |
+| v2 output envelope       | Normal command surfaces return structured success and error envelopes.                                                         |
+| Operation policy         | `open`, `confirm`, and `locked` profiles expose effect/risk/capability/resource scope, plus private remembered approvals.      |
+| Run recording            | `--record` and `UNICLI_RECORD_RUN=1` write append-only run traces that agents can list, show, probe, replay, and compare.      |
+| Browser evidence         | Browser operator actions can emit pre/post evidence, movement dimensions, stale-ref details, and watchdog results.             |
+| Local computer control   | `compute` exposes app discovery, snapshots, refs, clicks, typing, keys, scrolling, app launch, screenshots, and assertions.    |
+| Runtime exposure         | Native CLI, JSON stream, MCP, ACP, HTTP API, OpenAI-compatible, and bridge routes are modeled explicitly.                      |
+| Self-repair and delivery | Errors carry adapter path, step, retryability, suggestion, alternatives; delivery commands assess objectives and trajectories. |
+| Docs site                | VitePress landing page, guide/reference split, local search, and GitHub Pages deployment workflow are available.               |
 
 ## Next Priorities
 
-1. **Run/event kernel hardening**
+1. **Computer-control root model**
+   - Keep public docs, architecture tree, command descriptions, and agent
+     surfaces aligned around agent-to-computer control over real software.
+   - Treat browser automation, computer-use sandboxes, MCP, natural-language
+     local execution, and per-site wrappers as substrates below Uni-CLI, not as
+     competing product identities.
+   - Make `architecture tree` and `architecture audit` the executable check that
+     catches regressions back into catalog/lifecycle-first framing.
+   - Use `capability_matrix` and `workflow_readiness` from `architecture audit`
+     to separate cataloged coverage from behavior that still needs live
+     evidence.
+
+2. **Operation-contract parity**
+   - Project adapter commands and core Commander commands into the same
+     operation-contract shape.
+   - Keep argument schemas identical across `search`, `describe`, `--dry-run`,
+     direct CLI, MCP, ACP, generated agent configs, and docs.
+   - Add regression tests when a generated command family gets new arguments or
+     a core command becomes externally callable.
+
+3. **Control-kernel hardening**
    - Keep run traces append-only, local, and private by default.
    - Let agents probe replayability before repeating a command, then compare the replay trace against the original.
    - Extend evidence coverage across transport classes without making opaque
@@ -4847,28 +4998,22 @@ This file tracks current engineering direction. Historical release notes live in
    - Keep result envelopes, permission evaluations, and browser action evidence
      queryable enough for reviews and repair tasks.
 
-2. **Manifest/runtime parity**
-   - Treat generated TypeScript registrations as first-class manifest inputs.
-   - Keep argument schemas identical across `search`, `describe`, `--dry-run`,
-     direct CLI, MCP, ACP, and generated agent configs.
-   - Add regression tests when a generated command family gets new arguments.
-
-3. **Operation policy coverage**
+4. **Operation policy coverage**
    - Keep adapters open by default.
    - Expand effect/risk/capability-scope inference where commands still lack
      enough metadata.
    - Use `--yes --remember-approval` when a team wants repeat approval for the
      same command capability scope without storing raw args.
 
-4. **Transport bus**
+5. **Substrate bus**
    - Make HTTP, CDP, accessibility, subprocess, service, and Visual dispatch share
      one invocation kernel and one evidence model.
-   - Keep ACP/MCP/HTTP as wrappers over the same catalog rather than separate
+   - Keep ACP/MCP/HTTP as wrappers over the same operation contracts rather than separate
      behavior definitions.
    - Surface unavailable transports as structured errors with install/setup
      suggestions.
 
-5. **Desktop and Visual stack**
+6. **Desktop and Visual stack**
    - Build repeatable control paths for WeChat, WeCom, DingTalk, Lark, Mail,
      Notes, Word, PowerPoint, Excel, and common Electron apps.
    - Prefer app APIs, CDP, and accessibility before Visual.
@@ -4876,7 +5021,7 @@ This file tracks current engineering direction. Historical release notes live in
      action primitives, and post-action verification before marking commands
      live.
 
-6. **Agent loop alignment**
+7. **Delivery loop alignment**
    - Support parallel/background agent workflows with isolated worktrees, compact
      command discovery, and reviewable evidence.
    - Keep Uni-CLI command execution independent from any single agent loop or
@@ -4884,7 +5029,7 @@ This file tracks current engineering direction. Historical release notes live in
    - Feed adapter failures back into repair tasks that can be run by coding
      agents.
 
-7. **Continuous trend intake**
+8. **Continuous trend intake**
    - Periodically review agent-loop, computer-use, editor-agent, and desktop
      automation trends through a private research process.
    - Convert durable insights into architecture or roadmap updates, not prompt
@@ -4892,13 +5037,6 @@ This file tracks current engineering direction. Historical release notes live in
    - Keep source-specific attribution internal and keep public docs at the
      capability level.
    - Keep code decisions grounded in local tests, diffs, and runtime evidence.
-
-8. **Industry positioning**
-   - Stay below IDE/chat products as the command/control substrate.
-   - Compete on breadth, latency, repairability, local execution, and structured
-     evidence.
-   - Avoid becoming a model wrapper, prompt memory product, or protocol-only
-     bridge.
 
 9. **Adapter authoring loop**
    - Keep browser `analyze`, `init`, `verify`, fixtures, field maps, and site memory as first-class authoring artifacts.
@@ -4917,18 +5055,37 @@ This file tracks current engineering direction. Historical release notes live in
 
 12. **Docs as product surface**
     - README stays install-first and capability-first.
-    - Public docs should explain commands, contracts, repair paths, and integration
-      routes.
+    - Public docs should explain the computer-control loop, operation contracts,
+      action substrates, repair paths, and integration routes.
     - Keep the public entry path short, current, and directly useful.
+
+13. **Workflow evidence closure**
+    - Start from vehicle-assistant workflows: media, video search, browser tabs,
+      installed apps, productivity state, and open/navigate destinations.
+    - Promote a workflow from cataloged to claimed only after command execution,
+      post-state evidence, and auth/policy posture have been recorded.
+    - Do not add commands for coverage optics; new commands need a runner,
+      fixture, live smoke, or platform doctor evidence.
 
 ## Non-Goals
 
 - No winner-take-all backend policy.
 - No hidden success when an adapter failed.
-- No theory-first README.
+- No theory-first README and no catalog-first identity.
 - No new protocol shim unless it reduces latency, preserves session semantics, or unlocks a real client.
+- No positioning as only a browser library, MCP wrapper, computer-use sandbox,
+  natural-language shell, scraper, or per-site wrapper collection.
 
 ## Verify
+
+For public positioning and docs changes:
+
+```bash
+npm run docs:build
+npm run docs:check-public
+```
+
+For release readiness:
 
 ```bash
 npm run build

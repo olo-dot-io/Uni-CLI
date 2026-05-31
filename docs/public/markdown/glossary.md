@@ -9,9 +9,13 @@
 
 Definitions for the terms used across Uni-CLI documentation, source, and YAML adapters. Each entry is a standalone explanation so AI assistants can quote it directly when answering questions about the project.
 
+## Action substrate
+
+A concrete technical boundary Uni-CLI can use to make real software act: HTTP, browser CDP, desktop accessibility, subprocess, file operation, protocol server, visual fallback, or app-specific wrapper. Substrates are below the computer-control platform boundary.
+
 ## Adapter
 
-A YAML or TypeScript file that maps one site or tool to a set of CLI commands. Adapters declare site, command name, type, strategy, arguments, pipeline steps, and column projection. The preferred contribution format is YAML; TypeScript is reserved for adapters that need imperative control flow beyond the shared pipeline registry.
+A YAML or TypeScript file that maps one site or tool to a set of operations. Adapters declare site, command name, type, strategy, arguments, pipeline steps, and column projection. The preferred contribution format is YAML; TypeScript is reserved for adapters that need imperative control flow beyond the shared pipeline registry.
 
 ## Adapter type
 
@@ -19,7 +23,7 @@ The integration surface an adapter targets. Five types: `web-api` for HTTP APIs,
 
 ## AgentEnvelope (v2)
 
-The structured response shape returned by every Uni-CLI command. Contains `ok`, `version`, `data`, `meta`, optional `error`, and `exit_code`. On success `data` carries the result. On failure `data` is null and `error` populates with `adapter_path`, `step`, `action`, `suggestion`, `retryable`, and `alternatives`.
+The structured response shape returned by every Uni-CLI operation. Contains `ok`, `version`, `data`, `meta`, optional `error`, and `exit_code`. On success `data` carries the result. On failure `data` is null and `error` populates with source path, `step`, `action`, `suggestion`, `retryable`, and `alternatives`.
 
 ## AGENTS.md
 
@@ -27,11 +31,11 @@ A discovery file that agent runtimes read at startup to learn about available to
 
 ## Bilingual BM25 search
 
-The catalog discovery algorithm Uni-CLI uses to map natural-language intent to a site, command, and arguments. Indexes adapter metadata in English and Chinese with TF-IDF weighting. Returns ranked candidates for `unicli search "<intent>"`.
+The operation discovery algorithm Uni-CLI uses to map natural-language intent to a site, operation, and arguments. Indexes adapter metadata in English and Chinese with TF-IDF weighting. Returns ranked candidates for `unicli search "<intent>"`.
 
 ## Bridge adapter
 
-An adapter that wraps an existing CLI (e.g., `gh`, `docker`, `yt-dlp`, `lark-cli`) and exposes its commands through Uni-CLI's catalog. Pure passthrough — Uni-CLI does not re-implement the wrapped CLI, only registers, auto-installs, and aggregates discovery.
+An adapter that wraps an existing CLI (e.g., `gh`, `docker`, `yt-dlp`, `lark-cli`) and exposes its operations through Uni-CLI's catalog. Pure passthrough — Uni-CLI does not re-implement the wrapped CLI, only registers, auto-installs, and aggregates discovery.
 
 ## Browser adapter
 
@@ -39,7 +43,7 @@ An adapter that drives Chrome via the Chrome DevTools Protocol (CDP) for sites t
 
 ## Catalog
 
-The local index of all sites, commands, arguments, strategies, and output schemas. Generated at install time and updated when adapters change. Searched via `unicli search` rather than enumerated, so agents pay catalog cost only when they need to discover.
+The local index of all sites, operations, arguments, strategies, and output schemas. Generated at install time and updated when adapters change. Searched via `unicli search` rather than enumerated, so agents pay catalog cost only when they need to discover.
 
 ## CDP (Chrome DevTools Protocol)
 
@@ -47,7 +51,7 @@ The wire protocol Uni-CLI uses to control a real Chrome instance for browser ada
 
 ## Compute (Visual)
 
-The visual fallback adapter family. When structured transports (web-api, desktop AX, browser CDP) cannot reach a target, Compute drives the screen via vision — clicks, types, screenshots — through a unified actuating verb set.
+The local computer-control and visual fallback adapter family. When structured substrates (web-api, desktop AX, browser CDP, app API, subprocess) cannot reach a target, Compute can drive the screen with screenshots, clicks, typing, and post-action evidence through a unified action verb set.
 
 ## Cookie file
 
@@ -63,11 +67,11 @@ An adapter that shells out to a local binary (e.g., `ffmpeg`, `imagemagick`, `bl
 
 ## Discovery
 
-The phase where an agent maps natural-language intent to a concrete command. Performed by `unicli search "<intent>"` against the local catalog. Discovery cost is bounded — see [docs/BENCHMARK.md](/BENCHMARK) for measured token budgets.
+The phase where an agent maps natural-language intent to concrete operations. Performed by `unicli search "<intent>"` against the local operation catalog. Discovery cost is bounded — see [docs/BENCHMARK.md](/BENCHMARK) for measured token budgets.
 
 ## Error envelope
 
-The `error` field on a v2 AgentEnvelope when `ok` is false. Carries `adapter_path` (the YAML to edit), `step` (the failing pipeline step), `action` (one-line description), `suggestion` (a hypothesis the agent can test), `retryable` (whether retry would help), and `alternatives` (other commands that might satisfy the intent).
+The `error` field on a v2 AgentEnvelope when `ok` is false. Carries source path or `adapter_path`, `step` or failing boundary, `action` (one-line description), `suggestion` (a hypothesis the agent can test), `retryable` (whether retry would help), and `alternatives` (other operations that might satisfy the intent).
 
 ## Exit code
 
@@ -87,7 +91,11 @@ A standardized agent-readable index file at the site root (`/llms.txt` and `/llm
 
 ## MCP (Model Context Protocol)
 
-The Anthropic-led protocol for letting AI assistants invoke tools through a stateful server. Uni-CLI ships an optional MCP gateway (`unicli mcp serve`) that wraps the catalog for runtimes that only speak MCP.
+The Anthropic-led protocol for letting AI assistants invoke tools through a stateful server. Uni-CLI ships an optional MCP gateway (`unicli mcp serve`) that exposes the same operation contracts for runtimes that only speak MCP.
+
+## Operation contract
+
+The stable product primitive in Uni-CLI. An operation contract describes identity, args, output shape, auth posture, action substrate, effect, risk, capability, source path, and repair path. CLI, MCP, ACP, docs, skills, and generated configs should all project the same contract instead of defining behavior separately.
 
 ## Pipeline
 
@@ -103,11 +111,11 @@ The cheapest auth strategy. Direct fetch with no credentials. Used by sites with
 
 ## Repair
 
-The fourth phase of the four-part contract. After an error envelope names a failing adapter and step, the agent edits the YAML and runs `unicli repair <site> <command>` to verify. Patches persist in `~/.unicli/adapters/`.
+The stage where a failed operation becomes a bounded source change or reroute. After an error envelope names a failing source path and step or boundary, the agent edits the YAML/code or chooses an alternative, then runs `unicli repair <site> <command>` or a delivery verification to prove the fix. User-local patches persist in `~/.unicli/adapters/`.
 
 ## Self-repair
 
-The capability that lets agents fix their own integrations when sites drift. Composed of: structured error envelopes, agent-readable YAML adapters, a repair verification command, and a persistent overlay directory. The single design choice that makes catalog-as-YAML economically viable.
+The capability that lets agents fix their own integrations when software drifts. Composed of: structured error envelopes, agent-readable source paths, a repair verification command, alternatives, and a persistent overlay directory. This is one design choice that makes operation-as-YAML economically viable.
 
 ## Service adapter
 

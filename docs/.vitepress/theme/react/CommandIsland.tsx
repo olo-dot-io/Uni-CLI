@@ -29,29 +29,32 @@ const copy: Record<
   }
 > = {
   root: {
-    tabsLabel: "Command lifecycle",
-    commandLabel: "Command",
+    tabsLabel: "Computer-control loop",
+    commandLabel: "Operation",
     detailsLabel: "What stays inspectable",
     copy: "Copy",
     copied: "Copied",
     steps: [
       {
         value: "discover",
-        label: "01 Discover",
-        title: "Search selects a command with the action still visible.",
-        body: "The catalog can be broad because execution stays explicit and keeps inputs visible.",
+        label: "01 Intent",
+        title: "Search selects an operation with the action still visible.",
+        body: "The operation catalog can be broad because action stays explicit and keeps inputs visible.",
         command: 'unicli search "hacker news frontpage"',
         details: [
-          { name: "ranked result", value: "site, command, summary, examples" },
-          { name: "execution shape", value: "args schema, auth, surface type" },
+          {
+            name: "ranked result",
+            value: "site, operation, summary, examples",
+          },
+          { name: "action shape", value: "args schema, auth, substrate type" },
           { name: "side effect", value: "none: discovery only" },
         ],
       },
       {
         value: "execute",
-        label: "02 Execute",
-        title: "Execution returns one stable envelope.",
-        body: "The same command can render Markdown for review or JSON/YAML/CSV for programs without changing the underlying result shape.",
+        label: "02 Act",
+        title: "Governed action returns one stable envelope.",
+        body: "The same operation can render Markdown for review or JSON/YAML/CSV for programs without changing the underlying result shape.",
         command: "unicli hackernews top --limit 5 -f json",
         details: [
           { name: "success", value: "ok, schema_version, data, meta" },
@@ -62,11 +65,11 @@ const copy: Record<
       {
         value: "repair",
         label: "03 Repair",
-        title: "A broken surface becomes a patch target.",
-        body: "Failures include the adapter path, step, retryability, suggestion, and alternatives so repair starts from the smallest file diff.",
+        title: "A broken software boundary becomes a patch or reroute target.",
+        body: "Failures include the source path, step or boundary, retryability, suggestion, and alternatives so repair starts from the smallest real change.",
         command: "unicli repair hackernews top",
         details: [
-          { name: "where", value: "error.adapter_path and error.step" },
+          { name: "where", value: "source path and failing boundary" },
           { name: "what next", value: "suggestion, retryable, alternatives" },
           { name: "verify", value: "repair command plus the original command" },
         ],
@@ -74,29 +77,29 @@ const copy: Record<
     ],
   },
   zh: {
-    tabsLabel: "命令生命周期",
-    commandLabel: "命令",
+    tabsLabel: "Computer-control 闭环",
+    commandLabel: "操作",
     detailsLabel: "Agent 能检查什么",
     copy: "复制",
     copied: "已复制",
     steps: [
       {
         value: "discover",
-        label: "01 发现",
-        title: "搜索只选命令，不把动作藏起来。",
-        body: "目录可以很宽，执行仍然是另一条明确命令。Agent 先看到输入和边界，再决定要不要跑。",
+        label: "01 意图",
+        title: "搜索只选操作，不把动作藏起来。",
+        body: "操作目录可以很宽，行动仍然是另一条明确命令。Agent 先看到输入和边界，再决定要不要跑。",
         command: 'unicli search "hacker news frontpage"',
         details: [
-          { name: "排序结果", value: "站点、命令、摘要、样例" },
-          { name: "执行形状", value: "参数 schema、认证、接口类型" },
+          { name: "排序结果", value: "站点、操作、摘要、样例" },
+          { name: "行动形状", value: "参数 schema、认证、substrate 类型" },
           { name: "副作用", value: "发现阶段只读目录" },
         ],
       },
       {
         value: "execute",
-        label: "02 执行",
-        title: "执行返回统一 envelope，结果形状稳定。",
-        body: "同一条命令可以渲染成 Markdown 给人审阅，也可以输出 JSON/YAML/CSV 给程序消费，底层结果形状不变。",
+        label: "02 行动",
+        title: "治理后的行动返回统一 envelope。",
+        body: "同一条操作可以渲染成 Markdown 给人审阅，也可以输出 JSON/YAML/CSV 给程序消费，底层结果形状不变。",
         command: "unicli hackernews top --limit 5 -f json",
         details: [
           { name: "成功", value: "ok、schema_version、data、meta" },
@@ -107,11 +110,11 @@ const copy: Record<
       {
         value: "repair",
         label: "03 修复",
-        title: "外部界面变了，错误要落到具体 patch 目标。",
-        body: "失败会带上 adapter 路径、pipeline step、是否可重试、建议和替代命令。修复从最小文件 diff 开始。",
+        title: "软件边界变了，错误要落到 patch 或换路目标。",
+        body: "失败会带上 source path、step 或边界、是否可重试、建议和替代路径。修复从最小真实改动开始。",
         command: "unicli repair hackernews top",
         details: [
-          { name: "位置", value: "error.adapter_path 和 error.step" },
+          { name: "位置", value: "source path 和失败边界" },
           { name: "下一步", value: "suggestion、retryable、alternatives" },
           { name: "验证", value: "repair 命令加原命令回归" },
         ],

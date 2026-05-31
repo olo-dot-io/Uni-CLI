@@ -1,23 +1,24 @@
 <!-- Generated from docs/reference/sites.md. Do not edit this copy directly. -->
 
-# Command Catalog
+# Operation Catalog
 
 - Canonical: https://olo-dot-io.github.io/Uni-CLI/reference/sites
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/sites.md
 - Section: Reference
 - Parent: Reference (/reference/)
 
-Uni-CLI publishes the same generated adapter manifest to the docs site that the
-CLI uses for discovery. This page is the human-readable catalog: filter by
-surface, search by site or command, and inspect representative commands before
-running `unicli search`.
+Uni-CLI publishes the same generated operation manifest to the docs site that
+the CLI uses for discovery. This page is the human-readable operation catalog:
+filter by substrate, search by site or command, and inspect representative
+operations before running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 312 sites, 1763 commands.
+This catalog is generated from the adapter manifest: 313 sites, 1766 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
+| 12306 | web-api | 3 | no | unicli 12306 price<br>unicli 12306 stations<br>unicli 12306 trains |
 | 1688 | web-api | 5 | yes | unicli 1688 item<br>unicli 1688 search<br>unicli 1688 store |
 | 1point3acres | web-api | 9 | yes | unicli 1point3acres hot<br>unicli 1point3acres latest<br>unicli 1point3acres digest |
 | 36kr | web-api | 5 | no | unicli 36kr article<br>unicli 36kr hot<br>unicli 36kr latest |

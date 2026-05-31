@@ -1,16 +1,16 @@
 # Uni-CLI Copy Rules
 
-> Current version: v0.224.1 — Apollo · Collins.
+> Current version: v0.225.0 — Apollo · Irwin.
 >
-> Current scale: <!-- STATS:site_count -->312<!-- /STATS --> sites, <!-- STATS:command_count -->1763<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->1213<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->977<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->236<!-- /STATS --> TS), <!-- STATS:test_count -->8978<!-- /STATS --> tests.
+> Current scale: <!-- STATS:site_count -->313<!-- /STATS --> sites, <!-- STATS:command_count -->1766<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->1216<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->980<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->236<!-- /STATS --> TS), <!-- STATS:test_count -->9090<!-- /STATS --> tests.
 
 This file keeps docs and user-facing copy consistent. Public pages should expose
 install, command, output, and repair facts with the fewest words needed.
 
 ## Product Sentence
 
-Uni-CLI is the agent execution substrate for web, apps, local tools, and system
-capabilities.
+Uni-CLI is the universal computer-control platform for agents: intent, policy,
+action substrates, evidence, delivery, and repair across real software.
 
 Use that sentence as the north star. If a paragraph does not help a user install,
 discover, execute, record, inspect, repair, or extend the tool, it probably does

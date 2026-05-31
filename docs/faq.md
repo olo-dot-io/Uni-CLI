@@ -1,6 +1,6 @@
 ---
 title: Uni-CLI FAQ
-description: Answers to the most common questions about Uni-CLI — what it is, how it differs from MCP servers, how self-repair works, and what platforms it integrates with.
+description: Answers to the most common questions about Uni-CLI — what it is, how it differs from browser automation, MCP, computer-use sandboxes, and wrappers, and how evidence and repair work.
 ---
 
 # Frequently Asked Questions
@@ -9,11 +9,15 @@ Quick answers to the questions agents and developers ask most often. Each answer
 
 ## What is Uni-CLI?
 
-Uni-CLI is the operations substrate for agents that use real software. It turns websites, logged-in browsers, desktop apps, local tools, MCP servers, and system capabilities into searchable, governed, repairable operations. One path discovers capabilities, executes with policy, returns evidence, and self-repairs operations across <span><!-- STATS:site_count -->312<!-- /STATS --></span> sites and tools.
+Uni-CLI is the universal computer-control platform for agents. It turns websites, logged-in browsers, desktop apps, local tools, files, operating-system capabilities, MCP servers, screenshots, accessibility trees, and app-specific wrappers into governed operations. One path accepts intent, selects an action substrate, executes with policy, returns evidence, diagnoses failure, and repairs or reroutes across <span><!-- STATS:site_count -->313<!-- /STATS --></span> sites and tools.
 
 ## How is Uni-CLI different from a browser automation library?
 
-Uni-CLI uses YAML adapters that compile sites into deterministic CLI commands rather than Turing-complete scripts. Each command returns the same structured envelope, so agents can pipe results, retry on errors, and patch the YAML directly when an upstream API changes — no recompile, no library upgrade, no headless browser flakiness.
+Browser automation is one action substrate. Uni-CLI sits above it with operation contracts, permission policy, evidence receipts, delivery assessment, and repair/reroute paths. A browser command, desktop action, subprocess bridge, MCP route, or app wrapper should all return the same AgentEnvelope and follow the same control loop.
+
+## How is Uni-CLI different from a computer-use sandbox?
+
+A computer-use sandbox gives an agent an environment with screen, mouse, keyboard, and often benchmark hooks. Uni-CLI can use that kind of boundary, but its category is broader: it controls the user's real software environment through the smallest available substrate, from typed APIs and browser CDP to desktop accessibility, subprocesses, files, protocols, and visual fallback.
 
 ## Why a CLI instead of an MCP server?
 
@@ -21,7 +25,7 @@ A measured Uni-CLI list-style call lands at a 364-423 token total budget (median
 
 ## How does self-repair work in Uni-CLI?
 
-When a command fails, Uni-CLI emits a structured error JSON containing the adapter path, failing pipeline step, action, and a one-line suggestion. An agent reads the YAML at that path, edits the selector or auth header, then runs `unicli repair <site> <command>` to verify the fix. Patches persist in `~/.unicli/adapters/` so they survive `npm update`.
+When an operation fails, Uni-CLI emits a structured error JSON containing the source path, failing step or boundary, action, retryability, alternatives, and a one-line suggestion. An agent can edit the YAML or code at that path, run `unicli repair <site> <command>` or a bounded delivery verification, and keep the patch in `~/.unicli/adapters/` when the repair is user-local.
 
 ## Which AI agent runtimes work with Uni-CLI?
 
@@ -29,7 +33,7 @@ Any runtime that can spawn a subprocess can use Uni-CLI directly. Uni-CLI also e
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.224.1 ships a generated catalog with <span><!-- STATS:site_count -->312<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1763<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1213<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->8978<!-- /STATS --></span> tests. The headline is the contract: search, policy, evidence, repair, and the same AgentEnvelope across web, browser, desktop, local tools, and protocols.
+v0.225.0 ships a generated operation catalog with <span><!-- STATS:site_count -->313<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1766<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1216<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->9090<!-- /STATS --></span> tests. The headline is not the count; it is the shared control contract: intent, policy, action substrate, evidence, delivery, repair, and the same AgentEnvelope across web, browser, desktop, local tools, files, and protocols.
 
 ## Can Uni-CLI download papers and read local PDFs?
 
@@ -41,7 +45,7 @@ Start with intent search, then narrow by the domain-specific command: `unicli se
 
 ## Can I add a new site without writing TypeScript?
 
-Yes. The preferred contribution format is a 20-line YAML adapter that names the site, command, strategy, and pipeline. Run `unicli init <site> <command>` to scaffold one, then `unicli dev <path>` to hot-reload while iterating. Most adapters ship without a single line of TypeScript.
+Yes. The preferred contribution format is a short YAML adapter that names the site, command, strategy, and pipeline. YAML is an authoring format below the operation contract, not the product identity. Run `unicli init <site> <command>` to scaffold one, then `unicli dev <path>` to hot-reload while iterating. Most adapters ship without a single line of TypeScript.
 
 ## Does Uni-CLI handle authenticated sites?
 
@@ -57,7 +61,7 @@ Yes. Uni-CLI is Apache-2.0 licensed on GitHub at [olo-dot-io/Uni-CLI](https://gi
 
 ## Where can I see all commands?
 
-The full command catalog lives at [/reference/sites](/reference/sites). For agent-readable indexes, fetch [/llms.txt](/llms.txt) for a curated map or [/llms-full.txt](/llms-full.txt) for the concatenated docs.
+The full operation catalog lives at [/reference/sites](/reference/sites). For agent-readable indexes, fetch [/llms.txt](/llms.txt) for a curated map or [/llms-full.txt](/llms-full.txt) for the concatenated docs.
 
 ## How do I report a broken adapter?
 

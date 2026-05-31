@@ -71,20 +71,24 @@ const headlineStats = computed(() =>
   >
     <div>
       <p class="uni-eyebrow">
-        {{ isZh ? "一个目录，连接多种软件接口" : "One catalog, many surfaces" }}
+        {{
+          isZh
+            ? "一条控制闭环，多种行动 substrate"
+            : "One control loop, many action substrates"
+        }}
       </p>
       <h2 id="stats-title">
         {{
           isZh
-            ? "从一句意图搜索，到一条可运行命令。"
-            : "From one intent search to a runnable command."
+            ? "从一句意图，到一次可治理的软件动作。"
+            : "From one intent to one governed software action."
         }}
       </h2>
       <p>
         {{
           isZh
-            ? "Uni-CLI 把第一次交互做小：先搜目录，再选最窄的命令，运行后拿到结构化结果；失败时也会给出可修复的错误。"
-            : "Uni-CLI keeps the first interaction small: search the catalog, choose the narrow command, run it, and get a structured result or a repairable error."
+            ? "Uni-CLI 把第一次交互做小：先搜操作，再选最窄的 substrate，运行后拿到结构化结果；失败时也会给出可修复或可换路的错误。"
+            : "Uni-CLI keeps the first interaction small: search operations, choose the narrow substrate, run it, and get a structured result or a repairable/reroutable error."
         }}
       </p>
     </div>

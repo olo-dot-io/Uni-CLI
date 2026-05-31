@@ -1,97 +1,162 @@
 # Uni-CLI Architecture
 
-Uni-CLI is the bridge between agents and real software. The stable product
-primitive is not a browser session, a protocol server, or a generated tool list.
-It is a searchable command contract that can be invoked, governed, observed,
-recorded, repaired, and re-exposed through multiple agent runtimes.
+Uni-CLI is the universal computer-control platform for agents. The stable
+product primitive is not a browser session, a sandbox, a protocol server, a
+visual cursor, or a generated tool list. It is an operation that lets an agent
+control real software through a governed, observable, repairable path.
 
-The current generated catalog is the source of truth:
-**<span><!-- STATS:site_count -->312<!-- /STATS --></span> sites**,
-**<span><!-- STATS:command_count -->1763<!-- /STATS --></span> commands**,
-**<span><!-- STATS:adapter_count_total -->1213<!-- /STATS --></span> adapters**,
+The current generated operation catalog is the source of truth:
+**<span><!-- STATS:site_count -->313<!-- /STATS --></span> sites**,
+**<span><!-- STATS:command_count -->1766<!-- /STATS --></span> commands**,
+**<span><!-- STATS:adapter_count_total -->1216<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->8978<!-- /STATS --></span> tests** in v0.224.1.
+and **<span><!-- STATS:test_count -->9090<!-- /STATS --></span> tests** in v0.225.0.
 
-## Architectural Thesis
+## Computer-Control Thesis
 
-Agents already have a shell. Uni-CLI should make that shell an operating layer
-for websites, logged-in browser state, desktop apps, local tools, system
-capabilities, and protocol servers.
+Vehicle assistants work because the car exposes a bounded control layer above
+navigation, media, climate, and driving assistance. General computers have the
+same shape at larger scale. Browser state, desktop apps, local tools, files,
+operating-system services, accessibility trees, screenshots, protocol servers,
+and website-specific paths are the environment. Uni-CLI is the hand agents use
+to control that environment.
 
-The correct loop is:
+Adjacent projects usually own one concrete technical function: browser
+automation, a computer-use sandbox, natural-language local execution, an MCP
+server, or a per-application wrapper. Uni-CLI treats those as substrates. The
+platform boundary is larger: agent intent enters once, the system selects a
+controllable boundary, policy gates the effect, real software is acted on,
+evidence returns, failure is diagnosed, and the path is repaired or rerouted
+until the result is delivered.
 
-1. Discover the smallest useful operation by intent.
-2. Inspect its command contract, args, auth posture, effect, and risk.
-3. Execute through the shared invocation kernel.
-4. Return a structured envelope with data, evidence, retryability, and next
-   actions.
-5. Diagnose failure into auth, policy, upstream drift, missing context,
+The computer-control loop is:
+
+1. Accept human or agent intent without preloading a giant tool list.
+2. Select the smallest operation boundary that can act on the target software.
+3. Govern the operation through permission profile, risk, capability scope, and
+   local policy.
+4. Act through the selected substrate: API, browser, desktop, subprocess,
+   protocol, visual, or app-specific wrapper.
+5. Observe result data, context, retryability, timing, and evidence through one
+   envelope.
+6. Diagnose failure into auth, policy, missing context, upstream drift,
    environment trouble, or adapter defect.
-6. Repair or reroute through a bounded verification command.
-7. Reuse the repaired command from CLI, MCP, ACP, docs, skills, and scripts.
+7. Repair or reroute through a bounded verification command and alternatives.
+8. Deliver the objective state, then expose the same operation through CLI, MCP,
+   ACP, docs, skills, CI, and scripts.
 
-That loop is the product. Everything else is a wrapper, transport, authoring
-tool, or documentation surface around it.
+That loop is the product. The command lifecycle, YAML format, MCP gateway,
+browser automation, computer-use actions, and self-repair tools are internal
+machinery or substrates below it.
 
 ## Priority Model
 
-### First-Class Citizens
-
-These are product roots. They must stay small, testable, and shared by every
+These roots define product semantics and must stay shared by every runtime
 surface.
 
-| Priority | Surface             | Contract                                                                        |
-| -------- | ------------------- | ------------------------------------------------------------------------------- |
-| P0       | Command contract    | Site, command, args, output, auth, safety, capability, source path, repair path |
-| P0       | Invocation kernel   | Validate, harden, authorize, execute, observe, envelope                         |
-| P0       | Local computer use  | Native accessibility/CDP/subprocess/visual cascade for installed software       |
-| P0       | Evidence loop       | AgentEnvelope v2, run traces, post-state evidence, delivery trajectory          |
-| P1       | Discovery           | `search`, `list`, `describe`, `do`, generated catalog, docs index               |
-| P1       | Adapter authoring   | YAML first, TypeScript escape hatch, schema-v2 lint, repair verification        |
-| P1       | Governance          | Permission profiles, deny rules, approvals, safety metadata                     |
-| P1       | Repair and delivery | Adapter repair, health gates, objective-level delivery assessment               |
-| P2       | Protocol exposure   | MCP, ACP, streamable HTTP, agent packs, skills export                           |
-| P2       | Broad catalog scale | Hundreds of site commands, vertical meta-commands, external CLI hub             |
-| P2       | Public docs UI      | Homepage, catalog, lifecycle visualizations, compute evidence demo              |
+| Priority | Layer                      | Contract                                                                                   |
+| -------- | -------------------------- | ------------------------------------------------------------------------------------------ |
+| P0       | Computer-control platform  | Intent, selection, governance, action, observation, diagnosis, repair/reroute, delivery    |
+| P0       | Operation contract         | Args, output, auth posture, effect, safety, capability, source path, and repair path       |
+| P0       | Control kernel             | Validate, harden, authorize, invoke a substrate, observe, and envelope                     |
+| P0       | Action substrates          | HTTP, browser CDP, desktop accessibility, subprocess, visual fallback, protocols, wrappers |
+| P0       | Evidence and delivery loop | AgentEnvelope v2, run traces, post-state evidence, objective gates, trajectory, repair     |
+| P1       | Discovery                  | `search`, `list`, `describe`, `do`, generated catalog, docs index                          |
+| P1       | Governance                 | Permission profiles, deny rules, approvals, effect/risk/capability metadata                |
+| P1       | Authoring                  | YAML first, TypeScript escape hatch, schema-v2 lint, repair verification                   |
+| P1       | Runtime exposure           | Native CLI, JSON stream, MCP, ACP, streamable HTTP, agent packs, skills export             |
+| P2       | Broad coverage             | Hundreds of site commands, vertical meta-commands, external CLI hub                        |
+| P2       | Public docs UI             | Homepage, operation catalog, architecture, compute evidence demo                           |
 
-### Second-Class Citizens
+## Substrate Boundary
 
-Second-class does not mean unimportant. It means these surfaces must not define
-the architecture or fork semantics.
+Substrate plurality is a strength only while it remains below the platform
+boundary.
 
-- Expanded MCP mode is opt-in; the default agent surface stays compact.
-- Visual control is a real fallback only when it can see, act, and verify.
-- Browser UI automation is not the first transport when API, CDP, app API,
-  accessibility, or subprocess control exists.
-- TypeScript adapters are for cases where YAML pipeline primitives are not
-  enough.
+- Browser UI automation is one action substrate, not the architecture.
+- Computer-use sandboxing is one environment substrate, not the product category.
+- MCP is an exposure and protocol substrate; expanded MCP mode is opt-in.
+- Natural-language local execution is a useful substrate when typed command
+  contracts and policy still hold.
+- Visual control is valid only when it can see, act, and verify post-state
+  evidence.
 - External CLI passthrough is a bridge to mature tools, not a replacement for
-  command contracts.
-- Generated public files under `docs/public/` are build artifacts, not hand-edited
-  architecture sources.
+  operation contracts.
+- Generated public files under `docs/public/` are build artifacts, not
+  hand-edited architecture sources.
+
+## Capability Matrix And Workflow Readiness
+
+`unicli architecture audit -f json` emits two catalog-derived views that keep
+the vehicle-assistant analogy honest without pretending every path has already
+passed live smoke.
+
+The `capability_matrix` groups live registry commands by the real control
+surface they touch:
+
+- `web`: HTTP, RSS, public/cookie/header web paths, and web target surfaces.
+- `browser`: CDP, browser refs, browser evidence, and browser-backed adapters.
+- `desktop`: installed app, accessibility, local UI, and desktop target
+  surfaces.
+- `system`: operating-system state, macOS commands, local services, and system
+  target surfaces.
+- `protocol`: MCP, ACP, delivery/runs/architecture control services, and
+  service/protocol boundaries.
+- `bridge`: passthrough to mature external CLIs such as `gh`, `yt-dlp`, or
+  cloud CLIs.
+
+Rows include command counts, adapter/core split, write-sensitive count, local
+computer-use count, source-path coverage, and representative commands. A command
+can appear in more than one row when it genuinely crosses surfaces, for example
+a browser-backed web adapter or a macOS command that controls both desktop and
+system state.
+
+The `workflow_readiness` table tracks the real user workflows implied by the
+vehicle assistant comparison:
+
+- play or inspect media;
+- search video platforms;
+- operate browser tabs;
+- operate installed apps;
+- read and write productivity state;
+- open or navigate to a destination.
+
+Readiness is intentionally conservative:
+
+- `cataloged` means operation contracts exist in the live catalog, with at
+  least one action-capable command when the workflow requires action.
+- `partial` means the catalog has related read/discovery paths but lacks the
+  action shape needed to claim the workflow.
+- `gap` means the live catalog has no matching operation path.
+
+No workflow row claims live success. Each row carries `required_next_evidence`
+so Step 5 capability work can turn cataloged intent into behavior evidence:
+run the command, capture the envelope, verify post-state, record auth/policy
+posture, and only then promote a capability claim.
 
 ## System Tree
 
 ```text
 Uni-CLI
-|-- Product surfaces
-|   |-- Native CLI: src/cli.ts, src/main.ts, src/commands/*
-|   |-- MCP: src/mcp/*, src/mcp/profiles/computer-use.ts
-|   |-- ACP: src/commands/acp.ts, src/protocol/*
-|   |-- Streamable HTTP: src/mcp/streamable-http/*
-|   |-- Agent packs and skills: src/commands/agents.ts, scripts/build-agents.ts
-|   `-- Public docs: docs/, docs/.vitepress/theme/*
+|-- Computer-control platform
+|   |-- Intent: src/discovery/search.ts, src/commands/do.ts
+|   |-- Select: src/core/command-contract.ts, src/registry.ts
+|   |-- Govern: src/engine/permission-runtime.ts
+|   |-- Act: src/engine/kernel/*, src/engine/executor.ts
+|   |-- Observe: src/output/*, src/engine/session/*
+|   |-- Diagnose: src/engine/delivery/*, src/output/error-map.ts
+|   |-- Repair/reroute: src/commands/repair.ts, src/engine/repair/*
+|   `-- Deliver/expose: src/commands/delivery.ts, src/commands/agents.ts
 |
-|-- Discovery and catalog
+|-- Operation catalog
 |   |-- Runtime registry: src/registry.ts
-|   |-- Command contracts: src/core/command-contract.ts
-|   |-- Schema v2: src/core/schema-v2.ts
-|   |-- BM25 search: src/discovery/search.ts
 |   |-- Core catalog: src/discovery/core-catalog.ts
+|   |-- Adapter catalog: src/adapters/<site>/<command>.yaml or .ts
+|   |-- Schema v2: src/core/schema-v2.ts
 |   |-- Aliases and categories: src/discovery/aliases.ts
 |   `-- Generated manifests: registry.json, stats.json, server.json
 |
-|-- Invocation kernel
+|-- Control kernel
 |   |-- Compile and cache: src/engine/kernel/compile.ts
 |   |-- Input stages: src/engine/kernel/stages.ts
 |   |-- Execution: src/engine/kernel/execute.ts
@@ -100,46 +165,15 @@ Uni-CLI
 |   |-- Policy runtime: src/engine/permission-runtime.ts
 |   `-- Output envelope: src/output/*
 |
-|-- Adapter runtime
-|   |-- Loader: src/discovery/loader.ts
-|   |-- YAML pipeline executor: src/engine/executor.ts
-|   |-- Step registry: src/engine/step-registry.ts
-|   |-- Built-in steps: src/engine/steps/*
-|   |-- Repair engine: src/engine/repair/*
-|   |-- Health, lint, migrate, generate: src/commands/{health,lint,migrate*,generate}.ts
-|   `-- Catalog: src/adapters/<site>/<command>.yaml or .ts
+|-- Action substrates
+|   |-- Web/API: src/engine/steps/fetch*.ts, src/engine/steps/parse*.ts
+|   |-- Browser/CDP: src/browser/*, src/transport/adapters/cdp-browser.ts
+|   |-- Desktop/OS: src/commands/compute.ts, src/compute/*, src/transport/adapters/desktop-*.ts
+|   |-- Local tools/files: src/hub/*, src/engine/steps/exec*.ts, src/adapters/pdf/*
+|   |-- Protocols: src/mcp/*, src/commands/acp.ts, src/protocol/*
+|   `-- Visual fallback: src/transport/adapters/visual.ts, src/compute/visual-timeline.ts
 |
-|-- Transport layer
-|   |-- Transport bus: src/transport/bus.ts
-|   |-- Browser/CDP: src/transport/adapters/cdp-browser.ts
-|   |-- Desktop accessibility: src/transport/adapters/desktop-ax.ts
-|   |-- Windows UIA: src/transport/adapters/desktop-uia.ts
-|   |-- Linux AT-SPI: src/transport/adapters/desktop-atspi.ts
-|   |-- Subprocess bridge: src/transport/adapters/subprocess.ts
-|   |-- Visual fallback: src/transport/adapters/visual.ts
-|   `-- Native sidecars: crates/unicli-uia, crates/unicli-atspi
-|
-|-- Local computer use
-|   |-- CLI surface: src/commands/compute.ts, src/commands/doctor-compute.ts
-|   |-- Action executor: src/compute/action-execution.ts
-|   |-- Capture packet: src/compute/capture.ts
-|   |-- Cascade order: src/transport/cascade.ts
-|   |-- Ref store: src/transport/refs.ts
-|   |-- Platform overlays: src/compute/platform-overlays.ts
-|   |-- macOS HUD: src/compute/macos-overlay.ts
-|   |-- Windows HUD: src/compute/windows-overlay.ts
-|   |-- Linux HUD: src/compute/linux-overlay.ts
-|   `-- Visual action evidence: src/compute/visual-timeline.ts
-|
-|-- Browser operations
-|   |-- Daemon and launcher: src/browser/daemon.ts, src/browser/launcher.ts
-|   |-- Session runtime: src/browser/session-runtime.ts
-|   |-- Auth sync and cookies: src/browser/auth-sync.ts, src/engine/cookies.ts
-|   |-- Page actions and snapshots: src/browser/page.ts, src/browser/snapshot.ts
-|   |-- Network and record: src/browser/network-cache.ts, src/commands/record.ts
-|   `-- Evidence: src/engine/browser/action-evidence.ts
-|
-|-- Delivery and repair loop
+|-- Evidence, delivery, and repair
 |   |-- Run recording: src/engine/session/*
 |   |-- Replay and compare: src/commands/runs.ts, src/engine/session/replay.ts
 |   |-- Objective state: src/engine/delivery/*
@@ -147,12 +181,22 @@ Uni-CLI
 |   |-- Adapter repair: src/commands/repair.ts, src/engine/repair/*
 |   `-- Eval and probes: src/commands/eval.ts, tests/integration/*
 |
-|-- Extensibility
+|-- Runtime exposure
+|   |-- Native CLI: src/cli.ts, src/main.ts, src/commands/*
+|   |-- MCP: src/mcp/*, src/mcp/profiles/computer-use.ts
+|   |-- ACP: src/commands/acp.ts, src/protocol/*
+|   |-- Streamable HTTP: src/mcp/streamable-http/*
+|   |-- Agent packs and skills: src/commands/agents.ts, scripts/build-agents.ts
+|   `-- Public docs: docs/, docs/.vitepress/theme/*
+|
+|-- Authoring and repair machinery
+|   |-- Loader: src/discovery/loader.ts
+|   |-- YAML pipeline executor: src/engine/executor.ts
+|   |-- Step registry: src/engine/step-registry.ts
+|   |-- Built-in steps: src/engine/steps/*
+|   |-- Health, lint, migrate, generate: src/commands/{health,lint,migrate*,generate}.ts
 |   |-- User adapters: ~/.unicli/adapters
-|   |-- Plugins: src/plugin/*
-|   |-- Custom steps: src/plugin/step-registry.ts
-|   |-- External CLI hub: src/hub/*
-|   `-- MCP server package: src/bin/unicli-mcp.ts
+|   `-- Plugins and custom steps: src/plugin/*
 |
 `-- Verification and release
     |-- Unit tests: tests/unit/*
@@ -169,13 +213,11 @@ Uni-CLI
 ```mermaid
 flowchart TD
   user["Human or agent intent"] --> discover["search / list / describe / do"]
-  discover --> contract["CommandContract"]
-  contract --> kernel["Invocation kernel"]
-  kernel --> validate["validate + harden args"]
-  validate --> policy["permission policy"]
-  policy --> execute["adapter execution"]
-  execute --> transport["HTTP / CDP / a11y / subprocess / visual"]
-  transport --> envelope["AgentEnvelope v2"]
+  discover --> contract["OperationContract"]
+  contract --> policy["permission and risk policy"]
+  policy --> kernel["control kernel"]
+  kernel --> substrate["HTTP / CDP / accessibility / subprocess / visual / protocol"]
+  substrate --> envelope["AgentEnvelope v2"]
   envelope --> evidence["run evidence + post-state"]
   evidence --> delivery["delivery assessment"]
   delivery --> done["deliver"]
@@ -183,11 +225,16 @@ flowchart TD
   repair --> contract
 ```
 
-The invariant is that CLI, MCP, ACP, and HTTP wrappers must not implement their
-own semantics. They resolve inputs, call the same kernel, and render the same
-envelope.
+The invariant is that CLI, MCP, ACP, HTTP, docs, and skills must not implement
+their own semantics. They resolve inputs, call the same control kernel, and
+render the same envelope.
 
-## Command Lifecycle
+## Internal Command Lifecycle
+
+The command lifecycle is internal authoring and maintenance machinery. It keeps
+operations inspectable and repairable, but it is below the product boundary. The
+public product loop remains intent -> select -> govern -> act -> observe ->
+diagnose -> repair/reroute -> deliver -> expose.
 
 ### 1. Create
 
@@ -226,7 +273,7 @@ Discovery surfaces:
 - MCP meta-tools: `unicli_search`, `unicli_list`, `unicli_run`,
   `unicli_explore`.
 
-Discovery must optimize for a large command catalog by keeping the default
+Discovery must optimize for a large operation catalog by keeping the default
 resident surface small. The agent should search or describe before loading the
 full registry.
 
@@ -291,8 +338,9 @@ hand-maintained tables.
 
 ## Local Computer Use
 
-Local Computer Use is a P0 product root because agents must operate installed
-software, not only web pages.
+Local Computer Use is a P0 substrate because agents must operate installed
+software, not only web pages. It is essential, but it is still below the
+computer-control platform boundary.
 
 The preferred execution order is:
 
@@ -317,15 +365,15 @@ Current compute surface:
 ## Public Front-End
 
 The docs front-end is not a marketing landing page. It is an operator console
-and learning surface for the command lifecycle.
+and learning surface for the computer-control loop.
 
 First viewport priorities:
 
-1. State the product: operations substrate for agents that use real software.
+1. State the product: universal computer-control platform for agents.
 2. Show the smallest real command path.
 3. Expose catalog scale without making command count the main claim.
 4. Send users to install, catalog, repair, and agent integration routes.
-5. Show Local Computer Use as a first-class capability, including evidence.
+5. Show Local Computer Use as a first-class substrate, including evidence.
 
 The public UI should keep these components honest:
 
@@ -363,27 +411,31 @@ protocols, and persistence at once.
 ### Option B: Keep Adding Commands And Adapters
 
 This preserves momentum but leaves architecture pressure unresolved. Breadth
-without a stricter lifecycle makes discovery, verification, and repair harder.
+without a stricter operation model makes discovery, verification, and repair
+harder.
 
-### Option C: Rebuild Around A Command Lifecycle Spine
+### Option C: Rebuild Around The Computer-Control Platform
 
 This keeps the existing broad catalog and runtime, but makes
-create -> discover -> invoke -> observe -> repair -> publish the explicit
-architecture spine. Each subsystem can be simplified against that lifecycle.
+intent -> select -> govern -> act -> observe -> diagnose -> repair/reroute ->
+deliver -> expose the explicit architecture spine. Command lifecycle remains
+the internal authoring cycle below that product model.
 
 Chosen direction: **Option C**. It matches the current code shape and gives the
 team a safe path to remove drift without freezing feature work.
 
 ## Optimization Roadmap
 
-### Step 1: Freeze The Spine
+### Step 1: Freeze The Computer-Control Model
 
-- Treat `CommandContract` as the metadata source for docs, MCP, ACP, agent
+- Treat operation contracts as the metadata source for docs, MCP, ACP, agent
   packs, repair, and benchmarks.
 - Add parity tests whenever a wrapper gains behavior.
 - Keep default MCP compact and search-driven.
+- Keep `architecture tree` and `architecture audit` aligned with the
+  computer-control stages.
 
-### Step 2: Make Compute A Product Root
+### Step 2: Mature Local Computer Control As A Substrate
 
 - Keep `compute` independent from website adapter assumptions.
 - Preserve the action evidence contract across CLI and MCP.
@@ -412,8 +464,8 @@ team a safe path to remove drift without freezing feature work.
 
 ### Step 6: Raise The Public Front-End Bar
 
-- Use the docs UI to teach the command lifecycle, not just list features.
-- Keep Local Computer Use visible as a first-class bridge.
+- Use the docs UI to teach the computer-control loop, not just list features.
+- Keep Local Computer Use visible as a first-class substrate.
 - Use real fixtures for demos and catalog data.
 - Verify docs build and at least one browser screenshot after visual changes.
 

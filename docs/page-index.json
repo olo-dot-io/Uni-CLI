@@ -187,7 +187,7 @@
       "breadcrumbs": []
     },
     {
-      "title": "Command Catalog",
+      "title": "Operation Catalog",
       "locale": "root",
       "routePath": "/reference/sites",
       "markdownPath": "/markdown/reference/sites.md",
@@ -554,7 +554,7 @@
       "breadcrumbs": []
     },
     {
-      "title": "命令目录",
+      "title": "操作目录",
       "locale": "zh",
       "routePath": "/zh/reference/sites",
       "markdownPath": "/markdown/zh/reference/sites.md",

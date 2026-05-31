@@ -9,7 +9,7 @@
 
 发布不是固定节奏，而是取决于社区需要和实际开发状态。版本号必须表达真实变化：小修复走 patch，能力扩展走 minor，稳定合同或破坏性变化才走 major。
 
-`0.220.x` 线是当前执行底座上的 patch 发布线：命令优先发现和执行、v2 `AgentEnvelope` 输出、可修复 adapter 错误、operation-policy metadata、可选 run recording、论文 PDF 工作流，以及扩展后的 ACG/动画/漫画发现能力。它不是大版本稳定兼容边界。
+`0.225.0` 线是 minor release candidate，因为它把公开产品模型从 execution substrate / catalog 叙事重塑为通用 computer-control 平台：意图、策略、行动 substrate、证据、交付、修复，覆盖真实软件。它不是稳定 major 兼容边界；CLI/package 形状保持不变，变化点是 architecture audit、command contract 和文档共同表达更大的产品类别。
 
 ## 权限边界
 
@@ -44,6 +44,35 @@ npm run release:check
 
 `verify` 覆盖格式、类型、lint、manifest、adapter lint、schema lint、构建、单元测试、adapter 测试、统计、conformance 和 exports。
 
+## 历史发布审计
+
+当前公开 git/tag 历史从 2026 年的 `0.200.x` 线开始。`0.225.0` 候选版对照了
+`CHANGELOG.md`、本地 tag、npm registry、release automation 和当前 architecture
+audit。
+
+候选事实：
+
+- npm registry 上 `@zenalexa/unicli@latest` 是 `0.224.1`；
+- 本地最新 tag 是 `v0.224.1`；
+- 旧版本元数据下 `npm run release:check -- --strict-codename` 通过；
+- architecture audit 报告 1819 条命令、1783 条 adapter 命令、36 条 core 命令、627 条 local-computer-use 命令、0 个缺失 source path；
+- capability readiness 覆盖 web、browser、desktop、system、protocol、bridge 六类能力面；
+- workflow readiness cataloged media playback、video search、browser tab control、installed app operation、productivity state、open/navigate destination，但 live claim 仍需要后续证据。
+
+| Release line | 历史角色                                                                                               | 对 `0.225.0` 的审计结论                                                                |
+| ------------ | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| `0.200.0`    | 第一个 Vostok public adapter platform，带 build manifest 和 self-repair architecture。                 | 发布必须暴露机器可读 surface，不能只写定位。                                           |
+| `0.208.0`    | Skills export、MCP gateway、eval catalog、usage ledger、operate/observe，以及 4-reviewer hardening。   | Review finding 要明确，安全和 release wiring 问题必须在 tag 前修掉。                   |
+| `0.213.0`    | Engine rigor GA：executor/runtime/steps 拆分、schema-v2 adapter、v2 `AgentEnvelope`。                  | 稳定行为合同比营销叙事更重要。                                                         |
+| `0.217.0`    | Execution-substrate 定位，加 operation policy、run recording、browser evidence、agent backend matrix。 | 随着真实控制面扩张，旧定位会变小。                                                     |
+| `0.218.0`    | 跨平台 browser cookie import 和 auth diagnostics。                                                     | Auth 和平台边界必须说清楚，不支持的路径要诚实失败。                                    |
+| `0.221.0`    | Patent / scholarly verticals 带 typed records 和 source routing。                                      | 垂直覆盖必须伴随 record、provenance 和测试。                                           |
+| `0.222.0`    | Local computer-use 和 compute capture 进入发布面。                                                     | Desktop/computer control 是核心 substrate，不是 sidecar demo。                         |
+| `0.224.0`    | Callable architecture audit/tree 和 registry-backed search cache。                                     | Architecture audit 不能遗漏 core control command，也不能把产品退回 adapter lifecycle。 |
+
+`0.225.0` 是 minor release：项目身份和 architecture audit surface 发生实质变化，
+但不宣称 stable-major compatibility contract。
+
 ## Changeset
 
 有用户可见变化时，加 changeset：
@@ -56,11 +85,11 @@ npm run changeset
 
 ## 版本判断
 
-| 类型  | 什么时候用                                               |
-| ----- | -------------------------------------------------------- |
-| patch | 修 bug、修文档、修已有能力的边界。                       |
-| minor | 新 adapter、新命令、新协议能力、向后兼容的新功能。       |
-| major | 明确稳定大版本合同，破坏已有公开合同，或者需要用户迁移。 |
+| 类型  | 什么时候用                                                       |
+| ----- | ---------------------------------------------------------------- |
+| patch | 修 bug、修文档、修已有能力的边界。                               |
+| minor | 产品模型重塑、新 adapter、新命令、新协议能力、向后兼容的新功能。 |
+| major | 明确稳定大版本合同，破坏已有公开合同，或者需要用户迁移。         |
 
 ## Release label
 
@@ -73,7 +102,7 @@ npm run changeset
 | `0.200-0.213` | Vostok  |
 | `0.216+`      | Apollo  |
 
-`0.221.0` 的发布 label 是 `Apollo · Anders`。
+`0.225.0` 的候选发布 label 是 `Apollo · Irwin`。
 
 ## 发布步骤
 
@@ -90,6 +119,7 @@ npm run docs:check-public
 - README、AGENTS.md、stats 和 docs 都已同步。
 - `docs:build` 通过，公开站点可部署。
 - changelog 说清楚用户能得到什么。
+- 产品模型重塑发布要更新本页的历史发布审计。
 
 真实发布步骤：
 

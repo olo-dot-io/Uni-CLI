@@ -39,7 +39,7 @@ const siteBase = configuredSiteBase
     : "/";
 const siteOrigin = "https://olo-dot-io.github.io";
 const publicSiteUrl = `${siteOrigin}${siteBase}`;
-const zhDescription = "给 AI Agent 操作真实软件的执行底座。";
+const zhDescription = "AI Agent 控制 computer 的通用平台。";
 const npmPackageUrl = "https://www.npmjs.com/package/@zenalexa/unicli";
 const npmIcon = `<svg viewBox="0 0 48 24" aria-hidden="true"><rect x="1" y="5" width="46" height="15" rx="1" fill="#cb3837"/><text x="6" y="17" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" letter-spacing="-1">npm</text></svg>`;
 
@@ -198,11 +198,15 @@ function escapeMustacheInFence(md: any) {
 const homeFaqs: { q: string; a: string }[] = [
   {
     q: "What is Uni-CLI?",
-    a: `Uni-CLI is an agent-native control plane that turns websites, browser sessions, desktop apps, local CLIs, MCP servers, and system capabilities into one searchable command runtime. One path discovers, executes with policy, returns evidence, and self-repairs operations across ${siteStats.site_count} sites and tools.`,
+    a: `Uni-CLI is the universal computer-control platform for agents. It turns websites, browser sessions, desktop apps, local CLIs, files, MCP servers, screenshots, accessibility trees, and system capabilities into governed operations. One path accepts intent, selects an action substrate, executes with policy, returns evidence, and repairs or reroutes across ${siteStats.site_count} sites and tools.`,
   },
   {
     q: "How is Uni-CLI different from a browser automation library?",
-    a: "Uni-CLI uses YAML adapters that compile sites into deterministic CLI commands, not Turing-complete scripts. Each command returns the same v2 AgentEnvelope, so agents can pipe results, retry on structured errors, and patch the YAML when an upstream API changes.",
+    a: "Browser automation is one action substrate. Uni-CLI sits above it with operation contracts, permission policy, evidence receipts, delivery assessment, and repair/reroute paths shared by browser, desktop, subprocess, protocol, and visual operations.",
+  },
+  {
+    q: "How is Uni-CLI different from a computer-use sandbox?",
+    a: "A computer-use sandbox gives an agent screen, mouse, keyboard, and often benchmark hooks. Uni-CLI can use that boundary, but its category is broader: it controls the user's real software environment through the smallest available substrate.",
   },
   {
     q: "Why a CLI instead of an MCP server?",
@@ -210,7 +214,7 @@ const homeFaqs: { q: string; a: string }[] = [
   },
   {
     q: "How does self-repair work in Uni-CLI?",
-    a: "When a command fails, Uni-CLI emits a structured error JSON with adapter_path, failing pipeline step, action, and a suggestion. An agent reads the YAML at that path, edits the selector or auth header, then runs unicli repair <site> <command> to verify the fix. Patches persist in ~/.unicli/adapters/.",
+    a: "When an operation fails, Uni-CLI emits structured error JSON with source path, failing step or boundary, retryability, alternatives, and a suggestion. An agent patches the YAML or code at that path, then verifies with unicli repair or a bounded delivery check.",
   },
   {
     q: "Which AI agent platforms work with Uni-CLI?",
@@ -218,11 +222,11 @@ const homeFaqs: { q: string; a: string }[] = [
   },
   {
     q: "How many sites and commands does Uni-CLI ship?",
-    a: `${releaseLabel} ships a generated catalog with ${siteStats.site_count} sites, ${commandCount} commands, ${adapterCount} adapters, ${siteStats.pipeline_step_count} pipeline steps, and ${testCount} tests. The headline is the contract: search, policy, evidence, repair, and the same AgentEnvelope across web, browser, desktop, local tools, and protocols.`,
+    a: `${releaseLabel} ships a generated operation catalog with ${siteStats.site_count} sites, ${commandCount} commands, ${adapterCount} adapters, ${siteStats.pipeline_step_count} pipeline steps, and ${testCount} tests. The headline is the shared control contract: intent, policy, action substrate, evidence, delivery, repair, and the same AgentEnvelope across web, browser, desktop, local tools, files, and protocols.`,
   },
   {
     q: "Can I add a new site to Uni-CLI without writing TypeScript?",
-    a: "Yes. The preferred contribution format is a 20-line YAML adapter that names the site, command, strategy, and pipeline. Run unicli init <site> <command> to scaffold one, then unicli dev <path> to hot-reload while iterating.",
+    a: "Yes. The preferred contribution format is a short YAML adapter that names the site, command, strategy, and pipeline. YAML is an authoring format below the operation contract, not the product identity.",
   },
   {
     q: "Does Uni-CLI handle authenticated sites?",
@@ -244,7 +248,7 @@ const softwareApplicationLdJson = {
   name: "Uni-CLI",
   applicationCategory: "DeveloperApplication",
   operatingSystem: "macOS, Linux, Windows",
-  description: `Operations substrate for agents that use real software. Turns ${siteStats.site_count} websites, logged-in browsers, desktop apps, MCP servers, local tools, and system capabilities into searchable, governed, self-repairing operations.`,
+  description: `Universal computer-control platform for agents. Turns ${siteStats.site_count} websites, logged-in browsers, desktop apps, MCP servers, local tools, files, screenshots, accessibility trees, and system capabilities into governed, observable, repairable operations.`,
   url: publicSiteUrl,
   downloadUrl: npmPackageUrl,
   softwareVersion: releaseInfo.version,
@@ -361,8 +365,8 @@ function buildArticleLdJson(pageData: {
 const howToLdJson = {
   "@context": "https://schema.org",
   "@type": "HowTo",
-  name: "Install Uni-CLI and run your first command",
-  description: `Install Uni-CLI globally via npm, search the command catalog with natural-language intent, then execute a command across one of ${siteStats.site_count} supported sites or tools.`,
+  name: "Install Uni-CLI and run your first governed operation",
+  description: `Install Uni-CLI globally via npm, search the operation catalog with natural-language intent, then execute a governed operation across one of ${siteStats.site_count} supported sites or tools.`,
   totalTime: "PT5M",
   inLanguage: "en-US",
   step: [
@@ -375,20 +379,20 @@ const howToLdJson = {
     {
       "@type": "HowToStep",
       position: 2,
-      name: "Search the catalog",
-      text: "Run `unicli search 'find AI agent discussions on reddit'` to discover the matching site, command, and arguments.",
+      name: "Search operations",
+      text: "Run `unicli search 'find AI agent discussions on reddit'` to discover the matching site, operation, and arguments.",
     },
     {
       "@type": "HowToStep",
       position: 3,
-      name: "Execute the command",
-      text: "Run the suggested command, e.g. `unicli reddit search 'AI agents' -n 20 -f json` to fetch results in agent-readable JSON.",
+      name: "Execute the operation",
+      text: "Run the suggested operation, e.g. `unicli reddit search 'AI agents' -n 20 -f json` to fetch results in agent-readable JSON.",
     },
     {
       "@type": "HowToStep",
       position: 4,
       name: "Recover from failures",
-      text: "If a site changes shape, the v2 AgentEnvelope returns adapter_path, failing step, and a suggestion. Edit the YAML, then run `unicli repair <site> <command>` to verify.",
+      text: "If a site or software boundary changes shape, the v2 AgentEnvelope returns source path, failing step or boundary, and a suggestion. Edit the YAML or code, then run `unicli repair <site> <command>` to verify.",
     },
   ],
 };
@@ -396,7 +400,7 @@ const howToLdJson = {
 export default defineConfig({
   title: "Uni-CLI",
   lang: localizedSiteMaps.root.lang,
-  description: "Operations substrate for agents that use real software.",
+  description: "Universal computer-control platform for agents.",
   base: siteBase,
   srcExclude: ["public/markdown/**/*.md", "demo/README.md"],
   cleanUrls: true,
@@ -502,7 +506,7 @@ export default defineConfig({
       {
         property: "og:description",
         content:
-          "A searchable execution layer for sites, apps, local tools, MCP, and external CLIs.",
+          "A universal computer-control platform for agents across sites, apps, local tools, files, MCP, and external CLIs.",
       },
     ],
     ["meta", { property: "og:url", content: publicSiteUrl }],

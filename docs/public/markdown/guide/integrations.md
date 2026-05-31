@@ -8,8 +8,8 @@
 - Parent: Start (/)
 
 Uni-CLI is designed to be called directly from a shell. Agent clients that need
-a protocol server can use the same catalog over MCP, ACP, or generated platform
-configuration while keeping adapter behavior identical.
+a protocol server can use the same operation contracts over MCP, ACP, or
+generated platform configuration while keeping behavior identical.
 
 ## Choose A Path
 
