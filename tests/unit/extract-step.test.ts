@@ -49,6 +49,13 @@ async function getMockPage() {
   ).__mockPage;
 }
 
+function runMockBrowserPipeline(
+  steps: Parameters<typeof runPipeline>[0],
+  bag: Parameters<typeof runPipeline>[1],
+): ReturnType<typeof runPipeline> {
+  return runPipeline(steps, bag, undefined, { browserSession: "cdp" });
+}
+
 describe("browser step: extract", () => {
   let mockPage: Record<string, ReturnType<typeof vi.fn>>;
 
@@ -72,7 +79,10 @@ describe("browser step: extract", () => {
       },
     ];
 
-    const result = await runPipeline(steps, { args: {}, source: "internal" });
+    const result = await runMockBrowserPipeline(steps, {
+      args: {},
+      source: "internal",
+    });
     expect(result).toEqual(expected);
 
     // Verify evaluate was called with JS that queries the right selectors
@@ -100,7 +110,10 @@ describe("browser step: extract", () => {
       },
     ];
 
-    const result = await runPipeline(steps, { args: {}, source: "internal" });
+    const result = await runMockBrowserPipeline(steps, {
+      args: {},
+      source: "internal",
+    });
     expect(result).toEqual(expected);
 
     const jsArg = mockPage.evaluate.mock.calls[0][0] as string;
@@ -129,7 +142,10 @@ describe("browser step: extract", () => {
       },
     ];
 
-    const result = await runPipeline(steps, { args: {}, source: "internal" });
+    const result = await runMockBrowserPipeline(steps, {
+      args: {},
+      source: "internal",
+    });
     expect(result).toEqual(expected);
 
     const jsArg = mockPage.evaluate.mock.calls[0][0] as string;
@@ -152,7 +168,10 @@ describe("browser step: extract", () => {
       },
     ];
 
-    const result = await runPipeline(steps, { args: {}, source: "internal" });
+    const result = await runMockBrowserPipeline(steps, {
+      args: {},
+      source: "internal",
+    });
     expect(result).toEqual([]);
   });
 
@@ -171,7 +190,7 @@ describe("browser step: extract", () => {
       },
     ];
 
-    const result = await runPipeline(steps, {
+    const result = await runMockBrowserPipeline(steps, {
       args: { section: "products" },
       source: "internal",
     });
@@ -196,7 +215,10 @@ describe("browser step: extract", () => {
       },
     ];
 
-    const result = await runPipeline(steps, { args: {}, source: "internal" });
+    const result = await runMockBrowserPipeline(steps, {
+      args: {},
+      source: "internal",
+    });
     expect(result).toEqual(expected);
 
     const jsArg = mockPage.evaluate.mock.calls[0][0] as string;
@@ -222,7 +244,10 @@ describe("browser step: extract", () => {
       },
     ];
 
-    const result = await runPipeline(steps, { args: {}, source: "internal" });
+    const result = await runMockBrowserPipeline(steps, {
+      args: {},
+      source: "internal",
+    });
     expect(result).toEqual(expected);
 
     const jsArg = mockPage.evaluate.mock.calls[0][0] as string;
@@ -244,7 +269,10 @@ describe("browser step: extract", () => {
       },
     ];
 
-    const result = await runPipeline(steps, { args: {}, source: "internal" });
+    const result = await runMockBrowserPipeline(steps, {
+      args: {},
+      source: "internal",
+    });
     expect(result).toEqual([]);
   });
 
@@ -263,7 +291,10 @@ describe("browser step: extract", () => {
       },
     ];
 
-    const result = await runPipeline(steps, { args: {}, source: "internal" });
+    const result = await runMockBrowserPipeline(steps, {
+      args: {},
+      source: "internal",
+    });
     expect(result).toEqual(expected);
 
     const jsArg = mockPage.evaluate.mock.calls[0][0] as string;
@@ -286,7 +317,10 @@ describe("browser step: extract", () => {
       },
     ];
 
-    const result = await runPipeline(steps, { args: {}, source: "internal" });
+    const result = await runMockBrowserPipeline(steps, {
+      args: {},
+      source: "internal",
+    });
     expect(result).toEqual(expected);
 
     const jsArg = mockPage.evaluate.mock.calls[0][0] as string;

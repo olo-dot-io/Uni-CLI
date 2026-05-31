@@ -65,6 +65,28 @@ function debugLog(message: string): void {
   }
 }
 
+/**
+ * Resolve the CDP port from an explicit argument or UNICLI_CDP_PORT, with one
+ * consistent semantic across every caller: explicit wins, else a set env var is
+ * validated and THROWS on a malformed value (a bad port is a configuration error
+ * the agent must see, not a silent fall-back to 9222), else the default.
+ *
+ * This replaces four divergent inline parsers (cookie-extractor threw, while
+ * cookie-refresh / browser-helpers / launcher silently kept 9222 on garbage).
+ */
+export function resolveCdpPort(explicit?: number): number {
+  if (explicit !== undefined) return explicit;
+  const raw = process.env.UNICLI_CDP_PORT;
+  if (!raw) return CDP_DEFAULT_PORT;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) {
+    throw new Error(
+      `Invalid UNICLI_CDP_PORT: "${raw}" — expected an integer in 1..65535`,
+    );
+  }
+  return parsed;
+}
+
 function isCDPResponse(msg: CDPMessage): msg is CDPResponse {
   return "id" in msg && typeof (msg as CDPResponse).id === "number";
 }

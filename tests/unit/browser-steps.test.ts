@@ -55,13 +55,23 @@ async function getMockPage() {
   ).__mockPage;
 }
 
+function runMockBrowserPipeline(
+  steps: Parameters<typeof runPipeline>[0],
+  bag: Parameters<typeof runPipeline>[1],
+): ReturnType<typeof runPipeline> {
+  return runPipeline(steps, bag, undefined, { browserSession: "cdp" });
+}
+
 describe("browser step: navigate", () => {
   it("calls page.goto with resolved URL", async () => {
     const mockPage = await getMockPage();
     const steps = [
       { navigate: { url: "https://example.com/${{ args.path }}" } },
     ];
-    await runPipeline(steps, { args: { path: "search" }, source: "internal" });
+    await runMockBrowserPipeline(steps, {
+      args: { path: "search" },
+      source: "internal",
+    });
     expect(mockPage.goto).toHaveBeenCalledWith("https://example.com/search", {
       settleMs: 0,
     });
@@ -73,7 +83,7 @@ describe("browser step: navigate", () => {
     const steps = [
       { navigate: { url: "https://example.com", settleMs: 2000 } },
     ];
-    await runPipeline(steps, { args: {}, source: "internal" });
+    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
     expect(mockPage.goto).toHaveBeenCalledWith("https://example.com", {
       settleMs: 2000,
     });
@@ -83,7 +93,7 @@ describe("browser step: navigate", () => {
     const mockPage = await getMockPage();
     mockPage.goto.mockClear();
     const steps = [{ navigate: "https://example.com/${{ args.section }}" }];
-    await runPipeline(steps, {
+    await runMockBrowserPipeline(steps, {
       args: { section: "feed/trending" },
       source: "internal",
     });
@@ -111,7 +121,7 @@ describe("browser step: navigate", () => {
         },
       },
     ];
-    await runPipeline(steps, { args: {}, source: "internal" });
+    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
     expect(mockPage.goto).toHaveBeenCalledWith("https://example.com", {
       settleMs: 500,
       waitUntil: "networkidle",
@@ -150,10 +160,13 @@ describe("browser step: navigate", () => {
       );
 
       await expect(
-        runPipeline([{ navigate: { url: "https://example.com/private" } }], {
-          args: {},
-          source: "internal",
-        }),
+        runMockBrowserPipeline(
+          [{ navigate: { url: "https://example.com/private" } }],
+          {
+            args: {},
+            source: "internal",
+          },
+        ),
       ).rejects.toMatchObject({
         detail: {
           action: "navigate",
@@ -202,10 +215,13 @@ describe("browser step: navigate", () => {
       );
 
       await expect(
-        runPipeline([{ navigate: { url: pathToFileURL(deniedPath).href } }], {
-          args: {},
-          source: "internal",
-        }),
+        runMockBrowserPipeline(
+          [{ navigate: { url: pathToFileURL(deniedPath).href } }],
+          {
+            args: {},
+            source: "internal",
+          },
+        ),
       ).rejects.toMatchObject({
         detail: {
           action: "navigate",
@@ -229,7 +245,10 @@ describe("browser step: evaluate", () => {
     const mockPage = await getMockPage();
     mockPage.evaluate.mockResolvedValueOnce(42);
     const steps = [{ evaluate: { expression: "1 + 1" } }];
-    const result = await runPipeline(steps, { args: {}, source: "internal" });
+    const result = await runMockBrowserPipeline(steps, {
+      args: {},
+      source: "internal",
+    });
     expect(mockPage.evaluate).toHaveBeenCalledWith("1 + 1");
     expect(result).toEqual([42]);
   });
@@ -238,7 +257,10 @@ describe("browser step: evaluate", () => {
     const mockPage = await getMockPage();
     mockPage.evaluate.mockResolvedValueOnce("hello");
     const steps = [{ evaluate: "document.title" }];
-    const result = await runPipeline(steps, { args: {}, source: "internal" });
+    const result = await runMockBrowserPipeline(steps, {
+      args: {},
+      source: "internal",
+    });
     expect(mockPage.evaluate).toHaveBeenCalledWith("document.title");
     expect(result).toEqual(["hello"]);
   });
@@ -248,7 +270,10 @@ describe("browser step: click", () => {
   it("clicks resolved selector", async () => {
     const mockPage = await getMockPage();
     const steps = [{ click: { selector: ".btn-${{ args.type }}" } }];
-    await runPipeline(steps, { args: { type: "submit" }, source: "internal" });
+    await runMockBrowserPipeline(steps, {
+      args: { type: "submit" },
+      source: "internal",
+    });
     expect(mockPage.click).toHaveBeenCalledWith(".btn-submit");
   });
 
@@ -256,7 +281,7 @@ describe("browser step: click", () => {
     const mockPage = await getMockPage();
     mockPage.click.mockClear();
     const steps = [{ click: "#main-button" }];
-    await runPipeline(steps, { args: {}, source: "internal" });
+    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
     expect(mockPage.click).toHaveBeenCalledWith("#main-button");
   });
 
@@ -264,7 +289,7 @@ describe("browser step: click", () => {
     const mockPage = await getMockPage();
     mockPage.nativeClick.mockClear();
     const steps = [{ click: { x: 150, y: 300 } }];
-    await runPipeline(steps, { args: {}, source: "internal" });
+    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
     expect(mockPage.nativeClick).toHaveBeenCalledWith(150, 300);
   });
 
@@ -272,17 +297,17 @@ describe("browser step: click", () => {
     const mockPage = await getMockPage();
     mockPage.click.mockClear();
     const steps = [{ click: { selector: "#btn" } }];
-    await runPipeline(steps, { args: {}, source: "internal" });
+    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
     expect(mockPage.click).toHaveBeenCalledWith("#btn");
   });
 
   it("throws PipelineError when neither selector nor coordinates provided", async () => {
     const steps = [{ click: {} }];
     await expect(
-      runPipeline(steps, { args: {}, source: "internal" }),
+      runMockBrowserPipeline(steps, { args: {}, source: "internal" }),
     ).rejects.toThrow(PipelineError);
     await expect(
-      runPipeline(steps, { args: {}, source: "internal" }),
+      runMockBrowserPipeline(steps, { args: {}, source: "internal" }),
     ).rejects.toThrow(
       /click step requires either selector or x\/y coordinates/,
     );
@@ -295,7 +320,7 @@ describe("browser step: type", () => {
     const steps = [
       { type: { selector: "#search", text: "${{ args.query }}" } },
     ];
-    await runPipeline(steps, {
+    await runMockBrowserPipeline(steps, {
       args: { query: "hello world" },
       source: "internal",
     });
@@ -306,7 +331,7 @@ describe("browser step: type", () => {
     const mockPage = await getMockPage();
     mockPage.sendCDP.mockClear();
     const steps = [{ type: { text: "raw input" } }];
-    await runPipeline(steps, { args: {}, source: "internal" });
+    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
     expect(mockPage.sendCDP).toHaveBeenCalledWith("Input.insertText", {
       text: "raw input",
     });
@@ -318,7 +343,7 @@ describe("browser step: type", () => {
     const steps = [
       { type: { selector: "#search", text: "query", submit: true } },
     ];
-    await runPipeline(steps, { args: {}, source: "internal" });
+    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
     expect(mockPage.press).toHaveBeenCalledWith("Enter");
   });
 });
@@ -328,7 +353,7 @@ describe("browser step: wait", () => {
     const mockPage = await getMockPage();
     mockPage.waitFor.mockClear();
     const steps = [{ wait: 100 }];
-    await runPipeline(steps, { args: {}, source: "internal" });
+    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
     expect(mockPage.waitFor).toHaveBeenCalledWith(100);
   });
 
@@ -336,7 +361,7 @@ describe("browser step: wait", () => {
     const mockPage = await getMockPage();
     mockPage.waitFor.mockClear();
     const steps = [{ wait: { selector: ".loaded", timeout: 5000 } }];
-    await runPipeline(steps, { args: {}, source: "internal" });
+    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
     expect(mockPage.waitFor).toHaveBeenCalledWith(".loaded", 5000);
   });
 
@@ -344,7 +369,7 @@ describe("browser step: wait", () => {
     const mockPage = await getMockPage();
     mockPage.waitFor.mockClear();
     const steps = [{ wait: { ms: 500 } }];
-    await runPipeline(steps, { args: {}, source: "internal" });
+    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
     expect(mockPage.waitFor).toHaveBeenCalledWith(500);
   });
 });
@@ -371,10 +396,10 @@ describe("browser step: intercept", () => {
     ];
 
     await expect(
-      runPipeline(steps, { args: {}, source: "internal" }),
+      runMockBrowserPipeline(steps, { args: {}, source: "internal" }),
     ).rejects.toThrow(PipelineError);
     await expect(
-      runPipeline(steps, { args: {}, source: "internal" }),
+      runMockBrowserPipeline(steps, { args: {}, source: "internal" }),
     ).rejects.toThrow(/Intercept timeout/);
   });
 });
@@ -385,7 +410,7 @@ describe("browser page cleanup", () => {
     mockPage.close.mockClear();
     mockPage.evaluate.mockResolvedValueOnce("done");
     const steps = [{ evaluate: "document.title" }];
-    await runPipeline(steps, { args: {}, source: "internal" });
+    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
     expect(mockPage.close).toHaveBeenCalled();
   });
 });
@@ -395,7 +420,7 @@ describe("browser step: press", () => {
     const mockPage = await getMockPage();
     mockPage.press.mockClear();
     const steps = [{ press: "Enter" }];
-    await runPipeline(steps, { args: {}, source: "internal" });
+    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
     expect(mockPage.press).toHaveBeenCalledWith("Enter");
   });
 
@@ -403,7 +428,10 @@ describe("browser step: press", () => {
     const mockPage = await getMockPage();
     mockPage.press.mockClear();
     const steps = [{ press: "${{ args.key }}" }];
-    await runPipeline(steps, { args: { key: "Tab" }, source: "internal" });
+    await runMockBrowserPipeline(steps, {
+      args: { key: "Tab" },
+      source: "internal",
+    });
     expect(mockPage.press).toHaveBeenCalledWith("Tab");
   });
 
@@ -411,7 +439,7 @@ describe("browser step: press", () => {
     const mockPage = await getMockPage();
     mockPage.nativeKeyPress.mockClear();
     const steps = [{ press: { key: "a", modifiers: ["ctrl"] } }];
-    await runPipeline(steps, { args: {}, source: "internal" });
+    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
     expect(mockPage.nativeKeyPress).toHaveBeenCalledWith("a", ["ctrl"]);
   });
 
@@ -419,7 +447,7 @@ describe("browser step: press", () => {
     const mockPage = await getMockPage();
     mockPage.press.mockClear();
     const steps = [{ press: { key: "Escape" } }];
-    await runPipeline(steps, { args: {}, source: "internal" });
+    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
     expect(mockPage.press).toHaveBeenCalledWith("Escape");
   });
 });
@@ -429,7 +457,7 @@ describe("browser step: scroll", () => {
     const mockPage = await getMockPage();
     mockPage.scroll.mockClear();
     const steps = [{ scroll: "down" }];
-    await runPipeline(steps, { args: {}, source: "internal" });
+    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
     expect(mockPage.scroll).toHaveBeenCalledWith("down");
   });
 
@@ -437,7 +465,7 @@ describe("browser step: scroll", () => {
     const mockPage = await getMockPage();
     mockPage.scroll.mockClear();
     const steps = [{ scroll: { to: "bottom" } }];
-    await runPipeline(steps, { args: {}, source: "internal" });
+    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
     expect(mockPage.scroll).toHaveBeenCalledWith("bottom");
   });
 
@@ -446,7 +474,7 @@ describe("browser step: scroll", () => {
     mockPage.evaluate.mockClear();
     mockPage.evaluate.mockResolvedValueOnce(undefined);
     const steps = [{ scroll: { selector: "#comments" } }];
-    await runPipeline(steps, { args: {}, source: "internal" });
+    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
     expect(mockPage.evaluate).toHaveBeenCalledWith(
       expect.stringContaining("scrollIntoView"),
     );
@@ -456,7 +484,7 @@ describe("browser step: scroll", () => {
     const mockPage = await getMockPage();
     mockPage.autoScroll.mockClear();
     const steps = [{ scroll: { auto: true, max: 10, delay: 1000 } }];
-    await runPipeline(steps, { args: {}, source: "internal" });
+    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
     expect(mockPage.autoScroll).toHaveBeenCalledWith({
       maxScrolls: 10,
       delay: 1000,
@@ -470,7 +498,10 @@ describe("browser step: snapshot", () => {
     mockPage.snapshot.mockClear();
     mockPage.snapshot.mockResolvedValueOnce("snapshot-tree");
     const steps = [{ snapshot: {} }];
-    const result = await runPipeline(steps, { args: {}, source: "internal" });
+    const result = await runMockBrowserPipeline(steps, {
+      args: {},
+      source: "internal",
+    });
     expect(mockPage.snapshot).toHaveBeenCalledWith({
       interactive: undefined,
       compact: undefined,
@@ -487,7 +518,10 @@ describe("browser step: snapshot", () => {
     const steps = [
       { snapshot: { interactive: true, compact: true, max_depth: 5 } },
     ];
-    const result = await runPipeline(steps, { args: {}, source: "internal" });
+    const result = await runMockBrowserPipeline(steps, {
+      args: {},
+      source: "internal",
+    });
     expect(mockPage.snapshot).toHaveBeenCalledWith({
       interactive: true,
       compact: true,
@@ -515,7 +549,10 @@ describe("browser step: tap", () => {
         },
       },
     ];
-    const result = await runPipeline(steps, { args: {}, source: "internal" });
+    const result = await runMockBrowserPipeline(steps, {
+      args: {},
+      source: "internal",
+    });
     expect(mockPage.evaluate).toHaveBeenCalledWith(
       expect.stringContaining("userStore"),
     );
@@ -540,7 +577,10 @@ describe("browser step: tap", () => {
         },
       },
     ];
-    const result = await runPipeline(steps, { args: {}, source: "internal" });
+    const result = await runMockBrowserPipeline(steps, {
+      args: {},
+      source: "internal",
+    });
     expect(result).toEqual(["not-json"]);
   });
 });
@@ -550,7 +590,10 @@ describe("existing steps still work", () => {
     // Test that adding browser steps does not break existing functionality
     const steps = [{ limit: 2 }];
     // When data is null, limit returns empty array
-    const result = await runPipeline(steps, { args: {}, source: "internal" });
+    const result = await runMockBrowserPipeline(steps, {
+      args: {},
+      source: "internal",
+    });
     expect(result).toEqual([]);
   });
 });

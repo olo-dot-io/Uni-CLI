@@ -21,6 +21,26 @@ export interface FetchConfig {
   retry?: number;
   backoff?: number;
   cache?: number;
+  /**
+   * Capture the response `Set-Cookie` header(s) and merge them into the
+   * returned `ctx.cookieHeader` so a later step in the same pipeline can send
+   * them. Host-scoped: cookies from a cross-site final URL are dropped
+   * (see cookie-capture.ts). Default false. Honored by `fetch_text`.
+   */
+  capture_cookies?: boolean;
+  /**
+   * Closed set of endpoint URLs tried in order when `rotate_on_field` fires.
+   * Each candidate is independently validated by `assertSafeRequestUrl`.
+   * Rotation is bounded by the list length — it can never loop forever
+   * (keeps adapter control flow decidable). Honored by `fetch_text`.
+   */
+  rotate_urls?: string[];
+  /**
+   * Fixed top-level JSON field whose presence in a parsed response body
+   * signals "wrong endpoint, try the next `rotate_urls` candidate" (e.g.
+   * 12306's `c_url`). A closed key match, not an arbitrary expression.
+   */
+  rotate_on_field?: string;
 }
 
 export function normalizeFetchAttempts(retry: number | undefined): number {

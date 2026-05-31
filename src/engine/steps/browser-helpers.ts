@@ -42,14 +42,8 @@ export async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
     if (daemonPage) return daemonPage;
   }
 
-  let port = 9222;
-  const rawPort = process.env.UNICLI_CDP_PORT;
-  if (rawPort) {
-    const p = parseInt(rawPort, 10);
-    if (Number.isInteger(p) && p >= 1 && p <= 65535) {
-      port = p;
-    }
-  }
+  const { resolveCdpPort } = await import("../../browser/cdp-client.js");
+  const port = resolveCdpPort();
 
   try {
     const { BrowserPage: BP } = await import("../../browser/page.js");

@@ -8,7 +8,7 @@
  * first valid (non-error, non-empty) response wins.
  */
 
-import { loadCookies, formatCookieHeader } from "./cookies.js";
+import { acquireCookies, formatCookieHeader } from "./cookies.js";
 import { USER_AGENT } from "../constants.js";
 
 /** Strategy probe order — auto-probeable strategies only */
@@ -27,41 +27,32 @@ interface ProbeResult {
 }
 
 /**
- * Build headers for a given strategy.
+ * Build headers for a given strategy from already-acquired cookies. Pure: the
+ * caller owns cookie acquisition so the disk/browser/CDP read happens once per
+ * probe instead of once per buildHeaders call.
  */
-function buildHeaders(strategy: string, site: string): Record<string, string> {
+function buildHeaders(
+  strategy: string,
+  cookies: Record<string, string> | null,
+): Record<string, string> {
   const headers: Record<string, string> = {
     "User-Agent": USER_AGENT,
     Accept: "application/json",
   };
 
-  if (strategy === "public") {
+  if (strategy === "public" || !cookies) {
     return headers;
   }
 
-  if (strategy === "cookie" || strategy === "header") {
-    const cookies = loadCookies(site);
-    if (cookies) {
-      headers["Cookie"] = formatCookieHeader(cookies);
-    }
-  }
+  headers["Cookie"] = formatCookieHeader(cookies);
 
   if (strategy === "header") {
     // Extract CSRF token from cookies — common patterns
-    const cookies = loadCookies(site);
-    if (cookies) {
-      const csrfKeys = [
-        "ct0",
-        "csrf_token",
-        "_csrf",
-        "x-csrf-token",
-        "bili_jct",
-      ];
-      for (const key of csrfKeys) {
-        if (cookies[key]) {
-          headers["X-Csrf-Token"] = cookies[key];
-          break;
-        }
+    const csrfKeys = ["ct0", "csrf_token", "_csrf", "x-csrf-token", "bili_jct"];
+    for (const key of csrfKeys) {
+      if (cookies[key]) {
+        headers["X-Csrf-Token"] = cookies[key];
+        break;
       }
     }
   }
@@ -82,7 +73,14 @@ async function probeStrategy(
     CASCADE_ORDER.indexOf(strategy as (typeof CASCADE_ORDER)[number]) * 0.1;
 
   try {
-    const headers = buildHeaders(strategy, site);
+    // Public needs no auth; for cookie/header acquire across disk → browser → CDP
+    // so a logged-in Chrome session is reused even when no cookie file exists yet.
+    let cookies: Record<string, string> | null = null;
+    if (strategy !== "public") {
+      const outcome = await acquireCookies(site);
+      if (outcome.status === "loaded") cookies = outcome.cookies;
+    }
+    const headers = buildHeaders(strategy, cookies);
     const resp = await fetch(url, {
       headers,
       signal: AbortSignal.timeout(5000),

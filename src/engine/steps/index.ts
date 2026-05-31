@@ -19,6 +19,8 @@ export { stepFetch, type FetchConfig } from "./fetch.js";
 export { stepFetchText } from "./fetch-text.js";
 export { stepParseRss, type RssConfig } from "./parse-rss.js";
 export { stepSelectXml, type SelectXmlConfig } from "./select-xml.js";
+export { stepSplitText, type SplitTextConfig } from "./split-text.js";
+export { stepToEntries, type ToEntriesConfig } from "./to-entries.js";
 export { stepOauth2Token, type Oauth2TokenStepConfig } from "./oauth2-token.js";
 export { stepExec, type ExecConfig } from "./exec.js";
 export { stepWriteTemp, type WriteTempConfig } from "./write-temp.js";

@@ -205,13 +205,19 @@ export async function maybeRefreshCookies(
   if (!options?.site) return;
   try {
     const { refreshCookies } = await import("./cookie-refresh.js");
-    const refreshed = await refreshCookies(options.site);
-    if (refreshed) {
+    const outcome = await refreshCookies(options.site);
+    if (outcome.status === "refreshed") {
       process.stderr.write(
-        `[cookie-refresh] Cookies refreshed for ${options.site}, retry the command.\n`,
+        `[cookie-refresh] refreshed ${outcome.cookieCount} cookie(s) for ${options.site}; retry the command.\n`,
+      );
+    } else {
+      process.stderr.write(
+        `[cookie-refresh] could not refresh ${options.site} (${outcome.status}): ${outcome.detail}\n`,
       );
     }
   } catch {
-    /* non-fatal */
+    // REASON: cookie-refresh is loaded dynamically as a best-effort recovery
+    // hint after an auth failure; a failure to load or run it must not mask the
+    // original PipelineError that is already being reported to the agent.
   }
 }

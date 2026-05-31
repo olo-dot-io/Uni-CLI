@@ -41,6 +41,7 @@ import {
 import { recordUsage } from "../runtime/usage-ledger.js";
 import { ExitCode } from "../types.js";
 import { refreshCookiesFromBrowser } from "../engine/cookies.js";
+import { annotateAuthRetryFailure } from "../output/auth-guidance.js";
 import type { AdapterArg, OutputFormat } from "../types.js";
 import type { AgentContext } from "../output/envelope.js";
 
@@ -341,20 +342,8 @@ export function registerAdapterDispatch(program: Command): void {
               ),
             );
             result = await runInvocation();
-          } else if (result.error) {
-            result.error.suggestion = [
-              result.error.suggestion,
-              refresh.suggestion,
-            ]
-              .filter(Boolean)
-              .join(" ");
-            result.error.remedy = {
-              message:
-                refresh.suggestion ??
-                "Refresh browser login state, then retry.",
-              command: `unicli auth import ${adapter.name}`,
-            };
-            result.envelope.error = result.error;
+          } else {
+            annotateAuthRetryFailure(result, refresh.suggestion, adapter.name);
           }
         }
 
