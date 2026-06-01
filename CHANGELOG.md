@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.225.0] — 2026-05-31 — Apollo · Irwin
+## [0.225.0] — 2026-06-01 — Apollo · Irwin
 
 ### Added
 

@@ -4049,14 +4049,14 @@ ancestor of `HEAD`, and checking that the first-class `macos app-actions` and
 ## Historical Release Audit
 
 The public git/tag history starts in 2026 with the `0.200.x` line. For the
-`0.225.0` candidate, the release was checked against `CHANGELOG.md`, local tags,
+`0.225.0` release, the release was checked against `CHANGELOG.md`, local tags,
 npm registry state, release automation, and the current architecture audit.
 
-Candidate facts:
+Release facts:
 
-- npm registry state: `@zenalexa/unicli@latest` is `0.224.1`;
-- local tags: latest tag is `v0.224.1`;
-- previous release metadata passes `npm run release:check -- --strict-codename`;
+- npm registry state before tagging: `@zenalexa/unicli@latest` is `0.224.1`;
+- release tag target: `v0.225.0`;
+- release metadata passes `npm run release:check -- --strict-codename`;
 - architecture audit reports 1819 commands, 1783 adapter commands, 36 core
   commands, 627 local-computer-use commands, and 0 missing source paths;
 - capability readiness covers web, browser, desktop, system, protocol, and

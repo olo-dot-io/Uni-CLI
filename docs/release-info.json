@@ -1,11 +1,11 @@
 {
   "version": "0.225.0",
   "codename": "Apollo · Irwin",
-  "date": "2026-05-31",
+  "date": "2026-06-01",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
   "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.225.0",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02250--2026-05-31--apollo--irwin",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02250--2026-06-01--apollo--irwin",
   "highlights": {
     "root": [
       "Uni-CLI 0.225.0 is the universal computer-control platform release: intent, policy, action substrates, evidence, delivery, and repair across real software.",
