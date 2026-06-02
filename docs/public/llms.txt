@@ -5,10 +5,10 @@ Uni-CLI is the universal computer-control platform for AI agents to discover, ru
 ## Operation Snapshot
 
 - Sites: 313
-- Commands: 1766
-- Adapters: 1216 (980 YAML + 236 TypeScript)
+- Commands: 1767
+- Adapters: 1217 (980 YAML + 237 TypeScript)
 - Pipeline steps: 103
-- Tests: 9090
+- Tests: 9119
 
 ## Agent Contract
 

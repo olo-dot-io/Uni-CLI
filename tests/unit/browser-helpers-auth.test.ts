@@ -11,6 +11,8 @@ const browserPageMock = vi.hoisted(() => ({
 }));
 
 const launcherMock = vi.hoisted(() => ({
+  findAvailableCDPPort: vi.fn().mockResolvedValue(9222),
+  isCDPAvailable: vi.fn().mockResolvedValue(false),
   launchChrome: vi.fn().mockResolvedValue(9333),
 }));
 
@@ -32,6 +34,7 @@ const localProfileMock = vi.hoisted(() => ({
   automationUserDataDirForProfile: vi.fn(
     () => "/Users/example/.unicli/browser-profiles/google-chrome_Default",
   ),
+  readUserDataDirDebugPort: vi.fn(() => ({ state: "not-recorded" })),
 }));
 
 const chromiumCookieMock = vi.hoisted(() => ({
@@ -76,10 +79,7 @@ import { acquirePage } from "../../src/engine/steps/browser-helpers.js";
 describe("browser user-session auth bootstrap", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    browserPageMock.connect
-      .mockRejectedValueOnce(new Error("CDP unavailable"))
-      .mockRejectedValueOnce(new Error("CDP unavailable"))
-      .mockResolvedValue(pageMock.page);
+    browserPageMock.connect.mockResolvedValue(pageMock.page);
     pageMock.page.sendCDP.mockResolvedValue(undefined);
   });
 
@@ -95,6 +95,7 @@ describe("browser user-session auth bootstrap", () => {
       }),
     ).resolves.toBe(pageMock.page);
 
+    expect(launcherMock.findAvailableCDPPort).toHaveBeenCalledWith(9222);
     expect(launcherMock.launchChrome).toHaveBeenCalledWith(
       9222,
       expect.objectContaining({
@@ -104,6 +105,9 @@ describe("browser user-session auth bootstrap", () => {
           "/Users/example/.unicli/browser-profiles/google-chrome_Default",
       }),
     );
+    expect(browserPageMock.connect).toHaveBeenCalledWith(9222, {
+      freshPage: true,
+    });
     expect(chromiumCookieMock.readCookies).toHaveBeenCalledWith({
       browser: "chrome",
       domain: "x.com",
@@ -121,5 +125,30 @@ describe("browser user-session auth bootstrap", () => {
         }),
       ],
     });
+  });
+
+  it("reuses a live automation profile CDP port instead of launching another Chrome", async () => {
+    localProfileMock.readUserDataDirDebugPort.mockReturnValueOnce({
+      state: "recorded",
+      port: 9223,
+      source: "process-list",
+    });
+    launcherMock.isCDPAvailable.mockResolvedValueOnce(true);
+
+    await expect(
+      acquirePage({
+        data: null,
+        args: {},
+        vars: {},
+        browserSession: "user",
+        site: "twitter",
+        domain: "x.com",
+      }),
+    ).resolves.toBe(pageMock.page);
+
+    expect(browserPageMock.connect).toHaveBeenCalledWith(9223, {
+      freshPage: true,
+    });
+    expect(launcherMock.launchChrome).not.toHaveBeenCalled();
   });
 });

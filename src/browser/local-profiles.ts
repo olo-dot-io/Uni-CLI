@@ -116,6 +116,36 @@ export function automationUserDataDirForProfile(
   );
 }
 
+export function readUserDataDirDebugPort(
+  userDataDir: string,
+): LocalBrowserDebugPort {
+  return readDebugPort(userDataDir);
+}
+
+export function parseUserDataDirDebugPort(
+  processList: string,
+  userDataDir: string,
+): LocalBrowserDebugPort {
+  let fallback: LocalBrowserDebugPort | null = null;
+  for (const line of processList.split(/\r?\n/)) {
+    const match = line.match(/^\s*\d+\s+(.+)$/);
+    if (!match) continue;
+    const command = match[1];
+    if (!command.includes("--remote-debugging-port=")) continue;
+    if (extractUserDataDirArg(command) !== userDataDir) continue;
+    const port = extractRemoteDebuggingPortArg(command);
+    if (port === null) continue;
+    const debugPort: LocalBrowserDebugPort = {
+      state: "recorded",
+      port,
+      source: "process-list",
+    };
+    if (!command.includes("--type=")) return debugPort;
+    fallback ??= debugPort;
+  }
+  return fallback ?? { state: "not-recorded" };
+}
+
 export function knownLocalBrowserInstalls(
   opts: LocalProfileDiscoveryOptions = {},
 ): LocalBrowserInstall[] {
@@ -373,6 +403,12 @@ function extractUserDataDirArg(command: string): string | null {
   return (match?.[1] ?? match?.[2] ?? match?.[3] ?? null)?.trim() ?? null;
 }
 
+function extractRemoteDebuggingPortArg(command: string): number | null {
+  const match = command.match(/--remote-debugging-port=(\d+)/);
+  const port = Number(match?.[1]);
+  return Number.isInteger(port) && port > 0 ? port : null;
+}
+
 function matchesBrowserExecutable(
   command: string,
   browserPath: string,
@@ -466,8 +502,16 @@ function isValidProfileDir(profilePath: string): boolean {
 
 function readDebugPort(userDataDir: string): LocalBrowserDebugPort {
   const source = join(userDataDir, "DevToolsActivePort");
-  if (!existsSync(source)) return { state: "not-recorded" };
+  const fromFile = existsSync(source)
+    ? readDebugPortFile(source)
+    : ({ state: "not-recorded" } satisfies LocalBrowserDebugPort);
+  if (fromFile.state === "recorded") return fromFile;
 
+  const fromProcess = parseUserDataDirDebugPort(readProcessList(), userDataDir);
+  return fromProcess.state === "recorded" ? fromProcess : fromFile;
+}
+
+function readDebugPortFile(source: string): LocalBrowserDebugPort {
   try {
     const [rawPort, websocketPath] = readFileSync(source, "utf-8")
       .split(/\r?\n/)

@@ -1,7 +1,7 @@
 {
-  "generated": "2026-05-31T17:28:24.022Z",
+  "generated": "2026-06-02T17:08:55.406Z",
   "total_sites": 313,
-  "total_commands": 1766,
+  "total_commands": 1767,
   "sites": [
     {
       "site": "12306",
@@ -8479,7 +8479,7 @@
       "domain": "api.spotify.com",
       "auth": true,
       "strategy": "cookie",
-      "command_count": 23,
+      "command_count": 24,
       "commands": [
         {
           "name": "now-playing",
@@ -8520,6 +8520,11 @@
           "name": "queue",
           "description": "Add a Spotify track to the playback queue",
           "command": "unicli spotify queue"
+        },
+        {
+          "name": "play-track",
+          "description": "Search Spotify for a track query and start playback",
+          "command": "unicli spotify play-track"
         },
         {
           "name": "shuffle",
@@ -10150,7 +10155,7 @@
       "commands": [
         {
           "name": "feed",
-          "description": "Xiaohongshu home feed (via Pinia Store Action)",
+          "description": "Xiaohongshu home feed",
           "command": "unicli xiaohongshu feed"
         },
         {

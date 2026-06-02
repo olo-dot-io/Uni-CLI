@@ -5,8 +5,8 @@ This file is generated from the same VitePress site map as the public docs.
 ## Snapshot
 
 - Sites: 313
-- Commands: 1766
-- Adapters: 1216
+- Commands: 1767
+- Adapters: 1217
 - Pipeline steps: 103
 
 ---
@@ -66,9 +66,9 @@ Agent execution does not need a longer resident tool list or another website wra
 ## Coverage
 
 - Sites and tools: 313
-- Operations: 1766
+- Operations: 1767
 - Pipeline steps: 103
-- Tests: 9090
+- Tests: 9119
 
 These numbers come from the current generated repo artifacts: operations, adapters, pipeline steps, tests, and substrates are counted by the build.
 
@@ -81,7 +81,7 @@ These numbers come from the current generated repo artifacts: operations, adapte
 
 ## Current Version
 
-Latest: v0.225.0 · Apollo · Irwin.
+Latest: v0.225.1 · Apollo · Conrad.
 
 ## Agent Index
 
@@ -459,7 +459,7 @@ The cascade order is `public → cookie → header → intercept → ui`. On the
 
 Every command returns a v2 AgentEnvelope — the same shape on success or failure.
 Agents parse one schema across
-<span><!-- STATS:command_count -->1766<!-- /STATS --></span> commands.
+<span><!-- STATS:command_count -->1767<!-- /STATS --></span> commands.
 
 ```json
 {
@@ -554,7 +554,7 @@ That is the simplest exposure path. The same operation contract can also run
 through MCP, ACP, HTTP, skills, or CI without changing semantics. One command
 shape across
 <span><!-- STATS:site_count -->313<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1766<!-- /STATS --></span> commands. One error
+<span><!-- STATS:command_count -->1767<!-- /STATS --></span> commands. One error
 envelope across every failure. One self-repair path across every adapter.
 
 ## Further reading
@@ -1193,7 +1193,7 @@ Any runtime that can spawn a subprocess can use Uni-CLI directly. Uni-CLI also e
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.225.0 ships a generated operation catalog with <span><!-- STATS:site_count -->313<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1766<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1216<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->9090<!-- /STATS --></span> tests. The headline is not the count; it is the shared control contract: intent, policy, action substrate, evidence, delivery, repair, and the same AgentEnvelope across web, browser, desktop, local tools, files, and protocols.
+v0.225.1 ships a generated operation catalog with <span><!-- STATS:site_count -->313<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1767<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1217<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->9119<!-- /STATS --></span> tests. The headline is not the count; it is the shared control contract: intent, policy, action substrate, evidence, delivery, repair, and the same AgentEnvelope across web, browser, desktop, local tools, files, and protocols.
 
 ## Can Uni-CLI download papers and read local PDFs?
 
@@ -2034,7 +2034,7 @@ operations before running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 313 sites, 1766 commands.
+This catalog is generated from the adapter manifest: 313 sites, 1767 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -2271,7 +2271,7 @@ This catalog is generated from the adapter manifest: 313 sites, 1766 commands.
 | slay-the-spire-ii | service | 6 | no | unicli slay-the-spire-ii deck<br>unicli slay-the-spire-ii end-turn<br>unicli slay-the-spire-ii map |
 | slock | browser | 1 | yes | unicli slock servers |
 | smzdm | web-api | 3 | yes | unicli smzdm article<br>unicli smzdm hot<br>unicli smzdm search |
-| spotify | web-api | 23 | yes | unicli spotify now-playing<br>unicli spotify playlists<br>unicli spotify search |
+| spotify | web-api | 24 | yes | unicli spotify now-playing<br>unicli spotify playlists<br>unicli spotify search |
 | sspai | web-api | 2 | no | unicli sspai hot<br>unicli sspai latest |
 | stackoverflow | web-api | 10 | no | unicli stackoverflow bounties<br>unicli stackoverflow hot<br>unicli stackoverflow question |
 | stagehand | bridge | 1 | no | unicli stagehand wrap-observe |
@@ -4021,13 +4021,12 @@ If the maintainer has not explicitly asked to release, development stays under
 
 ## Versioning
 
-Uni-CLI follows semver. The `0.225.0` line is a minor release candidate because
-it changes the public product model from execution substrate/catalog framing to
-the universal computer-control platform model: intent, policy, action
-substrates, evidence, delivery, and repair across real software. It is not a
-stable-major compatibility boundary; it preserves the CLI/package shape while
-making architecture audit, command contracts, and docs describe the larger
-category.
+Uni-CLI follows semver. The `0.225.1` line is a patch release candidate because
+it repairs the site-availability and browser-substrate verification path without
+breaking the CLI/package shape. The `0.225.0` line introduced the universal
+computer-control platform model; `0.225.1` makes that model operationally
+auditable by separating real adapter failures from auth, platform, browser,
+local-daemon, write/destructive, quarantined, and caller-input-required paths.
 
 | Change                                                                                   | Version bump |
 | ---------------------------------------------------------------------------------------- | ------------ |
@@ -4049,36 +4048,41 @@ ancestor of `HEAD`, and checking that the first-class `macos app-actions` and
 ## Historical Release Audit
 
 The public git/tag history starts in 2026 with the `0.200.x` line. For the
-`0.225.0` release, the release was checked against `CHANGELOG.md`, local tags,
-npm registry state, release automation, and the current architecture audit.
+`0.225.1` release, the release was checked against `CHANGELOG.md`, local tags,
+npm registry state, release automation, adapter health, real E2E workflows, and
+the current site-availability sweep.
 
 Release facts:
 
-- npm registry state before tagging: `@zenalexa/unicli@latest` is `0.224.1`;
-- release tag target: `v0.225.0`;
+- npm registry state before tagging: `@zenalexa/unicli@latest` is `0.225.0`;
+- release tag target: `v0.225.1`;
 - release metadata passes `npm run release:check -- --strict-codename`;
-- architecture audit reports 1819 commands, 1783 adapter commands, 36 core
-  commands, 627 local-computer-use commands, and 0 missing source paths;
-- capability readiness covers web, browser, desktop, system, protocol, and
-  bridge surfaces;
-- workflow readiness catalogs media playback, video search, browser tab
-  control, installed app operation, productivity state, and open/navigate
-  destination, with required next evidence before live claims.
+- site availability classifies 313 sites and 1784 adapter commands with
+  `fail=0`;
+- representative safe site probes report `ok=64`, `environment_skip=12`, and
+  `no_auto_probe=237`;
+- adapter health reports `ok=160`, `fail=0`, `skip=1624`, and
+  `skip_env_missing=64`;
+- real E2E reports 43 passed workflows, 0 failed workflows, and 1 skipped
+  workflow for an arXiv rate limit;
+- built-CLI social smoke passes for Twitter/X, Xiaohongshu, Reddit, YouTube,
+  Bilibili, and Weibo.
 
-| Release line | Historical role                                                                                               | Audit lesson for `0.225.0`                                                                         |
-| ------------ | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `0.200.0`    | First Vostok public adapter platform with build manifest and self-repair architecture.                        | A release must expose a machine-readable surface, not just prose.                                  |
-| `0.208.0`    | Skills export, MCP gateway, eval catalog, usage ledger, operate/observe, and documented 4-reviewer hardening. | Review findings must be explicit and fixed before tag, especially security and release wiring.     |
-| `0.213.0`    | GA for engine rigor, split executor/runtime/steps, schema-v2 adapters, and v2 `AgentEnvelope`.                | Stable behavior contracts outrank marketing claims.                                                |
-| `0.217.0`    | Execution-substrate framing with operation policy, run recording, browser evidence, and agent backend matrix. | Product framing can become too small as real control surfaces expand.                              |
-| `0.218.0`    | Cross-platform browser cookie import and auth diagnostics.                                                    | Auth and platform boundaries must be explicit; unsupported paths must fail honestly.               |
-| `0.221.0`    | Patent and scholarly verticals with typed records and source routing.                                         | Vertical breadth matters only when records, provenance, and tests stay coherent.                   |
-| `0.222.0`    | Local computer-use and compute capture entered the release surface.                                           | Desktop/computer control is a core substrate, not a sidecar demo.                                  |
-| `0.224.0`    | Callable architecture audit/tree and live registry-backed search caching.                                     | Architecture audit must not omit core control commands or reduce the product to adapter lifecycle. |
+| Release line | Historical role                                                                                                 | Audit lesson for `0.225.1`                                                                         |
+| ------------ | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `0.200.0`    | First Vostok public adapter platform with build manifest and self-repair architecture.                          | A release must expose a machine-readable surface, not just prose.                                  |
+| `0.208.0`    | Skills export, MCP gateway, eval catalog, usage ledger, operate/observe, and documented 4-reviewer hardening.   | Review findings must be explicit and fixed before tag, especially security and release wiring.     |
+| `0.213.0`    | GA for engine rigor, split executor/runtime/steps, schema-v2 adapters, and v2 `AgentEnvelope`.                  | Stable behavior contracts outrank marketing claims.                                                |
+| `0.217.0`    | Execution-substrate framing with operation policy, run recording, browser evidence, and agent backend matrix.   | Product framing can become too small as real control surfaces expand.                              |
+| `0.218.0`    | Cross-platform browser cookie import and auth diagnostics.                                                      | Auth and platform boundaries must be explicit; unsupported paths must fail honestly.               |
+| `0.221.0`    | Patent and scholarly verticals with typed records and source routing.                                           | Vertical breadth matters only when records, provenance, and tests stay coherent.                   |
+| `0.222.0`    | Local computer-use and compute capture entered the release surface.                                             | Desktop/computer control is a core substrate, not a sidecar demo.                                  |
+| `0.224.0`    | Callable architecture audit/tree and live registry-backed search caching.                                       | Architecture audit must not omit core control commands or reduce the product to adapter lifecycle. |
+| `0.225.0`    | Universal computer-control platform framing with intent, policy, action substrates, evidence, delivery, repair. | Product claims need live health gates, not catalog counts alone.                                   |
 
-`0.225.0` is a minor release because the product identity and architecture audit
-surface changed materially. It does not claim a stable-major compatibility
-contract.
+`0.225.1` is a patch release because it hardens availability diagnostics,
+browser-substrate repair, and real workflow verification while preserving the
+public command/package contract.
 
 ## Changesets
 
@@ -4137,7 +4141,7 @@ npm run release:check -- --strict-codename
 ```
 
 For the 0.225 line, the release label format is unchanged. The current release
-candidate label is `Apollo · Irwin`.
+candidate label is `Apollo · Conrad`.
 
 ## Substantive Commits
 
@@ -4299,10 +4303,10 @@ control real software through a governed, observable, repairable path.
 
 The current generated operation catalog is the source of truth:
 **<span><!-- STATS:site_count -->313<!-- /STATS --></span> sites**,
-**<span><!-- STATS:command_count -->1766<!-- /STATS --></span> commands**,
-**<span><!-- STATS:adapter_count_total -->1216<!-- /STATS --></span> adapters**,
+**<span><!-- STATS:command_count -->1767<!-- /STATS --></span> commands**,
+**<span><!-- STATS:adapter_count_total -->1217<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->9090<!-- /STATS --></span> tests** in v0.225.0.
+and **<span><!-- STATS:test_count -->9119<!-- /STATS --></span> tests** in v0.225.1.
 
 ## Computer-Control Thesis
 
@@ -4590,6 +4594,10 @@ Observation is what turns a tool call into evidence.
 
 - Every result has command context, duration, surface, data, error, retryability,
   and next actions.
+- An empty successful observation is still a successful observation: adapters
+  that legitimately return `[]` keep `ok: true` and exit `0`. Absence becomes
+  exit `66` only when the command emits an explicit `empty_result` error, such
+  as no discovery match or a domain-specific not-found condition.
 - Browser actions can attach pre/post evidence, target identity, movement data,
   and stale-reference diagnostics.
 - Computer-use actions can attach `visual_action`, target point, overlay status,
@@ -4772,6 +4780,7 @@ Use the smallest credible ladder for the claim under change:
 | Adapter behavior                   | `unicli test <site>` or adapter runner with real owned code           |
 | Browser/session behavior           | Browser evidence test or live daemon smoke                            |
 | Local computer-use behavior        | `doctor compute`, snapshot/find/action smoke, post-capture evidence   |
+| Real CLI workflow matrix           | `npm run e2e:real`                                                    |
 | Public docs UI                     | `npm run docs:build` plus screenshot/visual inspection for UI changes |
 | Release readiness                  | `npm run verify`                                                      |
 
@@ -4948,7 +4957,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Current: v0.225.0 — Apollo · Irwin. <!-- STATS:site_count -->313<!-- /STATS --> sites, <!-- STATS:command_count -->1766<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps.
+> Current: v0.225.1 — Apollo · Conrad. <!-- STATS:site_count -->313<!-- /STATS --> sites, <!-- STATS:command_count -->1767<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction for the agent control plane for
 real software: a universal agent-to-computer control platform. Historical

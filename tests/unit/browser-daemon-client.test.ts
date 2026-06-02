@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  DAEMON_PRODUCT,
+  DAEMON_PROTOCOL,
+  isCompatibleExtensionHello,
+  type ExtensionHello,
+} from "../../src/browser/protocol.js";
+import {
   fetchDaemonPortConflict,
   fetchDaemonStatus,
   selectDaemonSpawnPort,
@@ -34,6 +40,23 @@ afterEach(() => {
 });
 
 describe("daemon client compatibility", () => {
+  it("rejects legacy extension hello messages without Uni-CLI protocol identity", () => {
+    expect(
+      isCompatibleExtensionHello({
+        type: "hello",
+        version: "1.0.17",
+      } as ExtensionHello),
+    ).toBe(false);
+    expect(
+      isCompatibleExtensionHello({
+        type: "hello",
+        version: "0.225.0-test",
+        product: DAEMON_PRODUCT,
+        protocol: DAEMON_PROTOCOL,
+      }),
+    ).toBe(true);
+  });
+
   it("uses an existing compatibility daemon port and header when configured", async () => {
     delete process.env.UNICLI_DAEMON_PORT;
     process.env[compatPortEnv] = "19826";
@@ -106,9 +129,11 @@ describe("daemon client compatibility", () => {
       sendCommand("navigate", { url: "https://example.com" }),
     ).resolves.toEqual({ navigated: true });
 
-    const commandBody = JSON.parse(
-      (fetchMock.mock.calls[1]?.[1] as { body: string }).body,
-    ) as { windowFocused?: boolean };
+    const [, commandInit] = fetchMock.mock.calls[1] ?? [];
+    expect(commandInit).toBeDefined();
+    const commandBody = JSON.parse((commandInit as { body: string }).body) as {
+      windowFocused?: boolean;
+    };
     expect(commandBody.windowFocused).toBe(false);
   });
 
@@ -125,9 +150,11 @@ describe("daemon client compatibility", () => {
 
     await sendCommand("navigate", { url: "https://example.com" });
 
-    const commandBody = JSON.parse(
-      (fetchMock.mock.calls[1]?.[1] as { body: string }).body,
-    ) as { windowFocused?: boolean };
+    const [, commandInit] = fetchMock.mock.calls[1] ?? [];
+    expect(commandInit).toBeDefined();
+    const commandBody = JSON.parse((commandInit as { body: string }).body) as {
+      windowFocused?: boolean;
+    };
     expect(commandBody.windowFocused).toBe(true);
   });
 

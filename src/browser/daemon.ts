@@ -19,6 +19,8 @@ import {
   DAEMON_PORT,
   DAEMON_PORT_CANDIDATES,
   DAEMON_HOST,
+  DAEMON_PRODUCT,
+  DAEMON_PROTOCOL,
   DAEMON_IDLE_TIMEOUT,
   DAEMON_WS_PATH,
   DAEMON_MAX_BODY,
@@ -29,6 +31,7 @@ import {
   type DaemonStatus,
   type ExtensionHello,
   type ExtensionLog,
+  isCompatibleExtensionHello,
 } from "./protocol.js";
 import { IdleManager } from "./idle-manager.js";
 
@@ -43,6 +46,17 @@ const IDLE_TIMEOUT = Number(
 
 let extensionWs: WebSocket | null = null;
 let extensionVersion: string | null = null;
+let extensionProduct: string | null = null;
+let extensionProtocol: string | null = null;
+
+function hasCompatibleExtension(): boolean {
+  return (
+    extensionWs !== null &&
+    extensionWs.readyState === WebSocket.OPEN &&
+    extensionProduct === DAEMON_PRODUCT &&
+    extensionProtocol === DAEMON_PROTOCOL
+  );
+}
 
 /** Pending CLI→Extension commands awaiting response. */
 const pending = new Map<
@@ -136,8 +150,8 @@ async function handleRequest(
   if (req.method === "GET" && path === "/ping") {
     json(res, 200, {
       ok: true,
-      product: "unicli",
-      protocol: "unicli-browser-bridge",
+      product: DAEMON_PRODUCT,
+      protocol: DAEMON_PROTOCOL,
       port: PORT,
     });
     return;
@@ -157,8 +171,10 @@ async function handleRequest(
         ok: true,
         pid: process.pid,
         uptime: Date.now() - startTime,
-        extensionConnected: extensionWs !== null,
+        extensionConnected: hasCompatibleExtension(),
         extensionVersion: extensionVersion ?? undefined,
+        extensionProduct: extensionProduct ?? undefined,
+        extensionProtocol: extensionProtocol ?? undefined,
         pending: pending.size,
         lastCliRequestTime: idleManager.lastCliRequestTime,
         memoryMB: Math.round(process.memoryUsage.rss() / 1024 / 1024),
@@ -222,11 +238,11 @@ async function handleCommand(
     return;
   }
 
-  if (!extensionWs || extensionWs.readyState !== WebSocket.OPEN) {
+  if (!hasCompatibleExtension()) {
     json(res, 503, {
       id: body.id,
       ok: false,
-      error: "Extension not connected",
+      error: "Compatible Uni-CLI browser extension not connected",
     });
     return;
   }
@@ -280,7 +296,9 @@ wss.on("connection", (ws: WebSocket) => {
 
   extensionWs = ws;
   extensionVersion = null;
-  idleManager.setExtensionConnected(true);
+  extensionProduct = null;
+  extensionProtocol = null;
+  idleManager.setExtensionConnected(false);
   pushLog("log", "Extension connected");
   console.error("[daemon] Extension connected");
 
@@ -314,7 +332,18 @@ wss.on("connection", (ws: WebSocket) => {
     // Extension hello
     if (msg.type === "hello") {
       const hello = msg as unknown as ExtensionHello;
+      if (!isCompatibleExtensionHello(hello)) {
+        pushLog(
+          "warn",
+          `Incompatible extension hello: product=${String(hello.product ?? "unknown")} protocol=${String(hello.protocol ?? "unknown")}`,
+        );
+        ws.close(1002, "Incompatible Uni-CLI browser bridge protocol");
+        return;
+      }
       extensionVersion = hello.version;
+      extensionProduct = hello.product ?? null;
+      extensionProtocol = hello.protocol ?? null;
+      idleManager.setExtensionConnected(true);
       pushLog("log", `Extension hello: v${hello.version}`);
       console.error(`[daemon] Extension hello: v${hello.version}`);
       return;
@@ -363,6 +392,8 @@ wss.on("connection", (ws: WebSocket) => {
 function cleanupExtension(reason: string): void {
   extensionWs = null;
   extensionVersion = null;
+  extensionProduct = null;
+  extensionProtocol = null;
   idleManager.setExtensionConnected(false);
   pushLog("log", `Extension disconnected: ${reason}`);
   console.error(`[daemon] Extension disconnected: ${reason}`);

@@ -241,6 +241,40 @@ describe("search", () => {
     expect(results[0].site).toBe("bilibili");
   });
 
+  it("routes listen-to-song intents to executable audio playback commands", () => {
+    const results = search("我想听 I really wanna stay at your house", 5);
+    const commands = results.map((r) => `${r.site}/${r.command}`);
+
+    expect(results[0]).toMatchObject({
+      site: "spotify",
+      command: "play-track",
+      category: "audio",
+    });
+    expect(commands).not.toContain("ctrip/hotel-search");
+  });
+
+  it("prefers track playback over generic desktop play when a Spotify song query is explicit", () => {
+    const results = search("play I really wanna stay at your house spotify", 5);
+
+    expect(results[0]).toMatchObject({
+      site: "spotify",
+      command: "play-track",
+    });
+  });
+
+  it("keeps hotel stay queries in the travel domain", () => {
+    const results = search(
+      "search Ctrip hotels for a weekend stay in Shanghai",
+      5,
+    );
+
+    expect(results[0]).toMatchObject({
+      site: "ctrip",
+      command: "hotel-search",
+      category: "travel",
+    });
+  });
+
   it("finds commands for English queries", () => {
     const results = search("twitter", 3);
     expect(results.length).toBeGreaterThan(0);

@@ -1,13 +1,105 @@
 /**
  * @owner   src/discovery/intents.ts
- * @does    Score natural-language intent signals that sit above raw BM25/TF-IDF lexical matching.
- * @needs   Search document metadata, site category map, vertical command capability knowledge
+ * @does    Owns discovery semantic routing: hard intent frames plus soft ranking signals above lexical BM25/TF-IDF.
+ * @needs   Search document metadata, site category map, vertical command capability knowledge.
  * @feeds   src/discovery/search.ts
- * @breaks  Weak or stale boosts make agents discover plausible but wrong commands for broad user intents.
+ * @breaks  Over-broad hard frames suppress correct lexical matches; stale soft boosts make plausible wrong commands rank first.
+ * @invariants Hard blocks only apply to high-confidence frames; soft boosts never remove candidates.
+ * @side-effects none.
+ * @perf    O(query terms + constant-size frame tables + one document semantic pass).
+ * @concurrency pure and reentrant.
+ * @test    tests/unit/search.test.ts, tests/unit/search-eval.test.ts
+ * @stability Public discovery behavior.
+ * @since   2026-06-01
  */
 
 import { SITE_CATEGORIES } from "./aliases.js";
 import type { SearchIndex } from "./search.js";
+
+type SearchDocument = SearchIndex["documents"][number];
+
+export type IntentFrame =
+  | {
+      kind: "audio.playback";
+      preferredSites: readonly string[];
+    }
+  | {
+      kind: "travel.lodging";
+      preferredSites: readonly string[];
+    };
+
+export interface IntentKernelInput {
+  query: string;
+  queryTerms: readonly string[];
+  siteHints: readonly string[];
+}
+
+export interface IntentKernelDecision {
+  blocked: boolean;
+  boost: number;
+}
+
+const AUDIO_PLAYBACK_STRONG_BOOST = 72;
+const AUDIO_CATEGORY_BOOST = 46;
+const AUDIO_SITE_HINT_BOOST = 20;
+const TRAVEL_LODGING_COMMAND_BOOST = 30;
+
+const AUDIO_SITES = ["spotify", "netease-music"] as const;
+const AUDIO_QUERY_SITE_HINTS = new Set<string>([
+  "spotify",
+  "netease-music",
+  "apple-music",
+  "apple-podcasts",
+  "xiaoyuzhou",
+]);
+const AUDIO_BLOCKED_CATEGORIES = new Set([
+  "finance",
+  "shopping",
+  "travel",
+  "jobs",
+  "patent",
+  "scholarly",
+  "social",
+  "news",
+]);
+const AUDIO_PLAYBACK_COMMANDS = new Map<string, number>([
+  ["play-track", AUDIO_PLAYBACK_STRONG_BOOST],
+  ["queue", 34],
+  ["search", 22],
+  ["play", 12],
+  ["now-playing", 8],
+  ["status", 8],
+]);
+const AUDIO_SECONDARY_PENALTY = new Map<string, number>([
+  ["play-liked", -16],
+  ["playlists", -10],
+  ["top-tracks", -8],
+]);
+
+const MEDIA_PLAYBACK_TRIGGER =
+  /(^|\s)(play|listen)\b|我想听|想听|听一下|收听|播放|放一下/u;
+const MEDIA_SEARCH_TRIGGER =
+  /\b(search|find|lookup|query)\b|搜索|查找|查询|检索/u;
+const MEDIA_STATUS_TRIGGER =
+  /\b(now\s+playing|currently\s+playing|status)\b|正在播放/u;
+const NON_AUDIO_PLAY_HINT =
+  /\b(video|movie|game|chess|youtube|bilibili|douyin|tiktok|twitch)\b|视频|电影|游戏|棋/u;
+
+const TRAVEL_SITES = ["ctrip"] as const;
+const TRAVEL_LODGING_TERMS = new Set([
+  "hotel",
+  "hotels",
+  "lodging",
+  "stay",
+  "stays",
+  "checkin",
+  "checkout",
+  "旅馆",
+  "酒店",
+  "住宿",
+  "入住",
+  "退房",
+]);
 
 const BOOST_RUN_TRACE_INTENT = 45.0;
 const BOOST_ACG_CREATOR_INTENT = 36.0;
@@ -30,8 +122,46 @@ const SCHOLARLY_WORKFLOW_COMMANDS = new Set([
 ]);
 const SCHOLARLY_NON_BLOCKING_SITE_HINTS = new Set(["agents", "pdf"]);
 
+export function resolveIntentFrame(
+  input: IntentKernelInput,
+): IntentFrame | undefined {
+  const terms = new Set(input.queryTerms);
+  const siteHints = new Set(input.siteHints);
+  const normalizedQuery = input.query.normalize("NFKC").toLowerCase();
+
+  if (isAudioPlaybackIntent(normalizedQuery, terms, siteHints)) {
+    return {
+      kind: "audio.playback",
+      preferredSites: preferredSites(siteHints, AUDIO_SITES),
+    };
+  }
+
+  if (isTravelLodgingIntent(terms, siteHints)) {
+    return {
+      kind: "travel.lodging",
+      preferredSites: preferredSites(siteHints, TRAVEL_SITES),
+    };
+  }
+
+  return undefined;
+}
+
+export function evaluateIntentFrame(
+  frame: IntentFrame | undefined,
+  doc: SearchDocument,
+): IntentKernelDecision {
+  if (!frame) return { blocked: false, boost: 0 };
+
+  switch (frame.kind) {
+    case "audio.playback":
+      return evaluateAudioPlayback(frame, doc);
+    case "travel.lodging":
+      return evaluateTravelLodging(frame, doc);
+  }
+}
+
 export function intentBoost(
-  doc: SearchIndex["documents"][number],
+  doc: SearchDocument,
   queryTerms: string[],
   siteHints: string[],
 ): number {
@@ -47,8 +177,97 @@ export function intentBoost(
   );
 }
 
+function isAudioPlaybackIntent(
+  normalizedQuery: string,
+  terms: Set<string>,
+  siteHints: Set<string>,
+): boolean {
+  if (MEDIA_STATUS_TRIGGER.test(normalizedQuery)) return false;
+  if (MEDIA_SEARCH_TRIGGER.test(normalizedQuery) && !hasPlaybackVerb(terms)) {
+    return false;
+  }
+  if (NON_AUDIO_PLAY_HINT.test(normalizedQuery)) return false;
+
+  const hasAudioSite = hasAnyValue(siteHints, AUDIO_QUERY_SITE_HINTS);
+  const hasAudioTerm = hasAny(terms, [
+    "audio",
+    "music",
+    "song",
+    "songs",
+    "track",
+    "tracks",
+    "歌曲",
+    "音乐",
+  ]);
+  const hasPlaybackTrigger = MEDIA_PLAYBACK_TRIGGER.test(normalizedQuery);
+
+  if (hasPlaybackTrigger && (hasAudioSite || hasAudioTerm)) return true;
+  if (hasPlaybackTrigger && normalizedQuery.startsWith("play ")) return true;
+  return /我想听|想听|听一下|收听|播放|放一下/u.test(normalizedQuery);
+}
+
+function hasPlaybackVerb(terms: Set<string>): boolean {
+  return hasAny(terms, ["play", "listen", "播放", "收听", "想听"]);
+}
+
+function isTravelLodgingIntent(
+  terms: Set<string>,
+  siteHints: Set<string>,
+): boolean {
+  return (
+    hasAnyValue(siteHints, TRAVEL_SITES) &&
+    hasAnyValue(terms, TRAVEL_LODGING_TERMS)
+  );
+}
+
+function evaluateAudioPlayback(
+  frame: Extract<IntentFrame, { kind: "audio.playback" }>,
+  doc: SearchDocument,
+): IntentKernelDecision {
+  const category = documentCategory(doc);
+  const preferredSite = frame.preferredSites.includes(doc.site);
+  if (!preferredSite && AUDIO_BLOCKED_CATEGORIES.has(category)) {
+    return { blocked: true, boost: 0 };
+  }
+
+  let boost = 0;
+  if (category === "audio") boost += AUDIO_CATEGORY_BOOST;
+  if (preferredSite) boost += AUDIO_SITE_HINT_BOOST;
+  boost += AUDIO_PLAYBACK_COMMANDS.get(doc.command) ?? 0;
+  boost += AUDIO_SECONDARY_PENALTY.get(doc.command) ?? 0;
+  return { blocked: false, boost };
+}
+
+function evaluateTravelLodging(
+  frame: Extract<IntentFrame, { kind: "travel.lodging" }>,
+  doc: SearchDocument,
+): IntentKernelDecision {
+  if (!frame.preferredSites.includes(doc.site)) {
+    return { blocked: false, boost: 0 };
+  }
+  if (doc.command === "hotel-search") {
+    return { blocked: false, boost: TRAVEL_LODGING_COMMAND_BOOST };
+  }
+  if (doc.command === "hotel-suggest") {
+    return { blocked: false, boost: TRAVEL_LODGING_COMMAND_BOOST * 0.72 };
+  }
+  return { blocked: false, boost: 0 };
+}
+
+function preferredSites<T extends string>(
+  siteHints: Set<string>,
+  defaultSites: readonly T[],
+): readonly string[] {
+  const hinted = defaultSites.filter((site) => siteHints.has(site));
+  return hinted.length > 0 ? hinted : defaultSites;
+}
+
+function documentCategory(doc: SearchDocument): string {
+  return doc.category ?? SITE_CATEGORIES.get(doc.site) ?? "other";
+}
+
 function architectureIntentBoost(
-  doc: SearchIndex["documents"][number],
+  doc: SearchDocument,
   queryTerms: string[],
 ): number {
   const terms = new Set(queryTerms);
@@ -513,4 +732,14 @@ function scholarlyProviderSourceBoost(
 
 function hasAny(terms: Set<string>, values: string[]): boolean {
   return values.some((value) => terms.has(value));
+}
+
+function hasAnyValue<T>(
+  values: Set<T>,
+  needles: ReadonlySet<T> | readonly T[],
+): boolean {
+  for (const needle of needles) {
+    if (values.has(needle)) return true;
+  }
+  return false;
 }

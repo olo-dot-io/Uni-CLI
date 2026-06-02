@@ -41,6 +41,7 @@ import type {
   AdapterCommand,
   AdapterArg,
   AdapterType,
+  BrowserSessionPreference,
   PipelineStep,
 } from "../types.js";
 
@@ -146,6 +147,7 @@ interface YamlAdapter {
   domain?: string;
   strategy?: string;
   browser?: boolean;
+  browserSession?: BrowserSessionPreference;
   type?: string;
   binary?: string;
   detect?: string;
@@ -354,6 +356,9 @@ function extractTsCommandStubs(
       if (!name) continue;
       const strategy = objectStrategyProp(body);
       const browser = objectBoolProp(body, "browser");
+      const browserSession = objectStringProp(body, "browserSession") as
+        | BrowserSessionPreference
+        | undefined;
       const domain = objectStringProp(body, "domain");
       const base = objectStringProp(body, "base");
       if (domain) meta.domain = domain;
@@ -370,6 +375,7 @@ function extractTsCommandStubs(
         ) as AdapterCommand["target_surface"],
         strategy,
         browser,
+        browserSession,
         domain,
         base,
         adapterArgs: objectArgsProp(body),
@@ -538,6 +544,7 @@ export function loadAdaptersFromDir(dir: string): number {
           adapterArgs,
           strategy: parsed.strategy as AdapterCommand["strategy"],
           browser: parsed.browser,
+          browserSession: parsed.browserSession,
           domain: parsed.domain,
           base: parsed.base,
           columns: parsed.columns,

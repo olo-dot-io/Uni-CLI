@@ -20,7 +20,11 @@ import {
   SITE_CATEGORIES,
   CATEGORY_ALIASES,
 } from "./aliases.js";
-import { intentBoost } from "./intents.js";
+import {
+  evaluateIntentFrame,
+  intentBoost,
+  resolveIntentFrame,
+} from "./intents.js";
 import {
   buildMacosDynamicSearchDocuments,
   discoverMacosDynamicData,
@@ -540,6 +544,11 @@ function searchIndex(
 
   const queryTerms = [...new Set(expandedTerms.map((t) => t.toLowerCase()))];
   const categoryFilter = options.category;
+  const intentFrame = resolveIntentFrame({
+    query,
+    queryTerms,
+    siteHints: [...siteHints, ...sitePhraseHints],
+  });
 
   // Step 3: Find candidate documents (union of posting lists)
   const candidateSet = new Set<number>();
@@ -573,6 +582,8 @@ function searchIndex(
     const doc = index.documents[idx];
     const docCategory = documentCategory(doc);
     if (categoryFilter && docCategory !== categoryFilter) continue;
+    const intentDecision = evaluateIntentFrame(intentFrame, doc);
+    if (intentDecision.blocked) continue;
 
     // Hybrid base: alpha-blend BM25 and TF-IDF cosine similarity.
     // BM25 scores are unbounded; cosine is [0,1]. We scale cosine by the
@@ -602,6 +613,7 @@ function searchIndex(
     }
 
     score += intentBoost(doc, queryTerms, [...siteHints, ...sitePhraseHints]);
+    score += intentDecision.boost;
     if (categoryFilter && queryTerms.length === 0) score += BOOST_CATEGORY;
 
     if (score <= 0) continue;

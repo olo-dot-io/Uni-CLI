@@ -37,6 +37,11 @@ interface PendingRequest {
   timer: ReturnType<typeof setTimeout>;
 }
 
+export interface ConnectToChromeOptions {
+  freshPage?: boolean;
+  pageUrl?: string;
+}
+
 // ── Remote endpoint types ───────────────────────────────────────────
 
 export interface RemoteEndpoint {
@@ -50,6 +55,14 @@ const CDP_SEND_TIMEOUT = 30_000;
 const CDP_CONNECT_TIMEOUT = 10_000;
 const CDP_DEFAULT_PORT = 9222;
 const CDP_FETCH_TIMEOUT = 10_000;
+const NON_NAVIGABLE_TARGET_TYPES = new Set([
+  "app",
+  "background_page",
+  "iframe",
+  "other",
+  "service_worker",
+  "webview",
+]);
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -232,7 +245,7 @@ export class CDPClient {
    */
   static async discoverTargets(port?: number): Promise<CDPTarget[]> {
     const p = port ?? CDP_DEFAULT_PORT;
-    const url = `http://localhost:${String(p)}/json`;
+    const url = `http://127.0.0.1:${String(p)}/json`;
     const raw = await fetchJson(url);
 
     if (!Array.isArray(raw)) {
@@ -270,11 +283,19 @@ export class CDPClient {
    * Convenience: discover + select + connect.
    * Returns a connected CDPClient ready to use.
    */
-  static async connectToChrome(port?: number): Promise<CDPClient> {
+  static async connectToChrome(
+    port?: number,
+    options: ConnectToChromeOptions = {},
+  ): Promise<CDPClient> {
     const targets = await CDPClient.discoverTargets(port);
     const target =
-      CDPClient.selectTarget(targets) ??
-      (await CDPClient.createTarget(port, "about:blank"));
+      options.freshPage === true
+        ? await CDPClient.createTarget(port, options.pageUrl ?? "about:blank")
+        : (CDPClient.selectTarget(targets) ??
+          (await CDPClient.createTarget(
+            port,
+            options.pageUrl ?? "about:blank",
+          )));
     if (!target) {
       throw new Error("No suitable Chrome target found");
     }
@@ -286,7 +307,11 @@ export class CDPClient {
     // Enable Page domain immediately after connection (matches reference pattern)
     try {
       await client.send("Page.enable");
-    } catch {
+    } catch (err) {
+      if (options.freshPage === true) {
+        await client.close();
+        throw err;
+      }
       debugLog("Failed to enable Page domain (non-fatal)");
     }
 
@@ -303,7 +328,7 @@ export class CDPClient {
   ): Promise<CDPTarget | null> {
     const p = port ?? CDP_DEFAULT_PORT;
     const raw = await fetchJson(
-      `http://localhost:${String(p)}/json/new?${encodeURIComponent(url)}`,
+      `http://127.0.0.1:${String(p)}/json/new?${encodeURIComponent(url)}`,
       { method: "PUT" },
     );
     if (
@@ -399,16 +424,15 @@ function scoreTarget(target: CDPTarget): number {
 
   // Hard exclusions
   if (haystack.includes("devtools")) return Number.NEGATIVE_INFINITY;
-  if (type === "service_worker") return Number.NEGATIVE_INFINITY;
-  if (type === "background_page") return Number.NEGATIVE_INFINITY;
+  if (NON_NAVIGABLE_TARGET_TYPES.has(type)) {
+    return Number.NEGATIVE_INFINITY;
+  }
+  if (type !== "page") return Number.NEGATIVE_INFINITY;
 
   let score = 0;
 
   // Type scoring
-  if (type === "page") score += 100;
-  else if (type === "app") score += 120;
-  else if (type === "webview") score += 90;
-  else if (type === "iframe") score += 20;
+  score += 100;
 
   // URL scoring
   if (url && url !== "about:blank" && !url.startsWith("chrome://")) {

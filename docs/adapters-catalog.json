@@ -1,8 +1,8 @@
 {
-  "source": "unicli@0.225.0",
-  "generated": "2026-05-31T17:28:24.022Z",
+  "source": "unicli@0.225.1",
+  "generated": "2026-06-02T17:08:55.406Z",
   "total_sites": 313,
-  "total_commands": 1766,
+  "total_commands": 1767,
   "adapters": [
     {
       "site": "12306",
@@ -21676,7 +21676,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["brightness"]
+          "columns": ["brightness", "status"]
         },
         {
           "name": "caffeinate",
@@ -22338,7 +22338,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["url", "title"]
+          "columns": ["state", "url", "title"]
         },
         {
           "name": "say",
@@ -32243,6 +32243,24 @@
           ]
         },
         {
+          "name": "play-track",
+          "description": "Search Spotify for a track query and start playback",
+          "when_to_use": "Search Spotify for a track query and start playback",
+          "command": "unicli spotify play-track",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": false,
+          "columns": ["ok", "query", "track", "artist", "uri"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
           "name": "shuffle",
           "description": "Toggle Spotify shuffle mode",
           "when_to_use": "Toggle Spotify shuffle mode",
@@ -38150,11 +38168,11 @@
       "commands": [
         {
           "name": "feed",
-          "description": "Xiaohongshu home feed (via Pinia Store Action)",
-          "when_to_use": "Xiaohongshu home feed (via Pinia Store Action)",
+          "description": "Xiaohongshu home feed",
+          "when_to_use": "Xiaohongshu home feed",
           "command": "unicli xiaohongshu feed",
           "auth": true,
-          "strategy": "intercept",
+          "strategy": "cookie",
           "browser": true,
           "columns": ["title", "author", "likes", "type", "url"],
           "args": [

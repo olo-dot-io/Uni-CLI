@@ -6,6 +6,8 @@
 export const DAEMON_PORT = 19825;
 export const DAEMON_PORT_CANDIDATES = [19825, 19826, 19827, 19828, 19829];
 export const DAEMON_HOST = "localhost";
+export const DAEMON_PRODUCT = "unicli";
+export const DAEMON_PROTOCOL = "unicli-browser-bridge";
 export const DAEMON_WS_PATH = "/ext";
 export const DAEMON_PING_PATH = "/ping";
 export const WS_RECONNECT_BASE_DELAY = 2000;

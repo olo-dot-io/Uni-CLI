@@ -469,9 +469,24 @@ export function registerBrowserCommands(program: Command): void {
   browser
     .command("sessions")
     .description("Show live browser daemon sessions for the selected profile")
-    .action(async () => {
-      await withBrowserOperatorEnv(browser, async () => {
-        const sessions = await listSessions();
+    .option("--json", "JSON output (alias for -f json)")
+    .action(async (opts: { json?: boolean }) => {
+      const startedAt = Date.now();
+      const fmt = detectFormat(
+        opts.json
+          ? "json"
+          : (program.opts().format as OutputFormat | undefined),
+      );
+      const ctx = makeCtx("browser.sessions", startedAt);
+      try {
+        const sessions = await withBrowserOperatorEnv(browser, async () =>
+          listSessions(),
+        );
+        ctx.duration_ms = Date.now() - startedAt;
+        if (fmt !== "md") {
+          console.log(format({ sessions }, undefined, fmt, ctx));
+          return;
+        }
         if (sessions.length === 0) {
           console.log(
             chalk.yellow("No browser sessions are currently active."),
@@ -493,7 +508,18 @@ export function registerBrowserCommands(program: Command): void {
             `  ${session.workspace} -> window ${String(session.windowId)}${tabs}${idle}`,
           );
         }
-      });
+      } catch (err) {
+        ctx.duration_ms = Date.now() - startedAt;
+        ctx.error = {
+          code: "internal_error",
+          message: err instanceof Error ? err.message : String(err),
+          suggestion:
+            "Run `unicli browser doctor --json` to inspect daemon, extension, and CDP fallback state.",
+          retryable: false,
+        };
+        console.log(format(null, undefined, fmt, ctx));
+        process.exitCode = 1;
+      }
     });
 
   browser

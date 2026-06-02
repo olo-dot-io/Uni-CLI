@@ -14,7 +14,7 @@ operations before running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 313 sites, 1766 commands.
+This catalog is generated from the adapter manifest: 313 sites, 1767 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -251,7 +251,7 @@ This catalog is generated from the adapter manifest: 313 sites, 1766 commands.
 | slay-the-spire-ii | service | 6 | no | unicli slay-the-spire-ii deck<br>unicli slay-the-spire-ii end-turn<br>unicli slay-the-spire-ii map |
 | slock | browser | 1 | yes | unicli slock servers |
 | smzdm | web-api | 3 | yes | unicli smzdm article<br>unicli smzdm hot<br>unicli smzdm search |
-| spotify | web-api | 23 | yes | unicli spotify now-playing<br>unicli spotify playlists<br>unicli spotify search |
+| spotify | web-api | 24 | yes | unicli spotify now-playing<br>unicli spotify playlists<br>unicli spotify search |
 | sspai | web-api | 2 | no | unicli sspai hot<br>unicli sspai latest |
 | stackoverflow | web-api | 10 | no | unicli stackoverflow bounties<br>unicli stackoverflow hot<br>unicli stackoverflow question |
 | stagehand | bridge | 1 | no | unicli stagehand wrap-observe |

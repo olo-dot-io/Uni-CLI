@@ -37,6 +37,8 @@ export async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
         ? await acquireDaemonPage(3000)
         : await acquireConnectedDaemonPage();
     if (daemonPage) return daemonPage;
+    const userSessionPage = await acquireUserSessionCdpPage(ctx);
+    if (userSessionPage) return userSessionPage;
   } else if (ctx.browserSession !== "cdp") {
     const daemonPage = await acquireConnectedDaemonPage();
     if (daemonPage) return daemonPage;
@@ -78,6 +80,49 @@ export async function acquirePage(ctx: PipelineContext): Promise<BrowserPage> {
       `Cannot connect to Chrome. Run "unicli browser start" first. (${err instanceof Error ? err.message : String(err)})`,
     );
   }
+}
+
+async function acquireUserSessionCdpPage(
+  ctx: PipelineContext,
+): Promise<BrowserPage | null> {
+  const {
+    automationUserDataDirForProfile,
+    readUserDataDirDebugPort,
+    resolvePreferredLocalBrowserProfile,
+  } = await import("../../browser/local-profiles.js");
+  const profile = resolvePreferredLocalBrowserProfile();
+  if (!profile) return null;
+
+  const { resolveCdpPort } = await import("../../browser/cdp-client.js");
+  const { BrowserPage: BP } = await import("../../browser/page.js");
+  const { injectStealth } = await import("../../browser/stealth.js");
+  const { findAvailableCDPPort, isCDPAvailable, launchChrome } =
+    await import("../../browser/launcher.js");
+
+  const userDataDir = automationUserDataDirForProfile(profile);
+  const recorded = readUserDataDirDebugPort(userDataDir);
+  const livePort =
+    recorded.state === "recorded" &&
+    typeof recorded.port === "number" &&
+    (await isCDPAvailable(recorded.port))
+      ? recorded.port
+      : null;
+  const port = livePort ?? (await findAvailableCDPPort(resolveCdpPort()));
+
+  if (livePort === null) {
+    await launchChrome(port, {
+      ...(profile.browser_path_exists
+        ? { browserPath: profile.browser_path }
+        : {}),
+      userDataDir,
+      reuseExisting: false,
+    });
+  }
+
+  const page = await BP.connect(port, { freshPage: true });
+  await injectStealth(page.sendCDP.bind(page));
+  await syncUserSessionCookies(page, ctx);
+  return page;
 }
 
 async function launchOptionsForContext(

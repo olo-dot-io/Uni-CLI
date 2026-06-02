@@ -118,6 +118,7 @@ const CATEGORIES = {
     "ele",
     "maoyan",
   ],
+  travel: ["ctrip"],
   dev: [
     "github-trending",
     "gitlab",

@@ -7,7 +7,14 @@
  */
 
 import { cli, Strategy } from "../../registry.js";
-import { connectElectronApp } from "../_electron/shared.js";
+import {
+  connectElectronApp,
+  electronAppCommandMeta,
+} from "../_electron/shared.js";
+
+const CODEX_PROJECTS_COMMAND_META = electronAppCommandMeta(
+  "src/adapters/codex/projects.ts",
+);
 
 interface CodexConversation {
   index: number;
@@ -141,6 +148,7 @@ cli({
   description: "List Codex projects and visible conversations from the sidebar",
   domain: "localhost",
   strategy: Strategy.PUBLIC,
+  ...CODEX_PROJECTS_COMMAND_META,
   browser: false,
   args: [
     {

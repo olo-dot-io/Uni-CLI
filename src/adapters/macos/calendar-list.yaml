@@ -28,20 +28,18 @@ pipeline:
           var calendars = cal.calendars();
           var result = [];
           for (var c = 0; c < calendars.length; c++) {
-            var events = calendars[c].events();
+            var events = calendars[c].events.whose({startDate: {_greaterThan: now, _lessThan: end}})();
             for (var e = 0; e < events.length; e++) {
               var ev = events[e];
               var start = ev.startDate();
-              if (start >= now && start <= end) {
-                result.push({
-                  calendar: calendars[c].name(),
-                  title: ev.summary(),
-                  start: start.toISOString(),
-                  end: ev.endDate().toISOString(),
-                  location: ev.location() || '',
-                  notes: (ev.description() || '').substring(0, 200)
-                });
-              }
+              result.push({
+                calendar: calendars[c].name(),
+                title: ev.summary(),
+                start: start.toISOString(),
+                end: ev.endDate().toISOString(),
+                location: ev.location() || '',
+                notes: (ev.description() || '').substring(0, 200)
+              });
             }
           }
           result.sort(function(a, b) { return a.start < b.start ? -1 : 1; });

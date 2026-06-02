@@ -1,8 +1,8 @@
 # Uni-CLI Copy Rules
 
-> Current version: v0.225.0 — Apollo · Irwin.
+> Current version: v0.225.1 — Apollo · Conrad.
 >
-> Current scale: <!-- STATS:site_count -->313<!-- /STATS --> sites, <!-- STATS:command_count -->1766<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->1216<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->980<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->236<!-- /STATS --> TS), <!-- STATS:test_count -->9090<!-- /STATS --> tests.
+> Current scale: <!-- STATS:site_count -->313<!-- /STATS --> sites, <!-- STATS:command_count -->1767<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->1217<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->980<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->237<!-- /STATS --> TS), <!-- STATS:test_count -->9119<!-- /STATS --> tests.
 
 This file keeps docs and user-facing copy consistent. Public pages should expose
 install, command, output, and repair facts with the fewest words needed.

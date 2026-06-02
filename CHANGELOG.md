@@ -1,5 +1,62 @@
 # Changelog
 
+## [0.225.1] — 2026-06-02 — Apollo · Conrad
+
+### Added
+
+- `npm run site:availability` now classifies every adapter command and runs one
+  bounded safe read probe per site when a command is public, non-browser,
+  non-destructive, and has no required semantic input.
+- `npm run e2e:real` now exercises a built-CLI real workflow matrix across
+  common web, browser-adjacent, social, reference, and local-tool routes.
+- Xiaohongshu now has a public `feed` reader for front-line social-media smoke
+  tests without forcing browser/CDP state into every availability check.
+
+### Changed
+
+- Adapter health and site availability now share the same environment classifier
+  for auth gates, platform gates, local daemons, transient network failures,
+  rate limits, and declared detect probes.
+- Electron desktop and AI-chat commands now declare their `cdp-browser`
+  substrate requirement, so health gates skip them honestly instead of
+  misreporting unavailable local app control as site breakage.
+- `unicli do` now returns objective-level delivery spec templates for media
+  playback intents while preserving explicit execution through
+  `unicli delivery run`.
+
+### Fixed
+
+- Browser launcher repair now converts detached `spawn` failures into catchable
+  launch errors and rejects invalid `mdfind` app executable paths before they
+  poison CDP/browser recovery.
+- Browser-session CDP acquisition now creates a fresh page target for
+  user-session commands, so a stale logged-in automation tab cannot make
+  Twitter/X and Xiaohongshu hang on stealth injection.
+- The all-site audit no longer empty-probes commands that require semantic
+  inputs such as `query`, `author`, `pid`, `id`, `url`, or `tags`.
+- The Maoyan hot adapter now follows the current public box-office response path
+  directly instead of relying on runtime select-path auto-fix.
+- Empty successful adapter observations remain `ok=true` and exit `0`; only
+  explicit `empty_result` errors become failure envelopes.
+- Common social-media smoke routes for Twitter/X, Xiaohongshu, Reddit, YouTube,
+  Bilibili, and Weibo now pass through the built CLI after the browser-substrate
+  repair.
+
+### Verified
+
+- `RELEASE_CODENAME="Apollo · Conrad" npm run release`
+- `SITE_SWEEP_TIMEOUT_MS=10000 npx tsx scripts/site-availability-sweep.ts`
+- `npm run adapter:health`
+- `npm run e2e:real`
+- `npm run typecheck`
+- `npm run lint`
+- `npm test`
+- `npm run format:check`
+- `git diff --check`
+- `npm run release:check -- --strict-codename`
+- `npm run verify`
+- `npm publish --dry-run`
+
 ## [0.225.0] — 2026-06-01 — Apollo · Irwin
 
 ### Added

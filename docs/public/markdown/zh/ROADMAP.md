@@ -7,7 +7,7 @@
 - 栏目: 解释
 - 上级: 解释 (/zh/ARCHITECTURE)
 
-> Current: v0.225.0 — Apollo · Irwin. <!-- STATS:site_count -->313<!-- /STATS --> 个站点，<!-- STATS:command_count -->1766<!-- /STATS --> 条命令，<!-- STATS:pipeline_step_count -->103<!-- /STATS --> 个 pipeline step。
+> Current: v0.225.1 — Apollo · Conrad. <!-- STATS:site_count -->313<!-- /STATS --> 个站点，<!-- STATS:command_count -->1767<!-- /STATS --> 条命令，<!-- STATS:pipeline_step_count -->103<!-- /STATS --> 个 pipeline step。
 
 路线图按“Agent 控制真实软件的控制平台”成熟度推进，不按固定周节奏发布。发布节奏取决于社区反馈和实际开发状态。
 

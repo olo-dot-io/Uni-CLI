@@ -398,6 +398,35 @@ describe("unicli browser operator surface", () => {
     return tmpHome;
   }
 
+  it("browser sessions emits a structured error when the extension bridge is unavailable", async () => {
+    daemonClientMocks.listSessions.mockRejectedValueOnce(
+      new Error("Compatible Uni-CLI browser extension not connected"),
+    );
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "sessions", "--json"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      ok: boolean;
+      command: string;
+      error: { code: string; message: string; retryable: boolean };
+    };
+    expect(env.ok).toBe(false);
+    expect(env.command).toBe("browser.sessions");
+    expect(env.error).toMatchObject({
+      code: "internal_error",
+      message: "Compatible Uni-CLI browser extension not connected",
+      retryable: false,
+    });
+    expect(process.exitCode).toBe(1);
+  });
+
   it("browser click records internal pre/post evidence when run recording is enabled", async () => {
     const home = useTempHome();
     const runRoot = join(home, "runs");

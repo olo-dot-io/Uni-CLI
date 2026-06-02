@@ -40,7 +40,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->313<!-- /STATS --> 个 surface · <!-- STATS:test_count -->9090<!-- /STATS --> 个测试</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->313<!-- /STATS --> 个 surface · <!-- STATS:test_count -->9119<!-- /STATS --> 个测试</sub>
 </p>
 
 <p align="center">
@@ -311,7 +311,7 @@ ACP 作为编辑器和桥接兼容层保留。真正跑任务时，优先 native
 <p><strong>音频</strong><br>
   <a data-site="apple-podcasts" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="apple-podcasts: 2 commands"><img alt="apple-podcasts" src="https://img.shields.io/static/v1?label=apple-podcasts&message=2+cmds&color=16a34a&style=flat-square&logo=applepodcasts&logoColor=white"></a>
   <a data-site="netease-music" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="netease-music: 15 commands"><img alt="netease-music" src="https://img.shields.io/static/v1?label=netease-music&message=15+cmds&color=16a34a&style=flat-square&logo=neteasecloudmusic&logoColor=white"></a>
-  <a data-site="spotify" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="spotify: 23 commands"><img alt="spotify" src="https://img.shields.io/static/v1?label=spotify&message=23+cmds&color=16a34a&style=flat-square&logo=spotify&logoColor=white"></a>
+  <a data-site="spotify" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="spotify: 24 commands"><img alt="spotify" src="https://img.shields.io/static/v1?label=spotify&message=24+cmds&color=16a34a&style=flat-square&logo=spotify&logoColor=white"></a>
 </p>
 <p><strong>内容</strong><br>
   <a data-site="pixiv" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="pixiv: 6 commands"><img alt="pixiv" src="https://img.shields.io/static/v1?label=pixiv&message=6+cmds&color=c2410c&style=flat-square&logo=pixiv&logoColor=white"></a>
@@ -496,5 +496,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v0.225.0 — Apollo · Irwin</sub>
+  <sub>v0.225.1 — Apollo · Conrad</sub>
 </p>

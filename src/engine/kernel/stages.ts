@@ -21,7 +21,11 @@ import {
 } from "../../output/error-map.js";
 import { commandStrategy } from "../../registry.js";
 import type { AgentError } from "../../output/envelope.js";
-import { ExitCode } from "../../types.js";
+import {
+  ExitCode,
+  type AdapterCommand,
+  type BrowserSessionPreference,
+} from "../../types.js";
 import type { OperationPolicy } from "../operation-policy.js";
 import {
   InvalidPermissionProfileError,
@@ -435,13 +439,17 @@ export async function executeKernelCommand(
   inv: Invocation,
   ctx: KernelCommandContext,
 ): Promise<unknown[]> {
+  const browserSession = resolveBrowserSessionPreference(
+    inv.command,
+    ctx.strategy,
+  );
   if (inv.command.pipeline) {
     return runPipeline(inv.command.pipeline, inv.bag, inv.adapter.base, {
       site: inv.adapter.name,
       command: inv.cmdName,
       strategy: ctx.strategy,
       domain: inv.command.domain ?? inv.adapter.domain,
-      browserSession: inv.command.browserSession,
+      browserSession,
       surface: inv.surface,
       trace_id: inv.trace_id,
     });
@@ -463,7 +471,7 @@ export async function executeKernelCommand(
           site: inv.adapter.name,
           command: inv.cmdName,
           domain: inv.command.domain ?? inv.adapter.domain,
-          browserSession: inv.command.browserSession,
+          browserSession,
         });
       }
       const raw = await inv.command.func(page as never, inv.bag.args);
@@ -479,6 +487,20 @@ export async function executeKernelCommand(
   }
 
   throw new Error(`command ${ctx.key} has neither pipeline nor func`);
+}
+
+function resolveBrowserSessionPreference(
+  command: AdapterCommand,
+  strategy: KernelCommandContext["strategy"],
+): BrowserSessionPreference | undefined {
+  if (command.browserSession) return command.browserSession;
+  if (
+    command.browser === true &&
+    (strategy === "cookie" || strategy === "header" || strategy === "intercept")
+  ) {
+    return "user";
+  }
+  return undefined;
 }
 
 export function malformedCommandResult(
@@ -567,7 +589,7 @@ export function successKernelResult(
       }),
     },
     durationMs,
-    exitCode: results.length === 0 ? ExitCode.EMPTY_RESULT : ExitCode.SUCCESS,
+    exitCode: ExitCode.SUCCESS,
     warnings,
     ...(diagnostics ? { diagnostics } : {}),
   };

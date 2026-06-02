@@ -8,6 +8,8 @@
 import {
   DAEMON_HOST,
   DAEMON_PORT_CANDIDATES,
+  DAEMON_PRODUCT,
+  DAEMON_PROTOCOL,
   DAEMON_WS_PATH,
   DAEMON_PING_PATH,
   WS_RECONNECT_BASE_DELAY,
@@ -134,6 +136,8 @@ async function connect(): Promise<void> {
       JSON.stringify({
         type: "hello",
         version: chrome.runtime.getManifest().version,
+        product: DAEMON_PRODUCT,
+        protocol: DAEMON_PROTOCOL,
       }),
     );
   };

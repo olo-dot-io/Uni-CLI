@@ -22,13 +22,12 @@ If the maintainer has not explicitly asked to release, development stays under
 
 ## Versioning
 
-Uni-CLI follows semver. The `0.225.0` line is a minor release candidate because
-it changes the public product model from execution substrate/catalog framing to
-the universal computer-control platform model: intent, policy, action
-substrates, evidence, delivery, and repair across real software. It is not a
-stable-major compatibility boundary; it preserves the CLI/package shape while
-making architecture audit, command contracts, and docs describe the larger
-category.
+Uni-CLI follows semver. The `0.225.1` line is a patch release candidate because
+it repairs the site-availability and browser-substrate verification path without
+breaking the CLI/package shape. The `0.225.0` line introduced the universal
+computer-control platform model; `0.225.1` makes that model operationally
+auditable by separating real adapter failures from auth, platform, browser,
+local-daemon, write/destructive, quarantined, and caller-input-required paths.
 
 | Change                                                                                   | Version bump |
 | ---------------------------------------------------------------------------------------- | ------------ |
@@ -50,36 +49,41 @@ ancestor of `HEAD`, and checking that the first-class `macos app-actions` and
 ## Historical Release Audit
 
 The public git/tag history starts in 2026 with the `0.200.x` line. For the
-`0.225.0` release, the release was checked against `CHANGELOG.md`, local tags,
-npm registry state, release automation, and the current architecture audit.
+`0.225.1` release, the release was checked against `CHANGELOG.md`, local tags,
+npm registry state, release automation, adapter health, real E2E workflows, and
+the current site-availability sweep.
 
 Release facts:
 
-- npm registry state before tagging: `@zenalexa/unicli@latest` is `0.224.1`;
-- release tag target: `v0.225.0`;
+- npm registry state before tagging: `@zenalexa/unicli@latest` is `0.225.0`;
+- release tag target: `v0.225.1`;
 - release metadata passes `npm run release:check -- --strict-codename`;
-- architecture audit reports 1819 commands, 1783 adapter commands, 36 core
-  commands, 627 local-computer-use commands, and 0 missing source paths;
-- capability readiness covers web, browser, desktop, system, protocol, and
-  bridge surfaces;
-- workflow readiness catalogs media playback, video search, browser tab
-  control, installed app operation, productivity state, and open/navigate
-  destination, with required next evidence before live claims.
+- site availability classifies 313 sites and 1784 adapter commands with
+  `fail=0`;
+- representative safe site probes report `ok=64`, `environment_skip=12`, and
+  `no_auto_probe=237`;
+- adapter health reports `ok=160`, `fail=0`, `skip=1624`, and
+  `skip_env_missing=64`;
+- real E2E reports 43 passed workflows, 0 failed workflows, and 1 skipped
+  workflow for an arXiv rate limit;
+- built-CLI social smoke passes for Twitter/X, Xiaohongshu, Reddit, YouTube,
+  Bilibili, and Weibo.
 
-| Release line | Historical role                                                                                               | Audit lesson for `0.225.0`                                                                         |
-| ------------ | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `0.200.0`    | First Vostok public adapter platform with build manifest and self-repair architecture.                        | A release must expose a machine-readable surface, not just prose.                                  |
-| `0.208.0`    | Skills export, MCP gateway, eval catalog, usage ledger, operate/observe, and documented 4-reviewer hardening. | Review findings must be explicit and fixed before tag, especially security and release wiring.     |
-| `0.213.0`    | GA for engine rigor, split executor/runtime/steps, schema-v2 adapters, and v2 `AgentEnvelope`.                | Stable behavior contracts outrank marketing claims.                                                |
-| `0.217.0`    | Execution-substrate framing with operation policy, run recording, browser evidence, and agent backend matrix. | Product framing can become too small as real control surfaces expand.                              |
-| `0.218.0`    | Cross-platform browser cookie import and auth diagnostics.                                                    | Auth and platform boundaries must be explicit; unsupported paths must fail honestly.               |
-| `0.221.0`    | Patent and scholarly verticals with typed records and source routing.                                         | Vertical breadth matters only when records, provenance, and tests stay coherent.                   |
-| `0.222.0`    | Local computer-use and compute capture entered the release surface.                                           | Desktop/computer control is a core substrate, not a sidecar demo.                                  |
-| `0.224.0`    | Callable architecture audit/tree and live registry-backed search caching.                                     | Architecture audit must not omit core control commands or reduce the product to adapter lifecycle. |
+| Release line | Historical role                                                                                                 | Audit lesson for `0.225.1`                                                                         |
+| ------------ | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `0.200.0`    | First Vostok public adapter platform with build manifest and self-repair architecture.                          | A release must expose a machine-readable surface, not just prose.                                  |
+| `0.208.0`    | Skills export, MCP gateway, eval catalog, usage ledger, operate/observe, and documented 4-reviewer hardening.   | Review findings must be explicit and fixed before tag, especially security and release wiring.     |
+| `0.213.0`    | GA for engine rigor, split executor/runtime/steps, schema-v2 adapters, and v2 `AgentEnvelope`.                  | Stable behavior contracts outrank marketing claims.                                                |
+| `0.217.0`    | Execution-substrate framing with operation policy, run recording, browser evidence, and agent backend matrix.   | Product framing can become too small as real control surfaces expand.                              |
+| `0.218.0`    | Cross-platform browser cookie import and auth diagnostics.                                                      | Auth and platform boundaries must be explicit; unsupported paths must fail honestly.               |
+| `0.221.0`    | Patent and scholarly verticals with typed records and source routing.                                           | Vertical breadth matters only when records, provenance, and tests stay coherent.                   |
+| `0.222.0`    | Local computer-use and compute capture entered the release surface.                                             | Desktop/computer control is a core substrate, not a sidecar demo.                                  |
+| `0.224.0`    | Callable architecture audit/tree and live registry-backed search caching.                                       | Architecture audit must not omit core control commands or reduce the product to adapter lifecycle. |
+| `0.225.0`    | Universal computer-control platform framing with intent, policy, action substrates, evidence, delivery, repair. | Product claims need live health gates, not catalog counts alone.                                   |
 
-`0.225.0` is a minor release because the product identity and architecture audit
-surface changed materially. It does not claim a stable-major compatibility
-contract.
+`0.225.1` is a patch release because it hardens availability diagnostics,
+browser-substrate repair, and real workflow verification while preserving the
+public command/package contract.
 
 ## Changesets
 
@@ -138,7 +142,7 @@ npm run release:check -- --strict-codename
 ```
 
 For the 0.225 line, the release label format is unchanged. The current release
-candidate label is `Apollo · Irwin`.
+candidate label is `Apollo · Conrad`.
 
 ## Substantive Commits
 

@@ -7,8 +7,15 @@
  * Commands: search, read, write, new, status, sidebar, favorites, export, screenshot
  */
 
-import { connectElectronApp } from "../_electron/shared.js";
+import {
+  connectElectronApp,
+  electronAppCommandMeta,
+} from "../_electron/shared.js";
 import { cli, Strategy } from "../../registry.js";
+
+const NOTION_COMMAND_META = electronAppCommandMeta(
+  "src/adapters/notion-app/notion-app.ts",
+);
 
 // search -- Quick-find via Cmd+K
 cli({
@@ -16,6 +23,7 @@ cli({
   name: "search",
   description: "Search in Notion (Cmd+K)",
   strategy: Strategy.PUBLIC,
+  ...NOTION_COMMAND_META,
   args: [
     {
       name: "query",
@@ -50,6 +58,7 @@ cli({
   name: "read",
   description: "Read current Notion page content",
   strategy: Strategy.PUBLIC,
+  ...NOTION_COMMAND_META,
   func: async () => {
     const p = await connectElectronApp("notion");
     const content = await p.evaluate(`
@@ -66,6 +75,7 @@ cli({
   name: "write",
   description: "Append text to current Notion page",
   strategy: Strategy.PUBLIC,
+  ...NOTION_COMMAND_META,
   args: [
     {
       name: "text",
@@ -97,6 +107,7 @@ cli({
   name: "new",
   description: "Create new Notion page",
   strategy: Strategy.PUBLIC,
+  ...NOTION_COMMAND_META,
   args: [
     {
       name: "title",
@@ -121,6 +132,7 @@ cli({
   name: "status",
   description: "Notion workspace status",
   strategy: Strategy.PUBLIC,
+  ...NOTION_COMMAND_META,
   func: async () => {
     const p = await connectElectronApp("notion");
     const title = await p.title();
@@ -134,6 +146,7 @@ cli({
   name: "sidebar",
   description: "Read Notion sidebar navigation",
   strategy: Strategy.PUBLIC,
+  ...NOTION_COMMAND_META,
   func: async () => {
     const p = await connectElectronApp("notion");
     const items = await p.evaluate(`
@@ -156,6 +169,7 @@ cli({
   name: "favorites",
   description: "List Notion favorites",
   strategy: Strategy.PUBLIC,
+  ...NOTION_COMMAND_META,
   func: async () => {
     const p = await connectElectronApp("notion");
     const items = await p.evaluate(`
@@ -180,6 +194,7 @@ cli({
   name: "export",
   description: "Export current Notion page as markdown",
   strategy: Strategy.PUBLIC,
+  ...NOTION_COMMAND_META,
   func: async () => {
     const p = await connectElectronApp("notion");
     const content = await p.evaluate(`
@@ -195,6 +210,7 @@ cli({
   name: "screenshot",
   description: "Screenshot current Notion page",
   strategy: Strategy.PUBLIC,
+  ...NOTION_COMMAND_META,
   args: [
     {
       name: "path",

@@ -13,10 +13,10 @@ control real software through a governed, observable, repairable path.
 
 The current generated operation catalog is the source of truth:
 **<span><!-- STATS:site_count -->313<!-- /STATS --></span> sites**,
-**<span><!-- STATS:command_count -->1766<!-- /STATS --></span> commands**,
-**<span><!-- STATS:adapter_count_total -->1216<!-- /STATS --></span> adapters**,
+**<span><!-- STATS:command_count -->1767<!-- /STATS --></span> commands**,
+**<span><!-- STATS:adapter_count_total -->1217<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->9090<!-- /STATS --></span> tests** in v0.225.0.
+and **<span><!-- STATS:test_count -->9119<!-- /STATS --></span> tests** in v0.225.1.
 
 ## Computer-Control Thesis
 
@@ -304,6 +304,10 @@ Observation is what turns a tool call into evidence.
 
 - Every result has command context, duration, surface, data, error, retryability,
   and next actions.
+- An empty successful observation is still a successful observation: adapters
+  that legitimately return `[]` keep `ok: true` and exit `0`. Absence becomes
+  exit `66` only when the command emits an explicit `empty_result` error, such
+  as no discovery match or a domain-specific not-found condition.
 - Browser actions can attach pre/post evidence, target identity, movement data,
   and stale-reference diagnostics.
 - Computer-use actions can attach `visual_action`, target point, overlay status,
@@ -486,6 +490,7 @@ Use the smallest credible ladder for the claim under change:
 | Adapter behavior                   | `unicli test <site>` or adapter runner with real owned code           |
 | Browser/session behavior           | Browser evidence test or live daemon smoke                            |
 | Local computer-use behavior        | `doctor compute`, snapshot/find/action smoke, post-capture evidence   |
+| Real CLI workflow matrix           | `npm run e2e:real`                                                    |
 | Public docs UI                     | `npm run docs:build` plus screenshot/visual inspection for UI changes |
 | Release readiness                  | `npm run verify`                                                      |
 

@@ -14,12 +14,16 @@ pipeline:
         - "-e"
         - |
           const app = Application('Safari');
-          const win = app.windows[0];
-          const tab = win.currentTab();
-          JSON.stringify([{ url: tab.url(), title: tab.name() }]);
+          const windows = app.windows();
+          if (windows.length === 0) {
+            JSON.stringify([{ state: 'no_window', url: '', title: '' }]);
+          } else {
+            const tab = windows[0].currentTab();
+            JSON.stringify([{ state: 'ok', url: tab.url(), title: tab.name() }]);
+          }
       parse: json
 
-columns: [url, title]
+columns: [state, url, title]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
 capabilities: ["subprocess.exec"]

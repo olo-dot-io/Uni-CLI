@@ -48,9 +48,9 @@ Agent 执行需要的不是更长的常驻工具列表，也不是又一个网�
 ## 覆盖范围
 
 - 站点和工具：313
-- 操作：1766
+- 操作：1767
 - Pipeline step：103
-- 测试：9090
+- 测试：9119
 
 能力规模来自当前仓库生成物：operation、adapter、pipeline step、测试和 substrate 都在本地构建流程里计数。
 
@@ -63,7 +63,7 @@ Agent 执行需要的不是更长的常驻工具列表，也不是又一个网�
 
 ## 当前版本
 
-当前 latest：v0.225.0 · Apollo · Irwin。
+当前 latest：v0.225.1 · Apollo · Conrad。
 
 ## Agent 索引
 

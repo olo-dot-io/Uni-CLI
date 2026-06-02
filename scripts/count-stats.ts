@@ -1,7 +1,7 @@
 /**
  * @owner   scripts/count-stats.ts
  * @does    Compute stats.json counts used by README, docs, AGENTS, and release copy with bounded test enumeration.
- * @needs   repo adapters/tests/manifest/MCP/capability files, vitest list, build-manifest category declarations
+ * @needs   repo adapters/tests/manifest/MCP/capability files, vitest list, dist manifest categories
  * @feeds   stats.json, scripts/build-readme.ts, scripts/build-agents.ts, npm run build, npm run stats:check
  * @breaks  Missing or malformed repo count sources produce zero counts or explicit test-count degradation warnings.
  */
@@ -164,11 +164,15 @@ function countAdapters(): {
   };
 }
 
-function countManifestCatalog(): { sites: number; commands: number } | null {
+function countManifestCatalog(): {
+  sites: number;
+  commands: number;
+  categories: number;
+} | null {
   if (!existsSync(DIST_MANIFEST)) return null;
   try {
     const manifest = JSON.parse(readFileSync(DIST_MANIFEST, "utf-8")) as {
-      sites?: Record<string, { commands?: unknown[] }>;
+      sites?: Record<string, { category?: string; commands?: unknown[] }>;
     };
     const sites = manifest.sites ?? {};
     return {
@@ -177,6 +181,9 @@ function countManifestCatalog(): { sites: number; commands: number } | null {
         (sum, site) => sum + (site.commands?.length ?? 0),
         0,
       ),
+      categories: new Set(
+        Object.values(sites).map((site) => site.category ?? "other"),
+      ).size,
     };
   } catch {
     return null;
@@ -406,6 +413,9 @@ function countTransports(): number {
 }
 
 function countCategories(): number {
+  const catalog = countManifestCatalog();
+  if (catalog) return catalog.categories;
+
   if (!existsSync(BUILD_MANIFEST)) return 0;
   const source = readFileSync(BUILD_MANIFEST, "utf-8");
   // Parse the `const CATEGORIES = { ... };` object-literal keys.
@@ -444,7 +454,7 @@ export function computeStats(): Stats {
     pipeline_step_count: countPipelineSteps(),
     transport_count: countTransports(),
     app_transport_count: countAppTransports(),
-    category_count: countCategories(),
+    category_count: catalog?.categories ?? countCategories(),
     built_at: todayUtc(),
   };
 }

@@ -1,5 +1,18 @@
 # Progress
 
+## 2026-06-02 — Browser Automation Timeout Repair
+
+- Root cause: commit `7f1a1efc` made browser delivery daemon-first and trusted any extension that found a Uni-CLI `/ping`; the live 9222 profile was running an incompatible OpenCLI extension that sent only `{type:"hello", version}`. The daemon marked it connected, commands waited until the 30s client timeout, and doctor reported `ready` while carrying `session_error`. Commit `c43cb7dc` then made this harder to diagnose by reporting the default path ready when local CDP was reachable.
+- Added protocol identity to the extension hello (`product=unicli`, `protocol=unicli-browser-bridge`) and made the daemon reject legacy/incompatible hello messages before reporting `extensionConnected` or accepting commands.
+- Routed authenticated browser commands (`cookie`, `header`, `intercept`) to `browserSession=user` by default, then made that path prefer the selected profile automation directory under `~/.unicli/browser-profiles/` before falling back to the default 9222 automation profile.
+- Fixed two follow-on live failures: automation profile CDP reuse now recovers the port from the process list when `DevToolsActivePort` is absent, and CDP HTTP discovery uses `127.0.0.1` instead of `localhost` to avoid the local host mapping that returned HTTP 404 on this machine.
+- Made future local CDP launches pass `--disable-extensions`, so a repaired automation profile cannot reload stale profile extensions into the CDP path.
+- Hardened `browser sessions -f json` so an unavailable/incompatible extension bridge emits a structured v2 error envelope instead of a raw Node stack.
+- Final audit found and fixed three adjacent real issues after the timeout repair: CDP target selection now rejects non-page targets (`iframe`, `webview`, `other`, `app`, service/background targets) and creates a real page when Chrome exposes only internal targets; `xiaohongshu.feed` now has a TypeScript adapter with store/API-first plus visible-DOM fallback; `weibo.trending` sends the Referer required by the public `hotSearch` endpoint instead of falsely reporting auth as required.
+- Experiment ladder: reproduced pre-fix `browser doctor` at 30.1s with `extension_connected=true` plus timeout diagnostics; verified daemon logs rejecting `[opencli]` hello after restart; restarted the 9222 automation Chrome with `--disable-extensions`; live `browser doctor --json` now returns ready on the default local-CDP path; live `twitter tweets kalomaze --limit 1 -f json` succeeds with one tweet; live `xiaohongshu feed --limit 1 -f json` now returns a real note; live `xiaohongshu trending --limit 1 -f json` returns a hot-note fallback row; live `reddit user-posts spez --limit 1 -f json`, `youtube search openai --limit 1 -f json`, `bilibili trending --limit 1 -f json`, and `weibo trending --limit 1 -f json` all return one row; `browser sessions -f json` returns a structured error when the extension bridge is unavailable.
+- Verification: `npm run typecheck`, `npm run lint`, touched-files `prettier --check`, targeted CDP/XHS/Weibo/surface tests (30 passed, 1 skipped), and full `npm test` (237 files passed, 2684 passed, 2 skipped).
+- Residual risk: an old incompatible OpenCLI extension from another installed browser profile still attempts to reconnect and is rejected; it no longer blocks delivery or creates 30s waits. The repaired 9222 automation Chrome now runs with `--disable-extensions`. Local CDP fallback is the working delivery path for authenticated site commands. `browser doctor` still reports the daemon extension bridge as `needs-extension`, so the system is not "perfect"; it is functional on the default local-CDP delivery path. Parallel live commands can still race on the same CDP page target; run social-site probes sequentially until page-target leasing is made per-command.
+
 ## 2026-05-31 — Step 2/5 Unified Operation Contracts
 
 - Root cause: adapter commands used `CommandContract`, but core Commander
@@ -182,3 +195,91 @@ typecheck`, `npm run lint`, `npm run docs:build`, `npm run docs:check-public`,
 - Residual risk: this is a verified local release candidate, not a real npm
   publish. Tagging and publishing still require a maintainer commit on `main`,
   `git tag v0.225.0`, and the GitHub `release.yml` workflow.
+
+## 2026-06-02 — Full-Site Availability Sweep and Browser Substrate Repair
+
+- Root cause: commit `7f1a1efc` introduced browser bridge port isolation that
+  could trust an incompatible extension hello. Commit `c43cb7dc` then broadened
+  repair behavior while doctor output could mask the bad daemon/extension state.
+- Added `scripts/site-availability-sweep.ts` and `npm run site:availability`.
+  The sweep classifies every adapter command, then runs at most one safe
+  public/read/non-browser/no-free-input representative probe per site.
+- Extracted shared health classifiers into `scripts/adapter-health-shared.ts`
+  so `adapter:health` and the new site sweep agree on detect gates,
+  platform/capability gates, transient network/rate-limit/auth/local-daemon
+  deferrals, and probe args.
+- Fixed concentrated sweep failures:
+  - untyped `limit` probe args now match CLI string semantics;
+  - Electron desktop and AI-chat/app-specific commands now expose
+    `minimum_capability: cdp-browser.cdp_attach`;
+  - local WebSocket commands are environment-gated via `net.websocket`;
+  - optional semantic inputs such as `query`, `author`, `pid`, `id`, `url`, and
+    `tags` are classified as input-required rather than empty-probed;
+  - Chrome/Electron launchers now convert detached `spawn` errors into
+    catchable launch errors and verify mdfind-discovered app executables.
+- Final full-site sweep result:
+  `SITE_SWEEP_TIMEOUT_MS=10000 npx tsx scripts/site-availability-sweep.ts` —
+  exit 0. 313 sites, 1784 adapter commands classified; site statuses:
+  ok=62, environment_skip=13, no_auto_probe=238, fail=0.
+- Experiment ladder: targeted site-sweep/Electron/launcher tests, typecheck,
+  lint, full unit tests, adapter health, real E2E, format check, and a final
+  post-format full-site sweep.
+- Observed verification:
+  - `npm test` — 238 files, 2691 passed, 2 skipped.
+  - `npm run adapter:health` — ok=155, fail=0, skip=1629,
+    skip_env_missing=65, total=1784.
+  - `npm run e2e:real` — workflow_total=44, passed=43, failed=0, skipped=1
+    (`arxiv` rate limited).
+  - Common social smoke through built `dist/main.js`: `twitter tweets
+kalomaze`, `xiaohongshu feed`, `reddit user-posts spez`, `youtube search
+openai`, `bilibili trending`, and `weibo trending` each returned
+    `ok=true` with one row.
+  - Final sweep environment skips were 5 auth-gated sites, 5 loopback/private
+    local services, 2 deprecated upstream patent placeholders, and 1 transient
+    V2EX timeout.
+- Residual risk: this proves every safe automatically runnable site
+  representative on this host. It intentionally does not claim auth-only,
+  browser-only, write/destructive, quarantined, platform-missing, local-daemon,
+  or caller-input-required commands are live without credentials, UI/CDP state,
+  explicit user input, or a safe write sandbox.
+
+## 2026-06-02 — 0.225.1 Browser Fresh-Target Release Closed
+
+- Root cause: the user-session CDP acquisition path treated a reachable
+  `/json` endpoint as enough proof that the existing page target was healthy.
+  The loaded-extension automation Chrome on port 9223 still answered HTTP CDP
+  discovery, but its existing page target timed out on `Runtime.evaluate`,
+  `Page.enable`, and `Page.addScriptToEvaluateOnNewDocument`; a fresh
+  `/json/new?about:blank` target on the same browser completed those commands.
+- Fix: `connectToChrome` now supports a `freshPage` connection mode,
+  `BrowserPage.connect` passes that mode through, and user-session browser
+  pipeline acquisition always attaches to a fresh page target. Fresh-target
+  `Page.enable` failure is fatal instead of being silently tolerated.
+- Additional release fixes: added `xiaohongshu feed`, locked the Maoyan hot
+  JSON path to `movieList.list`, shared the adapter-health classifier with the
+  full-site sweep, improved E2E timeout diagnostics, and prepared
+  `0.225.1 — Apollo · Conrad` docs/package metadata.
+- Final availability evidence:
+  `SITE_SWEEP_TIMEOUT_MS=10000 npm run --silent site:availability` — exit 0;
+  site statuses: ok=64, environment_skip=12, no_auto_probe=237, fail=0.
+  `npm run adapter:health` — exit 0; ok=158, fail=0, skip=1626,
+  skip_env_missing=66, total=1784.
+- Final real E2E evidence:
+  `npm run e2e:real` — exit 0; catalog_total=1820, workflow_total=44,
+  workflow_passed=44, workflow_failed=0, workflow_skipped=0.
+- Final release evidence:
+  `npm run verify` — exit 0. Unit tests: 239 files, 2693 passed, 2 skipped.
+  Adapter tests: 168 files, 6426 passed. Perf, compute coverage, adapter-test
+  coverage, stats, conformance, exports, changesets, and boundary checks also
+  passed. `npm run release:check -- --strict-codename` passed 23/23.
+  `npm publish --dry-run` produced the `@zenalexa/unicli@0.225.1` dry-run
+  tarball (`zenalexa-unicli-0.225.1.tgz`), package size 2.7 MB, 3828 files.
+- Common site smoke through built `dist/main.js`: `twitter tweets kalomaze`,
+  `xiaohongshu feed`, `reddit user-posts spez`, `youtube search openai`,
+  `bilibili trending`, `weibo trending`, and `maoyan hot` each returned
+  `ok=true` with one row and no stderr.
+- Residual risk: this proves the browser substrate regression and all safe
+  representative probes on this host. It still intentionally does not claim
+  write/destructive, browser-only manual flows, auth-only commands without
+  usable cookies, quarantined commands, platform-missing commands, or commands
+  requiring caller-supplied semantic input.

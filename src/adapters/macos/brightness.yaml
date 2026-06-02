@@ -15,11 +15,14 @@ pipeline:
         - |
           const app = Application.currentApplication();
           app.includeStandardAdditions = true;
-          const result = app.doShellScript('ioreg -c AppleBacklightDisplay | grep brightness');
-          JSON.stringify({ brightness: result });
+          const raw = app.doShellScript('ioreg -r -c AppleBacklightDisplay -k brightness 2>/dev/null || true');
+          const current = (raw.match(/"brightness"\\s*=\\s*(\\d+)/) || [])[1] || '';
+          const max = (raw.match(/"max-brightness"\\s*=\\s*(\\d+)/) || [])[1] || '';
+          const percent = current && max ? Math.round(Number(current) / Number(max) * 100) : null;
+          JSON.stringify([{ brightness: percent, raw: raw ? raw.split('\\n').slice(0, 8).join('\\n') : '', status: percent === null ? 'unavailable' : 'ok' }]);
       parse: json
 
-columns: [brightness]
+columns: [brightness, status]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
 capabilities: ["subprocess.exec"]

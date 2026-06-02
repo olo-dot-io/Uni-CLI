@@ -141,6 +141,8 @@ async function startBackgroundHarness(runtimeOnInstalled: {
     expect(sentMessages).toContainEqual({
       type: "hello",
       version: "0.214.0-test",
+      product: "unicli",
+      protocol: "unicli-browser-bridge",
     }),
   );
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   parseDefaultProfileDebugBlocks,
+  parseUserDataDirDebugPort,
   type LocalBrowserInstall,
 } from "../../src/browser/local-profiles.js";
 
@@ -55,5 +56,35 @@ describe("local browser profile diagnostics", () => {
         user_data_dir: "/home/example/.config/google-chrome",
       }),
     ]);
+  });
+
+  it("recovers a CDP port for an automation profile from the process list", () => {
+    const processList = [
+      "14018 /Applications/Google Chrome.app/Contents/MacOS/Google Chrome --remote-debugging-port=9223 --user-data-dir=/Users/example/.unicli/browser-profiles/google-chrome_Default --no-startup-window",
+      "14019 /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Helpers/Google Chrome Helper --type=renderer --remote-debugging-port=9223 --user-data-dir=/Users/example/.unicli/browser-profiles/google-chrome_Default",
+    ].join("\n");
+
+    expect(
+      parseUserDataDirDebugPort(
+        processList,
+        "/Users/example/.unicli/browser-profiles/google-chrome_Default",
+      ),
+    ).toEqual({
+      state: "recorded",
+      port: 9223,
+      source: "process-list",
+    });
+  });
+
+  it("parses quoted automation profile paths with spaces", () => {
+    const processList =
+      '14018 /Applications/Google Chrome.app/Contents/MacOS/Google Chrome --remote-debugging-port=9231 --user-data-dir="/Users/example/.unicli/browser profiles/google chrome Default" --no-startup-window';
+
+    expect(
+      parseUserDataDirDebugPort(
+        processList,
+        "/Users/example/.unicli/browser profiles/google chrome Default",
+      ),
+    ).toMatchObject({ state: "recorded", port: 9231 });
   });
 });

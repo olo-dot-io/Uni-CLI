@@ -9,8 +9,13 @@ import { writeFileSync } from "node:fs";
 import {
   registerAIChatCommands,
   connectElectronApp,
+  electronAppCommandMeta,
 } from "../_electron/shared.js";
 import { cli, Strategy } from "../../registry.js";
+
+const CURSOR_COMMAND_META = electronAppCommandMeta(
+  "src/adapters/cursor/cursor.ts",
+);
 
 registerAIChatCommands("cursor", {
   inputSelector:
@@ -28,6 +33,7 @@ cli({
   name: "composer",
   description: "Open Cursor Composer mode with a prompt",
   strategy: Strategy.PUBLIC,
+  ...CURSOR_COMMAND_META,
   args: [
     {
       name: "prompt",
@@ -52,6 +58,7 @@ cli({
   name: "extract-code",
   description: "Extract code blocks from the last Cursor response",
   strategy: Strategy.PUBLIC,
+  ...CURSOR_COMMAND_META,
   func: async () => {
     const p = await connectElectronApp("cursor");
     const code = await p.evaluate(`
@@ -75,6 +82,7 @@ cli({
   name: "export",
   description: "Export the current Cursor conversation to a Markdown file",
   strategy: Strategy.PUBLIC,
+  ...CURSOR_COMMAND_META,
   args: [
     {
       name: "output",
@@ -117,6 +125,7 @@ cli({
   name: "history",
   description: "List recent chat sessions from the Cursor sidebar",
   strategy: Strategy.PUBLIC,
+  ...CURSOR_COMMAND_META,
   func: async () => {
     const p = await connectElectronApp("cursor");
     const items = (await p.evaluate(`

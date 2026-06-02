@@ -16,6 +16,12 @@ interface SpotifyConfig {
   SPOTIFY_REDIRECT_URI?: string;
 }
 
+interface SpotifyTrack {
+  uri: string;
+  name: string;
+  artist: string;
+}
+
 const TOKEN_PATH = join(homedir(), ".unicli", "spotify-tokens.json");
 const ENV_PATH = join(homedir(), ".unicli", "spotify.env");
 
@@ -113,13 +119,26 @@ async function spotifyApi(
   return response.json();
 }
 
-async function searchTrack(query: string): Promise<string> {
+async function searchTrack(query: string): Promise<SpotifyTrack> {
   const data = (await spotifyApi(
     `/search?type=track&limit=1&q=${encodeURIComponent(query)}`,
-  )) as { tracks?: { items?: Array<{ uri?: string }> } };
-  const uri = data.tracks?.items?.[0]?.uri;
-  if (!uri) throw new Error(`No Spotify track found for query: ${query}`);
-  return uri;
+  )) as {
+    tracks?: {
+      items?: Array<{
+        uri?: string;
+        name?: string;
+        artists?: Array<{ name?: string }>;
+      }>;
+    };
+  };
+  const track = data.tracks?.items?.[0];
+  if (!track?.uri)
+    throw new Error(`No Spotify track found for query: ${query}`);
+  return {
+    uri: track.uri,
+    name: track.name ?? "",
+    artist: track.artists?.map((artist) => artist.name).join(", ") ?? "",
+  };
 }
 
 cli({
@@ -235,11 +254,38 @@ cli({
   args: [{ name: "query", type: "str", required: true, positional: true }],
   columns: ["ok", "uri"],
   func: async (_page, kwargs) => {
-    const uri = await searchTrack(str(kwargs.query));
-    await spotifyApi(`/me/player/queue?uri=${encodeURIComponent(uri)}`, {
+    const track = await searchTrack(str(kwargs.query));
+    await spotifyApi(`/me/player/queue?uri=${encodeURIComponent(track.uri)}`, {
       method: "POST",
     });
-    return [{ ok: true, uri }];
+    return [{ ok: true, uri: track.uri }];
+  },
+});
+
+cli({
+  site: "spotify",
+  name: "play-track",
+  description: "Search Spotify for a track query and start playback",
+  domain: "api.spotify.com",
+  strategy: Strategy.COOKIE,
+  args: [{ name: "query", type: "str", required: true, positional: true }],
+  columns: ["ok", "query", "track", "artist", "uri"],
+  func: async (_page, kwargs) => {
+    const query = str(kwargs.query);
+    const track = await searchTrack(query);
+    await spotifyApi("/me/player/play", {
+      method: "PUT",
+      body: JSON.stringify({ uris: [track.uri] }),
+    });
+    return [
+      {
+        ok: true,
+        query,
+        track: track.name,
+        artist: track.artist,
+        uri: track.uri,
+      },
+    ];
   },
 });
 

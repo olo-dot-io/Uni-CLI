@@ -2,7 +2,7 @@
  * @owner   Xiaohongshu browser adapters.
  * @does    Detects login, risk-control, and rendered-feed state in XHS web pages.
  * @needs   Browser-backed IPage from Uni-CLI runtime.
- * @feeds   xiaohongshu.search and xiaohongshu.trending.
+ * @feeds   xiaohongshu.feed, xiaohongshu.search, and xiaohongshu.trending.
  * @breaks  XHS copy or route changes can require updating page-state detection.
  */
 
@@ -62,7 +62,7 @@ export async function assertXhsReadable(
   assertXhsReadableState(command, await readXhsPageState(page));
 }
 
-export async function fetchXhsFeedItems(page: IPage): Promise<unknown[]> {
+async function fetchXhsStoreFeedItems(page: IPage): Promise<unknown[]> {
   const raw = await page.evaluate(`
     (async () => {
       const app = document.querySelector('#app')?.__vue_app__;
@@ -92,4 +92,61 @@ export async function fetchXhsFeedItems(page: IPage): Promise<unknown[]> {
     })()
   `);
   return Array.isArray(raw) ? raw : [];
+}
+
+export async function fetchXhsVisibleFeedItems(
+  page: IPage,
+): Promise<unknown[]> {
+  const raw = await page.evaluate(`
+    (() => {
+      const cleanText = (value) => String(value || '').replace(/\\s+/g, ' ').trim();
+      const normalizeUrl = (href) => {
+        if (!href) return '';
+        if (href.startsWith('http://') || href.startsWith('https://')) return href;
+        if (href.startsWith('/')) return 'https://www.xiaohongshu.com' + href;
+        return '';
+      };
+      const noteIdFromUrl = (url) => {
+        const match = url.match(/\\/(?:explore|search_result|note)\\/([^?#/]+)/i);
+        return match ? match[1] : '';
+      };
+      const rows = [];
+      const seen = new Set();
+      document.querySelectorAll('section.note-item, .note-item').forEach((el) => {
+        const link =
+          el.querySelector('a[href*="/explore/"]') ||
+          el.querySelector('a[href*="/search_result/"]') ||
+          el.querySelector('a[href*="/note/"]');
+        const url = normalizeUrl(link?.getAttribute('href') || '');
+        const id = noteIdFromUrl(url);
+        if (!id || seen.has(id)) return;
+        seen.add(id);
+
+        const titleEl = el.querySelector('.title, .note-title, a.title, .footer .title span');
+        const authorEl = el.querySelector('a.author .name, .name, .author-name, .nick-name, a.author');
+        const likesEl = el.querySelector('.count, .like-count, .like-wrapper .count');
+        const isVideo =
+          !!el.querySelector('video, .play-icon, .video-icon') ||
+          /视频/.test(cleanText(el.textContent));
+
+        rows.push({
+          id,
+          note_card: {
+            display_title: cleanText(titleEl?.textContent || link?.textContent || ''),
+            type: isVideo ? 'video' : 'normal',
+            user: { nickname: cleanText(authorEl?.textContent || '') },
+            interact_info: { liked_count: cleanText(likesEl?.textContent || '0') },
+          },
+        });
+      });
+      return rows;
+    })()
+  `);
+  return Array.isArray(raw) ? raw : [];
+}
+
+export async function fetchXhsFeedItems(page: IPage): Promise<unknown[]> {
+  const storeItems = await fetchXhsStoreFeedItems(page).catch(() => []);
+  if (storeItems.length > 0) return storeItems;
+  return fetchXhsVisibleFeedItems(page);
 }

@@ -7,8 +7,13 @@
 import {
   registerAIChatCommands,
   connectElectronApp,
+  electronAppCommandMeta,
 } from "../_electron/shared.js";
 import { cli, Strategy } from "../../registry.js";
+
+const CODEX_COMMAND_META = electronAppCommandMeta(
+  "src/adapters/codex/codex.ts",
+);
 
 registerAIChatCommands("codex", {
   inputSelector: ".input-area textarea, [role='textbox']",
@@ -24,6 +29,7 @@ cli({
   name: "extract-diff",
   description: "Extract diff patches from the last Codex response",
   strategy: Strategy.PUBLIC,
+  ...CODEX_COMMAND_META,
   func: async () => {
     const p = await connectElectronApp("codex");
     const diffs = await p.evaluate(`

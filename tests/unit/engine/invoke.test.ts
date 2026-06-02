@@ -273,6 +273,32 @@ describe("execute (end-to-end)", () => {
     expect(firstCmd).not.toContain("${cmd}");
   });
 
+  it("treats an empty successful observation as exit 0", async () => {
+    const adapter = mkAdapter({
+      name: "empty-observation",
+      commands: {
+        list: {
+          name: "list",
+          description: "List state that can legitimately be empty",
+          adapterArgs: [],
+          func: async () => [],
+        },
+      },
+    });
+    registerAdapter(adapter);
+    compileAll([adapter]);
+
+    const inv = buildInvocation("cli", "empty-observation", "list", {
+      args: {},
+      source: "shell",
+    })!;
+    const res = await execute(inv);
+
+    expect(res.error).toBeUndefined();
+    expect(res.results).toEqual([]);
+    expect(res.exitCode).toBe(0);
+  });
+
   it("paginated command surfaces a --cursor next_action", async () => {
     const inv = buildInvocation("cli", "inv-site", "paged", {
       args: {},

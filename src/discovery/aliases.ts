@@ -324,6 +324,10 @@ export const ACTION_ALIASES: ReadonlyMap<string, readonly string[]> = new Map([
 
   // Play / Media intent
   ["播放", ["play", "stream"]],
+  ["想听", ["play", "listen", "music", "song", "audio"]],
+  ["我想听", ["play", "listen", "music", "song", "audio"]],
+  ["听一下", ["play", "listen", "music", "song", "audio"]],
+  ["放一下", ["play", "listen", "music", "song", "audio"]],
   ["收听", ["play", "listen"]],
   ["我喜欢", ["play-liked", "liked", "favorite", "music"]],
   ["喜欢的音乐", ["play-liked", "liked", "favorite", "music"]],
@@ -355,10 +359,24 @@ export const DOMAIN_ALIASES: ReadonlyMap<string, readonly string[]> = new Map([
   ["弹幕", ["danmaku", "comment", "barrage"]],
   ["直播", ["live", "stream", "broadcast"]],
   ["音乐", ["music", "song", "audio", "playlist"]],
+  ["歌曲", ["song", "track", "music", "audio"]],
   ["播客", ["podcast", "audio", "episode"]],
   ["video", ["video", "clip", "stream"]],
   ["music", ["music", "song", "audio"]],
+  ["song", ["song", "track", "music", "audio"]],
+  ["track", ["track", "song", "music", "audio"]],
   ["podcast", ["podcast", "episode", "audio"]],
+
+  // Travel / Local
+  ["旅行", ["travel", "trip", "destination"]],
+  ["旅游", ["travel", "trip", "destination"]],
+  ["酒店", ["hotel", "lodging", "stay"]],
+  ["住宿", ["hotel", "lodging", "stay"]],
+  ["入住", ["checkin", "hotel", "stay"]],
+  ["退房", ["checkout", "hotel", "stay"]],
+  ["hotel", ["hotel", "lodging", "stay"]],
+  ["hotels", ["hotel", "lodging", "stay"]],
+  ["travel", ["travel", "trip", "destination"]],
 
   // News / Content
   ["新闻", ["news", "article", "headline"]],
@@ -1054,6 +1072,9 @@ export const SITE_CATEGORIES: ReadonlyMap<string, string> = new Map([
   ["ele", "shopping"],
   ["maoyan", "shopping"],
 
+  // Travel
+  ["ctrip", "travel"],
+
   // Developer
   ["github-trending", "dev"],
   ["gitlab", "dev"],
@@ -1306,6 +1327,13 @@ export const CATEGORY_ALIASES: ReadonlyMap<string, string> = new Map([
   ["知识产权", "patent"],
   ["patent", "patent"],
   ["patents", "patent"],
+  ["旅行", "travel"],
+  ["旅游", "travel"],
+  ["酒店", "travel"],
+  ["住宿", "travel"],
+  ["travel", "travel"],
+  ["hotel", "travel"],
+  ["hotels", "travel"],
   ["音乐", "audio"],
   ["音频", "audio"],
   ["求职", "jobs"],

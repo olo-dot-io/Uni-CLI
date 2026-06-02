@@ -147,6 +147,7 @@ export async function launchChrome(
     `--remote-debugging-port=${String(port)}`,
     "--no-first-run",
     "--no-default-browser-check",
+    "--disable-extensions",
   ];
 
   // Dedicated automation profile or selected logged-in Chromium profile.
@@ -173,11 +174,7 @@ export async function launchChrome(
     args.push("--no-startup-window");
   }
 
-  const child = spawn(actualPath, args, {
-    detached: true,
-    stdio: "ignore",
-  });
-  child.unref();
+  await spawnDetachedProcess(actualPath, args, "Chrome");
 
   // Wait for CDP to become available (poll every 200ms, max 10s)
   const start = Date.now();
@@ -304,8 +301,7 @@ export async function launchElectronApp(
     `--remote-debugging-port=${app.port}`,
     ...(app.extraArgs ?? []),
   ];
-  const proc = spawnProc(appPath, args, { detached: true, stdio: "ignore" });
-  proc.unref();
+  await spawnDetachedProcess(appPath, args, app.displayName ?? site, spawnProc);
 
   // Poll until CDP is available
   const deadline = Date.now() + 10_000;
@@ -338,7 +334,9 @@ async function findElectronAppPath(
         ).trim();
         if (result) {
           const execName = app.executableNames?.[0] ?? app.processName;
-          return `${result}/Contents/MacOS/${execName}`;
+          const candidate = `${result}/Contents/MacOS/${execName}`;
+          const { existsSync: fsExists } = await import("node:fs");
+          if (fsExists(candidate)) return candidate;
         }
       } catch {
         /* mdfind failed */
@@ -372,4 +370,29 @@ async function findElectronAppPath(
   }
 
   return null;
+}
+
+async function spawnDetachedProcess(
+  executablePath: string,
+  args: string[],
+  label: string,
+  spawnProc: typeof spawn = spawn,
+): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const child = spawnProc(executablePath, args, {
+      detached: true,
+      stdio: "ignore",
+    });
+    child.once("error", (err) => {
+      reject(
+        new Error(
+          `${label} launch failed: ${err instanceof Error ? err.message : String(err)}`,
+        ),
+      );
+    });
+    child.once("spawn", () => {
+      child.unref();
+      resolve();
+    });
+  });
 }

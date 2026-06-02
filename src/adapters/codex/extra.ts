@@ -1,12 +1,20 @@
 import { cli, Strategy } from "../../registry.js";
-import { connectElectronApp } from "../_electron/shared.js";
+import {
+  connectElectronApp,
+  electronAppCommandMeta,
+} from "../_electron/shared.js";
 import { intArg } from "../_shared/browser-tools.js";
+
+const CODEX_EXTRA_COMMAND_META = electronAppCommandMeta(
+  "src/adapters/codex/extra.ts",
+);
 
 cli({
   site: "codex",
   name: "history",
   description: "List Codex desktop conversation threads",
   strategy: Strategy.PUBLIC,
+  ...CODEX_EXTRA_COMMAND_META,
   args: [{ name: "limit", type: "int", default: 20 }],
   columns: ["title"],
   func: async (_page, kwargs) => {
@@ -27,6 +35,7 @@ cli({
   name: "export",
   description: "Export the current Codex desktop thread as Markdown text",
   strategy: Strategy.PUBLIC,
+  ...CODEX_EXTRA_COMMAND_META,
   columns: ["content"],
   func: async () => {
     const page = await connectElectronApp("codex");

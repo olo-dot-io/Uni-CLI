@@ -8,6 +8,8 @@
 export const DAEMON_PORT = 19825;
 export const DAEMON_PORT_CANDIDATES = [19825, 19826, 19827, 19828, 19829];
 export const DAEMON_HOST = "127.0.0.1";
+export const DAEMON_PRODUCT = "unicli";
+export const DAEMON_PROTOCOL = "unicli-browser-bridge";
 export const DAEMON_IDLE_TIMEOUT = 4 * 60 * 60 * 1000; // 4 hours default
 export const DAEMON_WS_PATH = "/ext";
 export const DAEMON_COMMAND_TIMEOUT = 120_000; // 2 min per command
@@ -73,6 +75,8 @@ export interface DaemonStatus {
   uptime: number;
   extensionConnected: boolean;
   extensionVersion?: string;
+  extensionProduct?: string;
+  extensionProtocol?: string;
   pending: number;
   lastCliRequestTime: number;
   memoryMB: number;
@@ -93,6 +97,8 @@ export interface BrowserSessionInfo {
 export interface ExtensionHello {
   type: "hello";
   version: string;
+  product?: string;
+  protocol?: string;
 }
 
 /** Extension→daemon log message */
@@ -101,4 +107,8 @@ export interface ExtensionLog {
   level: "log" | "warn" | "error";
   msg: string;
   ts: number;
+}
+
+export function isCompatibleExtensionHello(value: ExtensionHello): boolean {
+  return value.product === DAEMON_PRODUCT && value.protocol === DAEMON_PROTOCOL;
 }

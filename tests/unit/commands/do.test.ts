@@ -18,7 +18,10 @@ import {
 import { Command } from "commander";
 import { registerDoCommand } from "../../../src/commands/do.js";
 import { validateEnvelope } from "../../../src/output/envelope.js";
-import { loadAllAdapters } from "../../../src/discovery/loader.js";
+import {
+  loadAllAdapters,
+  loadTsAdapters,
+} from "../../../src/discovery/loader.js";
 import { registerAdapter } from "../../../src/registry.js";
 import { AdapterType } from "../../../src/types.js";
 
@@ -28,8 +31,9 @@ const deliveryFixtureHandler = vi.fn(async () => [
 
 // Ensure the YAML adapter registry is populated so that `do` can enrich
 // matches with args_schema / example_stdin via describeCommand.
-beforeAll(() => {
+beforeAll(async () => {
   loadAllAdapters();
+  await loadTsAdapters();
   registerAdapter({
     name: "do-delivery-fixture",
     type: AdapterType.WEB_API,
@@ -191,7 +195,7 @@ describe("unicli do — happy path", () => {
     expect((env.data.candidates as unknown[]).length).toBeLessThanOrEqual(2);
   });
 
-  it("emits next_actions with the top match's invocation first", async () => {
+  it("emits next_actions with direct invocation when no delivery template exists", async () => {
     const cap = captureStdout();
     try {
       const program = newProgram();
@@ -270,7 +274,79 @@ describe("unicli do — happy path", () => {
       attempts: [],
       runs: [],
     });
+    const actions = env.next_actions as Array<{ command: string }>;
+    expect(actions[0].command).toBe("unicli delivery run <delivery-spec.json>");
+    expect(actions[1].command).toBe(env.data.match.invocation);
     expect(deliveryFixtureHandler).not.toHaveBeenCalled();
+  });
+
+  it("prefers an objective plan over command BM25 when the user asks to play a song", async () => {
+    const cap = captureStdout();
+    try {
+      const program = newProgram();
+      await program.parseAsync([
+        "node",
+        "unicli",
+        "do",
+        "我想听",
+        "I really wanna stay at your house",
+        "-f",
+        "json",
+      ]);
+    } finally {
+      cap.restore();
+    }
+    const env = JSON.parse(cap.getStdout());
+    validateEnvelope(env);
+    expect(env.ok).toBe(true);
+    expect(env.data.match).toBeNull();
+    expect(env.data.objective_plan).toMatchObject({
+      schema_version: "objective-plan.v1",
+      objective: {
+        id: "media-playback",
+        kind: "media.playback",
+        slots: {
+          query: "I really wanna stay at your house",
+        },
+      },
+      delivery_spec_template: {
+        strategies: [
+          {
+            id: "spotify-api-play-track",
+            command: "spotify.play-track",
+            args: {
+              query: "I really wanna stay at your house",
+            },
+            verify_command: "unicli spotify status",
+          },
+        ],
+      },
+    });
+    expect(env.data.delivery_spec_template).toMatchObject({
+      objective: {
+        id: "media-playback",
+        evidence_gates: [
+          { kind: "run_completed" },
+          { kind: "required_evidence_type", evidence_type: "result-envelope" },
+        ],
+      },
+      strategies: [
+        {
+          id: "spotify-api-play-track",
+          kind: "adapter",
+          command: "spotify.play-track",
+        },
+      ],
+    });
+    expect(env.data.catalog_candidates[0]).not.toMatchObject({
+      site: "ctrip",
+      command: "hotel-search",
+    });
+    const actions = env.next_actions as Array<{ command: string }>;
+    expect(actions[0].command).toBe(
+      "unicli delivery run <objective-delivery-spec.json>",
+    );
+    expect(actions[1].command).toBe("unicli spotify play-track");
   });
 });
 

@@ -4,8 +4,15 @@
  * Commands: servers, channels, read, send, search, members, delete, status
  */
 
-import { connectElectronApp } from "../_electron/shared.js";
+import {
+  connectElectronApp,
+  electronAppCommandMeta,
+} from "../_electron/shared.js";
 import { cli, Strategy } from "../../registry.js";
+
+const DISCORD_APP_COMMAND_META = electronAppCommandMeta(
+  "src/adapters/discord-app/discord-app.ts",
+);
 
 // servers -- List Discord servers
 cli({
@@ -13,6 +20,7 @@ cli({
   name: "servers",
   description: "List Discord servers",
   strategy: Strategy.PUBLIC,
+  ...DISCORD_APP_COMMAND_META,
   func: async () => {
     const p = await connectElectronApp("discord-app");
     const servers = await p.evaluate(`
@@ -35,6 +43,7 @@ cli({
   name: "channels",
   description: "List channels in current server",
   strategy: Strategy.PUBLIC,
+  ...DISCORD_APP_COMMAND_META,
   func: async () => {
     const p = await connectElectronApp("discord-app");
     const channels = await p.evaluate(`
@@ -55,6 +64,7 @@ cli({
   name: "read",
   description: "Read recent messages",
   strategy: Strategy.PUBLIC,
+  ...DISCORD_APP_COMMAND_META,
   func: async () => {
     const p = await connectElectronApp("discord-app");
     const messages = await p.evaluate(`
@@ -79,6 +89,7 @@ cli({
   name: "send",
   description: "Send message in current channel",
   strategy: Strategy.PUBLIC,
+  ...DISCORD_APP_COMMAND_META,
   args: [
     {
       name: "message",
@@ -105,6 +116,7 @@ cli({
   name: "search",
   description: "Search Discord messages",
   strategy: Strategy.PUBLIC,
+  ...DISCORD_APP_COMMAND_META,
   args: [
     {
       name: "query",
@@ -138,6 +150,7 @@ cli({
   name: "members",
   description: "List server members",
   strategy: Strategy.PUBLIC,
+  ...DISCORD_APP_COMMAND_META,
   func: async () => {
     const p = await connectElectronApp("discord-app");
     const members = await p.evaluate(`
@@ -159,6 +172,7 @@ cli({
   name: "delete",
   description: "Delete a message by its ID in the active Discord channel",
   strategy: Strategy.PUBLIC,
+  ...DISCORD_APP_COMMAND_META,
   args: [
     {
       name: "message_id",
@@ -257,6 +271,7 @@ cli({
   name: "status",
   description: "Discord app status",
   strategy: Strategy.PUBLIC,
+  ...DISCORD_APP_COMMAND_META,
   func: async () => {
     const p = await connectElectronApp("discord-app");
     const title = await p.title();

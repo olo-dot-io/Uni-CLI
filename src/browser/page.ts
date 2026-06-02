@@ -5,7 +5,7 @@
  * on top of the raw CDPClient WebSocket connection.
  */
 
-import { CDPClient } from "./cdp-client.js";
+import { CDPClient, type ConnectToChromeOptions } from "./cdp-client.js";
 import type { CDPTarget } from "./cdp-client.js";
 import type {
   IPage,
@@ -814,8 +814,11 @@ export class BrowserPage implements IPage {
   /**
    * Static convenience: connect to Chrome and return a BrowserPage.
    */
-  static async connect(port?: number): Promise<BrowserPage> {
-    const client = await CDPClient.connectToChrome(port);
+  static async connect(
+    port?: number,
+    options?: ConnectToChromeOptions,
+  ): Promise<BrowserPage> {
+    const client = await CDPClient.connectToChrome(port, options);
     return new BrowserPage(client);
   }
 }

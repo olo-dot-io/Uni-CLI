@@ -4,7 +4,10 @@ import {
   resolveAppControlPolicy,
 } from "../../electron-apps.js";
 import { launchElectronApp } from "../../browser/launcher.js";
-import { connectElectronApp } from "./shared.js";
+import {
+  connectElectronApp,
+  ELECTRON_APP_MINIMUM_CAPABILITY,
+} from "./shared.js";
 import type { BrowserPage } from "../../browser/page.js";
 
 export interface ElectronMediaProfile {
@@ -39,6 +42,7 @@ export const ELECTRON_DESKTOP_MEDIA_COMMANDS = [
 const ELECTRON_DESKTOP_COMMAND_META = {
   adapter_path: "src/adapters/electron-desktop/electron-desktop.ts",
   target_surface: "desktop" as const,
+  minimum_capability: ELECTRON_APP_MINIMUM_CAPABILITY,
 };
 
 export function registerElectronDesktopCommands(

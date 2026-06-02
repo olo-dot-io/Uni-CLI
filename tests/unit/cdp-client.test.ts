@@ -103,13 +103,13 @@ describe("CDPClient.selectTarget", () => {
     expect(result!.id).toBe("2");
   });
 
-  it("prefers app type over page type", () => {
+  it("ignores non-page targets even when they look navigable", () => {
     const targets: CDPTarget[] = [
       {
         id: "1",
-        type: "page",
-        title: "Page",
-        url: "https://example.com",
+        type: "webview",
+        title: "Embedded App",
+        url: "https://app.example.com",
         webSocketDebuggerUrl: "ws://localhost:9222/1",
       },
       {
@@ -121,8 +121,7 @@ describe("CDPClient.selectTarget", () => {
       },
     ];
     const result = CDPClient.selectTarget(targets);
-    expect(result).not.toBeNull();
-    expect(result!.id).toBe("2");
+    expect(result).toBeNull();
   });
 });
 
@@ -180,6 +179,154 @@ describe("CDPClient.connectToChrome", () => {
 
     expect(createdTarget).toBe(true);
     expect(client.getConnectedTarget()?.id).toBe("created");
+
+    await client.close();
+    await new Promise<void>((resolve) => wsServer.close(() => resolve()));
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  });
+
+  it("creates a page target when Chrome exposes only internal targets", async () => {
+    let createdTarget = false;
+    const wsServer = new WebSocketServer({ noServer: true });
+    const server = http.createServer((req, res) => {
+      if (req.url === "/json") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify([
+            {
+              id: "webview",
+              type: "webview",
+              title: "Google Gemini",
+              url: "https://gemini.google.com/glic",
+              webSocketDebuggerUrl: "ws://localhost:9222/webview",
+            },
+            {
+              id: "iframe",
+              type: "iframe",
+              title: "RotateCookiesPage",
+              url: "https://accounts.google.com/RotateCookiesPage",
+              webSocketDebuggerUrl: "ws://localhost:9222/iframe",
+            },
+          ]),
+        );
+        return;
+      }
+      if (req.url?.startsWith("/json/new")) {
+        createdTarget = true;
+        const address = server.address();
+        const serverPort =
+          typeof address === "object" && address !== null ? address.port : 0;
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            id: "created-page",
+            type: "page",
+            title: "",
+            url: "about:blank",
+            webSocketDebuggerUrl: `ws://localhost:${String(serverPort)}/devtools/page/created-page`,
+          }),
+        );
+        return;
+      }
+      res.writeHead(404);
+      res.end();
+    });
+    server.on("upgrade", (req, socket, head) => {
+      if (req.url === "/devtools/page/created-page") {
+        wsServer.handleUpgrade(req, socket, head, (ws) => {
+          wsServer.emit("connection", ws, req);
+        });
+        return;
+      }
+      socket.destroy();
+    });
+    wsServer.on("connection", (ws) => {
+      ws.on("message", (data) => {
+        const msg = JSON.parse(data.toString()) as { id: number };
+        ws.send(JSON.stringify({ id: msg.id, result: {} }));
+      });
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, resolve));
+    const address = server.address();
+    const serverPort =
+      typeof address === "object" && address !== null ? address.port : 0;
+    const client = await CDPClient.connectToChrome(serverPort);
+
+    expect(createdTarget).toBe(true);
+    expect(client.getConnectedTarget()?.id).toBe("created-page");
+
+    await client.close();
+    await new Promise<void>((resolve) => wsServer.close(() => resolve()));
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  });
+
+  it("creates a fresh page target when requested even if an old page exists", async () => {
+    let createdTarget = false;
+    const wsServer = new WebSocketServer({ noServer: true });
+    const server = http.createServer((req, res) => {
+      if (req.url === "/json") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify([
+            {
+              id: "old-page",
+              type: "page",
+              title: "Stale page",
+              url: "https://www.xiaohongshu.com/explore/stale",
+              webSocketDebuggerUrl:
+                "ws://localhost:9222/devtools/page/old-page",
+            },
+          ]),
+        );
+        return;
+      }
+      if (req.url?.startsWith("/json/new")) {
+        createdTarget = true;
+        const address = server.address();
+        const serverPort =
+          typeof address === "object" && address !== null ? address.port : 0;
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            id: "fresh-page",
+            type: "page",
+            title: "",
+            url: "about:blank",
+            webSocketDebuggerUrl: `ws://localhost:${String(serverPort)}/devtools/page/fresh-page`,
+          }),
+        );
+        return;
+      }
+      res.writeHead(404);
+      res.end();
+    });
+    server.on("upgrade", (req, socket, head) => {
+      if (req.url === "/devtools/page/fresh-page") {
+        wsServer.handleUpgrade(req, socket, head, (ws) => {
+          wsServer.emit("connection", ws, req);
+        });
+        return;
+      }
+      socket.destroy();
+    });
+    wsServer.on("connection", (ws) => {
+      ws.on("message", (data) => {
+        const msg = JSON.parse(data.toString()) as { id: number };
+        ws.send(JSON.stringify({ id: msg.id, result: {} }));
+      });
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, resolve));
+    const address = server.address();
+    const serverPort =
+      typeof address === "object" && address !== null ? address.port : 0;
+    const client = await CDPClient.connectToChrome(serverPort, {
+      freshPage: true,
+    });
+
+    expect(createdTarget).toBe(true);
+    expect(client.getConnectedTarget()?.id).toBe("fresh-page");
 
     await client.close();
     await new Promise<void>((resolve) => wsServer.close(() => resolve()));
@@ -498,6 +645,7 @@ describe("CDPClient.discoverTargets", () => {
     httpServer = http.createServer((req, res) => {
       // Verify the path is /json
       expect(req.url).toBe("/json");
+      expect(req.headers.host).toBe(`127.0.0.1:${String(port)}`);
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(mockTargets));
     });

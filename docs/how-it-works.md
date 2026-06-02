@@ -99,7 +99,7 @@ The cascade order is `public → cookie → header → intercept → ui`. On the
 
 Every command returns a v2 AgentEnvelope — the same shape on success or failure.
 Agents parse one schema across
-<span><!-- STATS:command_count -->1766<!-- /STATS --></span> commands.
+<span><!-- STATS:command_count -->1767<!-- /STATS --></span> commands.
 
 ```json
 {
@@ -194,7 +194,7 @@ That is the simplest exposure path. The same operation contract can also run
 through MCP, ACP, HTTP, skills, or CI without changing semantics. One command
 shape across
 <span><!-- STATS:site_count -->313<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1766<!-- /STATS --></span> commands. One error
+<span><!-- STATS:command_count -->1767<!-- /STATS --></span> commands. One error
 envelope across every failure. One self-repair path across every adapter.
 
 ## Further reading

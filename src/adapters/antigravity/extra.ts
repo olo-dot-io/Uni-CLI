@@ -1,6 +1,13 @@
 import { cli, Strategy } from "../../registry.js";
-import { connectElectronApp } from "../_electron/shared.js";
+import {
+  connectElectronApp,
+  electronAppCommandMeta,
+} from "../_electron/shared.js";
 import { intArg } from "../_shared/browser-tools.js";
+
+const ANTIGRAVITY_COMMAND_META = electronAppCommandMeta(
+  "src/adapters/antigravity/extra.ts",
+);
 
 async function readAntigravityText(): Promise<string> {
   const page = await connectElectronApp("antigravity");
@@ -13,6 +20,7 @@ cli({
   name: "extract-code",
   description: "Extract code blocks from the active Antigravity conversation",
   strategy: Strategy.PUBLIC,
+  ...ANTIGRAVITY_COMMAND_META,
   columns: ["language", "code"],
   func: async () => {
     const page = await connectElectronApp("antigravity");
@@ -32,6 +40,7 @@ cli({
   name: "watch",
   description: "Poll Antigravity conversation text for updates",
   strategy: Strategy.PUBLIC,
+  ...ANTIGRAVITY_COMMAND_META,
   args: [
     { name: "interval", type: "int", default: 2 },
     { name: "iterations", type: "int", default: 5 },

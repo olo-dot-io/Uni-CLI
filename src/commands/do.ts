@@ -1,23 +1,25 @@
 /**
  * @owner        src/commands/do.ts
- * @does         One-call intent → ranked plan. Natural-language input maps to
- *               the best-fitting adapter command, and the envelope's
- *               next_actions field carries an executable, schema-aware
- *               invocation template. Intentionally plan-only — agents
- *               explicitly invoke the suggested command on the second hop
- *               (mirrors REST HATEOAS; avoids ambiguous-intent triggering
- *               irreversible adapter writes).
+ * @does         One-call intent → objective plan or ranked command plan.
+ *               Natural-language goals that describe an end state compile
+ *               into objective-level strategies before BM25 command search;
+ *               otherwise the best-fitting adapter command is returned with a
+ *               schema-aware invocation template. Intentionally plan-only —
+ *               agents explicitly invoke the suggested command on the second
+ *               hop.
  * @needs        commander, src/discovery/search, src/registry,
  *               src/commands/describe (describeCommand),
- *               src/engine/delivery/spec, src/output/{envelope,formatter}
+ *               src/engine/delivery/spec,
+ *               src/engine/objective,
+ *               src/output/{envelope,formatter}
  * @feeds        src/cli.ts agent entrypoint; complements `unicli search`
  *               (set semantics) with action semantics ("give me the answer").
  * @breaks       Emits `empty_result` envelope (exit 66) when no adapter
- *               scores above the floor. Otherwise always success path —
- *               this command does not perform network calls or writes.
- * @invariants   Never auto-executes the matched command. Output envelope's
- *               next_actions[0] is the recommended invocation; the agent
- *               must call it explicitly.
+ *               scores above the floor and no objective compiler accepts the
+ *               goal. Otherwise always success path — this command does not
+ *               perform network calls or writes.
+ * @invariants   Never auto-executes. Objective plans keep match=null so a
+ *               multi-step state goal cannot masquerade as a one-command hit.
  * @side-effects None — local index lookup only.
  * @perf         O(N) over BM25 index already loaded; <10ms cold per
  *               discovery/search.ts header.
@@ -34,6 +36,11 @@ import { describeCommand } from "./describe.js";
 import { format, detectFormat } from "../output/formatter.js";
 import { printErrorEnvelope } from "../output/error-writer.js";
 import { buildDeliveryOperatorSpecTemplate } from "../engine/delivery/spec.js";
+import {
+  buildObjectiveDoPayload,
+  buildObjectiveNextActions,
+  compileObjectivePlan,
+} from "../engine/objective/index.js";
 import type {
   AgentContext,
   AgentNextAction,
@@ -102,10 +109,11 @@ export function registerDoCommand(program: Command): void {
         return;
       }
 
+      const objectivePlan = compileObjectivePlan(intent);
       const results = search(intent, top);
       const filtered = results.filter((r) => r.score > SCORE_FLOOR);
 
-      if (filtered.length === 0) {
+      if (!objectivePlan && filtered.length === 0) {
         emitEmpty(startedAt, fmt, intent, "no adapter scored above the floor");
         return;
       }
@@ -142,6 +150,24 @@ export function registerDoCommand(program: Command): void {
         }
         return m;
       });
+
+      if (objectivePlan) {
+        const ctx: AgentContext = {
+          command: "core.do",
+          duration_ms: Date.now() - startedAt,
+          surface: "web",
+          next_actions: buildObjectiveNextActions(intent, objectivePlan),
+        };
+        console.log(
+          format(
+            buildObjectiveDoPayload(intent, objectivePlan, matches),
+            undefined,
+            fmt,
+            ctx,
+          ),
+        );
+        return;
+      }
 
       const best = matches[0];
       const data: Record<string, unknown> = {
@@ -215,7 +241,16 @@ function successNextActions(
 ): AgentNextAction[] {
   const actions: AgentNextAction[] = [];
 
-  // Primary: invoke the top match
+  if (hasDeliverySpecTemplate) {
+    actions.push({
+      command: "unicli delivery run <delivery-spec.json>",
+      description:
+        "Execute the included delivery_spec_template before claiming success",
+    });
+  }
+
+  // Direct command remains available when the caller intentionally bypasses
+  // delivery evidence collection for an inspect-only or manually supervised run.
   const params = argsSchemaToParams(best.args_schema);
   actions.push({
     command: `unicli ${best.site} ${best.command}`,
@@ -235,14 +270,6 @@ function successNextActions(
     description:
       "Stdin-JSON channel — use when params contain quotes/emoji/JSON",
   });
-
-  if (hasDeliverySpecTemplate) {
-    actions.push({
-      command: "unicli delivery run <delivery-spec.json>",
-      description:
-        "Execute the included delivery_spec_template after saving and filling required args",
-    });
-  }
 
   // Surface a runner-up if it scored close to the top
   if (

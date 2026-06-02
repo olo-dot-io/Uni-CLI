@@ -19,7 +19,7 @@ pipeline:
       headers:
         Referer: https://piaofang.maoyan.com/dashboard
 
-  - select: movieList.data.list
+  - select: movieList.list
 
   - map:
       rank: ${{ index + 1 }}

@@ -1,9 +1,18 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { join } from "node:path";
 
 const childProcessMocks = vi.hoisted(() => ({
   execSync: vi.fn(),
-  spawn: vi.fn(() => ({ unref: vi.fn() })),
+  spawn: vi.fn(() => {
+    const child = {
+      unref: vi.fn(),
+      once: vi.fn((event: string, cb: (...args: unknown[]) => void) => {
+        if (event === "spawn") queueMicrotask(() => cb());
+        return child;
+      }),
+    };
+    return child;
+  }),
 }));
 
 vi.mock("node:child_process", () => ({
@@ -74,11 +83,22 @@ describe("getCDPPort", () => {
 describe("launchChrome", () => {
   const originalChromePath = process.env.CHROME_PATH;
 
+  function mockSpawnSuccess(): void {
+    const child = {
+      unref: vi.fn(),
+      once: vi.fn((event: string, cb: (...args: unknown[]) => void) => {
+        if (event === "spawn") queueMicrotask(() => cb());
+        return child;
+      }),
+    };
+    childProcessMocks.spawn.mockReturnValue(child);
+  }
+
   afterEach(() => {
     vi.resetModules();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
-    childProcessMocks.spawn.mockReturnValue({ unref: vi.fn() });
+    mockSpawnSuccess();
     if (originalChromePath === undefined) delete process.env.CHROME_PATH;
     else process.env.CHROME_PATH = originalChromePath;
   });
@@ -100,8 +120,30 @@ describe("launchChrome", () => {
     expect(args).toContain(
       `--user-data-dir=${join(process.env.HOME ?? "~", ".unicli", "chrome-profile")}`,
     );
+    expect(args).toContain("--disable-extensions");
     expect(args).toContain("--no-startup-window");
     expect(args).not.toContain("--headless=new");
+  });
+
+  it("reports spawn errors instead of emitting an unhandled child_process error", async () => {
+    process.env.CHROME_PATH = "/missing/chrome";
+    const child = {
+      unref: vi.fn(),
+      once: vi.fn((event: string, cb: (...args: unknown[]) => void) => {
+        if (event === "error") {
+          queueMicrotask(() => cb(new Error("spawn ENOENT")));
+        }
+        return child;
+      }),
+    };
+    childProcessMocks.spawn.mockReturnValueOnce(child);
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("not running")));
+
+    const { launchChrome } = await import("../../src/browser/launcher.js");
+
+    await expect(launchChrome(9444)).rejects.toThrow(
+      "Chrome launch failed: spawn ENOENT",
+    );
   });
 
   it("allows an explicit foreground startup window for interactive login", async () => {

@@ -15,6 +15,20 @@ import { CDPClient } from "../../browser/cdp-client.js";
 import { BrowserPage } from "../../browser/page.js";
 import { injectStealth } from "../../browser/stealth.js";
 
+export const ELECTRON_APP_MINIMUM_CAPABILITY = "cdp-browser.cdp_attach";
+
+export function electronAppCommandMeta(adapterPath: string): {
+  adapter_path: string;
+  target_surface: "desktop";
+  minimum_capability: typeof ELECTRON_APP_MINIMUM_CAPABILITY;
+} {
+  return {
+    adapter_path: adapterPath,
+    target_surface: "desktop",
+    minimum_capability: ELECTRON_APP_MINIMUM_CAPABILITY,
+  };
+}
+
 /**
  * Connect to an Electron app via CDP.
  * Launches the app if not running.
@@ -77,6 +91,7 @@ export function registerAIChatCommands(
   const desktopCommandMeta = {
     adapter_path: `src/adapters/${site}/${site}.ts`,
     target_surface: "desktop" as const,
+    minimum_capability: ELECTRON_APP_MINIMUM_CAPABILITY,
   };
 
   /** Escape single quotes in selectors for use in evaluate strings */

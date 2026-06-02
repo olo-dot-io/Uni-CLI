@@ -22,6 +22,7 @@ import { cli, getAdapter, Strategy } from "../../src/registry.js";
 describe("kernel func execution", () => {
   it("passes an acquired page to browser-backed TypeScript commands", async () => {
     loadAllAdapters();
+    browserMock.calls.length = 0;
     let receivedPage: unknown;
 
     cli({
@@ -47,6 +48,7 @@ describe("kernel func execution", () => {
 
     expect(result.exitCode).toBe(0);
     expect(receivedPage).toBe(browserMock.page);
+    expect(browserMock.calls.at(-1)?.browserSession).toBe("user");
   });
 
   it("passes browser session preference to browser-backed TypeScript commands", async () => {

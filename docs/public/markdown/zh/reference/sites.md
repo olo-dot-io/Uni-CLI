@@ -11,7 +11,7 @@
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：313 个站点，1766 条命令。
+这个目录来自适配器 manifest：313 个站点，1767 条命令。
 
 | 站点 | 接口类型 | 命令数 | 认证 | 示例命令 |
 | --- | --- | ---: | --- | --- |
@@ -248,7 +248,7 @@
 | slay-the-spire-ii | service | 6 | 否 | unicli slay-the-spire-ii deck<br>unicli slay-the-spire-ii end-turn<br>unicli slay-the-spire-ii map |
 | slock | browser | 1 | 是 | unicli slock servers |
 | smzdm | web-api | 3 | 是 | unicli smzdm article<br>unicli smzdm hot<br>unicli smzdm search |
-| spotify | web-api | 23 | 是 | unicli spotify now-playing<br>unicli spotify playlists<br>unicli spotify search |
+| spotify | web-api | 24 | 是 | unicli spotify now-playing<br>unicli spotify playlists<br>unicli spotify search |
 | sspai | web-api | 2 | 否 | unicli sspai hot<br>unicli sspai latest |
 | stackoverflow | web-api | 10 | 否 | unicli stackoverflow bounties<br>unicli stackoverflow hot<br>unicli stackoverflow question |
 | stagehand | bridge | 1 | 否 | unicli stagehand wrap-observe |
