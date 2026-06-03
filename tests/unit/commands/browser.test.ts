@@ -965,6 +965,92 @@ describe("unicli browser operator surface", () => {
     expect(readFileSync(env.data.screenshot.path, "utf-8")).toBe("img");
   });
 
+  it("browser console reads bounded page console entries", async () => {
+    mockPage.evaluate.mockImplementation(async (script: string) => {
+      if (script.includes("__unicli_console_snapshot")) {
+        return JSON.stringify({
+          summary: {
+            count: 3,
+            error_count: 1,
+            warn_count: 1,
+            observed_since: "2026-04-27T14:00:00.000Z",
+          },
+          entries: [
+            {
+              level: "log",
+              text: "ready",
+              timestamp: "2026-04-27T14:00:01.000Z",
+            },
+            {
+              level: "warn",
+              text: "slow route",
+              timestamp: "2026-04-27T14:00:02.000Z",
+            },
+            {
+              level: "error",
+              text: "failed route",
+              timestamp: "2026-04-27T14:00:03.000Z",
+            },
+          ],
+          truncated: false,
+        });
+      }
+      return undefined;
+    });
+
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "console", "--max", "2"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      ok: boolean;
+      schema_version: string;
+      command: string;
+      data: {
+        evidence_type: string;
+        observed_since: string;
+        capture_scope: { console: string };
+        page: { url: string; title: string };
+        summary: { count: number; error_count: number; warn_count: number };
+        entries: Array<{ level: string; text: string; timestamp: string }>;
+        truncated: boolean;
+      };
+    };
+    expect(env.ok).toBe(true);
+    expect(env.schema_version).toBe("2");
+    expect(env.command).toBe("browser.console");
+    expect(env.data).toMatchObject({
+      evidence_type: "browser-console",
+      observed_since: "2026-04-27T14:00:00.000Z",
+      capture_scope: { console: "since_hook" },
+      page: { url: "https://example.com", title: "Test Page" },
+      summary: { count: 3, error_count: 1, warn_count: 1 },
+      truncated: true,
+    });
+    expect(env.data.entries).toEqual([
+      {
+        level: "warn",
+        text: "slow route",
+        timestamp: "2026-04-27T14:00:02.000Z",
+      },
+      {
+        level: "error",
+        text: "failed route",
+        timestamp: "2026-04-27T14:00:03.000Z",
+      },
+    ]);
+    expect(mockPage.addInitScript).toHaveBeenCalledWith(
+      expect.stringContaining("__unicli_console_entries"),
+    );
+  });
+
   it("browser evidence can wait for render-aware stability", async () => {
     useTempHome();
     mockPage.snapshot.mockResolvedValue("[1]<main>Ready</main>");

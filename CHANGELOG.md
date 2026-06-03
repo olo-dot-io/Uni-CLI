@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- `unicli browser console` now reads bounded current-page console messages,
+  warnings, errors, and page error events from the browser evidence hook without
+  exposing page-context eval or raw CDP authority.
+
 ## [0.225.1] — 2026-06-02 — Apollo · Conrad
 
 ### Added

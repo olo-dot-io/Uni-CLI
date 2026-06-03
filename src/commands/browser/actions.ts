@@ -34,6 +34,7 @@ import {
   captureBrowserEvidencePacket,
   captureRenderAwareBrowserEvidence,
   installBrowserEvidenceHooks,
+  readBrowserConsole,
 } from "../../engine/browser/evidence.js";
 import {
   assertBrowserSessionLeaseUrlGuard,
@@ -337,6 +338,23 @@ export function registerBrowserOperatorSubcommands(
             screenshotDir,
           });
         }),
+    );
+
+  root
+    .command("console")
+    .description("Read bounded browser console messages and page errors")
+    .option("--clear", "Clear captured console entries after reading")
+    .option("--max <n>", "Maximum console entries to return", "50")
+    .option("--text-max <n>", "Maximum text characters per entry", "1000")
+    .action((opts: { clear?: boolean; max: string; textMax: string }) =>
+      operatorAction(program, root, namespace, "console", async () => {
+        const page = await getOperatorPage(root, namespace);
+        return await readBrowserConsole(page, {
+          clear: opts.clear === true,
+          maxEntries: parseInt(opts.max, 10),
+          maxTextChars: parseInt(opts.textMax, 10),
+        });
+      }),
     );
 
   root

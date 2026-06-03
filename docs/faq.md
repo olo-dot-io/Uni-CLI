@@ -33,7 +33,7 @@ Any runtime that can spawn a subprocess can use Uni-CLI directly. Uni-CLI also e
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.225.1 ships a generated operation catalog with <span><!-- STATS:site_count -->313<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1767<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1217<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->9119<!-- /STATS --></span> tests. The headline is not the count; it is the shared control contract: intent, policy, action substrate, evidence, delivery, repair, and the same AgentEnvelope across web, browser, desktop, local tools, files, and protocols.
+v0.225.1 ships a generated operation catalog with <span><!-- STATS:site_count -->313<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1767<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1217<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->9120<!-- /STATS --></span> tests. The headline is not the count; it is the shared control contract: intent, policy, action substrate, evidence, delivery, repair, and the same AgentEnvelope across web, browser, desktop, local tools, files, and protocols.
 
 ## Can Uni-CLI download papers and read local PDFs?
 

@@ -81,6 +81,41 @@ export interface BrowserEvidencePacket {
   capture_errors: string[];
 }
 
+export interface BrowserConsoleSnapshot {
+  schema_version: "1";
+  evidence_type: "browser-console";
+  captured_at: string;
+  observed_since: string | null;
+  capture_scope: {
+    console: ConsoleScope;
+  };
+  page: {
+    url: string;
+    title: string;
+  };
+  summary: {
+    count: number;
+    error_count: number;
+    warn_count: number;
+  };
+  entries: BrowserConsoleEntry[];
+  truncated: boolean;
+  capture_errors: string[];
+}
+
+export interface BrowserConsoleReadOptions {
+  clear?: boolean;
+  maxEntries?: number;
+  maxTextChars?: number;
+  timestamp?: string;
+}
+
+export interface BrowserConsoleEntry {
+  level: "log" | "warn" | "error";
+  text: string;
+  timestamp: string;
+}
+
 type ConsoleScope = "session" | "since_hook" | "unavailable";
 type DomScope = "current_snapshot" | "provided_snapshot" | "unavailable";
 type NetworkScope = "session" | "session+fallback" | "fallback" | "unavailable";
@@ -110,8 +145,10 @@ interface NetworkReadResult {
 
 interface ConsoleReadResult {
   summary: ConsoleSummary;
+  entries?: unknown[];
   scope: ConsoleScope;
   observedSince: string | null;
+  truncated?: boolean;
 }
 
 export const BROWSER_EVIDENCE_HOOK_JS = `(() => {
@@ -123,10 +160,25 @@ export const BROWSER_EVIDENCE_HOOK_JS = `(() => {
     observed_since: new Date().toISOString()
   };
   root.__unicli_console_summary = summary;
+  const entries = Array.isArray(root.__unicli_console_entries)
+    ? root.__unicli_console_entries
+    : [];
+  root.__unicli_console_entries = entries;
   if (root.__unicli_console_hooked) return;
   root.__unicli_console_hooked = true;
 
-  const bump = (level) => {
+  const stringify = (value) => {
+    try {
+      if (typeof value === "string") return value;
+      if (value instanceof Error) return value.stack || value.message || "Error";
+      if (value === null || value === undefined) return String(value);
+      return String(value);
+    } catch {
+      return "[unserializable]";
+    }
+  };
+
+  const record = (level, args) => {
     try {
       summary.count = Number(summary.count || 0) + 1;
       if (level === "error") {
@@ -135,6 +187,13 @@ export const BROWSER_EVIDENCE_HOOK_JS = `(() => {
       if (level === "warn") {
         summary.warn_count = Number(summary.warn_count || 0) + 1;
       }
+      const text = (args || []).map(stringify).join(" ").slice(0, 2000);
+      entries.push({
+        level,
+        text,
+        timestamp: new Date().toISOString()
+      });
+      while (entries.length > 100) entries.shift();
     } catch {
       /* evidence hooks must never affect the page */
     }
@@ -144,20 +203,45 @@ export const BROWSER_EVIDENCE_HOOK_JS = `(() => {
     const original = console[level];
     if (typeof original !== "function") continue;
     console[level] = function(...args) {
-      bump(level);
+      record(level, args);
       return original.apply(this, args);
     };
   }
 
-  root.addEventListener?.("error", () => {
-    bump("error");
+  root.addEventListener?.("error", (event) => {
+    record("error", [event?.message || "error"]);
   });
-  root.addEventListener?.("unhandledrejection", () => {
-    bump("error");
+  root.addEventListener?.("unhandledrejection", (event) => {
+    record("error", [event?.reason || "unhandledrejection"]);
   });
 })()`;
 
 const READ_CONSOLE_SUMMARY_JS = `(() => JSON.stringify(globalThis.__unicli_console_summary || null))()`;
+
+function readConsoleSnapshotJs(clear: boolean): string {
+  return `(() => {
+    const root = globalThis;
+    const summary = root.__unicli_console_summary || null;
+    const entries = Array.isArray(root.__unicli_console_entries)
+      ? root.__unicli_console_entries
+      : [];
+    const __unicli_console_snapshot = {
+      summary,
+      entries,
+      truncated: false
+    };
+    if (${clear ? "true" : "false"}) {
+      root.__unicli_console_summary = {
+        count: 0,
+        error_count: 0,
+        warn_count: 0,
+        observed_since: new Date().toISOString()
+      };
+      root.__unicli_console_entries = [];
+    }
+    return JSON.stringify(__unicli_console_snapshot);
+  })()`;
+}
 
 export async function installBrowserEvidenceHooks(page: IPage): Promise<void> {
   try {
@@ -228,6 +312,50 @@ export async function captureBrowserEvidencePacket(
     console: summarizeConsole(consoleResult.summary),
     network: summarizeNetwork(networkResult.entries),
     screenshot,
+    capture_errors: captureErrors,
+  };
+}
+
+export async function readBrowserConsole(
+  page: IPage,
+  options: BrowserConsoleReadOptions = {},
+): Promise<BrowserConsoleSnapshot> {
+  const captureErrors: string[] = [];
+  const capturedAt = options.timestamp ?? new Date().toISOString();
+  const maxEntries = boundedInteger(options.maxEntries, 50, 0, 100);
+  const maxTextChars = boundedInteger(options.maxTextChars, 1000, 1, 2000);
+
+  await installBrowserEvidenceHooks(page);
+  const url = await captureValue(() => page.url(), "", "url", captureErrors);
+  const title = await captureValue(
+    () => page.title(),
+    "",
+    "title",
+    captureErrors,
+  );
+  const consoleResult = await readConsoleSnapshot(
+    page,
+    captureErrors,
+    options.clear === true,
+  );
+  const { entries, truncated } = boundedConsoleEntries(
+    consoleResult.entries ?? [],
+    maxEntries,
+    maxTextChars,
+  );
+
+  return {
+    schema_version: "1",
+    evidence_type: "browser-console",
+    captured_at: capturedAt,
+    observed_since: consoleResult.observedSince,
+    capture_scope: {
+      console: consoleResult.scope,
+    },
+    page: { url, title },
+    summary: summarizeConsole(consoleResult.summary),
+    entries,
+    truncated: truncated || consoleResult.truncated === true,
     capture_errors: captureErrors,
   };
 }
@@ -374,6 +502,41 @@ async function readConsoleSummary(
   }
 }
 
+async function readConsoleSnapshot(
+  page: IPage,
+  errors: string[],
+  clear: boolean,
+): Promise<ConsoleReadResult> {
+  try {
+    const raw = await page.evaluate(readConsoleSnapshotJs(clear));
+    const parsed = typeof raw === "string" ? (JSON.parse(raw) as unknown) : raw;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      const record = parsed as {
+        summary?: unknown;
+        entries?: unknown;
+        truncated?: unknown;
+      };
+      const summary = consoleSummaryValue(record.summary);
+      const base = consoleReadResult(summary);
+      return {
+        ...base,
+        entries: Array.isArray(record.entries) ? record.entries : [],
+        truncated:
+          typeof record.truncated === "boolean" ? record.truncated : undefined,
+      };
+    }
+    return consoleReadResult(parsed);
+  } catch (err) {
+    errors.push(`console: ${errorMessage(err)}`);
+    return {
+      summary: {},
+      entries: [],
+      scope: "unavailable",
+      observedSince: null,
+    };
+  }
+}
+
 async function readNetworkEntries(
   page: IPage,
   errors: string[],
@@ -502,6 +665,59 @@ function consoleReadResult(value: unknown): ConsoleReadResult {
     scope: "unavailable",
     observedSince: null,
   };
+}
+
+function consoleSummaryValue(value: unknown): ConsoleSummary {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as ConsoleSummary)
+    : {};
+}
+
+function boundedConsoleEntries(
+  values: unknown[],
+  maxEntries: number,
+  maxTextChars: number,
+): { entries: BrowserConsoleEntry[]; truncated: boolean } {
+  const entries = values.flatMap((value) =>
+    browserConsoleEntry(value, maxTextChars),
+  );
+  if (entries.length <= maxEntries) return { entries, truncated: false };
+  return {
+    entries: entries.slice(entries.length - maxEntries),
+    truncated: true,
+  };
+}
+
+function browserConsoleEntry(
+  value: unknown,
+  maxTextChars: number,
+): BrowserConsoleEntry[] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+  const record = value as Record<string, unknown>;
+  const level = record.level;
+  if (level !== "log" && level !== "warn" && level !== "error") return [];
+  const text = typeof record.text === "string" ? record.text : "";
+  const timestamp =
+    typeof record.timestamp === "string" && record.timestamp.length > 0
+      ? record.timestamp
+      : new Date(0).toISOString();
+  return [
+    {
+      level,
+      text: text.slice(0, maxTextChars),
+      timestamp,
+    },
+  ];
+}
+
+function boundedInteger(
+  value: number | undefined,
+  fallback: number,
+  min: number,
+  max: number,
+): number {
+  if (value === undefined || !Number.isFinite(value)) return fallback;
+  return Math.min(max, Math.max(min, Math.trunc(value)));
 }
 
 function mergeNetworkEntries(
