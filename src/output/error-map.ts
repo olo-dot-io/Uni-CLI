@@ -210,3 +210,34 @@ export function errorToAgentFields(
     alternatives: actionable?.alternatives ?? [],
   };
 }
+
+/**
+ * AgentError payload for an intent search that matched nothing.
+ *
+ * Shared by the commander search command and the fast-path discovery handler
+ * so both surfaces dead-end agents with the same actionable fallback instead
+ * of a bare "no results" line.
+ */
+export function emptySearchResultError(
+  queryLabel: string,
+  webSearchQuery: string,
+): {
+  code: string;
+  message: string;
+  suggestion: string;
+  retryable: boolean;
+  alternatives: string[];
+} {
+  return {
+    code: "empty_result",
+    message: `No commands matched: ${queryLabel}`,
+    suggestion:
+      "Rephrase with a site or domain word (e.g. 'twitter search', '股票行情'), or fall back to a generic web search.",
+    retryable: false,
+    alternatives: [
+      ...(webSearchQuery ? [`unicli google search "${webSearchQuery}"`] : []),
+      "unicli list --site <site>",
+      "unicli list",
+    ],
+  };
+}

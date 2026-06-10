@@ -12,6 +12,8 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { search } from "../discovery/search.js";
 import { format, detectFormat } from "../output/formatter.js";
+import { printErrorEnvelope } from "../output/error-writer.js";
+import { emptySearchResultError } from "../output/error-map.js";
 import type { AgentContext } from "../output/envelope.js";
 import type { OutputFormat } from "../types.js";
 
@@ -41,19 +43,27 @@ export function registerSearchCommand(program: Command): void {
 
         const results = search(query, limit, { category: opts.category });
 
-        if (results.length === 0) {
-          console.error(
-            chalk.yellow(
-              `No commands found for: ${[opts.category, query].filter(Boolean).join(" ")}`,
-            ),
-          );
-          process.exitCode = 66; // EX_EMPTY
-          return;
-        }
-
         const fmt = detectFormat(
           program.opts().format as OutputFormat | undefined,
         );
+
+        if (results.length === 0) {
+          const queryLabel = [opts.category, query].filter(Boolean).join(" ");
+          printErrorEnvelope({
+            fmt,
+            exitCode: 66, // EX_EMPTY
+            ctx: {
+              command: "core.search",
+              duration_ms: Date.now() - searchStarted,
+              surface: "web",
+              error: emptySearchResultError(
+                queryLabel,
+                query.replace(/"/g, "").trim(),
+              ),
+            },
+          });
+          return;
+        }
 
         const rows = results.map((r) => ({
           command: `${r.site} ${r.command}`,

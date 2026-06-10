@@ -21,6 +21,7 @@ import {
   CATEGORY_ALIASES,
 } from "./aliases.js";
 import {
+  appActionScorePrior,
   evaluateIntentFrame,
   intentBoost,
   resolveIntentFrame,
@@ -29,6 +30,7 @@ import {
   buildMacosDynamicSearchDocuments,
   discoverMacosDynamicData,
   dynamicMacosDiscoveryEnabled,
+  invalidateMacosDynamicCache,
 } from "./macos-dynamic.js";
 import {
   coreDiscoveryCategory,
@@ -586,8 +588,9 @@ function searchIndex(
     if (intentDecision.blocked) continue;
 
     // Hybrid base: alpha-blend BM25 and TF-IDF cosine similarity.
-    // BM25 scores are unbounded; cosine is [0,1]. We scale cosine by the
-    // average BM25 score across candidates to keep the blend balanced.
+    // BM25 scores are unbounded; cosine is [0,1] and is scaled by a fixed
+    // ×10 so the 20/80 blend keeps both regimes on comparable magnitudes
+    // (empirically tuned against the eval suite; NOT normalized per-query).
     const bm25 = bm25Score(doc.terms, doc.terms.length, queryTerms, index);
     const tfidf = tfidfCosine(doc.terms, queryTerms, index);
     let score = ALPHA_BM25 * bm25 + ALPHA_TFIDF * tfidf * 10;
@@ -600,7 +603,11 @@ function searchIndex(
       score += BOOST_SITE_PHRASE;
     }
 
-    // Boost: alias-resolved site match
+    // Boost: expanded query term hits the site or command name. The site
+    // branch intentionally co-fires with BOOST_SITE_EXACT on direct site
+    // queries AND fires alone when a DOMAIN_ALIASES expansion lands on a
+    // site name (e.g. 漫画→mangadex) — that second path is the zh-domain
+    // site-routing channel the eval suite depends on.
     for (const qt of queryTerms) {
       if (qt === doc.site) score += BOOST_SITE_ALIAS;
       if (qt === doc.command) score += BOOST_CMD_EXACT;
@@ -615,6 +622,7 @@ function searchIndex(
     score += intentBoost(doc, queryTerms, [...siteHints, ...sitePhraseHints]);
     score += intentDecision.boost;
     if (categoryFilter && queryTerms.length === 0) score += BOOST_CATEGORY;
+    score *= appActionScorePrior(doc, queryTerms);
 
     if (score <= 0) continue;
     if (shouldSortAll) {
@@ -723,4 +731,5 @@ function buildUsageExample(site: string, command: string): string {
 export function invalidateCache(): void {
   cachedIndex = null;
   cachedRegistryVersion = -1;
+  invalidateMacosDynamicCache();
 }

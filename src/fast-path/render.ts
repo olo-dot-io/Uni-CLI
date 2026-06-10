@@ -9,6 +9,7 @@
 import { writeSync } from "node:fs";
 import { format, detectFormat } from "../output/formatter.js";
 import { type OutputFormat } from "../types.js";
+import type { AgentContext } from "../output/envelope.js";
 import type { ManifestArg } from "./manifest.js";
 
 export type Io = {
@@ -237,6 +238,25 @@ export function emit(
       command,
       duration_ms: Date.now() - startedAt,
       surface: "web",
+    }),
+  );
+}
+
+export function emitError(
+  io: Io,
+  error: NonNullable<AgentContext["error"]>,
+  fmt: OutputFormat | undefined,
+  command: string,
+  startedAt: number,
+  exitCode: number,
+): void {
+  process.exitCode = exitCode;
+  io.stderr(
+    format(null, undefined, detectFormat(fmt), {
+      command,
+      duration_ms: Date.now() - startedAt,
+      surface: "web",
+      error,
     }),
   );
 }

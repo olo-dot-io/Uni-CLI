@@ -13,11 +13,26 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { search, invalidateCache } from "../../src/discovery/search.js";
 import { loadAllAdapters, loadTsAdapters } from "../../src/discovery/loader.js";
+import { listCommands } from "../../src/registry.js";
 
 interface EvalCase {
   query: string;
   site: string;
   command: string;
+  /**
+   * Interchangeable correct alternatives (multi-gold, StackOne-style).
+   * A query hits when ANY accepted pair appears in the top-k — single-gold
+   * cases were arbitrary whenever several commands are equally correct
+   * (论文搜索 → arxiv/google-scholar/semantic-scholar are all right).
+   */
+  alsoAccepted?: ReadonlyArray<{ site: string; command: string }>;
+}
+
+function acceptedPairs(c: EvalCase): ReadonlyArray<{
+  site: string;
+  command: string;
+}> {
+  return [{ site: c.site, command: c.command }, ...(c.alsoAccepted ?? [])];
 }
 
 // ── Eval Dataset ────────────────────────────────────────────────────────────
@@ -77,7 +92,6 @@ const EVAL_CASES: EvalCase[] = [
   { query: "豆瓣书评", site: "douban", command: "book-hot" },
 
   // Other social
-  { query: "即刻热门", site: "jike", command: "trending" },
   { query: "V2EX热帖", site: "v2ex", command: "hot" },
   { query: "bluesky feed", site: "bluesky", command: "feeds" },
   { query: "mastodon timeline", site: "mastodon", command: "timeline" },
@@ -145,6 +159,7 @@ const EVAL_CASES: EvalCase[] = [
   { query: "youtube trending", site: "youtube", command: "trending" },
   { query: "youtube视频信息", site: "youtube", command: "video" },
   { query: "youtube transcript", site: "youtube", command: "transcript" },
+  { query: "下载youtube视频字幕", site: "youtube", command: "transcript" },
   { query: "youtube shorts", site: "youtube", command: "shorts" },
   { query: "youtube channel", site: "youtube", command: "channel" },
   { query: "youtube comments", site: "youtube", command: "comments" },
@@ -214,15 +229,24 @@ const EVAL_CASES: EvalCase[] = [
 
   // ═══ Finance (50 cases) ═══
   { query: "股票行情", site: "xueqiu", command: "quote" },
+  { query: "查询苹果股价", site: "xueqiu", command: "quote" },
   { query: "stock price", site: "yahoo-finance", command: "quote" },
   { query: "雪球热股", site: "xueqiu", command: "hot-stock" },
-  { query: "xueqiu portfolio", site: "xueqiu", command: "portfolio" },
+  { query: "xueqiu portfolio", site: "xueqiu", command: "groups" },
   { query: "新浪财经", site: "sinafinance", command: "market" },
-  { query: "东方财富股票", site: "eastmoney", command: "stock" },
+  { query: "东方财富股票", site: "eastmoney", command: "quote" },
   { query: "yahoo finance quote", site: "yahoo-finance", command: "quote" },
   { query: "barchart stock data", site: "barchart", command: "quote" },
   { query: "binance价格", site: "binance", command: "ticker" },
-  { query: "crypto price", site: "binance", command: "ticker" },
+  {
+    query: "crypto price",
+    site: "binance",
+    command: "ticker",
+    alsoAccepted: [
+      { site: "binance", command: "price" },
+      { site: "coingecko", command: "coin" },
+    ],
+  },
   { query: "coinbase价格", site: "coinbase", command: "prices" },
   { query: "加密货币行情", site: "binance", command: "ticker" },
   { query: "富途行情", site: "futu", command: "quote" },
@@ -260,7 +284,7 @@ const EVAL_CASES: EvalCase[] = [
   { query: "拼多多搜索", site: "pinduoduo", command: "search" },
   { query: "什么值得买", site: "smzdm", command: "hot" },
   { query: "smzdm search", site: "smzdm", command: "search" },
-  { query: "美团热门", site: "meituan", command: "hot" },
+  { query: "美团热门", site: "meituan", command: "search" },
   { query: "美团搜索", site: "meituan", command: "search" },
   { query: "coupang热门商品", site: "coupang", command: "hot" },
   { query: "coupang search", site: "coupang", command: "search" },
@@ -333,20 +357,20 @@ const EVAL_CASES: EvalCase[] = [
 
   // ═══ AI & ML (40 cases) ═══
   { query: "ollama models", site: "ollama", command: "list" },
-  { query: "ollama run model", site: "ollama", command: "run" },
+  { query: "ollama run model", site: "ollama", command: "generate" },
   { query: "ollama generate", site: "ollama", command: "generate" },
   { query: "ollama ps", site: "ollama", command: "ps" },
   {
     query: "huggingface papers",
     site: "huggingface-papers",
-    command: "latest",
+    command: "search",
   },
   {
     query: "huggingface daily papers",
     site: "huggingface-papers",
     command: "daily",
   },
-  { query: "huggingface models", site: "hf", command: "search" },
+  { query: "huggingface models", site: "hf", command: "models" },
   { query: "huggingface datasets", site: "hf", command: "datasets" },
   { query: "huggingface spaces", site: "hf", command: "spaces" },
   { query: "openrouter models", site: "openrouter", command: "models" },
@@ -356,13 +380,12 @@ const EVAL_CASES: EvalCase[] = [
   { query: "replicate run", site: "replicate", command: "run" },
   { query: "deepseek对话", site: "deepseek", command: "chat" },
   { query: "deepseek models", site: "deepseek", command: "models" },
-  { query: "gemini chat", site: "gemini", command: "chat" },
+  { query: "gemini chat", site: "gemini", command: "ask" },
   { query: "gemini ask question", site: "gemini", command: "ask" },
   { query: "gemini image", site: "gemini", command: "image" },
   { query: "gemini deep research", site: "gemini", command: "deep-research" },
-  { query: "豆包对话", site: "doubao-web", command: "chat" },
+  { query: "豆包对话", site: "doubao-web", command: "ask" },
   { query: "doubao ask", site: "doubao", command: "ask" },
-  { query: "notebooklm create", site: "notebooklm", command: "create" },
   { query: "notebooklm list", site: "notebooklm", command: "list" },
   { query: "perplexity ask", site: "perplexity", command: "ask" },
   { query: "grok对话", site: "grok", command: "ask" },
@@ -430,7 +453,12 @@ const EVAL_CASES: EvalCase[] = [
   { query: "imagemagick convert", site: "imagemagick", command: "convert" },
   { query: "imagemagick montage", site: "imagemagick", command: "montage" },
   { query: "blender render", site: "blender", command: "render" },
-  { query: "3D渲染", site: "blender", command: "render" },
+  {
+    query: "3D渲染",
+    site: "blender",
+    command: "render",
+    alsoAccepted: [{ site: "freecad", command: "render" }],
+  },
   { query: "blender export", site: "blender", command: "export" },
   { query: "blender info", site: "blender", command: "info" },
   { query: "截图", site: "macos", command: "screenshot" },
@@ -517,8 +545,24 @@ const EVAL_CASES: EvalCase[] = [
 
   // ═══ Jobs (15 cases) ═══
   { query: "boss直聘搜索", site: "boss", command: "search" },
-  { query: "找工作", site: "boss", command: "search" },
-  { query: "job search", site: "boss", command: "search" },
+  {
+    query: "找工作",
+    site: "boss",
+    command: "search",
+    alsoAccepted: [
+      { site: "indeed", command: "search" },
+      { site: "indeed", command: "job" },
+    ],
+  },
+  {
+    query: "job search",
+    site: "boss",
+    command: "search",
+    alsoAccepted: [
+      { site: "indeed", command: "search" },
+      { site: "indeed", command: "job" },
+    ],
+  },
   { query: "boss recommend", site: "boss", command: "recommend" },
   { query: "boss detail", site: "boss", command: "detail" },
   { query: "boss chat list", site: "boss", command: "chatlist" },
@@ -681,7 +725,16 @@ const EVAL_CASES: EvalCase[] = [
   { query: "download video", site: "bilibili", command: "download" },
   { query: "search music", site: "spotify", command: "search" },
   { query: "trending topics", site: "twitter", command: "trending" },
-  { query: "latest news", site: "hackernews", command: "top" },
+  {
+    query: "latest news",
+    site: "hackernews",
+    command: "top",
+    alsoAccepted: [
+      { site: "reuters", command: "latest" },
+      { site: "ithome", command: "latest" },
+      { site: "36kr", command: "latest" },
+    ],
+  },
   { query: "stock quote", site: "yahoo-finance", command: "quote" },
   { query: "convert video format", site: "ffmpeg", command: "convert" },
   { query: "search papers", site: "arxiv", command: "search" },
@@ -692,7 +745,15 @@ const EVAL_CASES: EvalCase[] = [
   { query: "image resize", site: "imagemagick", command: "resize" },
   { query: "compress media", site: "ffmpeg", command: "compress" },
   { query: "post message", site: "slack", command: "post" },
-  { query: "movie search", site: "imdb", command: "search" },
+  {
+    query: "movie search",
+    site: "imdb",
+    command: "search",
+    alsoAccepted: [
+      { site: "douban", command: "search" },
+      { site: "maoyan", command: "search" },
+    ],
+  },
   { query: "podcast episodes", site: "apple-podcasts", command: "episodes" },
   { query: "code repository", site: "github-trending", command: "daily" },
   { query: "read article", site: "web", command: "read" },
@@ -701,12 +762,42 @@ const EVAL_CASES: EvalCase[] = [
   { query: "social media", site: "twitter", command: "trending" },
   { query: "developer tools", site: "github-trending", command: "daily" },
   { query: "AI tools", site: "ollama", command: "list" },
-  { query: "图片搜索", site: "unsplash", command: "search" },
+  {
+    query: "图片搜索",
+    site: "unsplash",
+    command: "search",
+    alsoAccepted: [{ site: "pexels", command: "search" }],
+  },
   { query: "视频下载", site: "bilibili", command: "download" },
   { query: "音乐搜索", site: "netease-music", command: "search" },
-  { query: "新闻头条", site: "hackernews", command: "top" },
-  { query: "论文搜索", site: "arxiv", command: "search" },
-  { query: "找工作搜索", site: "boss", command: "search" },
+  {
+    query: "新闻头条",
+    site: "hackernews",
+    command: "top",
+    alsoAccepted: [
+      { site: "toutiao", command: "hot" },
+      { site: "toutiao", command: "articles" },
+    ],
+  },
+  {
+    query: "论文搜索",
+    site: "arxiv",
+    command: "search",
+    alsoAccepted: [
+      { site: "google-scholar", command: "search" },
+      { site: "semantic-scholar", command: "search" },
+      { site: "baidu-scholar", command: "search" },
+    ],
+  },
+  {
+    query: "找工作搜索",
+    site: "boss",
+    command: "search",
+    alsoAccepted: [
+      { site: "indeed", command: "search" },
+      { site: "indeed", command: "job" },
+    ],
+  },
   { query: "游戏搜索", site: "steam", command: "search" },
 
   // ═══ Adversarial & Edge Cases (20 cases) ═══
@@ -795,17 +886,26 @@ const NEGATIVE_QUERIES: string[] = [
 function runEval(
   cases: EvalCase[],
   k: number,
-): { hits: number; total: number; accuracy: number; misses: EvalCase[] } {
+): {
+  hits: number;
+  total: number;
+  accuracy: number;
+  mrr: number;
+  misses: EvalCase[];
+} {
   let hits = 0;
+  let reciprocalRankSum = 0;
   const misses: EvalCase[] = [];
 
   for (const c of cases) {
     const results = search(c.query, k);
-    const found = results.some(
-      (r) => r.site === c.site && r.command === c.command,
+    const accepted = acceptedPairs(c);
+    const rank = results.findIndex((r) =>
+      accepted.some((a) => r.site === a.site && r.command === a.command),
     );
-    if (found) {
+    if (rank >= 0) {
       hits++;
+      reciprocalRankSum += 1 / (rank + 1);
     } else {
       misses.push(c);
     }
@@ -815,6 +915,8 @@ function runEval(
     hits,
     total: cases.length,
     accuracy: Math.round((hits / cases.length) * 10000) / 100,
+    // MRR@k: mean reciprocal rank of the first accepted hit (0 when absent).
+    mrr: Math.round((reciprocalRankSum / cases.length) * 10000) / 10000,
     misses,
   };
 }
@@ -834,7 +936,23 @@ describe("Search Engine Evaluation", () => {
     expect(total).toBeGreaterThanOrEqual(500);
   });
 
-  it("Top-1 accuracy > 30%", () => {
+  it("every gold (site, command) exists in the live registry", () => {
+    // Guards against gold rot: a renamed or deleted command must fail here
+    // loudly instead of silently deflating accuracy forever.
+    const live = new Set(listCommands().map((c) => `${c.site}/${c.command}`));
+    const stale = EVAL_CASES.flatMap((c) =>
+      acceptedPairs(c).map((a) => `${a.site}/${a.command}`),
+    ).filter((id) => !live.has(id));
+    expect([...new Set(stale)]).toEqual([]);
+  });
+
+  // Regression-lock thresholds are dated baselines minus ~3 points, NOT
+  // aspirational targets. Re-baseline (and re-date) whenever a deliberate
+  // ranking change moves the metrics.
+  // Baseline 2026-06-10 (multi-gold, 611 cases): Top-1 79.38, Top-3 91.82,
+  // Top-5 93.94, zh Top-5 93.48, en Top-5 94.15.
+
+  it("Top-1 accuracy stays above baseline-3 (76%)", () => {
     const result = runEval(EVAL_CASES, 1);
     console.log(`Top-1: ${result.accuracy}% (${result.hits}/${result.total})`);
     if (result.misses.length > 0 && result.misses.length <= 20) {
@@ -845,19 +963,25 @@ describe("Search Engine Evaluation", () => {
           .map((m) => `"${m.query}" → ${m.site}/${m.command}`),
       );
     }
-    expect(result.accuracy).toBeGreaterThan(30);
+    expect(result.accuracy).toBeGreaterThan(76);
   });
 
-  it("Top-3 accuracy > 55%", () => {
+  it("Top-3 accuracy stays above baseline-3 (88%)", () => {
     const result = runEval(EVAL_CASES, 3);
     console.log(`Top-3: ${result.accuracy}% (${result.hits}/${result.total})`);
-    expect(result.accuracy).toBeGreaterThan(55);
+    expect(result.accuracy).toBeGreaterThan(88);
   });
 
-  it("Top-5 accuracy > 65%", () => {
+  it("Top-5 accuracy stays above baseline-3 (91%)", () => {
     const result = runEval(EVAL_CASES, 5);
     console.log(`Top-5: ${result.accuracy}% (${result.hits}/${result.total})`);
-    expect(result.accuracy).toBeGreaterThan(65);
+    expect(result.accuracy).toBeGreaterThan(91);
+  });
+
+  it("MRR@5 catches rank slides that Hit@5 cannot see", () => {
+    const result = runEval(EVAL_CASES, 5);
+    console.log(`MRR@5: ${result.mrr}`);
+    expect(result.mrr).toBeGreaterThan(0.8);
   });
 
   it("Chinese queries have reasonable accuracy", () => {
@@ -868,7 +992,7 @@ describe("Search Engine Evaluation", () => {
     console.log(
       `Chinese Top-5: ${result.accuracy}% (${result.hits}/${result.total}, ${chineseCases.length} cases)`,
     );
-    expect(result.accuracy).toBeGreaterThan(50);
+    expect(result.accuracy).toBeGreaterThan(90);
   });
 
   it("English queries have reasonable accuracy", () => {
@@ -879,7 +1003,7 @@ describe("Search Engine Evaluation", () => {
     console.log(
       `English Top-5: ${result.accuracy}% (${result.hits}/${result.total}, ${englishCases.length} cases)`,
     );
-    expect(result.accuracy).toBeGreaterThan(60);
+    expect(result.accuracy).toBeGreaterThan(91);
   });
 
   it("negative queries return few or no high-confidence results", () => {

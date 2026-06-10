@@ -1,11 +1,11 @@
 /**
  * @owner   src/fast-path/handlers/discovery.ts
- * @does    Serve list/search/describe/repair from the generated manifest without booting Commander or adapters.
- * @needs   ../../discovery/search, ../../discovery/core-catalog, ../../discovery/macos-dynamic, ../manifest, ../render
+ * @does    Serve list/search/describe/repair from the generated manifest plus user-repaired adapters without booting Commander.
+ * @needs   ../../discovery/search, ../../discovery/core-catalog, ../../discovery/macos-dynamic, ../../output/error-map, ../manifest, ../render, js-yaml, node:fs
  * @feeds   src/fast-path.ts
- * @breaks  Sets process.exitCode for invalid args or empty searches; propagates unreadable manifest errors.
- * @invariants Fast-path search shares the canonical scorer and owns only manifest-to-document projection.
- * @side-effects Writes CLI output through Io and may set process.exitCode.
+ * @breaks  Sets process.exitCode for invalid args or empty searches; propagates unreadable manifest errors; skips malformed user-adapter YAML.
+ * @invariants Fast-path search shares the canonical scorer and owns manifest-to-document and user-adapter-to-document projection.
+ * @side-effects Writes CLI output through Io, reads ~/.unicli/adapters, and may set process.exitCode.
  * @perf    Keeps startup bounded by reading compact manifest data instead of loading adapters.
  * @concurrency No shared mutable state beyond process.exitCode.
  * @test    tests/unit/fast-path.test.ts, tests/unit/search.test.ts
@@ -35,6 +35,11 @@ import {
   resolveOperationAdapterPath,
   resolveOperationTargetSurface,
 } from "../../engine/operation-policy.js";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import yaml from "js-yaml";
+import { emptySearchResultError } from "../../output/error-map.js";
 import { readManifest, type Manifest } from "../manifest.js";
 import type { ParsedArgv } from "../parsed-argv.js";
 import { evaluateManifestOperationPolicy } from "../policy.js";
@@ -43,6 +48,7 @@ import {
   buildChannels,
   buildExample,
   emit,
+  emitError,
   type Io,
   summarizeArgs,
 } from "../render.js";
@@ -211,8 +217,14 @@ export function handleSearch(parsed: ParsedArgv, io: Io): boolean {
     { category },
   );
   if (results.length === 0) {
-    io.stderr(`No commands found for: ${effectiveQuery}`);
-    process.exitCode = 66;
+    emitError(
+      io,
+      emptySearchResultError(effectiveQuery, query.replace(/"/g, "").trim()),
+      parsed.format,
+      "core.search",
+      startedAt,
+      66, // EX_EMPTY
+    );
     return true;
   }
 
@@ -255,6 +267,7 @@ function manifestSearchDocuments(manifest: Manifest): CommandSearchDocument[] {
   for (const command of listCoreDiscoveryCommands()) {
     const id = `${command.site}/${command.command}`;
     if (seen.has(id)) continue;
+    seen.add(id);
     documents.push({
       site: command.site,
       command: command.command,
@@ -263,6 +276,57 @@ function manifestSearchDocuments(manifest: Manifest): CommandSearchDocument[] {
     });
   }
 
+  for (const doc of userAdapterSearchDocuments()) {
+    const id = `${doc.site}/${doc.command}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    documents.push(doc);
+  }
+
+  return documents;
+}
+
+const USER_ADAPTERS_DIR = join(
+  process.env.HOME ?? homedir(),
+  ".unicli",
+  "adapters",
+);
+
+/**
+ * Project user-repaired adapters (persisted under ~/.unicli/adapters by the
+ * self-repair loop) into search documents. The build-time manifest only
+ * covers src/adapters, so without this pass a user-repaired or user-authored
+ * adapter is executable but undiscoverable on the fast-path — breaking the
+ * "fixes persist" contract. Malformed YAML files are skipped, matching the
+ * loader's behavior for user-authored files.
+ */
+function userAdapterSearchDocuments(): CommandSearchDocument[] {
+  if (!existsSync(USER_ADAPTERS_DIR)) return [];
+
+  const documents: CommandSearchDocument[] = [];
+  for (const site of readdirSync(USER_ADAPTERS_DIR)) {
+    if (site.startsWith("_") || site.startsWith(".")) continue;
+    const siteDir = join(USER_ADAPTERS_DIR, site);
+    if (!statSync(siteDir).isDirectory()) continue;
+
+    for (const file of readdirSync(siteDir)) {
+      if (!file.endsWith(".yaml") && !file.endsWith(".yml")) continue;
+      if (file.startsWith("_")) continue;
+      try {
+        const parsed = yaml.load(readFileSync(join(siteDir, file), "utf8")) as
+          | { name?: string; description?: string }
+          | undefined;
+        if (!parsed?.name) continue;
+        documents.push({
+          site,
+          command: parsed.name,
+          description: parsed.description ?? "",
+        });
+      } catch {
+        continue;
+      }
+    }
+  }
   return documents;
 }
 

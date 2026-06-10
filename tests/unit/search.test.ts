@@ -13,9 +13,11 @@ import {
   tokenizeQuery,
   expandToken,
   isCJKChar,
+  strictMap,
 } from "../../src/discovery/aliases.js";
 import {
   search,
+  searchDocuments,
   buildIndexFromDocuments,
   invalidateCache,
 } from "../../src/discovery/search.js";
@@ -117,6 +119,19 @@ describe("isCJKChar", () => {
 
 // ── Alias Expansion Tests ───────────────────────────────────────────────────
 
+describe("strictMap", () => {
+  it("throws at construction on a duplicate key", () => {
+    // Regression lock for the 行情 incident: a duplicated Map-literal key
+    // silently dropped a synonym list; alias tables must fail loudly.
+    expect(() =>
+      strictMap([
+        ["行情", ["quote"]],
+        ["行情", ["ticker"]],
+      ]),
+    ).toThrow(/Duplicate alias key: 行情/);
+  });
+});
+
 describe("expandToken", () => {
   it("expands Chinese site aliases", () => {
     const expanded = expandToken("推特");
@@ -217,6 +232,40 @@ describe("search", () => {
     expect(results.length).toBeGreaterThan(0);
     expect(results[0].site).toBe("twitter");
     expect(results[0].command).toBe("trending");
+  });
+
+  it("down-weights Shortcuts app-action inventory for generic system intents", () => {
+    const corpus = [
+      {
+        site: "macos",
+        command: "battery",
+        description: "Get battery status and charge level",
+        category: "desktop",
+      },
+      {
+        site: "macos",
+        command: "app-action-shortcuts-get-battery-status",
+        description:
+          "Shortcuts app action Shortcuts / Get Battery Status. Gets the battery status.",
+        category: "desktop",
+      },
+      {
+        site: "macos",
+        command: "app-action-system-settings-open-battery-settings",
+        description:
+          "Shortcuts app action System Settings / Open Battery Settings.",
+        category: "desktop",
+      },
+    ];
+
+    const generic = searchDocuments(corpus, "battery status", 3);
+    expect(generic[0].command).toBe("battery");
+
+    const explicit = searchDocuments(corpus, "shortcuts battery status", 3);
+    const shortcutsAction = explicit.find((result) =>
+      result.command.startsWith("app-action-"),
+    );
+    expect(shortcutsAction).toBeDefined();
   });
 
   it("finds download commands for 下载视频", () => {

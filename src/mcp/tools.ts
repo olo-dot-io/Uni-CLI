@@ -252,6 +252,42 @@ export function selectPrompts(profile: string): McpPrompt[] {
 }
 
 /**
+ * Enumerate every adapter command sorted by final tool name.
+ *
+ * MCP `tools/list` must be deterministic across processes so clients can
+ * prompt-cache the tool list (required by the MCP 2026-07-28 spec revision);
+ * registry Map insertion order depends on adapter load order, so we sort.
+ * Byte-wise comparison (not localeCompare) keeps the order locale-independent,
+ * and sorting by the collision-normalized tool name also makes tool-name
+ * collision shadowing deterministic.
+ */
+function sortedCommandEntries(): Array<{
+  adapter: AdapterManifest;
+  cmdName: string;
+  cmd: AdapterCommand;
+}> {
+  const entries: Array<{
+    adapter: AdapterManifest;
+    cmdName: string;
+    cmd: AdapterCommand;
+    toolName: string;
+  }> = [];
+  for (const adapter of getAllAdapters()) {
+    for (const [cmdName, cmd] of Object.entries(adapter.commands)) {
+      entries.push({
+        adapter,
+        cmdName,
+        cmd,
+        toolName: buildToolName(adapter.name, cmdName),
+      });
+    }
+  }
+  return entries.sort((a, b) =>
+    a.toolName < b.toolName ? -1 : a.toolName > b.toolName ? 1 : 0,
+  );
+}
+
+/**
  * Build the expanded tool set: 4 default meta-tools + one full tool per
  * adapter command. Clients see the complete Uni-CLI surface area.
  *
@@ -265,32 +301,30 @@ export function buildExpandedTools(): McpTool[] {
   expandedRegistry.clear();
   const seen = new Set<string>(RESERVED_TOOL_NAMES);
 
-  for (const adapter of getAllAdapters()) {
-    for (const [cmdName, cmd] of Object.entries(adapter.commands)) {
-      const rawDesc =
-        cmd.description?.trim() ||
-        adapter.description?.trim() ||
-        `${cmdName} for ${adapter.name}`;
-      const toolName = buildToolName(adapter.name, cmdName);
-      if (seen.has(toolName)) {
-        process.stderr.write(
-          `unicli MCP: tool name collision: ${toolName} — shadowing ${adapter.name}/${cmdName}\n`,
-        );
-        continue;
-      }
-      seen.add(toolName);
-      expandedRegistry.set(toolName, { adapter, cmdName, cmd });
-      tools.push({
-        name: toolName,
-        description: truncateDescription(`[${adapter.name}] ${rawDesc}`),
-        inputSchema: buildInputSchema(cmd),
-        outputSchema: buildOutputSchema(cmd),
-        _meta: {
-          "anthropic/searchHint": `${adapter.name}: ${rawDesc}`,
-        },
-        annotations: annotationsForCommand(adapter, cmdName, cmd),
-      });
+  for (const { adapter, cmdName, cmd } of sortedCommandEntries()) {
+    const rawDesc =
+      cmd.description?.trim() ||
+      adapter.description?.trim() ||
+      `${cmdName} for ${adapter.name}`;
+    const toolName = buildToolName(adapter.name, cmdName);
+    if (seen.has(toolName)) {
+      process.stderr.write(
+        `unicli MCP: tool name collision: ${toolName} — shadowing ${adapter.name}/${cmdName}\n`,
+      );
+      continue;
     }
+    seen.add(toolName);
+    expandedRegistry.set(toolName, { adapter, cmdName, cmd });
+    tools.push({
+      name: toolName,
+      description: truncateDescription(`[${adapter.name}] ${rawDesc}`),
+      inputSchema: buildInputSchema(cmd),
+      outputSchema: buildOutputSchema(cmd),
+      _meta: {
+        "anthropic/searchHint": `${adapter.name}: ${rawDesc}`,
+      },
+      annotations: annotationsForCommand(adapter, cmdName, cmd),
+    });
   }
 
   return tools;
@@ -312,45 +346,43 @@ export function buildDeferredTools(): McpTool[] {
   expandedRegistry.clear();
   const seen = new Set<string>(RESERVED_TOOL_NAMES);
 
-  for (const adapter of getAllAdapters()) {
-    for (const [cmdName, cmd] of Object.entries(adapter.commands)) {
-      const rawDesc =
-        cmd.description?.trim() ||
-        adapter.description?.trim() ||
-        `${cmdName} for ${adapter.name}`;
-      const toolName = buildToolName(adapter.name, cmdName);
-      if (seen.has(toolName)) {
-        process.stderr.write(
-          `unicli MCP: tool name collision: ${toolName} — shadowing ${adapter.name}/${cmdName}\n`,
-        );
-        continue;
-      }
-      seen.add(toolName);
+  for (const { adapter, cmdName, cmd } of sortedCommandEntries()) {
+    const rawDesc =
+      cmd.description?.trim() ||
+      adapter.description?.trim() ||
+      `${cmdName} for ${adapter.name}`;
+    const toolName = buildToolName(adapter.name, cmdName);
+    if (seen.has(toolName)) {
+      process.stderr.write(
+        `unicli MCP: tool name collision: ${toolName} — shadowing ${adapter.name}/${cmdName}\n`,
+      );
+      continue;
+    }
+    seen.add(toolName);
 
-      // Register in the lookup table for runtime dispatch
-      expandedRegistry.set(toolName, { adapter, cmdName, cmd });
+    // Register in the lookup table for runtime dispatch
+    expandedRegistry.set(toolName, { adapter, cmdName, cmd });
 
-      // Lightweight stub: name + searchHint + minimal schema.
-      // Full inputSchema is resolved at call time via expandedRegistry.
-      tools.push({
-        name: toolName,
-        description: truncateDescription(`[${adapter.name}] ${rawDesc}`),
-        inputSchema: {
-          type: "object",
-          properties: {
-            _args: {
-              type: "object",
-              description: "Command arguments (pass key-value pairs)",
-              additionalProperties: true,
-            },
+    // Lightweight stub: name + searchHint + minimal schema.
+    // Full inputSchema is resolved at call time via expandedRegistry.
+    tools.push({
+      name: toolName,
+      description: truncateDescription(`[${adapter.name}] ${rawDesc}`),
+      inputSchema: {
+        type: "object",
+        properties: {
+          _args: {
+            type: "object",
+            description: "Command arguments (pass key-value pairs)",
+            additionalProperties: true,
           },
         },
-        _meta: {
-          "anthropic/searchHint": `${adapter.name}: ${rawDesc}`,
-        },
-        annotations: annotationsForCommand(adapter, cmdName, cmd),
-      });
-    }
+      },
+      _meta: {
+        "anthropic/searchHint": `${adapter.name}: ${rawDesc}`,
+      },
+      annotations: annotationsForCommand(adapter, cmdName, cmd),
+    });
   }
 
   return tools;

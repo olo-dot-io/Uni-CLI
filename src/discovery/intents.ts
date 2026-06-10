@@ -160,6 +160,35 @@ export function evaluateIntentFrame(
   }
 }
 
+// ── macOS Shortcuts app-action namespace prior ──────────────────────────────
+// Auto-generated Shortcuts app-action inventory makes up roughly half of the
+// command corpus (1,849 of ~3.6k documents as of 2026-06) under the single
+// macos site. Without an authority prior it drowns hand-authored system
+// commands on generic intents (screenshot, notifications, wifi). The prior is
+// a soft multiplier: it never removes a candidate, and it is disabled when
+// the query explicitly asks for Shortcuts actions.
+
+const APP_ACTION_COMMAND_PREFIX = "app-action-";
+const APP_ACTION_SCORE_PRIOR = 0.5;
+const SHORTCUTS_INTENT_TERMS: ReadonlySet<string> = new Set([
+  "shortcuts",
+  "shortcut",
+  "快捷指令",
+  "app-action",
+]);
+
+export function appActionScorePrior(
+  doc: SearchDocument,
+  queryTerms: readonly string[],
+): number {
+  if (doc.site !== "macos") return 1;
+  if (!doc.command.startsWith(APP_ACTION_COMMAND_PREFIX)) return 1;
+  for (const term of queryTerms) {
+    if (SHORTCUTS_INTENT_TERMS.has(term)) return 1;
+  }
+  return APP_ACTION_SCORE_PRIOR;
+}
+
 export function intentBoost(
   doc: SearchDocument,
   queryTerms: string[],

@@ -85,6 +85,22 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe("deterministic tool ordering", () => {
+  // MCP 2026-07-28 requires tools/list to be deterministically ordered so
+  // clients can prompt-cache it. Adapter tools must be sorted by
+  // (site, command) regardless of registry load order.
+  it("buildDeferredTools lists adapter tools sorted by tool name", () => {
+    const adapterTools = buildDeferredTools()
+      .map((tool) => tool.name)
+      .filter((name) => !DEFAULT_TOOL_NAMES.has(name));
+    const sorted = [...adapterTools].sort((a, b) =>
+      a < b ? -1 : a > b ? 1 : 0,
+    );
+    expect(adapterTools.length).toBeGreaterThan(0);
+    expect(adapterTools).toEqual(sorted);
+  });
+});
+
 describe("DEFAULT_TOOL_NAMES registry", () => {
   it("buildDefaultTools stays in lock-step with DEFAULT_TOOL_NAMES", () => {
     const names = buildDefaultTools().map((t) => t.name);

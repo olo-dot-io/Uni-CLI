@@ -339,15 +339,40 @@ export function listMacosAppActions(
   });
 }
 
+// Dynamic discovery shells out to `shortcuts` and `sqlite3` (two subprocess
+// spawns). Short-lived CLI invocations pay that once, but the long-lived MCP
+// server would pay it on EVERY search call — cache the result for a short
+// TTL. Shortcuts/app-action inventories change on human timescales, so a
+// staleness window of seconds is invisible to agents.
+const DYNAMIC_DATA_CACHE_TTL_MS = 30_000;
+
+let cachedDynamicData: MacosDynamicData | null = null;
+let cachedDynamicDataAtMs = 0;
+
+export function invalidateMacosDynamicCache(): void {
+  cachedDynamicData = null;
+  cachedDynamicDataAtMs = 0;
+}
+
 export function discoverMacosDynamicData(): MacosDynamicData {
   if (!dynamicMacosDiscoveryEnabled()) {
     return { shortcuts: [], appActions: [] };
   }
 
-  return {
+  const now = Date.now();
+  if (
+    cachedDynamicData &&
+    now - cachedDynamicDataAtMs < DYNAMIC_DATA_CACHE_TTL_MS
+  ) {
+    return cachedDynamicData;
+  }
+
+  cachedDynamicData = {
     shortcuts: discoverMacosShortcuts(),
     appActions: discoverMacosAppActions(),
   };
+  cachedDynamicDataAtMs = now;
+  return cachedDynamicData;
 }
 
 function discoverRunningAxApps(): string[] {
