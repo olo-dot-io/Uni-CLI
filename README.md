@@ -41,7 +41,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->317<!-- /STATS --> surfaces · <!-- STATS:test_count -->9167<!-- /STATS --> tests</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->317<!-- /STATS --> surfaces · <!-- STATS:test_count -->9173<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
