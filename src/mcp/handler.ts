@@ -20,20 +20,9 @@ import {
 import { expandedRegistry, type McpPrompt, type McpTool } from "./tools.js";
 import { MCP_PROTOCOL_VERSION, VERSION } from "../constants.js";
 import { resolveElicitation, type ElicitationResponse } from "./elicitation.js";
+import type { JsonRpcRequest, JsonRpcResponse } from "./jsonrpc.js";
 
-export interface JsonRpcRequest {
-  jsonrpc: "2.0";
-  id?: number | string | null;
-  method: string;
-  params?: Record<string, unknown>;
-}
-
-export interface JsonRpcResponse {
-  jsonrpc: "2.0";
-  id: number | string | null;
-  result?: unknown;
-  error?: { code: number; message: string; data?: unknown };
-}
+export type { JsonRpcRequest, JsonRpcResponse };
 
 function handleListAdapters(params: Record<string, unknown>): McpToolResult {
   let commands = [

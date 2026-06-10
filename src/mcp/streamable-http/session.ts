@@ -9,26 +9,14 @@
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { isOriginAllowed, ALLOWED_ORIGINS } from "../origin-guard.js";
+import type { JsonRpcRequest, JsonRpcResponse } from "../jsonrpc.js";
 
 // Re-exported so `handle-post.ts`, `index.ts`, and the `_test` shim keep
-// importing the origin policy from this module's stable surface.
+// importing the origin policy and wire types from this module's stable surface.
 export { isOriginAllowed, ALLOWED_ORIGINS };
+export type { JsonRpcRequest, JsonRpcResponse };
 
 // ── Types ──────────────────────────────────────────────────────────────────
-
-export interface JsonRpcRequest {
-  jsonrpc: "2.0";
-  id?: number | string | null;
-  method: string;
-  params?: Record<string, unknown>;
-}
-
-export interface JsonRpcResponse {
-  jsonrpc: "2.0";
-  id: number | string | null;
-  result?: unknown;
-  error?: { code: number; message: string; data?: unknown };
-}
 
 /**
  * Handler returns `undefined` for JSON-RPC notifications (no `id`). The
