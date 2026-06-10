@@ -1,0 +1,30 @@
+site: defuddle
+name: read
+description: Read a public URL through defuddle.md and return Markdown with frontmatter
+type: web-api
+domain: defuddle.md
+strategy: public
+
+args:
+  url:
+    type: str
+    required: true
+    positional: true
+    description: Public URL to convert to Markdown
+    format: uri
+
+pipeline:
+  - fetch_text:
+      url: "https://defuddle.md/${{ args.url }}"
+      headers:
+        Accept: "text/markdown"
+
+columns: []
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

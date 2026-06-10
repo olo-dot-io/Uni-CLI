@@ -1,0 +1,39 @@
+site: ollama-cloud
+name: fetch
+description: Fetch a public URL through Ollama Cloud web_fetch
+type: web-api
+domain: ollama.com
+strategy: public # auth is via OLLAMA_API_KEY Authorization header, no cookies
+
+args:
+  url:
+    type: str
+    required: true
+    positional: true
+    description: Public URL to fetch
+    format: uri
+
+pipeline:
+  - fetch:
+      url: https://ollama.com/api/web_fetch
+      method: POST
+      headers:
+        Accept: "application/json"
+        Authorization: "Bearer ${{ env.OLLAMA_API_KEY || '' }}"
+      body:
+        url: "${{ args.url }}"
+  - map:
+      title: "${{ item.title || '' }}"
+      url: "${{ args.url }}"
+      content: "${{ item.content || '' }}"
+      links: "${{ Array.isArray(item.links) ? item.links.join('\\n') : '' }}"
+
+columns: [title, url, content, links]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch", "map"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

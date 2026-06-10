@@ -127,6 +127,39 @@ describe("POST body template resolution", () => {
     expect(echo.body.limit).toBe(10);
   });
 
+  it("resolves header templates from args and env", async () => {
+    const previousToken = process.env.UNICLI_TEST_AUTH;
+    process.env.UNICLI_TEST_AUTH = "unit-token";
+    try {
+      const result = await runPipeline(
+        [
+          {
+            fetch: {
+              url: `${baseUrl}/headers`,
+              headers: {
+                Authorization: "Bearer ${{ env.UNICLI_TEST_AUTH || '' }}",
+                "X-Query": "${{ args.q }}",
+              },
+            },
+          },
+        ],
+        { args: { q: "typescript" }, source: "internal" },
+      );
+
+      const echo = result[0] as {
+        headers: { authorization?: string; "x-query"?: string };
+      };
+      expect(echo.headers.authorization).toBe("Bearer unit-token");
+      expect(echo.headers["x-query"]).toBe("typescript");
+    } finally {
+      if (previousToken === undefined) {
+        delete process.env.UNICLI_TEST_AUTH;
+      } else {
+        process.env.UNICLI_TEST_AUTH = previousToken;
+      }
+    }
+  });
+
   it("resolves nested templates in body", async () => {
     const steps = [
       {

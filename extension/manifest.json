@@ -5,6 +5,7 @@
   "description": "Bridges unicli CLI commands to Chrome browser tabs via the daemon",
   "permissions": [
     "debugger",
+    "downloads",
     "scripting",
     "tabs",
     "cookies",

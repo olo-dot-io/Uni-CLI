@@ -26,6 +26,7 @@ import {
 import {
   networkAccessForMethod,
   normalizeFetchAttempts,
+  resolveHeaderTemplates,
   type FetchConfig,
 } from "./fetch.js";
 
@@ -171,7 +172,7 @@ export async function stepFetchText(
 
   const headers: Record<string, string> = {
     "User-Agent": USER_AGENT,
-    ...config.headers,
+    ...resolveHeaderTemplates(config.headers, ctx),
   };
   if (ctx.cookieHeader) {
     headers["Cookie"] = ctx.cookieHeader;

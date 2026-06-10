@@ -1,0 +1,50 @@
+site: markdown-new
+name: read
+description: Convert a public URL to Markdown through markdown.new
+type: web-api
+domain: markdown.new
+strategy: public
+
+args:
+  url:
+    type: str
+    required: true
+    positional: true
+    description: Public URL to convert to Markdown
+    format: uri
+  method:
+    type: str
+    default: auto
+    choices: [auto, ai, browser]
+    description: Conversion method requested from markdown.new
+  retain_images:
+    type: bool
+    default: false
+    description: Keep image references in the returned Markdown
+
+pipeline:
+  - fetch:
+      url: https://markdown.new/
+      method: POST
+      headers:
+        Accept: "application/json"
+      body:
+        url: "${{ args.url }}"
+        method: "${{ args.method }}"
+        retain_images: ${{ args.retain_images }}
+  - map:
+      title: "${{ item.title || '' }}"
+      url: "${{ item.url || args.url }}"
+      method: "${{ item.method || args.method }}"
+      tokens: "${{ item.tokens || '' }}"
+      content: "${{ item.content || '' }}"
+
+columns: [title, url, method, tokens, content]
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch", "map"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

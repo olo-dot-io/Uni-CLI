@@ -25,6 +25,11 @@ import {
   registerNetworkCaptureListeners,
   startNetworkCapture,
 } from "./network-capture.js";
+import {
+  readDialogSnapshot,
+  respondToDialog,
+  type DialogSupervisorAction,
+} from "./dialog-supervisor.js";
 
 // ── State ───────────────────────────────────────────────────────────
 
@@ -513,6 +518,90 @@ async function handleCommand(cmd: Command): Promise<Result> {
         return { id: cmd.id, ok: true, data: readNetworkCapture(tabId) };
       }
 
+      case "downloads-read": {
+        const downloadsApi = chrome.downloads;
+        if (downloadsApi === undefined) {
+          return {
+            id: cmd.id,
+            ok: false,
+            error: "chrome.downloads API is unavailable",
+          };
+        }
+        const limit = readDownloadLimit(cmd.downloadLimit);
+        const downloads = await downloadsApi.search({
+          limit,
+          orderBy: ["-startTime"],
+        });
+        return {
+          id: cmd.id,
+          ok: true,
+          data: {
+            evidence_type: "browser-downloads",
+            captured_at: new Date().toISOString(),
+            workspace,
+            limit,
+            count: downloads.length,
+            downloads: downloads.map(normalizeDownloadItem),
+          },
+        };
+      }
+
+      case "dialog-read": {
+        const { windowId, tabId } = await getAutomationWindow(
+          workspace,
+          undefined,
+          cmd.windowFocused === true,
+        );
+        const snapshot = await readDialogSnapshot(tabId, {
+          clearRecent: cmd.clearRecent === true,
+        });
+        const tab = await readSessionTab(windowId, tabId);
+        return {
+          id: cmd.id,
+          ok: true,
+          data: {
+            ...snapshot,
+            workspace,
+            tabId,
+            ...(tab?.url ? { url: tab.url } : {}),
+            ...(tab?.title ? { title: tab.title } : {}),
+          },
+        };
+      }
+
+      case "dialog-respond": {
+        const action = readDialogAction(cmd.dialogAction);
+        if (action === null) {
+          return {
+            id: cmd.id,
+            ok: false,
+            error: "dialogAction must be accept or dismiss",
+          };
+        }
+        const { windowId, tabId } = await getAutomationWindow(
+          workspace,
+          undefined,
+          cmd.windowFocused === true,
+        );
+        const snapshot = await respondToDialog(tabId, {
+          action,
+          ...(cmd.promptText ? { promptText: cmd.promptText } : {}),
+          ...(cmd.dialogId ? { dialogId: cmd.dialogId } : {}),
+        });
+        const tab = await readSessionTab(windowId, tabId);
+        return {
+          id: cmd.id,
+          ok: true,
+          data: {
+            ...snapshot,
+            workspace,
+            tabId,
+            ...(tab?.url ? { url: tab.url } : {}),
+            ...(tab?.title ? { title: tab.title } : {}),
+          },
+        };
+      }
+
       default:
         return {
           id: cmd.id,
@@ -527,6 +616,66 @@ async function handleCommand(cmd: Command): Promise<Result> {
       error: err instanceof Error ? err.message : String(err),
     };
   }
+}
+
+async function readSessionTab(
+  windowId: number,
+  tabId: number,
+): Promise<chrome.tabs.Tab | undefined> {
+  const tabs = await chrome.tabs.query({ windowId });
+  return tabs.find((tab) => tab.id === tabId) ?? tabs[0];
+}
+
+function readDialogAction(
+  value: string | undefined,
+): DialogSupervisorAction | null {
+  if (value === "accept" || value === "dismiss") return value;
+  return null;
+}
+
+function readDownloadLimit(value: number | undefined): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 20;
+  return Math.max(1, Math.min(50, Math.trunc(value)));
+}
+
+function normalizeDownloadItem(
+  item: chrome.downloads.DownloadItem,
+): Record<string, unknown> {
+  return {
+    id: item.id,
+    state: item.state,
+    danger: item.danger,
+    exists: item.exists,
+    paused: item.paused,
+    incognito: item.incognito,
+    bytes_received: item.bytesReceived,
+    total_bytes: item.totalBytes,
+    file_size: item.fileSize,
+    filename_basename: basenameOnly(item.filename),
+    ...(item.mime === undefined || item.mime.length === 0
+      ? {}
+      : { mime: item.mime }),
+    ...(item.url === undefined || item.url.length === 0
+      ? {}
+      : { url: item.url }),
+    ...(item.finalUrl === undefined || item.finalUrl.length === 0
+      ? {}
+      : { final_url: item.finalUrl }),
+    ...(item.startTime === undefined || item.startTime.length === 0
+      ? {}
+      : { started_at: item.startTime }),
+    ...(item.endTime === undefined || item.endTime.length === 0
+      ? {}
+      : { ended_at: item.endTime }),
+    ...(item.error === undefined || item.error.length === 0
+      ? {}
+      : { error: item.error }),
+  };
+}
+
+function basenameOnly(path: string): string {
+  const normalized = path.split("\\").join("/");
+  return normalized.split("/").filter(Boolean).at(-1)?.slice(0, 240) ?? "";
 }
 
 // ── Lifecycle ───────────────────────────────────────────────────────

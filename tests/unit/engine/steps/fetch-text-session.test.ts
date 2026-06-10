@@ -26,6 +26,37 @@ function mockOnce(handler: (url: string, init: RequestInit) => Response): {
 }
 
 describe("fetch_text capture_cookies", () => {
+  it("resolves header templates before sending the request", async () => {
+    const previousToken = process.env.UNICLI_TEST_TEXT_AUTH;
+    process.env.UNICLI_TEST_TEXT_AUTH = "unit-text-token";
+    try {
+      const calls = mockOnce(
+        () =>
+          new Response("body", {
+            status: 200,
+          }),
+      );
+      await stepFetchText(ctx({ args: { q: "markdown" } }), {
+        url: "https://example.com/article",
+        headers: {
+          Authorization: "Bearer ${{ env.UNICLI_TEST_TEXT_AUTH || '' }}",
+          "X-Query": "${{ args.q }}",
+        },
+      });
+
+      expect(calls[0]?.init.headers).toMatchObject({
+        Authorization: "Bearer unit-text-token",
+        "X-Query": "markdown",
+      });
+    } finally {
+      if (previousToken === undefined) {
+        delete process.env.UNICLI_TEST_TEXT_AUTH;
+      } else {
+        process.env.UNICLI_TEST_TEXT_AUTH = previousToken;
+      }
+    }
+  });
+
   it("merges response Set-Cookie into returned ctx.cookieHeader (same host)", async () => {
     mockOnce(
       () =>

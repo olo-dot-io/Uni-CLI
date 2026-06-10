@@ -29,6 +29,9 @@ export type Action =
   | "bind-current"
   | "network-capture-start"
   | "network-capture-read"
+  | "downloads-read"
+  | "dialog-read"
+  | "dialog-respond"
   | "cdp";
 
 export interface Command {
@@ -43,6 +46,11 @@ export interface Command {
   matchDomain?: string;
   matchPathPrefix?: string;
   pattern?: string;
+  clearRecent?: boolean;
+  downloadLimit?: number;
+  dialogAction?: "accept" | "dismiss";
+  dialogId?: string;
+  promptText?: string;
   cdpMethod?: string;
   cdpParams?: Record<string, unknown>;
   selector?: string;

@@ -7,7 +7,11 @@
  */
 
 import { appendFileSync, mkdirSync } from "node:fs";
-import { dirname as pathDirname, join } from "node:path";
+import {
+  basename as pathBasename,
+  dirname as pathDirname,
+  join,
+} from "node:path";
 import { Command } from "commander";
 import chalk from "chalk";
 import { userHome } from "../../engine/user-home.js";
@@ -28,7 +32,8 @@ import {
   validateRef,
   withBrowserOperatorEnv,
 } from "./runtime.js";
-import { sendCommand } from "../../browser/daemon-client.js";
+import { listSessions, sendCommand } from "../../browser/daemon-client.js";
+import type { BrowserSessionInfo } from "../../browser/protocol.js";
 import { registerBrowserAuthoringSubcommands } from "./authoring.js";
 import {
   captureBrowserEvidencePacket,
@@ -59,6 +64,10 @@ interface BrowserProgramOptions {
   yes?: boolean;
   permissionProfile?: string;
 }
+
+type BrowserDomQueryKind = "text" | "value" | "attributes";
+
+const BROWSER_DOM_QUERY_RESULT_MAX_CHARS = 20_000;
 
 export function applyBrowserOperatorRootOptions(command: Command): void {
   command
@@ -180,6 +189,487 @@ function browserActionWatchdogMode(value?: string): BrowserActionWatchdogMode {
   }
 }
 
+interface BrowserCloseAllSessionResult {
+  readonly workspace: string;
+  readonly action: "closed_window" | "released_binding";
+  readonly status: "completed";
+}
+
+interface BrowserCloseAllResult {
+  readonly ok: true;
+  readonly scope: "all_managed_sessions";
+  readonly session_count: number;
+  readonly closed_count: number;
+  readonly released_count: number;
+  readonly failed_count: 0;
+  readonly sessions: readonly BrowserCloseAllSessionResult[];
+}
+
+const BROWSER_CDP_READ_ONLY_METHODS = new Set([
+  "Page.getFrameTree",
+  "Target.getTargetInfo",
+]);
+const BROWSER_CDP_RESULT_MAX_CHARS = 20_000;
+
+interface BrowserCdpReadOnlyResult {
+  readonly ok: true;
+  readonly evidence_type: "browser-cdp-readonly";
+  readonly workspace: string;
+  readonly method: string;
+  readonly authority: "read_only_allowlist";
+  readonly params_keys: readonly string[];
+  readonly result_json_chars: number;
+  readonly result_truncated: boolean;
+  readonly result?: unknown;
+  readonly result_preview?: string;
+}
+
+type BrowserDialogAction = "accept" | "dismiss";
+
+interface BrowserDialogProviderEntry {
+  readonly id: string;
+  readonly type: string;
+  readonly message: string;
+  readonly opened_at: string;
+  readonly url?: string;
+  readonly default_prompt?: string;
+}
+
+interface BrowserDialogProviderRecord extends BrowserDialogProviderEntry {
+  readonly closed_at: string;
+  readonly closed_by: "agent" | "remote" | "tab_closed";
+  readonly action?: BrowserDialogAction;
+}
+
+interface BrowserDialogProviderResult {
+  readonly ok: true;
+  readonly evidence_type: "browser-dialog-supervision";
+  readonly workspace: string;
+  readonly captured_at: string;
+  readonly supervision: "active";
+  readonly pending_count: number;
+  readonly recent_count: number;
+  readonly pending_dialogs: readonly BrowserDialogProviderEntry[];
+  readonly recent_dialogs: readonly BrowserDialogProviderRecord[];
+  readonly responded_dialog?: BrowserDialogProviderEntry;
+  readonly url?: string;
+  readonly title?: string;
+}
+
+interface BrowserDownloadProviderEntry {
+  readonly id: number;
+  readonly state: string;
+  readonly danger: string;
+  readonly exists: boolean;
+  readonly paused: boolean;
+  readonly incognito: boolean;
+  readonly bytes_received: number;
+  readonly total_bytes: number;
+  readonly file_size: number;
+  readonly filename_basename: string;
+  readonly mime?: string;
+  readonly url?: string;
+  readonly final_url?: string;
+  readonly started_at?: string;
+  readonly ended_at?: string;
+  readonly error?: string;
+}
+
+interface BrowserDownloadsProviderResult {
+  readonly ok: true;
+  readonly evidence_type: "browser-downloads";
+  readonly workspace: string;
+  readonly captured_at: string;
+  readonly limit: number;
+  readonly count: number;
+  readonly downloads: readonly BrowserDownloadProviderEntry[];
+}
+
+interface BrowserDomQueryResult {
+  readonly ok: true;
+  readonly evidence_type: "browser-dom-query";
+  readonly authority: "ref_read_only";
+  readonly kind: BrowserDomQueryKind;
+  readonly ref: string;
+  readonly result: string;
+  readonly result_chars: number;
+  readonly result_truncated: boolean;
+  readonly url: string;
+}
+
+async function closeAllBrowserSessions(): Promise<BrowserCloseAllResult> {
+  const sessions = await listSessions();
+  const reports: BrowserCloseAllSessionResult[] = [];
+
+  for (const session of sessions) {
+    await sendCommand("close-window", { workspace: session.workspace });
+    reports.push({
+      workspace: session.workspace,
+      action: closeActionForSession(session),
+      status: "completed",
+    });
+  }
+
+  return {
+    ok: true,
+    scope: "all_managed_sessions",
+    session_count: sessions.length,
+    closed_count: reports.filter((report) => report.action === "closed_window")
+      .length,
+    released_count: reports.filter(
+      (report) => report.action === "released_binding",
+    ).length,
+    failed_count: 0,
+    sessions: reports,
+  };
+}
+
+function closeActionForSession(
+  session: BrowserSessionInfo,
+): BrowserCloseAllSessionResult["action"] {
+  return session.owned === false ? "released_binding" : "closed_window";
+}
+
+function normalizeBrowserDialogProviderResult(
+  result: unknown,
+  workspace: string,
+): BrowserDialogProviderResult {
+  if (
+    !isRecord(result) ||
+    result.evidence_type !== "browser-dialog-supervision" ||
+    result.supervision !== "active"
+  ) {
+    throw new Error("Browser dialog supervisor returned an invalid payload.");
+  }
+  const respondedDialog = readDialogEntries([result.responded_dialog])[0];
+  return {
+    ok: true,
+    evidence_type: "browser-dialog-supervision",
+    workspace,
+    captured_at: readString(result.captured_at) ?? new Date().toISOString(),
+    supervision: "active",
+    pending_count: readNonNegativeInteger(result.pending_count),
+    recent_count: readNonNegativeInteger(result.recent_count),
+    pending_dialogs: readDialogEntries(result.pending_dialogs),
+    recent_dialogs: readDialogRecords(result.recent_dialogs),
+    ...(respondedDialog === undefined
+      ? {}
+      : { responded_dialog: respondedDialog }),
+    ...(readString(result.url) === undefined
+      ? {}
+      : { url: readString(result.url)! }),
+    ...(readString(result.title) === undefined
+      ? {}
+      : { title: readString(result.title)! }),
+  };
+}
+
+function normalizeBrowserDownloadsProviderResult(
+  result: unknown,
+  workspace: string,
+  limit: number,
+): BrowserDownloadsProviderResult {
+  if (!isRecord(result) || result.evidence_type !== "browser-downloads") {
+    throw new Error("Browser downloads provider returned an invalid payload.");
+  }
+  const downloads = readDownloadEntries(result.downloads);
+  return {
+    ok: true,
+    evidence_type: "browser-downloads",
+    workspace,
+    captured_at: readString(result.captured_at) ?? new Date().toISOString(),
+    limit,
+    count: downloads.length,
+    downloads,
+  };
+}
+
+function parseBrowserDialogAction(action: string): BrowserDialogAction {
+  if (action === "accept" || action === "dismiss") return action;
+  throw new Error("Browser dialog action must be accept or dismiss.");
+}
+
+function parseBrowserDomQueryKind(
+  rawKind: string | undefined,
+): BrowserDomQueryKind {
+  if (rawKind === undefined || rawKind === "text") return "text";
+  if (rawKind === "value" || rawKind === "attributes") return rawKind;
+  throw new Error("Browser query kind must be text, value, or attributes.");
+}
+
+function buildBrowserDomQueryJs(
+  ref: string,
+  kind: BrowserDomQueryKind,
+): string {
+  const refJson = JSON.stringify(ref);
+  const kindJson = JSON.stringify(kind);
+  return `(() => {
+    const __unicli_dom_query = true;
+    const ref = ${refJson};
+    const kind = ${kindJson};
+    const el = document.querySelector('[data-unicli-ref="' + ref + '"]');
+    if (!el) throw new Error('Ref not found: ' + ref);
+    const readText = () => {
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) {
+        return String(el.value || '');
+      }
+      const text = 'innerText' in el ? el.innerText : el.textContent;
+      return String(text || '').trim();
+    };
+    if (kind === 'text') {
+      const value = readText();
+      return { value, original_length: value.length, truncated: false };
+    }
+    if (kind === 'value') {
+      const value = 'value' in el ? String(el.value || '') : String(el.getAttribute('value') || '');
+      return { value, original_length: value.length, truncated: false };
+    }
+    const allowed = new Set(['href', 'src', 'alt', 'title', 'aria-label', 'role', 'name', 'placeholder', 'type']);
+    const attrs = {};
+    for (const attr of Array.from(el.attributes || [])) {
+      const name = attr.name.toLowerCase();
+      if (name === 'data-unicli-ref') continue;
+      if (!allowed.has(name) && !name.startsWith('aria-')) continue;
+      attrs[name] = String(attr.value || '').slice(0, 500);
+    }
+    const value = JSON.stringify(attrs);
+    return { value, original_length: value.length, truncated: false };
+  })()`;
+}
+
+function normalizeBrowserDomQueryResult({
+  kind,
+  rawResult,
+  ref,
+  url,
+}: {
+  readonly kind: BrowserDomQueryKind;
+  readonly rawResult: unknown;
+  readonly ref: string;
+  readonly url: string;
+}): BrowserDomQueryResult {
+  if (!isRecord(rawResult)) {
+    throw new Error("Browser query provider returned an invalid payload.");
+  }
+  const value = readStringAllowEmpty(rawResult.value);
+  if (value === undefined) {
+    throw new Error("Browser query provider returned no result value.");
+  }
+  const originalLength =
+    readNonNegativeInteger(rawResult.original_length) || value.length;
+  const truncatedValue =
+    value.length <= BROWSER_DOM_QUERY_RESULT_MAX_CHARS
+      ? value
+      : value.slice(0, BROWSER_DOM_QUERY_RESULT_MAX_CHARS);
+  return {
+    ok: true,
+    evidence_type: "browser-dom-query",
+    authority: "ref_read_only",
+    kind,
+    ref,
+    result: truncatedValue,
+    result_chars: Math.max(originalLength, value.length),
+    result_truncated:
+      rawResult.truncated === true ||
+      value.length > BROWSER_DOM_QUERY_RESULT_MAX_CHARS,
+    url,
+  };
+}
+
+function readDialogEntries(value: unknown): BrowserDialogProviderEntry[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (!isRecord(entry)) return [];
+    const id = readString(entry.id);
+    const type = readString(entry.type);
+    const message = readString(entry.message);
+    const openedAt = readString(entry.opened_at);
+    if (
+      id === undefined ||
+      type === undefined ||
+      message === undefined ||
+      openedAt === undefined
+    ) {
+      return [];
+    }
+    const url = readString(entry.url);
+    const defaultPrompt = readString(entry.default_prompt);
+    return [
+      {
+        id: id.slice(0, 120),
+        type: type.slice(0, 40),
+        message: message.slice(0, 1_000),
+        opened_at: openedAt,
+        ...(url === undefined ? {} : { url: url.slice(0, 2_000) }),
+        ...(defaultPrompt === undefined
+          ? {}
+          : { default_prompt: defaultPrompt.slice(0, 1_000) }),
+      },
+    ];
+  });
+}
+
+function readDialogRecords(value: unknown): BrowserDialogProviderRecord[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((record) => {
+    if (!isRecord(record)) return [];
+    const entry = readDialogEntries([record])[0];
+    const closedAt = readString(record.closed_at);
+    const closedBy = readString(record.closed_by);
+    if (
+      entry === undefined ||
+      closedAt === undefined ||
+      (closedBy !== "agent" &&
+        closedBy !== "remote" &&
+        closedBy !== "tab_closed")
+    ) {
+      return [];
+    }
+    return [
+      {
+        ...entry,
+        closed_at: closedAt,
+        closed_by: closedBy,
+        ...(record.action === "accept" || record.action === "dismiss"
+          ? { action: record.action }
+          : {}),
+      },
+    ];
+  });
+}
+
+function readDownloadEntries(value: unknown): BrowserDownloadProviderEntry[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 50).flatMap((entry) => {
+    if (!isRecord(entry)) return [];
+    const id = readNonNegativeInteger(entry.id);
+    const state = readString(entry.state);
+    const danger = readString(entry.danger);
+    const filenameBasename = readString(entry.filename_basename);
+    if (
+      state === undefined ||
+      danger === undefined ||
+      filenameBasename === undefined
+    ) {
+      return [];
+    }
+    return [
+      {
+        id,
+        state: state.slice(0, 40),
+        danger: danger.slice(0, 80),
+        exists: entry.exists === true,
+        paused: entry.paused === true,
+        incognito: entry.incognito === true,
+        bytes_received: readNonNegativeInteger(entry.bytes_received),
+        total_bytes: readNonNegativeInteger(entry.total_bytes),
+        file_size: readNonNegativeInteger(entry.file_size),
+        filename_basename: pathBasename(filenameBasename).slice(0, 240),
+        ...(readString(entry.mime) === undefined
+          ? {}
+          : { mime: readString(entry.mime)!.slice(0, 160) }),
+        ...(readString(entry.url) === undefined
+          ? {}
+          : { url: readString(entry.url)!.slice(0, 2_000) }),
+        ...(readString(entry.final_url) === undefined
+          ? {}
+          : { final_url: readString(entry.final_url)!.slice(0, 2_000) }),
+        ...(readString(entry.started_at) === undefined
+          ? {}
+          : { started_at: readString(entry.started_at)! }),
+        ...(readString(entry.ended_at) === undefined
+          ? {}
+          : { ended_at: readString(entry.ended_at)! }),
+        ...(readString(entry.error) === undefined
+          ? {}
+          : { error: readString(entry.error)!.slice(0, 160) }),
+      },
+    ];
+  });
+}
+
+function parseDownloadLimit(rawLimit: string | undefined): number {
+  const parsed = Number.parseInt(rawLimit ?? "20", 10);
+  if (!Number.isFinite(parsed)) return 20;
+  return Math.max(1, Math.min(50, Math.trunc(parsed)));
+}
+
+function readNonNegativeInteger(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? Math.trunc(value)
+    : 0;
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function readStringAllowEmpty(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseBrowserCdpParams(
+  rawParams: string | undefined,
+): Record<string, unknown> {
+  if (rawParams === undefined) return {};
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawParams) as unknown;
+  } catch {
+    throw new Error("CDP params must be a JSON object.");
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error("CDP params must be a JSON object.");
+  }
+  return parsed as Record<string, unknown>;
+}
+
+function assertBrowserCdpReadOnlyMethod(method: string): void {
+  if (BROWSER_CDP_READ_ONLY_METHODS.has(method)) return;
+  throw new Error(
+    `CDP method ${method} is not in the read-only allowlist. Supported methods: ${[
+      ...BROWSER_CDP_READ_ONLY_METHODS,
+    ].join(", ")}`,
+  );
+}
+
+function createBrowserCdpReadOnlyResult(input: {
+  readonly workspace: string;
+  readonly method: string;
+  readonly params: Readonly<Record<string, unknown>>;
+  readonly result: unknown;
+}): BrowserCdpReadOnlyResult {
+  const resultJson = JSON.stringify(input.result ?? null);
+  if (resultJson.length <= BROWSER_CDP_RESULT_MAX_CHARS) {
+    return {
+      ok: true,
+      evidence_type: "browser-cdp-readonly",
+      workspace: input.workspace,
+      method: input.method,
+      authority: "read_only_allowlist",
+      params_keys: Object.keys(input.params).sort(),
+      result_json_chars: resultJson.length,
+      result_truncated: false,
+      result: input.result,
+    };
+  }
+  return {
+    ok: true,
+    evidence_type: "browser-cdp-readonly",
+    workspace: input.workspace,
+    method: input.method,
+    authority: "read_only_allowlist",
+    params_keys: Object.keys(input.params).sort(),
+    result_json_chars: resultJson.length,
+    result_truncated: true,
+    result_preview: resultJson.slice(0, BROWSER_CDP_RESULT_MAX_CHARS),
+  };
+}
+
 export function registerBrowserOperatorSubcommands(
   root: Command,
   program: Command,
@@ -241,6 +731,40 @@ export function registerBrowserOperatorSubcommands(
             });
             console.error(chalk.dim(`URL: ${url}`));
             return { url, snapshot };
+          },
+        );
+      }),
+    );
+
+  root
+    .command("query <ref>")
+    .description("Read bounded DOM data from a verified snapshot ref")
+    .option("--kind <kind>", "Query kind: text, value, or attributes", "text")
+    .action((ref: string, opts: { kind?: string }) =>
+      operatorAction(program, root, namespace, "query", async () => {
+        validateRef(ref);
+        const kind = parseBrowserDomQueryKind(opts.kind);
+        const page = await getOperatorPage(root, namespace);
+        const selector = `[data-unicli-ref="${ref}"]`;
+        return await withRecordedBrowserAction(
+          program,
+          root,
+          namespace,
+          "query",
+          page,
+          { ref, kind },
+          async () => {
+            await verifyRef(page, selector);
+            const url = await page.url();
+            const rawResult = await page.evaluate(
+              buildBrowserDomQueryJs(ref, kind),
+            );
+            return normalizeBrowserDomQueryResult({
+              kind,
+              rawResult,
+              ref,
+              url,
+            });
           },
         );
       }),
@@ -355,6 +879,62 @@ export function registerBrowserOperatorSubcommands(
           maxTextChars: parseInt(opts.textMax, 10),
         });
       }),
+    );
+
+  root
+    .command("cdp <method> [params]")
+    .description("Run a read-only allowlisted Chrome DevTools Protocol command")
+    .action((method: string, paramsJson: string | undefined) =>
+      operatorAction(program, root, namespace, "cdp", async () => {
+        assertBrowserCdpReadOnlyMethod(method);
+        const params = parseBrowserCdpParams(paramsJson);
+        const page = await getOperatorPage(root, namespace);
+        const result = await page.sendCDP(method, params);
+        return createBrowserCdpReadOnlyResult({
+          workspace: resolveWorkspace(root, namespace),
+          method,
+          params,
+          result,
+        });
+      }),
+    );
+
+  root
+    .command("dialogs")
+    .description("Start and read provider-owned browser dialog supervision")
+    .option("--clear-recent", "Clear recent dialog records after reading")
+    .action((opts: { clearRecent?: boolean }) =>
+      operatorAction(program, root, namespace, "dialogs", async () => {
+        const workspace = resolveWorkspace(root, namespace);
+        const result = await sendCommand("dialog-read", {
+          workspace,
+          clearRecent: opts.clearRecent === true,
+        });
+        return normalizeBrowserDialogProviderResult(result, workspace);
+      }),
+    );
+
+  root
+    .command("dialog <action> [dialogId]")
+    .description("Respond to a pending browser JavaScript dialog")
+    .option("--prompt <text>", "Prompt text for prompt() dialogs")
+    .action(
+      (
+        actionRaw: string,
+        dialogId: string | undefined,
+        opts: { prompt?: string },
+      ) =>
+        operatorAction(program, root, namespace, "dialog", async () => {
+          const action = parseBrowserDialogAction(actionRaw);
+          const workspace = resolveWorkspace(root, namespace);
+          const result = await sendCommand("dialog-respond", {
+            workspace,
+            dialogAction: action,
+            ...(dialogId === undefined ? {} : { dialogId }),
+            ...(opts.prompt === undefined ? {} : { promptText: opts.prompt }),
+          });
+          return normalizeBrowserDialogProviderResult(result, workspace);
+        }),
     );
 
   root
@@ -736,6 +1316,28 @@ export function registerBrowserOperatorSubcommands(
     );
 
   root
+    .command("downloads")
+    .description(
+      "List recent browser downloads without exposing local file paths",
+    )
+    .option("--limit <n>", "Maximum download records to return", "20")
+    .action((opts: { limit?: string }) =>
+      operatorAction(program, root, namespace, "downloads", async () => {
+        const workspace = resolveWorkspace(root, namespace);
+        const limit = parseDownloadLimit(opts.limit);
+        const result = await sendCommand("downloads-read", {
+          workspace,
+          downloadLimit: limit,
+        });
+        return normalizeBrowserDownloadsProviderResult(
+          result,
+          workspace,
+          limit,
+        );
+      }),
+    );
+
+  root
     .command("extract")
     .description("Extract long-form page text with chunked pagination")
     .option("--selector <css>", "Optional content root selector")
@@ -839,11 +1441,19 @@ export function registerBrowserOperatorSubcommands(
   root
     .command("close")
     .description("Close the automation browser window")
-    .action(() =>
+    .option("--all", "Close or release all managed browser sessions")
+    .action((opts: { all?: boolean }) =>
       operatorAction(program, root, namespace, "close", async () => {
+        if (opts.all === true) {
+          return await closeAllBrowserSessions();
+        }
         const page = await getOperatorPage(root, namespace);
         await page.closeWindow();
-        return { ok: true, workspace: resolveWorkspace(root, namespace) };
+        return {
+          ok: true,
+          scope: "current_managed_session",
+          workspace: resolveWorkspace(root, namespace),
+        };
       }),
     );
 }

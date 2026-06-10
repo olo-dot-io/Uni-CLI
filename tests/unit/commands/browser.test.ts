@@ -1326,6 +1326,315 @@ describe("unicli browser operator surface", () => {
     expect(mockPage.sendCDP).toHaveBeenCalledWith("Page.getFrameTree");
   });
 
+  it("browser cdp runs only read-only allowlisted CDP methods", async () => {
+    mockPage.sendCDP.mockResolvedValueOnce({
+      frameTree: {
+        frame: { id: "root", url: "https://example.com" },
+      },
+    });
+
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "cdp", "Page.getFrameTree"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      command: string;
+      data: {
+        evidence_type: string;
+        method: string;
+        authority: string;
+        result_truncated: boolean;
+        result: { frameTree: { frame: { id: string } } };
+      };
+    };
+    expect(env.command).toBe("browser.cdp");
+    expect(env.data).toMatchObject({
+      evidence_type: "browser-cdp-readonly",
+      method: "Page.getFrameTree",
+      authority: "read_only_allowlist",
+      result_truncated: false,
+      result: {
+        frameTree: {
+          frame: { id: "root" },
+        },
+      },
+    });
+    expect(mockPage.sendCDP).toHaveBeenCalledWith("Page.getFrameTree", {});
+  });
+
+  it("browser cdp rejects page-context evaluation", async () => {
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "browser",
+          "cdp",
+          "Runtime.evaluate",
+          '{"expression":"document.cookie"}',
+        ],
+        {
+          from: "user",
+        },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStderr().trim()) as {
+      ok: boolean;
+      error: { message: string };
+    };
+    expect(env.ok).toBe(false);
+    expect(env.error.message).toContain("not in the read-only allowlist");
+    expect(mockPage.sendCDP).not.toHaveBeenCalled();
+  });
+
+  it("browser query reads a bounded verified ref without caller-supplied JavaScript", async () => {
+    mockPage.evaluate.mockImplementation(async (script: string) => {
+      if (script.includes("__unicli_ref_identity")) {
+        return { role: "a", name: "Install AI SDK", taken_at: Date.now() };
+      }
+      if (script.includes("document.querySelectorAll")) return 1;
+      if (script.includes("__unicli_dom_query")) {
+        return {
+          value: "Install AI SDK",
+          original_length: "Install AI SDK".length,
+          truncated: false,
+        };
+      }
+      return undefined;
+    });
+
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "query", "1", "--kind", "text"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      command: string;
+      data: {
+        ok: boolean;
+        evidence_type: string;
+        authority: string;
+        kind: string;
+        ref: string;
+        result: string;
+        result_chars: number;
+        result_truncated: boolean;
+        url: string;
+      };
+    };
+    expect(env.command).toBe("browser.query");
+    expect(env.data).toEqual({
+      ok: true,
+      evidence_type: "browser-dom-query",
+      authority: "ref_read_only",
+      kind: "text",
+      ref: "1",
+      result: "Install AI SDK",
+      result_chars: "Install AI SDK".length,
+      result_truncated: false,
+      url: "https://example.com",
+    });
+    expect(mockPage.evaluate.mock.calls.map(([script]) => script)).not.toEqual(
+      expect.arrayContaining([expect.stringContaining("document.cookie")]),
+    );
+  });
+
+  it("browser dialogs reads provider-owned dialog supervision state", async () => {
+    daemonClientMocks.sendCommand.mockResolvedValueOnce({
+      evidence_type: "browser-dialog-supervision",
+      captured_at: "2026-06-04T00:00:00.000Z",
+      supervision: "active",
+      pending_count: 1,
+      recent_count: 0,
+      pending_dialogs: [
+        {
+          id: "d-1",
+          type: "confirm",
+          message: "Continue?",
+          opened_at: "2026-06-04T00:00:00.000Z",
+          url: "https://example.com/dialog",
+        },
+      ],
+      recent_dialogs: [],
+      url: "https://example.com/dialog",
+    });
+
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "dialogs"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      command: string;
+      data: {
+        evidence_type: string;
+        pending_count: number;
+        pending_dialogs: Array<{ id: string; message: string }>;
+      };
+    };
+    expect(env.command).toBe("browser.dialogs");
+    expect(env.data).toMatchObject({
+      evidence_type: "browser-dialog-supervision",
+      pending_count: 1,
+      pending_dialogs: [{ id: "d-1", message: "Continue?" }],
+    });
+    expect(daemonClientMocks.sendCommand).toHaveBeenCalledWith("dialog-read", {
+      workspace: "browser:default",
+      clearRecent: false,
+    });
+  });
+
+  it("browser dialog responds to a pending provider-owned dialog", async () => {
+    daemonClientMocks.sendCommand.mockResolvedValueOnce({
+      evidence_type: "browser-dialog-supervision",
+      captured_at: "2026-06-04T00:00:01.000Z",
+      supervision: "active",
+      pending_count: 0,
+      recent_count: 1,
+      pending_dialogs: [],
+      recent_dialogs: [
+        {
+          id: "d-1",
+          type: "prompt",
+          message: "Name?",
+          opened_at: "2026-06-04T00:00:00.000Z",
+          closed_at: "2026-06-04T00:00:01.000Z",
+          closed_by: "agent",
+          action: "accept",
+        },
+      ],
+      responded_dialog: {
+        id: "d-1",
+        type: "prompt",
+        message: "Name?",
+        opened_at: "2026-06-04T00:00:00.000Z",
+      },
+    });
+
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        ["browser", "dialog", "accept", "d-1", "--prompt", "OLo"],
+        {
+          from: "user",
+        },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      command: string;
+      data: {
+        responded_dialog?: { id: string };
+        recent_dialogs: Array<{ action?: string; closed_by: string }>;
+      };
+    };
+    expect(env.command).toBe("browser.dialog");
+    expect(env.data.responded_dialog?.id).toBe("d-1");
+    expect(env.data.recent_dialogs[0]).toMatchObject({
+      action: "accept",
+      closed_by: "agent",
+    });
+    expect(daemonClientMocks.sendCommand).toHaveBeenCalledWith(
+      "dialog-respond",
+      {
+        workspace: "browser:default",
+        dialogAction: "accept",
+        dialogId: "d-1",
+        promptText: "OLo",
+      },
+    );
+  });
+
+  it("browser downloads reads bounded download supervision without local paths", async () => {
+    daemonClientMocks.sendCommand.mockResolvedValueOnce({
+      evidence_type: "browser-downloads",
+      captured_at: "2026-06-04T00:00:02.000Z",
+      workspace: "browser:default",
+      limit: 5,
+      count: 1,
+      downloads: [
+        {
+          id: 7,
+          state: "complete",
+          danger: "safe",
+          exists: true,
+          paused: false,
+          incognito: false,
+          bytes_received: 128,
+          total_bytes: 128,
+          file_size: 128,
+          filename_basename: "/Users/example/Downloads/report.pdf",
+          mime: "application/pdf",
+          url: "https://example.com/report.pdf",
+          final_url: "https://example.com/report.pdf",
+          started_at: "2026-06-04T00:00:00.000Z",
+          ended_at: "2026-06-04T00:00:01.000Z",
+        },
+      ],
+    });
+
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "downloads", "--limit", "5"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      command: string;
+      data: {
+        evidence_type: string;
+        count: number;
+        downloads: Array<{ filename_basename: string; state: string }>;
+      };
+    };
+    expect(env.command).toBe("browser.downloads");
+    expect(env.data).toMatchObject({
+      evidence_type: "browser-downloads",
+      count: 1,
+      downloads: [{ filename_basename: "report.pdf", state: "complete" }],
+    });
+    expect(JSON.stringify(env)).not.toContain("/Users/example/Downloads");
+    expect(daemonClientMocks.sendCommand).toHaveBeenCalledWith(
+      "downloads-read",
+      {
+        workspace: "browser:default",
+        downloadLimit: 5,
+      },
+    );
+  });
+
   it("browser tabs honors isolated workspaces", async () => {
     daemonClientMocks.sendCommand.mockResolvedValueOnce([
       { id: 1, url: "https://one.example", title: "one" },
@@ -1353,6 +1662,85 @@ describe("unicli browser operator surface", () => {
       expect.objectContaining({
         workspace: expect.stringMatching(/^browser:\d+:\d+:[0-9a-f]+$/),
       }),
+    );
+  });
+
+  it("browser close --all closes all managed daemon sessions with bounded evidence", async () => {
+    daemonClientMocks.listSessions.mockResolvedValueOnce([
+      {
+        workspace: "browser:default",
+        windowId: 41,
+        tabCount: 2,
+        owned: true,
+        idleMsRemaining: 12_000,
+      },
+      {
+        workspace: "browser:bound",
+        windowId: 42,
+        tabCount: 1,
+        owned: false,
+        idleMsRemaining: 9_000,
+      },
+    ]);
+    daemonClientMocks.sendCommand.mockResolvedValue({});
+
+    process.env.UNICLI_OUTPUT = "json";
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "close", "--all"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      command: string;
+      data: {
+        scope: string;
+        closed_count: number;
+        released_count: number;
+        failed_count: number;
+        sessions: Array<{
+          workspace: string;
+          action: string;
+          status: string;
+        }>;
+      };
+    };
+    expect(env.command).toBe("browser.close");
+    expect(env.data).toMatchObject({
+      scope: "all_managed_sessions",
+      closed_count: 1,
+      released_count: 1,
+      failed_count: 0,
+    });
+    expect(env.data.sessions).toEqual([
+      {
+        workspace: "browser:default",
+        action: "closed_window",
+        status: "completed",
+      },
+      {
+        workspace: "browser:bound",
+        action: "released_binding",
+        status: "completed",
+      },
+    ]);
+    expect(daemonClientMocks.sendCommand).toHaveBeenNthCalledWith(
+      1,
+      "close-window",
+      {
+        workspace: "browser:default",
+      },
+    );
+    expect(daemonClientMocks.sendCommand).toHaveBeenNthCalledWith(
+      2,
+      "close-window",
+      {
+        workspace: "browser:bound",
+      },
     );
   });
 

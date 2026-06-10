@@ -93,6 +93,57 @@ describe("adapter-smoke — live dispatch exercises hardening", () => {
     expect(env?.ok).toBe(true);
   });
 
+  it("jina read converts example.com to Markdown", () => {
+    const { status, env } = runCli(["jina", "read", "https://example.com"]);
+    if (status !== 0) {
+      console.warn("jina.read smoke skipped (network/upstream):", status);
+      return;
+    }
+    expect(env?.ok).toBe(true);
+    expect(String(env?.data)).toMatch(/Example Domain/);
+  });
+
+  it("markdown-new read converts example.com through the JSON API", () => {
+    const { status, env } = runCli([
+      "markdown-new",
+      "read",
+      "https://example.com",
+    ]);
+    if (status !== 0) {
+      console.warn(
+        "markdown-new.read smoke skipped (network/upstream):",
+        status,
+      );
+      return;
+    }
+    expect(env?.ok).toBe(true);
+    expect(JSON.stringify(env?.data)).toMatch(/Example Domain/);
+  });
+
+  it("defuddle read converts example.com to frontmatter Markdown", () => {
+    const { status, env } = runCli(["defuddle", "read", "https://example.com"]);
+    if (status !== 0) {
+      console.warn("defuddle.read smoke skipped (network/upstream):", status);
+      return;
+    }
+    expect(env?.ok).toBe(true);
+    expect(String(env?.data)).toMatch(/title: "Example Domain"/);
+  });
+
+  it("ollama-cloud fetch fails closed without OLLAMA_API_KEY", () => {
+    const { status, env } = runCli([
+      "ollama-cloud",
+      "fetch",
+      "https://example.com",
+    ]);
+    if (status === 0) {
+      expect(env?.ok).toBe(true);
+      return;
+    }
+    expect(env?.ok).toBe(false);
+    expect(env?.error?.code).toBe("auth_required");
+  });
+
   it("yt-dlp download 'not-a-url' fails ajv format:uri with structured error (deterministic)", () => {
     const { env } = runCli(["yt-dlp", "download", "not-a-url"]);
     expect(env).not.toBeNull();

@@ -36,6 +36,9 @@ export type DaemonAction =
   | "bind-current"
   | "network-capture-start"
   | "network-capture-read"
+  | "downloads-read"
+  | "dialog-read"
+  | "dialog-respond"
   | "cdp";
 
 export interface DaemonCommand {
@@ -50,6 +53,11 @@ export interface DaemonCommand {
   matchDomain?: string;
   matchPathPrefix?: string;
   pattern?: string;
+  clearRecent?: boolean;
+  downloadLimit?: number;
+  dialogAction?: "accept" | "dismiss";
+  dialogId?: string;
+  promptText?: string;
   cdpMethod?: string;
   cdpParams?: Record<string, unknown>;
   cdpSessionId?: string;

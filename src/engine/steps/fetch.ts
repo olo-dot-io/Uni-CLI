@@ -49,6 +49,18 @@ export function normalizeFetchAttempts(retry: number | undefined): number {
   return Math.max(1, Math.floor(attempts));
 }
 
+export function resolveHeaderTemplates(
+  headers: Record<string, string> | undefined,
+  ctx: PipelineContext,
+): Record<string, string> | undefined {
+  if (!headers) return undefined;
+  const resolved: Record<string, string> = {};
+  for (const [key, value] of Object.entries(headers)) {
+    resolved[key] = evalTemplate(value, ctx);
+  }
+  return resolved;
+}
+
 export async function stepFetch(
   ctx: PipelineContext,
   config: FetchConfig,
@@ -83,8 +95,15 @@ export async function stepFetch(
         access: networkAccessForMethod(config.method),
       });
       const resolvedConfig = config.body
-        ? { ...config, body: resolveTemplateDeep(config.body, itemCtx) }
-        : config;
+        ? {
+            ...config,
+            body: resolveTemplateDeep(config.body, itemCtx),
+            headers: resolveHeaderTemplates(config.headers, itemCtx),
+          }
+        : {
+            ...config,
+            headers: resolveHeaderTemplates(config.headers, itemCtx),
+          };
       return fetchJson(itemUrl, resolvedConfig, ctx.cookieHeader, stepIndex);
     });
     return { ...ctx, data: results };
@@ -100,8 +119,12 @@ export async function stepFetch(
   }
 
   const resolvedConfig = config.body
-    ? { ...config, body: resolveTemplateDeep(config.body, ctx) }
-    : config;
+    ? {
+        ...config,
+        body: resolveTemplateDeep(config.body, ctx),
+        headers: resolveHeaderTemplates(config.headers, ctx),
+      }
+    : { ...config, headers: resolveHeaderTemplates(config.headers, ctx) };
 
   try {
     const data = await fetchJson(

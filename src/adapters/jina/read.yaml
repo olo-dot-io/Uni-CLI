@@ -1,0 +1,30 @@
+site: jina
+name: read
+description: Read a public URL through Jina Reader and return Markdown
+type: web-api
+domain: r.jina.ai
+strategy: public
+
+args:
+  url:
+    type: str
+    required: true
+    positional: true
+    description: Public URL to convert to Markdown
+    format: uri
+
+pipeline:
+  - fetch_text:
+      url: "https://r.jina.ai/${{ args.url }}"
+      headers:
+        Accept: "text/plain"
+
+columns: []
+
+# schema-v2 metadata — injected by `unicli migrate schema-v2`
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

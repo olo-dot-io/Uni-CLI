@@ -73,6 +73,27 @@ function installChromeMock() {
     cookies: {
       getAll: vi.fn().mockResolvedValue([]),
     },
+    downloads: {
+      search: vi.fn().mockResolvedValue([
+        {
+          id: 9,
+          state: "complete",
+          danger: "safe",
+          exists: true,
+          paused: false,
+          incognito: false,
+          bytesReceived: 256,
+          totalBytes: 256,
+          fileSize: 256,
+          filename: "/Users/example/Downloads/export.csv",
+          mime: "text/csv",
+          url: "https://example.com/export.csv",
+          finalUrl: "https://example.com/export.csv",
+          startTime: "2026-06-04T00:00:00.000Z",
+          endTime: "2026-06-04T00:00:01.000Z",
+        },
+      ]),
+    },
     alarms: {
       create: vi.fn(),
       onAlarm: alarmsOnAlarm,
@@ -530,6 +551,181 @@ describe("background network capture routing", () => {
         ],
       }),
     );
+  });
+
+  it("routes dialog-read through provider-owned dialog supervision", async () => {
+    const { chrome, debuggerOnEvent, runtimeOnInstalled } = installChromeMock();
+    const { sockets, sentMessages } =
+      await startBackgroundHarness(runtimeOnInstalled);
+
+    sockets[0]!.onmessage?.({
+      data: JSON.stringify({
+        id: "watch-dialogs",
+        action: "dialog-read",
+        workspace: "dialogs",
+      }),
+    });
+    await vi.waitFor(() =>
+      expect(chrome.debugger.attach).toHaveBeenCalledWith({ tabId: 42 }, "1.3"),
+    );
+    expect(chrome.debugger.sendCommand).toHaveBeenCalledWith(
+      { tabId: 42 },
+      "Page.enable",
+    );
+
+    debuggerOnEvent.emit({ tabId: 42 }, "Page.javascriptDialogOpening", {
+      type: "confirm",
+      message: "Continue?",
+      url: "https://example.com/dialog",
+    });
+    sockets[0]!.onmessage?.({
+      data: JSON.stringify({
+        id: "read-dialogs",
+        action: "dialog-read",
+        workspace: "dialogs",
+      }),
+    });
+
+    await vi.waitFor(() => {
+      const message = sentMessages.find(
+        (entry) =>
+          typeof entry === "object" &&
+          entry !== null &&
+          "id" in entry &&
+          entry.id === "read-dialogs",
+      ) as { ok?: boolean; data?: { pending_dialogs?: unknown[] } } | undefined;
+      expect(message?.ok).toBe(true);
+      expect(message?.data?.pending_dialogs).toEqual([
+        expect.objectContaining({
+          id: "d-1",
+          type: "confirm",
+          message: "Continue?",
+          url: "https://example.com/dialog",
+        }),
+      ]);
+    });
+  });
+
+  it("routes dialog-respond through fixed dialog response CDP only", async () => {
+    const { chrome, debuggerOnEvent, runtimeOnInstalled } = installChromeMock();
+    const { sockets, sentMessages } =
+      await startBackgroundHarness(runtimeOnInstalled);
+
+    sockets[0]!.onmessage?.({
+      data: JSON.stringify({
+        id: "watch-dialogs",
+        action: "dialog-read",
+        workspace: "dialogs",
+      }),
+    });
+    await vi.waitFor(() =>
+      expect(chrome.debugger.sendCommand).toHaveBeenCalledWith(
+        { tabId: 42 },
+        "Page.enable",
+      ),
+    );
+    debuggerOnEvent.emit({ tabId: 42 }, "Page.javascriptDialogOpening", {
+      type: "prompt",
+      message: "Name?",
+      defaultPrompt: "OLo",
+      url: "https://example.com/prompt",
+    });
+
+    sockets[0]!.onmessage?.({
+      data: JSON.stringify({
+        id: "respond-dialog",
+        action: "dialog-respond",
+        workspace: "dialogs",
+        dialogAction: "accept",
+        dialogId: "d-1",
+        promptText: "UniCLI",
+      }),
+    });
+
+    await vi.waitFor(() =>
+      expect(chrome.debugger.sendCommand).toHaveBeenCalledWith(
+        { tabId: 42 },
+        "Page.handleJavaScriptDialog",
+        { accept: true, promptText: "UniCLI" },
+      ),
+    );
+    await vi.waitFor(() => {
+      const message = sentMessages.find(
+        (entry) =>
+          typeof entry === "object" &&
+          entry !== null &&
+          "id" in entry &&
+          entry.id === "respond-dialog",
+      ) as
+        | {
+            ok?: boolean;
+            data?: {
+              pending_count?: number;
+              recent_dialogs?: unknown[];
+              responded_dialog?: unknown;
+            };
+          }
+        | undefined;
+      expect(message?.ok).toBe(true);
+      expect(message?.data?.pending_count).toBe(0);
+      expect(message?.data?.responded_dialog).toEqual(
+        expect.objectContaining({ id: "d-1", message: "Name?" }),
+      );
+      expect(message?.data?.recent_dialogs).toEqual([
+        expect.objectContaining({
+          id: "d-1",
+          closed_by: "agent",
+          action: "accept",
+        }),
+      ]);
+    });
+  });
+
+  it("routes downloads-read through provider-owned browser download supervision", async () => {
+    const { chrome, runtimeOnInstalled } = installChromeMock();
+    const { sockets, sentMessages } =
+      await startBackgroundHarness(runtimeOnInstalled);
+
+    sockets[0]!.onmessage?.({
+      data: JSON.stringify({
+        id: "downloads",
+        action: "downloads-read",
+        workspace: "downloads",
+        downloadLimit: 5,
+      }),
+    });
+
+    await vi.waitFor(() => {
+      const message = sentMessages.find(
+        (entry) =>
+          typeof entry === "object" &&
+          entry !== null &&
+          "id" in entry &&
+          entry.id === "downloads",
+      ) as
+        | {
+            ok?: boolean;
+            data?: {
+              evidence_type?: string;
+              downloads?: Array<{ filename_basename?: string }>;
+            };
+          }
+        | undefined;
+      expect(message?.ok).toBe(true);
+      expect(message?.data?.evidence_type).toBe("browser-downloads");
+      expect(message?.data?.downloads).toEqual([
+        expect.objectContaining({
+          id: 9,
+          filename_basename: "export.csv",
+        }),
+      ]);
+      expect(JSON.stringify(message)).not.toContain("/Users/example/Downloads");
+    });
+    expect(chrome.downloads.search).toHaveBeenCalledWith({
+      limit: 5,
+      orderBy: ["-startTime"],
+    });
+    expect(chrome.windows.create).not.toHaveBeenCalled();
   });
 
   it("creates automation windows without focus unless the command opts in", async () => {
