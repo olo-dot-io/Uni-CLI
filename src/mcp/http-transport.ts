@@ -10,14 +10,21 @@
  * that. Most clients that "speak HTTP" to MCP only need request/response,
  * and starting with the simpler shape means zero new dependencies and a
  * tiny attack surface.
+ *
+ * Every request passes the shared `isOriginAllowed` DNS-rebinding guard
+ * (`./origin-guard.ts`) before routing, so a browser page on a foreign
+ * origin cannot reach the JSON-RPC dispatcher even though the socket binds
+ * to loopback.
  */
 
 import {
   createServer,
   type IncomingMessage,
+  type Server,
   type ServerResponse,
 } from "node:http";
 import { getAllAdapters, listCommands } from "../registry.js";
+import { isOriginAllowed } from "./origin-guard.js";
 import { handleOAuthRoute, createOAuthMiddleware } from "./oauth.js";
 import { VERSION } from "../constants.js";
 import { buildDefaultTools } from "./tools.js";
@@ -111,10 +118,20 @@ export async function startHttp(
   handler: ReturnType<typeof buildHandler>,
   port: number,
   authEnabled = false,
-): Promise<void> {
+): Promise<Server> {
   const oauthMiddleware = authEnabled ? createOAuthMiddleware() : null;
 
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
+    // DNS-rebinding guard: reject browser pages on a non-loopback origin
+    // before any routing, so a malicious site cannot drive tools/call.
+    if (!isOriginAllowed(req)) {
+      writeJson(res, 403, {
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32600, message: "Forbidden: invalid Origin" },
+      });
+      return;
+    }
     if (authEnabled && handleOAuthRoute(req, res)) return;
     if (
       req.method === "GET" &&
@@ -139,7 +156,11 @@ export async function startHttp(
     });
   });
 
+  const addr = server.address();
+  const boundPort = addr && typeof addr === "object" ? addr.port : port;
   process.stderr.write(
-    `unicli MCP server v${VERSION} — HTTP transport on http://127.0.0.1:${port}/mcp\n`,
+    `unicli MCP server v${VERSION} — HTTP transport on http://127.0.0.1:${boundPort}/mcp\n`,
   );
+
+  return server;
 }

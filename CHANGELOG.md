@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Security
+
+- The legacy HTTP MCP transport (`unicli mcp serve --transport http`) now
+  validates the `Origin` header on every request, rejecting non-loopback
+  browser origins with `403` before any routing. Previously this transport —
+  unlike the Streamable HTTP transport — accepted cross-origin browser
+  requests, so a malicious page could drive `tools/call` against a local
+  server bound to loopback. The DNS-rebinding policy is now shared by both
+  transports via `src/mcp/origin-guard.ts`.
+
 ### Added
 
 - `unicli browser console` now reads bounded current-page console messages,

@@ -8,6 +8,11 @@
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { isOriginAllowed, ALLOWED_ORIGINS } from "../origin-guard.js";
+
+// Re-exported so `handle-post.ts`, `index.ts`, and the `_test` shim keep
+// importing the origin policy from this module's stable surface.
+export { isOriginAllowed, ALLOWED_ORIGINS };
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -62,10 +67,6 @@ export const MAX_BODY = 1_048_576; // 1 MB
 export const SESSION_TTL_MS = 3_600_000; // 1 hour
 export const PRUNE_INTERVAL_MS = 300_000; // 5 minutes
 export const HEARTBEAT_MS = 30_000;
-export const ALLOWED_ORIGINS = new Set([
-  "http://localhost",
-  "http://127.0.0.1",
-]);
 export const MAX_SESSIONS = 100;
 export const MAX_ASYNC_TASKS = 200;
 
@@ -139,25 +140,6 @@ export function pruneStaleSessions(): void {
   for (const [id, task] of asyncTasks) {
     if (task.created < cutoff) asyncTasks.delete(id);
   }
-}
-
-/**
- * Validate Origin header for DNS rebinding protection.
- * Allow requests with no Origin (non-browser clients) or from localhost.
- */
-export function isOriginAllowed(req: IncomingMessage): boolean {
-  const origin = req.headers.origin;
-  if (!origin) return true; // Non-browser clients omit Origin
-  // Accept any localhost origin regardless of port
-  try {
-    const url = new URL(origin);
-    if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
-      return true;
-    }
-  } catch {
-    // Malformed origin — reject
-  }
-  return ALLOWED_ORIGINS.has(origin);
 }
 
 export function clientAcceptsSSE(req: IncomingMessage): boolean {
