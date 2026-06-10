@@ -6,11 +6,11 @@ visual cursor, or a generated tool list. It is an operation that lets an agent
 control real software through a governed, observable, repairable path.
 
 The current generated operation catalog is the source of truth:
-**<span><!-- STATS:site_count -->313<!-- /STATS --></span> sites**,
-**<span><!-- STATS:command_count -->1767<!-- /STATS --></span> commands**,
-**<span><!-- STATS:adapter_count_total -->1217<!-- /STATS --></span> adapters**,
+**<span><!-- STATS:site_count -->317<!-- /STATS --></span> sites**,
+**<span><!-- STATS:command_count -->1772<!-- /STATS --></span> commands**,
+**<span><!-- STATS:adapter_count_total -->1222<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->9120<!-- /STATS --></span> tests** in v0.225.1.
+and **<span><!-- STATS:test_count -->9167<!-- /STATS --></span> tests** in v0.225.1.
 
 ## Computer-Control Thesis
 
