@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 import {
   computeRefsPath,
+  describeElementRef,
   loadRefStore,
   RefAllocator,
   RefStore,
@@ -199,6 +200,84 @@ describe("RefStore", () => {
         process.env.UNICLI_COMPUTE_REFS_PATH = previous;
       }
     }
+  });
+
+  it("projects ref provenance with transport scope, identity, and expiry", () => {
+    const alloc = new RefAllocator();
+    const ref = alloc.alloc({
+      stable: "desktop-ax:calc:AXWindow[0]/AXButton[4]",
+      role: "AXButton",
+      name: "5",
+      value: "5",
+      bounds: { x: 1, y: 2, w: 3, h: 4 },
+      screenIndex: 1,
+      states: ["enabled"],
+      app: "Calculator",
+      pid: 42,
+    });
+    const bucket = {
+      ...alloc.freeze("desktop-ax", "calc"),
+      createdAt: Date.parse("2026-06-15T04:00:00.000Z"),
+    };
+
+    expect(describeElementRef(ref, bucket, { ttlMs: 30_000 })).toEqual({
+      provider: "unicli.compute",
+      alias: "@e1",
+      stable: "desktop-ax:calc:AXWindow[0]/AXButton[4]",
+      namespace: "desktop-ax",
+      transport: "desktop-ax",
+      scope: "calc",
+      createdAt: Date.parse("2026-06-15T04:00:00.000Z"),
+      createdAtIso: "2026-06-15T04:00:00.000Z",
+      expiresAt: Date.parse("2026-06-15T04:00:30.000Z"),
+      expiresAtIso: "2026-06-15T04:00:30.000Z",
+      ttlMs: 30_000,
+      role: "AXButton",
+      name: "5",
+      value: "5",
+      bounds: { x: 1, y: 2, w: 3, h: 4 },
+      screenIndex: 1,
+      states: ["enabled"],
+      app: "Calculator",
+      pid: 42,
+      identity: {
+        provider: "unicli.compute",
+        transport: "desktop-ax",
+        scope: "calc",
+        app: "Calculator",
+        pid: 42,
+        screenIndex: 1,
+      },
+    });
+  });
+
+  it("projects minimal ref provenance without optional expiry", () => {
+    const alloc = new RefAllocator();
+    const ref = alloc.alloc({
+      stable: "raw-ref-without-namespace",
+      role: "button",
+    });
+    const bucket = {
+      ...alloc.freeze("visual", "screen"),
+      createdAt: Date.parse("2026-06-15T04:01:00.000Z"),
+    };
+
+    expect(describeElementRef(ref, bucket)).toEqual({
+      provider: "unicli.compute",
+      alias: "@e1",
+      stable: "raw-ref-without-namespace",
+      namespace: "alias",
+      transport: "visual",
+      scope: "screen",
+      createdAt: Date.parse("2026-06-15T04:01:00.000Z"),
+      createdAtIso: "2026-06-15T04:01:00.000Z",
+      role: "button",
+      identity: {
+        provider: "unicli.compute",
+        transport: "visual",
+        scope: "screen",
+      },
+    });
   });
 
   it("returns an empty store for missing or invalid persisted payloads", () => {

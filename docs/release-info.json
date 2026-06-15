@@ -1,23 +1,23 @@
 {
-  "version": "0.225.1",
-  "codename": "Apollo · Conrad",
-  "date": "2026-06-02",
+  "version": "0.225.2",
+  "codename": "Apollo · Gordon",
+  "date": "2026-06-15",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.225.1",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02251--2026-06-02--apollo--conrad",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.225.2",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02252--2026-06-15--apollo--gordon",
   "highlights": {
     "root": [
-      "Uni-CLI 0.225.1 is the site-availability and browser-substrate repair release: every adapter command is classified, every safe public site representative is probed, and concentrated failures are reported as actionable health data.",
-      "`npm run site:availability` now separates real adapter failures from auth gates, browser/CDP requirements, local daemon gaps, platform mismatches, quarantines, semantic-input requirements, and write/destructive commands.",
-      "Browser and Electron repair paths now surface catchable launch errors, declare `cdp-browser` capability requirements, and create fresh user-session CDP page targets instead of reusing stale logged-in tabs.",
-      "The release candidate was smoke-tested through the built CLI on Twitter/X, Xiaohongshu, Reddit, YouTube, Bilibili, and Weibo, then checked with adapter health, real E2E, unit, lint, release, verify, and npm dry-run gates."
+      "Uni-CLI 0.225.2 is the compute-contract and ref-provenance patch release: core computer-use actions now expose their arguments through describe, schema, and MCP contracts.",
+      "Compute snapshots and find results now include provider, namespace, transport, scope, TTL, stable alias, identity, bounds, and app/process provenance so agents can route refs through the owner that created them.",
+      "Compute actions now fail closed on OLo-owned, browser-owned, and unknown namespaced refs with structured foreign_ref or unresolvable_ref envelopes instead of falling through to generic compute failures.",
+      "This release also carries the post-0.225.1 MCP Origin guard, browser console evidence, JSON-RPC type-boundary cleanup, and the full verify, release-check, public-docs, and npm dry-run gates."
     ],
     "zh": [
-      "Uni-CLI 0.225.1 是站点可用性与浏览器 substrate 修复发布：每条 adapter 命令都会被分类，每个安全公开站点代表探针都会被实际执行，集中失败会变成可行动的 health data。",
-      "`npm run site:availability` 现在把真实 adapter 失败和 auth gate、browser/CDP 需求、本地 daemon 缺口、平台不匹配、quarantine、语义输入需求、写入/破坏性命令分开报告。",
-      "Browser 与 Electron 修复路径现在会暴露可捕获的 launch error，声明 `cdp-browser` capability requirement，并为 user-session CDP 创建 fresh page target，不再复用 stale 登录 tab。",
-      "这个 release candidate 已用 built CLI 跑过 Twitter/X、小红书、Reddit、YouTube、Bilibili、Weibo smoke，并经过 adapter health、real E2E、unit、lint、release、verify、npm dry-run gates。"
+      "Uni-CLI 0.225.2 是 compute contract 与 ref provenance patch release：核心 computer-use 动作现在通过 describe、schema、MCP contracts 暴露参数。",
+      "Compute snapshots 与 find 结果现在包含 provider、namespace、transport、scope、TTL、stable alias、identity、bounds、app/process provenance，agent 可以把 ref 路由回创建它的 owner。",
+      "Compute actions 现在会对 OLo-owned、browser-owned、未知 namespace ref fail closed，返回结构化 foreign_ref 或 unresolvable_ref envelope，不再落到 generic compute failure。",
+      "本次 release 也包含 0.225.1 之后的 MCP Origin guard、browser console evidence、JSON-RPC type-boundary cleanup，并通过完整 verify、release-check、public-docs、npm dry-run gates。"
     ]
   }
 }

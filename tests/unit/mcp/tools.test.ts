@@ -18,6 +18,7 @@ import {
   loadTsAdapters,
   primeKernelCache,
 } from "../../../src/discovery/loader.js";
+import { describe as describeUnicli } from "../../../src/commands/describe.js";
 import { invalidateCache } from "../../../src/discovery/search.js";
 import { AdapterType } from "../../../src/types.js";
 import type { AdapterManifest } from "../../../src/types.js";
@@ -284,7 +285,7 @@ describe("computer-use profile", () => {
       "computer-use.scroll",
     ]) {
       const tool = tools.find((candidate) => candidate.name === name);
-      expect(tool?.inputSchema.properties).toHaveProperty("focus", {
+      expect(tool?.inputSchema.properties?.focus).toMatchObject({
         type: "boolean",
         default: false,
       });
@@ -327,6 +328,45 @@ describe("computer-use profile", () => {
     expect(prompts[0]?.text).toContain("compact accessibility snapshots");
     expect(prompts[0]?.text).toContain("app-shot references");
     expect(prompts[0]?.text).toContain("re-snapshot after actions");
+  });
+
+  it("keeps shared compute action schemas in parity with core describe", async () => {
+    const toolsModule = await import("../../../src/mcp/tools.js");
+    const selectTools = (
+      toolsModule as unknown as {
+        selectTools?: (profile: string) => Array<{
+          name: string;
+          inputSchema: {
+            properties?: Record<string, unknown>;
+            required?: string[];
+          };
+        }>;
+      }
+    ).selectTools;
+    expect(typeof selectTools).toBe("function");
+    const tools = selectTools!("computer-use");
+
+    for (const [command, toolName] of [
+      ["click", "computer-use.click"],
+      ["type", "computer-use.type"],
+      ["press", "computer-use.press"],
+      ["scroll", "computer-use.scroll"],
+    ] as const) {
+      const corePayload = describeUnicli("compute", command).payload as {
+        args_schema: {
+          properties: Record<string, unknown>;
+          required: string[];
+        };
+      };
+      const tool = tools.find((candidate) => candidate.name === toolName);
+      expect(tool).toBeDefined();
+      expect(tool?.inputSchema.properties).toEqual(
+        corePayload.args_schema.properties,
+      );
+      expect(tool?.inputSchema.required ?? []).toEqual(
+        corePayload.args_schema.required,
+      );
+    }
   });
 
   it("computer-use.capture rejects invalid format at the MCP boundary", async () => {

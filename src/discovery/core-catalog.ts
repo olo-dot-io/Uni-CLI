@@ -7,6 +7,10 @@
  */
 
 import type { TargetSurface } from "../types.js";
+import {
+  getComputeCommandContract,
+  type ComputeCommandArg,
+} from "../compute/contracts.js";
 
 export interface CoreDiscoveryArg {
   name: string;
@@ -40,52 +44,6 @@ const CORE_COMMAND_SOURCE_PATHS: Record<string, string> = {
   operate: "src/commands/operate.ts",
   runs: "src/commands/runs.ts",
 };
-
-const COMPUTE_CAPTURE_ARGS: readonly CoreDiscoveryArg[] = [
-  {
-    name: "app",
-    type: "str",
-    description: "Application name to scope snapshot and screenshot capture",
-  },
-  {
-    name: "format",
-    type: "str",
-    default: "compact",
-    choices: ["compact", "json", "tree"],
-    description: "Snapshot encoding for accessibility refs",
-  },
-  {
-    name: "include",
-    type: "str",
-    default: "snapshot,screenshot",
-    description: "Comma-separated capture parts: snapshot,screenshot",
-  },
-  {
-    name: "maxDepth",
-    type: "int",
-    description: "Maximum accessibility tree depth",
-  },
-  {
-    name: "screenshotPath",
-    type: "str",
-    description: "Optional screenshot output path",
-  },
-  {
-    name: "saveReference",
-    type: "bool",
-    description: "Persist app-shot handoff artifacts",
-  },
-  {
-    name: "copyReference",
-    type: "bool",
-    description: "Persist and copy app-shot handoff markup",
-  },
-  {
-    name: "referenceRoot",
-    type: "str",
-    description: "Directory for saved app-shot artifacts",
-  },
-];
 
 const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
   {
@@ -261,8 +219,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "desktop",
     type: "desktop",
     target_surface: "desktop",
-    description:
-      "List installed and visible desktop applications for local computer-use workflows.",
+    ...computeCommandFields("apps"),
   },
   {
     site: "compute",
@@ -270,8 +227,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "desktop",
     type: "desktop",
     target_surface: "desktop",
-    description:
-      "List visible desktop windows for local computer-use workflows.",
+    ...computeCommandFields("windows"),
   },
   {
     site: "compute",
@@ -279,8 +235,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "desktop",
     type: "desktop",
     target_surface: "desktop",
-    description:
-      "Capture compact accessibility snapshots, refs, app state, and native UI structure for local computer-use agents.",
+    ...computeCommandFields("snapshot"),
   },
   {
     site: "compute",
@@ -288,15 +243,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "desktop",
     type: "desktop",
     target_surface: "desktop",
-    args: COMPUTE_CAPTURE_ARGS,
-    channels: {
-      shell:
-        "unicli compute capture [--app <name>] [--include snapshot,screenshot] [--format compact] [--copy-reference]",
-      args_file: "unicli compute capture --args-file <path.json>",
-      stdin: "echo '{...}' | unicli compute capture",
-    },
-    description:
-      "Capture local computer-use context by combining accessibility refs, app state, screenshot evidence, image metadata, app-shot reference artifacts, clipboard handoff markup, and replayable capture trajectory.",
+    ...computeCommandFields("capture"),
   },
   {
     site: "compute",
@@ -304,8 +251,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "desktop",
     type: "desktop",
     target_surface: "desktop",
-    description:
-      "Find a desktop UI element by query and return stable refs for local computer-use actions.",
+    ...computeCommandFields("find"),
   },
   {
     site: "compute",
@@ -313,8 +259,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "desktop",
     type: "desktop",
     target_surface: "desktop",
-    description:
-      "Click a desktop UI ref through the local computer-use cascade with action evidence.",
+    ...computeCommandFields("click"),
   },
   {
     site: "compute",
@@ -322,8 +267,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "desktop",
     type: "desktop",
     target_surface: "desktop",
-    description:
-      "Type text into a desktop UI ref through native, browser, or visual computer-use transports.",
+    ...computeCommandFields("type"),
   },
   {
     site: "compute",
@@ -331,8 +275,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "desktop",
     type: "desktop",
     target_surface: "desktop",
-    description:
-      "Press a keyboard shortcut through local computer-use transports.",
+    ...computeCommandFields("press"),
   },
   {
     site: "compute",
@@ -340,8 +283,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "desktop",
     type: "desktop",
     target_surface: "desktop",
-    description:
-      "Scroll a desktop UI ref through local computer-use transports.",
+    ...computeCommandFields("scroll"),
   },
   {
     site: "compute",
@@ -349,7 +291,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "desktop",
     type: "desktop",
     target_surface: "desktop",
-    description: "Launch a desktop app before local computer-use control.",
+    ...computeCommandFields("launch"),
   },
   {
     site: "compute",
@@ -357,8 +299,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "desktop",
     type: "desktop",
     target_surface: "desktop",
-    description:
-      "Capture a desktop screenshot for local computer-use observation and visual fallback.",
+    ...computeCommandFields("screenshot"),
   },
   {
     site: "compute",
@@ -366,8 +307,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "desktop",
     type: "desktop",
     target_surface: "desktop",
-    description:
-      "Attach to a desktop app or browser-backed local runtime for computer-use actions.",
+    ...computeCommandFields("attach"),
   },
   {
     site: "compute",
@@ -375,8 +315,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "desktop",
     type: "desktop",
     target_surface: "desktop",
-    description:
-      "Evaluate JavaScript in an attached browser-backed local runtime.",
+    ...computeCommandFields("eval"),
   },
   {
     site: "compute",
@@ -384,8 +323,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "desktop",
     type: "desktop",
     target_surface: "desktop",
-    description:
-      "Wait for a local computer-use target to reach a stable or expected state.",
+    ...computeCommandFields("wait"),
   },
   {
     site: "compute",
@@ -393,8 +331,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "desktop",
     type: "desktop",
     target_surface: "desktop",
-    description:
-      "Observe desktop state against a natural-language goal using local computer-use transports.",
+    ...computeCommandFields("observe"),
   },
   {
     site: "compute",
@@ -402,8 +339,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "desktop",
     type: "desktop",
     target_surface: "desktop",
-    description:
-      "Assert desktop state for a local computer-use workflow and return structured evidence.",
+    ...computeCommandFields("assert"),
   },
 ];
 
@@ -466,5 +402,31 @@ function withCoreSourcePath(
   return {
     ...command,
     source_path: command.source_path ?? CORE_COMMAND_SOURCE_PATHS[command.site],
+  };
+}
+
+function computeCommandFields(
+  command: string,
+): Pick<CoreDiscoveryCommand, "args" | "channels" | "description"> {
+  const contract = getComputeCommandContract(command);
+  if (!contract) {
+    throw new Error(`missing compute command contract for ${command}`);
+  }
+  return {
+    description: contract.description,
+    args: contract.args.map(toCoreDiscoveryArg),
+    ...(contract.channels ? { channels: contract.channels } : {}),
+  };
+}
+
+function toCoreDiscoveryArg(arg: ComputeCommandArg): CoreDiscoveryArg {
+  return {
+    name: arg.name,
+    ...(arg.type === undefined ? {} : { type: arg.type }),
+    ...(arg.default === undefined ? {} : { default: arg.default }),
+    ...(arg.required === undefined ? {} : { required: arg.required }),
+    ...(arg.positional === undefined ? {} : { positional: arg.positional }),
+    ...(arg.choices === undefined ? {} : { choices: [...arg.choices] }),
+    ...(arg.description === undefined ? {} : { description: arg.description }),
   };
 }

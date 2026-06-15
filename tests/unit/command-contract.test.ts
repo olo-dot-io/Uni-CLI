@@ -206,7 +206,7 @@ describe("CommandContract", () => {
     expect(contract.schemas.input.properties.format).toMatchObject({
       type: "string",
       default: "compact",
-      enum: ["compact", "json", "tree"],
+      enum: ["compact", "tree", "json"],
     });
     expect(contract.repair).not.toHaveProperty("adapter_path");
     expect(contract.repair).not.toHaveProperty("repair_command");
@@ -234,6 +234,53 @@ describe("CommandContract", () => {
         source_kind: "core",
         source_path: "src/commands/compute.ts",
       },
+    });
+  });
+
+  it("describes core compute action args with ref provenance from the shared contract", () => {
+    const click = describeUnicli("compute", "click").payload as {
+      args_schema: {
+        properties: Record<string, { description?: string; type: string }>;
+        required: string[];
+      };
+      channels: { shell: string };
+    };
+    const type = describeUnicli("compute", "type").payload as {
+      args_schema: { required: string[] };
+      channels: { shell: string };
+    };
+    const press = describeUnicli("compute", "press").payload as {
+      args_schema: { required: string[] };
+      channels: { shell: string };
+    };
+    const scroll = describeUnicli("compute", "scroll").payload as {
+      args_schema: {
+        properties: Record<string, { default?: unknown; type: string }>;
+        required: string[];
+      };
+      channels: { shell: string };
+    };
+
+    expect(click.args_schema.required).toEqual(["ref"]);
+    expect(click.args_schema.properties.ref).toMatchObject({
+      type: "string",
+    });
+    expect(click.args_schema.properties.ref.description).toContain(
+      "olo:accessibility",
+    );
+    expect(click.channels.shell).toContain("<ref>");
+    expect(type.args_schema.required).toEqual(["ref", "text"]);
+    expect(type.channels.shell).toContain("<ref> <text>");
+    expect(press.args_schema.required).toEqual(["combo"]);
+    expect(press.channels.shell).toContain("<combo>");
+    expect(scroll.args_schema.required).toEqual(["ref"]);
+    expect(scroll.args_schema.properties.direction).toMatchObject({
+      type: "string",
+      default: "down",
+    });
+    expect(scroll.args_schema.properties.amount).toMatchObject({
+      type: "integer",
+      default: 300,
     });
   });
 

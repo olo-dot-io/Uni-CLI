@@ -2,7 +2,7 @@
  * @owner   src/transport/refs.ts
  * @does    Allocate, persist, and reload stable desktop element references across CLI processes.
  * @needs   filesystem, process env, home directory
- * @feeds   desktop transports and compute commands
+ * @feeds   desktop transports, compute commands, compute ref-provenance output
  * @breaks  Lost or invalid refs prevent follow-up desktop actions from targeting prior snapshots.
  */
 
@@ -29,6 +29,36 @@ export interface RefBucket {
   createdAt: number;
   transport: string;
   scope: string;
+}
+
+export interface ElementRefProvenance {
+  provider: "unicli.compute";
+  alias: string;
+  stable: string;
+  namespace: string;
+  transport: string;
+  scope: string;
+  createdAt: number;
+  createdAtIso: string;
+  expiresAt?: number;
+  expiresAtIso?: string;
+  ttlMs?: number;
+  role: string;
+  name?: string;
+  value?: string;
+  bounds?: ElementRef["bounds"];
+  screenIndex?: number;
+  states?: readonly string[];
+  app?: string;
+  pid?: number;
+  identity: {
+    provider: "unicli.compute";
+    transport: string;
+    scope: string;
+    app?: string;
+    pid?: number;
+    screenIndex?: number;
+  };
 }
 
 interface SerializedRefStore {
@@ -165,6 +195,52 @@ export function loadRefStore(file = computeRefsPath()): RefStore {
     });
   }
   return store;
+}
+
+export function describeElementRef(
+  ref: ElementRef,
+  bucket: RefBucket,
+  opts: { ttlMs?: number } = {},
+): ElementRefProvenance {
+  const expiresAt =
+    opts.ttlMs === undefined ? undefined : bucket.createdAt + opts.ttlMs;
+  return {
+    provider: "unicli.compute",
+    alias: ref.alias,
+    stable: ref.stable,
+    namespace: stableNamespace(ref.stable),
+    transport: bucket.transport,
+    scope: bucket.scope,
+    createdAt: bucket.createdAt,
+    createdAtIso: new Date(bucket.createdAt).toISOString(),
+    ...(expiresAt === undefined
+      ? {}
+      : { expiresAt, expiresAtIso: new Date(expiresAt).toISOString() }),
+    ...(opts.ttlMs === undefined ? {} : { ttlMs: opts.ttlMs }),
+    role: ref.role,
+    ...(ref.name === undefined ? {} : { name: ref.name }),
+    ...(ref.value === undefined ? {} : { value: ref.value }),
+    ...(ref.bounds === undefined ? {} : { bounds: ref.bounds }),
+    ...(ref.screenIndex === undefined ? {} : { screenIndex: ref.screenIndex }),
+    ...(ref.states === undefined ? {} : { states: ref.states }),
+    ...(ref.app === undefined ? {} : { app: ref.app }),
+    ...(ref.pid === undefined ? {} : { pid: ref.pid }),
+    identity: {
+      provider: "unicli.compute",
+      transport: bucket.transport,
+      scope: bucket.scope,
+      ...(ref.app === undefined ? {} : { app: ref.app }),
+      ...(ref.pid === undefined ? {} : { pid: ref.pid }),
+      ...(ref.screenIndex === undefined
+        ? {}
+        : { screenIndex: ref.screenIndex }),
+    },
+  };
+}
+
+function stableNamespace(stable: string): string {
+  const separator = stable.indexOf(":");
+  return separator >= 0 ? stable.slice(0, separator) : "alias";
 }
 
 function isSerializedRefStore(value: unknown): value is SerializedRefStore {

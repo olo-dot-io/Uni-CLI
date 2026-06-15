@@ -108,6 +108,8 @@ export interface AgentError {
     deeplink?: string;
     doc?: string;
   };
+  minimum_capability?: string;
+  exit_code?: number;
   retryable?: boolean;
   alternatives?: string[];
 }

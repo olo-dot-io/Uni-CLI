@@ -758,6 +758,94 @@ describe("compute cascade", () => {
     expect(ax.calls).toHaveLength(0);
   });
 
+  it("returns a foreign_ref envelope before dispatching OLo-owned refs", async () => {
+    const bus = createTransportBus();
+    const ax = new StubTransport(
+      "desktop-ax",
+      ["ax_press"],
+      ok({ transport: "desktop-ax" }),
+    );
+    bus.register(ax);
+
+    const result = await tryCascade(
+      bus,
+      {
+        kind: "compute_click",
+        params: { ref: "olo:accessibility:example" },
+      },
+      "darwin",
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.minimum_capability).toBe(
+        "compute.compute_click.foreign_ref",
+      );
+      expect(result.error.reason).toContain("olo.accessibility");
+      expect(result.error.suggestion).toContain("OLo");
+      expect(result.error.exit_code).toBe(2);
+    }
+    expect(ax.calls).toHaveLength(0);
+  });
+
+  it("returns a foreign_ref envelope for browser-owned refs", async () => {
+    const bus = createTransportBus();
+    const visual = new StubTransport(
+      "visual",
+      ["visual_click"],
+      ok({ transport: "visual" }),
+    );
+    bus.register(visual);
+
+    const result = await tryCascade(
+      bus,
+      {
+        kind: "compute_click",
+        params: { ref: "browser:dom:button-1" },
+      },
+      "darwin",
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.minimum_capability).toBe(
+        "compute.compute_click.foreign_ref",
+      );
+      expect(result.error.suggestion).toContain("owning provider");
+      expect(result.error.exit_code).toBe(2);
+    }
+    expect(visual.calls).toHaveLength(0);
+  });
+
+  it("returns an unresolvable_ref envelope for unsupported stable namespaces", async () => {
+    const bus = createTransportBus();
+    const visual = new StubTransport(
+      "visual",
+      ["visual_click"],
+      ok({ transport: "visual" }),
+    );
+    bus.register(visual);
+
+    const result = await tryCascade(
+      bus,
+      {
+        kind: "compute_click",
+        params: { ref: "unknown-provider:button-1" },
+      },
+      "darwin",
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.minimum_capability).toBe(
+        "compute.compute_click.unresolvable_ref",
+      );
+      expect(result.error.suggestion).toContain("desktop-ax");
+      expect(result.error.exit_code).toBe(2);
+    }
+    expect(visual.calls).toHaveLength(0);
+  });
+
   it("returns a ref_expired envelope for stale persisted buckets", async () => {
     const bus = createTransportBus();
     const alloc = new RefAllocator();
@@ -1050,8 +1138,12 @@ describe("compute cascade", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data).toMatchObject({
+        provider: "unicli.compute",
         alias: "@e2",
         stable: "desktop-ax:calc:AXWindow[0]/AXButton[0]",
+        transport: "desktop-ax",
+        scope: "calc",
+        ttlMs: 3_600_000,
         role: "AXButton",
         name: "5",
       });
@@ -1092,11 +1184,79 @@ describe("compute cascade", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data).toMatchObject({
+        provider: "unicli.compute",
         alias: "@e2",
         stable: "desktop-atspi:calc:frame[0]/text[1]",
+        transport: "desktop-atspi",
+        scope: "calc",
         role: "text",
         name: "Display",
         value: "8",
+      });
+    }
+  });
+
+  it("adds ref provenance to snapshots when the transport allocated refs", async () => {
+    const bus = createTransportBus();
+    const cdp = new StubTransport(
+      "cdp-browser",
+      ["snapshot"],
+      ok({ transport: "cdp-browser" }),
+    );
+    const alloc = new RefAllocator();
+    alloc.alloc({
+      stable: "cdp-browser:renderer:button[data-testid='run']",
+      role: "button",
+      name: "Run",
+      app: "VS Code",
+      pid: 42,
+    });
+    bus.refs.put(alloc.freeze("cdp-browser", "renderer"));
+    cdp.snapshotResult = {
+      format: "text",
+      encoding: "compact",
+      data: '@e1 button "Run"',
+      refs: { count: 1, scope: "renderer" },
+    };
+    bus.register(cdp);
+
+    const result = await tryCascade(
+      bus,
+      {
+        kind: "compute_snapshot",
+        params: {
+          format: "compact",
+          port: 9238,
+          webSocketDebuggerUrl: "ws://127.0.0.1:9238/page-1",
+        },
+      },
+      "darwin",
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data).toMatchObject({
+        refs: {
+          count: 1,
+          scope: "renderer",
+          provenance: {
+            provider: "unicli.compute",
+            accepted_namespaces: expect.arrayContaining([
+              "desktop-ax:* stable refs from the Uni-CLI macOS AX transport",
+            ]),
+            records: [
+              expect.objectContaining({
+                provider: "unicli.compute",
+                alias: "@e1",
+                stable: "cdp-browser:renderer:button[data-testid='run']",
+                transport: "cdp-browser",
+                scope: "renderer",
+                app: "VS Code",
+                pid: 42,
+              }),
+            ],
+          },
+        },
       });
     }
   });

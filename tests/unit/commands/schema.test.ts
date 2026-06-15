@@ -108,4 +108,36 @@ describe("unicli schema — v2 envelope", () => {
     expect(e?.code).toBe("not_found");
     validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
   });
+
+  it("emits a non-empty schema for core compute commands", async () => {
+    const cap = captureStdout();
+    try {
+      await newProgram().parseAsync(
+        ["-f", "json", "schema", "compute", "click"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = parseEnv(cap.getStdout());
+    expect(env.ok).toBe(true);
+    expect(env.command).toBe("schema.describe");
+    const data = env.data as {
+      site?: string;
+      command?: string;
+      input?: {
+        properties?: Record<string, { description?: string; type?: string }>;
+        required?: string[];
+      };
+    };
+    expect(data.site).toBe("compute");
+    expect(data.command).toBe("click");
+    expect(data.input?.required).toEqual(["ref"]);
+    expect(data.input?.properties?.ref).toMatchObject({ type: "string" });
+    expect(data.input?.properties?.ref.description).toContain(
+      "Uni-CLI compute element ref",
+    );
+    validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
+  });
 });

@@ -14,6 +14,12 @@ import chalk from "chalk";
 import { getAllAdapters, resolveCommand } from "../registry.js";
 import type { AdapterCommand, OutputFormat } from "../types.js";
 import { ExitCode } from "../types.js";
+import { buildCoreCommandContract } from "../core/command-contract.js";
+import {
+  getCoreDiscoveryCommand,
+  listCoreDiscoveryCommands,
+  type CoreDiscoveryCommand,
+} from "../discovery/core-catalog.js";
 import {
   type JsonSchemaObject,
   buildInputSchema,
@@ -46,6 +52,17 @@ function buildCommandSchema(
   };
 }
 
+function buildCoreCommandSchema(cmd: CoreDiscoveryCommand): CommandSchema {
+  const contract = buildCoreCommandContract({ command: cmd });
+  return {
+    site: cmd.site,
+    command: cmd.command,
+    description: cmd.description,
+    input: contract.schemas.input,
+    output: { type: "object", properties: {}, additionalProperties: true },
+  };
+}
+
 // ── Command registration ─────────────────────────────────────────────────
 
 export function registerSchemaCommand(program: Command): void {
@@ -73,6 +90,9 @@ export function registerSchemaCommand(program: Command): void {
             for (const [cmdName, cmd] of Object.entries(adapter.commands)) {
               schemas.push(buildCommandSchema(adapter.name, cmdName, cmd));
             }
+          }
+          for (const coreCommand of listCoreDiscoveryCommands()) {
+            schemas.push(buildCoreCommandSchema(coreCommand));
           }
 
           if (schemas.length === 0) {
@@ -108,6 +128,21 @@ export function registerSchemaCommand(program: Command): void {
           ctx.duration_ms = Date.now() - startedAt;
           console.error(format(null, undefined, fmt, ctx));
           process.exit(ExitCode.USAGE_ERROR);
+        }
+
+        const coreCommand = getCoreDiscoveryCommand(site, command);
+        if (coreCommand) {
+          const schema = buildCoreCommandSchema(coreCommand);
+          ctx.duration_ms = Date.now() - startedAt;
+          console.log(
+            format(
+              schema as unknown as Record<string, unknown>,
+              undefined,
+              fmt,
+              ctx,
+            ),
+          );
+          return;
         }
 
         const resolved = resolveCommand(site, command);

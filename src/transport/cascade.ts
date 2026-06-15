@@ -1,9 +1,14 @@
 import { err, exitCodeFor, ok } from "../core/envelope.js";
+import {
+  COMPUTE_REF_ACCEPTED_NAMESPACES,
+  readForeignComputeRefOwner,
+} from "../compute/contracts.js";
 import { enrichErrorWithRemedy } from "../engine/repair/remedies.js";
-import type { ElementRef, RefBucket } from "./refs.js";
+import { describeElementRef, type ElementRef, type RefBucket } from "./refs.js";
 import type {
   ActionRequest,
   ActionResult,
+  Snapshot,
   TransportBus,
   TransportContext,
   TransportKind,
@@ -219,7 +224,7 @@ export async function tryCascade(
         const snapshot = await adapter.snapshot({
           format: readSnapshotFormat(normalizedReq.params),
         });
-        return ok(snapshot);
+        return ok(enrichSnapshotWithRefProvenance(bus, snapshot, kind));
       }
       if (result.ok) return result;
       failures.push(
@@ -280,6 +285,13 @@ function validateRequestRef(
 ): ActionResult<unknown> | undefined {
   const refValue = req.params.ref;
   if (typeof refValue !== "string" || refValue.length === 0) return undefined;
+  const foreignOwner = readForeignComputeRefOwner(refValue);
+  if (foreignOwner === "unknown") {
+    return unresolvableRef(req.kind, refValue);
+  }
+  if (foreignOwner !== undefined) {
+    return foreignRef(req.kind, refValue, foreignOwner);
+  }
   const resolved = resolveParamRefWithBucket(bus, refValue);
   if (!resolved) {
     if (transportForStableRef(refValue)) return undefined;
@@ -309,6 +321,41 @@ function validateRequestRef(
     return windowMinimized(req.kind, refValue, resolved.ref);
   }
   return undefined;
+}
+
+function foreignRef(
+  action: string,
+  ref: string,
+  owner: string,
+): ActionResult<unknown> {
+  return withRemedy(
+    err({
+      transport: "visual",
+      step: 0,
+      action,
+      reason: `foreign_ref: ${ref} belongs to ${owner}, not Uni-CLI compute`,
+      suggestion:
+        owner === "olo.accessibility"
+          ? "route this ref to OLo's accessibility provider, or run `unicli compute snapshot` to allocate a Uni-CLI compute ref"
+          : "route this ref to its owning provider, or run `unicli compute snapshot` to allocate a Uni-CLI compute ref",
+      minimum_capability: `compute.${action}.foreign_ref`,
+      exit_code: exitCodeFor("usage_error"),
+    }),
+  );
+}
+
+function unresolvableRef(action: string, ref: string): ActionResult<unknown> {
+  return withRemedy(
+    err({
+      transport: "visual",
+      step: 0,
+      action,
+      reason: `unresolvable_ref: ${ref} is outside Uni-CLI compute ref namespaces`,
+      suggestion: `use one of these namespaces: ${COMPUTE_REF_ACCEPTED_NAMESPACES.join("; ")}`,
+      minimum_capability: `compute.${action}.unresolvable_ref`,
+      exit_code: exitCodeFor("usage_error"),
+    }),
+  );
 }
 
 function isPersistedAliasRef(ref: string): boolean {
@@ -441,6 +488,11 @@ function readSnapshotFormat(
     : undefined;
 }
 
+interface RefStoreMatch {
+  ref: ElementRef;
+  bucket: RefBucket;
+}
+
 function findInRefStore(
   bus: TransportBus,
   params: Record<string, unknown>,
@@ -448,7 +500,7 @@ function findInRefStore(
   const role = typeof params.role === "string" ? simplifyRole(params.role) : "";
   const name = typeof params.name === "string" ? params.name.toLowerCase() : "";
   const text = typeof params.text === "string" ? params.text.toLowerCase() : "";
-  const matches = bus.refs.list().filter((ref) => {
+  const matches = findRefMatches(bus).filter(({ ref }) => {
     const roleMatches = !role || simplifyRole(ref.role) === role;
     const nameMatches = !name || (ref.name ?? "").toLowerCase().includes(name);
     const textMatches =
@@ -461,13 +513,31 @@ function findInRefStore(
   if (params.first === true) {
     if (isAmbiguousFind(matches, params)) return findAmbiguous(matches, params);
     const first = matches[0];
-    return first ? ok(first) : findEmpty(params);
+    return first
+      ? ok(
+          describeElementRef(first.ref, first.bucket, {
+            ttlMs: readRefTtlMs(),
+          }),
+        )
+      : findEmpty(params);
   }
-  return ok(matches);
+  return ok(
+    matches.map((match) =>
+      describeElementRef(match.ref, match.bucket, { ttlMs: readRefTtlMs() }),
+    ),
+  );
+}
+
+function findRefMatches(bus: TransportBus): RefStoreMatch[] {
+  return bus.refs
+    .buckets()
+    .flatMap((bucket) =>
+      Array.from(bucket.byAlias.values()).map((ref) => ({ ref, bucket })),
+    );
 }
 
 function isAmbiguousFind(
-  matches: readonly ElementRef[],
+  matches: readonly RefStoreMatch[],
   params: Record<string, unknown>,
 ): boolean {
   if (matches.length < 2) return false;
@@ -475,7 +545,9 @@ function isAmbiguousFind(
     return false;
   }
   const scopes = new Set(
-    matches.map((ref) => `${ref.app ?? ""}:${ref.pid ?? ""}:${scopeOf(ref)}`),
+    matches.map(
+      ({ ref }) => `${ref.app ?? ""}:${ref.pid ?? ""}:${scopeOf(ref)}`,
+    ),
   );
   return scopes.size > 1;
 }
@@ -486,7 +558,7 @@ function scopeOf(ref: ElementRef): string {
 }
 
 function findAmbiguous(
-  matches: readonly ElementRef[],
+  matches: readonly RefStoreMatch[],
   params: Record<string, unknown>,
 ): ActionResult<unknown> {
   return withRemedy(
@@ -524,6 +596,48 @@ function withRemedy<T>(result: ActionResult<T>): ActionResult<T> {
 
 function simplifyRole(role: string): string {
   return ROLE_SIMPLIFY[role] ?? role.toLowerCase();
+}
+
+function enrichSnapshotWithRefProvenance(
+  bus: TransportBus,
+  snapshot: Snapshot,
+  transport: TransportKind,
+): Snapshot {
+  const scope = readSnapshotRefScope(snapshot.refs);
+  const buckets = bus.refs
+    .buckets()
+    .filter(
+      (bucket) =>
+        bucket.transport === transport &&
+        (scope === undefined || bucket.scope === scope),
+    );
+  const records = buckets.flatMap((bucket) =>
+    Array.from(bucket.byAlias.values()).map((ref) =>
+      describeElementRef(ref, bucket, { ttlMs: readRefTtlMs() }),
+    ),
+  );
+  if (records.length === 0) return snapshot;
+  const refs = isRecord(snapshot.refs) ? snapshot.refs : {};
+  return {
+    ...snapshot,
+    refs: {
+      ...refs,
+      provenance: {
+        provider: "unicli.compute",
+        accepted_namespaces: [...COMPUTE_REF_ACCEPTED_NAMESPACES],
+        records,
+      },
+    },
+  };
+}
+
+function readSnapshotRefScope(refs: Snapshot["refs"]): string | undefined {
+  if (!isRecord(refs) || typeof refs.scope !== "string") return undefined;
+  return refs.scope;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 const ROLE_SIMPLIFY: Readonly<Record<string, string>> = {

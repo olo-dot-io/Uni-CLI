@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.225.2] — 2026-06-15 — Apollo · Gordon
+
 ### Security
 
 - The legacy HTTP MCP transport (`unicli mcp serve --transport http`) now
@@ -17,6 +19,26 @@
 - `unicli browser console` now reads bounded current-page console messages,
   warnings, errors, and page error events from the browser evidence hook without
   exposing page-context eval or raw CDP authority.
+- Compute command contracts now expose core computer-use action arguments through
+  `describe`, `schema`, and MCP tool schemas, including click/type/press/scroll
+  fields that agents need for real OLo handoff planning.
+- Compute snapshots and `find` results now project ref provenance, including the
+  provider, namespace, transport, scope, stable alias, TTL, identity, bounds, and
+  app/process context.
+
+### Changed
+
+- MCP JSON-RPC wire handling now shares a single internal type boundary instead
+  of carrying parallel request/response shapes.
+- Intent discovery and browser supervision surfaces now expose more reliable
+  agent-facing evidence for local action planning.
+
+### Fixed
+
+- Compute actions now fail closed on OLo-owned, browser-owned, and unknown
+  namespaced refs before dispatch, returning structured `foreign_ref` or
+  `unresolvable_ref` envelopes instead of falling through to a generic compute
+  failure.
 
 ## [0.225.1] — 2026-06-02 — Apollo · Conrad
 

@@ -470,11 +470,13 @@ function print(
     format(null, undefined, fmt, {
       ...makeCtx(command, startedAt, { surface: "desktop" }),
       error: {
-        code: "compute_failed",
+        code: computeEnvelopeErrorCode(result.error.minimum_capability),
         message: result.error.reason,
         step: result.error.step,
         suggestion: result.error.suggestion,
         remedy: result.error.remedy,
+        minimum_capability: result.error.minimum_capability,
+        exit_code: result.error.exit_code,
         retryable: result.error.retryable,
       },
     }),
@@ -524,6 +526,20 @@ function invalidOptionResult(
     minimum_capability: minimumCapability,
     exit_code: exitCodeFor("usage_error"),
   });
+}
+
+function computeEnvelopeErrorCode(
+  minimumCapability: string | undefined,
+): string {
+  const reasonCode = minimumCapability?.split(".").at(-1);
+  if (
+    reasonCode === "foreign_ref" ||
+    reasonCode === "unresolvable_ref" ||
+    reasonCode === "ref_expired"
+  ) {
+    return reasonCode;
+  }
+  return "compute_failed";
 }
 
 function normalizeFocusOptions(

@@ -519,6 +519,44 @@ describe("unicli compute", () => {
     validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
   });
 
+  it("click exposes ref provenance error codes in the CLI envelope", async () => {
+    cascadeMock.tryCascade.mockResolvedValue(
+      err({
+        transport: "visual",
+        step: 0,
+        action: "compute_click",
+        reason:
+          "foreign_ref: olo:accessibility:example belongs to olo.accessibility, not Uni-CLI compute",
+        suggestion:
+          "route this ref to OLo's accessibility provider, or run `unicli compute snapshot` to allocate a Uni-CLI compute ref",
+        minimum_capability: "compute.compute_click.foreign_ref",
+        exit_code: 2,
+      }),
+    );
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        ["-f", "json", "compute", "click", "olo:accessibility:example"],
+        {
+          from: "user",
+        },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(process.exitCode).toBe(2);
+    const env = JSON.parse(cap.getStderr()) as Record<string, unknown>;
+    expect(env.error).toMatchObject({
+      code: "foreign_ref",
+      minimum_capability: "compute.compute_click.foreign_ref",
+      exit_code: 2,
+      suggestion:
+        "route this ref to OLo's accessibility provider, or run `unicli compute snapshot` to allocate a Uni-CLI compute ref",
+    });
+    validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
+  });
+
   it("click can opt into the system overlay executor and returns visual action evidence", async () => {
     const expectedOverlayProvider = expectedNativeOverlayProvider();
     if (!expectedOverlayProvider) {

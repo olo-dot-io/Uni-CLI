@@ -349,7 +349,7 @@ describe("CLI fast path", () => {
     expect(payload.args_schema.properties.format).toMatchObject({
       type: "string",
       default: "compact",
-      enum: ["compact", "json", "tree"],
+      enum: ["compact", "tree", "json"],
     });
     expect(payload.args_schema.properties.include).toMatchObject({
       type: "string",
