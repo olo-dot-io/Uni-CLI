@@ -56,6 +56,7 @@ import {
   withBrowserActionEvidence,
 } from "../../engine/browser/action-evidence.js";
 import { withBrowserSessionLeaseLock } from "../../engine/browser/session-lock.js";
+import type { NetworkRequest } from "../../types.js";
 
 export { withBrowserOperatorEnv };
 
@@ -68,6 +69,15 @@ interface BrowserProgramOptions {
 type BrowserDomQueryKind = "text" | "value" | "attributes";
 
 const BROWSER_DOM_QUERY_RESULT_MAX_CHARS = 20_000;
+
+interface BrowserConnectionTargetEvidence {
+  readonly source: "cdp_network_response";
+  readonly url: string;
+  readonly remote_ip_address: string;
+  readonly remote_port?: number;
+  readonly status: number;
+  readonly resource_type: string;
+}
 
 export function applyBrowserOperatorRootOptions(command: Command): void {
   command
@@ -186,6 +196,55 @@ function browserActionWatchdogMode(value?: string): BrowserActionWatchdogMode {
       return "warn";
     default:
       return "off";
+  }
+}
+
+async function readBrowserConnectionTargetEvidence(
+  page: Awaited<ReturnType<typeof getOperatorPage>>,
+  finalUrl: string,
+): Promise<BrowserConnectionTargetEvidence | undefined> {
+  const requests = await page.networkRequests();
+  return selectBrowserConnectionTargetEvidence(finalUrl, requests);
+}
+
+function selectBrowserConnectionTargetEvidence(
+  finalUrl: string,
+  requests: readonly NetworkRequest[],
+): BrowserConnectionTargetEvidence | undefined {
+  for (let index = requests.length - 1; index >= 0; index -= 1) {
+    const request = requests[index];
+    if (!request?.remoteIPAddress) continue;
+    if (!isSameBrowserDocumentUrl(finalUrl, request.url)) continue;
+    return {
+      source: "cdp_network_response",
+      url: request.url,
+      remote_ip_address: request.remoteIPAddress,
+      ...(request.remotePort !== undefined
+        ? { remote_port: request.remotePort }
+        : {}),
+      status: request.status,
+      resource_type: request.type,
+    };
+  }
+  return undefined;
+}
+
+function isSameBrowserDocumentUrl(left: string, right: string): boolean {
+  if (left === right) return true;
+  const normalizedLeft = normalizeBrowserUrlForDocumentMatch(left);
+  const normalizedRight = normalizeBrowserUrlForDocumentMatch(right);
+  return normalizedLeft !== undefined && normalizedLeft === normalizedRight;
+}
+
+function normalizeBrowserUrlForDocumentMatch(
+  rawUrl: string,
+): string | undefined {
+  try {
+    const url = new URL(rawUrl);
+    url.hash = "";
+    return url.href;
+  } catch {
+    return undefined;
   }
 }
 
@@ -683,12 +742,20 @@ export function registerBrowserOperatorSubcommands(
         const page = await getOperatorPage(root, namespace);
         await ensureNetworkCapture(page);
         await page.goto(url, { settleMs: 2000 });
-        const title = await page.title();
+        const finalUrl = await page.url();
+        const [title, connectionTargetEvidence] = await Promise.all([
+          page.title(),
+          readBrowserConnectionTargetEvidence(page, finalUrl),
+        ]);
         return {
           ok: true,
-          url,
+          requested_url: url,
+          url: finalUrl,
           title,
           workspace: resolveWorkspace(root, namespace),
+          ...(connectionTargetEvidence
+            ? { connection_target_evidence: connectionTargetEvidence }
+            : {}),
         };
       }),
     );
@@ -1050,7 +1117,15 @@ export function registerBrowserOperatorSubcommands(
     .action(() =>
       operatorAction(program, root, namespace, "get url", async () => {
         const page = await getOperatorPage(root, namespace);
-        return await page.url();
+        const url = await page.url();
+        const connectionTargetEvidence =
+          await readBrowserConnectionTargetEvidence(page, url);
+        return {
+          value: url,
+          ...(connectionTargetEvidence
+            ? { connection_target_evidence: connectionTargetEvidence }
+            : {}),
+        };
       }),
     );
 

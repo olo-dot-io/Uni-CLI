@@ -251,6 +251,8 @@ export interface NetworkRequest {
   type: string;
   size: number;
   timestamp: number;
+  remoteIPAddress?: string;
+  remotePort?: number;
 }
 
 /** Download result merged into each item */

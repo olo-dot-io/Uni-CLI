@@ -658,14 +658,12 @@ describe("BrowserPage", () => {
 
   describe("autoScroll()", () => {
     it("stops when page reaches bottom", async () => {
-      let callCount = 0;
       const originalSend = mock.send.bind(mock);
       mock.send = async (
         method: string,
         params?: Record<string, unknown>,
       ): Promise<unknown> => {
         if (method === "Runtime.evaluate") {
-          callCount++;
           mock.calls.push({ method, params });
           const expr = params?.expression as string;
           // First evaluate = scrollBy, second = check atBottom
@@ -769,6 +767,8 @@ describe("BrowserPage", () => {
           status: 200,
           mimeType: "application/json",
           headers: { "content-length": "1024" },
+          remoteIPAddress: "93.184.216.34",
+          remotePort: 443,
         },
         type: "XHR",
         timestamp: 12345.67,
@@ -783,6 +783,8 @@ describe("BrowserPage", () => {
         type: "XHR",
         size: 1024,
         timestamp: 12345.67,
+        remoteIPAddress: "93.184.216.34",
+        remotePort: 443,
       });
     });
   });

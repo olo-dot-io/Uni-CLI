@@ -63,6 +63,8 @@ interface NetworkResponseEvent {
     status: number;
     mimeType?: string;
     headers?: Record<string, string>;
+    remoteIPAddress?: string;
+    remotePort?: number;
   };
   type?: string;
   timestamp?: number;
@@ -95,6 +97,8 @@ export interface NetworkCaptureEntry {
   responseBody?: string;
   size: number;
   timestamp: number;
+  remoteIPAddress?: string;
+  remotePort?: number;
 }
 
 // ── Key mapping ─────────────────────────────────────────────────────
@@ -636,6 +640,12 @@ export class BrowserPage implements IPage {
           type: event.type ?? resp.mimeType ?? "unknown",
           size: contentLength ? parseInt(contentLength, 10) : 0,
           timestamp: event.timestamp ?? Date.now(),
+          ...(resp.remoteIPAddress
+            ? { remoteIPAddress: resp.remoteIPAddress }
+            : {}),
+          ...(resp.remotePort !== undefined
+            ? { remotePort: resp.remotePort }
+            : {}),
         });
         // Cap buffer to prevent unbounded memory growth
         if (this._networkRequests.length > 500) {
@@ -718,6 +728,12 @@ export class BrowserPage implements IPage {
         contentType,
         size: contentLength ? parseInt(contentLength, 10) : 0,
         timestamp: event.timestamp ?? Date.now(),
+        ...(event.response.remoteIPAddress
+          ? { remoteIPAddress: event.response.remoteIPAddress }
+          : {}),
+        ...(event.response.remotePort !== undefined
+          ? { remotePort: event.response.remotePort }
+          : {}),
       });
 
       // Cap buffer at 100 entries

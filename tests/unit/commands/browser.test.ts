@@ -824,6 +824,18 @@ describe("unicli browser operator surface", () => {
 
   it("browser open exposes the operator surface under browser", async () => {
     process.env.UNICLI_OUTPUT = "json";
+    mockPage.networkRequests.mockResolvedValueOnce([
+      {
+        url: "https://example.com/",
+        method: "GET",
+        status: 200,
+        type: "Document",
+        size: 4096,
+        timestamp: 123,
+        remoteIPAddress: "93.184.216.34",
+        remotePort: 443,
+      },
+    ]);
     const cap = captureConsole();
     try {
       const program = createProgram();
@@ -836,10 +848,26 @@ describe("unicli browser operator surface", () => {
 
     const env = JSON.parse(cap.getStdout().trim()) as {
       command: string;
-      data: { workspace: string };
+      data: {
+        workspace: string;
+        requested_url: string;
+        url: string;
+        connection_target_evidence: {
+          source: string;
+          remote_ip_address: string;
+          remote_port: number;
+        };
+      };
     };
     expect(env.command).toBe("browser.open");
     expect(env.data.workspace).toBe("browser:default");
+    expect(env.data.requested_url).toBe("https://example.com");
+    expect(env.data.url).toBe("https://example.com");
+    expect(env.data.connection_target_evidence).toMatchObject({
+      source: "cdp_network_response",
+      remote_ip_address: "93.184.216.34",
+      remote_port: 443,
+    });
     expect(mockPage.goto).toHaveBeenCalledWith("https://example.com", {
       settleMs: 2000,
     });
