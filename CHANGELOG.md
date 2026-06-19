@@ -12,7 +12,8 @@
   unlike the Streamable HTTP transport — accepted cross-origin browser
   requests, so a malicious page could drive `tools/call` against a local
   server bound to loopback. The DNS-rebinding policy is now shared by both
-  transports via `src/mcp/origin-guard.ts`.
+  transports via `src/mcp/origin-guard.ts`. Reported privately by
+  Ryan Vonbrubeck ([@dodge1218](https://github.com/dodge1218)).
 
 ### Added
 

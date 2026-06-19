@@ -15,6 +15,13 @@ If you discover a security vulnerability, please report it responsibly:
 3. Include: description, reproduction steps, and impact assessment.
 4. We will acknowledge within 48 hours and provide a fix timeline.
 
+## Reporter Credit
+
+We credit reporters by their preferred public name or handle unless they ask to
+remain anonymous. Depending on the issue, credit may appear in release notes, a
+GitHub Security Advisory, or both. For security advisories, GitHub sends the
+credited user an invitation to accept credit before it becomes public.
+
 ## Security Design Principles
 
 ### Credential Safety

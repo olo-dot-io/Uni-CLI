@@ -1,5 +1,35 @@
 # Progress
 
+## 2026-06-19 — Security Advisory Credit and Publication
+
+- Context: Ryan Vonbrubeck requested public credit as `@dodge1218` after the
+  legacy HTTP MCP Origin-validation fix had already shipped in `v0.225.2`.
+- Confirmed affected range from git tags: `v0.225.1` legacy
+  `src/mcp/http-transport.ts` accepted requests before any shared Origin guard,
+  while `v0.225.2` includes `src/mcp/origin-guard.ts`. The command
+  `git tag --contains d675c267` returns only `v0.225.2`.
+- Published GitHub Security Advisory
+  `GHSA-v3f4-w7r7-v3hm` for npm package `@zenalexa/unicli`, vulnerable range
+  `< 0.225.2`, patched version `0.225.2`, severity `high`, CWE-346 and
+  CWE-352.
+- Requested a CVE from GitHub for the advisory; the API accepted the request
+  with an empty 202-style body, and `cve_id` remains pending/null as of this
+  entry.
+- Added `@dodge1218` as Finder credit in the advisory. GitHub shows the credit
+  state as `pending`, which means Ryan must accept before the public advisory
+  displays it.
+- Updated GitHub Release `v0.225.2` to include the security summary, GHSA link,
+  and release-note credit.
+- Updated repository docs: `CHANGELOG.md` now credits Ryan beside the
+  `0.225.2` security entry, and `SECURITY.md` now states the reporter-credit
+  policy.
+- Verification: `git diff --check -- CHANGELOG.md SECURITY.md`,
+  `npx prettier --check CHANGELOG.md SECURITY.md`, GHSA readback, and GitHub
+  Release readback all exited 0 or returned the expected remote state.
+- Residual risk: GitHub Advisory Database / Dependabot review and CVE
+  assignment are asynchronous GitHub-side processes; monitor the advisory until
+  `cve_id` and accepted credit are visible if Ryan accepts the credit request.
+
 ## 2026-06-02 — Browser Automation Timeout Repair
 
 - Root cause: commit `7f1a1efc` made browser delivery daemon-first and trusted any extension that found a Uni-CLI `/ping`; the live 9222 profile was running an incompatible OpenCLI extension that sent only `{type:"hello", version}`. The daemon marked it connected, commands waited until the 30s client timeout, and doctor reported `ready` while carrying `session_error`. Commit `c43cb7dc` then made this harder to diagnose by reporting the default path ready when local CDP was reachable.
