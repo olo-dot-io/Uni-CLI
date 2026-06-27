@@ -552,5 +552,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v0.225.2 — Apollo · Gordon</sub>
+  <sub>v0.225.3 — Apollo · Schmitt</sub>
 </p>

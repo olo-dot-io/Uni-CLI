@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.225.3] — 2026-06-27 — Apollo · Schmitt
+
+### Added
+
+- `unicli scholar` now has a source-grounded academic-resource loop for
+  discovery, comparison, PDF download, bounded full-text reading, resource
+  lookup, coverage inspection, and fail-closed source auditing across the major
+  scholarly surfaces.
+- Source-scoped read/full-text commands now cover arXiv, ACL Anthology,
+  OpenReview, PubMed/PMC, bioRxiv, medRxiv, CVF, NeurIPS, PMLR, OpenAlex,
+  Semantic Scholar, and Unpaywall where each source exposes an actual
+  full-text or PDF URL.
+- `scholar-artifacts` provides the shared PDF download and `pdftotext`
+  extraction boundary used by source adapters, keeping artifact validation,
+  page ranges, truncation, and provenance consistent.
+
+### Changed
+
+- Scholarly discovery, capability policy, operation policy, fast-path metadata,
+  and generated command catalogs now expose source-fulltext, resource, citation,
+  and provenance capabilities directly to agents.
+- CNKI search moved from the old YAML fetch/map adapter to a typed KNS-backed
+  adapter with current request payload, vv token generation, structured record
+  normalization, and regression coverage.
+
+### Fixed
+
+- Broad PDF search intent no longer lets Unpaywall outrank execution-oriented
+  paper download/read workflows unless the query has DOI or open-access intent.
+- Generated manifest scanning now preserves shared TypeScript adapter
+  declarations used by scholarly adapters, preventing source-mode/dist parity
+  drift after adapter refactors.
+
 ## [Unreleased]
 
 ## [0.225.2] — 2026-06-15 — Apollo · Gordon
