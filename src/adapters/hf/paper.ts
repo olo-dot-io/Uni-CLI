@@ -1,9 +1,9 @@
 /**
  * @owner   src/adapters/hf/paper.ts
- * @does    Register agent-facing Hugging Face paper detail command.
+ * @does    Register agent-facing Hugging Face paper detail and resource-link command.
  * @needs   Hugging Face public papers API, modern arXiv ids, paper metadata normalization.
- * @feeds   surface coverage ledger, HF daily paper detail workflows, scholarly metadata readers.
- * @breaks  HF papers API shape drift or invalid arXiv id handling can hide paper details.
+ * @feeds   surface coverage ledger, HF daily paper detail workflows, scholarly metadata and resource readers.
+ * @breaks  HF papers API shape drift, resource-link schema drift, or invalid arXiv id handling can hide paper details.
  */
 
 import { cli, Strategy } from "../../registry.js";
@@ -25,6 +25,19 @@ interface HfPaper {
   ai_keywords?: unknown;
   summary?: unknown;
   ai_summary?: unknown;
+  githubRepo?: unknown;
+  githubStars?: unknown;
+  projectPage?: unknown;
+  linkedDatasets?: unknown;
+  linkedModels?: unknown;
+  linkedSpaces?: unknown;
+  numTotalDatasets?: unknown;
+  numTotalModels?: unknown;
+  numTotalSpaces?: unknown;
+}
+
+interface HfLinkedResource {
+  id?: unknown;
 }
 
 function stringField(value: unknown): string {
@@ -61,12 +74,51 @@ function hfAuthorNames(value: unknown): string {
     .join(", ");
 }
 
+function bareArxivId(value: string): string {
+  return value.replace(/v\d+$/i, "");
+}
+
+function linkedResourceIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item: HfLinkedResource | string) =>
+      typeof item === "string" ? item : stringField(item.id),
+    )
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
+function linkedResourceUrls(
+  value: unknown,
+  kind: "dataset" | "model" | "space",
+  endpoint: string,
+): string[] {
+  const base = hfEndpoint(endpoint);
+  return linkedResourceIds(value).map((id) => {
+    if (kind === "dataset") return `${base}/datasets/${id}`;
+    if (kind === "space") return `${base}/spaces/${id}`;
+    return `${base}/${id}`;
+  });
+}
+
+function csv(values: string[]): string {
+  return values.join(", ");
+}
+
 export function mapHfPaperRow(
   paper: HfPaper,
   endpoint = HF_DEFAULT_ENDPOINT,
 ): Record<string, unknown> {
   const id = stringField(paper.id);
   if (!id) throw new Error("Hugging Face returned no paper data.");
+  const sourceUrl = `${hfEndpoint(endpoint)}/papers/${id}`;
+  const datasetUrls = linkedResourceUrls(
+    paper.linkedDatasets,
+    "dataset",
+    endpoint,
+  );
+  const modelUrls = linkedResourceUrls(paper.linkedModels, "model", endpoint);
+  const spaceUrls = linkedResourceUrls(paper.linkedSpaces, "space", endpoint);
   return {
     id,
     title: stringField(paper.title),
@@ -78,7 +130,20 @@ export function mapHfPaperRow(
       : "",
     summary: stringField(paper.summary),
     aiSummary: stringField(paper.ai_summary),
-    url: `${hfEndpoint(endpoint)}/papers/${id}`,
+    arxiv_id: bareArxivId(id),
+    pdf_url: `https://arxiv.org/pdf/${id}`,
+    source_url: sourceUrl,
+    code_url: stringField(paper.githubRepo),
+    github_stars: numberOrNull(paper.githubStars),
+    project_url: stringField(paper.projectPage),
+    dataset_url: datasetUrls[0] ?? "",
+    model_urls: csv(modelUrls),
+    dataset_urls: csv(datasetUrls),
+    space_urls: csv(spaceUrls),
+    num_models: numberOrNull(paper.numTotalModels),
+    num_datasets: numberOrNull(paper.numTotalDatasets),
+    num_spaces: numberOrNull(paper.numTotalSpaces),
+    url: sourceUrl,
   };
 }
 
@@ -129,9 +194,28 @@ cli({
     "aiKeywords",
     "summary",
     "aiSummary",
+    "arxiv_id",
+    "pdf_url",
+    "source_url",
+    "code_url",
+    "github_stars",
+    "project_url",
+    "dataset_url",
+    "model_urls",
+    "dataset_urls",
+    "space_urls",
+    "num_models",
+    "num_datasets",
+    "num_spaces",
     "url",
   ],
-  capabilities: ["http.fetch", "scholar.get", "scholar.pdf", "scholar.code"],
+  capabilities: [
+    "http.fetch",
+    "scholar.get",
+    "scholar.pdf",
+    "scholar.code",
+    "scholar.datasets",
+  ],
   func: async (_page, kwargs) => {
     const id = requireHfPaperId(kwargs.id);
     return [mapHfPaperRow(await fetchHfPaper(id), hfEndpoint())];

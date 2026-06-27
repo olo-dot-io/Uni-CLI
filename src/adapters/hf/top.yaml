@@ -26,13 +26,45 @@ pipeline:
       title: "${{ (item.title || '').length > 60 ? (item.title || '').slice(0, 57) + '...' : (item.title || '') }}"
       upvotes: "${{ item.paper ? item.paper.upvotes : 0 }}"
       authors: "${{ (() => { const a = item.paper && item.paper.authors ? item.paper.authors : []; const n = a.map(x => x.name); return n.length <= 3 ? n.join(', ') : n.slice(0, 3).join(', ') + ' et al.'; })() }}"
+      source_url: "${{ item.paper && item.paper.id ? 'https://huggingface.co/papers/' + item.paper.id : '' }}"
+      pdf_url: "${{ item.paper && item.paper.id ? 'https://arxiv.org/pdf/' + item.paper.id : '' }}"
+      code_url: "${{ item.paper && item.paper.githubRepo ? item.paper.githubRepo : '' }}"
+      github_stars: "${{ item.paper && item.paper.githubStars ? item.paper.githubStars : '' }}"
+      project_url: "${{ item.paper && item.paper.projectPage ? item.paper.projectPage : '' }}"
+      dataset_url: "${{ item.paper && item.paper.linkedDatasets && item.paper.linkedDatasets[0] ? 'https://huggingface.co/datasets/' + item.paper.linkedDatasets[0].id : '' }}"
+      model_urls: "${{ item.paper && item.paper.linkedModels ? item.paper.linkedModels.map(x => 'https://huggingface.co/' + x.id).join(', ') : '' }}"
+      dataset_urls: "${{ item.paper && item.paper.linkedDatasets ? item.paper.linkedDatasets.map(x => 'https://huggingface.co/datasets/' + x.id).join(', ') : '' }}"
+      space_urls: "${{ item.paper && item.paper.linkedSpaces ? item.paper.linkedSpaces.map(x => 'https://huggingface.co/spaces/' + x.id).join(', ') : '' }}"
+      num_models: "${{ item.paper && item.paper.numTotalModels !== null && item.paper.numTotalModels !== undefined ? item.paper.numTotalModels : '' }}"
+      num_datasets: "${{ item.paper && item.paper.numTotalDatasets !== null && item.paper.numTotalDatasets !== undefined ? item.paper.numTotalDatasets : '' }}"
+      num_spaces: "${{ item.paper && item.paper.numTotalSpaces !== null && item.paper.numTotalSpaces !== undefined ? item.paper.numTotalSpaces : '' }}"
 
   - limit: ${{ args.limit }}
 
-columns: [rank, id, title, upvotes, authors]
+columns:
+  [
+    rank,
+    id,
+    title,
+    upvotes,
+    authors,
+    source_url,
+    pdf_url,
+    code_url,
+    github_stars,
+    project_url,
+    dataset_url,
+    model_urls,
+    dataset_urls,
+    space_urls,
+    num_models,
+    num_datasets,
+    num_spaces,
+  ]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["http.fetch", "scholar.search", "scholar.code"]
+capabilities:
+  ["http.fetch", "scholar.search", "scholar.code", "scholar.datasets"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

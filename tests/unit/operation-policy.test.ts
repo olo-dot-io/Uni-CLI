@@ -119,6 +119,82 @@ describe("operation policy", () => {
     });
   });
 
+  it("classifies remote PDF downloads as remote reads plus local file writes", () => {
+    const policy = evaluateOperationPolicy({
+      site: "openreview",
+      command: "download",
+      description: "Download an OpenReview paper PDF by forum id",
+      domain: "openreview.net",
+      adapterType: "web-api",
+      targetSurface: "web",
+      strategy: "public",
+      args: [
+        { name: "id", required: true },
+        { name: "output", required: false },
+      ],
+      capabilities: ["http.fetch", "http.download", "scholar.pdf"],
+      minimumCapability: "http.download",
+      profile: "locked",
+    });
+
+    expect(policy).toMatchObject({
+      effect: "download_file",
+      risk: "medium",
+      enforcement: "needs_approval",
+      capability_scope: {
+        dimensions: {
+          network: { access: "read" },
+          file: { access: "write" },
+        },
+        resources: {
+          domains: ["openreview.net"],
+          paths: ["arg:output"],
+        },
+      },
+    });
+    expect(policy.capability_scope.dimensions.network.reason).toContain(
+      "local download",
+    );
+  });
+
+  it("uses declared subprocess executables in capability scopes", () => {
+    const policy = evaluateOperationPolicy({
+      site: "arxiv",
+      command: "read",
+      description:
+        "Download an arXiv PDF by ID and extract text with pdftotext",
+      domain: "arxiv.org",
+      adapterType: "web-api",
+      targetSurface: "web",
+      strategy: "public",
+      args: [
+        { name: "id", required: true },
+        { name: "output", required: false },
+      ],
+      capabilities: [
+        "http.fetch",
+        "http.download",
+        "subprocess.exec",
+        "scholar.fulltext",
+      ],
+      executables: ["pdftotext"],
+      minimumCapability: "subprocess.exec",
+    });
+
+    expect(policy).toMatchObject({
+      effect: "download_file",
+      capability_scope: {
+        dimensions: {
+          process: { access: "read" },
+        },
+        resources: {
+          executables: ["pdftotext"],
+        },
+        resource_summary: expect.arrayContaining(["process:pdftotext"]),
+      },
+    });
+  });
+
   it("defaults to open when no profile is configured", () => {
     expect(resolvePermissionProfile()).toBe("open");
   });

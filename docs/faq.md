@@ -9,7 +9,7 @@ Quick answers to the questions agents and developers ask most often. Each answer
 
 ## What is Uni-CLI?
 
-Uni-CLI is the universal computer-control platform for agents. It turns websites, logged-in browsers, desktop apps, local tools, files, operating-system capabilities, MCP servers, screenshots, accessibility trees, and app-specific wrappers into governed operations. One path accepts intent, selects an action substrate, executes with policy, returns evidence, diagnoses failure, and repairs or reroutes across <span><!-- STATS:site_count -->317<!-- /STATS --></span> sites and tools.
+Uni-CLI is the universal computer-control platform for agents. It turns websites, logged-in browsers, desktop apps, local tools, files, operating-system capabilities, MCP servers, screenshots, accessibility trees, and app-specific wrappers into governed operations. One path accepts intent, selects an action substrate, executes with policy, returns evidence, diagnoses failure, and repairs or reroutes across <span><!-- STATS:site_count -->320<!-- /STATS --></span> sites and tools.
 
 ## How is Uni-CLI different from a browser automation library?
 
@@ -33,7 +33,7 @@ Any runtime that can spawn a subprocess can use Uni-CLI directly. Uni-CLI also e
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.225.2 ships a generated operation catalog with <span><!-- STATS:site_count -->317<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1772<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1222<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->9183<!-- /STATS --></span> tests. The headline is not the count; it is the shared control contract: intent, policy, action substrate, evidence, delivery, repair, and the same AgentEnvelope across web, browser, desktop, local tools, files, and protocols.
+v0.225.2 ships a generated operation catalog with <span><!-- STATS:site_count -->320<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1798<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1225<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->9257<!-- /STATS --></span> tests. The headline is not the count; it is the shared control contract: intent, policy, action substrate, evidence, delivery, repair, and the same AgentEnvelope across web, browser, desktop, local tools, files, and protocols.
 
 ## Can Uni-CLI download papers and read local PDFs?
 

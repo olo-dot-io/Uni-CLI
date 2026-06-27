@@ -27,6 +27,15 @@ describe("hf agent-facing paper command", () => {
           ai_keywords: ["transformer", "attention"],
           summary: "Paper summary",
           ai_summary: "AI summary",
+          githubRepo: "https://github.com/example/transformer",
+          githubStars: 42,
+          projectPage: "https://example.org/transformer",
+          linkedModels: [{ id: "org/model-a" }],
+          linkedDatasets: [{ id: "org/dataset-a" }],
+          linkedSpaces: [{ id: "org/space-a" }],
+          numTotalModels: 1,
+          numTotalDatasets: 1,
+          numTotalSpaces: 1,
         },
         "https://hf.example/",
       ),
@@ -39,6 +48,19 @@ describe("hf agent-facing paper command", () => {
       aiKeywords: "transformer, attention",
       summary: "Paper summary",
       aiSummary: "AI summary",
+      arxiv_id: "1706.03762",
+      pdf_url: "https://arxiv.org/pdf/1706.03762",
+      source_url: "https://hf.example/papers/1706.03762",
+      code_url: "https://github.com/example/transformer",
+      github_stars: 42,
+      project_url: "https://example.org/transformer",
+      dataset_url: "https://hf.example/datasets/org/dataset-a",
+      model_urls: "https://hf.example/org/model-a",
+      dataset_urls: "https://hf.example/datasets/org/dataset-a",
+      space_urls: "https://hf.example/spaces/org/space-a",
+      num_models: 1,
+      num_datasets: 1,
+      num_spaces: 1,
       url: "https://hf.example/papers/1706.03762",
     });
   });
@@ -53,6 +75,7 @@ describe("hf agent-facing paper command", () => {
       "scholar.get",
       "scholar.pdf",
       "scholar.code",
+      "scholar.datasets",
     ]);
   });
 });

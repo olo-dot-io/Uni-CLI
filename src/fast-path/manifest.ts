@@ -37,6 +37,9 @@ export type ManifestCommand = {
   args?: ManifestArg[];
   columns?: string[];
   defaultFormat?: string;
+  capabilities?: string[];
+  executables?: string[];
+  minimum_capability?: string;
   pipeline_steps?: number;
   adapter_path?: string;
   target_surface?: TargetSurface;

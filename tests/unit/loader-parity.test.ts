@@ -135,6 +135,7 @@ describe("loader runs from src directly without crashing", () => {
       expect(Object.keys(semanticScholar?.commands ?? {}).sort()).toEqual([
         "citations",
         "paper",
+        "read",
         "references",
         "search",
       ]);

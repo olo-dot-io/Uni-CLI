@@ -81,6 +81,7 @@ describe("CLI fast path", () => {
     expect(env.data.length).toBeGreaterThan(0);
     expect(env.data.every((row) => row.category === "scholarly")).toBe(true);
     expect(env.data.some((row) => row.site === "arxiv")).toBe(true);
+    expect(env.data.some((row) => row.site === "scholar-artifacts")).toBe(true);
   });
 
   it("lists core compute commands from the same discovery surface as adapters", () => {
@@ -234,6 +235,39 @@ describe("CLI fast path", () => {
     expect(payload.args_schema.required).toContain("query");
     expect(payload.args_schema.additionalProperties).toBe(false);
     expect(payload.channels.shell).toContain("<query>");
+  });
+
+  it("passes manifest capabilities into describe operation policy", () => {
+    const { stdout, io } = makeIo();
+
+    const handled = tryRunFastPath(
+      ["node", "unicli", "-f", "json", "describe", "arxiv", "download"],
+      io,
+    );
+
+    expect(handled).toBe(true);
+    const payload = JSON.parse(stdout.join("")) as {
+      operation_policy: {
+        effect: string;
+        capability_scope: {
+          dimensions: {
+            network: { access: string };
+            file: { access: string };
+          };
+          resources: { paths: string[] };
+        };
+      };
+    };
+    expect(payload.operation_policy.effect).toBe("download_file");
+    expect(
+      payload.operation_policy.capability_scope.dimensions.network.access,
+    ).toBe("read");
+    expect(
+      payload.operation_policy.capability_scope.dimensions.file.access,
+    ).toBe("write");
+    expect(payload.operation_policy.capability_scope.resources.paths).toContain(
+      "arg:output",
+    );
   });
 
   it("emits structured invalid permission profile errors for describe", () => {

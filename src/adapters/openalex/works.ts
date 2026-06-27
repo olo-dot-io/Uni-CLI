@@ -1,12 +1,20 @@
 /**
- * @owner   src/adapters/openalex/works.ts
- * @does    Register agent-facing OpenAlex work search and detail commands.
- * @needs   Public OpenAlex API, TypeScript adapter loader, work id/DOI normalization.
- * @feeds   surface coverage ledger, scholarly work command surface, agent-readable OpenAlex rows.
- * @breaks  OpenAlex API envelope drift, weak DOI/id parsing, or abstract reconstruction errors degrade research lookup.
+ * @owner       src::adapters::openalex::works
+ * @does        Registers agent-facing OpenAlex work search, detail, and source PDF read commands.
+ * @needs       Public OpenAlex API, src/adapters/scholar-artifacts/pdf-read.ts, pdftotext
+ * @feeds       src/commands/scholar.ts via scholar.* capability tags, surface coverage ledger, scholarly work rows
+ * @breaks      OpenAlex API envelope drift, weak DOI/id parsing, missing OA PDF URLs, or abstract reconstruction errors surface as explicit adapter errors.
+ * @invariants  Work references normalize to OpenAlex W ids or doi: refs; read requires a source-provided PDF URL before text is claimed.
+ * @side-effects HTTPS egress to api.openalex.org and source PDF hosts; read writes one PDF and executes pdftotext.
+ * @perf        O(limit) JSON mapping for search; O(PDF bytes + extracted page range) for read
+ * @concurrency safe
+ * @test        src/adapters/openalex/works.test.ts, tests/unit/adapters/scholar-sources.test.ts
+ * @stability   experimental
+ * @since       2026-05-19
  */
 
 import { cli, Strategy } from "../../registry.js";
+import { readScholarPdf } from "../scholar-artifacts/pdf-read.js";
 
 const OPENALEX_BASE = "https://api.openalex.org";
 const WORK_ID_RE = /^W\d{4,}$/;
@@ -19,6 +27,7 @@ const SEARCH_SELECT = [
   "cited_by_count",
   "authorships",
   "primary_location",
+  "best_oa_location",
   "open_access",
   "type",
 ].join(",");
@@ -31,6 +40,7 @@ const WORK_SELECT = [
   "cited_by_count",
   "authorships",
   "primary_location",
+  "best_oa_location",
   "open_access",
   "type",
   "referenced_works",
@@ -51,6 +61,15 @@ interface OpenAlexWork {
     };
   }>;
   primary_location?: {
+    landing_page_url?: unknown;
+    pdf_url?: unknown;
+    source?: {
+      display_name?: unknown;
+    };
+  };
+  best_oa_location?: {
+    landing_page_url?: unknown;
+    pdf_url?: unknown;
     source?: {
       display_name?: unknown;
     };
@@ -173,7 +192,25 @@ function authorList(work: OpenAlexWork): string[] {
 }
 
 function venue(work: OpenAlexWork): string {
-  return stringField(work.primary_location?.source?.display_name).trim();
+  return (
+    stringField(work.primary_location?.source?.display_name).trim() ||
+    stringField(work.best_oa_location?.source?.display_name).trim()
+  );
+}
+
+function publisherLandingUrl(work: OpenAlexWork): string {
+  return (
+    stringField(work.primary_location?.landing_page_url).trim() ||
+    stringField(work.best_oa_location?.landing_page_url).trim() ||
+    stringField(work.open_access?.oa_url).trim()
+  );
+}
+
+function openAlexPdfUrl(work: OpenAlexWork): string {
+  return (
+    stringField(work.primary_location?.pdf_url).trim() ||
+    stringField(work.best_oa_location?.pdf_url).trim()
+  );
 }
 
 export function mapOpenAlexSearchRows(
@@ -195,7 +232,8 @@ export function mapOpenAlexSearchRows(
       is_open_access: Boolean(work.open_access?.is_oa),
       type: stringField(work.type).trim(),
       doi: bareDoi(work.doi),
-      pdf_url: stringField(work.open_access?.oa_url).trim(),
+      pdf_url: openAlexPdfUrl(work),
+      landing_url: publisherLandingUrl(work) || undefined,
       openalex_id: id,
       source_adapter: "openalex",
       source_url: id ? `https://openalex.org/${id}` : "",
@@ -225,7 +263,8 @@ export function mapOpenAlexWorkRow(
     openAccess: Boolean(work.open_access?.is_oa),
     is_open_access: Boolean(work.open_access?.is_oa),
     openAccessUrl: stringField(work.open_access?.oa_url).trim(),
-    pdf_url: stringField(work.open_access?.oa_url).trim(),
+    pdf_url: openAlexPdfUrl(work),
+    landing_url: publisherLandingUrl(work) || undefined,
     referencedCount: Array.isArray(work.referenced_works)
       ? work.referenced_works.length
       : null,
@@ -240,6 +279,33 @@ export function mapOpenAlexWorkRow(
     retrieved_at: new Date().toISOString(),
     url: `https://openalex.org/${id}`,
   };
+}
+
+async function readOpenAlexWorkPdf(
+  row: Record<string, unknown>,
+  kwargs: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const pdfUrl = stringField(row.pdf_url);
+  if (!pdfUrl) {
+    const id = stringField(row.id) || stringField(row.openalex_id) || "record";
+    throw new Error(`OpenAlex work ${id} has no source PDF URL.`);
+  }
+  return readScholarPdf(
+    {
+      ...kwargs,
+      id: stringField(row.id) || stringField(row.openalex_id) || pdfUrl,
+      title: stringField(row.title) || pdfUrl,
+      source_adapter: "openalex",
+      source_url: stringField(row.source_url) || stringField(row.url),
+      pdf_url: pdfUrl,
+    },
+    {
+      site: "openalex",
+      command: "read",
+      defaultOutput: "./openalex-downloads",
+      userAgent: "unicli-openalex/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
+    },
+  );
 }
 
 async function fetchOpenAlex(url: string, label: string): Promise<unknown> {
@@ -348,5 +414,67 @@ cli({
       "openalex work",
     )) as OpenAlexWork;
     return [mapOpenAlexWorkRow(work)];
+  },
+});
+
+cli({
+  site: "openalex",
+  name: "read",
+  description: "Download an OpenAlex open-access Work PDF and extract text",
+  domain: "api.openalex.org",
+  strategy: Strategy.PUBLIC,
+  args: [
+    {
+      name: "id",
+      type: "str",
+      required: true,
+      positional: true,
+      description: "OpenAlex Work id or DOI",
+    },
+    {
+      name: "output",
+      type: "str",
+      default: "./openalex-downloads",
+      description: "Output directory for the downloaded PDF",
+      "x-unicli-kind": "path",
+    },
+    { name: "filename", type: "str", description: "Output PDF filename" },
+    { name: "first-page", type: "int", default: 1, description: "First page" },
+    { name: "last-page", type: "int", default: 20, description: "Last page" },
+    {
+      name: "max-chars",
+      type: "int",
+      default: 40000,
+      description: "Maximum extracted text characters",
+    },
+  ],
+  columns: [
+    "id",
+    "title",
+    "source_adapter",
+    "source_url",
+    "pdf_url",
+    "path",
+    "text_source",
+    "text",
+    "text_chars",
+    "text_truncated",
+  ],
+  capabilities: [
+    "http.fetch",
+    "http.download",
+    "subprocess.exec",
+    "scholar.fulltext",
+    "scholar.pdf",
+  ],
+  executables: ["pdftotext"],
+  minimum_capability: "subprocess.exec",
+  func: async (_page, kwargs) => {
+    const ref = requireOpenAlexWorkRef(kwargs.id);
+    const work = (await fetchOpenAlex(
+      `${OPENALEX_BASE}/works/${encodeURIComponent(ref)}?select=${WORK_SELECT}`,
+      "openalex work",
+    )) as OpenAlexWork;
+    return [await readOpenAlexWorkPdf(mapOpenAlexWorkRow(work), kwargs)];
   },
 });

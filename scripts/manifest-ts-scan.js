@@ -1,4 +1,6 @@
 import ts from "typescript";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 
 const ELECTRON_DESKTOP_BASE_COMMANDS = [
   [
@@ -250,9 +252,12 @@ function getObjectBoolean(obj, prop) {
   return undefined;
 }
 
-function literalValue(node) {
+function literalValue(node, constArrays = new Map()) {
   node = unwrapExpression(node);
   if (!node) return undefined;
+  if (ts.isIdentifier(node) && constArrays.has(node.text)) {
+    return literalValue(constArrays.get(node.text), constArrays);
+  }
   if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
     return node.text;
   }
@@ -262,7 +267,13 @@ function literalValue(node) {
   if (ts.isArrayLiteralExpression(node)) {
     const values = [];
     for (const element of node.elements) {
-      const value = literalValue(element);
+      if (ts.isSpreadElement(element)) {
+        const spreadValue = literalValue(element.expression, constArrays);
+        if (!Array.isArray(spreadValue)) return undefined;
+        values.push(...spreadValue);
+        continue;
+      }
+      const value = literalValue(element, constArrays);
       if (value === undefined) return undefined;
       values.push(value);
     }
@@ -280,6 +291,7 @@ function resolveConstArray(node, constArrays) {
 function getStringArray(obj, prop, constArrays = new Map()) {
   const value = literalValue(
     resolveConstArray(getObjectProperty(obj, prop), constArrays),
+    constArrays,
   );
   if (!Array.isArray(value)) return undefined;
   const strings = value.filter((item) => typeof item === "string");
@@ -302,36 +314,129 @@ function getObjectArgs(obj, constArrays = new Map()) {
   const node = resolveConstArray(getObjectProperty(obj, "args"), constArrays);
   if (!node || !ts.isArrayLiteralExpression(node)) return undefined;
 
+  return argsFromArrayLiteral(node, constArrays);
+}
+
+function argsFromArrayLiteral(node, constArrays) {
   const args = [];
   for (const element of node.elements) {
-    if (!ts.isObjectLiteralExpression(element)) return undefined;
-    const name = getObjectString(element, "name");
+    if (ts.isSpreadElement(element)) {
+      const spreadNode = resolveConstArray(element.expression, constArrays);
+      if (!spreadNode || !ts.isArrayLiteralExpression(spreadNode)) {
+        return undefined;
+      }
+      const spreadArgs = argsFromArrayLiteral(spreadNode, constArrays);
+      if (!spreadArgs) return undefined;
+      args.push(...spreadArgs);
+      continue;
+    }
+    const argNode = unwrapExpression(element);
+    if (!ts.isObjectLiteralExpression(argNode)) return undefined;
+    const name = getObjectString(argNode, "name");
     if (!name) return undefined;
 
     const arg = { name };
-    const type = getObjectString(element, "type");
+    const type = getObjectString(argNode, "type");
     if (type) arg.type = type;
-    const defaultValue = literalValue(getObjectProperty(element, "default"));
+    const defaultValue = literalValue(
+      getObjectProperty(argNode, "default"),
+      constArrays,
+    );
     if (defaultValue !== undefined) arg.default = defaultValue;
-    const required = getObjectBoolean(element, "required");
+    const required = getObjectBoolean(argNode, "required");
     if (required !== undefined) arg.required = required;
-    const positional = getObjectBoolean(element, "positional");
+    const positional = getObjectBoolean(argNode, "positional");
     if (positional !== undefined) arg.positional = positional;
-    const choices = getStringArray(element, "choices");
+    const choices = getStringArray(argNode, "choices", constArrays);
     if (choices) arg.choices = choices;
-    const description = getObjectString(element, "description");
+    const description = getObjectString(argNode, "description");
     if (description) arg.description = description;
-    const format = getObjectString(element, "format");
+    const format = getObjectString(argNode, "format");
     if (format) arg.format = format;
-    const kind = getObjectString(element, "x-unicli-kind");
+    const kind = getObjectString(argNode, "x-unicli-kind");
     if (kind) arg["x-unicli-kind"] = kind;
-    const accepts = getStringArray(element, "x-unicli-accepts");
+    const accepts = getStringArray(argNode, "x-unicli-accepts", constArrays);
     if (accepts) arg["x-unicli-accepts"] = accepts;
 
     args.push(arg);
   }
 
   return args;
+}
+
+function collectLocalConstArrays(sf) {
+  const constArrays = new Map();
+  for (const statement of sf.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name)) continue;
+      const initializer = unwrapExpression(declaration.initializer);
+      if (initializer && ts.isArrayLiteralExpression(initializer)) {
+        constArrays.set(declaration.name.text, initializer);
+      }
+    }
+  }
+  return constArrays;
+}
+
+function resolveRelativeTsImport(specifier, sourcePath) {
+  if (!sourcePath || !specifier.startsWith(".")) return undefined;
+  const base = resolve(dirname(sourcePath), specifier);
+  const candidates = [
+    specifier.endsWith(".js") ? base.replace(/\.js$/, ".ts") : base,
+    `${base}.ts`,
+    resolve(base, "index.ts"),
+  ];
+  return candidates.find((candidate) => existsSync(candidate));
+}
+
+function collectConstArraysFromFile(filePath, seenPaths) {
+  if (seenPaths.has(filePath)) return new Map();
+  seenPaths.add(filePath);
+  const source = readFileSync(filePath, "utf-8");
+  const sf = ts.createSourceFile(
+    filePath,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const constArrays = collectImportedConstArrays(sf, filePath, seenPaths);
+  for (const [name, node] of collectLocalConstArrays(sf)) {
+    constArrays.set(name, node);
+  }
+  return constArrays;
+}
+
+function collectImportedConstArrays(sf, sourcePath, seenPaths) {
+  const constArrays = new Map();
+  if (!sourcePath) return constArrays;
+
+  for (const statement of sf.statements) {
+    if (!ts.isImportDeclaration(statement)) continue;
+    if (!ts.isStringLiteral(statement.moduleSpecifier)) continue;
+    const resolved = resolveRelativeTsImport(
+      statement.moduleSpecifier.text,
+      sourcePath,
+    );
+    if (!resolved) continue;
+    const importClause = statement.importClause;
+    const namedBindings = importClause?.namedBindings;
+    if (!namedBindings || !ts.isNamedImports(namedBindings)) continue;
+
+    const importedArrays = collectConstArraysFromFile(resolved, seenPaths);
+    for (const [name, node] of importedArrays) {
+      if (!constArrays.has(name)) constArrays.set(name, node);
+    }
+    for (const element of namedBindings.elements) {
+      const importedName = element.propertyName?.text ?? element.name.text;
+      const localName = element.name.text;
+      const node = importedArrays.get(importedName);
+      if (node) constArrays.set(localName, node);
+    }
+  }
+
+  return constArrays;
 }
 
 function hasObjectProperty(obj, prop) {
@@ -380,7 +485,12 @@ function makeAiChatCommands(site, displayName, hasModel, hasNew, adapterPath) {
   return commands;
 }
 
-export function extractTsRegistrations(source, fallbackSite, fallbackCommand) {
+export function extractTsRegistrations(
+  source,
+  fallbackSite,
+  fallbackCommand,
+  options = {},
+) {
   const out = extractElectronDesktopRegistrations(
     source,
     fallbackSite,
@@ -394,16 +504,13 @@ export function extractTsRegistrations(source, fallbackSite, fallbackCommand) {
     ts.ScriptKind.TS,
   );
 
-  const constArrays = new Map();
-  for (const statement of sf.statements) {
-    if (!ts.isVariableStatement(statement)) continue;
-    for (const declaration of statement.declarationList.declarations) {
-      if (!ts.isIdentifier(declaration.name)) continue;
-      const initializer = unwrapExpression(declaration.initializer);
-      if (initializer && ts.isArrayLiteralExpression(initializer)) {
-        constArrays.set(declaration.name.text, initializer);
-      }
-    }
+  const constArrays = collectImportedConstArrays(
+    sf,
+    options.sourcePath,
+    new Set(options.sourcePath ? [options.sourcePath] : []),
+  );
+  for (const [name, node] of collectLocalConstArrays(sf)) {
+    constArrays.set(name, node);
   }
 
   function stringLiteralArrayValues(node) {
@@ -524,14 +631,16 @@ export function extractTsRegistrations(source, fallbackSite, fallbackCommand) {
               columns: getStringArray(first, "columns", constArrays),
               defaultFormat:
                 getObjectString(first, "defaultFormat", bindings) || undefined,
+              capabilities: getStringArray(first, "capabilities", constArrays),
+              executables: getStringArray(first, "executables", constArrays),
+              minimum_capability:
+                getObjectString(first, "minimum_capability", bindings) ||
+                undefined,
               args: getObjectArgs(first, constArrays),
               pipeline_steps: 0,
               adapter_path: `src/adapters/${fallbackSite}/${fallbackCommand}.ts`,
-              target_surface: getObjectString(
-                first,
-                "target_surface",
-                bindings,
-              ),
+              target_surface:
+                getObjectString(first, "target_surface", bindings) || undefined,
             },
           ],
         });

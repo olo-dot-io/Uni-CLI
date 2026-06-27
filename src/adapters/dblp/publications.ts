@@ -1,9 +1,16 @@
 /**
- * @owner   src/adapters/dblp/publications.ts
- * @does    Register agent-facing dblp publication, author, paper, and venue commands.
- * @needs   dblp public JSON/XML APIs, conservative XML field extraction, bounded result limits.
- * @feeds   surface coverage ledger, scholarly search surface, CS bibliography inspection.
- * @breaks  dblp API envelope drift, record-key parsing, or silent empty rows hide bibliography lookup failures.
+ * @owner       src::adapters::dblp::publications
+ * @does        Registers DBLP publication, paper, author, and venue commands for computer-science bibliography discovery.
+ * @needs       dblp public JSON/XML APIs, conservative XML field extraction, bounded result limits, src/registry.ts
+ * @feeds       src/commands/scholar.ts via scholar.search, scholar.get, scholar.pdf, scholar.author, and scholar.venue
+ * @breaks      DBLP API envelope drift, record-key parsing drift, or missing normalized ids makes CS bibliography rows invisible to the scholar meta-command.
+ * @invariants  DBLP `key` is the source-local scholarly id and is mirrored as `dblp_key`; DOI remains a separate cross-source dedupe key.
+ * @side-effects HTTPS egress to dblp.org only
+ * @perf        O(limit) JSON/XML mapping after one DBLP API request per command
+ * @concurrency safe
+ * @test        src/adapters/dblp/publications.test.ts; live smoke via `unicli dblp search <query>` and `unicli scholar doctor --sources dblp --live`
+ * @stability   experimental
+ * @since       2026-05-19
  */
 
 import { cli, Strategy } from "../../registry.js";
@@ -149,16 +156,21 @@ export function mapPublicationHit(
 ): Record<string, unknown> {
   const info = hit.info ?? {};
   const key = stringField(info.key);
+  const url = stringField(info.ee) || stringField(info.url);
   return {
+    id: key,
     rank,
     key,
+    dblp_key: key,
     title: stripTrailingDot(decodeXmlEntities(info.title)).trim(),
     authors: normalizeDblpAuthors(info.authors).join(", "),
     venue: decodeXmlEntities(info.venue),
     year: stringField(info.year),
     type: compactType(info.type),
     doi: stringField(info.doi),
-    url: stringField(info.ee) || stringField(info.url),
+    source_url: url || (key ? `${DBLP_ORIGIN}/rec/${key}.html` : ""),
+    landing_url: key ? `${DBLP_ORIGIN}/rec/${key}.html` : "",
+    url,
   };
 }
 
@@ -240,8 +252,12 @@ export function mapRecordXml(xml: string): Record<string, unknown> {
     .map(decodeXmlEntities)
     .find((value) => /(?:doi\.org\/|^10\.)/i.test(value));
   const doi = ee ? ee.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, "") : "";
+  const openAccessUrl = extractOpenAccessUrl(xml);
+  const dblpUrl = key ? `${DBLP_ORIGIN}/rec/${key}.html` : "";
   return {
+    id: key,
     key,
+    dblp_key: key,
     type,
     title: stripTrailingDot(decodeXmlEntities(extractFirst(xml, "title"))),
     authors: extractAll(xml, "author")
@@ -252,8 +268,11 @@ export function mapRecordXml(xml: string): Record<string, unknown> {
     year: decodeXmlEntities(extractFirst(xml, "year")),
     pages: decodeXmlEntities(extractFirst(xml, "pages")),
     doi: doi.startsWith("10.") ? doi : "",
-    open_access_url: extractOpenAccessUrl(xml),
-    dblp_url: key ? `${DBLP_ORIGIN}/rec/${key}.html` : "",
+    open_access_url: openAccessUrl,
+    source_url: openAccessUrl || dblpUrl,
+    landing_url: dblpUrl,
+    dblp_url: dblpUrl,
+    url: openAccessUrl || dblpUrl,
   };
 }
 
@@ -482,8 +501,10 @@ cli({
     return records.slice(0, limit).map((record, index) => {
       const row = mapRecordXml(`<root>${record}</root>`);
       return {
+        id: row.id || row.key || extractRecordKey(record),
         rank: index + 1,
         key: row.key || extractRecordKey(record),
+        dblp_key: row.dblp_key || row.key || extractRecordKey(record),
         title: row.title,
         authors: row.authors,
         venue: row.venue,
@@ -491,6 +512,8 @@ cli({
         type: row.type,
         doi: row.doi,
         pid,
+        source_url: row.source_url,
+        landing_url: row.landing_url,
         url: row.open_access_url || row.dblp_url,
       };
     });

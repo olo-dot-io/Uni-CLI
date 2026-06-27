@@ -1,9 +1,9 @@
 /**
  * @owner   src/adapters/pubmed/articles.ts
- * @does    Register agent-facing PubMed search, article, author, citation, and related-article commands.
- * @needs   NCBI E-utilities API, TypeScript adapter loader, PMID/query validation.
- * @feeds   surface coverage ledger, biomedical literature command surface, agent-readable PubMed rows.
- * @breaks  NCBI E-utilities envelope drift, weak PMID validation, or silent empty rows hide literature lookup failures.
+ * @does    Register agent-facing PubMed search, normalized paper metadata, field/value article detail, PMC full-text read, author, citation, and related-article commands.
+ * @needs   NCBI E-utilities PubMed/PMC APIs, TypeScript adapter loader, PMID/PMCID/query validation.
+ * @feeds   surface coverage ledger, biomedical literature command surface, agent-readable PubMed rows, scholar full-text workflow.
+ * @breaks  NCBI E-utilities envelope drift, weak PMID/PMCID validation, missing PMC full text, or silent empty rows hide literature lookup failures.
  */
 
 import { DOMParser, type Document, type Element } from "@xmldom/xmldom";
@@ -12,6 +12,7 @@ import { cli, Strategy } from "../../registry.js";
 const EUTILS_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils";
 const SUMMARY_COLUMNS = [
   "rank",
+  "id",
   "pmid",
   "title",
   "authors",
@@ -19,9 +20,23 @@ const SUMMARY_COLUMNS = [
   "year",
   "article_type",
   "doi",
+  "pmc_id",
   "url",
 ];
-const RELATED_COLUMNS = [...SUMMARY_COLUMNS.slice(0, 7), "score", "doi", "url"];
+const RELATED_COLUMNS = [
+  "rank",
+  "id",
+  "pmid",
+  "title",
+  "authors",
+  "journal",
+  "year",
+  "score",
+  "doi",
+  "pmc_id",
+  "url",
+];
+const PMC_BASE = "https://pmc.ncbi.nlm.nih.gov/articles";
 
 interface PubMedSummary {
   uid?: unknown;
@@ -70,6 +85,14 @@ export function requirePmid(value: unknown, label = "pmid"): string {
   return pmid;
 }
 
+export function normalizePmcId(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  const match = raw.match(/^(?:PMC)?(\d+)$/i);
+  if (!match) throw new Error(`pubmed pmc id "${raw}" is not valid.`);
+  return `PMC${match[1]}`;
+}
+
 export function requirePubMedLimit(
   value: unknown,
   fallback = 20,
@@ -80,6 +103,20 @@ export function requirePubMedLimit(
   if (!Number.isInteger(n) || n < 1 || n > max) {
     throw new Error(
       `pubmed limit must be an integer in [1, ${max}]. Got: ${String(value)}`,
+    );
+  }
+  return n;
+}
+
+export function requirePubMedMaxChars(
+  value: unknown,
+  fallback = 40_000,
+): number {
+  if (value === undefined || value === null || value === "") return fallback;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1_000 || n > 1_000_000) {
+    throw new Error(
+      `pubmed max-chars must be an integer in [1000, 1000000]. Got: ${String(value)}`,
     );
   }
   return n;
@@ -105,9 +142,10 @@ function buildUrl(
   tool: string,
   params: Record<string, unknown>,
   retmode = "json",
+  db = "pubmed",
 ): string {
   const search = new URLSearchParams();
-  search.set("db", "pubmed");
+  search.set("db", db);
   search.set("retmode", retmode);
   if (process.env.NCBI_API_KEY) search.set("api_key", process.env.NCBI_API_KEY);
   if (process.env.NCBI_EMAIL) search.set("email", process.env.NCBI_EMAIL);
@@ -122,8 +160,9 @@ async function eutilsFetch(
   tool: string,
   params: Record<string, unknown>,
   retmode = "json",
+  db = "pubmed",
 ): Promise<unknown> {
-  const response = await fetch(buildUrl(tool, params, retmode), {
+  const response = await fetch(buildUrl(tool, params, retmode, db), {
     headers: { "User-Agent": "unicli (https://github.com/olo-dot-io/Uni-CLI)" },
   });
   if (!response.ok)
@@ -154,12 +193,24 @@ function authorNames(authors: PubMedSummary["authors"], max = 3): string {
 }
 
 function doi(articleIds: PubMedSummary["articleids"]): string {
+  return articleId(articleIds, "doi");
+}
+
+function articleId(
+  articleIds: PubMedSummary["articleids"],
+  type: string,
+): string {
   return stringField(
     Array.isArray(articleIds)
-      ? articleIds.find((id) => stringField(id.idtype).toLowerCase() === "doi")
-          ?.value
+      ? articleIds.find(
+          (id) => stringField(id.idtype).toLowerCase() === type.toLowerCase(),
+        )?.value
       : "",
   );
+}
+
+function pmcUrl(pmcId: string): string {
+  return pmcId ? `${PMC_BASE}/${pmcId}/` : "";
 }
 
 function articleType(types: unknown[]): string {
@@ -178,17 +229,27 @@ export function mapPubMedSummaryRows(
   return pmids.flatMap((pmid, index) => {
     const summary = summaries.find((item) => stringField(item.uid) === pmid);
     if (!summary) return [];
+    const pmcId = articleId(summary.articleids, "pmc");
+    const url = `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`;
     return [
       {
         rank: index + 1,
+        id: pmid,
         pmid,
         title: cleanText(summary.title),
         authors: authorNames(summary.authors),
         journal: stringField(summary.source),
+        venue: stringField(summary.source),
         year: year(summary.pubdate),
         article_type: articleType(summary.pubtype ?? []),
+        type: articleType(summary.pubtype ?? []),
         doi: doi(summary.articleids),
-        url: `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`,
+        pmc_id: pmcId || undefined,
+        pmc_url: pmcUrl(pmcId),
+        source_adapter: "pubmed",
+        source_url: url,
+        retrieved_at: new Date().toISOString(),
+        url,
       },
     ];
   });
@@ -212,30 +273,42 @@ function firstElement(
   return root.getElementsByTagName(tagName)[0] ?? null;
 }
 
-export function mapPubMedArticleRows(
+function elements(root: Document | Element, tagName: string): Element[] {
+  const nodes = root.getElementsByTagName(tagName);
+  return Array.from({ length: nodes.length }, (_, index) =>
+    nodes.item(index),
+  ).filter((node): node is Element => node !== null);
+}
+
+function articleIdText(
+  root: Document | Element,
+  attrName: "IdType" | "pub-id-type",
+  attrValue: string,
+): string {
+  return (
+    elements(root, attrName === "IdType" ? "ArticleId" : "article-id")
+      .find(
+        (node) =>
+          node.getAttribute(attrName)?.toLowerCase() ===
+          attrValue.toLowerCase(),
+      )
+      ?.textContent?.trim() ?? ""
+  );
+}
+
+export function mapPubMedArticleRecord(
   xml: string,
   pmid: string,
-  fullAbstract = false,
-): Array<Record<string, unknown>> {
+): Record<string, unknown> {
   const document = new DOMParser().parseFromString(xml, "text/xml");
   const title = childText(document, "ArticleTitle");
   if (!title)
     throw new Error(`pubmed article ${pmid} did not include a title.`);
+  const doiValue = articleIdText(document, "IdType", "doi");
+  const pmcId = articleIdText(document, "IdType", "pmc");
   const abstract = elementTexts(document, "AbstractText").join(" ");
-  const shownAbstract =
-    fullAbstract || abstract.length <= 500
-      ? abstract
-      : `${abstract.slice(0, 497)}...`;
-  const doiValue =
-    Array.from(
-      { length: document.getElementsByTagName("ArticleId").length },
-      (_, index) => document.getElementsByTagName("ArticleId").item(index),
-    )
-      .filter((node): node is Element => node !== null)
-      .find((node) => node.getAttribute("IdType")?.toLowerCase() === "doi")
-      ?.textContent?.trim() ?? "";
   const authorNodes = document.getElementsByTagName("Author");
-  const authors = Array.from({ length: authorNodes.length }, (_, index) =>
+  const authorList = Array.from({ length: authorNodes.length }, (_, index) =>
     authorNodes.item(index),
   )
     .filter((author): author is Element => author !== null)
@@ -244,29 +317,169 @@ export function mapPubMedArticleRows(
         .filter(Boolean)
         .join(" "),
     )
-    .filter(Boolean)
-    .join(", ");
+    .filter(Boolean);
   const journal = firstElement(document, "Journal");
   const pubDate = firstElement(document, "PubDate");
+  const yearValue = pubDate ? childText(pubDate, "Year") : "";
+  const sourceUrl = `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`;
+  return {
+    id: pmid,
+    pmid,
+    title,
+    authors: authorList,
+    journal: journal ? childText(journal, "Title") : "",
+    venue: journal ? childText(journal, "Title") : "",
+    year: yearValue ? Number(yearValue) : undefined,
+    date: pubDate ? cleanText(pubDate.textContent ?? "") : "",
+    article_type: elementTexts(document, "PublicationType")[0] ?? "",
+    type: elementTexts(document, "PublicationType")[0] ?? "",
+    language: childText(document, "Language"),
+    doi: doiValue || undefined,
+    pmc_id: pmcId || undefined,
+    pmc_url: pmcUrl(pmcId),
+    abstract: abstract || undefined,
+    source_adapter: "pubmed",
+    source_url: sourceUrl,
+    retrieved_at: new Date().toISOString(),
+    url: sourceUrl,
+  };
+}
+
+export function mapPubMedArticleRows(
+  xml: string,
+  pmid: string,
+  fullAbstract = false,
+): Array<Record<string, unknown>> {
+  const record = mapPubMedArticleRecord(xml, pmid);
+  const abstract = stringField(record.abstract);
+  const shownAbstract =
+    fullAbstract || abstract.length <= 500
+      ? abstract
+      : `${abstract.slice(0, 497)}...`;
   return [
     { field: "PMID", value: pmid },
-    { field: "Title", value: title },
-    { field: "Authors", value: authors },
-    { field: "Journal", value: journal ? childText(journal, "Title") : "" },
-    { field: "Year", value: pubDate ? childText(pubDate, "Year") : "" },
-    {
-      field: "Date",
-      value: pubDate ? cleanText(pubDate.textContent ?? "") : "",
-    },
-    {
-      field: "Article Type",
-      value: elementTexts(document, "PublicationType")[0] ?? null,
-    },
-    { field: "Language", value: childText(document, "Language") },
-    { field: "DOI", value: doiValue || null },
+    { field: "PMCID", value: record.pmc_id || null },
+    { field: "Title", value: record.title },
+    { field: "Authors", value: (record.authors as string[]).join(", ") },
+    { field: "Journal", value: record.journal },
+    { field: "Year", value: record.year ? String(record.year) : "" },
+    { field: "Date", value: record.date },
+    { field: "Article Type", value: record.article_type || null },
+    { field: "Language", value: record.language },
+    { field: "DOI", value: record.doi || null },
     { field: "Abstract", value: shownAbstract || null },
-    { field: "URL", value: `https://pubmed.ncbi.nlm.nih.gov/${pmid}/` },
+    { field: "URL", value: record.source_url },
+    { field: "PMC URL", value: record.pmc_url || null },
   ];
+}
+
+function directChildElements(root: Element, tagName: string): Element[] {
+  const out: Element[] = [];
+  for (let index = 0; index < root.childNodes.length; index += 1) {
+    const node = root.childNodes.item(index);
+    if (node?.nodeType === 1 && node.nodeName === tagName) {
+      out.push(node as Element);
+    }
+  }
+  return out;
+}
+
+function directChildText(root: Element, tagName: string): string {
+  return cleanText(directChildElements(root, tagName)[0]?.textContent ?? "");
+}
+
+function sectionText(section: Element): string {
+  const title = directChildText(section, "title");
+  const paragraphs = directChildElements(section, "p")
+    .map((paragraph) => cleanText(paragraph.textContent ?? ""))
+    .filter(Boolean);
+  const nested = directChildElements(section, "sec")
+    .map(sectionText)
+    .filter(Boolean);
+  return [title ? `## ${title}` : "", ...paragraphs, ...nested]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function truncateText(
+  text: string,
+  maxChars: number,
+): {
+  text: string;
+  truncated: boolean;
+} {
+  if (text.length <= maxChars) return { text, truncated: false };
+  return {
+    text: `${text.slice(0, maxChars).trimEnd()}\n\n[truncated at ${maxChars} characters]`,
+    truncated: true,
+  };
+}
+
+export function mapPmcFullTextRow(
+  xml: string,
+  ref: string,
+  maxChars = 40_000,
+): Record<string, unknown> {
+  const document = new DOMParser().parseFromString(xml, "text/xml");
+  const title = childText(document, "article-title");
+  if (!title) {
+    throw new Error(`PMC full text ${ref} did not include an article title.`);
+  }
+  const pmcId = normalizePmcId(
+    articleIdText(document, "pub-id-type", "pmcid") || ref,
+  );
+  const pmid = articleIdText(document, "pub-id-type", "pmid");
+  const doiValue = articleIdText(document, "pub-id-type", "doi");
+  const abstract = cleanText(
+    firstElement(document, "abstract")?.textContent ?? "",
+  );
+  const body = firstElement(document, "body");
+  const bodyText = body
+    ? directChildElements(body, "sec")
+        .map(sectionText)
+        .filter(Boolean)
+        .join("\n\n")
+    : "";
+  const text = [abstract ? `## Abstract\n\n${abstract}` : "", bodyText]
+    .filter(Boolean)
+    .join("\n\n");
+  if (!text) {
+    throw new Error(`PMC full text ${pmcId} did not include readable text.`);
+  }
+  const truncated = truncateText(text, maxChars);
+  return {
+    id: pmid || pmcId,
+    title,
+    pmid: pmid || undefined,
+    pmc_id: pmcId,
+    doi: doiValue || undefined,
+    source_adapter: "pubmed",
+    source_url: pmcUrl(pmcId),
+    text: truncated.text,
+    text_truncated: truncated.truncated,
+    text_source: "pmc_xml",
+    retrieved_at: new Date().toISOString(),
+  };
+}
+
+async function pmcIdFromPubMedRef(ref: string): Promise<string> {
+  if (/^(?:PMC)?\d+$/i.test(ref) && /^PMC/i.test(ref)) {
+    return normalizePmcId(ref);
+  }
+  const pmid = requirePmid(ref, "pmid");
+  const json = (await eutilsFetch(
+    "esearch",
+    { term: `${pmid}[PMID]`, retmax: 1 },
+    "json",
+    "pmc",
+  )) as { esearchresult?: { idlist?: string[] } };
+  const numericPmc = json.esearchresult?.idlist?.[0];
+  if (!numericPmc) {
+    throw new Error(
+      `PubMed PMID ${pmid} has no PubMed Central full text record.`,
+    );
+  }
+  return normalizePmcId(numericPmc);
 }
 
 async function fetchSummaryRows(
@@ -346,13 +559,99 @@ cli({
     },
   ],
   columns: ["field", "value"],
-  capabilities: ["http.fetch", "scholar.get"],
+  capabilities: ["http.fetch"],
   func: async (_page, kwargs) => {
     const pmid = requirePmid(kwargs.pmid);
     const xml = String(
       await eutilsFetch("efetch", { id: pmid, rettype: "abstract" }, "xml"),
     );
     return mapPubMedArticleRows(xml, pmid, kwargs["full-abstract"] === true);
+  },
+});
+
+cli({
+  site: "pubmed",
+  name: "paper",
+  description: "Fetch normalized PubMed article metadata by PMID",
+  domain: "pubmed.ncbi.nlm.nih.gov",
+  strategy: Strategy.PUBLIC,
+  args: [
+    {
+      name: "pmid",
+      type: "str",
+      required: true,
+      positional: true,
+      description: "PubMed ID",
+    },
+  ],
+  columns: [
+    "id",
+    "title",
+    "authors",
+    "year",
+    "journal",
+    "doi",
+    "pmc_id",
+    "source_url",
+  ],
+  capabilities: ["http.fetch", "scholar.get"],
+  func: async (_page, kwargs) => {
+    const pmid = requirePmid(kwargs.pmid ?? kwargs.id ?? kwargs.ref);
+    const xml = String(
+      await eutilsFetch("efetch", { id: pmid, rettype: "abstract" }, "xml"),
+    );
+    return [mapPubMedArticleRecord(xml, pmid)];
+  },
+});
+
+cli({
+  site: "pubmed",
+  name: "read",
+  description: "Read PubMed Central full text for a PMID or PMCID",
+  domain: "eutils.ncbi.nlm.nih.gov",
+  strategy: Strategy.PUBLIC,
+  args: [
+    {
+      name: "ref",
+      type: "str",
+      required: true,
+      positional: true,
+      description: "PubMed PMID or PubMed Central PMCID",
+    },
+    {
+      name: "max-chars",
+      type: "int",
+      default: 40000,
+      description: "Maximum extracted text characters",
+    },
+  ],
+  columns: [
+    "id",
+    "title",
+    "pmid",
+    "pmc_id",
+    "doi",
+    "source_url",
+    "text",
+    "text_truncated",
+  ],
+  capabilities: ["http.fetch", "scholar.fulltext"],
+  func: async (_page, kwargs) => {
+    const ref = requirePubMedText(
+      kwargs.ref ?? kwargs.id ?? kwargs.pmid,
+      "ref",
+    );
+    const maxChars = requirePubMedMaxChars(kwargs["max-chars"]);
+    const pmcId = await pmcIdFromPubMedRef(ref);
+    const xml = String(
+      await eutilsFetch(
+        "efetch",
+        { id: pmcId.replace(/^PMC/i, "") },
+        "xml",
+        "pmc",
+      ),
+    );
+    return [mapPmcFullTextRow(xml, pmcId, maxChars)];
   },
 });
 

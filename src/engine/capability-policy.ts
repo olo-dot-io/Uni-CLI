@@ -194,7 +194,10 @@ function deriveResourceScope(
   }
 
   if (dimensions.process.access !== "none") {
-    resources.executables = [input.site];
+    resources.executables =
+      input.executables && input.executables.length > 0
+        ? input.executables
+        : [input.site];
   }
 
   if (dimensions.file.access !== "none") {
@@ -221,6 +224,18 @@ function isExplicitLocalSurface(surface?: TargetSurface): boolean {
 }
 
 function isNetworkCapable(input: OperationPolicyInput): boolean {
+  if (
+    input.capabilities?.some(
+      (capability) =>
+        capability === "http.fetch" ||
+        capability === "http.download" ||
+        capability.startsWith("mcp-browser."),
+    ) ||
+    input.minimumCapability === "http.fetch" ||
+    input.minimumCapability === "http.download"
+  ) {
+    return true;
+  }
   if (input.adapterType === AdapterType.SERVICE) return true;
   if (isExplicitLocalSurface(input.targetSurface)) return false;
   return (
@@ -250,6 +265,14 @@ function isDesktopCapable(input: OperationPolicyInput): boolean {
 }
 
 function isProcessCapable(input: OperationPolicyInput): boolean {
+  if (
+    input.capabilities?.some((capability) =>
+      capability.startsWith("subprocess."),
+    ) ||
+    input.minimumCapability?.startsWith("subprocess.")
+  ) {
+    return true;
+  }
   if (input.adapterType === AdapterType.SERVICE) return false;
   return (
     input.adapterType === AdapterType.BRIDGE ||
@@ -312,7 +335,40 @@ export function deriveCapabilityScope(
   const desktopCapable = isDesktopCapable(input);
   const processCapable = isProcessCapable(input);
 
-  if (networkCapable) {
+  if (effect === "download_file") {
+    if (networkCapable) {
+      promoteAccess(
+        dimensions,
+        "network",
+        "read",
+        "reads remote data for a local download",
+      );
+    }
+    if (browserCapable) {
+      promoteAccess(
+        dimensions,
+        "browser",
+        "read",
+        "may read through browser automation for a local download",
+      );
+    }
+    promoteAccess(
+      dimensions,
+      "file",
+      "write",
+      "may create or modify local files",
+    );
+    if (processCapable) {
+      promoteAccess(
+        dimensions,
+        "process",
+        "read",
+        "may run a local extraction process",
+      );
+    }
+  }
+
+  if (networkCapable && effect !== "download_file") {
     promoteAccess(
       dimensions,
       "network",
@@ -439,7 +495,7 @@ export function deriveCapabilityScope(
 
   if (desktopCapable && effect === "read") {
     promoteAccess(dimensions, "desktop", "read", "reads local desktop state");
-  } else if (desktopCapable) {
+  } else if (desktopCapable && effect !== "download_file") {
     promoteAccess(
       dimensions,
       "desktop",
@@ -448,7 +504,7 @@ export function deriveCapabilityScope(
     );
   }
 
-  if (processCapable && effect === "read") {
+  if (processCapable && (effect === "read" || effect === "download_file")) {
     promoteAccess(
       dimensions,
       "process",

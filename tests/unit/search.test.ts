@@ -506,10 +506,153 @@ describe("search", () => {
     const commands = results.slice(0, 5).map((r) => `${r.site}/${r.command}`);
 
     expect(commands).toEqual(
-      expect.arrayContaining(["arxiv/download", "pdf/read"]),
+      expect.arrayContaining([
+        "scholar/download",
+        "arxiv/download",
+        "pdf/read",
+      ]),
     );
     expect(results.slice(0, 5).map((r) => r.site)).not.toContain("yt-dlp");
     expect(results.slice(0, 5).map((r) => r.site)).not.toContain("nowcoder");
+  });
+
+  it("routes academic full-text reading to the scholar meta-command", () => {
+    const results = search("read academic paper pdf full text", 8);
+    const commands = results.slice(0, 5).map((r) => `${r.site}/${r.command}`);
+
+    expect(commands).toContain("scholar/read");
+    expect(results.slice(0, 5).map((r) => r.category)).toContain("scholarly");
+  });
+
+  it("routes paper code and dataset resource queries to scholar resources", () => {
+    const code = search("find code for academic paper", 8);
+    const datasets = search("datasets and models for a paper", 8);
+
+    expect(code.slice(0, 5).map((r) => `${r.site}/${r.command}`)).toContain(
+      "scholar/code",
+    );
+    expect(datasets.slice(0, 5).map((r) => `${r.site}/${r.command}`)).toContain(
+      "scholar/datasets",
+    );
+  });
+
+  it("routes paper reproducibility and install planning to scholar reproduce", () => {
+    const english = search(
+      "install and reproduce academic paper code environment",
+      8,
+    );
+    const chinese = search("论文复现和代码安装运行环境", 8);
+
+    expect(english[0]).toMatchObject({
+      site: "scholar",
+      command: "reproduce",
+    });
+    expect(chinese[0]).toMatchObject({
+      site: "scholar",
+      command: "reproduce",
+    });
+  });
+
+  it("routes paper availability queries to scholar availability", () => {
+    const english = search(
+      "audit paper availability pdf code datasets reviews citations",
+      8,
+    );
+    const chinese = search("审计论文资源是否可读", 8);
+
+    expect(english[0]).toMatchObject({
+      site: "scholar",
+      command: "availability",
+    });
+    expect(chinese[0]).toMatchObject({
+      site: "scholar",
+      command: "availability",
+    });
+  });
+
+  it("routes anti-hallucination evidence classification to scholar evidence", () => {
+    const english = search(
+      "classify paper evidence citation safety before quoting claims",
+      8,
+    );
+    const chinese = search("文献证据分级和引用安全，避免幻觉文献", 8);
+
+    expect(english[0]).toMatchObject({
+      site: "scholar",
+      command: "evidence",
+    });
+    expect(chinese[0]).toMatchObject({
+      site: "scholar",
+      command: "evidence",
+    });
+  });
+
+  it("routes scholarly closed-loop workflow queries to scholar workflow", () => {
+    const english = search(
+      "academic paper closed-loop workflow runbook for agent reading",
+      8,
+    );
+    const chinese = search("学术资源完整闭环工作流", 8);
+
+    expect(english[0]).toMatchObject({
+      site: "scholar",
+      command: "workflow",
+    });
+    expect(chinese[0]).toMatchObject({
+      site: "scholar",
+      command: "workflow",
+    });
+  });
+
+  it("routes per-source scholarly comparison queries to scholar sources", () => {
+    const english = search(
+      "which academic sources have pdf code reviews for this paper",
+      8,
+    );
+    const chinese = search("论文来源逐站点对比", 8);
+
+    expect(english[0]).toMatchObject({
+      site: "scholar",
+      command: "sources",
+    });
+    expect(chinese[0]).toMatchObject({
+      site: "scholar",
+      command: "sources",
+    });
+  });
+
+  it("routes scholarly source coverage and gap queries to scholar coverage", () => {
+    const english = search(
+      "compare academic source coverage gaps for papers",
+      8,
+    );
+    const chinese = search("学术网站覆盖矩阵和来源对比", 8);
+
+    expect(english[0]).toMatchObject({
+      site: "scholar",
+      command: "coverage",
+    });
+    expect(chinese[0]).toMatchObject({
+      site: "scholar",
+      command: "coverage",
+    });
+  });
+
+  it("routes peer-review and decision queries to scholar reviews", () => {
+    const english = search(
+      "read peer reviews and decision for openreview paper",
+      8,
+    );
+    const chinese = search("读取论文审稿意见和接收决定", 8);
+
+    expect(english[0]).toMatchObject({
+      site: "scholar",
+      command: "reviews",
+    });
+    expect(chinese[0]).toMatchObject({
+      site: "scholar",
+      command: "reviews",
+    });
   });
 
   it("routes top-conference proceedings queries to scholarly sources", () => {

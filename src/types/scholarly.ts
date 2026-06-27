@@ -1,10 +1,10 @@
 /**
  * @owner       src::types::scholarly
- * @does        Defines the normalized scholarly-work record used by first-source academic adapters and the `unicli scholar` meta-command.
+ * @does        Defines the normalized scholarly-work record used by first-source academic adapters and the `unicli scholar` meta-command, including paper artifact, search provenance, and resource links.
  * @needs       none
- * @feeds       src/commands/scholar.ts, src/adapters/{semantic-scholar,crossref,unpaywall,pmlr,cvf,neurips}
- * @breaks      Missing optional fields reduce output richness; missing id/title/source_adapter violates the scholar vertical contract.
- * @invariants  `id` is source-local when DOI is absent; DOI is the preferred dedupe key; dates are ISO-ish strings when present.
+ * @feeds       src/commands/scholar.ts, first-source scholarly adapters, PDF/fulltext discovery rows, code/dataset/model resource rows
+ * @breaks      Missing optional fields reduce output richness; missing id/title/source_adapter violates the scholar vertical contract; missing provenance/fulltext/resource identity fields prevents bounded-search disclosure, source-direct reading, and resource discovery.
+ * @invariants  `id` is source-local when DOI is absent; DOI is the preferred dedupe key; dates are ISO-ish strings when present; search provenance fields describe adapter scope rather than paper facts.
  * @side-effects none
  * @perf        O(1) type-only module
  * @concurrency safe
@@ -25,6 +25,7 @@ export interface ScholarlyWorkRecord {
   doi?: string;
   arxiv_id?: string;
   pmid?: string;
+  pmc_id?: string;
   openalex_id?: string;
   semantic_scholar_id?: string;
   dblp_key?: string;
@@ -36,9 +37,23 @@ export interface ScholarlyWorkRecord {
   pdf_url?: string;
   landing_url?: string;
   code_url?: string;
+  project_url?: string;
   dataset_url?: string;
+  model_urls?: string;
+  dataset_urls?: string;
+  space_urls?: string;
+  github_stars?: number;
+  num_models?: number;
+  num_datasets?: number;
+  num_spaces?: number;
   source_adapter: string;
   source_url?: string;
+  matched_fields?: string[];
+  search_scope?: string;
+  search_window?: string;
+  search_scanned_records?: number;
+  search_total_records?: number;
+  search_exhaustive?: boolean;
   retrieved_at: string;
   raw?: unknown;
 }

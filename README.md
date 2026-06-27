@@ -41,7 +41,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->317<!-- /STATS --> surfaces · <!-- STATS:test_count -->9183<!-- /STATS --> tests</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> surfaces · <!-- STATS:test_count -->9257<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -340,7 +340,7 @@ The wall below is generated from active manifest sites with real logo support. B
   <a data-site="replicate" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="replicate: 2 commands"><img alt="replicate" src="https://img.shields.io/static/v1?label=replicate&message=2+cmds&color=7c3aed&style=flat-square&logo=replicate&logoColor=white"></a>
 </p>
 <p><strong>scholarly</strong><br>
-  <a data-site="arxiv" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="arxiv: 5 commands"><img alt="arxiv" src="https://img.shields.io/static/v1?label=arxiv&message=5+cmds&color=0f766e&style=flat-square&logo=arxiv&logoColor=white"></a>
+  <a data-site="arxiv" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="arxiv: 6 commands"><img alt="arxiv" src="https://img.shields.io/static/v1?label=arxiv&message=6+cmds&color=0f766e&style=flat-square&logo=arxiv&logoColor=white"></a>
   <a data-site="google-scholar" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="google-scholar: 3 commands"><img alt="google-scholar" src="https://img.shields.io/static/v1?label=google-scholar&message=3+cmds&color=0f766e&style=flat-square&logo=google&logoColor=white"></a>
   <a data-site="huggingface-papers" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="huggingface-papers: 2 commands"><img alt="huggingface-papers" src="https://img.shields.io/static/v1?label=huggingface-papers&message=2+cmds&color=0f766e&style=flat-square&logo=huggingface&logoColor=white"></a>
   <a data-site="zotero" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="zotero: 8 commands"><img alt="zotero" src="https://img.shields.io/static/v1?label=zotero&message=8+cmds&color=0f766e&style=flat-square&logo=zotero&logoColor=white"></a>

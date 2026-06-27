@@ -192,6 +192,8 @@ export interface CliRegistration {
    * the underlying AdapterCommand at call time.
    */
   capabilities?: readonly string[];
+  /** Local executable names used by commands that declare subprocess.*. */
+  executables?: readonly string[];
   /** Schema-v2 minimum-capability token; defaults to `http.fetch`. */
   minimum_capability?: string;
   func: (page: unknown, kwargs: Record<string, unknown>) => Promise<unknown>;
@@ -234,6 +236,7 @@ export function cli(config: CliRegistration): void {
     socialCapabilities: config.socialCapabilities,
     defaultFormat: config.defaultFormat,
     capabilities: config.capabilities ? [...config.capabilities] : undefined,
+    executables: config.executables ? [...config.executables] : undefined,
     minimum_capability: config.minimum_capability,
     func: config.func as AdapterCommand["func"],
   };

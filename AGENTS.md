@@ -36,7 +36,7 @@ it starts only the Uni-CLI automation profile.
 
 <!-- BEGIN COUNTS -->
 
-> <!-- STATS:site_count -->317<!-- /STATS --> sites, <!-- STATS:command_count -->1772<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> <!-- STATS:site_count -->320<!-- /STATS --> sites, <!-- STATS:command_count -->1798<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 

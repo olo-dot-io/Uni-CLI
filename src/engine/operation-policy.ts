@@ -20,6 +20,7 @@ export type PermissionProfile = "open" | "confirm" | "locked";
 export type OperationRisk = "none" | "low" | "medium" | "high";
 export type OperationEffect =
   | "read"
+  | "download_file"
   | "send_message"
   | "publish_content"
   | "account_state"
@@ -42,6 +43,9 @@ export interface OperationPolicyInput {
   base?: string;
   browser?: boolean;
   args?: Array<{ name: string; required?: boolean }>;
+  capabilities?: string[];
+  executables?: string[];
+  minimumCapability?: string;
   profile?: string;
   approved?: boolean;
   approvalSource?: "none" | "invocation" | "env" | "memory";
@@ -243,6 +247,23 @@ function hasContentArg(args: OperationPolicyInput["args"] = []): boolean {
   return args.some((arg) => CONTENT_ARG_NAMES.has(arg.name.toLowerCase()));
 }
 
+function commandCapabilities(input: OperationPolicyInput): Set<string> {
+  return new Set([
+    ...(input.capabilities ?? []),
+    ...(input.minimumCapability ? [input.minimumCapability] : []),
+  ]);
+}
+
+function hasCapability(
+  input: OperationPolicyInput,
+  predicate: (capability: string) => boolean,
+): boolean {
+  for (const capability of commandCapabilities(input)) {
+    if (predicate(capability)) return true;
+  }
+  return false;
+}
+
 function normalizedDescription(input: OperationPolicyInput): string {
   return (input.description ?? "").trim().toLowerCase();
 }
@@ -356,6 +377,18 @@ function looksRemoteResourceCommand(
   );
 }
 
+function looksDownloadFileCommand(
+  input: OperationPolicyInput,
+  tokens: Set<string>,
+): boolean {
+  const description = normalizedDescription(input);
+  return (
+    hasCapability(input, (capability) => capability === "http.download") ||
+    tokens.has("download") ||
+    /^download\b/.test(description)
+  );
+}
+
 function isTargetSurface(value: unknown): value is TargetSurface {
   return (
     value === "web" ||
@@ -405,6 +438,7 @@ export function inferOperationEffect(
 ): OperationEffect {
   const tokens = commandTokens(input.site, input.command);
 
+  if (looksDownloadFileCommand(input, tokens)) return "download_file";
   if (looksReadOnlyCommand(input)) return "read";
   if (hasAny(tokens, ACCOUNT_STATE_TOKENS)) return "account_state";
   if (looksMessageCommand(input, tokens)) return "send_message";
@@ -427,6 +461,8 @@ export function riskForEffect(effect: OperationEffect): OperationRisk {
   switch (effect) {
     case "read":
       return "low";
+    case "download_file":
+      return "medium";
     case "account_state":
     case "remote_transform":
     case "remote_resource":

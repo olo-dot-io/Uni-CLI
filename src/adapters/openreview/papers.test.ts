@@ -7,10 +7,13 @@ import {
   formatOpenReviewDate,
   mapOpenReviewNoteRow,
   mapReviewThreadRows,
+  openReviewPdfFilename,
   readContent,
   requireForumId,
+  requireOpenReviewMaxChars,
   requireOpenReviewLimit,
   requireOpenReviewOffset,
+  requireOpenReviewPageRange,
   requireProfileId,
 } from "./papers.js";
 
@@ -26,11 +29,25 @@ describe("openreview agent-facing paper commands", () => {
     expect(requireOpenReviewOffset(undefined)).toBe(0);
     expect(() => requireOpenReviewOffset("-1")).toThrow("non-negative");
     expect(requireForumId("5sRnsubyAK")).toBe("5sRnsubyAK");
+    expect(requireForumId("https://openreview.net/forum?id=5sRnsubyAK")).toBe(
+      "5sRnsubyAK",
+    );
     expect(() => requireForumId("https://openreview.net/forum?id=x")).toThrow(
       "not a valid",
     );
     expect(requireProfileId("~Yoshua_Bengio1")).toBe("~Yoshua_Bengio1");
     expect(() => requireProfileId("Yoshua_Bengio1")).toThrow("not valid");
+    expect(requireOpenReviewPageRange("2", "4")).toEqual({
+      firstPage: 2,
+      lastPage: 4,
+    });
+    expect(() => requireOpenReviewPageRange("4", "2")).toThrow("last-page");
+    expect(requireOpenReviewMaxChars(undefined)).toBe(40000);
+    expect(requireOpenReviewMaxChars("1000")).toBe(1000);
+    expect(() => requireOpenReviewMaxChars("999")).toThrow("max-chars");
+    expect(openReviewPdfFilename("abcDEF123", "A / Paper: Demo")).toBe(
+      "abcDEF123-A-Paper-Demo.pdf",
+    );
   });
 
   it("maps OpenReview content.value note fields", () => {
@@ -64,7 +81,14 @@ describe("openreview agent-facing paper commands", () => {
       abstract: "Long abstract",
       pdate: "2025-10-09",
       pdf: "https://openreview.net/pdf/abc.pdf",
+      pdf_url: "https://openreview.net/pdf/abc.pdf",
       url: "https://openreview.net/forum?id=5sRnsubyAK",
+      source_url: "https://openreview.net/forum?id=5sRnsubyAK",
+      landing_url: "https://openreview.net/forum?id=5sRnsubyAK",
+      source_adapter: "openreview",
+      openreview_id: "5sRnsubyAK",
+      date: "2025-10-09",
+      retrieved_at: expect.any(String),
     });
   });
 
@@ -129,9 +153,16 @@ describe("openreview agent-facing paper commands", () => {
       "DECISION",
     ]);
     expect(rows[1]).toMatchObject({
+      forum: "forum123",
+      note_id: "early",
       author: "Reviewer_abc",
+      invitation: "Venue/-/Official_Review",
+      created_at: "1970-01-01",
+      source_url: "https://openreview.net/forum?id=forum123&noteId=early",
       rating: "8: accept",
       confidence: "4: high",
+      text_chars: expect.any(Number),
+      text_truncated: true,
     });
     expect(String(rows[1].text)).toHaveLength(200);
     expect(String(rows[1].text).endsWith("...")).toBe(true);

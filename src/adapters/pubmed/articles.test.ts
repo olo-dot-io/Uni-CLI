@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  mapPmcFullTextRow,
+  mapPubMedArticleRecord,
   mapPubMedArticleRows,
   mapPubMedSummaryRows,
+  normalizePmcId,
   requirePmid,
   requirePubMedLimit,
+  requirePubMedMaxChars,
   requirePubMedText,
 } from "./articles.js";
 
@@ -13,9 +17,15 @@ describe("pubmed agent-facing commands", () => {
     expect(() => requirePubMedText("", "query")).toThrow("cannot be empty");
     expect(requirePmid("37780221")).toBe("37780221");
     expect(() => requirePmid("PMID:1")).toThrow("numeric PMID");
+    expect(normalizePmcId("8938715")).toBe("PMC8938715");
+    expect(normalizePmcId("PMC8938715")).toBe("PMC8938715");
+    expect(() => normalizePmcId("pmc:8938715")).toThrow("not valid");
     expect(requirePubMedLimit(undefined)).toBe(20);
     expect(requirePubMedLimit("100")).toBe(100);
     expect(() => requirePubMedLimit("0")).toThrow("pubmed limit must");
+    expect(requirePubMedMaxChars(undefined)).toBe(40000);
+    expect(requirePubMedMaxChars("1000")).toBe(1000);
+    expect(() => requirePubMedMaxChars("999")).toThrow("max-chars");
   });
 
   it("maps PubMed summary rows in PMID order", () => {
@@ -34,7 +44,10 @@ describe("pubmed agent-facing commands", () => {
             source: "Journal",
             pubdate: "2026 May",
             pubtype: ["Journal Article"],
-            articleids: [{ idtype: "doi", value: "10.1/example" }],
+            articleids: [
+              { idtype: "doi", value: "10.1/example" },
+              { idtype: "pmc", value: "PMC123456" },
+            ],
           },
           {
             uid: "1",
@@ -51,6 +64,7 @@ describe("pubmed agent-facing commands", () => {
     ).toMatchObject([
       {
         rank: 1,
+        id: "1",
         pmid: "1",
         title: "First",
         authors: "Hopper G",
@@ -59,9 +73,12 @@ describe("pubmed agent-facing commands", () => {
       },
       {
         rank: 2,
+        id: "2",
         pmid: "2",
         authors: "Ada, Grace, Linus, et al.",
         doi: "10.1/example",
+        pmc_id: "PMC123456",
+        source_adapter: "pubmed",
       },
     ]);
   });
@@ -77,12 +94,14 @@ describe("pubmed agent-facing commands", () => {
         <PubDate><Year>2026</Year></PubDate>
         <PublicationType>Journal Article</PublicationType>
         <Language>eng</Language>
+        <ArticleId IdType="pmc">PMC123456</ArticleId>
         <ArticleId IdType="doi">10.1/example</ArticleId>
       </PubmedArticle>
       `,
       "123",
     );
     expect(rows).toContainEqual({ field: "PMID", value: "123" });
+    expect(rows).toContainEqual({ field: "PMCID", value: "PMC123456" });
     expect(rows).toContainEqual({ field: "Title", value: "Test & Treat" });
     expect(rows).toContainEqual({ field: "DOI", value: "10.1/example" });
     expect(rows).toContainEqual({
@@ -92,5 +111,73 @@ describe("pubmed agent-facing commands", () => {
     expect(() => mapPubMedArticleRows("<root />", "123")).toThrow(
       "did not include a title",
     );
+  });
+
+  it("maps normalized PubMed article metadata rows", () => {
+    const row = mapPubMedArticleRecord(
+      `
+      <PubmedArticle>
+        <ArticleTitle>Normalized Article</ArticleTitle>
+        <Abstract><AbstractText>Abstract text</AbstractText></Abstract>
+        <Author><LastName>Ada</LastName><Initials>L</Initials></Author>
+        <Journal><Title>Journal</Title></Journal>
+        <PubDate><Year>2026</Year></PubDate>
+        <PublicationType>Journal Article</PublicationType>
+        <Language>eng</Language>
+        <ArticleId IdType="pmc">PMC123456</ArticleId>
+        <ArticleId IdType="doi">10.1/example</ArticleId>
+      </PubmedArticle>
+      `,
+      "123",
+    );
+
+    expect(row).toMatchObject({
+      id: "123",
+      pmid: "123",
+      title: "Normalized Article",
+      authors: ["Ada L"],
+      doi: "10.1/example",
+      pmc_id: "PMC123456",
+      source_adapter: "pubmed",
+      source_url: "https://pubmed.ncbi.nlm.nih.gov/123/",
+    });
+  });
+
+  it("maps PMC JATS XML into source-direct full text", () => {
+    const row = mapPmcFullTextRow(
+      `
+      <article>
+        <front>
+          <article-meta>
+            <article-id pub-id-type="pmcid">PMC123456</article-id>
+            <article-id pub-id-type="pmid">123</article-id>
+            <article-id pub-id-type="doi">10.1/example</article-id>
+            <title-group><article-title>Full Text Article</article-title></title-group>
+          </article-meta>
+        </front>
+        <abstract><p>Abstract paragraph.</p></abstract>
+        <body>
+          <sec><title>Introduction</title><p>First body paragraph.</p></sec>
+          <sec><title>Methods</title><p>Second body paragraph.</p></sec>
+        </body>
+      </article>
+      `,
+      "PMC123456",
+      1000,
+    );
+
+    expect(row).toMatchObject({
+      id: "123",
+      title: "Full Text Article",
+      pmid: "123",
+      pmc_id: "PMC123456",
+      doi: "10.1/example",
+      source_adapter: "pubmed",
+      source_url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC123456/",
+      text_truncated: false,
+    });
+    expect(row.text).toContain("## Abstract");
+    expect(row.text).toContain("## Introduction");
+    expect(row.text).toContain("First body paragraph.");
   });
 });

@@ -77,6 +77,7 @@ export const AdapterCommandV2Schema = z.object({
   wait: z.string().optional(),
   extract: z.string().optional(),
   execArgs: z.array(z.string()).optional(),
+  executables: z.array(z.string()).optional(),
   output: z.unknown().optional(),
   columns: z.array(z.string()).optional(),
   defaultFormat: z.enum(["table", "json", "yaml", "csv", "md"]).optional(),

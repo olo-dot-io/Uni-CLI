@@ -53,14 +53,18 @@ describe("dblp agent-facing publication commands", () => {
         1,
       ),
     ).toEqual({
+      id: "conf/nips/Paper24",
       rank: 1,
       key: "conf/nips/Paper24",
+      dblp_key: "conf/nips/Paper24",
       title: "A Paper",
       authors: "Jane Doe",
       venue: "NeurIPS",
       year: "2024",
       type: "conf",
       doi: "10.0000/test",
+      source_url: "https://doi.org/10.0000/test",
+      landing_url: "https://dblp.org/rec/conf/nips/Paper24.html",
       url: "https://doi.org/10.0000/test",
     });
   });
@@ -81,7 +85,9 @@ describe("dblp agent-facing publication commands", () => {
       </dblp>
     `;
     expect(mapRecordXml(xml)).toEqual({
+      id: "conf/nips/Paper24",
       key: "conf/nips/Paper24",
+      dblp_key: "conf/nips/Paper24",
       type: "conf",
       title: "A Paper",
       authors: "Jane Doe, Max & Co",
@@ -90,7 +96,10 @@ describe("dblp agent-facing publication commands", () => {
       pages: "1-10",
       doi: "10.0000/test",
       open_access_url: "https://openaccess.example/paper",
+      source_url: "https://openaccess.example/paper",
+      landing_url: "https://dblp.org/rec/conf/nips/Paper24.html",
       dblp_url: "https://dblp.org/rec/conf/nips/Paper24.html",
+      url: "https://openaccess.example/paper",
     });
     expect(
       splitAuthorRecords(

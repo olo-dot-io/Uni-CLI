@@ -108,12 +108,32 @@ const BOOST_WEATHER_INTENT = 30.0;
 const BOOST_SCHOLARLY_INTENT = 34.0;
 const BOOST_SCHOLARLY_SEARCH = 12.0;
 const BOOST_SCHOLARLY_PDF = 10.0;
+const BOOST_SCHOLARLY_AVAILABILITY_LOOP = 118.0;
+const BOOST_SCHOLARLY_EVIDENCE_LOOP = 112.0;
+const BOOST_SCHOLARLY_WORKFLOW_LOOP = 118.0;
+const BOOST_SCHOLARLY_SOURCE_AUDIT_LOOP = 124.0;
+const BOOST_SCHOLARLY_REPRODUCE_LOOP = 108.0;
+const BOOST_SCHOLARLY_COVERAGE_LOOP = 96.0;
+const BOOST_SCHOLARLY_REVIEW_LOOP = 82.0;
+const BOOST_SCHOLARLY_ARTIFACT_LOOP = 64.0;
+const BOOST_SCHOLARLY_RESOURCE_LOOP = 58.0;
 const BOOST_SCHOLARLY_VENUE_SOURCE = 38.0;
 const BOOST_COMPUTE_CONTEXT = 52.0;
 const BOOST_SOCIAL_USER_TIMELINE_INTENT = 18.0;
 const BOOST_MARXISTS_ARCHIVE_INTENT = 50.0;
 
 const SCHOLARLY_WORKFLOW_COMMANDS = new Set([
+  "scholar/availability",
+  "scholar/evidence",
+  "scholar/sources",
+  "scholar/workflow",
+  "scholar/reproduce",
+  "scholar/coverage",
+  "scholar/reviews",
+  "scholar/code",
+  "scholar/datasets",
+  "scholar/read",
+  "scholar/download",
   "pdf/read",
   "hf/paper",
   "hf/top",
@@ -654,6 +674,13 @@ function scholarlyIntentBoost(
     "citations",
     "reference",
     "references",
+    "review",
+    "reviews",
+    "peer",
+    "decision",
+    "rebuttal",
+    "metareview",
+    "meta-review",
     "doi",
     "journal",
     "conference",
@@ -664,6 +691,48 @@ function scholarlyIntentBoost(
     "methods",
     "results",
     "conclusion",
+    "code",
+    "repo",
+    "repository",
+    "source",
+    "github",
+    "dataset",
+    "datasets",
+    "data",
+    "model",
+    "models",
+    "space",
+    "spaces",
+    "artifact",
+    "artifacts",
+    "fulltext",
+    "coverage",
+    "matrix",
+    "gap",
+    "gaps",
+    "evidence",
+    "classify",
+    "classification",
+    "verify",
+    "verified",
+    "hallucination",
+    "hallucinated",
+    "safety",
+    "safe",
+    "trustworthy",
+    "provenance",
+    "readiness",
+    "status",
+    "reproduce",
+    "reproducibility",
+    "replicate",
+    "replication",
+    "install",
+    "installation",
+    "setup",
+    "environment",
+    "clone",
+    "run",
   ]);
   if (!scholarlyIntent) return 0;
 
@@ -694,6 +763,158 @@ function scholarlyIntentBoost(
     "trending",
   ]);
   if (
+    hasAny(terms, [
+      "availability",
+      "available",
+      "audit",
+      "readable",
+      "readiness",
+    ]) &&
+    doc.site === "scholar" &&
+    doc.command === "availability"
+  ) {
+    boost += BOOST_SCHOLARLY_AVAILABILITY_LOOP;
+  }
+
+  if (
+    hasAny(terms, [
+      "classify",
+      "classification",
+      "verify",
+      "verified",
+      "evidence",
+      "safety",
+      "safe",
+      "trustworthy",
+      "provenance",
+      "status",
+      "hallucination",
+      "hallucinated",
+    ]) &&
+    doc.site === "scholar" &&
+    doc.command === "evidence"
+  ) {
+    boost += BOOST_SCHOLARLY_EVIDENCE_LOOP;
+  }
+
+  if (
+    hasAny(terms, [
+      "workflow",
+      "runbook",
+      "closed",
+      "loop",
+      "pipeline",
+      "step",
+      "steps",
+      "agent",
+      "closed-loop",
+      "end-to-end",
+    ]) &&
+    doc.site === "scholar" &&
+    doc.command === "workflow"
+  ) {
+    boost += BOOST_SCHOLARLY_WORKFLOW_LOOP;
+  }
+
+  const sourceAuditIntent =
+    hasAny(terms, [
+      "source",
+      "sources",
+      "site",
+      "sites",
+      "provider",
+      "providers",
+      "per-source",
+      "source-audit",
+    ]) &&
+    hasAny(terms, ["audit", "compare", "comparison", "which", "matrix"]) &&
+    !hasAny(terms, ["coverage", "gap", "gaps"]);
+  if (
+    sourceAuditIntent &&
+    doc.site === "scholar" &&
+    doc.command === "sources"
+  ) {
+    boost += BOOST_SCHOLARLY_SOURCE_AUDIT_LOOP;
+  }
+  if (
+    !sourceAuditIntent &&
+    doc.site === "scholar" &&
+    doc.command === "sources" &&
+    hasAny(terms, [
+      "availability",
+      "available",
+      "readable",
+      "readiness",
+      "classify",
+      "classification",
+      "evidence",
+      "safety",
+      "reproduce",
+      "reproducibility",
+      "replicate",
+      "install",
+      "installation",
+      "read",
+      "download",
+    ])
+  ) {
+    boost -= 28.0;
+  }
+
+  if (
+    hasAny(terms, [
+      "reproduce",
+      "reproducibility",
+      "replicate",
+      "replication",
+      "install",
+      "installation",
+      "setup",
+      "environment",
+      "clone",
+      "run",
+    ]) &&
+    doc.site === "scholar" &&
+    doc.command === "reproduce"
+  ) {
+    boost += BOOST_SCHOLARLY_REPRODUCE_LOOP;
+  }
+
+  if (
+    hasAny(terms, [
+      "coverage",
+      "matrix",
+      "compare",
+      "comparison",
+      "gap",
+      "gaps",
+      "sites",
+      "sources",
+    ]) &&
+    doc.site === "scholar" &&
+    doc.command === "coverage"
+  ) {
+    boost += BOOST_SCHOLARLY_COVERAGE_LOOP;
+  }
+
+  if (
+    hasAny(terms, [
+      "review",
+      "reviews",
+      "peer",
+      "decision",
+      "rebuttal",
+      "metareview",
+      "meta-review",
+      "openreview",
+    ]) &&
+    doc.site === "scholar" &&
+    doc.command === "reviews"
+  ) {
+    boost += BOOST_SCHOLARLY_REVIEW_LOOP;
+  }
+
+  if (
     searchIntent &&
     ["search", "recent", "trending", "daily", "author", "venue"].includes(
       doc.command,
@@ -705,10 +926,64 @@ function scholarlyIntentBoost(
   const pdfIntent = hasAny(terms, ["pdf", "download", "save", "read"]);
   if (
     pdfIntent &&
+    doc.site === "scholar" &&
+    (doc.command === "read" || doc.command === "download")
+  ) {
+    boost += BOOST_SCHOLARLY_ARTIFACT_LOOP;
+    const wantsText = hasAny(terms, ["read", "text", "full", "fulltext"]);
+    if (wantsText && doc.command === "read") boost += 16.0;
+    if (terms.has("download") && doc.command === "download") boost += 16.0;
+  }
+  if (
+    pdfIntent &&
     ((doc.site === "arxiv" && doc.command === "download") ||
       (doc.site === "pdf" && doc.command === "read"))
   ) {
     boost += BOOST_SCHOLARLY_PDF;
+  }
+
+  const resourceIntent = hasAny(terms, [
+    "code",
+    "repo",
+    "repository",
+    "source",
+    "github",
+    "dataset",
+    "datasets",
+    "data",
+    "model",
+    "models",
+    "space",
+    "spaces",
+    "artifact",
+    "artifacts",
+  ]);
+  if (
+    resourceIntent &&
+    doc.site === "scholar" &&
+    (doc.command === "code" || doc.command === "datasets")
+  ) {
+    boost += BOOST_SCHOLARLY_RESOURCE_LOOP;
+    if (
+      hasAny(terms, ["code", "repo", "repository", "source", "github"]) &&
+      doc.command === "code"
+    ) {
+      boost += 16.0;
+    }
+    if (
+      hasAny(terms, [
+        "dataset",
+        "datasets",
+        "data",
+        "model",
+        "models",
+        "space",
+        "spaces",
+      ]) &&
+      doc.command === "datasets"
+    ) {
+      boost += 16.0;
+    }
   }
 
   return boost;
@@ -746,16 +1021,48 @@ function scholarlyProviderSourceBoost(
   terms: Set<string>,
 ): number {
   const doiIntent = terms.has("doi");
-  const pdfIntent = hasAny(terms, ["pdf", "download", "save", "read"]);
   const openAccessIntent =
     terms.has("open") || terms.has("access") || terms.has("oa");
 
   if (doiIntent && doc.site === "crossref") return 34.0;
-  if ((doiIntent || openAccessIntent || pdfIntent) && doc.site === "unpaywall")
-    return 34.0;
+  if ((doiIntent || openAccessIntent) && doc.site === "unpaywall") return 34.0;
   if (doiIntent && doc.site === "openalex") return 18.0;
+  if (
+    hasAny(terms, ["biorxiv", "biology", "preprint", "preprints"]) &&
+    doc.site === "biorxiv"
+  )
+    return 24.0;
+  if (
+    hasAny(terms, [
+      "medrxiv",
+      "medical",
+      "clinical",
+      "preprint",
+      "preprints",
+    ]) &&
+    doc.site === "medrxiv"
+  )
+    return 24.0;
   if (terms.has("citation") && doc.site === "semantic-scholar") return 20.0;
   if (terms.has("citations") && doc.site === "semantic-scholar") return 20.0;
+  if (
+    hasAny(terms, [
+      "code",
+      "repo",
+      "repository",
+      "source",
+      "github",
+      "dataset",
+      "datasets",
+      "model",
+      "models",
+      "space",
+      "spaces",
+    ]) &&
+    (doc.site === "hf" || doc.site === "huggingface-papers")
+  ) {
+    return 24.0;
+  }
   return 0;
 }
 

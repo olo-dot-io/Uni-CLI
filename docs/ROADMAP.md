@@ -1,6 +1,6 @@
 # Uni-CLI Roadmap
 
-> Current: v0.225.2 — Apollo · Gordon. <!-- STATS:site_count -->317<!-- /STATS --> sites, <!-- STATS:command_count -->1772<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps.
+> Current: v0.225.2 — Apollo · Gordon. <!-- STATS:site_count -->320<!-- /STATS --> sites, <!-- STATS:command_count -->1798<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps.
 
 This file tracks current engineering direction for the agent control plane for
 real software: a universal agent-to-computer control platform. Historical

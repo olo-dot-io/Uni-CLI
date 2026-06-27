@@ -168,6 +168,7 @@ interface YamlAdapter {
   paginated?: boolean;
   // Desktop
   execArgs?: string[];
+  executables?: string[];
   // Web
   method?: string;
   path?: string;
@@ -557,6 +558,12 @@ export function loadAdaptersFromDir(dir: string): number {
           wait: parsed.wait,
           extract: parsed.extract,
           execArgs: parsed.execArgs,
+          executables: Array.isArray(parsed.executables)
+            ? parsed.executables.filter(
+                (executable): executable is string =>
+                  typeof executable === "string",
+              )
+            : undefined,
           quarantine: parsed.quarantine === true ? true : undefined,
           quarantineReason: parsed.quarantineReason,
           minimum_capability: parsed.minimum_capability,

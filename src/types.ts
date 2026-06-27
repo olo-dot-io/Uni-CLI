@@ -147,6 +147,13 @@ export interface AdapterCommand {
   capabilities?: string[];
 
   /**
+   * Local executable names the command may invoke when it declares a
+   * subprocess capability. This makes approval scopes and agent-facing command
+   * contracts name the actual binary instead of falling back to the site name.
+   */
+  executables?: string[];
+
+  /**
    * When true, the command accepts `--cursor <next_cursor>` for pagination
    * and surfaces `meta.pagination.next_cursor` in its envelope. The kernel
    * uses this flag to add a pagination hint to the success `next_actions`.

@@ -292,6 +292,9 @@ export async function authorizeKernelInvocation(
       base: inv.command.base ?? inv.adapter.base,
       browser: inv.adapter.browser === true || inv.command.browser === true,
       args: inv.command.adapterArgs,
+      capabilities: inv.command.capabilities,
+      executables: inv.command.executables,
+      minimumCapability: inv.command.minimum_capability,
       profile: inv.permissionProfile,
       approved: inv.approved,
     });

@@ -193,6 +193,8 @@ const CATEGORIES = {
     "openreview",
     "dblp",
     "pubmed",
+    "biorxiv",
+    "medrxiv",
     "acl-anthology",
     "pmlr",
     "cvf",
@@ -202,6 +204,7 @@ const CATEGORIES = {
     "google-scholar",
     "baidu-scholar",
     "huggingface-papers",
+    "scholar-artifacts",
     "paperreview",
     "zotero",
   ],
@@ -383,18 +386,33 @@ if (existsSync(ADAPTERS_DIR)) {
             args: serializeArgs(parsed.args),
             columns: serializeColumns(parsed.columns),
             defaultFormat: parsed.defaultFormat,
+            capabilities: Array.isArray(parsed.capabilities)
+              ? parsed.capabilities.filter(
+                  (capability) => typeof capability === "string",
+                )
+              : undefined,
+            executables: Array.isArray(parsed.executables)
+              ? parsed.executables.filter(
+                  (executable) => typeof executable === "string",
+                )
+              : undefined,
+            minimum_capability: parsed.minimum_capability,
             pipeline_steps: Array.isArray(parsed.pipeline)
               ? parsed.pipeline.length
               : 0,
             adapter_path: `src/adapters/${site}/${file}`,
+            target_surface: parsed.target_surface,
           });
         } catch {
           // Skip malformed YAML
         }
       } else if (ext === ".ts" && !SKIP_FILES.has(cmdName)) {
         try {
-          const source = readFileSync(join(siteDir, file), "utf-8");
-          for (const reg of extractTsRegistrations(source, site, cmdName)) {
+          const adapterPath = join(siteDir, file);
+          const source = readFileSync(adapterPath, "utf-8");
+          for (const reg of extractTsRegistrations(source, site, cmdName, {
+            sourcePath: adapterPath,
+          })) {
             if (reg.site === site) {
               commands.push(...reg.commands);
             } else {

@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { extractTsRegistrations } from "../../scripts/manifest-ts-scan.js";
 
@@ -89,6 +92,123 @@ describe("manifest TS scanner", () => {
         description: "List Semantic Scholar paper citations",
       }),
     );
+  });
+
+  it("keeps TypeScript command capability metadata in generated manifests", () => {
+    const source = `
+      import { cli, Strategy } from "../../src/registry.js";
+
+      cli({
+        site: "openreview",
+        name: "read",
+        description: "Download and extract text from an OpenReview paper PDF",
+        domain: "openreview.net",
+        strategy: Strategy.PUBLIC,
+        capabilities: ["http.fetch", "http.download", "subprocess.exec", "scholar.fulltext"],
+        executables: ["pdftotext"],
+        minimum_capability: "subprocess.exec",
+        args: [{ name: "id", type: "str" as const, required: true, positional: true }],
+        columns: ["id", "text"],
+        func: async () => [],
+      });
+    `;
+
+    const registrations = extractTsRegistrations(
+      source,
+      "openreview",
+      "papers",
+    );
+    const command = registrations
+      .filter((registration) => registration.site === "openreview")
+      .flatMap((registration) => registration.commands)
+      .find((candidate) => candidate.name === "read");
+
+    expect(command).toEqual(
+      expect.objectContaining({
+        capabilities: [
+          "http.fetch",
+          "http.download",
+          "subprocess.exec",
+          "scholar.fulltext",
+        ],
+        executables: ["pdftotext"],
+        minimum_capability: "subprocess.exec",
+      }),
+    );
+  });
+
+  it("resolves imported TS array constants and spread elements for command schemas", () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-manifest-scan-"));
+    try {
+      const sharedPath = join(dir, "shared.ts");
+      const entryPath = join(dir, "entry.ts");
+      writeFileSync(
+        sharedPath,
+        `
+        export const BASE_COLUMNS = ["rank", "title"];
+        export const SEARCH_COLUMNS = [...BASE_COLUMNS, "url"];
+        export const BASE_ARGS = [
+          { name: "query", type: "str" as const, required: true, positional: true },
+        ];
+        export const SEARCH_ARGS = [
+          ...BASE_ARGS,
+          { name: "limit", type: "int" as const, default: 20 },
+        ];
+        export const SEARCH_CAPABILITIES = ["http.fetch", "scholar.search"] as const;
+      `,
+      );
+      writeFileSync(
+        entryPath,
+        `
+        import { cli, Strategy } from "../../src/registry.js";
+        import {
+          SEARCH_ARGS,
+          SEARCH_CAPABILITIES,
+          SEARCH_COLUMNS,
+        } from "./shared.js";
+
+        cli({
+          site: "example-scholar",
+          name: "search",
+          description: "Search an example scholarly source",
+          domain: "example.test",
+          strategy: Strategy.PUBLIC,
+          args: SEARCH_ARGS,
+          columns: SEARCH_COLUMNS,
+          capabilities: SEARCH_CAPABILITIES,
+          func: async () => [],
+        });
+      `,
+      );
+
+      const registrations = extractTsRegistrations(
+        readFileSync(entryPath, "utf-8"),
+        "example-scholar",
+        "entry",
+        { sourcePath: entryPath },
+      );
+      const command = registrations
+        .filter((registration) => registration.site === "example-scholar")
+        .flatMap((registration) => registration.commands)
+        .find((candidate) => candidate.name === "search");
+
+      expect(command).toEqual(
+        expect.objectContaining({
+          args: [
+            expect.objectContaining({
+              name: "query",
+              required: true,
+              positional: true,
+            }),
+            expect.objectContaining({ name: "limit", default: 20 }),
+          ],
+          columns: ["rank", "title", "url"],
+          capabilities: ["http.fetch", "scholar.search"],
+        }),
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("emits argument schemas for generated Electron desktop commands", () => {

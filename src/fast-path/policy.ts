@@ -75,6 +75,9 @@ export function evaluateManifestOperationPolicy(input: {
       base: input.command.base,
       browser: input.command.browser === true,
       args: input.command.args,
+      capabilities: input.command.capabilities,
+      executables: input.command.executables,
+      minimumCapability: input.command.minimum_capability,
       profile: input.parsed.permissionProfile,
       approved: input.parsed.yes,
     };

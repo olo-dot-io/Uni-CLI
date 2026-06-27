@@ -1,12 +1,12 @@
 /**
  * @owner       src::adapters::semantic-scholar::papers
- * @does        Registers Semantic Scholar Graph API paper search, detail, citations, references, and PDF discovery commands.
- * @needs       api.semanticscholar.org Graph v1, optional SEMANTIC_SCHOLAR_API_KEY, src/registry.ts
+ * @does        Registers Semantic Scholar Graph API paper search, detail, citations, references, and source PDF read commands.
+ * @needs       api.semanticscholar.org Graph v1, optional SEMANTIC_SCHOLAR_API_KEY, src/adapters/scholar-artifacts/pdf-read.ts, pdftotext
  * @feeds       src/commands/scholar.ts via scholar.* capability tags
- * @breaks      Graph API rate limits or response-shape drift surface as explicit adapter errors; no cached fallback is used.
- * @invariants  Paper references are normalized to Semantic Scholar's accepted DOI:/ARXIV:/paperId formats; output maps to ScholarlyWorkRecord.
- * @side-effects HTTPS egress to api.semanticscholar.org only
- * @perf        O(limit) JSON mapping per command
+ * @breaks      Graph API rate limits, response-shape drift, missing OA PDF URLs, or pdftotext failures surface as explicit adapter errors; no cached fallback is used.
+ * @invariants  Paper references are normalized to Semantic Scholar's accepted DOI:/ARXIV:/paperId formats; read requires openAccessPdf.url before text is claimed.
+ * @side-effects HTTPS egress to api.semanticscholar.org and source PDF hosts; read writes one PDF and executes pdftotext.
+ * @perf        O(limit) JSON mapping per command; O(PDF bytes + extracted page range) for read
  * @concurrency safe
  * @test        tests/unit/adapters/scholar-sources.test.ts
  * @stability   experimental
@@ -15,6 +15,7 @@
 
 import { cli, Strategy } from "../../registry.js";
 import type { ScholarlyWorkRecord } from "../../types/scholarly.js";
+import { readScholarPdf } from "../scholar-artifacts/pdf-read.js";
 
 const API = "https://api.semanticscholar.org/graph/v1";
 const FIELDS = [
@@ -149,6 +150,33 @@ export function mapSemanticScholarPaper(
   };
 }
 
+async function readSemanticScholarPaperPdf(
+  row: ScholarlyWorkRecord,
+  kwargs: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const pdfUrl = str(row.pdf_url);
+  if (!pdfUrl) {
+    throw new Error(`Semantic Scholar paper ${row.id} has no source PDF URL.`);
+  }
+  return readScholarPdf(
+    {
+      ...kwargs,
+      id: row.id,
+      title: row.title,
+      source_adapter: row.source_adapter,
+      source_url: row.source_url,
+      pdf_url: pdfUrl,
+    },
+    {
+      site: "semantic-scholar",
+      command: "read",
+      defaultOutput: "./semantic-scholar-downloads",
+      userAgent:
+        "unicli-semantic-scholar/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
+    },
+  );
+}
+
 function rows(
   papers: unknown,
   source = "semantic-scholar",
@@ -221,6 +249,70 @@ cli({
       `semantic-scholar paper ${ref}`,
     )) as S2Paper;
     return [mapSemanticScholarPaper(paper, "semantic-scholar")];
+  },
+});
+
+cli({
+  site: "semantic-scholar",
+  name: "read",
+  description:
+    "Download a Semantic Scholar open-access paper PDF and extract text",
+  domain: "api.semanticscholar.org",
+  strategy: Strategy.PUBLIC,
+  args: [
+    { name: "id", type: "str", required: true, positional: true },
+    {
+      name: "output",
+      type: "str",
+      default: "./semantic-scholar-downloads",
+      description: "Output directory for the downloaded PDF",
+      "x-unicli-kind": "path",
+    },
+    { name: "filename", type: "str", description: "Output PDF filename" },
+    { name: "first-page", type: "int", default: 1, description: "First page" },
+    { name: "last-page", type: "int", default: 20, description: "Last page" },
+    {
+      name: "max-chars",
+      type: "int",
+      default: 40000,
+      description: "Maximum extracted text characters",
+    },
+  ],
+  columns: [
+    "id",
+    "title",
+    "source_adapter",
+    "source_url",
+    "pdf_url",
+    "path",
+    "text_source",
+    "text",
+    "text_chars",
+    "text_truncated",
+  ],
+  capabilities: [
+    "http.fetch",
+    "http.download",
+    "subprocess.exec",
+    "scholar.fulltext",
+    "scholar.pdf",
+  ],
+  executables: ["pdftotext"],
+  minimum_capability: "subprocess.exec",
+  func: async (_page, kwargs) => {
+    const ref = requireSemanticScholarPaperRef(
+      kwargs.id ?? kwargs.ref ?? kwargs.doi ?? kwargs.arxiv_id,
+    );
+    const paper = (await fetchS2(
+      `/paper/${encodeURIComponent(ref)}?fields=${encodeURIComponent(FIELDS)}`,
+      `semantic-scholar paper ${ref}`,
+    )) as S2Paper;
+    return [
+      await readSemanticScholarPaperPdf(
+        mapSemanticScholarPaper(paper, "semantic-scholar"),
+        kwargs,
+      ),
+    ];
   },
 });
 

@@ -17,24 +17,58 @@ args:
 
 pipeline:
   - fetch:
-      url: https://huggingface.co/api/papers
+      url: https://huggingface.co/api/papers/search
       params:
-        search: "${{ args.query }}"
+        q: "${{ args.query }}"
         limit: "${{ args.limit }}"
 
   - map:
-      title: "${{ item.title || '' }}"
-      authors: "${{ item.authors ? item.authors.slice(0,3).map(a => a.name || a).join(', ') : '' }}"
-      published: "${{ item.publishedAt || '' }}"
-      upvotes: "${{ item.upvotes || 0 }}"
-      url: "${{ 'https://huggingface.co/papers/' + (item.id || '') }}"
+      id: "${{ (item.paper || item).id || '' }}"
+      title: "${{ (item.paper || item).title || item.title || '' }}"
+      authors: "${{ (item.paper || item).authors ? (item.paper || item).authors.slice(0,3).map(a => a.name || a).join(', ') : '' }}"
+      published: "${{ (item.paper || item).publishedAt || item.publishedAt || '' }}"
+      upvotes: "${{ (item.paper || item).upvotes || item.upvotes || 0 }}"
+      url: "${{ 'https://huggingface.co/papers/' + ((item.paper || item).id || '') }}"
+      source_url: "${{ (item.paper || item).id ? 'https://huggingface.co/papers/' + (item.paper || item).id : '' }}"
+      pdf_url: "${{ (item.paper || item).id ? 'https://arxiv.org/pdf/' + (item.paper || item).id : '' }}"
+      code_url: "${{ (item.paper || item).githubRepo || '' }}"
+      github_stars: "${{ (item.paper || item).githubStars || '' }}"
+      project_url: "${{ (item.paper || item).projectPage || '' }}"
+      dataset_url: "${{ (item.paper || item).linkedDatasets && (item.paper || item).linkedDatasets[0] ? 'https://huggingface.co/datasets/' + (item.paper || item).linkedDatasets[0].id : '' }}"
+      model_urls: "${{ (item.paper || item).linkedModels ? (item.paper || item).linkedModels.map(x => 'https://huggingface.co/' + x.id).join(', ') : '' }}"
+      dataset_urls: "${{ (item.paper || item).linkedDatasets ? (item.paper || item).linkedDatasets.map(x => 'https://huggingface.co/datasets/' + x.id).join(', ') : '' }}"
+      space_urls: "${{ (item.paper || item).linkedSpaces ? (item.paper || item).linkedSpaces.map(x => 'https://huggingface.co/spaces/' + x.id).join(', ') : '' }}"
+      num_models: "${{ (item.paper || item).numTotalModels !== null && (item.paper || item).numTotalModels !== undefined ? (item.paper || item).numTotalModels : '' }}"
+      num_datasets: "${{ (item.paper || item).numTotalDatasets !== null && (item.paper || item).numTotalDatasets !== undefined ? (item.paper || item).numTotalDatasets : '' }}"
+      num_spaces: "${{ (item.paper || item).numTotalSpaces !== null && (item.paper || item).numTotalSpaces !== undefined ? (item.paper || item).numTotalSpaces : '' }}"
 
   - limit: ${{ args.limit }}
 
-columns: [title, authors, upvotes, published, url]
+columns:
+  [
+    id,
+    title,
+    authors,
+    upvotes,
+    published,
+    url,
+    source_url,
+    pdf_url,
+    code_url,
+    github_stars,
+    project_url,
+    dataset_url,
+    model_urls,
+    dataset_urls,
+    space_urls,
+    num_models,
+    num_datasets,
+    num_spaces,
+  ]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["http.fetch", "scholar.search", "scholar.code"]
+capabilities:
+  ["http.fetch", "scholar.search", "scholar.code", "scholar.datasets"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

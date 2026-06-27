@@ -93,6 +93,20 @@ describe("adapter loader", () => {
     expect(queryArg!.positional).toBe(true);
   });
 
+  it("parses Hugging Face daily paper limit as an integer", () => {
+    loadAdaptersFromDir(ADAPTERS_DIR);
+
+    const adapters = getAllAdapters();
+    const hfPapers = adapters.find((a) => a.name === "huggingface-papers");
+    const dailyCmd = hfPapers?.commands["daily"];
+    const limitArg = dailyCmd?.adapterArgs?.find((a) => a.name === "limit");
+
+    expect(limitArg).toMatchObject({
+      type: "int",
+      default: 20,
+    });
+  });
+
   it("stamps YAML and TypeScript commands with repairable source paths", () => {
     loadAdaptersFromDir(ADAPTERS_DIR);
 

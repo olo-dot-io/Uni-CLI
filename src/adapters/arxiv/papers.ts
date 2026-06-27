@@ -1,15 +1,28 @@
 /**
  * @owner   src/adapters/arxiv/papers.ts
- * @does    Register agent-facing arXiv author and recent category commands.
- * @needs   export.arxiv.org Atom API, category validation, conservative XML parsing.
- * @feeds   surface coverage ledger, scholarly search workflow, arXiv category monitoring.
- * @breaks  arXiv Atom shape drift, weak category parsing, or silent empty feeds hide paper discovery failures.
+ * @does    Register agent-facing arXiv author, recent category, and PDF text-read commands.
+ * @needs   export.arxiv.org Atom API, arxiv.org PDF URLs, category/id validation, conservative XML parsing, pdftotext.
+ * @feeds   surface coverage ledger, scholarly search/read workflow, arXiv category monitoring.
+ * @breaks  arXiv Atom/PDF shape drift, weak category/id parsing, denied PDF downloads, missing pdftotext, or silent empty feeds hide paper discovery/read failures.
+ * @invariants  arXiv ids are normalized before URL construction; read returns PDF-derived text only and labels `text_source=pdf`.
+ * @side-effects HTTPS egress to export.arxiv.org and arxiv.org; read writes PDFs under the requested output directory and executes pdftotext.
+ * @perf        O(limit) for Atom discovery; O(PDF bytes + extracted pages) for read.
+ * @concurrency safe - per-command local state only
+ * @test        src/adapters/arxiv/papers.test.ts, tests/unit/commands/scholar.test.ts
+ * @stability   experimental
+ * @since       0.225.2
  */
 
+import { execFile } from "node:child_process";
+import { join, resolve } from "node:path";
+import { promisify } from "node:util";
+
 import { cli, Strategy } from "../../registry.js";
+import { httpDownload, sanitizeFilename } from "../../engine/download.js";
 
 const ARXIV_BASE = "https://export.arxiv.org/api/query";
 const CATEGORY_RE = /^[a-z]+(?:-[a-z]+)*(?:\.[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)?$/;
+const execFileAsync = promisify(execFile);
 
 interface ArxivEntry {
   id: string;
@@ -42,6 +55,20 @@ export function requireArxivAuthor(value: unknown): string {
   const author = String(value ?? "").trim();
   if (!author) throw new Error("arxiv author cannot be empty.");
   return author;
+}
+
+export function normalizeArxivId(value: unknown): string {
+  const id = String(value ?? "")
+    .trim()
+    .replace(/^arxiv:/i, "")
+    .replace(/^https?:\/\/(?:www\.)?arxiv\.org\/(?:abs|pdf)\//i, "")
+    .replace(/\.pdf$/i, "");
+  if (
+    !/^(?:\d{4}\.\d{4,5}|[a-z-]+(?:\.[A-Z]{2})?\/\d{7})(?:v\d+)?$/i.test(id)
+  ) {
+    throw new Error(`Invalid arXiv id "${String(value ?? "")}".`);
+  }
+  return id;
 }
 
 export function requireArxivCategory(value: unknown): string {
@@ -157,6 +184,160 @@ function compactRows(entries: ArxivEntry[]): Array<Record<string, unknown>> {
   }));
 }
 
+function arxivPdfUrl(id: string): string {
+  return `https://arxiv.org/pdf/${id}`;
+}
+
+function arxivAbsUrl(id: string): string {
+  return `https://arxiv.org/abs/${id.replace(/v\d+$/i, "")}`;
+}
+
+export function arxivArtifactFilename(input: {
+  id: string;
+  title?: unknown;
+}): string {
+  const title = String(input.title ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 96);
+  return sanitizeFilename(`${input.id}${title ? `-${title}` : ""}.pdf`);
+}
+
+export function requireArxivPageRange(
+  firstPage: unknown,
+  lastPage: unknown,
+): { firstPage: number; lastPage: number } {
+  const first = Number(firstPage ?? 1);
+  const last = Number(lastPage ?? 20);
+  if (!Number.isInteger(first) || first < 1) {
+    throw new Error("arxiv first-page must be an integer >= 1.");
+  }
+  if (!Number.isInteger(last) || last < first) {
+    throw new Error("arxiv last-page must be an integer >= first-page.");
+  }
+  return { firstPage: first, lastPage: last };
+}
+
+export function requireArxivMaxChars(
+  value: unknown,
+  fallback = 40_000,
+): number {
+  if (value === undefined || value === null || value === "") return fallback;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1_000 || n > 1_000_000) {
+    throw new Error(
+      `arxiv max-chars must be an integer in [1000, 1000000]. Got: ${String(value)}`,
+    );
+  }
+  return n;
+}
+
+function truncateText(
+  text: string,
+  maxChars: number,
+): {
+  text: string;
+  truncated: boolean;
+  originalChars: number;
+} {
+  if (text.length <= maxChars) {
+    return { text, truncated: false, originalChars: text.length };
+  }
+  return {
+    text: `${text.slice(0, maxChars).trimEnd()}\n\n[truncated at ${maxChars} characters]`,
+    truncated: true,
+    originalChars: text.length,
+  };
+}
+
+async function fetchArxivEntryById(id: string): Promise<ArxivEntry> {
+  const params = new URLSearchParams({ id_list: id });
+  const rows = parseArxivEntries(await fetchArxiv(params));
+  const row = rows[0];
+  if (!row) throw new Error(`No arXiv paper found for ${id}.`);
+  return row;
+}
+
+export async function readArxivPaper(
+  kwargs: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const id = normalizeArxivId(kwargs.id ?? kwargs.arxiv_id ?? kwargs.ref);
+  const entry = await fetchArxivEntryById(id);
+  const canonicalId = entry.id || id.replace(/v\d+$/i, "");
+  const pdfUrl = arxivPdfUrl(id);
+  const outputDir = resolve(String(kwargs.output ?? "./arxiv-downloads"));
+  const path = join(
+    outputDir,
+    arxivArtifactFilename({ id, title: entry.title }),
+  );
+  const download = await httpDownload(pdfUrl, path, {
+    Accept: "application/pdf,*/*",
+    Referer: arxivAbsUrl(canonicalId),
+    "User-Agent": "unicli-arxiv/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
+  });
+  if (download.status === "failed" || !download.path) {
+    throw new Error(
+      `arXiv PDF download failed for ${id}: ${download.error ?? "no path"}.`,
+    );
+  }
+
+  const { firstPage, lastPage } = requireArxivPageRange(
+    kwargs["first-page"] ?? kwargs.firstPage,
+    kwargs["last-page"] ?? kwargs.lastPage,
+  );
+  const maxChars = requireArxivMaxChars(
+    kwargs["max-chars"] ?? kwargs.maxChars,
+    40_000,
+  );
+  const { stdout } = await execFileAsync(
+    "pdftotext",
+    [
+      "-layout",
+      "-enc",
+      "UTF-8",
+      "-f",
+      String(firstPage),
+      "-l",
+      String(lastPage),
+      download.path,
+      "-",
+    ],
+    { timeout: 60_000, maxBuffer: 10 * 1024 * 1024 },
+  );
+  const text = stdout.trim();
+  if (!text) {
+    throw new Error(
+      `pdftotext returned no text for arXiv ${id} pages ${firstPage}-${lastPage}.`,
+    );
+  }
+  const truncated = truncateText(text, maxChars);
+  return {
+    id: canonicalId,
+    title: entry.title,
+    authors: entry.authors
+      .split(/\s*,\s*/)
+      .map((author) => author.trim())
+      .filter(Boolean),
+    year: Number(entry.published.slice(0, 4)) || undefined,
+    date: entry.published,
+    venue: "arXiv",
+    type: "preprint",
+    abstract: entry.abstract,
+    arxiv_id: canonicalId,
+    source_adapter: "arxiv",
+    source_url: arxivAbsUrl(canonicalId),
+    pdf_url: pdfUrl,
+    path: download.path,
+    text: truncated.text,
+    text_chars: truncated.originalChars,
+    text_truncated: truncated.truncated,
+    text_source: "pdf",
+    retrieved_at: new Date().toISOString(),
+  };
+}
+
 cli({
   site: "arxiv",
   name: "author",
@@ -190,6 +371,72 @@ cli({
     }
     return rows;
   },
+});
+
+cli({
+  site: "arxiv",
+  name: "read",
+  description: "Download an arXiv PDF by ID and extract text with pdftotext",
+  domain: "arxiv.org",
+  strategy: Strategy.PUBLIC,
+  args: [
+    {
+      name: "id",
+      type: "str",
+      required: true,
+      positional: true,
+      description: "arXiv paper ID (e.g. 1706.03762)",
+      "x-unicli-kind": "id",
+      "x-unicli-accepts": ["url"],
+    },
+    {
+      name: "output",
+      type: "str",
+      default: "./arxiv-downloads",
+      description: "Output directory",
+      "x-unicli-kind": "path",
+    },
+    {
+      name: "first-page",
+      type: "int",
+      default: 1,
+      description: "First PDF page to extract",
+    },
+    {
+      name: "last-page",
+      type: "int",
+      default: 20,
+      description: "Last PDF page to extract",
+    },
+    {
+      name: "max-chars",
+      type: "int",
+      default: 40000,
+      description: "Maximum extracted text characters",
+    },
+  ],
+  columns: [
+    "id",
+    "title",
+    "source_adapter",
+    "source_url",
+    "pdf_url",
+    "path",
+    "text_source",
+    "text",
+    "text_chars",
+    "text_truncated",
+  ],
+  capabilities: [
+    "http.fetch",
+    "http.download",
+    "subprocess.exec",
+    "scholar.fulltext",
+    "scholar.pdf",
+  ],
+  executables: ["pdftotext"],
+  minimum_capability: "subprocess.exec",
+  func: async (_page, kwargs) => [await readArxivPaper(kwargs)],
 });
 
 cli({

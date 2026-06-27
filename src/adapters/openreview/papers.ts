@@ -1,17 +1,23 @@
 /**
  * @owner   src/adapters/openreview/papers.ts
- * @does    Register agent-facing OpenReview search, paper, author, venue, and reviews commands.
- * @needs   Public api2.openreview.net notes API, forum/profile id validation, note content normalization.
- * @feeds   surface coverage ledger, scholarly review workflow, agent-readable paper/review rows.
- * @breaks  OpenReview API envelope drift, content.value parsing, or silent empty threads hide paper review state.
+ * @does    Register agent-facing OpenReview search, paper, author, venue, reviews, PDF download, and PDF text extraction commands.
+ * @needs   Public api2.openreview.net notes API, openreview.net PDF URLs, pdftotext for read, forum/profile id validation, note content normalization.
+ * @feeds   surface coverage ledger, scholarly review workflow, agent-readable paper/review rows, local PDF/fulltext workflow.
+ * @breaks  OpenReview API envelope drift, content.value parsing, PDF download failure, pdftotext absence, or silent empty threads hide paper review state.
  */
 
+import { execFile } from "node:child_process";
+import { join, resolve } from "node:path";
+import { promisify } from "node:util";
+
+import { httpDownload, sanitizeFilename } from "../../engine/download.js";
 import { cli, Strategy } from "../../registry.js";
 
 const OPENREVIEW_API = "https://api2.openreview.net";
 const OPENREVIEW_BASE = "https://openreview.net";
 const FORUM_ID_RE = /^[A-Za-z0-9_-]{6,20}$/;
 const PROFILE_ID_RE = /^~(?=.*\p{L})[\p{L}\p{M}0-9._-]+\d+$/u;
+const execFileAsync = promisify(execFile);
 const REVIEW_SECTION_FIELDS = [
   ["summary", "Summary"],
   ["strengths", "Strengths"],
@@ -89,7 +95,9 @@ export function requireOpenReviewOffset(value: unknown, fallback = 0): number {
 }
 
 export function requireForumId(value: unknown, label = "id"): string {
-  const id = String(value ?? "").trim();
+  const raw = String(value ?? "").trim();
+  const id =
+    raw.match(/^https?:\/\/openreview\.net\/forum\?id=([^&#]+)/i)?.[1] ?? raw;
   if (!id) throw new Error(`openreview ${label} is required.`);
   if (!FORUM_ID_RE.test(id)) {
     throw new Error(
@@ -97,6 +105,44 @@ export function requireForumId(value: unknown, label = "id"): string {
     );
   }
   return id;
+}
+
+export function requireOpenReviewPageRange(
+  firstPage: unknown,
+  lastPage: unknown,
+): { firstPage: number; lastPage: number } {
+  const first = coerceOpenReviewInt(firstPage ?? 1);
+  const last = coerceOpenReviewInt(lastPage ?? 20);
+  if (!Number.isInteger(first) || first < 1) {
+    throw new Error("openreview first-page must be an integer >= 1.");
+  }
+  if (!Number.isInteger(last) || last < first) {
+    throw new Error("openreview last-page must be an integer >= first-page.");
+  }
+  return { firstPage: first, lastPage: last };
+}
+
+export function requireOpenReviewMaxChars(
+  value: unknown,
+  fallback = 40_000,
+): number {
+  const raw =
+    value === undefined || value === null || value === "" ? fallback : value;
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isInteger(n) || n < 1_000 || n > 1_000_000) {
+    throw new Error(
+      `openreview max-chars must be an integer in [1000, 1000000]. Got: ${String(value)}`,
+    );
+  }
+  return n;
+}
+
+export function openReviewPdfFilename(id: string, title: unknown): string {
+  const slug = stringField(title)
+    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return sanitizeFilename(`${id}${slug ? `-${slug}` : ""}.pdf`);
 }
 
 export function requireProfileId(value: unknown): string {
@@ -154,8 +200,12 @@ export function mapOpenReviewNoteRow(
   const keywordList = Array.isArray(keywords)
     ? keywords.map(stringField).filter(Boolean).join(", ")
     : stringField(keywords);
+  const pdate = formatOpenReviewDate(note.pdate ?? note.cdate);
+  const pdfUrl = absoluteOpenReviewPdf(readContent(content, "pdf"));
+  const sourceUrl = id ? `${OPENREVIEW_BASE}/forum?id=${id}` : "";
   return {
     id,
+    openreview_id: id,
     title: stringField(readContent(content, "title")).replace(/\s+/g, " "),
     authors: authorList,
     keywords: keywordList,
@@ -166,9 +216,15 @@ export function mapOpenReviewNoteRow(
       /\s+/g,
       " ",
     ),
-    pdate: formatOpenReviewDate(note.pdate ?? note.cdate),
-    pdf: absoluteOpenReviewPdf(readContent(content, "pdf")),
-    url: id ? `${OPENREVIEW_BASE}/forum?id=${id}` : "",
+    pdate,
+    date: pdate,
+    pdf: pdfUrl,
+    pdf_url: pdfUrl,
+    url: sourceUrl,
+    source_url: sourceUrl,
+    landing_url: sourceUrl,
+    source_adapter: "openreview",
+    retrieved_at: new Date().toISOString(),
   };
 }
 
@@ -179,6 +235,11 @@ function invitationTail(note: OpenReviewNote): string {
     if (match) return match[1];
   }
   return "";
+}
+
+function lastInvitation(note: OpenReviewNote): string {
+  const invitations = Array.isArray(note.invitations) ? note.invitations : [];
+  return invitations.length > 0 ? String(invitations.at(-1)) : "";
 }
 
 export function classifyReviewNote(
@@ -216,8 +277,24 @@ function joinReviewSections(content: OpenReviewContent | undefined): string {
   return parts.join("\n\n");
 }
 
-function truncate(text: string, maxLength: number): string {
-  return text.length <= maxLength ? text : `${text.slice(0, maxLength - 3)}...`;
+function truncateText(
+  text: string,
+  maxLength: number,
+): { text: string; truncated: boolean; originalChars: number } {
+  const originalChars = text.length;
+  if (originalChars <= maxLength) {
+    return { text, truncated: false, originalChars };
+  }
+  return {
+    text: `${text.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`,
+    truncated: true,
+    originalChars,
+  };
+}
+
+function openReviewNoteUrl(forum: string, noteId: string): string {
+  const forumUrl = `${OPENREVIEW_BASE}/forum?id=${forum}`;
+  return noteId && noteId !== forum ? `${forumUrl}&noteId=${noteId}` : forumUrl;
 }
 
 export function mapReviewThreadRows(
@@ -231,17 +308,26 @@ export function mapReviewThreadRows(
     .sort((a, b) => (numberField(a.cdate) ?? 0) - (numberField(b.cdate) ?? 0));
   return [root, ...sorted].map((note) => {
     const isRoot = note.id === forum;
+    const noteId = stringField(note.id);
     const rating = readContent(note.content, "rating");
     const confidence = readContent(note.content, "confidence");
+    const text = truncateText(joinReviewSections(note.content), maxLength);
     return {
+      forum,
+      note_id: noteId,
       type: classifyReviewNote(note, isRoot),
       author: authorFromSignatures(note.signatures),
+      invitation: lastInvitation(note),
+      created_at: formatOpenReviewDate(note.pdate ?? note.cdate),
+      source_url: openReviewNoteUrl(forum, noteId),
       rating: rating === undefined || rating === null ? "" : String(rating),
       confidence:
         confidence === undefined || confidence === null
           ? ""
           : String(confidence),
-      text: truncate(joinReviewSections(note.content), maxLength),
+      text: text.text,
+      text_chars: text.originalChars,
+      text_truncated: text.truncated,
     };
   });
 }
@@ -286,6 +372,88 @@ function notesFromEnvelope(json: NotesEnvelope): OpenReviewNote[] {
   return Array.isArray(json.notes) ? json.notes : [];
 }
 
+async function fetchOpenReviewPaperRow(
+  id: string,
+): Promise<Record<string, unknown>> {
+  const notes = notesFromEnvelope(
+    await fetchOpenReview(
+      `/notes?id=${encodeURIComponent(id)}`,
+      `openreview paper ${id}`,
+    ),
+  );
+  if (notes.length === 0)
+    throw new Error(`No OpenReview paper found with id "${id}".`);
+  return mapOpenReviewNoteRow(notes[0]);
+}
+
+function hasPaperContent(note: OpenReviewNote): boolean {
+  const content = note.content ?? {};
+  return (
+    stringField(readContent(content, "title")).length > 0 ||
+    stringField(readContent(content, "abstract")).length > 0 ||
+    stringField(readContent(content, "pdf")).length > 0
+  );
+}
+
+async function paperRowsFromSearchNotes(
+  notes: OpenReviewNote[],
+  limit: number,
+): Promise<Array<Record<string, unknown>>> {
+  const rows: Array<Record<string, unknown>> = [];
+  const seen = new Set<string>();
+  let firstHydrationError: Error | undefined;
+
+  for (const note of notes) {
+    const rawId = hasPaperContent(note) ? note.id : note.forum;
+    const idText = stringField(rawId);
+    if (!idText || seen.has(idText) || !FORUM_ID_RE.test(idText)) continue;
+    seen.add(idText);
+    try {
+      const row = hasPaperContent(note)
+        ? mapOpenReviewNoteRow(note)
+        : await fetchOpenReviewPaperRow(idText);
+      if (stringField(row.title) || stringField(row.pdf_url)) rows.push(row);
+    } catch (error) {
+      if (!firstHydrationError) {
+        firstHydrationError =
+          error instanceof Error ? error : new Error(String(error));
+      }
+    }
+    if (rows.length >= limit) break;
+  }
+
+  if (rows.length === 0 && firstHydrationError) throw firstHydrationError;
+  return rows;
+}
+
+async function downloadOpenReviewPdf(
+  row: Record<string, unknown>,
+  output: unknown,
+): Promise<Record<string, unknown>> {
+  const id = requireForumId(row.id);
+  const pdfUrl = stringField(row.pdf_url);
+  if (!pdfUrl) {
+    throw new Error(`OpenReview paper "${id}" does not expose a PDF URL.`);
+  }
+  const outputDir = resolve(String(output ?? "./openreview-downloads"));
+  const path = join(outputDir, openReviewPdfFilename(id, row.title));
+  const download = await httpDownload(pdfUrl, path, {
+    "User-Agent":
+      "unicli-openreview/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
+    Accept: "application/pdf,*/*",
+  });
+  if (download.status === "failed") {
+    throw new Error(
+      `OpenReview PDF download failed for ${id}: ${download.error ?? "unknown error"}.`,
+    );
+  }
+  return {
+    ...row,
+    path: download.path,
+    _download: download,
+  };
+}
+
 cli({
   site: "openreview",
   name: "search",
@@ -302,16 +470,26 @@ cli({
     },
     { name: "limit", type: "int", default: 25, description: "Max results" },
   ],
-  columns: ["rank", "id", "title", "authors", "venue", "pdate", "url"],
+  columns: [
+    "rank",
+    "id",
+    "title",
+    "authors",
+    "venue",
+    "pdate",
+    "pdf_url",
+    "source_url",
+  ],
   capabilities: ["http.fetch", "scholar.search", "scholar.review"],
   func: async (_page, kwargs) => {
     const query = String(kwargs.query ?? "").trim();
     if (!query) throw new Error("openreview search query cannot be empty.");
     const limit = requireOpenReviewLimit(kwargs.limit, 25, 50);
+    const searchLimit = Math.min(limit * 5, 50);
     const params = new URLSearchParams({
       term: query,
       type: "terms",
-      limit: String(limit),
+      limit: String(searchLimit),
     });
     const notes = notesFromEnvelope(
       await fetchOpenReview(
@@ -321,8 +499,11 @@ cli({
     );
     if (notes.length === 0)
       throw new Error(`No OpenReview papers found for "${query}".`);
-    return notes.slice(0, limit).map((note, index) => {
-      const row = mapOpenReviewNoteRow(note);
+    const paperRows = await paperRowsFromSearchNotes(notes, limit);
+    if (paperRows.length === 0) {
+      throw new Error(`No OpenReview paper notes found for "${query}".`);
+    }
+    return paperRows.map((row, index) => {
       return {
         rank: index + 1,
         id: row.id,
@@ -330,7 +511,10 @@ cli({
         authors: row.authors,
         venue: row.venue,
         pdate: row.pdate,
-        url: row.url,
+        pdf_url: row.pdf_url,
+        source_url: row.source_url,
+        source_adapter: row.source_adapter,
+        openreview_id: row.openreview_id,
       };
     });
   },
@@ -362,23 +546,18 @@ cli({
     "abstract",
     "pdate",
     "pdf",
+    "pdf_url",
     "url",
+    "source_url",
   ],
   capabilities: ["http.fetch", "scholar.get", "scholar.pdf", "scholar.review"],
   func: async (_page, kwargs) => {
     const id = requireForumId(kwargs.id);
-    const notes = notesFromEnvelope(
-      await fetchOpenReview(
-        `/notes?id=${encodeURIComponent(id)}`,
-        `openreview paper ${id}`,
-      ),
-    );
-    if (notes.length === 0)
-      throw new Error(`No OpenReview paper found with id "${id}".`);
-    const row = mapOpenReviewNoteRow(notes[0]);
+    const row = await fetchOpenReviewPaperRow(id);
     return [
       {
         id: row.id,
+        openreview_id: row.openreview_id,
         title: row.title,
         authors: row.authors,
         keywords: row.keywords,
@@ -387,8 +566,174 @@ cli({
         primary_area: row.primary_area,
         abstract: row.abstract,
         pdate: row.pdate,
+        date: row.date,
         pdf: row.pdf,
+        pdf_url: row.pdf_url,
         url: row.url,
+        source_url: row.source_url,
+        source_adapter: row.source_adapter,
+        retrieved_at: row.retrieved_at,
+      },
+    ];
+  },
+});
+
+cli({
+  site: "openreview",
+  name: "download",
+  description: "Download an OpenReview paper PDF by forum id",
+  domain: "openreview.net",
+  strategy: Strategy.PUBLIC,
+  args: [
+    {
+      name: "id",
+      type: "str",
+      required: true,
+      positional: true,
+      description: "OpenReview forum id or forum URL",
+      "x-unicli-kind": "id",
+      "x-unicli-accepts": ["url"],
+    },
+    {
+      name: "output",
+      type: "str",
+      default: "./openreview-downloads",
+      description: "Output directory",
+      "x-unicli-kind": "path",
+    },
+  ],
+  columns: ["id", "title", "pdf_url", "path", "_download"],
+  capabilities: ["http.fetch", "http.download", "scholar.pdf"],
+  minimum_capability: "http.download",
+  func: async (_page, kwargs) => {
+    const id = requireForumId(kwargs.id);
+    const downloaded = await downloadOpenReviewPdf(
+      await fetchOpenReviewPaperRow(id),
+      kwargs.output,
+    );
+    return [
+      {
+        id: downloaded.id,
+        title: downloaded.title,
+        pdf_url: downloaded.pdf_url,
+        path: downloaded.path,
+        _download: downloaded._download,
+        source_adapter: downloaded.source_adapter,
+        source_url: downloaded.source_url,
+        openreview_id: downloaded.openreview_id,
+      },
+    ];
+  },
+});
+
+cli({
+  site: "openreview",
+  name: "read",
+  description: "Download and extract text from an OpenReview paper PDF",
+  domain: "openreview.net",
+  strategy: Strategy.PUBLIC,
+  args: [
+    {
+      name: "id",
+      type: "str",
+      required: true,
+      positional: true,
+      description: "OpenReview forum id or forum URL",
+      "x-unicli-kind": "id",
+      "x-unicli-accepts": ["url"],
+    },
+    {
+      name: "output",
+      type: "str",
+      default: "./openreview-downloads",
+      description: "Output directory for the PDF used for extraction",
+      "x-unicli-kind": "path",
+    },
+    {
+      name: "first-page",
+      type: "int",
+      default: 1,
+      description: "First page to extract",
+    },
+    {
+      name: "last-page",
+      type: "int",
+      default: 20,
+      description: "Last page to extract",
+    },
+    {
+      name: "max-chars",
+      type: "int",
+      default: 40000,
+      description: "Maximum extracted text characters",
+    },
+  ],
+  columns: [
+    "id",
+    "title",
+    "pdf_url",
+    "path",
+    "text",
+    "text_chars",
+    "text_truncated",
+  ],
+  capabilities: [
+    "http.fetch",
+    "http.download",
+    "subprocess.exec",
+    "scholar.pdf",
+    "scholar.fulltext",
+  ],
+  minimum_capability: "subprocess.exec",
+  func: async (_page, kwargs) => {
+    const id = requireForumId(kwargs.id);
+    const { firstPage, lastPage } = requireOpenReviewPageRange(
+      kwargs["first-page"] ?? kwargs.firstPage,
+      kwargs["last-page"] ?? kwargs.lastPage,
+    );
+    const maxChars = requireOpenReviewMaxChars(
+      kwargs["max-chars"] ?? kwargs.maxChars,
+    );
+    const downloaded = await downloadOpenReviewPdf(
+      await fetchOpenReviewPaperRow(id),
+      kwargs.output,
+    );
+    const path = stringField(downloaded.path);
+    if (!path) throw new Error(`OpenReview PDF download produced no path.`);
+    const { stdout } = await execFileAsync(
+      "pdftotext",
+      [
+        "-layout",
+        "-enc",
+        "UTF-8",
+        "-f",
+        String(firstPage),
+        "-l",
+        String(lastPage),
+        path,
+        "-",
+      ],
+      { timeout: 60000, maxBuffer: 10 * 1024 * 1024 },
+    );
+    const text = stdout.trim();
+    if (!text) {
+      throw new Error(
+        `pdftotext returned no text for OpenReview paper ${id} pages ${firstPage}-${lastPage}.`,
+      );
+    }
+    const truncated = truncateText(text, maxChars);
+    return [
+      {
+        id: downloaded.id,
+        title: downloaded.title,
+        pdf_url: downloaded.pdf_url,
+        path,
+        text: truncated.text,
+        text_chars: truncated.originalChars,
+        text_truncated: truncated.truncated,
+        source_adapter: downloaded.source_adapter,
+        source_url: downloaded.source_url,
+        openreview_id: downloaded.openreview_id,
       },
     ];
   },
@@ -410,7 +755,16 @@ cli({
     },
     { name: "limit", type: "int", default: 50, description: "Max submissions" },
   ],
-  columns: ["rank", "id", "title", "authors", "venue", "pdate", "url"],
+  columns: [
+    "rank",
+    "id",
+    "title",
+    "authors",
+    "venue",
+    "pdate",
+    "pdf_url",
+    "source_url",
+  ],
   capabilities: ["http.fetch", "scholar.author", "scholar.search"],
   func: async (_page, kwargs) => {
     const profile = requireProfileId(kwargs.profile);
@@ -437,7 +791,10 @@ cli({
         authors: row.authors,
         venue: row.venue,
         pdate: row.pdate,
-        url: row.url,
+        pdf_url: row.pdf_url,
+        source_url: row.source_url,
+        source_adapter: row.source_adapter,
+        openreview_id: row.openreview_id,
       };
     });
   },
@@ -474,7 +831,9 @@ cli({
     "primary_area",
     "pdate",
     "pdf",
+    "pdf_url",
     "url",
+    "source_url",
   ],
   capabilities: ["http.fetch", "scholar.venue", "scholar.search"],
   func: async (_page, kwargs) => {
@@ -506,7 +865,11 @@ cli({
         primary_area: row.primary_area,
         pdate: row.pdate,
         pdf: row.pdf,
+        pdf_url: row.pdf_url,
         url: row.url,
+        source_url: row.source_url,
+        source_adapter: row.source_adapter,
+        openreview_id: row.openreview_id,
       };
     });
   },
@@ -525,7 +888,9 @@ cli({
       type: "str",
       required: true,
       positional: true,
-      description: "OpenReview forum id",
+      description: "OpenReview forum id or forum URL",
+      "x-unicli-kind": "id",
+      "x-unicli-accepts": ["url"],
     },
     {
       name: "max-length",
@@ -534,7 +899,20 @@ cli({
       description: "Per-row text truncation length",
     },
   ],
-  columns: ["type", "author", "rating", "confidence", "text"],
+  columns: [
+    "forum",
+    "note_id",
+    "type",
+    "author",
+    "invitation",
+    "created_at",
+    "source_url",
+    "rating",
+    "confidence",
+    "text",
+    "text_chars",
+    "text_truncated",
+  ],
   capabilities: ["http.fetch", "scholar.review"],
   func: async (_page, kwargs) => {
     const forum = requireForumId(kwargs.forum, "forum");

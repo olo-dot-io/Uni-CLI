@@ -32,6 +32,8 @@ export interface CoreDiscoveryCommand {
   source_path?: string;
   args?: readonly CoreDiscoveryArg[];
   channels?: Record<string, string>;
+  capabilities?: readonly string[];
+  minimum_capability?: string;
 }
 
 const CORE_COMMAND_SOURCE_PATHS: Record<string, string> = {
@@ -43,9 +45,507 @@ const CORE_COMMAND_SOURCE_PATHS: Record<string, string> = {
   mcp: "src/commands/mcp.ts",
   operate: "src/commands/operate.ts",
   runs: "src/commands/runs.ts",
+  scholar: "src/commands/scholar.ts",
 };
 
 const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
+  {
+    site: "scholar",
+    command: "availability",
+    category: "scholarly",
+    type: "web-api",
+    target_surface: "web",
+    source_path: "src/commands/scholar.ts",
+    description:
+      "Audit one academic paper from DOI, arXiv id, PMID, OpenReview id, source-local id, or title, then report source-backed metadata, PDF, full-text, code, dataset/model, citation, reference, and review availability plus next commands without downloading artifacts.",
+    capabilities: [
+      "http.fetch",
+      "scholar.get",
+      "scholar.pdf",
+      "scholar.fulltext",
+      "scholar.code",
+      "scholar.datasets",
+      "scholar.citations",
+      "scholar.references",
+      "scholar.review",
+    ],
+    minimum_capability: "http.fetch",
+    args: [
+      {
+        name: "ref",
+        type: "str",
+        required: true,
+        positional: true,
+        description: "DOI, arXiv id, OpenReview id, source-local id, or title",
+      },
+      { name: "source", type: "str", description: "Force one source" },
+      {
+        name: "sources",
+        type: "str",
+        description: "Comma-separated sources, or all",
+      },
+      {
+        name: "unpaywall-email",
+        type: "str",
+        description: "Requester email for Unpaywall DOI lookup",
+      },
+      {
+        name: "detailed",
+        type: "bool",
+        description: "Include evidence URLs, errors, and next commands",
+      },
+    ],
+  },
+  {
+    site: "scholar",
+    command: "evidence",
+    category: "scholarly",
+    type: "web-api",
+    target_surface: "web",
+    source_path: "src/commands/scholar.ts",
+    description:
+      "Classify one academic paper's source-backed evidence from DOI, arXiv id, PMID, OpenReview id, source-local id, or title into citation safety, reading readiness, missing evidence, primary anchors, and next commands without downloading artifacts.",
+    capabilities: [
+      "http.fetch",
+      "scholar.get",
+      "scholar.pdf",
+      "scholar.fulltext",
+      "scholar.code",
+      "scholar.datasets",
+      "scholar.citations",
+      "scholar.references",
+      "scholar.review",
+    ],
+    minimum_capability: "http.fetch",
+    args: [
+      {
+        name: "ref",
+        type: "str",
+        required: true,
+        positional: true,
+        description: "DOI, arXiv id, OpenReview id, source-local id, or title",
+      },
+      { name: "source", type: "str", description: "Force one source" },
+      {
+        name: "sources",
+        type: "str",
+        description: "Comma-separated sources, or all",
+      },
+      {
+        name: "unpaywall-email",
+        type: "str",
+        description: "Requester email for Unpaywall DOI lookup",
+      },
+      {
+        name: "detailed",
+        type: "bool",
+        description: "Include source errors and command timestamp",
+      },
+    ],
+  },
+  {
+    site: "scholar",
+    command: "sources",
+    category: "scholarly",
+    type: "web-api",
+    target_surface: "web",
+    source_path: "src/commands/scholar.ts",
+    description:
+      "Show a per-source provenance matrix for one academic paper from DOI, arXiv id, PMID, OpenReview id, source-local id, or title, including source status, evidence types, candidate capabilities, next commands, and source errors without downloading artifacts.",
+    capabilities: [
+      "http.fetch",
+      "scholar.get",
+      "scholar.pdf",
+      "scholar.fulltext",
+      "scholar.code",
+      "scholar.datasets",
+      "scholar.citations",
+      "scholar.references",
+      "scholar.review",
+    ],
+    minimum_capability: "http.fetch",
+    args: [
+      {
+        name: "ref",
+        type: "str",
+        required: true,
+        positional: true,
+        description: "DOI, arXiv id, OpenReview id, source-local id, or title",
+      },
+      { name: "source", type: "str", description: "Force one source" },
+      {
+        name: "sources",
+        type: "str",
+        description: "Comma-separated sources, or all",
+      },
+      {
+        name: "unpaywall-email",
+        type: "str",
+        description: "Requester email for Unpaywall DOI lookup",
+      },
+      {
+        name: "detailed",
+        type: "bool",
+        description: "Include source capabilities, errors, and next commands",
+      },
+    ],
+  },
+  {
+    site: "scholar",
+    command: "workflow",
+    category: "scholarly",
+    type: "web-api",
+    target_surface: "web",
+    source_path: "src/commands/scholar.ts",
+    description:
+      "Build a source-backed agent runbook for one academic paper from DOI, arXiv id, PMID, OpenReview id, source-local id, or title, ordering evidence classification, source reading, artifact download, citation/reference graph audit, peer-review audit, and reproducibility planning without downloading, cloning, installing, executing, or summarizing claims.",
+    capabilities: [
+      "http.fetch",
+      "scholar.get",
+      "scholar.pdf",
+      "scholar.fulltext",
+      "scholar.code",
+      "scholar.datasets",
+      "scholar.citations",
+      "scholar.references",
+      "scholar.review",
+    ],
+    minimum_capability: "http.fetch",
+    args: [
+      {
+        name: "ref",
+        type: "str",
+        required: true,
+        positional: true,
+        description: "DOI, arXiv id, OpenReview id, source-local id, or title",
+      },
+      { name: "source", type: "str", description: "Force one source" },
+      {
+        name: "sources",
+        type: "str",
+        description: "Comma-separated sources, or all",
+      },
+      {
+        name: "unpaywall-email",
+        type: "str",
+        description: "Requester email for Unpaywall DOI lookup",
+      },
+      {
+        name: "detailed",
+        type: "bool",
+        description: "Include runbook steps, source errors, and timestamp",
+      },
+    ],
+  },
+  {
+    site: "scholar",
+    command: "reproduce",
+    category: "scholarly",
+    type: "web-api",
+    target_surface: "web",
+    source_path: "src/commands/scholar.ts",
+    description:
+      "Plan one academic paper's source-backed code, data, model, and Space reproducibility path from DOI, arXiv id, OpenReview id, source-local id, or title, including installation readiness and safety boundaries without cloning, installing, or executing remote code.",
+    capabilities: [
+      "http.fetch",
+      "scholar.get",
+      "scholar.pdf",
+      "scholar.fulltext",
+      "scholar.code",
+      "scholar.datasets",
+    ],
+    minimum_capability: "http.fetch",
+    args: [
+      {
+        name: "ref",
+        type: "str",
+        required: true,
+        positional: true,
+        description: "DOI, arXiv id, OpenReview id, source-local id, or title",
+      },
+      { name: "source", type: "str", description: "Force one source" },
+      {
+        name: "sources",
+        type: "str",
+        description: "Comma-separated sources, or all",
+      },
+      {
+        name: "unpaywall-email",
+        type: "str",
+        description: "Requester email for Unpaywall DOI lookup",
+      },
+      {
+        name: "detailed",
+        type: "bool",
+        description: "Include source errors, download command, and timestamp",
+      },
+    ],
+  },
+  {
+    site: "scholar",
+    command: "coverage",
+    category: "scholarly",
+    type: "web-api",
+    target_surface: "web",
+    source_path: "src/commands/scholar.ts",
+    description:
+      "Compare registered academic and scholarly sources by discovery, metadata, PDF, full-text, code, dataset/model, citation, reference, and review coverage, then report missing closed-loop capabilities and next commands for agent routing without network I/O.",
+    capabilities: [
+      "scholar.search",
+      "scholar.get",
+      "scholar.pdf",
+      "scholar.fulltext",
+      "scholar.code",
+      "scholar.datasets",
+      "scholar.citations",
+      "scholar.references",
+      "scholar.review",
+      "scholar.venue",
+      "scholar.author",
+    ],
+    args: [
+      {
+        name: "sources",
+        type: "str",
+        description: "Comma-separated sources, or all",
+      },
+      {
+        name: "gaps",
+        type: "bool",
+        description: "Show only sources with missing closed-loop capabilities",
+      },
+      {
+        name: "detailed",
+        type: "bool",
+        description: "Include source command names and next commands",
+      },
+    ],
+  },
+  {
+    site: "scholar",
+    command: "reviews",
+    category: "scholarly",
+    type: "web-api",
+    target_surface: "web",
+    source_path: "src/commands/scholar.ts",
+    description:
+      "Fetch source-backed peer-review, decision, rebuttal, and comment rows for a scholarly paper review thread such as an OpenReview forum, with note ids, source URLs, ratings, confidence, text truncation, and agent-auditable anchors.",
+    capabilities: ["http.fetch", "scholar.review"],
+    minimum_capability: "http.fetch",
+    args: [
+      {
+        name: "ref",
+        type: "str",
+        required: true,
+        positional: true,
+        description: "OpenReview forum id, forum URL, or review-thread id",
+      },
+      {
+        name: "source",
+        type: "str",
+        description: "Force one review-capable source",
+      },
+      {
+        name: "sources",
+        type: "str",
+        description: "Comma-separated review-capable sources, or all",
+      },
+      {
+        name: "max-length",
+        type: "int",
+        default: 4000,
+        description: "Per-row review text truncation length",
+      },
+      {
+        name: "detailed",
+        type: "bool",
+        description: "Include reviewer/signature and text size fields",
+      },
+    ],
+  },
+  {
+    site: "scholar",
+    command: "code",
+    category: "scholarly",
+    type: "web-api",
+    target_surface: "web",
+    source_path: "src/commands/scholar.ts",
+    description:
+      "Resolve an academic paper from DOI, arXiv id, OpenReview id, source-local id, or title across scholarly resource-capable adapters, then return linked code repositories and project pages.",
+    capabilities: ["http.fetch", "scholar.code"],
+    minimum_capability: "http.fetch",
+    args: [
+      {
+        name: "ref",
+        type: "str",
+        required: true,
+        positional: true,
+        description: "DOI, arXiv id, OpenReview id, source-local id, or title",
+      },
+      { name: "source", type: "str", description: "Force one source" },
+      {
+        name: "sources",
+        type: "str",
+        description: "Comma-separated sources, or all",
+      },
+      {
+        name: "detailed",
+        type: "bool",
+        description: "Include richer resource metadata columns",
+      },
+    ],
+  },
+  {
+    site: "scholar",
+    command: "datasets",
+    category: "scholarly",
+    type: "web-api",
+    target_surface: "web",
+    source_path: "src/commands/scholar.ts",
+    description:
+      "Resolve an academic paper from DOI, arXiv id, OpenReview id, source-local id, or title across scholarly resource-capable adapters, then return linked datasets, models, and Spaces.",
+    capabilities: ["http.fetch", "scholar.datasets"],
+    minimum_capability: "http.fetch",
+    args: [
+      {
+        name: "ref",
+        type: "str",
+        required: true,
+        positional: true,
+        description: "DOI, arXiv id, OpenReview id, source-local id, or title",
+      },
+      { name: "source", type: "str", description: "Force one source" },
+      {
+        name: "sources",
+        type: "str",
+        description: "Comma-separated sources, or all",
+      },
+      {
+        name: "detailed",
+        type: "bool",
+        description: "Include richer resource metadata columns",
+      },
+    ],
+  },
+  {
+    site: "scholar",
+    command: "read",
+    category: "scholarly",
+    type: "web-api",
+    target_surface: "web",
+    source_path: "src/commands/scholar.ts",
+    description:
+      "Resolve an academic paper from DOI, arXiv id, OpenReview id, PubMed id, source-local id, or title across scholarly sources, prefer source-direct full text, then download the open PDF and extract capped text for agent reading.",
+    capabilities: [
+      "http.fetch",
+      "http.download",
+      "subprocess.exec",
+      "scholar.fulltext",
+      "scholar.pdf",
+    ],
+    minimum_capability: "subprocess.exec",
+    args: [
+      {
+        name: "ref",
+        type: "str",
+        required: true,
+        positional: true,
+        description: "DOI, arXiv id, OpenReview id, source-local id, or title",
+      },
+      { name: "source", type: "str", description: "Force one source" },
+      {
+        name: "sources",
+        type: "str",
+        description: "Comma-separated sources, or all",
+      },
+      {
+        name: "venue",
+        type: "str",
+        description: "Source-local venue scope, e.g. CVPR or ICCV",
+      },
+      {
+        name: "year",
+        type: "str",
+        description: "Source-local proceedings year",
+      },
+      {
+        name: "volume",
+        type: "str",
+        description: "Source-local proceedings volume, e.g. PMLR v235",
+      },
+      {
+        name: "output",
+        type: "str",
+        default: "./scholar-downloads",
+        description: "Output directory",
+      },
+      { name: "first-page", type: "int", default: 1 },
+      { name: "last-page", type: "int", default: 20 },
+      {
+        name: "max-chars",
+        type: "int",
+        description: "Maximum extracted/read text characters",
+      },
+      {
+        name: "unpaywall-email",
+        type: "str",
+        description: "Requester email for Unpaywall DOI lookup",
+      },
+    ],
+  },
+  {
+    site: "scholar",
+    command: "download",
+    category: "scholarly",
+    type: "web-api",
+    target_surface: "web",
+    source_path: "src/commands/scholar.ts",
+    description:
+      "Resolve an academic paper from DOI, arXiv id, OpenReview id, source-local id, or title across scholarly sources, download the open PDF, and return artifact metadata.",
+    capabilities: ["http.download", "scholar.pdf"],
+    minimum_capability: "http.download",
+    args: [
+      {
+        name: "ref",
+        type: "str",
+        required: true,
+        positional: true,
+        description: "DOI, arXiv id, OpenReview id, source-local id, or title",
+      },
+      { name: "source", type: "str", description: "Force one source" },
+      {
+        name: "sources",
+        type: "str",
+        description: "Comma-separated sources, or all",
+      },
+      {
+        name: "venue",
+        type: "str",
+        description: "Source-local venue scope, e.g. CVPR or ICCV",
+      },
+      {
+        name: "year",
+        type: "str",
+        description: "Source-local proceedings year",
+      },
+      {
+        name: "volume",
+        type: "str",
+        description: "Source-local proceedings volume, e.g. PMLR v235",
+      },
+      {
+        name: "output",
+        type: "str",
+        default: "./scholar-downloads",
+        description: "Output directory",
+      },
+      {
+        name: "unpaywall-email",
+        type: "str",
+        description: "Requester email for Unpaywall DOI lookup",
+      },
+    ],
+  },
   {
     site: "browser",
     command: "evidence",

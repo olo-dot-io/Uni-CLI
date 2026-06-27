@@ -269,6 +269,9 @@ export function buildCommandContract(
     base: command.base ?? adapter.base,
     browser: commandUsesBrowser(adapter, command),
     args,
+    capabilities: command.capabilities,
+    executables: command.executables,
+    minimumCapability: command.minimum_capability,
   });
   const sourcePath = command.adapter_path;
   const repairCommand = `unicli repair ${adapter.name} ${commandName}`;
@@ -364,6 +367,8 @@ export function buildCoreCommandContract(
     strategy: "public",
     browser,
     args: [...args],
+    capabilities: [...(command.capabilities ?? [])],
+    minimumCapability: command.minimum_capability,
   });
   const sourcePath = command.source_path;
 
