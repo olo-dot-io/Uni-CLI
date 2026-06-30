@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.226.0] — 2026-06-29 — Apollo · Stafford
+
+### Minor Changes
+
+- Browser automation now defaults to a verified logged-in identity: Uni-CLI attaches to an already-exposed local browser profile when possible, otherwise seeds its automation profile from the preferred local Chrome profile, and keeps empty profiles explicit through `--ephemeral`.
+
 ## [0.225.3] — 2026-06-27 — Apollo · Schmitt
 
 ### Added

@@ -1,3 +1,18 @@
+/**
+ * @owner   src/engine/steps/browser-helpers.ts
+ * @does    Acquire browser pages for pipeline steps and bootstrap user-session cookies after transport selection.
+ * @needs   src/browser bridge/page/launcher/stealth/local-profiles/auth-sync, src/engine/executor.ts
+ * @feeds   browser pipeline steps, adapter execution, tests/unit/browser-helpers-auth.test.ts
+ * @breaks  Browser acquisition and cookie bootstrap failures throw explicit command-facing errors.
+ * @invariants User-session CDP startup delegates attach/seed/ephemeral policy to src/browser/launcher.ts.
+ * @side-effects May start Chrome through launcher and may inject cookies into the connected page.
+ * @perf    Daemon probes are bounded before CDP fallback; Chrome target polling is capped.
+ * @concurrency Launcher owns automation profile seed locking and live-profile reuse.
+ * @test    tests/unit/browser-helpers-auth.test.ts
+ * @stability experimental
+ * @since   2026-06-29
+ */
+
 import type { PipelineContext } from "../executor.js";
 import type { BrowserPage } from "../../browser/page.js";
 
@@ -87,7 +102,6 @@ async function acquireUserSessionCdpPage(
 ): Promise<BrowserPage | null> {
   const {
     automationUserDataDirForProfile,
-    readUserDataDirDebugPort,
     resolvePreferredLocalBrowserProfile,
   } = await import("../../browser/local-profiles.js");
   const profile = resolvePreferredLocalBrowserProfile();
@@ -96,30 +110,23 @@ async function acquireUserSessionCdpPage(
   const { resolveCdpPort } = await import("../../browser/cdp-client.js");
   const { BrowserPage: BP } = await import("../../browser/page.js");
   const { injectStealth } = await import("../../browser/stealth.js");
-  const { findAvailableCDPPort, isCDPAvailable, launchChrome } =
+  const { findAvailableCDPPort, launchChrome } =
     await import("../../browser/launcher.js");
 
   const userDataDir = automationUserDataDirForProfile(profile);
-  const recorded = readUserDataDirDebugPort(userDataDir);
-  const livePort =
-    recorded.state === "recorded" &&
-    typeof recorded.port === "number" &&
-    (await isCDPAvailable(recorded.port))
-      ? recorded.port
-      : null;
-  const port = livePort ?? (await findAvailableCDPPort(resolveCdpPort()));
+  const port = await findAvailableCDPPort(resolveCdpPort());
 
-  if (livePort === null) {
-    await launchChrome(port, {
-      ...(profile.browser_path_exists
-        ? { browserPath: profile.browser_path }
-        : {}),
-      userDataDir,
-      reuseExisting: false,
-    });
-  }
+  const actualPort = await launchChrome(port, {
+    ...(profile.browser_path_exists
+      ? { browserPath: profile.browser_path }
+      : {}),
+    seedProfile: profile,
+    userDataDir,
+    profileDirectory: profile.profile_dir,
+    reuseExisting: false,
+  });
 
-  const page = await BP.connect(port, { freshPage: true });
+  const page = await BP.connect(actualPort, { freshPage: true });
   await injectStealth(page.sendCDP.bind(page));
   await syncUserSessionCookies(page, ctx);
   return page;
@@ -143,7 +150,9 @@ async function launchOptionsForContext(
     ...(profile.browser_path_exists
       ? { browserPath: profile.browser_path }
       : {}),
+    seedProfile: profile,
     userDataDir: automationUserDataDirForProfile(profile),
+    profileDirectory: profile.profile_dir,
   };
 }
 
@@ -158,9 +167,13 @@ async function syncUserSessionCookies(
     site: ctx.site,
     domain: ctx.domain,
   });
-  if (sync.status === "failed") {
+  if (sync.status !== "synced") {
+    const reason =
+      sync.status === "failed"
+        ? sync.reason
+        : `${sync.reason}${sync.domain ? ` for ${sync.domain}` : ""}`;
     throw new Error(
-      `Failed to bootstrap browser cookies for ${ctx.domain ?? ctx.site ?? "site"}: ${sync.reason}`,
+      `Failed to bootstrap browser cookies for ${ctx.domain ?? ctx.site ?? "site"}: ${reason}`,
     );
   }
 }

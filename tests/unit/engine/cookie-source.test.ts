@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   describeCookieFailure,
@@ -22,6 +22,9 @@ const prevNoBrowser = process.env.UNICLI_COOKIE_NO_BROWSER;
 afterEach(() => {
   if (prevNoBrowser === undefined) delete process.env.UNICLI_COOKIE_NO_BROWSER;
   else process.env.UNICLI_COOKIE_NO_BROWSER = prevNoBrowser;
+  vi.doUnmock("../../../src/browser/local-profiles.js");
+  vi.doUnmock("../../../src/engine/chromium-cookies.js");
+  vi.resetModules();
 });
 
 describe("loadCookiesWithDiagnostics — surfaces the real cause, never silent null", () => {
@@ -177,5 +180,44 @@ describe("describeCookieFailure — distinct, actionable guidance per cause", ()
       "x",
     );
     expect(d.suggestion).toMatch(/unreadable|Re-import/i);
+  });
+});
+
+describe("default browser cookie source", () => {
+  it("tries the preferred local browser profile before installed-browser fallback", async () => {
+    vi.resetModules();
+    const readCookiesAsRecord = vi.fn().mockReturnValue({ sid: "preferred" });
+    const detectInstalledBrowsers = vi.fn().mockReturnValue(["chrome"]);
+    vi.doMock("../../../src/engine/chromium-cookies.js", () => {
+      class ChromiumCookieError extends Error {
+        readonly code = "no_profile";
+      }
+      return {
+        ChromiumCookieError,
+        readCookiesAsRecord,
+        detectInstalledBrowsers,
+      };
+    });
+    vi.doMock("../../../src/browser/local-profiles.js", () => ({
+      browserCookieIdForLocalProfile: vi.fn(() => "chrome"),
+      resolvePreferredLocalBrowserProfile: vi.fn(() => ({
+        browser_name: "Google Chrome",
+        user_data_dir: "/Users/me/Library/Application Support/Google/Chrome",
+        profile_dir: "Default",
+        display_name: "Google Chrome - Me",
+      })),
+    }));
+
+    const mod = await import("../../../src/engine/cookie-source.js");
+    const out = await mod.defaultCookieSources.readBrowser("example.com");
+
+    expect(out).toEqual({ kind: "ok", cookies: { sid: "preferred" } });
+    expect(readCookiesAsRecord).toHaveBeenCalledWith({
+      browser: "chrome",
+      domain: "example.com",
+      profile: "Default",
+      userDataDir: "/Users/me/Library/Application Support/Google/Chrome",
+    });
+    expect(detectInstalledBrowsers).not.toHaveBeenCalled();
   });
 });

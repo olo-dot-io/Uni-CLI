@@ -41,7 +41,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> surfaces · <!-- STATS:test_count -->9257<!-- /STATS --> tests</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> surfaces · <!-- STATS:test_count -->9294<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -506,14 +506,18 @@ Docs:
 
 - Auth-required sites use local cookie files under
   `~/.unicli/cookies/<site>.json`, with local browser profile import as the
-  first repair path.
+  explicit repair path.
 - Browser adapters use background-first daemon/CDP sessions. Chrome/CDP runs
-  against Uni-CLI automation profiles under `~/.unicli/`; Chrome 136+ blocks
-  remote debugging on the default user-data-dir. `RemoteDebuggingAllowed`
-  policy can disable remote debugging entirely, but it cannot make default
-  profile CDP supported again.
+  against process-verified live profiles or Uni-CLI automation profiles under
+  `~/.unicli/`. By default Uni-CLI attaches to an already-exposed logged-in
+  profile when available, otherwise seeds its automation profile from the
+  preferred local Chrome profile. Empty profiles require explicit
+  `unicli browser start --ephemeral` or `UNICLI_BROWSER_EPHEMERAL=1`.
+  Chrome 136+ blocks remote debugging on the default user-data-dir.
+  `RemoteDebuggingAllowed` policy can disable remote debugging entirely, but it
+  cannot make default profile CDP supported again.
 - `unicli browser doctor --json` reports `default_path`, per-check
-  `next_step` commands, `chrome_remote_debugging`, and
+  `next_step` commands, `profile_source`, `chrome_remote_debugging`, and
   `self_repair.safe_command`; run
   `unicli browser doctor --repair` for the safe local CDP repair without
   touching the user's default Chrome profile.
@@ -552,5 +556,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v0.225.3 — Apollo · Schmitt</sub>
+  <sub>v0.226.0 — Apollo · Stafford</sub>
 </p>

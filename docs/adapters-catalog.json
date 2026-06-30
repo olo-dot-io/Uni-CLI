@@ -1,8 +1,8 @@
 {
-  "source": "unicli@0.225.1",
-  "generated": "2026-06-02T17:08:55.406Z",
-  "total_sites": 313,
-  "total_commands": 1767,
+  "source": "unicli@0.226.0",
+  "generated": "2026-06-29T18:55:30.311Z",
+  "total_sites": 320,
+  "total_commands": 1798,
   "adapters": [
     {
       "site": "12306",
@@ -944,6 +944,64 @@
               "type": "str",
               "required": true,
               "positional": true
+            }
+          ]
+        },
+        {
+          "name": "read",
+          "description": "Download an ACL Anthology paper PDF by id and extract text",
+          "when_to_use": "Download an ACL Anthology paper PDF by id and extract text",
+          "command": "unicli acl-anthology read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "source_adapter",
+            "source_url",
+            "pdf_url",
+            "path",
+            "text_source",
+            "text",
+            "text_chars",
+            "text_truncated"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "ACL Anthology paper id (e.g. 2020.acl-main.447)"
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory"
+            },
+            {
+              "name": "first-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "First PDF page to extract"
+            },
+            {
+              "name": "last-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Last PDF page to extract"
+            },
+            {
+              "name": "max-chars",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum extracted text characters"
             }
           ]
         }
@@ -2039,6 +2097,64 @@
           ]
         },
         {
+          "name": "read",
+          "description": "Download an arXiv PDF by ID and extract text with pdftotext",
+          "when_to_use": "Download an arXiv PDF by ID and extract text with pdftotext",
+          "command": "unicli arxiv read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "source_adapter",
+            "source_url",
+            "pdf_url",
+            "path",
+            "text_source",
+            "text",
+            "text_chars",
+            "text_truncated"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "arXiv paper ID (e.g. 1706.03762)"
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory"
+            },
+            {
+              "name": "first-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "First PDF page to extract"
+            },
+            {
+              "name": "last-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Last PDF page to extract"
+            },
+            {
+              "name": "max-chars",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum extracted text characters"
+            }
+          ]
+        },
+        {
           "name": "recent",
           "description": "List recent arXiv submissions in a category",
           "when_to_use": "List recent arXiv submissions in a category",
@@ -2436,7 +2552,15 @@
           "auth": false,
           "strategy": "public",
           "browser": true,
-          "columns": ["title", "authors", "source", "url"],
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "source",
+            "year",
+            "cited_by_count",
+            "source_url"
+          ],
           "args": [
             {
               "name": "query",
@@ -3808,6 +3932,261 @@
               "required": false,
               "positional": false,
               "description": "Number of trades"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "biorxiv",
+      "type": "web-api",
+      "domain": "api.biorxiv.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "recent",
+          "description": "List recent bioRxiv preprints from the official API",
+          "when_to_use": "List recent bioRxiv preprints from the official API",
+          "command": "unicli biorxiv recent",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "title",
+            "authors",
+            "date",
+            "version",
+            "category",
+            "doi",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "from",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Start date YYYY-MM-DD; defaults to seven UTC days ago"
+            },
+            {
+              "name": "to",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "End date YYYY-MM-DD; defaults to today UTC"
+            },
+            {
+              "name": "cursor",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "category",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Optional subject category, e.g. epidemiology or cell_biology"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search bioRxiv official API metadata within a bounded date window",
+          "when_to_use": "When you need to search biorxiv for a specific query.",
+          "command": "unicli biorxiv search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "title",
+            "authors",
+            "date",
+            "version",
+            "category",
+            "doi",
+            "pdf_url",
+            "source_url",
+            "matched_fields",
+            "search_scope",
+            "search_window",
+            "search_scanned_records",
+            "search_total_records",
+            "search_exhaustive"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Search text matched against title, abstract, authors, DOI, and category"
+            },
+            {
+              "name": "from",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Start date YYYY-MM-DD; defaults to seven UTC days ago"
+            },
+            {
+              "name": "to",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "End date YYYY-MM-DD; defaults to today UTC"
+            },
+            {
+              "name": "cursor",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "max-pages",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum official API pages to scan; each page contains up to 30 records"
+            },
+            {
+              "name": "category",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Optional subject category, e.g. epidemiology or cell_biology"
+            }
+          ]
+        },
+        {
+          "name": "paper",
+          "description": "Fetch bioRxiv preprint metadata by DOI",
+          "when_to_use": "Fetch bioRxiv preprint metadata by DOI",
+          "command": "unicli biorxiv paper",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "date",
+            "version",
+            "type",
+            "license",
+            "category",
+            "abstract",
+            "doi",
+            "jatsxml_url",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "doi",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Preprint DOI"
+            }
+          ]
+        },
+        {
+          "name": "download",
+          "description": "Download a bioRxiv preprint PDF by DOI",
+          "when_to_use": "When you need to download media or files from biorxiv.",
+          "command": "unicli biorxiv download",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["id", "title", "doi", "pdf_url", "path", "_download"],
+          "args": [
+            {
+              "name": "doi",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Preprint DOI"
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory"
+            }
+          ]
+        },
+        {
+          "name": "read",
+          "description": "Read bioRxiv preprint text by DOI, preferring JATS XML before PDF extraction",
+          "when_to_use": "Read bioRxiv preprint text by DOI, preferring JATS XML before PDF extraction",
+          "command": "unicli biorxiv read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "doi",
+            "pdf_url",
+            "path",
+            "text_source",
+            "text"
+          ],
+          "args": [
+            {
+              "name": "doi",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Preprint DOI"
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory"
+            },
+            {
+              "name": "first-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "First PDF page to extract when JATS XML is unavailable"
+            },
+            {
+              "name": "last-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Last PDF page to extract when JATS XML is unavailable"
+            },
+            {
+              "name": "max-chars",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum text characters to return"
             }
           ]
         }
@@ -6144,7 +6523,7 @@
       "commands": [
         {
           "name": "search",
-          "description": "Search CNKI academic papers",
+          "description": "Search CNKI academic papers by title",
           "when_to_use": "When you need to search cnki for a specific query.",
           "command": "unicli cnki search",
           "auth": false,
@@ -6152,26 +6531,28 @@
           "browser": false,
           "columns": [
             "rank",
+            "id",
             "title",
             "authors",
-            "source",
+            "venue",
             "year",
-            "citations"
+            "doi",
+            "cited_by_count",
+            "pdf_url",
+            "source_url"
           ],
           "args": [
             {
               "name": "query",
               "type": "str",
               "required": true,
-              "positional": true,
-              "description": "Search query"
+              "positional": true
             },
             {
               "name": "limit",
               "type": "int",
               "required": false,
-              "positional": false,
-              "description": "Maximum results"
+              "positional": false
             }
           ]
         }
@@ -7744,6 +8125,120 @@
               "positional": false
             }
           ]
+        },
+        {
+          "name": "paper",
+          "description": "Fetch CVF OpenAccess paper metadata by page id",
+          "when_to_use": "Fetch CVF OpenAccess paper metadata by page id",
+          "command": "unicli cvf paper",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "venue",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "year",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "read",
+          "description": "Download a CVF OpenAccess paper PDF by page id and extract text",
+          "when_to_use": "Download a CVF OpenAccess paper PDF by page id and extract text",
+          "command": "unicli cvf read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "source_adapter",
+            "source_url",
+            "pdf_url",
+            "path",
+            "text_source",
+            "text",
+            "text_chars",
+            "text_truncated"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "venue",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "year",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory for the downloaded PDF"
+            },
+            {
+              "name": "filename",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output PDF filename"
+            },
+            {
+              "name": "first-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "First page"
+            },
+            {
+              "name": "last-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Last page"
+            },
+            {
+              "name": "max-chars",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum extracted text characters"
+            }
+          ]
         }
       ]
     },
@@ -8521,6 +9016,34 @@
               "required": true,
               "positional": true,
               "description": "Protocol slug"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "defuddle",
+      "type": "web-api",
+      "domain": "defuddle.md",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "read",
+          "description": "Read a public URL through defuddle.md and return Markdown with frontmatter",
+          "when_to_use": "Read a public URL through defuddle.md and return Markdown with frontmatter",
+          "command": "unicli defuddle read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [],
+          "args": [
+            {
+              "name": "url",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Public URL to convert to Markdown"
             }
           ]
         }
@@ -16609,7 +17132,25 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["rank", "id", "title", "upvotes", "authors"],
+          "columns": [
+            "rank",
+            "id",
+            "title",
+            "upvotes",
+            "authors",
+            "source_url",
+            "pdf_url",
+            "code_url",
+            "github_stars",
+            "project_url",
+            "dataset_url",
+            "model_urls",
+            "dataset_urls",
+            "space_urls",
+            "num_models",
+            "num_datasets",
+            "num_spaces"
+          ],
           "args": [
             {
               "name": "limit",
@@ -16644,6 +17185,19 @@
             "aiKeywords",
             "summary",
             "aiSummary",
+            "arxiv_id",
+            "pdf_url",
+            "source_url",
+            "code_url",
+            "github_stars",
+            "project_url",
+            "dataset_url",
+            "model_urls",
+            "dataset_urls",
+            "space_urls",
+            "num_models",
+            "num_datasets",
+            "num_spaces",
             "url"
           ],
           "args": [
@@ -16822,11 +17376,29 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["title", "authors", "upvotes", "url"],
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "upvotes",
+            "url",
+            "source_url",
+            "pdf_url",
+            "code_url",
+            "github_stars",
+            "project_url",
+            "dataset_url",
+            "model_urls",
+            "dataset_urls",
+            "space_urls",
+            "num_models",
+            "num_datasets",
+            "num_spaces"
+          ],
           "args": [
             {
               "name": "limit",
-              "type": "str",
+              "type": "int",
               "required": false,
               "positional": false
             }
@@ -16840,7 +17412,26 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["title", "authors", "upvotes", "published", "url"],
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "upvotes",
+            "published",
+            "url",
+            "source_url",
+            "pdf_url",
+            "code_url",
+            "github_stars",
+            "project_url",
+            "dataset_url",
+            "model_urls",
+            "dataset_urls",
+            "space_urls",
+            "num_models",
+            "num_datasets",
+            "num_spaces"
+          ],
           "args": [
             {
               "name": "query",
@@ -19327,6 +19918,34 @@
               "type": "int",
               "required": false,
               "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "jina",
+      "type": "web-api",
+      "domain": "r.jina.ai",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "read",
+          "description": "Read a public URL through Jina Reader and return Markdown",
+          "when_to_use": "Read a public URL through Jina Reader and return Markdown",
+          "command": "unicli jina read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [],
+          "args": [
+            {
+              "name": "url",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Public URL to convert to Markdown"
             }
           ]
         }
@@ -22898,6 +23517,48 @@
       ]
     },
     {
+      "site": "markdown-new",
+      "type": "web-api",
+      "domain": "markdown.new",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "read",
+          "description": "Convert a public URL to Markdown through markdown.new",
+          "when_to_use": "Convert a public URL to Markdown through markdown.new",
+          "command": "unicli markdown-new read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["title", "url", "method", "tokens", "content"],
+          "args": [
+            {
+              "name": "url",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Public URL to convert to Markdown"
+            },
+            {
+              "name": "method",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Conversion method requested from markdown.new"
+            },
+            {
+              "name": "retain_images",
+              "type": "bool",
+              "required": false,
+              "positional": false,
+              "description": "Keep image references in the returned Markdown"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "marxists-cn",
       "type": "web-api",
       "domain": "www.marxists.org",
@@ -23589,6 +24250,261 @@
               "required": false,
               "positional": false,
               "description": "Max articles"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "medrxiv",
+      "type": "web-api",
+      "domain": "api.biorxiv.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "recent",
+          "description": "List recent medRxiv preprints from the official API",
+          "when_to_use": "List recent medRxiv preprints from the official API",
+          "command": "unicli medrxiv recent",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "title",
+            "authors",
+            "date",
+            "version",
+            "category",
+            "doi",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "from",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Start date YYYY-MM-DD; defaults to seven UTC days ago"
+            },
+            {
+              "name": "to",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "End date YYYY-MM-DD; defaults to today UTC"
+            },
+            {
+              "name": "cursor",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "category",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Optional subject category, e.g. epidemiology or cell_biology"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search medRxiv official API metadata within a bounded date window",
+          "when_to_use": "When you need to search medrxiv for a specific query.",
+          "command": "unicli medrxiv search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "rank",
+            "id",
+            "title",
+            "authors",
+            "date",
+            "version",
+            "category",
+            "doi",
+            "pdf_url",
+            "source_url",
+            "matched_fields",
+            "search_scope",
+            "search_window",
+            "search_scanned_records",
+            "search_total_records",
+            "search_exhaustive"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Search text matched against title, abstract, authors, DOI, and category"
+            },
+            {
+              "name": "from",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Start date YYYY-MM-DD; defaults to seven UTC days ago"
+            },
+            {
+              "name": "to",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "End date YYYY-MM-DD; defaults to today UTC"
+            },
+            {
+              "name": "cursor",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "max-pages",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum official API pages to scan; each page contains up to 30 records"
+            },
+            {
+              "name": "category",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Optional subject category, e.g. epidemiology or cell_biology"
+            }
+          ]
+        },
+        {
+          "name": "paper",
+          "description": "Fetch medRxiv preprint metadata by DOI",
+          "when_to_use": "Fetch medRxiv preprint metadata by DOI",
+          "command": "unicli medrxiv paper",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "date",
+            "version",
+            "type",
+            "license",
+            "category",
+            "abstract",
+            "doi",
+            "jatsxml_url",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "doi",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Preprint DOI"
+            }
+          ]
+        },
+        {
+          "name": "download",
+          "description": "Download a medRxiv preprint PDF by DOI",
+          "when_to_use": "When you need to download media or files from medrxiv.",
+          "command": "unicli medrxiv download",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["id", "title", "doi", "pdf_url", "path", "_download"],
+          "args": [
+            {
+              "name": "doi",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Preprint DOI"
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory"
+            }
+          ]
+        },
+        {
+          "name": "read",
+          "description": "Read medRxiv preprint text by DOI, preferring JATS XML before PDF extraction",
+          "when_to_use": "Read medRxiv preprint text by DOI, preferring JATS XML before PDF extraction",
+          "command": "unicli medrxiv read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "doi",
+            "pdf_url",
+            "path",
+            "text_source",
+            "text"
+          ],
+          "args": [
+            {
+              "name": "doi",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Preprint DOI"
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory"
+            },
+            {
+              "name": "first-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "First PDF page to extract when JATS XML is unavailable"
+            },
+            {
+              "name": "last-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Last PDF page to extract when JATS XML is unavailable"
+            },
+            {
+              "name": "max-chars",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum text characters to return"
             }
           ]
         }
@@ -24525,6 +25441,109 @@
               "type": "int",
               "required": false,
               "positional": false
+            }
+          ]
+        },
+        {
+          "name": "paper",
+          "description": "Fetch NeurIPS proceedings paper metadata by page id",
+          "when_to_use": "Fetch NeurIPS proceedings paper metadata by page id",
+          "command": "unicli neurips paper",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "doi",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "year",
+              "type": "str",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "read",
+          "description": "Download a NeurIPS proceedings paper PDF by page id and extract text",
+          "when_to_use": "Download a NeurIPS proceedings paper PDF by page id and extract text",
+          "command": "unicli neurips read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "source_adapter",
+            "source_url",
+            "pdf_url",
+            "path",
+            "text_source",
+            "text",
+            "text_chars",
+            "text_truncated"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "year",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory for the downloaded PDF"
+            },
+            {
+              "name": "filename",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output PDF filename"
+            },
+            {
+              "name": "first-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "First page"
+            },
+            {
+              "name": "last-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Last page"
+            },
+            {
+              "name": "max-chars",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum extracted text characters"
             }
           ]
         }
@@ -26511,6 +27530,60 @@
       ]
     },
     {
+      "site": "ollama-cloud",
+      "type": "web-api",
+      "domain": "ollama.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "fetch",
+          "description": "Fetch a public URL through Ollama Cloud web_fetch",
+          "when_to_use": "Fetch a public URL through Ollama Cloud web_fetch",
+          "command": "unicli ollama-cloud fetch",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["title", "url", "content", "links"],
+          "args": [
+            {
+              "name": "url",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Public URL to fetch"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search the web through Ollama Cloud web_search",
+          "when_to_use": "When you need to search ollama-cloud for a specific query.",
+          "command": "unicli ollama-cloud search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["title", "url", "content"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Web search query"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum number of results to return"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "ones",
       "type": "web-api",
       "domain": "ones.cn",
@@ -26820,6 +27893,71 @@
               "description": "OpenAlex Work id or DOI"
             }
           ]
+        },
+        {
+          "name": "read",
+          "description": "Download an OpenAlex open-access Work PDF and extract text",
+          "when_to_use": "Download an OpenAlex open-access Work PDF and extract text",
+          "command": "unicli openalex read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "source_adapter",
+            "source_url",
+            "pdf_url",
+            "path",
+            "text_source",
+            "text",
+            "text_chars",
+            "text_truncated"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "OpenAlex Work id or DOI"
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory for the downloaded PDF"
+            },
+            {
+              "name": "filename",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output PDF filename"
+            },
+            {
+              "name": "first-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "First page"
+            },
+            {
+              "name": "last-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Last page"
+            },
+            {
+              "name": "max-chars",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum extracted text characters"
+            }
+          ]
         }
       ]
     },
@@ -27007,7 +28145,8 @@
             "authors",
             "venue",
             "pdate",
-            "url"
+            "pdf_url",
+            "source_url"
           ],
           "args": [
             {
@@ -27045,7 +28184,9 @@
             "abstract",
             "pdate",
             "pdf",
-            "url"
+            "pdf_url",
+            "url",
+            "source_url"
           ],
           "args": [
             {
@@ -27054,6 +28195,87 @@
               "required": true,
               "positional": true,
               "description": "OpenReview note id"
+            }
+          ]
+        },
+        {
+          "name": "download",
+          "description": "Download an OpenReview paper PDF by forum id",
+          "when_to_use": "When you need to download media or files from openreview.",
+          "command": "unicli openreview download",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["id", "title", "pdf_url", "path", "_download"],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "OpenReview forum id or forum URL"
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory"
+            }
+          ]
+        },
+        {
+          "name": "read",
+          "description": "Download and extract text from an OpenReview paper PDF",
+          "when_to_use": "Download and extract text from an OpenReview paper PDF",
+          "command": "unicli openreview read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "pdf_url",
+            "path",
+            "text",
+            "text_chars",
+            "text_truncated"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "OpenReview forum id or forum URL"
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory for the PDF used for extraction"
+            },
+            {
+              "name": "first-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "First page to extract"
+            },
+            {
+              "name": "last-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Last page to extract"
+            },
+            {
+              "name": "max-chars",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum extracted text characters"
             }
           ]
         },
@@ -27072,7 +28294,8 @@
             "authors",
             "venue",
             "pdate",
-            "url"
+            "pdf_url",
+            "source_url"
           ],
           "args": [
             {
@@ -27108,7 +28331,9 @@
             "primary_area",
             "pdate",
             "pdf",
-            "url"
+            "pdf_url",
+            "url",
+            "source_url"
           ],
           "args": [
             {
@@ -27142,14 +28367,27 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["type", "author", "rating", "confidence", "text"],
+          "columns": [
+            "forum",
+            "note_id",
+            "type",
+            "author",
+            "invitation",
+            "created_at",
+            "source_url",
+            "rating",
+            "confidence",
+            "text",
+            "text_chars",
+            "text_truncated"
+          ],
           "args": [
             {
               "name": "forum",
               "type": "str",
               "required": true,
               "positional": true,
-              "description": "OpenReview forum id"
+              "description": "OpenReview forum id or forum URL"
             },
             {
               "name": "max-length",
@@ -28185,6 +29423,76 @@
               "positional": false
             }
           ]
+        },
+        {
+          "name": "read",
+          "description": "Download a PMLR paper PDF by id inside a proceedings volume and extract text",
+          "when_to_use": "Download a PMLR paper PDF by id inside a proceedings volume and extract text",
+          "command": "unicli pmlr read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "source_adapter",
+            "source_url",
+            "pdf_url",
+            "path",
+            "text_source",
+            "text",
+            "text_chars",
+            "text_truncated"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "volume",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory for the downloaded PDF"
+            },
+            {
+              "name": "filename",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output PDF filename"
+            },
+            {
+              "name": "first-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "First page"
+            },
+            {
+              "name": "last-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Last page"
+            },
+            {
+              "name": "max-chars",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum extracted text characters"
+            }
+          ]
         }
       ]
     },
@@ -28644,6 +29952,7 @@
           "browser": false,
           "columns": [
             "rank",
+            "id",
             "pmid",
             "title",
             "authors",
@@ -28651,6 +29960,7 @@
             "year",
             "article_type",
             "doi",
+            "pmc_id",
             "url"
           ],
           "args": [
@@ -28697,6 +30007,69 @@
           ]
         },
         {
+          "name": "paper",
+          "description": "Fetch normalized PubMed article metadata by PMID",
+          "when_to_use": "Fetch normalized PubMed article metadata by PMID",
+          "command": "unicli pubmed paper",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "journal",
+            "doi",
+            "pmc_id",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "pmid",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "PubMed ID"
+            }
+          ]
+        },
+        {
+          "name": "read",
+          "description": "Read PubMed Central full text for a PMID or PMCID",
+          "when_to_use": "Read PubMed Central full text for a PMID or PMCID",
+          "command": "unicli pubmed read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "pmid",
+            "pmc_id",
+            "doi",
+            "source_url",
+            "text",
+            "text_truncated"
+          ],
+          "args": [
+            {
+              "name": "ref",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "PubMed PMID or PubMed Central PMCID"
+            },
+            {
+              "name": "max-chars",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum extracted text characters"
+            }
+          ]
+        },
+        {
           "name": "author",
           "description": "Search PubMed articles by author name",
           "when_to_use": "Search PubMed articles by author name",
@@ -28706,6 +30079,7 @@
           "browser": false,
           "columns": [
             "rank",
+            "id",
             "pmid",
             "title",
             "authors",
@@ -28713,6 +30087,7 @@
             "year",
             "article_type",
             "doi",
+            "pmc_id",
             "url"
           ],
           "args": [
@@ -28742,6 +30117,7 @@
           "browser": false,
           "columns": [
             "rank",
+            "id",
             "pmid",
             "title",
             "authors",
@@ -28749,6 +30125,7 @@
             "year",
             "article_type",
             "doi",
+            "pmc_id",
             "url"
           ],
           "args": [
@@ -28785,14 +30162,15 @@
           "browser": false,
           "columns": [
             "rank",
+            "id",
             "pmid",
             "title",
             "authors",
             "journal",
             "year",
-            "article_type",
             "score",
             "doi",
+            "pmc_id",
             "url"
           ],
           "args": [
@@ -31001,6 +32379,176 @@
       ]
     },
     {
+      "site": "scholar-artifacts",
+      "type": "web-api",
+      "domain": "scholarly-pdf",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "download-pdf",
+          "description": "Download a scholarly PDF URL with artifact metadata",
+          "when_to_use": "When you need to download media or files from scholar-artifacts.",
+          "command": "unicli scholar-artifacts download-pdf",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "source_adapter",
+            "pdf_url",
+            "source_url",
+            "path",
+            "_download"
+          ],
+          "args": [
+            {
+              "name": "pdf_url",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Open scholarly PDF URL"
+            },
+            {
+              "name": "title",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Paper title"
+            },
+            {
+              "name": "id",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Source-local paper id"
+            },
+            {
+              "name": "source_adapter",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Source adapter name"
+            },
+            {
+              "name": "source_url",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Landing page URL"
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory"
+            },
+            {
+              "name": "filename",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output PDF filename"
+            }
+          ]
+        },
+        {
+          "name": "read-pdf",
+          "description": "Download a scholarly PDF URL and extract text with pdftotext",
+          "when_to_use": "Download a scholarly PDF URL and extract text with pdftotext",
+          "command": "unicli scholar-artifacts read-pdf",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "source_adapter",
+            "pdf_url",
+            "source_url",
+            "path",
+            "text",
+            "text_chars",
+            "text_truncated"
+          ],
+          "args": [
+            {
+              "name": "pdf_url",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Open scholarly PDF URL"
+            },
+            {
+              "name": "title",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Paper title"
+            },
+            {
+              "name": "id",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Source-local paper id"
+            },
+            {
+              "name": "source_adapter",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Source adapter name"
+            },
+            {
+              "name": "source_url",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Landing page URL"
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory"
+            },
+            {
+              "name": "filename",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output PDF filename"
+            },
+            {
+              "name": "first-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "First page"
+            },
+            {
+              "name": "last-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Last page"
+            },
+            {
+              "name": "max-chars",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum extracted text characters"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "semantic-scholar",
       "type": "web-api",
       "domain": "api.semanticscholar.org",
@@ -31064,6 +32612,70 @@
               "type": "str",
               "required": true,
               "positional": true
+            }
+          ]
+        },
+        {
+          "name": "read",
+          "description": "Download a Semantic Scholar open-access paper PDF and extract text",
+          "when_to_use": "Download a Semantic Scholar open-access paper PDF and extract text",
+          "command": "unicli semantic-scholar read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "source_adapter",
+            "source_url",
+            "pdf_url",
+            "path",
+            "text_source",
+            "text",
+            "text_chars",
+            "text_truncated"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory for the downloaded PDF"
+            },
+            {
+              "name": "filename",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output PDF filename"
+            },
+            {
+              "name": "first-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "First page"
+            },
+            {
+              "name": "last-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Last page"
+            },
+            {
+              "name": "max-chars",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum extracted text characters"
             }
           ]
         },
@@ -35646,6 +37258,77 @@
               "description": "Unpaywall requester email"
             }
           ]
+        },
+        {
+          "name": "read",
+          "description": "Download an Unpaywall open-access PDF by DOI and extract text",
+          "when_to_use": "Download an Unpaywall open-access PDF by DOI and extract text",
+          "command": "unicli unpaywall read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "source_adapter",
+            "source_url",
+            "pdf_url",
+            "path",
+            "text_source",
+            "text",
+            "text_chars",
+            "text_truncated"
+          ],
+          "args": [
+            {
+              "name": "doi",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "email",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Unpaywall requester email"
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory for the downloaded PDF"
+            },
+            {
+              "name": "filename",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output PDF filename"
+            },
+            {
+              "name": "first-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "First page"
+            },
+            {
+              "name": "last-page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Last page"
+            },
+            {
+              "name": "max-chars",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum extracted text characters"
+            }
+          ]
         }
       ]
     },
@@ -36509,7 +38192,7 @@
           "auth": false,
           "strategy": "public",
           "browser": true,
-          "columns": ["title", "authors", "source", "url"],
+          "columns": ["id", "title", "authors", "source", "year", "source_url"],
           "args": [
             {
               "name": "query",

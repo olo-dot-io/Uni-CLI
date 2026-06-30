@@ -1,9 +1,16 @@
 /**
- * BrowserBridge — high-level API for CLI commands to get a browser page
- * via the daemon. Auto-spawns the daemon if not running.
- *
- * DaemonPage — IPage implementation that routes all operations through
- * HTTP to the daemon, which forwards them to the Chrome Extension.
+ * @owner   src/browser/bridge.ts
+ * @does    Connect browser commands to daemon, extension, remote CDP, or local logged-in CDP fallback.
+ * @needs   node:child_process, node:fs, node:path, node:url, src/browser daemon-client/cdp-client/page/launcher/protocol
+ * @feeds   src/engine/steps/browser-helpers.ts, src/commands/browser/actions.ts, tests/unit/browser-bridge.test.ts
+ * @breaks  Connection failures throw BridgeConnectionError or RemoteConnectionError with repair commands.
+ * @invariants Explicit ephemeral mode skips remote and daemon identity reuse; otherwise remote CDP wins over local launch, and local launch connects to the actual port returned by launcher.
+ * @side-effects May spawn the Uni-CLI daemon process and may trigger Chrome launch through src/browser/launcher.ts.
+ * @perf    Daemon and extension probes use bounded timeouts before CDP fallback.
+ * @concurrency Reuses existing daemon/extension state; launcher owns browser profile locking and seed concurrency.
+ * @test    tests/unit/browser-bridge.test.ts
+ * @stability experimental
+ * @since   2026-06-29
  */
 
 import { spawn } from "node:child_process";
@@ -17,12 +24,8 @@ import {
 } from "./daemon-client.js";
 import { getRemoteEndpoint, CDPClient } from "./cdp-client.js";
 import { BrowserPage } from "./page.js";
-import {
-  getCDPPort,
-  isCDPAvailable,
-  isRemoteBrowser,
-  launchChrome,
-} from "./launcher.js";
+import { getCDPPort, isRemoteBrowser, launchChrome } from "./launcher.js";
+import { isBrowserEphemeralRequested } from "./profile-seed.js";
 import type { DaemonCommand, DaemonStatus } from "./protocol.js";
 import type {
   IPage,
@@ -114,6 +117,14 @@ export class BrowserBridge {
 
     this._state = "connecting";
 
+    if (isBrowserEphemeralRequested(process.env)) {
+      const page = await this.connectLocalCdp({ ephemeral: true });
+      this._page = page;
+      this._remotePage = page;
+      this._state = "connected";
+      return page;
+    }
+
     // Remote browser takes priority — skip daemon entirely
     if (isRemoteBrowser()) {
       const page = await this.connectRemote();
@@ -203,12 +214,12 @@ export class BrowserBridge {
     );
   }
 
-  private async connectLocalCdp(): Promise<BrowserPage> {
+  private async connectLocalCdp(
+    launchOptions?: Parameters<typeof launchChrome>[1],
+  ): Promise<BrowserPage> {
     const port = getCDPPort();
-    if (!(await isCDPAvailable(port))) {
-      await launchChrome(port);
-    }
-    return BrowserPage.connect(port);
+    const actualPort = await launchChrome(port, launchOptions);
+    return BrowserPage.connect(actualPort);
   }
 
   private async waitForExtension(

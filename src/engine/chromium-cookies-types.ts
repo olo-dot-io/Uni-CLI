@@ -1,7 +1,16 @@
 /**
- * Shared types for the chromium-cookies module. Split out to break a
- * circular import between `chromium-cookies.ts` (orchestration) and
- * `chromium-cookies-platform.ts` (per-platform crypto + keystore).
+ * @owner   src/engine/chromium-cookies-types.ts
+ * @does    Define shared Chromium cookie reader types and structured errors.
+ * @needs   none
+ * @feeds   src/engine/chromium-cookies.ts, src/engine/chromium-cookies-platform.ts, src/browser/auth-sync.ts, src/commands/auth.ts, scripts/browser-auth-default-acceptance.ts
+ * @breaks  ChromiumCookieError carries browser discovery, keystore, sqlite, and decryption failure codes to callers.
+ * @invariants Cookie rows expose decrypted values only to explicit auth/cookie import callers.
+ * @side-effects none
+ * @perf    none
+ * @concurrency none
+ * @test    tests/unit/chromium-cookies.test.ts
+ * @stability stable
+ * @since   2026-06-29
  */
 
 export type BrowserId = "chrome" | "brave" | "edge" | "arc" | "dia" | "atlas";
@@ -14,12 +23,15 @@ export interface CookieRow {
   expires: number;
   secure: boolean;
   httpOnly: boolean;
+  persistent: boolean;
+  hasExpires: boolean;
 }
 
 export interface ReadOptions {
   browser: BrowserId;
   domain: string;
   profile?: string;
+  userDataDir?: string;
 }
 
 export class ChromiumCookieError extends Error {

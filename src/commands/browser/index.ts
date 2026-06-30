@@ -1,9 +1,16 @@
 /**
  * @owner   src/commands/browser/index.ts
  * @does    Register browser root commands for Chrome lifecycle, CDP status, doctor reports, local profiles, cookies, sessions, actions, and adapter authoring.
- * @needs   commander, chalk, src/browser launcher/CDP/daemon/workspace/local-profiles/doctor, ./actions, ./adapter, output formatter, src/engine cookie-extractor/chromium-cookies
+ * @needs   commander, chalk, src/browser launcher/CDP/daemon/workspace/local-profiles/profile-seed/doctor, ./actions, ./adapter, output formatter, src/engine cookie-extractor/chromium-cookies
  * @feeds   src/cli.ts, tests/unit/commands/browser.test.ts
- * @breaks  Chrome, CDP, daemon, and cookie failures propagate through command errors and stderr. No fallback.
+ * @breaks  Chrome, CDP, daemon, profile seed, and cookie failures propagate through command errors and stderr. No fallback.
+ * @invariants Browser start reports attach/seeded/ephemeral source, refreshes only stopped automation profiles, and never substitutes an empty profile after seed failure.
+ * @side-effects May launch Chrome, seed Uni-CLI automation profile directories, save cookies, and write adapter skeletons.
+ * @perf    Browser lifecycle probes are bounded and profile lists avoid raw cookie values.
+ * @concurrency Launcher owns seed locks; command layer avoids launching a second Chrome for a live selected profile.
+ * @test    tests/unit/commands/browser.test.ts
+ * @stability experimental
+ * @since   2026-06-29
  */
 
 import { Command } from "commander";
@@ -31,16 +38,27 @@ import {
 import { registerBrowserAdapterAuthoringSubcommands } from "./adapter.js";
 import { resolveBrowserWorkspace } from "../../browser/workspace.js";
 import {
+  automationDefaultUserDataDir,
   automationUserDataDirForProfile,
+  browserCookieIdForLocalProfile,
   detectLocalBrowserProfiles,
+  isProcessVerifiedDebugPort,
+  readProcessDebugTargetForPort,
+  readUserDataDirDebugPort,
   resolveLocalBrowserProfile,
+  resolvePreferredLocalBrowserProfile,
   type LocalBrowserProfile,
 } from "../../browser/local-profiles.js";
 import { runBrowserDoctor } from "../../browser/doctor.js";
 import {
+  inspectAutomationProfileSeed,
+  isBrowserEphemeralRequested,
+  isEphemeralAutomationUserDataDir,
+  isRunningSeedIdentityUsable,
+} from "../../browser/profile-seed.js";
+import {
   ChromiumCookieError,
   readCookiesAsRecord,
-  type BrowserId,
 } from "../../engine/chromium-cookies.js";
 import { detectFormat, format } from "../../output/formatter.js";
 import { makeCtx } from "../../output/envelope.js";
@@ -68,17 +86,73 @@ export function registerBrowserCommands(program: Command): void {
       "Use a discovered logged-in browser profile from `unicli browser profiles --json`",
     )
     .option("--headless", "Launch in headless mode (for CI)")
+    .option(
+      "--ephemeral",
+      "Launch a clean empty temporary profile instead of attaching or seeding login state",
+    )
+    .option(
+      "--refresh-profile",
+      "Force a stopped automation profile to be reseeded from the selected local browser profile",
+    )
     .action(
       async (opts: {
         port: string;
         profile?: boolean;
         profileId?: string;
         headless?: boolean;
+        ephemeral?: boolean;
+        refreshProfile?: boolean;
       }) => {
         const port = parseInt(opts.port, 10);
-        const localProfile = opts.profileId
-          ? resolveLocalBrowserProfile(opts.profileId)
-          : null;
+        const ephemeral =
+          opts.ephemeral === true || isBrowserEphemeralRequested(process.env);
+        if (ephemeral && opts.refreshProfile === true) {
+          console.error(
+            chalk.red(
+              "--refresh-profile cannot be combined with --ephemeral because ephemeral profiles are intentionally empty.",
+            ),
+          );
+          process.exitCode = 1;
+          return;
+        }
+        const remote = getRemoteEndpoint();
+        if (!ephemeral && remote && opts.refreshProfile === true) {
+          console.error(
+            chalk.red(
+              "--refresh-profile applies only to local seeded automation profiles; UNICLI_CDP_ENDPOINT is configured.",
+            ),
+          );
+          process.exitCode = 1;
+          return;
+        }
+        if (!ephemeral && remote) {
+          try {
+            await verifyRemoteEndpoint(remote.endpoint, remote.headers);
+            console.log(chalk.green("Remote CDP endpoint connected"));
+            console.log(
+              chalk.dim(`Source: attach (${redactEndpoint(remote.endpoint)})`),
+            );
+            console.log(
+              chalk.dim(
+                "Browser commands will attach through UNICLI_CDP_ENDPOINT.",
+              ),
+            );
+          } catch (err) {
+            console.error(
+              chalk.red(
+                `Remote CDP endpoint is not reachable: ${err instanceof Error ? err.message : String(err)}`,
+              ),
+            );
+            process.exitCode = 1;
+          }
+          return;
+        }
+
+        const localProfile = ephemeral
+          ? null
+          : opts.profileId
+            ? resolveLocalBrowserProfile(opts.profileId)
+            : resolvePreferredLocalBrowserProfile();
         if (opts.profileId && !localProfile) {
           console.error(
             chalk.red(`Browser profile not found: ${opts.profileId}`),
@@ -91,26 +165,17 @@ export function registerBrowserCommands(program: Command): void {
         const liveProfilePort = localProfile
           ? await liveRecordedProfilePort(localProfile)
           : null;
-        if (liveProfilePort !== null) {
+        if (localProfile && liveProfilePort !== null) {
           console.log(
             chalk.green(
-              `Chrome CDP already available for ${localProfile?.display_name ?? "selected profile"} on port ${String(liveProfilePort)}`,
+              `Chrome CDP already available for ${localProfile.display_name} on port ${String(liveProfilePort)}`,
             ),
           );
+          console.log(chalk.dim("Source: attach live local browser profile"));
           await printTargetSummary(liveProfilePort);
           return;
         }
 
-        // Check if already available
-        if (!localProfile && (await isCDPAvailable(port))) {
-          console.log(
-            chalk.green(`Chrome CDP already available on port ${String(port)}`),
-          );
-          await printTargetSummary(port);
-          return;
-        }
-
-        // Find Chrome
         const chromePath = localProfile?.browser_path_exists
           ? localProfile.browser_path
           : findChrome();
@@ -125,28 +190,50 @@ export function registerBrowserCommands(program: Command): void {
         }
 
         console.log(chalk.dim(`Found Chrome: ${chromePath}`));
-        if (localProfile) {
+        if (ephemeral) {
+          console.log(
+            chalk.yellow(
+              "Warning: launching an explicit ephemeral browser with an empty temporary profile.",
+            ),
+          );
+        } else if (localProfile) {
           console.log(
             chalk.dim(
-              `Using profile: ${localProfile.display_name} (${localProfile.id})`,
+              `Login source profile: ${localProfile.display_name} (${localProfile.id})`,
             ),
           );
         }
         console.log(chalk.dim(`Launching with CDP on port ${String(port)}...`));
 
         try {
-          const launchPort = localProfile
-            ? await findAvailableProfileLaunchPort(port, localProfile)
+          const launchPort = ephemeral
+            ? await findAvailableCDPPort(port)
             : port;
+          if (ephemeral && launchPort !== port) {
+            console.error(
+              chalk.dim(
+                `Port ${String(port)} already has a local listener; launching ephemeral Chrome on ${String(launchPort)} instead.`,
+              ),
+            );
+          }
           const browserRootOpts = browser.opts() as { focus?: boolean };
           const actualPort = await launchChrome(launchPort, {
             profile: opts.profile,
             headless: opts.headless,
-            ...(localProfile ? launchOptionsForProfile(localProfile) : {}),
+            ephemeral,
+            refreshProfile: opts.refreshProfile === true,
+            ...(opts.profileId && localProfile
+              ? launchOptionsForProfile(localProfile)
+              : {}),
             ...(browserRootOpts.focus === true ? { background: false } : {}),
           });
           console.log(
             chalk.green(`Chrome CDP ready on port ${String(actualPort)}`),
+          );
+          printLaunchSource(
+            ephemeral,
+            localProfile,
+            opts.profileId !== undefined,
           );
           await printTargetSummary(actualPort);
         } catch (err) {
@@ -163,62 +250,52 @@ export function registerBrowserCommands(program: Command): void {
     .command("status")
     .description("Check Chrome CDP connection status")
     .option("--port <port>", "CDP port", String(getCDPPort()))
-    .action(async (opts: { port: string }) => {
+    .option("--json", "JSON output (alias for -f json)")
+    .action(async (opts: { port: string; json?: boolean }) => {
+      const startedAt = Date.now();
+      const fmt = detectFormat(
+        opts.json
+          ? "json"
+          : (program.opts().format as OutputFormat | undefined),
+      );
       const port = parseInt(opts.port, 10);
-
       const available = await isCDPAvailable(port);
+      const profileSource = resolveStatusProfileSource(port, available);
+      const daemon = await readStatusDaemonReport(browser);
+      if (fmt === "json") {
+        const ctx = makeCtx("browser.status", startedAt);
+        console.log(
+          format(
+            {
+              port,
+              connected: available,
+              profile_source: profileSource,
+              default_launch: defaultLaunchProfileStatus(),
+              daemon,
+              raw_cookie_values_returned: false,
+            },
+            undefined,
+            fmt,
+            ctx,
+          ),
+        );
+        return;
+      }
+
       if (!available) {
         console.log(
           chalk.yellow(`Chrome CDP not available on port ${String(port)}`),
         );
         console.log(chalk.dim("Run: unicli browser start"));
+        printStatusProfileSource(profileSource);
         return;
       }
 
       console.log(chalk.green(`Chrome CDP connected on port ${String(port)}`));
+      printStatusProfileSource(profileSource);
       await printTargetSummary(port);
 
-      await withBrowserOperatorEnv(browser, async () => {
-        const daemon = await fetchDaemonStatus({ timeout: 1000 });
-        if (!daemon) {
-          const conflict = await fetchDaemonPortConflict({ timeout: 1000 });
-          console.log(
-            chalk.dim(
-              conflict
-                ? `Daemon: unavailable (${conflict})`
-                : "Daemon: not running",
-            ),
-          );
-          return;
-        }
-        console.log(
-          chalk.dim(
-            `Daemon: port ${String(daemon.port)}, extension ${
-              daemon.extensionConnected ? "connected" : "not connected"
-            }`,
-          ),
-        );
-        if (!daemon.extensionConnected) return;
-        const sessions = await listSessions();
-        if (sessions.length > 0) {
-          console.log(chalk.dim(`Sessions: ${String(sessions.length)}`));
-          for (const session of sessions.slice(0, 5)) {
-            const idle =
-              typeof session.idleMsRemaining === "number"
-                ? `, idle ${String(Math.ceil(session.idleMsRemaining / 1000))}s`
-                : "";
-            const tabs =
-              typeof session.tabCount === "number"
-                ? `, tabs ${String(session.tabCount)}`
-                : "";
-            console.log(
-              chalk.dim(
-                `  • ${session.workspace} -> window ${String(session.windowId)}${tabs}${idle}`,
-              ),
-            );
-          }
-        }
-      });
+      printStatusDaemonReport(daemon);
     });
 
   // unicli browser remote
@@ -383,6 +460,7 @@ export function registerBrowserCommands(program: Command): void {
           {
             source: "local-filesystem",
             raw_cookie_values_returned: false,
+            default_launch: defaultLaunchProfileStatus(),
             profiles,
           },
           undefined,
@@ -569,9 +647,442 @@ function launchOptionsForProfile(
     ...(profile.browser_path_exists
       ? { browserPath: profile.browser_path }
       : {}),
+    seedProfile: profile,
     userDataDir: automationUserDataDirForProfile(profile),
+    profileDirectory: profile.profile_dir,
     reuseExisting: false,
   };
+}
+
+function printLaunchSource(
+  ephemeral: boolean,
+  localProfile: LocalBrowserProfile | null,
+  explicitProfile: boolean,
+): void {
+  if (ephemeral) {
+    console.log(chalk.yellow("Source: ephemeral empty profile"));
+    return;
+  }
+  const profile = localProfile ?? resolvePreferredLocalBrowserProfile();
+  if (!profile) {
+    console.log(chalk.yellow("Source: no local profile source"));
+    return;
+  }
+  const targetUserDataDir = explicitProfile
+    ? automationUserDataDirForProfile(profile)
+    : automationDefaultUserDataDir();
+  const seed = inspectAutomationProfileSeed(profile, targetUserDataDir);
+  const seedDetail =
+    seed.status === "fresh"
+      ? `seeded from ${profile.display_name}`
+      : `seed status ${seed.status}${seed.reason ? `: ${seed.reason}` : ""}`;
+  console.log(chalk.dim(`Source: ${seedDetail}`));
+  console.log(chalk.dim(`Automation profile: ${targetUserDataDir}`));
+}
+
+type BrowserStatusProfileSource =
+  | {
+      source: "attach";
+      mode: "remote-cdp" | "live-profile-cdp";
+      ready: boolean;
+      endpoint?: string;
+      profile?: ReturnType<typeof describeLocalProfile>;
+      port?: number;
+      warning?: string;
+      raw_cookie_values_returned: false;
+    }
+  | {
+      source: "seeded";
+      mode:
+        | "seeded-automation-profile"
+        | "seeded-automation-profile-not-running";
+      ready: boolean;
+      preferred_profile: ReturnType<typeof describeLocalProfile>;
+      automation_user_data_dir: string;
+      seed: ReturnType<typeof inspectAutomationProfileSeed>;
+      port?: number;
+      warning?: string;
+      raw_cookie_values_returned: false;
+    }
+  | {
+      source: "ephemeral";
+      mode: "empty-temporary-profile";
+      ready: boolean;
+      port?: number;
+      automation_user_data_dir?: string;
+      warning: string;
+      raw_cookie_values_returned: false;
+    }
+  | {
+      source: "missing-profile" | "unknown";
+      mode: "none" | "unknown-cdp";
+      ready: false;
+      preferred_profile?: ReturnType<typeof describeLocalProfile>;
+      automation_user_data_dir?: string;
+      seed?: ReturnType<typeof inspectAutomationProfileSeed>;
+      warning: string;
+      raw_cookie_values_returned: false;
+    };
+
+type BrowserStatusDaemonReport =
+  | {
+      status: "running";
+      port: number;
+      extension_connected: boolean;
+      sessions_count: number;
+      sessions: Array<{
+        workspace: string;
+        window_id: number;
+        tab_count?: number;
+        idle_ms_remaining?: number;
+      }>;
+    }
+  | { status: "unavailable"; conflict?: string };
+
+function resolveStatusProfileSource(
+  port: number,
+  connected: boolean,
+): BrowserStatusProfileSource {
+  const processTarget = connected ? readProcessDebugTargetForPort(port) : null;
+  if (
+    processTarget &&
+    isEphemeralAutomationUserDataDir(processTarget.user_data_dir)
+  ) {
+    return {
+      source: "ephemeral",
+      mode: "empty-temporary-profile",
+      ready: true,
+      port,
+      automation_user_data_dir: processTarget.user_data_dir,
+      warning:
+        "This CDP port belongs to an explicit ephemeral empty profile; logged-in cookies are intentionally not seeded.",
+      raw_cookie_values_returned: false,
+    };
+  }
+  if (isBrowserEphemeralRequested(process.env)) {
+    return {
+      source: "ephemeral",
+      mode: "empty-temporary-profile",
+      ready: false,
+      warning:
+        "UNICLI_BROWSER_EPHEMERAL=1 forces a clean empty profile; logged-in cookies are intentionally not seeded.",
+      raw_cookie_values_returned: false,
+    };
+  }
+  const remote = getRemoteEndpoint();
+  if (remote) {
+    return {
+      source: "attach",
+      mode: "remote-cdp",
+      ready: true,
+      endpoint: redactEndpoint(remote.endpoint),
+      warning:
+        "browser status --port checks local CDP separately; default browser commands attach through UNICLI_CDP_ENDPOINT.",
+      raw_cookie_values_returned: false,
+    };
+  }
+
+  const profiles = detectLocalBrowserProfiles();
+  const profile = resolvePreferredLocalBrowserProfile() ?? profiles[0] ?? null;
+  const defaultTargetUserDataDir = automationDefaultUserDataDir();
+  if (!profile || profiles.length === 0) {
+    return {
+      source: "missing-profile",
+      mode: "none",
+      ready: false,
+      automation_user_data_dir: defaultTargetUserDataDir,
+      warning:
+        "No local browser profile source was found; default startup will fail unless --ephemeral is explicit.",
+      raw_cookie_values_returned: false,
+    };
+  }
+
+  const liveProfile = profiles.find((candidate) => {
+    return (
+      isProcessVerifiedDebugPort(candidate.debug_port) &&
+      candidate.debug_port.port === port
+    );
+  });
+  if (connected && liveProfile) {
+    return {
+      source: "attach",
+      mode: "live-profile-cdp",
+      ready: true,
+      profile: describeLocalProfile(liveProfile),
+      port,
+      raw_cookie_values_returned: false,
+    };
+  }
+
+  const liveSeed = statusSeedCandidates(profile, profiles).find((candidate) => {
+    const debugPort = readUserDataDirDebugPort(candidate.targetUserDataDir);
+    return isProcessVerifiedDebugPort(debugPort) && debugPort.port === port;
+  });
+  if (connected && liveSeed) {
+    const seed = inspectAutomationProfileSeed(
+      liveSeed.profile,
+      liveSeed.targetUserDataDir,
+    );
+    return {
+      source: "seeded",
+      mode: "seeded-automation-profile",
+      ready: isRunningSeedIdentityUsable(seed),
+      preferred_profile: describeLocalProfile(liveSeed.profile),
+      automation_user_data_dir: liveSeed.targetUserDataDir,
+      seed,
+      port,
+      warning:
+        seed.status === "fresh"
+          ? undefined
+          : `Automation profile is running but seed status is ${seed.status}: ${seedWarningReason(seed.reason)}.`,
+      raw_cookie_values_returned: false,
+    };
+  }
+
+  const preferredProfile = describeLocalProfile(profile);
+  const seed = inspectAutomationProfileSeed(profile, defaultTargetUserDataDir);
+  if (!connected && seed.status === "fresh") {
+    return {
+      source: "seeded",
+      mode: "seeded-automation-profile-not-running",
+      ready: false,
+      preferred_profile: preferredProfile,
+      automation_user_data_dir: defaultTargetUserDataDir,
+      seed,
+      warning: "No CDP browser is currently reachable on the requested port.",
+      raw_cookie_values_returned: false,
+    };
+  }
+
+  return {
+    source: "unknown",
+    mode: "unknown-cdp",
+    ready: false,
+    preferred_profile: preferredProfile,
+    automation_user_data_dir: defaultTargetUserDataDir,
+    seed,
+    warning: connected
+      ? "CDP is reachable, but Uni-CLI cannot prove it is the live preferred profile or the seeded automation profile."
+      : "No CDP browser is currently reachable on the requested port.",
+    raw_cookie_values_returned: false,
+  };
+}
+
+function statusSeedCandidates(
+  preferredProfile: LocalBrowserProfile,
+  profiles: LocalBrowserProfile[],
+): Array<{ profile: LocalBrowserProfile; targetUserDataDir: string }> {
+  const candidates = [
+    {
+      profile: preferredProfile,
+      targetUserDataDir: automationDefaultUserDataDir(),
+    },
+  ];
+  const seen = new Set(
+    candidates.map((candidate) => candidate.targetUserDataDir),
+  );
+  for (const profile of profiles) {
+    const targetUserDataDir = automationUserDataDirForProfile(profile);
+    if (seen.has(targetUserDataDir)) continue;
+    seen.add(targetUserDataDir);
+    candidates.push({ profile, targetUserDataDir });
+  }
+  return candidates;
+}
+
+function describeLocalProfile(profile: LocalBrowserProfile): {
+  id: string;
+  browser_name: string;
+  profile_dir: string;
+  profile_name: string;
+  display_name: string;
+  debug_port_state: string;
+} {
+  return {
+    id: profile.id,
+    browser_name: profile.browser_name,
+    profile_dir: profile.profile_dir,
+    profile_name: profile.profile_name,
+    display_name: profile.display_name,
+    debug_port_state: profile.debug_port.state,
+  };
+}
+
+function seedWarningReason(reason: string | undefined): string {
+  return (reason ?? "manifest is not fresh").replace(/\.+$/, "");
+}
+
+async function readStatusDaemonReport(
+  browser: Command,
+): Promise<BrowserStatusDaemonReport> {
+  return withBrowserOperatorEnv(browser, async () => {
+    const daemon = await fetchDaemonStatus({ timeout: 1000 });
+    if (!daemon) {
+      const conflict = await fetchDaemonPortConflict({ timeout: 1000 });
+      return conflict
+        ? { status: "unavailable", conflict }
+        : { status: "unavailable" };
+    }
+    const sessions = daemon.extensionConnected ? await listSessions() : [];
+    return {
+      status: "running",
+      port: daemon.port,
+      extension_connected: daemon.extensionConnected,
+      sessions_count: sessions.length,
+      sessions: sessions.slice(0, 5).map((session) => ({
+        workspace: session.workspace,
+        window_id: session.windowId,
+        ...(typeof session.tabCount === "number"
+          ? { tab_count: session.tabCount }
+          : {}),
+        ...(typeof session.idleMsRemaining === "number"
+          ? { idle_ms_remaining: session.idleMsRemaining }
+          : {}),
+      })),
+    };
+  });
+}
+
+function printStatusProfileSource(source: BrowserStatusProfileSource): void {
+  if (source.source === "attach" && source.mode === "remote-cdp") {
+    console.log(chalk.dim(`Source: attach (${source.endpoint})`));
+    if (source.warning) console.log(chalk.dim(source.warning));
+    return;
+  }
+  if (source.source === "attach" && source.profile) {
+    console.log(
+      chalk.dim(`Source: live ${source.profile.display_name} on CDP port`),
+    );
+    return;
+  }
+  if (source.source === "seeded") {
+    const detail =
+      source.seed.status === "fresh"
+        ? `seeded from ${source.preferred_profile.display_name}`
+        : `seed status ${source.seed.status}${source.seed.reason ? `: ${source.seed.reason}` : ""}`;
+    console.log(chalk.dim(`Source: ${detail}`));
+    console.log(
+      chalk.dim(`Automation profile: ${source.automation_user_data_dir}`),
+    );
+    if (source.warning) console.log(chalk.yellow(`Warning: ${source.warning}`));
+    return;
+  }
+  console.log(chalk.yellow(`Source: ${source.source} (${source.mode})`));
+  console.log(chalk.yellow(`Warning: ${source.warning}`));
+}
+
+function printStatusDaemonReport(report: BrowserStatusDaemonReport): void {
+  if (report.status === "unavailable") {
+    console.log(
+      chalk.dim(
+        report.conflict
+          ? `Daemon: unavailable (${report.conflict})`
+          : "Daemon: not running",
+      ),
+    );
+    return;
+  }
+  console.log(
+    chalk.dim(
+      `Daemon: port ${String(report.port)}, extension ${
+        report.extension_connected ? "connected" : "not connected"
+      }`,
+    ),
+  );
+  if (!report.extension_connected || report.sessions.length === 0) return;
+  console.log(chalk.dim(`Sessions: ${String(report.sessions_count)}`));
+  for (const session of report.sessions) {
+    const idle =
+      typeof session.idle_ms_remaining === "number"
+        ? `, idle ${String(Math.ceil(session.idle_ms_remaining / 1000))}s`
+        : "";
+    const tabs =
+      typeof session.tab_count === "number"
+        ? `, tabs ${String(session.tab_count)}`
+        : "";
+    console.log(
+      chalk.dim(
+        `  • ${session.workspace} -> window ${String(session.window_id)}${tabs}${idle}`,
+      ),
+    );
+  }
+}
+
+function defaultLaunchProfileStatus(): Record<string, unknown> {
+  if (isBrowserEphemeralRequested(process.env)) {
+    return {
+      source: "ephemeral",
+      mode: "empty-temporary-profile",
+      warning: "UNICLI_BROWSER_EPHEMERAL=1 forces a clean empty profile.",
+      raw_cookie_values_returned: false,
+    };
+  }
+  const remote = getRemoteEndpoint();
+  if (remote) {
+    return {
+      source: "attach",
+      mode: "remote-cdp",
+      endpoint: redactEndpoint(remote.endpoint),
+      raw_cookie_values_returned: false,
+    };
+  }
+  const profile = resolvePreferredLocalBrowserProfile();
+  const targetUserDataDir = automationDefaultUserDataDir();
+  if (!profile) {
+    return {
+      source: "missing-profile",
+      mode: "none",
+      automation_user_data_dir: targetUserDataDir,
+      warning:
+        "Default browser startup requires a local browser profile source or explicit --ephemeral.",
+      raw_cookie_values_returned: false,
+    };
+  }
+  const seed = inspectAutomationProfileSeed(profile, targetUserDataDir);
+  return {
+    source: "seeded",
+    mode: isProcessVerifiedDebugPort(profile.debug_port)
+      ? "live-profile-or-seeded-profile"
+      : "seeded-automation-profile",
+    preferred_profile: {
+      id: profile.id,
+      browser_name: profile.browser_name,
+      profile_dir: profile.profile_dir,
+      profile_name: profile.profile_name,
+      debug_port_state: profile.debug_port.state,
+    },
+    automation_user_data_dir: targetUserDataDir,
+    seed,
+    raw_cookie_values_returned: false,
+  };
+}
+
+function redactEndpoint(endpoint: string): string {
+  try {
+    const url = new URL(endpoint);
+    if (url.username) url.username = "****";
+    if (url.password) url.password = "****";
+    if (url.search) url.search = "?...";
+    return url.toString();
+  } catch {
+    return endpoint.replace(/([?&][^=]+)=([^&]+)/g, "$1=...");
+  }
+}
+
+async function verifyRemoteEndpoint(
+  endpoint: string,
+  headers: Record<string, string>,
+): Promise<void> {
+  const client = new CDPClient();
+  try {
+    await client.connect(
+      endpoint,
+      Object.keys(headers).length > 0 ? { headers } : undefined,
+    );
+    await client.send("Browser.getVersion");
+  } finally {
+    await client.close();
+  }
 }
 
 async function resolveCookieReusePort(
@@ -615,30 +1126,14 @@ async function resolveCookieReusePort(
 async function liveRecordedProfilePort(
   profile: LocalBrowserProfile,
 ): Promise<number | null> {
+  const debugPort = readUserDataDirDebugPort(profile.user_data_dir);
   if (
-    profile.debug_port.state !== "recorded" ||
-    typeof profile.debug_port.port !== "number"
+    !isProcessVerifiedDebugPort(debugPort) ||
+    typeof debugPort.port !== "number"
   ) {
     return null;
   }
-  return (await isCDPAvailable(profile.debug_port.port))
-    ? profile.debug_port.port
-    : null;
-}
-
-async function findAvailableProfileLaunchPort(
-  requestedPort: number,
-  profile: LocalBrowserProfile,
-): Promise<number> {
-  const launchPort = await findAvailableCDPPort(requestedPort);
-  if (launchPort !== requestedPort) {
-    console.error(
-      chalk.dim(
-        `Port ${String(requestedPort)} already has a local listener; launching ${profile.display_name} on ${String(launchPort)} instead.`,
-      ),
-    );
-  }
-  return launchPort;
+  return (await isCDPAvailable(debugPort.port)) ? debugPort.port : null;
 }
 
 function readCookiesFromLocalProfile(
@@ -652,6 +1147,7 @@ function readCookiesFromLocalProfile(
       browser,
       domain,
       profile: profile.profile_dir,
+      userDataDir: profile.user_data_dir,
     });
     if (Object.keys(cookies).length > 0) {
       console.error(
@@ -675,23 +1171,8 @@ function readCookiesFromLocalProfile(
   }
 }
 
-function browserIdForLocalProfile(
-  profile: LocalBrowserProfile,
-): BrowserId | null {
-  switch (profile.browser_name) {
-    case "Google Chrome":
-      return "chrome";
-    case "Brave":
-      return "brave";
-    case "Microsoft Edge":
-      return "edge";
-    case "Arc":
-      return "arc";
-    case "Dia":
-      return "dia";
-    default:
-      return null;
-  }
+function browserIdForLocalProfile(profile: LocalBrowserProfile) {
+  return browserCookieIdForLocalProfile(profile);
 }
 
 function printSavedCookies(

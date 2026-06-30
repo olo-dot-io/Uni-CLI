@@ -1,17 +1,37 @@
 /**
  * @owner   src/browser/doctor.ts
  * @does    Build a machine-readable browser reliability report from live daemon, profile, CDP, layering, repair, and retry state.
- * @needs   src/browser local-profiles/launcher/cdp-client/daemon-client/bridge/protocol
+ * @needs   src/browser local-profiles/profile-seed/launcher/cdp-client/daemon-client/bridge/protocol
  * @feeds   src/commands/browser/index.ts, tests/unit/commands/browser.test.ts
  * @breaks  Probe failures are returned as diagnostics in the report; raw cookies, auth headers, and endpoint secrets are never emitted.
+ * @invariants Doctor reports whether the default browser path is attach, seeded, ephemeral, or unverified; it never reports raw cookie values.
+ * @side-effects Optional repair may launch Chrome through src/browser/launcher.ts; report-only mode performs bounded reads/probes.
+ * @perf    Probes use short network and daemon timeouts.
+ * @concurrency Does not mutate profile seed state except through explicit repair; launcher owns seed locks.
+ * @test    tests/unit/commands/browser.test.ts
+ * @stability experimental
+ * @since   2026-06-29
  */
 
 import {
+  automationDefaultUserDataDir,
+  automationUserDataDirForProfile,
   detectDefaultProfileDebugBlocks,
   detectLocalBrowserProfiles,
+  isProcessVerifiedDebugPort,
+  readProcessDebugTargetForPort,
+  readUserDataDirDebugPort,
+  resolvePreferredLocalBrowserProfile,
   type DefaultProfileDebugBlock,
   type LocalBrowserProfile,
 } from "./local-profiles.js";
+import {
+  inspectAutomationProfileSeed,
+  isBrowserEphemeralRequested,
+  isEphemeralAutomationUserDataDir,
+  isRunningSeedIdentityUsable,
+  type AutomationProfileSeedInspection,
+} from "./profile-seed.js";
 import { getCDPPort, isCDPAvailable, launchChrome } from "./launcher.js";
 import { getRemoteEndpoint } from "./cdp-client.js";
 import {
@@ -107,6 +127,29 @@ export interface BrowserRepairAttempt {
   }>;
 }
 
+export interface BrowserProfileSourceReport {
+  source: "attach" | "seeded" | "ephemeral" | "missing-profile" | "unverified";
+  mode:
+    | "remote-cdp"
+    | "live-profile-attach"
+    | "seeded-automation-profile"
+    | "empty-temporary-profile"
+    | "none"
+    | "unverified-local-cdp";
+  ready: boolean;
+  warning?: string;
+  port?: number;
+  profile?: {
+    id: string;
+    browser_name: string;
+    profile_dir: string;
+    profile_name: string;
+    debug_port_state: string;
+  };
+  automation_user_data_dir?: string;
+  seed?: AutomationProfileSeedInspection;
+}
+
 export interface BrowserDoctorReport {
   status: BrowserDoctorStatus;
   cookie_reuse: {
@@ -155,6 +198,7 @@ export interface BrowserDoctorReport {
     local_cdp: {
       port: number;
       reachable: boolean;
+      identity_verified: boolean;
       command: "unicli browser start";
       error?: string;
     };
@@ -189,6 +233,10 @@ export interface BrowserDoctorReport {
     status: "ready" | "needs-action";
     mode:
       | "local-cdp-automation-profile"
+      | "live-profile-attach"
+      | "seeded-automation-profile"
+      | "ephemeral-profile"
+      | "unverified-local-cdp"
       | "remote-cdp"
       | "daemon-extension"
       | "none";
@@ -197,6 +245,7 @@ export interface BrowserDoctorReport {
     commands: string[];
     detail: string;
   };
+  profile_source: BrowserProfileSourceReport;
   checks: BrowserDoctorCheck[];
   self_repair: {
     safe_command: "unicli browser doctor --repair";
@@ -231,10 +280,18 @@ export async function runBrowserDoctor(
       : ({ value: [] } satisfies DoctorProbe<BrowserSessionInfo[]>);
   const localCdp = await probeLocalCdp();
   const remote = getRemoteEndpoint();
+  const profileSource = await buildProfileSourceReport(
+    profiles,
+    remote !== null,
+  );
+  const localCdpIdentityVerified =
+    profileSource.ready &&
+    (profileSource.mode === "live-profile-attach" ||
+      profileSource.mode === "seeded-automation-profile" ||
+      profileSource.mode === "empty-temporary-profile");
 
   const backgroundStatus = buildBackgroundStatus(daemonStatus, conflict.value);
-  const isAutomationReady =
-    backgroundStatus === "ready" || localCdp.value || remote !== null;
+  const isAutomationReady = backgroundStatus === "ready" || profileSource.ready;
   const cookieReuse = buildCookieReuse(profiles);
   const backgroundOperation: BrowserDoctorReport["background_operation"] = {
     status: backgroundStatus,
@@ -289,6 +346,7 @@ export async function runBrowserDoctor(
     local_cdp: {
       port: getCDPPort(),
       reachable: localCdp.value,
+      identity_verified: localCdpIdentityVerified,
       command: "unicli browser start",
       ...(localCdp.error ? { error: localCdp.error } : {}),
     },
@@ -366,6 +424,7 @@ export async function runBrowserDoctor(
     backgroundOperation,
     directConnect,
     cookieReuse,
+    profileSource,
   });
   const checks = buildChecks({
     profiles,
@@ -394,6 +453,7 @@ export async function runBrowserDoctor(
     stability_reliability: stabilityReliability,
     repair_retry: repairRetry,
     default_path: defaultPath,
+    profile_source: profileSource,
     checks,
     self_repair: selfRepair,
     ...(repairAttempt ? { repair_attempt: repairAttempt } : {}),
@@ -426,7 +486,17 @@ export async function repairBrowserDoctor(): Promise<BrowserRepairAttempt> {
     };
   }
   const port = getCDPPort();
-  if (await isCDPAvailable(port)) {
+  const remote = getRemoteEndpoint();
+  const profileSource = await buildProfileSourceReport(
+    detectLocalBrowserProfiles(),
+    remote !== null,
+  );
+  if (
+    profileSource.ready &&
+    (profileSource.mode === "live-profile-attach" ||
+      profileSource.mode === "seeded-automation-profile" ||
+      profileSource.mode === "remote-cdp")
+  ) {
     return {
       status: "already-ready",
       actions: [
@@ -434,7 +504,10 @@ export async function repairBrowserDoctor(): Promise<BrowserRepairAttempt> {
           id: "start-local-automation-cdp",
           status: "skipped",
           command: "unicli browser start",
-          detail: `Local CDP is already reachable on port ${String(port)}.`,
+          detail:
+            profileSource.mode === "remote-cdp"
+              ? "Remote CDP is configured and verified as the default browser path."
+              : `Local CDP identity is already verified on port ${String(profileSource.port ?? port)}.`,
         },
       ],
     };
@@ -516,14 +589,14 @@ function buildCookieReuse(
       "unicli browser cookies <domain> --profile-id <id>" as const,
     strategy: [
       "import domain cookies from the selected local browser DB when platform decryption is available",
-      "prefer a live DevToolsActivePort recorded by the selected profile",
+      "prefer a live CDP process whose --user-data-dir matches the selected profile",
       "launch Chrome CDP with a Uni-CLI automation profile instead of the default user-data-dir",
       "inject selected local profile cookies into the automation profile for browserSession=user commands",
       "extract raw domain cookies through explicit user-requested CDP export",
     ],
     reuse_paths: [
       "direct browser DB cookie import",
-      "profile DevToolsActivePort",
+      "process-verified live profile CDP",
       "automation profile launch under ~/.unicli",
       "selected profile cookie injection into CDP automation profile",
       "explicit raw cookie export through browser cookies",
@@ -600,28 +673,192 @@ function buildNextActions(
   return [...new Set(commands)];
 }
 
+async function buildProfileSourceReport(
+  profiles: LocalBrowserProfile[],
+  remoteConfigured: boolean,
+): Promise<BrowserProfileSourceReport> {
+  const cdpPort = getCDPPort();
+  const processTarget = readProcessDebugTargetForPort(cdpPort);
+  if (
+    processTarget &&
+    isEphemeralAutomationUserDataDir(processTarget.user_data_dir) &&
+    (await isCDPAvailable(processTarget.port))
+  ) {
+    return {
+      source: "ephemeral",
+      mode: "empty-temporary-profile",
+      ready: true,
+      port: processTarget.port,
+      automation_user_data_dir: processTarget.user_data_dir,
+      warning:
+        "This CDP port belongs to an explicit ephemeral empty profile; logged-in cookies are intentionally not seeded.",
+    };
+  }
+  if (isBrowserEphemeralRequested(process.env)) {
+    return {
+      source: "ephemeral",
+      mode: "empty-temporary-profile",
+      ready: false,
+      warning:
+        "UNICLI_BROWSER_EPHEMERAL=1 forces an empty profile; logged-in cookies are intentionally not seeded.",
+    };
+  }
+  if (remoteConfigured) {
+    return {
+      source: "attach",
+      mode: "remote-cdp",
+      ready: true,
+    };
+  }
+
+  const profile = resolvePreferredLocalBrowserProfile() ?? profiles[0] ?? null;
+  const defaultTargetUserDataDir = automationDefaultUserDataDir();
+  if (!profile || profiles.length === 0) {
+    return {
+      source: "missing-profile",
+      mode: "none",
+      ready: false,
+      automation_user_data_dir: defaultTargetUserDataDir,
+      warning:
+        "No local browser profile source was found; default startup will fail unless --ephemeral is explicit.",
+    };
+  }
+
+  const profileSummary = (candidate: LocalBrowserProfile) => ({
+    id: candidate.id,
+    browser_name: candidate.browser_name,
+    profile_dir: candidate.profile_dir,
+    profile_name: candidate.profile_name,
+    debug_port_state: candidate.debug_port.state,
+  });
+  const liveProfile = profiles.find((candidate) =>
+    isProcessVerifiedDebugPort(candidate.debug_port),
+  );
+  if (liveProfile) {
+    const livePort = await liveProfilePort(liveProfile.user_data_dir);
+    if (livePort !== null) {
+      return {
+        source: "attach",
+        mode: "live-profile-attach",
+        ready: true,
+        port: livePort,
+        profile: profileSummary(liveProfile),
+      };
+    }
+  }
+
+  const liveSeed = statusSeedCandidates(profile, profiles).find((candidate) => {
+    const debugPort = readUserDataDirDebugPort(candidate.targetUserDataDir);
+    return isProcessVerifiedDebugPort(debugPort);
+  });
+  if (liveSeed) {
+    const liveSeededPort = await liveProfilePort(liveSeed.targetUserDataDir);
+    const seed = inspectAutomationProfileSeed(
+      liveSeed.profile,
+      liveSeed.targetUserDataDir,
+    );
+    if (liveSeededPort !== null && isRunningSeedIdentityUsable(seed)) {
+      return {
+        source: "seeded",
+        mode: "seeded-automation-profile",
+        ready: true,
+        port: liveSeededPort,
+        profile: profileSummary(liveSeed.profile),
+        automation_user_data_dir: liveSeed.targetUserDataDir,
+        seed,
+        warning:
+          seed.status === "fresh"
+            ? undefined
+            : `Automation profile is running but seed status is ${seed.status}: ${seedWarningReason(seed.reason)}.`,
+      };
+    }
+    if (liveSeededPort !== null) {
+      return {
+        source: "seeded",
+        mode: "unverified-local-cdp",
+        ready: false,
+        port: liveSeededPort,
+        profile: profileSummary(liveSeed.profile),
+        automation_user_data_dir: liveSeed.targetUserDataDir,
+        seed,
+        warning:
+          "A local CDP browser is running from the automation profile, but Uni-CLI cannot prove it was seeded from the selected profile.",
+      };
+    }
+  }
+
+  const seed = inspectAutomationProfileSeed(profile, defaultTargetUserDataDir);
+  if (seed.status === "fresh") {
+    return {
+      source: "seeded",
+      mode: "seeded-automation-profile",
+      ready: false,
+      profile: profileSummary(profile),
+      automation_user_data_dir: defaultTargetUserDataDir,
+      seed,
+      warning:
+        "Automation profile is seeded but no verified local CDP process is currently running.",
+    };
+  }
+
+  return {
+    source: "seeded",
+    mode: "seeded-automation-profile",
+    ready: false,
+    profile: profileSummary(profile),
+    automation_user_data_dir: defaultTargetUserDataDir,
+    seed,
+    warning:
+      "Automation profile must be seeded before default browser startup is ready.",
+  };
+}
+
+function statusSeedCandidates(
+  preferredProfile: LocalBrowserProfile,
+  profiles: LocalBrowserProfile[],
+): Array<{ profile: LocalBrowserProfile; targetUserDataDir: string }> {
+  const candidates = [
+    {
+      profile: preferredProfile,
+      targetUserDataDir: automationDefaultUserDataDir(),
+    },
+  ];
+  const seen = new Set(
+    candidates.map((candidate) => candidate.targetUserDataDir),
+  );
+  for (const profile of profiles) {
+    const targetUserDataDir = automationUserDataDirForProfile(profile);
+    if (seen.has(targetUserDataDir)) continue;
+    seen.add(targetUserDataDir);
+    candidates.push({ profile, targetUserDataDir });
+  }
+  return candidates;
+}
+
+function seedWarningReason(reason: string | undefined): string {
+  return (reason ?? "seed manifest is not fresh").replace(/\.+$/, "");
+}
+
+async function liveProfilePort(userDataDir: string): Promise<number | null> {
+  const debugPort = readUserDataDirDebugPort(userDataDir);
+  if (
+    !isProcessVerifiedDebugPort(debugPort) ||
+    typeof debugPort.port !== "number" ||
+    !(await isCDPAvailable(debugPort.port))
+  ) {
+    return null;
+  }
+  return debugPort.port;
+}
+
 function buildDefaultPath(input: {
   profiles: LocalBrowserProfile[];
   backgroundOperation: BrowserDoctorReport["background_operation"];
   directConnect: BrowserDoctorReport["direct_connect"];
   cookieReuse: BrowserDoctorReport["cookie_reuse"];
+  profileSource: BrowserProfileSourceReport;
 }): BrowserDoctorReport["default_path"] {
-  if (input.directConnect.local_cdp.reachable) {
-    return {
-      status: "ready",
-      mode: "local-cdp-automation-profile",
-      ready: true,
-      next_step: "Run the requested Uni-CLI command.",
-      commands: [
-        "unicli browser doctor --json",
-        "unicli <site> <command> -f json",
-        "unicli repair <site> <command>",
-      ],
-      detail:
-        "Default browser commands can use the Uni-CLI automation profile on local CDP. Authenticated sites reuse selected local profile cookies.",
-    };
-  }
-  if (input.directConnect.remote_cdp.configured) {
+  if (input.profileSource.mode === "remote-cdp") {
     return {
       status: "ready",
       mode: "remote-cdp",
@@ -631,7 +868,57 @@ function buildDefaultPath(input: {
         "unicli browser remote --status",
         "unicli <site> <command> -f json",
       ],
-      detail: "Remote CDP is configured and can carry browser commands.",
+      detail: "Remote CDP is configured and browser commands attach to it.",
+    };
+  }
+  if (input.profileSource.mode === "live-profile-attach") {
+    return {
+      status: "ready",
+      mode: "live-profile-attach",
+      ready: true,
+      next_step: "Run the requested Uni-CLI command.",
+      commands: [
+        "unicli browser profiles --json",
+        "unicli <site> <command> -f json",
+      ],
+      detail:
+        "Default browser commands attach to a live local browser profile with CDP already exposed.",
+    };
+  }
+  if (
+    input.profileSource.mode === "seeded-automation-profile" &&
+    input.profileSource.ready
+  ) {
+    return {
+      status: "ready",
+      mode: "seeded-automation-profile",
+      ready: true,
+      next_step: "Run the requested Uni-CLI command.",
+      commands: [
+        "unicli browser doctor --json",
+        "unicli <site> <command> -f json",
+        "unicli repair <site> <command>",
+      ],
+      detail:
+        "Default browser commands use a Uni-CLI automation profile seeded from the preferred logged-in browser profile.",
+    };
+  }
+  if (input.profileSource.source === "ephemeral") {
+    return {
+      status: input.directConnect.local_cdp.reachable
+        ? "ready"
+        : "needs-action",
+      mode: "ephemeral-profile",
+      ready: input.directConnect.local_cdp.reachable,
+      next_step: input.directConnect.local_cdp.reachable
+        ? "Run the requested Uni-CLI command."
+        : "unicli browser start --ephemeral",
+      commands: [
+        "unicli browser start --ephemeral",
+        "unicli <site> <command> -f json",
+      ],
+      detail:
+        "Ephemeral mode intentionally uses an empty temporary profile; logged-in cookies are not reused.",
     };
   }
   if (input.backgroundOperation.status === "ready") {
@@ -646,6 +933,26 @@ function buildDefaultPath(input: {
         "unicli <site> <command> -f json",
       ],
       detail: "Daemon and extension are connected for background tab control.",
+    };
+  }
+  if (
+    input.directConnect.local_cdp.reachable &&
+    !input.directConnect.local_cdp.identity_verified
+  ) {
+    return {
+      status: "needs-action",
+      mode: "unverified-local-cdp",
+      ready: false,
+      next_step:
+        "Stop the unverified automation Chrome and rerun `unicli browser start`.",
+      commands: [
+        "unicli browser start",
+        "unicli browser profiles --json",
+        "unicli browser doctor --json",
+      ],
+      detail:
+        input.profileSource.warning ??
+        "Local CDP is reachable, but doctor cannot prove it is attach or seeded.",
     };
   }
   const commands = ["unicli browser doctor --repair"];
@@ -675,7 +982,7 @@ function buildChecks(input: {
   remoteDebuggingPolicy: ChromeRemoteDebuggingPolicyReport;
   chrome136Guidance: Chrome136RemoteDebuggingGuidance;
 }): BrowserDoctorCheck[] {
-  const localCdpReady = input.directConnect.local_cdp.reachable;
+  const localCdpReady = input.directConnect.local_cdp.identity_verified;
   const hasDefaultBrowserPath =
     localCdpReady || input.backgroundOperation.status === "ready";
   const remoteConfigured = input.directConnect.remote_cdp.configured;
@@ -781,8 +1088,10 @@ function buildChecks(input: {
       ok: localCdpReady,
       status: localCdpReady ? "ready" : "needs-action",
       detail: localCdpReady
-        ? `Local CDP is reachable on port ${String(input.directConnect.local_cdp.port)}.`
-        : `Local CDP is not reachable on port ${String(input.directConnect.local_cdp.port)}.`,
+        ? `Local CDP identity is verified on port ${String(input.directConnect.local_cdp.port)}.`
+        : input.directConnect.local_cdp.reachable
+          ? `Local CDP is reachable on port ${String(input.directConnect.local_cdp.port)}, but Uni-CLI cannot verify its profile identity.`
+          : `Local CDP is not reachable on port ${String(input.directConnect.local_cdp.port)}.`,
       next_step: localCdpReady
         ? "No action."
         : "unicli browser doctor --repair",
@@ -833,7 +1142,7 @@ function buildSelfRepair(input: {
   defaultProfileDebugBlocks: DefaultProfileDebugBlock[];
   remoteDebuggingPolicy: ChromeRemoteDebuggingPolicyReport;
 }): BrowserDoctorReport["self_repair"] {
-  const cdpReady = input.directConnect.local_cdp.reachable;
+  const cdpReady = input.directConnect.local_cdp.identity_verified;
   const actions: BrowserSelfRepairAction[] = [];
   if (input.remoteDebuggingPolicy.state === "disabled") {
     actions.push({
@@ -861,7 +1170,7 @@ function buildSelfRepair(input: {
       input.remoteDebuggingPolicy.state === "disabled"
         ? "Blocked by Chrome policy RemoteDebuggingAllowed=false."
         : cdpReady
-          ? "Local automation CDP is already reachable."
+          ? "Local automation CDP already has verified profile identity."
           : "Starts Chrome with Uni-CLI's automation profile and --no-startup-window.",
     expected_result: `127.0.0.1:${String(input.directConnect.local_cdp.port)} listens from a ~/.unicli automation profile.`,
   });
@@ -976,18 +1285,22 @@ function buildCompleteness(input: {
     }),
     direct_connect: capabilityCheck({
       status:
-        input.directConnect.local_cdp.reachable ||
+        input.directConnect.local_cdp.identity_verified ||
         input.directConnect.remote_cdp.configured
           ? "ready"
           : "needs-action",
       evidence: [
-        input.directConnect.local_cdp.reachable
-          ? `local CDP reachable on port ${String(
+        input.directConnect.local_cdp.identity_verified
+          ? `local CDP identity verified on port ${String(
               input.directConnect.local_cdp.port,
             )}`
-          : `local CDP unreachable on port ${String(
-              input.directConnect.local_cdp.port,
-            )}`,
+          : input.directConnect.local_cdp.reachable
+            ? `local CDP reachable but identity unverified on port ${String(
+                input.directConnect.local_cdp.port,
+              )}`
+            : `local CDP unreachable on port ${String(
+                input.directConnect.local_cdp.port,
+              )}`,
         input.directConnect.remote_cdp.configured
           ? "remote CDP configured"
           : "remote CDP not configured",

@@ -289,6 +289,18 @@ describe("resolveCookieDb", () => {
     expect(r.profile).toBe("Default");
   });
 
+  it("honours an explicit user-data-dir request", () => {
+    const userDataDir = join(HOME, "automation-profile");
+    mkdirSync(join(userDataDir, "Default", "Network"), { recursive: true });
+    writeFileSync(join(userDataDir, "Default", "Network", "Cookies"), "");
+
+    const r = resolveCookieDb("chrome", "Default", userDataDir);
+
+    expect(r.userDataRoot).toBe(userDataDir);
+    expect(r.profile).toBe("Default");
+    expect(r.dbPath).toBe(join(userDataDir, "Default", "Network", "Cookies"));
+  });
+
   it("throws no_profile when the named profile has no Cookies file", () => {
     if (process.platform !== "darwin") return;
     expect(() => resolveCookieDb("chrome", "Profile 99")).toThrow(

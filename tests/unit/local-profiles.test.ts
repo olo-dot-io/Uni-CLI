@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  parseDebugPortProcessTargets,
   parseDefaultProfileDebugBlocks,
   parseUserDataDirDebugPort,
   type LocalBrowserInstall,
@@ -86,5 +87,26 @@ describe("local browser profile diagnostics", () => {
         "/Users/example/.unicli/browser profiles/google chrome Default",
       ),
     ).toMatchObject({ state: "recorded", port: 9231 });
+  });
+
+  it("lists process-verified debug targets by port and user-data-dir", () => {
+    const processList = [
+      "14018 /Applications/Google Chrome.app/Contents/MacOS/Google Chrome --remote-debugging-port=9333 --user-data-dir=/var/folders/t/unicli-chrome-ephemeral-abc --no-startup-window",
+      "14019 /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Helpers/Google Chrome Helper --type=renderer --remote-debugging-port=9333 --user-data-dir=/var/folders/t/unicli-chrome-ephemeral-abc",
+      "15018 /Applications/Google Chrome.app/Contents/MacOS/Google Chrome --remote-debugging-port=9444 --user-data-dir=/Users/example/.unicli/chrome-profile",
+    ].join("\n");
+
+    expect(parseDebugPortProcessTargets(processList)).toEqual([
+      {
+        port: 9333,
+        user_data_dir: "/var/folders/t/unicli-chrome-ephemeral-abc",
+        source: "process-list",
+      },
+      {
+        port: 9444,
+        user_data_dir: "/Users/example/.unicli/chrome-profile",
+        source: "process-list",
+      },
+    ]);
   });
 });

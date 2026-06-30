@@ -4,7 +4,7 @@
  *              miss (keychain denied / corrupt file / v20 encryption / CDP
  *              unavailable) as a typed outcome, instead of collapsing every
  *              failure to null.
- * @needs       node:fs, node:path, ./chromium-cookies (lazy), ./cookie-extractor (lazy)
+ * @needs       node:fs, node:path, ./chromium-cookies (lazy), ./cookie-extractor (lazy), ../browser/local-profiles (lazy)
  * @feeds       src::engine::cookies (loadCookies/loadCookiesWithCDP/acquireCookies
  *              projections), src::engine::executor (auth error detail)
  * @breaks      never throws from loadCookiesWithDiagnostics — failures become
@@ -21,7 +21,6 @@
 
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-
 export type CookieSourceName = "disk" | "browser" | "cdp";
 
 /** A typed failure cause from one acquisition source. */
@@ -120,8 +119,12 @@ export function resolveCookieDomain(site: string, domain?: string): string {
 
 async function defaultReadBrowser(domain: string): Promise<BrowserAttempt> {
   let mod: typeof import("./chromium-cookies.js");
+  let localProfiles: typeof import("../browser/local-profiles.js");
   try {
-    mod = await import("./chromium-cookies.js");
+    [mod, localProfiles] = await Promise.all([
+      import("./chromium-cookies.js"),
+      import("../browser/local-profiles.js"),
+    ]);
   } catch (err) {
     return {
       kind: "error",
@@ -134,9 +137,37 @@ async function defaultReadBrowser(domain: string): Promise<BrowserAttempt> {
       ],
     };
   }
+  const reasons: CookieReason[] = [];
+  const preferred = localProfiles.resolvePreferredLocalBrowserProfile();
+  if (preferred) {
+    const preferredBrowser =
+      localProfiles.browserCookieIdForLocalProfile(preferred);
+    if (preferredBrowser) {
+      try {
+        const record = mod.readCookiesAsRecord({
+          browser: preferredBrowser,
+          domain,
+          profile: preferred.profile_dir,
+          userDataDir: preferred.user_data_dir,
+        });
+        if (Object.keys(record).length > 0) {
+          return { kind: "ok", cookies: record };
+        }
+      } catch (err) {
+        const code =
+          err instanceof mod.ChromiumCookieError
+            ? err.code
+            : "browser_read_failed";
+        reasons.push({
+          source: "browser",
+          code,
+          detail: `${preferred.display_name}: ${err instanceof Error ? err.message : String(err)}`,
+        });
+      }
+    }
+  }
   const installed = mod.detectInstalledBrowsers();
   if (installed.length === 0) return { kind: "none" };
-  const reasons: CookieReason[] = [];
   for (const browser of installed) {
     try {
       const record = mod.readCookiesAsRecord({ browser, domain });

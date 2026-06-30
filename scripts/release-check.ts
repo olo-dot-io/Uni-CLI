@@ -50,6 +50,13 @@ function hasFinalCodename(value: string): boolean {
   );
 }
 
+function hasFinalCodenameValue(value: string): boolean {
+  return (
+    /^\S.+\s·\s\S.+$/.test(value.trim()) &&
+    !/\b(?:tbd|todo|unreleased|next)\b/i.test(value)
+  );
+}
+
 function releaseLineForVersion(
   content: string,
   currentVersion: string,
@@ -72,6 +79,18 @@ const versionFiles = [
   { file: "CHANGELOG.md", pattern: `[${version}]` },
   { file: "contributing/COPY.md", pattern: version },
   { file: "docs/ROADMAP.md", pattern: `v${version}` },
+  { file: "docs/zh/ROADMAP.md", pattern: `v${version}` },
+  { file: "docs/ARCHITECTURE.md", pattern: `v${version}` },
+  { file: "docs/faq.md", pattern: `v${version}` },
+  { file: "docs/zh/faq.md", pattern: `v${version}` },
+  { file: "docs/release-info.json", pattern: `"version": "${version}"` },
+  { file: "server.json", pattern: `"version": "${version}"` },
+  { file: "skills/unicli/SKILL.md", pattern: `version: ${version}` },
+  {
+    file: "skills/unicli-claude-code/SKILL.md",
+    pattern: `version: ${version}`,
+  },
+  { file: "skills/unicli-hermes/SKILL.md", pattern: `version: ${version}` },
 ];
 
 for (const { file, pattern } of versionFiles) {
@@ -146,9 +165,12 @@ results.push({
 
 if (strictCodename) {
   const codenameFiles = [
+    "AGENTS.md",
     "README.md",
     "README.zh-CN.md",
     "contributing/COPY.md",
+    "docs/ROADMAP.md",
+    "docs/zh/ROADMAP.md",
   ];
   for (const file of codenameFiles) {
     const filePath = join(ROOT, file);
@@ -169,6 +191,36 @@ if (strictCodename) {
       detail: pass
         ? `Found final codename in "${releaseLine.trim()}"`
         : `Missing final Program · Astronaut codename on a v${version} release line`,
+    });
+  }
+  const releaseInfoPath = join(ROOT, "docs/release-info.json");
+  if (existsSync(releaseInfoPath)) {
+    try {
+      const releaseInfo = JSON.parse(
+        readFileSync(releaseInfoPath, "utf-8"),
+      ) as { codename?: unknown; version?: unknown };
+      const codename = String(releaseInfo.codename ?? "");
+      const pass =
+        releaseInfo.version === version && hasFinalCodenameValue(codename);
+      results.push({
+        name: "docs/release-info.json release codename",
+        pass,
+        detail: pass
+          ? `Found final codename "${codename}"`
+          : "docs/release-info.json must contain the current version and final Program · Astronaut codename",
+      });
+    } catch (err) {
+      results.push({
+        name: "docs/release-info.json release codename",
+        pass: false,
+        detail: err instanceof Error ? err.message : String(err),
+      });
+    }
+  } else {
+    results.push({
+      name: "docs/release-info.json release codename",
+      pass: false,
+      detail: "File not found: docs/release-info.json",
     });
   }
 }

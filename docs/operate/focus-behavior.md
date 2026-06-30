@@ -10,9 +10,11 @@ The browser bridge follows the same rule. Daemon commands send
 read-only and must not create `about:blank` placeholder tabs, and headed local
 Chrome launches use `--no-startup-window` unless the caller explicitly opts
 into foreground startup with `unicli browser --focus start`. Chrome/CDP
-launches use Uni-CLI-owned automation profiles under `~/.unicli/`; logged-in
-state is reused by importing cookies from the selected local browser profile
-instead of launching CDP against Chrome's default user-data-dir.
+uses process-verified live profiles or Uni-CLI-owned automation profiles under
+`~/.unicli/`; default startup reuses logged-in state by attaching to an
+already-exposed local profile when available, otherwise by seeding the
+automation profile from the preferred local Chrome profile instead of launching
+CDP against Chrome's default user-data-dir.
 
 ## Defaults
 
@@ -37,14 +39,17 @@ instead of launching CDP against Chrome's default user-data-dir.
 - Chrome 136+ disables remote debugging for the browser's default
   user-data-dir. Treat a process with `--remote-debugging-port` but no listening
   port as a default-profile launch defect, not a retryable CDP race. The
-  correct repair is an automation profile plus cookie import from
-  `unicli browser profiles --json`. `unicli browser doctor --json` reports this
-  as the `default profile CDP trap` check, and `unicli browser doctor --repair`
-  starts the safe Uni-CLI automation CDP profile when needed. The
+  correct repair is a process-verified live attach or a Uni-CLI-owned seeded
+  automation profile selected from `unicli browser profiles --json`.
+  `unicli browser doctor --json` reports this as the `default profile CDP trap`
+  check, and `unicli browser doctor --repair` starts the safe Uni-CLI
+  automation CDP profile when needed. The `profile_source` section reports
+  attach, seeded, remote, and explicit ephemeral paths; the
   `chrome_remote_debugging` section also reports `RemoteDebuggingAllowed`:
   `false` blocks every local CDP path until the managed Chrome policy is
   removed or set true, while `true` still does not bypass the Chrome 136+
-  default-directory restriction.
+  default-directory restriction. Empty profiles require explicit
+  `unicli browser start --ephemeral` or `UNICLI_BROWSER_EPHEMERAL=1`.
 - macOS background input is not a global HID path. It resolves a running app
   and on-screen window, installs per-process event taps for the previous and
   target apps, sends an AppKit activation primer plus a center primer only when

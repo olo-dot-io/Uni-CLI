@@ -10,7 +10,7 @@ The current generated operation catalog is the source of truth:
 **<span><!-- STATS:command_count -->1798<!-- /STATS --></span> commands**,
 **<span><!-- STATS:adapter_count_total -->1225<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->9257<!-- /STATS --></span> tests** in v0.225.3.
+and **<span><!-- STATS:test_count -->9294<!-- /STATS --></span> tests** in v0.226.0.
 
 ## Computer-Control Thesis
 

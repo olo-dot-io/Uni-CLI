@@ -1,19 +1,39 @@
 /**
  * @owner   src/browser/launcher.ts
- * @does    Discover Chrome-family executables, probe local CDP ports, find free debug ports, and launch Chrome with optional profile binding.
- * @needs   node:child_process, node:fs, node:net, node:path, src/electron-apps
- * @feeds   src/browser/bridge.ts, src/commands/browser/index.ts, src/commands/status.ts, transport CDP browser adapter
- * @breaks  Missing Chrome, occupied ports, and CDP startup timeouts throw explicit errors; callers decide repair or fallback.
+ * @does    Discover Chrome executables, choose logged-in profile sources, seed automation user-data dirs, and launch Chrome with CDP.
+ * @needs   node:child_process, node:fs, node:net, src/electron-apps, src/browser/local-profiles.ts, src/browser/profile-seed.ts
+ * @feeds   src/browser/bridge.ts, src/commands/browser/index.ts, src/commands/status.ts, src/browser/doctor.ts, transport CDP browser adapter
+ * @breaks  Missing Chrome/profile sources, seed failures, occupied ports, default-dir policy violations, and CDP startup timeouts throw explicit errors.
+ * @invariants CDP is never launched against a known real browser default user-data-dir; empty profiles require explicit ephemeral opt-out.
+ * @side-effects Spawns Chrome and may create/replace Uni-CLI-owned automation profile directories before launch.
+ * @perf    Port probes are bounded; seed copies only login-state files before the single Chrome spawn.
+ * @concurrency Refuses to mutate a live or lock-held automation profile when it must be reseeded.
+ * @test    tests/unit/launcher.test.ts, tests/unit/profile-seed.test.ts
+ * @stability experimental
+ * @since   2026-06-29
  */
 
 import { execSync, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { createServer } from "node:net";
 import { getElectronApp, type ElectronAppEntry } from "../electron-apps.js";
+import { resolveCdpPort } from "./cdp-client.js";
 import {
   automationDefaultUserDataDir,
+  automationUserDataDirForProfile,
+  isProcessVerifiedDebugPort,
   knownLocalBrowserInstalls,
+  readUserDataDirDebugPort,
+  resolvePreferredLocalBrowserProfile,
+  type LocalBrowserProfile,
 } from "./local-profiles.js";
+import {
+  createEphemeralAutomationUserDataDir,
+  inspectAutomationProfileSeed,
+  isBrowserEphemeralRequested,
+  isRunningSeedIdentityUsable,
+  prepareSeededAutomationProfile,
+} from "./profile-seed.js";
 
 const DEFAULT_CDP_PORT = 9222;
 
@@ -24,6 +44,9 @@ export interface ChromeLaunchOptions {
   browserPath?: string;
   userDataDir?: string;
   profileDirectory?: string;
+  seedProfile?: LocalBrowserProfile | null;
+  ephemeral?: boolean;
+  refreshProfile?: boolean;
   reuseExisting?: boolean;
   allowDefaultUserDataDir?: boolean;
 }
@@ -125,24 +148,79 @@ export async function launchChrome(
   port: number = DEFAULT_CDP_PORT,
   options?: ChromeLaunchOptions,
 ): Promise<number> {
+  const ephemeral =
+    options?.ephemeral === true || isBrowserEphemeralRequested(process.env);
+  const seedProfile = resolveLaunchSeedProfile(options, ephemeral);
+  if (!ephemeral && !seedProfile && options?.userDataDir === undefined) {
+    throw new Error(
+      "No local browser profile found to seed Uni-CLI automation Chrome. Open/sign in to Chrome once, run `unicli browser profiles --json`, or explicitly opt out with `unicli browser start --ephemeral`.",
+    );
+  }
+
+  const liveSourcePort = seedProfile
+    ? await liveRecordedUserDataDirPort(seedProfile.user_data_dir)
+    : null;
+  if (liveSourcePort !== null) return liveSourcePort;
+
+  const profileDir = resolveLaunchUserDataDir(options, seedProfile, ephemeral);
+  if (
+    options?.allowDefaultUserDataDir !== true &&
+    isKnownDefaultUserDataDir(profileDir)
+  ) {
+    throw new Error(
+      `Chrome disables remote debugging for the default user-data-dir: ${profileDir}. Use a Uni-CLI automation profile seeded from the logged-in profile instead.`,
+    );
+  }
+
+  if (!ephemeral && seedProfile) {
+    const liveTargetPort = await liveRecordedUserDataDirPort(profileDir);
+    if (liveTargetPort !== null) {
+      if (options?.refreshProfile === true) {
+        throw new Error(
+          `Cannot refresh Uni-CLI automation profile while it is running on port ${String(liveTargetPort)}. Stop that Chrome profile, then rerun with --refresh-profile.`,
+        );
+      }
+      const seedState = inspectAutomationProfileSeed(seedProfile, profileDir);
+      if (isRunningSeedIdentityUsable(seedState)) {
+        return liveTargetPort;
+      }
+      throw new Error(
+        `Uni-CLI automation profile is already running on port ${String(liveTargetPort)} but its login-state seed is ${seedState.status}: ${seedState.reason ?? "seed manifest is not fresh"}. Stop that Chrome profile, then rerun so Uni-CLI can reseed it; use --ephemeral only for an intentionally empty profile.`,
+      );
+    }
+  }
+
+  const requestedPortAvailable = await isCDPAvailable(port);
+  if (requestedPortAvailable) {
+    if (options?.reuseExisting === false || ephemeral) {
+      throw new Error(`CDP port ${String(port)} is already in use`);
+    }
+    if (!ephemeral && seedProfile) {
+      throw new Error(
+        `CDP port ${String(port)} is already reachable, but it is not the verified live or seeded profile for ${seedProfile.display_name}. Stop that browser or choose another port; Uni-CLI will not silently reuse an unknown empty profile.`,
+      );
+    }
+    return port;
+  }
+
   const chromePath = findChrome();
   const actualPath =
-    process.env.CHROME_PATH ?? options?.browserPath ?? chromePath;
+    process.env.CHROME_PATH ??
+    options?.browserPath ??
+    (seedProfile?.browser_path_exists ? seedProfile.browser_path : undefined) ??
+    chromePath;
   if (!actualPath) {
     throw new Error(
       "Chrome not found. Install Google Chrome or set CHROME_PATH env var.",
     );
   }
 
-  // Check if already running with CDP
-  if (await isCDPAvailable(port)) {
-    if (options?.reuseExisting === false) {
-      throw new Error(`CDP port ${String(port)} is already in use`);
-    }
-    return port;
+  if (!ephemeral && seedProfile) {
+    prepareSeededAutomationProfile(seedProfile, profileDir, {
+      force: options?.refreshProfile === true,
+    });
   }
 
-  // Launch Chrome with remote debugging
   const args = [
     `--remote-debugging-port=${String(port)}`,
     "--no-first-run",
@@ -150,24 +228,15 @@ export async function launchChrome(
     "--disable-extensions",
   ];
 
-  // Dedicated automation profile or selected logged-in Chromium profile.
-  const profileDir = options?.userDataDir ?? automationDefaultUserDataDir();
-  if (
-    options?.allowDefaultUserDataDir !== true &&
-    isKnownDefaultUserDataDir(profileDir)
-  ) {
-    throw new Error(
-      `Chrome disables remote debugging for the default user-data-dir: ${profileDir}. Use a Uni-CLI automation profile and import cookies from the logged-in profile instead.`,
-    );
-  }
   if (profileDir) {
     args.push(`--user-data-dir=${profileDir}`);
   }
-  if (options?.profileDirectory) {
-    args.push(`--profile-directory=${options.profileDirectory}`);
+  const profileDirectory =
+    options?.profileDirectory ?? seedProfile?.profile_dir;
+  if (profileDirectory) {
+    args.push(`--profile-directory=${profileDirectory}`);
   }
 
-  // Chrome's new headless mode (for CI / server environments)
   if (options?.headless) {
     args.push("--headless=new");
   } else if (options?.background !== false) {
@@ -196,13 +265,48 @@ function isKnownDefaultUserDataDir(userDataDir: string): boolean {
   );
 }
 
+function resolveLaunchSeedProfile(
+  options: ChromeLaunchOptions | undefined,
+  ephemeral: boolean,
+): LocalBrowserProfile | null {
+  if (ephemeral) return null;
+  if (options && "seedProfile" in options) return options.seedProfile ?? null;
+  if (options?.userDataDir !== undefined) return null;
+  return resolvePreferredLocalBrowserProfile();
+}
+
+function resolveLaunchUserDataDir(
+  options: ChromeLaunchOptions | undefined,
+  seedProfile: LocalBrowserProfile | null,
+  ephemeral: boolean,
+): string {
+  if (options?.userDataDir) return options.userDataDir;
+  if (ephemeral) return createEphemeralAutomationUserDataDir();
+  if (seedProfile && options && "seedProfile" in options) {
+    return automationUserDataDirForProfile(seedProfile);
+  }
+  return automationDefaultUserDataDir();
+}
+
+async function liveRecordedUserDataDirPort(
+  userDataDir: string,
+): Promise<number | null> {
+  const debugPort = readUserDataDirDebugPort(userDataDir);
+  if (
+    !isProcessVerifiedDebugPort(debugPort) ||
+    typeof debugPort.port !== "number" ||
+    !(await isCDPAvailable(debugPort.port))
+  ) {
+    return null;
+  }
+  return debugPort.port;
+}
+
 /**
  * Get CDP port from environment or default.
  */
 export function getCDPPort(): number {
-  const envPort = process.env.UNICLI_CDP_PORT;
-  if (envPort) return parseInt(envPort, 10);
-  return DEFAULT_CDP_PORT;
+  return resolveCdpPort();
 }
 
 /**

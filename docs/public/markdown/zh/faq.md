@@ -11,7 +11,7 @@
 
 ## Uni-CLI 是什么？
 
-Uni-CLI 是 AI Agent 控制 computer 的通用平台。它把网站、登录态浏览器、桌面应用、本地工具、文件、操作系统能力、MCP 服务、截图、无障碍树和 App wrapper 收进可治理的操作层；一条路径接受意图、选择行动 substrate、按策略执行、返回证据、诊断失败，并修复或换路。当前覆盖 <span><!-- STATS:site_count -->313<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1767<!-- /STATS --></span> 条命令。
+Uni-CLI 是 AI Agent 控制 computer 的通用平台。它把网站、登录态浏览器、桌面应用、本地工具、文件、操作系统能力、MCP 服务、截图、无障碍树和 App wrapper 收进可治理的操作层；一条路径接受意图、选择行动 substrate、按策略执行、返回证据、诊断失败，并修复或换路。当前覆盖 <span><!-- STATS:site_count -->320<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1798<!-- /STATS --></span> 条命令。
 
 ## 和浏览器自动化库有什么区别？
 
@@ -35,7 +35,7 @@ computer-use sandbox 给 Agent 一个带屏幕、鼠标、键盘和 benchmark ho
 
 ## 一共有多少站点和命令？
 
-v0.225.1 生成操作目录包含 <span><!-- STATS:site_count -->313<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1767<!-- /STATS --></span> 条命令、<span><!-- STATS:adapter_count_total -->1217<!-- /STATS --></span> 个适配器、<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> 个 pipeline step、<span><!-- STATS:test_count -->9119<!-- /STATS --></span> 个测试。真正重要的不是数字，而是一套共享控制合同：意图、策略、行动 substrate、证据、交付、修复，以及跨 web、browser、desktop、本地工具、文件和协议的同一种 AgentEnvelope。
+v0.226.0 生成操作目录包含 <span><!-- STATS:site_count -->320<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1798<!-- /STATS --></span> 条命令、<span><!-- STATS:adapter_count_total -->1225<!-- /STATS --></span> 个适配器、<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> 个 pipeline step、<span><!-- STATS:test_count -->9294<!-- /STATS --></span> 个测试。真正重要的不是数字，而是一套共享控制合同：意图、策略、行动 substrate、证据、交付、修复，以及跨 web、browser、desktop、本地工具、文件和协议的同一种 AgentEnvelope。
 
 ## 能下载论文并读取本地 PDF 吗？
 

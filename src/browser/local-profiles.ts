@@ -2,8 +2,15 @@
  * @owner   src/browser/local-profiles.ts
  * @does    Discover local Chromium-family browser profiles without reading cookie values.
  * @needs   node:child_process, node:fs, node:os, node:path, Chromium profile Local State conventions
- * @feeds   src/browser/doctor.ts, src/commands/browser/index.ts, tests/unit/commands/browser.test.ts
+ * @feeds   src/browser/launcher.ts, src/browser/doctor.ts, src/browser/auth-sync.ts, src/commands/browser/index.ts, src/engine/cookie-source.ts, tests/unit/local-profiles.test.ts
  * @breaks  Missing or malformed profile metadata is skipped; filesystem errors do not expose secrets or raw cookies.
+ * @invariants Live CDP identity requires process-list proof matching both --remote-debugging-port and --user-data-dir; DevToolsActivePort files are hints only.
+ * @side-effects Reads profile metadata and the bounded local process list.
+ * @perf    Profile discovery scans known Chromium roots once per call.
+ * @concurrency Read-only; callers own launch and seed locks.
+ * @test    tests/unit/local-profiles.test.ts, tests/unit/commands/browser.test.ts
+ * @stability experimental
+ * @since   2026-06-29
  */
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
@@ -24,6 +31,19 @@ export interface LocalBrowserDebugPort {
   websocket_path?: string;
   source?: string;
 }
+
+export interface LocalBrowserDebugTarget {
+  port: number;
+  user_data_dir: string;
+  source: "process-list";
+}
+
+export type LocalProfileCookieBrowserId =
+  | "chrome"
+  | "brave"
+  | "edge"
+  | "arc"
+  | "dia";
 
 export interface LocalBrowserProfile {
   id: string;
@@ -122,28 +142,92 @@ export function readUserDataDirDebugPort(
   return readDebugPort(userDataDir);
 }
 
+export function isProcessVerifiedDebugPort(
+  debugPort: LocalBrowserDebugPort,
+): boolean {
+  return debugPort.state === "recorded" && debugPort.source === "process-list";
+}
+
+export function browserCookieIdForLocalProfile(
+  profileOrBrowserName: LocalBrowserProfile | string,
+): LocalProfileCookieBrowserId | null {
+  const browserName =
+    typeof profileOrBrowserName === "string"
+      ? profileOrBrowserName
+      : profileOrBrowserName.browser_name;
+  switch (browserName) {
+    case "Google Chrome":
+    case "Chrome Canary":
+      return "chrome";
+    case "Brave":
+      return "brave";
+    case "Microsoft Edge":
+      return "edge";
+    case "Arc":
+      return "arc";
+    case "Dia":
+      return "dia";
+    default:
+      return null;
+  }
+}
+
 export function parseUserDataDirDebugPort(
   processList: string,
   userDataDir: string,
 ): LocalBrowserDebugPort {
-  let fallback: LocalBrowserDebugPort | null = null;
+  const target = parseDebugPortProcessTargets(processList).find(
+    (candidate) => candidate.user_data_dir === userDataDir,
+  );
+  if (target) {
+    return {
+      state: "recorded",
+      port: target.port,
+      source: "process-list",
+    };
+  }
+  return { state: "not-recorded" };
+}
+
+export function parseDebugPortProcessTargets(
+  processList: string,
+): LocalBrowserDebugTarget[] {
+  const targets = new Map<
+    string,
+    { target: LocalBrowserDebugTarget; isMainProcess: boolean }
+  >();
   for (const line of processList.split(/\r?\n/)) {
     const match = line.match(/^\s*\d+\s+(.+)$/);
     if (!match) continue;
     const command = match[1];
     if (!command.includes("--remote-debugging-port=")) continue;
-    if (extractUserDataDirArg(command) !== userDataDir) continue;
     const port = extractRemoteDebuggingPortArg(command);
-    if (port === null) continue;
-    const debugPort: LocalBrowserDebugPort = {
-      state: "recorded",
-      port,
-      source: "process-list",
-    };
-    if (!command.includes("--type=")) return debugPort;
-    fallback ??= debugPort;
+    const userDataDir = extractUserDataDirArg(command);
+    if (port === null || !userDataDir) continue;
+    const key = `${port}\0${userDataDir}`;
+    const isMainProcess = !command.includes("--type=");
+    const existing = targets.get(key);
+    if (existing?.isMainProcess) continue;
+    targets.set(key, {
+      target: {
+        port,
+        user_data_dir: userDataDir,
+        source: "process-list",
+      },
+      isMainProcess,
+    });
   }
-  return fallback ?? { state: "not-recorded" };
+  return [...targets.values()].map((entry) => entry.target);
+}
+
+export function readProcessDebugTargetForPort(
+  port: number,
+): LocalBrowserDebugTarget | null {
+  return (
+    parseDebugPortProcessTargets(readProcessList()).find(
+      (target) => target.port === port,
+    ) ?? null
+  );
 }
 
 export function knownLocalBrowserInstalls(
@@ -501,14 +585,14 @@ function isValidProfileDir(profilePath: string): boolean {
 }
 
 function readDebugPort(userDataDir: string): LocalBrowserDebugPort {
+  const fromProcess = parseUserDataDirDebugPort(readProcessList(), userDataDir);
+  if (fromProcess.state === "recorded") return fromProcess;
+
   const source = join(userDataDir, "DevToolsActivePort");
   const fromFile = existsSync(source)
     ? readDebugPortFile(source)
     : ({ state: "not-recorded" } satisfies LocalBrowserDebugPort);
-  if (fromFile.state === "recorded") return fromFile;
-
-  const fromProcess = parseUserDataDirDebugPort(readProcessList(), userDataDir);
-  return fromProcess.state === "recorded" ? fromProcess : fromFile;
+  return fromFile;
 }
 
 function readDebugPortFile(source: string): LocalBrowserDebugPort {

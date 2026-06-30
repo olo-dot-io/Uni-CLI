@@ -1,22 +1,16 @@
 /**
- * Direct Chromium cookie reader (macOS / Linux / Windows).
- *
- * Reads encrypted cookies from a browser's local SQLite DB and decrypts them
- * with the browser's platform-native key store. No CDP, no extension, no
- * browser launch — works whether the browser is open or closed.
- *
- *   macOS    keychain `security` CLI → AES-128-CBC + 32-byte SHA256 prefix
- *   Linux    libsecret `secret-tool` (peanuts fallback) → AES-128-CBC, no prefix, PBKDF2 iter=1
- *   Windows  Local State + DPAPI → AES-256-GCM + 32-byte SHA256 prefix
- *            v20 cookies (Chrome 127+ App-Bound) surface as
- *            encryption_unsupported with a CDP-fallback suggestion
- *
- * SQLite is read by copy-then-open via the system `sqlite3` binary so that
- * an open browser cannot block the read; WAL/SHM siblings are copied too.
- *
- * Tests at tests/unit/chromium-cookies.test.ts cover the pure path
- * (deriveKey vector, decrypt round-trips per platform, profile picker,
- * resolveCookieDb error codes).
+ * @owner   src/engine/chromium-cookies.ts
+ * @does    Read and decrypt Chromium-family cookie SQLite stores through platform-native keystores.
+ * @needs   node:fs, node:os, node:path, node:child_process, src/engine/chromium-cookies-types.ts, src/engine/chromium-cookies-platform.ts
+ * @feeds   src/browser/auth-sync.ts, src/commands/auth.ts, scripts/browser-auth-default-acceptance.ts, tests/unit/chromium-cookies.test.ts
+ * @breaks  ChromiumCookieError throws on browser discovery, profile discovery, keychain, sqlite, unsupported encryption, and decrypt failures.
+ * @invariants Reads from copied SQLite snapshots; callers must explicitly choose the browser/profile/user-data-dir source.
+ * @side-effects Creates and removes temporary SQLite snapshots; may invoke sqlite3 and platform keystore CLIs.
+ * @perf    Copies only cookie DB files and WAL/SHM siblings before querying.
+ * @concurrency Copy-then-open avoids holding locks on a running browser profile.
+ * @test    tests/unit/chromium-cookies.test.ts
+ * @stability stable
+ * @since   2026-06-29
  */
 
 import {
@@ -206,6 +200,7 @@ function locateCookieFile(root: string, profile: string): string | null {
 export function resolveCookieDb(
   browser: BrowserId,
   profile?: string,
+  userDataDir?: string,
 ): {
   dbPath: string;
   profile: string;
@@ -221,12 +216,16 @@ export function resolveCookieDb(
       `Supported on: ${Object.keys(spec.paths).join(", ")}.`,
     );
   }
-  const root = userDataRoot(browser, platform);
+  const root = userDataDir ?? userDataRoot(browser, platform);
   if (!existsSync(root)) {
     throw new ChromiumCookieError(
       "browser_not_installed",
-      `${browser} not found at ${root}`,
-      `Install ${browser} or pass --browser <other>.`,
+      userDataDir
+        ? `${browser} user-data-dir not found at ${root}`
+        : `${browser} not found at ${root}`,
+      userDataDir
+        ? "Pass an existing Chromium user-data-dir."
+        : `Install ${browser} or pass --browser <other>.`,
     );
   }
   const chosen = profile ?? listProfiles(browser)[0];
@@ -293,6 +292,8 @@ export interface RawCookieRow {
   expires: number;
   isSecure: number;
   isHttpOnly: number;
+  isPersistent: number;
+  hasExpires: number;
 }
 
 /**
@@ -333,7 +334,7 @@ function readRowsForDomain(dbPath: string, domain: string): RawCookieRow[] {
     ".mode list",
     ".separator |",
     ".headers off",
-    `SELECT host_key, name, hex(encrypted_value), value, path, expires_utc, is_secure, is_httponly
+    `SELECT host_key, name, hex(encrypted_value), value, path, expires_utc, is_secure, is_httponly, is_persistent, has_expires
        FROM cookies
        WHERE ${clauses};`,
   ].join("\n");
@@ -361,8 +362,19 @@ function readRowsForDomain(dbPath: string, domain: string): RawCookieRow[] {
   for (const line of stdout.split("\n")) {
     if (!line) continue;
     const parts = line.split("|");
-    if (parts.length < 8) continue;
-    const [host, name, hex, plain, path, expires, isSecure, isHttpOnly] = parts;
+    if (parts.length < 10) continue;
+    const [
+      host,
+      name,
+      hex,
+      plain,
+      path,
+      expires,
+      isSecure,
+      isHttpOnly,
+      isPersistent,
+      hasExpires,
+    ] = parts;
     rows.push({
       host,
       name,
@@ -372,6 +384,8 @@ function readRowsForDomain(dbPath: string, domain: string): RawCookieRow[] {
       expires: Number(expires) || 0,
       isSecure: Number(isSecure) || 0,
       isHttpOnly: Number(isHttpOnly) || 0,
+      isPersistent: Number(isPersistent) || 0,
+      hasExpires: Number(hasExpires) || 0,
     });
   }
   return rows;
@@ -390,7 +404,7 @@ export function readCookies(opts: ReadOptions): CookieRow[] {
     dbPath,
     platform,
     userDataRoot: root,
-  } = resolveCookieDb(opts.browser, opts.profile);
+  } = resolveCookieDb(opts.browser, opts.profile, opts.userDataDir);
   const secret = getEncryptionSecret(
     opts.browser,
     platform,
@@ -453,6 +467,8 @@ export function decodeCookieRows(
       expires: r.expires,
       secure: r.isSecure === 1,
       httpOnly: r.isHttpOnly === 1,
+      persistent: r.isPersistent === 1,
+      hasExpires: r.hasExpires === 1,
     });
   }
 

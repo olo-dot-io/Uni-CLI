@@ -84,6 +84,23 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function releaseDateEt(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const values = new Map(parts.map((part) => [part.type, part.value]));
+  const year = values.get("year");
+  const month = values.get("month");
+  const day = values.get("day");
+  if (!year || !month || !day) {
+    throw new Error("failed to resolve Eastern release date");
+  }
+  return `${year}-${month}-${day}`;
+}
+
 const codename = (
   readArgValue("--codename") ??
   process.env.RELEASE_CODENAME ??
@@ -255,7 +272,7 @@ if (existsSync(changelogPath)) {
     `^## (?:\\[${escapedVersion}\\]|${escapedVersion}|@zenalexa/unicli@${escapedVersion})(?:\\s+—.*)?$`,
     "m",
   );
-  const today = new Date().toISOString().slice(0, 10);
+  const today = releaseDateEt();
   const newHeading = `## [${version}] — ${today} — ${codename}`;
 
   if (versionHeadingPattern.test(changelog)) {
@@ -307,7 +324,7 @@ if (existsSync(changelogPath)) {
 const releaseInfoPath = join(ROOT, "docs/release-info.json");
 if (existsSync(releaseInfoPath)) {
   try {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = releaseDateEt();
     const info = JSON.parse(readFileSync(releaseInfoPath, "utf-8")) as Record<
       string,
       unknown

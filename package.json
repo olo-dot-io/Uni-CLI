@@ -1,6 +1,6 @@
 {
   "name": "@zenalexa/unicli",
-  "version": "0.225.3",
+  "version": "0.226.0",
   "description": "Universal computer-control platform for agents: intent, policy, action substrates, evidence, delivery, and repair.",
   "packageManager": "npm@11.14.0",
   "type": "module",
@@ -155,6 +155,7 @@
     "test": "vitest run --project unit --maxWorkers=1 --reporter=dot",
     "test:adapter": "vitest run --project adapter",
     "test:perf": "vitest run --project perf",
+    "accept:browser-auth": "tsx scripts/browser-auth-default-acceptance.ts",
     "e2e:real": "npm run build && tsx scripts/e2e-real-matrix.ts",
     "compute:smoke": "tsx scripts/compute-live-smoke.ts",
     "coverage:compute-snapshot": "vitest run --project unit tests/unit/refs.test.ts tests/unit/snapshot-encoder.test.ts --coverage --coverage.enabled=true --coverage.provider=v8 --coverage.include=src/transport/refs.ts --coverage.include=src/transport/snapshot-encoder.ts --coverage.reporter=text --coverage.thresholds.lines=100 --coverage.thresholds.functions=100 --coverage.thresholds.branches=100 --coverage.thresholds.statements=100",

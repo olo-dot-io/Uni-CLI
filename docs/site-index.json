@@ -1,7 +1,7 @@
 {
-  "generated": "2026-06-02T17:08:55.406Z",
-  "total_sites": 313,
-  "total_commands": 1767,
+  "generated": "2026-06-29T18:55:30.311Z",
+  "total_sites": 320,
+  "total_commands": 1798,
   "sites": [
     {
       "site": "12306",
@@ -189,7 +189,7 @@
       "domain": "aclanthology.org",
       "auth": false,
       "strategy": "public",
-      "command_count": 2,
+      "command_count": 3,
       "commands": [
         {
           "name": "search",
@@ -200,6 +200,11 @@
           "name": "paper",
           "description": "Fetch an ACL Anthology paper by anthology id",
           "command": "unicli acl-anthology paper"
+        },
+        {
+          "name": "read",
+          "description": "Download an ACL Anthology paper PDF by id and extract text",
+          "command": "unicli acl-anthology read"
         }
       ]
     },
@@ -480,7 +485,7 @@
       "domain": "export.arxiv.org",
       "auth": false,
       "strategy": "public",
-      "command_count": 6,
+      "command_count": 7,
       "commands": [
         {
           "name": "download",
@@ -506,6 +511,11 @@
           "name": "author",
           "description": "List arXiv papers by a given author",
           "command": "unicli arxiv author"
+        },
+        {
+          "name": "read",
+          "description": "Download an arXiv PDF by ID and extract text with pdftotext",
+          "command": "unicli arxiv read"
         },
         {
           "name": "recent",
@@ -937,6 +947,41 @@
           "name": "trades",
           "description": "Binance recent trades for a trading pair",
           "command": "unicli binance trades"
+        }
+      ]
+    },
+    {
+      "site": "biorxiv",
+      "type": "web-api",
+      "domain": "api.biorxiv.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 5,
+      "commands": [
+        {
+          "name": "recent",
+          "description": "List recent bioRxiv preprints from the official API",
+          "command": "unicli biorxiv recent"
+        },
+        {
+          "name": "search",
+          "description": "Search bioRxiv official API metadata within a bounded date window",
+          "command": "unicli biorxiv search"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch bioRxiv preprint metadata by DOI",
+          "command": "unicli biorxiv paper"
+        },
+        {
+          "name": "download",
+          "description": "Download a bioRxiv preprint PDF by DOI",
+          "command": "unicli biorxiv download"
+        },
+        {
+          "name": "read",
+          "description": "Read bioRxiv preprint text by DOI, preferring JATS XML before PDF extraction",
+          "command": "unicli biorxiv read"
         }
       ]
     },
@@ -1643,7 +1688,7 @@
       "commands": [
         {
           "name": "search",
-          "description": "Search CNKI academic papers",
+          "description": "Search CNKI academic papers by title",
           "command": "unicli cnki search"
         }
       ]
@@ -2126,12 +2171,22 @@
       "domain": "openaccess.thecvf.com",
       "auth": false,
       "strategy": "public",
-      "command_count": 1,
+      "command_count": 3,
       "commands": [
         {
           "name": "search",
           "description": "Search CVF OpenAccess proceedings (CVPR/ICCV/ECCV/WACV)",
           "command": "unicli cvf search"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch CVF OpenAccess paper metadata by page id",
+          "command": "unicli cvf paper"
+        },
+        {
+          "name": "read",
+          "description": "Download a CVF OpenAccess paper PDF by page id and extract text",
+          "command": "unicli cvf read"
         }
       ]
     },
@@ -2307,6 +2362,21 @@
           "name": "protocol",
           "description": "Fetch DefiLlama protocol detail by slug",
           "command": "unicli defillama protocol"
+        }
+      ]
+    },
+    {
+      "site": "defuddle",
+      "type": "web-api",
+      "domain": "defuddle.md",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "read",
+          "description": "Read a public URL through defuddle.md and return Markdown with frontmatter",
+          "command": "unicli defuddle read"
         }
       ]
     },
@@ -4995,6 +5065,21 @@
       ]
     },
     {
+      "site": "jina",
+      "type": "web-api",
+      "domain": "r.jina.ai",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "read",
+          "description": "Read a public URL through Jina Reader and return Markdown",
+          "command": "unicli jina read"
+        }
+      ]
+    },
+    {
       "site": "jpo",
       "type": "web-api",
       "domain": "ip-data.jpo.go.jp",
@@ -5983,6 +6068,21 @@
       ]
     },
     {
+      "site": "markdown-new",
+      "type": "web-api",
+      "domain": "markdown.new",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "read",
+          "description": "Convert a public URL to Markdown through markdown.new",
+          "command": "unicli markdown-new read"
+        }
+      ]
+    },
+    {
       "site": "marxists-cn",
       "type": "web-api",
       "domain": "www.marxists.org",
@@ -6139,6 +6239,41 @@
           "name": "tag",
           "description": "Latest Medium articles tagged with a keyword from RSS",
           "command": "unicli medium tag"
+        }
+      ]
+    },
+    {
+      "site": "medrxiv",
+      "type": "web-api",
+      "domain": "api.biorxiv.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 5,
+      "commands": [
+        {
+          "name": "recent",
+          "description": "List recent medRxiv preprints from the official API",
+          "command": "unicli medrxiv recent"
+        },
+        {
+          "name": "search",
+          "description": "Search medRxiv official API metadata within a bounded date window",
+          "command": "unicli medrxiv search"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch medRxiv preprint metadata by DOI",
+          "command": "unicli medrxiv paper"
+        },
+        {
+          "name": "download",
+          "description": "Download a medRxiv preprint PDF by DOI",
+          "command": "unicli medrxiv download"
+        },
+        {
+          "name": "read",
+          "description": "Read medRxiv preprint text by DOI, preferring JATS XML before PDF extraction",
+          "command": "unicli medrxiv read"
         }
       ]
     },
@@ -6438,12 +6573,22 @@
       "domain": "proceedings.neurips.cc",
       "auth": false,
       "strategy": "public",
-      "command_count": 1,
+      "command_count": 3,
       "commands": [
         {
           "name": "search",
           "description": "Search NeurIPS proceedings by year",
           "command": "unicli neurips search"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch NeurIPS proceedings paper metadata by page id",
+          "command": "unicli neurips paper"
+        },
+        {
+          "name": "read",
+          "description": "Download a NeurIPS proceedings paper PDF by page id and extract text",
+          "command": "unicli neurips read"
         }
       ]
     },
@@ -7018,6 +7163,26 @@
       ]
     },
     {
+      "site": "ollama-cloud",
+      "type": "web-api",
+      "domain": "ollama.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "fetch",
+          "description": "Fetch a public URL through Ollama Cloud web_fetch",
+          "command": "unicli ollama-cloud fetch"
+        },
+        {
+          "name": "search",
+          "description": "Search the web through Ollama Cloud web_search",
+          "command": "unicli ollama-cloud search"
+        }
+      ]
+    },
+    {
       "site": "ones",
       "type": "web-api",
       "domain": "ones.cn",
@@ -7088,7 +7253,7 @@
       "domain": "api.openalex.org",
       "auth": false,
       "strategy": "public",
-      "command_count": 2,
+      "command_count": 3,
       "commands": [
         {
           "name": "search",
@@ -7099,6 +7264,11 @@
           "name": "work",
           "description": "Fetch a single OpenAlex Work",
           "command": "unicli openalex work"
+        },
+        {
+          "name": "read",
+          "description": "Download an OpenAlex open-access Work PDF and extract text",
+          "command": "unicli openalex read"
         }
       ]
     },
@@ -7161,7 +7331,7 @@
       "domain": "openreview.net",
       "auth": false,
       "strategy": "public",
-      "command_count": 5,
+      "command_count": 7,
       "commands": [
         {
           "name": "search",
@@ -7172,6 +7342,16 @@
           "name": "paper",
           "description": "Show full metadata for a single OpenReview paper",
           "command": "unicli openreview paper"
+        },
+        {
+          "name": "download",
+          "description": "Download an OpenReview paper PDF by forum id",
+          "command": "unicli openreview download"
+        },
+        {
+          "name": "read",
+          "description": "Download and extract text from an OpenReview paper PDF",
+          "command": "unicli openreview read"
         },
         {
           "name": "author",
@@ -7463,7 +7643,7 @@
       "domain": "proceedings.mlr.press",
       "auth": false,
       "strategy": "public",
-      "command_count": 2,
+      "command_count": 3,
       "commands": [
         {
           "name": "search",
@@ -7474,6 +7654,11 @@
           "name": "paper",
           "description": "Fetch a PMLR paper by id inside a proceedings volume",
           "command": "unicli pmlr paper"
+        },
+        {
+          "name": "read",
+          "description": "Download a PMLR paper PDF by id inside a proceedings volume and extract text",
+          "command": "unicli pmlr read"
         }
       ]
     },
@@ -7631,7 +7816,7 @@
       "domain": "pubmed.ncbi.nlm.nih.gov",
       "auth": false,
       "strategy": "public",
-      "command_count": 5,
+      "command_count": 7,
       "commands": [
         {
           "name": "search",
@@ -7642,6 +7827,16 @@
           "name": "article",
           "description": "Get detailed information for a PubMed article by PMID",
           "command": "unicli pubmed article"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch normalized PubMed article metadata by PMID",
+          "command": "unicli pubmed paper"
+        },
+        {
+          "name": "read",
+          "description": "Read PubMed Central full text for a PMID or PMCID",
+          "command": "unicli pubmed read"
         },
         {
           "name": "author",
@@ -8174,12 +8369,32 @@
       ]
     },
     {
+      "site": "scholar-artifacts",
+      "type": "web-api",
+      "domain": "scholarly-pdf",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "download-pdf",
+          "description": "Download a scholarly PDF URL with artifact metadata",
+          "command": "unicli scholar-artifacts download-pdf"
+        },
+        {
+          "name": "read-pdf",
+          "description": "Download a scholarly PDF URL and extract text with pdftotext",
+          "command": "unicli scholar-artifacts read-pdf"
+        }
+      ]
+    },
+    {
       "site": "semantic-scholar",
       "type": "web-api",
       "domain": "api.semanticscholar.org",
       "auth": false,
       "strategy": "public",
-      "command_count": 4,
+      "command_count": 5,
       "commands": [
         {
           "name": "search",
@@ -8190,6 +8405,11 @@
           "name": "paper",
           "description": "Fetch one Semantic Scholar paper by paperId, DOI, or arXiv id",
           "command": "unicli semantic-scholar paper"
+        },
+        {
+          "name": "read",
+          "description": "Download a Semantic Scholar open-access paper PDF and extract text",
+          "command": "unicli semantic-scholar read"
         },
         {
           "name": "citations",
@@ -9442,12 +9662,17 @@
       "domain": "api.unpaywall.org",
       "auth": false,
       "strategy": "public",
-      "command_count": 1,
+      "command_count": 2,
       "commands": [
         {
           "name": "oa",
           "description": "Find open-access PDF availability for a DOI via Unpaywall",
           "command": "unicli unpaywall oa"
+        },
+        {
+          "name": "read",
+          "description": "Download an Unpaywall open-access PDF by DOI and extract text",
+          "command": "unicli unpaywall read"
         }
       ]
     },

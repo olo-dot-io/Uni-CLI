@@ -47,10 +47,10 @@ Agent execution does not need a longer resident tool list or another website wra
 
 ## Coverage
 
-- Sites and tools: 313
-- Operations: 1767
+- Sites and tools: 320
+- Operations: 1798
 - Pipeline steps: 103
-- Tests: 9119
+- Tests: 9294
 
 These numbers come from the current generated repo artifacts: operations, adapters, pipeline steps, tests, and substrates are counted by the build.
 
@@ -63,7 +63,7 @@ These numbers come from the current generated repo artifacts: operations, adapte
 
 ## Current Version
 
-Latest: v0.225.1 · Apollo · Conrad.
+Latest: v0.226.0 · Apollo · Stafford.
 
 ## Agent Index
 

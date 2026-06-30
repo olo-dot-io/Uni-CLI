@@ -112,13 +112,17 @@ export function getEncryptionSecret(
 
 function macSecurityLookup(browser: BrowserId, spec: KeystoreSpec): string {
   const labels = spec.macLabels ?? [];
-  const accounts = spec.macAccounts ?? [];
+  const accounts = [...(spec.macAccounts ?? []), ""];
+  const attempts: string[] = [];
   let lastError = "";
   for (const label of labels) {
     for (const account of accounts) {
       try {
         const args = ["find-generic-password", "-w", "-s", label];
         if (account) args.push("-a", account);
+        attempts.push(
+          `${label}${account ? ` / ${account}` : " / <any account>"}`,
+        );
         const out = execFileSync("/usr/bin/security", args, {
           encoding: "utf8",
           stdio: ["ignore", "pipe", "pipe"],
@@ -132,8 +136,8 @@ function macSecurityLookup(browser: BrowserId, spec: KeystoreSpec): string {
   }
   throw new ChromiumCookieError(
     "keychain_denied",
-    `no Safe Storage password for ${browser}: ${lastError || "not found"}`,
-    `Try: security find-generic-password -wa "${accounts[0] ?? browser}" -s "${labels[0] ?? `${browser} Safe Storage`}"`,
+    `no Safe Storage password for ${browser}; tried ${attempts.join(", ")}: ${lastError || "not found"}`,
+    `Try: security find-generic-password -w -s "${labels[0] ?? `${browser} Safe Storage`}"`,
   );
 }
 
@@ -389,8 +393,8 @@ function hasNonPrintable(buf: Buffer): boolean {
 
 export const KEYSTORE_SPECS: Record<BrowserId, KeystoreSpec> = {
   chrome: {
-    macLabels: ["Chrome Safe Storage"],
-    macAccounts: ["Chrome"],
+    macLabels: ["Chrome Safe Storage", "Google Chrome Safe Storage"],
+    macAccounts: ["Chrome", "Google Chrome"],
     linuxApp: "chrome",
     winLocalStateRel: "Local State",
   },

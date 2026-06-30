@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const originalBrowserEphemeral = process.env.UNICLI_BROWSER_EPHEMERAL;
+
 const childProcessMock = vi.hoisted(() => ({
   spawn: vi.fn(() => ({ unref: vi.fn() })),
 }));
@@ -56,6 +58,11 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  if (originalBrowserEphemeral === undefined) {
+    delete process.env.UNICLI_BROWSER_EPHEMERAL;
+  } else {
+    process.env.UNICLI_BROWSER_EPHEMERAL = originalBrowserEphemeral;
+  }
 });
 
 function daemonStatus(extensionConnected: boolean) {
@@ -137,8 +144,26 @@ describe("BrowserBridge auto-start behavior", () => {
 
     const page = await new BrowserBridge().connect({ timeout: 1 });
 
-    expect(launcherMock.launchChrome).toHaveBeenCalledWith(9222);
+    expect(launcherMock.launchChrome).toHaveBeenCalledWith(9222, undefined);
     expect(pageMock.connect).toHaveBeenCalledWith(9222);
+    expect(page).toBe(directPage);
+  });
+
+  it("ephemeral mode skips remote and daemon identity reuse", async () => {
+    const directPage = { close: vi.fn() };
+    process.env.UNICLI_BROWSER_EPHEMERAL = "1";
+    launcherMock.isRemoteBrowser.mockReturnValue(true);
+    daemonMock.fetchDaemonStatus.mockResolvedValue(daemonStatus(true));
+    launcherMock.launchChrome.mockResolvedValueOnce(9444);
+    pageMock.connect.mockResolvedValueOnce(directPage);
+
+    const page = await new BrowserBridge().connect({ timeout: 1 });
+
+    expect(daemonMock.fetchDaemonStatus).not.toHaveBeenCalled();
+    expect(launcherMock.launchChrome).toHaveBeenCalledWith(9222, {
+      ephemeral: true,
+    });
+    expect(pageMock.connect).toHaveBeenCalledWith(9444);
     expect(page).toBe(directPage);
   });
 

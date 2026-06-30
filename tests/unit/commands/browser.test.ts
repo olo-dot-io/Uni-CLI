@@ -25,6 +25,11 @@ import {
   readRunEvents,
 } from "../../../src/engine/session/store.js";
 import { createBrowserSessionLease } from "../../../src/engine/browser/session-lease.js";
+import {
+  resolvePreferredLocalBrowserProfile,
+  type LocalBrowserProfile,
+} from "../../../src/browser/local-profiles.js";
+import { prepareSeededAutomationProfile } from "../../../src/browser/profile-seed.js";
 
 const mockPage = {
   goto: vi.fn().mockResolvedValue(undefined),
@@ -158,6 +163,13 @@ const launcherMocks = vi.hoisted(() => ({
   launchChrome: vi.fn().mockResolvedValue(9222),
 }));
 
+const cdpClientMocks = vi.hoisted(() => ({
+  connect: vi.fn().mockResolvedValue(undefined),
+  send: vi.fn().mockResolvedValue({ product: "Chrome/136.0.0.0" }),
+  close: vi.fn().mockResolvedValue(undefined),
+  discoverTargets: vi.fn().mockResolvedValue([]),
+}));
+
 const cookieExtractorMocks = vi.hoisted(() => ({
   extractCookiesViaCDP: vi.fn().mockResolvedValue({ sid: "cookie" }),
   saveCookies: vi.fn().mockReturnValue("/tmp/unicli-cookies/example.json"),
@@ -179,6 +191,10 @@ const chromiumCookieMocks = vi.hoisted(() => {
     readCookiesAsRecord: vi.fn().mockReturnValue({}),
   };
 });
+
+const childProcessMocks = vi.hoisted(() => ({
+  execFileSync: vi.fn(() => ""),
+}));
 
 const chromePolicyMocks = vi.hoisted(() => ({
   buildChrome136RemoteDebuggingGuidance: vi.fn(() => ({
@@ -230,6 +246,27 @@ vi.mock("../../../src/browser/bridge.js", () => ({
 
 vi.mock("../../../src/browser/launcher.js", () => launcherMocks);
 
+vi.mock("../../../src/browser/cdp-client.js", () => {
+  const CDPClient = vi.fn().mockImplementation(() => ({
+    connect: cdpClientMocks.connect,
+    send: cdpClientMocks.send,
+    close: cdpClientMocks.close,
+  }));
+  return {
+    CDPClient: Object.assign(CDPClient, {
+      discoverTargets: cdpClientMocks.discoverTargets,
+    }),
+    getRemoteEndpoint: vi.fn(() => {
+      const endpoint = process.env.UNICLI_CDP_ENDPOINT;
+      if (!endpoint) return null;
+      const headers = process.env.UNICLI_CDP_HEADERS
+        ? (JSON.parse(process.env.UNICLI_CDP_HEADERS) as Record<string, string>)
+        : {};
+      return { endpoint, headers };
+    }),
+  };
+});
+
 vi.mock("../../../src/browser/daemon-client.js", () => ({
   BROWSER_DAEMON_COMMAND_MAX_ATTEMPTS: 4,
   BROWSER_DAEMON_EXTENSION_RETRY_DELAY_MS: 1500,
@@ -246,6 +283,14 @@ vi.mock("../../../src/engine/cookie-extractor.js", () => cookieExtractorMocks);
 vi.mock("../../../src/engine/chromium-cookies.js", () => chromiumCookieMocks);
 
 vi.mock("../../../src/browser/chrome-policy.js", () => chromePolicyMocks);
+
+vi.mock("node:child_process", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:child_process")>();
+  return {
+    ...actual,
+    execFileSync: childProcessMocks.execFileSync,
+  };
+});
 
 import { registerBrowserCommands } from "../../../src/commands/browser/index.js";
 
@@ -294,6 +339,7 @@ describe("unicli browser operator surface", () => {
   let origCdpEndpoint: string | undefined;
   let origCdpHeaders: string | undefined;
   let origCdpPort: string | undefined;
+  let origBrowserEphemeral: string | undefined;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -309,6 +355,7 @@ describe("unicli browser operator surface", () => {
     origCdpEndpoint = process.env.UNICLI_CDP_ENDPOINT;
     origCdpHeaders = process.env.UNICLI_CDP_HEADERS;
     origCdpPort = process.env.UNICLI_CDP_PORT;
+    origBrowserEphemeral = process.env.UNICLI_BROWSER_EPHEMERAL;
     daemonClientMocks.fetchDaemonPortConflict.mockResolvedValue(null);
     daemonClientMocks.fetchDaemonStatus.mockResolvedValue({
       pid: 999,
@@ -337,6 +384,10 @@ describe("unicli browser operator surface", () => {
       async (port: number) => port,
     );
     launcherMocks.launchChrome.mockResolvedValue(9222);
+    cdpClientMocks.connect.mockResolvedValue(undefined);
+    cdpClientMocks.send.mockResolvedValue({ product: "Chrome/136.0.0.0" });
+    cdpClientMocks.close.mockResolvedValue(undefined);
+    cdpClientMocks.discoverTargets.mockResolvedValue([]);
     cookieExtractorMocks.extractCookiesViaCDP.mockResolvedValue({
       sid: "cookie",
     });
@@ -344,6 +395,7 @@ describe("unicli browser operator surface", () => {
       "/tmp/unicli-cookies/example.json",
     );
     chromiumCookieMocks.readCookiesAsRecord.mockReturnValue({});
+    childProcessMocks.execFileSync.mockReturnValue("");
     chromePolicyMocks.detectChromeRemoteDebuggingPolicy.mockReturnValue({
       name: "RemoteDebuggingAllowed",
       state: "not-configured",
@@ -375,6 +427,9 @@ describe("unicli browser operator surface", () => {
     else process.env.UNICLI_CDP_HEADERS = origCdpHeaders;
     if (origCdpPort === undefined) delete process.env.UNICLI_CDP_PORT;
     else process.env.UNICLI_CDP_PORT = origCdpPort;
+    if (origBrowserEphemeral === undefined)
+      delete process.env.UNICLI_BROWSER_EPHEMERAL;
+    else process.env.UNICLI_BROWSER_EPHEMERAL = origBrowserEphemeral;
     if (tmpHome) {
       rmSync(tmpHome, { recursive: true, force: true });
       tmpHome = null;
@@ -396,6 +451,35 @@ describe("unicli browser operator surface", () => {
     process.env.APPDATA = join(tmpHome, "AppData", "Roaming");
     process.env.LOCALAPPDATA = join(tmpHome, "AppData", "Local");
     return tmpHome;
+  }
+
+  function createLocalChromeProfile(home: string): LocalBrowserProfile {
+    const chromeRoot = join(
+      home,
+      "Library",
+      "Application Support",
+      "Google",
+      "Chrome",
+    );
+    mkdirSync(join(chromeRoot, "Default", "Network"), { recursive: true });
+    writeFileSync(
+      join(chromeRoot, "Local State"),
+      JSON.stringify({
+        os_crypt: {},
+        profile: { info_cache: { Default: { name: "Personal" } } },
+      }),
+    );
+    writeFileSync(join(chromeRoot, "Default", "Preferences"), "{}");
+    writeFileSync(join(chromeRoot, "Default", "Network", "Cookies"), "db");
+    const profile = resolvePreferredLocalBrowserProfile();
+    if (!profile) throw new Error("test profile discovery failed");
+    return profile;
+  }
+
+  function mockLiveDebugProcess(userDataDir: string, port: number): void {
+    childProcessMocks.execFileSync.mockReturnValue(
+      `14018 /Applications/Google Chrome.app/Contents/MacOS/Google Chrome --remote-debugging-port=${String(port)} --user-data-dir="${userDataDir}" --no-startup-window`,
+    );
   }
 
   it("browser sessions emits a structured error when the extension bridge is unavailable", async () => {
@@ -2060,6 +2144,244 @@ describe("unicli browser operator surface", () => {
     );
   });
 
+  it("browser status --json reports a live attached profile source", async () => {
+    const home = useTempHome();
+    const profile = createLocalChromeProfile(home);
+    mockLiveDebugProcess(profile.user_data_dir, 9333);
+    launcherMocks.isCDPAvailable.mockResolvedValue(true);
+    process.env.UNICLI_OUTPUT = "json";
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "status", "--port", "9333"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      command: string;
+      data: {
+        connected: boolean;
+        profile_source: {
+          source: string;
+          mode: string;
+          ready: boolean;
+          profile: { id: string; display_name: string };
+          raw_cookie_values_returned: boolean;
+        };
+        daemon: { status: string; sessions_count: number };
+      };
+    };
+    expect(env.command).toBe("browser.status");
+    expect(env.data.connected).toBe(true);
+    expect(env.data.profile_source).toMatchObject({
+      source: "attach",
+      mode: "live-profile-cdp",
+      ready: true,
+      profile: {
+        id: "google-chrome:Default",
+        display_name: "Google Chrome - Personal",
+      },
+      raw_cookie_values_returned: false,
+    });
+    expect(env.data.daemon).toMatchObject({
+      status: "running",
+      sessions_count: 1,
+    });
+  });
+
+  it("browser status --json does not trust a file-only DevToolsActivePort as profile identity", async () => {
+    const home = useTempHome();
+    const profile = createLocalChromeProfile(home);
+    writeFileSync(
+      join(profile.user_data_dir, "DevToolsActivePort"),
+      "9333\n/devtools/browser/stale\n",
+    );
+    launcherMocks.isCDPAvailable.mockResolvedValue(true);
+    process.env.UNICLI_OUTPUT = "json";
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "status", "--port", "9333"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: {
+        profile_source: {
+          source: string;
+          mode: string;
+          ready: boolean;
+          warning: string;
+        };
+      };
+    };
+    expect(env.data.profile_source).toMatchObject({
+      source: "unknown",
+      mode: "unknown-cdp",
+      ready: false,
+    });
+    expect(env.data.profile_source.warning).toContain("cannot prove");
+  });
+
+  it("browser status --json reports a verified seeded automation profile", async () => {
+    const home = useTempHome();
+    const profile = createLocalChromeProfile(home);
+    const targetUserDataDir = join(home, ".unicli", "chrome-profile");
+    prepareSeededAutomationProfile(profile, targetUserDataDir, {
+      platform: "darwin",
+    });
+    mockLiveDebugProcess(targetUserDataDir, 9333);
+    launcherMocks.isCDPAvailable.mockResolvedValue(true);
+    process.env.UNICLI_OUTPUT = "json";
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "status", "--port", "9333"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: {
+        profile_source: {
+          source: string;
+          mode: string;
+          ready: boolean;
+          automation_user_data_dir: string;
+          seed: { status: string };
+        };
+      };
+    };
+    expect(env.data.profile_source).toMatchObject({
+      source: "seeded",
+      mode: "seeded-automation-profile",
+      ready: true,
+      automation_user_data_dir: targetUserDataDir,
+      seed: { status: "fresh" },
+    });
+  });
+
+  it("browser status --json reports explicit ephemeral identity source", async () => {
+    useTempHome();
+    process.env.UNICLI_BROWSER_EPHEMERAL = "1";
+    process.env.UNICLI_OUTPUT = "json";
+    launcherMocks.isCDPAvailable.mockResolvedValue(true);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "status", "--port", "9333"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: {
+        profile_source: {
+          source: string;
+          mode: string;
+          ready: boolean;
+          warning: string;
+        };
+      };
+    };
+    expect(env.data.profile_source).toMatchObject({
+      source: "ephemeral",
+      mode: "empty-temporary-profile",
+      ready: false,
+    });
+    expect(env.data.profile_source.warning).toContain("empty profile");
+  });
+
+  it("browser status --json identifies a running ephemeral profile by process identity", async () => {
+    useTempHome();
+    const ephemeralUserDataDir = join(
+      tmpdir(),
+      "unicli-chrome-ephemeral-status",
+    );
+    mockLiveDebugProcess(ephemeralUserDataDir, 9333);
+    process.env.UNICLI_OUTPUT = "json";
+    launcherMocks.isCDPAvailable.mockResolvedValue(true);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "status", "--port", "9333"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: {
+        profile_source: {
+          source: string;
+          mode: string;
+          ready: boolean;
+          port: number;
+          automation_user_data_dir: string;
+          warning: string;
+        };
+      };
+    };
+    expect(env.data.profile_source).toMatchObject({
+      source: "ephemeral",
+      mode: "empty-temporary-profile",
+      ready: true,
+      port: 9333,
+      automation_user_data_dir: ephemeralUserDataDir,
+    });
+    expect(env.data.profile_source.warning).toContain("empty profile");
+  });
+
+  it("browser status --json does not trust an unknown reachable CDP port", async () => {
+    const home = useTempHome();
+    createLocalChromeProfile(home);
+    launcherMocks.isCDPAvailable.mockResolvedValue(true);
+    process.env.UNICLI_OUTPUT = "json";
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "status", "--port", "9444"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: {
+        profile_source: {
+          source: string;
+          mode: string;
+          ready: boolean;
+          warning: string;
+        };
+      };
+    };
+    expect(env.data.profile_source).toMatchObject({
+      source: "unknown",
+      mode: "unknown-cdp",
+      ready: false,
+    });
+    expect(env.data.profile_source.warning).toContain("cannot prove");
+  });
+
   it("browser verify --strict-memory fails when site memory was not written", async () => {
     useTempHome();
 
@@ -2173,6 +2495,13 @@ describe("unicli browser operator surface", () => {
       command: string;
       data: {
         source: string;
+        default_launch: {
+          source: string;
+          mode: string;
+          preferred_profile?: { id: string };
+          automation_user_data_dir?: string;
+          seed?: { status: string };
+        };
         profiles: Array<{
           id: string;
           browser_name: string;
@@ -2186,6 +2515,13 @@ describe("unicli browser operator surface", () => {
     };
     expect(env.command).toBe("browser.profiles");
     expect(env.data.source).toBe("local-filesystem");
+    expect(env.data.default_launch).toMatchObject({
+      source: "seeded",
+      mode: "seeded-automation-profile",
+      preferred_profile: { id: "google-chrome:Default" },
+      automation_user_data_dir: join(home, ".unicli", "chrome-profile"),
+      seed: { status: "unseedable" },
+    });
     expect(env.data.profiles).toEqual([
       expect.objectContaining({
         id: "google-chrome:Default",
@@ -2197,6 +2533,35 @@ describe("unicli browser operator surface", () => {
         debug_port: { state: "not-recorded" },
       }),
     ]);
+  });
+
+  it("browser profiles reports explicit ephemeral default source", async () => {
+    useTempHome();
+    process.env.UNICLI_BROWSER_EPHEMERAL = "1";
+    process.env.UNICLI_OUTPUT = "json";
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "profiles"], { from: "user" });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: {
+        default_launch: {
+          source: string;
+          mode: string;
+          warning: string;
+        };
+      };
+    };
+    expect(env.data.default_launch).toMatchObject({
+      source: "ephemeral",
+      mode: "empty-temporary-profile",
+    });
+    expect(env.data.default_launch.warning).toContain("empty profile");
   });
 
   it("browser doctor reports the browser reliability contract", async () => {
@@ -2295,6 +2660,11 @@ describe("unicli browser operator surface", () => {
           next_step: string;
           commands: string[];
         };
+        profile_source: {
+          source: string;
+          mode: string;
+          ready: boolean;
+        };
         checks: Array<{
           name: string;
           ok: boolean;
@@ -2346,7 +2716,7 @@ describe("unicli browser operator surface", () => {
     expect(env.data.cookie_reuse.reuse_paths).toEqual(
       expect.arrayContaining([
         "direct browser DB cookie import",
-        "profile DevToolsActivePort",
+        "process-verified live profile CDP",
         "automation profile launch under ~/.unicli",
         "selected profile cookie injection into CDP automation profile",
         "explicit raw cookie export through browser cookies",
@@ -2436,6 +2806,11 @@ describe("unicli browser operator surface", () => {
       mode: "remote-cdp",
       ready: true,
       next_step: "Run the requested Uni-CLI command.",
+    });
+    expect(env.data.profile_source).toMatchObject({
+      source: "attach",
+      mode: "remote-cdp",
+      ready: true,
     });
     expect(env.data.default_path.commands).toEqual(
       expect.arrayContaining([
@@ -2614,11 +2989,116 @@ describe("unicli browser operator surface", () => {
     expect(env.data.completeness.matrix.retry.status).toBe("ready");
   });
 
-  it("browser doctor --repair starts the safe local automation CDP path", async () => {
+  it("browser doctor reports explicit ephemeral profile source", async () => {
     useTempHome();
-    launcherMocks.isCDPAvailable
-      .mockResolvedValueOnce(false)
-      .mockResolvedValueOnce(true);
+    process.env.UNICLI_BROWSER_EPHEMERAL = "1";
+    process.env.UNICLI_OUTPUT = "json";
+    daemonClientMocks.fetchDaemonStatus.mockResolvedValue(null);
+    launcherMocks.isCDPAvailable.mockResolvedValue(false);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "doctor", "--json"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: {
+        profile_source: {
+          source: string;
+          mode: string;
+          ready: boolean;
+          warning: string;
+        };
+        default_path: {
+          mode: string;
+          ready: boolean;
+        };
+      };
+    };
+    expect(env.data.profile_source).toMatchObject({
+      source: "ephemeral",
+      mode: "empty-temporary-profile",
+      ready: false,
+    });
+    expect(env.data.profile_source.warning).toContain("empty profile");
+    expect(env.data.default_path).toMatchObject({
+      mode: "ephemeral-profile",
+      ready: false,
+    });
+  });
+
+  it("browser doctor reports a running ephemeral profile source", async () => {
+    useTempHome();
+    const ephemeralUserDataDir = join(
+      tmpdir(),
+      "unicli-chrome-ephemeral-doctor",
+    );
+    mockLiveDebugProcess(ephemeralUserDataDir, 9222);
+    process.env.UNICLI_OUTPUT = "json";
+    daemonClientMocks.fetchDaemonStatus.mockResolvedValue(null);
+    launcherMocks.isCDPAvailable.mockResolvedValue(true);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "doctor", "--json"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      data: {
+        profile_source: {
+          source: string;
+          mode: string;
+          ready: boolean;
+          port: number;
+          automation_user_data_dir: string;
+          warning: string;
+        };
+        direct_connect: {
+          local_cdp: { identity_verified: boolean };
+        };
+        default_path: {
+          mode: string;
+          ready: boolean;
+        };
+      };
+    };
+    expect(env.data.profile_source).toMatchObject({
+      source: "ephemeral",
+      mode: "empty-temporary-profile",
+      ready: true,
+      port: 9222,
+      automation_user_data_dir: ephemeralUserDataDir,
+    });
+    expect(env.data.profile_source.warning).toContain("empty profile");
+    expect(env.data.direct_connect.local_cdp.identity_verified).toBe(true);
+    expect(env.data.default_path).toMatchObject({
+      mode: "ephemeral-profile",
+      ready: true,
+    });
+  });
+
+  it("browser doctor --repair starts the safe local automation CDP path", async () => {
+    const home = useTempHome();
+    const profile = createLocalChromeProfile(home);
+    const targetUserDataDir = join(home, ".unicli", "chrome-profile");
+    prepareSeededAutomationProfile(profile, targetUserDataDir, {
+      platform: "darwin",
+    });
+    launcherMocks.isCDPAvailable.mockResolvedValue(true);
+    launcherMocks.launchChrome.mockImplementationOnce(async () => {
+      mockLiveDebugProcess(targetUserDataDir, 9222);
+      return 9222;
+    });
     process.env.UNICLI_OUTPUT = "json";
 
     const cap = captureConsole();
@@ -2637,7 +3117,9 @@ describe("unicli browser operator surface", () => {
           status: string;
           actions: Array<{ id: string; status: string; command: string }>;
         };
-        direct_connect: { local_cdp: { reachable: boolean } };
+        direct_connect: {
+          local_cdp: { reachable: boolean; identity_verified: boolean };
+        };
       };
     };
     expect(launcherMocks.launchChrome).toHaveBeenCalledWith(9222);
@@ -2652,6 +3134,7 @@ describe("unicli browser operator surface", () => {
       ],
     });
     expect(env.data.direct_connect.local_cdp.reachable).toBe(true);
+    expect(env.data.direct_connect.local_cdp.identity_verified).toBe(true);
   });
 
   it("browser doctor --repair refuses unsupported policy bypasses when remote debugging is disabled", async () => {
@@ -2744,10 +3227,7 @@ describe("unicli browser operator surface", () => {
       }),
     );
     writeFileSync(join(chromeRoot, "Default", "Preferences"), "{}");
-    writeFileSync(
-      join(chromeRoot, "DevToolsActivePort"),
-      "9444\n/devtools/browser/live\n",
-    );
+    mockLiveDebugProcess(chromeRoot, 9444);
     launcherMocks.isCDPAvailable.mockImplementation(async (port: number) => {
       return port === 9444;
     });
@@ -2828,6 +3308,7 @@ describe("unicli browser operator surface", () => {
       browser: "chrome",
       domain: "example.com",
       profile: "Default",
+      userDataDir: chromeRoot,
     });
     expect(launcherMocks.findAvailableCDPPort).not.toHaveBeenCalled();
     expect(launcherMocks.launchChrome).not.toHaveBeenCalled();
@@ -2862,10 +3343,7 @@ describe("unicli browser operator surface", () => {
         "keychain denied",
       );
     });
-    writeFileSync(
-      join(chromeRoot, "DevToolsActivePort"),
-      "9444\n/devtools/browser/live\n",
-    );
+    mockLiveDebugProcess(chromeRoot, 9444);
     launcherMocks.isCDPAvailable.mockImplementation(async (port: number) => {
       return port === 9444;
     });
@@ -2952,6 +3430,262 @@ describe("unicli browser operator surface", () => {
     expect(process.exitCode).toBe(1);
   });
 
+  it("browser start defaults to the preferred local profile seed path", async () => {
+    const home = useTempHome();
+    const chromeRoot = join(
+      home,
+      "Library",
+      "Application Support",
+      "Google",
+      "Chrome",
+    );
+    mkdirSync(join(chromeRoot, "Default", "Network"), { recursive: true });
+    writeFileSync(
+      join(chromeRoot, "Local State"),
+      JSON.stringify({
+        profile: { info_cache: { Default: { name: "Personal" } } },
+      }),
+    );
+    writeFileSync(join(chromeRoot, "Default", "Preferences"), "{}");
+    writeFileSync(join(chromeRoot, "Default", "Network", "Cookies"), "cookie");
+    launcherMocks.isCDPAvailable.mockResolvedValue(false);
+    launcherMocks.launchChrome.mockResolvedValue(9333);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "start", "--port", "9333"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    expect(launcherMocks.launchChrome).toHaveBeenCalledWith(
+      9333,
+      expect.objectContaining({
+        ephemeral: false,
+      }),
+    );
+    const options = launcherMocks.launchChrome.mock.calls[0]?.[1] as
+      | Record<string, unknown>
+      | undefined;
+    expect(options).not.toHaveProperty("userDataDir");
+    expect(options).not.toHaveProperty("seedProfile");
+    expect(cap.getStdout()).toContain(
+      "Login source profile: Google Chrome - Personal",
+    );
+    expect(cap.getStdout()).toContain("Chrome CDP ready on port 9333");
+  });
+
+  it("browser start --refresh-profile forces the local seeded profile refresh path", async () => {
+    const home = useTempHome();
+    createLocalChromeProfile(home);
+    launcherMocks.isCDPAvailable.mockResolvedValue(false);
+    launcherMocks.launchChrome.mockResolvedValue(9333);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        ["browser", "start", "--refresh-profile", "--port", "9333"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(launcherMocks.launchChrome).toHaveBeenCalledWith(
+      9333,
+      expect.objectContaining({
+        ephemeral: false,
+        refreshProfile: true,
+      }),
+    );
+    expect(cap.getStdout()).toContain("Chrome CDP ready on port 9333");
+  });
+
+  it("browser start rejects refresh-profile with explicit ephemeral startup", async () => {
+    useTempHome();
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        ["browser", "start", "--refresh-profile", "--ephemeral"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(launcherMocks.launchChrome).not.toHaveBeenCalled();
+    expect(cap.getStderr()).toContain(
+      "--refresh-profile cannot be combined with --ephemeral",
+    );
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("browser start attaches to the preferred live local profile before launching", async () => {
+    const home = useTempHome();
+    const chromeRoot = join(
+      home,
+      "Library",
+      "Application Support",
+      "Google",
+      "Chrome",
+    );
+    mkdirSync(join(chromeRoot, "Default"), { recursive: true });
+    writeFileSync(
+      join(chromeRoot, "Local State"),
+      JSON.stringify({
+        profile: { info_cache: { Default: { name: "Personal" } } },
+      }),
+    );
+    writeFileSync(join(chromeRoot, "Default", "Preferences"), "{}");
+    mockLiveDebugProcess(chromeRoot, 9444);
+    launcherMocks.isCDPAvailable.mockImplementation(async (port: number) => {
+      return port === 9444;
+    });
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "start", "--port", "9333"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    expect(launcherMocks.launchChrome).not.toHaveBeenCalled();
+    expect(cap.getStdout()).toContain(
+      "Chrome CDP already available for Google Chrome - Personal on port 9444",
+    );
+    expect(cap.getStdout()).toContain(
+      "Source: attach live local browser profile",
+    );
+  });
+
+  it("browser start attaches to a reachable remote CDP endpoint without launching local Chrome", async () => {
+    process.env.UNICLI_CDP_ENDPOINT =
+      "ws://127.0.0.1:9333/devtools/browser/remote";
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "start"], { from: "user" });
+    } finally {
+      cap.restore();
+    }
+
+    expect(cdpClientMocks.connect).toHaveBeenCalledWith(
+      "ws://127.0.0.1:9333/devtools/browser/remote",
+      undefined,
+    );
+    expect(cdpClientMocks.send).toHaveBeenCalledWith("Browser.getVersion");
+    expect(cdpClientMocks.close).toHaveBeenCalled();
+    expect(launcherMocks.launchChrome).not.toHaveBeenCalled();
+    expect(cap.getStdout()).toContain("Remote CDP endpoint connected");
+    expect(cap.getStdout()).toContain("Source: attach");
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it("browser start fails loudly when the remote CDP endpoint is unreachable", async () => {
+    process.env.UNICLI_CDP_ENDPOINT =
+      "ws://127.0.0.1:9333/devtools/browser/remote";
+    cdpClientMocks.connect.mockRejectedValueOnce(new Error("ECONNREFUSED"));
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(["browser", "start"], { from: "user" });
+    } finally {
+      cap.restore();
+    }
+
+    expect(launcherMocks.launchChrome).not.toHaveBeenCalled();
+    expect(cap.getStderr()).toContain("Remote CDP endpoint is not reachable");
+    expect(cap.getStderr()).toContain("ECONNREFUSED");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("browser start --ephemeral explicitly launches an empty profile", async () => {
+    const home = useTempHome();
+    const chromeRoot = join(
+      home,
+      "Library",
+      "Application Support",
+      "Google",
+      "Chrome",
+    );
+    mkdirSync(join(chromeRoot, "Default"), { recursive: true });
+    writeFileSync(
+      join(chromeRoot, "Local State"),
+      JSON.stringify({
+        profile: { info_cache: { Default: { name: "Personal" } } },
+      }),
+    );
+    writeFileSync(join(chromeRoot, "Default", "Preferences"), "{}");
+    launcherMocks.launchChrome.mockResolvedValue(9333);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        ["browser", "start", "--ephemeral", "--port", "9333"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(launcherMocks.launchChrome).toHaveBeenCalledWith(
+      9333,
+      expect.objectContaining({
+        ephemeral: true,
+      }),
+    );
+    const options = launcherMocks.launchChrome.mock.calls[0]?.[1] as
+      | Record<string, unknown>
+      | undefined;
+    expect(options).not.toHaveProperty("userDataDir");
+    expect(options).not.toHaveProperty("seedProfile");
+    expect(cap.getStdout()).toContain(
+      "Warning: launching an explicit ephemeral",
+    );
+    expect(cap.getStdout()).toContain("Source: ephemeral empty profile");
+  });
+
+  it("browser start --ephemeral uses a free port instead of reusing an existing CDP browser", async () => {
+    useTempHome();
+    launcherMocks.findAvailableCDPPort.mockResolvedValue(9334);
+    launcherMocks.launchChrome.mockResolvedValue(9334);
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        ["browser", "start", "--ephemeral", "--port", "9333"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(launcherMocks.findAvailableCDPPort).toHaveBeenCalledWith(9333);
+    expect(launcherMocks.launchChrome).toHaveBeenCalledWith(
+      9334,
+      expect.objectContaining({
+        ephemeral: true,
+      }),
+    );
+    expect(cap.getStderr()).toContain(
+      "launching ephemeral Chrome on 9334 instead",
+    );
+    expect(cap.getStdout()).toContain("Source: ephemeral empty profile");
+  });
+
   it("browser start launches a selected logged-in profile with CDP", async () => {
     const home = useTempHome();
     const chromeRoot = join(
@@ -2993,6 +3727,10 @@ describe("unicli browser operator surface", () => {
     expect(launcherMocks.launchChrome).toHaveBeenCalledWith(
       9333,
       expect.objectContaining({
+        profileDirectory: "Default",
+        seedProfile: expect.objectContaining({
+          id: "google-chrome:Default",
+        }),
         userDataDir: join(
           home,
           ".unicli",
@@ -3001,10 +3739,6 @@ describe("unicli browser operator surface", () => {
         ),
       }),
     );
-    const launchOptions = launcherMocks.launchChrome.mock.calls[0]?.[1] as
-      | { profileDirectory?: string }
-      | undefined;
-    expect(launchOptions?.profileDirectory).toBeUndefined();
     expect(cap.getStdout()).toContain("Chrome CDP ready on port 9333");
   });
 
@@ -3051,6 +3785,10 @@ describe("unicli browser operator surface", () => {
       9333,
       expect.objectContaining({
         background: false,
+        profileDirectory: "Default",
+        seedProfile: expect.objectContaining({
+          id: "google-chrome:Default",
+        }),
         userDataDir: join(
           home,
           ".unicli",
@@ -3059,10 +3797,6 @@ describe("unicli browser operator surface", () => {
         ),
       }),
     );
-    const launchOptions = launcherMocks.launchChrome.mock.calls[0]?.[1] as
-      | { profileDirectory?: string }
-      | undefined;
-    expect(launchOptions?.profileDirectory).toBeUndefined();
   });
 
   it("browser upload rejects paths that only share the home prefix", async () => {

@@ -35,6 +35,7 @@ const localProfileMock = vi.hoisted(() => ({
     () => "/Users/example/.unicli/browser-profiles/google-chrome_Default",
   ),
   readUserDataDirDebugPort: vi.fn(() => ({ state: "not-recorded" })),
+  browserCookieIdForLocalProfile: vi.fn(() => "chrome"),
 }));
 
 const chromiumCookieMock = vi.hoisted(() => ({
@@ -101,17 +102,22 @@ describe("browser user-session auth bootstrap", () => {
       expect.objectContaining({
         browserPath:
           "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        profileDirectory: "Default",
+        seedProfile: expect.objectContaining({
+          id: "google-chrome:Default",
+        }),
         userDataDir:
           "/Users/example/.unicli/browser-profiles/google-chrome_Default",
       }),
     );
-    expect(browserPageMock.connect).toHaveBeenCalledWith(9222, {
+    expect(browserPageMock.connect).toHaveBeenCalledWith(9333, {
       freshPage: true,
     });
     expect(chromiumCookieMock.readCookies).toHaveBeenCalledWith({
       browser: "chrome",
       domain: "x.com",
       profile: "Default",
+      userDataDir: "/Users/example/Library/Application Support/Google/Chrome",
     });
     expect(pageMock.page.sendCDP).toHaveBeenCalledWith("Network.setCookies", {
       cookies: [
@@ -127,13 +133,8 @@ describe("browser user-session auth bootstrap", () => {
     });
   });
 
-  it("reuses a live automation profile CDP port instead of launching another Chrome", async () => {
-    localProfileMock.readUserDataDirDebugPort.mockReturnValueOnce({
-      state: "recorded",
-      port: 9223,
-      source: "process-list",
-    });
-    launcherMock.isCDPAvailable.mockResolvedValueOnce(true);
+  it("connects to the actual profile port returned by launcher", async () => {
+    launcherMock.launchChrome.mockResolvedValueOnce(9223);
 
     await expect(
       acquirePage({
@@ -149,6 +150,26 @@ describe("browser user-session auth bootstrap", () => {
     expect(browserPageMock.connect).toHaveBeenCalledWith(9223, {
       freshPage: true,
     });
-    expect(launcherMock.launchChrome).not.toHaveBeenCalled();
+    expect(launcherMock.launchChrome).toHaveBeenCalled();
+  });
+
+  it("fails user-session acquisition when the selected profile has no cookies", async () => {
+    chromiumCookieMock.readCookies.mockReturnValueOnce([]);
+
+    await expect(
+      acquirePage({
+        data: null,
+        args: {},
+        vars: {},
+        browserSession: "user",
+        site: "twitter",
+        domain: "x.com",
+      }),
+    ).rejects.toThrow(/Failed to bootstrap browser cookies.*no-cookies/);
+
+    expect(pageMock.page.sendCDP).not.toHaveBeenCalledWith(
+      "Network.setCookies",
+      expect.anything(),
+    );
   });
 });

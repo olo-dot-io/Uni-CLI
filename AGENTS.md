@@ -16,23 +16,29 @@ self-repairing — agents can fix them by editing one file. See
 Before using raw browser tools, legacy OpenCLI, curl, or computer-use for a
 website, logged-in browser session, desktop app, macOS state, local tool, or
 external CLI, run `unicli search "<intent>"` or `unicli list --site <site>`.
-If auth is needed, use `unicli auth import`, `unicli browser profiles --json`,
-or `unicli browser cookies <domain> --profile-id <id>`. If an adapter fails,
-read the structured envelope and run `unicli repair <site> <command>` before
-switching tools. Browser work is background-first: daemon commands default to
-`windowFocused: false`, doctor/session probes must not create `about:blank`
-placeholder tabs, foreground startup requires explicit `unicli browser --focus
-start`, and CDP must use Uni-CLI automation profiles under `~/.unicli/` rather
-than Chrome's default user-data-dir. Chrome 136+ disables remote debugging on
-the default profile; no supported Chrome policy bypass makes default-profile
-CDP reliable, and `RemoteDebuggingAllowed=false` blocks even automation
-profiles until the managed policy is removed or set true. Reuse login state
-through cookie import from discovered local profiles instead. For any browser
-failure, read `unicli browser doctor --json`: `default_path` tells whether
-delivery can proceed now, `chrome_remote_debugging` gives the Chrome
-136+/policy truth, `checks[*].next_step` gives the exact repair command, and
-`unicli browser doctor --repair` is the safe first repair for local CDP because
-it starts only the Uni-CLI automation profile.
+If auth is needed, first check `unicli browser profiles --json` and
+`unicli browser doctor --json`; explicit cookie repair remains available via
+`unicli auth import` or `unicli browser cookies <domain> --profile-id <id>`.
+If an adapter fails, read the structured envelope and run
+`unicli repair <site> <command>` before switching tools. Browser work is
+background-first: daemon commands default to `windowFocused: false`,
+doctor/session probes must not create `about:blank` placeholder tabs,
+foreground startup requires explicit `unicli browser --focus start`, and CDP
+must use process-verified live profiles or Uni-CLI automation profiles under
+`~/.unicli/` rather than Chrome's default user-data-dir. Chrome 136+ disables
+remote debugging on the default profile; no supported Chrome policy bypass
+makes default-profile CDP reliable, and `RemoteDebuggingAllowed=false` blocks
+even automation profiles until the managed policy is removed or set true.
+Default browser startup reuses login state by attaching to an already-exposed
+local profile when available, otherwise by seeding a Uni-CLI-owned automation
+profile from the preferred local Chrome profile. Empty profiles require
+explicit `unicli browser start --ephemeral` or `UNICLI_BROWSER_EPHEMERAL=1`.
+For any browser failure, read `unicli browser doctor --json`: `default_path`
+tells whether delivery can proceed now, `profile_source` tells whether the path
+is attach, seeded, remote, or ephemeral, `chrome_remote_debugging` gives the
+Chrome 136+/policy truth, `checks[*].next_step` gives the exact repair command,
+and `unicli browser doctor --repair` is the safe first repair for local CDP
+because it starts only the Uni-CLI automation profile.
 
 <!-- BEGIN COUNTS -->
 
@@ -128,7 +134,7 @@ allowlist entry without a one-line `// REASON:` justification in
 
 ## Version
 
-0.225.3 — Apollo · Schmitt
+0.226.0 — Apollo · Stafford
 
 ## MCP one-liner (Claude Desktop / Cursor / Continue)
 

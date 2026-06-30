@@ -1,15 +1,16 @@
 /**
- * CdpBrowserTransport — wraps the existing `BrowserPage` (an IPage impl)
- * behind the TransportAdapter interface.
- *
- * The underlying `src/browser/page.ts` is the canonical CDP client; this
- * wrapper exposes the same methods through the uniform envelope contract
- * so the bus-driven dispatch routes browser steps without duplicating
- * the CDP client logic.
- *
- * Page acquisition is pluggable via the constructor `pageFactory` for
- * testability. The default factory tries an already-running browser on
- * the configured CDP port and falls back to auto-launch.
+ * @owner   src/transport/adapters/cdp-browser.ts
+ * @does    Expose BrowserPage CDP operations behind the transport adapter envelope contract.
+ * @needs   node:child_process, src/browser/page.ts, src/browser/launcher.ts, src/electron-apps.ts, src/transport refs/snapshot-encoder/types
+ * @feeds   bus-driven browser steps, adapter execution, tests/unit/transport adapters
+ * @breaks  CDP attach, app launch, and browser action failures return structured envelopes or throw during page acquisition.
+ * @invariants Default page acquisition delegates profile attach/seed/ephemeral policy to launcher before connecting.
+ * @side-effects May launch Chrome/Electron apps and mutate pages through CDP actions.
+ * @perf    CDP target probing and post-launch polling are bounded.
+ * @concurrency Browser profile concurrency is owned by launcher; transport state is per adapter instance.
+ * @test    tests/unit/transport/adapters/cdp-browser.test.ts
+ * @stability experimental
+ * @since   2026-06-29
  */
 
 import { err, exitCodeFor, ok } from "../../core/envelope.js";
@@ -92,19 +93,18 @@ export interface CdpDebuggerInfo {
 
 /** Default factory — connect or auto-launch Chrome via the existing launcher. */
 async function defaultPageFactory(): Promise<IPage> {
-  const port = Number(process.env.CHROME_DEBUG_PORT ?? 9222);
   const { BrowserPage } = await import("../../browser/page.js");
+  const { launchChrome } = await import("../../browser/launcher.js");
+  const { resolveCdpPort } = await import("../../browser/cdp-client.js");
+  const port = resolveCdpPort();
+  const actualPort = await launchChrome(port);
   try {
-    const page = await BrowserPage.connect(port);
-    return page;
+    return await BrowserPage.connect(actualPort);
   } catch {
-    const { launchChrome } = await import("../../browser/launcher.js");
-    await launchChrome(port);
-    // Poll up to 20 attempts at 500ms each while the launched Chrome warms up.
     let lastErr: unknown;
     for (let attempt = 0; attempt < 20; attempt++) {
       try {
-        return await BrowserPage.connect(port);
+        return await BrowserPage.connect(actualPort);
       } catch (e) {
         lastErr = e;
         await new Promise((r) => setTimeout(r, 500));

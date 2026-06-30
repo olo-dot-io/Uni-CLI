@@ -40,7 +40,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> 个 surface · <!-- STATS:test_count -->9257<!-- /STATS --> 个测试</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> 个 surface · <!-- STATS:test_count -->9294<!-- /STATS --> 个测试</sub>
 </p>
 
 <p align="center">
@@ -463,8 +463,19 @@ columns: [title, url]
 
 ## 边界和诚实说明
 
-- 需要登录的网站使用本地 cookie 文件：`~/.unicli/cookies/<site>.json`。
-- Browser adapter 需要可连接的 Chrome/CDP。
+- 需要登录的网站仍支持本地 cookie 文件：`~/.unicli/cookies/<site>.json`；
+  `unicli auth import` 和 `unicli browser cookies <domain> --profile-id <id>`
+  是显式修复路径，不再是默认日常路径。
+- Browser adapter 默认使用可验证身份的 Chrome/CDP：如果已有暴露 CDP 的登录
+  profile 就 attach，否则从首选本地 Chrome profile 播种 Uni-CLI 自有
+  automation profile。空 profile 必须显式使用
+  `unicli browser start --ephemeral` 或 `UNICLI_BROWSER_EPHEMERAL=1`。
+  Chrome 136+ 仍然禁止 default user-data-dir 上的 remote debugging；
+  `RemoteDebuggingAllowed` 只能整体禁用本地 CDP，不能让 default profile CDP
+  重新变成可支持路径。
+- `unicli browser doctor --json` 会报告 `default_path`、`profile_source`、
+  `chrome_remote_debugging` 和每个 check 的 `next_step`；安全本地修复命令是
+  `unicli browser doctor --repair`，不会把 CDP 指向用户真实默认 Chrome profile。
 - Permission profile 是用户选择的运行时策略。默认是 `open`；更严格的
   `confirm` 和 `locked` profile 会要求 `--yes` 或 `UNICLI_APPROVE=1`。
   `--yes` 加 `--remember-approval` 会把同一条命令的 capability 和资源 scope
@@ -496,5 +507,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v0.225.3 — Apollo · Schmitt</sub>
+  <sub>v0.226.0 — Apollo · Stafford</sub>
 </p>

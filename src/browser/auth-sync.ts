@@ -7,12 +7,9 @@
  */
 
 import type { IPage } from "../types.js";
+import { readCookies, type CookieRow } from "../engine/chromium-cookies.js";
 import {
-  readCookies,
-  type BrowserId,
-  type CookieRow,
-} from "../engine/chromium-cookies.js";
-import {
+  browserCookieIdForLocalProfile,
   resolvePreferredLocalBrowserProfile,
   type LocalBrowserProfile,
   type LocalProfileDiscoveryOptions,
@@ -91,6 +88,7 @@ export async function syncLocalProfileCookiesToPage(
       browser,
       domain,
       profile: profile.profile_dir,
+      userDataDir: profile.user_data_dir,
     });
   } catch (err) {
     return {
@@ -161,22 +159,6 @@ function chromeExpiresToUnixSeconds(expiresUtc: number): number | undefined {
   return unixSeconds > 0 ? unixSeconds : undefined;
 }
 
-function browserIdForLocalProfile(
-  profile: LocalBrowserProfile,
-): BrowserId | null {
-  switch (profile.browser_name) {
-    case "Google Chrome":
-    case "Chrome Canary":
-      return "chrome";
-    case "Brave":
-      return "brave";
-    case "Microsoft Edge":
-      return "edge";
-    case "Arc":
-      return "arc";
-    case "Dia":
-      return "dia";
-    default:
-      return null;
-  }
+function browserIdForLocalProfile(profile: LocalBrowserProfile) {
+  return browserCookieIdForLocalProfile(profile);
 }

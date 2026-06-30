@@ -1,8 +1,13 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { join } from "node:path";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import type { LocalBrowserProfile } from "../../src/browser/local-profiles.js";
+import { prepareSeededAutomationProfile } from "../../src/browser/profile-seed.js";
 
 const childProcessMocks = vi.hoisted(() => ({
   execSync: vi.fn(),
+  execFileSync: vi.fn(() => ""),
   spawn: vi.fn(() => {
     const child = {
       unref: vi.fn(),
@@ -17,6 +22,7 @@ const childProcessMocks = vi.hoisted(() => ({
 
 vi.mock("node:child_process", () => ({
   execSync: childProcessMocks.execSync,
+  execFileSync: childProcessMocks.execFileSync,
   spawn: childProcessMocks.spawn,
 }));
 
@@ -82,6 +88,7 @@ describe("getCDPPort", () => {
 
 describe("launchChrome", () => {
   const originalChromePath = process.env.CHROME_PATH;
+  const originalHome = process.env.HOME;
 
   function mockSpawnSuccess(): void {
     const child = {
@@ -94,13 +101,22 @@ describe("launchChrome", () => {
     childProcessMocks.spawn.mockReturnValue(child);
   }
 
+  function mockLiveDebugProcess(userDataDir: string, port: number): void {
+    childProcessMocks.execFileSync.mockReturnValue(
+      `14018 /Applications/Google Chrome.app/Contents/MacOS/Google Chrome --remote-debugging-port=${String(port)} --user-data-dir="${userDataDir}" --no-startup-window`,
+    );
+  }
+
   afterEach(() => {
     vi.resetModules();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    childProcessMocks.execFileSync.mockReturnValue("");
     mockSpawnSuccess();
     if (originalChromePath === undefined) delete process.env.CHROME_PATH;
     else process.env.CHROME_PATH = originalChromePath;
+    if (originalHome === undefined) delete process.env.HOME;
+    else process.env.HOME = originalHome;
   });
 
   it("starts headed Chrome without creating a foreground startup window by default", async () => {
@@ -115,14 +131,26 @@ describe("launchChrome", () => {
 
     const { launchChrome } = await import("../../src/browser/launcher.js");
 
-    await expect(launchChrome(9444)).resolves.toBe(9444);
+    await expect(launchChrome(9444, { ephemeral: true })).resolves.toBe(9444);
     const args = childProcessMocks.spawn.mock.calls[0]?.[1] as string[];
-    expect(args).toContain(
-      `--user-data-dir=${join(process.env.HOME ?? "~", ".unicli", "chrome-profile")}`,
+    expect(args.find((arg) => arg.startsWith("--user-data-dir="))).toContain(
+      "unicli-chrome-ephemeral-",
     );
     expect(args).toContain("--disable-extensions");
     expect(args).toContain("--no-startup-window");
     expect(args).not.toContain("--headless=new");
+  });
+
+  it("does not reuse an existing CDP browser for explicit ephemeral launch", async () => {
+    process.env.CHROME_PATH = "/Applications/Google Chrome.app/test";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+
+    const { launchChrome } = await import("../../src/browser/launcher.js");
+
+    await expect(launchChrome(9444, { ephemeral: true })).rejects.toThrow(
+      "CDP port 9444 is already in use",
+    );
+    expect(childProcessMocks.spawn).not.toHaveBeenCalled();
   });
 
   it("reports spawn errors instead of emitting an unhandled child_process error", async () => {
@@ -141,7 +169,7 @@ describe("launchChrome", () => {
 
     const { launchChrome } = await import("../../src/browser/launcher.js");
 
-    await expect(launchChrome(9444)).rejects.toThrow(
+    await expect(launchChrome(9444, { ephemeral: true })).rejects.toThrow(
       "Chrome launch failed: spawn ENOENT",
     );
   });
@@ -158,8 +186,123 @@ describe("launchChrome", () => {
 
     const { launchChrome } = await import("../../src/browser/launcher.js");
 
-    await expect(launchChrome(9444, { background: false })).resolves.toBe(9444);
+    await expect(
+      launchChrome(9444, { background: false, ephemeral: true }),
+    ).resolves.toBe(9444);
     const args = childProcessMocks.spawn.mock.calls[0]?.[1] as string[];
     expect(args).not.toContain("--no-startup-window");
+  });
+
+  it("rejects CDP launch against a real default user-data-dir", async () => {
+    const home = mkdtempSync(join(tmpdir(), "unicli-launcher-home-"));
+    process.env.HOME = home;
+    process.env.CHROME_PATH = "/Applications/Google Chrome.app/test";
+    const chromeRoot = join(
+      home,
+      "Library",
+      "Application Support",
+      "Google",
+      "Chrome",
+    );
+    mkdirSync(chromeRoot, { recursive: true });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+
+    const { launchChrome } = await import("../../src/browser/launcher.js");
+
+    try {
+      await expect(
+        launchChrome(9444, { userDataDir: chromeRoot }),
+      ).rejects.toThrow(
+        `Chrome disables remote debugging for the default user-data-dir: ${chromeRoot}`,
+      );
+      expect(childProcessMocks.spawn).not.toHaveBeenCalled();
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses to refresh a seeded automation profile while it is running", async () => {
+    const home = mkdtempSync(join(tmpdir(), "unicli-launcher-home-"));
+    process.env.HOME = home;
+    const profile: LocalBrowserProfile = {
+      id: "google-chrome:Default",
+      browser_name: "Google Chrome",
+      browser_path: "/Applications/Google Chrome.app/test",
+      browser_path_exists: true,
+      user_data_dir: join(home, "Chrome"),
+      profile_dir: "Default",
+      profile_name: "Personal",
+      profile_path: join(home, "Chrome", "Default"),
+      display_name: "Google Chrome - Personal",
+      debug_port: { state: "not-recorded" },
+    };
+    const targetUserDataDir = join(
+      home,
+      ".unicli",
+      "browser-profiles",
+      "google-chrome_Default",
+    );
+    mkdirSync(targetUserDataDir, { recursive: true });
+    mockLiveDebugProcess(targetUserDataDir, 9444);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+
+    const { launchChrome } = await import("../../src/browser/launcher.js");
+
+    try {
+      await expect(
+        launchChrome(9333, { seedProfile: profile, refreshProfile: true }),
+      ).rejects.toThrow(
+        "Cannot refresh Uni-CLI automation profile while it is running on port 9444",
+      );
+      expect(childProcessMocks.spawn).not.toHaveBeenCalled();
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it("reuses a running seeded automation profile when only the source profile changed", async () => {
+    const home = mkdtempSync(join(tmpdir(), "unicli-launcher-home-"));
+    process.env.HOME = home;
+    const sourceUserDataDir = join(home, "Chrome");
+    const sourceProfilePath = join(sourceUserDataDir, "Default");
+    mkdirSync(join(sourceProfilePath, "Network"), { recursive: true });
+    writeFileSync(join(sourceUserDataDir, "Local State"), "{}");
+    writeFileSync(join(sourceProfilePath, "Preferences"), "{}");
+    writeFileSync(join(sourceProfilePath, "Network", "Cookies"), "cookie-db");
+    const profile: LocalBrowserProfile = {
+      id: "google-chrome:Default",
+      browser_name: "Google Chrome",
+      browser_path: "/Applications/Google Chrome.app/test",
+      browser_path_exists: true,
+      user_data_dir: sourceUserDataDir,
+      profile_dir: "Default",
+      profile_name: "Personal",
+      profile_path: sourceProfilePath,
+      display_name: "Google Chrome - Personal",
+      debug_port: { state: "not-recorded" },
+    };
+    const targetUserDataDir = join(
+      home,
+      ".unicli",
+      "browser-profiles",
+      "google-chrome_Default",
+    );
+    prepareSeededAutomationProfile(profile, targetUserDataDir, {
+      platform: "darwin",
+    });
+    writeFileSync(join(sourceProfilePath, "Network", "Cookies"), "new-db");
+    mockLiveDebugProcess(targetUserDataDir, 9444);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+
+    const { launchChrome } = await import("../../src/browser/launcher.js");
+
+    try {
+      await expect(launchChrome(9333, { seedProfile: profile })).resolves.toBe(
+        9444,
+      );
+      expect(childProcessMocks.spawn).not.toHaveBeenCalled();
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
   });
 });

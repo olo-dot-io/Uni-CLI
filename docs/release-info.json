@@ -1,23 +1,23 @@
 {
-  "version": "0.225.3",
-  "codename": "Apollo · Schmitt",
-  "date": "2026-06-27",
+  "version": "0.226.0",
+  "codename": "Apollo · Stafford",
+  "date": "2026-06-29",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.225.3",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02253--2026-06-27--apollo--schmitt",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.226.0",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02260--2026-06-29--apollo--stafford",
   "highlights": {
     "root": [
-      "Uni-CLI 0.225.3 is the scholarly-resource closure release: agents can now discover, compare, download, read, audit, and classify academic resources through source-grounded commands instead of stopping at metadata or PDF URL discovery.",
-      "Source-scoped full-text and PDF reading now covers arXiv, ACL Anthology, OpenReview, PubMed/PMC, bioRxiv, medRxiv, CVF, NeurIPS, PMLR, OpenAlex, Semantic Scholar, and Unpaywall where the source exposes real text or PDF artifacts.",
-      "The scholar coverage and routing surfaces now expose source-fulltext, resource, citation, provenance, and fail-closed availability signals so missing PDFs remain explicit metadata records rather than hallucinated papers.",
-      "This release also replaces the obsolete CNKI YAML adapter with the typed KNS-backed adapter and keeps generated manifests, operation policy, capability policy, README, AGENTS, docs, and stats synchronized through the release gates."
+      "Uni-CLI 0.226.0 makes browser automation identity continuous by default: commands first attach to a process-verified logged-in Chrome profile when CDP is already exposed, otherwise they seed a Uni-CLI-owned automation profile from the preferred local Chrome profile.",
+      "Chrome 136's default-profile CDP block remains enforced; Uni-CLI never launches remote debugging against the real default user-data-dir and reports unknown CDP listeners instead of silently reusing them.",
+      "The browser doctor, status, and profiles surfaces now report whether the current path is attach, seeded, remote, or explicit ephemeral, including seed freshness and empty-profile warnings.",
+      "A new browser-auth acceptance probe checks decrypted persistent-cookie parity between the real profile and seeded automation profile without printing raw cookie values."
     ],
     "zh": [
-      "Uni-CLI 0.225.3 是 scholarly-resource closure release：agent 现在可以通过 source-grounded commands 完成学术资源发现、对比、下载、阅读、审计和分类，而不是停在 metadata 或 PDF URL discovery。",
-      "Source-scoped full-text/PDF reading 现在覆盖 arXiv、ACL Anthology、OpenReview、PubMed/PMC、bioRxiv、medRxiv、CVF、NeurIPS、PMLR、OpenAlex、Semantic Scholar、Unpaywall，前提是来源真实暴露 text 或 PDF artifact。",
-      "Scholar coverage 与 routing surface 现在暴露 source-fulltext、resource、citation、provenance、fail-closed availability 信号；缺 PDF 的记录保持为显式 metadata record，不伪造成已读论文。",
-      "本次 release 也用 typed KNS-backed adapter 替换旧 CNKI YAML adapter，并通过 release gates 同步 generated manifests、operation policy、capability policy、README、AGENTS、docs、stats。"
+      "Uni-CLI 0.226.0 默认让 browser automation 延续用户登录态：已有 process-verified CDP 的真实登录 Chrome 会被优先 attach，否则会从首选本地 Chrome profile 播种 Uni-CLI 自有 automation profile。",
+      "Chrome 136 对 default profile 的 CDP 限制继续硬拦截；Uni-CLI 永远不会对真实默认 user-data-dir 启动 remote debugging，也不会静默复用未知 CDP listener。",
+      "browser doctor、status、profiles 现在会显示当前路径是 attach、seeded、remote 还是显式 ephemeral，并暴露 seed freshness 与空 profile warning。",
+      "新增 browser-auth acceptance probe，在不打印 raw cookie value 的前提下校验真实 profile 与 seeded automation profile 的 decrypted persistent-cookie parity。"
     ]
   }
 }

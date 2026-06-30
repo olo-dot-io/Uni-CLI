@@ -16,6 +16,8 @@ function row(over: Partial<RawCookieRow>): RawCookieRow {
     expires: 0,
     isSecure: 1,
     isHttpOnly: 1,
+    isPersistent: 1,
+    hasExpires: 1,
     ...over,
   };
 }
@@ -82,11 +84,24 @@ describe("decodeCookieRows — per-row decrypt resilience (v20 regression)", () 
     expect(out.map((r) => [r.name, r.value])).toEqual([["plain", "v"]]);
   });
 
-  it("maps secure/httpOnly numeric flags to booleans", () => {
+  it("maps cookie metadata numeric flags to booleans", () => {
     const out = decodeCookieRows(
-      [row({ name: "a", isSecure: 1, isHttpOnly: 0 })],
+      [
+        row({
+          name: "a",
+          isSecure: 1,
+          isHttpOnly: 0,
+          isPersistent: 0,
+          hasExpires: 0,
+        }),
+      ],
       () => "OK",
     );
-    expect(out[0]).toMatchObject({ secure: true, httpOnly: false });
+    expect(out[0]).toMatchObject({
+      secure: true,
+      httpOnly: false,
+      persistent: false,
+      hasExpires: false,
+    });
   });
 });
