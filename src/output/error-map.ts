@@ -127,6 +127,16 @@ export function mapErrorToExitCode(err: unknown): number {
     return ExitCode.GENERIC_ERROR;
   }
   if (err instanceof BridgeConnectionError) return ExitCode.SERVICE_UNAVAILABLE;
+  if (err instanceof Error) {
+    const code = (err as ActionableError).code;
+    if (
+      code === "auth_required" ||
+      code === "challenge_required" ||
+      code === "permission_denied"
+    ) {
+      return ExitCode.AUTH_REQUIRED;
+    }
+  }
   const message = err instanceof Error ? err.message : String(err);
   if (
     /ETIMEDOUT|ENOTFOUND|ECONNREFUSED|ECONNRESET|socket hang up|daemon failed/i.test(
@@ -154,6 +164,7 @@ export function errorToAgentFields(
   adapterPath: string,
   siteName: string,
   cmdName = "<command>",
+  domain?: string,
 ): {
   adapter_path: string | undefined;
   step: number | undefined;
@@ -202,9 +213,9 @@ export function errorToAgentFields(
     suggestion:
       actionable?.suggestion ??
       (code === "auth_required"
-        ? authFailureSuggestion(siteName, cmdName)
+        ? authFailureSuggestion(siteName, cmdName, domain)
         : code === "challenge_required"
-          ? challengeFailureSuggestion(siteName, cmdName)
+          ? challengeFailureSuggestion(siteName, cmdName, domain)
           : `Run 'unicli test ${siteName}' to diagnose, or report this error.`),
     retryable: actionable?.retryable ?? isRetryableMessage(message),
     alternatives: actionable?.alternatives ?? [],

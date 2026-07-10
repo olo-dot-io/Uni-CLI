@@ -14,6 +14,7 @@ import {
   authImportCommand,
   authLoginUrl,
   authRetryCommand,
+  browserCookieCaptureCommand,
 } from "./auth-guidance.js";
 
 /** Hints shown alongside a successful result for site-<cmd>. */
@@ -53,6 +54,7 @@ export function defaultErrorNextActions(
   site: string,
   cmdName: string,
   errCode: string,
+  domain?: string,
 ): AgentNextAction[] {
   const actions: AgentNextAction[] = [
     {
@@ -74,21 +76,31 @@ export function defaultErrorNextActions(
     });
   }
 
+  if (errCode === "auth_required" || errCode === "not_authenticated") {
+    actions.push({
+      command: authImportCommand(site, domain),
+      description:
+        "Import cookies from an installed browser profile without launching a new login flow",
+    });
+  }
+
   if (
     errCode === "auth_required" ||
     errCode === "not_authenticated" ||
     errCode === "challenge_required"
   ) {
     actions.push({
-      command: authImportCommand(site),
-      description:
-        "Import cookies from an installed browser profile without launching a new login flow",
-    });
-    actions.push({
-      command: `unicli browser open ${authLoginUrl(site)}`,
+      command: `unicli browser open ${authLoginUrl(site, domain)}`,
       description:
         "Open the site in the shared browser profile so the user or agent can complete login/challenge, then retry",
     });
+    if (errCode === "challenge_required") {
+      actions.push({
+        command: browserCookieCaptureCommand(site, domain),
+        description:
+          "Capture the just-verified shared-browser cookies for the adapter",
+      });
+    }
     actions.push({
       command: authRetryCommand(site, cmdName),
       description:

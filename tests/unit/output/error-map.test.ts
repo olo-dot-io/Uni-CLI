@@ -194,6 +194,13 @@ describe("errorTypeToCode — generic Error message matching", () => {
     );
   });
 
+  it("maps an actionable challenge code to the auth-required exit status", () => {
+    const err = Object.assign(new Error("browser verification required"), {
+      code: "challenge_required",
+    });
+    expect(mapErrorToExitCode(err)).toBe(ExitCode.AUTH_REQUIRED);
+  });
+
   it("marks generic rate-limit errors as retryable", () => {
     const fields = errorToAgentFields(
       new Error("linux-do request failed: HTTP 429"),

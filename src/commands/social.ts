@@ -24,7 +24,10 @@ import {
 } from "../social/capabilities.js";
 import { buildInvocation, execute } from "../engine/kernel/execute.js";
 import { refreshCookiesFromBrowser } from "../engine/cookies.js";
-import { annotateAuthRetryFailure } from "../output/auth-guidance.js";
+import {
+  annotateAuthRetryFailure,
+  shouldRefreshAuthError,
+} from "../output/auth-guidance.js";
 
 export const HIGHLIGHTED_SOCIAL_SITES = [
   "xiaohongshu",
@@ -295,11 +298,12 @@ export function registerSocialCommand(program: Command): void {
         const rootOpts = program.opts() as { authRetry?: boolean };
         if (
           rootOpts.authRetry === true &&
-          result.error?.code === "auth_required"
+          shouldRefreshAuthError(result.error?.code)
         ) {
           const refresh = await refreshCookiesFromBrowser(
             site,
             command.domain ?? adapter.domain,
+            { preferCdp: result.error?.code === "challenge_required" },
           );
           if (refresh.ok) {
             process.stderr.write(

@@ -57,6 +57,28 @@ describe("loadCookiesWithDiagnostics — surfaces the real cause, never silent n
     });
   });
 
+  it("prefers live CDP during challenge recovery", async () => {
+    let browserCalled = false;
+    const out = await loadCookiesWithDiagnostics(
+      "openreview",
+      "openreview.net",
+      sources({
+        readBrowser: async () => {
+          browserCalled = true;
+          return { kind: "ok", cookies: { stale: "browser" } };
+        },
+        readCdp: async () => ({ clearance: "live" }),
+      }),
+      { skipDisk: true, preferCdp: true },
+    );
+    expect(browserCalled).toBe(false);
+    expect(out).toEqual({
+      status: "loaded",
+      source: "cdp",
+      cookies: { clearance: "live" },
+    });
+  });
+
   it("reports ABSENT (not error) when nothing is logged in and nothing errored", async () => {
     const out = await loadCookiesWithDiagnostics("x", "x.com", sources({}));
     expect(out).toEqual({ status: "absent" });

@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 
-import { annotateAuthRetryFailure } from "../../../src/output/auth-guidance.js";
+import {
+  annotateAuthRetryFailure,
+  shouldRefreshAuthError,
+} from "../../../src/output/auth-guidance.js";
 import type { AgentError, AgentContext } from "../../../src/output/envelope.js";
 
 function ctx(error?: AgentError): AgentContext {
@@ -8,6 +11,13 @@ function ctx(error?: AgentError): AgentContext {
 }
 
 describe("annotateAuthRetryFailure — single source of the --auth-retry failure annotation", () => {
+  it("refreshes both ordinary auth failures and browser challenges", () => {
+    expect(shouldRefreshAuthError("auth_required")).toBe(true);
+    expect(shouldRefreshAuthError("challenge_required")).toBe(true);
+    expect(shouldRefreshAuthError("permission_denied")).toBe(false);
+    expect(shouldRefreshAuthError(undefined)).toBe(false);
+  });
+
   it("merges the refresh suggestion, attaches an import remedy, mirrors onto the envelope", () => {
     const error: AgentError = {
       code: "auth_required",

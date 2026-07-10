@@ -71,7 +71,7 @@ export function getCookieDir(): string {
 export async function acquireCookies(
   site: string,
   domain?: string,
-  opts: { skipDisk?: boolean } = {},
+  opts: { skipDisk?: boolean; preferCdp?: boolean } = {},
 ): Promise<CookieLoadOutcome> {
   const outcome = await loadCookiesWithDiagnostics(
     site,
@@ -121,6 +121,7 @@ export interface CookieRefreshResult {
 export async function refreshCookiesFromBrowser(
   site: string,
   domain?: string,
+  opts: { preferCdp?: boolean } = {},
 ): Promise<CookieRefreshResult> {
   if (!/^[a-zA-Z0-9._-]+$/.test(site)) {
     return {
@@ -133,7 +134,10 @@ export async function refreshCookiesFromBrowser(
   }
 
   const cookieDomain = resolveCookieDomain(site, domain);
-  const outcome = await acquireCookies(site, domain, { skipDisk: true });
+  const outcome = await acquireCookies(site, domain, {
+    skipDisk: true,
+    preferCdp: opts.preferCdp,
+  });
 
   if (outcome.status === "loaded") {
     return {

@@ -200,19 +200,19 @@ export const defaultCookieSources: CookieSources = {
 };
 
 /**
- * Acquire cookies across disk → browser → CDP, collecting the real cause of
- * each source's failure. Never throws: a miss with no underlying fault is
- * "absent"; a miss where a source actually errored (Keychain denial, corrupt
- * file, v20 encryption, CDP down) is "error" with the reasons.
+ * Acquire cookies across disk, local browser storage, and live CDP, collecting
+ * the real cause of each source's failure. Challenge recovery can prefer CDP
+ * because the shared browser is where verification was just completed; normal
+ * auth acquisition preserves the legacy browser-before-CDP order.
  *
- * Domain precedence and the disk-first / browser / CDP order match the legacy
- * loadCookiesWithCDP exactly, so the projection wrappers preserve behavior.
+ * Domain precedence and the default disk / browser / CDP order match the
+ * legacy loadCookiesWithCDP behavior.
  */
 export async function loadCookiesWithDiagnostics(
   site: string,
   domain?: string,
   sources: CookieSources = defaultCookieSources,
-  opts: { skipDisk?: boolean } = {},
+  opts: { skipDisk?: boolean; preferCdp?: boolean } = {},
 ): Promise<CookieLoadOutcome> {
   const reasons: CookieReason[] = [];
 
@@ -235,25 +235,36 @@ export async function loadCookiesWithDiagnostics(
 
   const cookieDomain = resolveCookieDomain(site, domain);
 
-  if (process.env.UNICLI_COOKIE_NO_BROWSER !== "1") {
-    const browser = await sources.readBrowser(cookieDomain);
-    if (browser.kind === "ok" && Object.keys(browser.cookies).length > 0) {
-      return { status: "loaded", source: "browser", cookies: browser.cookies };
+  const order: CookieSourceName[] = opts.preferCdp
+    ? ["cdp", "browser"]
+    : ["browser", "cdp"];
+  for (const source of order) {
+    if (source === "browser") {
+      if (process.env.UNICLI_COOKIE_NO_BROWSER === "1") continue;
+      const browser = await sources.readBrowser(cookieDomain);
+      if (browser.kind === "ok" && Object.keys(browser.cookies).length > 0) {
+        return {
+          status: "loaded",
+          source: "browser",
+          cookies: browser.cookies,
+        };
+      }
+      if (browser.kind === "error") reasons.push(...browser.reasons);
+      continue;
     }
-    if (browser.kind === "error") reasons.push(...browser.reasons);
-  }
 
-  try {
-    const cdp = await sources.readCdp(cookieDomain);
-    if (Object.keys(cdp).length > 0) {
-      return { status: "loaded", source: "cdp", cookies: cdp };
+    try {
+      const cdp = await sources.readCdp(cookieDomain);
+      if (Object.keys(cdp).length > 0) {
+        return { status: "loaded", source: "cdp", cookies: cdp };
+      }
+    } catch (err) {
+      reasons.push({
+        source: "cdp",
+        code: "cdp_unavailable",
+        detail: err instanceof Error ? err.message : String(err),
+      });
     }
-  } catch (err) {
-    reasons.push({
-      source: "cdp",
-      code: "cdp_unavailable",
-      detail: err instanceof Error ? err.message : String(err),
-    });
   }
 
   return reasons.length > 0

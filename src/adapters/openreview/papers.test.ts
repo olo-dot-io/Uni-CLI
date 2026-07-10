@@ -7,6 +7,8 @@ import {
   formatOpenReviewDate,
   mapOpenReviewNoteRow,
   mapReviewThreadRows,
+  openReviewChallengeUrl,
+  openReviewClearanceCookieHeader,
   openReviewPdfFilename,
   readContent,
   requireForumId,
@@ -18,6 +20,29 @@ import {
 } from "./papers.js";
 
 describe("openreview agent-facing paper commands", () => {
+  it("parses challenge envelopes and sends only the public clearance cookie", () => {
+    const challenge =
+      "https://openreview.net/challenge?redirect=https%3A%2F%2Fapi2.openreview.net%2Fnotes";
+    expect(
+      openReviewChallengeUrl(
+        JSON.stringify({
+          name: "ChallengeRequiredError",
+          status: 403,
+          details: { challengeUrl: challenge },
+        }),
+      ),
+    ).toBe(challenge);
+    expect(openReviewChallengeUrl("<html>forbidden</html>")).toBeUndefined();
+    expect(
+      openReviewClearanceCookieHeader({
+        "openreview.clearanceToken": "clear",
+        "openreview.accessToken": "private-access",
+        "openreview.refreshToken": "stale-refresh",
+      }),
+    ).toBe("openreview.clearanceToken=clear");
+    expect(openReviewClearanceCookieHeader(null)).toBeUndefined();
+  });
+
   it("validates integer, forum id, and profile id arguments", () => {
     expect(coerceOpenReviewInt("42")).toBe(42);
     expect(Number.isNaN(coerceOpenReviewInt("1.5"))).toBe(true);

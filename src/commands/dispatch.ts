@@ -41,7 +41,10 @@ import {
 import { recordUsage } from "../runtime/usage-ledger.js";
 import { ExitCode } from "../types.js";
 import { refreshCookiesFromBrowser } from "../engine/cookies.js";
-import { annotateAuthRetryFailure } from "../output/auth-guidance.js";
+import {
+  annotateAuthRetryFailure,
+  shouldRefreshAuthError,
+} from "../output/auth-guidance.js";
 import type { AdapterArg, OutputFormat } from "../types.js";
 import type { AgentContext } from "../output/envelope.js";
 
@@ -329,11 +332,12 @@ export function registerAdapterDispatch(program: Command): void {
         let result = await runInvocation();
         if (
           rootOpts.authRetry === true &&
-          result.error?.code === "auth_required"
+          shouldRefreshAuthError(result.error?.code)
         ) {
           const refresh = await refreshCookiesFromBrowser(
             adapter.name,
             cmd.domain ?? adapter.domain,
+            { preferCdp: result.error?.code === "challenge_required" },
           );
           if (refresh.ok) {
             process.stderr.write(

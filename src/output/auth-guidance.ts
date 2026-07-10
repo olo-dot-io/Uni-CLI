@@ -15,6 +15,7 @@ const SITE_DOMAINS: Record<string, string> = {
   douyin: "douyin.com",
   facebook: "facebook.com",
   instagram: "instagram.com",
+  openreview: "openreview.net",
   reddit: "reddit.com",
   threads: "threads.net",
   tiktok: "tiktok.com",
@@ -38,27 +39,43 @@ export function authImportCommand(site: string, domain?: string): string {
   return `unicli auth import ${site} --domain ${authDomainForSite(site, domain)}`;
 }
 
+export function browserCookieCaptureCommand(
+  site: string,
+  domain?: string,
+): string {
+  return `unicli browser cookies ${authDomainForSite(site, domain)} --save-as ${site}`;
+}
+
 export function authRetryCommand(site: string, cmdName: string): string {
   return `unicli --auth-retry ${site} ${cmdName} --args-file <path.json>`;
 }
 
-export function authFailureSuggestion(site: string, cmdName: string): string {
+export function authFailureSuggestion(
+  site: string,
+  cmdName: string,
+  domain?: string,
+): string {
   return [
-    `Refresh login state with \`${authImportCommand(site)}\`, then retry.`,
+    `Refresh login state with \`${authImportCommand(site, domain)}\`, then retry.`,
     `For one-shot recovery, run \`${authRetryCommand(site, cmdName)}\`.`,
-    `If no cookies are found, open \`${authLoginUrl(site)}\` in the browser, sign in, then retry.`,
+    `If no cookies are found, open \`${authLoginUrl(site, domain)}\` in the browser, sign in, then retry.`,
   ].join(" ");
 }
 
 export function challengeFailureSuggestion(
   site: string,
   cmdName: string,
+  domain?: string,
 ): string {
   return [
-    `Open \`${authLoginUrl(site)}\` in the shared browser and complete the login, captcha, or risk-control challenge.`,
-    `Then refresh cookies with \`${authImportCommand(site)}\`.`,
+    `Open \`${authLoginUrl(site, domain)}\` in the shared browser and complete the login, captcha, or risk-control challenge.`,
+    `Then capture that verified browser state with \`${browserCookieCaptureCommand(site, domain)}\`.`,
     `For one-shot recovery after the browser is clean, run \`${authRetryCommand(site, cmdName)}\`.`,
   ].join(" ");
+}
+
+export function shouldRefreshAuthError(code: string | undefined): boolean {
+  return code === "auth_required" || code === "challenge_required";
 }
 
 /**

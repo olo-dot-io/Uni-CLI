@@ -192,6 +192,7 @@ function errorResult(input: {
               input.inv.adapter.name,
               input.inv.cmdName,
               input.nextActionCode,
+              input.inv.command.domain ?? input.inv.adapter.domain,
             ),
           }
         : {}),
@@ -546,6 +547,7 @@ export function executionErrorResult(
     ctx.adapterPath,
     inv.adapter.name,
     inv.cmdName,
+    inv.command.domain ?? inv.adapter.domain,
   );
   const error: AgentError = {
     code: errorTypeToCode(err),

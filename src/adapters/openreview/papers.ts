@@ -1,15 +1,16 @@
 /**
  * @owner   src/adapters/openreview/papers.ts
  * @does    Register agent-facing OpenReview search, paper, author, venue, reviews, PDF download, and PDF text extraction commands.
- * @needs   Public api2.openreview.net notes API, openreview.net PDF URLs, pdftotext for read, forum/profile id validation, note content normalization.
+ * @needs   Public api2.openreview.net notes API, optional browser-issued clearance cookie, openreview.net PDF URLs, pdftotext for read, forum/profile id validation, note content normalization.
  * @feeds   surface coverage ledger, scholarly review workflow, agent-readable paper/review rows, local PDF/fulltext workflow.
- * @breaks  OpenReview API envelope drift, content.value parsing, PDF download failure, pdftotext absence, or silent empty threads hide paper review state.
+ * @breaks  OpenReview challenge-envelope or API drift, clearance-cookie filtering, content.value parsing, PDF download failure, pdftotext absence, or silent empty threads hide paper review state.
  */
 
 import { execFile } from "node:child_process";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
+import { formatCookieHeader, loadCookies } from "../../engine/cookies.js";
 import { httpDownload, sanitizeFilename } from "../../engine/download.js";
 import { cli, Strategy } from "../../registry.js";
 
@@ -52,6 +53,12 @@ interface NotesEnvelope {
   notes?: OpenReviewNote[];
   error?: unknown;
   errors?: unknown;
+}
+
+interface OpenReviewChallengeEnvelope {
+  name?: unknown;
+  status?: unknown;
+  details?: { challengeUrl?: unknown };
 }
 
 function stringField(value: unknown): string {
@@ -297,6 +304,64 @@ function openReviewNoteUrl(forum: string, noteId: string): string {
   return noteId && noteId !== forum ? `${forumUrl}&noteId=${noteId}` : forumUrl;
 }
 
+export function openReviewClearanceCookieHeader(
+  cookies: Record<string, string> | null,
+): string | undefined {
+  const clearance = cookies?.["openreview.clearanceToken"];
+  return clearance
+    ? formatCookieHeader({ "openreview.clearanceToken": clearance })
+    : undefined;
+}
+
+export function openReviewChallengeUrl(body: string): string | undefined {
+  try {
+    const parsed = JSON.parse(body) as OpenReviewChallengeEnvelope;
+    const url = parsed.details?.challengeUrl;
+    return parsed.name === "ChallengeRequiredError" &&
+      parsed.status === 403 &&
+      typeof url === "string" &&
+      url.startsWith("https://openreview.net/challenge?")
+      ? url
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function openReviewHeaders(accept: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    "User-Agent":
+      "unicli-openreview/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
+    Accept: accept,
+  };
+  const cookie = openReviewClearanceCookieHeader(loadCookies("openreview"));
+  if (cookie) headers.Cookie = cookie;
+  return headers;
+}
+
+function openReviewChallengeError(
+  challengeUrl: string,
+  label: string,
+): Error & {
+  code: string;
+  suggestion: string;
+  retryable: boolean;
+  alternatives: string[];
+} {
+  const openCommand = `unicli browser open ${JSON.stringify(challengeUrl)}`;
+  const captureCommand =
+    "unicli browser cookies openreview.net --save-as openreview";
+  return Object.assign(
+    new Error(`OpenReview requires browser verification for ${label}.`),
+    {
+      code: "challenge_required",
+      suggestion: `${openCommand}; wait for the redirect, then run \`${captureCommand}\` and retry.`,
+      retryable: false,
+      alternatives: [openCommand, captureCommand],
+    },
+  );
+}
+
 export function mapReviewThreadRows(
   root: OpenReviewNote,
   replies: OpenReviewNote[],
@@ -337,15 +402,15 @@ async function fetchOpenReview(
   label: string,
 ): Promise<NotesEnvelope> {
   const response = await fetch(`${OPENREVIEW_API}${path}`, {
-    headers: {
-      "User-Agent":
-        "unicli-openreview/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
-      Accept: "application/json",
-    },
+    headers: openReviewHeaders("application/json"),
   });
   if (response.status === 404) return {};
   if (!response.ok) {
     const body = await response.text().catch(() => "");
+    const challengeUrl = openReviewChallengeUrl(body);
+    if (response.status === 403 && challengeUrl) {
+      throw openReviewChallengeError(challengeUrl, label);
+    }
     throw new Error(
       `OpenReview API HTTP ${response.status} for ${label}${body ? ` (${body.slice(0, 200)})` : ""}.`,
     );
@@ -437,11 +502,11 @@ async function downloadOpenReviewPdf(
   }
   const outputDir = resolve(String(output ?? "./openreview-downloads"));
   const path = join(outputDir, openReviewPdfFilename(id, row.title));
-  const download = await httpDownload(pdfUrl, path, {
-    "User-Agent":
-      "unicli-openreview/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
-    Accept: "application/pdf,*/*",
-  });
+  const download = await httpDownload(
+    pdfUrl,
+    path,
+    openReviewHeaders("application/pdf,*/*"),
+  );
   if (download.status === "failed") {
     throw new Error(
       `OpenReview PDF download failed for ${id}: ${download.error ?? "unknown error"}.`,
