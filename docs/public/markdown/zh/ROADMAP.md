@@ -7,7 +7,7 @@
 - 栏目: 解释
 - 上级: 解释 (/zh/ARCHITECTURE)
 
-> Current: v0.227.0 — Apollo · Mattingly. <!-- STATS:site_count -->320<!-- /STATS --> 个站点，<!-- STATS:command_count -->1798<!-- /STATS --> 条命令，<!-- STATS:pipeline_step_count -->105<!-- /STATS --> 个 built-in action（<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> 个 registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> 个 transport-native）。
+> Current: v0.227.1 — Apollo · Evans. <!-- STATS:site_count -->320<!-- /STATS --> 个站点，<!-- STATS:command_count -->1798<!-- /STATS --> 条命令，<!-- STATS:pipeline_step_count -->105<!-- /STATS --> 个 built-in action（<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> 个 registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> 个 transport-native）。
 
 路线图按“Agent 控制真实软件的控制平台”成熟度推进，不按固定周节奏发布。发布节奏取决于社区反馈和实际开发状态。
 

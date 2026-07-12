@@ -112,3 +112,24 @@ paths now use POSIX separators at the production boundary. The third revealed
 that the nested Git fixture inherited the runner's global `core.autocrlf`;
 the fixture now owns that Git setting so its fast-forward oracle measures
 repository synchronization rather than runner configuration.
+
+## v0.227.1 publication candidate
+
+- GitHub Actions run [`29196085654`](https://github.com/olo-dot-io/Uni-CLI/actions/runs/29196085654)
+  passed Linux Node 22/24, Windows Node 22, macOS, and the Linux, Windows, and
+  macOS Rust sidecar jobs from commit `8620b2d2`.
+- The versioned `npm run verify:clean` gate passed 250 unit files (2,807 passed,
+  2 skipped), 11 integration files (21 passed, 7 credential-gated skips), 170
+  adapter files (6,467 passed), performance, coverage, stats, truth,
+  conformance, export, changeset, and public-boundary checks.
+- `zenalexa-unicli-0.227.1.tgz` is 2,869,676 bytes compressed and 14,257,888
+  bytes unpacked (3,890 entries; SHA-1
+  `ec1c7e5562c58076af171d92b09aa279a918bcd8`). A clean install returned live
+  Hacker News data; a dead proxy preserved `network_error` and exit 75 without
+  suggesting adapter repair; repair success and failure matched their exact
+  oracle envelopes and process exits; explicit cookie storage was `0700/0600`;
+  and MCP initialized as `0.227.1` with exactly four default meta-tools.
+- Eleven installed `--version` invocations measured 28.49 ms on the first run,
+  28.33 ms warm p50, and 35.36 ms warm maximum in this acceptance environment.
+  This is an installed-artifact probe, not a replacement for the separately
+  labeled benchmark matrix.

@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.227.1] — 2026-07-12 — Apollo · Evans
+
+### Fixed
+
+- Explicitly forced detached update checks now run under CI while normal CI and
+  non-TTY invocations remain network-free.
+- macOS browser-seed simulations declare their target platform instead of
+  inheriting the runner host, and profile-seed manifests serialize portable
+  POSIX-relative paths.
+- Test inventory and Git reference synchronization fixtures now own their
+  case-sensitivity and line-ending assumptions, so release evidence is stable
+  across Linux, macOS, and Windows.
+
+### Verification
+
+- GitHub Actions run `29196085654` passed Linux Node 22 and Node 24, Windows
+  Node 22, macOS, and all three Rust sidecar jobs.
+- The `v0.227.0` candidate correctly stopped before npm publication and GitHub
+  Release creation when its release gate found host-contaminated tests.
+  `0.227.1` is the corrected publication target and carries the `0.227.0`
+  production truth fixes below.
+
 ## [0.227.0] — 2026-07-12 — Apollo · Mattingly
 
 ### Security

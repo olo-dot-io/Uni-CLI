@@ -1,6 +1,6 @@
 # Uni-CLI Roadmap
 
-> Current: v0.227.0 — Apollo · Mattingly. <!-- STATS:site_count -->320<!-- /STATS --> sites, <!-- STATS:command_count -->1798<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->105<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native).
+> Current: v0.227.1 — Apollo · Evans. <!-- STATS:site_count -->320<!-- /STATS --> sites, <!-- STATS:command_count -->1798<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->105<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native).
 
 This file tracks current engineering direction for the agent control plane for
 real software: a universal agent-to-computer control platform. Historical
