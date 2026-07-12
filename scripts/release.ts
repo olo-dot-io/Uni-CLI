@@ -220,6 +220,12 @@ const rules: Rule[] = [
     replacement: `version: ${version}`,
     description: "skills/unicli-hermes SKILL.md version",
   },
+  {
+    file: "skills/unicli-repair/SKILL.md",
+    pattern: /^version: [\d.]+/m,
+    replacement: `version: ${version}`,
+    description: "skills/unicli-repair SKILL.md version",
+  },
 ];
 
 // --- Apply rules ---

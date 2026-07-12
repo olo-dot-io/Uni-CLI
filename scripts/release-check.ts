@@ -91,6 +91,7 @@ const versionFiles = [
     pattern: `version: ${version}`,
   },
   { file: "skills/unicli-hermes/SKILL.md", pattern: `version: ${version}` },
+  { file: "skills/unicli-repair/SKILL.md", pattern: `version: ${version}` },
 ];
 
 for (const { file, pattern } of versionFiles) {
