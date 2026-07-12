@@ -516,5 +516,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v0.226.0 — Apollo · Stafford</sub>
+  <sub>v0.227.0 — Apollo · Mattingly</sub>
 </p>

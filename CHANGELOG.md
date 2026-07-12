@@ -1,5 +1,60 @@
 # Changelog
 
+## [0.227.0] — 2026-07-12 — Apollo · Mattingly
+
+### Security
+
+- Live browser and CDP cookie acquisition is memory-only. Cookie files are
+  created only by explicit import/export commands; POSIX storage uses an
+  owner-only `0700` directory and `0600` file, atomic replacement, legacy-mode
+  tightening, and symlink rejection.
+- Undici 8.7.0 and js-yaml 4.3.0 remove the production advisories reported
+  against the previous dependency graph. CI and the tag workflow now enforce a
+  zero-moderate-or-higher production audit on Node 22 and Node 24.
+- `PRIVACY.md` and `SECURITY.md` now describe the implemented credential and
+  network data flows and are included in the published npm artifact.
+
+### Fixed
+
+- All Node HTTP owners now pair `undici.fetch` with the same package's proxy
+  dispatcher, including pipeline, OAuth, download, extraction, cascade, and
+  public HTTP transport paths. Proxy and `NO_PROXY` behavior is locked by a
+  real local-proxy regression and Node 22/24 live command checks.
+- `unicli repair` is now a bounded, shell-free verifier for the exact original
+  command. It performs no hidden npm, git, or agent mutation; its envelope,
+  oracle evidence, and process exit code express one result.
+- Network, authentication, rate-limit, and browser-availability failures no
+  longer tell agents to edit adapters. Only established adapter-drift classes
+  offer repair verification.
+- Root metadata commands no longer wait for update-network I/O. A detached
+  worker refreshes the correctly scoped npm package cache for the next run.
+- Explicit cookie export returns `auth_required` with exit 77 when no cookie is
+  found, rather than reporting process success without a persisted artifact.
+- Per-domain rate limiting serializes concurrent callers and retains the
+  strictest declared policy. Jina reads bypass stale upstream cache entries.
+
+### Changed
+
+- The executable action contract is derived from live owners and budgeted as
+  50 registered composition actions plus 55 transport-native actions. Catalog,
+  documentation, and runtime must agree exactly.
+- Fixture shape, deterministic integration, real endpoint, authenticated
+  browser, cold-start, and warm-start evidence are published as separate
+  claims. Inventory count is not presented as operational health.
+- `npm run verify` includes repair truth integration; Node 22/24 CI and the
+  release workflow execute the canonical gate instead of hand-maintained test
+  subsets. Reference synchronization now discovers nested checkouts and fails
+  closed on dirty, diverged, or empty work.
+
+### Verification
+
+- Node 22.23.1 and Node 24.18.0 each pass 250 unit files (2,807 passed, 2
+  skipped). The clean gate passes 11 integration files, 170 adapter files with
+  6,467 tests, performance, coverage, conformance, export, stats, release-truth,
+  changeset, and public-boundary checks.
+- The real E2E matrix passes 44 of 44 workflows with zero failures or skips,
+  and the production dependency audit reports zero vulnerabilities.
+
 ## [0.226.0] — 2026-06-29 — Apollo · Stafford
 
 ### Minor Changes

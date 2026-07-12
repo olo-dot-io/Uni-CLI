@@ -63,7 +63,7 @@ These numbers come from the current generated repo artifacts: operations, adapte
 
 ## Current Version
 
-Latest: v0.226.0 · Apollo · Stafford.
+Latest: v0.227.0 · Apollo · Mattingly.
 
 ## Agent Index
 

@@ -50,7 +50,7 @@ diverged checkouts, and fails when it synchronizes zero repositories.
 
 ## Observed acceptance evidence
 
-- Node 22.23.1 and Node 24.18.0 each passed 250 unit-test files: 2,806
+- Node 22.23.1 and Node 24.18.0 each passed 250 unit-test files: 2,807
   passed and 2 skipped on the same production source.
 - `npm run verify:clean` passed unit, adapter, performance, coverage,
   integration, conformance, export, stats, truth, changeset, and boundary
@@ -64,6 +64,13 @@ diverged checkouts, and fails when it synchronizes zero repositories.
 - `npm audit --omit=dev --audit-level=moderate` reports zero vulnerabilities.
 - Fixture shape, live endpoint, and authenticated-browser evidence remain
   separate claims; inventory count is not operational-health evidence.
+- The packed `@zenalexa/unicli@0.227.0` artifact is 2,869,550 bytes compressed
+  and 14,257,485 bytes unpacked (3,890 entries; SHA-1
+  `233c544433eedc6e40a9a14df429ccf5852855fc`). A clean local install returned
+  live Hacker News data, preserved `network_error` with exit 75 through a dead
+  proxy, made repair success/failure match its oracle and process exit, wrote
+  explicit cookies as `0700/0600`, exposed `PRIVACY.md` and `SECURITY.md`, and
+  completed MCP initialize plus the four-tool default listing.
 
 ## Independent release audit closure
 
