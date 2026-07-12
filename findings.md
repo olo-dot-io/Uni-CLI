@@ -103,3 +103,12 @@ suppression, declare `darwin` inside macOS seed simulations, restore the host
 platform after each test, and always register the two case-sensitivity tests.
 No `0.227.0` npm package or GitHub Release was created; the patch release must
 pass the actual Linux release gate before publication.
+
+The follow-up push CI run (`29195610866`) passed Linux Node 22/24, macOS, and
+all three Rust sidecar jobs, then stopped on three Windows assertions. Two
+revealed that the serialized profile-seed manifest inherited the host path
+separator even while simulating its supported macOS format; manifest-relative
+paths now use POSIX separators at the production boundary. The third revealed
+that the nested Git fixture inherited the runner's global `core.autocrlf`;
+the fixture now owns that Git setting so its fast-forward oracle measures
+repository synchronization rather than runner configuration.

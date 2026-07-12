@@ -4,7 +4,7 @@
  * @needs   node:fs, node:os, node:path, src/browser/local-profiles.ts
  * @feeds   src/browser/launcher.ts, src/browser/doctor.ts, src/commands/browser/index.ts, scripts/browser-auth-default-acceptance.ts, tests/unit/profile-seed.test.ts
  * @breaks  BrowserProfileSeedError throws on unsupported platforms, missing cookie stores, lock contention, source races, manifest corruption, and copy failures.
- * @invariants Seeded profiles live outside real browser user-data dirs; manifest is written only after all required files copy, and fresh seeds require target files to still exist.
+ * @invariants Seeded profiles live outside real browser user-data dirs; manifest paths use portable POSIX separators; manifest is written only after all required files copy, and fresh seeds require target files to still exist.
  * @side-effects Creates, replaces, and removes files under Uni-CLI-owned automation profile directories and temporary staging directories.
  * @perf    Copies only Local State, profile preferences, and cookie stores instead of whole browser profiles.
  * @concurrency Uses an exclusive sibling lock file and refuses to seed when another seed owns the target.
@@ -27,7 +27,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, posix } from "node:path";
 import type { LocalBrowserProfile } from "./local-profiles.js";
 
 export const AUTOMATION_PROFILE_SEED_MANIFEST = ".unicli-profile-seed.json";
@@ -39,7 +39,7 @@ export const EPHEMERAL_AUTOMATION_USER_DATA_DIR_PREFIX = join(
 const SEED_MANIFEST_VERSION = 1;
 const COOKIE_STORE_RELATIVE_PATHS = [
   "Cookies",
-  join("Network", "Cookies"),
+  posix.join("Network", "Cookies"),
 ] as const;
 const COOKIE_SQLITE_SUFFIXES = ["", "-wal", "-shm", "-journal"] as const;
 const OPTIONAL_PROFILE_FILES = ["Preferences", "Secure Preferences"] as const;
@@ -527,7 +527,7 @@ function buildSourceFingerprint(
 function sourceRelativePaths(profile: LocalBrowserProfile): string[] {
   const files = ["Local State"];
   for (const name of OPTIONAL_PROFILE_FILES) {
-    const relativePath = join(profile.profile_dir, name);
+    const relativePath = posix.join(profile.profile_dir, name);
     if (existsSync(join(profile.user_data_dir, relativePath))) {
       files.push(relativePath);
     }
@@ -535,7 +535,7 @@ function sourceRelativePaths(profile: LocalBrowserProfile): string[] {
 
   let cookieStores = 0;
   for (const cookiePath of COOKIE_STORE_RELATIVE_PATHS) {
-    const baseRelativePath = join(profile.profile_dir, cookiePath);
+    const baseRelativePath = posix.join(profile.profile_dir, cookiePath);
     const baseSource = join(profile.user_data_dir, baseRelativePath);
     if (!existsSync(baseSource)) continue;
     cookieStores += 1;

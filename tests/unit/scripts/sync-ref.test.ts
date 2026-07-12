@@ -8,7 +8,10 @@ const SCRIPT = resolve("scripts/sync-ref.sh");
 const roots: string[] = [];
 
 function git(cwd: string, ...args: string[]): string {
-  return execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
+  return execFileSync("git", ["-c", "core.autocrlf=false", ...args], {
+    cwd,
+    encoding: "utf8",
+  }).trim();
 }
 
 function createNestedReference(): {
@@ -31,6 +34,7 @@ function createNestedReference(): {
   git(publisher, "commit", "-m", "initial");
   git(publisher, "push", "origin", "HEAD");
   git(root, "clone", remote, checkout);
+  git(checkout, "config", "core.autocrlf", "false");
 
   return { root, checkout, publisher };
 }
