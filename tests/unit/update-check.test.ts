@@ -81,6 +81,14 @@ describe("foreground update check", () => {
     expect(
       checkForUpdates({
         ...process.env,
+        CI: "1",
+        UNICLI_UPDATE_CHECK_FORCE: "0",
+      }),
+    ).toBe("disabled");
+    expect(
+      checkForUpdates({
+        ...process.env,
+        CI: "1",
         NO_UPDATE_NOTIFIER: "1",
         UNICLI_UPDATE_CHECK_FORCE: "1",
       }),
@@ -96,6 +104,7 @@ describe("foreground update check", () => {
     expect(
       checkForUpdates({
         ...process.env,
+        CI: "1",
         UNICLI_UPDATE_CHECK_FORCE: "1",
         UNICLI_UPDATE_CHECK_CACHE_PATH: cachePath,
         UNICLI_UPDATE_CHECK_WORKER_PATH: join(root, "missing-worker.js"),
@@ -118,6 +127,7 @@ describe("foreground update check", () => {
     expect(
       checkForUpdates({
         ...process.env,
+        CI: "1",
         UNICLI_UPDATE_CHECK_FORCE: "1",
         UNICLI_UPDATE_CHECK_CACHE_PATH: cachePath,
         UNICLI_UPDATE_CHECK_WORKER_PATH: workerPath,
@@ -129,6 +139,7 @@ describe("foreground update check", () => {
     expect(
       checkForUpdates({
         ...process.env,
+        CI: "1",
         UNICLI_UPDATE_CHECK_FORCE: "1",
         UNICLI_UPDATE_CHECK_CACHE_PATH: join(root, "missing-cache.json"),
         UNICLI_UPDATE_CHECK_WORKER_PATH: join(root, "missing-worker.js"),

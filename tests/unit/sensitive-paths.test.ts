@@ -157,19 +157,15 @@ describe("Case-insensitive filesystem support (Darwin/Win32)", () => {
   const caseInsensitive =
     process.platform === "darwin" || process.platform === "win32";
 
-  it.runIf(caseInsensitive)(
-    "blocks /Users/x/.SSH/id_rsa on macOS/Windows",
-    () => {
-      expect(isSensitivePath("/Users/x/.SSH/id_rsa")).toBe(true);
-    },
-  );
+  it("blocks /Users/x/.SSH/id_rsa on macOS/Windows", () => {
+    if (!caseInsensitive) return;
+    expect(isSensitivePath("/Users/x/.SSH/id_rsa")).toBe(true);
+  });
 
-  it.runIf(caseInsensitive)(
-    "blocks /Users/x/.AWS/credentials on macOS/Windows",
-    () => {
-      expect(isSensitivePath("/Users/x/.AWS/credentials")).toBe(true);
-    },
-  );
+  it("blocks /Users/x/.AWS/credentials on macOS/Windows", () => {
+    if (!caseInsensitive) return;
+    expect(isSensitivePath("/Users/x/.AWS/credentials")).toBe(true);
+  });
 });
 
 describe("Extended pattern coverage (v0.208.1 hardening)", () => {

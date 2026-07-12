@@ -88,3 +88,18 @@ gaps. The release candidate closes each at its owning boundary:
 The same closure also makes empty cookie export an `auth_required` envelope
 with exit 77, includes `PRIVACY.md` and `SECURITY.md` in the npm artifact, and
 records the reference trail in this tracked file.
+
+## Release-gate portability finding
+
+The first `v0.227.0` tag run (`29195080361`) correctly stopped before npm
+publish. Its Linux/Node 24 environment exposed seven host-contaminated unit
+failures: `CI` suppressed three explicitly forced update-check tests, while
+four macOS seed simulations inspected the host Linux platform. The same run
+also showed that two `it.runIf` cases made generated test inventory 9,272 on
+Linux versus 9,274 on macOS.
+
+The owning fixes make explicit force override only implicit CI/non-TTY update
+suppression, declare `darwin` inside macOS seed simulations, restore the host
+platform after each test, and always register the two case-sensitivity tests.
+No `0.227.0` npm package or GitHub Release was created; the patch release must
+pass the actual Linux release gate before publication.

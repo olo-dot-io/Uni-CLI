@@ -4,7 +4,7 @@
  * @needs       node fs/path/os/url/child_process, package VERSION, compiled update-check-worker
  * @feeds       src::cli interactive update notice
  * @breaks      Invalid or stale cache data triggers a background refresh; worker launch errors are explicit in debug mode.
- * @invariants  The scoped package URL matches package.json; network I/O never runs in the foreground CLI process.
+ * @invariants  The scoped package URL matches package.json; network I/O never runs in the foreground CLI process; explicit force overrides CI/non-TTY suppression but not explicit disable controls.
  * @side-effects Reads one cache file, may register an exit notice, and may spawn one detached background worker.
  * @perf        Fresh-cache reads are synchronous and bounded; refresh launch returns without awaiting network I/O.
  * @concurrency The cache worker owns atomic replacement; duplicate CLI launches may race safely with last-completed write winning.
@@ -198,11 +198,11 @@ function registerExitMessage(latest: string): void {
 export function checkForUpdates(
   env: NodeJS.ProcessEnv = process.env,
 ): UpdateCheckStatus {
+  const forced = env.UNICLI_UPDATE_CHECK_FORCE === "1";
   if (
-    env.CI ||
     env.NO_UPDATE_NOTIFIER === "1" ||
     env.UNICLI_DISABLE_UPDATE_CHECK === "1" ||
-    (!process.stderr.isTTY && env.UNICLI_UPDATE_CHECK_FORCE !== "1")
+    ((Boolean(env.CI) || !process.stderr.isTTY) && !forced)
   ) {
     return "disabled";
   }

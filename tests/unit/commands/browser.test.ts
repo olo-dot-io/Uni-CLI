@@ -347,6 +347,7 @@ describe("unicli browser operator surface", () => {
   let origCdpHeaders: string | undefined;
   let origCdpPort: string | undefined;
   let origBrowserEphemeral: string | undefined;
+  let origPlatform: NodeJS.Platform;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -363,6 +364,7 @@ describe("unicli browser operator surface", () => {
     origCdpHeaders = process.env.UNICLI_CDP_HEADERS;
     origCdpPort = process.env.UNICLI_CDP_PORT;
     origBrowserEphemeral = process.env.UNICLI_BROWSER_EPHEMERAL;
+    origPlatform = process.platform;
     daemonClientMocks.fetchDaemonPortConflict.mockResolvedValue(null);
     daemonClientMocks.fetchDaemonStatus.mockResolvedValue({
       pid: 999,
@@ -449,7 +451,12 @@ describe("unicli browser operator surface", () => {
     else process.env.APPDATA = origAppData;
     if (origLocalAppData === undefined) delete process.env.LOCALAPPDATA;
     else process.env.LOCALAPPDATA = origLocalAppData;
+    Object.defineProperty(process, "platform", { value: origPlatform });
   });
+
+  function usePlatform(platform: NodeJS.Platform): void {
+    Object.defineProperty(process, "platform", { value: platform });
+  }
 
   function useTempHome(): string {
     tmpHome = mkdtempSync(join(tmpdir(), "unicli-browser-cmd-"));
@@ -2239,6 +2246,7 @@ describe("unicli browser operator surface", () => {
   });
 
   it("browser status --json reports a verified seeded automation profile", async () => {
+    usePlatform("darwin");
     const home = useTempHome();
     const profile = createLocalChromeProfile(home);
     const targetUserDataDir = join(home, ".unicli", "chrome-profile");
@@ -2472,6 +2480,7 @@ describe("unicli browser operator surface", () => {
   });
 
   it("browser profiles lists local Chromium-family profiles with stable ids", async () => {
+    usePlatform("darwin");
     const home = useTempHome();
     const chromeRoot = join(
       home,
@@ -3097,6 +3106,7 @@ describe("unicli browser operator surface", () => {
   });
 
   it("browser doctor --repair starts the safe local automation CDP path", async () => {
+    usePlatform("darwin");
     const home = useTempHome();
     const profile = createLocalChromeProfile(home);
     const targetUserDataDir = join(home, ".unicli", "chrome-profile");

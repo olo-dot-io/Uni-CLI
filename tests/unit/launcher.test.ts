@@ -295,6 +295,8 @@ describe("launchChrome", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
 
     const { launchChrome } = await import("../../src/browser/launcher.js");
+    const originalPlatform = process.platform;
+    Object.defineProperty(process, "platform", { value: "darwin" });
 
     try {
       await expect(launchChrome(9333, { seedProfile: profile })).resolves.toBe(
@@ -302,6 +304,7 @@ describe("launchChrome", () => {
       );
       expect(childProcessMocks.spawn).not.toHaveBeenCalled();
     } finally {
+      Object.defineProperty(process, "platform", { value: originalPlatform });
       rmSync(home, { recursive: true, force: true });
     }
   });
