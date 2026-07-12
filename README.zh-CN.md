@@ -40,7 +40,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> 个 surface · <!-- STATS:test_count -->9299<!-- /STATS --> 个测试</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> 个 surface · <!-- STATS:test_count -->9247<!-- /STATS --> 个测试</sub>
 </p>
 
 <p align="center">
@@ -420,10 +420,14 @@ adapter 默认是很小的 YAML。命令失败时，Agent 不需要猜，可以�
 3. 打开 error.adapter_path。
 4. 修改失败 step。
 5. 保存到 ~/.unicli/adapters/<site>/<command>.yaml。
-6. 用 unicli repair <site> <command> 验证。
+6. 用 unicli repair <site> <command> 做一次有界验证。
+7. 再检查原始命令返回的代表性数据。
 ```
 
-本地修复会在 npm 更新后继续保留。
+`unicli repair` 不修改源码或 git 状态。它把原始命令作为有 timeout 的子进程
+oracle；只有目标 envelope 为 `ok=true` 且进程 exit `0` 才返回成功，失败时传播
+目标错误和退出码。本地修复会在 npm 更新后继续保留。详见
+[自修复](docs/zh/guide/self-repair.md)。
 
 ## 写一个 adapter
 

@@ -1,210 +1,123 @@
-/**
- * `unicli repair` envelope tests — exercises the --dry-run and --eval paths
- * without triggering the AI-driven repair loop (which requires network + an
- * API key). The loop path is exercised indirectly via a mocked `runRepairLoop`.
- */
-
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { Command } from "commander";
-import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { registerRepairCommand } from "../../../src/commands/repair.js";
+import { registerAdapter } from "../../../src/registry.js";
+import { AdapterType } from "../../../src/types.js";
 import { validateEnvelope } from "../../../src/output/envelope.js";
 
-function captureStdout(): {
-  getStdout: () => string;
-  getStderr: () => string;
+function captureConsole(): {
+  stdout: () => string;
+  stderr: () => string;
   restore: () => void;
 } {
-  let out = "";
-  let err = "";
-  const origLog = console.log;
-  const origError = console.error;
-  console.log = ((...args: unknown[]) => {
-    out += args.map(String).join(" ") + "\n";
-  }) as typeof console.log;
-  console.error = ((...args: unknown[]) => {
-    err += args.map(String).join(" ") + "\n";
-  }) as typeof console.error;
+  let stdout = "";
+  let stderr = "";
+  const originalLog = console.log;
+  const originalError = console.error;
+  console.log = (...args: unknown[]) => {
+    stdout += `${args.map(String).join(" ")}\n`;
+  };
+  console.error = (...args: unknown[]) => {
+    stderr += `${args.map(String).join(" ")}\n`;
+  };
   return {
-    getStdout: () => out,
-    getStderr: () => err,
+    stdout: () => stdout,
+    stderr: () => stderr,
     restore: () => {
-      console.log = origLog;
-      console.error = origError;
+      console.log = originalLog;
+      console.error = originalError;
     },
   };
 }
 
-vi.mock("../../../src/engine/repair/engine.js", () => ({
-  runRepairLoop: vi.fn(async () => ({
-    iterations: 2,
-    bestMetric: 1,
-    improved: true,
-  })),
-}));
+function program(): Command {
+  const command = new Command();
+  command.exitOverride();
+  command.configureOutput({ writeErr: () => undefined });
+  command.option("-f, --format <format>");
+  command.option("--args-file <path>");
+  registerRepairCommand(command);
+  return command;
+}
 
-vi.mock("../../../src/engine/repair/eval.js", () => ({
-  runEval: vi.fn(() => ({ score: 2, total: 2 })),
-}));
-
-import { registerRepairCommand } from "../../../src/commands/repair.js";
-import { runRepairLoop } from "../../../src/engine/repair/engine.js";
-
-describe("unicli repair — v2 envelope", () => {
-  let dir: string;
-  const originalExit = process.exit;
-
-  beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "unicli-repair-test-"));
-    process.exit = ((code?: number) => {
-      throw new Error(`__EXIT__${code}`);
-    }) as typeof process.exit;
-    // Reset mock to default (improved=true) before each test.
-    (runRepairLoop as unknown as { mockReset: () => void }).mockReset();
-    (
-      runRepairLoop as unknown as {
-        mockResolvedValue: (v: unknown) => void;
-      }
-    ).mockResolvedValue({
-      iterations: 2,
-      bestMetric: 1,
-      improved: true,
-    });
+beforeAll(() => {
+  registerAdapter({
+    name: "repair-unit-fixture",
+    type: AdapterType.WEB_API,
+    commands: {
+      ping: {
+        name: "ping",
+        adapter_path: "src/adapters/repair-unit-fixture/ping.yaml",
+        pipeline: [],
+      },
+    },
   });
+});
 
-  afterEach(() => {
-    process.exit = originalExit;
+afterEach(() => {
+  process.exitCode = undefined;
+});
+
+describe("unicli repair command truth contract", () => {
+  it("emits a mutation-free dry-run envelope", async () => {
+    const capture = captureConsole();
+    process.exitCode = 75;
     try {
-      rmSync(dir, { recursive: true, force: true });
-    } catch {
-      /* ignore */
-    }
-  });
-
-  function newProgram(): Command {
-    const program = new Command();
-    program.exitOverride();
-    program.option("-f, --format <fmt>", "output format");
-    registerRepairCommand(program);
-    return program;
-  }
-
-  it("--dry-run emits an ok envelope with the plan", async () => {
-    const cap = captureStdout();
-    try {
-      const program = newProgram();
-      await program.parseAsync(
-        ["-f", "json", "repair", "example", "ping", "--dry-run"],
+      await program().parseAsync(
+        ["-f", "json", "repair", "repair-unit-fixture", "ping", "--dry-run"],
         { from: "user" },
       );
     } finally {
-      cap.restore();
+      capture.restore();
     }
 
-    const env = JSON.parse(cap.getStdout().trim()) as Record<string, unknown>;
-    expect(env.ok).toBe(true);
-    expect(env.schema_version).toBe("2");
-    expect(env.command).toBe("repair.run");
-    const data = env.data as {
-      mode: string;
-      site: string;
-      command: string | null;
-      config: Record<string, unknown>;
-    };
-    expect(data.mode).toBe("dry-run");
-    expect(data.site).toBe("example");
-    expect(data.command).toBe("ping");
-    expect(typeof data.config).toBe("object");
-    validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
+    const envelope = JSON.parse(capture.stdout().trim());
+    validateEnvelope(envelope);
+    expect(envelope.ok).toBe(true);
+    expect(envelope.command).toBe("repair.plan");
+    expect(envelope.data).toMatchObject({
+      mode: "verification-plan",
+      mutates_source: false,
+      target: {
+        site: "repair-unit-fixture",
+        command: "ping",
+        adapter_path: "src/adapters/repair-unit-fixture/ping.yaml",
+      },
+      repair_budget: { max_attempts: 3 },
+    });
+    expect(process.exitCode).toBe(0);
   });
 
-  it("--eval emits an envelope carrying the eval score", async () => {
-    const evalPath = join(dir, "tasks.json");
-    writeFileSync(
-      evalPath,
-      JSON.stringify([
-        { name: "smoke", expect: "ok", actual: "ok" },
-        { name: "smoke2", expect: "ok", actual: "ok" },
-      ]),
-    );
-
-    const cap = captureStdout();
-    let exitCode: number | null = null;
+  it("returns an error envelope and usage exit for an unknown target", async () => {
+    const capture = captureConsole();
     try {
-      const program = newProgram();
-      try {
-        await program.parseAsync(
-          ["-f", "json", "repair", "example", "--eval", evalPath],
-          { from: "user" },
-        );
-      } catch (err) {
-        const m = /^__EXIT__(\d+)/.exec((err as Error).message);
-        if (m) exitCode = parseInt(m[1], 10);
-        else throw err;
-      }
+      await program().parseAsync(
+        ["-f", "json", "repair", "missing-site", "missing-command"],
+        { from: "user" },
+      );
     } finally {
-      cap.restore();
+      capture.restore();
     }
 
-    // Eval reports exit 0 when score === total, caught here as __EXIT__0.
-    // runEval is the real implementation; shape-only assertion follows.
-    const out = cap.getStdout().trim();
-    expect(out.length).toBeGreaterThan(0);
-    const env = JSON.parse(out) as Record<string, unknown>;
-    expect(env.ok).toBe(true);
-    expect(env.command).toBe("repair.run");
-    const data = env.data as {
-      mode: string;
-      score: number;
-      total: number;
-    };
-    expect(data.mode).toBe("eval");
-    expect(typeof data.score).toBe("number");
-    expect(typeof data.total).toBe("number");
-    expect(typeof exitCode === "number" || exitCode === null).toBe(true);
+    const envelope = JSON.parse(capture.stderr().trim());
+    validateEnvelope(envelope);
+    expect(envelope.ok).toBe(false);
+    expect(envelope.error.code).toBe("invalid_input");
+    expect(envelope.error.exit_code).toBe(2);
+    expect(process.exitCode).toBe(2);
   });
 
-  it("loop path emits an envelope with iterations + best_metric", async () => {
-    const cap = captureStdout();
-    let exitCode: number | null = null;
-    let caughtErr: unknown = null;
+  it("rejects the removed autonomous loop surface", async () => {
+    const capture = captureConsole();
     try {
-      const program = newProgram();
-      try {
-        await program.parseAsync(
-          ["-f", "json", "repair", "example", "ping", "--loop"],
+      await expect(
+        program().parseAsync(
+          ["repair", "repair-unit-fixture", "ping", "--loop"],
           { from: "user" },
-        );
-      } catch (err) {
-        const m = /^__EXIT__(\d+)/.exec((err as Error).message);
-        if (m) exitCode = parseInt(m[1], 10);
-        else caughtErr = err;
-      }
+        ),
+      ).rejects.toMatchObject({ code: "commander.unknownOption" });
     } finally {
-      cap.restore();
+      capture.restore();
     }
-
-    // If the action never ran to process.exit, the caught error (if any)
-    // surfaces diagnostic detail for debugging.
-    if (caughtErr) throw caughtErr;
-
-    const out = cap.getStdout().trim();
-    expect(out.length).toBeGreaterThan(0);
-    const env = JSON.parse(out) as Record<string, unknown>;
-    expect(env.ok).toBe(true);
-    expect(env.command).toBe("repair.run");
-    const data = env.data as {
-      mode: string;
-      iterations: number;
-      best_metric: number;
-      improved: boolean;
-    };
-    expect(data.mode).toBe("loop");
-    expect(data.iterations).toBe(2);
-    expect(data.best_metric).toBe(1);
-    expect(data.improved).toBe(true);
-    // Exit code tracks `improved`: true → 0, false → 1. Mock returns true.
-    expect(exitCode).toBe(0);
   });
 });

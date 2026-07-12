@@ -41,7 +41,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> surfaces · <!-- STATS:test_count -->9299<!-- /STATS --> tests</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> surfaces · <!-- STATS:test_count -->9247<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -461,10 +461,14 @@ Adapters are small YAML files by default. A failed command gives an agent enough
 3. Open error.adapter_path.
 4. Patch the failing step.
 5. Save the override in ~/.unicli/adapters/<site>/<command>.yaml.
-6. Verify with unicli repair <site> <command>.
+6. Verify once with unicli repair <site> <command>.
+7. Inspect representative rows from the original command.
 ```
 
-Local overrides survive npm updates.
+`unicli repair` never edits source or git state. It re-runs the original command
+as a bounded subprocess and succeeds only when the target envelope is `ok=true`
+and its process exits `0`; failures preserve the target error and exit code.
+Local overrides survive npm updates. See [Self-Repair](docs/guide/self-repair.md).
 
 ## Write An Adapter
 

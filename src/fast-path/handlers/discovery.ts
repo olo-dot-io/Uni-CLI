@@ -1,7 +1,7 @@
 /**
  * @owner   src/fast-path/handlers/discovery.ts
  * @does    Serve list/search/describe/repair from the generated manifest plus user-repaired adapters without booting Commander.
- * @needs   ../../discovery/search, ../../discovery/core-catalog, ../../discovery/macos-dynamic, ../../output/error-map, ../manifest, ../render, js-yaml, node:fs
+ * @needs   ../../discovery/search, ../../discovery/core-catalog, ../../discovery/macos-dynamic, ../../engine/repair/plan, ../../output/error-map, ../manifest, ../render, js-yaml, node:fs
  * @feeds   src/fast-path.ts
  * @breaks  Sets process.exitCode for invalid args or empty searches; propagates unreadable manifest errors; skips malformed user-adapter YAML.
  * @invariants Fast-path search shares the canonical scorer and owns manifest-to-document and user-adapter-to-document projection.
@@ -30,7 +30,7 @@ import {
   discoverMacosDynamicData,
   dynamicMacosDiscoveryEnabled,
 } from "../../discovery/macos-dynamic.js";
-import { buildDefaultConfig } from "../../engine/repair/config.js";
+import { buildRepairPlan, parseTargetArgs } from "../../engine/repair/plan.js";
 import {
   resolveOperationAdapterPath,
   resolveOperationTargetSurface,
@@ -538,23 +538,14 @@ function describeCoreCommand(
 export function handleRepair(parsed: ParsedArgv, io: Io): boolean {
   const startedAt = Date.now();
   let dryRun = parsed.dryRun;
-  let max = 20;
   let timeout = 90;
+  let targetArgsRaw: string | undefined;
   const positionals: string[] = [];
 
   for (let i = 0; i < parsed.rest.length; i += 1) {
     const arg = parsed.rest[i];
     if (arg === "--dry-run") {
       dryRun = true;
-      continue;
-    }
-    if (arg === "--max") {
-      max = parseInt(parsed.rest[i + 1] ?? "", 10) || 20;
-      i += 1;
-      continue;
-    }
-    if (arg.startsWith("--max=")) {
-      max = parseInt(arg.slice("--max=".length), 10) || 20;
       continue;
     }
     if (arg === "--timeout") {
@@ -566,6 +557,15 @@ export function handleRepair(parsed: ParsedArgv, io: Io): boolean {
       timeout = parseInt(arg.slice("--timeout=".length), 10) || 90;
       continue;
     }
+    if (arg === "--target-args") {
+      targetArgsRaw = parsed.rest[i + 1];
+      i += 1;
+      continue;
+    }
+    if (arg.startsWith("--target-args=")) {
+      targetArgsRaw = arg.slice("--target-args=".length);
+      continue;
+    }
     if (arg.startsWith("-")) return false;
     positionals.push(arg);
   }
@@ -573,26 +573,31 @@ export function handleRepair(parsed: ParsedArgv, io: Io): boolean {
   if (!dryRun) return false;
 
   const [site, command] = positionals;
-  if (!site) return false;
-  const config = buildDefaultConfig(site, command);
-  config.maxIterations = max;
-  config.timeout = timeout * 1000;
-
-  emit(
-    io,
-    {
-      mode: "dry-run",
-      site,
-      command: command ?? null,
-      config: {
-        ...config,
-        metricPattern: config.metricPattern.source,
-      },
-    },
-    undefined,
-    parsed.format,
-    "repair.run",
-    startedAt,
+  if (!site || !command) return false;
+  const manifest = readManifest();
+  const manifestCommand = manifest.sites[site]?.commands.find(
+    (candidate) => candidate.name === command,
   );
+  if (!manifestCommand) return false;
+  const adapterPath = resolveOperationAdapterPath(
+    site,
+    command,
+    manifestCommand.adapter_path,
+  );
+
+  let plan;
+  try {
+    plan = buildRepairPlan({
+      site,
+      command,
+      adapterPath,
+      targetArgs: parseTargetArgs(targetArgsRaw),
+      timeoutMs: timeout * 1_000,
+    });
+  } catch {
+    return false;
+  }
+
+  emit(io, { ...plan }, undefined, parsed.format, "repair.plan", startedAt);
   return true;
 }

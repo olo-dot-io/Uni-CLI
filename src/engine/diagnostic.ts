@@ -1,11 +1,16 @@
 /**
- * RepairContext Diagnostic Module — structured error context for agent self-repair.
- *
- * When UNICLI_DIAGNOSTIC=1, pipeline failures emit a RepairContext JSON block
- * to stderr, giving agents everything they need to diagnose and fix the adapter:
- *   - Error details with hints
- *   - Full adapter source (YAML/TS)
- *   - Browser page state (URL, DOM snapshot, network, console errors)
+ * @owner       src::engine::diagnostic
+ * @does        Builds, redacts, bounds, and emits optional pipeline/browser diagnostic evidence for agents.
+ * @needs       node fs, browser page evidence, exit-code names, adapter source
+ * @feeds       engine runtime diagnostic mode and evidence-driven adapter repair
+ * @breaks      Unredacted secrets or invalid truncation would make diagnostic output unsafe or unparsable.
+ * @invariants  Sensitive headers/query/body fields are redacted; emitted JSON stays within 256 KiB.
+ * @side-effects Reads adapter source and writes a delimited diagnostic block to stderr when enabled.
+ * @perf        Source, stack, snapshots, network data, and bodies are independently bounded.
+ * @concurrency Each diagnostic owns an immutable redacted copy.
+ * @test        tests/unit/diagnostic.test.ts
+ * @stability   stable
+ * @since       2026-04-06
  */
 
 import { readFileSync } from "node:fs";
@@ -108,12 +113,12 @@ function isSensitiveKey(key: string): boolean {
 export function isValidRepairContext(obj: unknown): obj is RepairContext {
   if (typeof obj !== "object" || obj === null) return false;
   const o = obj as Record<string, unknown>;
-  // Require error.message and error.code (classifyFailure depends on both)
+  // Repair evidence requires a stable failure code and human-readable detail.
   if (typeof o.error !== "object" || o.error === null) return false;
   const err = o.error as Record<string, unknown>;
   if (typeof err.message !== "string") return false;
   if (typeof err.code !== "string") return false;
-  // Require adapter.site (classifyFailure depends on it)
+  // The site anchors the diagnostic to an owned adapter boundary.
   if (typeof o.adapter !== "object" || o.adapter === null) return false;
   const adapter = o.adapter as Record<string, unknown>;
   if (typeof adapter.site !== "string") return false;

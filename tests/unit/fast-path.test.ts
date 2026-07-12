@@ -409,7 +409,7 @@ describe("CLI fast path", () => {
     expect(payload.contract?.repair.repair_command).toBeUndefined();
   });
 
-  it("serves repair dry-run without entering the repair loop", () => {
+  it("serves a mutation-free repair verification plan", () => {
     const { stdout, io } = makeIo();
 
     const handled = tryRunFastPath(
@@ -429,13 +429,23 @@ describe("CLI fast path", () => {
     expect(handled).toBe(true);
     const env = JSON.parse(stdout.join("")) as {
       command: string;
-      data: { mode: string; site: string; command: string };
+      data: {
+        mode: string;
+        mutates_source: boolean;
+        target: { site: string; command: string; adapter_path: string };
+        repair_budget: { max_attempts: number };
+      };
     };
-    expect(env.command).toBe("repair.run");
+    expect(env.command).toBe("repair.plan");
     expect(env.data).toMatchObject({
-      mode: "dry-run",
-      site: "twitter",
-      command: "search",
+      mode: "verification-plan",
+      mutates_source: false,
+      target: {
+        site: "twitter",
+        command: "search",
+        adapter_path: "src/adapters/twitter/search.ts",
+      },
+      repair_budget: { max_attempts: 3 },
     });
   });
 

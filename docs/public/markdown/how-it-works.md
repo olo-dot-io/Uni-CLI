@@ -130,21 +130,23 @@ This is the design choice that makes the rest of the architecture worth building
 ```json
 {
   "ok": false,
-  "version": "v2",
+  "schema_version": "2",
+  "command": "twitter.search",
+  "meta": { "duration_ms": 91, "surface": "web" },
   "data": null,
   "error": {
+    "code": "not_found",
+    "message": "HTTP 404 from the configured search endpoint",
     "adapter_path": "/Users/me/.unicli/adapters/twitter/search.yaml",
-    "step": "fetch",
-    "action": "request returned 404",
+    "step": 0,
     "suggestion": "endpoint may have moved; check x.com/i/api/graphql/* in DevTools Network tab",
     "retryable": false,
     "alternatives": ["unicli twitter timeline @user", "unicli twitter trending"]
-  },
-  "exit_code": 69
+  }
 }
 ```
 
-The agent has everything it needs: the file to edit, the failing step, a one-line hypothesis, and at least one alternative path. After the YAML edit, `unicli repair twitter search` re-runs the failing step against a known-good fixture. The patch persists in `~/.unicli/adapters/`, so `npm update` cannot wipe it.
+The agent has everything it needs: the file to edit, the failing step, a one-line hypothesis, and at least one alternative path. After the YAML edit, `unicli repair twitter search` re-runs the original command as a bounded JSON oracle and requires its envelope and process exit to agree. The patch persists in `~/.unicli/adapters/`, so `npm update` cannot wipe it.
 
 A bug that would have cost 30 minutes of human debugging closes in 30 seconds of agent runtime. That two-orders-of-magnitude difference is the entire economic argument for adapters as YAML.
 

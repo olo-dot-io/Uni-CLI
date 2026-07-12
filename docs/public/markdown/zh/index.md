@@ -50,7 +50,7 @@ Agent 执行需要的不是更长的常驻工具列表，也不是又一个网�
 - 站点和工具：320
 - 操作：1798
 - Pipeline step：103
-- 测试：9294
+- 测试：9247
 
 能力规模来自当前仓库生成物：operation、adapter、pipeline step、测试和 substrate 都在本地构建流程里计数。
 

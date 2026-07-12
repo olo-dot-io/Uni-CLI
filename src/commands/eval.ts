@@ -1,6 +1,18 @@
 /**
- * Eval harness — declarative regression suite for adapters.
+ * @owner       src::commands::eval
+ * @does        Discovers and executes declarative adapter regression suites through the public CLI surface.
+ * @needs       node fs/path/os/child_process, js-yaml, commander, output envelope/formatter
+ * @feeds       `unicli eval list|run|ci` and post-repair regression assets
+ * @breaks      Invalid eval YAML, command launch failures, judge failures, and incomplete runs remain explicit results.
+ * @invariants  Cases invoke argv without a shell; judges evaluate the same JSON/exit surface users receive.
+ * @side-effects Reads eval files, starts bounded CLI subprocesses, writes envelopes and summaries.
+ * @perf        O(eval cases); every case has a configured timeout.
+ * @concurrency Cases execute serially to avoid shared auth and upstream-rate interference.
+ * @test        tests/unit/commands/eval.test.ts, tests/unit/eval.test.ts
+ * @stability   public
+ * @since       2026-04-08
  *
+ * Declarative regression suite usage:
  *   unicli eval list                       # list available evals
  *   unicli eval run smoke/bilibili         # run one eval file
  *   unicli eval run --all smoke/           # run a directory
@@ -21,10 +33,9 @@
  *         - { type: contains, field: data[0].title, value: "" }
  *
  * Why this exists:
- *   v0.207 shipped the eval *primitive* (`src/engine/repair/eval.ts`).
- *   v0.208 ships the *content*: a starter catalog so the self-repair loop
- *   has measurable baselines. Without baselines, claimed improvements are
- *   noise. The CLI command is the on-ramp; the YAML files are the data.
+ *   Declarative eval files are the reusable regression asset produced after
+ *   a repair. The repair command itself uses the original command as its
+ *   online oracle; recurring failures graduate into this offline harness.
  */
 
 import type { Command } from "commander";

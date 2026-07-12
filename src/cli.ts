@@ -393,7 +393,7 @@ export async function createCli(): Promise<Command> {
   // Emit startup hook — plugins can listen for CLI boot
   await emitHook("onStartup", { command: "__startup__", args: {} });
 
-  // Register repair command — self-repair broken adapters using AI
+  // Register repair command — bounded original-command verification
   registerRepairCommand(program);
 
   // Register skills command — export adapter SKILL.md files for agent registries
