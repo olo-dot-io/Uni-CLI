@@ -1,8 +1,8 @@
 /**
  * @owner   scripts/build-readme.ts
- * @does    Inject generated stats and logo-backed README coverage content.
- * @needs   stats.json, dist/manifest.json, README/doc marker blocks
- * @feeds   README.md, README.zh-CN.md, AGENTS.md, roadmap/copy stats
+ * @does    Inject generated stats, logo-backed README coverage, and the MCP registry catalog description.
+ * @needs   stats.json, dist/manifest.json, README/doc marker blocks, server.json
+ * @feeds   README.md, README.zh-CN.md, AGENTS.md, roadmap/copy stats, server.json
  * @breaks  Stale public counts or placeholder badges misrepresent catalog quality.
  */
 
@@ -14,6 +14,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
 const STATS_PATH = join(ROOT, "stats.json");
 const MANIFEST_PATH = join(ROOT, "dist", "manifest.json");
+const SERVER_JSON_PATH = join(ROOT, "server.json");
 
 const TARGETS = [
   "README.md",
@@ -284,6 +285,45 @@ export function inject(
   return { output, changed, missing };
 }
 
+function requiredCount(
+  stats: Record<string, unknown>,
+  key: "site_count" | "adapter_count_yaml" | "command_count",
+): number {
+  const value = stats[key];
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+    throw new Error(
+      `build-readme: stats.${key} must be a non-negative integer`,
+    );
+  }
+  return value;
+}
+
+export function buildServerDescription(stats: Record<string, unknown>): string {
+  const sites = requiredCount(stats, "site_count");
+  const yamlAdapters = requiredCount(stats, "adapter_count_yaml");
+  const commands = requiredCount(stats, "command_count");
+  return `Agent operations CLI exposing ${String(sites)} sites and tools, ${String(yamlAdapters)} declarative YAML adapters, and ${String(commands)} commands through one MCP server. Structured errors name the owning adapter, and bounded repair verification reruns the exact original command without hidden mutation.`;
+}
+
+function syncServerDescription(stats: Record<string, unknown>): boolean {
+  if (!existsSync(SERVER_JSON_PATH)) {
+    throw new Error("build-readme: server.json is missing");
+  }
+  const source = readFileSync(SERVER_JSON_PATH, "utf-8");
+  const server = JSON.parse(source) as Record<string, unknown>;
+  if (typeof server.description !== "string") {
+    throw new Error("build-readme: server.json description must be a string");
+  }
+  const output = `${JSON.stringify(
+    { ...server, description: buildServerDescription(stats) },
+    null,
+    2,
+  )}\n`;
+  if (output === source) return false;
+  writeFileSync(SERVER_JSON_PATH, output, "utf-8");
+  return true;
+}
+
 function categoryRank(category: string): number {
   const rank = CATEGORY_ORDER.indexOf(category);
   return rank === -1 ? CATEGORY_ORDER.length : rank;
@@ -412,6 +452,9 @@ function main(): void {
     `build-readme: injected ${totalChanged} STATS marker${totalChanged === 1 ? "" : "s"} across ${TARGETS.length} file${TARGETS.length === 1 ? "" : "s"}`,
   );
   console.log(`build-readme: updated ${gridChanged} README site grid block`);
+  console.log(
+    `build-readme: MCP registry description ${syncServerDescription(stats) ? "updated" : "already current"}`,
+  );
   if (missingAll.length > 0) {
     for (const { file, keys } of missingAll) {
       console.error(

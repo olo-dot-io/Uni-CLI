@@ -9,6 +9,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { buildServerDescription } from "../../scripts/build-readme.js";
 
 const ROOT = process.cwd();
 
@@ -81,6 +82,7 @@ interface ReleaseInfo {
 }
 
 interface ServerJson {
+  description: string;
   version: string;
   packages: Array<{ version: string }>;
 }
@@ -129,6 +131,16 @@ describe("current docs catalog claims", () => {
     expect(server.packages.map((entry) => entry.version)).toEqual([
       pkg.version,
     ]);
+  });
+
+  it("MCP registry description is derived from current catalog stats", () => {
+    const stats = JSON.parse(readRepoFile("stats.json")) as Record<
+      string,
+      unknown
+    >;
+    const server = JSON.parse(readRepoFile("server.json")) as ServerJson;
+
+    expect(server.description).toBe(buildServerDescription(stats));
   });
 
   it.each(["docs/faq.md", "docs/zh/faq.md"])(

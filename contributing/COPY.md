@@ -2,7 +2,7 @@
 
 > Current version: v0.226.0 — Apollo · Stafford.
 >
-> Current scale: <!-- STATS:site_count -->320<!-- /STATS --> sites, <!-- STATS:command_count -->1798<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->1225<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->984<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->241<!-- /STATS --> TS), <!-- STATS:test_count -->9273<!-- /STATS --> tests.
+> Current scale: <!-- STATS:site_count -->320<!-- /STATS --> sites, <!-- STATS:command_count -->1798<!-- /STATS --> commands, <!-- STATS:adapter_count_total -->1225<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->984<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->241<!-- /STATS --> TS), <!-- STATS:test_count -->9274<!-- /STATS --> tests.
 
 This file keeps docs and user-facing copy consistent. Public pages should expose
 install, command, output, and repair facts with the fewest words needed.
