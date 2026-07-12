@@ -25,6 +25,8 @@ interface Stats {
   site_count: number;
   command_count: number;
   pipeline_step_count: number;
+  pipeline_registered_step_count: number;
+  pipeline_transport_step_count: number;
 }
 
 function agentsText(): string {
@@ -56,6 +58,12 @@ describe("AGENTS.md generated catalog sync", () => {
     );
     expect(text).toContain(
       `<!-- STATS:pipeline_step_count -->${current.pipeline_step_count}<!-- /STATS -->`,
+    );
+    expect(text).toContain(
+      `<!-- STATS:pipeline_registered_step_count -->${current.pipeline_registered_step_count}<!-- /STATS -->`,
+    );
+    expect(text).toContain(
+      `<!-- STATS:pipeline_transport_step_count -->${current.pipeline_transport_step_count}<!-- /STATS -->`,
     );
   });
 });

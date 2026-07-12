@@ -1,10 +1,6 @@
 /**
- * Capability matrix tests — 46 steps × 7 transports per round4/02 §3.
- *
- * These tests freeze the matrix so a future refactor cannot silently
- * widen or narrow what a transport claims to support. Every row in the
- * matrix is re-asserted; if round4/02 changes, this test is the first
- * place to update.
+ * Capability matrix behavior tests. Exact executable ownership and surface
+ * budgets are frozen independently in step-surface.test.ts.
  */
 
 import { describe, it, expect } from "vitest";
@@ -29,8 +25,8 @@ describe("CAPABILITY_MATRIX shape", () => {
     ]);
   });
 
-  it("declares at least 46 distinct step names", () => {
-    expect(Object.keys(CAPABILITY_MATRIX).length).toBeGreaterThanOrEqual(46);
+  it("declares the executable built-in action surface", () => {
+    expect(Object.keys(CAPABILITY_MATRIX)).toHaveLength(105);
   });
 
   it("uses only the 7 known transport kinds in each row", () => {
@@ -62,7 +58,6 @@ describe("stepSupportedBy", () => {
       "press",
       "scroll",
       "snapshot",
-      "screenshot",
       "extract",
     ]) {
       expect(stepSupportedBy(step), step).toEqual(["cdp-browser"]);

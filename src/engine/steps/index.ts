@@ -1,7 +1,16 @@
 /**
- * Step handler barrel — single side-effect import that registers every
- * built-in pipeline step into `step-registry`. The executor imports this
- * file once; per-step modules self-register on load.
+ * @owner       src::engine::steps
+ * @does        Exports every registered built-in pipeline action and triggers each action's one-time registry registration.
+ * @needs       one module per composable pipeline action
+ * @feeds       executor dispatch and executable step-surface derivation
+ * @breaks      Missing exports make actions undiscoverable to both runtime dispatch and release truth checks.
+ * @invariants  Transport-native Visual/AX/UIA/AT-SPI handlers remain separate exports and are never double-registered here.
+ * @side-effects Importing this barrel populates the process-local step registry.
+ * @perf        One bounded module initialization for the 50 registered actions.
+ * @concurrency ES module initialization guarantees a single registration sequence per process.
+ * @test        tests/unit/step-surface.test.ts and pipeline behavior suites
+ * @stability   stable
+ * @since       2026-04-01
  */
 export { stepSelect } from "./select.js";
 export { stepMap } from "./map.js";
@@ -14,6 +23,7 @@ export { stepAppend } from "./append.js";
 export { stepIf } from "./if.js";
 export { stepEach, type EachConfig } from "./each.js";
 export { stepParallel } from "./parallel.js";
+export { stepRateLimit, type RateLimitConfig } from "./rate-limit.js";
 export { stepAssert, type AssertConfig } from "./assert.js";
 export { stepFetch, type FetchConfig } from "./fetch.js";
 export { stepFetchText } from "./fetch-text.js";

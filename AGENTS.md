@@ -42,7 +42,7 @@ because it starts only the Uni-CLI automation profile.
 
 <!-- BEGIN COUNTS -->
 
-> <!-- STATS:site_count -->320<!-- /STATS --> sites, <!-- STATS:command_count -->1798<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->103<!-- /STATS --> pipeline steps, BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> <!-- STATS:site_count -->320<!-- /STATS --> sites, <!-- STATS:command_count -->1798<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->105<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native), BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 
@@ -100,11 +100,11 @@ Uni-CLI is adapter-heavy; patch-rot is the failure mode that kills us fastest.
 
 ## Project references
 
-| Topic                       | Where                    |
-| --------------------------- | ------------------------ |
-| Adapter format              | `docs/ADAPTER-FORMAT.md` |
-| Pipeline steps (live count) | `unicli list`            |
-| Strategy semantics          | `src/types.ts`           |
+| Topic                   | Where                        |
+| ----------------------- | ---------------------------- |
+| Adapter format          | `docs/ADAPTER-FORMAT.md`     |
+| Built-in action surface | `src/engine/step-surface.ts` |
+| Strategy semantics      | `src/types.ts`               |
 
 `unicli list` is more authoritative than any inventory in this file — the
 project ships at high cadence, written counts go stale fast.

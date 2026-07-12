@@ -421,27 +421,38 @@ function main(): void {
 
   // Replace COUNTS section. Numbers are emitted as inline STATS markers so
   // `scripts/count-consistency.ts` can catch drift against stats.json — that
-  // way build-agents.ts is not a blind spot in the SSOT gate. Pipeline step
-  // count comes from stats.json so it never drifts from the engine source.
-  let pipelineSteps = 31;
-  if (existsSync(STATS_PATH)) {
-    try {
-      const stats = JSON.parse(readFileSync(STATS_PATH, "utf-8")) as {
-        pipeline_step_count?: number;
-      };
-      if (typeof stats.pipeline_step_count === "number") {
-        pipelineSteps = stats.pipeline_step_count;
-      }
-    } catch {
-      /* fall through to default */
-    }
+  // way build-agents.ts is not a blind spot in the SSOT gate. Action counts
+  // come from stats.json, which count-stats derives from the live registries.
+  if (!existsSync(STATS_PATH)) {
+    throw new Error("stats.json not found — run scripts/count-stats.ts first");
   }
+  const stats = JSON.parse(readFileSync(STATS_PATH, "utf-8")) as {
+    pipeline_step_count?: unknown;
+    pipeline_registered_step_count?: unknown;
+    pipeline_transport_step_count?: unknown;
+  };
+  const actionCounts = [
+    stats.pipeline_step_count,
+    stats.pipeline_registered_step_count,
+    stats.pipeline_transport_step_count,
+  ];
+  if (!actionCounts.every((value) => Number.isInteger(value))) {
+    throw new Error(
+      "stats.json is missing integer built-in action counts — run scripts/count-stats.ts first",
+    );
+  }
+  const pipelineSteps = stats.pipeline_step_count as number;
+  const registeredSteps = stats.pipeline_registered_step_count as number;
+  const transportSteps = stats.pipeline_transport_step_count as number;
   const countsRegex = /<!-- BEGIN COUNTS -->\n[\s\S]*?<!-- END COUNTS -->/;
   if (countsRegex.test(updated)) {
     const countsLine =
       `> <!-- STATS:site_count -->${siteCount}<!-- /STATS --> sites, ` +
       `<!-- STATS:command_count -->${cmdCount}<!-- /STATS --> commands, ` +
-      `<!-- STATS:pipeline_step_count -->${pipelineSteps}<!-- /STATS --> pipeline steps, ` +
+      `<!-- STATS:pipeline_step_count -->${pipelineSteps}<!-- /STATS --> built-in actions ` +
+      `(` +
+      `<!-- STATS:pipeline_registered_step_count -->${registeredSteps}<!-- /STATS --> registered + ` +
+      `<!-- STATS:pipeline_transport_step_count -->${transportSteps}<!-- /STATS --> transport-native), ` +
       `BM25 bilingual search. \`npm install -g @zenalexa/unicli\``;
     updated = updated.replace(
       countsRegex,

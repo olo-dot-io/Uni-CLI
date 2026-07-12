@@ -1,19 +1,16 @@
 /**
- * Step → transport capability matrix.
- *
- * Single source of truth for which transports can execute each pipeline
- * step, per `.claude/plans/sessions/2026-04-14-v212-rethink/round4/02-operate-anything-arch.md`
- * §3 (46 steps × 7 transports).
- *
- * Legend from round4/02:
- *   ●  native
- *   ○  emulated via delegate (still legal — appears in `transports`)
- *   –  unsupported (absent from `transports`)
- *   ◐  OS-gated (appears in `transports` AND `platforms`)
- *
- * The YAML runner uses {@link stepSupportedBy} at parse time to route a
- * step to the right transport; {@link stepPlatform} is consulted when the
- * step is platform-exclusive.
+ * @owner       src::transport::capability
+ * @does        Maps every built-in pipeline and transport-native action to legal transports and optional host platforms.
+ * @needs       canonical TransportKind vocabulary
+ * @feeds       transport routing, step-surface truth checks, stats, schema migration, docs
+ * @breaks      Missing, stale, or extra action rows fail the built-in step-surface contract.
+ * @invariants  Matrix keys exactly equal executable built-in action names; metadata such as retry is excluded.
+ * @side-effects None.
+ * @perf        O(1) action lookup.
+ * @concurrency Immutable after module initialization.
+ * @test        tests/unit/step-surface.test.ts, tests/unit/transport-capability.test.ts
+ * @stability   stable
+ * @since       2026-04-14
  */
 
 import type { TransportKind } from "./types.js";
@@ -44,6 +41,7 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
   // --- API / content steps ---
   fetch: { transports: ["http"] },
   fetch_text: { transports: ["http"] },
+  "oauth2-token": { transports: ["http"] },
   parse_rss: { transports: ["http"] },
   html_to_md: { transports: ["http", "cdp-browser"] },
 
@@ -53,6 +51,9 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
   filter: { transports: [...TRANSPORT_KINDS] },
   sort: { transports: [...TRANSPORT_KINDS] },
   limit: { transports: [...TRANSPORT_KINDS] },
+  "select-xml": { transports: [...TRANSPORT_KINDS] },
+  split_text: { transports: [...TRANSPORT_KINDS] },
+  to_entries: { transports: [...TRANSPORT_KINDS] },
 
   // --- Subprocess ---
   exec: { transports: ["subprocess"] },
@@ -82,9 +83,6 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
   snapshot: {
     transports: ["cdp-browser"],
   },
-  screenshot: {
-    transports: ["cdp-browser"],
-  },
   tap: { transports: ["cdp-browser"] },
   download: { transports: ["http", "cdp-browser", "subprocess"] },
   websocket: { transports: ["http"] },
@@ -100,7 +98,6 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
   extract: {
     transports: ["cdp-browser"],
   },
-  retry: { transports: [...TRANSPORT_KINDS] },
 
   // --- Visual family (screenshot + VLM coord action) ---
   visual_snapshot: { transports: ["visual"] },

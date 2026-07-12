@@ -57,6 +57,8 @@ type Stats = {
   adapter_count_yaml?: number;
   adapter_count_ts?: number;
   pipeline_step_count?: number;
+  pipeline_registered_step_count?: number;
+  pipeline_transport_step_count?: number;
   test_count?: number;
 };
 
@@ -342,6 +344,8 @@ function renderHomePageMarkdown(
   locale: LocaleKey,
 ): string {
   const pipelineSteps = stats.pipeline_step_count ?? "see docs";
+  const registeredSteps = stats.pipeline_registered_step_count ?? "?";
+  const transportSteps = stats.pipeline_transport_step_count ?? "?";
   if (locale === "zh") {
     return [
       "## AI Agent 控制 computer 的通用平台",
@@ -387,10 +391,10 @@ function renderHomePageMarkdown(
       "",
       `- 站点和工具：${siteIndex.total_sites}`,
       `- 操作：${siteIndex.total_commands}`,
-      `- Pipeline step：${pipelineSteps}`,
+      `- Built-in action：${pipelineSteps}（${registeredSteps} registered + ${transportSteps} transport-native）`,
       `- 测试：${stats.test_count}`,
       "",
-      "能力规模来自当前仓库生成物：operation、adapter、pipeline step、测试和 substrate 都在本地构建流程里计数。",
+      "能力规模来自当前仓库生成物：operation、adapter、built-in action、测试和 substrate 都在本地构建流程里计数。",
       "",
       "## 入口",
       "",
@@ -454,10 +458,10 @@ function renderHomePageMarkdown(
     "",
     `- Sites and tools: ${siteIndex.total_sites}`,
     `- Operations: ${siteIndex.total_commands}`,
-    `- Pipeline steps: ${pipelineSteps}`,
+    `- Built-in actions: ${pipelineSteps} (${registeredSteps} registered + ${transportSteps} transport-native)`,
     `- Tests: ${stats.test_count}`,
     "",
-    "These numbers come from the current generated repo artifacts: operations, adapters, pipeline steps, tests, and substrates are counted by the build.",
+    "These numbers come from the current generated repo artifacts: operations, adapters, built-in actions, tests, and substrates are counted by the build.",
     "",
     "## Entrypoints",
     "",
@@ -604,7 +608,7 @@ function renderLlmsTxt(
     `- Sites: ${siteIndex.total_sites}`,
     `- Commands: ${siteIndex.total_commands}`,
     `- Adapters: ${stats.adapter_count_total ?? "see docs"} (${stats.adapter_count_yaml ?? "?"} YAML + ${stats.adapter_count_ts ?? "?"} TypeScript)`,
-    `- Pipeline steps: ${stats.pipeline_step_count ?? "see docs"}`,
+    `- Built-in actions: ${stats.pipeline_step_count ?? "see docs"} (${stats.pipeline_registered_step_count ?? "?"} registered + ${stats.pipeline_transport_step_count ?? "?"} transport-native)`,
     `- Tests: ${stats.test_count ?? "see repo"}`,
     "",
     "## Agent Contract",
@@ -657,7 +661,7 @@ function renderLlmsFullTxt(
     `- Sites: ${siteIndex.total_sites}`,
     `- Commands: ${siteIndex.total_commands}`,
     `- Adapters: ${stats.adapter_count_total ?? "see repo"}`,
-    `- Pipeline steps: ${stats.pipeline_step_count ?? "see repo"}`,
+    `- Built-in actions: ${stats.pipeline_step_count ?? "see repo"} (${stats.pipeline_registered_step_count ?? "?"} registered + ${stats.pipeline_transport_step_count ?? "?"} transport-native)`,
     "",
   ];
 

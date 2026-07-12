@@ -39,7 +39,7 @@ An adapter that wraps an existing CLI (e.g., `gh`, `docker`, `yt-dlp`, `lark-cli
 
 ## Browser adapter
 
-An adapter that drives Chrome via the Chrome DevTools Protocol (CDP) for sites that require interactive sessions, JavaScript execution, or login state. Uses `navigate`, `evaluate`, `click`, `type`, `wait`, `intercept`, `tap`, `snapshot`, and `screenshot` pipeline steps.
+An adapter that drives Chrome via the Chrome DevTools Protocol (CDP) for sites that require interactive sessions, JavaScript execution, or login state. Uses registered actions such as `navigate`, `evaluate`, `click`, `type`, `wait`, `intercept`, `tap`, and `snapshot`; screenshots are exposed through browser/compute operations rather than a generic `screenshot` pipeline action.
 
 ## Catalog
 
@@ -79,7 +79,7 @@ A `sysexits.h`-compatible numeric status returned by every Uni-CLI invocation. 0
 
 ## Header strategy
 
-An auth strategy that reads a cookie file and auto-extracts a CSRF token from it, then injects both into request headers. Used by sites that require CSRF on state-changing requests (e.g., Reddit `vote`, Twitter `like`).
+An auth strategy that reads explicit cookie storage or a live browser/CDP session into memory, auto-extracts a CSRF token, then injects both into the target request headers. Used by sites that require CSRF on state-changing requests (e.g., Reddit `vote`, Twitter `like`).
 
 ## Intercept strategy
 
@@ -99,11 +99,11 @@ The stable product primitive in Uni-CLI. An operation contract describes identit
 
 ## Pipeline
 
-The ordered list of steps an adapter runs to produce its result. Drawn from the <!-- STATS:pipeline_step_count -->103<!-- /STATS -->-step registry covering API fetch, transform, browser, desktop, media, control flow, and assertion. Steps share a context object — each step reads `ctx.data` and writes back.
+The ordered list of actions an adapter runs to produce its result. The executable surface contains <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> built-in names: <span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span> registered pipeline actions and <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> low-level transport-native actions. Actions share a context object; plugins are outside this built-in budget.
 
 ## Pipeline step
 
-One unit of work in an adapter's pipeline. Examples: `fetch`, `select`, `map`, `filter`, `navigate`, `click`, `intercept`, `if`, `each`, `assert`. Every step is deterministic — same inputs produce same outputs — so adapters compose into reliable execution graphs.
+One unit of work in an adapter's pipeline. Examples: `fetch`, `select`, `map`, `filter`, `navigate`, `click`, `intercept`, `if`, `each`, `assert`. Pure transform actions are deterministic; external actions preserve a stable contract and explicit evidence around network, browser, desktop, or subprocess state.
 
 ## Public strategy
 

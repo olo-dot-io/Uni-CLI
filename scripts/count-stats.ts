@@ -1,7 +1,7 @@
 /**
  * @owner   scripts/count-stats.ts
  * @does    Compute stats.json counts used by README, docs, AGENTS, and release copy with bounded test enumeration.
- * @needs   repo adapters/tests/manifest/MCP/capability files, vitest list, dist manifest categories
+ * @needs   repo adapters/tests/manifest/MCP files, executable step surface, vitest list, dist manifest categories
  * @feeds   stats.json, scripts/build-readme.ts, scripts/build-agents.ts, npm run build, npm run stats:check
  * @breaks  Missing or malformed repo count sources produce zero counts or explicit test-count degradation warnings.
  */
@@ -17,6 +17,7 @@ import { join, extname, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import yaml from "js-yaml";
+import { getBuiltInStepSurface } from "../src/engine/step-surface.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -39,13 +40,12 @@ export interface Stats {
   site_count: number;
   command_count: number;
   test_count: number;
-  /**
-   * Distinct pipeline step names declared in the capability matrix
-   * (src/transport/capability.ts). This counts every step the runner
-   * knows about — API, browser, Visual, desktop-ax — not just the root
-   * `executeStep` switch arms, so the number matches the spec promise.
-   */
+  /** Executable built-in actions: registered pipeline plus transport-native. */
   pipeline_step_count: number;
+  /** Actions owned by the main step registry. */
+  pipeline_registered_step_count: number;
+  /** Low-level actions owned directly by visual/AX/UIA/AT-SPI transports. */
+  pipeline_transport_step_count: number;
   /**
    * Transport surfaces the MCP server exposes (stdio, streamable-http,
    * http). Distinct from {@link app_transport_count}.
@@ -332,54 +332,6 @@ function countTests(): number {
   return countTestsByRegex();
 }
 
-const OPEN_BRACE = String.fromCharCode(0x7b);
-
-function extractBalancedObject(
-  source: string,
-  declPrefix: string,
-): string | null {
-  const startIdx = source.indexOf(declPrefix);
-  if (startIdx < 0) return null;
-  const openIdx = source.indexOf(OPEN_BRACE, startIdx);
-  if (openIdx < 0) return null;
-  let depth = 0;
-  for (let i = openIdx; i < source.length; i++) {
-    const ch = source.charCodeAt(i);
-    if (ch === 0x7b) depth++;
-    else if (ch === 0x7d) {
-      depth--;
-      if (depth === 0) return source.slice(openIdx + 1, i);
-    }
-  }
-  return null;
-}
-
-function countPipelineSteps(): number {
-  // Source of truth: the capability matrix. Every step the runner can
-  // possibly dispatch — http, cdp-browser, subprocess, desktop-ax,
-  // desktop-uia, desktop-atspi, visual — lives as a top-level key of
-  // `CAPABILITY_MATRIX`. Counting this file rather than the root switch
-  // captures steps that moved into `src/engine/steps/*` modules as part
-  // of the v0.212 rewrite.
-  if (!existsSync(CAPABILITY_MATRIX_FILE)) return 0;
-  const source = readFileSync(CAPABILITY_MATRIX_FILE, "utf-8");
-  const body = extractBalancedObject(source, "export const CAPABILITY_MATRIX");
-  if (!body) return 0;
-  // Top-level keys only: two-space-indented "step_name:" followed by an
-  // object-literal open-brace. The matrix is an object; nested config (e.g.
-  // the transports tuple) lives one level deeper.
-  const keyRe = new RegExp(
-    "^ " + "{2}" + "([a-z_][a-z0-9_]*)\\s*:\\s*" + OPEN_BRACE,
-    "gm",
-  );
-  const seen = new Set<string>();
-  let km: RegExpExecArray | null;
-  while ((km = keyRe.exec(body)) !== null) {
-    seen.add(km[1]);
-  }
-  return seen.size;
-}
-
 /**
  * Application-layer transports registered on the TransportBus. Read from
  * `TRANSPORT_KINDS` in capability.ts — the canonical 7-transport tuple
@@ -444,6 +396,7 @@ function todayUtc(): string {
 export function computeStats(): Stats {
   const adapters = countAdapters();
   const catalog = countManifestCatalog();
+  const stepSurface = getBuiltInStepSurface();
   return {
     adapter_count_yaml: adapters.yaml,
     adapter_count_ts: adapters.ts,
@@ -451,7 +404,9 @@ export function computeStats(): Stats {
     site_count: catalog?.sites ?? adapters.sites,
     command_count: catalog?.commands ?? adapters.commands,
     test_count: countTests(),
-    pipeline_step_count: countPipelineSteps(),
+    pipeline_step_count: stepSurface.totalCount,
+    pipeline_registered_step_count: stepSurface.registeredCount,
+    pipeline_transport_step_count: stepSurface.transportNativeCount,
     transport_count: countTransports(),
     app_transport_count: countAppTransports(),
     category_count: catalog?.categories ?? countCategories(),
@@ -466,7 +421,8 @@ function main(): void {
   console.log(
     `stats.json: ${stats.site_count} sites, ${stats.command_count} commands, ` +
       `${stats.adapter_count_total} adapters (${stats.adapter_count_yaml} YAML + ${stats.adapter_count_ts} TS), ` +
-      `${stats.test_count} tests, ${stats.pipeline_step_count} steps, ` +
+      `${stats.test_count} tests, ${stats.pipeline_step_count} actions ` +
+      `(${stats.pipeline_registered_step_count} registered + ${stats.pipeline_transport_step_count} transport-native), ` +
       `${stats.transport_count} MCP transports, ${stats.app_transport_count} app transports, ${stats.category_count} categories`,
   );
 }

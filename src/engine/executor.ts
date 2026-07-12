@@ -1,17 +1,16 @@
 /**
- * YAML Pipeline Execution Engine — runPipeline orchestrator.
- *
- * Dispatches pipeline steps through `step-registry`. Per-step bodies live
- * in `steps/*.ts` and self-register on import. This file owns:
- *   - PipelineError shape
- *   - `executeStep` dispatch (registry → visual/ax bus → plugin registry);
- *     an unrecognized action raises a typed `unknown_action` PipelineError
- *   - `buildPipelineError` — single shaping point for step-failure envelopes
- *   - `runPipeline` orchestration (cookies, retry, fallback, auto-fix,
- *     diagnostic, cookie refresh, temp-dir cleanup, per-step observation)
- *
- * Per-step recovery helpers live in `runtime.ts`. The per-step observation
- * record + sink contract live in `step-observer.ts`.
+ * @owner       src::engine::executor
+ * @does        Orchestrates YAML pipelines and dispatches registered, transport-native, then plugin actions.
+ * @needs       step registry/barrel, transport handler tables, operation args, cookie acquisition, runtime recovery, observer
+ * @feeds       adapter execution across CLI/MCP/ACP and repair verification
+ * @breaks      Unknown actions and step failures become typed PipelineError instances with owning step evidence.
+ * @invariants  Every built-in non-transport action is registry-owned; retry/fallback remain bounded sibling metadata.
+ * @side-effects Executes network/browser/desktop/subprocess actions, observes steps, and cleans temporary directories.
+ * @perf        O(pipeline length) orchestration excluding action-owned I/O.
+ * @concurrency Parallelism exists only in explicit parallel/each handlers; the main pipeline is ordered.
+ * @test        tests/unit/pipeline*.test.ts, tests/integration/repair-truth.test.ts
+ * @stability   stable
+ * @since       2026-04-01
  */
 
 import { rmSync } from "node:fs";
@@ -185,13 +184,6 @@ export async function executeStep(
   fullStep?: PipelineStep,
   depth?: number,
 ): Promise<PipelineContext> {
-  if (action === "rate_limit") {
-    const rl = config as { domain: string; rpm?: number };
-    const { waitForToken } = await import("./rate-limiter.js");
-    await waitForToken(rl.domain, rl.rpm ?? 60);
-    return ctx;
-  }
-
   const handler = getStep(action);
   if (handler) return handler(ctx, config, stepIndex, fullStep, depth);
 

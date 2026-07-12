@@ -49,10 +49,10 @@ Agent execution does not need a longer resident tool list or another website wra
 
 - Sites and tools: 320
 - Operations: 1798
-- Pipeline steps: 103
-- Tests: 9260
+- Built-in actions: 105 (50 registered + 55 transport-native)
+- Tests: 9268
 
-These numbers come from the current generated repo artifacts: operations, adapters, pipeline steps, tests, and substrates are counted by the build.
+These numbers come from the current generated repo artifacts: operations, adapters, built-in actions, tests, and substrates are counted by the build.
 
 ## Entrypoints
 

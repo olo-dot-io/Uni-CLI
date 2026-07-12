@@ -67,7 +67,19 @@ Five fields define the authoring unit: `site` (the integration name), `name` (th
 
 ## Internal pipeline registry
 
-Every adapter runs through the same <!-- STATS:pipeline_step_count -->103<!-- /STATS -->-step pipeline registry. Steps are grouped by purpose: API fetch, transform, browser, desktop, media, control flow, and assertion. Each step is deterministic — same inputs produce same outputs — so adapters compose into reliable execution graphs.
+The runtime exposes <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span>
+built-in action names, but they are not one flat programming language:
+<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span> are
+registered pipeline actions and
+<span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> are
+low-level transport-native Visual/AX/UIA/AT-SPI actions. The budgets are
+machine-enforced; new behavior should compose existing actions or live behind a
+plugin/transport boundary instead of extending the shared vocabulary by
+default. `retry` and `backoff` are bounded sibling metadata, not action names.
+
+Pure transforms are deterministic. Network, browser, desktop, and subprocess
+actions instead promise a stable input/error/evidence contract around inherently
+external state; the documentation does not call those effects deterministic.
 
 | Group     | Examples                                                            | Purpose                                  |
 | --------- | ------------------------------------------------------------------- | ---------------------------------------- |
@@ -76,7 +88,8 @@ Every adapter runs through the same <!-- STATS:pipeline_step_count -->103<!-- /S
 | Browser   | `navigate`, `evaluate`, `click`, `type`, `wait`, `intercept`, `tap` | CDP control over Chrome                  |
 | Desktop   | `exec`, `write_temp`                                                | Subprocess control                       |
 | Media     | `download`, `websocket`                                             | File and stream capture                  |
-| Control   | `set`, `if`, `each`, `parallel`, `rate_limit`, `assert`, `retry`    | Composition primitives                   |
+| Control   | `set`, `if`, `each`, `parallel`, `rate_limit`, `assert`             | Composition primitives                   |
+| Native    | `visual_*`, `ax_*`, `uia_*`, `atspi_*`                              | Explicit low-level transport actions     |
 | Output    | `extract`, columns                                                  | Final shape for the agent                |
 
 The pipeline runs top to bottom with a shared context object. Each step reads `ctx.data` and writes back. Templates (`${{ item.field }}`) interpolate from prior step outputs.

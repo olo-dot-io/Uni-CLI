@@ -67,37 +67,37 @@ numbers from fixture or cold-start results.
 
 ### Cold-process CLI startup
 
-| command boundary | wall p50 | wall p95 | evidence class |
-| ---------------- | --------: | --------: | -------------- |
-| `unicli --version` | 22 ms | 24 ms | new subprocess, constant metadata path |
-| `unicli --help` | 20 ms | 23 ms | new subprocess, concise root help |
-| `unicli list -f json` | 114 ms | 122 ms | new subprocess, manifest fast path |
+| command boundary      | wall p50 | wall p95 | evidence class                         |
+| --------------------- | -------: | -------: | -------------------------------------- |
+| `unicli --version`    |    22 ms |    24 ms | new subprocess, constant metadata path |
+| `unicli --help`       |    20 ms |    23 ms | new subprocess, concise root help      |
+| `unicli list -f json` |   114 ms |   122 ms | new subprocess, manifest fast path     |
 
 ### Full catalog response size
 
-| metric | value |
-| ------ | ----- |
-| response tokens | 109102 |
-| response chars | 392766 |
-| distinct site labels in `list` output | 329 |
-| command rows in `list` output | 1845 |
+| metric                                | value  |
+| ------------------------------------- | ------ |
+| response tokens                       | 109102 |
+| response chars                        | 392766 |
+| distinct site labels in `list` output | 329    |
+| command rows in `list` output         | 1845   |
 
 ### Adapter call: p50/p95 response tokens
 
-| category | command | invocation tokens | response p50 tokens | response p95 tokens | wall p50 ms | wall p95 ms | mode |
-| -------- | ------- | ----------------: | ------------------: | ------------------: | ----------: | ----------: | ---- |
-| news | `unicli hackernews top --limit 5` | 9 | 404 | 404 | 0.003 | 0.005 | fixture |
-| social | `unicli reddit hot --limit 5` | 8 | 415 | 415 | 0.003 | 0.004 | fixture |
-| social-cn | `unicli 36kr hot --limit 5` | 7 | 357 | 357 | 0.003 | 0.003 | fixture |
-| dev | `unicli github-trending daily --limit 5` | 11 | 400 | 400 | 0.004 | 0.004 | fixture |
+| category  | command                                  | invocation tokens | response p50 tokens | response p95 tokens | wall p50 ms | wall p95 ms | mode    |
+| --------- | ---------------------------------------- | ----------------: | ------------------: | ------------------: | ----------: | ----------: | ------- |
+| news      | `unicli hackernews top --limit 5`        |                 9 |                 404 |                 404 |       0.003 |       0.005 | fixture |
+| social    | `unicli reddit hot --limit 5`            |                 8 |                 415 |                 415 |       0.003 |       0.004 | fixture |
+| social-cn | `unicli 36kr hot --limit 5`              |                 7 |                 357 |                 357 |       0.003 |       0.003 | fixture |
+| dev       | `unicli github-trending daily --limit 5` |                11 |                 400 |                 400 |       0.004 |       0.004 | fixture |
 
 ### Public call budget
 
-| metric | value |
-| ------ | ----- |
-| Smallest total call budget | 364 tokens |
-| Largest total call budget | 423 tokens |
-| Median total call budget | 412 tokens |
+| metric                             | value          |
+| ---------------------------------- | -------------- |
+| Smallest total call budget         | 364 tokens     |
+| Largest total call budget          | 423 tokens     |
+| Median total call budget           | 412 tokens     |
 | Representative response token span | 357-415 tokens |
 
 <!-- BENCH:end -->

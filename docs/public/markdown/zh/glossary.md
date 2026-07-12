@@ -15,7 +15,7 @@ Uni-CLI 可以用来让真实软件行动的具体技术边界：HTTP、browser 
 
 ## Adapter (适配器)
 
-把一个站点或工具映射到一组操作的 YAML 或 TypeScript 文件。声明 site、命令名、type、strategy、args、pipeline、columns。推荐格式是 YAML；TypeScript 留给那些超出 <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> 步 pipeline 的命令式控制流场景。
+把一个站点或工具映射到一组操作的 YAML 或 TypeScript 文件。声明 site、命令名、type、strategy、args、pipeline、columns。推荐格式是 YAML；TypeScript 留给无法由共享 action 组合表达、确实需要命令式控制流的场景。
 
 ## Adapter type (适配器类型)
 
@@ -39,7 +39,7 @@ Uni-CLI 把自然语言意图映射到站点、操作、参数的发现算法。
 
 ## Browser adapter (浏览器适配器)
 
-通过 CDP 驱动 Chrome 的适配器，用于需要交互会话、JS 执行、登录态的站点。用 `navigate`、`evaluate`、`click`、`type`、`wait`、`intercept`、`tap`、`snapshot`、`screenshot` 等 pipeline step。
+通过 CDP 驱动 Chrome 的适配器，用于需要交互会话、JS 执行、登录态的站点。使用 `navigate`、`evaluate`、`click`、`type`、`wait`、`intercept`、`tap`、`snapshot` 等注册 action；截图由 browser/compute operation 暴露，不存在通用 `screenshot` pipeline action。
 
 ## Catalog (目录)
 
@@ -79,7 +79,7 @@ Agent 把自然语言意图映射到具体操作的阶段。由 `unicli search "
 
 ## Header strategy
 
-读 cookie 文件并自动从中抽 CSRF token，把两者一起注入请求 header 的认证策略。用于状态变更请求需要 CSRF 的站点 (Reddit `vote`、Twitter `like`)。
+把显式 cookie storage 或 live browser/CDP session 读入内存，自动抽取 CSRF token，再把两者注入目标请求 header 的认证策略。用于状态变更请求需要 CSRF 的站点 (Reddit `vote`、Twitter `like`)。
 
 ## Intercept strategy
 
@@ -99,11 +99,16 @@ Uni-CLI 稳定的产品原语。operation contract 描述 identity、args、输�
 
 ## Pipeline
 
-适配器为产出结果按顺序跑的步骤列表。从 59 步注册表里取，覆盖 API 拉取、变换、浏览器、桌面、媒体、控制流、断言。步骤之间共享一个 context 对象——每步读 `ctx.data`、写回。
+适配器为产出结果按顺序执行的 action 列表。可执行 built-in surface 共
+<span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> 个名字：
+<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span>
+个注册 pipeline action，加
+<span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span>
+个底层 transport-native action。action 共享 context；plugin 不计入该预算。
 
 ## Pipeline step (Pipeline 步骤)
 
-适配器 pipeline 里的一个工作单元。例：`fetch`、`select`、`map`、`filter`、`navigate`、`click`、`intercept`、`if`、`each`、`assert`。每步都是确定性的——同样输入产出同样输出——所以适配器组合起来就是稳定的执行图。
+适配器 pipeline 里的一个工作单元。例：`fetch`、`select`、`map`、`filter`、`navigate`、`click`、`intercept`、`if`、`each`、`assert`。纯变换 action 可以是确定性的；外部 action 对 network、browser、desktop、subprocess 状态提供稳定合同和显式证据。
 
 ## Public strategy
 

@@ -69,17 +69,28 @@ columns: [title, published, url]
 
 ## 内部 pipeline 注册表
 
-所有适配器共用同一份 <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> 步 pipeline 注册表。步骤按用途分组：API 拉取、变换、浏览器、桌面、媒体、控制流、断言。每步都是确定性的——同样输入产出同样输出——所以适配器组合起来就是稳定的执行图。
+runtime 暴露 <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span>
+个 built-in action name，但它们不是一门扁平编程语言：
+<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span>
+个属于注册 pipeline action，另有
+<span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span>
+个是 Visual/AX/UIA/AT-SPI 的底层 transport-native action。预算由机器门禁；新行为
+默认应组合已有 action，或进入 plugin/transport 边界，而不是继续扩张共享词表。
+`retry`、`backoff` 是有界 sibling metadata，不是 action name。
 
-| 类别   | 示例                                                                | 用途                  |
-| ------ | ------------------------------------------------------------------- | --------------------- |
-| API    | `fetch`、`fetch_text`、`parse_rss`、`html_to_md`                    | HTTP 拉取与结构化抽取 |
-| 变换   | `select`、`map`、`filter`、`sort`、`limit`                          | 在步骤之间变形 JSON   |
-| 浏览器 | `navigate`、`evaluate`、`click`、`type`、`wait`、`intercept`、`tap` | 通过 CDP 控制 Chrome  |
-| 桌面   | `exec`、`write_temp`                                                | 子进程控制            |
-| 媒体   | `download`、`websocket`                                             | 文件和流式抓取        |
-| 控制   | `set`、`if`、`each`、`parallel`、`rate_limit`、`assert`、`retry`    | 组合原语              |
-| 输出   | `extract`、columns                                                  | 给 Agent 的最终形状   |
+纯变换可以是确定性的；network、browser、desktop、subprocess 面对外部状态，承诺
+的是稳定输入、错误和证据合同，不冒充同输入必得同输出。
+
+| 类别   | 示例                                                                | 用途                      |
+| ------ | ------------------------------------------------------------------- | ------------------------- |
+| API    | `fetch`、`fetch_text`、`parse_rss`、`html_to_md`                    | HTTP 拉取与结构化抽取     |
+| 变换   | `select`、`map`、`filter`、`sort`、`limit`                          | 在步骤之间变形 JSON       |
+| 浏览器 | `navigate`、`evaluate`、`click`、`type`、`wait`、`intercept`、`tap` | 通过 CDP 控制 Chrome      |
+| 桌面   | `exec`、`write_temp`                                                | 子进程控制                |
+| 媒体   | `download`、`websocket`                                             | 文件和流式抓取            |
+| 控制   | `set`、`if`、`each`、`parallel`、`rate_limit`、`assert`             | 组合原语                  |
+| 原生   | `visual_*`、`ax_*`、`uia_*`、`atspi_*`                              | 显式底层 transport action |
+| 输出   | `extract`、columns                                                  | 给 Agent 的最终形状       |
 
 Pipeline 自上而下走，共享一个 context 对象。每步读 `ctx.data`、写回。模板 (`${{ item.field }}`) 从前一步输出里取值。
 

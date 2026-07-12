@@ -1,6 +1,14 @@
 # Pipeline Steps
 
-Uni-CLI adapters execute a sequence of pipeline steps. Each step performs one action: fetch data, transform it, interact with a browser, or control execution flow. The current registry has <!-- STATS:pipeline_step_count -->103<!-- /STATS --> step names; the table below lists the common author-facing families.
+Uni-CLI adapters execute a sequence of actions: fetch data, transform it,
+interact with a browser, or control execution flow. The built-in executable
+surface has <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span>
+names: <span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span>
+registered pipeline actions documented here and
+<span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span>
+low-level transport-native Visual/AX/UIA/AT-SPI actions. The latter belong to
+their transport/compute references rather than a general-purpose YAML language.
+`retry` and `backoff` are sibling metadata, not actions.
 
 ## Overview
 

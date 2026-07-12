@@ -254,6 +254,22 @@ describe("rate_limit step", () => {
     );
     expect(result).toHaveLength(2);
   });
+
+  it.each([
+    [{ domain: "" }, "domain must be a non-empty string"],
+    [{ domain: "example.com", rpm: 0 }, "rpm must be an integer"],
+    [{ domain: "example.com", rpm: 1.5 }, "rpm must be an integer"],
+  ])(
+    "rejects invalid configuration before waiting",
+    async (config, message) => {
+      await expect(
+        runPipeline([{ rate_limit: config }], {
+          args: {},
+          source: "internal",
+        }),
+      ).rejects.toThrow(message);
+    },
+  );
 });
 
 describe("parallel step", () => {

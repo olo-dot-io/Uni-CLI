@@ -1,16 +1,16 @@
 /**
- * `unicli lint [path]` — minimal schema-v2 lint engine.
- *
- * Four checks, all static (no network):
- *
- *   1. Every YAML adapter parses and matches schema-v2 shape.
- *   2. Every step name in every `pipeline` is in the known-steps registry.
- *   3. No cycles in nested `if` / `each` sub-pipelines (BFS visit).
- *   4. Quarantined adapters (quarantine: true) must carry a non-empty
- *      `quarantineReason`.
- *
- * Non-zero exit on any failure so CI can gate. `--json` emits a
- * structured report for agents.
+ * @owner       src::commands::lint
+ * @does        Statically validates YAML schema-v2 shape, executable built-in actions, nested cycles, and quarantine evidence.
+ * @needs       js-yaml, schema-v2 enums, built-in step surface, filesystem traversal, v2 formatter
+ * @feeds       `unicli lint`, CI adapter/schema gates
+ * @breaks      Parse, schema, unknown-action, cycle, and quarantine violations produce non-zero structured reports.
+ * @invariants  Known actions come from the same executable step surface and capability matrix as runtime dispatch.
+ * @side-effects Reads adapter files and writes CLI output; never performs adapter network or browser actions.
+ * @perf        O(adapter bytes plus nested pipeline nodes).
+ * @concurrency Synchronous filesystem scan; no shared mutation.
+ * @test        tests/unit/commands/lint*.test.ts and adapter schema suites
+ * @stability   stable
+ * @since       2026-04-01
  */
 
 import { Command } from "commander";
@@ -25,31 +25,11 @@ import {
   AdapterTrustSchema,
   AdapterConfidentialitySchema,
 } from "../core/schema-v2.js";
-import "../engine/steps/index.js";
-import { listSteps } from "../engine/step-registry.js";
-import { VISUAL_STEP_HANDLERS } from "../engine/steps/visual.js";
-import { DESKTOP_AX_STEP_HANDLERS } from "../engine/steps/desktop-ax.js";
-import { DESKTOP_SIDECAR_STEP_HANDLERS } from "../engine/steps/desktop-sidecar.js";
+import { builtInStepNames } from "../engine/step-surface.js";
 import { format, detectFormat } from "../output/formatter.js";
 import { makeCtx } from "../output/envelope.js";
 
-// ── Known step registry ─────────────────────────────────────────────────
-//
-// Source of truth is the registry in src/engine/step-registry.ts (populated
-// by src/engine/steps/*.ts on import via steps/index.ts). The side-effect
-// import above guarantees the registry is fully populated before lint runs.
-//
-// `rate_limit` is dispatched directly by the executor and does not
-// self-register. Visual and native desktop steps route through dispatch tables
-// instead of the registry, so we add their kinds explicitly.
-
-const KNOWN_STEPS = new Set<string>([
-  ...listSteps(),
-  "rate_limit",
-  ...Object.keys(VISUAL_STEP_HANDLERS),
-  ...Object.keys(DESKTOP_AX_STEP_HANDLERS),
-  ...Object.keys(DESKTOP_SIDECAR_STEP_HANDLERS),
-]);
+const KNOWN_STEPS = new Set<string>(builtInStepNames());
 
 // Step keys that modify other keys rather than being executable themselves.
 // They count as metadata, not actions.

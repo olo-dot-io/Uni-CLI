@@ -38,8 +38,8 @@ npm run bench:gate
 - <span><!-- STATS:site_count -->320<!-- /STATS --></span> 个站点。
 - <span><!-- STATS:command_count -->1798<!-- /STATS --></span> 条命令。
 - <span><!-- STATS:adapter_count_yaml -->984<!-- /STATS --></span> 个 schema-v2 YAML adapter。
-- <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> 个 pipeline steps。
-- <span><!-- STATS:test_count -->9260<!-- /STATS --></span> 个测试。
+- <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> 个 built-in action（<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span> 个 registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> 个 transport-native）。
+- <span><!-- STATS:test_count -->9268<!-- /STATS --></span> 个测试。
 
 数字随开发更新，以 `npm run stats` 生成结果为准。
 
