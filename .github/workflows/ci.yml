@@ -12,6 +12,8 @@ name: CI
 #     egress routinely fail independently of project correctness.
 #   • `rust-sidecars`                      — stable x64 targets on PR/push.
 #   • `rust-sidecars-extended`             — ARM cross-targets on cron/manual.
+#   • Node 22 runs the full Linux gate; Node 24 runs build, unit, and production
+#     dependency-audit compatibility because both majors satisfy `engines`.
 # ─────────────────────────────────────────────────────────────────────────────
 
 on:
@@ -55,6 +57,9 @@ jobs:
           - os: ubuntu-latest
             node-version: 22
             profile: full
+          - os: ubuntu-latest
+            node-version: 24
+            profile: node-compat
           - os: windows-latest
             node-version: 22
             profile: windows-smoke
@@ -102,8 +107,12 @@ jobs:
         run: npm run build
 
       - name: Unit tests
-        if: matrix.profile == 'full' || matrix.profile == 'windows-smoke'
+        if: matrix.profile == 'full' || matrix.profile == 'node-compat' || matrix.profile == 'windows-smoke'
         run: npm run test
+
+      - name: Production dependency audit
+        if: matrix.profile == 'node-compat'
+        run: npm audit --omit=dev --audit-level=moderate
 
       - name: Compute snapshot coverage
         if: matrix.profile == 'full'
@@ -116,6 +125,10 @@ jobs:
       - name: Stats consistency gate
         if: matrix.profile == 'full'
         run: npm run stats:check
+
+      - name: Release truth consistency gate
+        if: matrix.profile == 'full'
+        run: npm run truth:check
 
   rust-sidecars:
     name: Rust Sidecars (${{ matrix.target }})
@@ -373,3 +386,37 @@ jobs:
               console.log('- \`' + f.file + '\` — ' + f.errors.join('; '));
             }
           " >> $GITHUB_STEP_SUMMARY
+
+  benchmark-evidence:
+    name: Scheduled Fixture Benchmark
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'schedule' && github.event.schedule == '0 9 * * *') || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --include=dev
+
+      - name: Build current CLI
+        run: npm run build
+
+      - name: Measure cold subprocess and fixture adapter boundaries
+        env:
+          BENCH_FIXTURES_ONLY: "1"
+          BENCH_RUNS: "20"
+        run: npm run bench
+
+      - name: Upload benchmark evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: benchmark-evidence-${{ github.run_id }}
+          path: |
+            bench/results.json
+            docs/BENCHMARK.md
+          retention-days: 30

@@ -50,7 +50,7 @@ Agent execution does not need a longer resident tool list or another website wra
 - Sites and tools: 320
 - Operations: 1798
 - Pipeline steps: 103
-- Tests: 9256
+- Tests: 9260
 
 These numbers come from the current generated repo artifacts: operations, adapters, pipeline steps, tests, and substrates are counted by the build.
 

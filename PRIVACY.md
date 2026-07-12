@@ -10,8 +10,12 @@ data across the boundaries selected by the command.
   to redirects or follow-up endpoints used by that pipeline.
 - Browser, desktop, MCP, ACP, plugin, visual, and agent-backend commands may
   communicate with the local or remote service named in their configuration.
-- Interactive CLI startup may query the npm registry for package-version
-  metadata. The request contains no Uni-CLI account or usage identifier.
+- Non-metadata interactive CLI paths may launch a detached,
+  three-second-bounded npm registry check. A successful response is cached for
+  24 hours. Root `--version` and `--help` do not load it, and the foreground
+  process never awaits its network request. Set `NO_UPDATE_NOTIFIER=1` or
+  `UNICLI_DISABLE_UPDATE_CHECK=1` to disable it. The request contains no Uni-CLI
+  account or usage identifier.
 - Uni-CLI does not send command history or adapter results to a Uni-CLI-operated
   service.
 

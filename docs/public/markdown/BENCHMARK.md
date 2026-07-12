@@ -17,11 +17,10 @@ Agent-native infrastructure should publish real cost numbers. Uni-CLI measures
 both the command invocation and the response body so public claims stay tied to
 the current code, fixtures, and output contract.
 
-The current fixture bench measures v2 `AgentEnvelope` response bodies at
-**357-415 tokens** for representative `--limit 5` list-style calls. Total
-invocation-plus-response budgets land at **364-423 tokens** in the same suite.
-`unicli list` is much larger because it intentionally emits the full
-235-site / 1450-command catalog.
+The generated results below measure v2 `AgentEnvelope` response bodies for
+representative `--limit 5` calls and measure the current full catalog directly.
+`unicli list` is intentionally much larger than one adapter call; no catalog
+count or latency from an older run is presented as current truth.
 
 This file ships real numbers or says `TODO:` -- nothing in between.
 
@@ -35,8 +34,9 @@ This file ships real numbers or says `TODO:` -- nothing in between.
    roughly 6-8% on English and compact JSON; rounding to tens of tokens is
    honest at this precision.
 4. Record p50 and p95 across the configured number of iterations
-   (`BENCH_RUNS`, default 50) of in-process tokenisation in fixture mode, or
-   subprocess wall-clock in live mode.
+   (`BENCH_RUNS`, default 50). Root metadata and catalog startup always use new
+   subprocesses. Adapter fixture timing is in-process parsing/tokenisation;
+   adapter live timing includes a real subprocess and network.
 5. Also capture the invocation-string token count so the agent-side command cost
    is visible.
 
@@ -52,41 +52,52 @@ Legacy fixture payloads are normalized into the current v2 `AgentEnvelope` shape
 before token counting, so the benchmark tracks the current public output
 contract even when source fixtures predate the envelope migration.
 
+There is no generic "warm CLI" number: each native CLI call is a new process.
+Persistent MCP and browser-daemon sessions have different ownership/lifetime
+boundaries and require their own benchmark; this report does not infer those
+numbers from fixture or cold-start results.
+
 ## Results
 
 <!-- BENCH:begin -->
 
-> Generated 2026-04-30T12:50:15.804Z on Node v22.22.2 / darwin-arm64.
-> Mode: **fixture** (20 iterations per case).
+> Generated 2026-07-12T12:08:20.122Z on Node v22.23.1 / darwin-arm64.
+> Mode: **fixture** (50 iterations per case).
 > Reproduce with `npm run bench` (local live mode) or `BENCH_FIXTURES_ONLY=1 npm run bench` (CI-deterministic fixture mode).
 
-### Cold start: `unicli list`
+### Cold-process CLI startup
 
-| metric          | value  |
-| --------------- | ------ |
-| wall p50        | 47 ms  |
-| wall p95        | 82 ms  |
-| response tokens | 73370  |
-| response chars  | 264131 |
-| sites listed    | 235    |
-| commands listed | 1450   |
+| command boundary | wall p50 | wall p95 | evidence class |
+| ---------------- | --------: | --------: | -------------- |
+| `unicli --version` | 22 ms | 24 ms | new subprocess, constant metadata path |
+| `unicli --help` | 20 ms | 23 ms | new subprocess, concise root help |
+| `unicli list -f json` | 114 ms | 122 ms | new subprocess, manifest fast path |
+
+### Full catalog response size
+
+| metric | value |
+| ------ | ----- |
+| response tokens | 109102 |
+| response chars | 392766 |
+| distinct site labels in `list` output | 329 |
+| command rows in `list` output | 1845 |
 
 ### Adapter call: p50/p95 response tokens
 
-| category  | command                                  | invocation tokens | response p50 tokens | response p95 tokens | wall p50 ms | wall p95 ms | mode    |
-| --------- | ---------------------------------------- | ----------------: | ------------------: | ------------------: | ----------: | ----------: | ------- |
-| news      | `unicli hackernews top --limit 5`        |                 9 |                 404 |                 404 |       0.005 |        0.08 | fixture |
-| social    | `unicli reddit hot --limit 5`            |                 8 |                 415 |                 415 |       0.005 |       0.016 | fixture |
-| social-cn | `unicli 36kr hot --limit 5`              |                 7 |                 357 |                 357 |       0.003 |       0.004 | fixture |
-| dev       | `unicli github-trending daily --limit 5` |                11 |                 400 |                 400 |       0.005 |       0.006 | fixture |
+| category | command | invocation tokens | response p50 tokens | response p95 tokens | wall p50 ms | wall p95 ms | mode |
+| -------- | ------- | ----------------: | ------------------: | ------------------: | ----------: | ----------: | ---- |
+| news | `unicli hackernews top --limit 5` | 9 | 404 | 404 | 0.003 | 0.005 | fixture |
+| social | `unicli reddit hot --limit 5` | 8 | 415 | 415 | 0.003 | 0.004 | fixture |
+| social-cn | `unicli 36kr hot --limit 5` | 7 | 357 | 357 | 0.003 | 0.003 | fixture |
+| dev | `unicli github-trending daily --limit 5` | 11 | 400 | 400 | 0.004 | 0.004 | fixture |
 
 ### Public call budget
 
-| metric                             | value          |
-| ---------------------------------- | -------------- |
-| Smallest total call budget         | 364 tokens     |
-| Largest total call budget          | 423 tokens     |
-| Median total call budget           | 412 tokens     |
+| metric | value |
+| ------ | ----- |
+| Smallest total call budget | 364 tokens |
+| Largest total call budget | 423 tokens |
+| Median total call budget | 412 tokens |
 | Representative response token span | 357-415 tokens |
 
 <!-- BENCH:end -->
@@ -108,7 +119,7 @@ larger payload, it should expose pagination, `--limit`, or `--compact`.
 The `bench/` directory is self-contained:
 
 - `bench/tokens.ts` — token estimator (no native deps).
-- `bench/cold-start.ts` — `unicli list` cold-start runner.
+- `bench/cold-start.ts` — cold-process root metadata and `unicli list` runner.
 - `bench/adapter-call.ts` — per-command p50/p95 runner (live or fixture mode).
 - `bench/report.ts` — orchestrator, writes `bench/results.json` and patches
   this file between `<!-- BENCH:begin -->` and `<!-- BENCH:end -->`.
@@ -121,4 +132,4 @@ maintenance check.
 
 ---
 
-_Last reviewed: 2026-04-28._
+_Last reviewed: 2026-07-12._

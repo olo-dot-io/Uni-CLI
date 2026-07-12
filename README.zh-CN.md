@@ -40,7 +40,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> 个 surface · <!-- STATS:test_count -->9256<!-- /STATS --> 个测试</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> 个 surface · <!-- STATS:test_count -->9260<!-- /STATS --> 个测试</sub>
 </p>
 
 <p align="center">
@@ -202,7 +202,11 @@ ACP 作为编辑器和桥接兼容层保留。真正跑任务时，优先 native
 
 ## 覆盖范围
 
-每条命令都能搜索、可声明、可验证、可修。近期覆盖已经扩展到论文下载和本地 PDF 读取、ACG/动画/漫画/wiki 发现、booru tag 搜索、美少女游戏目录，以及日文和罗马音实体检索。
+目录刻意保持广覆盖。目录行可搜索、带类型；这只是 inventory evidence，不代表
+第三方 endpoint 或登录态此刻健康。fixture shape、实时 endpoint health、带登录态
+browser health 是三层独立证据，绝不相加成“可用命令数”。近期 inventory 包含论文
+下载和本地 PDF 读取、ACG/动画/漫画/wiki 发现、booru tag 搜索、美少女游戏目录，
+以及日文和罗马音实体检索。
 
 下面的网格由 active manifest 中带真实 logo 的站点生成，徽章命令数不包含 quarantined 命令。完整目录始终以 `unicli list` 和文档站为准。
 

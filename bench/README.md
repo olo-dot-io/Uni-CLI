@@ -2,7 +2,8 @@
 
 Run `npm run bench` from the repo root. The harness:
 
-1. Re-measures `unicli list` cold-start (subprocess wall-clock p50/p95).
+1. Re-measures root `--version`, root `--help`, and `unicli list` as separate
+   cold subprocess boundaries (wall-clock p50/p95).
 2. Runs four adapter calls (news, social, social-cn, dev categories)
    against live endpoints, with fallback to committed fixtures if live
    fails.
@@ -16,6 +17,11 @@ Run `npm run bench` from the repo root. The harness:
 | ------- | ------------------------------------- | ------- | ----------------------------------------------- |
 | live    | `npm run bench`                       | yes     | Dev-machine truth; refreshes fixtures.          |
 | fixture | `BENCH_FIXTURES_ONLY=1 npm run bench` | no      | CI-deterministic. Uses `bench/fixtures/*.json`. |
+
+Fixture adapter timings measure in-process parsing/tokenisation, not CLI
+startup. Live adapter timings use real subprocess/network calls. Every startup
+sample launches a new Node process; persistent MCP/browser-daemon warm latency
+is not measured or inferred by this harness.
 
 ## Iterations
 
@@ -39,15 +45,14 @@ to make numbers prettier — the point of this harness is honest reporting.
 
 ## Not part of `npm run verify`
 
-Bench is network-flaky and slow; it is deliberately excluded from the
-default verification chain. CI runs fixture mode on `workflow_dispatch`
-or the nightly schedule, both of which are separate workflows from the
-verify pipeline.
+Bench is network-flaky and slow; it is deliberately excluded from the default
+verification chain. CI runs fixture mode as a separate scheduled/manual job,
+not as a pull-request verify gate.
 
 ## Files
 
 - `tokens.ts` — o200k_base heuristic tokeniser (no native deps).
-- `cold-start.ts` — cold-start runner for `unicli list`.
+- `cold-start.ts` — cold-process runner for root metadata and `unicli list`.
 - `adapter-call.ts` — per-command p50/p95 runner.
 - `report.ts` — orchestrator, writes `results.json` and patches `docs/BENCHMARK.md`.
 - `fixtures/*.json` — committed response captures.

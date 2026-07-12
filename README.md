@@ -41,7 +41,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> surfaces · <!-- STATS:test_count -->9256<!-- /STATS --> tests</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> surfaces · <!-- STATS:test_count -->9260<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -243,7 +243,13 @@ Start with [Compute](docs/operate/compute.md), [Electron App Control](docs/opera
 
 ## Coverage
 
-The catalog is intentionally broad. Every command is discoverable, typed, and repairable. Recent coverage includes scholarly paper download/read workflows, ACG/anime/manga/wiki discovery, booru tag search, visual-novel catalogs, and Japanese/romaji-aware entity lookup.
+The catalog is intentionally broad. Catalog rows are discoverable and typed;
+that is inventory evidence, not proof that a third-party endpoint or login is
+healthy today. Fixture shape, live endpoint health, and authenticated-browser
+health are tracked as separate evidence layers and never added together as one
+"working commands" claim. Recent inventory includes scholarly paper
+download/read workflows, ACG/anime/manga/wiki discovery, booru tag search,
+visual-novel catalogs, and Japanese/romaji-aware entity lookup.
 
 The wall below is generated from active manifest sites with real logo support. Badge counts exclude quarantined commands. The full generated catalog stays in `unicli list` and the docs site.
 

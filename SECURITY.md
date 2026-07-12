@@ -71,3 +71,9 @@ command without exposing cookie values.
 dependencies. Security claims must follow the checked-in workflows and actual
 `npm audit --omit=dev` result; dependency counts or audit gates are not stated
 manually here.
+
+The pull-request/mainline matrix runs the full Linux gate on Node 22 and a
+build/unit compatibility gate plus `npm audit --omit=dev --audit-level=moderate`
+on Node 24. The release workflow repeats the production audit before packing or
+publishing. `npm run truth:check` verifies those workflow and documentation
+contracts from repository state.

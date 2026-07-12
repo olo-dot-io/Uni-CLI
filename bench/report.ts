@@ -63,16 +63,32 @@ function renderMarkdown(report: Report): string {
     `> Reproduce with \`npm run bench\` (local live mode) or \`BENCH_FIXTURES_ONLY=1 npm run bench\` (CI-deterministic fixture mode).`,
   );
   lines.push("");
-  lines.push("### Cold start: `unicli list`");
+  lines.push("### Cold-process CLI startup");
+  lines.push("");
+  lines.push("| command boundary | wall p50 | wall p95 | evidence class |");
+  lines.push("| ---------------- | --------: | --------: | -------------- |");
+  lines.push(
+    `| \`unicli --version\` | ${report.cold_start.version_wall_ms_p50} ms | ${report.cold_start.version_wall_ms_p95} ms | new subprocess, constant metadata path |`,
+  );
+  lines.push(
+    `| \`unicli --help\` | ${report.cold_start.help_wall_ms_p50} ms | ${report.cold_start.help_wall_ms_p95} ms | new subprocess, concise root help |`,
+  );
+  lines.push(
+    `| \`unicli list -f json\` | ${report.cold_start.wall_ms_p50} ms | ${report.cold_start.wall_ms_p95} ms | new subprocess, manifest fast path |`,
+  );
+  lines.push("");
+  lines.push("### Full catalog response size");
   lines.push("");
   lines.push("| metric | value |");
   lines.push("| ------ | ----- |");
-  lines.push(`| wall p50 | ${report.cold_start.wall_ms_p50} ms |`);
-  lines.push(`| wall p95 | ${report.cold_start.wall_ms_p95} ms |`);
   lines.push(`| response tokens | ${report.cold_start.response_tokens} |`);
   lines.push(`| response chars | ${report.cold_start.response_chars} |`);
-  lines.push(`| sites listed | ${report.cold_start.sites} |`);
-  lines.push(`| commands listed | ${report.cold_start.commands} |`);
+  lines.push(
+    `| distinct site labels in \`list\` output | ${report.cold_start.sites} |`,
+  );
+  lines.push(
+    `| command rows in \`list\` output | ${report.cold_start.commands} |`,
+  );
   lines.push("");
   lines.push("### Adapter call: p50/p95 response tokens");
   lines.push("");
@@ -141,7 +157,7 @@ async function main(): Promise<void> {
   console.log(`[bench] cold-start...`);
   const cold = runColdStart(runs);
   console.log(
-    `[bench]   wall p50=${cold.wall_ms_p50}ms p95=${cold.wall_ms_p95}ms response=${cold.response_tokens} tokens`,
+    `[bench]   version=${cold.version_wall_ms_p50}ms help=${cold.help_wall_ms_p50}ms list=${cold.wall_ms_p50}ms response=${cold.response_tokens} tokens`,
   );
 
   console.log(`[bench] adapter-call (${mode})...`);

@@ -70,7 +70,9 @@ jobs:
           npm run lint:schema-v2
           npm run build
           npm run test
+          npm audit --omit=dev --audit-level=moderate
           npm run stats:check
+          npm run truth:check
           npm run boundary:check
 
       - name: Validate release metadata

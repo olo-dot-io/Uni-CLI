@@ -21,6 +21,16 @@ npm run bench:agent
 npm run bench:gate
 ```
 
+## 证据边界
+
+- `--version`、`--help` 和 `list -f json` 分别以全新 Node subprocess 测量；
+- fixture adapter 时间只代表进程内解析/序列化，不冒充 CLI 或网络延迟；
+- live adapter 时间包含真实 subprocess 与网络；
+- MCP、browser daemon 等常驻进程的 warm latency 未在本页推断。
+
+当前生成时间、运行环境、p50/p95 和完整结果见英文主报告
+[`docs/BENCHMARK.md`](../BENCHMARK.md)。
+
 ## 当前公开指标
 
 这些数字来自仓库生成的 `stats.json` 和 manifest：
@@ -29,7 +39,7 @@ npm run bench:gate
 - <span><!-- STATS:command_count -->1798<!-- /STATS --></span> 条命令。
 - <span><!-- STATS:adapter_count_yaml -->984<!-- /STATS --></span> 个 schema-v2 YAML adapter。
 - <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> 个 pipeline steps。
-- <span><!-- STATS:test_count -->9256<!-- /STATS --></span> 个测试。
+- <span><!-- STATS:test_count -->9260<!-- /STATS --></span> 个测试。
 
 数字随开发更新，以 `npm run stats` 生成结果为准。
 
