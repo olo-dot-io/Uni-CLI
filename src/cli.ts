@@ -1,5 +1,16 @@
 /**
- * CLI entry point — Commander-based routing with dynamic adapter commands.
+ * @owner       src::cli
+ * @does        Builds the Commander command tree and dispatches full CLI operations after the manifest fast path.
+ * @needs       command registrars, adapter registry/loader, pipeline engine, proxy-aware network, update check
+ * @feeds       src/main.ts and CLI-focused integration tests
+ * @breaks      Command parsing, adapter loading, or command handlers propagate semantic CLI exit codes.
+ * @invariants  One command tree owns every non-fast-path invocation; proxy installation precedes network-capable handlers.
+ * @side-effects Loads adapters, installs global proxy-aware fetch, checks cached updates, writes CLI output.
+ * @perf        Full path loads the adapter registry; discovery-only invocations stay on src/fast-path.ts.
+ * @concurrency One command tree per createCli call; process-wide network installation is idempotent.
+ * @test        tests/unit/cli, tests/unit/commands, tests/unit/integration-fixtures
+ * @stability   stable
+ * @since       2026-04-06
  */
 
 import { Command } from "commander";
@@ -69,10 +80,13 @@ import { registerDescribeCommand } from "./commands/describe.js";
 import { registerArchitectureCommand } from "./commands/architecture.js";
 import { emitHook } from "./hooks.js";
 import { checkForUpdates } from "./engine/update-check.js";
+import { installProxyAwareFetch } from "./engine/proxy.js";
 import type { OutputFormat } from "./types.js";
 
 export async function createCli(): Promise<Command> {
   const program = new Command();
+
+  installProxyAwareFetch();
 
   // Non-blocking update check (fire-and-forget)
   checkForUpdates();

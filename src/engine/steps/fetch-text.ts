@@ -1,6 +1,6 @@
 //! @owner       src::engine::steps::fetch_text
 //! @does        HTTP request returning raw text; optional session-cookie capture and bounded endpoint rotation
-//! @needs       ./fetch (FetchConfig), ../cookie-capture, ../ssrf, ../template, ../runtime-resource-guard
+//! @needs       ./fetch (FetchConfig), ../proxy, ../cookie-capture, ../ssrf, ../template, ../runtime-resource-guard
 //! @feeds       ./index (barrel), pipeline executor via registry "fetch_text"
 //! @breaks      PipelineError on http_error / network_error after retries
 //! @invariants  every fetched URL (incl. rotation candidates) passes assertSafeRequestUrl; cookie capture is host-scoped; rotation bounded by rotate_urls.length
@@ -16,7 +16,7 @@ import { registerStep, type StepHandler } from "../step-registry.js";
 import { type PipelineContext, PipelineError } from "../executor.js";
 import { assertSafeRequestUrl } from "../ssrf.js";
 import { evalTemplate } from "../template.js";
-import { getProxyAgent } from "../proxy.js";
+import { describeNetworkFailure } from "../proxy.js";
 import { assertRuntimeNetworkAllowed } from "../runtime-resource-guard.js";
 import {
   parseSetCookiePairs,
@@ -60,17 +60,14 @@ async function fetchTextOnce(
   stepIndex: number,
 ): Promise<TextResult> {
   const method = config.method ?? "GET";
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dispatcher from undici not in standard RequestInit
-  const fetchInit: Record<string, any> = { method, headers };
-  const ftAgent = getProxyAgent();
-  if (ftAgent) fetchInit.dispatcher = ftAgent;
+  const fetchInit: RequestInit = { method, headers };
 
   const maxAttempts = normalizeFetchAttempts(config.retry);
   const baseDelay = config.backoff ?? 1000;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      const resp = await fetch(requestUrl, fetchInit as RequestInit);
+      const resp = await fetch(requestUrl, fetchInit);
       if (resp.ok) {
         const text = await resp.text();
         const getSetCookie = (
@@ -121,7 +118,7 @@ async function fetchTextOnce(
         throw err;
       }
       if (isLastAttempt) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = describeNetworkFailure(err);
         throw new PipelineError(
           `fetch_text failed for ${requestUrl}: ${message}`,
           {

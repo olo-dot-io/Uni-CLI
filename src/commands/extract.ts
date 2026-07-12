@@ -33,7 +33,7 @@
 import { Command } from "commander";
 import TurndownService from "turndown";
 import { assertSafeRequestUrl } from "../engine/ssrf.js";
-import { getProxyAgent } from "../engine/proxy.js";
+import { describeNetworkFailure } from "../engine/proxy.js";
 import { USER_AGENT } from "../constants.js";
 import { format, detectFormat } from "../output/formatter.js";
 import { printErrorEnvelope } from "../output/error-writer.js";
@@ -118,14 +118,11 @@ export function registerExtractCommand(program: Command): void {
       let html: string;
       let httpStatus = 0;
       try {
-        const init: Record<string, unknown> = {
+        const init: RequestInit = {
           method: "GET",
           headers: { "User-Agent": USER_AGENT },
         };
-        const agent = getProxyAgent();
-        if (agent) init.dispatcher = agent;
-
-        const resp = await fetch(url, init as RequestInit);
+        const resp = await fetch(url, init);
         httpStatus = resp.status;
 
         if (!resp.ok) {
@@ -180,7 +177,7 @@ export function registerExtractCommand(program: Command): void {
           baseCtx(startedAt),
           {
             code: "network_error",
-            message: e instanceof Error ? e.message : String(e),
+            message: describeNetworkFailure(e),
             suggestion: `Network fetch failed for ${url} — verify connectivity`,
             retryable: true,
           },

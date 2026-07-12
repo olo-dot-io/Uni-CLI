@@ -1,3 +1,18 @@
+/**
+ * @owner       src::engine::steps::fetch
+ * @does        Executes validated HTTP requests with retries, caching, proxy routing, and bounded concurrency.
+ * @needs       node fs/path/os/crypto, constants, registry/executor, SSRF/template/cookies/download/proxy/resource guard
+ * @feeds       step registry action "fetch", fetch_text shared request helpers
+ * @breaks      PipelineError preserves network, HTTP, policy, and response-shape failure semantics.
+ * @invariants  Every request URL passes SSRF validation; proxy fetch and dispatcher share one Undici implementation.
+ * @side-effects Network I/O, optional cache writes, cookie acquisition, and response-cookie capture.
+ * @perf        Retry count and fan-out are explicitly bounded by adapter configuration.
+ * @concurrency Multi-URL requests use the shared bounded concurrency mapper.
+ * @test        tests/adapter/phase5-workflow.test.ts, tests/unit/proxy.test.ts
+ * @stability   stable
+ * @since       2026-04-15
+ */
+
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -9,7 +24,7 @@ import { assertSafeRequestUrl } from "../ssrf.js";
 import { evalTemplate, resolveTemplateDeep } from "../template.js";
 import { formatCookieHeader, loadCookiesWithCDP } from "../cookies.js";
 import { mapConcurrent } from "../download.js";
-import { getProxyAgent } from "../proxy.js";
+import { describeNetworkFailure } from "../proxy.js";
 import { assertRuntimeNetworkAllowed } from "../runtime-resource-guard.js";
 
 export interface FetchConfig {
@@ -239,20 +254,40 @@ async function fetchJson(
     headers["Cookie"] = cookieHeader;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dispatcher from undici not in standard RequestInit
-  const init: Record<string, any> = { method, headers };
+  const init: RequestInit = { method, headers };
   if (config.body && method !== "GET") {
     headers["Content-Type"] = "application/json";
     init.body = JSON.stringify(config.body);
   }
-  const proxyAgent = getProxyAgent();
-  if (proxyAgent) init.dispatcher = proxyAgent;
-
   const maxAttempts = normalizeFetchAttempts(config.retry);
   const baseDelay = config.backoff ?? 1000;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const resp = await fetch(url, init as RequestInit);
+    let resp: Response;
+    try {
+      resp = await fetch(url, init);
+    } catch (error) {
+      const isLastAttempt = attempt === maxAttempts;
+      if (!isLastAttempt) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, baseDelay * 2 ** (attempt - 1)),
+        );
+        continue;
+      }
+      throw new PipelineError(
+        `Network request failed for ${url}: ${describeNetworkFailure(error)}`,
+        {
+          step: stepIndex,
+          action: "fetch",
+          config: { url, method },
+          errorType: "network_error",
+          url,
+          suggestion: `Check proxy configuration and connectivity to ${new URL(url).origin}.`,
+          retryable: true,
+          alternatives: [],
+        },
+      );
+    }
 
     if (resp.ok) {
       const data = await resp.json();

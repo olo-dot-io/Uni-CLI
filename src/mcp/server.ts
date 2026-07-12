@@ -1,7 +1,18 @@
 #!/usr/bin/env node
 
 /**
- * MCP (Model Context Protocol) server entry point for Uni-CLI.
+ * @owner       src::mcp::server
+ * @does        Boots stdio, HTTP, or Streamable HTTP MCP transports over the canonical Uni-CLI command registry.
+ * @needs       discovery/registry, MCP handler/transports/tools, proxy-aware network
+ * @feeds       bin/unicli-mcp and `unicli mcp serve`
+ * @breaks      Adapter loading, transport startup, and handler failures surface as JSON-RPC or process errors.
+ * @invariants  Default mode exposes four meta-tools; all network-capable handlers share the CLI proxy contract.
+ * @side-effects Loads adapters, installs global proxy-aware fetch, binds stdin or network listeners.
+ * @perf        Tool catalog size depends on default/deferred/expanded profile.
+ * @concurrency JSON-RPC calls may overlap; shared registries are read-only after startup.
+ * @test        tests/unit/mcp, tests/integration/mcp*.test.ts
+ * @stability   stable
+ * @since       2026-04-06
  *
  * Thin bootstrap: load adapters → build tool list → wire the transport →
  * start serving. The meat lives in sibling modules:
@@ -43,6 +54,9 @@ import {
 } from "./handler.js";
 import { startHttp } from "./http-transport.js";
 import { startStreamableHttp } from "./streamable-http/index.js";
+import { installProxyAwareFetch } from "../engine/proxy.js";
+
+installProxyAwareFetch();
 
 export { annotateIfLarge } from "./dispatch.js";
 
