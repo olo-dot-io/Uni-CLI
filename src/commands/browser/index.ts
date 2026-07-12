@@ -1,11 +1,11 @@
 /**
  * @owner   src/commands/browser/index.ts
  * @does    Register browser root commands for Chrome lifecycle, CDP status, doctor reports, local profiles, cookies, sessions, actions, and adapter authoring.
- * @needs   commander, chalk, src/browser launcher/CDP/daemon/workspace/local-profiles/profile-seed/doctor, ./actions, ./adapter, output formatter, src/engine cookie-extractor/chromium-cookies
+ * @needs   commander, chalk, src/browser launcher/CDP/daemon/workspace/local-profiles/profile-seed/doctor, ./actions, ./adapter, output formatter, src/engine cookie-extractor/cookie-storage/chromium-cookies
  * @feeds   src/cli.ts, tests/unit/commands/browser.test.ts
  * @breaks  Chrome, CDP, daemon, profile seed, and cookie failures propagate through command errors and stderr. No fallback.
  * @invariants Browser start reports attach/seeded/ephemeral source, refreshes only stopped automation profiles, and never substitutes an empty profile after seed failure.
- * @side-effects May launch Chrome, seed Uni-CLI automation profile directories, save cookies, and write adapter skeletons.
+ * @side-effects May launch Chrome, seed automation profiles, explicitly export cookies, and write adapter skeletons.
  * @perf    Browser lifecycle probes are bounded and profile lists avoid raw cookie values.
  * @concurrency Launcher owns seed locks; command layer avoids launching a second Chrome for a live selected profile.
  * @test    tests/unit/commands/browser.test.ts
@@ -478,7 +478,7 @@ export function registerBrowserCommands(program: Command): void {
   // unicli browser cookies <domain>
   browser
     .command("cookies <domain>")
-    .description("Extract cookies from Chrome for a domain")
+    .description("Explicitly extract and persist cookies for a domain")
     .option("--port <port>", "CDP port", String(getCDPPort()))
     .option(
       "--profile-id <id>",
@@ -507,8 +507,12 @@ export function registerBrowserCommands(program: Command): void {
         }
 
         try {
-          const { extractCookiesViaCDP, saveCookies } =
-            await import("../../engine/cookie-extractor.js");
+          const [{ extractCookiesViaCDP }, { saveCookies }] = await Promise.all(
+            [
+              import("../../engine/cookie-extractor.js"),
+              import("../../engine/cookie-storage.js"),
+            ],
+          );
           const localCookies = localProfile
             ? readCookiesFromLocalProfile(domain, localProfile)
             : null;
@@ -1189,6 +1193,13 @@ function printSavedCookies(
     ),
   );
   console.log(chalk.dim(`Saved to: ${filePath}`));
+  console.log(
+    chalk.dim(
+      process.platform === "win32"
+        ? "Storage: plaintext JSON; protection follows the selected path's Windows ACL"
+        : "Storage: plaintext JSON (owner-only directory 0700, file 0600)",
+    ),
+  );
 }
 
 /**

@@ -53,7 +53,7 @@ The local computer-control and visual fallback adapter family. When structured s
 
 ## Cookie file
 
-Per-site authentication state stored at `~/.unicli/cookies/<site>.json`. Read by adapters with `strategy: cookie` or `strategy: header`. Never sent off the local machine.
+Optional per-site authentication state explicitly persisted as plaintext JSON at `~/.unicli/cookies/<site>.json`. Cookie/header adapters can instead read a live browser/CDP session into memory. Cookie values are sent only to the target request/browser boundary selected by the command.
 
 ## Daemon
 

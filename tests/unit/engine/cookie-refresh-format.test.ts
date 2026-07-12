@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { saveCookies } from "../../../src/engine/cookie-extractor.js";
+import { saveCookies } from "../../../src/engine/cookie-storage.js";
 import { loadCookies } from "../../../src/engine/cookies.js";
 
 // Regression: cookie-refresh.ts once wrote an ARRAY format that loadCookies

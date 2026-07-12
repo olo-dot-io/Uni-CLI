@@ -1,10 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import {
   refreshCookies,
   type PageSession,
   type SessionRefreshDeps,
 } from "../../../src/engine/cookie-refresh.js";
+import { forgetTransientCookies } from "../../../src/engine/cookies.js";
 import { resolveCdpPort } from "../../../src/browser/cdp-client.js";
 
 // A fully fake page — no Chrome, no CDP, no network.
@@ -20,29 +24,40 @@ function fakePage(over: Partial<PageSession> = {}): PageSession {
 function deps(over: Partial<SessionRefreshDeps> = {}): SessionRefreshDeps {
   return {
     connect: async () => fakePage(),
-    persist: () => {},
     ...over,
   };
 }
 
 describe("refreshCookies — names the cause instead of a bare boolean", () => {
-  it("returns refreshed with a cookie count and persists on success", async () => {
-    const persisted: Array<[string, Record<string, string>]> = [];
-    const out = await refreshCookies(
-      "bilibili",
-      undefined,
-      deps({
-        connect: async () =>
-          fakePage({ cookies: async () => ({ a: "1", b: "2" }) }),
-        persist: (site, cookies) => persisted.push([site, cookies]),
-      }),
-    );
-    expect(out).toEqual({
-      status: "refreshed",
-      site: "bilibili",
-      cookieCount: 2,
-    });
-    expect(persisted).toEqual([["bilibili", { a: "1", b: "2" }]]);
+  afterEach(() => {
+    forgetTransientCookies("bilibili");
+    forgetTransientCookies("x");
+  });
+
+  it("returns refreshed in memory without opting into persistence", async () => {
+    const root = mkdtempSync(join(tmpdir(), "unicli-refresh-memory-"));
+    const previous = process.env.UNICLI_COOKIE_DIR;
+    process.env.UNICLI_COOKIE_DIR = join(root, "cookies");
+    try {
+      const out = await refreshCookies(
+        "bilibili",
+        undefined,
+        deps({
+          connect: async () =>
+            fakePage({ cookies: async () => ({ a: "1", b: "2" }) }),
+        }),
+      );
+      expect(out).toEqual({
+        status: "refreshed",
+        site: "bilibili",
+        cookieCount: 2,
+      });
+      expect(existsSync(process.env.UNICLI_COOKIE_DIR)).toBe(false);
+    } finally {
+      if (previous === undefined) delete process.env.UNICLI_COOKIE_DIR;
+      else process.env.UNICLI_COOKIE_DIR = previous;
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("returns no-browser (not false) when the connection fails", async () => {
@@ -69,8 +84,7 @@ describe("refreshCookies — names the cause instead of a bare boolean", () => {
     expect(out.status).toBe("no-cookies");
   });
 
-  it("returns error when navigation throws, and does not persist", async () => {
-    const persist = vi.fn();
+  it("returns error when navigation throws", async () => {
     const out = await refreshCookies(
       "x",
       "x.com",
@@ -81,13 +95,11 @@ describe("refreshCookies — names the cause instead of a bare boolean", () => {
               throw new Error("navigation timeout");
             },
           }),
-        persist,
       }),
     );
     expect(out.status).toBe("error");
     if (out.status !== "error") throw new Error("unreachable");
     expect(out.detail).toContain("navigation timeout");
-    expect(persist).not.toHaveBeenCalled();
   });
 
   it("always closes the page, even when the refresh errors", async () => {
@@ -108,7 +120,7 @@ describe("refreshCookies — names the cause instead of a bare boolean", () => {
     expect(close).toHaveBeenCalledOnce();
   });
 
-  it("a close failure does not override the determined outcome", async () => {
+  it("surfaces a close failure together with the determined outcome", async () => {
     const out = await refreshCookies(
       "x",
       "x.com",
@@ -122,7 +134,11 @@ describe("refreshCookies — names the cause instead of a bare boolean", () => {
           }),
       }),
     );
-    expect(out.status).toBe("refreshed");
+    expect(out).toEqual({
+      status: "error",
+      detail:
+        "Cookie refresh reached refreshed, but CDP page cleanup failed: close blew up",
+    });
   });
 });
 

@@ -33,7 +33,7 @@ Any runtime that can spawn a subprocess can use Uni-CLI directly. Uni-CLI also e
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.226.0 ships a generated operation catalog with <span><!-- STATS:site_count -->320<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1798<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1225<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->9247<!-- /STATS --></span> tests. The headline is not the count; it is the shared control contract: intent, policy, action substrate, evidence, delivery, repair, and the same AgentEnvelope across web, browser, desktop, local tools, files, and protocols.
+v0.226.0 ships a generated operation catalog with <span><!-- STATS:site_count -->320<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1798<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1225<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->9256<!-- /STATS --></span> tests. The headline is not the count; it is the shared control contract: intent, policy, action substrate, evidence, delivery, repair, and the same AgentEnvelope across web, browser, desktop, local tools, files, and protocols.
 
 ## Can Uni-CLI download papers and read local PDFs?
 
@@ -49,7 +49,7 @@ Yes. The preferred contribution format is a short YAML adapter that names the si
 
 ## Does Uni-CLI handle authenticated sites?
 
-Yes. Strategies cascade across `public`, `cookie`, `header` (cookie + CSRF), `intercept` (browser XHR capture), and `ui` (interactive). Cookies live in `~/.unicli/cookies/`, and Uni-CLI auto-probes the cheapest strategy that returns valid data.
+Yes. Strategies cascade across `public`, `cookie`, `header` (cookie + CSRF), `intercept` (browser XHR capture), and `ui` (interactive). Cookie/header commands use an explicitly persisted file when present or read a live local browser/CDP source into process memory without writing it. `auth import` and `browser cookies` are the explicit persistence commands.
 
 ## How does Uni-CLI compare to MCP for token cost?
 

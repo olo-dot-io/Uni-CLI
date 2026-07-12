@@ -35,7 +35,7 @@ computer-use sandbox 给 Agent 一个带屏幕、鼠标、键盘和 benchmark ho
 
 ## 一共有多少站点和命令？
 
-v0.226.0 生成操作目录包含 <span><!-- STATS:site_count -->320<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1798<!-- /STATS --></span> 条命令、<span><!-- STATS:adapter_count_total -->1225<!-- /STATS --></span> 个适配器、<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> 个 pipeline step、<span><!-- STATS:test_count -->9247<!-- /STATS --></span> 个测试。真正重要的不是数字，而是一套共享控制合同：意图、策略、行动 substrate、证据、交付、修复，以及跨 web、browser、desktop、本地工具、文件和协议的同一种 AgentEnvelope。
+v0.226.0 生成操作目录包含 <span><!-- STATS:site_count -->320<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1798<!-- /STATS --></span> 条命令、<span><!-- STATS:adapter_count_total -->1225<!-- /STATS --></span> 个适配器、<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> 个 pipeline step、<span><!-- STATS:test_count -->9256<!-- /STATS --></span> 个测试。真正重要的不是数字，而是一套共享控制合同：意图、策略、行动 substrate、证据、交付、修复，以及跨 web、browser、desktop、本地工具、文件和协议的同一种 AgentEnvelope。
 
 ## 能下载论文并读取本地 PDF 吗？
 
@@ -51,7 +51,7 @@ v0.226.0 生成操作目录包含 <span><!-- STATS:site_count -->320<!-- /STATS 
 
 ## 需要登录的网站能跑吗？
 
-能。strategy 会按 `public` → `cookie` → `header` (cookie + CSRF) → `intercept` (浏览器 XHR 抓取) → `ui` (交互) 级联探测。Cookie 文件存在 `~/.unicli/cookies/`，Uni-CLI 自动选最便宜的能拿到合法数据的策略。
+能。strategy 会按 `public` → `cookie` → `header` (cookie + CSRF) → `intercept` (浏览器 XHR 抓取) → `ui` (交互) 级联探测。`cookie`/`header` 命令优先读取用户显式持久化的文件；没有文件时只把 live browser/CDP Cookie 读入本次进程内存。只有 `auth import` 和 `browser cookies` 会显式落盘。
 
 ## token 成本上比 MCP 好多少？
 

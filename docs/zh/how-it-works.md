@@ -85,15 +85,18 @@ Pipeline 自上而下走，共享一个 context 对象。每步读 `ctx.data`、
 
 认证是接触现代 web 时最脏的部分。每个适配器声明五种策略之一，Uni-CLI 自动探测最便宜的能跑通的策略。
 
-| 策略        | 认证来源                        | 典型成本                      |
-| ----------- | ------------------------------- | ----------------------------- |
-| `public`    | 无                              | 直接 fetch                    |
-| `cookie`    | `~/.unicli/cookies/<site>.json` | 注入 header                   |
-| `header`    | Cookie + 自动抽 CSRF            | 从 cookie 抽 CSRF，注入请求   |
-| `intercept` | 浏览器在线会话                  | Navigate 页面，捕获 XHR/fetch |
-| `ui`        | 浏览器在线会话                  | 点击、输入、snapshot          |
+| 策略        | 认证来源                         | 典型成本                      |
+| ----------- | -------------------------------- | ----------------------------- |
+| `public`    | 无                               | 直接 fetch                    |
+| `cookie`    | 显式文件或 live browser/CDP 内存 | 注入目标请求 header           |
+| `header`    | Cookie + 自动抽 CSRF             | 抽取 CSRF，注入目标请求       |
+| `intercept` | 浏览器在线会话                   | Navigate 页面，捕获 XHR/fetch |
+| `ui`        | 浏览器在线会话                   | 点击、输入、snapshot          |
 
 级联顺序是 `public → cookie → header → intercept → ui`。某站第一次跑时，Uni-CLI 逐个试，直到某个策略返回可解析数据，然后缓存结果。后面的调用跳过探测。
+
+live browser/CDP 获取只停留在本次进程内存。只有显式执行 `auth import` 或
+`browser cookies` 才会在 `~/.unicli/cookies/` 写入 plaintext JSON。
 
 ## v2 AgentEnvelope
 

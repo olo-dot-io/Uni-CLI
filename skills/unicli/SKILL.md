@@ -244,8 +244,9 @@ unicli auth list
 unicli auth setup <site>
 ```
 
-Cookie files live at `~/.unicli/cookies/<site>.json` — never read or edit these
-directly; use `unicli auth`.
+Live browser/CDP cookies remain in process memory by default. Explicit imports
+create plaintext JSON at `~/.unicli/cookies/<site>.json`; never read, print, or
+edit values directly—use `unicli auth`.
 
 ---
 

@@ -87,15 +87,19 @@ The pipeline runs top to bottom with a shared context object. Each step reads `c
 
 Authentication is the messiest part of touching the modern web. Every adapter declares one of five strategies, and Uni-CLI auto-probes the cheapest one that returns valid data.
 
-| Strategy    | Auth source                                    | Typical cost                               |
-| ----------- | ---------------------------------------------- | ------------------------------------------ |
-| `public`    | None                                           | Direct fetch                               |
-| `cookie`    | Cookie file at `~/.unicli/cookies/<site>.json` | Inject into headers                        |
-| `header`    | Cookie + auto-extracted CSRF                   | Read CSRF from cookie, inject into request |
-| `intercept` | Live browser session                           | Navigate page, capture XHR/fetch responses |
-| `ui`        | Live browser session                           | Click, type, snapshot                      |
+| Strategy    | Auth source                              | Typical cost                               |
+| ----------- | ---------------------------------------- | ------------------------------------------ |
+| `public`    | None                                     | Direct fetch                               |
+| `cookie`    | Explicit file or live browser/CDP memory | Inject into target request headers         |
+| `header`    | Cookie + auto-extracted CSRF             | Read CSRF, inject into target request      |
+| `intercept` | Live browser session                     | Navigate page, capture XHR/fetch responses |
+| `ui`        | Live browser session                     | Click, type, snapshot                      |
 
 The cascade order is `public → cookie → header → intercept → ui`. On the first run for a site, Uni-CLI tries each strategy until one returns parseable data, then caches the result. Subsequent calls skip the probe.
+
+Live browser/CDP acquisition remains in process memory. Only explicit
+`auth import` or `browser cookies` commands persist plaintext JSON under
+`~/.unicli/cookies/`.
 
 ## The v2 AgentEnvelope
 

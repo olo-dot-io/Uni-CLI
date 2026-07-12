@@ -41,7 +41,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> surfaces · <!-- STATS:test_count -->9247<!-- /STATS --> tests</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> surfaces · <!-- STATS:test_count -->9256<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -508,9 +508,10 @@ Docs:
 
 ## Trust And Limits
 
-- Auth-required sites use local cookie files under
-  `~/.unicli/cookies/<site>.json`, with local browser profile import as the
-  explicit repair path.
+- Auth-required commands can read a live local browser/CDP session into memory.
+  They do not persist it by default. `unicli auth import` and
+  `unicli browser cookies` are explicit plaintext-JSON persistence paths under
+  `~/.unicli/cookies/<site>.json` (POSIX: directory `0700`, file `0600`).
 - Browser adapters use background-first daemon/CDP sessions. Chrome/CDP runs
   against process-verified live profiles or Uni-CLI automation profiles under
   `~/.unicli/`. By default Uni-CLI attaches to an already-exposed logged-in

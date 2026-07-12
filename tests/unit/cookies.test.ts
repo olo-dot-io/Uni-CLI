@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
+import { existsSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -15,7 +15,10 @@ import {
   validateCookies,
   getCookieDir,
   refreshCookiesFromBrowser,
+  acquireCookies,
+  forgetTransientCookies,
 } from "../../src/engine/cookies.js";
+import type { CookieSources } from "../../src/engine/cookie-source.js";
 
 beforeAll(() => {
   mkdirSync(TEST_COOKIE_DIR, { recursive: true });
@@ -109,6 +112,10 @@ describe("getCookieDir", () => {
 });
 
 describe("refreshCookiesFromBrowser", () => {
+  afterEach(() => {
+    forgetTransientCookies("example", "example.com");
+  });
+
   it("rejects invalid site names before touching browser state", async () => {
     const result = await refreshCookiesFromBrowser("../bad", "example.com");
     expect(result).toMatchObject({
@@ -117,5 +124,68 @@ describe("refreshCookiesFromBrowser", () => {
       domain: "example.com",
     });
     expect(result.suggestion).toContain("Site names");
+  });
+
+  it("hands fresh browser cookies to the immediate retry instead of stale disk state", async () => {
+    const refreshSources: CookieSources = {
+      readDisk: () => ({ kind: "ok", cookies: { sid: "stale" } }),
+      readBrowser: async () => ({
+        kind: "ok",
+        cookies: { sid: "fresh" },
+      }),
+      readCdp: async () => ({}),
+    };
+    const retrySources: CookieSources = {
+      readDisk: () => ({ kind: "ok", cookies: { sid: "stale" } }),
+      readBrowser: async () => ({ kind: "none" }),
+      readCdp: async () => ({}),
+    };
+
+    const refresh = await refreshCookiesFromBrowser(
+      "example",
+      "example.com",
+      {},
+      refreshSources,
+    );
+    const retry = await acquireCookies(
+      "example",
+      "example.com",
+      {},
+      retrySources,
+    );
+
+    expect(refresh).toMatchObject({ ok: true, source: "browser" });
+    expect(retry).toEqual({
+      status: "loaded",
+      source: "browser",
+      cookies: { sid: "fresh" },
+    });
+  });
+});
+
+describe("live cookie acquisition", () => {
+  it("keeps browser cookies in memory unless the user explicitly imports", async () => {
+    const sources: CookieSources = {
+      readDisk: () => ({ kind: "absent" }),
+      readBrowser: async () => ({
+        kind: "ok",
+        cookies: { sid: "memory-only" },
+      }),
+      readCdp: async () => ({}),
+    };
+
+    const outcome = await acquireCookies(
+      "memory-only",
+      "example.com",
+      {},
+      sources,
+    );
+
+    expect(outcome).toEqual({
+      status: "loaded",
+      source: "browser",
+      cookies: { sid: "memory-only" },
+    });
+    expect(existsSync(join(TEST_COOKIE_DIR, "memory-only.json"))).toBe(false);
   });
 });

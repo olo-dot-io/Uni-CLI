@@ -103,8 +103,10 @@ unicli auth check bilibili
 unicli bilibili feed
 ```
 
-Cookies live at `~/.unicli/cookies/SITE.json`. Auth failures return exit
-code `77` and a structured error with the next command to run.
+By default a logged-in local browser/CDP session is read into process memory and
+is not persisted. `unicli auth import SITE` explicitly writes plaintext JSON at
+`~/.unicli/cookies/SITE.json` with owner-only POSIX permissions. Auth failures
+return exit code `77` and a structured next action.
 
 ## Repair A Broken Command
 

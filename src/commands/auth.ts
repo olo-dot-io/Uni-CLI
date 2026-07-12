@@ -1,10 +1,16 @@
 /**
- * Auth CLI subcommands — cookie management for authenticated adapters.
- *
- * Commands:
- *   auth setup <site>  — Show required cookies and setup instructions
- *   auth check <site>  — Validate cookie file for a site
- *   auth list           — List all sites with configured cookies
+ * @owner       src::commands::auth
+ * @does        Reports auth requirements, explicitly imports cookies, validates storage, and audits browser reachability.
+ * @needs       adapter registry, Chromium cookie readers, owner-only cookie storage, v2 formatter
+ * @feeds       `unicli auth setup|import|check|list|audit` and `unicli doctor cookies`
+ * @breaks      Invalid targets, browser/keychain failures, corrupt storage, and missing cookies emit semantic errors.
+ * @invariants  Only `auth import` persists browser cookies; values never appear in output or logs.
+ * @side-effects Explicit import writes plaintext JSON with owner-only permissions; audit/check read local state.
+ * @perf        Import stops on the first browser hit; audit is bounded by --limit.
+ * @concurrency Commands are single-process and storage replacement is atomic.
+ * @test        tests/unit/commands/auth.test.ts, tests/unit/cookie-storage.test.ts
+ * @stability   public
+ * @since       2026-04-04
  */
 
 import { Command } from "commander";
@@ -12,11 +18,7 @@ import chalk from "chalk";
 import { readdirSync, existsSync } from "node:fs";
 import { join, basename } from "node:path";
 import { commandStrategy, getAllAdapters } from "../registry.js";
-import {
-  loadCookies,
-  validateCookies,
-  getCookieDir,
-} from "../engine/cookies.js";
+import { getCookieDir } from "../engine/cookies.js";
 import {
   BROWSER_IDS,
   ChromiumCookieError,
@@ -26,7 +28,10 @@ import {
   resolveCookieDb,
   type BrowserId,
 } from "../engine/chromium-cookies.js";
-import { saveCookies as saveCookiesToDisk } from "../engine/cookie-extractor.js";
+import {
+  readDiskCookies,
+  saveCookies as saveCookiesToDisk,
+} from "../engine/cookie-storage.js";
 import { execFileSync } from "node:child_process";
 import { ExitCode } from "../types.js";
 import type { OutputFormat } from "../types.js";
@@ -80,6 +85,10 @@ export function registerAuthCommands(program: Command): void {
         site,
         cookie_dir: dir,
         cookie_file: filePath,
+        persistence: "explicit",
+        storage_format: "plaintext-json",
+        directory_mode: process.platform === "win32" ? null : "0700",
+        file_mode: process.platform === "win32" ? null : "0600",
         strategy: siteStrategy,
         required_cookies: required,
         template,
@@ -93,13 +102,13 @@ export function registerAuthCommands(program: Command): void {
         chalk.dim(`\n  Template keys: ${Object.keys(template).join(", ")}`),
       );
       console.error(
-        chalk.dim(
-          `  Save JSON to ${filePath}, then: unicli auth check ${site}`,
-        ),
+        chalk.dim(`  Explicit local persistence: unicli auth import ${site}`),
       );
       console.error(
         chalk.dim(
-          `  Or import directly from your browser: unicli auth import ${site}`,
+          process.platform === "win32"
+            ? `  Storage is plaintext JSON at ${filePath}; protection follows that path's Windows ACL.`
+            : `  Storage is plaintext JSON at ${filePath} (directory 0700, file 0600).`,
         ),
       );
     });
@@ -108,7 +117,7 @@ export function registerAuthCommands(program: Command): void {
   auth
     .command("import <site>")
     .description(
-      "Import cookies for a site directly from a local browser (Chrome/Arc/Dia/Brave/Edge/Atlas)",
+      "Explicitly import and persist cookies from a local browser (Chrome/Arc/Dia/Brave/Edge/Atlas)",
     )
     .option(
       "-b, --browser <id>",
@@ -210,6 +219,9 @@ export function registerAuthCommands(program: Command): void {
               cookie_count: Object.keys(cookies).length,
               cookies: Object.keys(cookies),
               file: filePath,
+              storage_format: "plaintext-json",
+              directory_mode: process.platform === "win32" ? null : "0700",
+              file_mode: process.platform === "win32" ? null : "0600",
             };
             ctx.duration_ms = Date.now() - startedAt;
             console.log(format(data, undefined, fmt, ctx));
@@ -224,15 +236,19 @@ export function registerAuthCommands(program: Command): void {
               lastError = err;
               continue;
             }
-            throw err;
+            ctx.error = {
+              code: "permission_denied",
+              message: `Could not securely persist cookies for ${site}: ${err instanceof Error ? err.message : String(err)}`,
+              suggestion: `Check ownership and permissions for ${getCookieDir()}, then rerun the explicit import.`,
+              retryable: false,
+            };
+            console.error(format(null, undefined, fmt, ctx));
+            process.exit(ExitCode.CONFIG_ERROR);
           }
         }
 
         ctx.error = {
-          code:
-            lastError?.code === "keychain_denied"
-              ? "auth_required"
-              : "auth_required",
+          code: "auth_required",
           message:
             lastError?.message ??
             `Could not read cookies for ${domain} from any installed browser.`,
@@ -269,8 +285,8 @@ export function registerAuthCommands(program: Command): void {
         process.exit(ExitCode.USAGE_ERROR);
       }
 
-      const cookies = loadCookies(site);
-      if (!cookies) {
+      const stored = readDiskCookies(site);
+      if (stored.kind === "absent") {
         const filePath = join(getCookieDir(), `${site}.json`);
         ctx.error = {
           code: "auth_required",
@@ -281,13 +297,22 @@ export function registerAuthCommands(program: Command): void {
         console.error(format(null, undefined, fmt, ctx));
         process.exit(ExitCode.AUTH_REQUIRED);
       }
+      if (stored.kind === "corrupt") {
+        ctx.error = {
+          code: "invalid_input",
+          message: `Cookie storage is not safe and readable: ${stored.detail}`,
+          suggestion: `Re-import with: unicli auth import ${site}`,
+          retryable: false,
+        };
+        console.error(format(null, undefined, fmt, ctx));
+        process.exit(ExitCode.CONFIG_ERROR);
+      }
 
+      const cookies = stored.cookies;
       const keys = Object.keys(cookies);
       const required = adapter.authCookies ?? [];
-      const { valid, missing } =
-        required.length > 0
-          ? validateCookies(site, required)
-          : { valid: true, missing: [] as string[] };
+      const missing = required.filter((key) => !(key in cookies));
+      const valid = missing.length === 0;
 
       if (!valid) {
         ctx.error = {
@@ -333,22 +358,31 @@ export function registerAuthCommands(program: Command): void {
       if (existsSync(dir)) {
         try {
           files = readdirSync(dir).filter((f) => f.endsWith(".json"));
-        } catch {
-          files = [];
+        } catch (error) {
+          ctx.error = {
+            code: "permission_denied",
+            message: `Cannot enumerate cookie storage ${dir}: ${error instanceof Error ? error.message : String(error)}`,
+            suggestion: "Restore directory ownership and owner-only access.",
+            retryable: false,
+          };
+          console.error(format(null, undefined, fmt, ctx));
+          process.exit(ExitCode.CONFIG_ERROR);
         }
       }
 
       const rows = files.map((file) => {
         const site = basename(file, ".json");
-        const cookies = loadCookies(site);
+        const stored = readDiskCookies(site);
         return {
           site,
-          cookie_count: cookies ? Object.keys(cookies).length : 0,
+          cookie_count:
+            stored.kind === "ok" ? Object.keys(stored.cookies).length : 0,
+          status: stored.kind === "ok" ? "ok" : stored.kind,
         };
       });
 
       ctx.duration_ms = Date.now() - startedAt;
-      console.log(format(rows, ["site", "cookie_count"], fmt, ctx));
+      console.log(format(rows, ["site", "cookie_count", "status"], fmt, ctx));
 
       if (rows.length === 0) {
         console.error(chalk.dim(`\n  No cookies configured in ${dir}`));

@@ -1,30 +1,91 @@
 /**
  * @owner       src::engine::cookies
- * @does        Cookie front door for adapters — thin projections over the
- *              structured acquisition core in cookie-source.ts (disk read,
- *              header formatting, multi-source load, refresh).
- * @needs       ./cookie-source, ./cookie-extractor (saveCookies)
+ * @does        Cookie front door for adapters — structured acquisition, header formatting,
+ *              and bounded process-memory handoff after an auth refresh.
+ * @needs       ./cookie-source and ./cookie-storage
  * @feeds       adapters (loadCookiesWithCDP/formatCookieHeader), executor,
  *              dispatch/social (refreshCookiesFromBrowser), commands/auth
  * @breaks      loadCookies/loadCookiesWithCDP return null on miss (back-compat);
  *              acquireCookies returns a typed CookieLoadOutcome that names the
  *              real cause — callers that need the cause use acquireCookies
- * @invariants  loadCookiesWithCDP cookies === acquireCookies(...).cookies on load
- * @side-effects acquireCookies persists browser/CDP cookies to disk (best-effort)
- * @test        tests/unit/engine/cookie-source.test.ts, cookie-refresh-format.test.ts
+ * @invariants  Refreshed values override stale disk state for at most five minutes; live acquisition never persists.
+ * @side-effects Reads explicitly persisted files or browser/CDP cookies and retains bounded refresh handoffs in process memory; never writes.
+ * @concurrency The latest refresh for one site/domain wins; the handoff cache is capped at 32 entries.
+ * @test        tests/unit/engine/cookie-source.test.ts, tests/unit/cookies.test.ts
  * @stability   stable
  * @since       2026-05-30
  */
 
 import {
   cookieDir,
+  defaultCookieSources,
   describeCookieFailure,
   loadCookiesWithDiagnostics,
   readDiskCookies,
   resolveCookieDomain,
   type CookieLoadOutcome,
+  type CookieSources,
 } from "./cookie-source.js";
-import { saveCookies as saveCookiesToDisk } from "./cookie-extractor.js";
+
+const TRANSIENT_COOKIE_TTL_MS = 5 * 60 * 1000;
+const MAX_TRANSIENT_COOKIE_SESSIONS = 32;
+
+interface TransientCookies {
+  source: "browser" | "cdp";
+  cookies: Record<string, string>;
+  expiresAt: number;
+}
+
+const transientCookies = new Map<string, TransientCookies>();
+
+function transientCookieKey(site: string, domain?: string): string {
+  return `${site}\u0000${resolveCookieDomain(site, domain)}`;
+}
+
+function readTransientCookies(
+  site: string,
+  domain?: string,
+): TransientCookies | undefined {
+  const key = transientCookieKey(site, domain);
+  const entry = transientCookies.get(key);
+  if (!entry) return undefined;
+  if (entry.expiresAt <= Date.now()) {
+    transientCookies.delete(key);
+    return undefined;
+  }
+  return entry;
+}
+
+export function rememberTransientCookies(
+  site: string,
+  domain: string | undefined,
+  source: "browser" | "cdp",
+  cookies: Record<string, string>,
+): void {
+  const key = transientCookieKey(site, domain);
+  transientCookies.delete(key);
+  while (transientCookies.size >= MAX_TRANSIENT_COOKIE_SESSIONS) {
+    const oldest = transientCookies.keys().next().value as string | undefined;
+    if (oldest === undefined) break;
+    transientCookies.delete(oldest);
+  }
+  transientCookies.set(key, {
+    source,
+    cookies: { ...cookies },
+    expiresAt: Date.now() + TRANSIENT_COOKIE_TTL_MS,
+  });
+}
+
+export function forgetTransientCookies(site: string, domain?: string): void {
+  if (domain !== undefined) {
+    transientCookies.delete(transientCookieKey(site, domain));
+    return;
+  }
+  const prefix = `${site}\u0000`;
+  for (const key of transientCookies.keys()) {
+    if (key.startsWith(prefix)) transientCookies.delete(key);
+  }
+}
 
 /**
  * Load cookies for a site from disk. Returns null when the file is absent OR
@@ -63,31 +124,24 @@ export function getCookieDir(): string {
 
 /**
  * Acquire cookies across disk → browser → CDP, returning the structured outcome
- * (loaded / absent / error+reasons). On a non-disk load, persists to
- * ~/.unicli/cookies for offline reuse. This is the front door for callers that
- * need to surface WHY acquisition failed (Keychain denial, v20 encryption,
- * corrupt file) instead of a bare null.
+ * (loaded / absent / error+reasons). Browser/CDP values remain in process memory
+ * for this invocation; only explicit auth/browser export commands persist.
  */
 export async function acquireCookies(
   site: string,
   domain?: string,
   opts: { skipDisk?: boolean; preferCdp?: boolean } = {},
+  sources: CookieSources = defaultCookieSources,
 ): Promise<CookieLoadOutcome> {
-  const outcome = await loadCookiesWithDiagnostics(
-    site,
-    domain,
-    undefined,
-    opts,
-  );
-  if (outcome.status === "loaded" && outcome.source !== "disk") {
-    try {
-      saveCookiesToDisk(site, outcome.cookies);
-    } catch {
-      // REASON: persistence is best-effort; the cookies are already usable for
-      // this run, and the next run re-acquires from the same live source.
-    }
+  const transient = readTransientCookies(site, domain);
+  if (transient) {
+    return {
+      status: "loaded",
+      source: transient.source,
+      cookies: { ...transient.cookies },
+    };
   }
-  return outcome;
+  return loadCookiesWithDiagnostics(site, domain, sources, opts);
 }
 
 /**
@@ -122,6 +176,7 @@ export async function refreshCookiesFromBrowser(
   site: string,
   domain?: string,
   opts: { preferCdp?: boolean } = {},
+  sources: CookieSources = defaultCookieSources,
 ): Promise<CookieRefreshResult> {
   if (!/^[a-zA-Z0-9._-]+$/.test(site)) {
     return {
@@ -134,17 +189,19 @@ export async function refreshCookiesFromBrowser(
   }
 
   const cookieDomain = resolveCookieDomain(site, domain);
-  const outcome = await acquireCookies(site, domain, {
+  const outcome = await loadCookiesWithDiagnostics(site, domain, sources, {
     skipDisk: true,
     preferCdp: opts.preferCdp,
   });
 
   if (outcome.status === "loaded") {
+    const source = outcome.source === "cdp" ? "cdp" : "browser";
+    rememberTransientCookies(site, cookieDomain, source, outcome.cookies);
     return {
       ok: true,
       site,
       domain: cookieDomain,
-      source: outcome.source === "cdp" ? "cdp" : "browser",
+      source,
       cookieCount: Object.keys(outcome.cookies).length,
       cookies: Object.keys(outcome.cookies),
     };

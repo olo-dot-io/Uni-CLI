@@ -172,6 +172,9 @@ const cdpClientMocks = vi.hoisted(() => ({
 
 const cookieExtractorMocks = vi.hoisted(() => ({
   extractCookiesViaCDP: vi.fn().mockResolvedValue({ sid: "cookie" }),
+}));
+
+const cookieStorageMocks = vi.hoisted(() => ({
   saveCookies: vi.fn().mockReturnValue("/tmp/unicli-cookies/example.json"),
 }));
 
@@ -279,6 +282,10 @@ vi.mock("../../../src/browser/daemon-client.js", () => ({
 }));
 
 vi.mock("../../../src/engine/cookie-extractor.js", () => cookieExtractorMocks);
+vi.mock("../../../src/engine/cookie-storage.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  ...cookieStorageMocks,
+}));
 
 vi.mock("../../../src/engine/chromium-cookies.js", () => chromiumCookieMocks);
 
@@ -391,7 +398,7 @@ describe("unicli browser operator surface", () => {
     cookieExtractorMocks.extractCookiesViaCDP.mockResolvedValue({
       sid: "cookie",
     });
-    cookieExtractorMocks.saveCookies.mockReturnValue(
+    cookieStorageMocks.saveCookies.mockReturnValue(
       "/tmp/unicli-cookies/example.json",
     );
     chromiumCookieMocks.readCookiesAsRecord.mockReturnValue({});
@@ -3256,10 +3263,9 @@ describe("unicli browser operator surface", () => {
       "example.com",
       9444,
     );
-    expect(cookieExtractorMocks.saveCookies).toHaveBeenCalledWith(
-      "example-com",
-      { sid: "cookie" },
-    );
+    expect(cookieStorageMocks.saveCookies).toHaveBeenCalledWith("example-com", {
+      sid: "cookie",
+    });
     expect(cap.getStdout()).toContain("Extracted 1 cookies for example.com");
   });
 
@@ -3313,10 +3319,9 @@ describe("unicli browser operator surface", () => {
     expect(launcherMocks.findAvailableCDPPort).not.toHaveBeenCalled();
     expect(launcherMocks.launchChrome).not.toHaveBeenCalled();
     expect(cookieExtractorMocks.extractCookiesViaCDP).not.toHaveBeenCalled();
-    expect(cookieExtractorMocks.saveCookies).toHaveBeenCalledWith(
-      "example-com",
-      { sid: "raw-cookie" },
-    );
+    expect(cookieStorageMocks.saveCookies).toHaveBeenCalledWith("example-com", {
+      sid: "raw-cookie",
+    });
     expect(cap.getStdout()).toContain("Extracted 1 cookies for example.com");
   });
 

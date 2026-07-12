@@ -39,7 +39,7 @@ unicli auth setup SITE
 unicli auth check SITE
 ```
 
-Cookie 文件：
+显式 import/export 后的 plaintext Cookie 文件（默认 browser/CDP 获取不落盘）：
 
 ```text
 ~/.unicli/cookies/SITE.json

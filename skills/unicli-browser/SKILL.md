@@ -56,15 +56,17 @@ must bring Chrome forward.
 ## Authentication
 
 ```bash
-unicli auth setup <site>      # Show required cookies + file template
-unicli auth import <site> --domain <domain> # Direct import from local browser DB
+unicli auth setup <site>      # Show auth sources and explicit storage contract
+unicli auth import <site> --domain <domain> # Explicit plaintext local persistence
 unicli browser profiles --json # Pick a logged-in Chrome/Arc/Brave/Edge profile
 unicli browser cookies <domain> --profile-id <id> # Explicit cookie export
 unicli auth check <site>      # Validate cookie file
 unicli auth list              # List configured sites
 ```
 
-Cookie files: `~/.unicli/cookies/<site>.json` with format `{ "KEY": "value" }`.
+Normal browser/CDP acquisition stays in process memory. Explicit import/export
+creates plaintext `{ "KEY": "value" }` JSON at
+`~/.unicli/cookies/<site>.json` (POSIX directory `0700`, file `0600`).
 
 Chrome 136+ blocks remote debugging when Chrome is launched against its default
 profile directory. Do not tell users to run CDP on

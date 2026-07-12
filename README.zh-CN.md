@@ -40,7 +40,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> 个 surface · <!-- STATS:test_count -->9247<!-- /STATS --> 个测试</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> 个 surface · <!-- STATS:test_count -->9256<!-- /STATS --> 个测试</sub>
 </p>
 
 <p align="center">
@@ -467,9 +467,10 @@ columns: [title, url]
 
 ## 边界和诚实说明
 
-- 需要登录的网站仍支持本地 cookie 文件：`~/.unicli/cookies/<site>.json`；
+- 需要登录的命令可以把本地浏览器/CDP Cookie 读入本次进程内存，默认不落盘。
   `unicli auth import` 和 `unicli browser cookies <domain> --profile-id <id>`
-  是显式修复路径，不再是默认日常路径。
+  是显式 plaintext-JSON 持久化路径：`~/.unicli/cookies/<site>.json`
+  （POSIX 目录 `0700`、文件 `0600`）。
 - Browser adapter 默认使用可验证身份的 Chrome/CDP：如果已有暴露 CDP 的登录
   profile 就 attach，否则从首选本地 Chrome profile 播种 Uni-CLI 自有
   automation profile。空 profile 必须显式使用

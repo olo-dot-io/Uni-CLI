@@ -1,16 +1,17 @@
 /**
- * Extract cookies from a running Chrome instance via CDP.
- * No extension. No cookie files. No manual export.
- *
- * Usage:
- *   const cookies = await extractCookiesViaCDP("bilibili.com");
- *   // -> { SESSDATA: "abc", bili_jct: "def", ... }
+ * @owner       src::engine::cookie-extractor
+ * @does        Extracts domain-scoped cookies from a running Chromium CDP session into process memory.
+ * @needs       browser CDP client and a validated domain/port
+ * @feeds       cookie acquisition and explicit browser cookie export commands
+ * @breaks      CDP connection, protocol, cookie-read, and connection-close failures propagate to the caller.
+ * @invariants  This module never persists cookies; the caller chooses whether to use memory or explicit storage.
+ * @side-effects Opens and closes one CDP connection; cookie values exist in memory for the call lifetime.
+ * @perf        One Network.getCookies request.
+ * @concurrency Each extraction owns its CDP client.
+ * @test        tests/unit/cookie-extractor.test.ts
+ * @stability   stable
+ * @since       2026-04-05
  */
-
-import { writeFileSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
-
-import { cookieDir } from "./cookie-source.js";
 
 interface CDPCookie {
   name: string;
@@ -22,11 +23,6 @@ interface CDPCookie {
   secure: boolean;
 }
 
-/**
- * Extract cookies for a domain from a running Chrome instance.
- * Connects to Chrome's CDP debug port, calls Network.getCookies,
- * and returns cookies as a flat key-value record.
- */
 export async function extractCookiesViaCDP(
   domain: string,
   port?: number,
@@ -36,6 +32,8 @@ export async function extractCookiesViaCDP(
   const cdpPort = resolveCdpPort(port);
   const client = await CDPClient.connectToChrome(cdpPort);
 
+  let result: Record<string, string> | undefined;
+  let operationError: unknown;
   try {
     const { cookies } = (await client.send("Network.getCookies", {
       urls: [
@@ -46,32 +44,26 @@ export async function extractCookiesViaCDP(
       ],
     })) as { cookies: CDPCookie[] };
 
-    const result: Record<string, string> = {};
-    for (const c of cookies) {
-      result[c.name] = c.value;
-    }
-    return result;
-  } finally {
-    await client.close().catch(() => {});
+    result = {};
+    for (const cookie of cookies) result[cookie.name] = cookie.value;
+  } catch (error) {
+    operationError = error;
   }
-}
 
-/**
- * Save extracted cookies to disk for offline use.
- * Writes to ~/.unicli/cookies/<site>.json
- */
-export function saveCookies(
-  site: string,
-  cookies: Record<string, string>,
-): string {
-  if (!/^[a-zA-Z0-9._-]+$/.test(site)) {
-    throw new Error(
-      `Invalid site name: "${site}" — only alphanumeric, dot, dash, underscore allowed`,
+  let closeError: unknown;
+  try {
+    await client.close();
+  } catch (error) {
+    closeError = error;
+  }
+
+  if (operationError !== undefined && closeError !== undefined) {
+    throw new AggregateError(
+      [operationError, closeError],
+      "Cookie extraction and CDP cleanup both failed",
     );
   }
-  const dir = cookieDir();
-  mkdirSync(dir, { recursive: true });
-  const filePath = join(dir, `${site}.json`);
-  writeFileSync(filePath, JSON.stringify(cookies, null, 2), "utf-8");
-  return filePath;
+  if (operationError !== undefined) throw operationError;
+  if (closeError !== undefined) throw closeError;
+  return result ?? {};
 }

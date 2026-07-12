@@ -4,14 +4,14 @@
  *              miss (keychain denied / corrupt file / v20 encryption / CDP
  *              unavailable) as a typed outcome, instead of collapsing every
  *              failure to null.
- * @needs       node:fs, node:path, ./chromium-cookies (lazy), ./cookie-extractor (lazy), ../browser/local-profiles (lazy)
+ * @needs       ./cookie-storage, ./chromium-cookies (lazy), ./cookie-extractor (lazy), ../browser/local-profiles (lazy)
  * @feeds       src::engine::cookies (loadCookies/loadCookiesWithCDP/acquireCookies
  *              projections), src::engine::executor (auth error detail)
  * @breaks      never throws from loadCookiesWithDiagnostics — failures become
  *              CookieLoadOutcome {status:"error", reasons}; readDiskCookies is total
  * @invariants  exactly one of loaded|absent|error; "absent" ⇒ no source errored
  *              (genuinely not logged in); "error" ⇒ ≥1 source had a real failure
- * @side-effects readDiskCookies reads fs; default sources read browser DB / CDP
+ * @side-effects disk reads tighten legacy permissions; default sources read browser DB / CDP into memory
  * @perf        disk O(file); browser tries installed browsers in order, stops on hit
  * @concurrency stateless; sources own their own IO
  * @test        tests/unit/engine/cookie-source.test.ts
@@ -19,8 +19,9 @@
  * @since       2026-05-30
  */
 
-import { readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { readDiskCookies, type DiskRead } from "./cookie-storage.js";
+export { cookieDir, readDiskCookies } from "./cookie-storage.js";
+export type { DiskRead } from "./cookie-storage.js";
 export type CookieSourceName = "disk" | "browser" | "cdp";
 
 /** A typed failure cause from one acquisition source. */
@@ -46,12 +47,6 @@ export type CookieLoadOutcome =
   | { status: "absent" }
   | { status: "error"; reasons: CookieReason[] };
 
-/** Disk read distinguishes absent (fine) from corrupt (a real, surfaceable fault). */
-export type DiskRead =
-  | { kind: "ok"; cookies: Record<string, string> }
-  | { kind: "absent" }
-  | { kind: "corrupt"; detail: string };
-
 /** Browser read across installed browsers: a hit, a clean miss, or real errors. */
 export type BrowserAttempt =
   | { kind: "ok"; cookies: Record<string, string> }
@@ -67,47 +62,6 @@ export interface CookieSources {
   readDisk(site: string): DiskRead;
   readBrowser(domain: string): Promise<BrowserAttempt>;
   readCdp(domain: string): Promise<Record<string, string>>;
-}
-
-const SITE_RE = /^[a-zA-Z0-9._-]+$/;
-
-export function cookieDir(): string {
-  return (
-    process.env.UNICLI_COOKIE_DIR ??
-    join(process.env.HOME ?? "~", ".unicli", "cookies")
-  );
-}
-
-/**
- * Read the on-disk cookie file, distinguishing absent from corrupt. The old
- * loadCookies collapsed a truncated / wrong-shaped file to null ("no auth"),
- * hiding the real cause; this returns a typed corrupt with a detail.
- */
-export function readDiskCookies(site: string): DiskRead {
-  if (!SITE_RE.test(site)) {
-    return { kind: "corrupt", detail: `invalid site name "${site}"` };
-  }
-  const path = join(cookieDir(), `${site}.json`);
-  if (!existsSync(path)) return { kind: "absent" };
-  let raw: string;
-  try {
-    raw = readFileSync(path, "utf-8");
-  } catch (err) {
-    return {
-      kind: "corrupt",
-      detail: `cannot read ${path}: ${err instanceof Error ? err.message : String(err)}`,
-    };
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return { kind: "corrupt", detail: `${path} is not valid JSON` };
-  }
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-    return { kind: "corrupt", detail: `${path} is not a {name: value} object` };
-  }
-  return { kind: "ok", cookies: parsed as Record<string, string> };
 }
 
 /** Resolve the cookie domain the same way the legacy loader did. */

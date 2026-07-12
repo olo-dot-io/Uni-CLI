@@ -68,7 +68,7 @@ Agent execution does not need a longer resident tool list or another website wra
 - Sites and tools: 320
 - Operations: 1798
 - Pipeline steps: 103
-- Tests: 9247
+- Tests: 9256
 
 These numbers come from the current generated repo artifacts: operations, adapters, pipeline steps, tests, and substrates are counted by the build.
 
@@ -207,8 +207,10 @@ unicli auth check bilibili
 unicli bilibili feed
 ```
 
-Cookies live at `~/.unicli/cookies/SITE.json`. Auth failures return exit
-code `77` and a structured error with the next command to run.
+By default a logged-in local browser/CDP session is read into process memory and
+is not persisted. `unicli auth import SITE` explicitly writes plaintext JSON at
+`~/.unicli/cookies/SITE.json` with owner-only POSIX permissions. Auth failures
+return exit code `77` and a structured next action.
 
 ## Repair A Broken Command
 
@@ -445,15 +447,19 @@ The pipeline runs top to bottom with a shared context object. Each step reads `c
 
 Authentication is the messiest part of touching the modern web. Every adapter declares one of five strategies, and Uni-CLI auto-probes the cheapest one that returns valid data.
 
-| Strategy    | Auth source                                    | Typical cost                               |
-| ----------- | ---------------------------------------------- | ------------------------------------------ |
-| `public`    | None                                           | Direct fetch                               |
-| `cookie`    | Cookie file at `~/.unicli/cookies/<site>.json` | Inject into headers                        |
-| `header`    | Cookie + auto-extracted CSRF                   | Read CSRF from cookie, inject into request |
-| `intercept` | Live browser session                           | Navigate page, capture XHR/fetch responses |
-| `ui`        | Live browser session                           | Click, type, snapshot                      |
+| Strategy    | Auth source                              | Typical cost                               |
+| ----------- | ---------------------------------------- | ------------------------------------------ |
+| `public`    | None                                     | Direct fetch                               |
+| `cookie`    | Explicit file or live browser/CDP memory | Inject into target request headers         |
+| `header`    | Cookie + auto-extracted CSRF             | Read CSRF, inject into target request      |
+| `intercept` | Live browser session                     | Navigate page, capture XHR/fetch responses |
+| `ui`        | Live browser session                     | Click, type, snapshot                      |
 
 The cascade order is `public → cookie → header → intercept → ui`. On the first run for a site, Uni-CLI tries each strategy until one returns parseable data, then caches the result. Subsequent calls skip the probe.
+
+Live browser/CDP acquisition remains in process memory. Only explicit
+`auth import` or `browser cookies` commands persist plaintext JSON under
+`~/.unicli/cookies/`.
 
 ## The v2 AgentEnvelope
 
@@ -790,14 +796,15 @@ mcp_servers:
 
 ## Auth
 
-All integration paths use the same local credentials as the CLI:
+All integration paths use the same CLI credential policy:
 
 ```bash
 unicli auth setup SITE
 unicli auth check SITE
 ```
 
-Cookie path:
+Live browser/CDP cookies stay in process memory unless the user explicitly runs
+an import/export command. Explicit plaintext storage path:
 
 ```text
 ~/.unicli/cookies/SITE.json
@@ -1195,7 +1202,7 @@ Any runtime that can spawn a subprocess can use Uni-CLI directly. Uni-CLI also e
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.226.0 ships a generated operation catalog with <span><!-- STATS:site_count -->320<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1798<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1225<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->9247<!-- /STATS --></span> tests. The headline is not the count; it is the shared control contract: intent, policy, action substrate, evidence, delivery, repair, and the same AgentEnvelope across web, browser, desktop, local tools, files, and protocols.
+v0.226.0 ships a generated operation catalog with <span><!-- STATS:site_count -->320<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1798<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1225<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps, and <span><!-- STATS:test_count -->9256<!-- /STATS --></span> tests. The headline is not the count; it is the shared control contract: intent, policy, action substrate, evidence, delivery, repair, and the same AgentEnvelope across web, browser, desktop, local tools, files, and protocols.
 
 ## Can Uni-CLI download papers and read local PDFs?
 
@@ -1211,7 +1218,7 @@ Yes. The preferred contribution format is a short YAML adapter that names the si
 
 ## Does Uni-CLI handle authenticated sites?
 
-Yes. Strategies cascade across `public`, `cookie`, `header` (cookie + CSRF), `intercept` (browser XHR capture), and `ui` (interactive). Cookies live in `~/.unicli/cookies/`, and Uni-CLI auto-probes the cheapest strategy that returns valid data.
+Yes. Strategies cascade across `public`, `cookie`, `header` (cookie + CSRF), `intercept` (browser XHR capture), and `ui` (interactive). Cookie/header commands use an explicitly persisted file when present or read a live local browser/CDP source into process memory without writing it. `auth import` and `browser cookies` are the explicit persistence commands.
 
 ## How does Uni-CLI compare to MCP for token cost?
 
@@ -1293,7 +1300,7 @@ The local computer-control and visual fallback adapter family. When structured s
 
 ## Cookie file
 
-Per-site authentication state stored at `~/.unicli/cookies/<site>.json`. Read by adapters with `strategy: cookie` or `strategy: header`. Never sent off the local machine.
+Optional per-site authentication state explicitly persisted as plaintext JSON at `~/.unicli/cookies/<site>.json`. Cookie/header adapters can instead read a live browser/CDP session into memory. Cookie values are sent only to the target request/browser boundary selected by the command.
 
 ## Daemon
 
@@ -4292,7 +4299,7 @@ The current generated operation catalog is the source of truth:
 **<span><!-- STATS:command_count -->1798<!-- /STATS --></span> commands**,
 **<span><!-- STATS:adapter_count_total -->1225<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->103<!-- /STATS --></span> pipeline steps**,
-and **<span><!-- STATS:test_count -->9247<!-- /STATS --></span> tests** in v0.226.0.
+and **<span><!-- STATS:test_count -->9256<!-- /STATS --></span> tests** in v0.226.0.
 
 ## Computer-Control Thesis
 

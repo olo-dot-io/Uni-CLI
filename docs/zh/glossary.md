@@ -53,7 +53,7 @@ Uni-CLI 用来控制真实 Chrome 实例的 wire protocol。在 `src/browser/cdp
 
 ## Cookie file (Cookie 文件)
 
-每站独立的认证态，存在 `~/.unicli/cookies/<site>.json`。`strategy: cookie` 或 `strategy: header` 的适配器读取它。永远不出本机。
+用户可以显式把每站认证态以 plaintext JSON 存到 `~/.unicli/cookies/<site>.json`；`cookie`/`header` adapter 也可以只把 live browser/CDP Cookie 读入本次进程内存。Cookie 值只发送给该命令选择的目标请求/浏览器边界。
 
 ## Daemon (守护进程)
 

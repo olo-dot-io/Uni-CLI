@@ -64,7 +64,7 @@ pipeline:
 columns: [title, score, by, url]
 ```
 
-认证型 API 仍然走 `web-api`，只是 `strategy` 变成 `cookie` 或 `header`。Cookie 放在 `~/.unicli/cookies/SITE.json`。
+认证型 API 仍然走 `web-api`，只是 `strategy` 变成 `cookie` 或 `header`。默认从 live browser/CDP 读入本次进程内存；用户显式 import 后的 plaintext JSON 位于 `~/.unicli/cookies/SITE.json`。
 
 ## `browser`：浏览器控制
 

@@ -1,4 +1,17 @@
 /**
+ * @owner       src::protocol::acp
+ * @does        Implements the Agent Client Protocol JSON-RPC session and command bridge over stdio.
+ * @needs       adapter registry, pipeline/kernel execution, protocol framing, constants
+ * @feeds       src/commands/acp.ts and ACP editor clients
+ * @breaks      Protocol, command-resolution, cancellation, and execution errors remain JSON-RPC responses.
+ * @invariants  stdout contains protocol frames only; sessions are process-local; pipeline auth uses canonical acquisition.
+ * @side-effects Reads stdin, writes stdout/stderr, executes adapter commands, and retains in-memory sessions.
+ * @perf        Session lookup is O(1); command execution cost is adapter-bound.
+ * @concurrency Request handlers share a process-local session map and cancellation state.
+ * @test        tests/unit/protocol/acp.test.ts
+ * @stability   experimental
+ * @since       2026-04-05
+ *
  * ACP (Agent Client Protocol) server — JSON-RPC 2.0 over stdio.
  *
  * ACP is the protocol adopted by the Zed editor and Gemini CLI for agent ↔
@@ -215,7 +228,7 @@ export class AcpServer {
   ): AcpRpcResponse {
     // ACP requires an authenticate method even when the server has no real
     // auth. We accept any payload and return success — cookie-backed adapters
-    // resolve credentials for each command through ~/.unicli/cookies.
+    // use the canonical explicit-file or live browser/CDP acquisition path.
     return {
       jsonrpc: "2.0",
       id,

@@ -89,7 +89,9 @@ unicli auth check bilibili
 unicli bilibili feed
 ```
 
-Cookie 放在 `~/.unicli/cookies/SITE.json`。认证失败会返回退出码 `77`，错误信封里会给出下一步该运行的命令。
+默认情况下，登录态从本地 browser/CDP 读入本次进程内存，不落盘。显式执行
+`unicli auth import SITE` 才会在 `~/.unicli/cookies/SITE.json` 写入
+plaintext JSON（POSIX owner-only 权限）。认证失败返回退出码 `77`，错误信封给出下一步动作。
 
 ## 修复坏掉的命令
 

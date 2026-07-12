@@ -1,10 +1,15 @@
 /**
- * Pipeline runtime helpers — fallback chain, retry/backoff, auto-fix
- * recovery, diagnostic emission, smart cookie refresh.
- *
- * These are the per-step recovery primitives that surround `executeStep`.
- * Extracted from `runPipeline` so the orchestrator stays under its LOC
- * budget while the recovery logic remains independently testable.
+ * @owner       src::engine::runtime
+ * @does        Executes per-step fallback, retry, diagnostic, selector recovery, and authenticated-session refresh helpers.
+ * @needs       executor pipeline types, step registry, diagnostic/select-fix/cookie-refresh lazy modules
+ * @feeds       src::engine::executor pipeline orchestration
+ * @breaks      Recovery failures remain subordinate to the original pipeline error but are reported on stderr.
+ * @invariants  Retries are bounded, domain-aware cookie refresh never persists, and the original error remains authoritative.
+ * @side-effects May retry steps, sleep, emit diagnostics, mutate in-memory pipeline context, navigate Chrome, and write stderr.
+ * @concurrency Each helper call owns its retry counter and pipeline context.
+ * @test        tests/unit/engine/runtime-cookie-refresh.test.ts and pipeline executor suites
+ * @stability   stable
+ * @since       2026-04-01
  */
 
 import type { PipelineStep } from "../types.js";
@@ -205,7 +210,7 @@ export async function maybeRefreshCookies(
   if (!options?.site) return;
   try {
     const { refreshCookies } = await import("./cookie-refresh.js");
-    const outcome = await refreshCookies(options.site);
+    const outcome = await refreshCookies(options.site, options.domain);
     if (outcome.status === "refreshed") {
       process.stderr.write(
         `[cookie-refresh] refreshed ${outcome.cookieCount} cookie(s) for ${options.site}; retry the command.\n`,
@@ -215,9 +220,9 @@ export async function maybeRefreshCookies(
         `[cookie-refresh] could not refresh ${options.site} (${outcome.status}): ${outcome.detail}\n`,
       );
     }
-  } catch {
-    // REASON: cookie-refresh is loaded dynamically as a best-effort recovery
-    // hint after an auth failure; a failure to load or run it must not mask the
-    // original PipelineError that is already being reported to the agent.
+  } catch (error) {
+    process.stderr.write(
+      `[cookie-refresh] recovery failed for ${options.site}: ${error instanceof Error ? error.message : String(error)}; the original pipeline error remains authoritative.\n`,
+    );
   }
 }

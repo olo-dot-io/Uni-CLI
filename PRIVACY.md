@@ -1,31 +1,72 @@
-# Privacy Policy
+# Privacy
 
-## What Uni-CLI Collects
+Uni-CLI has no hosted telemetry, analytics, usage-tracking, or crash-reporting
+service. It is a local execution tool, but executing commands necessarily moves
+data across the boundaries selected by the command.
 
-**Nothing.** Uni-CLI does not collect, transmit, or store any user data.
+## Network activity
 
-- No analytics or telemetry
-- No crash reporting
-- No usage tracking
-- No network calls except those explicitly initiated by your commands
+- Website/API adapters send requests to the URLs declared by their adapter and
+  to redirects or follow-up endpoints used by that pipeline.
+- Browser, desktop, MCP, ACP, plugin, visual, and agent-backend commands may
+  communicate with the local or remote service named in their configuration.
+- Interactive CLI startup may query the npm registry for package-version
+  metadata. The request contains no Uni-CLI account or usage identifier.
+- Uni-CLI does not send command history or adapter results to a Uni-CLI-operated
+  service.
 
-## Browser Session Reuse
+## Browser sessions and cookies
 
-Browser-based adapters (`strategy: cookie`) reuse your Chrome/Chromium login session through the Browser Bridge extension. This means:
+Authenticated commands can obtain cookies from three local sources:
 
-- **Your cookies stay in Chrome** — they are never extracted, copied, or transmitted
-- **API calls happen inside the browser context** — via `page.evaluate()`, not from Node.js
-- **No credentials are stored** — not on disk, not in memory beyond the command execution
-- **No third-party services** — all communication is between the CLI, the local daemon, and your browser
+1. an explicitly persisted file at `~/.unicli/cookies/<site>.json`;
+2. a supported local Chromium profile database; or
+3. a live Chrome DevTools Protocol session.
 
-## YAML Adapters
+Cookie values are extracted into the Uni-CLI process memory when required. They
+may be placed in a `Cookie` request header and sent to the target site declared
+by the adapter. Runtime browser/CDP acquisition and automatic auth refresh do
+**not** persist those values.
 
-YAML adapter pipelines execute `fetch` calls to the URLs specified in the adapter definition. These are the same HTTP requests your browser would make when visiting the site. No additional data is sent.
+Persistence is an explicit action:
 
-## Plugin Privacy
+```bash
+unicli auth import <site>
+unicli browser cookies <domain> [--save-as <site>]
+```
 
-Third-party plugins may have their own privacy practices. Review plugin source code before installation. Uni-CLI's plugin system does not add any data collection on top of what plugins themselves do.
+Those commands store an unencrypted JSON object on the local filesystem. On
+POSIX systems Uni-CLI creates the cookie directory with mode `0700`, the file
+with mode `0600`, writes through an owner-only temporary file, and atomically
+replaces the destination. Reading an older broad-permission file first tightens
+the directory and file to those modes. Windows access is governed by the
+selected path's filesystem ACL; POSIX mode numbers do not apply, and Uni-CLI
+does not currently create a Windows Credential Manager entry.
+
+Uni-CLI output reports cookie names and counts where useful, never cookie
+values. Cookie files are classified as sensitive paths and must not be added to
+logs, prompts, commits, or issue reports.
+
+Delete explicit local persistence by removing the relevant file under
+`~/.unicli/cookies/`. The next authenticated command can still read the active
+local browser session into memory.
+
+## Other local data
+
+Depending on the command, Uni-CLI can create browser automation profiles, run
+receipts, downloads, screenshots, adapter overlays, approvals, or caches under
+`~/.unicli/` or a user-selected output path. Each command's dry run, help, or
+documentation describes its output boundary.
+
+## Plugins and configured providers
+
+Third-party plugins, adapters, MCP servers, visual backends, and model providers
+run under their own data practices. Review their source and endpoint settings
+before sending confidential data. Uni-CLI does not add a second telemetry
+channel, but it cannot override the behavior of software the user installs or
+configures.
 
 ## Questions
 
-If you have privacy concerns, please open an issue or contact ziming.wang@connect.ust.hk.
+For privacy questions, open an issue without secrets or contact
+ziming.wang@connect.ust.hk.

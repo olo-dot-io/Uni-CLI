@@ -175,14 +175,15 @@ claude mcp add unicli -- npx @zenalexa/unicli mcp serve
 
 ## 认证
 
-所有集成路径都使用同一套本地凭据：
+所有集成路径都使用同一套 CLI 凭据策略：
 
 ```bash
 unicli auth setup SITE
 unicli auth check SITE
 ```
 
-Cookie 路径：
+live browser/CDP Cookie 默认只在本次进程内存；用户显式 import/export 后的
+plaintext 存储路径：
 
 ```text
 ~/.unicli/cookies/SITE.json

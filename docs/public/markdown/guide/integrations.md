@@ -214,14 +214,15 @@ mcp_servers:
 
 ## Auth
 
-All integration paths use the same local credentials as the CLI:
+All integration paths use the same CLI credential policy:
 
 ```bash
 unicli auth setup SITE
 unicli auth check SITE
 ```
 
-Cookie path:
+Live browser/CDP cookies stay in process memory unless the user explicitly runs
+an import/export command. Explicit plaintext storage path:
 
 ```text
 ~/.unicli/cookies/SITE.json
