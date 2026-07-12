@@ -39,4 +39,21 @@ describe("per-domain rate limiter", () => {
     );
     expect(vi.getTimerCount()).toBe(0);
   });
+
+  it("keeps the strictest policy when callers disagree on one domain", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const resolved: string[] = [];
+
+    await waitForToken("example.com", 1);
+    const looserCaller = waitForToken("example.com", 60_000).then(() =>
+      resolved.push("looser"),
+    );
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(resolved).toEqual([]);
+    await vi.advanceTimersByTimeAsync(59_999);
+    await looserCaller;
+    expect(resolved).toEqual(["looser"]);
+  });
 });

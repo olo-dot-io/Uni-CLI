@@ -2,9 +2,9 @@
  * @owner       src::engine::proxy
  * @does        Routes Node HTTP(S) fetches through environment proxies without crossing Undici dispatcher versions.
  * @needs       undici fetch and EnvHttpProxyAgent, process environment
- * @feeds       CLI/MCP global fetch, pipeline fetch/fetch_text, core extract
+ * @feeds       CLI/MCP global fetch plus direct pipeline/OAuth/download/HTTP-transport/extract network owners
  * @breaks      Invalid proxy URLs and proxy connection failures propagate from Undici fetch.
- * @invariants  A proxied request's fetch and dispatcher come from the same Undici package; loopback always bypasses proxies.
+ * @invariants  A proxied request's fetch and dispatcher come from the same Undici package; loopback bypasses proxies; direct no-proxy test injection remains observable.
  * @side-effects Owns cached proxy connection pools and may replace globalThis.fetch when installed.
  * @perf        O(1) environment resolution; one cached dispatcher per distinct proxy configuration.
  * @concurrency Process-wide installation is idempotent; dispatcher cache is shared by async callers.
@@ -23,6 +23,7 @@ const LOOPBACK_NO_PROXY = ["127.0.0.1", "localhost", "::1"] as const;
 const nativeFetch = globalThis.fetch.bind(globalThis);
 const dispatchers = new Map<string, Dispatcher>();
 let isInstalled = false;
+let installedFetch: typeof globalThis.fetch | undefined;
 
 export interface ProxyConfig {
   httpProxy?: string;
@@ -84,7 +85,13 @@ export async function fetchWithProxy(
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<Response> {
   const dispatcher = getProxyAgent(env);
-  if (!dispatcher) return nativeFetch(input, init);
+  if (!dispatcher) {
+    const directFetch =
+      globalThis.fetch === installedFetch
+        ? nativeFetch
+        : globalThis.fetch.bind(globalThis);
+    return directFetch(input, init);
+  }
 
   return (await undiciFetch(
     input as Parameters<typeof undiciFetch>[0],
@@ -97,8 +104,9 @@ export async function fetchWithProxy(
 
 export function installProxyAwareFetch(): void {
   if (isInstalled) return;
-  globalThis.fetch = ((input: FetchInput, init?: RequestInit) =>
+  installedFetch = ((input: FetchInput, init?: RequestInit) =>
     fetchWithProxy(input, init)) as typeof globalThis.fetch;
+  globalThis.fetch = installedFetch;
   isInstalled = true;
 }
 

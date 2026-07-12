@@ -4,7 +4,7 @@
  * @needs   src/browser local-profiles/profile-seed/launcher/cdp-client/daemon-client/bridge/protocol
  * @feeds   src/commands/browser/index.ts, tests/unit/commands/browser.test.ts
  * @breaks  Probe failures are returned as diagnostics in the report; raw cookies, auth headers, and endpoint secrets are never emitted.
- * @invariants Doctor reports whether the default browser path is attach, seeded, ephemeral, or unverified; it never reports raw cookie values.
+ * @invariants Doctor reports whether the default browser path is attach, seeded, ephemeral, or unverified; it never reports raw cookie values or prescribes adapter repair for browser availability.
  * @side-effects Optional repair may launch Chrome through src/browser/launcher.ts; report-only mode performs bounded reads/probes.
  * @perf    Probes use short network and daemon timeouts.
  * @concurrency Does not mutate profile seed state except through explicit repair; launcher owns seed locks.
@@ -409,7 +409,6 @@ export async function runBrowserDoctor(
       "unicli browser start",
       "unicli browser bind",
       "unicli browser evidence --render-aware",
-      "unicli repair <site> <command>",
     ],
   };
   const nextActions = buildNextActions(
@@ -669,7 +668,6 @@ function buildNextActions(
     commands.push("unicli browser remote --status");
   }
   commands.push("unicli browser evidence --render-aware");
-  commands.push("unicli repair <site> <command>");
   return [...new Set(commands)];
 }
 
@@ -897,7 +895,6 @@ function buildDefaultPath(input: {
       commands: [
         "unicli browser doctor --json",
         "unicli <site> <command> -f json",
-        "unicli repair <site> <command>",
       ],
       detail:
         "Default browser commands use a Uni-CLI automation profile seeded from the preferred logged-in browser profile.",

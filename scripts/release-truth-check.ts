@@ -90,6 +90,16 @@ const unitStep = verifySteps.find((step) => step.run === "npm run test");
 if (!unitStep?.if?.includes("node-compat")) {
   fail("Node 24 compatibility matrix does not execute the unit suite");
 }
+const integrationCommand = "npm run test:integration";
+if (!manifest.scripts?.verify?.includes(integrationCommand)) {
+  fail("npm run verify does not include the integration suite");
+}
+if (!hasRun(allSteps(ci), integrationCommand)) {
+  fail("CI does not execute the integration suite");
+}
+if (!hasRun(allSteps(release), "npm run verify")) {
+  fail("release workflow does not execute the canonical npm run verify gate");
+}
 
 const benchmarkSteps = ci.jobs?.["benchmark-evidence"]?.steps ?? [];
 const benchmarkStep = benchmarkSteps.find(

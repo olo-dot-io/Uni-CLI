@@ -77,7 +77,7 @@ unicli hackernews top || echo "exit $?"
 unicli browser profiles --json
 unicli auth import <site> --domain <domain>
 unicli browser cookies <domain> --profile-id <id>
-unicli repair <site> <command>
+unicli repair <site> <command> # verifier after evidence-backed adapter edit
 ```
 
 Browser operations are backend/background-first. Daemon commands default to
@@ -99,5 +99,7 @@ Agent loop for delivery:
 2. If `default_path.ready` is true, run the requested command.
 3. If false, run `self_repair.safe_command` or the first failing
    `checks[*].next_step`.
-4. If the command still fails with a structured adapter envelope, run
-   `unicli repair <site> <command>`.
+4. Classify the remaining structured envelope. Restore auth, challenge,
+   network, or rate-limit boundaries without editing the adapter. Only when
+   current endpoint/DOM evidence proves selector/schema/endpoint drift, edit
+   `adapter_path` and run `unicli repair <site> <command>` as the verifier.

@@ -1,16 +1,16 @@
 /**
- * Download pipeline step — HTTP streaming, yt-dlp video, document save.
- *
- * Three modes:
- *   1. httpDownload  — fetch() + stream to disk (any URL)
- *   2. ytdlpDownload — shell out to yt-dlp for video platforms
- *   3. document save — writeFileSync (caller supplies content)
- *
- * Utility exports:
- *   requiresYtdlp   — detect video platform URLs
- *   sanitizeFilename — make names filesystem-safe
- *   generateFilename — derive name from URL
- *   mapConcurrent   — bounded-concurrency async map
+ * @owner       src::engine::download
+ * @does        Streams HTTP content or invokes yt-dlp, while providing filename and bounded-concurrency utilities.
+ * @needs       canonical proxy-aware fetch, node streams/fs/path, yt-dlp subprocess when selected
+ * @feeds       download pipeline action, HTTP transport, scholarly/media adapters, public package download export
+ * @breaks      HTTP, stream, filesystem, and subprocess failures return explicit failed DownloadResult values.
+ * @invariants  HTTP downloads use the same fetch/proxy boundary as pipeline requests; result order is preserved.
+ * @side-effects Creates directories/files and may launch yt-dlp.
+ * @perf        HTTP streams without whole-body buffering; mapConcurrent is caller-bounded.
+ * @concurrency Worker-pool mapping preserves input order; each destination stream has one owner.
+ * @test        tests/unit/download.test.ts and adapter download suites
+ * @stability   public
+ * @since       2026-04-03
  */
 
 import { execFile } from "node:child_process";
@@ -18,6 +18,7 @@ import { createWriteStream, mkdirSync, statSync } from "node:fs";
 import { dirname } from "node:path";
 import { Readable } from "node:stream";
 import { promisify } from "node:util";
+import { fetchWithProxy } from "./proxy.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -95,7 +96,7 @@ export async function httpDownload(
   try {
     mkdirSync(dirname(destPath), { recursive: true });
 
-    const res = await fetch(url, { headers });
+    const res = await fetchWithProxy(url, { headers });
     if (!res.ok) {
       return {
         status: "failed",

@@ -7,6 +7,7 @@ import {
   hasProxyConfig,
   resolveProxyConfig,
 } from "../../src/engine/proxy.js";
+import { runPipeline } from "../../src/engine/executor.js";
 
 const servers: Server[] = [];
 
@@ -92,6 +93,31 @@ describe("proxy fetch integration", () => {
 
     expect(await response.json()).toEqual({ via: "proxy" });
     expect(requestTarget).toBe("http://upstream.invalid/items");
+  });
+
+  it("routes direct public pipeline execution through the proxy boundary", async () => {
+    let requestTarget = "";
+    const proxy = createServer((request, response) => {
+      requestTarget = request.url ?? "";
+      response.setHeader("content-type", "application/json");
+      response.setHeader("connection", "close");
+      response.end(JSON.stringify({ via: "direct-engine-proxy" }));
+    });
+    const proxyPort = await listen(proxy);
+    const previous = process.env.HTTP_PROXY;
+    process.env.HTTP_PROXY = `http://127.0.0.1:${proxyPort}`;
+
+    try {
+      const result = await runPipeline(
+        [{ fetch: { url: "http://upstream.invalid/direct-engine" } }],
+        { args: {}, source: "internal" },
+      );
+      expect(result).toEqual([{ via: "direct-engine-proxy" }]);
+      expect(requestTarget).toBe("http://upstream.invalid/direct-engine");
+    } finally {
+      if (previous === undefined) delete process.env.HTTP_PROXY;
+      else process.env.HTTP_PROXY = previous;
+    }
   });
 
   it("reaches loopback directly even when the configured proxy is dead", async () => {

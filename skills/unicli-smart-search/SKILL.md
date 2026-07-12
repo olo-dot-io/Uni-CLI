@@ -74,7 +74,7 @@ unicli xueqiu hot -f json | jq '.data[] | {name, change}'
 - Exit 77 -> `unicli auth import <site> --domain <domain>` or `unicli browser cookies <domain> --profile-id <id>` then retry
 - Exit 69 -> `unicli browser doctor --json`, `unicli browser doctor --repair`, then retry
 - Exit 66 -> try different query terms
-- Adapter failure -> read stderr envelope and run `unicli repair <site> <command>`
+- Adapter failure -> classify `error.code`; auth/network/rate-limit errors stay at their owning boundary, while selector/schema/endpoint drift is edited from `adapter_path` and then verified with `unicli repair <site> <command>`
 - Site down -> switch to alternative from routing table
 
 ## Budget

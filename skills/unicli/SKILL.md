@@ -261,7 +261,7 @@ edit values directly—use `unicli auth`.
 | 2    | Usage error            | Fix arg syntax; run `unicli describe <site> <cmd>`     |
 | 66   | Empty result           | Try different query terms or `--limit`                 |
 | 69   | Service unavailable    | `unicli browser doctor --json`, then `doctor --repair` |
-| 75   | Temp failure / timeout | Retry once; if persists → load `unicli-repair`         |
+| 75   | Temp failure / timeout | Retry once; if persistent, diagnose network/rate limit |
 | 77   | Auth required          | `unicli auth import` or explicit browser cookies       |
 | 78   | Config error           | Read `error.suggestion`; check `~/.unicli/` config     |
 
@@ -291,8 +291,10 @@ edit values directly—use `unicli auth`.
 - **ALWAYS check `ok` first** before reading `data`.
 - **NEVER retry on exit 2** (usage error — fix the args, not the adapter).
 - **Follow `error.remedy.command`** exactly — it is generated from the adapter schema.
-- **Load `unicli-repair` skill** when the same command fails twice after following
-  `remedy` — the adapter likely needs structural repair, not just a retry.
+- **Load `unicli-repair` only for established drift codes** such as
+  `selector_miss`, `parse_error`, `empty_result`, or a proven endpoint/schema
+  change. Auth, challenge, network, and rate-limit failures are not source
+  repair evidence.
 
 ---
 

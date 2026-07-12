@@ -115,9 +115,10 @@ Every successful call returns:
 ```
 
 Errors return `ok: false` with a structured `error` object (`adapter_path`,
-`step`, `suggestion`) and `next_actions` biased toward `unicli repair`. If
-you see `invalid_input` from the hardening layer, that means the arg bag
-tripped a safety check — read `error.suggestion` for the exact fix.
+`step`, `suggestion`) and failure-classified `next_actions`. `unicli repair`
+appears only for established adapter-drift classes and verifies an edit; it
+never edits automatically. If you see `invalid_input` from the hardening layer,
+the arg bag tripped a safety check — read `error.suggestion` for the exact fix.
 
 ## --dry-run — preview before committing
 

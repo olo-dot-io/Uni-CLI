@@ -19,7 +19,7 @@ The current generated operation catalog is the source of truth:
 (<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span>
 registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span>
 transport-native),
-and **<span><!-- STATS:test_count -->9268<!-- /STATS --></span> tests** in v0.226.0.
+and **<span><!-- STATS:test_count -->9273<!-- /STATS --></span> tests** in v0.226.0.
 
 ## Computer-Control Thesis
 

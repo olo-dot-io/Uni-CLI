@@ -33,7 +33,7 @@
 import { Command } from "commander";
 import TurndownService from "turndown";
 import { assertSafeRequestUrl } from "../engine/ssrf.js";
-import { describeNetworkFailure } from "../engine/proxy.js";
+import { describeNetworkFailure, fetchWithProxy } from "../engine/proxy.js";
 import { USER_AGENT } from "../constants.js";
 import { format, detectFormat } from "../output/formatter.js";
 import { printErrorEnvelope } from "../output/error-writer.js";
@@ -122,7 +122,7 @@ export function registerExtractCommand(program: Command): void {
           method: "GET",
           headers: { "User-Agent": USER_AGENT },
         };
-        const resp = await fetch(url, init);
+        const resp = await fetchWithProxy(url, init);
         httpStatus = resp.status;
 
         if (!resp.ok) {

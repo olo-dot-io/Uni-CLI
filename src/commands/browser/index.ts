@@ -63,6 +63,7 @@ import {
 import { detectFormat, format } from "../../output/formatter.js";
 import { makeCtx } from "../../output/envelope.js";
 import type { AgentNextAction } from "../../output/envelope.js";
+import { ExitCode } from "../../types.js";
 import type { OutputFormat } from "../../types.js";
 
 export function registerBrowserCommands(program: Command): void {
@@ -493,6 +494,11 @@ export function registerBrowserCommands(program: Command): void {
         domain: string,
         opts: { port: string; profileId?: string; saveAs?: string },
       ) => {
+        const startedAt = Date.now();
+        const fmt = detectFormat(
+          program.opts().format as OutputFormat | undefined,
+        );
+        const ctx = makeCtx("browser.cookies", startedAt);
         const requestedPort = parseInt(opts.port, 10);
         const localProfile = opts.profileId
           ? resolveLocalBrowserProfile(opts.profileId)
@@ -517,7 +523,15 @@ export function registerBrowserCommands(program: Command): void {
             ? readCookiesFromLocalProfile(domain, localProfile)
             : null;
           if (localCookies && Object.keys(localCookies).length > 0) {
-            printSavedCookies(domain, opts.saveAs, localCookies, saveCookies);
+            printSavedCookies(
+              domain,
+              opts.saveAs,
+              localCookies,
+              saveCookies,
+              fmt,
+              ctx,
+              startedAt,
+            );
             return;
           }
 
@@ -531,14 +545,29 @@ export function registerBrowserCommands(program: Command): void {
           const count = Object.keys(cookies).length;
 
           if (count === 0) {
-            console.log(chalk.yellow(`No cookies found for ${domain}`));
-            console.log(
-              chalk.dim("Make sure you are logged in to this site in Chrome."),
-            );
+            ctx.error = {
+              code: "auth_required",
+              message: `No cookies found for ${domain}; nothing was persisted.`,
+              suggestion:
+                "Log in with the selected browser profile, verify the domain, then rerun this explicit persistence command.",
+              retryable: false,
+              exit_code: ExitCode.AUTH_REQUIRED,
+            };
+            ctx.duration_ms = Date.now() - startedAt;
+            console.error(format(null, undefined, fmt, ctx));
+            process.exitCode = ExitCode.AUTH_REQUIRED;
             return;
           }
 
-          printSavedCookies(domain, opts.saveAs, cookies, saveCookies);
+          printSavedCookies(
+            domain,
+            opts.saveAs,
+            cookies,
+            saveCookies,
+            fmt,
+            ctx,
+            startedAt,
+          );
         } catch (err) {
           console.error(
             chalk.red(err instanceof Error ? err.message : String(err)),
@@ -1184,9 +1213,34 @@ function printSavedCookies(
   saveAs: string | undefined,
   cookies: Record<string, string>,
   saveCookies: (site: string, cookies: Record<string, string>) => string,
+  fmt: OutputFormat,
+  ctx: ReturnType<typeof makeCtx>,
+  startedAt: number,
 ): void {
   const siteName = saveAs ?? domain.replace(/\./g, "-");
   const filePath = saveCookies(siteName, cookies);
+  if (fmt !== "md") {
+    ctx.duration_ms = Date.now() - startedAt;
+    console.log(
+      format(
+        {
+          domain,
+          site: siteName,
+          cookie_count: Object.keys(cookies).length,
+          cookies: Object.keys(cookies),
+          file: filePath,
+          persistence: "explicit",
+          storage_format: "plaintext-json",
+          directory_mode: process.platform === "win32" ? null : "0700",
+          file_mode: process.platform === "win32" ? null : "0600",
+        },
+        undefined,
+        fmt,
+        ctx,
+      ),
+    );
+    return;
+  }
   console.log(
     chalk.green(
       `Extracted ${String(Object.keys(cookies).length)} cookies for ${domain}`,

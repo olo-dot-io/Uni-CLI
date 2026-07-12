@@ -1,14 +1,20 @@
 /**
- * Strategy cascade — auto-probe authentication strategies.
- *
- * Tries strategies in order: PUBLIC -> COOKIE -> HEADER
- * INTERCEPT and UI require explicit site configuration.
- *
- * Probe mechanism: make a test fetch with each strategy,
- * first valid (non-error, non-empty) response wins.
+ * @owner       src::engine::cascade
+ * @does        Probes public, cookie, then header authentication and caches the first valid strategy per site.
+ * @needs       canonical proxy-aware fetch, cookie acquisition/header formatting, user agent
+ * @feeds       adapter strategy resolution
+ * @breaks      Failed probes remain unsuccessful outcomes; no strategy is manufactured when every boundary fails.
+ * @invariants  Probe order is public then cookie then header; browser/CDP acquisition never persists implicitly.
+ * @side-effects Performs bounded HTTP probes, may read browser cookies into memory, and caches winning strategies.
+ * @perf        Five-second request deadline per probe and O(1) site cache lookup.
+ * @concurrency Cache writes are latest-success-wins within one process.
+ * @test        tests/unit/cascade.test.ts
+ * @stability   stable
+ * @since       2026-04-02
  */
 
 import { acquireCookies, formatCookieHeader } from "./cookies.js";
+import { fetchWithProxy } from "./proxy.js";
 import { USER_AGENT } from "../constants.js";
 
 /** Strategy probe order — auto-probeable strategies only */
@@ -81,7 +87,7 @@ async function probeStrategy(
       if (outcome.status === "loaded") cookies = outcome.cookies;
     }
     const headers = buildHeaders(strategy, cookies);
-    const resp = await fetch(url, {
+    const resp = await fetchWithProxy(url, {
       headers,
       signal: AbortSignal.timeout(5000),
     });

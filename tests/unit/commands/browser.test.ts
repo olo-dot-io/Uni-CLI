@@ -2805,8 +2805,10 @@ describe("unicli browser operator surface", () => {
         "unicli auth import <site> --domain <domain>",
         "unicli browser start",
         "unicli browser bind",
-        "unicli repair <site> <command>",
       ]),
+    );
+    expect(env.data.repair_retry.recovery_commands).not.toContain(
+      "unicli repair <site> <command>",
     );
     expect(env.data.default_path).toMatchObject({
       status: "ready",
@@ -3267,6 +3269,39 @@ describe("unicli browser operator surface", () => {
       sid: "cookie",
     });
     expect(cap.getStdout()).toContain("Extracted 1 cookies for example.com");
+  });
+
+  it("browser cookies returns auth_required when explicit persistence finds nothing", async () => {
+    launcherMocks.isCDPAvailable.mockResolvedValue(true);
+    cookieExtractorMocks.extractCookiesViaCDP.mockResolvedValue({});
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        ["-f", "json", "browser", "cookies", "example.com", "--port", "9333"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const envelope = JSON.parse(cap.getStderr()) as {
+      ok: boolean;
+      command: string;
+      error: { code: string; exit_code: number; message: string };
+    };
+    expect(envelope).toMatchObject({
+      ok: false,
+      command: "browser.cookies",
+      error: {
+        code: "auth_required",
+        exit_code: 77,
+      },
+    });
+    expect(envelope.error.message).toContain("nothing was persisted");
+    expect(cookieStorageMocks.saveCookies).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(77);
   });
 
   it("browser cookies imports raw cookies from the selected local browser profile before CDP", async () => {

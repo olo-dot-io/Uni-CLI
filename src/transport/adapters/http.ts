@@ -1,23 +1,22 @@
 /**
- * HttpTransport — wraps Node's native `fetch` behind the TransportAdapter
- * interface.
- *
- * This is the transport for API-level steps: `fetch`, `fetch_text`,
- * `parse_rss`, `html_to_md`, and HTTP-based `download`. The
- * `src/engine/steps/*.ts` bodies remain the canonical executor — this
- * wrapper exposes the same primitives through the uniform
- * `action()` / `snapshot()` / `open()` / `close()` contract so the
- * bus-driven dispatch path works.
- *
- * Contract:
- *  - `action()` NEVER throws — all failures become an `err()` envelope
- *  - `capability.steps` is the single source of truth for dispatch
- *  - `snapshot()` returns the last HTTP response body as JSON
+ * @owner       src::transport::adapters::http
+ * @does        Exposes JSON/text fetch and download through the uniform transport envelope contract.
+ * @needs       canonical proxy-aware fetch, SSRF guard, core envelopes, transport types, download engine
+ * @feeds       transport bus and public `@zenalexa/unicli/transport/http` export
+ * @breaks      Invalid input, policy, HTTP, network, and download failures return typed error envelopes.
+ * @invariants  Actions never throw to callers; direct public transport use honors the same proxy path as the CLI.
+ * @side-effects Performs HTTP I/O and optional destination-file writes.
+ * @perf        Response previews are capped; downloads stream through the download engine.
+ * @concurrency One instance retains only its latest envelope/preview; callers own instance sharing.
+ * @test        tests/unit/transport/adapters/http.test.ts, tests/unit/proxy.test.ts
+ * @stability   public
+ * @since       2026-04-14
  */
 
 import { USER_AGENT } from "../../constants.js";
 import { err, exitCodeFor, ok } from "../../core/envelope.js";
 import { assertSafeRequestUrl } from "../../engine/executor.js";
+import { fetchWithProxy } from "../../engine/proxy.js";
 import type { Envelope } from "../../core/envelope.js";
 import type {
   ActionRequest,
@@ -203,7 +202,10 @@ export class HttpTransport implements TransportAdapter {
     }
 
     try {
-      const resp = await fetch(this.buildUrl(url, params), init as RequestInit);
+      const resp = await fetchWithProxy(
+        this.buildUrl(url, params),
+        init as RequestInit,
+      );
       if (!resp.ok) {
         let preview = "";
         try {
@@ -298,7 +300,7 @@ export class HttpTransport implements TransportAdapter {
         ? (p.headers as Record<string, string>)
         : undefined;
     try {
-      const resp = await fetch(url, {
+      const resp = await fetchWithProxy(url, {
         method,
         headers: this.buildHeaders(extraHeaders),
       });

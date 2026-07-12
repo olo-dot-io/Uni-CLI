@@ -12,8 +12,8 @@ name: CI
 #     egress routinely fail independently of project correctness.
 #   • `rust-sidecars`                      — stable x64 targets on PR/push.
 #   • `rust-sidecars-extended`             — ARM cross-targets on cron/manual.
-#   • Node 22 runs the full Linux gate; Node 24 runs build, unit, and production
-#     dependency-audit compatibility because both majors satisfy `engines`.
+#   • Node 22 runs the full Linux gate; Node 24 runs build, unit, integration,
+#     and production-audit compatibility because both majors satisfy `engines`.
 # ─────────────────────────────────────────────────────────────────────────────
 
 on:
@@ -109,6 +109,10 @@ jobs:
       - name: Unit tests
         if: matrix.profile == 'full' || matrix.profile == 'node-compat' || matrix.profile == 'windows-smoke'
         run: npm run test
+
+      - name: Integration tests
+        if: matrix.profile == 'full' || matrix.profile == 'node-compat'
+        run: npm run test:integration
 
       - name: Production dependency audit
         if: matrix.profile == 'node-compat'

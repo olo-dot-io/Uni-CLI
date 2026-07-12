@@ -12,6 +12,21 @@ for (const key of Object.keys(process.env)) {
   if (/^(npm|pnpm)_config_/i.test(key)) delete process.env[key];
 }
 
+// REASON: deterministic network stubs must not inherit the host proxy; proxy
+// behavior tests pass an explicit environment or set the process keys locally.
+for (const key of [
+  "http_proxy",
+  "HTTP_PROXY",
+  "https_proxy",
+  "HTTPS_PROXY",
+  "all_proxy",
+  "ALL_PROXY",
+  "no_proxy",
+  "NO_PROXY",
+]) {
+  delete process.env[key];
+}
+
 // Suppress the npm update notifier in spawned `npx` children. The unit tests
 // in tests/unit/cli/* (and a few elsewhere) parse the child stderr as a single
 // JSON envelope, so any trailing `npm notice ...` line corrupts the parse and

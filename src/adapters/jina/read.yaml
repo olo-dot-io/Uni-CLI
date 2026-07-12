@@ -18,6 +18,7 @@ pipeline:
       url: "https://r.jina.ai/${{ args.url }}"
       headers:
         Accept: "text/plain"
+        X-No-Cache: "true"
 
 columns: []
 

@@ -3,7 +3,7 @@
 //! @needs       ./fetch (FetchConfig), ../proxy, ../cookie-capture, ../ssrf, ../template, ../runtime-resource-guard
 //! @feeds       ./index (barrel), pipeline executor via registry "fetch_text"
 //! @breaks      PipelineError on http_error / network_error after retries
-//! @invariants  every fetched URL (incl. rotation candidates) passes assertSafeRequestUrl; cookie capture is host-scoped; rotation bounded by rotate_urls.length
+//! @invariants  every fetched URL passes SSRF validation and the canonical proxy boundary; cookie capture is host-scoped; rotation is bounded
 //! @side-effects network I/O
 //! @perf        one fetch per attempt; rotation adds at most rotate_urls.length fetches
 //! @concurrency stateless per call
@@ -16,7 +16,7 @@ import { registerStep, type StepHandler } from "../step-registry.js";
 import { type PipelineContext, PipelineError } from "../executor.js";
 import { assertSafeRequestUrl } from "../ssrf.js";
 import { evalTemplate } from "../template.js";
-import { describeNetworkFailure } from "../proxy.js";
+import { describeNetworkFailure, fetchWithProxy } from "../proxy.js";
 import { assertRuntimeNetworkAllowed } from "../runtime-resource-guard.js";
 import {
   parseSetCookiePairs,
@@ -67,7 +67,7 @@ async function fetchTextOnce(
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      const resp = await fetch(requestUrl, fetchInit);
+      const resp = await fetchWithProxy(requestUrl, fetchInit);
       if (resp.ok) {
         const text = await resp.text();
         const getSetCookie = (

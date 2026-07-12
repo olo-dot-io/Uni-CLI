@@ -1,7 +1,7 @@
 ---
 name: unicli-hermes
 description: >
-  Use Uni-CLI to interact with 237 websites, desktop apps, and system tools.
+  Use Uni-CLI to interact with the current website, desktop-app, and system-tool catalog.
   Trigger when: user asks to check a website, fetch data, control a desktop app,
   or interact with social media, news, finance, or AI platforms.
 version: 0.226.0
@@ -18,7 +18,7 @@ triggers:
 
 # Uni-CLI Agent Skill
 
-Universal CLI for AI agents — 237 sites, 3,319 commands.
+Universal CLI for AI agents. Run `unicli list` for the live inventory.
 
 ## Install
 
@@ -32,7 +32,7 @@ npm install -g @zenalexa/unicli
 unicli <site> <command> [--limit N] [-f json]  # Run any command
 unicli list [--site <name>]                     # Discover commands
 unicli schema <site> <command>                  # Get input/output schema
-unicli repair <site> <command>                  # Fix broken adapter
+unicli repair <site> <command>                  # Verify an evidence-backed fix
 unicli test <site>                              # Validate adapter
 ```
 
@@ -59,6 +59,9 @@ When a command fails:
 3. Fix the issue (selector changed? API versioned? auth needed?)
 4. Save to `~/.unicli/adapters/<site>/<command>.yaml`
 5. Verify: `unicli repair <site> <command>`
+
+`unicli repair` never edits source or invokes an AI backend. Do not offer it for
+auth, challenge, network, or rate-limit failures; restore that boundary first.
 
 ## MCP Server (Hermes / agentskills.io)
 

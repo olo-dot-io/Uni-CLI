@@ -4,7 +4,7 @@
  * @needs       Wall-clock milliseconds with non-negative elapsed clamping and bounded timers.
  * @feeds       registered rate_limit pipeline step
  * @breaks      Empty domains and non-integer RPM outside 1..60000 throw before any timer is scheduled.
- * @invariants  Buckets never exceed the current RPM capacity; queued callers consume distinct tokens in arrival order.
+ * @invariants  One domain keeps the strictest RPM observed for the process lifetime; queued callers consume distinct tokens in arrival order.
  * @side-effects Retains process-local buckets and may await a timer.
  * @perf        O(1) lookup/refill per acquisition.
  * @concurrency A per-domain promise tail serializes refill, wait, and consumption across concurrent callers.
@@ -50,9 +50,10 @@ export async function waitForToken(domain: string, rpm: number): Promise<void> {
 
 async function acquireToken(bucket: Bucket, rpm: number): Promise<void> {
   const now = Date.now();
-  if (bucket.rpm !== rpm) {
-    bucket.tokens = Math.min(bucket.tokens, rpm);
-    bucket.rpm = rpm;
+  const strictestRpm = Math.min(bucket.rpm, rpm);
+  if (bucket.rpm !== strictestRpm) {
+    bucket.tokens = Math.min(bucket.tokens, strictestRpm);
+    bucket.rpm = strictestRpm;
   }
 
   const elapsed = Math.max(0, now - bucket.lastRefill);

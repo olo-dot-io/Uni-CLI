@@ -156,7 +156,7 @@ live browser/CDP 获取只停留在本次进程内存。只有显式执行 `auth
 }
 ```
 
-Agent 拿到的信息很完整：要改的文件、失败的 step、一句话假设、至少一条备选路径。改完 YAML，跑 `unicli repair twitter search` 用已知好的 fixture 重跑失败 step。补丁存在 `~/.unicli/adapters/`，`npm update` 冲不掉。
+Agent 拿到的信息很完整：要改的文件、失败的 step、一句话假设、至少一条备选路径。改完 YAML，跑 `unicli repair twitter search`，由有界子进程重跑原始 JSON 命令，并要求 envelope 与 exit code 一致。补丁存在 `~/.unicli/adapters/`，`npm update` 冲不掉。
 
 人调试要 30 分钟的 bug，Agent 30 秒就闭环了。两个数量级的差距，就是把适配器写成 YAML 全部经济性论证的核心。
 

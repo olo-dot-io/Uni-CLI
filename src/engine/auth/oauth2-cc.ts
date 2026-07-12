@@ -1,7 +1,7 @@
 /**
  * @owner       src::engine::auth::oauth2-cc
  * @does        OAuth 2.0 client_credentials token broker with LRU cache — issues, caches, and refreshes bearer tokens for adapters that authenticate against EPO OPS, PatSnap Eureka, Lens.org, and similar APIs.
- * @needs       node:crypto (Basic-auth + cache-key digest), global fetch
+ * @needs       node:crypto (Basic-auth + cache-key digest), canonical proxy-aware fetch
  * @feeds       src/engine/steps/oauth2-token.ts (pipeline step), src/adapters/epo/*, src/adapters/patsnap/*, src/adapters/lens/*
  * @breaks      throws Oauth2Error on token-endpoint 4xx/5xx; caller decides retry vs propagate via the patent envelope
  * @invariants  one in-flight refresh per (token_url, client_id) tuple; cache key is salted with client_id hash; tokens are evicted on TTL expiry minus the configured buffer
@@ -14,6 +14,7 @@
  */
 
 import { createHash } from "node:crypto";
+import { fetchWithProxy } from "../proxy.js";
 
 export interface Oauth2ClientCredentialsConfig {
   /** Token endpoint URL (e.g. https://ops.epo.org/3.2/auth/accesstoken). */
@@ -106,7 +107,7 @@ export async function obtainClientCredentialsToken(
     const body = new URLSearchParams({ grant_type: "client_credentials" });
     if (scope) body.set("scope", scope);
 
-    const response = await fetch(token_url, {
+    const response = await fetchWithProxy(token_url, {
       method: "POST",
       headers: {
         Authorization: `Basic ${basic}`,

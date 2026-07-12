@@ -38,4 +38,25 @@ describe("error next_actions", () => {
       commands.every((command) => !command.includes("openreview.com")),
     ).toBe(true);
   });
+
+  it("never recommends adapter repair for network or authentication failures", () => {
+    for (const code of ["network_error", "rate_limited", "auth_required"]) {
+      const commands = defaultErrorNextActions("hackernews", "top", code).map(
+        (action) => action.command,
+      );
+      expect(commands).not.toContain("unicli repair hackernews top");
+    }
+  });
+
+  it("offers repair only as the verifier for established adapter drift", () => {
+    const action = defaultErrorNextActions(
+      "hackernews",
+      "top",
+      "selector_miss",
+    ).find((candidate) => candidate.command === "unicli repair hackernews top");
+
+    expect(action?.description).toContain(
+      "Verify an evidence-backed adapter fix",
+    );
+  });
 });

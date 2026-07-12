@@ -63,17 +63,8 @@ jobs:
 
       - name: Verify release package surface
         run: |
-          npm run format:check
-          npm run typecheck
-          npm run lint
-          npm run lint:adapters
-          npm run lint:schema-v2
-          npm run build
-          npm run test
+          npm run verify
           npm audit --omit=dev --audit-level=moderate
-          npm run stats:check
-          npm run truth:check
-          npm run boundary:check
 
       - name: Validate release metadata
         id: release_metadata

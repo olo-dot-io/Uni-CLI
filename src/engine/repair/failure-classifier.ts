@@ -2,13 +2,13 @@
  * @owner       src::engine::repair::failure-classifier
  * @does        Distinguishes adapter-source drift from auth, network, rate-limit, and runtime failures.
  * @needs       v2 AgentError and the verified target identity
- * @feeds       repair failure envelope guidance and next actions
+ * @feeds       repair failure envelope guidance and default error next_actions
  * @breaks      Unknown codes remain explicit runtime diagnoses rather than triggering automatic edits.
  * @invariants  Auth, challenge, network, and rate-limit failures never recommend source mutation.
  * @side-effects None.
  * @perf        O(alternative count).
  * @concurrency Pure and reentrant.
- * @test        tests/unit/repair.test.ts
+ * @test        tests/unit/repair.test.ts, tests/unit/output/next-actions.test.ts
  * @stability   stable
  * @since       2026-04-07
  */
@@ -28,6 +28,21 @@ export interface RepairDiagnosis {
   sourceRepairable: boolean;
   guidance: string;
   nextCommands: string[];
+}
+
+const ADAPTER_REPAIR_CODES = new Set([
+  "selector_miss",
+  "not_found",
+  "api_error",
+  "upstream_error",
+  "empty_result",
+  "parse_error",
+  "unknown_action",
+  "quarantined",
+]);
+
+export function isAdapterRepairCandidate(code: string): boolean {
+  return ADAPTER_REPAIR_CODES.has(code);
 }
 
 export function classifyRepairFailure(
@@ -75,16 +90,7 @@ export function classifyRepairFailure(
     };
   }
 
-  const repairableCodes = new Set([
-    "selector_miss",
-    "not_found",
-    "api_error",
-    "upstream_error",
-    "empty_result",
-    "unknown_action",
-    "quarantined",
-  ]);
-  if (repairableCodes.has(error.code)) {
+  if (isAdapterRepairCandidate(error.code)) {
     return {
       type: "adapter_drift",
       sourceRepairable: true,

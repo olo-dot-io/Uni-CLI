@@ -24,7 +24,7 @@ import { assertSafeRequestUrl } from "../ssrf.js";
 import { evalTemplate, resolveTemplateDeep } from "../template.js";
 import { formatCookieHeader, loadCookiesWithCDP } from "../cookies.js";
 import { mapConcurrent } from "../download.js";
-import { describeNetworkFailure } from "../proxy.js";
+import { describeNetworkFailure, fetchWithProxy } from "../proxy.js";
 import { assertRuntimeNetworkAllowed } from "../runtime-resource-guard.js";
 
 export interface FetchConfig {
@@ -265,7 +265,7 @@ async function fetchJson(
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let resp: Response;
     try {
-      resp = await fetch(url, init);
+      resp = await fetchWithProxy(url, init);
     } catch (error) {
       const isLastAttempt = attempt === maxAttempts;
       if (!isLastAttempt) {

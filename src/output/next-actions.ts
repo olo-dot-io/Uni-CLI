@@ -1,12 +1,16 @@
 /**
- * Default HATEOAS `next_actions` hints. Every CLI response carries a small
- * set of templates so the agent always has a navigable next step without
- * re-reading docs. Agents read `params.<name>.value` / `.default` / `.enum`
- * to fill templates instead of guessing flag syntax.
- *
- * Pattern from joelclaw.com "CLI Design for AI Agents" (2026-02), refined
- * for Uni-CLI's self-repair contract so failure paths also suggest
- * `unicli repair` + stdin-JSON channel switch.
+ * @owner       src::output::next-actions
+ * @does        Builds bounded HATEOAS command hints for success and failure envelopes.
+ * @needs       auth guidance and canonical adapter-repair eligibility
+ * @feeds       default AgentEnvelope next_actions across adapter commands
+ * @breaks      Misclassified hints can send agents into retries or source edits that cannot fix the owning failure.
+ * @invariants  Auth/network/rate-limit failures never recommend adapter repair; drift classes describe repair as verification only.
+ * @side-effects None.
+ * @perf        O(1) with a bounded action list.
+ * @concurrency Pure and reentrant.
+ * @test        tests/unit/output/next-actions.test.ts
+ * @stability   public
+ * @since       2026-04-01
  */
 
 import type { AgentNextAction } from "./envelope.js";
@@ -16,6 +20,7 @@ import {
   authRetryCommand,
   browserCookieCaptureCommand,
 } from "./auth-guidance.js";
+import { isAdapterRepairCandidate } from "../engine/repair/failure-classifier.js";
 
 /** Hints shown alongside a successful result for site-<cmd>. */
 export function defaultSuccessNextActions(
@@ -49,7 +54,7 @@ export function defaultSuccessNextActions(
   return actions;
 }
 
-/** Hints shown on the error path — biased toward repair + channel switch. */
+/** Hints shown on the error path, classified before source repair is offered. */
 export function defaultErrorNextActions(
   site: string,
   cmdName: string,
@@ -114,11 +119,13 @@ export function defaultErrorNextActions(
     });
   }
 
-  actions.push({
-    command: `unicli repair ${site} ${cmdName}`,
-    description:
-      "Ask an agent to repair the adapter YAML if the upstream API has drifted",
-  });
+  if (isAdapterRepairCandidate(errCode)) {
+    actions.push({
+      command: `unicli repair ${site} ${cmdName}`,
+      description:
+        "Verify an evidence-backed adapter fix with the exact original command",
+    });
+  }
 
   return actions;
 }
