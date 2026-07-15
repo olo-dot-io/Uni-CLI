@@ -1,696 +1,129 @@
 /**
- * Unicli Browser Bridge — Chrome Extension Service Worker.
- *
- * Connects to the unicli daemon via WebSocket and dispatches
- * commands to Chrome tabs using chrome.debugger API.
+ * @owner       extension/src/background.ts
+ * @does        Maintain one Chrome Native Messaging port, identify the extension, dispatch broker commands, and reconnect after host/service-worker interruption.
+ * @needs       chrome.runtime, chrome.alarms, extension/src/chrome-controller.ts, src/browser/chrome-native-protocol.ts
+ * @feeds       Uni-CLI Chrome native host
+ * @breaks      Logs connection/dispatch failures; broker status remains disconnected until an identity-compatible native host is available.
+ * @invariants  No loopback discovery, WebSocket, port scan, or browser-window creation occurs at connection time; every command receives one correlated result.
+ * @side-effects Opens a Chrome Native Messaging port, posts hello/results, installs lifecycle listeners and a keepalive alarm.
+ * @perf        Idle work is one native port plus a 24-second reconnect alarm; commands are sequential from the native host.
+ * @concurrency A connection generation prevents stale disconnect callbacks from clearing a replacement port.
+ * @test        tests/integration/browser-extension-background.test.ts
+ * @stability   experimental
+ * @since       2026-07-15
  */
 
 import {
-  DAEMON_HOST,
-  DAEMON_PORT_CANDIDATES,
-  DAEMON_PRODUCT,
-  DAEMON_PROTOCOL,
-  DAEMON_WS_PATH,
-  DAEMON_PING_PATH,
-  WS_RECONNECT_BASE_DELAY,
-  WS_RECONNECT_MAX_DELAY,
-  MAX_EAGER_ATTEMPTS,
-  KEEPALIVE_ALARM_PERIOD,
-  WINDOW_IDLE_TIMEOUT,
-  type Command,
-  type Result,
-} from "./protocol.js";
-import {
-  readNetworkCapture,
-  registerNetworkCaptureListeners,
-  startNetworkCapture,
-} from "./network-capture.js";
-import {
-  readDialogSnapshot,
-  respondToDialog,
-  type DialogSupervisorAction,
-} from "./dialog-supervisor.js";
+  CHROME_NATIVE_HOST_NAME,
+  CHROME_NATIVE_PRODUCT,
+  CHROME_NATIVE_PROTOCOL,
+  CHROME_NATIVE_PROTOCOL_VERSION,
+  type ChromeNativeCommand,
+} from "../../src/browser/chrome-native-protocol.js";
+import { getChromeBrowserSessionId } from "./browser-session.js";
+import { handleChromeNativeCommand } from "./chrome-controller.js";
+import { registerNetworkCaptureListeners } from "./network-capture.js";
 
-// ── State ───────────────────────────────────────────────────────────
+const RECONNECT_BASE_DELAY_MS = 2_000;
+const RECONNECT_MAX_DELAY_MS = 30_000;
+const KEEPALIVE_ALARM_PERIOD_MINUTES = 0.4;
 
-let ws: WebSocket | null = null;
-let reconnectAttempts = 0;
+let nativePort: chrome.runtime.Port | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let reconnectAttempts = 0;
+let connectionGeneration = 0;
+let connectionAttempt: Promise<void> | null = null;
 
-function websocketOpenState(): number {
-  return typeof WebSocket.OPEN === "number" ? WebSocket.OPEN : 1;
-}
-
-function websocketConnectingState(): number {
-  return typeof WebSocket.CONNECTING === "number" ? WebSocket.CONNECTING : 0;
-}
-
-function createWebSocket(url: string): WebSocket {
-  try {
-    return new WebSocket(url);
-  } catch (err) {
-    try {
-      return (WebSocket as unknown as (target: string) => WebSocket)(url);
-    } catch {
-      throw err;
-    }
-  }
-}
-
-async function findUniCliDaemonPort(): Promise<number | null> {
-  for (const port of DAEMON_PORT_CANDIDATES) {
-    try {
-      const resp = await fetch(
-        `http://${DAEMON_HOST}:${port}${DAEMON_PING_PATH}`,
-        { signal: AbortSignal.timeout(1000) },
+function connectNativeHost(): void {
+  if (nativePort || connectionAttempt) return;
+  connectionAttempt = openNativeHost()
+    .catch((error: unknown) => {
+      console.error(
+        `[unicli] Native host initialization failed: ${error instanceof Error ? error.message : String(error)}`,
       );
-      if (!resp.ok) continue;
-      const body = (await resp.json().catch(() => null)) as {
-        product?: string;
-      } | null;
-      if (body?.product === "unicli") return port;
-    } catch {
-      continue;
-    }
-  }
-  return null;
+      scheduleReconnect();
+    })
+    .finally(() => {
+      connectionAttempt = null;
+    });
 }
 
-interface AutomationSession {
-  windowId: number;
-  idleTimer: ReturnType<typeof setTimeout> | null;
-  idleDeadlineAt: number;
-  owned: boolean;
-  preferredTabId: number | null;
-}
-
-const automationSessions = new Map<string, AutomationSession>();
-
-// ── Console log forwarding ──────────────────────────────────────────
-
-const origLog = console.log;
-const origWarn = console.warn;
-const origError = console.error;
-
-function forwardLog(level: string, ...args: unknown[]): void {
-  const msg = args
-    .map((a) => (typeof a === "string" ? a : JSON.stringify(a)))
-    .join(" ");
-  if (ws?.readyState === websocketOpenState()) {
-    ws.send(JSON.stringify({ type: "log", level, msg, ts: Date.now() }));
-  }
-}
-
-console.log = (...args: unknown[]) => {
-  origLog(...args);
-  forwardLog("log", ...args);
-};
-console.warn = (...args: unknown[]) => {
-  origWarn(...args);
-  forwardLog("warn", ...args);
-};
-console.error = (...args: unknown[]) => {
-  origError(...args);
-  forwardLog("error", ...args);
-};
-
-// ── WebSocket Connection ────────────────────────────────────────────
-
-async function connect(): Promise<void> {
-  if (
-    ws?.readyState === websocketOpenState() ||
-    ws?.readyState === websocketConnectingState()
-  )
-    return;
-
-  const daemonPort = await findUniCliDaemonPort();
-  if (daemonPort === null) {
-    return; // Daemon not running — skip WS attempt
-  }
+async function openNativeHost(): Promise<void> {
+  const browserSessionId = await getChromeBrowserSessionId();
+  if (nativePort) return;
+  const generation = ++connectionGeneration;
+  let port: chrome.runtime.Port;
   try {
-    ws = createWebSocket(`ws://${DAEMON_HOST}:${daemonPort}${DAEMON_WS_PATH}`);
-  } catch {
+    port = chrome.runtime.connectNative(CHROME_NATIVE_HOST_NAME);
+  } catch (error) {
+    console.error(
+      `[unicli] Native host connection failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
     scheduleReconnect();
     return;
   }
-
-  ws.onopen = () => {
-    console.log(`[bridge] Connected to daemon on port ${daemonPort}`);
-    reconnectAttempts = 0;
-    ws!.send(
-      JSON.stringify({
-        type: "hello",
-        version: chrome.runtime.getManifest().version,
-        product: DAEMON_PRODUCT,
-        protocol: DAEMON_PROTOCOL,
-      }),
-    );
-  };
-
-  ws.onmessage = async (event) => {
-    try {
-      const cmd = JSON.parse(event.data as string) as Command;
-      const result = await handleCommand(cmd);
-      ws?.send(JSON.stringify(result));
-    } catch {
-      // Malformed message — ignore
-    }
-  };
-
-  ws.onclose = () => {
-    console.log("[bridge] Disconnected from daemon");
-    ws = null;
+  nativePort = port;
+  reconnectAttempts = 0;
+  port.onMessage.addListener((message: unknown) => {
+    void dispatchNativeCommand(port, generation, message);
+  });
+  port.onDisconnect.addListener(() => {
+    const lastError = chrome.runtime.lastError?.message;
+    if (lastError)
+      console.error(`[unicli] Native host disconnected: ${lastError}`);
+    if (connectionGeneration !== generation) return;
+    nativePort = null;
     scheduleReconnect();
-  };
+  });
+  port.postMessage({
+    type: "hello",
+    product: CHROME_NATIVE_PRODUCT,
+    protocol: CHROME_NATIVE_PROTOCOL,
+    version: CHROME_NATIVE_PROTOCOL_VERSION,
+    extension_id: chrome.runtime.id,
+    extension_version: chrome.runtime.getManifest().version,
+    browser_session_id: browserSessionId,
+  });
+}
 
-  ws.onerror = () => {
-    ws?.close();
-  };
+async function dispatchNativeCommand(
+  port: chrome.runtime.Port,
+  generation: number,
+  message: unknown,
+): Promise<void> {
+  if (connectionGeneration !== generation || nativePort !== port) return;
+  const command = message as ChromeNativeCommand;
+  const result = await handleChromeNativeCommand(command);
+  if (connectionGeneration === generation && nativePort === port) {
+    port.postMessage(result);
+  }
 }
 
 function scheduleReconnect(): void {
   if (reconnectTimer) return;
-  if (reconnectAttempts >= MAX_EAGER_ATTEMPTS) return; // rely on keepalive alarm
-
   const delay = Math.min(
-    WS_RECONNECT_BASE_DELAY * 2 ** reconnectAttempts,
-    WS_RECONNECT_MAX_DELAY,
+    RECONNECT_BASE_DELAY_MS * 2 ** reconnectAttempts,
+    RECONNECT_MAX_DELAY_MS,
   );
-  reconnectAttempts++;
+  reconnectAttempts += 1;
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
-    connect();
+    connectNativeHost();
   }, delay);
 }
 
-// ── Automation Window Management ────────────────────────────────────
-
-async function getAutomationWindow(
-  workspace: string,
-  initialUrl?: string,
-  windowFocused = false,
-): Promise<{ windowId: number; tabId: number }> {
-  const existing = automationSessions.get(workspace);
-  if (existing) {
-    // Reset idle timer
-    if (existing.idleTimer) clearTimeout(existing.idleTimer);
-    existing.idleTimer = setTimeout(
-      () => closeSession(workspace),
-      WINDOW_IDLE_TIMEOUT,
-    );
-    existing.idleDeadlineAt = Date.now() + WINDOW_IDLE_TIMEOUT;
-
-    // Get preferred tab
-    if (existing.preferredTabId) {
-      return { windowId: existing.windowId, tabId: existing.preferredTabId };
-    }
-    const tabs = await chrome.tabs.query({ windowId: existing.windowId });
-    const tabId = tabs[0]?.id ?? -1;
-    return { windowId: existing.windowId, tabId };
-  }
-
-  // Create new automation window
-  const win = await chrome.windows.create({
-    width: 1280,
-    height: 900,
-    type: "normal",
-    focused: windowFocused,
-    url: initialUrl ?? "about:blank",
-  });
-
-  const tabId = win.tabs?.[0]?.id ?? -1;
-
-  const session: AutomationSession = {
-    windowId: win.id!,
-    idleTimer: setTimeout(() => closeSession(workspace), WINDOW_IDLE_TIMEOUT),
-    idleDeadlineAt: Date.now() + WINDOW_IDLE_TIMEOUT,
-    owned: true,
-    preferredTabId: tabId,
-  };
-  automationSessions.set(workspace, session);
-
-  return { windowId: win.id!, tabId };
-}
-
-async function closeSession(workspace: string): Promise<void> {
-  const session = automationSessions.get(workspace);
-  if (!session) return;
-  automationSessions.delete(workspace);
-  if (session.idleTimer) clearTimeout(session.idleTimer);
-  if (!session.owned) return;
-  try {
-    await chrome.windows.remove(session.windowId);
-  } catch {
-    /* already closed */
-  }
-}
-
-function hostMatchesDomain(hostname: string, domain: string): boolean {
-  const host = hostname.toLowerCase();
-  const expected = domain
-    .trim()
-    .toLowerCase()
-    .replace(/^\.+|\.+$/g, "");
-  if (!expected) return true;
-  return host === expected || host.endsWith(`.${expected}`);
-}
-
-function matchesBindCriteria(tab: chrome.tabs.Tab, cmd: Command): boolean {
-  if (!tab.id || !tab.url) return false;
-  if (!/^https?:/i.test(tab.url)) return false;
-  if (!cmd.matchDomain && !cmd.matchPathPrefix) return true;
-
-  try {
-    const url = new URL(tab.url);
-    if (cmd.matchDomain && !hostMatchesDomain(url.hostname, cmd.matchDomain)) {
-      return false;
-    }
-    if (cmd.matchPathPrefix && !url.pathname.startsWith(cmd.matchPathPrefix)) {
-      return false;
-    }
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// ── Command Dispatcher ──────────────────────────────────────────────
-
-async function handleCommand(cmd: Command): Promise<Result> {
-  const workspace = cmd.workspace ?? "default";
-  try {
-    switch (cmd.action) {
-      case "exec": {
-        const { tabId } = await getAutomationWindow(
-          workspace,
-          undefined,
-          cmd.windowFocused === true,
-        );
-        const result = await chrome.debugger.sendCommand(
-          { tabId },
-          "Runtime.evaluate",
-          {
-            expression: cmd.code,
-            returnByValue: true,
-            awaitPromise: true,
-            allowUnsafeEvalBlockedByCSP: true,
-          },
-        );
-        return { id: cmd.id, ok: true, data: (result as any)?.result?.value };
-      }
-
-      case "navigate": {
-        const { tabId } = await getAutomationWindow(
-          workspace,
-          cmd.url,
-          cmd.windowFocused === true,
-        );
-        await chrome.tabs.update(tabId, { url: cmd.url });
-        // Wait for page load
-        await new Promise<void>((resolve) => {
-          const listener = (
-            updatedTabId: number,
-            info: chrome.tabs.TabChangeInfo,
-          ) => {
-            if (updatedTabId === tabId && info.status === "complete") {
-              chrome.tabs.onUpdated.removeListener(listener);
-              resolve();
-            }
-          };
-          chrome.tabs.onUpdated.addListener(listener);
-          setTimeout(() => {
-            chrome.tabs.onUpdated.removeListener(listener);
-            resolve();
-          }, 30000);
-        });
-        return { id: cmd.id, ok: true };
-      }
-
-      case "tabs": {
-        const session = automationSessions.get(workspace);
-        if (!session) return { id: cmd.id, ok: true, data: [] };
-        const tabs = await chrome.tabs.query({ windowId: session.windowId });
-        return {
-          id: cmd.id,
-          ok: true,
-          data: tabs.map((t) => ({ id: t.id, url: t.url, title: t.title })),
-        };
-      }
-
-      case "cookies": {
-        await getAutomationWindow(
-          workspace,
-          undefined,
-          cmd.windowFocused === true,
-        );
-        const domain = cmd.domain ?? "";
-        const cookies = await chrome.cookies.getAll({ domain });
-        const obj: Record<string, string> = {};
-        for (const c of cookies) obj[c.name] = c.value;
-        return { id: cmd.id, ok: true, data: obj };
-      }
-
-      case "screenshot": {
-        const { tabId } = await getAutomationWindow(
-          workspace,
-          undefined,
-          cmd.windowFocused === true,
-        );
-        const result = await chrome.debugger.sendCommand(
-          { tabId },
-          "Page.captureScreenshot",
-          {
-            format: cmd.format ?? "png",
-            quality: cmd.quality,
-            fromSurface: true,
-          },
-        );
-        return { id: cmd.id, ok: true, data: (result as any)?.data };
-      }
-
-      case "close-window": {
-        await closeSession(workspace);
-        return { id: cmd.id, ok: true };
-      }
-
-      case "sessions": {
-        const now = Date.now();
-        const sessions = await Promise.all(
-          Array.from(automationSessions.entries()).map(async ([ws, s]) => {
-            const tabs = await chrome.tabs.query({ windowId: s.windowId });
-            return {
-              workspace: ws,
-              windowId: s.windowId,
-              tabCount: tabs.length,
-              owned: s.owned,
-              preferredTabId: s.preferredTabId,
-              idleMsRemaining: Math.max(0, s.idleDeadlineAt - now),
-            };
-          }),
-        );
-        return { id: cmd.id, ok: true, data: { sessions } };
-      }
-
-      case "set-file-input": {
-        const { tabId } = await getAutomationWindow(
-          workspace,
-          undefined,
-          cmd.windowFocused === true,
-        );
-        // Resolve node and set files
-        const doc = await chrome.debugger.sendCommand(
-          { tabId },
-          "DOM.getDocument",
-        );
-        const node = await chrome.debugger.sendCommand(
-          { tabId },
-          "DOM.querySelector",
-          {
-            nodeId: (doc as any).root.nodeId,
-            selector: cmd.selector,
-          },
-        );
-        await chrome.debugger.sendCommand({ tabId }, "DOM.setFileInputFiles", {
-          nodeId: (node as any).nodeId,
-          files: cmd.files,
-        });
-        return { id: cmd.id, ok: true };
-      }
-
-      case "insert-text": {
-        const { tabId } = await getAutomationWindow(
-          workspace,
-          undefined,
-          cmd.windowFocused === true,
-        );
-        await chrome.debugger.sendCommand({ tabId }, "Input.insertText", {
-          text: cmd.text,
-        });
-        return { id: cmd.id, ok: true };
-      }
-
-      case "cdp": {
-        const { tabId } = await getAutomationWindow(
-          workspace,
-          undefined,
-          cmd.windowFocused === true,
-        );
-        if (!cmd.cdpMethod) {
-          return { id: cmd.id, ok: false, error: "Missing cdpMethod" };
-        }
-        const result = await chrome.debugger.sendCommand(
-          { tabId },
-          cmd.cdpMethod,
-          cmd.cdpParams ?? {},
-        );
-        return { id: cmd.id, ok: true, data: result };
-      }
-
-      case "bind-current": {
-        const activeTabs = await chrome.tabs.query({
-          active: true,
-          lastFocusedWindow: true,
-        });
-        const fallbackTabs = await chrome.tabs.query({
-          lastFocusedWindow: true,
-        });
-        const allTabs = await chrome.tabs.query({});
-        const activeTab =
-          activeTabs.find((tab) => matchesBindCriteria(tab, cmd)) ??
-          fallbackTabs.find((tab) => matchesBindCriteria(tab, cmd)) ??
-          allTabs.find((tab) => matchesBindCriteria(tab, cmd));
-        if (!activeTab?.id) {
-          return {
-            id: cmd.id,
-            ok: false,
-            error:
-              cmd.matchDomain || cmd.matchPathPrefix
-                ? `No visible tab matched ${cmd.matchDomain ?? "domain"}${cmd.matchPathPrefix ? ` ${cmd.matchPathPrefix}` : ""}`
-                : "No active debuggable tab",
-          };
-        }
-        const session = automationSessions.get(workspace);
-        if (session) {
-          session.preferredTabId = activeTab.id;
-          session.windowId = activeTab.windowId;
-          session.owned = false;
-          session.idleDeadlineAt = Date.now() + WINDOW_IDLE_TIMEOUT;
-        } else {
-          automationSessions.set(workspace, {
-            windowId: activeTab.windowId,
-            idleTimer: setTimeout(
-              () => closeSession(workspace),
-              WINDOW_IDLE_TIMEOUT,
-            ),
-            idleDeadlineAt: Date.now() + WINDOW_IDLE_TIMEOUT,
-            owned: false,
-            preferredTabId: activeTab.id,
-          });
-        }
-        return {
-          id: cmd.id,
-          ok: true,
-          data: {
-            tabId: activeTab.id,
-            url: activeTab.url,
-            title: activeTab.title,
-            workspace,
-          },
-        };
-      }
-
-      case "network-capture-start": {
-        const { tabId } = await getAutomationWindow(
-          workspace,
-          undefined,
-          cmd.windowFocused === true,
-        );
-        await startNetworkCapture(tabId, cmd.pattern);
-        return { id: cmd.id, ok: true, data: { started: true } };
-      }
-
-      case "network-capture-read": {
-        const { tabId } = await getAutomationWindow(
-          workspace,
-          undefined,
-          cmd.windowFocused === true,
-        );
-        return { id: cmd.id, ok: true, data: readNetworkCapture(tabId) };
-      }
-
-      case "downloads-read": {
-        const downloadsApi = chrome.downloads;
-        if (downloadsApi === undefined) {
-          return {
-            id: cmd.id,
-            ok: false,
-            error: "chrome.downloads API is unavailable",
-          };
-        }
-        const limit = readDownloadLimit(cmd.downloadLimit);
-        const downloads = await downloadsApi.search({
-          limit,
-          orderBy: ["-startTime"],
-        });
-        return {
-          id: cmd.id,
-          ok: true,
-          data: {
-            evidence_type: "browser-downloads",
-            captured_at: new Date().toISOString(),
-            workspace,
-            limit,
-            count: downloads.length,
-            downloads: downloads.map(normalizeDownloadItem),
-          },
-        };
-      }
-
-      case "dialog-read": {
-        const { windowId, tabId } = await getAutomationWindow(
-          workspace,
-          undefined,
-          cmd.windowFocused === true,
-        );
-        const snapshot = await readDialogSnapshot(tabId, {
-          clearRecent: cmd.clearRecent === true,
-        });
-        const tab = await readSessionTab(windowId, tabId);
-        return {
-          id: cmd.id,
-          ok: true,
-          data: {
-            ...snapshot,
-            workspace,
-            tabId,
-            ...(tab?.url ? { url: tab.url } : {}),
-            ...(tab?.title ? { title: tab.title } : {}),
-          },
-        };
-      }
-
-      case "dialog-respond": {
-        const action = readDialogAction(cmd.dialogAction);
-        if (action === null) {
-          return {
-            id: cmd.id,
-            ok: false,
-            error: "dialogAction must be accept or dismiss",
-          };
-        }
-        const { windowId, tabId } = await getAutomationWindow(
-          workspace,
-          undefined,
-          cmd.windowFocused === true,
-        );
-        const snapshot = await respondToDialog(tabId, {
-          action,
-          ...(cmd.promptText ? { promptText: cmd.promptText } : {}),
-          ...(cmd.dialogId ? { dialogId: cmd.dialogId } : {}),
-        });
-        const tab = await readSessionTab(windowId, tabId);
-        return {
-          id: cmd.id,
-          ok: true,
-          data: {
-            ...snapshot,
-            workspace,
-            tabId,
-            ...(tab?.url ? { url: tab.url } : {}),
-            ...(tab?.title ? { title: tab.title } : {}),
-          },
-        };
-      }
-
-      default:
-        return {
-          id: cmd.id,
-          ok: false,
-          error: `Unknown action: ${cmd.action}`,
-        };
-    }
-  } catch (err) {
-    return {
-      id: cmd.id,
-      ok: false,
-      error: err instanceof Error ? err.message : String(err),
-    };
-  }
-}
-
-async function readSessionTab(
-  windowId: number,
-  tabId: number,
-): Promise<chrome.tabs.Tab | undefined> {
-  const tabs = await chrome.tabs.query({ windowId });
-  return tabs.find((tab) => tab.id === tabId) ?? tabs[0];
-}
-
-function readDialogAction(
-  value: string | undefined,
-): DialogSupervisorAction | null {
-  if (value === "accept" || value === "dismiss") return value;
-  return null;
-}
-
-function readDownloadLimit(value: number | undefined): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) return 20;
-  return Math.max(1, Math.min(50, Math.trunc(value)));
-}
-
-function normalizeDownloadItem(
-  item: chrome.downloads.DownloadItem,
-): Record<string, unknown> {
-  return {
-    id: item.id,
-    state: item.state,
-    danger: item.danger,
-    exists: item.exists,
-    paused: item.paused,
-    incognito: item.incognito,
-    bytes_received: item.bytesReceived,
-    total_bytes: item.totalBytes,
-    file_size: item.fileSize,
-    filename_basename: basenameOnly(item.filename),
-    ...(item.mime === undefined || item.mime.length === 0
-      ? {}
-      : { mime: item.mime }),
-    ...(item.url === undefined || item.url.length === 0
-      ? {}
-      : { url: item.url }),
-    ...(item.finalUrl === undefined || item.finalUrl.length === 0
-      ? {}
-      : { final_url: item.finalUrl }),
-    ...(item.startTime === undefined || item.startTime.length === 0
-      ? {}
-      : { started_at: item.startTime }),
-    ...(item.endTime === undefined || item.endTime.length === 0
-      ? {}
-      : { ended_at: item.endTime }),
-    ...(item.error === undefined || item.error.length === 0
-      ? {}
-      : { error: item.error }),
-  };
-}
-
-function basenameOnly(path: string): string {
-  const normalized = path.split("\\").join("/");
-  return normalized.split("/").filter(Boolean).at(-1)?.slice(0, 240) ?? "";
-}
-
-// ── Lifecycle ───────────────────────────────────────────────────────
-
 function initialize(): void {
   registerNetworkCaptureListeners();
-  connect();
-  chrome.alarms.create("keepalive", {
-    periodInMinutes: KEEPALIVE_ALARM_PERIOD,
+  chrome.alarms.create("unicli-native-host-keepalive", {
+    periodInMinutes: KEEPALIVE_ALARM_PERIOD_MINUTES,
   });
+  connectNativeHost();
 }
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === "keepalive") connect();
+  if (alarm.name === "unicli-native-host-keepalive") connectNativeHost();
 });
-
 chrome.runtime.onInstalled.addListener(initialize);
 chrome.runtime.onStartup.addListener(initialize);
+
+initialize();

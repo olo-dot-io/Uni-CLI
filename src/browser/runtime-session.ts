@@ -1,6 +1,6 @@
 /**
  * @owner       src/browser/runtime-session.ts
- * @does        Own browser Agent-session lifecycle, turn cancellation, target leases, handoff, TTL reclamation, and per-target mutation ordering.
+ * @does        Own browser Agent-session lifecycle, turn cancellation, target leases, atomic finalization, handoff, TTL reclamation, and per-target mutation ordering.
  * @needs       src/browser/invocation-context.ts
  * @feeds       src/browser/runtime-broker.ts, src/browser/protocol.ts
  * @breaks      BrowserRuntimeSessionError on ended/unknown sessions, ended turns, ownership conflicts, and invalid leases.
@@ -236,6 +236,34 @@ export class BrowserRuntimeSessionRegistry {
         throw turnEndedError(context.turn_id);
       }
       return mutation(turn.controller.signal);
+    });
+  }
+
+  async finalizeTarget(
+    context: BrowserInvocationContext,
+    targetId: string,
+    finalize: (signal: AbortSignal) => Promise<void>,
+  ): Promise<BrowserTargetLease> {
+    this.requireLiveContext(context);
+    const queue = this.requireTargetQueue(targetId);
+    return queue.enqueue(async () => {
+      const session = this.requireLiveContext(context);
+      const lease = this.requireTargetLease(targetId);
+      assertTargetOwner(lease, context.agent_session_id, session.generation);
+      const turn = this.requireLiveTurn(session, context.turn_id);
+      if (turn.controller.signal.aborted) {
+        throw turnEndedError(context.turn_id);
+      }
+      await finalize(turn.controller.signal);
+      if (this.targets.get(targetId) !== lease) {
+        throw new BrowserRuntimeSessionError(
+          "browser_target_not_found",
+          `Browser target "${targetId}" changed ownership during finalization`,
+        );
+      }
+      this.targets.delete(targetId);
+      this.targetQueues.delete(targetId);
+      return lease.publicLease;
     });
   }
 

@@ -1,0 +1,236 @@
+import { spawn, type ChildProcess } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { afterEach, describe, expect, it } from "vitest";
+
+import { BrowserRuntimeBroker } from "../../src/browser/runtime-broker.js";
+import {
+  CHROME_EXTENSION_ID,
+  CHROME_NATIVE_PRODUCT,
+  CHROME_NATIVE_PROTOCOL,
+  CHROME_NATIVE_PROTOCOL_VERSION,
+  chromeTargetId,
+  type ChromeNativeCommand,
+  type ChromeNativeHello,
+  type ChromeNativeResult,
+} from "../../src/browser/chrome-native-protocol.js";
+import {
+  encodeNativeMessage,
+  readNativeMessages,
+} from "../../src/browser/native-messaging.js";
+import type {
+  BrowserBrokerStatus,
+  BrowserTargetCommandResult,
+} from "../../src/browser/runtime-protocol.js";
+import {
+  BrowserRuntimeBrokerClient,
+  BrowserRuntimeBrokerServer,
+} from "../../src/browser/runtime-transport.js";
+import {
+  repositoryRoot,
+  tsxPath,
+  waitForExit,
+} from "../helpers/browser-runtime-harness.js";
+
+const BROWSER_SESSION_ID = "018f4f68-6f5b-7b01-8c02-123456789abc";
+const nativeHostMainPath = join(
+  repositoryRoot,
+  "src",
+  "browser",
+  "native-host-main.ts",
+);
+
+let cleanup: (() => Promise<void>) | null = null;
+
+afterEach(async () => {
+  await cleanup?.();
+  cleanup = null;
+});
+
+describe("Chrome native host and broker integration", () => {
+  it("carries framed extension commands through authenticated broker ownership and cleanup", async () => {
+    const runtimeRoot = mkdtempSync(join(tmpdir(), "unicli-native-e2e-"));
+    const runtimeId = randomUUID();
+    const broker = new BrowserRuntimeBroker({ runtimeId });
+    const server = new BrowserRuntimeBrokerServer({
+      runtimeId,
+      runtimeRoot,
+      handler: (request) => broker.dispatch(request),
+    });
+    await server.start();
+    const client = new BrowserRuntimeBrokerClient({
+      runtimeRoot,
+      timeoutMs: 10_000,
+    });
+    const host = spawn(tsxPath, [nativeHostMainPath], {
+      cwd: repositoryRoot,
+      env: {
+        ...process.env,
+        UNICLI_BROWSER_RUNTIME_DIR: runtimeRoot,
+      },
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    const stderr: Buffer[] = [];
+    host.stderr?.on("data", (chunk: Buffer) => stderr.push(chunk));
+    const messages = readNativeMessages(host.stdout!);
+    cleanup = async () => {
+      if (host.exitCode === null) host.kill("SIGTERM");
+      await waitForExit(host, 5_000).catch(() => host.kill("SIGKILL"));
+      await broker.close().catch(() => undefined);
+      await server.stop();
+      rmSync(runtimeRoot, { recursive: true, force: true });
+    };
+
+    writeExtensionMessage(host, hello());
+    await waitForChromeProvider(client);
+    const context = {
+      agent_session_id: "native-e2e-agent",
+      turn_id: "turn-1",
+      transport: "cli" as const,
+      profile_partition_id: "regular-chrome",
+    };
+    await client.requestOrThrow({
+      id: randomUUID(),
+      action: "session.start",
+      context,
+    });
+
+    const acquiring = client.requestOrThrow<BrowserTargetCommandResult>({
+      id: randomUUID(),
+      action: "target.command",
+      context,
+      provider: "chrome",
+      visibility: "background",
+      profile_partition_id: "regular-chrome",
+      command: { method: "title" },
+    });
+    const allocate = await nextCommand(messages);
+    expect(allocate).toMatchObject({
+      action: "target.allocate",
+      visibility: "background",
+    });
+    const targetId = chromeTargetId(BROWSER_SESSION_ID, 71);
+    writeExtensionMessage(
+      host,
+      success(allocate.request_id, {
+        target_id: targetId,
+        tab_id: 71,
+        window_id: 7,
+        owned: true,
+        visibility: "background",
+      }),
+    );
+
+    const title = await nextCommand(messages);
+    expect(title).toMatchObject({
+      action: "page.command",
+      target_id: targetId,
+      tab_id: 71,
+      visibility: "background",
+      command: { method: "title" },
+    });
+    writeExtensionMessage(host, success(title.request_id, "Example"));
+    await expect(acquiring).resolves.toMatchObject({
+      target_id: targetId,
+      provider: "chrome",
+      visibility: "background",
+      data: "Example",
+    });
+
+    const ending = client.requestOrThrow({
+      id: randomUUID(),
+      action: "session.end",
+      agent_session_id: context.agent_session_id,
+    });
+    const finalize = await nextCommand(messages);
+    expect(finalize).toMatchObject({
+      action: "target.finalize",
+      target_id: targetId,
+      disposition: "close",
+      visibility: "background",
+    });
+    writeExtensionMessage(host, success(finalize.request_id));
+    await expect(ending).resolves.toMatchObject({
+      agent_session_id: context.agent_session_id,
+      released_targets: [{ target_id: targetId }],
+    });
+
+    const status = await client.requestOrThrow<BrowserBrokerStatus>({
+      id: randomUUID(),
+      action: "broker.status",
+    });
+    expect(status.providers.chrome).toMatchObject({
+      connected: true,
+      browser_session_id: BROWSER_SESSION_ID,
+      target_count: 0,
+      queued_commands: 0,
+      in_flight_commands: 0,
+    });
+    expect(status.sessions.sessions).toEqual([]);
+    host.stdin!.end();
+    await waitForExit(host, 5_000);
+    expect(host.exitCode).toBe(0);
+    const disconnected = await client.requestOrThrow<BrowserBrokerStatus>({
+      id: randomUUID(),
+      action: "broker.status",
+    });
+    expect(disconnected.providers.chrome.connected).toBe(false);
+    expect(Buffer.concat(stderr).toString("utf8")).toBe("");
+  });
+});
+
+function hello(): ChromeNativeHello {
+  return {
+    type: "hello",
+    product: CHROME_NATIVE_PRODUCT,
+    protocol: CHROME_NATIVE_PROTOCOL,
+    version: CHROME_NATIVE_PROTOCOL_VERSION,
+    extension_id: CHROME_EXTENSION_ID,
+    extension_version: "1.0.0-test",
+    browser_session_id: BROWSER_SESSION_ID,
+  };
+}
+
+function success(requestId: string, data?: unknown): ChromeNativeResult {
+  return {
+    type: "result",
+    request_id: requestId,
+    ok: true,
+    ...(data === undefined ? {} : { data }),
+  };
+}
+
+function writeExtensionMessage(
+  host: ChildProcess,
+  message: ChromeNativeHello | ChromeNativeResult,
+): void {
+  host.stdin!.write(
+    encodeNativeMessage(message as unknown as Record<string, unknown>),
+  );
+}
+
+async function nextCommand(
+  messages: AsyncGenerator<Record<string, unknown>>,
+): Promise<ChromeNativeCommand> {
+  const next = await messages.next();
+  if (next.done) throw new Error("Chrome native host stdout ended early");
+  return next.value as unknown as ChromeNativeCommand;
+}
+
+async function waitForChromeProvider(
+  client: BrowserRuntimeBrokerClient,
+): Promise<void> {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const status = await client.requestOrThrow<BrowserBrokerStatus>({
+      id: randomUUID(),
+      action: "broker.status",
+    });
+    if (status.providers.chrome.connected) return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error("Chrome native host did not register with the broker");
+}

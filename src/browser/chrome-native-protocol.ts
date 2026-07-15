@@ -1,0 +1,120 @@
+/**
+ * @owner       src/browser/chrome-native-protocol.ts
+ * @does        Define the versioned Chrome extension/native-host command, result, target, tab, and error contract shared by broker, host, extension, and tests.
+ * @needs       src/browser/runtime-protocol.ts (type only)
+ * @feeds       src/browser/chrome-provider.ts, native-host-main.ts, extension/src/background.ts, extension/src/chrome-controller.ts
+ * @breaks      Consumers reject unknown product/protocol/version, malformed commands/results, mismatched request ids, and unsupported visibility states.
+ * @invariants  Native messages are request-correlated; background is explicit; target allocation/claim/finalization is separate from page mutation.
+ * @side-effects none (constants and types only)
+ * @perf        O(1) serialization shape; native framing enforces the byte limit separately.
+ * @concurrency One native host executes commands sequentially while the broker preserves per-target ordering.
+ * @test        tests/unit/chrome-native-framing.test.ts, tests/integration/browser-extension-background.test.ts
+ * @stability   experimental
+ * @since       2026-07-15
+ */
+
+import type { BrowserPageCommand } from "./runtime-protocol.js";
+
+export const CHROME_NATIVE_PRODUCT = "unicli";
+export const CHROME_NATIVE_PROTOCOL = "unicli-chrome-native";
+export const CHROME_NATIVE_PROTOCOL_VERSION = 1;
+export const CHROME_NATIVE_HOST_NAME = "io.unicli.browser";
+export const CHROME_EXTENSION_ID = "decklegbfaimflikbihddclmbiiaiakg";
+export const CHROME_NATIVE_MAX_HOST_TO_EXTENSION_BYTES = 1024 * 1024;
+export const CHROME_NATIVE_MAX_EXTENSION_TO_HOST_BYTES = 64 * 1024 * 1024;
+
+export interface ChromeNativeHello {
+  type: "hello";
+  product: typeof CHROME_NATIVE_PRODUCT;
+  protocol: typeof CHROME_NATIVE_PROTOCOL;
+  version: typeof CHROME_NATIVE_PROTOCOL_VERSION;
+  extension_id: string;
+  extension_version: string;
+  browser_session_id: string;
+}
+
+export interface ChromeNativeTab {
+  tab_id: number;
+  window_id: number;
+  url?: string;
+  title?: string;
+  active: boolean;
+  last_accessed?: number;
+}
+
+export interface ChromeNativeTarget {
+  target_id: string;
+  tab_id: number;
+  window_id: number;
+  owned: boolean;
+  visibility: "background" | "foreground";
+  url?: string;
+  title?: string;
+}
+
+interface ChromeNativeCommandBase {
+  type: "command";
+  request_id: string;
+}
+
+export type ChromeNativeCommand =
+  | (ChromeNativeCommandBase & { action: "tabs.list" })
+  | (ChromeNativeCommandBase & {
+      action: "target.allocate";
+      visibility: "background" | "foreground";
+    })
+  | (ChromeNativeCommandBase & {
+      action: "target.claim";
+      tab_id: number;
+      visibility: "background" | "foreground";
+    })
+  | (ChromeNativeCommandBase & {
+      action: "target.finalize";
+      target_id: string;
+      tab_id: number;
+      visibility: "background" | "foreground";
+      disposition: "close" | "release";
+    })
+  | (ChromeNativeCommandBase & {
+      action: "page.command";
+      target_id: string;
+      tab_id: number;
+      visibility: "background" | "foreground";
+      command: BrowserPageCommand;
+    });
+
+export interface ChromeNativeError {
+  code: string;
+  message: string;
+  suggestion: string;
+  retryable: boolean;
+}
+
+interface ChromeNativeResultBase {
+  type: "result";
+  request_id: string;
+}
+
+export type ChromeNativeResult =
+  | (ChromeNativeResultBase & {
+      ok: true;
+      data?: unknown;
+      error?: never;
+    })
+  | (ChromeNativeResultBase & {
+      ok: false;
+      data?: never;
+      error: ChromeNativeError;
+    });
+
+export type ChromeNativeMessage =
+  | ChromeNativeHello
+  | ChromeNativeCommand
+  | ChromeNativeResult;
+
+export function chromeTargetId(
+  browserSessionId: string,
+  tabId: number,
+): string {
+  return `chrome-target:${browserSessionId}:${String(tabId)}`;
+}
