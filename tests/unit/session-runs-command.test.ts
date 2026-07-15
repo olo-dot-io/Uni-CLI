@@ -105,10 +105,11 @@ describe("unicli runs command", () => {
       expectedDomain: "example.com",
     });
     lease.target = {
-      kind: "daemon-tab",
+      kind: "broker-target",
       captured_at: "2026-04-29T01:00:00.000Z",
-      window_id: 9,
-      tab_id: 27,
+      target_id: "managed-target-27",
+      provider: "managed",
+      visibility: "hidden",
     };
     lease.auth = {
       state: "cookies_present",
@@ -402,6 +403,7 @@ describe("unicli runs command", () => {
           browser_session_id: string;
           browser_workspace_id: string;
           browser_target_kind?: string;
+          browser_target_id?: string;
           browser_tab_id?: number;
           browser_window_id?: number;
           browser_auth_state?: string;
@@ -420,9 +422,8 @@ describe("unicli runs command", () => {
       status: "completed",
       events: 3,
       browser_workspace_id: "browser:default",
-      browser_target_kind: "daemon-tab",
-      browser_tab_id: 27,
-      browser_window_id: 9,
+      browser_target_kind: "broker-target",
+      browser_target_id: "managed-target-27",
       browser_auth_state: "cookies_present",
       browser_cookie_count: 2,
       evidence_count: 1,
@@ -627,7 +628,7 @@ describe("unicli runs command", () => {
     expect(lines[0]).not.toHaveProperty("internal");
     expect(lines[0]).not.toHaveProperty("secret");
     expect(cap.getStdout()).not.toContain("private");
-    expect(cap.getStdout()).not.toContain("hidden");
+    expect(cap.getStdout()).not.toContain('"token":"hidden"');
   });
 
   it("reports malformed stream traces as invalid input", async () => {

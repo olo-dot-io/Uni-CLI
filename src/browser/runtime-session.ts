@@ -2,7 +2,7 @@
  * @owner       src/browser/runtime-session.ts
  * @does        Own browser Agent-session lifecycle, turn cancellation, target leases, atomic finalization, handoff, TTL reclamation, and per-target mutation ordering.
  * @needs       src/browser/invocation-context.ts
- * @feeds       src/browser/runtime-broker.ts, src/browser/protocol.ts
+ * @feeds       src/browser/runtime-broker.ts, src/browser/runtime-protocol.ts
  * @breaks      BrowserRuntimeSessionError on ended/unknown sessions, ended turns, ownership conflicts, and invalid leases.
  * @invariants  A target has one mutating owner; ended identities cannot resurrect without startSession; mutations are FIFO per target and parallel across targets.
  * @side-effects Mutates broker-local session, tombstone, target, queue, and AbortController state.
@@ -44,6 +44,8 @@ export interface BrowserRuntimeRegistryStatus {
   sessions: BrowserRuntimeSessionStatus[];
   tombstoned_session_ids: string[];
   target_leases: BrowserTargetLease[];
+  pending_release_session_ids?: string[];
+  pending_release_target_ids?: string[];
 }
 
 export interface ReapedBrowserSession {

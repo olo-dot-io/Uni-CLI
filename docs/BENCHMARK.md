@@ -46,7 +46,7 @@ before token counting, so the benchmark tracks the current public output
 contract even when source fixtures predate the envelope migration.
 
 There is no generic "warm CLI" number: each native CLI call is a new process.
-Persistent MCP and browser-daemon sessions have different ownership/lifetime
+Persistent MCP and Browser Runtime Broker sessions have different ownership/lifetime
 boundaries and require their own benchmark; this report does not infer those
 numbers from fixture or cold-start results.
 

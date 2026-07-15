@@ -1,599 +1,282 @@
-/**
- * Browser pipeline step tests.
- *
- * Since browser steps require a live Chrome CDP connection, these tests
- * verify the step registration, step dispatch, and error behavior
- * without actually connecting to Chrome.
- */
-
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { describe, it, expect, vi } from "vitest";
-import { runPipeline, PipelineError } from "../../src/engine/executor.js";
-import "../../src/engine/steps/index.js";
 
-// Mock the browser modules so tests don't require a running Chrome
-vi.mock("../../src/browser/page.js", () => {
-  const mockPage = {
-    goto: vi.fn().mockResolvedValue(undefined),
-    evaluate: vi.fn().mockResolvedValue("mock-result"),
-    click: vi.fn().mockResolvedValue(undefined),
-    type: vi.fn().mockResolvedValue(undefined),
-    press: vi.fn().mockResolvedValue(undefined),
-    nativeKeyPress: vi.fn().mockResolvedValue(undefined),
-    waitFor: vi.fn().mockResolvedValue(undefined),
-    waitForSelector: vi.fn().mockResolvedValue(undefined),
-    scroll: vi.fn().mockResolvedValue(undefined),
-    autoScroll: vi.fn().mockResolvedValue(undefined),
-    snapshot: vi.fn().mockResolvedValue("mock-snapshot-tree"),
-    cookies: vi.fn().mockResolvedValue({}),
-    close: vi.fn().mockResolvedValue(undefined),
-    sendCDP: vi.fn().mockResolvedValue(undefined),
-    nativeClick: vi.fn().mockResolvedValue(undefined),
-    networkRequests: vi.fn().mockResolvedValue([]),
-  };
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-  return {
-    BrowserPage: {
-      connect: vi.fn().mockResolvedValue(mockPage),
-    },
-    __mockPage: mockPage,
-  };
+import { createBrowserInvocationContext } from "../../src/browser/invocation-context.js";
+import {
+  createBrowserInvocationScope,
+  runBrowserInvocation,
+} from "../../src/browser/invocation-scope.js";
+import { runPipeline } from "../../src/engine/executor.js";
+import type { ResolvedArgs } from "../../src/engine/args.js";
+import type { PipelineStep } from "../../src/types.js";
+import { InMemoryBrowserRuntimeHarness } from "../helpers/in-memory-browser-runtime.js";
+
+let runtime: InMemoryBrowserRuntimeHarness;
+let previousRuntimeRoot: string | undefined;
+let previousPermissionRulesPath: string | undefined;
+let turnNumber = 0;
+
+beforeEach(async () => {
+  previousRuntimeRoot = process.env.UNICLI_BROWSER_RUNTIME_DIR;
+  previousPermissionRulesPath = process.env.UNICLI_PERMISSION_RULES_PATH;
+  delete process.env.UNICLI_PERMISSION_RULES_PATH;
+  runtime = new InMemoryBrowserRuntimeHarness();
+  process.env.UNICLI_BROWSER_RUNTIME_DIR = runtime.runtimeRoot;
+  turnNumber = 0;
+  await runtime.start();
 });
 
-vi.mock("../../src/browser/stealth.js", () => ({
-  injectStealth: vi.fn().mockResolvedValue(undefined),
-}));
+afterEach(async () => {
+  await runtime.cleanup();
+  restoreEnv("UNICLI_BROWSER_RUNTIME_DIR", previousRuntimeRoot);
+  restoreEnv("UNICLI_PERMISSION_RULES_PATH", previousPermissionRulesPath);
+});
 
-// Access the mock page for assertions
-async function getMockPage() {
-  const mod = await import("../../src/browser/page.js");
-  return (
-    mod as unknown as { __mockPage: Record<string, ReturnType<typeof vi.fn>> }
-  ).__mockPage;
-}
+describe("broker-backed browser pipeline steps", () => {
+  it("executes a multi-step pipeline on one hidden broker target and finalizes its turn", async () => {
+    runtime.provider.evaluationResults.set("6 * 7", 42);
 
-function runMockBrowserPipeline(
-  steps: Parameters<typeof runPipeline>[0],
-  bag: Parameters<typeof runPipeline>[1],
-): ReturnType<typeof runPipeline> {
-  return runPipeline(steps, bag, undefined, { browserSession: "cdp" });
-}
-
-describe("browser step: navigate", () => {
-  it("calls page.goto with resolved URL", async () => {
-    const mockPage = await getMockPage();
-    const steps = [
-      { navigate: { url: "https://example.com/${{ args.path }}" } },
-    ];
-    await runMockBrowserPipeline(steps, {
-      args: { path: "search" },
-      source: "internal",
-    });
-    expect(mockPage.goto).toHaveBeenCalledWith("https://example.com/search", {
-      settleMs: 0,
-    });
-  });
-
-  it("passes settleMs option", async () => {
-    const mockPage = await getMockPage();
-    mockPage.goto.mockClear();
-    const steps = [
-      { navigate: { url: "https://example.com", settleMs: 2000 } },
-    ];
-    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
-    expect(mockPage.goto).toHaveBeenCalledWith("https://example.com", {
-      settleMs: 2000,
-    });
-  });
-
-  it("accepts the shorthand `- navigate: <url>` form (used by 58 adapters)", async () => {
-    const mockPage = await getMockPage();
-    mockPage.goto.mockClear();
-    const steps = [{ navigate: "https://example.com/${{ args.section }}" }];
-    await runMockBrowserPipeline(steps, {
-      args: { section: "feed/trending" },
-      source: "internal",
-    });
-    expect(mockPage.goto).toHaveBeenCalledWith(
-      "https://example.com/feed/trending",
-      { settleMs: 0 },
+    const result = await runBrokerPipeline(
+      [
+        {
+          navigate: {
+            url: "https://example.com/${{ args.path }}",
+            settleMs: 25,
+          },
+        },
+        { evaluate: "6 * 7" },
+        { click: ".continue" },
+        { type: { selector: "#search", text: "hello", submit: true } },
+        { press: { key: "a", modifiers: ["ctrl"] } },
+        { scroll: "bottom" },
+        {
+          snapshot: { interactive: true, compact: true, max_depth: 5 },
+        },
+      ],
+      { args: { path: "feed" }, source: "internal" },
     );
-  });
 
-  it("passes waitUntil option and waits for networkidle", async () => {
-    const mockPage = await getMockPage();
-    mockPage.goto.mockClear();
-    mockPage.networkRequests.mockClear();
-    mockPage.waitFor.mockClear();
-    // Simulate stable network: always return same count
-    mockPage.networkRequests.mockResolvedValue([
-      { url: "https://example.com" },
+    expect(result).toEqual(["[1]<button>Continue</button>"]);
+    expect(runtime.provider.acquireCount).toBe(1);
+    const page = runtime.provider.pages[0]!;
+    expect(page.navigations).toEqual([
+      {
+        url: "https://example.com/feed",
+        options: { settleMs: 25 },
+      },
     ]);
-    const steps = [
+    expect(page.clicks).toEqual([".continue"]);
+    expect(page.typed).toEqual([{ selector: "#search", text: "hello" }]);
+    expect(page.presses).toEqual([
+      { key: "Enter" },
+      { key: "a", modifiers: ["ctrl"] },
+    ]);
+    expect(page.scrolls).toEqual(["bottom"]);
+    expect(page.evaluations).toEqual(
+      expect.arrayContaining([
+        "6 * 7",
+        expect.stringContaining("const INTERACTIVE = true"),
+        expect.stringContaining("const COMPACT = true"),
+        expect.stringContaining("const MAX_DEPTH = 5"),
+      ]),
+    );
+    expect(page.cdpCalls[0]).toMatchObject({
+      method: "Page.addScriptToEvaluateOnNewDocument",
+    });
+    const status = await runtime.status();
+    expect(status.sessions.sessions).toEqual([
+      expect.objectContaining({
+        agent_session_id: "pipeline-agent",
+        active_turn_ids: [],
+        target_ids: [page.targetId],
+      }),
+    ]);
+  });
+
+  it("accepts shorthand navigate and evaluate forms", async () => {
+    runtime.provider.evaluationResults.set("document.title", "Fixture title");
+
+    const result = await runBrokerPipeline(
+      [
+        { navigate: "https://example.com/trending" },
+        { evaluate: "document.title" },
+      ],
+      { args: {}, source: "internal" },
+    );
+
+    expect(result).toEqual(["Fixture title"]);
+    expect(runtime.provider.pages[0]?.navigations).toEqual([
       {
-        navigate: {
-          url: "https://example.com",
-          waitUntil: "networkidle",
-          settleMs: 500,
-        },
+        url: "https://example.com/trending",
+        options: { settleMs: 0 },
       },
-    ];
-    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
-    expect(mockPage.goto).toHaveBeenCalledWith("https://example.com", {
-      settleMs: 500,
-      waitUntil: "networkidle",
-    });
-    // networkRequests should have been polled at least once
-    expect(mockPage.networkRequests).toHaveBeenCalled();
+    ]);
   });
 
-  it("blocks denied navigation domains before connecting to the browser", async () => {
-    const tmp = mkdtempSync(join(tmpdir(), "unicli-browser-deny-"));
-    const originalRulesPath = process.env.UNICLI_PERMISSION_RULES_PATH;
-    const mod = await import("../../src/browser/page.js");
-    const browserPage = (
-      mod as unknown as { BrowserPage: { connect: ReturnType<typeof vi.fn> } }
-    ).BrowserPage;
-    browserPage.connect.mockClear();
-    try {
-      process.env.UNICLI_PERMISSION_RULES_PATH = join(
-        tmp,
-        "permission-rules.json",
-      );
-      writeFileSync(
-        process.env.UNICLI_PERMISSION_RULES_PATH,
-        JSON.stringify({
-          schema_version: "1",
-          rules: [
-            {
-              id: "deny-example-navigation",
-              decision: "deny",
-              match: { resources: { domains: ["example.com"] } },
-              reason: "navigation target is blocked",
-            },
-          ],
+  it("routes coordinate clicks and focused typing through broker CDP commands", async () => {
+    await runBrokerPipeline(
+      [{ click: { x: 150, y: 300 } }, { type: { text: "focused input" } }],
+      { args: {}, source: "internal" },
+    );
+
+    expect(runtime.provider.pages[0]?.cdpCalls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          method: "Input.dispatchMouseEvent",
+          params: expect.objectContaining({ x: 150, y: 300 }),
         }),
-        "utf-8",
-      );
-
-      await expect(
-        runMockBrowserPipeline(
-          [{ navigate: { url: "https://example.com/private" } }],
-          {
-            args: {},
-            source: "internal",
-          },
-        ),
-      ).rejects.toMatchObject({
-        detail: {
-          action: "navigate",
-          errorType: "permission_denied",
+        {
+          method: "Input.insertText",
+          params: { text: "focused input" },
         },
-      });
-      expect(browserPage.connect).not.toHaveBeenCalled();
-    } finally {
-      if (originalRulesPath === undefined) {
-        delete process.env.UNICLI_PERMISSION_RULES_PATH;
-      } else {
-        process.env.UNICLI_PERMISSION_RULES_PATH = originalRulesPath;
-      }
-      rmSync(tmp, { recursive: true, force: true });
-    }
-  });
-
-  it("blocks denied file navigation paths before connecting to the browser", async () => {
-    const tmp = mkdtempSync(join(tmpdir(), "unicli-browser-file-deny-"));
-    const originalRulesPath = process.env.UNICLI_PERMISSION_RULES_PATH;
-    const mod = await import("../../src/browser/page.js");
-    const browserPage = (
-      mod as unknown as { BrowserPage: { connect: ReturnType<typeof vi.fn> } }
-    ).BrowserPage;
-    browserPage.connect.mockClear();
-    try {
-      const deniedPath = join(tmp, "secret.html");
-      process.env.UNICLI_PERMISSION_RULES_PATH = join(
-        tmp,
-        "permission-rules.json",
-      );
-      writeFileSync(
-        process.env.UNICLI_PERMISSION_RULES_PATH,
-        JSON.stringify({
-          schema_version: "1",
-          rules: [
-            {
-              id: "deny-file-navigation",
-              decision: "deny",
-              match: { resources: { paths: [deniedPath] } },
-              reason: "file navigation target is blocked",
-            },
-          ],
-        }),
-        "utf-8",
-      );
-
-      await expect(
-        runMockBrowserPipeline(
-          [{ navigate: { url: pathToFileURL(deniedPath).href } }],
-          {
-            args: {},
-            source: "internal",
-          },
-        ),
-      ).rejects.toMatchObject({
-        detail: {
-          action: "navigate",
-          errorType: "permission_denied",
-        },
-      });
-      expect(browserPage.connect).not.toHaveBeenCalled();
-    } finally {
-      if (originalRulesPath === undefined) {
-        delete process.env.UNICLI_PERMISSION_RULES_PATH;
-      } else {
-        process.env.UNICLI_PERMISSION_RULES_PATH = originalRulesPath;
-      }
-      rmSync(tmp, { recursive: true, force: true });
-    }
-  });
-});
-
-describe("browser step: evaluate", () => {
-  it("runs expression and stores result as data", async () => {
-    const mockPage = await getMockPage();
-    mockPage.evaluate.mockResolvedValueOnce(42);
-    const steps = [{ evaluate: { expression: "1 + 1" } }];
-    const result = await runMockBrowserPipeline(steps, {
-      args: {},
-      source: "internal",
-    });
-    expect(mockPage.evaluate).toHaveBeenCalledWith("1 + 1");
-    expect(result).toEqual([42]);
-  });
-
-  it("accepts string shorthand", async () => {
-    const mockPage = await getMockPage();
-    mockPage.evaluate.mockResolvedValueOnce("hello");
-    const steps = [{ evaluate: "document.title" }];
-    const result = await runMockBrowserPipeline(steps, {
-      args: {},
-      source: "internal",
-    });
-    expect(mockPage.evaluate).toHaveBeenCalledWith("document.title");
-    expect(result).toEqual(["hello"]);
-  });
-});
-
-describe("browser step: click", () => {
-  it("clicks resolved selector", async () => {
-    const mockPage = await getMockPage();
-    const steps = [{ click: { selector: ".btn-${{ args.type }}" } }];
-    await runMockBrowserPipeline(steps, {
-      args: { type: "submit" },
-      source: "internal",
-    });
-    expect(mockPage.click).toHaveBeenCalledWith(".btn-submit");
-  });
-
-  it("accepts string shorthand", async () => {
-    const mockPage = await getMockPage();
-    mockPage.click.mockClear();
-    const steps = [{ click: "#main-button" }];
-    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
-    expect(mockPage.click).toHaveBeenCalledWith("#main-button");
-  });
-
-  it("clicks by x/y coordinates via nativeClick", async () => {
-    const mockPage = await getMockPage();
-    mockPage.nativeClick.mockClear();
-    const steps = [{ click: { x: 150, y: 300 } }];
-    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
-    expect(mockPage.nativeClick).toHaveBeenCalledWith(150, 300);
-  });
-
-  it("clicks by selector in object form", async () => {
-    const mockPage = await getMockPage();
-    mockPage.click.mockClear();
-    const steps = [{ click: { selector: "#btn" } }];
-    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
-    expect(mockPage.click).toHaveBeenCalledWith("#btn");
-  });
-
-  it("throws PipelineError when neither selector nor coordinates provided", async () => {
-    const steps = [{ click: {} }];
-    await expect(
-      runMockBrowserPipeline(steps, { args: {}, source: "internal" }),
-    ).rejects.toThrow(PipelineError);
-    await expect(
-      runMockBrowserPipeline(steps, { args: {}, source: "internal" }),
-    ).rejects.toThrow(
-      /click step requires either selector or x\/y coordinates/,
+      ]),
     );
   });
-});
 
-describe("browser step: type", () => {
-  it("types text into a selector", async () => {
-    const mockPage = await getMockPage();
-    const steps = [
-      { type: { selector: "#search", text: "${{ args.query }}" } },
-    ];
-    await runMockBrowserPipeline(steps, {
-      args: { query: "hello world" },
-      source: "internal",
-    });
-    expect(mockPage.type).toHaveBeenCalledWith("#search", "hello world");
-  });
-
-  it("types text without selector via sendCDP", async () => {
-    const mockPage = await getMockPage();
-    mockPage.sendCDP.mockClear();
-    const steps = [{ type: { text: "raw input" } }];
-    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
-    expect(mockPage.sendCDP).toHaveBeenCalledWith("Input.insertText", {
-      text: "raw input",
-    });
-  });
-
-  it("presses Enter when submit is true", async () => {
-    const mockPage = await getMockPage();
-    mockPage.press.mockClear();
-    const steps = [
-      { type: { selector: "#search", text: "query", submit: true } },
-    ];
-    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
-    expect(mockPage.press).toHaveBeenCalledWith("Enter");
-  });
-});
-
-describe("browser step: wait", () => {
-  it("waits for a fixed number of milliseconds", async () => {
-    const mockPage = await getMockPage();
-    mockPage.waitFor.mockClear();
-    const steps = [{ wait: 100 }];
-    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
-    expect(mockPage.waitFor).toHaveBeenCalledWith(100);
-  });
-
-  it("waits for a CSS selector", async () => {
-    const mockPage = await getMockPage();
-    mockPage.waitFor.mockClear();
-    const steps = [{ wait: { selector: ".loaded", timeout: 5000 } }];
-    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
-    expect(mockPage.waitFor).toHaveBeenCalledWith(".loaded", 5000);
-  });
-
-  it("waits by ms property", async () => {
-    const mockPage = await getMockPage();
-    mockPage.waitFor.mockClear();
-    const steps = [{ wait: { ms: 500 } }];
-    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
-    expect(mockPage.waitFor).toHaveBeenCalledWith(500);
-  });
-});
-
-describe("browser step: intercept", () => {
-  it("throws PipelineError on timeout when no request captured", async () => {
-    const mockPage = await getMockPage();
-    // Make evaluate return empty array for capture polling, then throw timeout
-    mockPage.evaluate.mockImplementation(async (expr: string) => {
-      if (typeof expr === "string" && expr.includes("__unicli_intercepted")) {
-        return "[]";
-      }
-      return undefined;
-    });
-
-    const steps = [
-      {
-        intercept: {
-          trigger: "scroll",
-          capture: "/api/data",
-          timeout: 300,
-        },
-      },
-    ];
-
+  it("rejects malformed click configuration with a structured pipeline error", async () => {
     await expect(
-      runMockBrowserPipeline(steps, { args: {}, source: "internal" }),
-    ).rejects.toThrow(PipelineError);
+      runBrokerPipeline([{ click: {} }], {
+        args: {},
+        source: "internal",
+      }),
+    ).rejects.toMatchObject({
+      detail: { action: "click", errorType: "expression_error" },
+    });
+  });
+
+  it("times out an interceptor when the broker target captures no matching request", async () => {
     await expect(
-      runMockBrowserPipeline(steps, { args: {}, source: "internal" }),
+      runBrokerPipeline(
+        [
+          {
+            intercept: {
+              trigger: "scroll",
+              capture: "/api/data",
+              timeout: 250,
+            },
+          },
+        ],
+        { args: {}, source: "internal" },
+      ),
     ).rejects.toThrow(/Intercept timeout/);
-  });
-});
-
-describe("browser page cleanup", () => {
-  it("calls page.close in finally block", async () => {
-    const mockPage = await getMockPage();
-    mockPage.close.mockClear();
-    mockPage.evaluate.mockResolvedValueOnce("done");
-    const steps = [{ evaluate: "document.title" }];
-    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
-    expect(mockPage.close).toHaveBeenCalled();
-  });
-});
-
-describe("browser step: press", () => {
-  it("presses a simple key string", async () => {
-    const mockPage = await getMockPage();
-    mockPage.press.mockClear();
-    const steps = [{ press: "Enter" }];
-    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
-    expect(mockPage.press).toHaveBeenCalledWith("Enter");
+    expect(runtime.provider.pages[0]?.scrolls).toEqual(["down"]);
   });
 
-  it("presses a key with template substitution", async () => {
-    const mockPage = await getMockPage();
-    mockPage.press.mockClear();
-    const steps = [{ press: "${{ args.key }}" }];
-    await runMockBrowserPipeline(steps, {
-      args: { key: "Tab" },
-      source: "internal",
-    });
-    expect(mockPage.press).toHaveBeenCalledWith("Tab");
-  });
+  it("returns parsed data from a framework tap over the broker page", async () => {
+    runtime.provider.evaluationResolver = (expression) =>
+      expression.includes("userStore")
+        ? JSON.stringify({ url: "/api/user", data: { name: "test" } })
+        : undefined;
 
-  it("presses a key with modifiers via nativeKeyPress", async () => {
-    const mockPage = await getMockPage();
-    mockPage.nativeKeyPress.mockClear();
-    const steps = [{ press: { key: "a", modifiers: ["ctrl"] } }];
-    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
-    expect(mockPage.nativeKeyPress).toHaveBeenCalledWith("a", ["ctrl"]);
-  });
-
-  it("presses object config without modifiers via press()", async () => {
-    const mockPage = await getMockPage();
-    mockPage.press.mockClear();
-    const steps = [{ press: { key: "Escape" } }];
-    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
-    expect(mockPage.press).toHaveBeenCalledWith("Escape");
-  });
-});
-
-describe("browser step: scroll", () => {
-  it("scrolls by direction string", async () => {
-    const mockPage = await getMockPage();
-    mockPage.scroll.mockClear();
-    const steps = [{ scroll: "down" }];
-    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
-    expect(mockPage.scroll).toHaveBeenCalledWith("down");
-  });
-
-  it("scrolls to an extreme via 'to' property", async () => {
-    const mockPage = await getMockPage();
-    mockPage.scroll.mockClear();
-    const steps = [{ scroll: { to: "bottom" } }];
-    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
-    expect(mockPage.scroll).toHaveBeenCalledWith("bottom");
-  });
-
-  it("scrolls to element via selector", async () => {
-    const mockPage = await getMockPage();
-    mockPage.evaluate.mockClear();
-    mockPage.evaluate.mockResolvedValueOnce(undefined);
-    const steps = [{ scroll: { selector: "#comments" } }];
-    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
-    expect(mockPage.evaluate).toHaveBeenCalledWith(
-      expect.stringContaining("scrollIntoView"),
-    );
-  });
-
-  it("auto-scrolls with max and delay", async () => {
-    const mockPage = await getMockPage();
-    mockPage.autoScroll.mockClear();
-    const steps = [{ scroll: { auto: true, max: 10, delay: 1000 } }];
-    await runMockBrowserPipeline(steps, { args: {}, source: "internal" });
-    expect(mockPage.autoScroll).toHaveBeenCalledWith({
-      maxScrolls: 10,
-      delay: 1000,
-    });
-  });
-});
-
-describe("browser step: snapshot", () => {
-  it("takes a snapshot with default options", async () => {
-    const mockPage = await getMockPage();
-    mockPage.snapshot.mockClear();
-    mockPage.snapshot.mockResolvedValueOnce("snapshot-tree");
-    const steps = [{ snapshot: {} }];
-    const result = await runMockBrowserPipeline(steps, {
-      args: {},
-      source: "internal",
-    });
-    expect(mockPage.snapshot).toHaveBeenCalledWith({
-      interactive: undefined,
-      compact: undefined,
-      maxDepth: undefined,
-      raw: undefined,
-    });
-    expect(result).toEqual(["snapshot-tree"]);
-  });
-
-  it("passes normalized options (max_depth -> maxDepth)", async () => {
-    const mockPage = await getMockPage();
-    mockPage.snapshot.mockClear();
-    mockPage.snapshot.mockResolvedValueOnce("tree");
-    const steps = [
-      { snapshot: { interactive: true, compact: true, max_depth: 5 } },
-    ];
-    const result = await runMockBrowserPipeline(steps, {
-      args: {},
-      source: "internal",
-    });
-    expect(mockPage.snapshot).toHaveBeenCalledWith({
-      interactive: true,
-      compact: true,
-      maxDepth: 5,
-      raw: undefined,
-    });
-    expect(result).toEqual(["tree"]);
-  });
-});
-
-describe("browser step: tap", () => {
-  it("evaluates a tap script and returns parsed JSON data", async () => {
-    const mockPage = await getMockPage();
-    mockPage.evaluate.mockClear();
-    mockPage.evaluate.mockResolvedValueOnce(
-      JSON.stringify({ url: "/api/user", data: { name: "test" }, ts: 123 }),
-    );
-    const steps = [
-      {
-        tap: {
-          store: "userStore",
-          action: "fetchData",
-          capture: "/api/user",
-          framework: "pinia" as const,
+    const result = await runBrokerPipeline(
+      [
+        {
+          tap: {
+            store: "userStore",
+            action: "fetchData",
+            capture: "/api/user",
+            framework: "pinia",
+          },
         },
-      },
-    ];
-    const result = await runMockBrowserPipeline(steps, {
-      args: {},
-      source: "internal",
-    });
-    expect(mockPage.evaluate).toHaveBeenCalledWith(
-      expect.stringContaining("userStore"),
+      ],
+      { args: {}, source: "internal" },
     );
-    expect(mockPage.evaluate).toHaveBeenCalledWith(
-      expect.stringContaining("fetchData"),
-    );
-    expect(result).toEqual([
-      { url: "/api/user", data: { name: "test" }, ts: 123 },
-    ]);
+
+    expect(result).toEqual([{ url: "/api/user", data: { name: "test" } }]);
+    expect(runtime.provider.pages[0]?.evaluations[0]).toContain("fetchData");
   });
 
-  it("returns raw string when JSON.parse fails", async () => {
-    const mockPage = await getMockPage();
-    mockPage.evaluate.mockClear();
-    mockPage.evaluate.mockResolvedValueOnce("not-json");
-    const steps = [
-      {
-        tap: {
-          store: "s",
-          action: "a",
-          capture: "/api",
-        },
-      },
-    ];
-    const result = await runMockBrowserPipeline(steps, {
-      args: {},
-      source: "internal",
+  it("blocks a denied navigation domain before allocating any browser target", async () => {
+    const rulesRoot = installPermissionRule({
+      id: "deny-example-navigation",
+      decision: "deny",
+      match: { resources: { domains: ["example.com"] } },
+      reason: "navigation target is blocked",
     });
-    expect(result).toEqual(["not-json"]);
+    try {
+      await expect(
+        runBrokerPipeline(
+          [{ navigate: { url: "https://example.com/private" } }],
+          { args: {}, source: "internal" },
+        ),
+      ).rejects.toMatchObject({
+        detail: { action: "navigate", errorType: "permission_denied" },
+      });
+      expect(runtime.provider.acquireCount).toBe(0);
+    } finally {
+      rmSync(rulesRoot, { recursive: true, force: true });
+    }
   });
-});
 
-describe("existing steps still work", () => {
-  it("limit step works unchanged", async () => {
-    // Test that adding browser steps does not break existing functionality
-    const steps = [{ limit: 2 }];
-    // When data is null, limit returns empty array
-    const result = await runMockBrowserPipeline(steps, {
+  it("blocks a denied file navigation before allocating any browser target", async () => {
+    const deniedRoot = mkdtempSync(join(tmpdir(), "unicli-file-deny-"));
+    const deniedPath = join(deniedRoot, "secret.html");
+    const rulesRoot = installPermissionRule({
+      id: "deny-file-navigation",
+      decision: "deny",
+      match: { resources: { paths: [deniedPath] } },
+      reason: "file navigation target is blocked",
+    });
+    try {
+      await expect(
+        runBrokerPipeline(
+          [{ navigate: { url: pathToFileURL(deniedPath).href } }],
+          { args: {}, source: "internal" },
+        ),
+      ).rejects.toMatchObject({
+        detail: { action: "navigate", errorType: "permission_denied" },
+      });
+      expect(runtime.provider.acquireCount).toBe(0);
+    } finally {
+      rmSync(rulesRoot, { recursive: true, force: true });
+      rmSync(deniedRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps non-browser steps browser-free", async () => {
+    const result = await runBrokerPipeline([{ limit: 2 }], {
       args: {},
       source: "internal",
     });
+
     expect(result).toEqual([]);
+    expect(runtime.provider.acquireCount).toBe(0);
   });
 });
+
+async function runBrokerPipeline(
+  steps: PipelineStep[],
+  bag: ResolvedArgs,
+): Promise<unknown[]> {
+  const context = createBrowserInvocationContext({
+    transport: "cli",
+    agentSessionId: "pipeline-agent",
+    turnId: `pipeline-turn-${String(++turnNumber)}`,
+    profilePartitionId: "pipeline-login",
+  });
+  const scope = createBrowserInvocationScope({ context });
+  return runBrowserInvocation(scope, () =>
+    runPipeline(steps, bag, undefined, { browserSession: "cdp" }),
+  );
+}
+
+function installPermissionRule(rule: Record<string, unknown>): string {
+  const root = mkdtempSync(join(tmpdir(), "unicli-browser-rule-"));
+  const path = join(root, "permission-rules.json");
+  process.env.UNICLI_PERMISSION_RULES_PATH = path;
+  writeFileSync(
+    path,
+    JSON.stringify({ schema_version: "1", rules: [rule] }),
+    "utf-8",
+  );
+  return root;
+}
+
+function restoreEnv(name: string, value: string | undefined): void {
+  if (value === undefined) delete process.env[name];
+  else process.env[name] = value;
+}

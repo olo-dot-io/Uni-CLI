@@ -518,20 +518,20 @@ Docs:
   They do not persist it by default. `unicli auth import` and
   `unicli browser cookies` are explicit plaintext-JSON persistence paths under
   `~/.unicli/cookies/<site>.json` (POSIX: directory `0700`, file `0600`).
-- Browser adapters use background-first daemon/CDP sessions. Chrome/CDP runs
-  against process-verified live profiles or Uni-CLI automation profiles under
-  `~/.unicli/`. By default Uni-CLI attaches to an already-exposed logged-in
-  profile when available, otherwise seeds its automation profile from the
-  preferred local Chrome profile. Empty profiles require explicit
-  `unicli browser start --ephemeral` or `UNICLI_BROWSER_EPHEMERAL=1`.
+- Browser adapters use one owner-only Browser Runtime Broker. The default
+  managed provider is hidden and uses Uni-CLI automation profiles under
+  `~/.unicli/`; Agent sessions own distinct targets while declared profile
+  partitions can share login/storage. Existing Chrome requires the native
+  host and explicit background or foreground visibility. Empty profiles
+  require explicit `unicli browser start --ephemeral` or
+  `UNICLI_BROWSER_EPHEMERAL=1`.
   Chrome 136+ blocks remote debugging on the default user-data-dir.
   `RemoteDebuggingAllowed` policy can disable remote debugging entirely, but it
   cannot make default profile CDP supported again.
 - `unicli browser doctor --json` reports `default_path`, per-check
   `next_step` commands, `profile_source`, `chrome_remote_debugging`, and
-  `self_repair.safe_command`; run
-  `unicli browser doctor --repair` for the safe local CDP repair without
-  touching the user's default Chrome profile.
+  broker/provider/session/lease evidence. `unicli browser doctor --repair`
+  starts only the windowless broker and never starts a browser provider.
 - Permission profiles are user-selected runtime policy. The default is `open`;
   stricter `confirm` and `locked` profiles require `--yes` or `UNICLI_APPROVE=1`
   for blocked operations. Add `--remember-approval` with `--yes` to store the

@@ -326,7 +326,7 @@ describe("browser operator evidence", () => {
     expect(packet.capture_scope.screenshot).toBe("skipped");
   });
 
-  it("merges daemon network capture with backend fallback requests", async () => {
+  it("merges provider network capture with backend fallback requests", async () => {
     const page = Object.assign(mockPage(), {
       readNetworkCapture: vi.fn(async () => [
         {

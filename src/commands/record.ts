@@ -1,15 +1,16 @@
 /**
- * Record mode — capture network requests and auto-generate adapter YAML.
- *
- * Flow: connect browser → navigate → inject full-capture interceptor →
- * poll captured requests (multi-tab via CDP Target domain) →
- * analyze → score → deduplicate → write YAML candidates.
- *
- * Enhanced with:
- *   - Multi-tab recording via CDP Target.setDiscoverTargets
- *   - Write candidate generation (POST/PUT/PATCH/DELETE with JSON bodies)
- *   - URL parameter templatization (query/page/id/limit params + numeric path segments)
- *   - Deduplication by normalized URL pattern
+ * @owner       src/commands/record.ts
+ * @does        Capture broker-routed browser traffic, score endpoints, and generate read/write adapter YAML candidates.
+ * @needs       commander, chalk, node fs/path/os, src/browser bridge, src/engine/interceptor.ts
+ * @feeds       public `unicli record` command and generated adapters under ~/.unicli/adapters
+ * @breaks      Broker, navigation, capture, analysis, and filesystem failures produce a nonzero command result.
+ * @invariants  Recording uses one isolated broker target; candidate writes are bounded and derived only from captured requests.
+ * @side-effects Navigates a browser target, attaches optional tab sessions, polls renderer buffers, and writes adapter candidates.
+ * @perf        Polls at two-second intervals, caps capture at 10,000 requests, and writes at most five read plus five write candidates.
+ * @concurrency One polling callback runs at a time; the broker serializes commands per target; additional tab sessions remain explicitly tracked.
+ * @test        tests/unit/record.test.ts, tests/unit/record-command.test.ts
+ * @stability   experimental
+ * @since       2026-04-06
  */
 
 import { Command } from "commander";
@@ -18,7 +19,6 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { BrowserBridge } from "../browser/bridge.js";
-import { createOneShotWorkspace } from "../browser/workspace.js";
 import {
   generateInterceptorJs,
   generateReadInterceptedJs,
@@ -577,11 +577,13 @@ export function registerRecordCommand(program: Command): void {
       console.log(chalk.dim(`Site: ${siteName} | Timeout: ${opts.timeout}s`));
       console.log(chalk.dim("Press Ctrl+C to stop early.\n"));
 
+      let bridge: BrowserBridge | undefined;
       try {
-        const bridge = new BrowserBridge();
+        bridge = new BrowserBridge();
         const page = await bridge.connect({
           timeout: 30_000,
-          workspace: createOneShotWorkspace("record"),
+          profilePartitionId: "default",
+          isolated: true,
         });
 
         // Navigate to target URL
@@ -827,6 +829,8 @@ export function registerRecordCommand(program: Command): void {
           ),
         );
         process.exitCode = 1;
+      } finally {
+        await bridge?.close();
       }
     });
 }

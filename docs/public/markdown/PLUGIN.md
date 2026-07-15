@@ -19,13 +19,14 @@ non-exported implementation details.
 
 ## 1. Stability contract
 
-Uni-CLI exposes 24 subpaths from `package.json` `exports`. Each subpath is
+Uni-CLI exposes 27 subpaths from `package.json` `exports`. Each subpath is
 labelled **Stable**, **Beta**, or **Experimental**. The label governs how
 quickly we may break the API.
 
 | Subpath                                  | Source                                  | Status       |
 | ---------------------------------------- | --------------------------------------- | ------------ |
 | `@zenalexa/unicli`                       | `src/main.ts`                           | Stable       |
+| `@zenalexa/unicli/index`                 | `src/index.ts`                          | Stable       |
 | `@zenalexa/unicli/registry`              | `src/registry.ts`                       | Stable       |
 | `@zenalexa/unicli/errors`                | `src/errors.ts`                         | Stable       |
 | `@zenalexa/unicli/types`                 | `src/types.ts`                          | Stable       |
@@ -43,11 +44,13 @@ quickly we may break the API.
 | `@zenalexa/unicli/transport/desktop-ax`  | `src/transport/adapters/desktop-ax.ts`  | Beta         |
 | `@zenalexa/unicli/transport/subprocess`  | `src/transport/adapters/subprocess.ts`  | Beta         |
 | `@zenalexa/unicli/transport/cdp-browser` | `src/transport/adapters/cdp-browser.ts` | Beta         |
+| `@zenalexa/unicli/compute/visual-timeline` | `src/compute/visual-timeline.ts`       | Beta         |
+| `@zenalexa/unicli/agents/backends`       | `src/agents/backends.ts`                | Beta         |
 | `@zenalexa/unicli/protocol/skill`        | `src/protocol/skill.ts`                 | Beta         |
 | `@zenalexa/unicli/registry-v2`           | `src/core/registry.ts`                  | Experimental |
 | `@zenalexa/unicli/browser/cdp`           | `src/browser/cdp-client.ts`             | Experimental |
 | `@zenalexa/unicli/browser/page`          | `src/browser/page.ts`                   | Experimental |
-| `@zenalexa/unicli/browser/daemon`        | `src/browser/daemon-client.ts`          | Experimental |
+| `@zenalexa/unicli/browser/runtime`       | `src/browser/runtime-client.ts`         | Experimental |
 | `@zenalexa/unicli/browser/utils`         | `src/browser/dom-helpers.ts`            | Experimental |
 
 **Stable** — Breaking changes require a major bump and a deprecation
@@ -76,8 +79,8 @@ exports:
 - **Experimental subpath, breaking change** → allowed in any release,
   including `PATCH`. No changelog entry required (but encouraged).
 - **Adding a new subpath** → `MINOR` bump, never `PATCH`.
-- **Removing a subpath** → only during a `MAJOR` bump with a deprecation
-  window.
+- **Removing a Stable or Beta subpath** → only during a `MAJOR` bump with a
+  deprecation window. Experimental subpaths follow the Experimental policy.
 
 The CI gate `scripts/check-exports-count.ts` enforces a floor of 20
 subpaths so we never silently amputate the plugin surface.
@@ -144,34 +147,52 @@ Until then, preload-import is the supported pattern.
 
 ---
 
-## 5. Plugin-side browser daemon spawn pattern
+## 5. Broker-owned browser invocation pattern
 
-Browser-aware plugins should reuse the Uni-CLI daemon contract instead of
-opening their own ad hoc Chrome bridge. The supported pattern is:
+Browser-aware plugins use one machine-level Browser Runtime Broker. They do
+not allocate ports, spawn a caller-owned browser service, probe arbitrary CDP endpoints, or
+own Chrome processes. Declare Agent identity and provider policy at the call
+boundary; the broker reuses runtimes and login partitions while keeping each
+Agent target independently owned and serialized.
 
-1. Allocate a daemon port per profile or workspace.
-2. Start the browser daemon from the plugin host process or dashboard.
-3. Export `UNICLI_DAEMON_PORT=<port>` before invoking Uni-CLI commands.
-4. Use `@zenalexa/unicli/browser/daemon` for `fetchDaemonStatus`,
-   `sendCommand`, `listSessions`, or `bindCurrentTab` when the plugin needs
-   direct daemon access.
+```ts
+import {
+  BrowserBridge,
+  createBrowserInvocationContext,
+  createBrowserInvocationScope,
+  runBrowserInvocation,
+} from "@zenalexa/unicli/browser/runtime";
 
-CLI users can route a single command to a non-default daemon with:
+const context = createBrowserInvocationContext({
+  transport: "plugin",
+  agentSessionId: hostThreadId,
+  turnId: hostTurnId,
+  profilePartitionId: "team-login",
+});
+const scope = createBrowserInvocationScope({
+  context,
+  provider: "managed",
+  visibility: "hidden",
+  profilePartitionId: "team-login",
+});
 
-```bash
-unicli browser --daemon-port 19826 status
-unicli browser --daemon-port 19826 upload 12 ./fixture.png
+await runBrowserInvocation(scope, async () => {
+  const page = await new BrowserBridge().connect();
+  await page.goto("https://example.com");
+  return page.snapshot({ interactive: true });
+});
 ```
 
-Plugins that still need legacy daemon compatibility may set `UNICLI_COMPAT_DAEMON_PORT`;
-Uni-CLI will honor it when `UNICLI_DAEMON_PORT` is not set. New plugins
-should prefer the Uni-CLI environment variable and the `X-Unicli` daemon
-header.
+Use `provider: "chrome", visibility: "background"` only when the native host
+and extension should control an explicit existing Chrome tab without
+activation. Foreground Chrome requires `visibility: "foreground"`. Remote CDP
+is explicit with `provider: "remote", visibility: "hidden"` and
+`UNICLI_CDP_ENDPOINT`; no provider silently falls back to another.
 
-The daemon protocol is intentionally isolated from plugin loading: plugins
-may spawn and supervise the daemon, but they must not open sockets or launch
-Chrome during module import. Perform those actions from an explicit command,
-dashboard action, or worker process.
+`probeBrowserRuntimeBroker()` is report-only. `ensureBrowserRuntimeBroker()`
+starts only the windowless control plane; browser providers remain lazy until
+a page command needs one. Importing the module performs no process, socket, or
+filesystem side effect.
 
 ---
 
@@ -194,8 +215,8 @@ One-line summary of what a plugin can legitimately do with each subpath.
 - `transport/desktop-ax` — drive native UI via the macOS AX / Windows UIA bridge.
 - `transport/visual` — access the Computer-Use Agent transport surface.
 - `browser/cdp` — low-level raw CDP client (experimental — prefer `browser/page`).
-- `browser/page` — high-level `BrowserPage` API (navigate, click, evaluate, snapshot).
-- `browser/daemon` — talk to the standalone daemon HTTP+WS server.
+- `browser/page` — direct high-level `BrowserPage` API for provider authors; plugins should prefer `browser/runtime`.
+- `browser/runtime` — broker-backed invocation identity, provider/visibility policy, page access, lifecycle probes, and typed errors.
 - `browser/utils` — shared DOM helpers for snapshot normalisation and ref resolution.
 - `protocol/mcp` — MCP schema builders (`buildInputSchema`, `buildToolName`, etc.).
 - `protocol/acp` — embed an ACP server that reuses the Uni-CLI pipeline runner.

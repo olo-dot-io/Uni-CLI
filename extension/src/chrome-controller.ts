@@ -54,6 +54,9 @@ interface DomBoxResult {
 
 const attachedTabs = new Set<number>();
 const NAVIGATION_TIMEOUT_MS = 30_000;
+let debuggerLifecycleListenersRegistered = false;
+
+registerDebuggerLifecycleListeners();
 
 export async function handleChromeNativeCommand(
   command: ChromeNativeCommand,
@@ -320,6 +323,7 @@ async function executePageCommand(
             : { quality: command.quality }),
           captureBeyondViewport: command.full_page === true,
           fromSurface: true,
+          ...(command.clip ? { clip: { ...command.clip, scale: 1 } } : {}),
         }),
       );
     case "cdp":
@@ -627,11 +631,29 @@ async function sendDebuggerCommand(
   sessionId?: string,
 ): Promise<unknown> {
   await ensureDebuggerAttached(tabId);
-  return chrome.debugger.sendCommand(
-    { tabId, ...(sessionId ? { sessionId } : {}) },
-    method,
-    params,
-  );
+  const target = { tabId, ...(sessionId ? { sessionId } : {}) };
+  try {
+    return await chrome.debugger.sendCommand(target, method, params);
+  } catch (error) {
+    if (!isDebuggerDetachError(error)) throw error;
+    attachedTabs.delete(tabId);
+    await ensureDebuggerAttached(tabId);
+    return chrome.debugger.sendCommand(target, method, params);
+  }
+}
+
+function registerDebuggerLifecycleListeners(): void {
+  if (debuggerLifecycleListenersRegistered) return;
+  debuggerLifecycleListenersRegistered = true;
+  chrome.debugger.onDetach.addListener((source) => {
+    if (source.tabId !== undefined) attachedTabs.delete(source.tabId);
+  });
+  chrome.tabs.onRemoved.addListener((tabId) => attachedTabs.delete(tabId));
+}
+
+function isDebuggerDetachError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /not attached|debugger[^\n]*detach|detached while/i.test(message);
 }
 
 async function ensureDebuggerAttached(tabId: number): Promise<void> {

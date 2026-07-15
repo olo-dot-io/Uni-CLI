@@ -1,16 +1,16 @@
 /**
- * POST /mcp — request dispatch for the Streamable HTTP transport.
- *
- * Covers six request shapes:
- *   1. Notification (no `id`)              → 204 No Content
- *   2. `tasks/status` / `tasks/cancel`      → synchronous task mgmt
- *   3. Async `tools/call` with SSE client   → 202 + event stream
- *   4. Async `tools/call` without SSE       → 202 + background task
- *   5. `initialize`                         → allocates a session, 200
- *   6. Sync method (default)                → 200 JSON (or SSE event)
- *
- * Session and protocol-version validation for every non-initialize call
- * live here; session state itself is imported from `./session.ts`.
+ * @owner       src/mcp/streamable-http/handle-post.ts
+ * @does        Dispatch Streamable HTTP initialize, notification, sync, async-task, and SSE MCP POST shapes with session identity.
+ * @needs       node:http/crypto, MCP constants, streamable session helpers/state
+ * @feeds       src/mcp/streamable-http/index.ts
+ * @breaks      Origin, protocol, session, capacity, parse, and handler failures return the corresponding HTTP/JSON-RPC/SSE terminal state.
+ * @invariants  Every non-initialize request validates protocol/session before dispatch and forwards that session to browser-capable tools.
+ * @side-effects Mutates bounded session/task maps, streams SSE events, writes HTTP responses, and logs notification-only failures to stderr.
+ * @perf        Bodies are bounded; task/session maps have explicit maxima; async execution avoids holding non-SSE responses open.
+ * @concurrency Task status transitions and SSE writes are request-local over shared bounded maps.
+ * @test        tests/unit/mcp/streamable-http.test.ts, tests/unit/mcp-browser-invocation.test.ts
+ * @stability   stable
+ * @since       2026-04-01
  */
 
 import { randomUUID } from "node:crypto";
@@ -256,7 +256,9 @@ function startAsyncSse(
   // this event only, and closes it for complete/cancelled/error.
   writeSseEvent(res, "accepted", { taskId, status: "running" });
 
-  Promise.resolve(handler(parsed)).then(
+  Promise.resolve(
+    handler(parsed, { transport: "mcp-http", mcpSessionId: sessionId }),
+  ).then(
     (result) => {
       if (task.status === "cancelled") {
         writeSseEvent(res, "cancelled", { taskId });
@@ -295,7 +297,9 @@ function startAsyncBackground(
   };
   asyncTasks.set(taskId, task);
 
-  Promise.resolve(handler(parsed)).then(
+  Promise.resolve(
+    handler(parsed, { transport: "mcp-http", mcpSessionId: sessionId }),
+  ).then(
     (result) => {
       if (task.status === "cancelled") return;
       task.status = "completed";
@@ -346,11 +350,17 @@ async function handleNotification(
   res: ServerResponse,
   parsed: JsonRpcRequest,
   handler: Handler,
+  sessionId?: string,
 ): Promise<void> {
   try {
-    await handler(parsed);
-  } catch {
-    /* Notifications have no response — swallow errors */
+    await handler(parsed, {
+      transport: "mcp-http",
+      ...(sessionId ? { mcpSessionId: sessionId } : {}),
+    });
+  } catch (error) {
+    process.stderr.write(
+      `[unicli-mcp] notification ${parsed.method} failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
   }
   res.writeHead(204);
   res.end();
@@ -446,9 +456,13 @@ async function runHandlerSafe(
   res: ServerResponse,
   parsed: JsonRpcRequest,
   handler: Handler,
+  sessionId?: string,
 ): Promise<JsonRpcResponse | undefined | null> {
   try {
-    const response = await handler(parsed);
+    const response = await handler(parsed, {
+      transport: "mcp-http",
+      ...(sessionId ? { mcpSessionId: sessionId } : {}),
+    });
     if (!response) {
       res.writeHead(204);
       res.end();
@@ -485,7 +499,7 @@ export async function handlePost(
   if (handleTaskMethod(res, parsed, sessionId)) return;
 
   if (parsed.id === undefined || parsed.id === null) {
-    await handleNotification(res, parsed, handler);
+    await handleNotification(res, parsed, handler, sessionId);
     return;
   }
 
@@ -498,7 +512,7 @@ export async function handlePost(
     return;
   }
 
-  const response = await runHandlerSafe(res, parsed, handler);
+  const response = await runHandlerSafe(res, parsed, handler, sessionId);
   if (response === null) return;
   if (!response) return;
 

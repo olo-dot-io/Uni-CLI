@@ -117,9 +117,9 @@
       "types": "./dist/browser/page.d.ts",
       "import": "./dist/browser/page.js"
     },
-    "./browser/daemon": {
-      "types": "./dist/browser/daemon-client.d.ts",
-      "import": "./dist/browser/daemon-client.js"
+    "./browser/runtime": {
+      "types": "./dist/browser/runtime-client.d.ts",
+      "import": "./dist/browser/runtime-client.js"
     },
     "./browser/utils": {
       "types": "./dist/browser/dom-helpers.d.ts",

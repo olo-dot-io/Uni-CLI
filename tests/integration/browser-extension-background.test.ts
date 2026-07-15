@@ -310,6 +310,33 @@ describe("Chrome extension background visibility contract", () => {
       error: { code: "chrome_target_invalid" },
     });
   });
+
+  it("reattaches once when Chrome detaches the debugger during a background page command", async () => {
+    const harness = installStatefulChrome();
+    const { handleChromeNativeCommand } =
+      await import("../../extension/src/chrome-controller.js");
+    const before = harness.uiState();
+    harness.chrome.debugger.sendCommand
+      .mockRejectedValueOnce(
+        new Error("Debugger detached while handling command"),
+      )
+      .mockResolvedValueOnce({ result: { value: true } });
+
+    const evaluated = await handleChromeNativeCommand(
+      command({
+        action: "page.command",
+        target_id: chromeTargetId(BROWSER_SESSION_ID, 10),
+        tab_id: 10,
+        visibility: "background",
+        command: { method: "evaluate", expression: "true" },
+      }),
+    );
+
+    expect(evaluated).toMatchObject({ ok: true, data: true });
+    expect(harness.chrome.debugger.attach).toHaveBeenCalledTimes(2);
+    expect(harness.chrome.debugger.sendCommand).toHaveBeenCalledTimes(2);
+    expect(harness.uiState()).toEqual(before);
+  });
 });
 
 function command(

@@ -1,12 +1,16 @@
 /**
- * JSON-RPC 2.0 wire types — single source of truth for the MCP surface.
- *
- * The request/response envelope is shared by the dispatcher (`handler.ts`)
- * and every transport (stdio, legacy HTTP, Streamable HTTP). Defining it
- * once here keeps the transports from re-declaring drifting copies, the same
- * class of divergence that left the legacy HTTP transport without an origin
- * guard. Both `handler.ts` and `streamable-http/session.ts` re-export these
- * so existing import paths stay stable.
+ * @owner       src/mcp/jsonrpc.ts
+ * @does        Define the shared JSON-RPC wire envelope, handler contract, and MCP request identity context.
+ * @needs       no runtime dependencies
+ * @feeds       MCP handler plus stdio, simple HTTP, and Streamable HTTP transports
+ * @breaks      Type drift here breaks every MCP transport at compile time.
+ * @invariants  Handler context distinguishes stdio/HTTP and may carry one stable MCP session id.
+ * @side-effects None; type declarations only.
+ * @perf        Erased at runtime.
+ * @concurrency Immutable request-local types.
+ * @test        tests/unit/mcp/tools.test.ts, tests/unit/mcp-browser-invocation.test.ts
+ * @stability   stable
+ * @since       2026-04-01
  */
 
 export interface JsonRpcRequest {
@@ -22,3 +26,13 @@ export interface JsonRpcResponse {
   result?: unknown;
   error?: { code: number; message: string; data?: unknown };
 }
+
+export interface McpRequestContext {
+  transport: "mcp-stdio" | "mcp-http";
+  mcpSessionId?: string;
+}
+
+export type JsonRpcHandler = (
+  request: JsonRpcRequest,
+  context?: McpRequestContext,
+) => JsonRpcResponse | undefined | Promise<JsonRpcResponse | undefined>;

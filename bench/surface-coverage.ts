@@ -241,7 +241,7 @@ export const DEFAULT_SURFACE_SIGNALS: SignalCase[] = [
     title: "fix(browser): keep text/javascript API responses in network output",
     required_text: [
       {
-        file: "tests/unit/commands/browser.test.ts",
+        file: "tests/unit/browser/network-cache.test.ts",
         includes: "text/javascript",
       },
       {
@@ -278,32 +278,35 @@ export const DEFAULT_SURFACE_SIGNALS: SignalCase[] = [
   },
   {
     id: "surface-pr-1193",
-    title: "docs: plugin-side daemon spawn pattern",
+    title: "docs: broker-owned browser invocation pattern",
     required_files: ["docs/PLUGIN.md"],
     required_text: [
       {
         file: "docs/PLUGIN.md",
-        includes: "Plugin-side browser daemon spawn pattern",
+        includes: "Broker-owned browser invocation pattern",
       },
-      { file: "docs/PLUGIN.md", includes: "UNICLI_DAEMON_PORT" },
+      { file: "docs/PLUGIN.md", includes: "runBrowserInvocation" },
       {
         file: "docs/PLUGIN.md",
-        includes: "@zenalexa/unicli/browser/daemon",
+        includes: "@zenalexa/unicli/browser/runtime",
       },
     ],
   },
   {
     id: "surface-pr-1187",
-    title: "feat(browser): custom daemon ports for extension dashboard",
+    title: "feat(browser): authenticated shared broker and profile partitions",
     required_text: [
       {
         file: "src/commands/browser/actions.ts",
-        includes: "--daemon-port <port>",
+        includes: "--profile-partition <id>",
       },
-      { file: "src/browser/daemon-client.ts", includes: "UNICLI_DAEMON_PORT" },
       {
-        file: "src/browser/daemon-client.ts",
-        includes: "COMPAT_DAEMON_PORT_ENV",
+        file: "src/browser/runtime-protocol.ts",
+        includes: "auth_token",
+      },
+      {
+        file: "src/browser/runtime-transport.ts",
+        includes: "acquireBrokerLock",
       },
     ],
   },
@@ -311,8 +314,14 @@ export const DEFAULT_SURFACE_SIGNALS: SignalCase[] = [
     id: "surface-pr-1182",
     title: "errors: classify CDP debugger-detach as transient",
     required_text: [
-      { file: "src/browser/daemon-client.ts", includes: "debugger" },
-      { file: "src/browser/daemon-client.ts", includes: "detach" },
+      {
+        file: "extension/src/chrome-controller.ts",
+        includes: "isDebuggerDetachError",
+      },
+      {
+        file: "extension/src/chrome-controller.ts",
+        includes: "attachedTabs.delete",
+      },
     ],
   },
   {
@@ -329,11 +338,17 @@ export const DEFAULT_SURFACE_SIGNALS: SignalCase[] = [
   },
   {
     id: "surface-issue-1169",
-    title: "browser bind-current runtime contract",
+    title: "explicit Chrome target claim contract",
     required_text: [
-      { file: "src/browser/protocol.ts", includes: '"bind-current"' },
-      { file: "src/browser/daemon-client.ts", includes: "bindCurrentTab" },
-      { file: "src/commands/browser/index.ts", includes: '.command("bind")' },
+      {
+        file: "src/browser/runtime-protocol.ts",
+        includes: 'action: "chrome.target.claim"',
+      },
+      { file: "src/browser/chrome-provider.ts", includes: "claimTarget" },
+      {
+        file: "src/commands/browser/lifecycle.ts",
+        includes: '.command("bind <tab-id>")',
+      },
     ],
   },
   {

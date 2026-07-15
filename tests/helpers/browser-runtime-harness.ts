@@ -30,6 +30,7 @@ export class RealBrowserBrokerHarness {
   });
   private processHandle: ChildProcess | null = null;
   private output: ReturnType<typeof collectProcessOutput> | null = null;
+  private readonly orphanedBrowserPids = new Set<number>();
 
   constructor(readonly browserPath: string) {}
 
@@ -62,6 +63,25 @@ export class RealBrowserBrokerHarness {
     await waitForExit(child, 12_000);
   }
 
+  async crashBroker(browserPid: number, brokerPid: number): Promise<void> {
+    const child = this.requireProcess();
+    this.orphanedBrowserPids.add(browserPid);
+    process.kill(brokerPid, "SIGKILL");
+    await waitForPidExit(brokerPid, 12_000);
+    if (processIsAlive(brokerPid)) {
+      throw new Error(`Browser broker ${String(brokerPid)} survived SIGKILL`);
+    }
+    if (child.exitCode === null && child.signalCode === null) {
+      try {
+        await waitForExit(child, 2_000);
+      } catch {
+        child.kill("SIGKILL");
+        await waitForExit(child, 2_000);
+      }
+    }
+    this.processHandle = null;
+  }
+
   async cleanup(): Promise<void> {
     const child = this.processHandle;
     if (child && child.exitCode === null) {
@@ -83,14 +103,16 @@ export class RealBrowserBrokerHarness {
         child.kill("SIGKILL");
       }
     }
+    for (const pid of this.orphanedBrowserPids) {
+      if (!processIsAlive(pid)) continue;
+      process.kill(pid, "SIGTERM");
+      await waitForPidExit(pid, 2_000);
+      if (processIsAlive(pid)) process.kill(pid, "SIGKILL");
+      await waitForPidExit(pid, 2_000);
+    }
+    this.orphanedBrowserPids.clear();
     rmSync(this.runtimeRoot, { recursive: true, force: true });
     this.processHandle = null;
-  }
-
-  brokerPid(): number {
-    const pid = this.requireProcess().pid;
-    if (!pid) throw new Error("Browser broker process has no PID");
-    return pid;
   }
 
   stderr(): string {
@@ -180,6 +202,13 @@ export function waitForExit(
       resolve();
     });
   });
+}
+
+async function waitForPidExit(pid: number, timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline && processIsAlive(pid)) {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
 }
 
 async function waitForBroker(

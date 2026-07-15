@@ -1,13 +1,16 @@
 /**
- * MCP JSON-RPC dispatch — `buildHandler(tools)` returns the per-request
- * handler used by every transport (stdio, HTTP, Streamable HTTP).
- *
- * Extracted from `server.ts` so the top-level file only owns bootstrap,
- * arg parsing, and transport wiring. This module owns:
- *   - `initialize` / `ping` / `tools/list` / `tools/call` method dispatch
- *   - The four built-in meta-tools (`unicli_list` / `unicli_run` /
- *     `unicli_search` / `unicli_explore` + deprecated aliases)
- *   - Fallthrough to expanded-tool dispatch via `./dispatch.ts`
+ * @owner       src/mcp/handler.ts
+ * @does        Dispatch MCP JSON-RPC methods and run each tool call inside its transport-derived browser invocation scope.
+ * @needs       registry/discovery, MCP tools/dispatch/elicitation, browser invocation context/scope, constants
+ * @feeds       MCP stdio, simple HTTP, and Streamable HTTP transports
+ * @breaks      Invalid methods/arguments return JSON-RPC errors; tool and browser-finalization failures propagate to the owning transport.
+ * @invariants  Every tools/call receives one Agent session/turn identity before any browser-capable command runs.
+ * @side-effects Executes registered tools, adapters, elicitation resolution, and browser turn finalizers.
+ * @perf        Tool lookup is linear in the selected MCP profile; browser scope setup is O(1).
+ * @concurrency Async-local browser scopes isolate overlapping tool calls across MCP sessions and turns.
+ * @test        tests/unit/mcp/tools.test.ts, tests/unit/mcp-browser-invocation.test.ts
+ * @stability   stable
+ * @since       2026-04-01
  */
 
 import { getAllAdapters, listCommands, resolveCommand } from "../registry.js";
@@ -20,7 +23,17 @@ import {
 import { expandedRegistry, type McpPrompt, type McpTool } from "./tools.js";
 import { MCP_PROTOCOL_VERSION, VERSION } from "../constants.js";
 import { resolveElicitation, type ElicitationResponse } from "./elicitation.js";
-import type { JsonRpcRequest, JsonRpcResponse } from "./jsonrpc.js";
+import { createBrowserInvocationContext } from "../browser/invocation-context.js";
+import {
+  createBrowserInvocationScope,
+  runBrowserInvocation,
+} from "../browser/invocation-scope.js";
+import type {
+  JsonRpcHandler,
+  JsonRpcRequest,
+  JsonRpcResponse,
+  McpRequestContext,
+} from "./jsonrpc.js";
 
 export type { JsonRpcRequest, JsonRpcResponse };
 
@@ -375,6 +388,7 @@ async function handleToolsCall(
   id: JsonRpcResponse["id"],
   req: JsonRpcRequest,
   tools: McpTool[],
+  requestContext?: McpRequestContext,
 ): Promise<JsonRpcResponse> {
   const params = req.params as
     | { name: string; arguments?: Record<string, unknown> }
@@ -386,29 +400,37 @@ async function handleToolsCall(
       error: { code: -32602, message: "Missing tool name" },
     };
   }
-  const toolArgs = params.arguments ?? {};
-
-  const directTool = tools.find((tool) => tool.name === params.name);
-  if (directTool?.handler) {
-    const result = await directTool.handler(toolArgs);
-    return { jsonrpc: "2.0", id, result: annotateIfLarge(result) };
-  }
-
-  const builtin = await dispatchBuiltin(id, params.name, toolArgs);
-  if (builtin) return builtin;
-
-  const result = await handleExpandedTool(params.name, toolArgs);
-  if (result) {
-    return { jsonrpc: "2.0", id, result: annotateIfLarge(result) };
-  }
-  return {
-    jsonrpc: "2.0",
-    id,
-    error: {
-      code: -32602,
-      message: `Unknown tool: ${params.name}. Use unicli_list to see available commands.`,
-    },
-  };
+  const invocationContext = createBrowserInvocationContext({
+    transport: requestContext?.transport ?? "mcp-stdio",
+    mcpSessionId: requestContext?.mcpSessionId,
+    metadata: req.params?._meta,
+  });
+  const scope = createBrowserInvocationScope({
+    context: invocationContext,
+    profilePartitionId: "default",
+  });
+  return runBrowserInvocation(scope, async () => {
+    const toolArgs = params.arguments ?? {};
+    const directTool = tools.find((tool) => tool.name === params.name);
+    if (directTool?.handler) {
+      const result = await directTool.handler(toolArgs);
+      return { jsonrpc: "2.0", id, result: annotateIfLarge(result) };
+    }
+    const builtin = await dispatchBuiltin(id, params.name, toolArgs);
+    if (builtin) return builtin;
+    const result = await handleExpandedTool(params.name, toolArgs);
+    if (result) {
+      return { jsonrpc: "2.0", id, result: annotateIfLarge(result) };
+    }
+    return {
+      jsonrpc: "2.0",
+      id,
+      error: {
+        code: -32602,
+        message: `Unknown tool: ${params.name}. Use unicli_list to see available commands.`,
+      },
+    };
+  });
 }
 
 function handleElicitationResponse(
@@ -435,11 +457,10 @@ function handleElicitationResponse(
 export function buildHandler(
   tools: McpTool[],
   prompts: McpPrompt[] = [],
-): (
-  req: JsonRpcRequest,
-) => JsonRpcResponse | undefined | Promise<JsonRpcResponse | undefined> {
+): JsonRpcHandler {
   return function handleRequest(
     req: JsonRpcRequest,
+    requestContext?: McpRequestContext,
   ): JsonRpcResponse | undefined | Promise<JsonRpcResponse | undefined> {
     const id = req.id ?? null;
 
@@ -452,7 +473,7 @@ export function buildHandler(
       case "tools/list":
         return { jsonrpc: "2.0", id, result: { tools } };
       case "tools/call":
-        return handleToolsCall(id, req, tools);
+        return handleToolsCall(id, req, tools, requestContext);
       case "prompts/list":
         return handlePromptsList(id, prompts);
       case "prompts/get":

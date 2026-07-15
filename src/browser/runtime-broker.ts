@@ -1,7 +1,7 @@
 /**
  * @owner       src/browser/runtime-broker.ts
  * @does        Route authenticated lifecycle, native-host, target ownership, visibility, and page requests through managed and Chrome browser providers.
- * @needs       node:crypto, src/browser/chrome-provider.ts, chrome-native-protocol.ts, managed-browser.ts, runtime-protocol.ts, runtime-session.ts
+ * @needs       node:crypto, src/browser/chrome-provider.ts, chrome-native-protocol.ts, managed-browser.ts, remote-browser.ts, runtime-protocol.ts, runtime-session.ts
  * @feeds       src/browser/runtime-transport.ts, runtime-broker-main.ts, CLI/MCP browser clients and native host
  * @breaks      Returns structured lifecycle, ownership, visibility, provider, native-host, CDP, and command errors without provider fallback.
  * @invariants  Providers own processes/tabs; every mutation crosses an exclusive target queue; profiles have one writer; visibility never changes implicitly.
@@ -22,6 +22,7 @@ import {
   ManagedBrowserProvider,
   type ManagedBrowserTargetRequest,
 } from "./managed-browser.js";
+import { RemoteBrowserProvider } from "./remote-browser.js";
 import {
   BROWSER_BROKER_DEFAULT_SESSION_TTL_MS,
   BROWSER_BROKER_PRODUCT,
@@ -48,6 +49,7 @@ interface BrowserRuntimeBrokerOptions {
   sessionTtlMs?: number;
   provider?: ManagedBrowserProvider;
   chromeProvider?: ChromeBrowserProvider;
+  remoteProvider?: RemoteBrowserProvider;
   now?: () => number;
 }
 
@@ -65,7 +67,15 @@ interface ChromeTargetPolicy {
   target: ChromeNativeTarget;
 }
 
-type TargetPolicy = ManagedTargetPolicy | ChromeTargetPolicy;
+interface RemoteTargetPolicy {
+  provider: "remote";
+  profilePartitionId: string;
+}
+
+type TargetPolicy =
+  | ManagedTargetPolicy
+  | ChromeTargetPolicy
+  | RemoteTargetPolicy;
 
 export class BrowserRuntimeBroker {
   readonly runtimeId: string;
@@ -74,7 +84,9 @@ export class BrowserRuntimeBroker {
   private readonly registry: BrowserRuntimeSessionRegistry;
   private readonly managedProvider: ManagedBrowserProvider;
   private readonly chromeProvider: ChromeBrowserProvider;
+  private readonly remoteProvider: RemoteBrowserProvider;
   private readonly sessionTargetIds = new Map<string, Set<string>>();
+  private readonly pendingTargetReleaseOwners = new Map<string, string>();
   private readonly targetPolicies = new Map<string, TargetPolicy>();
   private readonly now: () => number;
 
@@ -89,6 +101,7 @@ export class BrowserRuntimeBroker {
       options.provider ??
       new ManagedBrowserProvider({ brokerRuntimeId: this.runtimeId });
     this.chromeProvider = options.chromeProvider ?? new ChromeBrowserProvider();
+    this.remoteProvider = options.remoteProvider ?? new RemoteBrowserProvider();
   }
 
   async dispatch(
@@ -111,27 +124,42 @@ export class BrowserRuntimeBroker {
       broker_pid: process.pid,
       uptime_ms: this.now() - this.startedAtMs,
       session_ttl_ms: this.sessionTtlMs,
-      sessions: this.registry.status(),
+      sessions: {
+        ...this.registry.status(),
+        pending_release_session_ids: [
+          ...new Set(this.pendingTargetReleaseOwners.values()),
+        ].sort(),
+        pending_release_target_ids: [
+          ...this.pendingTargetReleaseOwners.keys(),
+        ].sort(),
+      },
       providers: {
         managed: this.managedProvider.status(),
         chrome: this.chromeProvider.status(),
+        remote: this.remoteProvider.status(),
       },
     };
   }
 
   async reapIdleSessions(): Promise<BrowserSessionEndResult[]> {
+    const releaseErrors = await this.retryPendingSessionReleases();
     const reaped = await this.registry.reapIdleSessions(this.sessionTtlMs);
     const outcomes: BrowserSessionEndResult[] = [];
     for (const session of reaped) {
-      const releasedTargets = await this.releaseSessionTargets(
-        session.agent_session_id,
-        session.target_leases,
-      );
-      outcomes.push({
-        agent_session_id: session.agent_session_id,
-        released_targets: releasedTargets,
-      });
+      try {
+        const releasedTargets = await this.releaseSessionTargets(
+          session.agent_session_id,
+          session.target_leases,
+        );
+        outcomes.push({
+          agent_session_id: session.agent_session_id,
+          released_targets: releasedTargets,
+        });
+      } catch (error) {
+        releaseErrors.push(error);
+      }
     }
+    throwCollectedErrors(releaseErrors, "Browser session reaping failed");
     return outcomes;
   }
 
@@ -152,8 +180,14 @@ export class BrowserRuntimeBroker {
     } catch (error) {
       closeError ??= error;
     }
+    try {
+      await this.remoteProvider.close();
+    } catch (error) {
+      closeError ??= error;
+    }
     this.chromeProvider.close();
     this.sessionTargetIds.clear();
+    this.pendingTargetReleaseOwners.clear();
     this.targetPolicies.clear();
     if (closeError) throw closeError;
   }
@@ -250,15 +284,20 @@ export class BrowserRuntimeBroker {
         if (signal.aborted) throw signal.reason;
         const result =
           request.provider === "managed"
-            ? await executeManagedPageCommand(
+            ? await executeCdpPageCommand(
                 this.managedProvider.getPage(targetId),
                 request.command,
               )
-            : await this.chromeProvider.execute(
-                targetId,
-                request.visibility,
-                request.command,
-              );
+            : request.provider === "remote"
+              ? await executeCdpPageCommand(
+                  this.remoteProvider.getPage(targetId),
+                  request.command,
+                )
+              : await this.chromeProvider.execute(
+                  targetId,
+                  request.visibility,
+                  request.command,
+                );
         if (signal.aborted) throw signal.reason;
         return result;
       },
@@ -281,6 +320,15 @@ export class BrowserRuntimeBroker {
         runtime_id: runtime.runtime_id,
         provider: "managed",
         browser_pid: runtime.browser_pid,
+        visibility: "hidden",
+        ...(data === undefined ? {} : { data }),
+      };
+    }
+    if (request.provider === "remote") {
+      return {
+        target_id: targetId,
+        runtime_id: this.runtimeId,
+        provider: "remote",
         visibility: "hidden",
         ...(data === undefined ? {} : { data }),
       };
@@ -313,9 +361,13 @@ export class BrowserRuntimeBroker {
       );
     });
     if (ownedTargetId) return ownedTargetId;
-    return request.provider === "managed"
-      ? this.acquireManagedTarget(request)
-      : this.acquireChromeTarget(request);
+    if (request.provider === "managed") {
+      return this.acquireManagedTarget(request);
+    }
+    if (request.provider === "remote") {
+      return this.acquireRemoteTarget(request);
+    }
+    return this.acquireChromeTarget(request);
   }
 
   private async acquireManagedTarget(
@@ -335,7 +387,7 @@ export class BrowserRuntimeBroker {
         provider: "managed",
         profile_partition_id: request.profile_partition_id,
         visibility: "hidden",
-        lifetime: "session",
+        lifetime: request.isolated ? "turn" : "session",
       });
     } catch (error) {
       await this.managedProvider.releaseTarget(target.target_id);
@@ -362,6 +414,31 @@ export class BrowserRuntimeBroker {
       request.profile_partition_id,
       target,
     );
+  }
+
+  private async acquireRemoteTarget(
+    request: Extract<BrowserTargetCommandRequest, { provider: "remote" }>,
+  ): Promise<string> {
+    this.registry.touchSession(request.context);
+    const targetId = await this.remoteProvider.acquireTarget();
+    try {
+      this.registry.claimTarget(request.context, {
+        target_id: targetId,
+        provider: "remote",
+        profile_partition_id: request.profile_partition_id,
+        visibility: "hidden",
+        lifetime: "session",
+      });
+    } catch (error) {
+      await this.remoteProvider.releaseTarget(targetId);
+      throw error;
+    }
+    this.targetPolicies.set(targetId, {
+      provider: "remote",
+      profilePartitionId: request.profile_partition_id,
+    });
+    this.addSessionTarget(request.context.agent_session_id, targetId);
+    return targetId;
   }
 
   private async claimChromeTarget(
@@ -487,20 +564,42 @@ export class BrowserRuntimeBroker {
       ...leases.map((lease) => lease.target_id),
       ...(this.sessionTargetIds.get(agentSessionId) ?? []),
     ]);
-    for (const targetId of targetIds) {
-      await this.releaseProviderTarget(targetId);
-      this.targetPolicies.delete(targetId);
-      this.removeSessionTarget(agentSessionId, targetId);
-    }
+    await this.releaseTargetIds(agentSessionId, targetIds);
     return leases;
   }
 
-  private async releaseLeases(leases: BrowserTargetLease[]): Promise<void> {
-    for (const lease of leases) {
-      await this.releaseProviderTarget(lease.target_id);
-      this.targetPolicies.delete(lease.target_id);
-      this.removeSessionTarget(lease.owner_session_id, lease.target_id);
+  private async releaseTargetIds(
+    agentSessionId: string,
+    targetIds: Iterable<string>,
+  ): Promise<void> {
+    const releaseErrors: unknown[] = [];
+    for (const targetId of targetIds) {
+      try {
+        await this.releaseProviderTarget(targetId);
+        this.targetPolicies.delete(targetId);
+        this.removeSessionTarget(agentSessionId, targetId);
+        this.pendingTargetReleaseOwners.delete(targetId);
+      } catch (error) {
+        this.pendingTargetReleaseOwners.set(targetId, agentSessionId);
+        releaseErrors.push(error);
+      }
     }
+    throwCollectedErrors(
+      releaseErrors,
+      `Browser session ${agentSessionId} target release failed`,
+    );
+  }
+
+  private async releaseLeases(leases: BrowserTargetLease[]): Promise<void> {
+    const releaseErrors: unknown[] = [];
+    for (const lease of leases) {
+      try {
+        await this.releaseTargetIds(lease.owner_session_id, [lease.target_id]);
+      } catch (error) {
+        releaseErrors.push(error);
+      }
+    }
+    throwCollectedErrors(releaseErrors, "Browser turn target release failed");
   }
 
   private async releaseProviderTarget(targetId: string): Promise<void> {
@@ -512,6 +611,10 @@ export class BrowserRuntimeBroker {
       await this.managedProvider.releaseTarget(targetId);
       return;
     }
+    if (policy.provider === "remote") {
+      await this.remoteProvider.releaseTarget(targetId);
+      return;
+    }
     await this.chromeProvider.releaseTarget(targetId);
   }
 
@@ -519,8 +622,25 @@ export class BrowserRuntimeBroker {
     agentSessionId: string,
   ): Promise<void> {
     const pending = this.sessionTargetIds.get(agentSessionId);
-    if (!pending || pending.size === 0) return;
+    if (!pending || pending.size === 0) {
+      return;
+    }
     await this.releaseSessionTargets(agentSessionId, []);
+  }
+
+  private async retryPendingSessionReleases(): Promise<unknown[]> {
+    const errors: unknown[] = [];
+    const pending = [...this.pendingTargetReleaseOwners.entries()].sort(
+      ([left], [right]) => left.localeCompare(right),
+    );
+    for (const [targetId, agentSessionId] of pending) {
+      try {
+        await this.releaseTargetIds(agentSessionId, [targetId]);
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+    return errors;
   }
 
   private addSessionTarget(agentSessionId: string, targetId: string): void {
@@ -554,6 +674,9 @@ function policyMatchesRequest(
   if (policy.provider === "chrome" && request.provider === "chrome") {
     return true;
   }
+  if (policy.provider === "remote" && request.provider === "remote") {
+    return true;
+  }
   return (
     policy.provider === "managed" &&
     request.provider === "managed" &&
@@ -575,8 +698,22 @@ class BrowserTargetPolicyError extends Error {
   }
 }
 
-async function executeManagedPageCommand(
-  page: ReturnType<ManagedBrowserProvider["getPage"]>,
+class BrowserProviderCapabilityError extends Error {
+  readonly code = "browser_capability_unavailable";
+  readonly retryable = false;
+  readonly suggestion =
+    "Select the Chrome provider for browser UI capabilities, or use a page/CDP command supported by the managed hidden provider.";
+
+  constructor(capability: string) {
+    super(`CDP page provider does not provide ${capability}`);
+    this.name = "BrowserProviderCapabilityError";
+  }
+}
+
+async function executeCdpPageCommand(
+  page:
+    | ReturnType<ManagedBrowserProvider["getPage"]>
+    | ReturnType<RemoteBrowserProvider["getPage"]>,
   command: BrowserPageCommand,
 ): Promise<unknown> {
   switch (command.method) {
@@ -613,6 +750,7 @@ async function executeManagedPageCommand(
         format: command.format,
         quality: command.quality,
         fullPage: command.full_page,
+        clip: command.clip,
       });
       return bytes.toString("base64");
     }
@@ -629,6 +767,11 @@ async function executeManagedPageCommand(
       return page.startNetworkCapture(command.pattern);
     case "network_capture_read":
       return page.readNetworkCapture();
+    case "downloads_read":
+      throw new BrowserProviderCapabilityError("download history");
+    case "dialog_read":
+    case "dialog_respond":
+      throw new BrowserProviderCapabilityError("JavaScript dialog supervision");
   }
 }
 
@@ -661,4 +804,10 @@ function brokerError(error: unknown): {
     retryable:
       typeof candidate.retryable === "boolean" ? candidate.retryable : false,
   };
+}
+
+function throwCollectedErrors(errors: unknown[], message: string): void {
+  if (errors.length === 0) return;
+  if (errors.length === 1) throw errors[0];
+  throw new AggregateError(errors, message);
 }

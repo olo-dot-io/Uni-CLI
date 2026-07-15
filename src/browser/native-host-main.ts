@@ -1,11 +1,11 @@
 /**
  * @owner       src/browser/native-host-main.ts
  * @does        Bridge one Chrome extension Native Messaging connection to the authenticated Browser Runtime Broker using register/poll/result/disconnect lifecycle.
- * @needs       node:crypto, chrome-native-protocol.ts, native-messaging.ts, runtime-protocol.ts, runtime-transport.ts
+ * @needs       node:crypto, chrome-native-protocol.ts, native-messaging.ts, runtime-launch.ts, runtime-protocol.ts, runtime-transport.ts
  * @feeds       bin/unicli-browser-native-host and the Chrome extension
  * @breaks      Exits nonzero with a structured stderr envelope on invalid identity/framing, broker failure, request mismatch, or disconnect.
  * @invariants  Chrome validates extension origin before launch; host validates hello identity; broker credentials remain in owner-only files and never enter extension messages.
- * @side-effects Reads/writes Native Messaging stdio frames and opens authenticated broker IPC requests.
+ * @side-effects Reads/writes Native Messaging stdio frames, lazily starts the broker service, and opens authenticated broker IPC requests.
  * @perf        One long poll per idle interval and one result request per command; no browser process is launched.
  * @concurrency One host processes one extension command at a time; broker target queues retain cross-client ordering.
  * @test        tests/unit/chrome-native-framing.test.ts, tests/integration/browser-extension-background.test.ts
@@ -29,6 +29,7 @@ import {
   readNativeMessages,
   writeNativeMessage,
 } from "./native-messaging.js";
+import { ensureBrowserRuntimeBroker } from "./runtime-launch.js";
 import { BrowserRuntimeBrokerClient } from "./runtime-transport.js";
 
 const hostInstanceId = randomUUID();
@@ -46,6 +47,7 @@ async function main(): Promise<void> {
     );
   }
   const hello = readHello(first.value);
+  await ensureBrowserRuntimeBroker();
   await client.requestOrThrow({
     id: randomUUID(),
     action: "chrome.host.register",

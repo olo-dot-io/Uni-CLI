@@ -1,7 +1,7 @@
 /**
  * @owner   src/commands/explore.ts
  * @does    Explore a browser page, capture API traffic, score endpoints, and persist adapter-authoring evidence.
- * @needs   commander, chalk, fs/path, browser bridge/workspace/site-memory, engine interceptor/endpoint-scorer/user-home, output, adapter-authoring
+ * @needs   commander, chalk, fs/path, browser broker bridge/site-memory, engine interceptor/endpoint-scorer/user-home, output, adapter-authoring
  * @feeds   src/cli.ts, src/commands/generate.ts workflow, src/commands/synthesize.ts workflow, tests/unit/commands/explore-generate.test.ts
  * @breaks  Browser, capture, scoring, and filesystem failures emit structured command envelopes. No fallback.
  */
@@ -11,7 +11,6 @@ import chalk from "chalk";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { BrowserBridge } from "../browser/bridge.js";
-import { createOneShotWorkspace } from "../browser/workspace.js";
 import {
   generateInterceptorJs,
   generateReadInterceptedJs,
@@ -85,11 +84,13 @@ export function registerExploreCommand(program: Command): void {
           process.stderr.write(chalk.dim("Press Ctrl+C to stop early.\n\n"));
         }
 
+        let bridge: BrowserBridge | undefined;
         try {
-          const bridge = new BrowserBridge();
+          bridge = new BrowserBridge();
           const page = await bridge.connect({
             timeout: 30_000,
-            workspace: createOneShotWorkspace("explore"),
+            profilePartitionId: "default",
+            isolated: true,
           });
 
           // Inject interceptor before navigation to capture all requests
@@ -255,6 +256,8 @@ export function registerExploreCommand(program: Command): void {
           ctx.duration_ms = Date.now() - startedAt;
           console.error(format(null, undefined, fmt, ctx));
           process.exitCode = mapErrorToExitCode(err);
+        } finally {
+          await bridge?.close();
         }
       },
     );

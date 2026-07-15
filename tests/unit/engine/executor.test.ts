@@ -20,6 +20,7 @@ import {
   unregisterStep,
 } from "../../../src/engine/step-registry.js";
 import type { ArgSource, ResolvedArgs } from "../../../src/engine/args.js";
+import type { IPage } from "../../../src/types.js";
 
 interface Capture {
   args?: Record<string, unknown>;
@@ -29,6 +30,7 @@ interface Capture {
 }
 
 let captured: Capture = {};
+let cleanupFailure: Error | null = null;
 
 beforeAll(() => {
   registerStep("__probe__", (ctx: PipelineContext) => {
@@ -40,10 +42,24 @@ beforeAll(() => {
     };
     return { ...ctx, data: ctx.args };
   });
+  registerStep("__cleanup_probe__", (ctx: PipelineContext) => ({
+    ...ctx,
+    data: "cleanup-probe",
+    page: {
+      close: async () => {
+        if (cleanupFailure) throw cleanupFailure;
+      },
+    } as unknown as IPage,
+  }));
+  registerStep("__execution_failure_probe__", () => {
+    throw new Error("execution probe failed");
+  });
 });
 
 afterAll(() => {
   unregisterStep("__probe__");
+  unregisterStep("__cleanup_probe__");
+  unregisterStep("__execution_failure_probe__");
 });
 
 describe("runPipeline — ResolvedArgs bag plumbing", () => {
@@ -86,5 +102,39 @@ describe("runPipeline — ResolvedArgs bag plumbing", () => {
     await runPipeline([{ __probe__: {} }], bag);
     expect(captured.source).toBe("internal");
     expect(captured.args).toEqual({ probe: true });
+  });
+
+  it("surfaces browser turn-finalization failures after successful work", async () => {
+    cleanupFailure = new Error("turn finalization failed");
+    try {
+      await expect(
+        runPipeline([{ __cleanup_probe__: {} }], {
+          args: {},
+          source: "internal",
+        }),
+      ).rejects.toThrow("turn finalization failed");
+    } finally {
+      cleanupFailure = null;
+    }
+  });
+
+  it("retains both execution and turn-finalization failures", async () => {
+    cleanupFailure = new Error("turn finalization failed");
+    try {
+      const failure = await runPipeline(
+        [{ __cleanup_probe__: {} }, { __execution_failure_probe__: {} }],
+        { args: {}, source: "internal" },
+      ).catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(AggregateError);
+      expect((failure as AggregateError).errors).toEqual([
+        expect.objectContaining({
+          message: expect.stringContaining("execution probe failed"),
+        }),
+        cleanupFailure,
+      ]);
+    } finally {
+      cleanupFailure = null;
+    }
   });
 });

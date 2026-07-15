@@ -1,5 +1,16 @@
 /**
- * Shell auto-completion generator for bash, zsh, fish.
+ * @owner   src/commands/completion.ts
+ * @does    Generate bash, zsh, and fish completions from the current built-in command and adapter registries.
+ * @needs   commander, src/registry.ts
+ * @feeds   src/cli.ts, interactive shell completion
+ * @breaks  Registry read failures surface to the caller; unsupported shells set a nonzero exit code.
+ * @invariants Built-in completions name only commands registered by the current CLI surface.
+ * @side-effects Registers CLI options and prints a completion script or completion candidates.
+ * @perf     Site and command completion scans the in-memory registry once per request.
+ * @concurrency Completion generation is stateless and safe across independent CLI processes.
+ * @test     tests/unit/completion.test.ts
+ * @stability stable
+ * @since    2026-04-24
  */
 
 import { Command } from "commander";
@@ -7,7 +18,6 @@ import { listCommands } from "../registry.js";
 
 const BUILTIN_COMMANDS = [
   "list",
-  "daemon",
   "operate",
   "record",
   "auth",

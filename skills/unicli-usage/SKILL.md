@@ -23,9 +23,9 @@ unicli hackernews search "AI agents"  # Example: search HN
 
 unicli doctor                         # System health check
 unicli browser doctor --json          # Browser/profile/CDP reliability report
-unicli browser doctor --repair        # Safe repair for local automation CDP
-unicli browser start                  # Background-safe CDP startup
-unicli browser --focus start          # Foreground only for explicit login
+unicli browser doctor --repair        # Start only the windowless broker
+unicli browser start                  # Start hidden managed provider on demand
+unicli browser --focus start          # Explicit existing-Chrome foreground control
 ```
 
 ## Output Formats
@@ -80,9 +80,11 @@ unicli browser cookies <domain> --profile-id <id>
 unicli repair <site> <command> # verifier after evidence-backed adapter edit
 ```
 
-Browser operations are backend/background-first. Daemon commands default to
-`windowFocused: false`, doctor/session probes must not create placeholder tabs,
-and `--focus` is the explicit escape hatch for a foreground login flow.
+Browser operations are broker-owned and background-first. The default managed
+provider is hidden; the Chrome provider requires explicit `background` or
+`foreground` visibility. Doctor/status/session probes do not start the broker,
+browser providers, or placeholder tabs. `--focus` is the explicit foreground
+escape hatch.
 
 Chrome 136+ rejects CDP on the browser's default user-data-dir. Uni-CLI should
 therefore launch CDP against its own automation profile under `~/.unicli/` and
@@ -96,9 +98,9 @@ before asking the user to foreground Chrome.
 Agent loop for delivery:
 
 1. Run `unicli browser doctor --json`.
-2. If `default_path.ready` is true, run the requested command.
-3. If false, run `self_repair.safe_command` or the first failing
-   `checks[*].next_step`.
+2. If `default_path.available` is true, run the requested command.
+3. If false, run the first failing `checks[*].next_step`; `doctor --repair`
+   repairs only the broker control plane.
 4. Classify the remaining structured envelope. Restore auth, challenge,
    network, or rate-limit boundaries without editing the adapter. Only when
    current endpoint/DOM evidence proves selector/schema/endpoint drift, edit

@@ -2,7 +2,7 @@
  * @owner       src/browser/runtime-broker-main.ts
  * @does        Run one long-lived Browser Runtime Broker process and coordinate authenticated transport, TTL reaping, signals, and complete shutdown.
  * @needs       node:crypto, src/browser/runtime-broker.ts, runtime-protocol.ts, runtime-transport.ts
- * @feeds       unicli browser broker start, daemon compatibility entrypoint, integration tests
+ * @feeds       unicli browser broker lifecycle, lazy BrowserBridge auto-start, native host, and integration tests
  * @breaks      Exits nonzero after emitting a structured error when configuration, transport startup, reaping, or shutdown fails.
  * @invariants  One process owns one broker transport; shutdown stops admission before releasing sessions, targets, browsers, descriptors, and locks.
  * @side-effects Creates the broker endpoint, starts browser providers lazily, installs signal handlers and a reaper timer, and writes failures to stderr.

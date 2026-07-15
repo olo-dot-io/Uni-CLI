@@ -25,10 +25,10 @@ Discovery:
 Execution and recovery:
   <site> <command> [options]    Run a website, app, or local-tool command
   repair [site] [command]      Verify a repair with the original command
-  doctor                       Diagnose adapters, browser, daemon, and tools
+  doctor                       Diagnose adapters, browser runtime, and tools
 
 Control surfaces:
-  browser                      Browser/CDP lifecycle and actions
+  browser                      Broker-owned browser lifecycle and actions
   auth                         Explicit authentication storage and checks
   compute                      Desktop accessibility and visual transports
   mcp                          Model Context Protocol gateway

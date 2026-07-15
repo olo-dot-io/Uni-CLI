@@ -1,3 +1,18 @@
+/**
+ * @owner       src/engine/browser/session-lease.ts
+ * @does        Describe browser evidence leases and enforce exact domain/path/target guards independently of the runtime transport.
+ * @needs       node:crypto
+ * @feeds       src/commands/browser/actions.ts, src/engine/browser/session-runtime.ts, browser action evidence
+ * @breaks      BrowserSessionLeaseGuardError on domain, path, or target drift.
+ * @invariants  Domain matching is exact-host or subdomain only; paths are prefix-matched; captured target identity is immutable evidence.
+ * @side-effects none
+ * @perf        O(length of guard and captured target strings).
+ * @concurrency Pure value construction and validation.
+ * @test        tests/unit/browser-session-lease.test.ts, tests/unit/browser-action-evidence.test.ts
+ * @stability   experimental
+ * @since       2026-05-14
+ */
+
 import { createHash } from "node:crypto";
 
 export type BrowserSessionLeaseScope = "shared" | "explicit" | "isolated";
@@ -6,8 +21,6 @@ export interface BrowserSessionLeaseOptions {
   namespace: "browser" | "operate";
   workspace: string;
   isolated?: boolean;
-  sharedSession?: boolean;
-  daemonPort?: string;
   expectedDomain?: string;
   expectedPathPrefix?: string;
 }
@@ -17,7 +30,6 @@ export interface BrowserSessionLease {
   browser_workspace_id: string;
   lease_owner: string;
   scope: BrowserSessionLeaseScope;
-  daemon_port?: string;
   url_guard?: BrowserSessionLeaseUrlGuard;
   target?: BrowserSessionLeaseTarget;
   auth?: BrowserSessionLeaseAuthPosture;
@@ -29,9 +41,11 @@ export interface BrowserSessionLeaseUrlGuard {
 }
 
 export interface BrowserSessionLeaseTarget {
-  kind: "daemon-tab" | "cdp-target" | "unknown";
+  kind: "broker-target" | "cdp-target" | "unknown";
   captured_at: string;
   target_id?: string;
+  provider?: "managed" | "chrome" | "remote";
+  visibility?: "hidden" | "background" | "foreground";
   tab_id?: number;
   window_id?: number;
   target_type?: string;
@@ -78,20 +92,18 @@ export function createBrowserSessionLease(
   const workspace = options.workspace.trim();
   const owner = `unicli.${options.namespace}`;
   const scope = leaseScope(workspace, options);
-  const daemonPort = normalizedDaemonPort(options.daemonPort);
   const urlGuard = browserSessionLeaseUrlGuard(options);
 
   return {
     browser_session_id: `browser-session:${shortHash([
-      "v1",
+      "v2",
       owner,
       workspace,
-      daemonPort ?? "default-daemon",
+      "browser-runtime-broker",
     ])}`,
     browser_workspace_id: workspace,
     lease_owner: owner,
     scope,
-    ...(daemonPort ? { daemon_port: daemonPort } : {}),
     ...(urlGuard ? { url_guard: urlGuard } : {}),
   };
 }
@@ -131,15 +143,10 @@ function leaseScope(
   if (options.isolated || /^browser:\d+:\d+:[0-9a-f]+$/.test(workspace)) {
     return "isolated";
   }
-  if (options.sharedSession || workspace === `${options.namespace}:default`) {
+  if (workspace === `${options.namespace}:default` || workspace === "default") {
     return "shared";
   }
   return "explicit";
-}
-
-function normalizedDaemonPort(value?: string): string | undefined {
-  const raw = value ?? process.env.UNICLI_DAEMON_PORT;
-  return raw && raw.trim().length > 0 ? raw.trim() : undefined;
 }
 
 function browserSessionLeaseUrlGuard(

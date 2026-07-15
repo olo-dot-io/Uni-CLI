@@ -1,18 +1,16 @@
 /**
- * SSRF defence — reject request URLs that point at non-http(s) schemes or
- * reserved local address ranges before we issue the fetch.
- *
- * The attack shape this blocks: a YAML adapter takes `${{ args.query }}`
- * and interpolates it into the request URL. An attacker (or a careless
- * template author) feeds a payload like `http://169.254.169.254/latest/meta-data/`
- * (AWS IMDS) or `http://127.0.0.1:19825/internal` (Uni-CLI daemon). Without
- * this guard the runner happily fetches it and returns the response —
- * leaking credentials or driving the daemon.
- *
- * The check is intentionally conservative: only http/https, and no loopback
- * / link-local / private metadata addresses. Set `UNICLI_ALLOW_LOCAL=1` to
- * bypass — useful for local dev / testing where a developer intentionally
- * targets `127.0.0.1` or a docker compose stack on a private subnet.
+ * @owner       src/engine/ssrf.ts
+ * @does        Reject non-HTTP schemes and reserved local/metadata addresses before adapter fetches execute.
+ * @needs       WHATWG URL, UNICLI_ALLOW_LOCAL explicit development override
+ * @feeds       src/engine/executor.ts and transport HTTP request guards
+ * @breaks      Invalid or disallowed URLs throw before any network request is issued.
+ * @invariants  Only http/https pass; loopback, link-local, private metadata, and private IPv4 ranges stay blocked unless explicitly enabled.
+ * @side-effects Reads one environment flag and performs no I/O.
+ * @perf        O(URL length) parsing and bounded prefix checks.
+ * @concurrency Pure apart from the process environment read.
+ * @test        tests/unit/ssrf.test.ts
+ * @stability   stable
+ * @since       2026-04-01
  */
 export function assertSafeRequestUrl(raw: string): void {
   let u: URL;

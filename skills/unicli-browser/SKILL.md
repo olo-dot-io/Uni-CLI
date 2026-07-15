@@ -1,147 +1,162 @@
 ---
 name: unicli-browser
 description: >
-  Control browser automation sessions via unicli. The browser command now owns
-  lifecycle, interaction, introspection, and daemon diagnostics.
-version: 1.0.0
+  Control broker-owned hidden, existing-Chrome, or remote browser targets with
+  explicit Agent identity, visibility, profile partitions, and lifecycle.
+version: 2.0.0
 triggers:
   - "browser automation"
   - "control chrome"
   - "unicli browser"
-  - "launch chrome"
+  - "background browser"
 allowed-tools: [Bash]
 protocol: 2.0
 ---
 
 ## When to Use
 
-Use `unicli browser` for both browser lifecycle and direct page interaction.
-`unicli operate` still exists, but it is now a compatibility alias over the same implementation.
+Use `unicli browser` for browser lifecycle, page interaction, session sharing,
+target handoff, and diagnostics. `unicli operate` is a compatibility alias for
+the page-action subset.
+
+## Provider Decision
+
+| Requirement                                  | Provider and visibility        |
+| -------------------------------------------- | ------------------------------ |
+| No window; default automation                | `managed` + `hidden` (default) |
+| Existing signed-in Chrome tab, no activation | `chrome` + `background`        |
+| Explicit user-visible Chrome interaction     | `chrome` + `foreground`        |
+| Explicit cloud/browser service               | `remote` + `hidden`            |
+
+No provider falls back to another. Managed and remote providers cannot become
+foreground. Existing Chrome cannot promise hidden operation.
 
 ## Quick Start
 
 ```bash
-unicli browser start          # Launch Chrome with CDP without a foreground startup window
-unicli browser doctor --repair # Safe repair: start Uni-CLI automation CDP if needed
-unicli browser --focus start  # Foreground only for explicit interactive login
-unicli browser status         # Check CDP + daemon/session status
-unicli browser doctor --json  # Machine-readable reliability report
-unicli browser profiles --json # Discover local logged-in profiles
-unicli browser open <url>     # Navigate to a page
-unicli browser state          # DOM accessibility tree with [ref] numbers
-unicli browser screenshot     # Visual capture to file
-unicli browser find --css ... # Structured DOM query + ref allocation
-unicli browser extract        # Chunked long-form text extraction
+unicli browser doctor --json             # Probe only; starts nothing
+unicli browser broker start              # Start windowless control plane only
+unicli browser start                     # Lazily start default managed hidden target
+unicli browser open https://example.com
+unicli browser state
+unicli browser click <ref>
+unicli browser screenshot ./page.png
+unicli browser sessions --json
 ```
 
-## Browser Lifecycle
+## Agent Sessions and Reuse
+
+A stable Agent session owns targets across turns. Different Agent sessions use
+different targets, while a shared profile partition can reuse login/storage.
 
 ```bash
-unicli browser start          # Spawn Chrome + daemon in background-safe mode
-unicli browser doctor --repair # Safe self-repair for local automation CDP
-unicli browser --focus start  # Opt into a foreground startup window
-unicli browser status         # Connection health check
-unicli daemon status          # Daemon process info
-unicli daemon stop            # Stop daemon
-unicli daemon restart         # Restart daemon
+unicli browser --session thread-42 --turn turn-1 open https://example.com
+unicli browser --session thread-42 --turn turn-2 state
+unicli browser --session thread-42 --turn turn-3 click 7
+unicli browser sessions --json
+unicli browser session-end thread-42
 ```
 
-The daemon auto-exits after idle timeout. Chrome/CDP uses Uni-CLI-owned
-automation profiles under `~/.unicli/` rather than the browser's default
-user-data-dir. Logged-in state is reused by importing cookies from the selected
-local profile into the automation profile. Browser commands default to
-`windowFocused: false`; use `--focus` only when a real interactive login step
-must bring Chrome forward.
+Use `--profile-partition team-login` to share storage deliberately. Use
+`--isolated` for a disposable browser context inside that partition. `--workspace`
+is a compatibility spelling for the same partition concept.
 
-## Authentication
+## Existing Chrome Without Foreground Activation
+
+Install the native host and extension once, keep an existing normal Chrome
+window open, list tabs, then claim a specific tab:
 
 ```bash
-unicli auth setup <site>      # Show auth sources and explicit storage contract
-unicli auth import <site> --domain <domain> # Explicit plaintext local persistence
-unicli browser profiles --json # Pick a logged-in Chrome/Arc/Brave/Edge profile
-unicli browser cookies <domain> --profile-id <id> # Explicit cookie export
-unicli auth check <site>      # Validate cookie file
-unicli auth list              # List configured sites
+unicli browser native-host install
+unicli browser --provider chrome --visibility background tabs
+unicli browser --session thread-42 --provider chrome --visibility background bind 123
+unicli browser --session thread-42 --turn turn-2 --provider chrome --visibility background state
 ```
 
-Normal browser/CDP acquisition stays in process memory. Explicit import/export
-creates plaintext `{ "KEY": "value" }` JSON at
-`~/.unicli/cookies/<site>.json` (POSIX directory `0700`, file `0600`).
+Background allocation must preserve focused window and active-tab state. If
+Chrome cannot satisfy that postcondition, the command fails instead of opening
+or focusing a window. Use `--focus` only for an explicit foreground request.
 
-Chrome 136+ blocks remote debugging when Chrome is launched against its default
-profile directory. Do not tell users to run CDP on
-`~/Library/Application Support/Google/Chrome` or equivalent, and do not suggest
-unstable feature-flag bypasses. `RemoteDebuggingAllowed=false` in
-`chrome://policy` blocks local CDP entirely; removing that managed policy or
-setting it true is a user/admin action. Even when the policy is true, it does
-not make default-profile CDP supported again. Use the automation profile plus
-cookie import path instead:
+## Broker Lifecycle
+
+```bash
+unicli browser broker status
+unicli browser broker start
+unicli browser broker restart
+unicli browser broker stop
+```
+
+The broker is one authenticated, owner-only local control plane. Starting it
+does not start Chrome. Browser processes are provider-owned and lazy. Session
+TTL and target leases are visible through `browser status` and `browser
+sessions`.
+
+## Authentication and Profiles
 
 ```bash
 unicli browser profiles --json
-unicli auth import twitter --domain x.com
-unicli twitter trending -f json
+unicli browser cookies <domain> --profile-id <id>  # Explicit persistence
+unicli auth import <site> --domain <domain>        # Explicit persistence
 ```
 
-## Strategies Requiring Browser
+Managed runtimes use Uni-CLI-owned profiles under `~/.unicli/`; they never run
+CDP against Chrome's default user-data-dir. A selected local profile seeds the
+automation profile. `--ephemeral` explicitly selects an empty profile.
 
-| Strategy    | How it works                                   |
-| ----------- | ---------------------------------------------- |
-| `cookie`    | Injects cookies from file into request headers |
-| `header`    | Cookie + auto-extracted CSRF token             |
-| `intercept` | Navigate page, capture XHR/fetch responses     |
-| `ui`        | Interact with page DOM (click, type, scroll)   |
+Chrome 136+ ignores remote-debugging switches on its default data directory.
+`RemoteDebuggingAllowed=false` blocks even Uni-CLI automation profiles until an
+administrator removes the policy or sets it true. The policy does not make the
+default-profile CDP path supported.
 
-`public` strategy does NOT need a browser.
-
-## Architecture
-
-There are two browser paths:
-
-1. `browser start` uses local Chrome + CDP with a Uni-CLI automation profile.
-   `browser cookies` first tries direct local profile cookie import, then only
-   reuses a recorded CDP port if that port is already live.
-2. `browser open/state/click/...` use:
-   CLI -> daemon-client -> HTTP/WS -> daemon -> Browser Bridge extension -> Chrome tabs
-
-That means extension state, daemon port, workspace, focus/background mode, and tab binding are all part of the real runtime story.
-
-Useful controls:
+## Remote Browser
 
 ```bash
-unicli browser --daemon-port 19826 sessions
-unicli browser --workspace profile-a bind --match-domain example.com
-unicli browser --isolated open https://example.com
-unicli browser --background open https://example.com
+export UNICLI_CDP_ENDPOINT='wss://browser.example/devtools/browser/...'
+export UNICLI_CDP_HEADERS='{"Authorization":"Bearer ..."}'
+unicli browser remote
+unicli browser --provider remote --visibility hidden start
 ```
 
-`unicli browser doctor --json` and `unicli browser sessions` are read-only
-probes: they inspect daemon/session state without allocating an `about:blank`
-placeholder tab.
+Status redacts credentials, paths, query tokens, and headers. Malformed remote
+configuration is a hard error and never falls back locally.
 
-The doctor report is the routing source of truth for agents:
+## Page Workflow
 
-- `default_path`: whether a command can run now, and which runtime mode will
-  carry it (`local-cdp-automation-profile`, `remote-cdp`, or daemon extension).
-- `chrome_remote_debugging`: official Chrome 136+ default-directory truth and
-  `RemoteDebuggingAllowed` policy state.
-- `checks[*].next_step`: exact next command for each missing capability.
-- `self_repair.safe_command`: safe automated repair. Today this is
-  `unicli browser doctor --repair`, which starts only Uni-CLI's automation CDP
-  profile and never launches CDP against the user's default Chrome profile.
+1. `open` the URL.
+2. `state` to obtain current refs.
+3. Use `click`, `type`, `select`, or `keys` with those refs.
+4. Run `state` again after navigation or DOM replacement.
+5. Prefer captured JSON APIs when `network` reveals a stable endpoint.
+
+Useful commands:
+
+```bash
+unicli browser find --css 'button'
+unicli browser query 7 --kind attributes
+unicli browser frames
+unicli browser console
+unicli browser network
+unicli browser extract --chunk-size 8000
+unicli browser evidence --render-aware
+```
 
 ## Diagnostics
 
-```bash
-unicli doctor                                    # Full system health check
-UNICLI_DIAGNOSTIC=1 unicli <site> <cmd>          # Enhanced error context
-```
+`unicli browser doctor --json` is the routing truth:
 
-## Troubleshooting
+- `default_path`: managed/hidden availability and profile source.
+- `broker`: stopped, running, or exact endpoint error.
+- `providers`: managed runtimes, Chrome native-host state, redacted remote state.
+- `sessions`: live Agent turns, target leases, and tombstones.
+- `checks[*].next_step`: exact repairs.
 
-| Problem                 | Fix                                                                                                  |
-| ----------------------- | ---------------------------------------------------------------------------------------------------- |
-| "Browser not connected" | `unicli browser doctor --json`, then `unicli browser doctor --repair`                                |
-| Exit 69 (unavailable)   | `unicli browser doctor --repair` then retry                                                          |
-| Exit 77 (auth)          | `unicli auth import <site> --domain <domain>` or `unicli browser cookies <domain> --profile-id <id>` |
-| CDP connection dropped  | `unicli daemon restart`                                                                              |
+`unicli browser doctor --repair` starts only the broker. It never starts a
+browser provider and never creates an `about:blank` placeholder target.
+
+| Problem                     | Exact next action                                                             |
+| --------------------------- | ----------------------------------------------------------------------------- |
+| Broker unavailable          | `unicli browser broker restart`                                               |
+| Managed browser unavailable | Install Chrome or use explicit `--ephemeral`                                  |
+| Chrome provider unavailable | Install native host/extension and keep a normal Chrome window open            |
+| Remote config invalid       | Correct or unset `UNICLI_CDP_ENDPOINT` / `UNICLI_CDP_HEADERS`, restart broker |
+| Exit 77                     | Restore auth with explicit profile/cookie flow                                |

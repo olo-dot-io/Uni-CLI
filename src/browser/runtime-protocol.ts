@@ -1,7 +1,7 @@
 /**
  * @owner       src/browser/runtime-protocol.ts
  * @does        Define the authenticated Browser Runtime Broker request, response, lifecycle, command, status, and refusal wire contracts.
- * @needs       src/browser/invocation-context.ts, runtime-session.ts, managed-browser.ts, chrome-provider.ts, chrome-native-protocol.ts
+ * @needs       src/browser/invocation-context.ts, runtime-session.ts, managed-browser.ts, remote-browser.ts, chrome-provider.ts, chrome-native-protocol.ts
  * @feeds       src/browser/runtime-broker.ts, src/browser/runtime-transport.ts, native browser host and CLI/MCP clients
  * @breaks      Protocol consumers reject unknown versions, malformed identities, unknown actions, and structured broker errors.
  * @invariants  Authentication is outside tool arguments; every request has one id; hidden/background/foreground and provider selection are explicit.
@@ -23,6 +23,7 @@ import {
   type ChromeNativeResult,
 } from "./chrome-native-protocol.js";
 import type { ManagedBrowserRuntimeStatus } from "./managed-browser.js";
+import type { RemoteBrowserStatus } from "./remote-browser.js";
 import type {
   BrowserRuntimeRegistryStatus,
   BrowserTargetLease,
@@ -53,6 +54,12 @@ export type BrowserPageCommand =
       format?: "png" | "jpeg" | "webp";
       quality?: number;
       full_page?: boolean;
+      clip?: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      };
     }
   | {
       method: "cdp";
@@ -121,9 +128,15 @@ export interface ChromeBrowserTargetCommandRequest extends BrowserTargetCommandR
   visibility: "background" | "foreground";
 }
 
+export interface RemoteBrowserTargetCommandRequest extends BrowserTargetCommandRequestBase {
+  provider: "remote";
+  visibility: "hidden";
+}
+
 export type BrowserTargetCommandRequest =
   | ManagedBrowserTargetCommandRequest
-  | ChromeBrowserTargetCommandRequest;
+  | ChromeBrowserTargetCommandRequest
+  | RemoteBrowserTargetCommandRequest;
 
 export interface BrowserTargetHandoffRequest extends BrowserBrokerRequestBase {
   action: "target.handoff";
@@ -221,7 +234,7 @@ export interface BrowserBrokerResponse {
 export interface BrowserTargetCommandResult {
   target_id: string;
   runtime_id: string;
-  provider: "managed" | "chrome";
+  provider: "managed" | "chrome" | "remote";
   browser_pid?: number;
   visibility: BrowserVisibility;
   data?: unknown;
@@ -240,6 +253,7 @@ export interface BrowserBrokerStatus {
   providers: {
     managed: ManagedBrowserRuntimeStatus[];
     chrome: ChromeProviderStatus;
+    remote: RemoteBrowserStatus;
   };
 }
 
@@ -267,6 +281,7 @@ const invocationContextSchema = z
       "cli",
       "mcp-stdio",
       "mcp-http",
+      "plugin",
       "native-host",
       "broker",
     ]),
@@ -321,6 +336,15 @@ const pageCommandSchema = z.discriminatedUnion("method", [
       format: z.enum(["png", "jpeg", "webp"]).optional(),
       quality: z.number().int().min(0).max(100).optional(),
       full_page: z.boolean().optional(),
+      clip: z
+        .object({
+          x: z.number().finite().nonnegative(),
+          y: z.number().finite().nonnegative(),
+          width: z.number().finite().positive(),
+          height: z.number().finite().positive(),
+        })
+        .strict()
+        .optional(),
     })
     .strict(),
   z
@@ -449,6 +473,18 @@ const brokerRequestSchema = z.union([
       isolated: z.boolean(),
       ephemeral: z.boolean(),
       profile_id: z.string().trim().min(1).max(512).optional(),
+      command: pageCommandSchema,
+    })
+    .strict(),
+  z
+    .object({
+      id: requestIdSchema,
+      action: z.literal("target.command"),
+      context: invocationContextSchema,
+      target_id: z.string().trim().min(1).max(512).optional(),
+      provider: z.literal("remote"),
+      visibility: z.literal("hidden"),
+      profile_partition_id: z.string().trim().min(1).max(512),
       command: pageCommandSchema,
     })
     .strict(),

@@ -2,7 +2,7 @@
 name: unicli-operate
 description: >
   Compatibility guide for `unicli operate`. Prefer `unicli browser`, which now
-  exposes the same operator surface plus daemon/session diagnostics.
+  exposes the same operator surface plus broker/session diagnostics.
 version: 1.0.0
 triggers:
   - "operate browser"
@@ -105,9 +105,9 @@ unicli operate network                # See captured JSON APIs
 
 ## Troubleshooting
 
-| Problem                | Fix                                     |
-| ---------------------- | --------------------------------------- |
-| Browser not connected  | `unicli browser doctor --repair`        |
-| Element not found      | `scroll down` then `state`              |
-| Stale refs after click | `state` to refresh                      |
-| eval returns undefined | Wrap: `"(function(){ return ...; })()"` |
+| Problem                | Fix                                                               |
+| ---------------------- | ----------------------------------------------------------------- |
+| Browser not connected  | `unicli browser doctor --json`; run its first failing `next_step` |
+| Element not found      | `scroll down` then `state`                                        |
+| Stale refs after click | `state` to refresh                                                |
+| eval returns undefined | Wrap: `"(function(){ return ...; })()"`                           |

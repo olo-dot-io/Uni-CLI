@@ -2,7 +2,7 @@
  * @owner       src/browser/runtime-transport.ts
  * @does        Serve and call the Browser Runtime Broker over an authenticated owner-only Unix socket or secret-bearing Windows named pipe.
  * @needs       node:crypto, node:fs, node:net, node:os, node:path, src/browser/runtime-protocol.ts, src/engine/user-home.ts
- * @feeds       src/browser/runtime-broker-main.ts, src/browser/daemon-client.ts, native browser host
+ * @feeds       src/browser/runtime-broker-main.ts, src/browser/runtime-launch.ts, src/browser/runtime-client.ts, native browser host
  * @breaks      BrokerTransportError on endpoint/lock/auth/schema/framing/connect/timeout failures; broker responses preserve provider errors.
  * @invariants  One broker lock owns one endpoint descriptor; descriptor and Unix socket are mode 0600; messages are bounded newline-delimited JSON; tokens compare in constant time.
  * @side-effects Creates/removes runtime files and sockets, opens local IPC connections, and accepts concurrent client requests.
@@ -582,6 +582,7 @@ function sendWireRequest(
     const cleanup = (): void => {
       clearTimeout(timer);
       socket.off("error", finishError);
+      socket.off("end", finishPrematureEnd);
     };
     const finishSuccess = (response: BrowserBrokerResponse): void => {
       if (settled) return;
@@ -603,6 +604,14 @@ function sendWireRequest(
               `Browser broker connection failed at ${socketPath}: ${errorMessage(error)}`,
               { cause: error },
             ),
+      );
+    };
+    const finishPrematureEnd = (): void => {
+      finishError(
+        new BrokerTransportError(
+          "browser_broker_unavailable",
+          `Browser broker closed the connection before completing a response at ${socketPath}`,
+        ),
       );
     };
     const timer = setTimeout(() => {
@@ -656,6 +665,7 @@ function sendWireRequest(
       finishSuccess(parsed.data);
     });
     socket.once("error", finishError);
+    socket.once("end", finishPrematureEnd);
   });
 }
 

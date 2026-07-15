@@ -1,9 +1,8 @@
 /**
  * `unicli status` envelope test — verifies the v2 envelope wraps the system
- * health snapshot (version/platform/daemon/browser/adapter counts).
+ * health snapshot (version/platform/broker/browser/adapter counts).
  *
- * The daemon and Chrome probes are left un-mocked; they return "stopped" or
- * "unknown" in CI, and the envelope shape is what we test here.
+ * The owner-only runtime probe is mocked to a deterministic stopped state.
  */
 
 import { describe, it, expect, vi } from "vitest";
@@ -11,23 +10,13 @@ import { Command } from "commander";
 import { registerStatusCommand } from "../../../src/commands/status.js";
 import { validateEnvelope } from "../../../src/output/envelope.js";
 
-// Daemon + Chrome probes mocked to deterministic "stopped"/"unknown" so the
-// test doesn't race real network calls under verify:clean concurrency. The
-// envelope-shape assertions below still verify the v2 contract end-to-end.
-vi.mock("../../../src/browser/daemon-client.js", async () => {
-  const actual = await vi.importActual<
-    typeof import("../../../src/browser/daemon-client.js")
-  >("../../../src/browser/daemon-client.js");
-  return { ...actual, fetchDaemonStatus: vi.fn().mockResolvedValue(null) };
-});
-vi.mock("../../../src/browser/launcher.js", async () => {
-  const actual = await vi.importActual<
-    typeof import("../../../src/browser/launcher.js")
-  >("../../../src/browser/launcher.js");
+vi.mock("../../../src/browser/runtime-launch.js", () => {
   return {
-    ...actual,
-    isCDPAvailable: vi.fn().mockResolvedValue(false),
-    getCDPPort: vi.fn().mockReturnValue(9222),
+    probeBrowserRuntimeBroker: vi.fn().mockRejectedValue(
+      Object.assign(new Error("not running"), {
+        code: "browser_broker_unavailable",
+      }),
+    ),
   };
 });
 
@@ -85,14 +74,15 @@ describe("unicli status — v2 envelope", () => {
       platform: string;
       node: string;
       browser: { status: string };
-      daemon: { status: string };
+      broker: { status: string; live_session_count: number };
       adapters: { total: number };
     };
     expect(typeof data.version).toBe("string");
     expect(typeof data.platform).toBe("string");
     expect(typeof data.node).toBe("string");
-    expect(["running", "stopped", "unknown"]).toContain(data.browser.status);
-    expect(["running", "stopped", "unknown"]).toContain(data.daemon.status);
+    expect(data.browser.status).toBe("stopped");
+    expect(data.broker.status).toBe("stopped");
+    expect(data.broker.live_session_count).toBe(0);
     expect(typeof data.adapters.total).toBe("number");
     validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
     // Timeout generous (60s) because `unicli status` walks all 896 YAML

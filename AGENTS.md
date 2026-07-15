@@ -21,24 +21,23 @@ If auth is needed, first check `unicli browser profiles --json` and
 `unicli auth import` or `unicli browser cookies <domain> --profile-id <id>`.
 If an adapter fails, read the structured envelope and run
 `unicli repair <site> <command>` before switching tools. Browser work is
-background-first: daemon commands default to `windowFocused: false`,
-doctor/session probes must not create `about:blank` placeholder tabs,
-foreground startup requires explicit `unicli browser --focus start`, and CDP
-must use process-verified live profiles or Uni-CLI automation profiles under
-`~/.unicli/` rather than Chrome's default user-data-dir. Chrome 136+ disables
+background-first: the managed provider is hidden, existing Chrome uses an
+explicit verified `background` or `foreground` contract, and doctor/status/
+session probes start neither providers nor `about:blank` placeholder targets.
+Foreground control requires explicit `unicli browser --focus start`, and CDP
+uses Uni-CLI automation profiles under `~/.unicli/` rather than Chrome's
+default user-data-dir. Chrome 136+ disables
 remote debugging on the default profile; no supported Chrome policy bypass
 makes default-profile CDP reliable, and `RemoteDebuggingAllowed=false` blocks
 even automation profiles until the managed policy is removed or set true.
-Default browser startup reuses login state by attaching to an already-exposed
-local profile when available, otherwise by seeding a Uni-CLI-owned automation
-profile from the preferred local Chrome profile. Empty profiles require
+Default browser startup reuses login state by seeding a Uni-CLI-owned
+automation profile from the preferred local Chrome profile. Empty profiles require
 explicit `unicli browser start --ephemeral` or `UNICLI_BROWSER_EPHEMERAL=1`.
 For any browser failure, read `unicli browser doctor --json`: `default_path`
 tells whether delivery can proceed now, `profile_source` tells whether the path
-is attach, seeded, remote, or ephemeral, `chrome_remote_debugging` gives the
+is seeded, ephemeral, unavailable, or policy-blocked, `chrome_remote_debugging` gives the
 Chrome 136+/policy truth, `checks[*].next_step` gives the exact repair command,
-and `unicli browser doctor --repair` is the safe first repair for local CDP
-because it starts only the Uni-CLI automation profile.
+and `unicli browser doctor --repair` safely starts only the windowless broker.
 
 <!-- BEGIN COUNTS -->
 

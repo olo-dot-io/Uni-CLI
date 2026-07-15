@@ -4,6 +4,13 @@
  * @needs   node:child_process, node:fs, node:path, Chrome Enterprise policy conventions
  * @feeds   src/browser/doctor.ts, tests/unit/chrome-policy.test.ts
  * @breaks  Policy probe failures become unknown diagnostics; the module never writes browser policy.
+ * @invariants Guidance never claims Chrome policy can bypass the Chrome 136+ default-profile debugging restriction.
+ * @side-effects Reads operating-system policy stores and may execute read-only policy inspection commands.
+ * @perf     Policy detection performs bounded local filesystem/process probes only when doctor runs.
+ * @concurrency Probes are read-only and independent across callers.
+ * @test     tests/unit/chrome-policy.test.ts, tests/unit/browser-doctor.test.ts
+ * @stability stable
+ * @since    2026-06-26
  */
 
 import { execFileSync } from "node:child_process";
@@ -32,7 +39,7 @@ export interface Chrome136RemoteDebuggingGuidance {
   default_user_data_dir_cdp_supported: false;
   policy_can_bypass_default_user_data_dir: false;
   automatic_fix: "custom-user-data-dir";
-  safe_command: "unicli browser doctor --repair";
+  safe_command: "unicli browser --provider managed start";
   supported_paths: string[];
   unsupported_paths: string[];
   user_visible_warning: string;
@@ -44,12 +51,12 @@ export function buildChrome136RemoteDebuggingGuidance(): Chrome136RemoteDebuggin
     default_user_data_dir_cdp_supported: false,
     policy_can_bypass_default_user_data_dir: false,
     automatic_fix: "custom-user-data-dir",
-    safe_command: "unicli browser doctor --repair",
+    safe_command: "unicli browser --provider managed start",
     supported_paths: [
       "Launch Chrome with a Uni-CLI-owned non-default --user-data-dir under ~/.unicli.",
       "Reuse login state by importing cookies from the selected local browser profile.",
       "Use Chrome for Testing or Chromium when a fully automation-owned browser is acceptable.",
-      "Use the daemon extension bridge when extension state is connected.",
+      "Use the broker Chrome provider when its native host and extension are connected.",
       "Use UNICLI_CDP_ENDPOINT for a remote/cloud CDP browser.",
     ],
     unsupported_paths: [

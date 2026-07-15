@@ -14,9 +14,8 @@
  */
 
 import { rmSync } from "node:fs";
-import type { PipelineStep } from "../types.js";
+import type { IPage, PipelineStep } from "../types.js";
 import type { BrowserSessionPreference } from "../types.js";
-import type { BrowserPage } from "../browser/page.js";
 import { isTargetError } from "../browser/target-errors.js";
 import { acquireCookies, formatCookieHeader } from "./cookies.js";
 import { describeCookieFailure } from "./cookie-source.js";
@@ -90,7 +89,7 @@ export type PipelineContext = {
   cookieHeader?: string;
   temp?: Record<string, string>;
   tempDir?: string;
-  page?: BrowserPage;
+  page?: IPage;
   browserSession?: BrowserSessionPreference;
   /** Adapter auth domain used for browser cookie bootstrap. */
   domain?: string;
@@ -388,6 +387,9 @@ export async function runPipeline(
     browserSession: options?.browserSession,
   };
   let tempDir: string | undefined;
+  let executionFailed = false;
+  let executionError: unknown;
+  let pipelineResult: unknown[] = [];
 
   try {
     for (let i = 0; i < steps.length; i++) {
@@ -479,23 +481,40 @@ export async function runPipeline(
     }
 
     const result = ctx.data;
-    if (Array.isArray(result)) return result;
-    if (result !== null && result !== undefined) return [result];
-    return [];
-  } finally {
-    if (tempDir) {
-      try {
-        rmSync(tempDir, { recursive: true, force: true });
-      } catch {
-        /* best-effort */
-      }
-    }
-    if (ctx.page) {
-      try {
-        await ctx.page.close();
-      } catch {
-        /* best-effort */
-      }
+    if (Array.isArray(result)) pipelineResult = result;
+    else if (result !== null && result !== undefined) pipelineResult = [result];
+  } catch (error) {
+    executionFailed = true;
+    executionError = error;
+  }
+
+  const cleanupErrors: unknown[] = [];
+  if (tempDir) {
+    try {
+      rmSync(tempDir, { recursive: true, force: true });
+    } catch (error) {
+      cleanupErrors.push(error);
     }
   }
+  if (ctx.page) {
+    try {
+      await ctx.page.close();
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+  }
+  if (executionFailed) {
+    if (cleanupErrors.length > 0) {
+      throw new AggregateError(
+        [executionError, ...cleanupErrors],
+        "Pipeline execution and resource cleanup both failed",
+      );
+    }
+    throw executionError;
+  }
+  if (cleanupErrors.length === 1) throw cleanupErrors[0];
+  if (cleanupErrors.length > 1) {
+    throw new AggregateError(cleanupErrors, "Pipeline resource cleanup failed");
+  }
+  return pipelineResult;
 }

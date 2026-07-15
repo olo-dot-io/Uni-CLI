@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { createServer, type Server, type ServerResponse } from "node:http";
 import { join } from "node:path";
@@ -37,7 +37,7 @@ afterEach(async () => {
   if (barrierServer) await closeHttpServer(barrierServer);
   harness = null;
   barrierServer = null;
-});
+}, 30_000);
 
 describe("Browser Runtime Broker real process ownership", () => {
   testIfBrowser(
@@ -126,6 +126,194 @@ describe("Browser Runtime Broker real process ownership", () => {
     },
     45_000,
   );
+
+  testIfBrowser(
+    "reuses one hidden target across independent CLI turns with the same Agent session",
+    async () => {
+      const runtime = new RealBrowserBrokerHarness(browserPath!);
+      harness = runtime;
+      const origin = await startHtmlFixture();
+      barrierServer = origin.server;
+      await runtime.start();
+
+      const opened = await runCliProcess(runtime.runtimeRoot, [
+        "browser",
+        "--session",
+        "cli-agent",
+        "--turn",
+        "cli-turn-1",
+        "open",
+        origin.url,
+      ]);
+      const currentUrl = await runCliProcess(runtime.runtimeRoot, [
+        "browser",
+        "--session",
+        "cli-agent",
+        "--turn",
+        "cli-turn-2",
+        "get",
+        "url",
+      ]);
+
+      expect(opened).toMatchObject({
+        error: null,
+        data: {
+          requested_url: origin.url,
+          url: origin.url,
+          title: "shared CLI target",
+        },
+      });
+      expect(currentUrl).toMatchObject({
+        error: null,
+        data: { value: origin.url },
+      });
+      const status = await runtime.client.requestOrThrow<BrowserBrokerStatus>({
+        id: randomUUID(),
+        action: "broker.status",
+      });
+      expect(status.sessions.sessions).toEqual([
+        expect.objectContaining({
+          agent_session_id: "cli-agent",
+          active_turn_ids: [],
+          target_ids: [status.sessions.target_leases[0]?.target_id],
+        }),
+      ]);
+      expect(status.sessions.target_leases).toEqual([
+        expect.objectContaining({
+          owner_session_id: "cli-agent",
+          provider: "managed",
+          visibility: "hidden",
+        }),
+      ]);
+      expect(status.providers.managed).toEqual([
+        expect.objectContaining({
+          visibility: "hidden",
+          target_count: 1,
+        }),
+      ]);
+      if (process.platform !== "win32") {
+        const browserCommand = execFileSync(
+          "ps",
+          [
+            "-p",
+            String(status.providers.managed[0]!.browser_pid),
+            "-o",
+            "command=",
+          ],
+          { encoding: "utf8" },
+        );
+        expect(browserCommand).toMatch(
+          /chrome-headless-shell|--headless(?:=new)?/,
+        );
+      }
+
+      await runtime.shutdownGracefully();
+      expect(runtime.stderr()).toBe("");
+    },
+    45_000,
+  );
+
+  testIfBrowser(
+    "recovers the hidden browser after a broker crash and discards targets whose leases were lost",
+    async () => {
+      const runtime = new RealBrowserBrokerHarness(browserPath!);
+      harness = runtime;
+      const initialBroker = await runtime.start();
+      const firstContext = {
+        agent_session_id: "crash-agent",
+        turn_id: "before-crash",
+        transport: "cli" as const,
+        profile_partition_id: "crash-profile",
+      };
+      await runtime.client.requestOrThrow({
+        id: randomUUID(),
+        action: "session.start",
+        context: firstContext,
+      });
+      const beforeCrash =
+        await runtime.client.requestOrThrow<BrowserTargetCommandResult>({
+          id: randomUUID(),
+          action: "target.command",
+          context: firstContext,
+          provider: "managed",
+          visibility: "hidden",
+          profile_partition_id: "crash-profile",
+          isolated: false,
+          ephemeral: true,
+          command: {
+            method: "evaluate",
+            expression: 'document.title = "owned before crash"; document.title',
+          },
+        });
+      expect(beforeCrash.data).toBe("owned before crash");
+
+      await runtime.crashBroker(
+        beforeCrash.browser_pid,
+        initialBroker.broker_pid,
+      );
+      expect(processIsAlive(beforeCrash.browser_pid)).toBe(true);
+      const restartedBroker = await runtime.start();
+      expect(restartedBroker.broker_pid).not.toBe(initialBroker.broker_pid);
+      expect(restartedBroker.runtime_id).not.toBe(initialBroker.runtime_id);
+
+      const recoveredContext = {
+        ...firstContext,
+        turn_id: "after-crash",
+      };
+      await runtime.client.requestOrThrow({
+        id: randomUUID(),
+        action: "session.start",
+        context: recoveredContext,
+      });
+      const afterCrash =
+        await runtime.client.requestOrThrow<BrowserTargetCommandResult>({
+          id: randomUUID(),
+          action: "target.command",
+          context: recoveredContext,
+          provider: "managed",
+          visibility: "hidden",
+          profile_partition_id: "crash-profile",
+          isolated: false,
+          ephemeral: true,
+          command: { method: "title" },
+        });
+
+      expect(afterCrash.browser_pid).toBe(beforeCrash.browser_pid);
+      expect(afterCrash.runtime_id).toBe(beforeCrash.runtime_id);
+      expect(afterCrash.data).not.toBe("owned before crash");
+      const status = await runtime.client.requestOrThrow<BrowserBrokerStatus>({
+        id: randomUUID(),
+        action: "broker.status",
+      });
+      expect(status.providers.managed).toEqual([
+        expect.objectContaining({
+          recovered: true,
+          browser_pid: beforeCrash.browser_pid,
+          target_count: 1,
+        }),
+      ]);
+      const discovered = (await fetch(
+        `http://127.0.0.1:${String(status.providers.managed[0]!.cdp_port)}/json/list`,
+      ).then((response) => response.json())) as Array<{
+        id?: string;
+        type?: string;
+      }>;
+      const pageTargets = discovered.filter((target) => target.type === "page");
+      expect(pageTargets.map((target) => target.id)).toEqual([
+        afterCrash.target_id,
+      ]);
+
+      await runtime.client.requestOrThrow({
+        id: randomUUID(),
+        action: "session.end",
+        agent_session_id: recoveredContext.agent_session_id,
+      });
+      await runtime.shutdownGracefully();
+      expect(processIsAlive(beforeCrash.browser_pid)).toBe(false);
+      expect(runtime.stderr()).toBe("");
+    },
+    45_000,
+  );
 });
 
 async function startTwoPartyBarrier(): Promise<{
@@ -161,6 +349,28 @@ async function startTwoPartyBarrier(): Promise<{
   };
 }
 
+async function startHtmlFixture(): Promise<{
+  server: Server;
+  url: string;
+}> {
+  const server = createServer((_request, response) => {
+    response.setHeader("Content-Type", "text/html; charset=utf-8");
+    response.end("<!doctype html><title>shared CLI target</title>");
+  });
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") {
+    throw new Error("HTML fixture did not expose a TCP port");
+  }
+  return {
+    server,
+    url: `http://127.0.0.1:${String(address.port)}/`,
+  };
+}
+
 function runClientProcess(
   input: Record<string, string>,
 ): Promise<BrowserTargetCommandResult> {
@@ -191,6 +401,53 @@ function runClientProcess(
         );
       } catch (error) {
         reject(error);
+      }
+    });
+  });
+}
+
+function runCliProcess(
+  runtimeRoot: string,
+  args: string[],
+): Promise<Record<string, unknown>> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(
+      process.execPath,
+      [join(repositoryRoot, "dist", "main.js"), "-f", "json", ...args],
+      {
+        cwd: repositoryRoot,
+        env: {
+          ...process.env,
+          UNICLI_ALLOW_LOCAL: "1",
+          UNICLI_BROWSER_RUNTIME_DIR: runtimeRoot,
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+    const output = collectProcessOutput(child);
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      reject(new Error(`CLI browser command timed out: ${args.join(" ")}`));
+    }, 25_000);
+    child.once("exit", (code) => {
+      clearTimeout(timer);
+      if (code !== 0) {
+        reject(
+          new Error(
+            `CLI browser command exited ${String(code)}: ${output.stderr()}`,
+          ),
+        );
+        return;
+      }
+      try {
+        resolve(JSON.parse(output.stdout().trim()) as Record<string, unknown>);
+      } catch (error) {
+        reject(
+          new Error(
+            `CLI browser command returned invalid JSON: ${output.stdout()} ${output.stderr()}`,
+            { cause: error },
+          ),
+        );
       }
     });
   });

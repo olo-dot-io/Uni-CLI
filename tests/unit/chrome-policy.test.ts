@@ -13,7 +13,7 @@ describe("Chrome remote debugging policy diagnostics", () => {
       default_user_data_dir_cdp_supported: false,
       policy_can_bypass_default_user_data_dir: false,
       automatic_fix: "custom-user-data-dir",
-      safe_command: "unicli browser doctor --repair",
+      safe_command: "unicli browser --provider managed start",
     });
     expect(guidance.supported_paths).toEqual(
       expect.arrayContaining([

@@ -1,15 +1,25 @@
 /**
- * Streamable HTTP session + request helpers.
- *
- * Owns the module-level `sessions` / `asyncTasks` maps, the helpers that
- * every POST/DELETE handler shares (CORS, body reading, JSON response),
- * and origin validation. Kept in a single file so `handle-post.ts` and
- * `index.ts` can both import from the same SSOT without circular deps.
+ * @owner       src/mcp/streamable-http/session.ts
+ * @does        Own Streamable HTTP session/task state plus shared origin, CORS, body, response, and handler contracts.
+ * @needs       node:http, MCP origin guard and JSON-RPC types
+ * @feeds       streamable handle-post, index, and test shim
+ * @breaks      Session/helper drift breaks protocol validation and every Streamable HTTP route.
+ * @invariants  Shared maps are the single source of truth; request bodies remain bounded; handler type carries MCP request identity.
+ * @side-effects Maintains in-process session/task maps and reads/writes HTTP streams.
+ * @perf        O(1) map operations with explicit session/task limits enforced by callers.
+ * @concurrency Node's event loop serializes individual mutations; asynchronous tasks share these maps intentionally.
+ * @test        tests/unit/mcp/streamable-http.test.ts, tests/unit/mcp-browser-invocation.test.ts
+ * @stability   stable
+ * @since       2026-04-01
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { isOriginAllowed, ALLOWED_ORIGINS } from "../origin-guard.js";
-import type { JsonRpcRequest, JsonRpcResponse } from "../jsonrpc.js";
+import type {
+  JsonRpcHandler,
+  JsonRpcRequest,
+  JsonRpcResponse,
+} from "../jsonrpc.js";
 
 // Re-exported so `handle-post.ts`, `index.ts`, and the `_test` shim keep
 // importing the origin policy and wire types from this module's stable surface.
@@ -25,9 +35,7 @@ export type { JsonRpcRequest, JsonRpcResponse };
  * legal, `undefined` represents "no response", and the transport awaits
  * uniformly so the cast-adapt in server.ts is no longer required.
  */
-export type Handler = (
-  req: JsonRpcRequest,
-) => JsonRpcResponse | undefined | Promise<JsonRpcResponse | undefined>;
+export type Handler = JsonRpcHandler;
 
 export interface Session {
   created: number;

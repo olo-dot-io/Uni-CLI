@@ -33,7 +33,7 @@ npm run bench:gate
 - `--version`、`--help` 和 `list -f json` 分别以全新 Node subprocess 测量；
 - fixture adapter 时间只代表进程内解析/序列化，不冒充 CLI 或网络延迟；
 - live adapter 时间包含真实 subprocess 与网络；
-- MCP、browser daemon 等常驻进程的 warm latency 未在本页推断。
+- MCP 与 Browser Runtime Broker 等常驻进程的 warm latency 未在本页推断。
 
 当前生成时间、运行环境、p50/p95 和完整结果见英文主报告
 [`docs/BENCHMARK.md`](/BENCHMARK.md)。
