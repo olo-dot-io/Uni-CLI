@@ -1,8 +1,16 @@
 /**
- * Core CDP client -- raw WebSocket JSON-RPC over Chrome DevTools Protocol.
- *
- * Zero new runtime dependencies (uses existing `ws` package).
- * Foundation for all browser automation in Uni-CLI.
+ * @owner       src/browser/cdp-client.ts
+ * @does        Provide raw browser-level and target-level Chrome DevTools Protocol connections.
+ * @needs       node:http, ws
+ * @feeds       src/browser/page.ts, src/browser/managed-browser.ts, transport CDP adapters
+ * @breaks      Throws on invalid endpoints, unavailable targets, protocol errors, connection loss, and command timeouts.
+ * @invariants  Every request id resolves once; a client binds to one WebSocket endpoint until close; target selection excludes non-page surfaces.
+ * @side-effects Opens HTTP and WebSocket connections and mutates pending-request/listener state.
+ * @perf        O(1) pending dispatch; target discovery is O(number of exposed DevTools targets).
+ * @concurrency Multiple in-flight commands are correlated by id; close rejects every pending command.
+ * @test        tests/unit/cdp-client.test.ts, tests/integration/browser-runtime-broker.test.ts
+ * @stability   experimental
+ * @since       2026-04-04
  */
 
 import WebSocket from "ws";
@@ -26,6 +34,15 @@ export interface CDPTarget {
   type: string;
   title: string;
   url: string;
+  webSocketDebuggerUrl: string;
+}
+
+export interface CDPBrowserVersion {
+  Browser: string;
+  "Protocol-Version"?: string;
+  "User-Agent"?: string;
+  "V8-Version"?: string;
+  "WebKit-Version"?: string;
   webSocketDebuggerUrl: string;
 }
 
@@ -260,6 +277,20 @@ export class CDPClient {
     );
   }
 
+  static async discoverBrowser(port?: number): Promise<CDPBrowserVersion> {
+    const p = port ?? CDP_DEFAULT_PORT;
+    const raw = await fetchJson(`http://127.0.0.1:${String(p)}/json/version`);
+    if (
+      typeof raw !== "object" ||
+      raw === null ||
+      typeof (raw as Record<string, unknown>).Browser !== "string" ||
+      typeof (raw as Record<string, unknown>).webSocketDebuggerUrl !== "string"
+    ) {
+      throw new Error("CDP /json/version returned an invalid browser endpoint");
+    }
+    return raw as CDPBrowserVersion;
+  }
+
   /**
    * Select the best tab from a list of targets.
    * Prefers type=page, avoids devtools/service_worker/background.
@@ -315,6 +346,30 @@ export class CDPClient {
       debugLog("Failed to enable Page domain (non-fatal)");
     }
 
+    return client;
+  }
+
+  static async connectToBrowser(port?: number): Promise<CDPClient> {
+    const browser = await CDPClient.discoverBrowser(port);
+    const client = new CDPClient();
+    await client.connect(browser.webSocketDebuggerUrl);
+    return client;
+  }
+
+  static async connectToTarget(
+    targetId: string,
+    port?: number,
+  ): Promise<CDPClient> {
+    const target = (await CDPClient.discoverTargets(port)).find(
+      (candidate) => candidate.id === targetId,
+    );
+    if (!target) {
+      throw new Error(`Chrome target not found: ${targetId}`);
+    }
+    const client = new CDPClient();
+    await client.connect(target.webSocketDebuggerUrl);
+    client.connectedTarget = target;
+    await client.send("Page.enable");
     return client;
   }
 
