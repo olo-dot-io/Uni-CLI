@@ -1,8 +1,16 @@
 /**
- * Browser page abstraction -- implements IPage interface via CDP.
- *
- * Provides high-level operations (goto, evaluate, click, type, cookies)
- * on top of the raw CDPClient WebSocket connection.
+ * @owner       src/browser/page.ts
+ * @does        Implement high-level navigation, DOM/input, storage, screenshot, snapshot, network-capture, and raw CDP operations for one page target.
+ * @needs       src/browser/cdp-client.ts, dom-helpers.ts, snapshot-helpers.ts, src/types.ts, src/engine/browser/session-lease.ts
+ * @feeds       src/browser/bridge.ts, managed-browser.ts, browser helpers, pipeline browser steps
+ * @breaks      Throws exact navigation, evaluation, selector, input, screenshot, and CDP errors from the bound target.
+ * @invariants  One BrowserPage owns one CDPClient; navigation listeners and timers are removed on either load or timeout; close releases client state.
+ * @side-effects Navigates and mutates a browser target, dispatches input, captures network bodies and pixels, and opens/closes one CDP connection.
+ * @perf        Direct CDP operations are O(1) round trips; selector polling and snapshots scale with page complexity.
+ * @concurrency CDP request ids permit overlap, while callers must serialize mutations through the Browser Runtime Broker target queue.
+ * @test        tests/unit/browser-page.test.ts, tests/integration/browser-runtime-isolation.test.ts
+ * @stability   stable
+ * @since       2026-04-04
  */
 
 import { CDPClient, type ConnectToChromeOptions } from "./cdp-client.js";
@@ -218,17 +226,20 @@ export class BrowserPage implements IPage {
   ): Promise<void> {
     // Set up a load event listener before navigating
     const loadPromise = new Promise<void>((resolve) => {
-      const handler = (): void => {
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      let settled = false;
+      const finish = (): void => {
+        if (settled) return;
+        settled = true;
+        if (timeout) clearTimeout(timeout);
         this.client.off("Page.loadEventFired", handler);
         resolve();
       };
+      const handler = (): void => {
+        finish();
+      };
       this.client.on("Page.loadEventFired", handler);
-
-      // Timeout: resolve anyway after LOAD_EVENT_TIMEOUT so we don't hang
-      setTimeout(() => {
-        this.client.off("Page.loadEventFired", handler);
-        resolve();
-      }, LOAD_EVENT_TIMEOUT);
+      timeout = setTimeout(finish, LOAD_EVENT_TIMEOUT);
     });
 
     const result = (await this.client.send("Page.navigate", {
