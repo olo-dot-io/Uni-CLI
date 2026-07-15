@@ -109,6 +109,44 @@ describe("BrowserRuntimeSessionRegistry", () => {
     ).resolves.toBe("ok");
   });
 
+  it("keeps ownership until provider finalization succeeds and then removes the target atomically", async () => {
+    const registry = new BrowserRuntimeSessionRegistry();
+    const owner = context("owner", "turn-1");
+    registry.startSession(owner);
+    registry.claimTarget(owner, {
+      target_id: "target-finalize",
+      provider: "chrome",
+      profile_partition_id: "regular-chrome",
+      visibility: "background",
+      lifetime: "session",
+    });
+    let releaseProvider: (() => void) | undefined;
+    const providerGate = new Promise<void>((resolve) => {
+      releaseProvider = resolve;
+    });
+    const finalizing = registry.finalizeTarget(
+      owner,
+      "target-finalize",
+      () => providerGate,
+    );
+    const queuedMutation = registry.runTargetMutation(
+      owner,
+      "target-finalize",
+      async () => "late",
+    );
+
+    await Promise.resolve();
+    expect(registry.status().target_leases).toHaveLength(1);
+    releaseProvider?.();
+    await expect(finalizing).resolves.toMatchObject({
+      target_id: "target-finalize",
+    });
+    await expect(queuedMutation).rejects.toMatchObject({
+      code: "browser_target_not_found",
+    });
+    expect(registry.status().target_leases).toHaveLength(0);
+  });
+
   it("tombstones ended sessions and turns until an explicit lifecycle start", async () => {
     const registry = new BrowserRuntimeSessionRegistry();
     const firstTurn = context("agent-a", "turn-a");

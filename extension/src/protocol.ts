@@ -1,70 +1,12 @@
-/**
- * Shared protocol types for daemon ↔ extension communication.
- * Mirrors src/browser/protocol.ts constants.
- */
-
-export const DAEMON_PORT = 19825;
-export const DAEMON_PORT_CANDIDATES = [19825, 19826, 19827, 19828, 19829];
-export const DAEMON_HOST = "localhost";
-export const DAEMON_PRODUCT = "unicli";
-export const DAEMON_PROTOCOL = "unicli-browser-bridge";
-export const DAEMON_WS_PATH = "/ext";
-export const DAEMON_PING_PATH = "/ping";
-export const WS_RECONNECT_BASE_DELAY = 2000;
-export const WS_RECONNECT_MAX_DELAY = 5000;
-export const MAX_EAGER_ATTEMPTS = 6;
-export const KEEPALIVE_ALARM_PERIOD = 0.4; // ~24 seconds in minutes
-export const WINDOW_IDLE_TIMEOUT = 30_000;
-
-export type Action =
-  | "exec"
-  | "navigate"
-  | "tabs"
-  | "cookies"
-  | "screenshot"
-  | "close-window"
-  | "sessions"
-  | "set-file-input"
-  | "insert-text"
-  | "bind-current"
-  | "network-capture-start"
-  | "network-capture-read"
-  | "downloads-read"
-  | "dialog-read"
-  | "dialog-respond"
-  | "cdp";
-
-export interface Command {
-  id: string;
-  action: Action;
-  tabId?: number;
-  code?: string;
-  workspace?: string;
-  windowFocused?: boolean;
-  url?: string;
-  domain?: string;
-  matchDomain?: string;
-  matchPathPrefix?: string;
-  pattern?: string;
-  clearRecent?: boolean;
-  downloadLimit?: number;
-  dialogAction?: "accept" | "dismiss";
-  dialogId?: string;
-  promptText?: string;
-  cdpMethod?: string;
-  cdpParams?: Record<string, unknown>;
-  selector?: string;
-  text?: string;
-  files?: string[];
-  format?: string;
-  quality?: number;
-  fullPage?: boolean;
-  timeout?: number;
-}
-
-export interface Result {
-  id: string;
-  ok: boolean;
-  data?: unknown;
-  error?: string;
-}
+export {
+  CHROME_EXTENSION_ID,
+  CHROME_NATIVE_HOST_NAME,
+  CHROME_NATIVE_PRODUCT,
+  CHROME_NATIVE_PROTOCOL,
+  CHROME_NATIVE_PROTOCOL_VERSION,
+  chromeTargetId,
+} from "../../src/browser/chrome-native-protocol.js";
+export type {
+  ChromeNativeCommand as Command,
+  ChromeNativeResult as Result,
+} from "../../src/browser/chrome-native-protocol.js";

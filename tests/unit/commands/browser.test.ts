@@ -496,6 +496,86 @@ describe("unicli browser operator surface", () => {
     );
   }
 
+  it("browser native-host install and status validate a real per-user Chrome manifest without launching Chrome", async () => {
+    const home = useTempHome();
+    usePlatform("darwin");
+    const installConsole = captureConsole();
+    try {
+      await createProgram().parseAsync(
+        ["browser", "native-host", "install", "--json"],
+        { from: "user" },
+      );
+    } finally {
+      installConsole.restore();
+    }
+
+    const installEnvelope = JSON.parse(installConsole.getStdout().trim()) as {
+      ok: boolean;
+      data: {
+        ready: boolean;
+        registrations: Array<{ state: string; manifest_path: string }>;
+      };
+    };
+    expect(installEnvelope.ok).toBe(true);
+    expect(installEnvelope.data).toMatchObject({
+      ready: true,
+      registrations: [{ state: "ready" }],
+    });
+    expect(
+      existsSync(
+        join(
+          home,
+          "Library/Application Support/Google/Chrome/NativeMessagingHosts/io.unicli.browser.json",
+        ),
+      ),
+    ).toBe(true);
+    expect(launcherMocks.launchChrome).not.toHaveBeenCalled();
+
+    process.exitCode = undefined;
+    const statusConsole = captureConsole();
+    try {
+      await createProgram().parseAsync(
+        ["browser", "native-host", "status", "--json"],
+        { from: "user" },
+      );
+    } finally {
+      statusConsole.restore();
+    }
+    const statusEnvelope = JSON.parse(statusConsole.getStdout().trim()) as {
+      data: { ready: boolean };
+    };
+    expect(statusEnvelope.data.ready).toBe(true);
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it("browser native-host status reports a missing registration as non-ready without creating files", async () => {
+    const home = useTempHome();
+    usePlatform("darwin");
+    const cap = captureConsole();
+    try {
+      await createProgram().parseAsync(
+        ["browser", "native-host", "status", "--json"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const envelope = JSON.parse(cap.getStdout().trim()) as {
+      data: {
+        ready: boolean;
+        registrations: Array<{ state: string }>;
+      };
+    };
+    expect(envelope.data).toMatchObject({
+      ready: false,
+      registrations: [{ state: "missing" }],
+    });
+    expect(process.exitCode).toBe(1);
+    expect(readdirSync(home)).toEqual([]);
+    expect(launcherMocks.launchChrome).not.toHaveBeenCalled();
+  });
+
   it("browser sessions emits a structured error when the extension bridge is unavailable", async () => {
     daemonClientMocks.listSessions.mockRejectedValueOnce(
       new Error("Compatible Uni-CLI browser extension not connected"),

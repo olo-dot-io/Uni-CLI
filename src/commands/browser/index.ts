@@ -36,6 +36,7 @@ import {
   withBrowserOperatorEnv,
 } from "./actions.js";
 import { registerBrowserAdapterAuthoringSubcommands } from "./adapter.js";
+import { registerBrowserNativeHostCommands } from "./native-host.js";
 import { resolveBrowserWorkspace } from "../../browser/workspace.js";
 import {
   automationDefaultUserDataDir,
@@ -662,6 +663,7 @@ export function registerBrowserCommands(program: Command): void {
     );
 
   registerBrowserAdapterAuthoringSubcommands(browser, program);
+  registerBrowserNativeHostCommands(browser, program);
   registerBrowserOperatorSubcommands(browser, program, "browser");
 }
 

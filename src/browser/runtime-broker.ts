@@ -1,20 +1,23 @@
 /**
  * @owner       src/browser/runtime-broker.ts
- * @does        Route authenticated lifecycle and page requests through broker-owned sessions, target leases, visibility policy, and browser providers.
- * @needs       node:crypto, src/browser/managed-browser.ts, runtime-protocol.ts, runtime-session.ts
- * @feeds       src/browser/runtime-transport.ts, src/browser/runtime-broker-main.ts
- * @breaks      Returns structured BrowserBrokerError responses for lifecycle, ownership, visibility, provider, CDP, and command failures.
- * @invariants  Browser processes and targets are provider-owned; every mutation crosses a target lease queue; hidden requests never route to a visible provider.
- * @side-effects Starts/stops managed runtimes, mutates lifecycle/target state, and executes page/CDP operations.
- * @perf        Status is O(sessions + targets + runtimes); page commands add one local broker hop over direct CDP.
- * @concurrency Per-target FIFO comes from BrowserRuntimeSessionRegistry; distinct targets execute in parallel; per-partition launch is coalesced by ManagedBrowserProvider.
- * @test        tests/unit/browser-runtime-session.test.ts, tests/integration/browser-runtime-broker.test.ts
+ * @does        Route authenticated lifecycle, native-host, target ownership, visibility, and page requests through managed and Chrome browser providers.
+ * @needs       node:crypto, src/browser/chrome-provider.ts, chrome-native-protocol.ts, managed-browser.ts, runtime-protocol.ts, runtime-session.ts
+ * @feeds       src/browser/runtime-transport.ts, runtime-broker-main.ts, CLI/MCP browser clients and native host
+ * @breaks      Returns structured lifecycle, ownership, visibility, provider, native-host, CDP, and command errors without provider fallback.
+ * @invariants  Providers own processes/tabs; every mutation crosses an exclusive target queue; profiles have one writer; visibility never changes implicitly.
+ * @side-effects Starts/stops managed runtimes, brokers extension commands, mutates lifecycle/target state, and executes page/CDP operations.
+ * @perf        Status is O(sessions + targets + runtimes); commands add one local broker hop and Chrome commands add one native-host hop.
+ * @concurrency Per-target FIFO is registry-owned; distinct targets run in parallel; managed launch is coalesced; one native host serializes Chrome delivery.
+ * @test        tests/unit/browser-runtime-session.test.ts, tests/unit/chrome-provider.test.ts, tests/integration/browser-runtime-broker.test.ts, tests/integration/browser-extension-background.test.ts
  * @stability   experimental
  * @since       2026-07-15
  */
 
 import { randomUUID } from "node:crypto";
 
+import { ChromeBrowserProvider } from "./chrome-provider.js";
+import type { ChromeNativeTarget } from "./chrome-native-protocol.js";
+import type { BrowserInvocationContext } from "./invocation-context.js";
 import {
   ManagedBrowserProvider,
   type ManagedBrowserTargetRequest,
@@ -27,10 +30,13 @@ import {
   type BrowserBrokerRequest,
   type BrowserBrokerResponse,
   type BrowserBrokerStatus,
+  type BrowserChromeTargetClaimRequest,
   type BrowserPageCommand,
   type BrowserSessionEndResult,
   type BrowserTargetCommandRequest,
   type BrowserTargetCommandResult,
+  type ChromeBrowserTargetCommandRequest,
+  type ManagedBrowserTargetCommandRequest,
 } from "./runtime-protocol.js";
 import {
   BrowserRuntimeSessionRegistry,
@@ -41,22 +47,33 @@ interface BrowserRuntimeBrokerOptions {
   runtimeId?: string;
   sessionTtlMs?: number;
   provider?: ManagedBrowserProvider;
+  chromeProvider?: ChromeBrowserProvider;
   now?: () => number;
 }
 
-interface TargetPolicy {
+interface ManagedTargetPolicy {
+  provider: "managed";
   profilePartitionId: string;
   isolated: boolean;
   ephemeral: boolean;
   profileId?: string;
 }
 
+interface ChromeTargetPolicy {
+  provider: "chrome";
+  profilePartitionId: string;
+  target: ChromeNativeTarget;
+}
+
+type TargetPolicy = ManagedTargetPolicy | ChromeTargetPolicy;
+
 export class BrowserRuntimeBroker {
   readonly runtimeId: string;
   private readonly startedAtMs: number;
   private readonly sessionTtlMs: number;
   private readonly registry: BrowserRuntimeSessionRegistry;
-  private readonly provider: ManagedBrowserProvider;
+  private readonly managedProvider: ManagedBrowserProvider;
+  private readonly chromeProvider: ChromeBrowserProvider;
   private readonly sessionTargetIds = new Map<string, Set<string>>();
   private readonly targetPolicies = new Map<string, TargetPolicy>();
   private readonly now: () => number;
@@ -68,9 +85,10 @@ export class BrowserRuntimeBroker {
     this.now = options.now ?? Date.now;
     this.startedAtMs = this.now();
     this.registry = new BrowserRuntimeSessionRegistry({ now: this.now });
-    this.provider =
+    this.managedProvider =
       options.provider ??
       new ManagedBrowserProvider({ brokerRuntimeId: this.runtimeId });
+    this.chromeProvider = options.chromeProvider ?? new ChromeBrowserProvider();
   }
 
   async dispatch(
@@ -79,11 +97,7 @@ export class BrowserRuntimeBroker {
     try {
       return { id: request.id, ok: true, data: await this.execute(request) };
     } catch (error) {
-      return {
-        id: request.id,
-        ok: false,
-        error: brokerError(error),
-      };
+      return { id: request.id, ok: false, error: brokerError(error) };
     }
   }
 
@@ -99,8 +113,8 @@ export class BrowserRuntimeBroker {
       session_ttl_ms: this.sessionTtlMs,
       sessions: this.registry.status(),
       providers: {
-        managed: this.provider.status(),
-        chrome_connected: false,
+        managed: this.managedProvider.status(),
+        chrome: this.chromeProvider.status(),
       },
     };
   }
@@ -122,13 +136,26 @@ export class BrowserRuntimeBroker {
   }
 
   async close(): Promise<void> {
+    let closeError: unknown;
     const sessionIds = this.registry
       .status()
       .sessions.map((session) => session.agent_session_id);
-    for (const sessionId of sessionIds) await this.endSession(sessionId);
-    await this.provider.close();
+    for (const sessionId of sessionIds) {
+      try {
+        await this.endSession(sessionId);
+      } catch (error) {
+        closeError ??= error;
+      }
+    }
+    try {
+      await this.managedProvider.close();
+    } catch (error) {
+      closeError ??= error;
+    }
+    this.chromeProvider.close();
     this.sessionTargetIds.clear();
     this.targetPolicies.clear();
+    if (closeError) throw closeError;
   }
 
   private async execute(request: BrowserBrokerRequest): Promise<unknown> {
@@ -181,43 +208,89 @@ export class BrowserRuntimeBroker {
         this.addSessionTarget(request.to.agent_session_id, request.target_id);
         return lease;
       }
+      case "chrome.tabs.list":
+        this.registry.touchSession(request.context);
+        return this.chromeProvider.listTabs();
+      case "chrome.target.claim":
+        return this.claimChromeTarget(request);
+      case "chrome.target.finalize":
+        return this.finalizeChromeTarget(
+          request.context,
+          request.target_id,
+          request.disposition,
+        );
+      case "chrome.host.register":
+        this.chromeProvider.registerHost(
+          request.host_instance_id,
+          request.hello,
+        );
+        return this.chromeProvider.status();
+      case "chrome.host.poll":
+        return this.chromeProvider.poll(request.host_instance_id);
+      case "chrome.host.heartbeat":
+        this.chromeProvider.heartbeat(request.host_instance_id);
+        return { accepted: true };
+      case "chrome.host.result":
+        this.chromeProvider.deliver(request.host_instance_id, request.result);
+        return { accepted: true };
+      case "chrome.host.disconnect":
+        this.chromeProvider.disconnectHost(request.host_instance_id);
+        return { disconnected: true };
     }
   }
 
   private async executeTargetCommand(
     request: BrowserTargetCommandRequest,
   ): Promise<BrowserTargetCommandResult> {
-    if (request.visibility !== "hidden") {
-      throw new BrowserVisibilityUnavailableError(request.visibility);
-    }
     const targetId = await this.resolveTarget(request);
-    const runtime = this.provider
-      .status()
-      .find(
-        (candidate) =>
-          candidate.profile_partition_id === request.profile_partition_id,
-      );
-    if (!runtime) {
-      throw new Error(
-        `Managed runtime disappeared for partition ${request.profile_partition_id}`,
-      );
-    }
     const data = await this.registry.runTargetMutation(
       request.context,
       targetId,
       async (signal) => {
         if (signal.aborted) throw signal.reason;
-        const page = this.provider.getPage(targetId);
-        const commandResult = await executePageCommand(page, request.command);
+        const result =
+          request.provider === "managed"
+            ? await executeManagedPageCommand(
+                this.managedProvider.getPage(targetId),
+                request.command,
+              )
+            : await this.chromeProvider.execute(
+                targetId,
+                request.visibility,
+                request.command,
+              );
         if (signal.aborted) throw signal.reason;
-        return commandResult;
+        return result;
       },
     );
+    if (request.provider === "managed") {
+      const runtime = this.managedProvider
+        .status()
+        .find(
+          (candidate) =>
+            candidate.profile_partition_id === request.profile_partition_id,
+        );
+      if (!runtime) {
+        throw new BrowserTargetPolicyError(
+          targetId,
+          "managed runtime disappeared",
+        );
+      }
+      return {
+        target_id: targetId,
+        runtime_id: runtime.runtime_id,
+        provider: "managed",
+        browser_pid: runtime.browser_pid,
+        visibility: "hidden",
+        ...(data === undefined ? {} : { data }),
+      };
+    }
+    const chromeStatus = this.chromeProvider.status();
     return {
       target_id: targetId,
-      runtime_id: runtime.runtime_id,
-      browser_pid: runtime.browser_pid,
-      visibility: "hidden",
+      runtime_id: chromeStatus.host_instance_id ?? this.runtimeId,
+      provider: "chrome",
+      visibility: request.visibility,
       ...(data === undefined ? {} : { data }),
     };
   }
@@ -233,17 +306,20 @@ export class BrowserRuntimeBroker {
       ...(this.sessionTargetIds.get(request.context.agent_session_id) ?? []),
     ].find((targetId) => {
       const policy = this.targetPolicies.get(targetId);
-      return policy?.profilePartitionId === request.profile_partition_id;
+      return (
+        policyMatchesRequest(policy, request) &&
+        (policy?.provider !== "chrome" ||
+          this.chromeProvider.hasLiveTarget(targetId))
+      );
     });
-    if (ownedTargetId) {
-      this.assertTargetPolicy(ownedTargetId, request);
-      return ownedTargetId;
-    }
-    return this.acquireTarget(request);
+    if (ownedTargetId) return ownedTargetId;
+    return request.provider === "managed"
+      ? this.acquireManagedTarget(request)
+      : this.acquireChromeTarget(request);
   }
 
-  private async acquireTarget(
-    request: BrowserTargetCommandRequest,
+  private async acquireManagedTarget(
+    request: ManagedBrowserTargetCommandRequest,
   ): Promise<string> {
     this.registry.touchSession(request.context);
     const providerRequest: ManagedBrowserTargetRequest = {
@@ -252,7 +328,7 @@ export class BrowserRuntimeBroker {
       ephemeral: request.ephemeral,
       ...(request.profile_id ? { profile_id: request.profile_id } : {}),
     };
-    const target = await this.provider.acquireTarget(providerRequest);
+    const target = await this.managedProvider.acquireTarget(providerRequest);
     try {
       this.registry.claimTarget(request.context, {
         target_id: target.target_id,
@@ -262,10 +338,11 @@ export class BrowserRuntimeBroker {
         lifetime: "session",
       });
     } catch (error) {
-      await this.provider.releaseTarget(target.target_id);
+      await this.managedProvider.releaseTarget(target.target_id);
       throw error;
     }
     this.targetPolicies.set(target.target_id, {
+      provider: "managed",
       profilePartitionId: request.profile_partition_id,
       isolated: request.isolated,
       ephemeral: request.ephemeral,
@@ -275,19 +352,116 @@ export class BrowserRuntimeBroker {
     return target.target_id;
   }
 
+  private async acquireChromeTarget(
+    request: ChromeBrowserTargetCommandRequest,
+  ): Promise<string> {
+    this.registry.touchSession(request.context);
+    const target = await this.chromeProvider.acquireTarget(request.visibility);
+    return this.claimNewChromeTarget(
+      request.context,
+      request.profile_partition_id,
+      target,
+    );
+  }
+
+  private async claimChromeTarget(
+    request: BrowserChromeTargetClaimRequest,
+  ): Promise<ChromeNativeTarget> {
+    this.registry.touchSession(request.context);
+    const targetId = this.chromeProvider.targetIdForTab(request.tab_id);
+    const existing = this.targetPolicies.get(targetId);
+    if (existing) {
+      if (
+        existing.provider !== "chrome" ||
+        existing.profilePartitionId !== request.profile_partition_id
+      ) {
+        throw new BrowserTargetPolicyError(
+          targetId,
+          "provider or profile partition mismatch",
+        );
+      }
+      this.registry.claimTarget(request.context, {
+        target_id: targetId,
+        provider: "chrome",
+        profile_partition_id: request.profile_partition_id,
+        visibility: request.visibility,
+        lifetime: "session",
+      });
+      if (this.chromeProvider.hasLiveTarget(targetId)) return existing.target;
+      const target = await this.chromeProvider.claimTarget(
+        request.tab_id,
+        request.visibility,
+      );
+      existing.target = target;
+      return target;
+    }
+    const target = await this.chromeProvider.claimTarget(
+      request.tab_id,
+      request.visibility,
+    );
+    try {
+      this.claimNewChromeTarget(
+        request.context,
+        request.profile_partition_id,
+        target,
+      );
+      return target;
+    } catch (error) {
+      await this.chromeProvider.releaseTarget(target.target_id, "release");
+      throw error;
+    }
+  }
+
+  private claimNewChromeTarget(
+    context: BrowserInvocationContext,
+    profilePartitionId: string,
+    target: ChromeNativeTarget,
+  ): string {
+    this.registry.claimTarget(context, {
+      target_id: target.target_id,
+      provider: "chrome",
+      profile_partition_id: profilePartitionId,
+      visibility: target.visibility,
+      lifetime: "session",
+    });
+    this.targetPolicies.set(target.target_id, {
+      provider: "chrome",
+      profilePartitionId,
+      target,
+    });
+    this.addSessionTarget(context.agent_session_id, target.target_id);
+    return target.target_id;
+  }
+
+  private async finalizeChromeTarget(
+    context: BrowserChromeTargetClaimRequest["context"],
+    targetId: string,
+    disposition?: "close" | "release",
+  ): Promise<BrowserTargetLease> {
+    const policy = this.targetPolicies.get(targetId);
+    if (policy?.provider !== "chrome") {
+      throw new BrowserTargetPolicyError(targetId, "not a Chrome target");
+    }
+    const lease = await this.registry.finalizeTarget(
+      context,
+      targetId,
+      async (signal) => {
+        if (signal.aborted) throw signal.reason;
+        await this.chromeProvider.releaseTarget(targetId, disposition);
+      },
+    );
+    this.targetPolicies.delete(targetId);
+    this.removeSessionTarget(context.agent_session_id, targetId);
+    return lease;
+  }
+
   private assertTargetPolicy(
     targetId: string,
     request: BrowserTargetCommandRequest,
   ): void {
     const policy = this.targetPolicies.get(targetId);
-    if (!policy) return;
-    if (
-      policy.profilePartitionId !== request.profile_partition_id ||
-      policy.isolated !== request.isolated ||
-      policy.ephemeral !== request.ephemeral ||
-      policy.profileId !== request.profile_id
-    ) {
-      throw new BrowserTargetPolicyError(targetId);
+    if (!policy || !policyMatchesRequest(policy, request)) {
+      throw new BrowserTargetPolicyError(targetId, "request policy mismatch");
     }
   }
 
@@ -314,7 +488,7 @@ export class BrowserRuntimeBroker {
       ...(this.sessionTargetIds.get(agentSessionId) ?? []),
     ]);
     for (const targetId of targetIds) {
-      await this.provider.releaseTarget(targetId);
+      await this.releaseProviderTarget(targetId);
       this.targetPolicies.delete(targetId);
       this.removeSessionTarget(agentSessionId, targetId);
     }
@@ -323,10 +497,22 @@ export class BrowserRuntimeBroker {
 
   private async releaseLeases(leases: BrowserTargetLease[]): Promise<void> {
     for (const lease of leases) {
-      await this.provider.releaseTarget(lease.target_id);
+      await this.releaseProviderTarget(lease.target_id);
       this.targetPolicies.delete(lease.target_id);
       this.removeSessionTarget(lease.owner_session_id, lease.target_id);
     }
+  }
+
+  private async releaseProviderTarget(targetId: string): Promise<void> {
+    const policy = this.targetPolicies.get(targetId);
+    if (!policy) {
+      throw new BrowserTargetPolicyError(targetId, "provider record missing");
+    }
+    if (policy.provider === "managed") {
+      await this.managedProvider.releaseTarget(targetId);
+      return;
+    }
+    await this.chromeProvider.releaseTarget(targetId);
   }
 
   private async releasePendingSessionTargets(
@@ -354,33 +540,42 @@ export class BrowserRuntimeBroker {
   }
 }
 
-class BrowserVisibilityUnavailableError extends Error {
-  readonly code = "browser_visibility_unavailable";
-  readonly retryable = false;
-  readonly suggestion =
-    "Use visibility=hidden with the managed provider, or install/connect the Chrome provider for explicit background work.";
-
-  constructor(visibility: string) {
-    super(
-      `The managed browser provider cannot satisfy visibility=${visibility}`,
-    );
-    this.name = "BrowserVisibilityUnavailableError";
+function policyMatchesRequest(
+  policy: TargetPolicy | undefined,
+  request: BrowserTargetCommandRequest,
+): boolean {
+  if (
+    !policy ||
+    policy.provider !== request.provider ||
+    policy.profilePartitionId !== request.profile_partition_id
+  ) {
+    return false;
   }
+  if (policy.provider === "chrome" && request.provider === "chrome") {
+    return true;
+  }
+  return (
+    policy.provider === "managed" &&
+    request.provider === "managed" &&
+    policy.isolated === request.isolated &&
+    policy.ephemeral === request.ephemeral &&
+    policy.profileId === request.profile_id
+  );
 }
 
 class BrowserTargetPolicyError extends Error {
   readonly code = "browser_target_policy_mismatch";
   readonly retryable = false;
   readonly suggestion =
-    "Create a new target when changing profile partition, isolation, persistence, or source profile.";
+    "Create or claim a target whose provider, profile partition, isolation, and persistence match the request.";
 
-  constructor(targetId: string) {
-    super(`Browser target ${targetId} is bound to a different runtime policy`);
+  constructor(targetId: string, reason: string) {
+    super(`Browser target ${targetId} policy mismatch: ${reason}`);
     this.name = "BrowserTargetPolicyError";
   }
 }
 
-async function executePageCommand(
+async function executeManagedPageCommand(
   page: ReturnType<ManagedBrowserProvider["getPage"]>,
   command: BrowserPageCommand,
 ): Promise<unknown> {

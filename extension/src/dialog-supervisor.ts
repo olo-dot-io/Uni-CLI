@@ -2,8 +2,9 @@
  * @owner   extension/src/dialog-supervisor.ts
  * @does    Maintain provider-owned browser JavaScript dialog state for daemon browser sessions.
  * @needs   chrome.debugger, chrome.tabs
- * @feeds   extension/src/background.ts dialog-read/dialog-respond commands
+ * @feeds   extension/src/chrome-controller.ts dialog_read/dialog_respond commands
  * @breaks  extension dialog supervision tests when pending/recent dialog state or response routing drifts.
+ * @test    tests/integration/browser-extension-background.test.ts
  */
 
 export type DialogSupervisorAction = "accept" | "dismiss";
@@ -234,7 +235,7 @@ function clearTab(tabId?: number): void {
   attachedTabs.delete(tabId);
   const state = dialogStates.get(tabId);
   if (state === undefined) return;
-  for (const dialog of [...state.pending.values()]) {
+  for (const dialog of state.pending.values()) {
     archiveDialog(tabId, dialog, "tab_closed");
   }
   dialogStates.delete(tabId);

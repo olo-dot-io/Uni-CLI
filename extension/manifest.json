@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Unicli Browser Bridge",
-  "version": "0.1.0",
-  "description": "Bridges unicli CLI commands to Chrome browser tabs via the daemon",
+  "name": "Uni-CLI Browser Control",
+  "version": "1.0.0",
+  "description": "Controls explicitly allocated or claimed Chrome tabs through an authenticated native host.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAslbqpIPwG7lgzGRzYC7ub1E+g1Fcr8aA0Wt4X+Kv+LJrFUiZyWVEXPfGsSN/gz8NmdvBp0zV+ZpQSk9JCvAIsRxnAZDQgBHYftRcKTy8Q6UCx4YhLJsMWRh8LueJowYCXqCXJ6PSXSFo0/qxU9ltKBDvhI82cwcnb8znec6+klSyoUZqmtmwJDVPvHnvZiw6x+GLzO2dleX+tTV825fAKAJJEr0Li3tjhTiqdQNfuZ4URYfe53qZEHNXCCTDL8eafniBpgU2mHRjbpY/ORviv/5OIV9nXgvbkePNT5d5BK0LnCsZnR3Z5WGuhQZ0P/Qvgz6dhSCpYSfchgY1EArbPQIDAQAB",
   "permissions": [
     "debugger",
     "downloads",
@@ -10,11 +11,14 @@
     "tabs",
     "cookies",
     "activeTab",
-    "alarms"
+    "alarms",
+    "nativeMessaging",
+    "storage",
+    "windows"
   ],
   "host_permissions": ["<all_urls>"],
   "background": {
-    "service_worker": "src/background.js",
+    "service_worker": "dist/background.js",
     "type": "module"
   },
   "icons": {}

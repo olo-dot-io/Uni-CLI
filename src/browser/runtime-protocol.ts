@@ -1,7 +1,7 @@
 /**
  * @owner       src/browser/runtime-protocol.ts
  * @does        Define the authenticated Browser Runtime Broker request, response, lifecycle, command, status, and refusal wire contracts.
- * @needs       src/browser/invocation-context.ts, src/browser/runtime-session.ts, src/browser/managed-browser.ts
+ * @needs       src/browser/invocation-context.ts, runtime-session.ts, managed-browser.ts, chrome-provider.ts, chrome-native-protocol.ts
  * @feeds       src/browser/runtime-broker.ts, src/browser/runtime-transport.ts, native browser host and CLI/MCP clients
  * @breaks      Protocol consumers reject unknown versions, malformed identities, unknown actions, and structured broker errors.
  * @invariants  Authentication is outside tool arguments; every request has one id; hidden/background/foreground and provider selection are explicit.
@@ -14,6 +14,14 @@
  */
 
 import type { BrowserInvocationContext } from "./invocation-context.js";
+import type { ChromeProviderStatus } from "./chrome-provider.js";
+import {
+  CHROME_NATIVE_PRODUCT,
+  CHROME_NATIVE_PROTOCOL,
+  CHROME_NATIVE_PROTOCOL_VERSION,
+  type ChromeNativeHello,
+  type ChromeNativeResult,
+} from "./chrome-native-protocol.js";
 import type { ManagedBrowserRuntimeStatus } from "./managed-browser.js";
 import type {
   BrowserRuntimeRegistryStatus,
@@ -54,7 +62,15 @@ export type BrowserPageCommand =
     }
   | { method: "set_file_input"; selector: string; files: string[] }
   | { method: "network_capture_start"; pattern?: string }
-  | { method: "network_capture_read" };
+  | { method: "network_capture_read" }
+  | { method: "downloads_read"; limit?: number }
+  | { method: "dialog_read"; clear_recent?: boolean }
+  | {
+      method: "dialog_respond";
+      action: "accept" | "dismiss";
+      prompt_text?: string;
+      dialog_id?: string;
+    };
 
 interface BrowserBrokerRequestBase {
   id: string;
@@ -83,24 +99,84 @@ export interface BrowserSessionEndRequest extends BrowserBrokerRequestBase {
   agent_session_id: string;
 }
 
-export interface BrowserTargetCommandRequest extends BrowserBrokerRequestBase {
+interface BrowserTargetCommandRequestBase extends BrowserBrokerRequestBase {
   action: "target.command";
   context: BrowserInvocationContext;
   target_id?: string;
-  provider: "managed";
   visibility: BrowserVisibility;
   profile_partition_id: string;
+  command: BrowserPageCommand;
+}
+
+export interface ManagedBrowserTargetCommandRequest extends BrowserTargetCommandRequestBase {
+  provider: "managed";
+  visibility: "hidden";
   isolated: boolean;
   ephemeral: boolean;
   profile_id?: string;
-  command: BrowserPageCommand;
 }
+
+export interface ChromeBrowserTargetCommandRequest extends BrowserTargetCommandRequestBase {
+  provider: "chrome";
+  visibility: "background" | "foreground";
+}
+
+export type BrowserTargetCommandRequest =
+  | ManagedBrowserTargetCommandRequest
+  | ChromeBrowserTargetCommandRequest;
 
 export interface BrowserTargetHandoffRequest extends BrowserBrokerRequestBase {
   action: "target.handoff";
   target_id: string;
   from: BrowserInvocationContext;
   to: BrowserInvocationContext;
+}
+
+export interface BrowserChromeTabsListRequest extends BrowserBrokerRequestBase {
+  action: "chrome.tabs.list";
+  context: BrowserInvocationContext;
+}
+
+export interface BrowserChromeTargetClaimRequest extends BrowserBrokerRequestBase {
+  action: "chrome.target.claim";
+  context: BrowserInvocationContext;
+  tab_id: number;
+  visibility: "background" | "foreground";
+  profile_partition_id: string;
+}
+
+export interface BrowserChromeTargetFinalizeRequest extends BrowserBrokerRequestBase {
+  action: "chrome.target.finalize";
+  context: BrowserInvocationContext;
+  target_id: string;
+  disposition?: "close" | "release";
+}
+
+export interface BrowserChromeHostRegisterRequest extends BrowserBrokerRequestBase {
+  action: "chrome.host.register";
+  host_instance_id: string;
+  hello: ChromeNativeHello;
+}
+
+export interface BrowserChromeHostPollRequest extends BrowserBrokerRequestBase {
+  action: "chrome.host.poll";
+  host_instance_id: string;
+}
+
+export interface BrowserChromeHostHeartbeatRequest extends BrowserBrokerRequestBase {
+  action: "chrome.host.heartbeat";
+  host_instance_id: string;
+}
+
+export interface BrowserChromeHostResultRequest extends BrowserBrokerRequestBase {
+  action: "chrome.host.result";
+  host_instance_id: string;
+  result: ChromeNativeResult;
+}
+
+export interface BrowserChromeHostDisconnectRequest extends BrowserBrokerRequestBase {
+  action: "chrome.host.disconnect";
+  host_instance_id: string;
 }
 
 export type BrowserBrokerRequest =
@@ -110,7 +186,15 @@ export type BrowserBrokerRequest =
   | BrowserTurnEndRequest
   | BrowserSessionEndRequest
   | BrowserTargetCommandRequest
-  | BrowserTargetHandoffRequest;
+  | BrowserTargetHandoffRequest
+  | BrowserChromeTabsListRequest
+  | BrowserChromeTargetClaimRequest
+  | BrowserChromeTargetFinalizeRequest
+  | BrowserChromeHostRegisterRequest
+  | BrowserChromeHostPollRequest
+  | BrowserChromeHostHeartbeatRequest
+  | BrowserChromeHostResultRequest
+  | BrowserChromeHostDisconnectRequest;
 
 export interface BrowserBrokerWireRequest {
   product: typeof BROWSER_BROKER_PRODUCT;
@@ -137,7 +221,8 @@ export interface BrowserBrokerResponse {
 export interface BrowserTargetCommandResult {
   target_id: string;
   runtime_id: string;
-  browser_pid: number;
+  provider: "managed" | "chrome";
+  browser_pid?: number;
   visibility: BrowserVisibility;
   data?: unknown;
 }
@@ -154,7 +239,7 @@ export interface BrowserBrokerStatus {
   sessions: BrowserRuntimeRegistryStatus;
   providers: {
     managed: ManagedBrowserRuntimeStatus[];
-    chrome_connected: boolean;
+    chrome: ChromeProviderStatus;
   };
 }
 
@@ -260,11 +345,71 @@ const pageCommandSchema = z.discriminatedUnion("method", [
     })
     .strict(),
   z.object({ method: z.literal("network_capture_read") }).strict(),
+  z
+    .object({
+      method: z.literal("downloads_read"),
+      limit: z.number().int().min(1).max(50).optional(),
+    })
+    .strict(),
+  z
+    .object({
+      method: z.literal("dialog_read"),
+      clear_recent: z.boolean().optional(),
+    })
+    .strict(),
+  z
+    .object({
+      method: z.literal("dialog_respond"),
+      action: z.enum(["accept", "dismiss"]),
+      prompt_text: z.string().optional(),
+      dialog_id: z.string().min(1).optional(),
+    })
+    .strict(),
 ]);
 
 const requestIdSchema = z.string().trim().min(1).max(512);
 
-const brokerRequestSchema = z.discriminatedUnion("action", [
+const chromeNativeHelloSchema = z
+  .object({
+    type: z.literal("hello"),
+    product: z.literal(CHROME_NATIVE_PRODUCT),
+    protocol: z.literal(CHROME_NATIVE_PROTOCOL),
+    version: z.literal(CHROME_NATIVE_PROTOCOL_VERSION),
+    extension_id: z.string().trim().min(1).max(128),
+    extension_version: z.string().trim().min(1).max(128),
+    browser_session_id: z.string().uuid(),
+  })
+  .strict();
+
+const chromeNativeErrorSchema = z
+  .object({
+    code: z.string().trim().min(1).max(256),
+    message: z.string().max(16_384),
+    suggestion: z.string().max(16_384),
+    retryable: z.boolean(),
+  })
+  .strict();
+
+const chromeNativeResultSchema = z.discriminatedUnion("ok", [
+  z
+    .object({
+      type: z.literal("result"),
+      request_id: requestIdSchema,
+      ok: z.literal(true),
+      data: z.unknown().optional(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("result"),
+      request_id: requestIdSchema,
+      ok: z.literal(false),
+      error: chromeNativeErrorSchema,
+    })
+    .strict(),
+]);
+
+const brokerRequestSchema = z.union([
   z
     .object({ id: requestIdSchema, action: z.literal("broker.status") })
     .strict(),
@@ -299,7 +444,7 @@ const brokerRequestSchema = z.discriminatedUnion("action", [
       context: invocationContextSchema,
       target_id: z.string().trim().min(1).max(512).optional(),
       provider: z.literal("managed"),
-      visibility: z.enum(["hidden", "background", "foreground"]),
+      visibility: z.literal("hidden"),
       profile_partition_id: z.string().trim().min(1).max(512),
       isolated: z.boolean(),
       ephemeral: z.boolean(),
@@ -310,10 +455,85 @@ const brokerRequestSchema = z.discriminatedUnion("action", [
   z
     .object({
       id: requestIdSchema,
+      action: z.literal("target.command"),
+      context: invocationContextSchema,
+      target_id: z.string().trim().min(1).max(512).optional(),
+      provider: z.literal("chrome"),
+      visibility: z.enum(["background", "foreground"]),
+      profile_partition_id: z.string().trim().min(1).max(512),
+      command: pageCommandSchema,
+    })
+    .strict(),
+  z
+    .object({
+      id: requestIdSchema,
       action: z.literal("target.handoff"),
       target_id: z.string().trim().min(1).max(512),
       from: invocationContextSchema,
       to: invocationContextSchema,
+    })
+    .strict(),
+  z
+    .object({
+      id: requestIdSchema,
+      action: z.literal("chrome.tabs.list"),
+      context: invocationContextSchema,
+    })
+    .strict(),
+  z
+    .object({
+      id: requestIdSchema,
+      action: z.literal("chrome.target.claim"),
+      context: invocationContextSchema,
+      tab_id: z.number().int().nonnegative(),
+      visibility: z.enum(["background", "foreground"]),
+      profile_partition_id: z.string().trim().min(1).max(512),
+    })
+    .strict(),
+  z
+    .object({
+      id: requestIdSchema,
+      action: z.literal("chrome.target.finalize"),
+      context: invocationContextSchema,
+      target_id: z.string().trim().min(1).max(512),
+      disposition: z.enum(["close", "release"]).optional(),
+    })
+    .strict(),
+  z
+    .object({
+      id: requestIdSchema,
+      action: z.literal("chrome.host.register"),
+      host_instance_id: z.string().uuid(),
+      hello: chromeNativeHelloSchema,
+    })
+    .strict(),
+  z
+    .object({
+      id: requestIdSchema,
+      action: z.literal("chrome.host.poll"),
+      host_instance_id: z.string().uuid(),
+    })
+    .strict(),
+  z
+    .object({
+      id: requestIdSchema,
+      action: z.literal("chrome.host.heartbeat"),
+      host_instance_id: z.string().uuid(),
+    })
+    .strict(),
+  z
+    .object({
+      id: requestIdSchema,
+      action: z.literal("chrome.host.result"),
+      host_instance_id: z.string().uuid(),
+      result: chromeNativeResultSchema,
+    })
+    .strict(),
+  z
+    .object({
+      id: requestIdSchema,
+      action: z.literal("chrome.host.disconnect"),
+      host_instance_id: z.string().uuid(),
     })
     .strict(),
 ]);
