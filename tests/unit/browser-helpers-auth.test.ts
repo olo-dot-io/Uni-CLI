@@ -1,27 +1,19 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const pageMock = vi.hoisted(() => ({
-  page: {
-    sendCDP: vi.fn().mockResolvedValue(undefined),
-  },
+import type { PipelineContext } from "../../src/engine/executor.js";
+import type { IPage } from "../../src/types.js";
+import { InMemoryBrowserRuntimeHarness } from "../helpers/in-memory-browser-runtime.js";
+
+const cookieBoundary = vi.hoisted(() => ({
+  readCookies: vi.fn(),
 }));
 
-const browserPageMock = vi.hoisted(() => ({
-  connect: vi.fn(),
-}));
-
-const launcherMock = vi.hoisted(() => ({
-  findAvailableCDPPort: vi.fn().mockResolvedValue(9222),
-  isCDPAvailable: vi.fn().mockResolvedValue(false),
-  launchChrome: vi.fn().mockResolvedValue(9333),
-}));
-
-const localProfileMock = vi.hoisted(() => ({
-  resolvePreferredLocalBrowserProfile: vi.fn(() => ({
+// REASON: Local browser profile discovery and encrypted cookie storage are operating-system boundaries; broker/auth-sync behavior stays real.
+vi.mock("../../src/browser/local-profiles.js", () => ({
+  resolvePreferredLocalBrowserProfile: () => ({
     id: "google-chrome:Default",
     browser_name: "Google Chrome",
-    browser_path:
-      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    browser_path: "/Applications/Chrome",
     browser_path_exists: true,
     user_data_dir: "/Users/example/Library/Application Support/Google/Chrome",
     profile_dir: "Default",
@@ -30,16 +22,27 @@ const localProfileMock = vi.hoisted(() => ({
       "/Users/example/Library/Application Support/Google/Chrome/Default",
     display_name: "Google Chrome - Personal",
     debug_port: { state: "not-recorded" },
-  })),
-  automationUserDataDirForProfile: vi.fn(
-    () => "/Users/example/.unicli/browser-profiles/google-chrome_Default",
-  ),
-  readUserDataDirDebugPort: vi.fn(() => ({ state: "not-recorded" })),
-  browserCookieIdForLocalProfile: vi.fn(() => "chrome"),
+  }),
+  browserCookieIdForLocalProfile: () => "chrome",
+}));
+vi.mock("../../src/engine/chromium-cookies.js", () => ({
+  readCookies: cookieBoundary.readCookies,
 }));
 
-const chromiumCookieMock = vi.hoisted(() => ({
-  readCookies: vi.fn(() => [
+import {
+  acquirePage,
+  waitForNetworkIdle,
+} from "../../src/engine/steps/browser-helpers.js";
+
+let runtime: InMemoryBrowserRuntimeHarness;
+let previousRuntimeRoot: string | undefined;
+
+beforeEach(async () => {
+  vi.clearAllMocks();
+  previousRuntimeRoot = process.env.UNICLI_BROWSER_RUNTIME_DIR;
+  runtime = new InMemoryBrowserRuntimeHarness();
+  process.env.UNICLI_BROWSER_RUNTIME_DIR = runtime.runtimeRoot;
+  cookieBoundary.readCookies.mockReturnValue([
     {
       host: ".x.com",
       name: "auth_token",
@@ -48,128 +51,121 @@ const chromiumCookieMock = vi.hoisted(() => ({
       expires: 13_433_616_000_000_000,
       secure: true,
       httpOnly: true,
+      persistent: true,
+      hasExpires: true,
     },
-  ]),
-}));
+  ]);
+  await runtime.start();
+});
 
-vi.mock("../../src/browser/discover.js", () => ({
-  checkDaemonStatus: vi.fn().mockResolvedValue({
-    running: false,
-    extensionConnected: false,
-  }),
-}));
+afterEach(async () => {
+  await runtime.cleanup();
+  if (previousRuntimeRoot === undefined) {
+    delete process.env.UNICLI_BROWSER_RUNTIME_DIR;
+  } else {
+    process.env.UNICLI_BROWSER_RUNTIME_DIR = previousRuntimeRoot;
+  }
+});
 
-vi.mock("../../src/browser/page.js", () => ({
-  BrowserPage: {
-    connect: browserPageMock.connect,
-  },
-}));
+describe("browser pipeline page acquisition", () => {
+  it("acquires through the broker, installs hardening, and syncs declared user cookies", async () => {
+    const page = await acquirePage(userPipelineContext());
 
-vi.mock("../../src/browser/launcher.js", () => launcherMock);
-
-vi.mock("../../src/browser/stealth.js", () => ({
-  injectStealth: vi.fn().mockResolvedValue(undefined),
-}));
-
-vi.mock("../../src/browser/local-profiles.js", () => localProfileMock);
-
-vi.mock("../../src/engine/chromium-cookies.js", () => chromiumCookieMock);
-
-import { acquirePage } from "../../src/engine/steps/browser-helpers.js";
-
-describe("browser user-session auth bootstrap", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    browserPageMock.connect.mockResolvedValue(pageMock.page);
-    pageMock.page.sendCDP.mockResolvedValue(undefined);
-  });
-
-  it("auto-starts CDP in an automation profile and imports cookies from the selected local profile", async () => {
-    await expect(
-      acquirePage({
-        data: null,
-        args: {},
-        vars: {},
-        browserSession: "user",
-        site: "twitter",
-        domain: "x.com",
-      }),
-    ).resolves.toBe(pageMock.page);
-
-    expect(launcherMock.findAvailableCDPPort).toHaveBeenCalledWith(9222);
-    expect(launcherMock.launchChrome).toHaveBeenCalledWith(
-      9222,
-      expect.objectContaining({
-        browserPath:
-          "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-        profileDirectory: "Default",
-        seedProfile: expect.objectContaining({
-          id: "google-chrome:Default",
-        }),
-        userDataDir:
-          "/Users/example/.unicli/browser-profiles/google-chrome_Default",
-      }),
-    );
-    expect(browserPageMock.connect).toHaveBeenCalledWith(9333, {
-      freshPage: true,
-    });
-    expect(chromiumCookieMock.readCookies).toHaveBeenCalledWith({
+    expect(page).toBeDefined();
+    expect(runtime.provider.acquireCount).toBe(1);
+    expect(cookieBoundary.readCookies).toHaveBeenCalledWith({
       browser: "chrome",
       domain: "x.com",
       profile: "Default",
       userDataDir: "/Users/example/Library/Application Support/Google/Chrome",
     });
-    expect(pageMock.page.sendCDP).toHaveBeenCalledWith("Network.setCookies", {
-      cookies: [
-        expect.objectContaining({
-          domain: ".x.com",
-          httpOnly: true,
-          name: "auth_token",
-          path: "/",
-          secure: true,
-          value: "secret",
-        }),
-      ],
-    });
+    expect(runtime.provider.pages[0]?.cdpCalls).toEqual([
+      expect.objectContaining({
+        method: "Page.addScriptToEvaluateOnNewDocument",
+      }),
+      { method: "Network.enable" },
+      {
+        method: "Network.setCookies",
+        params: {
+          cookies: [
+            expect.objectContaining({
+              domain: ".x.com",
+              name: "auth_token",
+              value: "secret",
+            }),
+          ],
+        },
+      },
+    ]);
   });
 
-  it("connects to the actual profile port returned by launcher", async () => {
-    launcherMock.launchChrome.mockResolvedValueOnce(9223);
+  it("fails with the exact cookie bootstrap reason instead of opening an unauthenticated fallback", async () => {
+    cookieBoundary.readCookies.mockReturnValue([]);
 
-    await expect(
-      acquirePage({
-        data: null,
-        args: {},
-        vars: {},
-        browserSession: "user",
-        site: "twitter",
-        domain: "x.com",
-      }),
-    ).resolves.toBe(pageMock.page);
-
-    expect(browserPageMock.connect).toHaveBeenCalledWith(9223, {
-      freshPage: true,
-    });
-    expect(launcherMock.launchChrome).toHaveBeenCalled();
-  });
-
-  it("fails user-session acquisition when the selected profile has no cookies", async () => {
-    chromiumCookieMock.readCookies.mockReturnValueOnce([]);
-
-    await expect(
-      acquirePage({
-        data: null,
-        args: {},
-        vars: {},
-        browserSession: "user",
-        site: "twitter",
-        domain: "x.com",
-      }),
-    ).rejects.toThrow(/Failed to bootstrap browser cookies.*no-cookies/);
-
-    expect(pageMock.page.sendCDP).not.toHaveBeenCalledWith(
-      "Network.setCookies",
-      expect.anything(),
+    await expect(acquirePage(userPipelineContext())).rejects.toThrow(
+      "Failed to bootstrap browser cookies for x.com: no-cookies for x.com",
     );
+    expect(runtime.provider.acquireCount).toBe(1);
+    expect(runtime.provider.pages[0]?.cdpCalls).toEqual([
+      expect.objectContaining({
+        method: "Page.addScriptToEvaluateOnNewDocument",
+      }),
+    ]);
+  });
+
+  it("skips local cookie access for non-user browser sessions", async () => {
+    await acquirePage({
+      data: null,
+      args: {},
+      vars: {},
+      browserSession: "fresh",
+      site: "twitter",
+      domain: "x.com",
+    });
+
+    expect(cookieBoundary.readCookies).not.toHaveBeenCalled();
+    expect(runtime.provider.pages[0]?.cdpCalls).toEqual([
+      expect.objectContaining({
+        method: "Page.addScriptToEvaluateOnNewDocument",
+      }),
+    ]);
+  });
+
+  it("reuses an already acquired pipeline page without touching runtime ownership", async () => {
+    const existing = { title: vi.fn() } as unknown as IPage;
+
+    await expect(
+      acquirePage({ data: null, args: {}, vars: {}, page: existing }),
+    ).resolves.toBe(existing);
+    expect(runtime.provider.acquireCount).toBe(0);
+    expect(cookieBoundary.readCookies).not.toHaveBeenCalled();
   });
 });
+
+describe("browser pipeline network quiescence", () => {
+  it("waits until the observed request count stays unchanged for the quiet window", async () => {
+    let count = 0;
+    const page = {
+      networkRequests: vi.fn(async () => {
+        count = Math.min(count + 1, 2);
+        return Array.from({ length: count }, () => ({}));
+      }),
+      waitFor: vi.fn(async () => undefined),
+    } as unknown as IPage;
+
+    await waitForNetworkIdle(page, 1_000, 0);
+
+    expect(page.networkRequests).toHaveBeenCalledTimes(3);
+  });
+});
+
+function userPipelineContext(): PipelineContext {
+  return {
+    data: null,
+    args: {},
+    vars: {},
+    browserSession: "user",
+    site: "twitter",
+    domain: "x.com",
+  };
+}

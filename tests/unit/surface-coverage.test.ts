@@ -98,10 +98,10 @@ describe("surface coverage benchmark", () => {
       (signal) => signal.id === "surface-issue-1192",
     );
     const doubao = signals.find((signal) => signal.id === "surface-issue-1189");
-    const pluginDaemonDocs = signals.find(
+    const pluginBrowserRuntime = signals.find(
       (signal) => signal.id === "surface-pr-1193",
     );
-    const customDaemonPorts = signals.find(
+    const sharedBrokerEndpoint = signals.find(
       (signal) => signal.id === "surface-pr-1187",
     );
     const debuggerDetachRetry = signals.find(
@@ -150,12 +150,12 @@ describe("surface coverage benchmark", () => {
     });
     expect(instagram).toMatchObject({ status: "covered", missing_sites: [] });
     expect(doubao).toMatchObject({ status: "covered", missing_commands: [] });
-    expect(pluginDaemonDocs).toMatchObject({
+    expect(pluginBrowserRuntime).toMatchObject({
       status: "covered",
       missing_files: [],
       missing_text: [],
     });
-    expect(customDaemonPorts).toMatchObject({
+    expect(sharedBrokerEndpoint).toMatchObject({
       status: "covered",
       missing_text: [],
     });

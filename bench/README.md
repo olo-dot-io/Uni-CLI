@@ -20,7 +20,7 @@ Run `npm run bench` from the repo root. The harness:
 
 Fixture adapter timings measure in-process parsing/tokenisation, not CLI
 startup. Live adapter timings use real subprocess/network calls. Every startup
-sample launches a new Node process; persistent MCP/browser-daemon warm latency
+sample launches a new Node process; persistent MCP/Browser Runtime Broker warm latency
 is not measured or inferred by this harness.
 
 ## Iterations

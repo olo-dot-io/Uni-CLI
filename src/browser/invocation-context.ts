@@ -2,7 +2,7 @@
  * @owner       src/browser/invocation-context.ts
  * @does        Define and validate transport-independent identity for one browser invocation.
  * @needs       node:crypto
- * @feeds       src/browser/runtime-session.ts, src/browser/protocol.ts, src/mcp/handler.ts, src/commands/browser/runtime.ts
+ * @feeds       src/browser/runtime-session.ts, src/browser/runtime-protocol.ts, src/mcp/handler.ts, src/commands/browser/runtime.ts
  * @breaks      BrowserInvocationContextError on malformed or conflicting caller identity.
  * @invariants  Agent-session and turn ids are non-empty bounded strings; transport metadata never enters command arguments.
  * @side-effects Uses the operating-system random source when a caller does not declare identity.
@@ -19,6 +19,7 @@ export type BrowserInvocationTransport =
   | "cli"
   | "mcp-stdio"
   | "mcp-http"
+  | "plugin"
   | "native-host"
   | "broker";
 

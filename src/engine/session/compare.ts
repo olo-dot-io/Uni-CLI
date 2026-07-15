@@ -1,3 +1,18 @@
+/**
+ * @owner       src/engine/session/compare.ts
+ * @does        Compare recorded run behavior, environment, browser target identity, permissions, and evidence with scored divergence checks.
+ * @needs       src/engine/session/query.ts and types.ts
+ * @feeds       replay/compare commands and delivery regression gates
+ * @breaks      Missing evidence is classified explicitly; target ids are never conflated across broker-owned sessions.
+ * @invariants  Behavior and context checks remain separate; scores derive only from named checks; secrets never enter comparable summaries.
+ * @side-effects none
+ * @perf        O(events + evidence types + fixed comparison checks).
+ * @concurrency Pure after run-event loading.
+ * @test        tests/unit/session-runs-command.test.ts, tests/unit/session-compare.test.ts
+ * @stability   stable
+ * @since       2026-04-29
+ */
+
 import { summarizeRunEvents, type RunSummary } from "./query.js";
 import type { RunEvent, RunId, RunTraceMetadata } from "./types.js";
 
@@ -54,6 +69,7 @@ export interface RunComparableSummary {
   transport_surface?: string;
   target_surface?: string;
   browser_target_kind?: string;
+  browser_target_id?: string;
   browser_tab_id?: number;
   browser_window_id?: number;
   browser_auth_state?: string;
@@ -323,6 +339,9 @@ export function summarizeComparableRun(
       : {}),
     ...(summary.browser_target_kind
       ? { browser_target_kind: summary.browser_target_kind }
+      : {}),
+    ...(summary.browser_target_id
+      ? { browser_target_id: summary.browser_target_id }
       : {}),
     ...(typeof summary.browser_tab_id === "number"
       ? { browser_tab_id: summary.browser_tab_id }
@@ -623,6 +642,13 @@ export function compareRunEvents(
       "browser_target_kind",
       left.browser_target_kind,
       right.browser_target_kind,
+      "context",
+      { missingMeansMatch: true },
+    ),
+    compareScalar(
+      "browser_target_id",
+      left.browser_target_id,
+      right.browser_target_id,
       "context",
       { missingMeansMatch: true },
     ),

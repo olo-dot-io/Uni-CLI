@@ -37,6 +37,7 @@
  * each call via the same code path as the CLI.
  */
 
+import { randomUUID } from "node:crypto";
 import { createInterface } from "node:readline";
 import { loadAllAdapters, loadTsAdapters } from "../discovery/loader.js";
 import { getAllAdapters, listCommands } from "../registry.js";
@@ -107,6 +108,7 @@ async function startStdio(
   handler: ReturnType<typeof buildHandler>,
 ): Promise<void> {
   const rl = createInterface({ input: process.stdin, terminal: false });
+  const mcpSessionId = randomUUID();
   let pending = 0;
   let inputClosed = false;
 
@@ -134,7 +136,10 @@ async function startStdio(
 
     pending++;
     try {
-      const response = await handler(req);
+      const response = await handler(req, {
+        transport: "mcp-stdio",
+        mcpSessionId,
+      });
       if (response) send(response);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

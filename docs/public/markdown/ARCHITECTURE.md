@@ -491,7 +491,7 @@ Use the smallest credible ladder for the claim under change:
 | Pure contract or metadata function | Unit test plus typecheck                                              |
 | CLI/MCP/ACP parity                 | Wire parity test over the same command                                |
 | Adapter behavior                   | `unicli test <site>` or adapter runner with real owned code           |
-| Browser/session behavior           | Browser evidence test or live daemon smoke                            |
+| Browser/session behavior           | Broker/provider integration test or live hidden-browser smoke         |
 | Local computer-use behavior        | `doctor compute`, snapshot/find/action smoke, post-capture evidence   |
 | Real CLI workflow matrix           | `npm run e2e:real`                                                    |
 | Public docs UI                     | `npm run docs:build` plus screenshot/visual inspection for UI changes |

@@ -22,6 +22,6 @@ def check(command):
     # but require approval for operate, auth setup, and other write ops
     parts = cmd.split()
     if len(parts) >= 3 and parts[0] == "unicli":
-        if parts[1] not in ("operate", "auth", "browser", "daemon", "record", "eval"):
+        if parts[1] not in ("operate", "auth", "browser", "record", "eval"):
             return "ALLOW"
     return "PASS"

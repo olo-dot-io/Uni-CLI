@@ -1,19 +1,27 @@
 /**
  * @owner   src/commands/browser/runtime.ts
- * @does    Provide shared browser operator runtime helpers for workspace resolution, bridge access, and output formatting.
- * @needs   commander, src/browser bridge/workspace, src/engine interceptor/user-home, permissions, output, types
+ * @does    Provide shared browser operator invocation identity, provider policy, broker page access, evidence normalization, and output formatting.
+ * @needs   commander, src/browser bridge/invocation-context/invocation-scope, src/engine interceptor/user-home, permissions, output, types
  * @feeds   src/commands/browser/actions.ts, src/commands/browser/authoring.ts
  * @breaks  Bridge, workspace, permission, and formatting failures return structured errors and nonzero exits. No fallback.
+ * @invariants One invocation scope owns one immutable Agent/session/turn/provider/visibility/profile-partition identity.
+ * @side-effects Acquires broker sessions, runs page commands, formats output, and finalizes invocation-owned resources.
+ * @perf     Scope setup performs one broker session acquisition; repeated actions reuse that session target.
+ * @concurrency AsyncLocalStorage isolates simultaneous invocation identities within one CLI or MCP process.
+ * @test     tests/unit/commands/browser.test.ts, tests/unit/browser-invocation-scope.test.ts
+ * @stability experimental
+ * @since    2026-04-24
  */
 
 import { isAbsolute, relative, resolve } from "node:path";
 import { Command } from "commander";
-import { BrowserBridge, type DaemonPage } from "../../browser/bridge.js";
-import { resolveBrowserWorkspace } from "../../browser/workspace.js";
+import { BrowserBridge, type BrowserBrokerPage } from "../../browser/bridge.js";
+import { createBrowserInvocationContext } from "../../browser/invocation-context.js";
 import {
-  generateInterceptorJs,
-  generateReadInterceptedJs,
-} from "../../engine/interceptor.js";
+  createBrowserInvocationScope,
+  runBrowserInvocation,
+  type BrowserProvider,
+} from "../../browser/invocation-scope.js";
 import {
   buildSensitivePathDenial,
   isSensitivePathRealpath,
@@ -26,11 +34,21 @@ import { userHome } from "../../engine/user-home.js";
 
 export interface BrowserOperatorRootOptions {
   workspace?: string;
+  session?: string;
+  turn?: string;
+  provider?: string;
+  visibility?: string;
+  profilePartition?: string;
+  profileId?: string;
+  ephemeral?: boolean;
   isolated?: boolean;
-  sharedSession?: boolean;
-  daemonPort?: string;
   focus?: boolean;
   background?: boolean;
+}
+
+export interface BrowserOperatorContextDefaults {
+  provider?: BrowserProvider;
+  visibility?: "hidden" | "background" | "foreground";
 }
 
 export interface NormalizedNetworkEntry {
@@ -56,55 +74,82 @@ function getRootOpts(root: Command): BrowserOperatorRootOptions {
 }
 
 export function resolveWorkspace(root: Command, namespace: string): string {
+  void namespace;
   const opts = getRootOpts(root);
-  return resolveBrowserWorkspace(namespace, {
-    workspace: opts.workspace,
-    isolated: opts.isolated,
-    sharedSession: opts.sharedSession,
-  });
+  const explicit = opts.profilePartition?.trim() || opts.workspace?.trim();
+  if (explicit) return explicit;
+  return opts.profileId ? `profile:${opts.profileId}` : "default";
 }
 
-export async function withBrowserOperatorEnv<T>(
+export async function withBrowserOperatorContext<T>(
   root: Command,
   fn: () => Promise<T>,
+  defaults: BrowserOperatorContextDefaults = {},
 ): Promise<T> {
   const opts = getRootOpts(root);
-  const prevPort = process.env.UNICLI_DAEMON_PORT;
-  const prevFocus = process.env.UNICLI_WINDOW_FOCUSED;
+  if (opts.focus && opts.background) {
+    throw new Error("--focus and --background cannot be combined");
+  }
+  const visibility =
+    parseVisibility(opts.visibility) ??
+    (opts.focus ? "foreground" : opts.background ? "background" : undefined);
+  const provider =
+    parseProvider(opts.provider) ??
+    defaults.provider ??
+    (visibility === "background" || visibility === "foreground"
+      ? "chrome"
+      : "managed");
+  const profilePartitionId = resolveWorkspace(root, "browser");
+  const context = createBrowserInvocationContext({
+    transport: "cli",
+    agentSessionId: opts.session,
+    turnId: opts.turn,
+    profilePartitionId,
+  });
+  const scope = createBrowserInvocationScope({
+    context,
+    provider,
+    visibility: visibility ?? defaults.visibility,
+    profilePartitionId,
+    isolated: opts.isolated,
+    ephemeral: opts.ephemeral,
+    profileId: opts.profileId,
+  });
+  return runBrowserInvocation(scope, fn);
+}
 
-  if (opts.daemonPort) {
-    process.env.UNICLI_DAEMON_PORT = opts.daemonPort;
+function parseProvider(value: string | undefined): BrowserProvider | undefined {
+  if (value === undefined) return undefined;
+  if (value === "managed" || value === "chrome" || value === "remote") {
+    return value;
   }
-  if (opts.focus) {
-    process.env.UNICLI_WINDOW_FOCUSED = "1";
-  } else if (opts.background) {
-    process.env.UNICLI_WINDOW_FOCUSED = "0";
-  }
+  throw new Error(
+    `Invalid browser provider "${value}"; expected managed, chrome, or remote`,
+  );
+}
 
-  try {
-    return await fn();
-  } finally {
-    if (opts.daemonPort) {
-      if (prevPort === undefined) delete process.env.UNICLI_DAEMON_PORT;
-      else process.env.UNICLI_DAEMON_PORT = prevPort;
-    }
-    if (opts.focus || opts.background) {
-      if (prevFocus === undefined) delete process.env.UNICLI_WINDOW_FOCUSED;
-      else process.env.UNICLI_WINDOW_FOCUSED = prevFocus;
-    }
+function parseVisibility(
+  value: string | undefined,
+): "hidden" | "background" | "foreground" | undefined {
+  if (value === undefined) return undefined;
+  if (value === "hidden" || value === "background" || value === "foreground") {
+    return value;
   }
+  throw new Error(
+    `Invalid browser visibility "${value}"; expected hidden, background, or foreground`,
+  );
 }
 
 export async function getOperatorPage(
   root: Command,
   namespace: string,
-): Promise<DaemonPage> {
+): Promise<BrowserBrokerPage> {
   const bridge = new BrowserBridge();
   const page = await bridge.connect({
     timeout: 30_000,
     workspace: resolveWorkspace(root, namespace),
   });
-  return page as DaemonPage;
+  return page as BrowserBrokerPage;
 }
 
 export async function operatorAction(
@@ -119,7 +164,7 @@ export async function operatorAction(
   const fmt = detectFormat(program.opts().format as OutputFormat | undefined);
 
   try {
-    const result = await withBrowserOperatorEnv(root, fn);
+    const result = await withBrowserOperatorContext(root, fn);
     let data: unknown[] | Record<string, unknown>;
     if (result === undefined || result === null) {
       data = { ok: true };
@@ -146,7 +191,7 @@ export async function operatorAction(
       retryable:
         code === "stale_ref" ||
         code === "browser_lease_locked" ||
-        /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|daemon failed/i.test(
+        /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|broker failed/i.test(
           message,
         ),
     };
@@ -156,84 +201,30 @@ export async function operatorAction(
   }
 }
 
-export async function ensureNetworkCapture(page: DaemonPage): Promise<void> {
-  const pageAny = page as unknown as {
-    startNetworkCapture?: () => Promise<boolean | void>;
-  };
-  let captureStarted = false;
-  if (typeof pageAny.startNetworkCapture === "function") {
-    captureStarted = (await pageAny.startNetworkCapture()) !== false;
-  }
-  if (!captureStarted) {
-    try {
-      await page.evaluate(generateInterceptorJs("", { captureText: true }));
-    } catch {
-      // Best effort only.
-    }
-  }
+export async function ensureNetworkCapture(
+  page: BrowserBrokerPage,
+): Promise<void> {
+  await page.startNetworkCapture();
 }
 
 export async function readNetworkEntries(
-  page: DaemonPage,
+  page: BrowserBrokerPage,
 ): Promise<{ raw: unknown[]; normalized: NormalizedNetworkEntry[] }> {
-  const pageAny = page as unknown as Record<string, unknown>;
-  if (typeof pageAny.readNetworkCapture === "function") {
-    const rawEntries =
-      (await (
-        pageAny as {
-          readNetworkCapture(): Promise<
-            Array<{
-              url: string;
-              method: string;
-              status: number;
-              contentType: string;
-              size: number;
-              responseBody?: string;
-            }>
-          >;
-        }
-      ).readNetworkCapture()) ?? [];
-
-    if (rawEntries.length > 0) {
-      return {
-        raw: rawEntries,
-        normalized: rawEntries.map((entry) => ({
-          url: entry.url,
-          method: entry.method,
-          status: entry.status,
-          contentType: entry.contentType,
-          bodySize: entry.size,
-          ...(entry.responseBody ? { body: entry.responseBody } : {}),
-        })),
-      };
-    }
-  }
-
-  try {
-    const raw = (await page.evaluate(generateReadInterceptedJs())) as string;
-    const parsed = JSON.parse(raw) as Array<{
-      url: string;
-      data?: unknown;
-      type?: string;
-      method?: string;
-      status?: number;
-    }>;
-    if (parsed.length > 0) {
-      return {
-        raw: parsed,
-        normalized: parsed.map((entry) => ({
-          url: entry.url,
-          method: entry.method ?? "GET",
-          status: entry.status ?? 200,
-          contentType:
-            entry.type === "text" ? "text/plain" : "application/json",
-          bodySize: entry.data == null ? 0 : JSON.stringify(entry.data).length,
-          ...(entry.data !== undefined ? { body: entry.data } : {}),
-        })),
-      };
-    }
-  } catch {
-    // Interceptor not installed or buffer malformed.
+  const rawEntries = await page.readNetworkCapture();
+  if (rawEntries.length > 0) {
+    return {
+      raw: rawEntries,
+      normalized: rawEntries.map((entry) => ({
+        url: entry.url,
+        method: entry.method,
+        status: entry.status,
+        contentType: entry.contentType,
+        bodySize: entry.size,
+        ...(entry.responseBody === undefined
+          ? {}
+          : { body: entry.responseBody }),
+      })),
+    };
   }
 
   const requests = await page.networkRequests();
@@ -250,7 +241,7 @@ export async function readNetworkEntries(
 }
 
 export async function readFrames(
-  page: DaemonPage,
+  page: BrowserBrokerPage,
 ): Promise<
   Array<{ index: number; frameId: string; parentFrameId?: string; url: string }>
 > {

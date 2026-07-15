@@ -7,12 +7,10 @@
  * built `dist/main.js` CLI with `--format json` and compares the rendered
  * envelope against what the MCP stdio handler returns for the same args.
  *
- * Asserts deep-equal on `results[0]` modulo `trace_id` / `duration_ms`
- * (fields that MUST vary per invocation). HN-list volatility (top story
- * IDs churn in seconds) means the comparison runs on a single row — if
- * both sides observed the same ordering we get a byte-for-byte diff;
- * when ordering shifted, the test falls back to shape parity so the suite
- * does not flake.
+ * Asserts deep-equal on one story present on both surfaces modulo request
+ * metadata and live ranking counters. HN rows do not expose an id, so the
+ * canonical URL is the stable identity while score/comments/rank may change
+ * between the sequential requests.
  *
  * Needs network (hackernews top → hacker-news.firebaseio.com). Skips
  * gracefully when the network is unavailable or the upstream times out —
@@ -169,6 +167,32 @@ function isNetworkError(stderr: string): boolean {
   return /ENOTFOUND|ECONNREFUSED|ETIMEDOUT|getaddrinfo|network/i.test(stderr);
 }
 
+const VOLATILE_ROW_FIELDS = new Set([
+  "trace_id",
+  "duration_ms",
+  "score",
+  "comments",
+  "rank",
+]);
+
+function rowIdentity(row: Record<string, unknown>): string | null {
+  for (const key of ["id", "url"]) {
+    const value = row[key];
+    if (typeof value === "string" && value.length > 0) {
+      return `${key}:${value}`;
+    }
+  }
+  return null;
+}
+
+function stripVolatileRowFields(
+  row: Record<string, unknown>,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(row).filter(([key]) => !VOLATILE_ROW_FIELDS.has(key)),
+  );
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────
 
 describe("wire parity — CLI (dist/main.js) ↔ MCP handler envelope", () => {
@@ -250,55 +274,43 @@ describe("wire parity — CLI (dist/main.js) ↔ MCP handler envelope", () => {
       const mcpKeys = new Set(Object.keys(mcpRow0));
       expect([...cliKeys].sort()).toEqual([...mcpKeys].sort());
 
-      // Deep-equal parity on results[0] modulo non-deterministic fields.
-      // HN's top list shifts by the second — if both calls land on the
-      // same story we get a full byte-for-byte match. Otherwise we look
-      // for ANY common story id between the two result sets and compare
-      // those rows, so the stronger assertion still applies most of the
-      // time. When no overlap exists (rare, tail of the list churns),
-      // we fall back to the shape parity above.
-      const stripVolatile = (o: Record<string, unknown>) => {
-        const out: Record<string, unknown> = {};
-        for (const [k, v] of Object.entries(o)) {
-          if (k === "trace_id" || k === "duration_ms") continue;
-          out[k] = v;
-        }
-        return out;
-      };
+      for (const key of cliKeys) {
+        expect(typeof cliRow0[key]).toBe(typeof mcpRow0[key]);
+      }
 
-      const cliStripped = stripVolatile(cliRow0);
-      const mcpStripped = stripVolatile(mcpRow0);
-
-      // Fast path: rows line up 1:1 (same id, same position).
-      if (
-        typeof cliRow0.id === typeof mcpRow0.id &&
-        cliRow0.id === mcpRow0.id
-      ) {
-        expect(cliStripped).toEqual(mcpStripped);
+      const mcpRowsByIdentity = new Map(
+        mcpResult.rows.flatMap((row) => {
+          if (typeof row !== "object" || row === null) return [];
+          const record = row as Record<string, unknown>;
+          const identity = rowIdentity(record);
+          return identity ? [[identity, record] as const] : [];
+        }),
+      );
+      const commonStory = cliEnv
+        .data!.filter(
+          (row): row is Record<string, unknown> =>
+            typeof row === "object" && row !== null,
+        )
+        .map((row) => {
+          const identity = rowIdentity(row);
+          return {
+            row,
+            matchingMcpRow: identity
+              ? mcpRowsByIdentity.get(identity)
+              : undefined,
+          };
+        })
+        .find((candidate) => candidate.matchingMcpRow !== undefined);
+      if (!commonStory?.matchingMcpRow) {
+        console.warn(
+          "wire-parity: CLI/MCP result lists have no common stable URL; " +
+            "shape and field-type parity were asserted.",
+        );
         return;
       }
 
-      // Slow path: search mcpResult for a row whose id matches cliRow0.id.
-      if (cliRow0.id !== undefined) {
-        const match = mcpResult.rows.find(
-          (r) =>
-            typeof r === "object" &&
-            r !== null &&
-            (r as Record<string, unknown>).id === cliRow0.id,
-        );
-        if (match) {
-          expect(cliStripped).toEqual(
-            stripVolatile(match as Record<string, unknown>),
-          );
-          return;
-        }
-      }
-
-      // No overlap — lists churned between the two calls. Shape parity
-      // (already asserted above) is the best we can do without a fixture.
-      console.warn(
-        "wire-parity: CLI/MCP result lists do not overlap on id; " +
-          "shape parity asserted but deep-equal skipped (HN list volatility).",
+      expect(stripVolatileRowFields(commonStory.row)).toEqual(
+        stripVolatileRowFields(commonStory.matchingMcpRow),
       );
     },
     NETWORK_TIMEOUT_MS + 15_000,

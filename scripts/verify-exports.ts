@@ -31,7 +31,7 @@ import * as desktopAx from "../src/transport/adapters/desktop-ax.js";
 import * as visual from "../src/transport/adapters/visual.js";
 import * as cdpClient from "../src/browser/cdp-client.js";
 import * as browserPage from "../src/browser/page.js";
-import * as daemon from "../src/browser/daemon-client.js";
+import * as browserRuntime from "../src/browser/runtime-client.js";
 import * as domHelpers from "../src/browser/dom-helpers.js";
 import * as mcpSchema from "../src/mcp/schema.js";
 import * as acp from "../src/protocol/acp.js";
@@ -64,7 +64,7 @@ const symbols: Array<[string, unknown]> = [
   ["visual", visual],
   ["cdpClient", cdpClient],
   ["browserPage", browserPage],
-  ["daemon", daemon],
+  ["browserRuntime", browserRuntime],
   ["domHelpers", domHelpers],
   ["mcpSchema", mcpSchema],
   ["acp", acp],
@@ -95,5 +95,5 @@ if (failures > 0) {
 }
 
 console.log(
-  `verify-exports: OK — ${symbols.length} symbols resolved across 24 subpaths`,
+  `verify-exports: OK — ${symbols.length} symbols resolved across the public subpath surface`,
 );

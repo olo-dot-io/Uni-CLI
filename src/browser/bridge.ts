@@ -1,617 +1,707 @@
 /**
- * @owner   src/browser/bridge.ts
- * @does    Connect browser commands to daemon, extension, remote CDP, or local logged-in CDP fallback.
- * @needs   node:child_process, node:fs, node:path, node:url, src/browser daemon-client/cdp-client/page/launcher/protocol
- * @feeds   src/engine/steps/browser-helpers.ts, src/commands/browser/actions.ts, tests/unit/browser-bridge.test.ts
- * @breaks  Connection failures throw BridgeConnectionError or RemoteConnectionError with repair commands.
- * @invariants Explicit ephemeral mode skips remote and daemon identity reuse; otherwise remote CDP wins over local launch, and local launch connects to the actual port returned by launcher.
- * @side-effects May spawn the Uni-CLI daemon process and may trigger Chrome launch through src/browser/launcher.ts.
- * @perf    Daemon and extension probes use bounded timeouts before CDP fallback.
- * @concurrency Reuses existing daemon/extension state; launcher owns browser profile locking and seed concurrency.
- * @test    tests/unit/browser-bridge.test.ts
- * @stability experimental
- * @since   2026-06-29
+ * @owner       src/browser/bridge.ts
+ * @does        Expose the browser page interface over the shared Browser Runtime Broker without caller-owned Chrome or legacy transport fallback.
+ * @needs       node:crypto, node:fs/promises, src/browser invocation-context/invocation-scope/runtime-launch/runtime-protocol/runtime-transport, src/types.ts
+ * @feeds       browser-backed engine steps, browser operator/generate/record/explore commands, tests/unit/browser-bridge.test.ts
+ * @breaks      Broker/provider/lifecycle failures retain their structured code, suggestion, and retryability; no provider or visibility fallback occurs.
+ * @invariants  Every page command carries one Agent session, turn, profile partition, provider, and visibility; close ends a turn while closeWindow ends only the owning session.
+ * @side-effects Lazily starts the broker, starts/touches one logical session, executes broker commands, and may write an explicitly requested screenshot file.
+ * @perf        One local authenticated IPC round trip per page command; target and browser runtime reuse are broker-owned.
+ * @concurrency Broker target queues serialize one target while AsyncLocalStorage keeps concurrent Agent identities independent.
+ * @test        tests/unit/browser-bridge.test.ts, tests/integration/browser-runtime-autostart.test.ts, tests/integration/browser-runtime-broker.test.ts
+ * @stability   experimental
+ * @since       2026-07-15
  */
 
-import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { randomUUID } from "node:crypto";
+import { writeFile } from "node:fs/promises";
+
 import {
-  fetchDaemonStatus,
-  selectDaemonSpawnPort,
-  sendCommand,
-} from "./daemon-client.js";
-import { getRemoteEndpoint, CDPClient } from "./cdp-client.js";
-import { BrowserPage } from "./page.js";
-import { getCDPPort, isRemoteBrowser, launchChrome } from "./launcher.js";
-import { isBrowserEphemeralRequested } from "./profile-seed.js";
-import type { DaemonCommand, DaemonStatus } from "./protocol.js";
+  createBrowserInvocationContext,
+  type BrowserInvocationContext,
+} from "./invocation-context.js";
+import {
+  createBrowserInvocationScope,
+  currentBrowserInvocationScope,
+  registerBrowserTurnFinalizer,
+  type BrowserInvocationScope,
+  type BrowserProvider,
+} from "./invocation-scope.js";
+import { ensureBrowserRuntimeBroker } from "./runtime-launch.js";
+import type {
+  BrowserChromeTargetClaimRequest,
+  BrowserPageCommand,
+  BrowserTargetCommandRequest,
+  BrowserTargetCommandResult,
+} from "./runtime-protocol.js";
+import type {
+  ChromeNativeTab,
+  ChromeNativeTarget,
+} from "./chrome-native-protocol.js";
+import type { BrowserRuntimeBrokerClient } from "./runtime-transport.js";
+import type { BrowserSessionLeaseTarget } from "../engine/browser/session-lease.js";
 import type {
   IPage,
-  SnapshotOptions,
-  ScreenshotOptions,
   NetworkRequest,
+  ScreenshotOptions,
+  SnapshotOptions,
 } from "../types.js";
-import type { BrowserSessionLeaseTarget } from "../engine/browser/session-lease.js";
 
-// ── Errors ────────────────────────────────────────────────────────
+export interface BrowserBridgeConnectOptions {
+  timeout?: number;
+  runtimeRoot?: string;
+  workspace?: string;
+  context?: BrowserInvocationContext;
+  sessionId?: string;
+  turnId?: string;
+  provider?: BrowserProvider;
+  visibility?: "hidden" | "background" | "foreground";
+  profilePartitionId?: string;
+  isolated?: boolean;
+  ephemeral?: boolean;
+  profileId?: string;
+}
 
-/**
- * Structured connection error for AI agent consumption.
- * Thrown when Chrome/daemon connection fails — always retryable.
- */
 export class BridgeConnectionError extends Error {
+  readonly code = "browser_broker_unavailable";
   readonly retryable = true;
-  readonly suggestion = "Run 'unicli browser start' first, then retry.";
-  readonly alternatives = ["unicli browser start", "unicli daemon restart"];
+  readonly suggestion = "Run `unicli browser doctor --json` and retry.";
+  readonly alternatives = [
+    "unicli browser broker start",
+    "unicli browser doctor",
+  ];
 
-  constructor(message: string) {
-    super(message);
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
     this.name = "BridgeConnectionError";
   }
 
-  /** JSON output for AI agents */
-  toAgentJSON() {
+  toAgentJSON(): Record<string, unknown> {
     return {
       error: this.message,
+      code: this.code,
       retryable: this.retryable,
       step: -1,
       action: "browser_connect",
       suggestion: this.suggestion,
       alternatives: this.alternatives,
-      exit_code: 69, // SERVICE_UNAVAILABLE
+      exit_code: 69,
     };
   }
 }
-
-/**
- * Structured connection error for remote CDP endpoints.
- * Thrown when connection to a remote browser fails.
- */
-export class RemoteConnectionError extends Error {
-  readonly retryable = true;
-  readonly suggestion: string;
-
-  constructor(message: string, endpoint: string) {
-    super(message);
-    this.name = "RemoteConnectionError";
-    this.suggestion = `Check that the remote CDP endpoint is reachable: ${endpoint}`;
-  }
-
-  /** JSON output for AI agents */
-  toAgentJSON() {
-    return {
-      error: this.message,
-      retryable: this.retryable,
-      step: -1,
-      action: "remote_browser_connect",
-      suggestion: this.suggestion,
-      alternatives: ["unicli browser start"],
-      exit_code: 69, // SERVICE_UNAVAILABLE
-    };
-  }
-}
-
-// ── Constants ──────────────────────────────────────────────────────
-
-const DAEMON_SPAWN_TIMEOUT = 10_000; // 10s to start daemon
-const DAEMON_POLL_INTERVAL = 200;
-const EXTENSION_FAST_WAIT_MS = 2_000;
-export const BROWSER_REMOTE_CONNECT_MAX_ATTEMPTS = 3;
-export const BROWSER_REMOTE_RETRY_DELAY_MS = 1000;
-const REMOTE_CONNECT_RETRIES = BROWSER_REMOTE_CONNECT_MAX_ATTEMPTS - 1;
-
-// ── BrowserBridge ──────────────────────────────────────────────────
 
 export class BrowserBridge {
-  private _page: DaemonPage | IPage | null = null;
-  private _state: "idle" | "connecting" | "connected" | "closed" = "idle";
-  private _remotePage: BrowserPage | null = null;
+  private page: BrowserBrokerPage | null = null;
+  private connection: Promise<BrowserBrokerPage> | null = null;
+  private pendingOptions: BrowserBridgeConnectOptions | null = null;
+  private state: "idle" | "connecting" | "connected" | "closed" = "idle";
 
-  async connect(opts?: {
-    timeout?: number;
-    workspace?: string;
-  }): Promise<IPage> {
-    if (this._state === "connected" && this._page) return this._page;
-
-    this._state = "connecting";
-
-    if (isBrowserEphemeralRequested(process.env)) {
-      const page = await this.connectLocalCdp({ ephemeral: true });
-      this._page = page;
-      this._remotePage = page;
-      this._state = "connected";
-      return page;
-    }
-
-    // Remote browser takes priority — skip daemon entirely
-    if (isRemoteBrowser()) {
-      const page = await this.connectRemote();
-      this._page = page;
-      this._remotePage = page;
-      this._state = "connected";
-      return page;
-    }
-
-    const timeout = opts?.timeout ?? DAEMON_SPAWN_TIMEOUT;
-    const workspace = opts?.workspace ?? "default";
-
-    const daemonStatus = await this.ensureDaemonBestEffort(timeout);
-    if (daemonStatus?.extensionConnected) {
-      this._page = new DaemonPage(workspace);
-      this._state = "connected";
-      return this._page;
-    }
-
-    const extensionStatus = await this.waitForExtension(
-      Math.min(timeout, EXTENSION_FAST_WAIT_MS),
-    );
-    if (extensionStatus?.extensionConnected) {
-      this._page = new DaemonPage(workspace);
-      this._state = "connected";
-      return this._page;
-    }
-
-    try {
-      const page = await this.connectLocalCdp();
-      this._page = page;
-      this._remotePage = page;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+  async connect(options: BrowserBridgeConnectOptions = {}): Promise<IPage> {
+    if (this.state === "connected" && this.page) return this.page;
+    if (this.state === "closed") {
       throw new BridgeConnectionError(
-        `Browser automation unavailable: daemon is ${daemonStatus ? "running" : "not reachable"}, extension is not connected, and CDP auto-start failed: ${message}`,
+        "A closed BrowserBridge cannot be reconnected; create a new bridge for a new invocation",
       );
     }
-    this._state = "connected";
-    return this._page;
+    if (this.connection) {
+      if (!sameConnectOptions(this.pendingOptions ?? {}, options)) {
+        throw new BridgeConnectionError(
+          "Concurrent BrowserBridge.connect calls declared conflicting invocation options",
+        );
+      }
+      return this.connection;
+    }
+    this.state = "connecting";
+    const scope = resolveBridgeScope(options);
+    this.pendingOptions = { ...options };
+    const connection = this.open(scope, options);
+    this.connection = connection;
+    try {
+      return await connection;
+    } catch (error) {
+      this.resetAfterConnectFailure();
+      if (hasStructuredBrowserError(error)) throw error;
+      throw new BridgeConnectionError(
+        `Browser broker connection failed: ${errorMessage(error)}`,
+        { cause: error },
+      );
+    } finally {
+      if (this.connection === connection) {
+        this.connection = null;
+        this.pendingOptions = null;
+      }
+    }
   }
 
   async close(): Promise<void> {
-    if (this._remotePage) {
-      await this._remotePage.close();
-      this._remotePage = null;
+    if (this.state === "closed") return;
+    const page = this.page ?? (this.connection ? await this.connection : null);
+    try {
+      await page?.close();
+    } finally {
+      this.page = null;
+      this.state = "closed";
     }
-    // Does NOT kill daemon — daemon auto-exits on idle
-    this._state = "closed";
-    this._page = null;
   }
 
-  /**
-   * Connect to a remote CDP endpoint with retry logic.
-   * Handles Cloudflare Browser Rendering and any standard CDP WebSocket.
-   */
-  private async connectRemote(): Promise<BrowserPage> {
-    const remote = getRemoteEndpoint();
-    if (!remote) {
-      throw new RemoteConnectionError(
-        "UNICLI_CDP_ENDPOINT is not set",
-        "(none)",
-      );
-    }
-
-    let lastError: Error | null = null;
-    for (let attempt = 0; attempt <= REMOTE_CONNECT_RETRIES; attempt++) {
-      try {
-        const client = await CDPClient.connectToRemote(
-          remote.endpoint,
-          Object.keys(remote.headers).length > 0 ? remote.headers : undefined,
-        );
-        return new BrowserPage(client);
-      } catch (err) {
-        lastError = err instanceof Error ? err : new Error(String(err));
-        if (attempt < REMOTE_CONNECT_RETRIES) {
-          await new Promise((r) =>
-            setTimeout(r, BROWSER_REMOTE_RETRY_DELAY_MS),
-          );
-        }
-      }
-    }
-
-    throw new RemoteConnectionError(
-      `Failed to connect to remote CDP endpoint after ${String(REMOTE_CONNECT_RETRIES + 1)} attempts: ${lastError?.message ?? "unknown error"}`,
-      remote.endpoint,
-    );
-  }
-
-  private async connectLocalCdp(
-    launchOptions?: Parameters<typeof launchChrome>[1],
-  ): Promise<BrowserPage> {
-    const port = getCDPPort();
-    const actualPort = await launchChrome(port, launchOptions);
-    return BrowserPage.connect(actualPort);
-  }
-
-  private async waitForExtension(
-    timeout: number,
-  ): Promise<DaemonStatus | null> {
-    const deadline = Date.now() + timeout;
-    while (Date.now() < deadline) {
-      const status = await fetchDaemonStatus({ timeout: 300 });
-      if (status?.extensionConnected) return status;
-      await new Promise((r) => setTimeout(r, DAEMON_POLL_INTERVAL));
-    }
-    return null;
-  }
-
-  private async ensureDaemonBestEffort(
-    timeout: number,
-  ): Promise<DaemonStatus | null> {
-    const existing = await fetchDaemonStatus({ timeout: 500 });
-    if (existing) return existing;
-
-    // Not running — spawn daemon
-    const daemonDir = dirname(fileURLToPath(import.meta.url));
-    const daemonJsPath = join(daemonDir, "daemon.js");
-    const daemonTsPath = join(daemonDir, "daemon.ts");
-    const daemonArgs = existsSync(daemonJsPath)
-      ? [daemonJsPath]
-      : [...process.execArgv, daemonTsPath];
-    const port = await selectDaemonSpawnPort({ timeout: 300 });
-    const proc = spawn(process.execPath, daemonArgs, {
-      detached: true,
-      stdio: "ignore",
-      env: {
-        ...process.env,
-        UNICLI_DAEMON_PORT: String(port),
-      },
+  private async open(
+    scope: BrowserInvocationScope,
+    options: BrowserBridgeConnectOptions,
+  ): Promise<BrowserBrokerPage> {
+    const { client } = await ensureBrowserRuntimeBroker({
+      runtimeRoot: options.runtimeRoot,
+      timeoutMs: options.timeout,
     });
-    proc.unref();
+    await client.requestOrThrow({
+      id: randomUUID(),
+      action: "session.start",
+      context: scope.context,
+    });
+    const page = new BrowserBrokerPage(client, scope);
+    this.page = page;
+    this.state = "connected";
+    registerBrowserTurnFinalizer(turnKey(scope.context), () => page.close());
+    return page;
+  }
 
-    // Poll until daemon is reachable within the caller's connection budget.
-    const deadline = Date.now() + timeout;
-    while (Date.now() < deadline) {
-      await new Promise((r) => setTimeout(r, DAEMON_POLL_INTERVAL));
-      const status = await fetchDaemonStatus({ timeout: 300 });
-      if (status) return status;
-    }
-
-    return null;
+  private resetAfterConnectFailure(): void {
+    if (this.state !== "closed") this.state = "idle";
   }
 }
 
-// ── DaemonPage ─────────────────────────────────────────────────────
+export interface BrowserNetworkCaptureEntry {
+  url: string;
+  method: string;
+  status: number;
+  contentType: string;
+  size: number;
+  timestamp?: number;
+  remoteIPAddress?: string;
+  remotePort?: number;
+  responseBody?: string;
+}
 
-type CommandParams = Omit<DaemonCommand, "id" | "action">;
+export class BrowserBrokerPage implements IPage {
+  private targetId: string | undefined;
+  private ended = false;
+  private readonly networkHistory: NetworkRequest[] = [];
 
-export class DaemonPage implements IPage {
-  constructor(private readonly workspace: string) {}
-
-  private cmdOpts(extra: CommandParams = {}): CommandParams {
-    return { workspace: this.workspace, ...extra };
-  }
+  constructor(
+    private readonly client: BrowserRuntimeBrokerClient,
+    readonly scope: BrowserInvocationScope,
+  ) {}
 
   async browserTargetInfo(): Promise<BrowserSessionLeaseTarget | null> {
-    const capturedAt = new Date().toISOString();
-    try {
-      const sessionsResult = (await sendCommand("sessions")) as {
-        sessions?: Array<{
-          workspace: string;
-          windowId: number;
-          tabCount?: number;
-          owned?: boolean;
-          preferredTabId?: number | null;
-        }>;
-      };
-      const session = sessionsResult.sessions?.find(
-        (item) => item.workspace === this.workspace,
-      );
-      if (!session) return null;
-
-      const tabsResult = await sendCommand("tabs", this.cmdOpts());
-      const tabs = Array.isArray(tabsResult)
-        ? (tabsResult as Array<{ id?: number; url?: string; title?: string }>)
-        : [];
-      const preferredTabId =
-        typeof session.preferredTabId === "number"
-          ? session.preferredTabId
-          : undefined;
-      const selectedTab =
-        preferredTabId !== undefined
-          ? tabs.find((tab) => tab.id === preferredTabId)
-          : tabs[0];
-      const targetTabId =
-        preferredTabId ??
-        (typeof selectedTab?.id === "number" ? selectedTab.id : undefined);
-
-      return {
-        kind: "daemon-tab",
-        captured_at: capturedAt,
-        window_id: session.windowId,
-        ...(typeof targetTabId === "number" ? { tab_id: targetTabId } : {}),
-        ...(selectedTab?.url ? { url: selectedTab.url } : {}),
-        ...(selectedTab?.title ? { title: selectedTab.title } : {}),
-        ...(session.owned !== undefined ? { owned: session.owned } : {}),
-        ...(session.preferredTabId !== undefined
-          ? { preferred_tab_id: session.preferredTabId }
-          : {}),
-        ...(typeof session.tabCount === "number"
-          ? { tab_count: session.tabCount }
-          : {}),
-      };
-    } catch {
-      return null;
-    }
+    if (!this.targetId) return null;
+    const [url, title] = await Promise.all([this.url(), this.title()]);
+    return {
+      kind: "broker-target",
+      captured_at: new Date().toISOString(),
+      target_id: this.targetId,
+      provider: this.scope.provider,
+      visibility: this.scope.visibility,
+      url,
+      title,
+      owned: true,
+    };
   }
 
   async goto(
     url: string,
     options?: { settleMs?: number; waitUntil?: string },
   ): Promise<void> {
-    await sendCommand("navigate", this.cmdOpts({ url }));
-    if (options?.settleMs) {
-      await new Promise((r) => setTimeout(r, options.settleMs));
-    }
+    await this.command({
+      method: "navigate",
+      url,
+      ...(options?.settleMs === undefined
+        ? {}
+        : { settle_ms: options.settleMs }),
+    });
   }
 
-  async evaluate(script: string): Promise<unknown> {
-    return sendCommand("exec", this.cmdOpts({ code: script }));
+  evaluate(script: string): Promise<unknown> {
+    return this.command({ method: "evaluate", expression: script });
   }
 
   async wait(seconds: number): Promise<void> {
-    await new Promise((r) => setTimeout(r, seconds * 1000));
+    if (!Number.isFinite(seconds) || seconds < 0) {
+      throw new TypeError("Browser wait seconds must be a non-negative number");
+    }
+    await delay(seconds * 1_000);
   }
 
-  async waitForSelector(selector: string, timeout?: number): Promise<void> {
-    const maxWait = timeout ?? 10_000;
-    const deadline = Date.now() + maxWait;
+  async waitForSelector(selector: string, timeout = 10_000): Promise<void> {
+    const deadline = Date.now() + timeout;
+    const selectorJson = JSON.stringify(selector);
     while (Date.now() < deadline) {
-      const found = await this.evaluate(
-        `!!document.querySelector('${selector.replace(/'/g, "\\'")}')`,
-      );
-      if (found) return;
-      await new Promise((r) => setTimeout(r, 200));
+      if (await this.evaluate(`!!document.querySelector(${selectorJson})`)) {
+        return;
+      }
+      await delay(200);
     }
     throw new Error(`waitForSelector timed out: ${selector}`);
   }
 
   async waitFor(condition: number | string, timeout?: number): Promise<void> {
     if (typeof condition === "number") {
-      await new Promise((r) => setTimeout(r, condition));
-    } else {
-      await this.waitForSelector(condition, timeout);
+      if (!Number.isFinite(condition) || condition < 0) {
+        throw new TypeError(
+          "Browser wait milliseconds must be a non-negative number",
+        );
+      }
+      await delay(condition);
+      return;
     }
+    await this.waitForSelector(condition, timeout);
   }
 
   async click(selector: string): Promise<void> {
-    const escaped = selector.replace(/'/g, "\\'");
-    await sendCommand(
-      "exec",
-      this.cmdOpts({
-        code: `(() => {
-        const el = document.querySelector('${escaped}');
-        if (!el) throw new Error('Element not found: ${escaped}');
-        el.click();
-      })()`,
-      }),
-    );
+    await this.command({ method: "click", selector });
   }
 
   async type(selector: string, text: string): Promise<void> {
-    await this.click(selector);
-    await this.insertText(text);
+    await this.command({ method: "type", selector, text });
   }
 
   async press(key: string, modifiers?: string[]): Promise<void> {
-    // Use CDP via daemon for key press
-    const params: Record<string, unknown> = {
-      type: "keyDown",
+    await this.command({
+      method: "press",
       key,
-      windowsVirtualKeyCode: key.charCodeAt(0),
-    };
-    if (modifiers?.length) {
-      const MODS: Record<string, number> = {
-        alt: 1,
-        ctrl: 2,
-        meta: 4,
-        shift: 8,
-      };
-      params.modifiers = modifiers.reduce(
-        (acc, m) => acc | (MODS[m.toLowerCase()] ?? 0),
-        0,
-      );
-    }
-    await sendCommand(
-      "cdp",
-      this.cmdOpts({
-        cdpMethod: "Input.dispatchKeyEvent",
-        cdpParams: params,
-      }),
-    );
-    await sendCommand(
-      "cdp",
-      this.cmdOpts({
-        cdpMethod: "Input.dispatchKeyEvent",
-        cdpParams: { ...params, type: "keyUp" },
-      }),
-    );
+      ...(modifiers ? { modifiers } : {}),
+    });
   }
 
   async insertText(text: string): Promise<void> {
-    await sendCommand("insert-text", this.cmdOpts({ text }));
+    await this.command({ method: "insert_text", text });
   }
 
   async scroll(direction: "down" | "up" | "bottom" | "top"): Promise<void> {
-    const scripts: Record<string, string> = {
-      down: "window.scrollBy(0, window.innerHeight)",
-      up: "window.scrollBy(0, -window.innerHeight)",
-      bottom: "window.scrollTo(0, document.body.scrollHeight)",
-      top: "window.scrollTo(0, 0)",
-    };
-    await this.evaluate(scripts[direction]);
+    await this.command({ method: "scroll", direction });
   }
 
-  async autoScroll(opts?: {
+  async autoScroll(options?: {
     maxScrolls?: number;
     delay?: number;
   }): Promise<void> {
-    const max = opts?.maxScrolls ?? 20;
-    const delay = opts?.delay ?? 1000;
-    for (let i = 0; i < max; i++) {
-      try {
-        const atBottom = await this.evaluate(
-          `(() => { window.scrollBy(0, window.innerHeight); return (window.scrollY + window.innerHeight) >= document.body.scrollHeight - 50; })()`,
-        );
-        if (atBottom) break;
-        await new Promise((r) => setTimeout(r, delay));
-      } catch {
-        break;
-      }
+    const maxScrolls = options?.maxScrolls ?? 20;
+    const waitMilliseconds = options?.delay ?? 1_000;
+    for (let index = 0; index < maxScrolls; index += 1) {
+      const atBottom = await this.evaluate(
+        "(() => { window.scrollBy(0, window.innerHeight); return (window.scrollY + window.innerHeight) >= document.body.scrollHeight - 50; })()",
+      );
+      if (atBottom) return;
+      await delay(waitMilliseconds);
     }
   }
 
   async nativeClick(x: number, y: number): Promise<void> {
-    await sendCommand(
-      "cdp",
-      this.cmdOpts({
-        cdpMethod: "Input.dispatchMouseEvent",
-        cdpParams: {
-          type: "mousePressed",
-          x,
-          y,
-          button: "left",
-          clickCount: 1,
-        },
-      }),
-    );
-    await sendCommand(
-      "cdp",
-      this.cmdOpts({
-        cdpMethod: "Input.dispatchMouseEvent",
-        cdpParams: {
-          type: "mouseReleased",
-          x,
-          y,
-          button: "left",
-          clickCount: 1,
-        },
-      }),
-    );
+    await this.sendCDP("Input.dispatchMouseEvent", {
+      type: "mousePressed",
+      x,
+      y,
+      button: "left",
+      clickCount: 1,
+    });
+    await this.sendCDP("Input.dispatchMouseEvent", {
+      type: "mouseReleased",
+      x,
+      y,
+      button: "left",
+      clickCount: 1,
+    });
   }
 
-  async nativeKeyPress(key: string, modifiers?: string[]): Promise<void> {
-    await this.press(key, modifiers);
+  nativeKeyPress(key: string, modifiers?: string[]): Promise<void> {
+    return this.press(key, modifiers);
   }
 
   async setFileInput(selector: string, files: string[]): Promise<void> {
-    await sendCommand("set-file-input", this.cmdOpts({ selector, files }));
+    await this.command({ method: "set_file_input", selector, files });
   }
 
   async cookies(): Promise<Record<string, string>> {
-    const result = await sendCommand("cookies", this.cmdOpts());
-    return (result as Record<string, string>) ?? {};
+    return expectStringRecord(
+      await this.command({ method: "cookies" }),
+      "cookies",
+    );
   }
 
   async title(): Promise<string> {
-    return (await this.evaluate("document.title")) as string;
+    return expectString(await this.command({ method: "title" }), "title");
   }
 
   async url(): Promise<string> {
-    return (await this.evaluate("window.location.href")) as string;
+    return expectString(await this.command({ method: "url" }), "url");
   }
 
-  async snapshot(opts?: SnapshotOptions): Promise<string> {
+  async snapshot(options?: SnapshotOptions): Promise<string> {
     const { snapshotWithFingerprint } = await import("./snapshot-helpers.js");
-    return snapshotWithFingerprint(this, opts);
+    return snapshotWithFingerprint(this, options);
   }
 
-  async screenshot(opts?: ScreenshotOptions): Promise<Buffer> {
-    const result = await sendCommand(
-      "screenshot",
-      this.cmdOpts({
-        format: opts?.format ?? "png",
-        quality: opts?.quality,
-        fullPage: opts?.fullPage,
+  async screenshot(options?: ScreenshotOptions): Promise<Buffer> {
+    const encoded = expectString(
+      await this.command({
+        method: "screenshot",
+        ...(options?.format ? { format: options.format } : {}),
+        ...(options?.quality === undefined ? {} : { quality: options.quality }),
+        ...(options?.fullPage === undefined
+          ? {}
+          : { full_page: options.fullPage }),
+        ...(options?.clip ? { clip: options.clip } : {}),
       }),
+      "screenshot",
     );
-    const data = String(result ?? "");
-    return Buffer.from(data, "base64");
+    const bytes = Buffer.from(encoded, "base64");
+    if (options?.path) await writeFile(options.path, bytes);
+    return bytes;
   }
 
   async startNetworkCapture(pattern?: string): Promise<boolean> {
-    try {
-      await sendCommand(
-        "network-capture-start",
-        this.cmdOpts(pattern ? { pattern } : {}),
+    const result = await this.command({
+      method: "network_capture_start",
+      ...(pattern ? { pattern } : {}),
+    });
+    if (result !== true) {
+      throw new TypeError(
+        "Browser network capture start returned invalid data",
       );
-      return true;
-    } catch {
-      // Daemon/extension may not support this action yet — degrade gracefully
-      return false;
     }
+    return true;
   }
 
-  async readNetworkCapture(): Promise<
-    Array<{
-      url: string;
-      method: string;
-      status: number;
-      contentType: string;
-      size: number;
-      responseBody?: string;
-    }>
-  > {
-    try {
-      const result = await sendCommand("network-capture-read", this.cmdOpts());
-      // daemon-client unwraps { data } already, so result may be the array directly
-      if (Array.isArray(result))
-        return result as Array<{
-          url: string;
-          method: string;
-          status: number;
-          contentType: string;
-          size: number;
-          responseBody?: string;
-        }>;
-      const data = (result as { data?: unknown[] })?.data;
-      return (Array.isArray(data) ? data : []) as Array<{
-        url: string;
-        method: string;
-        status: number;
-        contentType: string;
-        size: number;
-        responseBody?: string;
-      }>;
-    } catch {
-      return []; // Degrade gracefully if daemon doesn't support this
-    }
-  }
-
-  async networkRequests(): Promise<NetworkRequest[]> {
-    const result = await sendCommand("network-capture-read", this.cmdOpts());
-    return (result as NetworkRequest[]) ?? [];
-  }
-
-  async addInitScript(source: string): Promise<void> {
-    await sendCommand(
-      "cdp",
-      this.cmdOpts({
-        cdpMethod: "Page.addScriptToEvaluateOnNewDocument",
-        cdpParams: { source },
-      }),
+  async readNetworkCapture(): Promise<BrowserNetworkCaptureEntry[]> {
+    return expectNetworkEntries(
+      await this.command({ method: "network_capture_read" }),
     );
   }
 
-  async sendCDP(
+  async readDialogs(clearRecent = false): Promise<unknown> {
+    return this.command({
+      method: "dialog_read",
+      clear_recent: clearRecent,
+    });
+  }
+
+  async respondDialog(options: {
+    action: "accept" | "dismiss";
+    promptText?: string;
+    dialogId?: string;
+  }): Promise<unknown> {
+    return this.command({
+      method: "dialog_respond",
+      action: options.action,
+      ...(options.promptText === undefined
+        ? {}
+        : { prompt_text: options.promptText }),
+      ...(options.dialogId === undefined
+        ? {}
+        : { dialog_id: options.dialogId }),
+    });
+  }
+
+  readDownloads(limit: number): Promise<unknown> {
+    return this.command({ method: "downloads_read", limit });
+  }
+
+  async tabs(): Promise<ChromeNativeTab[] | BrowserSessionLeaseTarget[]> {
+    if (this.scope.provider === "chrome") {
+      return this.client.requestOrThrow<ChromeNativeTab[]>({
+        id: randomUUID(),
+        action: "chrome.tabs.list",
+        context: this.scope.context,
+      });
+    }
+    if (!this.targetId) await this.url();
+    const target = await this.browserTargetInfo();
+    return target ? [target] : [];
+  }
+
+  async claimChromeTab(tabId: number): Promise<ChromeNativeTarget> {
+    if (this.scope.provider !== "chrome") {
+      throw new Error("Chrome tab claims require the Chrome provider");
+    }
+    const request: BrowserChromeTargetClaimRequest = {
+      id: randomUUID(),
+      action: "chrome.target.claim",
+      context: this.scope.context,
+      tab_id: tabId,
+      visibility:
+        this.scope.visibility === "foreground" ? "foreground" : "background",
+      profile_partition_id: this.scope.profilePartitionId,
+    };
+    const target =
+      await this.client.requestOrThrow<ChromeNativeTarget>(request);
+    this.targetId = target.target_id;
+    return target;
+  }
+
+  async networkRequests(): Promise<NetworkRequest[]> {
+    const captured = (await this.readNetworkCapture()).map((entry) => ({
+      url: entry.url,
+      method: entry.method,
+      status: entry.status,
+      type: entry.contentType,
+      size: entry.size,
+      timestamp: entry.timestamp ?? Date.now(),
+      ...(entry.remoteIPAddress
+        ? { remoteIPAddress: entry.remoteIPAddress }
+        : {}),
+      ...(entry.remotePort === undefined
+        ? {}
+        : { remotePort: entry.remotePort }),
+    }));
+    this.networkHistory.push(...captured);
+    if (this.networkHistory.length > 500) {
+      this.networkHistory.splice(0, this.networkHistory.length - 500);
+    }
+    return [...this.networkHistory];
+  }
+
+  async addInitScript(source: string): Promise<void> {
+    await this.sendCDP("Page.addScriptToEvaluateOnNewDocument", { source });
+  }
+
+  sendCDP(
     method: string,
     params?: Record<string, unknown>,
     sessionId?: string,
   ): Promise<unknown> {
-    return sendCommand(
-      "cdp",
-      this.cmdOpts({
-        cdpMethod: method,
-        cdpParams: params,
-        cdpSessionId: sessionId,
-      }),
-    );
+    return this.command({
+      method: "cdp",
+      cdp_method: method,
+      ...(params ? { params } : {}),
+      ...(sessionId ? { session_id: sessionId } : {}),
+    });
   }
 
   async close(): Promise<void> {
-    // Don't close the daemon — just release this page reference
+    if (this.ended) return;
+    this.ended = true;
+    await this.client.requestOrThrow({
+      id: randomUUID(),
+      action: "turn.end",
+      context: this.scope.context,
+    });
   }
 
   async closeWindow(): Promise<void> {
-    await sendCommand("close-window", this.cmdOpts());
+    if (this.ended) return;
+    this.ended = true;
+    await this.client.requestOrThrow({
+      id: randomUUID(),
+      action: "session.end",
+      agent_session_id: this.scope.context.agent_session_id,
+    });
   }
+
+  private async command(command: BrowserPageCommand): Promise<unknown> {
+    if (this.ended) {
+      throw new Error(
+        `Browser turn ${this.scope.context.turn_id} has already ended`,
+      );
+    }
+    const result = await this.client.requestOrThrow<BrowserTargetCommandResult>(
+      this.targetCommand(command),
+    );
+    this.targetId = result.target_id;
+    return result.data;
+  }
+
+  private targetCommand(
+    command: BrowserPageCommand,
+  ): BrowserTargetCommandRequest {
+    const base = {
+      id: randomUUID(),
+      action: "target.command" as const,
+      context: this.scope.context,
+      ...(this.targetId ? { target_id: this.targetId } : {}),
+      profile_partition_id: this.scope.profilePartitionId,
+      command,
+    };
+    if (this.scope.provider === "managed") {
+      return {
+        ...base,
+        provider: "managed",
+        visibility: "hidden",
+        isolated: this.scope.isolated,
+        ephemeral: this.scope.ephemeral,
+        ...(this.scope.profileId ? { profile_id: this.scope.profileId } : {}),
+      };
+    }
+    if (this.scope.provider === "remote") {
+      return {
+        ...base,
+        provider: "remote",
+        visibility: "hidden",
+      };
+    }
+    return {
+      ...base,
+      provider: "chrome",
+      visibility:
+        this.scope.visibility === "foreground" ? "foreground" : "background",
+    };
+  }
+}
+
+function resolveBridgeScope(
+  options: BrowserBridgeConnectOptions,
+): BrowserInvocationScope {
+  const ambient = currentBrowserInvocationScope();
+  if (ambient) {
+    assertAmbientOptions(ambient, options);
+    return ambient;
+  }
+  const partition =
+    options.profilePartitionId ?? options.workspace ?? "default";
+  const context =
+    options.context ??
+    createBrowserInvocationContext({
+      transport: "cli",
+      agentSessionId: options.sessionId,
+      turnId: options.turnId,
+      profilePartitionId: partition,
+    });
+  return createBrowserInvocationScope({
+    context,
+    provider: options.provider,
+    visibility: options.visibility,
+    profilePartitionId: partition,
+    isolated: options.isolated,
+    ephemeral: options.ephemeral,
+    profileId: options.profileId,
+  });
+}
+
+function assertAmbientOptions(
+  ambient: BrowserInvocationScope,
+  options: BrowserBridgeConnectOptions,
+): void {
+  const declaredPartition = options.profilePartitionId ?? options.workspace;
+  const conflicts =
+    (options.context &&
+      !sameInvocationContext(options.context, ambient.context)) ||
+    (options.sessionId &&
+      options.sessionId !== ambient.context.agent_session_id) ||
+    (options.turnId && options.turnId !== ambient.context.turn_id) ||
+    (options.provider && options.provider !== ambient.provider) ||
+    (options.visibility && options.visibility !== ambient.visibility) ||
+    (declaredPartition && declaredPartition !== ambient.profilePartitionId) ||
+    (options.isolated !== undefined && options.isolated !== ambient.isolated) ||
+    (options.ephemeral !== undefined &&
+      options.ephemeral !== ambient.ephemeral) ||
+    (options.profileId !== undefined &&
+      options.profileId !== ambient.profileId);
+  if (conflicts) {
+    throw new BridgeConnectionError(
+      "Browser connection options conflict with the trusted invocation scope",
+    );
+  }
+}
+
+function sameInvocationContext(
+  left: BrowserInvocationContext,
+  right: BrowserInvocationContext,
+): boolean {
+  return (
+    left.agent_session_id === right.agent_session_id &&
+    left.turn_id === right.turn_id &&
+    left.transport === right.transport &&
+    left.profile_partition_id === right.profile_partition_id
+  );
+}
+
+function sameConnectOptions(
+  left: BrowserBridgeConnectOptions,
+  right: BrowserBridgeConnectOptions,
+): boolean {
+  return (
+    left.timeout === right.timeout &&
+    left.runtimeRoot === right.runtimeRoot &&
+    (left.profilePartitionId ?? left.workspace) ===
+      (right.profilePartitionId ?? right.workspace) &&
+    sameOptionalInvocationContext(left.context, right.context) &&
+    left.sessionId === right.sessionId &&
+    left.turnId === right.turnId &&
+    left.provider === right.provider &&
+    left.visibility === right.visibility &&
+    left.isolated === right.isolated &&
+    left.ephemeral === right.ephemeral &&
+    left.profileId === right.profileId
+  );
+}
+
+function sameOptionalInvocationContext(
+  left: BrowserInvocationContext | undefined,
+  right: BrowserInvocationContext | undefined,
+): boolean {
+  if (!left || !right) return left === right;
+  return sameInvocationContext(left, right);
+}
+
+function turnKey(context: BrowserInvocationContext): string {
+  return `${context.agent_session_id}\0${context.turn_id}`;
+}
+
+function expectString(value: unknown, label: string): string {
+  if (typeof value !== "string") {
+    throw new TypeError(`Browser ${label} returned invalid data`);
+  }
+  return value;
+}
+
+function expectStringRecord(
+  value: unknown,
+  label: string,
+): Record<string, string> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new TypeError(`Browser ${label} returned invalid data`);
+  }
+  const entries = Object.entries(value);
+  if (entries.some(([, item]) => typeof item !== "string")) {
+    throw new TypeError(`Browser ${label} returned non-string values`);
+  }
+  return Object.fromEntries(entries) as Record<string, string>;
+}
+
+function expectNetworkEntries(value: unknown): BrowserNetworkCaptureEntry[] {
+  if (!Array.isArray(value) || value.some((entry) => !isNetworkEntry(entry))) {
+    throw new TypeError("Browser network capture returned invalid data");
+  }
+  return value;
+}
+
+function isNetworkEntry(value: unknown): value is BrowserNetworkCaptureEntry {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const entry = value as Record<string, unknown>;
+  return (
+    typeof entry.url === "string" &&
+    typeof entry.method === "string" &&
+    typeof entry.status === "number" &&
+    typeof entry.contentType === "string" &&
+    typeof entry.size === "number"
+  );
+}
+
+function hasStructuredBrowserError(
+  error: unknown,
+): error is Error & { code: string; suggestion: string } {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    typeof error.code === "string" &&
+    "suggestion" in error &&
+    typeof error.suggestion === "string"
+  );
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }

@@ -1,20 +1,16 @@
 /**
- * Simple JSON-RPC over HTTP transport for MCP.
- *
- * POST /mcp accepts a single JSON-RPC envelope and returns a single JSON
- * response. GET /mcp returns server info — handy for health checks from a
- * browser.
- *
- * Note: this is intentionally NOT a full MCP Streamable HTTP transport —
- * no SSE event stream, no session resume. See `./streamable-http.ts` for
- * that. Most clients that "speak HTTP" to MCP only need request/response,
- * and starting with the simpler shape means zero new dependencies and a
- * tiny attack surface.
- *
- * Every request passes the shared `isOriginAllowed` DNS-rebinding guard
- * (`./origin-guard.ts`) before routing, so a browser page on a foreign
- * origin cannot reach the JSON-RPC dispatcher even though the socket binds
- * to loopback.
+ * @owner       src/mcp/http-transport.ts
+ * @does        Serve bounded request/response MCP JSON-RPC over loopback HTTP with origin and browser-session identity guards.
+ * @needs       node:http/crypto, MCP handler/tools/oauth/origin guard, registry, constants
+ * @feeds       simple `unicli mcp --http` clients and health probes
+ * @breaks      Invalid origins, oversized/invalid bodies, and handler failures return bounded HTTP/JSON-RPC errors.
+ * @invariants  POST bodies are capped at 1 MiB; every request carries an MCP session id into tool dispatch; foreign origins never route.
+ * @side-effects Listens on a local HTTP socket, processes OAuth routes, and writes responses/stderr startup evidence.
+ * @perf        One buffered parse and one handler dispatch per POST; no SSE/session-resume state.
+ * @concurrency Node HTTP may overlap requests; per-request browser identity is passed explicitly.
+ * @test        tests/unit/mcp/http-transport.test.ts, tests/unit/mcp-browser-invocation.test.ts
+ * @stability   stable
+ * @since       2026-04-01
  */
 
 import {
@@ -23,6 +19,7 @@ import {
   type Server,
   type ServerResponse,
 } from "node:http";
+import { randomUUID } from "node:crypto";
 import { getAllAdapters, listCommands } from "../registry.js";
 import { isOriginAllowed } from "./origin-guard.js";
 import { handleOAuthRoute, createOAuthMiddleware } from "./oauth.js";
@@ -97,7 +94,13 @@ async function dispatchPost(
     return;
   }
   try {
-    const response = await handler(parsed);
+    const response = await handler(parsed, {
+      transport: "mcp-http",
+      mcpSessionId:
+        typeof req.headers["mcp-session-id"] === "string"
+          ? req.headers["mcp-session-id"]
+          : randomUUID(),
+    });
     if (!response) {
       res.writeHead(204);
       res.end();

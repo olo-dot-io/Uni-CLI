@@ -1,7 +1,7 @@
 /**
  * @owner   src/commands/generate.ts
  * @does    Run one-shot adapter authoring by exploring a URL, generating candidates, selecting one, and installing it locally.
- * @needs   commander, chalk, fs/path, browser bridge/workspace/site-memory, engine interceptor/endpoint-scorer/user-home, output, adapter-authoring
+ * @needs   commander, chalk, fs/path, browser broker bridge/site-memory, engine interceptor/endpoint-scorer/user-home, output, adapter-authoring
  * @feeds   src/cli.ts, eval smoke files, ~/.unicli/adapters, tests/unit/commands/explore-generate.test.ts
  * @breaks  Browser, endpoint, candidate, and filesystem failures emit structured command envelopes. No fallback.
  */
@@ -17,7 +17,6 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { BrowserBridge } from "../browser/bridge.js";
-import { createOneShotWorkspace } from "../browser/workspace.js";
 import {
   generateInterceptorJs,
   generateReadInterceptedJs,
@@ -125,6 +124,7 @@ export function registerGenerateCommand(program: Command): void {
           );
         }
 
+        let bridge: BrowserBridge | undefined;
         try {
           // ── Phase 1: Explore ──────────────────────────────────────
           if (!jsonOnly) {
@@ -133,10 +133,11 @@ export function registerGenerateCommand(program: Command): void {
             );
           }
 
-          const bridge = new BrowserBridge();
+          bridge = new BrowserBridge();
           const page = await bridge.connect({
             timeout: 30_000,
-            workspace: createOneShotWorkspace("generate"),
+            profilePartitionId: "default",
+            isolated: true,
           });
 
           // Inject interceptor and navigate
@@ -379,6 +380,8 @@ export function registerGenerateCommand(program: Command): void {
           ctx.duration_ms = Date.now() - startedAt;
           console.error(format(null, undefined, fmt, ctx));
           process.exitCode = mapErrorToExitCode(err);
+        } finally {
+          await bridge?.close();
         }
       },
     );

@@ -1,101 +1,58 @@
-/**
- * Tests for the extract pipeline step.
- *
- * The extract step uses page.evaluate() to run a JS expression that
- * extracts structured data from DOM elements matching CSS selectors.
- * These tests mock the browser page to verify correct JS generation
- * and result handling.
- */
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createBrowserInvocationContext } from "../../src/browser/invocation-context.js";
+import {
+  createBrowserInvocationScope,
+  runBrowserInvocation,
+} from "../../src/browser/invocation-scope.js";
+import type { ResolvedArgs } from "../../src/engine/args.js";
 import { runPipeline } from "../../src/engine/executor.js";
 import "../../src/engine/steps/index.js";
+import type { PipelineStep } from "../../src/types.js";
+import { InMemoryBrowserRuntimeHarness } from "../helpers/in-memory-browser-runtime.js";
 
-// Mock the browser modules so tests don't require a running Chrome
-vi.mock("../../src/browser/page.js", () => {
-  const mockPage = {
-    goto: vi.fn().mockResolvedValue(undefined),
-    evaluate: vi.fn().mockResolvedValue("[]"),
-    click: vi.fn().mockResolvedValue(undefined),
-    type: vi.fn().mockResolvedValue(undefined),
-    press: vi.fn().mockResolvedValue(undefined),
-    nativeKeyPress: vi.fn().mockResolvedValue(undefined),
-    waitFor: vi.fn().mockResolvedValue(undefined),
-    waitForSelector: vi.fn().mockResolvedValue(undefined),
-    scroll: vi.fn().mockResolvedValue(undefined),
-    autoScroll: vi.fn().mockResolvedValue(undefined),
-    snapshot: vi.fn().mockResolvedValue("mock-snapshot-tree"),
-    cookies: vi.fn().mockResolvedValue({}),
-    close: vi.fn().mockResolvedValue(undefined),
-    sendCDP: vi.fn().mockResolvedValue(undefined),
-  };
+let runtime: InMemoryBrowserRuntimeHarness;
+let previousRuntimeRoot: string | undefined;
+let invocationNumber = 0;
 
-  return {
-    BrowserPage: {
-      connect: vi.fn().mockResolvedValue(mockPage),
-    },
-    __mockPage: mockPage,
-  };
+beforeEach(async () => {
+  previousRuntimeRoot = process.env.UNICLI_BROWSER_RUNTIME_DIR;
+  runtime = new InMemoryBrowserRuntimeHarness();
+  process.env.UNICLI_BROWSER_RUNTIME_DIR = runtime.runtimeRoot;
+  invocationNumber = 0;
+  await runtime.start();
 });
 
-vi.mock("../../src/browser/stealth.js", () => ({
-  injectStealth: vi.fn().mockResolvedValue(undefined),
-}));
+afterEach(async () => {
+  await runtime.cleanup();
+  if (previousRuntimeRoot === undefined) {
+    delete process.env.UNICLI_BROWSER_RUNTIME_DIR;
+  } else {
+    process.env.UNICLI_BROWSER_RUNTIME_DIR = previousRuntimeRoot;
+  }
+});
 
-async function getMockPage() {
-  const mod = await import("../../src/browser/page.js");
-  return (
-    mod as unknown as { __mockPage: Record<string, ReturnType<typeof vi.fn>> }
-  ).__mockPage;
-}
-
-function runMockBrowserPipeline(
-  steps: Parameters<typeof runPipeline>[0],
-  bag: Parameters<typeof runPipeline>[1],
-): ReturnType<typeof runPipeline> {
-  return runPipeline(steps, bag, undefined, { browserSession: "cdp" });
-}
-
-describe("browser step: extract", () => {
-  let mockPage: Record<string, ReturnType<typeof vi.fn>>;
-
-  beforeEach(async () => {
-    mockPage = await getMockPage();
-    mockPage.evaluate.mockReset();
-  });
-
-  it("extracts text fields from container elements", async () => {
-    const expected = [{ title: "Product A" }, { title: "Product B" }];
-    mockPage.evaluate.mockResolvedValueOnce(JSON.stringify(expected));
-
-    const steps = [
+describe("broker-backed extract pipeline step", () => {
+  it("extracts text fields with a templated container selector", async () => {
+    const { result, expression } = await runExtract(
       {
         extract: {
-          from: ".product-list .item",
-          fields: {
-            title: { selector: ".title" },
-          },
+          from: "#${{ args.section }} .item",
+          fields: { title: { selector: ".title" } },
         },
       },
-    ];
+      [{ title: "Product A" }, { title: "Product B" }],
+      { args: { section: "products" }, source: "internal" },
+    );
 
-    const result = await runMockBrowserPipeline(steps, {
-      args: {},
-      source: "internal",
-    });
-    expect(result).toEqual(expected);
-
-    // Verify evaluate was called with JS that queries the right selectors
-    const jsArg = mockPage.evaluate.mock.calls[0][0] as string;
-    expect(jsArg).toContain(".product-list .item");
-    expect(jsArg).toContain(".title");
+    expect(result).toEqual([{ title: "Product A" }, { title: "Product B" }]);
+    expect(expression).toContain("#products .item");
+    expect(expression).toContain(".title");
+    expect(expression).toContain("textContent.trim()");
   });
 
-  it("extracts number fields with pattern", async () => {
-    const expected = [{ price: 29.99 }, { price: 49.5 }];
-    mockPage.evaluate.mockResolvedValueOnce(JSON.stringify(expected));
-
-    const steps = [
+  it("generates patterned and unpatterned number extraction", async () => {
+    const patterned = await runExtract(
       {
         extract: {
           from: ".product",
@@ -108,128 +65,67 @@ describe("browser step: extract", () => {
           },
         },
       },
-    ];
+      [{ price: 29.99 }],
+    );
+    const unpatterned = await runExtract(
+      {
+        extract: {
+          from: ".stats",
+          fields: { count: { selector: ".count", type: "number" } },
+        },
+      },
+      [{ count: 42 }],
+    );
 
-    const result = await runMockBrowserPipeline(steps, {
-      args: {},
-      source: "internal",
-    });
-    expect(result).toEqual(expected);
-
-    const jsArg = mockPage.evaluate.mock.calls[0][0] as string;
-    expect(jsArg).toContain(".price");
-    expect(jsArg).toContain("parseFloat");
-    // The pattern is JSON.stringify'd inside the JS, so backslashes are doubled
-    expect(jsArg).toContain("\\d+");
-    expect(jsArg).toContain("parseFloat(m[0])");
+    expect(patterned.result).toEqual([{ price: 29.99 }]);
+    expect(patterned.expression).toContain("new RegExp");
+    expect(patterned.expression).toContain("\\d+");
+    expect(patterned.expression).toContain("parseFloat(m[0])");
+    expect(unpatterned.result).toEqual([{ count: 42 }]);
+    expect(unpatterned.expression).toContain("replace(/[^\\d.-]/g");
   });
 
-  it("extracts attribute fields", async () => {
-    const expected = [
-      { url: "https://example.com/a", image: "https://img.com/1.jpg" },
-    ];
-    mockPage.evaluate.mockResolvedValueOnce(JSON.stringify(expected));
-
-    const steps = [
+  it("generates explicit and default attribute extraction", async () => {
+    const { result, expression } = await runExtract(
       {
         extract: {
           from: ".card",
           fields: {
-            url: { selector: "a", type: "attribute", attribute: "href" },
-            image: { selector: "img", type: "attribute", attribute: "src" },
+            url: {
+              selector: "a.primary",
+              type: "attribute",
+              attribute: "data-url",
+            },
+            fallback: { selector: "a.fallback", type: "attribute" },
           },
         },
       },
-    ];
+      [{ url: "/primary", fallback: "/fallback" }],
+    );
 
-    const result = await runMockBrowserPipeline(steps, {
-      args: {},
-      source: "internal",
-    });
-    expect(result).toEqual(expected);
-
-    const jsArg = mockPage.evaluate.mock.calls[0][0] as string;
-    expect(jsArg).toContain("getAttribute");
-    expect(jsArg).toContain("href");
-    expect(jsArg).toContain("src");
+    expect(result).toEqual([{ url: "/primary", fallback: "/fallback" }]);
+    expect(expression).toContain("getAttribute");
+    expect(expression).toContain("data-url");
+    expect(expression).toContain("href");
   });
 
-  it("handles empty container (no matching elements)", async () => {
-    mockPage.evaluate.mockResolvedValueOnce("[]");
-
-    const steps = [
-      {
-        extract: {
-          from: ".nonexistent",
-          fields: {
-            title: { selector: ".title" },
-          },
-        },
-      },
-    ];
-
-    const result = await runMockBrowserPipeline(steps, {
-      args: {},
-      source: "internal",
-    });
-    expect(result).toEqual([]);
-  });
-
-  it("works with template expressions in from selector", async () => {
-    const expected = [{ name: "Item 1" }];
-    mockPage.evaluate.mockResolvedValueOnce(JSON.stringify(expected));
-
-    const steps = [
-      {
-        extract: {
-          from: "#${{ args.section }} .item",
-          fields: {
-            name: { selector: ".name" },
-          },
-        },
-      },
-    ];
-
-    const result = await runMockBrowserPipeline(steps, {
-      args: { section: "products" },
-      source: "internal",
-    });
-    expect(result).toEqual(expected);
-
-    const jsArg = mockPage.evaluate.mock.calls[0][0] as string;
-    expect(jsArg).toContain("#products .item");
-  });
-
-  it("extracts html fields", async () => {
-    const expected = [{ content: "<b>Bold</b> text" }];
-    mockPage.evaluate.mockResolvedValueOnce(JSON.stringify(expected));
-
-    const steps = [
+  it("generates HTML field extraction", async () => {
+    const { result, expression } = await runExtract(
       {
         extract: {
           from: ".post",
-          fields: {
-            content: { selector: ".body", type: "html" },
-          },
+          fields: { content: { selector: ".body", type: "html" } },
         },
       },
-    ];
+      [{ content: "<b>Bold</b> text" }],
+    );
 
-    const result = await runMockBrowserPipeline(steps, {
-      args: {},
-      source: "internal",
-    });
-    expect(result).toEqual(expected);
-
-    const jsArg = mockPage.evaluate.mock.calls[0][0] as string;
-    expect(jsArg).toContain("innerHTML");
+    expect(result).toEqual([{ content: "<b>Bold</b> text" }]);
+    expect(expression).toContain("innerHTML");
   });
 
-  it("extracts text with regex pattern (group 1)", async () => {
-    const expected = [{ id: "12345" }];
-    mockPage.evaluate.mockResolvedValueOnce(JSON.stringify(expected));
-
-    const steps = [
+  it("generates capture-group text extraction", async () => {
+    const { result, expression } = await runExtract(
       {
         extract: {
           from: ".item",
@@ -242,89 +138,67 @@ describe("browser step: extract", () => {
           },
         },
       },
-    ];
+      [{ id: "12345" }],
+    );
 
-    const result = await runMockBrowserPipeline(steps, {
-      args: {},
-      source: "internal",
-    });
-    expect(result).toEqual(expected);
-
-    const jsArg = mockPage.evaluate.mock.calls[0][0] as string;
-    expect(jsArg).toContain("ID:\\\\s*(\\\\d+)");
-    expect(jsArg).toContain("m[1] || m[0]");
+    expect(result).toEqual([{ id: "12345" }]);
+    expect(expression).toContain("ID:\\\\s*(\\\\d+)");
+    expect(expression).toContain("m[1] || m[0]");
   });
 
-  it("handles malformed JSON from evaluate gracefully", async () => {
-    mockPage.evaluate.mockResolvedValueOnce("not valid json");
-
-    const steps = [
+  it("returns an empty collection when the page has no matching elements", async () => {
+    const { result } = await runExtract(
       {
         extract: {
-          from: ".item",
-          fields: {
-            title: { selector: ".title" },
-          },
+          from: ".missing",
+          fields: { title: { selector: ".title" } },
         },
       },
-    ];
+      [],
+    );
 
-    const result = await runMockBrowserPipeline(steps, {
-      args: {},
-      source: "internal",
-    });
     expect(result).toEqual([]);
   });
 
-  it("uses default attribute href when type is attribute but no attribute specified", async () => {
-    const expected = [{ link: "/page/1" }];
-    mockPage.evaluate.mockResolvedValueOnce(JSON.stringify(expected));
-
-    const steps = [
+  it("contains malformed page JSON as an empty extraction result", async () => {
+    const { result } = await runExtract(
       {
         extract: {
-          from: ".nav",
-          fields: {
-            link: { selector: "a", type: "attribute" },
-          },
+          from: ".item",
+          fields: { title: { selector: ".title" } },
         },
       },
-    ];
+      "not valid json",
+    );
 
-    const result = await runMockBrowserPipeline(steps, {
-      args: {},
-      source: "internal",
-    });
-    expect(result).toEqual(expected);
-
-    const jsArg = mockPage.evaluate.mock.calls[0][0] as string;
-    expect(jsArg).toContain("getAttribute");
-    expect(jsArg).toContain("href");
-  });
-
-  it("extracts number fields without pattern (strips non-numeric chars)", async () => {
-    const expected = [{ count: 42 }];
-    mockPage.evaluate.mockResolvedValueOnce(JSON.stringify(expected));
-
-    const steps = [
-      {
-        extract: {
-          from: ".stats",
-          fields: {
-            count: { selector: ".count", type: "number" },
-          },
-        },
-      },
-    ];
-
-    const result = await runMockBrowserPipeline(steps, {
-      args: {},
-      source: "internal",
-    });
-    expect(result).toEqual(expected);
-
-    const jsArg = mockPage.evaluate.mock.calls[0][0] as string;
-    // In the generated JS, the regex is literal: /[^\d.-]/g
-    expect(jsArg).toContain("replace(/[^\\d.-]/g");
+    expect(result).toEqual([]);
   });
 });
+
+async function runExtract(
+  step: PipelineStep,
+  pageResult: unknown[] | string,
+  bag: ResolvedArgs = { args: {}, source: "internal" },
+): Promise<{ result: unknown[]; expression: string }> {
+  const serialized =
+    typeof pageResult === "string" ? pageResult : JSON.stringify(pageResult);
+  let expression = "";
+  runtime.provider.evaluationResolver = (candidate) => {
+    if (!candidate.includes("document.querySelectorAll")) return undefined;
+    expression = candidate;
+    return serialized;
+  };
+  const invocationId = ++invocationNumber;
+  const context = createBrowserInvocationContext({
+    transport: "cli",
+    agentSessionId: `extract-agent-${String(invocationId)}`,
+    turnId: `extract-turn-${String(invocationId)}`,
+    profilePartitionId: "extract-login",
+  });
+  const scope = createBrowserInvocationScope({ context });
+  const result = await runBrowserInvocation(scope, () =>
+    runPipeline([step], bag, undefined, { browserSession: "cdp" }),
+  );
+  expect(expression).not.toBe("");
+  return { result, expression };
+}

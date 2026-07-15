@@ -14,8 +14,7 @@
  */
 
 import { readFileSync } from "node:fs";
-import { ExitCode } from "../types.js";
-import type { BrowserPage } from "../browser/page.js";
+import { ExitCode, type IPage } from "../types.js";
 
 export interface RepairContext {
   error: {
@@ -302,7 +301,7 @@ export async function buildRepairContext(opts: {
   site: string;
   command: string;
   adapterPath?: string;
-  page?: BrowserPage;
+  page?: IPage;
 }): Promise<RepairContext> {
   const { error, site, command, adapterPath, page } = opts;
 

@@ -1,12 +1,20 @@
 /**
  * @owner   src/commands/browser/actions.ts
- * @does    Register browser action CLI handlers and wrap actions with session lease, evidence, and daemon execution.
- * @needs   commander, chalk, fs/path, src/browser observe/snapshot/daemon, ./runtime, ./authoring, src/engine/browser
+ * @does    Register browser action CLI handlers and wrap actions with broker invocation identity, evidence, and target guards.
+ * @needs   commander, chalk, fs/path, src/browser observe/snapshot/runtime broker, ./runtime, ./authoring, src/engine/browser
  * @feeds   src/commands/browser/index.ts, src/commands/operate.ts, tests/unit/commands/browser.test.ts
- * @breaks  Action, lease, daemon, and evidence failures propagate as command errors or evidence envelopes. No fallback.
+ * @breaks  Action, lease, broker/provider, and evidence failures propagate as command errors or evidence envelopes. No fallback.
+ * @invariants Every page mutation executes through BrowserBrokerPage under one explicit invocation identity and target lease.
+ * @side-effects Navigates pages, mutates browser targets, reads/writes evidence files, and may print operator output.
+ * @perf     Action latency is dominated by broker IPC and provider work; state reads avoid allocating additional targets.
+ * @concurrency The broker serializes commands per target while distinct Agent sessions may run concurrently.
+ * @test     tests/unit/commands/browser.test.ts, tests/integration/browser-runtime-broker.test.ts
+ * @stability experimental
+ * @since    2026-04-24
  */
 
 import { appendFileSync, mkdirSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import {
   basename as pathBasename,
   dirname as pathDirname,
@@ -30,10 +38,9 @@ import {
   resolveAllowedUploadPath,
   resolveWorkspace,
   validateRef,
-  withBrowserOperatorEnv,
+  withBrowserOperatorContext,
 } from "./runtime.js";
-import { listSessions, sendCommand } from "../../browser/daemon-client.js";
-import type { BrowserSessionInfo } from "../../browser/protocol.js";
+import { ensureBrowserRuntimeBroker } from "../../browser/runtime-launch.js";
 import { registerBrowserAuthoringSubcommands } from "./authoring.js";
 import {
   captureBrowserEvidencePacket,
@@ -55,10 +62,9 @@ import {
   isBrowserActionEvidenceEnabled,
   withBrowserActionEvidence,
 } from "../../engine/browser/action-evidence.js";
-import { withBrowserSessionLeaseLock } from "../../engine/browser/session-lock.js";
 import type { NetworkRequest } from "../../types.js";
 
-export { withBrowserOperatorEnv };
+export { withBrowserOperatorContext };
 
 interface BrowserProgramOptions {
   record?: boolean;
@@ -83,16 +89,30 @@ export function applyBrowserOperatorRootOptions(command: Command): void {
   command
     .option(
       "--workspace <name>",
-      "Reuse a named automation workspace instead of the default shared session",
+      "Use a named profile partition for shared login/storage state",
+    )
+    .option("--session <id>", "Stable Agent session id for target reuse")
+    .option("--turn <id>", "Explicit Agent turn id")
+    .option(
+      "--provider <provider>",
+      "Browser provider: managed, chrome, or remote",
+    )
+    .option(
+      "--visibility <mode>",
+      "Visibility contract: hidden, background, or foreground",
+    )
+    .option("--profile-partition <id>", "Explicit login/storage partition id")
+    .option(
+      "--profile-id <id>",
+      "Seed the managed provider from a discovered local browser profile",
+    )
+    .option(
+      "--ephemeral",
+      "Use an intentionally empty temporary managed-browser profile",
     )
     .option(
       "--isolated",
-      "Use a unique per-command workspace to avoid cross-command interference",
-    )
-    .option("--shared-session", "Force the default shared browser workspace")
-    .option(
-      "--daemon-port <port>",
-      "Route through a specific daemon port for multi-profile setups",
+      "Use a disposable browser context inside the selected profile partition",
     )
     .option(
       "--expect-domain <domain>",
@@ -102,10 +122,13 @@ export function applyBrowserOperatorRootOptions(command: Command): void {
       "--expect-path-prefix <prefix>",
       "Require browser commands to run under this URL path prefix",
     )
-    .option("--focus", "Allow the automation window to take focus")
+    .option(
+      "--focus",
+      "Select the Chrome provider with explicit foreground visibility",
+    )
     .option(
       "--background",
-      "Prefer background operation and avoid focus-stealing where possible",
+      "Select the Chrome provider with a verified non-activating background contract",
     );
 }
 
@@ -127,25 +150,23 @@ async function withRecordedBrowserAction<T>(
   }
   const workspace = resolveWorkspace(root, namespace);
   const lease = await browserSessionLease(root, namespace, workspace, page);
-  return await withBrowserSessionLeaseLock(lease, async () => {
-    await assertBrowserSessionLeaseTargetCurrent(lease, page);
-    return await withBrowserActionEvidence(
-      page,
-      {
-        command: `${namespace}.${action.split(" ").join("_")}`,
-        namespace,
-        action,
-        workspace,
-        lease,
-        args,
-        enabled,
-        approved: programOpts.yes === true,
-        permissionProfile: programOpts.permissionProfile,
-        watchdog: browserActionWatchdog(action),
-      },
-      fn,
-    );
-  });
+  await assertBrowserSessionLeaseTargetCurrent(lease, page);
+  return await withBrowserActionEvidence(
+    page,
+    {
+      command: `${namespace}.${action.split(" ").join("_")}`,
+      namespace,
+      action,
+      workspace,
+      lease,
+      args,
+      enabled,
+      approved: programOpts.yes === true,
+      permissionProfile: programOpts.permissionProfile,
+      watchdog: browserActionWatchdog(action),
+    },
+    fn,
+  );
 }
 
 async function browserSessionLease(
@@ -156,8 +177,6 @@ async function browserSessionLease(
 ) {
   const rootOpts = root.opts() as {
     isolated?: boolean;
-    sharedSession?: boolean;
-    daemonPort?: string;
     expectDomain?: string;
     expectPathPrefix?: string;
   };
@@ -165,8 +184,6 @@ async function browserSessionLease(
     namespace,
     workspace,
     isolated: rootOpts.isolated,
-    sharedSession: rootOpts.sharedSession,
-    daemonPort: rootOpts.daemonPort,
     expectedDomain: rootOpts.expectDomain,
     expectedPathPrefix: rootOpts.expectPathPrefix,
   });
@@ -249,17 +266,17 @@ function normalizeBrowserUrlForDocumentMatch(
 }
 
 interface BrowserCloseAllSessionResult {
-  readonly workspace: string;
-  readonly action: "closed_window" | "released_binding";
+  readonly agent_session_id: string;
+  readonly action: "ended_session";
+  readonly target_count: number;
   readonly status: "completed";
 }
 
 interface BrowserCloseAllResult {
   readonly ok: true;
-  readonly scope: "all_managed_sessions";
+  readonly scope: "all_broker_sessions";
   readonly session_count: number;
-  readonly closed_count: number;
-  readonly released_count: number;
+  readonly ended_count: number;
   readonly failed_count: 0;
   readonly sessions: readonly BrowserCloseAllSessionResult[];
 }
@@ -357,36 +374,32 @@ interface BrowserDomQueryResult {
 }
 
 async function closeAllBrowserSessions(): Promise<BrowserCloseAllResult> {
-  const sessions = await listSessions();
+  const { client, status } = await ensureBrowserRuntimeBroker();
+  const sessions = status.sessions.sessions;
   const reports: BrowserCloseAllSessionResult[] = [];
 
   for (const session of sessions) {
-    await sendCommand("close-window", { workspace: session.workspace });
+    await client.requestOrThrow({
+      id: randomUUID(),
+      action: "session.end",
+      agent_session_id: session.agent_session_id,
+    });
     reports.push({
-      workspace: session.workspace,
-      action: closeActionForSession(session),
+      agent_session_id: session.agent_session_id,
+      action: "ended_session",
+      target_count: session.target_ids.length,
       status: "completed",
     });
   }
 
   return {
     ok: true,
-    scope: "all_managed_sessions",
+    scope: "all_broker_sessions",
     session_count: sessions.length,
-    closed_count: reports.filter((report) => report.action === "closed_window")
-      .length,
-    released_count: reports.filter(
-      (report) => report.action === "released_binding",
-    ).length,
+    ended_count: reports.length,
     failed_count: 0,
     sessions: reports,
   };
-}
-
-function closeActionForSession(
-  session: BrowserSessionInfo,
-): BrowserCloseAllSessionResult["action"] {
-  return session.owned === false ? "released_binding" : "closed_window";
 }
 
 function normalizeBrowserDialogProviderResult(
@@ -736,7 +749,7 @@ export function registerBrowserOperatorSubcommands(
 ): void {
   root
     .command("open <url>")
-    .description("Navigate to URL in daemon browser")
+    .description("Navigate one broker-owned browser target to a URL")
     .action((url: string) =>
       operatorAction(program, root, namespace, "open", async () => {
         const page = await getOperatorPage(root, namespace);
@@ -973,10 +986,8 @@ export function registerBrowserOperatorSubcommands(
     .action((opts: { clearRecent?: boolean }) =>
       operatorAction(program, root, namespace, "dialogs", async () => {
         const workspace = resolveWorkspace(root, namespace);
-        const result = await sendCommand("dialog-read", {
-          workspace,
-          clearRecent: opts.clearRecent === true,
-        });
+        const page = await getOperatorPage(root, namespace);
+        const result = await page.readDialogs(opts.clearRecent === true);
         return normalizeBrowserDialogProviderResult(result, workspace);
       }),
     );
@@ -994,9 +1005,9 @@ export function registerBrowserOperatorSubcommands(
         operatorAction(program, root, namespace, "dialog", async () => {
           const action = parseBrowserDialogAction(actionRaw);
           const workspace = resolveWorkspace(root, namespace);
-          const result = await sendCommand("dialog-respond", {
-            workspace,
-            dialogAction: action,
+          const page = await getOperatorPage(root, namespace);
+          const result = await page.respondDialog({
+            action,
             ...(dialogId === undefined ? {} : { dialogId }),
             ...(opts.prompt === undefined ? {} : { promptText: opts.prompt }),
           });
@@ -1400,10 +1411,8 @@ export function registerBrowserOperatorSubcommands(
       operatorAction(program, root, namespace, "downloads", async () => {
         const workspace = resolveWorkspace(root, namespace);
         const limit = parseDownloadLimit(opts.limit);
-        const result = await sendCommand("downloads-read", {
-          workspace,
-          downloadLimit: limit,
-        });
+        const page = await getOperatorPage(root, namespace);
+        const result = await page.readDownloads(limit);
         return normalizeBrowserDownloadsProviderResult(
           result,
           workspace,
@@ -1507,9 +1516,8 @@ export function registerBrowserOperatorSubcommands(
     .description("List tabs for the current browser workspace")
     .action(() =>
       operatorAction(program, root, namespace, "tabs", async () => {
-        const workspace = resolveWorkspace(root, namespace);
-        const result = await sendCommand("tabs", { workspace });
-        return Array.isArray(result) ? result : [];
+        const page = await getOperatorPage(root, namespace);
+        return await page.tabs();
       }),
     );
 

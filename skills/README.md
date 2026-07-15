@@ -15,7 +15,7 @@ SKILL.md standard: Claude Code, Codex, Hermes, Cline, OpenCode, etc.
 | `talk-normal`         | Always-on concise writing rules for docs and UI copy                                |
 | `unicli`              | Comprehensive agent guide — discover, run, read output, auth, errors, skill routing |
 | `bgclick-rev`         | IDA-backed research workflow for macOS background clicks                            |
-| `unicli-browser`      | Control Chrome via daemon bridge                                                    |
+| `unicli-browser`      | Control broker-owned hidden, existing-Chrome, and remote browser targets            |
 | `unicli-claude`       | Claude.ai-specific commands and integration                                         |
 | `unicli-claude-code`  | Claude Code CLI integration                                                         |
 | `unicli-explorer`     | Create new adapters by exploring sites/APIs                                         |

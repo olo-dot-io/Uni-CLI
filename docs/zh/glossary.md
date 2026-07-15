@@ -55,9 +55,9 @@ Uni-CLI 用来控制真实 Chrome 实例的 wire protocol。在 `src/browser/cdp
 
 用户可以显式把每站认证态以 plaintext JSON 存到 `~/.unicli/cookies/<site>.json`；`cookie`/`header` adapter 也可以只把 live browser/CDP Cookie 读入本次进程内存。Cookie 值只发送给该命令选择的目标请求/浏览器边界。
 
-## Daemon (守护进程)
+## Browser Runtime Broker (浏览器运行时代理)
 
-Uni-CLI 可以管理的长生命浏览器进程，端口 19825。带 `--remote-debugging-port` 启动 Chrome，跨 CLI 调用维持会话状态，空闲超时自动退出。可选——大多数适配器不用它也能跑。
+CLI、MCP、native host 与插件共用的机器级、仅所有者可访问的浏览器控制平面。它认证本地 IPC，管理 Agent session 与 target lease，按 target 串行化变更，并只在请求时启动 managed、existing-Chrome 或 remote provider；broker 自身不会打开浏览器窗口。
 
 ## Desktop adapter (桌面适配器)
 

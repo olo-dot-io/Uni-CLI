@@ -1,6 +1,6 @@
 /**
  * @owner   extension/src/dialog-supervisor.ts
- * @does    Maintain provider-owned browser JavaScript dialog state for daemon browser sessions.
+ * @does    Maintain provider-owned browser JavaScript dialog state for broker-owned Chrome targets.
  * @needs   chrome.debugger, chrome.tabs
  * @feeds   extension/src/chrome-controller.ts dialog_read/dialog_respond commands
  * @breaks  extension dialog supervision tests when pending/recent dialog state or response routing drifts.

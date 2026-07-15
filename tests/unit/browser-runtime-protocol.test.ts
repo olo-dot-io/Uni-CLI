@@ -10,6 +10,11 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import {
+  createServer as createNetServer,
+  type Server,
+  type Socket,
+} from "node:net";
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -30,6 +35,8 @@ import {
 
 let runtimeRoot: string | null = null;
 let servers: BrowserRuntimeBrokerServer[] = [];
+let rawServers: Server[] = [];
+let rawSockets = new Set<Socket>();
 
 afterEach(async () => {
   for (const server of servers.reverse()) {
@@ -40,6 +47,21 @@ afterEach(async () => {
     }
   }
   servers = [];
+  for (const socket of rawSockets) socket.destroy();
+  rawSockets = new Set<Socket>();
+  await Promise.all(
+    rawServers.map(
+      (server) =>
+        new Promise<void>((resolve) => {
+          if (!server.listening) {
+            resolve();
+            return;
+          }
+          server.close(() => resolve());
+        }),
+    ),
+  );
+  rawServers = [];
   if (runtimeRoot) rmSync(runtimeRoot, { recursive: true, force: true });
   runtimeRoot = null;
 });
@@ -138,6 +160,46 @@ describe("browser broker protocol and authenticated transport", () => {
       code: "browser_broker_endpoint_invalid",
     });
     expect(readFileSync(paths.lockPath, "utf8")).toBe("not-json\n");
+  });
+
+  it("fails immediately when the broker closes before a complete response", async () => {
+    runtimeRoot = mkdtempSync(join(tmpdir(), "unicli-broker-premature-end-"));
+    const paths = browserBrokerPaths(runtimeRoot);
+    mkdirSync(paths.runtimeRoot, { recursive: true, mode: 0o700 });
+    const rawServer = createNetServer((socket) => {
+      rawSockets.add(socket);
+      socket.once("close", () => rawSockets.delete(socket));
+      socket.end();
+    });
+    rawServers.push(rawServer);
+    await new Promise<void>((resolve, reject) => {
+      rawServer.once("error", reject);
+      rawServer.listen(paths.socketPath, resolve);
+    });
+    writeFileSync(
+      paths.descriptorPath,
+      `${JSON.stringify({
+        product: BROWSER_BROKER_PRODUCT,
+        protocol: BROWSER_BROKER_PROTOCOL,
+        version: BROWSER_BROKER_PROTOCOL_VERSION,
+        runtime_id: randomUUID(),
+        pid: process.pid,
+        socket_path: paths.socketPath,
+        auth_token: "x".repeat(43),
+        started_at: new Date().toISOString(),
+      })}\n`,
+      { mode: 0o600 },
+    );
+
+    await expect(
+      new BrowserRuntimeBrokerClient({
+        runtimeRoot,
+        timeoutMs: 5_000,
+      }).request({ id: "premature-end", action: "broker.status" }),
+    ).rejects.toMatchObject({
+      code: "browser_broker_unavailable",
+      message: expect.stringContaining("before completing a response"),
+    });
   });
 
   it("rejects unknown actions and implicit visibility at the wire boundary", () => {

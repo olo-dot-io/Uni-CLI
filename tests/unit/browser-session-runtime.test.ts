@@ -56,22 +56,16 @@ function mockPage(
 }
 
 describe("browser session runtime", () => {
-  it("uses window and tab identity when both are available", () => {
+  it("uses broker target identity when available", () => {
     expect(
       browserSessionTargetKey({
-        kind: "daemon-tab",
+        kind: "broker-target",
         captured_at: "2026-04-29T02:10:00.000Z",
-        window_id: 7,
-        tab_id: 42,
+        target_id: "managed-target-42",
+        provider: "managed",
+        visibility: "hidden",
       }),
-    ).toBe("window:7:tab:42");
-    expect(
-      browserSessionTargetKey({
-        kind: "daemon-tab",
-        captured_at: "2026-04-29T02:10:00.000Z",
-        tab_id: 42,
-      }),
-    ).toBe("tab:42");
+    ).toBe("target:managed-target-42");
   });
 
   it("enriches a lease with target identity and auth posture", async () => {
@@ -84,10 +78,11 @@ describe("browser session runtime", () => {
       lease,
       mockPage(
         {
-          kind: "daemon-tab",
+          kind: "broker-target",
           captured_at: "2026-04-29T02:10:00.000Z",
-          tab_id: 42,
-          window_id: 7,
+          target_id: "managed-target-42",
+          provider: "managed",
+          visibility: "hidden",
           url: "https://example.com/feed",
           title: "Feed",
           owned: false,
@@ -99,9 +94,10 @@ describe("browser session runtime", () => {
     expect(enriched).toMatchObject({
       ...lease,
       target: {
-        kind: "daemon-tab",
-        tab_id: 42,
-        window_id: 7,
+        kind: "broker-target",
+        target_id: "managed-target-42",
+        provider: "managed",
+        visibility: "hidden",
         url: "https://example.com/feed",
       },
       auth: {
@@ -118,9 +114,11 @@ describe("browser session runtime", () => {
         workspace: "browser:default",
       }),
       target: {
-        kind: "daemon-tab" as const,
+        kind: "broker-target" as const,
         captured_at: "2026-04-29T02:10:00.000Z",
-        tab_id: 42,
+        target_id: "managed-target-42",
+        provider: "managed" as const,
+        visibility: "hidden" as const,
       },
     };
 
@@ -128,23 +126,27 @@ describe("browser session runtime", () => {
       assertBrowserSessionLeaseTargetCurrent(
         lease,
         mockPage({
-          kind: "daemon-tab",
+          kind: "broker-target",
           captured_at: "2026-04-29T02:11:00.000Z",
-          tab_id: 43,
+          target_id: "managed-target-43",
+          provider: "managed",
+          visibility: "hidden",
         }),
       ),
     ).rejects.toMatchObject({
       code: "browser_target_mismatch",
-      expected: "tab:42",
-      actual: "tab:43",
+      expected: "target:managed-target-42",
+      actual: "target:managed-target-43",
     });
     await expect(
       assertBrowserSessionLeaseTargetCurrent(
         lease,
         mockPage({
-          kind: "daemon-tab",
+          kind: "broker-target",
           captured_at: "2026-04-29T02:11:00.000Z",
-          tab_id: 43,
+          target_id: "managed-target-43",
+          provider: "managed",
+          visibility: "hidden",
         }),
       ),
     ).rejects.toBeInstanceOf(BrowserSessionLeaseGuardError);

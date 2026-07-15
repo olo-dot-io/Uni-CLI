@@ -46,6 +46,24 @@ describe("browser network cache", () => {
     });
   });
 
+  it("preserves text/javascript response bodies in network output", () => {
+    const [entry] = toCachedNetworkEntries([
+      {
+        url: "https://example.com/api/bootstrap.js",
+        method: "GET",
+        status: 200,
+        contentType: "text/javascript",
+        bodySize: 27,
+        body: '{"data":{"enabled":true}}',
+      },
+    ]);
+
+    expect(entry).toMatchObject({
+      contentType: "text/javascript",
+      body: '{"data":{"enabled":true}}',
+    });
+  });
+
   it("filters response bodies by nested field names", () => {
     const parsed = parseNetworkFilter("id,title");
     expect(parsed).toEqual({ ok: true, fields: ["id", "title"] });

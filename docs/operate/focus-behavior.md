@@ -5,16 +5,15 @@ verbs. Use `--focus` or `focus: true` only when the target app must be brought
 forward before the action can succeed. The visual fallback is treated as
 focus-taking when the cascade reaches it.
 
-The browser bridge follows the same rule. Daemon commands send
-`windowFocused: false` by default, extension session/doctor probes are
-read-only and must not create `about:blank` placeholder tabs, and headed local
-Chrome launches use `--no-startup-window` unless the caller explicitly opts
-into foreground startup with `unicli browser --focus start`. Chrome/CDP
-uses process-verified live profiles or Uni-CLI-owned automation profiles under
-`~/.unicli/`; default startup reuses logged-in state by attaching to an
-already-exposed local profile when available, otherwise by seeding the
-automation profile from the preferred local Chrome profile instead of launching
-CDP against Chrome's default user-data-dir.
+The Browser Runtime Broker follows the same rule. Its default managed provider
+runs hidden against a Uni-CLI-owned automation profile under `~/.unicli/`.
+Existing Chrome is a separate provider: `background` creates or claims an
+inactive tab in an existing normal window and verifies that focus and active-tab
+state did not change; `foreground` is available only through explicit
+`--focus`/`--visibility foreground`. Status, doctor, and session probes are
+read-only and allocate no target or `about:blank` placeholder. The broker is
+machine-scoped and reusable, while each Agent session owns distinct targets and
+may opt into a shared login/storage partition.
 
 ## Defaults
 
@@ -31,20 +30,22 @@ CDP against Chrome's default user-data-dir.
 - `compute click`, `compute type`, `compute press`, and `compute scroll` pass
   `focus: false` to AX, UIA, AT-SPI, and CDP unless the caller sets `--focus`
   or `focus: true`.
-- `browser open`, `browser state`, `browser click`, `browser type`,
-  `browser screenshot`, and daemon-backed browser commands pass
-  `windowFocused: false` unless `--focus` or `UNICLI_WINDOW_FOCUSED=1` is set.
-  `browser doctor` and `browser sessions` inspect existing sessions without
-  allocating a placeholder window.
+- `browser open`, `browser state`, `browser click`, `browser type`, and
+  `browser screenshot` default to the hidden managed provider. Use
+  `--background` for verified non-activating existing-Chrome control and
+  `--focus` only for an explicit foreground action. `browser doctor`,
+  `browser status`, and `browser sessions` inspect existing runtime state
+  without starting a provider or allocating a target.
 - Chrome 136+ disables remote debugging for the browser's default
   user-data-dir. Treat a process with `--remote-debugging-port` but no listening
   port as a default-profile launch defect, not a retryable CDP race. The
   correct repair is a process-verified live attach or a Uni-CLI-owned seeded
   automation profile selected from `unicli browser profiles --json`.
-  `unicli browser doctor --json` reports this as the `default profile CDP trap`
-  check, and `unicli browser doctor --repair` starts the safe Uni-CLI
-  automation CDP profile when needed. The `profile_source` section reports
-  attach, seeded, remote, and explicit ephemeral paths; the
+  `unicli browser doctor --json` reports this through profile-ownership and
+  Chrome-policy checks. `unicli browser doctor --repair` starts only the
+  windowless broker; `unicli browser --provider managed start` explicitly
+  starts the safe hidden managed provider. The `profile_source` section reports
+  seeded, explicit ephemeral, unavailable, and policy-blocked paths; the
   `chrome_remote_debugging` section also reports `RemoteDebuggingAllowed`:
   `false` blocks every local CDP path until the managed Chrome policy is
   removed or set true, while `true` still does not bypass the Chrome 136+

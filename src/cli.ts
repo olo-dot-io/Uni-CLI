@@ -33,7 +33,6 @@ import { VERSION } from "./constants.js";
 import { registerAuthCommands } from "./commands/auth.js";
 import { registerBrowserCommands } from "./commands/browser/index.js";
 import { registerComputeCommand } from "./commands/compute.js";
-import { registerDaemonCommands } from "./commands/daemon.js";
 import { registerDoctorComputeCommand } from "./commands/doctor-compute.js";
 import { registerDoctorCookies } from "./commands/auth.js";
 import {
@@ -82,6 +81,7 @@ import { emitHook } from "./hooks.js";
 import { checkForUpdates } from "./engine/update-check.js";
 import { installProxyAwareFetch } from "./engine/proxy.js";
 import type { OutputFormat } from "./types.js";
+import { runBrowserDoctor } from "./browser/doctor.js";
 
 export async function createCli(): Promise<Command> {
   const program = new Command();
@@ -222,7 +222,7 @@ export async function createCli(): Promise<Command> {
   // Register "doctor" command
   const doctor = program
     .command("doctor")
-    .description("Diagnose environment: adapters, browser, daemon, tools")
+    .description("Diagnose environment: adapters, browser runtime, tools")
     .action(async () => {
       console.log(chalk.bold("unicli doctor\n"));
 
@@ -233,48 +233,32 @@ export async function createCli(): Promise<Command> {
       console.log(`  Platform: ${chalk.green(process.platform)}`);
       console.log("");
 
-      // 2. Daemon status
-      try {
-        const { fetchDaemonStatus } =
-          await import("./browser/daemon-client.js");
-        const status = await fetchDaemonStatus({ timeout: 2000 });
-        if (status) {
-          console.log(
-            `  Daemon:   ${chalk.green("running")} (port ${status.port ?? 19825})`,
-          );
-        } else {
-          console.log(
-            `  Daemon:   ${chalk.yellow("not running")} — run: unicli daemon start`,
-          );
-        }
-      } catch {
-        console.log(
-          `  Daemon:   ${chalk.yellow("not running")} — run: unicli daemon start`,
-        );
-      }
+      // 2. Browser Runtime Broker and lazy providers. This probe never starts
+      // a broker or browser process.
+      const browser = await runBrowserDoctor();
+      const brokerLabel =
+        browser.broker.state === "running"
+          ? chalk.green("running")
+          : browser.broker.state === "stopped"
+            ? chalk.dim("stopped")
+            : chalk.red("error");
+      console.log(
+        `  Broker:   ${brokerLabel}${browser.broker.broker_pid ? ` (pid ${String(browser.broker.broker_pid)})` : ""}`,
+      );
+      console.log(
+        `  Managed:  ${browser.default_path.available ? chalk.green("ready") : chalk.yellow("needs action")} (${browser.default_path.visibility}, ${browser.default_path.profile_source})`,
+      );
+      console.log(
+        `  Chrome:   ${browser.providers.chrome.connected ? chalk.green("connected") : chalk.dim("not connected")} (background provider)`,
+      );
+      console.log(
+        `  Remote:   ${browser.providers.remote.configured ? chalk.green("configured") : chalk.dim("not configured")}`,
+      );
+      console.log(
+        `  Sessions: ${String(browser.sessions.sessions.length)} live, ${String(browser.sessions.target_leases.length)} target lease(s)`,
+      );
 
-      // 3. Chrome / CDP connectivity
-      try {
-        const { isCDPAvailable, getCDPPort } =
-          await import("./browser/launcher.js");
-        const port = getCDPPort();
-        const available = await isCDPAvailable(port);
-        if (available) {
-          console.log(
-            `  Chrome:   ${chalk.green("reachable")} (CDP port ${port})`,
-          );
-        } else {
-          console.log(
-            `  Chrome:   ${chalk.yellow("not detected")} — run: unicli browser start`,
-          );
-        }
-      } catch {
-        console.log(
-          `  Chrome:   ${chalk.yellow("not detected")} — run: unicli browser start`,
-        );
-      }
-
-      // 4. Cookie directory
+      // 3. Cookie directory
       const { existsSync, readdirSync } = await import("node:fs");
       const { getCookieDir } = await import("./engine/cookies.js");
       const cookieDir = getCookieDir();
@@ -291,7 +275,7 @@ export async function createCli(): Promise<Command> {
         );
       }
 
-      // 5. External tools
+      // 4. External tools
       console.log("");
       const tools = [
         { name: "yt-dlp", check: "yt-dlp --version" },
@@ -309,7 +293,7 @@ export async function createCli(): Promise<Command> {
         }
       }
 
-      // 6. Plugin directory
+      // 5. Plugin directory
       const { join } = await import("node:path");
       const { homedir } = await import("node:os");
       const pluginsDir = join(homedir(), ".unicli", "plugins");
@@ -332,14 +316,11 @@ export async function createCli(): Promise<Command> {
   // Register auth commands — cookie management
   registerAuthCommands(program);
 
-  // Register browser commands — Chrome CDP management
+  // Register browser commands — broker-owned browser runtimes
   registerBrowserCommands(program);
 
   // Register compute commands — local app control cascade
   registerComputeCommand(program);
-
-  // Register daemon commands — lifecycle management
-  registerDaemonCommands(program);
 
   // Register completion command — shell tab completion
   registerCompletionCommand(program);

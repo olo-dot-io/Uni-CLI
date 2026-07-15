@@ -1,144 +1,183 @@
-/**
- * `unicli operate` envelope tests.
- *
- * The happy paths require a live daemon-backed browser, which is out of scope
- * for a unit test. We instead mock `BrowserBridge` to (a) return a stub page
- * for an ack-only action (keys) and (b) fail connection for the error path.
- * Both branches must emit a v2 envelope on stdout / stderr.
- */
+import { join } from "node:path";
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Command } from "commander";
-import { validateEnvelope } from "../../../src/output/envelope.js";
-
-function captureStdout(): {
-  getStdout: () => string;
-  getStderr: () => string;
-  restore: () => void;
-} {
-  let out = "";
-  let err = "";
-  const origLog = console.log;
-  const origError = console.error;
-  console.log = ((...args: unknown[]) => {
-    out += args.map(String).join(" ") + "\n";
-  }) as typeof console.log;
-  console.error = ((...args: unknown[]) => {
-    err += args.map(String).join(" ") + "\n";
-  }) as typeof console.error;
-  return {
-    getStdout: () => out,
-    getStderr: () => err,
-    restore: () => {
-      console.log = origLog;
-      console.error = origError;
-    },
-  };
-}
-
-// Mock BrowserBridge to intercept daemon connection attempts. Hoisted by Vitest.
-vi.mock("../../../src/browser/bridge.js", () => {
-  const connectFn = vi.fn();
-  class MockBridge {
-    connect = connectFn;
-  }
-  class MockDaemonPage {}
-  class BridgeConnectionError extends Error {
-    suggestion = "start daemon";
-    retryable = true;
-    alternatives: string[] = [];
-    constructor(message: string) {
-      super(message);
-      this.name = "BridgeConnectionError";
-    }
-  }
-  return {
-    BrowserBridge: MockBridge,
-    DaemonPage: MockDaemonPage,
-    BridgeConnectionError,
-    __connectFn: connectFn,
-  };
-});
 
 import { registerOperateCommands } from "../../../src/commands/operate.js";
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-expect-error — pulled from mock return
-import * as bridgeMock from "../../../src/browser/bridge.js";
+import { InMemoryBrowserRuntimeHarness } from "../../helpers/in-memory-browser-runtime.js";
 
-describe("unicli operate — v2 envelope", () => {
-  beforeEach(() => {
-    // Default: connection fails so every command hits the error path, which is
-    // sufficient for envelope shape tests without a live daemon.
-    (
-      bridgeMock as unknown as { __connectFn: ReturnType<typeof vi.fn> }
-    ).__connectFn.mockReset();
-    (
-      bridgeMock as unknown as { __connectFn: ReturnType<typeof vi.fn> }
-    ).__connectFn.mockRejectedValue(new Error("daemon failed: offline (test)"));
-  });
+let runtime: InMemoryBrowserRuntimeHarness;
+let previousRuntimeRoot: string | undefined;
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+beforeEach(async () => {
+  previousRuntimeRoot = process.env.UNICLI_BROWSER_RUNTIME_DIR;
+  runtime = new InMemoryBrowserRuntimeHarness();
+  process.env.UNICLI_BROWSER_RUNTIME_DIR = runtime.runtimeRoot;
+  process.exitCode = undefined;
+  await runtime.start();
+});
 
-  function newProgram(): Command {
-    const program = new Command();
-    program.exitOverride();
-    program.option("-f, --format <fmt>", "output format");
-    registerOperateCommands(program);
-    return program;
+afterEach(async () => {
+  await runtime.cleanup();
+  if (previousRuntimeRoot === undefined) {
+    delete process.env.UNICLI_BROWSER_RUNTIME_DIR;
+  } else {
+    process.env.UNICLI_BROWSER_RUNTIME_DIR = previousRuntimeRoot;
   }
+  process.exitCode = undefined;
+});
 
-  it("operate back emits an error envelope when daemon is unavailable", async () => {
-    const cap = captureStdout();
-    const origExitCode = process.exitCode;
-    try {
-      const program = newProgram();
-      await program.parseAsync(["-f", "json", "operate", "back"], {
-        from: "user",
-      });
-    } finally {
-      cap.restore();
-      process.exitCode = origExitCode;
-    }
+describe("unicli operate broker compatibility surface", () => {
+  it("reuses the same hidden broker target across alias invocations", async () => {
+    const opened = await runOperate([
+      "operate",
+      "--session",
+      "operate-agent",
+      "open",
+      "https://example.com/path",
+    ]);
+    const state = await runOperate([
+      "operate",
+      "--session",
+      "operate-agent",
+      "state",
+      "--compact",
+    ]);
 
-    const errText = cap.getStderr().trim();
-    expect(errText.length).toBeGreaterThan(0);
-    const env = JSON.parse(errText) as Record<string, unknown>;
-    expect(env.ok).toBe(false);
-    expect(env.schema_version).toBe("2");
-    expect(env.command).toBe("operate.back");
-    const e = env.error as { code: string } | undefined;
-    expect(typeof e?.code).toBe("string");
+    expect(opened.error).toBeNull();
+    expect(opened.data).toMatchObject({
+      url: "https://example.com/path",
+      title: "Example fixture",
+    });
+    expect(state.data).toEqual({
+      url: "https://example.com/path",
+      snapshot: "[1]<button>Continue</button>",
+    });
+    expect(runtime.provider.acquireCount).toBe(1);
+    expect(runtime.provider.pages[0]?.visibility).toBe("hidden");
   });
 
-  it("operate keys emits an envelope with ok data when page accepts the press", async () => {
-    const pressFn = vi.fn().mockResolvedValue(undefined);
-    (
-      bridgeMock as unknown as { __connectFn: ReturnType<typeof vi.fn> }
-    ).__connectFn.mockResolvedValue({
-      press: pressFn,
+  it("routes key chords through the broker page command surface", async () => {
+    const result = await runOperate([
+      "operate",
+      "--session",
+      "keys-agent",
+      "keys",
+      "Control+Enter",
+    ]);
+
+    expect(result).toMatchObject({
+      data: { ok: true, key: "Control+Enter" },
     });
+    expect(runtime.provider.pages[0]?.presses).toEqual([
+      { key: "Enter", modifiers: ["control"] },
+    ]);
+  });
 
-    const cap = captureStdout();
-    try {
-      const program = newProgram();
-      await program.parseAsync(["-f", "json", "operate", "keys", "Enter"], {
-        from: "user",
-      });
-    } finally {
-      cap.restore();
-    }
+  it("validates upload refs before allocating a target", async () => {
+    const result = await runOperate([
+      "operate",
+      "upload",
+      "not-a-ref",
+      join(process.cwd(), "fixtures", "upload.txt"),
+    ]);
 
-    const out = cap.getStdout().trim();
-    expect(out.length).toBeGreaterThan(0);
-    const env = JSON.parse(out) as Record<string, unknown>;
-    expect(env.ok).toBe(true);
-    expect(env.command).toBe("operate.keys");
-    const data = env.data as { ok: boolean; key: string };
-    expect(data.ok).toBe(true);
-    expect(data.key).toBe("Enter");
-    validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
-    expect(pressFn).toHaveBeenCalledWith("Enter");
+    expect(result.data).toBeNull();
+    expect(result.error?.message).toContain("Invalid ref");
+    expect(runtime.provider.acquireCount).toBe(0);
+  });
+
+  it("sends an allowed absolute upload path to the broker target", async () => {
+    const uploadPath = join(process.cwd(), "fixtures", "upload.txt");
+    const result = await runOperate([
+      "operate",
+      "--session",
+      "upload-agent",
+      "upload",
+      "42",
+      uploadPath,
+    ]);
+
+    expect(result).toMatchObject({
+      data: { ok: true, ref: "42", path: uploadPath },
+    });
+    expect(runtime.provider.pages[0]?.uploads).toEqual([
+      {
+        selector: '[data-unicli-ref="42"]',
+        files: [uploadPath],
+      },
+    ]);
+  });
+
+  it("normalizes provider network capture without a JavaScript fallback", async () => {
+    await runOperate([
+      "operate",
+      "--session",
+      "network-agent",
+      "open",
+      "https://example.com",
+    ]);
+    runtime.provider.pages[0]!.networkCaptureEntries = [
+      {
+        url: "https://example.com/api/data.js",
+        method: "GET",
+        status: 200,
+        contentType: "text/javascript",
+        size: 27,
+        responseBody: '{"data":{"enabled":true}}',
+      },
+    ];
+
+    const result = await runOperate([
+      "operate",
+      "--session",
+      "network-agent",
+      "network",
+      "--raw",
+    ]);
+
+    expect(result.data).toEqual([
+      expect.objectContaining({
+        url: "https://example.com/api/data.js",
+        method: "GET",
+        status: 200,
+        contentType: "text/javascript",
+        bodySize: 27,
+        body: '{"data":{"enabled":true}}',
+      }),
+    ]);
   });
 });
+
+async function runOperate(args: string[]): Promise<{
+  data: unknown;
+  error?: { code: string; message: string; retryable: boolean } | null;
+  stdout: string;
+  stderr: string;
+}> {
+  const program = new Command();
+  program.exitOverride();
+  program.option("-f, --format <format>", "output format");
+  registerOperateCommands(program);
+  let stdout = "";
+  let stderr = "";
+  const originalLog = console.log;
+  const originalError = console.error;
+  console.log = ((...values: unknown[]) => {
+    stdout += `${values.map(String).join(" ")}\n`;
+  }) as typeof console.log;
+  console.error = ((...values: unknown[]) => {
+    stderr += `${values.map(String).join(" ")}\n`;
+  }) as typeof console.error;
+  try {
+    await program.parseAsync(["-f", "json", ...args], { from: "user" });
+  } finally {
+    console.log = originalLog;
+    console.error = originalError;
+  }
+  const envelope = JSON.parse((stdout || stderr).trim()) as {
+    data: unknown;
+    error?: { code: string; message: string; retryable: boolean } | null;
+  };
+  return { ...envelope, stdout, stderr };
+}

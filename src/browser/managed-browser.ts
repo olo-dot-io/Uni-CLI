@@ -4,11 +4,11 @@
  * @needs       node:child_process, node:crypto, node:fs, node:path, src/browser/cdp-client.ts, launcher.ts, local-profiles.ts, page.ts, profile-seed.ts, src/engine/user-home.ts
  * @feeds       src/browser/runtime-broker.ts
  * @breaks      ManagedBrowserError on unavailable binaries/profiles, conflicting partition policy, startup failure, stale runtime identity, CDP failure, and teardown failure.
- * @invariants  One process writes a profile partition; every leased page has a distinct target; hidden runtimes always use headless=new; isolated targets own a disposable browser context.
+ * @invariants  One process writes a profile partition; every leased page has a distinct target; hidden runtimes always use headless=new; crash recovery discards targets whose leases died with the broker.
  * @side-effects Creates mode-restricted runtime/profile files, spawns or recovers Chromium, opens CDP sockets, and closes targets/processes.
  * @perf        Browser launch is lazy and coalesced per partition; target allocation is one browser-level CDP call plus one target WebSocket.
  * @concurrency Concurrent launch requests for one partition share one promise; distinct partitions and targets progress independently.
- * @test        tests/integration/browser-runtime-broker.test.ts, tests/integration/browser-runtime-isolation.test.ts
+ * @test        tests/integration/browser-runtime-broker.test.ts, tests/integration/browser-runtime-isolation.test.ts, including broker crash recovery
  * @stability   experimental
  * @since       2026-07-15
  */
@@ -117,6 +117,7 @@ type ManagedBrowserErrorCode =
 const RUNTIME_DESCRIPTOR_VERSION = 1;
 const DEFAULT_STARTUP_TIMEOUT_MS = 15_000;
 const STARTUP_POLL_MS = 100;
+const TARGET_CLOSE_TIMEOUT_MS = 5_000;
 const MAX_STARTUP_STDERR_BYTES = 16 * 1024;
 
 export class ManagedBrowserError extends Error {
@@ -371,7 +372,7 @@ export class ManagedBrowserProvider {
         recovered: false,
         targets: new Map(),
       };
-      await closeInitialPageTargets(runtime.browserClient);
+      await closeAllPageTargets(runtime.browserClient);
       writeRuntimeDescriptor(paths.descriptorPath, descriptor);
       return runtime;
     } catch (error) {
@@ -553,7 +554,10 @@ async function recoverRuntime(
     }
     return null;
   }
-  const browserClient = await CDPClient.connectToBrowser(descriptor.cdp_port);
+  const browserClient = await connectRecoveredBrowser(
+    descriptorPath,
+    descriptor,
+  );
   const recoveredDescriptor = {
     ...descriptor,
     broker_runtime_id: brokerRuntimeId,
@@ -794,7 +798,7 @@ async function connectTargetWithRetry(
   );
 }
 
-async function closeInitialPageTargets(client: CDPClient): Promise<void> {
+async function closeAllPageTargets(client: CDPClient): Promise<void> {
   const response = (await client.send("Target.getTargets")) as {
     targetInfos?: Array<{ targetId?: string; type?: string }>;
   };
@@ -807,6 +811,84 @@ async function closeInitialPageTargets(client: CDPClient): Promise<void> {
   for (const targetId of pageTargetIds) {
     await closeTargetIfPresent(client, targetId);
   }
+}
+
+async function connectRecoveredBrowser(
+  descriptorPath: string,
+  descriptor: RuntimeDescriptor,
+): Promise<CDPClient> {
+  let browserClient: CDPClient | null = null;
+  try {
+    browserClient = await CDPClient.connectToBrowser(descriptor.cdp_port);
+    await closeAllPageTargets(browserClient);
+    return browserClient;
+  } catch (error) {
+    return rejectUnsafeRecovery(
+      descriptorPath,
+      descriptor,
+      browserClient,
+      error,
+    );
+  }
+}
+
+async function rejectUnsafeRecovery(
+  descriptorPath: string,
+  descriptor: RuntimeDescriptor,
+  browserClient: CDPClient | null,
+  recoveryError: unknown,
+): Promise<never> {
+  const cleanupErrors: unknown[] = [];
+  if (browserClient) {
+    try {
+      await browserClient.close();
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+  }
+  try {
+    terminatePid(descriptor.browser_pid);
+  } catch (error) {
+    cleanupErrors.push(error);
+  }
+  await waitForProcessExit(descriptor.browser_pid, 2_000);
+  if (processIsAlive(descriptor.browser_pid)) {
+    try {
+      process.kill(descriptor.browser_pid, "SIGKILL");
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+    await waitForProcessExit(descriptor.browser_pid, 2_000);
+  }
+  if (processIsAlive(descriptor.browser_pid)) {
+    cleanupErrors.push(
+      new Error(
+        `Unsafe recovered browser process ${String(descriptor.browser_pid)} remained alive`,
+      ),
+    );
+  } else {
+    try {
+      rmSync(descriptorPath, { force: true });
+      if (descriptor.profile_source === "ephemeral") {
+        rmSync(descriptor.user_data_dir, { recursive: true, force: true });
+      }
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+  }
+  throw new ManagedBrowserError(
+    "browser_runtime_start_failed",
+    `Managed browser recovery could not discard targets whose broker ownership was lost: ${errorMessage(recoveryError)}`,
+    {
+      cause:
+        cleanupErrors.length === 0
+          ? recoveryError
+          : new AggregateError(
+              [recoveryError, ...cleanupErrors],
+              "Managed browser recovery and cleanup failed",
+            ),
+    },
+  );
 }
 
 async function closeTargetIfPresent(
@@ -830,6 +912,24 @@ async function closeTargetIfPresent(
       `Chrome refused to close managed target ${targetId}`,
     );
   }
+  const deadline = Date.now() + TARGET_CLOSE_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const remaining = (await client.send("Target.getTargets")) as {
+      targetInfos?: Array<{ targetId?: string }>;
+    };
+    if (
+      !(remaining.targetInfos ?? []).some(
+        (target) => target.targetId === targetId,
+      )
+    ) {
+      return;
+    }
+    await sleep(50);
+  }
+  throw new ManagedBrowserError(
+    "browser_runtime_shutdown_failed",
+    `Chrome target ${targetId} remained live after close confirmation`,
+  );
 }
 
 async function disposeBrowserContext(

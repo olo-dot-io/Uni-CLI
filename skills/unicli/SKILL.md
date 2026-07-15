@@ -304,11 +304,11 @@ Use browser mode when: a site requires JavaScript rendering, login-gated access,
 interaction (click/type/scroll), or the API adapter returns exit 69.
 
 ```bash
-unicli browser doctor --json     # read default_path/checks/self_repair
-unicli browser doctor --repair   # safe local CDP self-repair
-unicli browser start             # launch Chrome with CDP without foreground startup
-unicli browser --focus start     # opt into foreground only for interactive login
-unicli browser status            # confirm CDP is alive + session state
+unicli browser doctor --json     # probe broker/providers/sessions; starts nothing
+unicli browser doctor --repair   # start only the windowless broker
+unicli browser start             # lazily acquire a managed hidden target
+unicli browser --focus start     # explicit existing-Chrome foreground control
+unicli browser status            # broker/provider/session/lease truth
 unicli browser open <url>        # navigate to page
 unicli browser state             # DOM accessibility tree with [ref] IDs
 unicli browser find --css h2     # query specific elements
@@ -320,10 +320,10 @@ unicli browser screenshot        # capture to file
 
 For a guided browser automation workflow, load skill `unicli-browser`.
 
-Browser commands are background-first on macOS and desktop systems:
-daemon-backed commands send `windowFocused: false` by default, doctor/session
-probes do not allocate `about:blank` placeholder tabs, and local headed Chrome
-startup uses `--no-startup-window` unless `--focus` is explicit.
+Browser commands are background-first on macOS and desktop systems. Managed
+targets are hidden. Existing-Chrome targets use a verified non-activating
+`background` contract unless `--focus` is explicit. Doctor/status/session
+probes allocate no browser or `about:blank` target.
 
 ---
 

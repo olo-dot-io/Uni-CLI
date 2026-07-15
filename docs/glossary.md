@@ -55,9 +55,9 @@ The local computer-control and visual fallback adapter family. When structured s
 
 Optional per-site authentication state explicitly persisted as plaintext JSON at `~/.unicli/cookies/<site>.json`. Cookie/header adapters can instead read a live browser/CDP session into memory. Cookie values are sent only to the target request/browser boundary selected by the command.
 
-## Daemon
+## Browser Runtime Broker
 
-A long-lived browser process Uni-CLI can manage on port 19825. Spawns Chrome with the `--remote-debugging-port` flag, holds session state across CLI calls, and exits on idle timeout. Optional — most adapters work without it.
+The machine-scoped, owner-only browser control plane shared by CLI, MCP, native-host, and plugin invocations. It authenticates local IPC, owns Agent sessions and target leases, serializes mutations per target, and lazily starts only the requested managed, existing-Chrome, or remote provider. The broker itself opens no browser window.
 
 ## Desktop adapter
 
