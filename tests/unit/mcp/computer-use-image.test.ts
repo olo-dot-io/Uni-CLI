@@ -79,8 +79,8 @@ describe("computer-use MCP image content", () => {
         task: {},
       },
     });
-    const taskId = (created?.result as { task: { taskId: string } }).task
-      .taskId;
+    if (!created) throw new Error("capture task returned no response");
+    const taskId = (created.result as { task: { taskId: string } }).task.taskId;
     const completed = await handler({
       jsonrpc: "2.0",
       id: 3,

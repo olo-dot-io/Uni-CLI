@@ -166,9 +166,10 @@ describe("MCP browser invocation propagation", () => {
     );
 
     expect(seenSignals).toEqual([controller.signal]);
+    if (!response) throw new Error("inspect_signal returned no response");
     expect(
       (
-        response?.result as {
+        response.result as {
           structuredContent: { data: { scopeOwnsSignal: boolean } };
         }
       ).structuredContent.data.scopeOwnsSignal,

@@ -1710,7 +1710,7 @@ function activeRetiredLineage(
 
 function pruneRetiredLineagesLocked(now = Date.now()): boolean {
   let changed = false;
-  for (const lineage of [...retiredLineages.values()]) {
+  for (const lineage of retiredLineages.values()) {
     if (lineage.expires_at > now) continue;
     removeRetiredLineageMemory(lineage.root_tab_id);
     changed = true;
