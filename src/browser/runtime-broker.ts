@@ -1,10 +1,10 @@
 /**
  * @owner       src/browser/runtime-broker.ts
- * @does        Route authenticated lifecycle, native-host inventory reconciliation, target ownership, visibility, and page requests through managed, remote, and Chrome providers.
+ * @does        Route authenticated lifecycle, native-host inventory reconciliation, target-free Chrome content search, target ownership, visibility, and page requests through managed, remote, and Chrome providers.
  * @needs       node:crypto, src/browser/chrome-provider.ts, chrome-native-protocol.ts, managed-browser.ts, remote-browser.ts, runtime-protocol.ts, runtime-session.ts
  * @feeds       src/browser/runtime-transport.ts, runtime-broker-main.ts, CLI/MCP browser clients and native host
  * @breaks      Returns structured lifecycle, ownership, visibility, provider, native-host, CDP, and command errors without provider fallback.
- * @invariants  Providers own processes/tabs; shutdown rejects ordinary Agent admission while preserving broker status and authenticated Chrome host cleanup traffic until every provider teardown attempt finishes; every mutation crosses an exclusive target queue; active turn heartbeats are serialized with session teardown; target claim and release generations are linearized by deterministic target id; pending cleanup cannot be reclaimed or delete a later owner; any typed ambiguous write outcome quarantines and invalidates its target without replay; Chrome cleanup is asynchronous through provider orphan reconciliation; missing Chrome tabs invalidate their lease and only implicit commands allocate one replacement; profiles have one writer; visibility never changes implicitly.
+ * @invariants  Providers own processes/tabs; every command response derives ownership and exact Chrome tab/window identity from the broker's target policy; shutdown rejects ordinary Agent admission while preserving broker status and authenticated Chrome host cleanup traffic until every provider teardown attempt finishes; provider-wide Chrome search touches a live Agent session but allocates no target; every mutation crosses an exclusive target queue; foreground page presence is rejected before any non-Chrome/foreground acquisition; active turn heartbeats are serialized with session teardown; target claim and release generations are linearized by deterministic target id; pending cleanup cannot be reclaimed or delete a later owner; any typed ambiguous write outcome quarantines and invalidates its target without replay; Chrome cleanup is asynchronous through provider orphan reconciliation; missing Chrome tabs invalidate their lease and only implicit commands allocate one replacement; profiles have one writer; visibility never changes implicitly.
  * @side-effects Starts/stops managed runtimes, brokers extension commands, mutates lifecycle/target state, and executes page/CDP operations.
  * @perf        Status is O(sessions + targets + runtimes); commands add one local broker hop and Chrome commands add one native-host hop.
  * @concurrency Mutation FIFO is registry-owned; claim/release FIFO is broker-owned per target id; distinct targets run in parallel; cold acquisition shares provider work but isolates each waiter's cancellation, stops accepting waiters before aborting abandoned work, and aborts shared work only after every waiter leaves; acquisition, restart, shutdown, and idle reaping are linearized per session; one native host serializes Chrome delivery.
@@ -32,6 +32,7 @@ import {
   BROWSER_BROKER_PROTOCOL,
   BROWSER_BROKER_PROTOCOL_VERSION,
   browserPageCommandCanMutate,
+  browserPageCommandRequiresForegroundChrome,
   type BrowserBrokerError,
   type BrowserBrokerRequest,
   type BrowserBrokerResponse,
@@ -350,6 +351,9 @@ export class BrowserRuntimeBroker {
       case "chrome.tabs.list":
         this.registry.touchSession(request.context);
         return this.chromeProvider.listTabs();
+      case "chrome.content.search":
+        this.registry.touchSession(request.context);
+        return this.chromeProvider.searchContent(request.search, requestSignal);
       case "chrome.target.claim":
         return this.runSessionLifecycle(request.context.agent_session_id, () =>
           this.claimChromeTarget(request, requestSignal),
@@ -390,6 +394,15 @@ export class BrowserRuntimeBroker {
     request: BrowserTargetCommandRequest,
     requestSignal?: AbortSignal,
   ): Promise<BrowserTargetCommandResult> {
+    if (
+      browserPageCommandRequiresForegroundChrome(request.command) &&
+      (request.provider !== "chrome" || request.visibility !== "foreground")
+    ) {
+      throw new BrowserProviderCapabilityError(
+        "foreground Chrome agent presence",
+        "Select the Chrome provider with explicit foreground visibility; hidden/background work never renders page presence.",
+      );
+    }
     let targetId = await this.resolveCommandTarget(request, requestSignal);
     let canReplaceMissingChromeTarget =
       request.provider === "chrome" && request.target_id === undefined;
@@ -496,6 +509,7 @@ export class BrowserRuntimeBroker {
         provider: "managed",
         browser_pid: runtime.browser_pid,
         visibility: "hidden",
+        owned: true,
         ...(data === undefined ? {} : { data }),
       };
     }
@@ -505,15 +519,26 @@ export class BrowserRuntimeBroker {
         runtime_id: this.runtimeId,
         provider: "remote",
         visibility: "hidden",
+        owned: true,
         ...(data === undefined ? {} : { data }),
       };
+    }
+    const policy = this.targetPolicies.get(targetId);
+    if (policy?.provider !== "chrome") {
+      throw new BrowserTargetPolicyError(
+        targetId,
+        "Chrome target identity record missing",
+      );
     }
     const chromeStatus = this.chromeProvider.status();
     return {
       target_id: targetId,
       runtime_id: chromeStatus.host_instance_id ?? this.runtimeId,
       provider: "chrome",
-      visibility: request.visibility,
+      visibility: policy.target.visibility,
+      owned: policy.target.owned,
+      tab_id: policy.target.tab_id,
+      window_id: policy.target.window_id,
       ...(data === undefined ? {} : { data }),
     };
   }
@@ -1305,12 +1330,16 @@ class BrowserTargetDiscardedError extends Error {
 class BrowserProviderCapabilityError extends Error {
   readonly code = "browser_capability_unavailable";
   readonly retryable = false;
-  readonly suggestion =
-    "Select the Chrome provider for browser UI capabilities, or use a page/CDP command supported by the managed hidden provider.";
+  readonly suggestion: string;
 
-  constructor(capability: string) {
-    super(`CDP page provider does not provide ${capability}`);
+  constructor(capability: string, suggestion?: string) {
+    super(
+      `Selected browser provider/visibility does not provide ${capability}`,
+    );
     this.name = "BrowserProviderCapabilityError";
+    this.suggestion =
+      suggestion ??
+      "Select the Chrome provider for browser UI capabilities, or use a page/CDP command supported by the managed hidden provider.";
   }
 }
 
@@ -1432,13 +1461,19 @@ async function executeCdpPageCommand(
     case "evaluate":
       return page.evaluate(command.expression, signal);
     case "click":
-      await page.click(command.selector, signal);
+      await page.click(command.selector, signal, command.snapshot_id);
       return undefined;
     case "native_click":
       await page.nativeClick(command.x, command.y, signal);
       return undefined;
     case "type":
-      await page.type(command.selector, command.text, signal);
+      await page.type(
+        command.selector,
+        command.text,
+        signal,
+        command.mode ?? "insert_text",
+        command.snapshot_id,
+      );
       return undefined;
     case "press":
       await page.press(command.key, command.modifiers, signal);

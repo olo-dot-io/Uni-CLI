@@ -1,11 +1,15 @@
 /**
- * Shared JSON Schema builders for MCP tools and CLI schema command.
- *
- * Single source of truth for:
- *   - Adapter arg → JSON Schema type mapping
- *   - Input/output schema generation from AdapterCommand metadata
- *   - Tool name normalization (site + command → MCP tool name)
- *   - Description truncation within token budgets
+ * @owner       src::mcp::schema
+ * @does        Build shared JSON Schemas, normalized MCP tool names, and bounded descriptions for direct tools and adapter commands.
+ * @needs       src/types.ts adapter command contracts
+ * @feeds       MCP default/deferred/expanded/computer-use profiles and CLI schema output
+ * @breaks      Schema drift can make clients submit arguments that the canonical command boundary rejects.
+ * @invariants  JSON Schema properties retain standard primitive bounds; adapter schemas reject undeclared input keys.
+ * @side-effects none
+ * @perf        O(argument count) schema construction and O(description words) truncation.
+ * @test        tests/unit/mcp/tools.test.ts, tests/unit/mcp/schema.test.ts
+ * @stability   stable
+ * @since       2026-04-06
  */
 
 import type { AdapterCommand } from "../types.js";
@@ -17,6 +21,10 @@ export interface JsonSchemaProperty {
   description?: string;
   default?: unknown;
   enum?: string[];
+  minimum?: number;
+  maximum?: number;
+  minLength?: number;
+  maxLength?: number;
   additionalProperties?: boolean;
   items?: JsonSchemaProperty;
   properties?: Record<string, JsonSchemaProperty>;

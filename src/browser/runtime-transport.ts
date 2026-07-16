@@ -1,11 +1,11 @@
 /**
  * @owner       src/browser/runtime-transport.ts
- * @does        Serve and call the Browser Runtime Broker over an authenticated owner-only Unix socket or secret-bearing Windows named pipe, preserving outcome ambiguity after mutating request dispatch, classifying unpublished broker generations as retryable, and propagating disconnect cancellation into broker work.
- * @needs       node:crypto, node:fs, node:net, node:os, node:path, src/browser/kernel-file-lock.ts, src/browser/runtime-protocol.ts, src/engine/user-home.ts
+ * @does        Serve and call the Browser Runtime Broker over an authenticated owner-only Unix socket or secret-bearing Windows named pipe, preserve command outcomes, and safely retire unreachable older broker generations during explicit lifecycle repair.
+ * @needs       node:child_process/crypto/fs/net/os/path, src/browser/kernel-file-lock.ts, src/browser/runtime-protocol.ts, src/transport/process-owner.ts, src/engine/user-home.ts
  * @feeds       src/browser/runtime-broker-main.ts, src/browser/runtime-launch.ts, src/browser/runtime-client.ts, native browser host
  * @breaks      BrokerTransportError on endpoint/lock/auth/schema/framing/connect/timeout failures and BrowserBrokerOutcomeAmbiguousError when a mutating frame lacks an authoritative response; broker responses preserve provider errors.
- * @invariants  One kernel-backed guard owns one broker lock and endpoint descriptor; shutdown unpublishes that descriptor before severing accepted connections; once the guard is exclusive a naked PID can never veto stale-state takeover, while every published legacy descriptor is either authenticated at its trusted endpoint, proven absent by the kernel, or rejected fail-closed; only the server instance that successfully bound the Unix socket may unlink it; descriptor and Unix socket are owner-only; control frames are bounded newline-delimited JSON; large responses use length-and-digest-verified artifacts; tokens compare in constant time; every failure after mutating frame dispatch is non-retryable outcome ambiguity; client disconnect and server stop abort matching handlers.
- * @side-effects Creates/removes runtime files and sockets, opens local IPC connections, and accepts concurrent client requests.
+ * @invariants  One kernel-backed guard owns one broker lock and endpoint descriptor; shutdown unpublishes that descriptor before severing accepted connections; explicit forced retirement requires an owner-only descriptor, matching lock generation, trusted socket path, absent endpoint, exact broker command identity, matching process start time, and saved process-group/Job ownership before signalling; once the guard is exclusive a naked PID can never veto stale-state takeover; only the server instance or verified retirement path may unlink its exact generation; control frames are bounded newline-delimited JSON; large responses use length-and-digest-verified artifacts; tokens compare in constant time; every failure after mutating frame dispatch is non-retryable outcome ambiguity; client disconnect and server stop abort matching handlers.
+ * @side-effects Creates/removes runtime files and sockets, opens local IPC connections, accepts concurrent client requests, and may terminate one verified stale broker process owner after an explicit stop/restart.
  * @perf        One short local socket connection per request; control frames are capped at 4 MiB and response artifacts at 128 MiB.
  * @concurrency A kernel socket guard on Linux/Windows or a process-owned BSD lock descriptor serializes stale-lock takeover across processes; no resident guardian can outlive or die independently from the broker; the OS accept queue handles independent clients; each connection carries exactly one request/response; broker owns target serialization.
  * @test        tests/unit/browser-runtime-protocol.test.ts, tests/integration/browser-runtime-broker.test.ts
@@ -13,6 +13,7 @@
  * @since       2026-07-15
  */
 
+import { execFileSync } from "node:child_process";
 import {
   createHash,
   randomBytes,
@@ -59,6 +60,10 @@ import {
   type BrowserBrokerWireRequest,
 } from "./runtime-protocol.js";
 import { userHome } from "../engine/user-home.js";
+import {
+  terminateProcessOwner,
+  type ProcessOwnerIdentity,
+} from "../transport/process-owner.js";
 
 interface BrowserBrokerServerOptions {
   runtimeRoot?: string;
@@ -126,6 +131,7 @@ export const BROWSER_BROKER_DEFAULT_REQUEST_TIMEOUT_MS = 150_000;
 const SERVER_FRAME_TIMEOUT_MS = 30_000;
 const PUBLISHED_BROKER_PROBE_TIMEOUT_MS = 1_000;
 const UNIX_SOCKET_PATH_LIMIT = 100;
+const BROKER_PROCESS_START_TOLERANCE_MS = 15_000;
 
 const browserBrokerArtifactHeaderSchema = z
   .object({
@@ -648,6 +654,41 @@ export async function shutdownBrowserRuntimeBroker(
   };
 }
 
+export async function retireBrowserRuntimeBroker(
+  options: BrowserBrokerClientOptions = {},
+): Promise<{
+  runtime_id: string;
+  protocol_version: number;
+  forced: boolean;
+  response?: unknown;
+}> {
+  const paths = browserBrokerPaths(options.runtimeRoot);
+  const descriptor = readBrokerEndpointEnvelope(paths.descriptorPath);
+  assertRetirementGeneration(paths, descriptor);
+  try {
+    const graceful = await shutdownBrowserRuntimeBroker(options);
+    return { ...graceful, forced: false };
+  } catch (error) {
+    if (!retirementCanContain(error)) throw error;
+  }
+  if (!samePublishedGeneration(paths.descriptorPath, descriptor)) {
+    return {
+      runtime_id: descriptor.runtime_id,
+      protocol_version: descriptor.version,
+      forced: false,
+    };
+  }
+  assertRetirementGeneration(paths, descriptor);
+  const identity = verifiedBrokerProcessOwner(descriptor);
+  if (identity) await terminateProcessOwner(identity);
+  await removeRetiredBrokerGeneration(paths, descriptor);
+  return {
+    runtime_id: descriptor.runtime_id,
+    protocol_version: descriptor.version,
+    forced: identity !== null,
+  };
+}
+
 export function readBrokerEndpointDescriptor(
   runtimeRoot?: string,
 ): BrowserBrokerEndpointDescriptor {
@@ -720,6 +761,231 @@ function readBrokerEndpointEnvelope(
     );
   }
   return parsed.data;
+}
+
+function assertRetirementGeneration(
+  paths: BrokerPaths,
+  descriptor: BrowserBrokerEndpointEnvelope,
+): void {
+  if (!trustedPublishedSocketPath(paths, descriptor.socket_path)) {
+    throw new BrokerTransportError(
+      "browser_broker_endpoint_invalid",
+      `Browser broker retirement refused untrusted socket path ${descriptor.socket_path}`,
+    );
+  }
+  const lock = readLockPayload(paths.lockPath);
+  if (
+    !lock ||
+    lock.pid !== descriptor.pid ||
+    lock.runtime_id !== descriptor.runtime_id ||
+    !timestampsMatch(lock.created_at, descriptor.started_at)
+  ) {
+    throw new BrokerTransportError(
+      "browser_broker_endpoint_invalid",
+      `Browser broker retirement refused generation ${descriptor.runtime_id} because its owner lock does not match the endpoint descriptor`,
+    );
+  }
+}
+
+function retirementCanContain(error: unknown): boolean {
+  return (
+    error instanceof BrokerTransportError &&
+    (error.code === "browser_broker_unavailable" ||
+      error.code === "browser_broker_endpoint_invalid" ||
+      error.code === "browser_broker_timeout")
+  );
+}
+
+function samePublishedGeneration(
+  descriptorPath: string,
+  expected: BrowserBrokerEndpointEnvelope,
+): boolean {
+  try {
+    const current = readBrokerEndpointEnvelope(descriptorPath);
+    return (
+      current.runtime_id === expected.runtime_id && current.pid === expected.pid
+    );
+  } catch (error) {
+    if (brokerEndpointDefinitelyAbsent(error)) return false;
+    throw error;
+  }
+}
+
+function verifiedBrokerProcessOwner(
+  descriptor: BrowserBrokerEndpointEnvelope,
+): ProcessOwnerIdentity | null {
+  if (!processExists(descriptor.pid)) return null;
+  return process.platform === "win32"
+    ? verifiedWindowsBrokerProcessOwner(descriptor)
+    : verifiedPosixBrokerProcessOwner(descriptor);
+}
+
+function verifiedPosixBrokerProcessOwner(
+  descriptor: BrowserBrokerEndpointEnvelope,
+): ProcessOwnerIdentity {
+  const processGroup = Number.parseInt(
+    readProcessField(descriptor.pid, "pgid"),
+    10,
+  );
+  const startedAt = Date.parse(readProcessField(descriptor.pid, "lstart"));
+  const command = readProcessField(descriptor.pid, "command");
+  if (
+    processGroup !== descriptor.pid ||
+    !Number.isFinite(startedAt) ||
+    !timestampsMatch(
+      new Date(startedAt).toISOString(),
+      descriptor.started_at,
+    ) ||
+    !isBrokerMainCommand(command)
+  ) {
+    throw new BrokerTransportError(
+      "browser_broker_endpoint_invalid",
+      `Browser broker retirement refused PID ${String(descriptor.pid)} because its process identity does not match generation ${descriptor.runtime_id}`,
+    );
+  }
+  return {
+    kind: "posix-process-group",
+    owner_pid: descriptor.pid,
+    process_group_id: processGroup,
+  };
+}
+
+function verifiedWindowsBrokerProcessOwner(
+  descriptor: BrowserBrokerEndpointEnvelope,
+): ProcessOwnerIdentity {
+  const child = readWindowsProcess(descriptor.pid);
+  const parent = readWindowsProcess(child.parent_process_id);
+  if (
+    !timestampsMatch(child.started_at, descriptor.started_at) ||
+    !isBrokerMainCommand(child.command_line) ||
+    !/unicli-process-owner(?:\.exe)?(?:\s|$)/i.test(
+      `${parent.name} ${parent.command_line}`,
+    )
+  ) {
+    throw new BrokerTransportError(
+      "browser_broker_endpoint_invalid",
+      `Browser broker retirement refused PID ${String(descriptor.pid)} because its Windows Job identity does not match generation ${descriptor.runtime_id}`,
+    );
+  }
+  return { kind: "windows-job", owner_pid: child.parent_process_id };
+}
+
+function readProcessField(pid: number, field: string): string {
+  try {
+    return execFileSync("ps", ["-p", String(pid), "-o", `${field}=`], {
+      encoding: "utf8",
+      timeout: 5_000,
+      maxBuffer: 64 * 1024,
+    }).trim();
+  } catch (error) {
+    throw new BrokerTransportError(
+      "browser_broker_endpoint_invalid",
+      `Browser broker process identity for PID ${String(pid)} could not be read: ${errorMessage(error)}`,
+      { cause: error },
+    );
+  }
+}
+
+function readWindowsProcess(pid: number): {
+  parent_process_id: number;
+  started_at: string;
+  command_line: string;
+  name: string;
+} {
+  const script = [
+    `$p=Get-CimInstance Win32_Process -Filter 'ProcessId = ${String(pid)}'`,
+    "if ($null -eq $p) { exit 3 }",
+    "$o=[pscustomobject]@{parent_process_id=[int]$p.ParentProcessId;started_at=$p.CreationDate.ToUniversalTime().ToString('o');command_line=[string]$p.CommandLine;name=[string]$p.Name}",
+    "$o | ConvertTo-Json -Compress",
+  ].join("; ");
+  try {
+    const parsed = JSON.parse(
+      execFileSync("powershell.exe", ["-NoProfile", "-Command", script], {
+        encoding: "utf8",
+        timeout: 5_000,
+        maxBuffer: 64 * 1024,
+      }),
+    ) as Record<string, unknown>;
+    if (
+      !Number.isSafeInteger(parsed.parent_process_id) ||
+      (parsed.parent_process_id as number) <= 0 ||
+      typeof parsed.started_at !== "string" ||
+      typeof parsed.command_line !== "string" ||
+      typeof parsed.name !== "string"
+    ) {
+      throw new Error("process metadata is malformed");
+    }
+    return parsed as {
+      parent_process_id: number;
+      started_at: string;
+      command_line: string;
+      name: string;
+    };
+  } catch (error) {
+    throw new BrokerTransportError(
+      "browser_broker_endpoint_invalid",
+      `Browser broker Windows process identity for PID ${String(pid)} could not be read: ${errorMessage(error)}`,
+      { cause: error },
+    );
+  }
+}
+
+function isBrokerMainCommand(command: string): boolean {
+  return /(?:^|[\\/])runtime-broker-main\.(?:ts|js)(?:\s|$)/.test(command);
+}
+
+function timestampsMatch(left: string, right: string): boolean {
+  const leftTime = Date.parse(left);
+  const rightTime = Date.parse(right);
+  return (
+    Number.isFinite(leftTime) &&
+    Number.isFinite(rightTime) &&
+    Math.abs(leftTime - rightTime) <= BROKER_PROCESS_START_TOLERANCE_MS
+  );
+}
+
+function processExists(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    if (isErrno(error, "ESRCH")) return false;
+    throw error;
+  }
+}
+
+async function removeRetiredBrokerGeneration(
+  paths: BrokerPaths,
+  descriptor: BrowserBrokerEndpointEnvelope,
+): Promise<void> {
+  let guard: BrokerOwnershipGuard;
+  try {
+    guard = await acquireBrokerGuard(paths.guardPath);
+  } catch (error) {
+    if (!samePublishedGeneration(paths.descriptorPath, descriptor)) return;
+    throw error;
+  }
+  try {
+    if (!samePublishedGeneration(paths.descriptorPath, descriptor)) return;
+    await assertDefaultBrokerEndpointUnoccupied(descriptor.socket_path);
+    const lock = readLockPayload(paths.lockPath);
+    if (
+      lock &&
+      (lock.pid !== descriptor.pid || lock.runtime_id !== descriptor.runtime_id)
+    ) {
+      throw new BrokerTransportError(
+        "browser_broker_endpoint_invalid",
+        "Browser broker generation changed while retirement held the ownership guard",
+      );
+    }
+    rmSync(paths.descriptorPath, { force: true });
+    rmSync(paths.lockPath, { force: true });
+    if (process.platform !== "win32") {
+      rmSync(descriptor.socket_path, { force: true });
+    }
+  } finally {
+    await releaseBrokerGuard(guard);
+  }
 }
 
 export function browserBrokerPaths(runtimeRoot?: string): BrokerPaths {

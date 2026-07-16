@@ -392,8 +392,7 @@ describe("BrowserPage", () => {
   });
 
   describe("click()", () => {
-    it("falls back to JS click when DOM methods fail", async () => {
-      // Make DOM.getDocument throw to trigger fallback
+    it("surfaces DOM targeting failure without changing to synthetic click", async () => {
       const originalSend = mock.send.bind(mock);
       mock.send = async (
         method: string,
@@ -402,25 +401,16 @@ describe("BrowserPage", () => {
         if (method === "DOM.getDocument") {
           throw new Error("DOM not available");
         }
-        // For the JS fallback evaluate call, return success
-        if (method === "Runtime.evaluate") {
-          mock.calls.push({ method, params });
-          return { result: { value: undefined } };
-        }
         return originalSend(method, params);
       };
 
-      await page.click("#btn");
-
-      // Should have attempted DOM.getDocument, then fallen back to evaluate
-      const evaluateCall = mock.calls.find(
-        (c) => c.method === "Runtime.evaluate",
-      );
-      expect(evaluateCall).toBeDefined();
-      // The expression should contain querySelector with our selector
-      const expr = evaluateCall!.params?.expression as string;
-      expect(expr).toContain("document.querySelector");
-      expect(expr).toContain("#btn");
+      await expect(page.click("#btn")).rejects.toThrow("DOM not available");
+      expect(
+        mock.calls.filter((call) => call.method === "Runtime.evaluate"),
+      ).toEqual([]);
+      expect(
+        mock.calls.filter((call) => call.method === "Input.dispatchMouseEvent"),
+      ).toEqual([]);
     });
 
     it("uses CDP native click when DOM methods succeed", async () => {
@@ -526,23 +516,52 @@ describe("BrowserPage", () => {
       ).toEqual(["mousePressed", "mouseReleased"]);
     });
 
-    it("falls back to JS click when nodeId is 0 (not found)", async () => {
+    it("refuses a missing selector without synthetic replay", async () => {
       mock.responses.set("DOM.getDocument", {
         root: { nodeId: 1 },
       });
       mock.responses.set("DOM.querySelector", { nodeId: 0 });
-      // evaluate for JS fallback
+
+      await expect(page.click(".missing")).rejects.toThrow("Element not found");
+      expect(
+        mock.calls.filter((call) => call.method === "Runtime.evaluate"),
+      ).toEqual([]);
+      expect(
+        mock.calls.filter((call) => call.method === "Input.dispatchMouseEvent"),
+      ).toEqual([]);
+    });
+
+    it("uses the exact snapshot node registry for a ref click", async () => {
       mock.responses.set("Runtime.evaluate", {
-        result: { value: undefined },
+        result: {
+          value: {
+            status: "found",
+            ref: "7",
+            x: 125,
+            y: 75,
+            width: 50,
+            height: 20,
+            frame_depth: 1,
+          },
+        },
       });
 
-      await page.click(".missing");
+      await page.click('[data-unicli-ref="7"]');
 
-      // Should have fallen back to evaluate
-      const evaluateCall = mock.calls.find(
-        (c) => c.method === "Runtime.evaluate",
-      );
-      expect(evaluateCall).toBeDefined();
+      expect(
+        mock.calls.filter((call) => call.method === "DOM.getDocument"),
+      ).toEqual([]);
+      expect(
+        mock.calls.find(
+          (call) =>
+            call.method === "Input.dispatchMouseEvent" &&
+            call.params?.type === "mousePressed",
+        )?.params,
+      ).toMatchObject({ x: 125, y: 75, button: "left" });
+      expect(
+        mock.calls.find((call) => call.method === "Runtime.evaluate")?.params
+          ?.expression,
+      ).toContain("__unicli_ref_nodes");
     });
   });
 
@@ -565,6 +584,49 @@ describe("BrowserPage", () => {
       expect(insertCall).toBeDefined();
       expect(insertCall!.params).toEqual({ text: "hello" });
     });
+
+    it("verifies the snapshot capability and dispatches one trusted key pair per character", async () => {
+      mock.responses.set("Runtime.evaluate", {
+        result: {
+          value: {
+            status: "found",
+            ref: "7",
+            x: 125,
+            y: 75,
+            width: 50,
+            height: 20,
+            frame_depth: 0,
+          },
+        },
+      });
+      const snapshotId = "43d57ef6-7560-4d75-8ce4-cfa6960c28e7";
+
+      await page.type(
+        '[data-unicli-ref="7"]',
+        "A\n",
+        undefined,
+        "keystrokes",
+        snapshotId,
+      );
+
+      expect(
+        mock.calls.find((call) => call.method === "Runtime.evaluate")?.params
+          ?.expression,
+      ).toContain(snapshotId);
+      expect(
+        mock.calls.filter((call) => call.method === "Input.insertText"),
+      ).toEqual([]);
+      expect(
+        mock.calls
+          .filter((call) => call.method === "Input.dispatchKeyEvent")
+          .map((call) => call.params),
+      ).toEqual([
+        { type: "keyDown", key: "A", text: "A" },
+        { type: "keyUp", key: "A" },
+        { type: "keyDown", key: "Enter", text: "\r" },
+        { type: "keyUp", key: "Enter" },
+      ]);
+    });
   });
 
   describe("press()", () => {
@@ -573,7 +635,8 @@ describe("BrowserPage", () => {
 
       const keyDown = mock.calls.find(
         (c) =>
-          c.method === "Input.dispatchKeyEvent" && c.params?.type === "keyDown",
+          c.method === "Input.dispatchKeyEvent" &&
+          (c.params?.type === "keyDown" || c.params?.type === "rawKeyDown"),
       );
       const keyUp = mock.calls.find(
         (c) =>
@@ -587,15 +650,44 @@ describe("BrowserPage", () => {
       expect(keyDown!.params?.windowsVirtualKeyCode).toBe(13);
     });
 
-    it("passes through unknown keys directly", async () => {
+    it("maps printable keys to their standard physical key identity", async () => {
       await page.press("a");
 
       const keyDown = mock.calls.find(
         (c) =>
-          c.method === "Input.dispatchKeyEvent" && c.params?.type === "keyDown",
+          c.method === "Input.dispatchKeyEvent" &&
+          (c.params?.type === "keyDown" || c.params?.type === "rawKeyDown"),
       );
       expect(keyDown!.params?.key).toBe("a");
-      expect(keyDown!.params?.code).toBe("a");
+      expect(keyDown!.params?.code).toBe("KeyA");
+      expect(keyDown!.params?.windowsVirtualKeyCode).toBe(65);
+      expect(keyDown!.params?.nativeVirtualKeyCode).toBeUndefined();
+      expect(keyDown!.params?.unmodifiedText).toBe("a");
+    });
+
+    it("emits an editor command for the macOS primary select-all shortcut", async () => {
+      await page.press("a", ["meta"]);
+
+      const events = mock.calls
+        .filter((call) => call.method === "Input.dispatchKeyEvent")
+        .map((call) => call.params);
+      expect(events).toEqual([
+        {
+          type: "rawKeyDown",
+          key: "a",
+          code: "KeyA",
+          windowsVirtualKeyCode: 65,
+          modifiers: 4,
+          commands: ["selectAll"],
+        },
+        {
+          type: "keyUp",
+          key: "a",
+          code: "KeyA",
+          windowsVirtualKeyCode: 65,
+          modifiers: 4,
+        },
+      ]);
     });
 
     it("releases the key before surfacing cancellation after keyDown", async () => {
@@ -784,12 +876,13 @@ describe("BrowserPage", () => {
 
       const keyDown = mock.calls.find(
         (c) =>
-          c.method === "Input.dispatchKeyEvent" && c.params?.type === "keyDown",
+          c.method === "Input.dispatchKeyEvent" &&
+          (c.params?.type === "keyDown" || c.params?.type === "rawKeyDown"),
       );
       expect(keyDown).toBeDefined();
       // ctrl=2, shift=8 => 10
       expect(keyDown!.params?.modifiers).toBe(10);
-      expect(keyDown!.params?.key).toBe("a");
+      expect(keyDown!.params?.key).toBe("A");
     });
 
     it("omits modifiers field when no modifiers given", async () => {
@@ -815,11 +908,15 @@ describe("BrowserPage", () => {
 
   describe("nativeClick()", () => {
     it("sends mousePressed + mouseReleased at coordinates", async () => {
+      mock.responses.set("Runtime.evaluate", {
+        result: { value: { width: 800, height: 600 } },
+      });
       await page.nativeClick(100, 200);
 
-      expect(mock.calls).toHaveLength(2);
-      const pressed = mock.calls[0];
-      const released = mock.calls[1];
+      expect(mock.calls).toHaveLength(3);
+      expect(mock.calls[0].method).toBe("Runtime.evaluate");
+      const pressed = mock.calls[1];
+      const released = mock.calls[2];
 
       expect(pressed.method).toBe("Input.dispatchMouseEvent");
       expect(pressed.params?.type).toBe("mousePressed");
@@ -833,6 +930,9 @@ describe("BrowserPage", () => {
     });
 
     it("releases the mouse before surfacing coordinate-click cancellation", async () => {
+      mock.responses.set("Runtime.evaluate", {
+        result: { value: { width: 800, height: 600 } },
+      });
       const controller = new AbortController();
       const cancellation = new Error("cancel native click");
       const originalSend = mock.send.bind(mock);
@@ -851,8 +951,23 @@ describe("BrowserPage", () => {
         cancellation,
       );
       expect(mock.calls.map((call) => call.params?.type)).toEqual([
+        undefined,
         "mousePressed",
         "mouseReleased",
+      ]);
+    });
+
+    it("refuses out-of-viewport coordinates before dispatching input", async () => {
+      mock.responses.set("Runtime.evaluate", {
+        result: { value: { width: 800, height: 600 } },
+      });
+
+      await expect(page.nativeClick(1_000_000_000, 20)).rejects.toMatchObject({
+        code: "browser_coordinate_out_of_bounds",
+        retryable: false,
+      });
+      expect(mock.calls.map(({ method }) => method)).toEqual([
+        "Runtime.evaluate",
       ]);
     });
   });
@@ -868,7 +983,7 @@ describe("BrowserPage", () => {
       expect(keyDown).toBeDefined();
       expect(keyDown!.params?.key).toBe("a");
       expect(keyDown!.params?.text).toBe("a");
-      expect(keyDown!.params?.windowsVirtualKeyCode).toBe(97); // 'a'.charCodeAt(0)
+      expect(keyDown!.params?.windowsVirtualKeyCode).toBe(65);
     });
 
     it("applies modifier bitmask", async () => {
@@ -876,7 +991,8 @@ describe("BrowserPage", () => {
 
       const keyDown = mock.calls.find(
         (c) =>
-          c.method === "Input.dispatchKeyEvent" && c.params?.type === "keyDown",
+          c.method === "Input.dispatchKeyEvent" &&
+          (c.params?.type === "keyDown" || c.params?.type === "rawKeyDown"),
       );
       expect(keyDown!.params?.modifiers).toBe(4); // meta=4
       // text should not be set when modifiers present

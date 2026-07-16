@@ -62,6 +62,13 @@ function makeMockPage(state: MockState): {
         const t = state.takenAt;
         return typeof t === "number" ? Date.now() - t : null;
       }
+      if (expr.includes("__unicli_ref_nodes")) {
+        const refMatch = /const ref = ("[^"]+")/.exec(expr);
+        return {
+          status: "registry_unavailable",
+          ref: refMatch ? (JSON.parse(refMatch[1]) as string) : "unknown",
+        };
+      }
       // listCandidates
       if (
         expr.includes("__unicli_ref_identity") &&

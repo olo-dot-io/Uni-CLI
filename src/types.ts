@@ -250,6 +250,7 @@ export interface SnapshotOptions {
   interactive?: boolean;
   compact?: boolean;
   maxDepth?: number;
+  maxRefs?: number;
   raw?: boolean;
 }
 

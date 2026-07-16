@@ -1,12 +1,12 @@
 /**
  * @owner       src/browser/bridge.ts
- * @does        Expose the browser page interface over the shared Browser Runtime Broker without caller-owned Chrome or legacy transport fallback.
+ * @does        Expose target-scoped page control, provider-wide Chrome content search, and foreground agent presence over the shared Browser Runtime Broker without caller-owned Chrome or legacy transport fallback.
  * @needs       node:crypto, transactional file publication, src/browser invocation-context/invocation-scope/runtime-launch/runtime-protocol/runtime-transport, src/types.ts
  * @feeds       browser-backed engine steps, browser operator/generate/record/explore commands, tests/unit/browser-bridge.test.ts
  * @breaks      Broker/provider/lifecycle failures retain their structured code, suggestion, and retryability; aborted waits surface the invocation signal reason; broker-invalidated targets are never reused; no provider or visibility fallback occurs.
- * @invariants  Every page command carries one Agent session, turn, profile partition, provider, and visibility; cached target identity is cleared whenever the broker invalidates its lease; waits, snapshots, and screenshot publication honor cancellation; close ends a turn while closeWindow ends only the owning session.
+ * @invariants  Every page command carries one Agent session, turn, profile partition, provider, and visibility; authoritative ownership and Chrome tab/window identity come from each broker command response rather than provider inference; provider-wide search carries the same identity without allocating a target; cached target identity is cleared whenever the broker invalidates its lease; waits, snapshots, and screenshot publication honor cancellation; close ends a turn while closeWindow ends only the owning session.
  * @side-effects Lazily starts the broker, starts/touches one logical session, executes broker commands, and may write an explicitly requested screenshot file.
- * @perf        One local authenticated IPC round trip per page command; target and browser runtime reuse are broker-owned.
+ * @perf        One local authenticated IPC round trip per page command; the last exact target identity is cached from broker responses so action acknowledgements add no provider round trips.
  * @concurrency Broker target queues serialize one target while AsyncLocalStorage keeps concurrent Agent identities independent.
  * @test        tests/unit/browser-bridge.test.ts, tests/integration/browser-runtime-autostart.test.ts, tests/integration/browser-runtime-broker.test.ts
  * @stability   experimental
@@ -28,15 +28,20 @@ import {
   type BrowserTurnFinalizerHandle,
 } from "./invocation-scope.js";
 import { ensureBrowserRuntimeBroker } from "./runtime-launch.js";
-import type {
-  BrowserChromeTargetClaimRequest,
-  BrowserPageCommand,
-  BrowserSessionStartResult,
-  BrowserTargetCommandRequest,
-  BrowserTargetCommandResult,
+import {
+  BROWSER_BROKER_DEFAULT_SESSION_TTL_MS,
+  isBrowserAgentPresenceResult,
+  type BrowserAgentPresenceResult,
+  type BrowserBrokerStatus,
+  type BrowserChromeTargetClaimRequest,
+  type BrowserPageCommand,
+  type BrowserSessionStartResult,
+  type BrowserTargetCommandRequest,
+  type BrowserTargetCommandResult,
 } from "./runtime-protocol.js";
-import { BROWSER_BROKER_DEFAULT_SESSION_TTL_MS } from "./runtime-protocol.js";
 import type {
+  ChromeContentSearchQuery,
+  ChromeContentSearchResult,
   ChromeNativeTab,
   ChromeNativeTarget,
 } from "./chrome-native-protocol.js";
@@ -249,6 +254,7 @@ export interface BrowserNetworkCaptureEntry {
 
 export class BrowserBrokerPage implements IPage {
   private targetId: string | undefined;
+  private targetEvidence: BrowserSessionLeaseTarget | null = null;
   private lifecycleState: "open" | "ending" | "ended" = "open";
   private lifecycleRequest: Promise<void> | null = null;
   private readonly networkHistory: NetworkRequest[] = [];
@@ -270,18 +276,44 @@ export class BrowserBrokerPage implements IPage {
   }
 
   async browserTargetInfo(): Promise<BrowserSessionLeaseTarget | null> {
-    if (!this.targetId) return null;
+    const target = this.browserTargetIdentity();
+    if (!target) return null;
     const [url, title] = await Promise.all([this.url(), this.title()]);
     return {
-      kind: "broker-target",
-      captured_at: new Date().toISOString(),
-      target_id: this.targetId,
-      provider: this.scope.provider,
-      visibility: this.scope.visibility,
+      ...target,
       url,
       title,
-      owned: true,
     };
+  }
+
+  browserTargetIdentity(): BrowserSessionLeaseTarget | null {
+    return this.targetEvidence ? { ...this.targetEvidence } : null;
+  }
+
+  async adoptPreparedTarget(): Promise<BrowserSessionLeaseTarget | null> {
+    if (this.targetId) return this.browserTargetInfo();
+    const status = await this.client.requestOrThrow<BrowserBrokerStatus>(
+      { id: randomUUID(), action: "broker.status" },
+      this.scope.signal,
+    );
+    const lease = status.sessions.target_leases.find(
+      (candidate) =>
+        candidate.owner_session_id === this.scope.context.agent_session_id &&
+        candidate.provider === this.scope.provider &&
+        candidate.visibility === this.scope.visibility &&
+        candidate.profile_partition_id === this.scope.profilePartitionId,
+    );
+    if (!lease) return null;
+    this.targetId = lease.target_id;
+    this.targetEvidence = {
+      kind: "broker-target",
+      captured_at: new Date().toISOString(),
+      target_id: lease.target_id,
+      provider: lease.provider,
+      visibility: lease.visibility,
+      owned: lease.provider !== "chrome",
+    };
+    return this.browserTargetIdentity();
   }
 
   async goto(
@@ -341,8 +373,27 @@ export class BrowserBrokerPage implements IPage {
     await this.command({ method: "click", selector });
   }
 
+  async clickRef(selector: string, snapshotId: string): Promise<void> {
+    await this.command({ method: "click", selector, snapshot_id: snapshotId });
+  }
+
   async type(selector: string, text: string): Promise<void> {
     await this.command({ method: "type", selector, text });
+  }
+
+  async typeWithMode(
+    selector: string,
+    text: string,
+    mode: "insert_text" | "keystrokes",
+    snapshotId?: string,
+  ): Promise<void> {
+    await this.command({
+      method: "type",
+      selector,
+      text,
+      mode,
+      ...(snapshotId === undefined ? {} : { snapshot_id: snapshotId }),
+    });
   }
 
   async press(key: string, modifiers?: string[]): Promise<void> {
@@ -504,6 +555,47 @@ export class BrowserBrokerPage implements IPage {
     return target ? [target] : [];
   }
 
+  async searchChromeContent(
+    search: ChromeContentSearchQuery,
+  ): Promise<ChromeContentSearchResult> {
+    if (this.scope.provider !== "chrome") {
+      throw new Error("Chrome content search requires the Chrome provider");
+    }
+    this.assertHeartbeatHealthy();
+    return this.client.requestOrThrow<ChromeContentSearchResult>(
+      {
+        id: randomUUID(),
+        action: "chrome.content.search",
+        context: this.scope.context,
+        search,
+      },
+      this.scope.signal,
+    );
+  }
+
+  async setAgentPresence(
+    visible: boolean,
+    label?: string,
+  ): Promise<BrowserAgentPresenceResult> {
+    return expectAgentPresenceResult(
+      await this.command({
+        method: "agent_presence",
+        visible,
+        ...(label === undefined ? {} : { label }),
+      }),
+    );
+  }
+
+  async moveAgentCursor(
+    x: number,
+    y: number,
+    visible = true,
+  ): Promise<BrowserAgentPresenceResult> {
+    return expectAgentPresenceResult(
+      await this.command({ method: "agent_cursor", x, y, visible }),
+    );
+  }
+
   async claimChromeTab(tabId: number): Promise<ChromeNativeTarget> {
     if (this.scope.provider !== "chrome") {
       throw new Error("Chrome tab claims require the Chrome provider");
@@ -522,6 +614,18 @@ export class BrowserBrokerPage implements IPage {
       this.scope.signal,
     );
     this.targetId = target.target_id;
+    this.targetEvidence = {
+      kind: "broker-target",
+      captured_at: new Date().toISOString(),
+      target_id: target.target_id,
+      provider: "chrome",
+      visibility: target.visibility,
+      tab_id: target.tab_id,
+      window_id: target.window_id,
+      owned: target.owned,
+      ...(target.url === undefined ? {} : { url: target.url }),
+      ...(target.title === undefined ? {} : { title: target.title }),
+    };
     return target;
   }
 
@@ -607,6 +711,7 @@ export class BrowserBrokerPage implements IPage {
           target_id: targetId,
         });
         this.targetId = undefined;
+        this.targetEvidence = null;
       } catch (error) {
         if (
           error instanceof BrowserBrokerClientError &&
@@ -614,6 +719,7 @@ export class BrowserBrokerPage implements IPage {
             error.code === "browser_target_unusable")
         ) {
           this.targetId = undefined;
+          this.targetEvidence = null;
         } else {
           errors.push(error);
         }
@@ -650,10 +756,29 @@ export class BrowserBrokerPage implements IPage {
     } catch (error) {
       if (this.targetId && commandFailureInvalidatesTarget(error)) {
         this.targetId = undefined;
+        this.targetEvidence = null;
       }
       throw error;
     }
     this.targetId = result.target_id;
+    const prior =
+      this.targetEvidence?.target_id === result.target_id
+        ? this.targetEvidence
+        : undefined;
+    this.targetEvidence = {
+      kind: "broker-target",
+      captured_at: new Date().toISOString(),
+      target_id: result.target_id,
+      provider: result.provider,
+      visibility: result.visibility,
+      owned: result.owned,
+      ...(result.tab_id === undefined ? {} : { tab_id: result.tab_id }),
+      ...(result.window_id === undefined
+        ? {}
+        : { window_id: result.window_id }),
+      ...(prior?.url === undefined ? {} : { url: prior.url }),
+      ...(prior?.title === undefined ? {} : { title: prior.title }),
+    };
     return result.data;
   }
 
@@ -948,6 +1073,13 @@ function expectNetworkEntries(value: unknown): BrowserNetworkCaptureEntry[] {
     throw new TypeError("Browser network capture returned invalid data");
   }
   return value;
+}
+
+function expectAgentPresenceResult(value: unknown): BrowserAgentPresenceResult {
+  if (!isBrowserAgentPresenceResult(value)) {
+    throw new TypeError("Browser agent presence returned invalid data");
+  }
+  return value as BrowserAgentPresenceResult;
 }
 
 function isNetworkEntry(value: unknown): value is BrowserNetworkCaptureEntry {

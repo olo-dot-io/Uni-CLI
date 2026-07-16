@@ -689,6 +689,158 @@ describe("browser broker protocol and authenticated transport", () => {
       result: { error: { outcome_ambiguous: true } },
     });
   });
+
+  it("accepts bounded Chrome content search and foreground presence commands", () => {
+    const base = {
+      product: BROWSER_BROKER_PRODUCT,
+      protocol: BROWSER_BROKER_PROTOCOL,
+      version: BROWSER_BROKER_PROTOCOL_VERSION,
+      auth_token: "x".repeat(43),
+    };
+    const context = {
+      agent_session_id: "agent",
+      turn_id: "turn",
+      transport: "cli" as const,
+    };
+    expect(
+      browserBrokerWireRequestSchema.parse({
+        ...base,
+        request: {
+          id: "search",
+          action: "chrome.content.search",
+          context,
+          search: {
+            query: "浏览器 runtime",
+            include_history: true,
+            max_results: 100,
+            max_tabs: 200,
+            max_chars_per_tab: 500_000,
+            history_start_time: 0,
+          },
+        },
+      }).request,
+    ).toMatchObject({ action: "chrome.content.search" });
+    expect(
+      browserBrokerWireRequestSchema.parse({
+        ...base,
+        request: {
+          id: "presence",
+          action: "target.command",
+          context,
+          provider: "chrome",
+          visibility: "foreground",
+          profile_partition_id: "default",
+          command: {
+            method: "agent_presence",
+            visible: true,
+            label: "Agent active",
+          },
+        },
+      }).request,
+    ).toMatchObject({
+      command: { method: "agent_presence", label: "Agent active" },
+    });
+  });
+
+  it("carries snapshot capability identity atomically with ref click and type", () => {
+    const snapshotId = randomUUID();
+    const base = {
+      product: BROWSER_BROKER_PRODUCT,
+      protocol: BROWSER_BROKER_PROTOCOL,
+      version: BROWSER_BROKER_PROTOCOL_VERSION,
+      auth_token: "x".repeat(43),
+      request: {
+        id: "atomic-ref",
+        action: "target.command",
+        context: {
+          agent_session_id: "agent",
+          turn_id: "turn",
+          transport: "cli",
+        },
+        provider: "managed",
+        visibility: "hidden",
+        profile_partition_id: "default",
+        isolated: false,
+        ephemeral: true,
+      },
+    };
+
+    expect(
+      browserBrokerWireRequestSchema.parse({
+        ...base,
+        request: {
+          ...base.request,
+          command: {
+            method: "click",
+            selector: '[data-unicli-ref="7"]',
+            snapshot_id: snapshotId,
+          },
+        },
+      }).request,
+    ).toMatchObject({
+      command: { method: "click", snapshot_id: snapshotId },
+    });
+    expect(
+      browserBrokerWireRequestSchema.parse({
+        ...base,
+        request: {
+          ...base.request,
+          command: {
+            method: "type",
+            selector: '[data-unicli-ref="7"]',
+            snapshot_id: snapshotId,
+            text: "typed",
+            mode: "keystrokes",
+          },
+        },
+      }).request,
+    ).toMatchObject({
+      command: {
+        method: "type",
+        snapshot_id: snapshotId,
+        mode: "keystrokes",
+      },
+    });
+    expect(
+      browserBrokerWireRequestSchema.safeParse({
+        ...base,
+        request: {
+          ...base.request,
+          command: {
+            method: "click",
+            selector: '[data-unicli-ref="7"]',
+            snapshot_id: "not-a-uuid",
+          },
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it.each([
+    { query: "", max_results: 1 },
+    { query: "x", max_results: 101 },
+    { query: "x", max_tabs: 201 },
+    { query: "x", max_chars_per_tab: 500_001 },
+  ])("rejects unbounded Chrome content search %#", (search) => {
+    expect(
+      browserBrokerWireRequestSchema.safeParse({
+        product: BROWSER_BROKER_PRODUCT,
+        protocol: BROWSER_BROKER_PROTOCOL,
+        version: BROWSER_BROKER_PROTOCOL_VERSION,
+        auth_token: "x".repeat(43),
+        request: {
+          id: "search",
+          action: "chrome.content.search",
+          context: {
+            agent_session_id: "agent",
+            turn_id: "turn",
+            transport: "cli",
+          },
+          search,
+        },
+      }).success,
+    ).toBe(false);
+  });
 });
 
 function createServer(

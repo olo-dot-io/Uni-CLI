@@ -4,7 +4,7 @@
  * @needs       node:crypto, commander, src/browser bridge/doctor/invocation/runtime-launch/runtime-protocol/runtime-transport/remote-browser, output
  * @feeds       src/commands/browser/index.ts and the public `unicli browser` command tree
  * @breaks      Structured broker/provider/lifecycle errors produce nonzero command exits without legacy transport or direct-CDP fallback.
- * @invariants  Status/doctor are probe-only; broker start launches no provider; authenticated stop/restart observes the broker's explicit shutdown state and never reports a completed stop while cleanup ownership remains; provider and visibility are explicit; handoff is linearizable.
+ * @invariants  Status/doctor are probe-only; broker start launches no provider; explicit stop/restart gracefully shuts down a reachable generation and may contain only an owner-file/process-identity-verified unreachable generation; lifecycle commands never report a completed stop while cleanup ownership remains; provider and visibility are explicit; handoff is linearizable.
  * @side-effects Explicit commands may start/stop the broker, start a selected provider, claim a Chrome tab, or transfer/end Agent sessions.
  * @perf        Status is one local IPC; start is lazy; shutdown waiting uses the shared broker/provider completion budget.
  * @concurrency Broker lock and target queues own cross-process serialization; handoff starts both endpoint turns before atomic transfer.
@@ -34,7 +34,7 @@ import {
 } from "../../browser/runtime-protocol.js";
 import {
   browserBrokerPaths,
-  shutdownBrowserRuntimeBroker,
+  retireBrowserRuntimeBroker,
 } from "../../browser/runtime-transport.js";
 import { readRemoteEndpoint } from "../../browser/remote-browser.js";
 import type { OutputFormat } from "../../types.js";
@@ -308,9 +308,9 @@ function registerBrokerCommands(browser: Command, program: Command): void {
     .description("Stop the broker and release all sessions/providers")
     .action(() =>
       runLifecycleCommand(program, "browser.broker.stop", async () => {
-        let result: Awaited<ReturnType<typeof shutdownBrowserRuntimeBroker>>;
+        let result: Awaited<ReturnType<typeof retireBrowserRuntimeBroker>>;
         try {
-          result = await shutdownBrowserRuntimeBroker();
+          result = await retireBrowserRuntimeBroker();
         } catch (error) {
           if (isBrokerUnavailable(error)) {
             return { state: "stopped", already_stopped: true };
@@ -332,7 +332,7 @@ function registerBrokerCommands(browser: Command, program: Command): void {
     .action(() =>
       runLifecycleCommand(program, "browser.broker.restart", async () => {
         try {
-          await shutdownBrowserRuntimeBroker();
+          await retireBrowserRuntimeBroker();
           const state = await waitForBrokerStop();
           if (state !== "stopped") {
             throw new BrokerShutdownPendingError();

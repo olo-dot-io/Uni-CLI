@@ -4,7 +4,7 @@
  * @needs       src/browser/invocation-context.ts, runtime-session.ts, managed-browser.ts, remote-browser.ts, chrome-provider.ts, chrome-native-protocol.ts
  * @feeds       src/browser/runtime-broker.ts, src/browser/runtime-transport.ts, native browser host and CLI/MCP clients
  * @breaks      Protocol consumers reject unknown versions, malformed identities, unknown actions, and structured broker or Chrome extension errors.
- * @invariants  Authentication is outside tool arguments; every request has one id; active turns renew an explicit broker lease; hidden/background/foreground, provider selection, cancellation effect classification, and extension-reported outcome ambiguity are explicit.
+ * @invariants  Authentication is outside tool arguments; every request has one id; active turns renew an explicit broker lease; every target response carries authoritative ownership and exact Chrome tab/window identity when applicable; provider-wide Chrome search is read-only and target-free; hidden/background/foreground, provider selection, cancellation effect classification, and extension-reported outcome ambiguity are explicit.
  * @side-effects none (types and constants only)
  * @perf        O(1) serialization shape.
  * @concurrency Request ids allow independent in-flight clients; target ordering is broker-owned, not encoded in transport.
@@ -16,11 +16,15 @@
 import type { BrowserInvocationContext } from "./invocation-context.js";
 import type { ChromeProviderStatus } from "./chrome-provider.js";
 import {
+  CHROME_CONTENT_SEARCH_MAX_CHARS_PER_TAB,
+  CHROME_CONTENT_SEARCH_MAX_RESULTS,
+  CHROME_CONTENT_SEARCH_MAX_TABS,
   CHROME_NATIVE_PRODUCT,
   CHROME_NATIVE_PROTOCOL,
   CHROME_NATIVE_PROTOCOL_VERSION,
   type ChromeNativeHello,
   type ChromeNativeResult,
+  type ChromeContentSearchQuery,
 } from "./chrome-native-protocol.js";
 import type { ManagedBrowserRuntimeStatus } from "./managed-browser.js";
 import type { RemoteBrowserStatus } from "./remote-browser.js";
@@ -33,7 +37,7 @@ import { z } from "zod";
 
 export const BROWSER_BROKER_PRODUCT = "unicli";
 export const BROWSER_BROKER_PROTOCOL = "unicli-browser-runtime";
-export const BROWSER_BROKER_PROTOCOL_VERSION = 3;
+export const BROWSER_BROKER_PROTOCOL_VERSION = 5;
 export const BROWSER_BROKER_MAX_MESSAGE_BYTES = 4 * 1024 * 1024;
 export const BROWSER_BROKER_MAX_ARTIFACT_BYTES = 128 * 1024 * 1024;
 export const BROWSER_BROKER_DEFAULT_SESSION_TTL_MS = 5 * 60 * 1000;
@@ -42,9 +46,15 @@ export const BROWSER_BROKER_SHUTDOWN_WAIT_MS = 150_000;
 export type BrowserPageCommand =
   | { method: "navigate"; url: string; settle_ms?: number }
   | { method: "evaluate"; expression: string }
-  | { method: "click"; selector: string }
+  | { method: "click"; selector: string; snapshot_id?: string }
   | { method: "native_click"; x: number; y: number }
-  | { method: "type"; selector: string; text: string }
+  | {
+      method: "type";
+      selector: string;
+      text: string;
+      mode?: "insert_text" | "keystrokes";
+      snapshot_id?: string;
+    }
   | { method: "press"; key: string; modifiers?: string[] }
   | { method: "insert_text"; text: string }
   | { method: "scroll"; direction: "down" | "up" | "bottom" | "top" }
@@ -80,7 +90,71 @@ export type BrowserPageCommand =
       action: "accept" | "dismiss";
       prompt_text?: string;
       dialog_id?: string;
+    }
+  | { method: "agent_presence"; visible: boolean; label?: string }
+  | {
+      method: "agent_cursor";
+      x: number;
+      y: number;
+      visible?: boolean;
     };
+
+export interface BrowserAgentPresenceResult {
+  status: "visible" | "hidden" | "inactive" | "out_of_bounds";
+  cursor_visible: boolean;
+  viewport_width: number;
+  viewport_height: number;
+  x?: number;
+  y?: number;
+}
+
+export function isBrowserAgentPresenceResult(
+  value: unknown,
+): value is BrowserAgentPresenceResult {
+  if (!isUnknownRecord(value)) return false;
+  const status = value.status;
+  const cursorVisible = value.cursor_visible;
+  const width = value.viewport_width;
+  const height = value.viewport_height;
+  const x = value.x;
+  const y = value.y;
+  if (
+    (status !== "visible" &&
+      status !== "hidden" &&
+      status !== "inactive" &&
+      status !== "out_of_bounds") ||
+    typeof cursorVisible !== "boolean" ||
+    !nonnegativeFinite(width) ||
+    !nonnegativeFinite(height) ||
+    !optionalNonnegativeFinite(x) ||
+    !optionalNonnegativeFinite(y) ||
+    (x === undefined) !== (y === undefined)
+  ) {
+    return false;
+  }
+  if (status === "hidden" || status === "inactive") {
+    return cursorVisible === false && x === undefined;
+  }
+  if (status === "out_of_bounds") {
+    return x !== undefined && y !== undefined && (x >= width || y >= height);
+  }
+  if (x !== undefined && (x >= width || y! >= height)) return false;
+  return cursorVisible === false || x !== undefined;
+}
+
+function nonnegativeFinite(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
+}
+
+function optionalNonnegativeFinite(
+  value: unknown,
+): value is number | undefined {
+  return value === undefined || nonnegativeFinite(value);
+}
+
+function isUnknownRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 const READ_ONLY_BROWSER_PAGE_COMMANDS = new Set<BrowserPageCommand["method"]>([
   "cookies",
@@ -99,6 +173,14 @@ export function browserPageCommandCanMutate(
     return command.clear_recent === true;
   }
   return !READ_ONLY_BROWSER_PAGE_COMMANDS.has(command.method);
+}
+
+export function browserPageCommandRequiresForegroundChrome(
+  command: BrowserPageCommand,
+): boolean {
+  return (
+    command.method === "agent_presence" || command.method === "agent_cursor"
+  );
 }
 
 interface BrowserBrokerRequestBase {
@@ -183,6 +265,12 @@ export interface BrowserChromeTabsListRequest extends BrowserBrokerRequestBase {
   context: BrowserInvocationContext;
 }
 
+export interface BrowserChromeContentSearchRequest extends BrowserBrokerRequestBase {
+  action: "chrome.content.search";
+  context: BrowserInvocationContext;
+  search: ChromeContentSearchQuery;
+}
+
 export interface BrowserChromeTargetClaimRequest extends BrowserBrokerRequestBase {
   action: "chrome.target.claim";
   context: BrowserInvocationContext;
@@ -236,6 +324,7 @@ export type BrowserBrokerRequest =
   | BrowserTargetDiscardRequest
   | BrowserTargetHandoffRequest
   | BrowserChromeTabsListRequest
+  | BrowserChromeContentSearchRequest
   | BrowserChromeTargetClaimRequest
   | BrowserChromeTargetFinalizeRequest
   | BrowserChromeHostRegisterRequest
@@ -274,6 +363,9 @@ export interface BrowserTargetCommandResult {
   provider: "managed" | "chrome" | "remote";
   browser_pid?: number;
   visibility: BrowserVisibility;
+  owned: boolean;
+  tab_id?: number;
+  window_id?: number;
   data?: unknown;
 }
 
@@ -346,7 +438,11 @@ const pageCommandSchema = z.discriminatedUnion("method", [
     .strict(),
   z.object({ method: z.literal("evaluate"), expression: z.string() }).strict(),
   z
-    .object({ method: z.literal("click"), selector: z.string().min(1) })
+    .object({
+      method: z.literal("click"),
+      selector: z.string().min(1),
+      snapshot_id: z.string().uuid().optional(),
+    })
     .strict(),
   z
     .object({
@@ -360,6 +456,8 @@ const pageCommandSchema = z.discriminatedUnion("method", [
       method: z.literal("type"),
       selector: z.string().min(1),
       text: z.string(),
+      mode: z.enum(["insert_text", "keystrokes"]).optional(),
+      snapshot_id: z.string().uuid().optional(),
     })
     .strict(),
   z
@@ -439,6 +537,21 @@ const pageCommandSchema = z.discriminatedUnion("method", [
       action: z.enum(["accept", "dismiss"]),
       prompt_text: z.string().optional(),
       dialog_id: z.string().min(1).optional(),
+    })
+    .strict(),
+  z
+    .object({
+      method: z.literal("agent_presence"),
+      visible: z.boolean(),
+      label: z.string().trim().min(1).max(80).optional(),
+    })
+    .strict(),
+  z
+    .object({
+      method: z.literal("agent_cursor"),
+      x: z.number().finite().nonnegative(),
+      y: z.number().finite().nonnegative(),
+      visible: z.boolean().optional(),
     })
     .strict(),
 ]);
@@ -596,6 +709,39 @@ const brokerRequestSchema = z.union([
       id: requestIdSchema,
       action: z.literal("chrome.tabs.list"),
       context: invocationContextSchema,
+    })
+    .strict(),
+  z
+    .object({
+      id: requestIdSchema,
+      action: z.literal("chrome.content.search"),
+      context: invocationContextSchema,
+      search: z
+        .object({
+          query: z.string().trim().min(1).max(512),
+          include_history: z.boolean().optional(),
+          max_results: z
+            .number()
+            .int()
+            .min(1)
+            .max(CHROME_CONTENT_SEARCH_MAX_RESULTS)
+            .optional(),
+          max_tabs: z
+            .number()
+            .int()
+            .min(1)
+            .max(CHROME_CONTENT_SEARCH_MAX_TABS)
+            .optional(),
+          max_chars_per_tab: z
+            .number()
+            .int()
+            .min(1_024)
+            .max(CHROME_CONTENT_SEARCH_MAX_CHARS_PER_TAB)
+            .optional(),
+          history_start_time: z.number().finite().nonnegative().optional(),
+          history_end_time: z.number().finite().nonnegative().optional(),
+        })
+        .strict(),
     })
     .strict(),
   z

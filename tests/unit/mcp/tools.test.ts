@@ -274,7 +274,7 @@ describe("computer-use profile", () => {
     }
   });
 
-  it("selectTools returns exactly the 16 computer-use tools", async () => {
+  it("selectTools returns the desktop and bounded Chrome computer-use tools", async () => {
     const toolsModule = await import("../../../src/mcp/tools.js");
     const selectTools = (
       toolsModule as unknown as {
@@ -302,6 +302,22 @@ describe("computer-use profile", () => {
       "computer-use.wait",
       "computer-use.observe",
       "computer-use.assert",
+      "computer-use.browser_tabs",
+      "computer-use.browser_prepare",
+      "computer-use.browser_state",
+      "computer-use.browser_screenshot",
+      "computer-use.browser_navigate",
+      "computer-use.browser_click",
+      "computer-use.browser_type",
+      "computer-use.browser_press",
+      "computer-use.browser_scroll",
+      "computer-use.browser_search",
+      "computer-use.browser_claim",
+      "computer-use.browser_dialogs",
+      "computer-use.browser_dialog",
+      "computer-use.browser_downloads",
+      "computer-use.browser_presence",
+      "computer-use.browser_cursor",
     ]);
     const capture = tools.find(
       (candidate) => candidate.name === "computer-use.capture",
@@ -323,6 +339,20 @@ describe("computer-use profile", () => {
       copyReference: { type: "boolean", default: false },
       referenceRoot: { type: "string" },
     });
+    const browserState = tools.find(
+      (candidate) => candidate.name === "computer-use.browser_state",
+    );
+    expect(browserState).toMatchObject({
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+      },
+      execution: { taskSupport: "optional" },
+    });
+    expect(browserState?.inputSchema.properties).not.toHaveProperty(
+      "allow_launch",
+    );
     for (const name of [
       "computer-use.click",
       "computer-use.type",
@@ -373,6 +403,8 @@ describe("computer-use profile", () => {
     expect(prompts[0]?.text).toContain("compact accessibility snapshots");
     expect(prompts[0]?.text).toContain("app-shot references");
     expect(prompts[0]?.text).toContain("re-snapshot after actions");
+    expect(prompts[0]?.text).toContain("browser_search");
+    expect(prompts[0]?.text).toContain("--browser-visibility foreground");
   });
 
   it("keeps shared compute action schemas in parity with core describe", async () => {

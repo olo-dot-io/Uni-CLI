@@ -25,6 +25,190 @@ beforeEach(() => {
 });
 
 describe("Chrome extension background visibility contract", () => {
+  it("searches eligible open pages and history without attaching, focusing, or navigating", async () => {
+    const harness = installStatefulChrome({
+      tabs: [
+        seededTab(10, true, "https://example.com/runtime"),
+        seededTab(12, false, "https://docs.example.com/broker"),
+        seededTab(13, false, "chrome://settings/"),
+      ],
+      pageSearchResults: {
+        10: {
+          scanned_chars: 2_048,
+          scanned_nodes: 25,
+          truncated: false,
+          exact_query_match: true,
+          matched_terms: 1,
+          matched_term_indexes: [0],
+          match_count: 2,
+          snippets: ["Shared runtime broker"],
+        },
+        12: {
+          scanned_chars: 1_024,
+          scanned_nodes: 12,
+          truncated: false,
+          exact_query_match: false,
+          matched_terms: 0,
+          matched_term_indexes: [],
+          match_count: 0,
+          snippets: [],
+        },
+      },
+      historyItems: [
+        {
+          id: "history-runtime",
+          url: "https://example.com/runtime",
+          title: "Runtime broker",
+          lastVisitTime: 90,
+          visitCount: 4,
+        },
+      ],
+    });
+    const { handleChromeNativeCommand } =
+      await import("../../extension/src/chrome-controller.js");
+    const before = harness.uiState();
+
+    const result = await handleChromeNativeCommand(
+      command({
+        action: "content.search",
+        search: {
+          query: "runtime",
+          include_history: true,
+          max_results: 3,
+          max_tabs: 5,
+          max_chars_per_tab: 4_096,
+        },
+      }),
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      data: {
+        query: "runtime",
+        result_count: 1,
+        eligible_open_tabs: 2,
+        scanned_open_tabs: 2,
+        matched_open_tabs: 1,
+        scanned_history_items: 1,
+        matched_history_items: 1,
+        ui_state_unchanged: true,
+        results: [
+          {
+            sources: ["open_tab", "history"],
+            url: "https://example.com/runtime",
+            snippets: ["Shared runtime broker"],
+          },
+        ],
+      },
+    });
+    expect(harness.chrome.scripting.executeScript).toHaveBeenCalledTimes(2);
+    expect(harness.chrome.history.search).toHaveBeenCalledWith({
+      text: "runtime",
+      startTime: 0,
+      maxResults: 15,
+    });
+    expect(harness.chrome.debugger.attach).not.toHaveBeenCalled();
+    expect(harness.chrome.debugger.sendCommand).not.toHaveBeenCalled();
+    expect(harness.chrome.tabs.update).not.toHaveBeenCalled();
+    expect(harness.chrome.windows.update).not.toHaveBeenCalled();
+    expect(harness.uiState()).toEqual(before);
+  });
+
+  it("refuses page presence for background targets before injecting a script", async () => {
+    const harness = installStatefulChrome();
+    const { handleChromeNativeCommand } =
+      await import("../../extension/src/chrome-controller.js");
+    const target = await claimBackgroundTarget(handleChromeNativeCommand, 10);
+
+    const result = await handleChromeNativeCommand(
+      command({
+        action: "page.command",
+        target_id: target.target_id,
+        tab_id: target.tab_id,
+        visibility: "background",
+        command: { method: "agent_presence", visible: true },
+      }),
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: "chrome_agent_presence_requires_foreground",
+        retryable: false,
+      },
+    });
+    expect(harness.chrome.scripting.executeScript).not.toHaveBeenCalled();
+  });
+
+  it("renders and removes target-scoped foreground presence without closing a claimed tab", async () => {
+    const harness = installStatefulChrome();
+    const { handleChromeNativeCommand } =
+      await import("../../extension/src/chrome-controller.js");
+    const claimed = await handleChromeNativeCommand(
+      command({
+        action: "target.claim",
+        tab_id: 10,
+        visibility: "foreground",
+      }),
+    );
+    if (!claimed.ok) throw new Error(claimed.error.message);
+    const target = claimed.data as ChromeNativeTarget;
+
+    await expect(
+      handleChromeNativeCommand(
+        command({
+          action: "page.command",
+          target_id: target.target_id,
+          tab_id: target.tab_id,
+          visibility: "foreground",
+          command: {
+            method: "agent_presence",
+            visible: true,
+            label: "Uni-CLI working",
+          },
+        }),
+      ),
+    ).resolves.toMatchObject({
+      ok: true,
+      data: { status: "visible", cursor_visible: false },
+    });
+    await expect(
+      handleChromeNativeCommand(
+        command({
+          action: "page.command",
+          target_id: target.target_id,
+          tab_id: target.tab_id,
+          visibility: "foreground",
+          command: { method: "agent_cursor", x: 320, y: 180 },
+        }),
+      ),
+    ).resolves.toMatchObject({
+      ok: true,
+      data: { status: "visible", cursor_visible: true, x: 320, y: 180 },
+    });
+    await expect(
+      handleChromeNativeCommand(
+        command({
+          action: "target.finalize",
+          target_id: target.target_id,
+          tab_id: target.tab_id,
+          visibility: "foreground",
+          disposition: "release",
+        }),
+      ),
+    ).resolves.toMatchObject({ ok: true });
+
+    expect(harness.presenceUpdates).toEqual([
+      { kind: "show", label: "Uni-CLI working" },
+      { kind: "move", x: 320, y: 180, cursor_visible: true },
+      { kind: "hide" },
+    ]);
+    expect(harness.chrome.tabs.remove).not.toHaveBeenCalledWith(10);
+    await expect(harness.chrome.tabs.get(10)).resolves.toMatchObject({
+      url: "https://example.com/",
+    });
+  });
+
   it("allocates, mutates, and closes an inactive tab without changing window focus or active tabs", async () => {
     const harness = installStatefulChrome();
     const { handleChromeNativeCommand } =
@@ -797,7 +981,10 @@ describe("Chrome extension background visibility contract", () => {
       const inputEvents: string[] = [];
       let releaseAttempts = 0;
       harness.chrome.debugger.sendCommand.mockImplementation(
-        async (_target: unknown, _method: string, params: unknown) => {
+        async (_target: unknown, method: string, params: unknown) => {
+          if (method === "Runtime.evaluate") {
+            return { result: { value: { width: 800, height: 600 } } };
+          }
           const type = String(
             (params as Record<string, unknown> | undefined)?.type ?? "",
           );
@@ -828,6 +1015,78 @@ describe("Chrome extension background visibility contract", () => {
     },
   );
 
+  it("refuses out-of-viewport coordinate clicks before debugger input", async () => {
+    const harness = installStatefulChrome();
+    const { handleChromeNativeCommand } =
+      await import("../../extension/src/chrome-controller.js");
+    const target = await allocateOwnedBackgroundTarget(
+      handleChromeNativeCommand,
+    );
+
+    const result = await handleChromeNativeCommand(
+      command({
+        action: "page.command",
+        target_id: target.target_id,
+        tab_id: target.tab_id,
+        visibility: "background",
+        command: { method: "native_click", x: 800, y: 0 },
+      }),
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: "browser_coordinate_out_of_bounds",
+        retryable: false,
+      },
+    });
+    expect(
+      harness.chrome.debugger.sendCommand.mock.calls.filter(
+        ([, method]) => method === "Input.dispatchMouseEvent",
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("dispatches named keys with the same CDP descriptor as the managed provider", async () => {
+    const harness = installStatefulChrome();
+    const { handleChromeNativeCommand } =
+      await import("../../extension/src/chrome-controller.js");
+    const target = await allocateOwnedBackgroundTarget(
+      handleChromeNativeCommand,
+    );
+
+    const result = await handleChromeNativeCommand(
+      command({
+        action: "page.command",
+        target_id: target.target_id,
+        tab_id: target.tab_id,
+        visibility: "background",
+        command: { method: "press", key: "Enter", modifiers: ["meta"] },
+      }),
+    );
+
+    expect(result).toMatchObject({ ok: true });
+    const events = harness.chrome.debugger.sendCommand.mock.calls
+      .filter(([, method]) => method === "Input.dispatchKeyEvent")
+      .map(([, , params]) => params as Record<string, unknown>);
+    expect(events).toEqual([
+      {
+        type: "rawKeyDown",
+        key: "Enter",
+        code: "Enter",
+        windowsVirtualKeyCode: 13,
+        modifiers: 4,
+      },
+      {
+        type: "keyUp",
+        key: "Enter",
+        code: "Enter",
+        windowsVirtualKeyCode: 13,
+        modifiers: 4,
+      },
+    ]);
+  });
+
   it("always dispatches release after an ambiguously applied input down without replaying down", async () => {
     const harness = installStatefulChrome();
     const { handleChromeNativeCommand } =
@@ -837,7 +1096,10 @@ describe("Chrome extension background visibility contract", () => {
     );
     const inputEvents: string[] = [];
     harness.chrome.debugger.sendCommand.mockImplementation(
-      async (_target: unknown, _method: string, params: unknown) => {
+      async (_target: unknown, method: string, params: unknown) => {
+        if (method === "Runtime.evaluate") {
+          return { result: { value: { width: 800, height: 600 } } };
+        }
         const type = String(
           (params as Record<string, unknown> | undefined)?.type ?? "",
         );
@@ -2214,6 +2476,8 @@ function installStatefulChrome(
     createGate?: Promise<void>;
     storageGetGate?: Promise<void>;
     sessionStorage?: Record<string, unknown>;
+    pageSearchResults?: Record<number, unknown>;
+    historyItems?: chrome.history.HistoryItem[];
   } = {},
 ) {
   const windows: WindowState[] = structuredClone(
@@ -2281,6 +2545,8 @@ function installStatefulChrome(
   const nativeOnDisconnect = createEvent<[]>();
   const nativeMessages: unknown[] = [];
   const removedTabIds: number[] = [];
+  const presenceUpdates: unknown[] = [];
+  const presenceTabs = new Set<number>();
   let beforeRemoveTab: (() => void) | null = null;
   let beforeEveryRemoveTab: ((tabId: number) => void) | null = null;
   const sessionStorage: Record<string, unknown> = {
@@ -2517,6 +2783,10 @@ function installStatefulChrome(
       onFocusChanged: windowsOnFocusChanged,
     },
     webNavigation: {
+      getAllFrames: vi.fn(async ({ tabId }: { tabId: number }) => {
+        const tab = tabs.find((candidate) => candidate.id === tabId);
+        return tab ? [{ frameId: 0, parentFrameId: -1, url: tab.url }] : null;
+      }),
       onBeforeNavigate: webNavigationOnBeforeNavigate,
       onCommitted: webNavigationOnCommitted,
       onCompleted: webNavigationOnCompleted,
@@ -2528,17 +2798,123 @@ function installStatefulChrome(
     debugger: {
       attach: vi.fn().mockResolvedValue(undefined),
       detach: vi.fn().mockResolvedValue(undefined),
-      sendCommand: vi.fn(async (_target: unknown, method: string) => {
-        if (method === "Runtime.evaluate") return { result: { value: true } };
-        if (method === "DOM.getDocument") return { root: { nodeId: 1 } };
-        if (method === "DOM.querySelector") return { nodeId: 2 };
-        if (method === "DOM.getBoxModel") {
-          return { model: { content: [0, 0, 10, 0, 10, 10, 0, 10] } };
-        }
-        return {};
-      }),
+      sendCommand: vi.fn(
+        async (_target: unknown, method: string, params: unknown) => {
+          if (method === "Runtime.evaluate") {
+            const expression = String(
+              (params as { expression?: unknown } | undefined)?.expression ??
+                "",
+            );
+            return {
+              result: {
+                value: expression.includes("window.innerWidth")
+                  ? { width: 800, height: 600 }
+                  : true,
+              },
+            };
+          }
+          if (method === "DOM.getDocument") return { root: { nodeId: 1 } };
+          if (method === "DOM.querySelector") return { nodeId: 2 };
+          if (method === "DOM.getBoxModel") {
+            return { model: { content: [0, 0, 10, 0, 10, 10, 0, 10] } };
+          }
+          return {};
+        },
+      ),
       onEvent: debuggerOnEvent,
       onDetach: debuggerOnDetach,
+    },
+    scripting: {
+      executeScript: vi.fn(
+        async (injection: {
+          target: { tabId: number };
+          func?: { name?: string };
+          args?: unknown[];
+        }) => {
+          const tabId = injection.target.tabId;
+          if (injection.func?.name === "searchOpenDocument") {
+            return [
+              {
+                frameId: 0,
+                result: options.pageSearchResults?.[tabId] ?? {
+                  scanned_chars: 0,
+                  scanned_nodes: 0,
+                  truncated: false,
+                  exact_query_match: false,
+                  matched_terms: 0,
+                  matched_term_indexes: [],
+                  match_count: 0,
+                  snippets: [],
+                },
+              },
+            ];
+          }
+          if (injection.func?.name === "renderAgentPresence") {
+            const update = injection.args?.[0] as
+              | { kind: "show"; label: string }
+              | { kind: "hide" }
+              | {
+                  kind: "move";
+                  x: number;
+                  y: number;
+                  cursor_visible: boolean;
+                };
+            presenceUpdates.push(structuredClone(update));
+            if (update.kind === "hide") {
+              presenceTabs.delete(tabId);
+              return [
+                {
+                  frameId: 0,
+                  result: {
+                    status: "hidden",
+                    cursor_visible: false,
+                    viewport_width: 1_440,
+                    viewport_height: 900,
+                  },
+                },
+              ];
+            }
+            if (update.kind === "show") {
+              presenceTabs.add(tabId);
+              return [
+                {
+                  frameId: 0,
+                  result: {
+                    status: "visible",
+                    cursor_visible: false,
+                    viewport_width: 1_440,
+                    viewport_height: 900,
+                  },
+                },
+              ];
+            }
+            return [
+              {
+                frameId: 0,
+                result: presenceTabs.has(tabId)
+                  ? {
+                      status: "visible",
+                      cursor_visible: update.cursor_visible,
+                      viewport_width: 1_440,
+                      viewport_height: 900,
+                      x: update.x,
+                      y: update.y,
+                    }
+                  : {
+                      status: "inactive",
+                      cursor_visible: false,
+                      viewport_width: 1_440,
+                      viewport_height: 900,
+                    },
+              },
+            ];
+          }
+          throw new Error("Unexpected scripting function");
+        },
+      ),
+    },
+    history: {
+      search: vi.fn(async () => structuredClone(options.historyItems ?? [])),
     },
     cookies: { getAll: vi.fn().mockResolvedValue([]) },
     downloads: {
@@ -2624,6 +3000,7 @@ function installStatefulChrome(
       return structuredClone(tab);
     },
     removedTabIds,
+    presenceUpdates,
     targetLedger: () =>
       structuredClone(
         sessionStorage.unicli_target_ledger_v1 ?? {

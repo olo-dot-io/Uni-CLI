@@ -1,12 +1,12 @@
 /**
  * @owner       extension/src/chrome-controller.ts
- * @does        Execute broker-issued tab list/allocation/claim/finalize and page commands through Chrome APIs while delegating background lifetime ownership to one durable supervisor.
- * @needs       chrome.tabs/windows/debugger/cookies, extension background-supervisor.ts, debugger-dispatch.ts, dialog-supervisor.ts, target-ledger.ts, network-capture.ts, src/browser/chrome-native-protocol.ts
+ * @does        Execute broker-issued tab inventory/content search, target allocation/claim/finalization, page commands, and foreground agent presence through Chrome APIs while delegating background lifetime ownership to one durable supervisor.
+ * @needs       chrome.tabs/windows/debugger/scripting/history/cookies, extension background-supervisor.ts, content-search.ts, agent-presence.ts, debugger-dispatch.ts, dialog-supervisor.ts, target-ledger.ts, network-capture.ts, src/browser/chrome-native-protocol.ts, src/browser/key-descriptor.ts, src/browser/ref-target.ts
  * @feeds       extension/src/background.ts
- * @breaks      Returns structured ChromeNativeError for absent windows/tabs, unsupported surfaces, debugger/CDP failure, incomplete popup compensation, and background postcondition changes.
- * @invariants  Background never calls windows.create or mutates claimed tabs; non-idempotent debugger commands never replay after ambiguous detach; canceled owned allocation cleans its late Chrome artifact and ledger; finalize requires target identity and tab existence but never page-URL support.
- * @side-effects Creates inactive tabs only in existing windows, claims tabs, dispatches CDP/page operations, detaches debuggers, and closes owned targets on finalize.
- * @perf        Page commands map to direct Chrome API/CDP calls; background postcondition cost belongs to background-supervisor.ts.
+ * @breaks      Returns structured ChromeNativeError for absent windows/tabs, unsupported surfaces, out-of-viewport coordinates, bounded-search failures, agent-presence failures, debugger/CDP failure, incomplete popup compensation, and background postcondition changes.
+ * @invariants  Background never calls windows.create or mutates claimed tabs; content search is target-free and no-focus; agent presence requires an HTTP(S) foreground target; non-idempotent debugger commands never replay after ambiguous detach; canceled owned allocation cleans its late Chrome artifact and ledger; finalize removes presence before releasing user tabs.
+ * @side-effects Creates inactive tabs only in existing windows, performs explicit isolated-world reads, claims tabs, dispatches CDP/page operations, renders explicit foreground presence, detaches debuggers, and closes owned targets on finalize.
+ * @perf        Page commands map to direct Chrome API/CDP calls; content search is bounded in content-search.ts; agent presence has O(1) explicit updates and zero idle work; background postcondition cost belongs to background-supervisor.ts.
  * @concurrency The native host is sequential and broker target queues serialize mutations; debugger attach state is tab-scoped.
  * @test        tests/integration/browser-extension-background.test.ts, tests/unit/extension/network-capture.test.ts
  * @stability   experimental
@@ -21,8 +21,28 @@ import {
   type ChromeNativeTab,
   type ChromeNativeTarget,
 } from "../../src/browser/chrome-native-protocol.js";
-import type { BrowserPageCommand } from "../../src/browser/runtime-protocol.js";
+import {
+  browserPageCommandRequiresForegroundChrome,
+  type BrowserPageCommand,
+} from "../../src/browser/runtime-protocol.js";
+import {
+  BROWSER_VIEWPORT_EXPRESSION,
+  BrowserViewportPointError,
+  buildBrowserRefTargetExpression,
+  readBrowserRefTargetResult,
+  requireBrowserViewportPoint,
+} from "../../src/browser/ref-target.js";
+import { browserKeyEventPair } from "../../src/browser/key-descriptor.js";
+import {
+  AgentPresenceError,
+  executeAgentPresenceCommand,
+  removeAgentPresence,
+} from "./agent-presence.js";
 import { raceWithCancellation } from "./cancellable-operation.js";
+import {
+  ChromeContentSearchError,
+  searchChromeContent,
+} from "./content-search.js";
 import {
   assertBackgroundTargetCanFinalize,
   assertChromeUiStateUnchanged as assertUiStateUnchanged,
@@ -106,6 +126,15 @@ async function executeChromeCommand(
   switch (command.action) {
     case "tabs.list":
       return listTabsWithoutUiChange();
+    case "content.search":
+      return searchChromeContent(
+        command.search,
+        {
+          capture: captureUiState,
+          assertUnchanged: assertUiStateUnchanged,
+        },
+        signal,
+      );
     case "target.allocate":
       return allocateTarget(command.request_id, command.visibility, signal);
     case "target.claim":
@@ -329,8 +358,9 @@ async function finalizeTarget(
 ): Promise<void> {
   signal?.throwIfAborted();
   await assertTargetIdentity(targetId, tabId);
+  let existingTab: chrome.tabs.Tab;
   try {
-    await readExistingTab(tabId);
+    existingTab = await readExistingTab(tabId);
   } catch (error) {
     if (!isMissingTabError(error)) throw error;
     await persistLedger(
@@ -355,6 +385,13 @@ async function finalizeTarget(
       false,
     );
   }
+  if (
+    disposition === "release" &&
+    visibility === "foreground" &&
+    isAgentPresenceEligibleUrl(existingTab.url)
+  ) {
+    await removeAgentPresence(tabId, signal);
+  }
   try {
     await detachDebugger(tabId);
     if (disposition === "close") await chrome.tabs.remove(tabId);
@@ -376,6 +413,17 @@ async function executeTargetPageCommand(
   signal?: AbortSignal,
 ): Promise<unknown> {
   signal?.throwIfAborted();
+  if (
+    browserPageCommandRequiresForegroundChrome(command) &&
+    visibility !== "foreground"
+  ) {
+    throw new ChromeControllerError(
+      "chrome_agent_presence_requires_foreground",
+      `Chrome page.${command.method} requires explicit foreground visibility`,
+      "Claim or allocate the target with foreground visibility; hidden/background work never renders page presence.",
+      false,
+    );
+  }
   await assertTargetIdentity(targetId, tabId);
   const trackedTarget = await readChromeTarget(targetId);
   if (!trackedTarget || trackedTarget.tab_id !== tabId) {
@@ -389,6 +437,17 @@ async function executeTargetPageCommand(
     );
   }
   const tab = await readSupportedTab(tabId);
+  if (
+    browserPageCommandRequiresForegroundChrome(command) &&
+    !isAgentPresenceEligibleUrl(tab.url)
+  ) {
+    throw new ChromeControllerError(
+      "chrome_agent_presence_unsupported",
+      `Chrome page.${command.method} requires an HTTP(S) document`,
+      "Navigate the explicit foreground target to a normal web page before rendering agent presence.",
+      false,
+    );
+  }
   const before = visibility === "background" ? await captureUiState() : null;
   if (visibility === "foreground") {
     await chrome.tabs.update(tabId, { active: true });
@@ -439,6 +498,16 @@ async function invalidateCancelledForegroundTarget(
   target: ChromeNativeTarget,
 ): Promise<void> {
   const errors: unknown[] = [];
+  if (!target.owned) {
+    try {
+      const tab = await readExistingTab(target.tab_id);
+      if (isAgentPresenceEligibleUrl(tab.url)) {
+        await removeAgentPresence(target.tab_id);
+      }
+    } catch (error) {
+      if (!isMissingTabError(error)) errors.push(error);
+    }
+  }
   try {
     await detachDebugger(target.tab_id);
   } catch (error) {
@@ -450,6 +519,19 @@ async function invalidateCancelledForegroundTarget(
     } catch (error) {
       if (!isMissingTabError(error)) errors.push(error);
     }
+  }
+  if (errors.length > 0 && !target.owned) {
+    throw new ChromeControllerError(
+      "chrome_target_invalidation_failed",
+      `Cancelled Chrome target ${target.target_id} could not remove foreground presence: ${errors.map(errorMessage).join("; ")}`,
+      "Retry target finalization after the page permits isolated-world cleanup.",
+      false,
+      true,
+      {
+        cause: new AggregateError(errors, "Foreground presence cleanup failed"),
+        targetUnusable: true,
+      },
+    );
   }
   try {
     await persistLedger(
@@ -526,16 +608,20 @@ async function executePageCommand(
     case "evaluate":
       return evaluate(tabId, command.expression);
     case "click":
-      await click(tabId, command.selector);
+      await click(tabId, command.selector, command.snapshot_id);
       return undefined;
     case "native_click":
       await nativeClick(tabId, command.x, command.y);
       return undefined;
     case "type":
-      await click(tabId, command.selector);
-      await sendDebuggerCommand(tabId, "Input.insertText", {
-        text: command.text,
-      });
+      await click(tabId, command.selector, command.snapshot_id);
+      if ((command.mode ?? "insert_text") === "insert_text") {
+        await sendDebuggerCommand(tabId, "Input.insertText", {
+          text: command.text,
+        });
+      } else {
+        await typeKeystrokes(tabId, command.text);
+      }
       return undefined;
     case "press":
       await press(tabId, command.key, command.modifiers);
@@ -633,6 +719,9 @@ async function executePageCommand(
           ? {}
           : { dialogId: command.dialog_id }),
       });
+    case "agent_presence":
+    case "agent_cursor":
+      return executeAgentPresenceCommand(tabId, command);
   }
 }
 
@@ -834,55 +923,93 @@ async function evaluate(tabId: number, expression: string): Promise<unknown> {
   return result.result?.value;
 }
 
-async function click(tabId: number, selector: string): Promise<void> {
-  const document = (await sendDebuggerCommand(
-    tabId,
-    "DOM.getDocument",
-    {},
-    undefined,
-    true,
-  )) as DomDocumentResult;
-  const rootNodeId = document.root?.nodeId;
-  if (!rootNodeId) {
+async function click(
+  tabId: number,
+  selector: string,
+  expectedSnapshotId?: string,
+): Promise<void> {
+  let x: number;
+  let y: number;
+  const refExpression = buildBrowserRefTargetExpression(
+    selector,
+    expectedSnapshotId,
+  );
+  if (expectedSnapshotId !== undefined && !refExpression) {
     throw controllerError(
-      "chrome_selector_not_found",
-      "Chrome did not return a DOM root node",
+      "chrome_ref_contract_invalid",
+      "A snapshot id requires a ref-bearing selector",
     );
   }
-  const query = (await sendDebuggerCommand(
-    tabId,
-    "DOM.querySelector",
-    {
-      nodeId: rootNodeId,
-      selector,
-    },
-    undefined,
-    true,
-  )) as DomQueryResult;
-  if (!query.nodeId) {
-    throw controllerError(
-      "chrome_selector_not_found",
-      `Chrome selector did not match an element: ${selector}`,
+  if (refExpression) {
+    const target = readBrowserRefTargetResult(
+      await evaluate(tabId, refExpression),
     );
+    if (target.status !== "found") {
+      throw controllerError(
+        target.status === "stale" || target.status === "registry_unavailable"
+          ? "stale_ref"
+          : target.status === "selector_mismatch"
+            ? "ref_not_found"
+            : target.status === "unsupported_frame"
+              ? "chrome_frame_unsupported"
+              : target.status === "occluded"
+                ? "browser_selector_occluded"
+                : "chrome_selector_not_interactable",
+        `Chrome ref ${target.ref} cannot be clicked: ${target.status}`,
+      );
+    }
+    x = target.x;
+    y = target.y;
+  } else {
+    const document = (await sendDebuggerCommand(
+      tabId,
+      "DOM.getDocument",
+      {},
+      undefined,
+      true,
+    )) as DomDocumentResult;
+    const rootNodeId = document.root?.nodeId;
+    if (!rootNodeId) {
+      throw controllerError(
+        "chrome_selector_not_found",
+        "Chrome did not return a DOM root node",
+      );
+    }
+    const query = (await sendDebuggerCommand(
+      tabId,
+      "DOM.querySelector",
+      {
+        nodeId: rootNodeId,
+        selector,
+      },
+      undefined,
+      true,
+    )) as DomQueryResult;
+    if (!query.nodeId) {
+      throw controllerError(
+        "chrome_selector_not_found",
+        `Chrome selector did not match an element: ${selector}`,
+      );
+    }
+    const box = (await sendDebuggerCommand(
+      tabId,
+      "DOM.getBoxModel",
+      {
+        nodeId: query.nodeId,
+      },
+      undefined,
+      true,
+    )) as DomBoxResult;
+    const content = box.model?.content;
+    if (!content || content.length < 8) {
+      throw controllerError(
+        "chrome_selector_not_interactable",
+        `Chrome selector has no interactable box: ${selector}`,
+      );
+    }
+    x = (content[0] + content[2] + content[4] + content[6]) / 4;
+    y = (content[1] + content[3] + content[5] + content[7]) / 4;
   }
-  const box = (await sendDebuggerCommand(
-    tabId,
-    "DOM.getBoxModel",
-    {
-      nodeId: query.nodeId,
-    },
-    undefined,
-    true,
-  )) as DomBoxResult;
-  const content = box.model?.content;
-  if (!content || content.length < 8) {
-    throw controllerError(
-      "chrome_selector_not_interactable",
-      `Chrome selector has no interactable box: ${selector}`,
-    );
-  }
-  const x = (content[0] + content[2] + content[4] + content[6]) / 4;
-  const y = (content[1] + content[3] + content[5] + content[7]) / 4;
   await dispatchDebuggerInputPair(
     tabId,
     "Input.dispatchMouseEvent",
@@ -908,34 +1035,34 @@ async function press(
   key: string,
   modifiers?: string[],
 ): Promise<void> {
-  const modifierMask = (modifiers ?? []).reduce((mask, modifier) => {
-    const value = {
-      alt: 1,
-      ctrl: 2,
-      control: 2,
-      meta: 4,
-      command: 4,
-      shift: 8,
-    }[modifier.toLowerCase()];
-    return mask | (value ?? 0);
-  }, 0);
-  const keyCode = key.length === 1 ? key.charCodeAt(0) : 0;
-  const params = {
-    key,
-    code: key,
-    windowsVirtualKeyCode: keyCode,
-    nativeVirtualKeyCode: keyCode,
-    ...(modifierMask ? { modifiers: modifierMask } : {}),
-  };
+  const events = browserKeyEventPair(key, modifiers);
   await dispatchDebuggerInputPair(
     tabId,
     "Input.dispatchKeyEvent",
-    { type: "keyDown", ...params },
-    { type: "keyUp", ...params },
+    events.down,
+    events.up,
   );
 }
 
+async function typeKeystrokes(tabId: number, text: string): Promise<void> {
+  for (const character of text) {
+    const key = character === "\n" ? "Enter" : character;
+    const keyText = character === "\n" ? "\r" : character;
+    await dispatchDebuggerInputPair(
+      tabId,
+      "Input.dispatchKeyEvent",
+      { type: "keyDown", key, text: keyText },
+      { type: "keyUp", key },
+    );
+  }
+}
+
 async function nativeClick(tabId: number, x: number, y: number): Promise<void> {
+  requireBrowserViewportPoint(
+    await evaluate(tabId, BROWSER_VIEWPORT_EXPRESSION),
+    x,
+    y,
+  );
   await dispatchDebuggerInputPair(
     tabId,
     "Input.dispatchMouseEvent",
@@ -1297,6 +1424,10 @@ function isSupportedTabUrl(url: string | undefined): boolean {
   return url === undefined || /^(https?:|file:|about:blank(?:$|#))/i.test(url);
 }
 
+function isAgentPresenceEligibleUrl(url: string | undefined): boolean {
+  return typeof url === "string" && /^https?:/i.test(url);
+}
+
 function scrollExpression(direction: "down" | "up" | "bottom" | "top"): string {
   return {
     down: "window.scrollBy(0, window.innerHeight)",
@@ -1365,6 +1496,26 @@ function readControllerError(error: unknown): ChromeNativeError {
       retryable: error.retryable,
       ...(error.outcomeAmbiguous ? { outcome_ambiguous: true } : {}),
       ...(error.targetUnusable ? { target_unusable: true } : {}),
+    };
+  }
+  if (
+    error instanceof ChromeContentSearchError ||
+    error instanceof AgentPresenceError
+  ) {
+    return {
+      code: error.code,
+      message: error.message,
+      suggestion: error.suggestion,
+      retryable: error.retryable,
+      ...(error.outcomeAmbiguous ? { outcome_ambiguous: true } : {}),
+    };
+  }
+  if (error instanceof BrowserViewportPointError) {
+    return {
+      code: error.code,
+      message: error.message,
+      suggestion: error.suggestion,
+      retryable: error.retryable,
     };
   }
   return {

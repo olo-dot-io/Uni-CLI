@@ -1,10 +1,10 @@
 /**
  * @owner       src/browser/page.ts
  * @does        Implement high-level navigation, DOM/input, storage, screenshot, snapshot, network-capture, and raw CDP operations for one page target.
- * @needs       src/browser/cdp-client.ts CDPCommandClient, dom-helpers.ts, snapshot-helpers.ts, src/types.ts, src/engine/browser/session-lease.ts, transactional file publication
+ * @needs       src/browser/cdp-client.ts CDPCommandClient, key-descriptor.ts, ref-target.ts, snapshot-helpers.ts, src/types.ts, src/engine/browser/session-lease.ts, transactional file publication
  * @feeds       src/browser/bridge.ts, managed-browser.ts, browser helpers, pipeline browser steps
  * @breaks      Throws exact navigation, typed load-timeout, evaluation, selector, input, screenshot, and CDP errors from the bound target.
- * @invariants  One BrowserPage owns one root or flattened-session CDP command client; non-idempotent input is never replayed after dispatch; request cancellation reaches CDP waits, commands, and screenshot publication; navigation timeout is ambiguous rather than successful; DOM-settle and auto-scroll never hide target/transport loss; navigation listeners and timers are removed on load, timeout, error, or abort; close releases only that client's state.
+ * @invariants  One BrowserPage owns one root or flattened-session CDP command client; ref input uses the latest exact renderer registry and coordinate input must fit the live CSS viewport before trusted CDP dispatch; non-idempotent input is never replayed after dispatch; request cancellation reaches CDP waits, commands, and screenshot publication; navigation timeout is ambiguous rather than successful; DOM-settle and auto-scroll never hide target/transport loss; navigation listeners and timers are removed on load, timeout, error, or abort; close releases only that client's state.
  * @side-effects Navigates and mutates a browser target, dispatches input, captures network bodies and pixels, and opens/closes one CDP connection.
  * @perf        Direct CDP operations are O(1) round trips; selector polling and snapshots scale with page complexity.
  * @concurrency CDP request ids permit overlap; broker target queues serialize mutations, and network-capture drains serialize so one response is consumed by at most one reader.
@@ -27,6 +27,13 @@ import type {
 } from "../types.js";
 import type { BrowserSessionLeaseTarget } from "../engine/browser/session-lease.js";
 import { writeFileTransactionally } from "../engine/transactional-file.js";
+import {
+  BROWSER_VIEWPORT_EXPRESSION,
+  buildBrowserRefTargetExpression,
+  requireBrowserRefTarget,
+  requireBrowserViewportPoint,
+} from "./ref-target.js";
+import { browserKeyEventPair } from "./key-descriptor.js";
 
 // ── CDP result types ────────────────────────────────────────────────
 
@@ -132,46 +139,6 @@ export interface NetworkCaptureEntry {
   timestamp: number;
   remoteIPAddress?: string;
   remotePort?: number;
-}
-
-// ── Key mapping ─────────────────────────────────────────────────────
-
-const KEY_MAP: Record<string, { key: string; code: string; keyCode: number }> =
-  {
-    Enter: { key: "Enter", code: "Enter", keyCode: 13 },
-    Tab: { key: "Tab", code: "Tab", keyCode: 9 },
-    Escape: { key: "Escape", code: "Escape", keyCode: 27 },
-    Backspace: { key: "Backspace", code: "Backspace", keyCode: 8 },
-    Delete: { key: "Delete", code: "Delete", keyCode: 46 },
-    ArrowUp: { key: "ArrowUp", code: "ArrowUp", keyCode: 38 },
-    ArrowDown: { key: "ArrowDown", code: "ArrowDown", keyCode: 40 },
-    ArrowLeft: { key: "ArrowLeft", code: "ArrowLeft", keyCode: 37 },
-    ArrowRight: { key: "ArrowRight", code: "ArrowRight", keyCode: 39 },
-    Space: { key: " ", code: "Space", keyCode: 32 },
-    Home: { key: "Home", code: "Home", keyCode: 36 },
-    End: { key: "End", code: "End", keyCode: 35 },
-    PageUp: { key: "PageUp", code: "PageUp", keyCode: 33 },
-    PageDown: { key: "PageDown", code: "PageDown", keyCode: 34 },
-  };
-
-// ── Modifier bitmask ────────────────────────────────────────────────
-
-const MODIFIER_MAP: Record<string, number> = {
-  alt: 1,
-  ctrl: 2,
-  control: 2,
-  meta: 4,
-  command: 4,
-  shift: 8,
-};
-
-function computeModifiers(modifiers?: string[]): number {
-  if (!modifiers || modifiers.length === 0) return 0;
-  let mask = 0;
-  for (const m of modifiers) {
-    mask |= MODIFIER_MAP[m.toLowerCase()] ?? 0;
-  }
-  return mask;
 }
 
 // ── Constants ───────────────────────────────────────────────────────
@@ -412,14 +379,28 @@ export class BrowserPage implements IPage {
     return result.result?.value;
   }
 
-  /**
-   * Click an element by CSS selector.
-   * Attempts CDP DOM-based click first, falls back to JS click.
-   */
-  async click(selector: string, signal?: AbortSignal): Promise<void> {
+  /** Click an element through the trusted CDP Input route. */
+  async click(
+    selector: string,
+    signal?: AbortSignal,
+    expectedSnapshotId?: string,
+  ): Promise<void> {
     let cx: number;
     let cy: number;
-    try {
+    const refExpression = buildBrowserRefTargetExpression(
+      selector,
+      expectedSnapshotId,
+    );
+    if (expectedSnapshotId !== undefined && !refExpression) {
+      throw new TypeError("A snapshot id requires a ref-bearing selector");
+    }
+    if (refExpression) {
+      const target = requireBrowserRefTarget(
+        await this.evaluate(refExpression, signal),
+      );
+      cx = target.x;
+      cy = target.y;
+    } else {
       const docResult = (await this.client.send(
         "DOM.getDocument",
         undefined,
@@ -453,14 +434,6 @@ export class BrowserPage implements IPage {
       if (!Number.isFinite(cx) || !Number.isFinite(cy)) {
         throw new Error("Element box model is invalid");
       }
-    } catch {
-      signal?.throwIfAborted();
-      const selectorJson = JSON.stringify(selector);
-      await this.evaluate(
-        `(() => { const el = document.querySelector(${selectorJson}); if (!el) throw new Error('Element not found: ' + ${selectorJson}); el.click(); })()`,
-        signal,
-      );
-      return;
     }
     await dispatchInputPair(
       this.client,
@@ -490,11 +463,25 @@ export class BrowserPage implements IPage {
     selector: string,
     text: string,
     signal?: AbortSignal,
+    mode: "insert_text" | "keystrokes" = "insert_text",
+    expectedSnapshotId?: string,
   ): Promise<void> {
-    // Focus the element first
-    await this.click(selector, signal);
-    // Insert text via CDP
-    await this.client.send("Input.insertText", { text }, undefined, signal);
+    await this.click(selector, signal, expectedSnapshotId);
+    if (mode === "insert_text") {
+      await this.client.send("Input.insertText", { text }, undefined, signal);
+      return;
+    }
+    for (const character of text) {
+      const key = character === "\n" ? "Enter" : character;
+      const keyText = character === "\n" ? "\r" : character;
+      await dispatchInputPair(
+        this.client,
+        "Input.dispatchKeyEvent",
+        { type: "keyDown", key, text: keyText },
+        { type: "keyUp", key },
+        signal,
+      );
+    }
   }
 
   /**
@@ -505,27 +492,13 @@ export class BrowserPage implements IPage {
     modifiers?: string[],
     signal?: AbortSignal,
   ): Promise<void> {
-    const mapped = KEY_MAP[key];
-    const keyValue = mapped?.key ?? key;
-    const code = mapped?.code ?? key;
-    const keyCode = mapped?.keyCode ?? 0;
-    const mod = computeModifiers(modifiers);
-
-    const baseParams: Record<string, unknown> = {
-      key: keyValue,
-      code,
-      windowsVirtualKeyCode: keyCode,
-      nativeVirtualKeyCode: keyCode,
-    };
-    if (mod) {
-      baseParams.modifiers = mod;
-    }
+    const events = browserKeyEventPair(key, modifiers);
 
     await dispatchInputPair(
       this.client,
       "Input.dispatchKeyEvent",
-      { type: "keyDown", ...baseParams },
-      { type: "keyUp", ...baseParams },
+      events.down,
+      events.up,
       signal,
     );
   }
@@ -650,6 +623,11 @@ export class BrowserPage implements IPage {
    * Coordinate-based native click via CDP mouse events.
    */
   async nativeClick(x: number, y: number, signal?: AbortSignal): Promise<void> {
+    requireBrowserViewportPoint(
+      await this.evaluate(BROWSER_VIEWPORT_EXPRESSION, signal),
+      x,
+      y,
+    );
     await dispatchInputPair(
       this.client,
       "Input.dispatchMouseEvent",
@@ -679,32 +657,13 @@ export class BrowserPage implements IPage {
     modifiers?: string[],
     signal?: AbortSignal,
   ): Promise<void> {
-    const mapped = KEY_MAP[key];
-    const keyValue = mapped?.key ?? key;
-    const code = mapped?.code ?? key;
-    const keyCode =
-      mapped?.keyCode ?? (key.length === 1 ? key.charCodeAt(0) : 0);
-    const mod = computeModifiers(modifiers);
-
-    const baseParams: Record<string, unknown> = {
-      key: keyValue,
-      code,
-      windowsVirtualKeyCode: keyCode,
-      nativeVirtualKeyCode: keyCode,
-    };
-    if (mod) {
-      baseParams.modifiers = mod;
-    }
-    // For single characters, include text for character input
-    if (key.length === 1 && !mod) {
-      baseParams.text = key;
-    }
+    const events = browserKeyEventPair(key, modifiers);
 
     await dispatchInputPair(
       this.client,
       "Input.dispatchKeyEvent",
-      { type: "keyDown", ...baseParams },
-      { type: "keyUp", ...baseParams },
+      events.down,
+      events.up,
       signal,
     );
   }

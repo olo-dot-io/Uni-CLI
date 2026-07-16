@@ -206,6 +206,7 @@ export async function operatorAction(
   name: string,
   fn: () => Promise<unknown>,
   argumentValues: Record<string, unknown> = {},
+  defaults: BrowserOperatorContextDefaults = {},
 ): Promise<void> {
   const startedAt = Date.now();
   const ctx = makeCtx(`${namespace}.${name.split(" ").join("_")}`, startedAt);
@@ -216,9 +217,9 @@ export async function operatorAction(
       program,
       namespace,
       name,
-      browserOperatorPermissionArguments(root, argumentValues),
+      browserOperatorPermissionArguments(root, argumentValues, defaults),
     );
-    const result = await withBrowserOperatorContext(root, fn);
+    const result = await withBrowserOperatorContext(root, fn, defaults);
     let data: unknown[] | Record<string, unknown>;
     if (result === undefined || result === null) {
       data = { ok: true };

@@ -52,11 +52,13 @@ describe("managed browser process lifecycle", () => {
       testRoot = mkdtempSync(join(tmpdir(), "unicli-managed-lifecycle-"));
       const runtimeRoot = join(testRoot, "runtime");
       const pidPath = join(testRoot, "browser.pid");
+      const argsPath = join(testRoot, "browser.args");
       const browserPath = join(testRoot, "fake-chromium");
       writeFileSync(
         browserPath,
         `#!/bin/sh
 user_data_dir=""
+printf '%s\n' "$@" > ${JSON.stringify(argsPath)}
 for argument in "$@"; do
   case "$argument" in
     --user-data-dir=*) user_data_dir="\${argument#*=}" ;;
@@ -87,6 +89,8 @@ while :; do sleep 1; done
       ).rejects.toMatchObject({ code: "browser_runtime_start_failed" });
 
       expect(existsSync(pidPath)).toBe(true);
+      const launchArgs = readFileSync(argsPath, "utf8").trim().split("\n");
+      expect(launchArgs.at(-1)).toBe("about:blank");
       const pid = Number.parseInt(readFileSync(pidPath, "utf8"), 10);
       expect(processIsAlive(pid)).toBe(false);
       expect(findProfileDirectories(runtimeRoot)).toEqual([]);

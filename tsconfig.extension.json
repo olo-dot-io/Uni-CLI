@@ -15,6 +15,7 @@
   "include": [
     "extension/src/**/*.ts",
     "src/browser/chrome-native-protocol.ts",
+    "src/browser/key-descriptor.ts",
     "src/browser/runtime-protocol.ts"
   ]
 }

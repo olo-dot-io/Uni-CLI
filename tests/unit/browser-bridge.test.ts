@@ -189,6 +189,52 @@ describe("broker-backed browser bridge", () => {
     expect(commands[1]).toMatchObject({ target_id: "target-owned" });
   });
 
+  it("preserves exact ownership metadata when Chrome allocates a background target", async () => {
+    const requests: BrowserBrokerRequest[] = [];
+    await startRecordingBroker(requests, (request, runtimeId) => {
+      if (request.action !== "target.command") {
+        return responseFor(request, runtimeId);
+      }
+      return {
+        id: request.id,
+        ok: true,
+        data: {
+          target_id: "chrome-target-owned",
+          runtime_id: runtimeId,
+          provider: "chrome",
+          visibility: "background",
+          owned: true,
+          tab_id: 42,
+          window_id: 7,
+          data: "https://example.com/",
+        },
+      };
+    });
+    const bridge = new BrowserBridge();
+    const page = await bridge.connect({
+      runtimeRoot: runtimeRoot!,
+      sessionId: "chrome-owned-agent",
+      turnId: "chrome-owned-turn",
+      provider: "chrome",
+      visibility: "background",
+      profilePartitionId: "chrome-owned-profile",
+    });
+
+    await expect(page.url()).resolves.toBe("https://example.com/");
+    expect(page.browserTargetIdentity()).toMatchObject({
+      target_id: "chrome-target-owned",
+      provider: "chrome",
+      visibility: "background",
+      owned: true,
+      tab_id: 42,
+      window_id: 7,
+    });
+    expect(
+      requests.find((request) => request.action === "target.command"),
+    ).not.toHaveProperty("target_id");
+    await bridge.close();
+  });
+
   it("sends a coordinate click as one broker mutation", async () => {
     const requests: BrowserBrokerRequest[] = [];
     await startRecordingBroker(requests);
@@ -464,6 +510,88 @@ describe("broker-backed browser bridge", () => {
     ).toHaveLength(0);
   });
 
+  it("searches Chrome tabs and history without allocating or caching a target", async () => {
+    const requests: BrowserBrokerRequest[] = [];
+    await startRecordingBroker(requests);
+    const bridge = new BrowserBridge();
+    const page = (await bridge.connect({
+      runtimeRoot: runtimeRoot!,
+      sessionId: "chrome-search-agent",
+      turnId: "chrome-search-turn",
+      provider: "chrome",
+      visibility: "background",
+    })) as BrowserBrokerPage;
+
+    await expect(
+      page.searchChromeContent({
+        query: "runtime broker",
+        include_history: true,
+        max_results: 3,
+      }),
+    ).resolves.toMatchObject({
+      query: "runtime broker",
+      result_count: 1,
+      ui_state_unchanged: true,
+    });
+    await bridge.close();
+
+    expect(
+      requests.filter((request) => request.action === "chrome.content.search"),
+    ).toEqual([
+      expect.objectContaining({
+        search: {
+          query: "runtime broker",
+          include_history: true,
+          max_results: 3,
+        },
+      }),
+    ]);
+    expect(
+      requests.filter((request) => request.action === "target.command"),
+    ).toHaveLength(0);
+  });
+
+  it("projects foreground agent presence and cursor movement as target-scoped commands", async () => {
+    const requests: BrowserBrokerRequest[] = [];
+    await startRecordingBroker(requests);
+    const bridge = new BrowserBridge();
+    const page = (await bridge.connect({
+      runtimeRoot: runtimeRoot!,
+      sessionId: "chrome-presence-agent",
+      turnId: "chrome-presence-turn",
+      provider: "chrome",
+      visibility: "foreground",
+    })) as BrowserBrokerPage;
+
+    await expect(page.setAgentPresence(true, "Uni-CLI")).resolves.toMatchObject(
+      {
+        status: "visible",
+        cursor_visible: false,
+      },
+    );
+    await expect(page.moveAgentCursor(120, 80)).resolves.toMatchObject({
+      status: "visible",
+      cursor_visible: true,
+      x: 120,
+      y: 80,
+    });
+    await expect(page.setAgentPresence(false)).resolves.toMatchObject({
+      status: "hidden",
+      cursor_visible: false,
+    });
+    await bridge.close();
+
+    expect(
+      requests
+        .filter((request) => request.action === "target.command")
+        .map((request) => request.command),
+    ).toEqual([
+      { method: "agent_presence", visible: true, label: "Uni-CLI" },
+      { method: "agent_cursor", x: 120, y: 80, visible: true },
+      { method: "agent_presence", visible: false },
+    ]);
+  });
+
   it("preserves screenshot files and validated network evidence across broker IPC", async () => {
     const requests: BrowserBrokerRequest[] = [];
     await startRecordingBroker(requests);
@@ -531,6 +659,7 @@ describe("broker-backed browser bridge", () => {
           runtime_id: "runtime-owned",
           provider: "managed",
           visibility: "hidden",
+          owned: true,
           data: Buffer.from("replacement-capture").toString("base64"),
         };
       },
@@ -580,6 +709,44 @@ function responseFor(
   if (request.action === "broker.status") {
     return { id: request.id, ok: true, data: status(runtimeId) };
   }
+  if (request.action === "chrome.content.search") {
+    return {
+      id: request.id,
+      ok: true,
+      data: {
+        query: request.search.query.trim(),
+        result_count: 1,
+        eligible_open_tabs: 1,
+        scanned_open_tabs: 1,
+        matched_open_tabs: 1,
+        failed_open_tabs: 0,
+        scanned_history_items: 1,
+        matched_history_items: 1,
+        ui_state_unchanged: true,
+        truncated: false,
+        limits: {
+          max_results: request.search.max_results ?? 20,
+          max_tabs: request.search.max_tabs ?? 50,
+          max_chars_per_tab: request.search.max_chars_per_tab ?? 120_000,
+          tab_concurrency: 4,
+          max_frames_per_tab: 32,
+        },
+        results: [
+          {
+            sources: ["open_tab", "history"],
+            url: "https://example.com/runtime",
+            title: "Runtime broker",
+            score: 9,
+            match_fields: ["title", "content"],
+            snippets: ["Shared runtime broker"],
+            tab_id: 42,
+            window_id: 7,
+          },
+        ],
+        failures: [],
+      },
+    };
+  }
   if (request.action !== "target.command") {
     return { id: request.id, ok: true, data: { accepted: true } };
   }
@@ -614,12 +781,31 @@ function responseFor(
     case "screenshot":
       data = Buffer.from("image-bytes").toString("base64");
       break;
+    case "agent_presence":
+      data = {
+        status: request.command.visible ? "visible" : "hidden",
+        cursor_visible: false,
+        viewport_width: 1_440,
+        viewport_height: 900,
+      };
+      break;
+    case "agent_cursor":
+      data = {
+        status: request.command.visible === false ? "hidden" : "visible",
+        cursor_visible: request.command.visible !== false,
+        viewport_width: 1_440,
+        viewport_height: 900,
+        x: request.command.x,
+        y: request.command.y,
+      };
+      break;
   }
   const result: BrowserTargetCommandResult = {
     target_id: request.target_id ?? "target-owned",
     runtime_id: runtimeId,
     provider: request.provider,
     visibility: request.visibility,
+    owned: request.provider !== "chrome",
     ...(data === undefined ? {} : { data }),
   };
   return { id: request.id, ok: true, data: result };
