@@ -33,6 +33,98 @@ describe("ChromeBrowserProvider", () => {
     provider.close();
   });
 
+  it("dispatches bounded provider-wide content search without allocating a target", async () => {
+    const provider = new ChromeBrowserProvider();
+    const hostId = randomUUID();
+    provider.registerHost(hostId, hello());
+    const searching = provider.searchContent({
+      query: "release notes",
+      include_history: true,
+      max_results: 2,
+      max_tabs: 3,
+      max_chars_per_tab: 4_096,
+    });
+
+    const command = await provider.poll(hostId);
+    expect(command).toMatchObject({
+      action: "content.search",
+      search: {
+        query: "release notes",
+        include_history: true,
+        max_results: 2,
+        max_tabs: 3,
+        max_chars_per_tab: 4_096,
+      },
+    });
+    provider.deliver(
+      hostId,
+      success(command!.request_id, {
+        query: "release notes",
+        result_count: 1,
+        eligible_open_tabs: 1,
+        scanned_open_tabs: 1,
+        matched_open_tabs: 1,
+        failed_open_tabs: 0,
+        scanned_history_items: 2,
+        matched_history_items: 1,
+        ui_state_unchanged: true,
+        truncated: false,
+        limits: {
+          max_results: 2,
+          max_tabs: 3,
+          max_chars_per_tab: 4_096,
+          tab_concurrency: 4,
+          max_frames_per_tab: 32,
+        },
+        results: [
+          {
+            sources: ["open_tab", "history"],
+            url: "https://example.com/releases",
+            title: "Release notes",
+            score: 12,
+            match_fields: ["title", "content"],
+            snippets: ["Latest release notes"],
+            tab_id: 41,
+            window_id: 7,
+            active: false,
+            last_visit_time: 123,
+            visit_count: 2,
+          },
+        ],
+        failures: [],
+      }),
+    );
+
+    await expect(searching).resolves.toMatchObject({
+      query: "release notes",
+      result_count: 1,
+      ui_state_unchanged: true,
+    });
+    expect(provider.status().target_count).toBe(0);
+    provider.close();
+  });
+
+  it("rejects malformed content-search output instead of trusting the extension", async () => {
+    const provider = new ChromeBrowserProvider();
+    const hostId = randomUUID();
+    provider.registerHost(hostId, hello());
+    const searching = provider.searchContent({ query: "bounded" });
+    const command = await provider.poll(hostId);
+    provider.deliver(
+      hostId,
+      success(command!.request_id, {
+        query: "bounded",
+        result_count: 101,
+        results: [],
+      }),
+    );
+
+    await expect(searching).rejects.toMatchObject({
+      code: "chrome_provider_protocol_invalid",
+    });
+    provider.close();
+  });
+
   it("cancels cold Chrome work without admitting a later command", async () => {
     const provider = new ChromeBrowserProvider({ hostWaitTimeoutMs: 250 });
     const controller = new AbortController();
@@ -844,6 +936,11 @@ describe("ChromeBrowserProvider", () => {
       ok: true,
       data: {
         target_id: chromeTargetId(BROWSER_SESSION_ID, 43),
+        provider: "chrome",
+        visibility: "background",
+        owned: true,
+        tab_id: 43,
+        window_id: 7,
         data: "Replacement title",
       },
     });

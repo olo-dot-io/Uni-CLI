@@ -1,12 +1,12 @@
 /**
  * @owner       src/browser/chrome-provider.ts
- * @does        Broker Chrome native-host registration, durable inventory reconciliation, long polling, command correlation, target metadata, disconnect recovery, and exact provider errors.
+ * @does        Broker Chrome native-host registration, durable inventory reconciliation, target-free bounded content search, long polling, command correlation, target metadata, disconnect recovery, and exact provider errors.
  * @needs       node:crypto, src/browser/chrome-native-protocol.ts, runtime-protocol.ts (type only)
  * @feeds       src/browser/runtime-broker.ts, native-host-main.ts, browser status/doctor
  * @breaks      ChromeProviderError on absent/conflicting/stale hosts, protocol mismatch, unknown targets/results, extension refusal, timeout, or disconnect.
- * @invariants  One live native host owns the extension channel; every command resolves exactly once; canceled queued commands are never dispatched; a dispatched deadline retires the entire host generation instead of waiting forever for a late result; authoritative replacement hello inventory invalidates missing targets and immediately re-enables retained orphan cleanup; orphan finalization and a new claim of the same tab never overlap; claimed tabs remain open while owned task tabs close.
+ * @invariants  One live native host owns the extension channel; every command resolves exactly once; content search never creates a target record; canceled queued commands are never dispatched; a dispatched deadline retires the entire host generation instead of waiting forever for a late result; authoritative replacement hello inventory invalidates missing targets and immediately re-enables retained orphan cleanup; orphan finalization and a new claim of the same tab never overlap; claimed tabs remain open while owned task tabs close.
  * @side-effects Holds long-poll promises, queues extension commands, tracks Chrome targets, and rejects work on disconnect/close.
- * @perf        O(1) command/result correlation and target lookup; tabs list cost is extension/Chrome API dependent.
+ * @perf        O(1) command/result correlation and target lookup; content-search work is extension-bounded and provider validation is O(result limit).
  * @concurrency Native commands are serialized by one host; broker target queues establish owned mutation order; per-target reconciliation promises linearize orphan cleanup before a new claim.
  * @test        tests/unit/chrome-provider.test.ts, tests/integration/browser-extension-background.test.ts
  * @stability   experimental
@@ -16,6 +16,7 @@
 import { randomUUID } from "node:crypto";
 
 import {
+  CHROME_CONTENT_SEARCH_MAX_RESULTS,
   CHROME_EXTENSION_ID,
   CHROME_NATIVE_COMMAND_DEADLINE_MS,
   CHROME_NATIVE_PROTOCOL_VERSION,
@@ -25,6 +26,10 @@ import {
   type ChromeNativeResult,
   type ChromeNativeTab,
   type ChromeNativeTarget,
+  type ChromeContentSearchFailure,
+  type ChromeContentSearchMatch,
+  type ChromeContentSearchQuery,
+  type ChromeContentSearchResult,
 } from "./chrome-native-protocol.js";
 import type { BrowserPageCommand } from "./runtime-protocol.js";
 
@@ -275,6 +280,22 @@ export class ChromeBrowserProvider {
       action: "tabs.list",
     });
     return readChromeTabs(result);
+  }
+
+  async searchContent(
+    search: ChromeContentSearchQuery,
+    signal?: AbortSignal,
+  ): Promise<ChromeContentSearchResult> {
+    const result = await this.dispatch(
+      {
+        type: "command",
+        request_id: randomUUID(),
+        action: "content.search",
+        search,
+      },
+      signal,
+    );
+    return readChromeContentSearchResult(result, search.query.trim());
   }
 
   async acquireTarget(
@@ -961,6 +982,103 @@ function readChromeTabs(value: unknown): ChromeNativeTab[] {
   return value;
 }
 
+function readChromeContentSearchResult(
+  value: unknown,
+  expectedQuery: string,
+): ChromeContentSearchResult {
+  if (!isRecord(value)) {
+    throw protocolResultError(
+      "Chrome content.search returned an invalid schema",
+    );
+  }
+  const limits = value.limits;
+  const results = value.results;
+  const failures = value.failures;
+  if (
+    value.query !== expectedQuery ||
+    !boundedCount(value.result_count, CHROME_CONTENT_SEARCH_MAX_RESULTS) ||
+    !boundedCount(value.eligible_open_tabs, 100_000) ||
+    !boundedCount(value.scanned_open_tabs, 200) ||
+    !boundedCount(value.matched_open_tabs, 200) ||
+    !boundedCount(value.failed_open_tabs, 200) ||
+    !boundedCount(value.scanned_history_items, 500) ||
+    !boundedCount(value.matched_history_items, 500) ||
+    value.ui_state_unchanged !== true ||
+    typeof value.truncated !== "boolean" ||
+    !isSearchLimits(limits) ||
+    !Array.isArray(results) ||
+    results.length !== value.result_count ||
+    !results.every(isChromeContentSearchMatch) ||
+    !Array.isArray(failures) ||
+    failures.length > 20 ||
+    !failures.every(isChromeContentSearchFailure)
+  ) {
+    throw protocolResultError(
+      "Chrome content.search returned an invalid schema",
+    );
+  }
+  return value as unknown as ChromeContentSearchResult;
+}
+
+function isSearchLimits(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  return (
+    boundedPositiveInteger(value.max_results, 100) &&
+    boundedPositiveInteger(value.max_tabs, 200) &&
+    boundedPositiveInteger(value.max_chars_per_tab, 500_000) &&
+    value.tab_concurrency === 4
+  );
+}
+
+function isChromeContentSearchMatch(
+  value: unknown,
+): value is ChromeContentSearchMatch {
+  if (!isRecord(value)) return false;
+  return (
+    Array.isArray(value.sources) &&
+    value.sources.length >= 1 &&
+    value.sources.length <= 2 &&
+    value.sources.every(
+      (source) => source === "open_tab" || source === "history",
+    ) &&
+    new Set(value.sources).size === value.sources.length &&
+    typeof value.url === "string" &&
+    value.url.length <= 4_096 &&
+    optionalBoundedString(value.title, 512) &&
+    typeof value.score === "number" &&
+    Number.isFinite(value.score) &&
+    value.score >= 0 &&
+    Array.isArray(value.match_fields) &&
+    value.match_fields.length <= 3 &&
+    value.match_fields.every(
+      (field) => field === "title" || field === "url" || field === "content",
+    ) &&
+    optionalStringArray(value.snippets, 3, 320) &&
+    optionalNonnegativeInteger(value.tab_id) &&
+    optionalNonnegativeInteger(value.window_id) &&
+    (value.active === undefined || typeof value.active === "boolean") &&
+    optionalNonnegativeFinite(value.last_accessed) &&
+    optionalNonnegativeFinite(value.last_visit_time) &&
+    optionalNonnegativeInteger(value.visit_count)
+  );
+}
+
+function isChromeContentSearchFailure(
+  value: unknown,
+): value is ChromeContentSearchFailure {
+  if (!isRecord(value)) return false;
+  return (
+    value.source === "open_tab" &&
+    isNonnegativeInteger(value.tab_id) &&
+    optionalBoundedString(value.url, 4_096) &&
+    typeof value.code === "string" &&
+    value.code.length > 0 &&
+    value.code.length <= 256 &&
+    typeof value.message === "string" &&
+    value.message.length <= 512
+  );
+}
+
 function isChromeTab(value: unknown): value is ChromeNativeTab {
   if (typeof value !== "object" || value === null || Array.isArray(value))
     return false;
@@ -980,6 +1098,54 @@ function isChromeTab(value: unknown): value is ChromeNativeTab {
 
 function isNonnegativeInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
+function boundedCount(value: unknown, maximum: number): value is number {
+  return isNonnegativeInteger(value) && value <= maximum;
+}
+
+function boundedPositiveInteger(
+  value: unknown,
+  maximum: number,
+): value is number {
+  return isNonnegativeInteger(value) && value >= 1 && value <= maximum;
+}
+
+function optionalNonnegativeInteger(value: unknown): boolean {
+  return value === undefined || isNonnegativeInteger(value);
+}
+
+function optionalNonnegativeFinite(value: unknown): boolean {
+  return (
+    value === undefined ||
+    (typeof value === "number" && Number.isFinite(value) && value >= 0)
+  );
+}
+
+function optionalBoundedString(value: unknown, maximum: number): boolean {
+  return (
+    value === undefined ||
+    (typeof value === "string" && value.length <= maximum)
+  );
+}
+
+function optionalStringArray(
+  value: unknown,
+  maximumItems: number,
+  maximumChars: number,
+): boolean {
+  return (
+    value === undefined ||
+    (Array.isArray(value) &&
+      value.length <= maximumItems &&
+      value.every(
+        (item) => typeof item === "string" && item.length <= maximumChars,
+      ))
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isOptionalString(value: unknown): boolean {

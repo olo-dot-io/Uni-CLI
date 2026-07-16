@@ -57,6 +57,7 @@ export {
   BrowserRuntimeBrokerClient,
 } from "./runtime-transport.js";
 export type {
+  BrowserAgentPresenceResult,
   BrowserBrokerError,
   BrowserBrokerRequest,
   BrowserBrokerResponse,
@@ -64,3 +65,12 @@ export type {
   BrowserPageCommand,
   BrowserTargetCommandResult,
 } from "./runtime-protocol.js";
+export type {
+  ChromeContentSearchFailure,
+  ChromeContentSearchMatch,
+  ChromeContentSearchQuery,
+  ChromeContentSearchResult,
+  ChromeContentSearchSource,
+  ChromeNativeTab,
+  ChromeNativeTarget,
+} from "./chrome-native-protocol.js";

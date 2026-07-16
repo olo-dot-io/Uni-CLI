@@ -13,6 +13,7 @@
     "activeTab",
     "alarms",
     "nativeMessaging",
+    "history",
     "storage",
     "webNavigation",
     "windows"

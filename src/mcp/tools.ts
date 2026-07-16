@@ -1,6 +1,6 @@
 /**
  * @owner       src/mcp/tools.ts
- * @does        Build compact, expanded, deferred, and computer-use MCP tool definitions with cancellable handler contracts.
+ * @does        Build compact, expanded, deferred, and computer-use MCP tool definitions, including direct desktop and Chrome control, with cancellable handler contracts.
  * @needs       registry, command contracts, MCP schemas/profiles
  * @feeds       MCP handler and every MCP transport profile
  * @breaks      Tool/schema/handler/task-support drift breaks discovery, durable mutation execution, or request cancellation across MCP clients.
@@ -30,6 +30,7 @@ import {
   COMPUTER_USE_PROMPTS,
   COMPUTER_USE_TOOLS,
 } from "./profiles/computer-use.js";
+import { BROWSER_CONTROL_TOOLS } from "./profiles/browser-control.js";
 
 export interface McpToolAnnotations {
   readOnlyHint?: boolean;
@@ -258,7 +259,7 @@ export function buildDefaultTools(): McpTool[] {
 export function selectTools(profile: string): McpTool[] {
   switch (profile) {
     case "computer-use":
-      return COMPUTER_USE_TOOLS;
+      return [...COMPUTER_USE_TOOLS, ...BROWSER_CONTROL_TOOLS];
     case "deferred":
       return buildDeferredTools();
     case "expanded":

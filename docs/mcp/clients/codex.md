@@ -14,6 +14,12 @@ Existing prompts that call `computer-use.*` tools can keep the same prefix.
 Uni-CLI routes the calls through the cross-platform compute cascade: macOS AX,
 Windows UIA, Linux AT-SPI, CDP for Electron targets, then configured fallbacks.
 
+Append `--browser-provider chrome --browser-visibility background` to `args`
+for non-focusing Chrome work. `browser_prepare` creates an inactive owned tab;
+existing user tabs stay background-read-only and use explicit `tab_id` values.
+Use `foreground` only for user-tab mutation, edge presence, or the virtual
+cursor. The profile exposes 16 desktop and 16 direct browser tools.
+
 ## Permissions
 
 On macOS, grant Accessibility to Codex or to the terminal process that launches
@@ -26,4 +32,4 @@ Linux require the platform accessibility services used by UIA and AT-SPI.
 npx -y @zenalexa/unicli mcp serve --profile computer-use
 ```
 
-The server banner should report `16 tools registered, mode=computer-use`.
+The server banner should report `32 tools registered, mode=computer-use`.

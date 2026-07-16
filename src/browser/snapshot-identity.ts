@@ -1,16 +1,25 @@
 /**
- * Fingerprint persistence for the ref-backed locator verification layer.
- *
- * On every snapshot we persist a map on the page:
- *
- *   window.__unicli_ref_identity   : Record<ref, {role, name?, bbox?, taken_at}>
- *   window.__unicli_ref_taken_at   : number (ms epoch)
- *
- * Click/type steps read this map before acting and throw TargetError if the
- * ref is stale, ambiguous, or not found. See target-errors.ts.
+ * @owner       src/browser/snapshot-identity.ts
+ * @does        Verify snapshot refs against identity metadata and the exact live-node registry before any action.
+ * @needs       src/browser/ref-target.ts, target-errors.ts, src/types.ts
+ * @feeds       browser click/type/query steps and direct computer-use browser tools
+ * @breaks      Missing, detached, mismatched, or ambiguous refs throw typed target errors; plain CSS selectors retain their non-ref contract.
+ * @invariants  Snapshot-generated refs resolve through the latest renderer node registry; the DOM-query path exists only for legacy fingerprints without that registry.
+ * @side-effects Reads renderer snapshot globals; the exported legacy persistence script refreshes registry state for `browser find`.
+ * @perf        O(1) for snapshot-generated refs; legacy verification is O(document matches).
+ * @concurrency A navigation or newer snapshot makes the previous registry unavailable or stale before mutation.
+ * @test        tests/unit/browser/target-errors.test.ts, tests/integration/browser-ref-capabilities.test.ts
+ * @stability   experimental
+ * @since       2026-04-24
  */
 
 import type { IPage } from "../types.js";
+import {
+  BrowserRefTargetError,
+  buildBrowserRefTargetExpression,
+  extractBrowserSnapshotRef,
+  readBrowserRefTargetResult,
+} from "./ref-target.js";
 import {
   ambiguous,
   notFound,
@@ -29,6 +38,7 @@ import {
 export const FINGERPRINT_PERSIST_JS = `(() => {
   const takenAt = Date.now();
   const map = {};
+  const nodesByRef = new Map();
   const nodes = document.querySelectorAll('[data-unicli-ref]');
   for (let i = 0; i < nodes.length; i++) {
     const el = nodes[i];
@@ -50,8 +60,11 @@ export const FINGERPRINT_PERSIST_JS = `(() => {
     if (name) entry.name = name;
     if (bbox) entry.bbox = bbox;
     map[ref] = entry;
+    nodesByRef.set(ref, el);
   }
   window.__unicli_ref_identity = map;
+  window.__unicli_ref_nodes = nodesByRef;
+  window.__unicli_ref_snapshot_id = 'find:' + String(takenAt);
   window.__unicli_ref_taken_at = takenAt;
   return takenAt;
 })()`;
@@ -76,11 +89,7 @@ export async function getSnapshotAge(page: IPage): Promise<number | null> {
  * CSS selectors bypass verification — backward compat).
  */
 export function extractRef(selector: string): string | null {
-  const match = /\[data-unicli-ref=(?:"([^"]+)"|'([^']+)'|([^\]\s]+))\]/.exec(
-    selector,
-  );
-  if (!match) return null;
-  return match[1] ?? match[2] ?? match[3] ?? null;
+  return extractBrowserSnapshotRef(selector);
 }
 
 /**
@@ -157,6 +166,31 @@ export async function verifyRef(page: IPage, selector: string): Promise<void> {
       age ?? undefined,
       candidates.length ? candidates : undefined,
     );
+  }
+  const targetExpression = buildBrowserRefTargetExpression(selector);
+  if (targetExpression) {
+    const target = readBrowserRefTargetResult(
+      await page.evaluate(targetExpression),
+    );
+    if (target.status === "found") return;
+    if (target.status !== "registry_unavailable") {
+      const candidates = await listCandidates(page);
+      if (target.status === "stale") {
+        throw staleRef(
+          ref,
+          (await getSnapshotAge(page)) ?? undefined,
+          candidates.length ? candidates : undefined,
+        );
+      }
+      if (
+        target.status === "unsupported_frame" ||
+        target.status === "not_interactable" ||
+        target.status === "occluded"
+      ) {
+        throw new BrowserRefTargetError(target.status, ref);
+      }
+      throw notFound(ref, candidates.length ? candidates : undefined);
+    }
   }
   // Count via the canonical ref selector so ref uniqueness is verified,
   // not the caller's compound selector (e.g. `button[data-unicli-ref="3"].primary`).

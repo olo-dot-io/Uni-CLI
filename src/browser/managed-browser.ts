@@ -4,7 +4,7 @@
  * @needs       node:child_process types/inspection, node:crypto, node:fs, node:path, src/browser/cdp-client.ts, launcher.ts, local-profiles.ts, page.ts, profile-seed.ts, src/engine/user-home.ts, src/transport/process-owner.ts
  * @feeds       src/browser/runtime-broker.ts
  * @breaks      ManagedBrowserError on unavailable binaries/profiles, conflicting partition policy, startup failure, stale runtime identity, CDP failure, and teardown failure.
- * @invariants  One process owner writes a profile partition; every leased page has a distinct target; failed isolated allocation disposes its BrowserContext when its identity is known, while an ambiguous allocation retires the whole runtime before returning; target/context teardown converges by post-command inventory even when an ACK is lost; hidden runtimes always use headless=new; stale runtimes are retired before replacement; browser PIDs are identity evidence and never cleanup authority; runtime evidence and ephemeral profiles are removed only after the persisted POSIX process group or Windows Job owner is absent; crash recovery discards targets whose leases died with the broker.
+ * @invariants  One process owner writes a profile partition; every leased page has a distinct target; failed isolated allocation disposes its BrowserContext when its identity is known, while an ambiguous allocation retires the whole runtime before returning; target/context teardown converges by post-command inventory even when an ACK is lost; hidden runtimes always use headless=new with an explicit about:blank startup target so Chromium publishes DevToolsActivePort; stale runtimes are retired before replacement; browser PIDs are identity evidence and never cleanup authority; runtime evidence and ephemeral profiles are removed only after the persisted POSIX process group or Windows Job owner is absent; crash recovery discards targets whose leases died with the broker.
  * @side-effects Creates mode-restricted runtime/profile files, spawns or recovers Chromium, opens CDP sockets, and closes targets/processes.
  * @perf        Browser launch is lazy; runtime liveness transitions are coalesced per partition; target allocation is one browser-level CDP call plus one target WebSocket.
  * @concurrency Concurrent liveness checks, stale-runtime retirement, and launches for one partition share one transition; distinct partitions and targets progress independently.
@@ -972,6 +972,7 @@ async function launchHeadlessBrowser(input: {
   if (input.profileDirectory) {
     args.push(`--profile-directory=${input.profileDirectory}`);
   }
+  args.push("about:blank");
   rmSync(input.ownerReportPath, { force: true });
   const launch = spawnOwnedProcess(input.browserPath, args, {
     stdio: ["ignore", "ignore", "pipe"],

@@ -1,3 +1,18 @@
+/**
+ * @owner       src::mcp::profiles::computer-use
+ * @does        Project compute contracts plus direct browser control into cancellable, permission-enforced MCP computer-use tools and visual evidence.
+ * @needs       compute authorization/capture/action modules, transport bus, direct browser-control profile, MCP tool contracts
+ * @feeds       compact and computer-use MCP profiles
+ * @breaks      Tool handlers must never create overlays, transports, files, clipboard writes, desktop actions, or browser targets before authorization.
+ * @invariants  Every tool is authorized from canonical pre-transform arguments; request AbortSignal reaches the final transport and capture side effects; browser preparation, snapshot refs, target ownership, and foreground presence remain explicit.
+ * @side-effects Controls local apps and browsers and may persist explicitly requested capture references.
+ * @perf        One permission evaluation plus one selected compute cascade per ordinary call; direct browser tools retain their own bounded command budgets.
+ * @concurrency MCP request signals isolate cancellation; the transport bus, ref store, and Browser Runtime Broker retain their documented scopes.
+ * @test        tests/unit/mcp/tools.test.ts, tests/unit/mcp-server.test.ts, tests/unit/mcp/browser-control.test.ts
+ * @stability   experimental
+ * @since       2026-07-15
+ */
+
 import { getBus } from "../../transport/bus.js";
 import {
   executeComputeAction,
@@ -165,6 +180,12 @@ export const COMPUTER_USE_PROMPTS: McpPrompt[] = [
       "Always re-snapshot after actions that may have changed the UI.",
       "Prefer background actions. Set focus only when the target app needs keyboard focus.",
       "Attach CDP to Electron apps when desktop accessibility misses renderer content.",
+      "For owned work, call browser_prepare: Chrome creates an inactive owned tab, while managed and remote targets follow their configured policies.",
+      "For an existing Chrome page, call browser_tabs and pass its explicit tab_id; browser_search scans bounded open-page/frame text and optional history without focus or debugger attachment.",
+      "Call browser_state before ref-based browser_click/browser_type and reuse only refs from that snapshot; navigation or a newer snapshot invalidates older refs. Browser click also accepts one explicit viewport point for canvas-style targets.",
+      "Browser state traverses open shadow roots and same-origin frames; cross-origin/OOPIF DOM refs are unsupported and reported rather than guessed.",
+      "Use browser_screenshot, browser_press, browser_scroll, browser_dialogs/browser_dialog, and browser_downloads for exact target supervision.",
+      "Page edge presence and the virtual cursor require --browser-provider chrome --browser-visibility foreground and an explicit tab_id.",
     ].join("\n"),
   },
 ];
@@ -417,17 +438,3 @@ function readCaptureFormat(
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-/**
- * @owner       src::mcp::profiles::computer-use
- * @does        Project compute contracts into cancellable, permission-enforced MCP computer-use tools and visual evidence.
- * @needs       compute authorization/capture/action modules, transport bus, MCP tool contracts
- * @feeds       compact and computer-use MCP profiles
- * @breaks      Tool handlers must never create overlays, transports, files, clipboard writes, or desktop actions before authorization.
- * @invariants  Every tool is authorized from canonical pre-transform arguments; request AbortSignal reaches the final transport and capture side effects.
- * @side-effects Controls local apps and browsers and may persist explicitly requested capture references.
- * @perf        One permission evaluation plus one selected compute cascade per ordinary call.
- * @concurrency MCP request signals isolate cancellation; the transport bus and ref store retain their documented process scope.
- * @test        tests/unit/mcp/tools.test.ts, tests/unit/mcp-server.test.ts
- * @stability   stable
- * @since       2026-07-15
- */

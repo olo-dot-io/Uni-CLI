@@ -67,6 +67,7 @@ const READ_ACTIONS = new Set([
   "get_value",
   "query",
   "remote",
+  "search",
   "sessions",
   "state",
   "status",

@@ -391,7 +391,7 @@ describe("MCP server — computer-use profile", () => {
     );
   });
 
-  it("lists the 16 computer-use tools over stdio", async () => {
+  it("lists desktop and bounded Chrome computer-use tools over stdio", async () => {
     const response = await sendRequest(proc, {
       jsonrpc: "2.0",
       id: 102,
@@ -417,6 +417,22 @@ describe("MCP server — computer-use profile", () => {
       "computer-use.wait",
       "computer-use.observe",
       "computer-use.assert",
+      "computer-use.browser_tabs",
+      "computer-use.browser_prepare",
+      "computer-use.browser_state",
+      "computer-use.browser_screenshot",
+      "computer-use.browser_navigate",
+      "computer-use.browser_click",
+      "computer-use.browser_type",
+      "computer-use.browser_press",
+      "computer-use.browser_scroll",
+      "computer-use.browser_search",
+      "computer-use.browser_claim",
+      "computer-use.browser_dialogs",
+      "computer-use.browser_dialog",
+      "computer-use.browser_downloads",
+      "computer-use.browser_presence",
+      "computer-use.browser_cursor",
     ]);
   });
 

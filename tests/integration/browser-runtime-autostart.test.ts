@@ -1,8 +1,16 @@
 import { randomUUID } from "node:crypto";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { createServer, type Server, type Socket } from "node:net";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -20,7 +28,15 @@ import {
 import {
   BrowserRuntimeBrokerServer,
   browserBrokerPaths,
+  retireBrowserRuntimeBroker,
 } from "../../src/browser/runtime-transport.js";
+import {
+  processOwnerExists,
+  spawnOwnedProcess,
+  terminateOwnedProcess,
+} from "../../src/transport/process-owner.js";
+
+const require = createRequire(import.meta.url);
 
 let runtimeRoot: string | null = null;
 let manualServer: BrowserRuntimeBrokerServer | null = null;
@@ -151,6 +167,95 @@ describe("browser broker lazy auto-start", () => {
         requestTimeoutMs: 1_000,
       }),
     ).resolves.toMatchObject({ spawned: true });
+  });
+
+  it("retires an unreachable older broker generation before starting the current protocol", async () => {
+    runtimeRoot = mkdtempSync(join(tmpdir(), "unicli-broker-retire-old-"));
+    const helper = join(
+      process.cwd(),
+      "tests",
+      "helpers",
+      "runtime-broker-main.ts",
+    );
+    // REASON: a previous-version broker process is an external compatibility boundary; this real process fixture reproduces its owner-only stale descriptor and vanished socket.
+    const launch = spawnOwnedProcess(
+      process.execPath,
+      [
+        "--import",
+        pathToFileURL(require.resolve("tsx")).href,
+        helper,
+        runtimeRoot,
+      ],
+      { cwd: process.cwd(), stdio: "ignore" },
+    );
+    const identity = await launch.identity;
+    try {
+      await expect
+        .poll(
+          () => existsSync(browserBrokerPaths(runtimeRoot!).descriptorPath),
+          { timeout: 5_000, interval: 20 },
+        )
+        .toBe(true);
+
+      await expect(
+        retireBrowserRuntimeBroker({
+          runtimeRoot,
+          requestTimeoutMs: 100,
+        }),
+      ).resolves.toMatchObject({
+        protocol_version: BROWSER_BROKER_PROTOCOL_VERSION - 1,
+        forced: true,
+      });
+      expect(processOwnerExists(identity)).toBe(false);
+      const paths = browserBrokerPaths(runtimeRoot);
+      expect(existsSync(paths.descriptorPath)).toBe(false);
+      expect(existsSync(paths.lockPath)).toBe(false);
+
+      const current = await ensureBrowserRuntimeBroker({ runtimeRoot });
+      expect(current.status.version).toBe(BROWSER_BROKER_PROTOCOL_VERSION);
+      expect(current.status.providers.managed).toEqual([]);
+      expect(current.status.providers.chrome.connected).toBe(false);
+    } finally {
+      if (processOwnerExists(identity))
+        await terminateOwnedProcess(launch.child);
+    }
+  });
+
+  it("refuses stale endpoint files that point at an unrelated live process", async () => {
+    runtimeRoot = mkdtempSync(join(tmpdir(), "unicli-broker-retire-refuse-"));
+    const paths = browserBrokerPaths(runtimeRoot);
+    const runtimeId = randomUUID();
+    const startedAt = new Date().toISOString();
+    writeFileSync(
+      paths.lockPath,
+      `${JSON.stringify({
+        pid: process.pid,
+        runtime_id: runtimeId,
+        created_at: startedAt,
+      })}\n`,
+      { mode: 0o600 },
+    );
+    writeFileSync(
+      paths.descriptorPath,
+      `${JSON.stringify({
+        product: BROWSER_BROKER_PRODUCT,
+        protocol: BROWSER_BROKER_PROTOCOL,
+        version: Math.max(1, BROWSER_BROKER_PROTOCOL_VERSION - 1),
+        runtime_id: runtimeId,
+        pid: process.pid,
+        socket_path: paths.socketPath,
+        auth_token: "unrelated-process-token-unrelated-process-token",
+        started_at: startedAt,
+      })}\n`,
+      { mode: 0o600 },
+    );
+
+    await expect(
+      retireBrowserRuntimeBroker({ runtimeRoot, requestTimeoutMs: 100 }),
+    ).rejects.toMatchObject({ code: "browser_broker_endpoint_invalid" });
+    expect(() => process.kill(process.pid, 0)).not.toThrow();
+    expect(existsSync(paths.descriptorPath)).toBe(true);
+    expect(existsSync(paths.lockPath)).toBe(true);
   });
 
   it("probes a secret-bearing legacy endpoint before refusing a second owner", async () => {

@@ -1,17 +1,19 @@
 /**
  * @owner       src/mcp/handler.ts
  * @does        Dispatch MCP JSON-RPC methods, standard durable Tasks, and each tool call inside its transport-derived browser invocation scope.
- * @needs       registry/discovery, MCP tools/tasks/dispatch/elicitation, browser invocation context/scope, generate permission, constants
+ * @needs       registry/discovery, MCP tools/tasks/dispatch/elicitation, browser invocation context/scope/runtime probe, generate permission, constants
  * @feeds       MCP stdio, simple HTTP, and Streamable HTTP transports
  * @breaks      Invalid methods/arguments return JSON-RPC errors; tool and browser-finalization failures propagate to the owning transport.
- * @invariants  Every tools/call receives one Agent session/turn identity before any browser-capable command runs; mutating tools require task augmentation; tasks are scoped to the transport session that created them.
- * @side-effects Executes registered tools, adapters, elicitation resolution, and browser turn finalizers.
+ * @invariants  Every tools/call receives one Agent session/turn identity before any browser-capable command runs; mutating tools require task augmentation; tasks are scoped to the transport session that created them; transport close settles tasks before ending every no-longer-referenced Agent browser session without starting an absent broker, and retains cleanup ownership until every available broker acknowledgement succeeds.
+ * @side-effects Executes registered tools, adapters, elicitation resolution, browser turn finalizers, and transport-owned browser-session cleanup.
  * @perf        Tool lookup is linear in the selected MCP profile; browser scope setup is O(1).
- * @concurrency Async-local browser scopes isolate overlapping tool calls across MCP sessions and turns.
- * @test        tests/unit/mcp/tools.test.ts, tests/unit/mcp-browser-invocation.test.ts
+ * @concurrency Async-local browser scopes isolate overlapping tool calls across MCP sessions and turns; transport cleanup is serialized so closeSession/closeAll cannot double-release one broker session.
+ * @test        tests/unit/mcp/tools.test.ts, tests/unit/mcp-browser-invocation.test.ts, tests/unit/mcp/browser-control.test.ts
  * @stability   stable
  * @since       2026-04-01
  */
+
+import { randomUUID } from "node:crypto";
 
 import { getAllAdapters, listCommands, resolveCommand } from "../registry.js";
 import { listCoreDiscoveryCommands } from "../discovery/core-catalog.js";
@@ -30,6 +32,8 @@ import {
   type BrowserProvider,
 } from "../browser/invocation-scope.js";
 import type { BrowserVisibility } from "../browser/runtime-session.js";
+import { probeBrowserRuntimeBroker } from "../browser/runtime-launch.js";
+import { BrokerTransportError } from "../browser/runtime-transport.js";
 import type {
   JsonRpcHandler,
   JsonRpcRequest,
@@ -473,6 +477,7 @@ async function handleToolsCall(
   tools: McpTool[],
   browserPolicy: McpBrowserPolicy,
   requestContext?: McpRequestContext,
+  onBrowserInvocation?: (agentSessionId: string) => void,
 ): Promise<JsonRpcResponse> {
   const params = req.params as
     | { name: string; arguments?: Record<string, unknown> }
@@ -489,6 +494,7 @@ async function handleToolsCall(
     mcpSessionId: requestContext?.mcpSessionId,
     metadata: req.params?._meta,
   });
+  onBrowserInvocation?.(invocationContext.agent_session_id);
   const scope = createBrowserInvocationScope({
     context: invocationContext,
     ...browserPolicy,
@@ -558,6 +564,26 @@ export function buildHandler(
   const browserPolicy = createMcpBrowserPolicy(options.browserPolicy);
   const taskManager = new McpTaskManager();
   const advertisedTools = tools.map(withDefaultTaskSupport);
+  const browserSessionsByTransport = new Map<string, Set<string>>();
+  let browserCleanupTail = Promise.resolve();
+  const serializeBrowserCleanup = (
+    cleanup: () => Promise<void>,
+  ): Promise<void> => {
+    const result = browserCleanupTail.then(cleanup, cleanup);
+    browserCleanupTail = result.catch(() => undefined);
+    return result;
+  };
+  const rememberBrowserInvocation = (
+    transportSessionId: string,
+    agentSessionId: string,
+  ): void => {
+    let sessions = browserSessionsByTransport.get(transportSessionId);
+    if (!sessions) {
+      sessions = new Set();
+      browserSessionsByTransport.set(transportSessionId, sessions);
+    }
+    sessions.add(agentSessionId);
+  };
   const handleRequest: JsonRpcHandler = function handleRequest(
     req: JsonRpcRequest,
     requestContext?: McpRequestContext,
@@ -614,6 +640,8 @@ export function buildHandler(
                 advertisedTools,
                 browserPolicy,
                 taskContext,
+                (agentSessionId) =>
+                  rememberBrowserInvocation(sessionId, agentSessionId),
               ),
           });
         }
@@ -623,6 +651,8 @@ export function buildHandler(
           advertisedTools,
           browserPolicy,
           requestContext,
+          (agentSessionId) =>
+            rememberBrowserInvocation(sessionId, agentSessionId),
         );
       }
       case "tasks/get":
@@ -660,10 +690,78 @@ export function buildHandler(
         return undefined;
     }
   };
-  handleRequest.closeSession = (sessionId, reason) =>
-    taskManager.closeSession(sessionId, reason);
-  handleRequest.closeAll = (reason) => taskManager.closeAll(reason);
+  handleRequest.closeSession = async (sessionId, reason) => {
+    await taskManager.closeSession(sessionId, reason);
+    await serializeBrowserCleanup(async () => {
+      const agentSessionIds = browserSessionsToEndForTransport(
+        browserSessionsByTransport,
+        sessionId,
+      );
+      await endBrowserAgentSessions(agentSessionIds);
+      browserSessionsByTransport.delete(sessionId);
+    });
+  };
+  handleRequest.closeAll = async (reason) => {
+    await taskManager.closeAll(reason);
+    await serializeBrowserCleanup(async () => {
+      const agentSessionIds = new Set(
+        [...browserSessionsByTransport.values()].flatMap((sessions) => [
+          ...sessions,
+        ]),
+      );
+      await endBrowserAgentSessions([...agentSessionIds]);
+      browserSessionsByTransport.clear();
+    });
+  };
   return handleRequest;
+}
+
+function browserSessionsToEndForTransport(
+  sessionsByTransport: Map<string, Set<string>>,
+  transportSessionId: string,
+): string[] {
+  const closing = sessionsByTransport.get(transportSessionId);
+  if (!closing) return [];
+  const retained = new Set(
+    [...sessionsByTransport.entries()].flatMap(([sessionId, sessions]) =>
+      sessionId === transportSessionId ? [] : [...sessions],
+    ),
+  );
+  return [...closing].filter((agentSessionId) => !retained.has(agentSessionId));
+}
+
+async function endBrowserAgentSessions(
+  agentSessionIds: readonly string[],
+): Promise<void> {
+  const results = await Promise.allSettled(
+    agentSessionIds.map(endBrowserAgentSession),
+  );
+  const errors = results.flatMap((result) =>
+    result.status === "rejected" ? [result.reason as unknown] : [],
+  );
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1) {
+    throw new AggregateError(errors, "Browser Agent session cleanup failed");
+  }
+}
+
+async function endBrowserAgentSession(agentSessionId: string): Promise<void> {
+  try {
+    const { client } = await probeBrowserRuntimeBroker();
+    await client.requestOrThrow({
+      id: randomUUID(),
+      action: "session.end",
+      agent_session_id: agentSessionId,
+    });
+  } catch (error) {
+    if (
+      error instanceof BrokerTransportError &&
+      error.code === "browser_broker_unavailable"
+    ) {
+      return;
+    }
+    throw error;
+  }
 }
 
 function withDefaultTaskSupport(tool: McpTool): McpTool {

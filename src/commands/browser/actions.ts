@@ -1,10 +1,10 @@
 /**
  * @owner   src/commands/browser/actions.ts
- * @does    Register browser action CLI handlers and wrap actions with broker invocation identity, evidence, and target guards.
+ * @does    Register browser action, cross-tab content-search, and foreground agent-presence CLI handlers and wrap actions with broker invocation identity, evidence, and target guards.
  * @needs   commander, chalk, fs/path, src/browser observe/snapshot/runtime broker, ./runtime, ./authoring, src/engine/browser
  * @feeds   src/commands/browser/index.ts, src/commands/operate.ts, tests/unit/commands/browser.test.ts
  * @breaks  Action, lease, broker/provider, and evidence failures propagate as command errors or evidence envelopes. No fallback.
- * @invariants Every page mutation executes through BrowserBrokerPage under one explicit invocation identity and target lease.
+ * @invariants Every page mutation executes through BrowserBrokerPage under one explicit invocation identity and target lease; provider-wide search carries the same identity but allocates no target; visible presence requires an explicit foreground scope.
  * @side-effects Navigates pages, mutates browser targets, reads/writes evidence files, and may print operator output.
  * @perf     Action latency is dominated by broker IPC and provider work; state reads avoid allocating additional targets.
  * @concurrency The broker serializes commands per target while distinct Agent sessions may run concurrently.
@@ -665,6 +665,38 @@ function parseDownloadLimit(rawLimit: string | undefined): number {
   return Math.max(1, Math.min(50, Math.trunc(parsed)));
 }
 
+function parseBoundedCliInteger(
+  raw: string | undefined,
+  label: string,
+  minimum: number,
+  maximum: number,
+): number | undefined {
+  if (raw === undefined) return undefined;
+  if (!/^\d+$/.test(raw)) {
+    throw new Error(`${label} must be an integer`);
+  }
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
+    throw new Error(
+      `${label} must be from ${String(minimum)} to ${String(maximum)}`,
+    );
+  }
+  return value;
+}
+
+function parseHistoryTimestamp(
+  raw: string | undefined,
+  label: string,
+): number | undefined {
+  if (raw === undefined) return undefined;
+  const numeric = /^\d+$/.test(raw) ? Number(raw) : Number.NaN;
+  const value = Number.isSafeInteger(numeric) ? numeric : Date.parse(raw);
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`${label} must be an ISO date or epoch milliseconds`);
+  }
+  return value;
+}
+
 function readNonNegativeInteger(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0
     ? Math.trunc(value)
@@ -1119,7 +1151,6 @@ export function registerBrowserOperatorSubcommands(
             page,
             { ref },
             async () => {
-              await verifyRef(page, selector);
               await page.click(selector);
               return { ok: true, clicked: ref };
             },
@@ -1150,10 +1181,7 @@ export function registerBrowserOperatorSubcommands(
             page,
             { ref, text },
             async () => {
-              await verifyRef(page, selector);
-              await page.click(selector);
-              await page.wait(0.3);
-              await page.insertText(text);
+              await page.type(selector, text);
               return { ok: true, ref, text };
             },
           );
@@ -1751,6 +1779,148 @@ export function registerBrowserOperatorSubcommands(
       operatorAction(program, root, namespace, "tabs", async () => {
         const page = await getOperatorPage(root, namespace);
         return await page.tabs();
+      }),
+    );
+
+  root
+    .command("search <query>")
+    .description(
+      "Search bounded content across eligible open Chrome tabs without focus or navigation",
+    )
+    .option("--history", "Also search Chrome history metadata")
+    .option("--from <time>", "History start as ISO date or epoch milliseconds")
+    .option("--to <time>", "History end as ISO date or epoch milliseconds")
+    .option("--max-results <n>", "Maximum merged results (1-100)")
+    .option("--max-tabs <n>", "Maximum recent open tabs to scan (1-200)")
+    .option(
+      "--max-chars-per-tab <n>",
+      "Maximum DOM text characters scanned per tab (1024-500000)",
+    )
+    .action(
+      (
+        query: string,
+        opts: {
+          history?: boolean;
+          from?: string;
+          to?: string;
+          maxResults?: string;
+          maxTabs?: string;
+          maxCharsPerTab?: string;
+        },
+      ) => {
+        const historyStartTime = parseHistoryTimestamp(opts.from, "--from");
+        const historyEndTime = parseHistoryTimestamp(opts.to, "--to");
+        const includeHistory =
+          opts.history === true ||
+          historyStartTime !== undefined ||
+          historyEndTime !== undefined;
+        const maxResults = parseBoundedCliInteger(
+          opts.maxResults,
+          "--max-results",
+          1,
+          100,
+        );
+        const maxTabs = parseBoundedCliInteger(
+          opts.maxTabs,
+          "--max-tabs",
+          1,
+          200,
+        );
+        const maxCharsPerTab = parseBoundedCliInteger(
+          opts.maxCharsPerTab,
+          "--max-chars-per-tab",
+          1_024,
+          500_000,
+        );
+        const search = {
+          query,
+          ...(includeHistory ? { include_history: true } : {}),
+          ...(maxResults === undefined ? {} : { max_results: maxResults }),
+          ...(maxTabs === undefined ? {} : { max_tabs: maxTabs }),
+          ...(maxCharsPerTab === undefined
+            ? {}
+            : { max_chars_per_tab: maxCharsPerTab }),
+          ...(historyStartTime === undefined
+            ? {}
+            : { history_start_time: historyStartTime }),
+          ...(historyEndTime === undefined
+            ? {}
+            : { history_end_time: historyEndTime }),
+        };
+        return operatorAction(
+          program,
+          root,
+          namespace,
+          "search",
+          async () => {
+            const page = await getOperatorPage(root, namespace);
+            return page.searchChromeContent(search);
+          },
+          search,
+          { provider: "chrome", visibility: "background" },
+        );
+      },
+    );
+
+  const agent = root
+    .command("agent")
+    .description(
+      "Render explicit foreground-only Agent presence on the controlled Chrome tab",
+    );
+  agent
+    .command("show")
+    .description("Show a steady isolated edge glow; requires --focus")
+    .option("--label <text>", "Badge label (1-80 characters)")
+    .action((opts: { label?: string }) =>
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "agent show",
+        async () => {
+          const page = await getOperatorPage(root, namespace);
+          return page.setAgentPresence(true, opts.label);
+        },
+        { label: opts.label ?? null },
+      ),
+    );
+  agent
+    .command("cursor <x> <y>")
+    .description(
+      "Move the compositor-friendly virtual cursor in CSS pixels; requires --focus and agent show",
+    )
+    .action((xRaw: string, yRaw: string) => {
+      const x = parseBoundedCliInteger(
+        xRaw,
+        "cursor x",
+        0,
+        Number.MAX_SAFE_INTEGER,
+      )!;
+      const y = parseBoundedCliInteger(
+        yRaw,
+        "cursor y",
+        0,
+        Number.MAX_SAFE_INTEGER,
+      )!;
+      return operatorAction(
+        program,
+        root,
+        namespace,
+        "agent cursor",
+        async () => {
+          const page = await getOperatorPage(root, namespace);
+          return page.moveAgentCursor(x, y);
+        },
+        { x, y },
+      );
+    });
+  agent
+    .command("hide")
+    .description("Remove edge glow and cursor; requires --focus")
+    .action(() =>
+      operatorAction(program, root, namespace, "agent hide", async () => {
+        const page = await getOperatorPage(root, namespace);
+        return page.setAgentPresence(false);
       }),
     );
 
