@@ -63,6 +63,7 @@ export function handleAdapterDryRun(parsed: ParsedArgv, io: Io): boolean {
     targetSurface,
     adapterPath,
     startedAt,
+    argumentValues: args,
   });
   if (!operationPolicy) return true;
 
@@ -115,6 +116,8 @@ export function handleAdapterPolicyGate(parsed: ParsedArgv, io: Io): boolean {
     cmdName,
     command.adapter_path,
   );
+  const argumentValues = resolveDryRunArgs(command.args, parsed.rest.slice(1));
+  if (!argumentValues) return false;
 
   const operationPolicy = evaluateManifestOperationPolicy({
     parsed,
@@ -126,6 +129,7 @@ export function handleAdapterPolicyGate(parsed: ParsedArgv, io: Io): boolean {
     targetSurface,
     adapterPath,
     startedAt,
+    argumentValues,
   });
   if (!operationPolicy) return true;
 

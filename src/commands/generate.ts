@@ -1,7 +1,7 @@
 /**
  * @owner   src/commands/generate.ts
  * @does    Run one-shot adapter authoring by exploring a URL, generating candidates, selecting one, and installing it locally.
- * @needs   commander, chalk, fs/path, browser broker bridge/site-memory, engine interceptor/endpoint-scorer/user-home, output, adapter-authoring
+ * @needs   commander, chalk, fs/path, browser broker bridge/site-memory, engine interceptor/endpoint-scorer/user-home, output, adapter-authoring, generate permission
  * @feeds   src/cli.ts, eval smoke files, ~/.unicli/adapters, tests/unit/commands/explore-generate.test.ts
  * @breaks  Browser, endpoint, candidate, and filesystem failures emit structured command envelopes. No fallback.
  */
@@ -27,7 +27,6 @@ import {
   convertToEndpointEntries,
   deriveCommandName,
   detectAuth,
-  extractSiteName,
   pickStrategy,
   uniqueName,
   type CapturedEndpointRequest,
@@ -35,9 +34,13 @@ import {
 import { recordEndpointDiscoveries } from "../browser/site-memory.js";
 import { format, detectFormat } from "../output/formatter.js";
 import { makeCtx } from "../output/envelope.js";
-import { mapErrorToExitCode } from "../output/error-map.js";
+import { errorTypeToCode, mapErrorToExitCode } from "../output/error-map.js";
 import { userHome } from "../engine/user-home.js";
 import type { OutputFormat } from "../types.js";
+import {
+  authorizeGenerateOperation,
+  resolveGenerateOperation,
+} from "./generate-permission.js";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -110,22 +113,41 @@ export function registerGenerateCommand(program: Command): void {
         const ctx = makeCtx("core.generate", startedAt);
         const rootFmt = program.opts().format as OutputFormat | undefined;
         const fmt = detectFormat(opts.json ? "json" : rootFmt);
-        const timeoutMs = (parseInt(opts.timeout, 10) || 30) * 1000;
-        const siteName = opts.site ?? extractSiteName(url);
+        const operation = resolveGenerateOperation({
+          url,
+          goal: opts.goal,
+          timeoutSeconds: opts.timeout,
+          site: opts.site,
+          interact: opts.interact,
+        });
+        const timeoutMs = operation.timeoutSeconds * 1000;
+        const siteName = operation.site;
         const jsonOnly = opts.json ?? false;
-
-        if (!jsonOnly) {
-          process.stderr.write(chalk.bold(`Generate: ${url}\n`));
-          if (opts.goal) {
-            process.stderr.write(chalk.dim(`Goal: ${opts.goal}\n`));
-          }
-          process.stderr.write(
-            chalk.dim(`Site: ${siteName} | Timeout: ${opts.timeout}s\n\n`),
-          );
-        }
-
         let bridge: BrowserBridge | undefined;
         try {
+          const rootOptions = program.opts() as {
+            permissionProfile?: string;
+            yes?: boolean;
+            rememberApproval?: boolean;
+          };
+          await authorizeGenerateOperation(operation, {
+            profile: rootOptions.permissionProfile,
+            approved: rootOptions.yes === true,
+            rememberApproval: rootOptions.rememberApproval === true,
+          });
+
+          if (!jsonOnly) {
+            process.stderr.write(chalk.bold(`Generate: ${url}\n`));
+            if (opts.goal) {
+              process.stderr.write(chalk.dim(`Goal: ${opts.goal}\n`));
+            }
+            process.stderr.write(
+              chalk.dim(
+                `Site: ${siteName} | Timeout: ${String(operation.timeoutSeconds)}s\n\n`,
+              ),
+            );
+          }
+
           // ── Phase 1: Explore ──────────────────────────────────────
           if (!jsonOnly) {
             process.stderr.write(
@@ -370,16 +392,22 @@ export function registerGenerateCommand(program: Command): void {
           console.error(chalk.dim(`  Installed to: ${destPath}`));
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
+          const structured = err as Partial<{
+            suggestion: string;
+            retryable: boolean;
+            exitCode: number;
+          }>;
           ctx.error = {
-            code: "internal_error",
+            code: errorTypeToCode(err),
             message: msg,
             suggestion:
+              structured.suggestion ??
               "Check browser connectivity with: unicli browser status",
-            retryable: true,
+            retryable: structured.retryable ?? true,
           };
           ctx.duration_ms = Date.now() - startedAt;
           console.error(format(null, undefined, fmt, ctx));
-          process.exitCode = mapErrorToExitCode(err);
+          process.exitCode = structured.exitCode ?? mapErrorToExitCode(err);
         } finally {
           await bridge?.close();
         }

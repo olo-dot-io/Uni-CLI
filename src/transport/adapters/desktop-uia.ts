@@ -1,13 +1,29 @@
 /**
- * DesktopUiaTransport — Windows UI Automation (UIA) transport.
+ * @owner       src::transport::adapters::desktop-uia
+ * @does        Route Windows UI Automation snapshots and actions through one process-contained native sidecar.
+ * @needs       sidecar lifecycle, UIA binary resolution, desktop snapshot normalization
+ * @feeds       compute cascade and direct desktop-uia transport callers
+ * @breaks      Omitting mutation delivery metadata can turn post-frame sidecar cancellation into a replayable ordinary failure; encoding snapshot failures as data makes a failed observation look successful.
+ * @invariants  Compute contract mutability reaches the sidecar; post-frame mutation cancellation remains outcome-ambiguous; snapshot failures throw for cascade fallback; action failures become structured envelopes; close is idempotent.
+ * @side-effects Starts and terminates the UIA sidecar and can mutate the Windows desktop.
+ * @perf        One serialized sidecar round trip per action or snapshot.
+ * @concurrency The sidecar owns FIFO serialization and process containment for each active request.
+ * @test        tests/unit/transport/adapters/desktop-uia.test.ts and tests/unit/transport/sidecar.test.ts
+ * @stability   stable
+ * @since       2026-07-15
  */
 
 import { err, exitCodeFor } from "../../core/envelope.js";
 import { ok } from "../../core/envelope.js";
 import { resolveSidecarBinary } from "../sidecar-binary.js";
-import { isSidecarError, StdioSidecarClient } from "../sidecar.js";
+import {
+  isSidecarError,
+  SIDECAR_CANCELLATION_PROTOCOL,
+  StdioSidecarClient,
+} from "../sidecar.js";
 import type { SidecarClient } from "../sidecar.js";
 import { normalizeDesktopSidecarError } from "./desktop-sidecar-errors.js";
+import { isOperationOutcomeAmbiguousError } from "../contained-process.js";
 import {
   snapshotFromSidecarRaw,
   type SidecarSnapshotFormat,
@@ -85,30 +101,37 @@ export class DesktopUiaTransport implements TransportAdapter {
     });
   }
 
-  async snapshot(opts?: { format?: SidecarSnapshotFormat }): Promise<Snapshot> {
+  async snapshot(opts?: {
+    format?: SidecarSnapshotFormat;
+    signal?: AbortSignal;
+  }): Promise<Snapshot> {
+    opts?.signal?.throwIfAborted();
     if (this.platform !== "win32") return this.unavailableSnapshot();
-    try {
-      const params = opts?.format ? { format: opts.format } : {};
-      const data = await this.requireSidecar().call("uia_snapshot", params);
-      return snapshotFromSidecarRaw(data, {
-        format: opts?.format,
-        transport: this.kind,
-        refs: this.refs,
-      });
-    } catch (error) {
-      return {
-        format: "json",
-        data: JSON.stringify(this.snapshotError(error)),
-      };
-    }
+    const params = opts?.format ? { format: opts.format } : {};
+    const data = await this.requireSidecar().call("uia_snapshot", params, {
+      signal: opts?.signal,
+    });
+    opts?.signal?.throwIfAborted();
+    return snapshotFromSidecarRaw(data, {
+      format: opts?.format,
+      transport: this.kind,
+      refs: this.refs,
+    });
   }
 
   async action<T = unknown>(req: ActionRequest): Promise<ActionResult<T>> {
+    req.signal?.throwIfAborted();
     if (this.platform !== "win32") return this.unavailable(req.kind);
     try {
-      const data = await this.requireSidecar().call<T>(req.kind, req.params);
+      const data = await this.requireSidecar().call<T>(req.kind, req.params, {
+        signal: req.signal,
+        cancellationDelivery:
+          req.canMutate === false ? "contained" : "outcome-ambiguous",
+      });
       return ok(data);
     } catch (error) {
+      if (isOperationOutcomeAmbiguousError(error)) throw error;
+      req.signal?.throwIfAborted();
       return this.errorFromSidecar<T>(req.kind, error);
     }
   }
@@ -124,6 +147,11 @@ export class DesktopUiaTransport implements TransportAdapter {
       this.sidecar = new StdioSidecarClient(this.sidecarCommand, [], {
         env: process.env,
       });
+    }
+    if (this.sidecar.cancellation !== SIDECAR_CANCELLATION_PROTOCOL) {
+      throw new Error(
+        `desktop-uia sidecar must implement ${SIDECAR_CANCELLATION_PROTOCOL} cancellation`,
+      );
     }
     return this.sidecar;
   }
@@ -189,19 +217,6 @@ export class DesktopUiaTransport implements TransportAdapter {
       minimum_capability: `desktop-uia.${action}`,
       exit_code: exitCodeFor("service_unavailable"),
     });
-  }
-
-  private snapshotError(error: unknown): Record<string, unknown> {
-    if (isSidecarError(error)) {
-      return { ok: false, error };
-    }
-    return {
-      ok: false,
-      error: {
-        transport: "desktop-uia",
-        reason: error instanceof Error ? error.message : String(error),
-      },
-    };
   }
 }
 

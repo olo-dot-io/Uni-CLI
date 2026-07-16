@@ -119,6 +119,14 @@ async function importNetworkCapture() {
   return import("../../../extension/src/network-capture.js");
 }
 
+function networkDispatch(tabId: number) {
+  return (
+    method: string,
+    params: Record<string, unknown>,
+    _replayOnDetach: boolean,
+  ) => chrome.debugger.sendCommand({ tabId }, method, params);
+}
+
 describe("extension network capture", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -126,11 +134,11 @@ describe("extension network capture", () => {
     vi.unstubAllGlobals();
   });
 
-  it("starts capture by attaching the debugger, enabling Network, and clearing old entries", async () => {
+  it("starts capture through the supplied debugger boundary and clears old entries", async () => {
     const { chrome, debuggerOnEvent } = installChromeMock();
     const capture = await importNetworkCapture();
 
-    await capture.startNetworkCapture(42);
+    await capture.startNetworkCapture(42, networkDispatch(42));
     debuggerOnEvent.emit({ tabId: 42 }, "Network.responseReceived", {
       requestId: "r1",
       response: {
@@ -142,12 +150,12 @@ describe("extension network capture", () => {
     });
     expect(capture.readNetworkCapture(42)).toHaveLength(1);
 
-    await capture.startNetworkCapture(42, "users");
+    await capture.startNetworkCapture(42, networkDispatch(42), "users");
 
-    expect(chrome.debugger.attach).toHaveBeenCalledWith({ tabId: 42 }, "1.3");
     expect(chrome.debugger.sendCommand).toHaveBeenCalledWith(
       { tabId: 42 },
       "Network.enable",
+      {},
     );
     expect(capture.readNetworkCapture(42)).toEqual([]);
   });
@@ -155,7 +163,7 @@ describe("extension network capture", () => {
   it("captures matching substring responses and records request method", async () => {
     const { debuggerOnEvent } = installChromeMock();
     const capture = await importNetworkCapture();
-    await capture.startNetworkCapture(42, "api/users");
+    await capture.startNetworkCapture(42, networkDispatch(42), "api/users");
 
     debuggerOnEvent.emit({ tabId: 42 }, "Network.requestWillBeSent", {
       requestId: "r1",
@@ -195,7 +203,7 @@ describe("extension network capture", () => {
   it("supports slash regex filters without the global flag", async () => {
     const { debuggerOnEvent } = installChromeMock();
     const capture = await importNetworkCapture();
-    await capture.startNetworkCapture(42, "/api\\/v1/i");
+    await capture.startNetworkCapture(42, networkDispatch(42), "/api\\/v1/i");
 
     debuggerOnEvent.emit({ tabId: 42 }, "Network.responseReceived", {
       requestId: "r1",
@@ -214,15 +222,15 @@ describe("extension network capture", () => {
     installChromeMock();
     const capture = await importNetworkCapture();
 
-    await expect(capture.startNetworkCapture(42, "/[/i")).rejects.toThrow(
-      /Invalid network capture regex/i,
-    );
+    await expect(
+      capture.startNetworkCapture(42, networkDispatch(42), "/[/i"),
+    ).rejects.toThrow(/Invalid network capture regex/i);
   });
 
   it("updates encoded size and captures response bodies best effort", async () => {
     const { chrome, debuggerOnEvent } = installChromeMock();
     const capture = await importNetworkCapture();
-    await capture.startNetworkCapture(42);
+    await capture.startNetworkCapture(42, networkDispatch(42));
 
     debuggerOnEvent.emit({ tabId: 42 }, "Network.requestWillBeSent", {
       requestId: "r1",
@@ -267,7 +275,7 @@ describe("extension network capture", () => {
     const capture = await importNetworkCapture();
 
     expect(capture.readNetworkCapture(42)).toEqual([]);
-    await capture.startNetworkCapture(42);
+    await capture.startNetworkCapture(42, networkDispatch(42));
     debuggerOnEvent.emit({ tabId: 42 }, "Network.responseReceived", {
       requestId: "r1",
       response: {
@@ -286,7 +294,7 @@ describe("extension network capture", () => {
     const { debuggerOnEvent } = installChromeMock();
     const capture = await importNetworkCapture();
 
-    await capture.startNetworkCapture(42);
+    await capture.startNetworkCapture(42, networkDispatch(42));
     debuggerOnEvent.emit({ tabId: 42 }, "Network.requestWillBeSent", {
       requestId: "reused",
       request: { method: "POST" },
@@ -319,7 +327,7 @@ describe("extension network capture", () => {
     const { chrome, debuggerOnEvent } = installChromeMock();
     const capture = await importNetworkCapture();
 
-    await capture.startNetworkCapture(42);
+    await capture.startNetworkCapture(42, networkDispatch(42));
     for (let index = 0; index < 101; index++) {
       debuggerOnEvent.emit({ tabId: 42 }, "Network.responseReceived", {
         requestId: `r${index}`,
@@ -365,7 +373,7 @@ describe("extension network capture", () => {
     });
     const capture = await importNetworkCapture();
 
-    await capture.startNetworkCapture(42);
+    await capture.startNetworkCapture(42, networkDispatch(42));
     debuggerOnEvent.emit({ tabId: 42 }, "Network.responseReceived", {
       requestId: "utf8",
       response: {
@@ -396,7 +404,7 @@ describe("extension network capture", () => {
       installChromeMock();
     const capture = await importNetworkCapture();
 
-    await capture.startNetworkCapture(42);
+    await capture.startNetworkCapture(42, networkDispatch(42));
     debuggerOnEvent.emit({ tabId: 42 }, "Network.responseReceived", {
       requestId: "r1",
       response: {
@@ -409,7 +417,7 @@ describe("extension network capture", () => {
     debuggerOnDetach.emit({ tabId: 42 }, "target_closed");
     expect(capture.readNetworkCapture(42)).toEqual([]);
 
-    await capture.startNetworkCapture(42);
+    await capture.startNetworkCapture(42, networkDispatch(42));
     debuggerOnEvent.emit({ tabId: 42 }, "Network.responseReceived", {
       requestId: "r2",
       response: {

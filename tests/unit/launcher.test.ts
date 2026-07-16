@@ -20,11 +20,28 @@ const childProcessMocks = vi.hoisted(() => ({
   }),
 }));
 
-vi.mock("node:child_process", () => ({
-  execSync: childProcessMocks.execSync,
-  execFileSync: childProcessMocks.execFileSync,
-  spawn: childProcessMocks.spawn,
-}));
+vi.mock("node:child_process", async () => {
+  const actual =
+    await vi.importActual<typeof import("node:child_process")>(
+      "node:child_process",
+    );
+  return {
+    ...actual,
+    execSync: childProcessMocks.execSync,
+    execFileSync: ((...args: Parameters<typeof actual.execFileSync>) =>
+      args[0] === "/bin/ps" ||
+      args[0] === "/usr/bin/lockf" ||
+      args[0] === "/usr/bin/flock" ||
+      args[0] === "/bin/flock"
+        ? Reflect.apply(actual.execFileSync, actual, args)
+        : Reflect.apply(
+            childProcessMocks.execFileSync,
+            undefined,
+            args,
+          )) as typeof actual.execFileSync,
+    spawn: childProcessMocks.spawn,
+  };
+});
 
 import { findChrome, getCDPPort } from "../../src/browser/launcher.js";
 
@@ -287,7 +304,7 @@ describe("launchChrome", () => {
       "browser-profiles",
       "google-chrome_Default",
     );
-    prepareSeededAutomationProfile(profile, targetUserDataDir, {
+    await prepareSeededAutomationProfile(profile, targetUserDataDir, {
       platform: "darwin",
     });
     writeFileSync(join(sourceProfilePath, "Network", "Cookies"), "new-db");

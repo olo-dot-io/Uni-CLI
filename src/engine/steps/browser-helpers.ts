@@ -21,11 +21,24 @@ import type { PipelineContext } from "../executor.js";
 
 export async function acquirePage(ctx: PipelineContext): Promise<IPage> {
   if (ctx.page) return ctx.page;
+  const discardLifecycle = currentBrowserInvocationScope() ? "turn" : "session";
   const bridge = new BrowserBridge();
   const page = await bridge.connect();
-  await injectStealth(page.sendCDP.bind(page));
-  await syncUserSessionCookies(page, ctx);
-  return page;
+  try {
+    await injectStealth(page.sendCDP.bind(page));
+    await syncUserSessionCookies(page, ctx);
+    return page;
+  } catch (initializationError) {
+    try {
+      await bridge.discard(discardLifecycle);
+    } catch (cleanupError) {
+      throw new AggregateError(
+        [initializationError, cleanupError],
+        "Browser page initialization and target cleanup both failed",
+      );
+    }
+    throw initializationError;
+  }
 }
 
 async function syncUserSessionCookies(

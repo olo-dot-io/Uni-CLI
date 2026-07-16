@@ -1,122 +1,57 @@
 /**
- * @owner       src/mcp/streamable-http/handle-post.ts
- * @does        Dispatch Streamable HTTP initialize, notification, sync, async-task, and SSE MCP POST shapes with session identity.
- * @needs       node:http/crypto, MCP constants, streamable session helpers/state
+ * @owner       src::mcp::streamable-http::handle-post
+ * @does        Validate and dispatch Streamable HTTP initialize, notification, JSON, and single-event SSE MCP POST requests with cross-connection explicit cancellation.
+ * @needs       node:http/crypto, MCP constants/OAuth principal, shared Streamable session helpers
  * @feeds       src/mcp/streamable-http/index.ts
- * @breaks      Origin, protocol, session, capacity, parse, and handler failures return the corresponding HTTP/JSON-RPC/SSE terminal state.
- * @invariants  Every non-initialize request validates protocol/session before dispatch and forwards that session to browser-capable tools.
- * @side-effects Mutates bounded session/task maps, streams SSE events, writes HTTP responses, and logs notification-only failures to stderr.
- * @perf        Bodies are bounded; task/session maps have explicit maxima; async execution avoids holding non-SSE responses open.
- * @concurrency Task status transitions and SSE writes are request-local over shared bounded maps.
- * @test        tests/unit/mcp/streamable-http.test.ts, tests/unit/mcp-browser-invocation.test.ts
+ * @breaks      Transport-owned task state or early disconnect settlement can split durable execution from the handler's authoritative MCP Tasks registry.
+ * @invariants  Every non-initialize request validates protocol/session/principal; durable task creation and ordinary requests survive socket loss; only notifications/cancelled aborts the typed live request generation; initialize is not cancellable; notifications return 202 with no JSON-RPC body.
+ * @side-effects Creates bounded sessions, registers/dispatches handlers, streams one SSE event, writes HTTP responses, and processes explicit cancellation.
+ * @perf        Request bodies are bounded; task state is not duplicated in the transport.
+ * @concurrency Each HTTP request owns one AbortController; shared durable tasks are owned exclusively by McpTaskManager.
+ * @test        tests/unit/streamable-http.test.ts, tests/unit/mcp-browser-invocation.test.ts
  * @stability   stable
  * @since       2026-04-01
  */
 
 import { randomUUID } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
+
 import { MCP_PROTOCOL_VERSION } from "../../constants.js";
+import { decodeJsonRpcRequest } from "../jsonrpc.js";
+import { getAuthenticatedPrincipal } from "../oauth.js";
+import { StreamableRequestRegistry } from "./request-registry.js";
 import {
   clientAcceptsSSE,
   corsHeaders,
   isOriginAllowed,
   jsonResponse,
+  MAX_SESSIONS,
   readBody,
   sessions,
-  asyncTasks,
-  MAX_SESSIONS,
-  MAX_ASYNC_TASKS,
   STREAMING_METHODS,
-  type AsyncTask,
   type Handler,
-  type JsonRpcRequest,
-  type JsonRpcResponse,
 } from "./session.js";
-
-// ── Async Task Handlers ───────────────────────────────────────────────────
-
-function handleTaskStatus(
-  parsed: JsonRpcRequest,
-  sessionId: string,
-): JsonRpcResponse {
-  const taskId = (parsed.params as { taskId?: string } | undefined)?.taskId;
-  if (!taskId) {
-    return {
-      jsonrpc: "2.0",
-      id: parsed.id ?? null,
-      error: { code: -32602, message: "Missing required param: taskId" },
-    };
-  }
-  const task = asyncTasks.get(taskId);
-  if (!task || task.sessionId !== sessionId) {
-    return {
-      jsonrpc: "2.0",
-      id: parsed.id ?? null,
-      error: { code: -32602, message: "Task not found" },
-    };
-  }
-  const resultPayload: Record<string, unknown> = {
-    taskId: task.id,
-    status: task.status,
-  };
-  if (task.progress) resultPayload.progress = task.progress;
-  if (task.status === "completed" && task.result) {
-    resultPayload.result = task.result;
-  }
-  if (task.status === "failed" && task.error) {
-    resultPayload.error = task.error;
-  }
-  return { jsonrpc: "2.0", id: parsed.id ?? null, result: resultPayload };
-}
-
-function handleTaskCancel(
-  parsed: JsonRpcRequest,
-  sessionId: string,
-): JsonRpcResponse {
-  const taskId = (parsed.params as { taskId?: string } | undefined)?.taskId;
-  if (!taskId) {
-    return {
-      jsonrpc: "2.0",
-      id: parsed.id ?? null,
-      error: { code: -32602, message: "Missing required param: taskId" },
-    };
-  }
-  const task = asyncTasks.get(taskId);
-  if (!task || task.sessionId !== sessionId) {
-    return {
-      jsonrpc: "2.0",
-      id: parsed.id ?? null,
-      error: { code: -32602, message: "Task not found" },
-    };
-  }
-  if (task.status === "running") {
-    task.status = "cancelled";
-  }
-  return {
-    jsonrpc: "2.0",
-    id: parsed.id ?? null,
-    result: { taskId: task.id, status: task.status },
-  };
-}
-
-// ── Body parse + session validation ────────────────────────────────────────
+import type { JsonRpcRequest, JsonRpcResponse } from "../jsonrpc.js";
 
 type PreflightResult =
   | { ok: true; parsed: JsonRpcRequest; sessionId: string | undefined }
   | { ok: false };
 
 function rpcErrorResponse(
+  req: IncomingMessage,
   res: ServerResponse,
   status: number,
   id: number | string | null,
   code: number,
   message: string,
 ): void {
-  jsonResponse(res, status, {
-    jsonrpc: "2.0",
-    id,
-    error: { code, message },
-  });
+  jsonResponse(
+    res,
+    status,
+    { jsonrpc: "2.0", id, error: { code, message } },
+    undefined,
+    req,
+  );
 }
 
 async function readAndParse(
@@ -124,20 +59,25 @@ async function readAndParse(
   res: ServerResponse,
 ): Promise<JsonRpcRequest | undefined> {
   if (!isOriginAllowed(req)) {
-    rpcErrorResponse(res, 403, null, -32600, "Forbidden: invalid Origin");
+    rpcErrorResponse(req, res, 403, null, -32_600, "Forbidden: invalid Origin");
     return undefined;
   }
   let body: string;
   try {
     body = await readBody(req);
   } catch {
-    rpcErrorResponse(res, 413, null, -32600, "Request too large");
+    rpcErrorResponse(req, res, 413, null, -32_600, "Request too large");
     return undefined;
   }
   try {
-    return JSON.parse(body) as JsonRpcRequest;
+    const decoded = decodeJsonRpcRequest(JSON.parse(body) as unknown);
+    if (!decoded.ok) {
+      jsonResponse(res, 400, decoded.response, undefined, req);
+      return undefined;
+    }
+    return decoded.request;
   } catch {
-    rpcErrorResponse(res, 400, null, -32700, "Parse error");
+    rpcErrorResponse(req, res, 400, null, -32_700, "Parse error");
     return undefined;
   }
 }
@@ -148,13 +88,27 @@ function validateSession(
   parsed: JsonRpcRequest,
   sessionId: string | undefined,
 ): boolean {
-  if (!sessionId || !sessions.has(sessionId)) {
+  const session = sessionId ? sessions.get(sessionId) : undefined;
+  if (!session) {
     rpcErrorResponse(
+      req,
       res,
       404,
       parsed.id ?? null,
-      -32600,
+      -32_600,
       "Invalid or missing MCP-Session-Id",
+    );
+    return false;
+  }
+  const principalId = getAuthenticatedPrincipal(req);
+  if (session.principalId !== principalId) {
+    rpcErrorResponse(
+      req,
+      res,
+      403,
+      parsed.id ?? null,
+      -32_600,
+      "MCP session belongs to a different authenticated client",
     );
     return false;
   }
@@ -163,25 +117,27 @@ function validateSession(
     | undefined;
   if (!clientProtocol) {
     rpcErrorResponse(
+      req,
       res,
       400,
       parsed.id ?? null,
-      -32600,
+      -32_600,
       "Missing MCP-Protocol-Version header",
     );
     return false;
   }
   if (clientProtocol !== MCP_PROTOCOL_VERSION) {
     rpcErrorResponse(
+      req,
       res,
       400,
       parsed.id ?? null,
-      -32600,
+      -32_600,
       `Unsupported protocol version: ${clientProtocol}`,
     );
     return false;
   }
-  sessions.get(sessionId)!.lastSeen = Date.now();
+  session.lastSeen = Date.now();
   return true;
 }
 
@@ -191,335 +147,207 @@ async function preflight(
 ): Promise<PreflightResult> {
   const parsed = await readAndParse(req, res);
   if (!parsed) return { ok: false };
-
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
-  if (parsed.method !== "initialize") {
-    if (!validateSession(req, res, parsed, sessionId)) return { ok: false };
+  if (
+    parsed.method !== "initialize" &&
+    !validateSession(req, res, parsed, sessionId)
+  ) {
+    return { ok: false };
   }
   return { ok: true, parsed, sessionId };
 }
 
-// ── Async task dispatch (SSE + background) ────────────────────────────────
-
-function writeSseEvent(
+function handleInitialize(
+  req: IncomingMessage,
   res: ServerResponse,
-  event: string,
-  data: Record<string, unknown>,
+  parsed: JsonRpcRequest,
+  response: JsonRpcResponse,
 ): void {
-  if (res.writableEnded) return;
-  res.write(
-    `id: ${randomUUID()}\nevent: ${event}\ndata: ${JSON.stringify(data)}\n\n`,
-  );
-  if (event !== "accepted") res.end();
-}
-
-function logLastEventId(req: IncomingMessage): void {
-  // Spec 2025-11-25 §5.3: a reconnecting client MAY send Last-Event-ID
-  // so the server can resume after the last delivered event. Replay lands
-  // in a later release — until then we log the header for forward-compat
-  // testing without advertising resumability.
-  const lastEventId = req.headers["last-event-id"] as string | undefined;
-  if (lastEventId && process.env.UNICLI_DEBUG) {
-    process.stderr.write(
-      `mcp: Last-Event-ID=${lastEventId} received (replay not enabled yet)\n`,
+  if (sessions.size >= MAX_SESSIONS) {
+    rpcErrorResponse(
+      req,
+      res,
+      503,
+      parsed.id ?? null,
+      -32_603,
+      "Server at capacity: too many active sessions",
     );
+    return;
   }
-}
-
-function startAsyncSse(
-  req: IncomingMessage,
-  res: ServerResponse,
-  parsed: JsonRpcRequest,
-  sessionId: string,
-  handler: Handler,
-): void {
-  const taskId = randomUUID();
-  const task: AsyncTask = {
-    id: taskId,
-    sessionId,
-    status: "running",
-    created: Date.now(),
-  };
-  asyncTasks.set(taskId, task);
-
-  logLastEventId(req);
-
-  res.writeHead(202, {
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive",
-    "MCP-Session-Id": sessionId,
-    ...corsHeaders(req),
+  const sessionId = randomUUID();
+  const now = Date.now();
+  sessions.set(sessionId, {
+    created: now,
+    lastSeen: now,
+    protocolVersion: MCP_PROTOCOL_VERSION,
+    ...(getAuthenticatedPrincipal(req)
+      ? { principalId: getAuthenticatedPrincipal(req) }
+      : {}),
   });
-
-  // Accepted event stays open — writeSseEvent keeps the stream alive for
-  // this event only, and closes it for complete/cancelled/error.
-  writeSseEvent(res, "accepted", { taskId, status: "running" });
-
-  Promise.resolve(
-    handler(parsed, { transport: "mcp-http", mcpSessionId: sessionId }),
-  ).then(
-    (result) => {
-      if (task.status === "cancelled") {
-        writeSseEvent(res, "cancelled", { taskId });
-        return;
-      }
-      task.status = "completed";
-      task.result = result;
-      writeSseEvent(res, "complete", { taskId, result: result ?? null });
-    },
-    (err: unknown) => {
-      if (task.status === "cancelled") {
-        writeSseEvent(res, "cancelled", { taskId });
-        return;
-      }
-      const msg = err instanceof Error ? err.message : String(err);
-      task.status = "failed";
-      task.error = msg;
-      writeSseEvent(res, "error", { taskId, error: msg });
-    },
-  );
-}
-
-function startAsyncBackground(
-  req: IncomingMessage,
-  res: ServerResponse,
-  parsed: JsonRpcRequest,
-  sessionId: string,
-  handler: Handler,
-): void {
-  const taskId = randomUUID();
-  const task: AsyncTask = {
-    id: taskId,
-    sessionId,
-    status: "running",
-    created: Date.now(),
-  };
-  asyncTasks.set(taskId, task);
-
-  Promise.resolve(
-    handler(parsed, { transport: "mcp-http", mcpSessionId: sessionId }),
-  ).then(
-    (result) => {
-      if (task.status === "cancelled") return;
-      task.status = "completed";
-      task.result = result;
-    },
-    (err: unknown) => {
-      if (task.status === "cancelled") return;
-      const msg = err instanceof Error ? err.message : String(err);
-      task.status = "failed";
-      task.error = msg;
-    },
-  );
-
   jsonResponse(
     res,
-    202,
+    200,
+    response,
     {
-      jsonrpc: "2.0",
-      id: parsed.id,
-      result: { _meta: { taskId, status: "running" } },
+      "MCP-Session-Id": sessionId,
+      "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
     },
-    { "MCP-Session-Id": sessionId, ...corsHeaders(req) },
     req,
   );
 }
 
-// ── Sub-handlers for specific request shapes ──────────────────────────────
-
-function handleTaskMethod(
+function handleResponse(
+  req: IncomingMessage,
   res: ServerResponse,
   parsed: JsonRpcRequest,
   sessionId: string | undefined,
-): boolean {
-  const fn =
-    parsed.method === "tasks/status"
-      ? handleTaskStatus
-      : parsed.method === "tasks/cancel"
-        ? handleTaskCancel
-        : undefined;
-  if (!fn || parsed.id == null) return false;
-  const headers: Record<string, string> = {};
-  if (sessionId) headers["MCP-Session-Id"] = sessionId;
-  jsonResponse(res, 200, fn(parsed, sessionId!), headers);
-  return true;
+  response: JsonRpcResponse,
+): void {
+  if (res.destroyed) return;
+  if (STREAMING_METHODS.has(parsed.method) && clientAcceptsSSE(req)) {
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      ...(sessionId ? { "MCP-Session-Id": sessionId } : {}),
+      ...corsHeaders(req),
+    });
+    res.end(
+      `id: ${randomUUID()}\nevent: message\ndata: ${JSON.stringify(response)}\n\n`,
+    );
+    return;
+  }
+  jsonResponse(
+    res,
+    200,
+    response,
+    sessionId ? { "MCP-Session-Id": sessionId } : undefined,
+    req,
+  );
 }
 
-async function handleNotification(
+async function dispatch(
+  req: IncomingMessage,
   res: ServerResponse,
   parsed: JsonRpcRequest,
   handler: Handler,
+  signal: AbortSignal,
+  sessionId?: string,
+): Promise<JsonRpcResponse | undefined> {
+  try {
+    const response = await handler(parsed, {
+      transport: "mcp-http",
+      ...(sessionId ? { mcpSessionId: sessionId } : {}),
+      signal,
+    });
+    if (signal.aborted || res.destroyed) return undefined;
+    return response;
+  } catch (error) {
+    if (signal.aborted || res.destroyed) return undefined;
+    const message = error instanceof Error ? error.message : String(error);
+    rpcErrorResponse(
+      req,
+      res,
+      500,
+      parsed.id ?? null,
+      -32_603,
+      `Internal error: ${message}`,
+    );
+    return undefined;
+  }
+}
+
+async function dispatchNotification(
+  req: IncomingMessage,
+  res: ServerResponse,
+  parsed: JsonRpcRequest,
+  handler: Handler,
+  signal: AbortSignal,
   sessionId?: string,
 ): Promise<void> {
   try {
     await handler(parsed, {
       transport: "mcp-http",
       ...(sessionId ? { mcpSessionId: sessionId } : {}),
+      signal,
     });
   } catch (error) {
-    process.stderr.write(
-      `[unicli-mcp] notification ${parsed.method} failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
-  }
-  res.writeHead(204);
-  res.end();
-}
-
-function handleAsync(
-  req: IncomingMessage,
-  res: ServerResponse,
-  parsed: JsonRpcRequest,
-  sessionId: string,
-  handler: Handler,
-): void {
-  if (asyncTasks.size >= MAX_ASYNC_TASKS) {
-    jsonResponse(
-      res,
-      503,
-      {
-        jsonrpc: "2.0",
-        id: parsed.id ?? null,
-        error: {
-          code: -32603,
-          message: "Server at capacity: too many active tasks",
-        },
-      },
-      undefined,
-      req,
-    );
-    return;
-  }
-  if (clientAcceptsSSE(req)) {
-    startAsyncSse(req, res, parsed, sessionId, handler);
-  } else {
-    startAsyncBackground(req, res, parsed, sessionId, handler);
-  }
-}
-
-function handleInitialize(
-  res: ServerResponse,
-  parsed: JsonRpcRequest,
-  response: JsonRpcResponse,
-): void {
-  if (sessions.size >= MAX_SESSIONS) {
-    jsonResponse(res, 503, {
-      jsonrpc: "2.0",
-      id: parsed.id ?? null,
-      error: {
-        code: -32603,
-        message: "Server at capacity: too many active sessions",
-      },
-    });
-    return;
-  }
-  const newSessionId = randomUUID();
-  sessions.set(newSessionId, {
-    created: Date.now(),
-    lastSeen: Date.now(),
-    protocolVersion: MCP_PROTOCOL_VERSION,
-  });
-  jsonResponse(res, 200, response, {
-    "MCP-Session-Id": newSessionId,
-    "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
-  });
-}
-
-function handleSyncResponse(
-  req: IncomingMessage,
-  res: ServerResponse,
-  parsed: JsonRpcRequest,
-  sessionId: string | undefined,
-  response: JsonRpcResponse,
-): void {
-  if (STREAMING_METHODS.has(parsed.method) && clientAcceptsSSE(req)) {
-    res.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-      "MCP-Session-Id": sessionId!,
-      ...corsHeaders(req),
-    });
-    const eventId = randomUUID();
-    res.write(
-      `id: ${eventId}\nevent: message\ndata: ${JSON.stringify(response)}\n\n`,
-    );
-    res.end();
-    return;
-  }
-  const headers: Record<string, string> = {};
-  if (sessionId) headers["MCP-Session-Id"] = sessionId;
-  jsonResponse(res, 200, response, headers);
-}
-
-async function runHandlerSafe(
-  res: ServerResponse,
-  parsed: JsonRpcRequest,
-  handler: Handler,
-  sessionId?: string,
-): Promise<JsonRpcResponse | undefined | null> {
-  try {
-    const response = await handler(parsed, {
-      transport: "mcp-http",
-      ...(sessionId ? { mcpSessionId: sessionId } : {}),
-    });
-    if (!response) {
-      res.writeHead(204);
-      res.end();
-      return null;
+    if (!signal.aborted) {
+      process.stderr.write(
+        `[unicli-mcp] notification ${parsed.method} failed: ${error instanceof Error ? error.message : String(error)}\n`,
+      );
     }
-    return response;
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    jsonResponse(res, 500, {
-      jsonrpc: "2.0",
-      id: parsed.id ?? null,
-      error: { code: -32603, message: `Internal error: ${message}` },
-    });
-    return null;
+  }
+  if (!res.destroyed && !res.writableEnded) {
+    res.writeHead(202, corsHeaders(req));
+    res.end();
   }
 }
 
-// ── POST /mcp main entry ──────────────────────────────────────────────────
-
-/**
- * Handle a POST /mcp request. Reads and parses the body, validates the
- * session + protocol version, and dispatches to the sync, async-SSE, or
- * async-background path. Notifications (no `id`) respond with 204.
- */
 export async function handlePost(
   req: IncomingMessage,
   res: ServerResponse,
   handler: Handler,
+  activeRequests: StreamableRequestRegistry,
 ): Promise<void> {
-  const pre = await preflight(req, res);
-  if (!pre.ok) return;
-  const { parsed, sessionId } = pre;
-
-  if (handleTaskMethod(res, parsed, sessionId)) return;
-
-  if (parsed.id === undefined || parsed.id === null) {
-    await handleNotification(res, parsed, handler, sessionId);
+  const preflightResult = await preflight(req, res);
+  if (!preflightResult.ok) return;
+  const { parsed, sessionId } = preflightResult;
+  if (parsed.method === "notifications/cancelled") {
+    if (sessionId) activeRequests.cancel(sessionId, parsed.params?.requestId);
+    if (!res.destroyed) {
+      res.writeHead(202, corsHeaders(req));
+      res.end();
+    }
     return;
   }
-
-  const wantsAsync =
-    parsed.method === "tools/call" &&
-    req.headers["x-mcp-async"] === "true" &&
-    sessionId;
-  if (wantsAsync) {
-    handleAsync(req, res, parsed, sessionId!, handler);
+  const lease = activeRequests.register(sessionId, parsed.id, parsed.method);
+  if (lease instanceof Error) {
+    const atCapacity = lease.message.startsWith("Server at capacity");
+    rpcErrorResponse(
+      req,
+      res,
+      atCapacity ? 503 : 409,
+      parsed.id ?? null,
+      atCapacity ? -32_603 : -32_600,
+      lease.message,
+    );
     return;
   }
-
-  const response = await runHandlerSafe(res, parsed, handler, sessionId);
-  if (response === null) return;
-  if (!response) return;
-
-  if (parsed.method === "initialize") {
-    handleInitialize(res, parsed, response);
-    return;
+  try {
+    if (!Object.hasOwn(parsed, "id")) {
+      await dispatchNotification(
+        req,
+        res,
+        parsed,
+        handler,
+        lease.signal,
+        sessionId,
+      );
+      return;
+    }
+    const response = await dispatch(
+      req,
+      res,
+      parsed,
+      handler,
+      lease.signal,
+      sessionId,
+    );
+    if (response === undefined) {
+      if (!res.destroyed && lease.signal.aborted) {
+        res.writeHead(202, corsHeaders(req));
+        res.end();
+      }
+      return;
+    }
+    if (res.destroyed) return;
+    if (parsed.method === "initialize") {
+      handleInitialize(req, res, parsed, response);
+      return;
+    }
+    handleResponse(req, res, parsed, sessionId, response);
+  } finally {
+    lease.finish();
   }
-
-  handleSyncResponse(req, res, parsed, sessionId, response);
 }

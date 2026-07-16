@@ -1,10 +1,35 @@
+/**
+ * @owner       src::transport::cascade
+ * @does        Bind one immutable compute target, select transports by capability/ref provenance, and return the first successful envelope.
+ * @needs       core envelopes, compute contracts, repair remedies, refs, transport types.
+ * @feeds       compute CLI, registered compute pipeline steps, and computer-use action execution.
+ * @breaks      Re-resolving a short alias after an await can dispatch against a different app; replaying an ambiguous mutation can duplicate host effects.
+ * @invariants  One exact ref generation feeds validation, routing, enrichment, overlay evidence, and dispatch; ambiguous aliases never dispatch; cancellation is checked before every fallback.
+ * @side-effects Opens and dispatches selected transport adapters and may allocate refs from snapshots.
+ * @perf        O(number of preferred transports + live ref buckets).
+ * @concurrency A bound ref generation is revalidated after every awaited adapter setup before dispatch.
+ * @test        tests/unit/compute-cascade.test.ts, tests/unit/compute-action-execution.test.ts
+ * @stability   stable
+ * @since       2026-06-29
+ */
+
 import { err, exitCodeFor, ok } from "../core/envelope.js";
 import {
+  computeCommandCanMutate,
   COMPUTE_REF_ACCEPTED_NAMESPACES,
   readForeignComputeRefOwner,
 } from "../compute/contracts.js";
 import { enrichErrorWithRemedy } from "../engine/repair/remedies.js";
-import { describeElementRef, type ElementRef, type RefBucket } from "./refs.js";
+import {
+  describeElementRef,
+  type ElementRef,
+  type RefBucket,
+  type RefStoreMatch,
+} from "./refs.js";
+import {
+  isOperationOutcomeAmbiguousError,
+  OperationOutcomeAmbiguousError,
+} from "./contained-process.js";
 import type {
   ActionRequest,
   ActionResult,
@@ -100,7 +125,7 @@ export const COMPUTE_PREFERENCE: Readonly<
   compute_evaluate: ["cdp-browser"],
 };
 
-const MUTATING_COMPUTE_STEPS = new Set([
+const FOCUS_NORMALIZED_COMPUTE_STEPS = new Set([
   "compute_click",
   "compute_type",
   "compute_press",
@@ -110,6 +135,15 @@ const MUTATING_COMPUTE_STEPS = new Set([
 const noStoreRefPassthrough = new WeakSet<TransportBus>();
 
 const DEFAULT_REF_TTL_MS = 60 * 60 * 1000;
+
+export interface PreparedComputeRequest {
+  request: ActionRequest;
+  refMatch?: RefStoreMatch;
+}
+
+export type ComputeRequestPreparation =
+  | { status: "ready"; prepared: PreparedComputeRequest }
+  | { status: "rejected"; result: ActionResult<unknown> };
 
 export function preferenceFor(
   step: string,
@@ -122,14 +156,13 @@ export function preferenceFor(
 }
 
 function preferenceForRequest(
-  bus: TransportBus,
-  req: ActionRequest,
+  prepared: PreparedComputeRequest,
   platform: NodeJS.Platform,
 ): readonly TransportKind[] {
+  const { request: req, refMatch } = prepared;
   const base = preferenceFor(req.kind, platform);
-  const ref = resolveParamRef(bus, req.params.ref);
   const owner = transportForStableRef(
-    ref?.stable ?? readStableRefParam(req.params.ref),
+    refMatch?.ref.stable ?? readStableRefParam(req.params.ref),
   );
   if (owner) return preferTransport(base, owner);
   if (hasCdpSessionParams(req.params)) {
@@ -175,15 +208,35 @@ export async function tryCascade(
   req: ActionRequest,
   platform: NodeJS.Platform = process.platform,
   transportCtx: TransportContext = { vars: {}, bus, refs: bus.refs },
+  preparedRequest?: PreparedComputeRequest,
 ): Promise<ActionResult<unknown>> {
-  const normalizedReq = normalizeComputeRequest(req);
+  const signal = req.signal ?? transportCtx.signal;
+  signal?.throwIfAborted();
+  const preparation = preparedRequest
+    ? { status: "ready" as const, prepared: preparedRequest }
+    : prepareComputeRequest(bus, {
+        ...req,
+        ...(signal ? { signal } : {}),
+      });
+  if (preparation.status === "rejected") return preparation.result;
+  const prepared =
+    signal && preparation.prepared.request.signal !== signal
+      ? {
+          ...preparation.prepared,
+          request: { ...preparation.prepared.request, signal },
+        }
+      : preparation.prepared;
+  const normalizedReq = prepared.request;
+  const canMutate = normalizedReq.canMutate === true;
   if (normalizedReq.kind === "compute_find") {
-    return findInRefStore(bus, normalizedReq.params);
+    const result = findInRefStore(bus, normalizedReq.params);
+    signal?.throwIfAborted();
+    return result;
   }
-  const refError = validateRequestRef(bus, normalizedReq);
+  const refError = validatePreparedRef(bus, prepared);
   if (refError) return refError;
 
-  const order = preferenceForRequest(bus, normalizedReq, platform);
+  const order = preferenceForRequest(prepared, platform);
   if (order.length === 0) {
     return withRemedy(
       err({
@@ -200,30 +253,47 @@ export async function tryCascade(
 
   const failures: string[] = [];
   for (const kind of order) {
+    signal?.throwIfAborted();
+    const staleBeforeOpen = validatePreparedRef(bus, prepared);
+    if (staleBeforeOpen) return staleBeforeOpen;
+    let actionDispatched = false;
     try {
       const adapter = bus.get(kind);
-      const adapted = adaptStep(
-        enrichComputeRequestFromRefs(bus, normalizedReq),
-        kind,
-      );
+      const adapted = adaptStep(normalizedReq, kind);
       const dispatchReq = normalizeFocusForTransport(
         adapted,
         kind,
         normalizedReq.kind,
       );
       await adapter.open(transportCtx);
-      const result = await adapter.action<unknown>(dispatchReq);
+      signal?.throwIfAborted();
+      const staleAfterOpen = validatePreparedRef(bus, prepared);
+      if (staleAfterOpen) return staleAfterOpen;
       if (
-        result.ok &&
         normalizedReq.kind === "compute_snapshot" &&
-        (kind === "desktop-ax" ||
-          kind === "desktop-uia" ||
+        (kind === "desktop-uia" ||
           kind === "desktop-atspi" ||
           kind === "cdp-browser")
       ) {
         const snapshot = await adapter.snapshot({
           format: readSnapshotFormat(normalizedReq.params),
+          ...(signal ? { signal } : {}),
         });
+        signal?.throwIfAborted();
+        return ok(enrichSnapshotWithRefProvenance(bus, snapshot, kind));
+      }
+      actionDispatched = true;
+      const result = await adapter.action<unknown>(dispatchReq);
+      if (
+        result.ok &&
+        normalizedReq.kind === "compute_snapshot" &&
+        kind === "desktop-ax"
+      ) {
+        const snapshot = await adapter.snapshot({
+          format: readSnapshotFormat(normalizedReq.params),
+          ...(signal ? { signal } : {}),
+        });
+        signal?.throwIfAborted();
         return ok(enrichSnapshotWithRefProvenance(bus, snapshot, kind));
       }
       if (result.ok) return result;
@@ -231,6 +301,21 @@ export async function tryCascade(
         `${kind}:${result.error.minimum_capability ?? result.error.reason}`,
       );
     } catch (error) {
+      if (isOperationOutcomeAmbiguousError(error)) throw error;
+      if (signal?.aborted) {
+        if (
+          canMutate &&
+          actionDispatched &&
+          isCancellationCompletion(error, signal)
+        ) {
+          throw new OperationOutcomeAmbiguousError(
+            normalizedReq.kind,
+            signal.reason,
+          );
+        }
+        if (isCancellationCompletion(error, signal)) throw signal.reason;
+        throw error;
+      }
       const message = error instanceof Error ? error.message : String(error);
       failures.push(`${kind}:${message}`);
     }
@@ -249,8 +334,72 @@ export async function tryCascade(
   );
 }
 
+export function prepareComputeRequest(
+  bus: TransportBus,
+  req: ActionRequest,
+): ComputeRequestPreparation {
+  const normalizedReq = normalizeComputeRequest({
+    ...req,
+    canMutate: computeCommandCanMutate(req.kind),
+  });
+  if (normalizedReq.kind === "compute_find") {
+    return { status: "ready", prepared: { request: normalizedReq } };
+  }
+
+  const refValue = normalizedReq.params.ref;
+  if (typeof refValue !== "string" || refValue.length === 0) {
+    return { status: "ready", prepared: { request: normalizedReq } };
+  }
+  const foreignOwner = readForeignComputeRefOwner(refValue);
+  if (foreignOwner === "unknown") {
+    return { status: "rejected", result: unresolvableRef(req.kind, refValue) };
+  }
+  if (foreignOwner !== undefined) {
+    return {
+      status: "rejected",
+      result: foreignRef(req.kind, refValue, foreignOwner),
+    };
+  }
+
+  const matches = bus.refs.matches(refValue);
+  if (matches.length > 1) {
+    return {
+      status: "rejected",
+      result: refAmbiguous(req.kind, refValue, matches),
+    };
+  }
+  const refMatch = matches[0];
+  if (!refMatch) {
+    if (transportForStableRef(refValue)) {
+      return { status: "ready", prepared: { request: normalizedReq } };
+    }
+    if (bus.refs.buckets().length === 0) {
+      if (noStoreRefPassthrough.has(bus)) {
+        return { status: "ready", prepared: { request: normalizedReq } };
+      }
+      if (!isPersistedAliasRef(refValue)) {
+        noStoreRefPassthrough.add(bus);
+        return { status: "ready", prepared: { request: normalizedReq } };
+      }
+    }
+    return {
+      status: "rejected",
+      result: refExpired(req.kind, refValue, "no live ref matched the target"),
+    };
+  }
+
+  const prepared: PreparedComputeRequest = {
+    request: enrichComputeRequestFromMatch(normalizedReq, refMatch.ref),
+    refMatch,
+  };
+  const refError = validatePreparedRef(bus, prepared);
+  return refError
+    ? { status: "rejected", result: refError }
+    : { status: "ready", prepared };
+}
+
 function normalizeComputeRequest(req: ActionRequest): ActionRequest {
-  if (!MUTATING_COMPUTE_STEPS.has(req.kind)) return req;
+  if (!FOCUS_NORMALIZED_COMPUTE_STEPS.has(req.kind)) return req;
   if (req.params.focus === true) return req;
   return {
     ...req,
@@ -266,7 +415,10 @@ function normalizeFocusForTransport(
   transport: TransportKind,
   computeKind: string,
 ): ActionRequest {
-  if (transport !== "visual" || !MUTATING_COMPUTE_STEPS.has(computeKind)) {
+  if (
+    transport !== "visual" ||
+    !FOCUS_NORMALIZED_COMPUTE_STEPS.has(computeKind)
+  ) {
     return req;
   }
   if (req.params.focus === true) return req;
@@ -279,46 +431,48 @@ function normalizeFocusForTransport(
   };
 }
 
-function validateRequestRef(
+function isCancellationCompletion(
+  error: unknown,
+  signal: AbortSignal,
+): boolean {
+  return (
+    error === signal.reason ||
+    (error instanceof Error && error.name === "AbortError")
+  );
+}
+
+function validatePreparedRef(
   bus: TransportBus,
-  req: ActionRequest,
+  prepared: PreparedComputeRequest,
 ): ActionResult<unknown> | undefined {
-  const refValue = req.params.ref;
-  if (typeof refValue !== "string" || refValue.length === 0) return undefined;
-  const foreignOwner = readForeignComputeRefOwner(refValue);
-  if (foreignOwner === "unknown") {
-    return unresolvableRef(req.kind, refValue);
-  }
-  if (foreignOwner !== undefined) {
-    return foreignRef(req.kind, refValue, foreignOwner);
-  }
-  const resolved = resolveParamRefWithBucket(bus, refValue);
-  if (!resolved) {
-    if (transportForStableRef(refValue)) return undefined;
-    if (bus.refs.buckets().length === 0) {
-      if (noStoreRefPassthrough.has(bus)) return undefined;
-      if (!isPersistedAliasRef(refValue)) {
-        noStoreRefPassthrough.add(bus);
-        return undefined;
-      }
-    }
-    return refExpired(req.kind, refValue, "no live ref matched the target");
-  }
-  if (isRefBucketExpired(resolved.bucket)) {
+  const { request, refMatch } = prepared;
+  if (!refMatch) return undefined;
+  const refValue =
+    typeof request.params.ref === "string"
+      ? request.params.ref
+      : refMatch.ref.alias;
+  if (!bus.refs.isCurrent(refMatch)) {
     return refExpired(
-      req.kind,
+      request.kind,
       refValue,
-      `ref ${refValue} expired; bucket age ${Date.now() - resolved.bucket.createdAt}ms exceeds ${readRefTtlMs()}ms`,
+      "ref binding changed before dispatch",
     );
   }
-  if (isDisabledRef(resolved.ref)) {
-    return elementDisabled(req.kind, refValue, resolved.ref);
+  if (isRefBucketExpired(refMatch.bucket)) {
+    return refExpired(
+      request.kind,
+      refValue,
+      `ref ${refValue} expired; bucket age ${Date.now() - refMatch.bucket.createdAt}ms exceeds ${readRefTtlMs()}ms`,
+    );
   }
-  if (isOffScreenRef(resolved.ref)) {
-    return elementOffScreen(req.kind, refValue, resolved.ref);
+  if (isDisabledRef(refMatch.ref)) {
+    return elementDisabled(request.kind, refValue, refMatch.ref);
   }
-  if (isMinimizedRef(resolved.ref)) {
-    return windowMinimized(req.kind, refValue, resolved.ref);
+  if (isOffScreenRef(refMatch.ref)) {
+    return elementOffScreen(request.kind, refValue, refMatch.ref);
+  }
+  if (isMinimizedRef(refMatch.ref)) {
+    return windowMinimized(request.kind, refValue, refMatch.ref);
   }
   return undefined;
 }
@@ -378,6 +532,31 @@ function refExpired(
       reason: `${reason}: ${ref}`,
       suggestion: "run `unicli compute snapshot` again, then retry",
       minimum_capability: `compute.${action}.ref_expired`,
+      exit_code: exitCodeFor("empty_result"),
+    }),
+  );
+}
+
+function refAmbiguous(
+  action: string,
+  ref: string,
+  matches: readonly RefStoreMatch[],
+): ActionResult<unknown> {
+  const candidates = matches
+    .map(
+      ({ ref: element, bucket }) =>
+        `${bucket.transport}/${bucket.scope}=${element.stable}`,
+    )
+    .join(", ");
+  return withRemedy(
+    err({
+      transport: "visual",
+      step: 0,
+      action,
+      reason: `ref_ambiguous: ${ref} matches multiple live targets (${candidates})`,
+      suggestion:
+        "pass one stable ref from the intended app, or take a fresh snapshot scoped by app or pid",
+      minimum_capability: `compute.${action}.ref_ambiguous`,
       exit_code: exitCodeFor("empty_result"),
     }),
   );
@@ -488,7 +667,7 @@ function readSnapshotFormat(
     : undefined;
 }
 
-interface RefStoreMatch {
+interface LocatedRef {
   ref: ElementRef;
   bucket: RefBucket;
 }
@@ -528,7 +707,7 @@ function findInRefStore(
   );
 }
 
-function findRefMatches(bus: TransportBus): RefStoreMatch[] {
+function findRefMatches(bus: TransportBus): LocatedRef[] {
   return bus.refs
     .buckets()
     .flatMap((bucket) =>
@@ -537,7 +716,7 @@ function findRefMatches(bus: TransportBus): RefStoreMatch[] {
 }
 
 function isAmbiguousFind(
-  matches: readonly RefStoreMatch[],
+  matches: readonly LocatedRef[],
   params: Record<string, unknown>,
 ): boolean {
   if (matches.length < 2) return false;
@@ -558,7 +737,7 @@ function scopeOf(ref: ElementRef): string {
 }
 
 function findAmbiguous(
-  matches: readonly RefStoreMatch[],
+  matches: readonly LocatedRef[],
   params: Record<string, unknown>,
 ): ActionResult<unknown> {
   return withRemedy(
@@ -685,33 +864,21 @@ function adaptStep(
   return { ...req, kind };
 }
 
-function resolveParamRef(
-  bus: TransportBus,
-  refValue: unknown,
-): ReturnType<TransportBus["refs"]["resolve"]> {
-  return resolveParamRefWithBucket(bus, refValue)?.ref;
-}
-
-function resolveParamRefWithBucket(
-  bus: TransportBus,
-  refValue: unknown,
-): { ref: ElementRef; bucket: RefBucket } | undefined {
-  if (typeof refValue !== "string") return undefined;
-  for (const bucket of bus.refs.buckets()) {
-    const ref = bucket.byAlias.get(refValue) ?? bucket.byStable.get(refValue);
-    if (ref) return { ref, bucket };
-  }
-  return undefined;
-}
-
 export function enrichComputeRequestFromRefs(
   bus: TransportBus,
   req: ActionRequest,
 ): ActionRequest {
   const refValue = req.params.ref;
-  const ref = resolveParamRef(bus, refValue);
-  if (!ref) return req;
+  if (typeof refValue !== "string") return req;
+  const matches = bus.refs.matches(refValue);
+  const match = matches.length === 1 ? matches[0] : undefined;
+  return match ? enrichComputeRequestFromMatch(req, match.ref) : req;
+}
 
+function enrichComputeRequestFromMatch(
+  req: ActionRequest,
+  ref: ElementRef,
+): ActionRequest {
   const boundsCenter =
     ref.bounds === undefined
       ? {}

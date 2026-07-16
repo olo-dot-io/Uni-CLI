@@ -8,9 +8,9 @@
 
 import { describe, it, expect } from "vitest";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import {
   DesktopAxTransport,
   type AxShell,
@@ -82,6 +82,9 @@ class FakeShell implements AxShell {
     const key = `${command}:${args.join("|")}`;
     if (this.throws[key]) throw this.throws[key];
     if (this.commandThrows[command]) throw this.commandThrows[command];
+    if (command === "screencapture") {
+      writeFileSync(String(args.at(-1)), "png bytes");
+    }
     if (this.responses[key]) {
       return { stdout: this.responses[key]!, stderr: "" };
     }
@@ -395,27 +398,30 @@ describe("DesktopAxTransport", () => {
   });
 
   it("ax_screenshot shells screencapture to the requested path", async () => {
+    const root = mkdtempSync(join(tmpdir(), "unicli-ax-transaction-"));
+    const destination = join(root, "shot.png");
     const shell = new FakeShell();
     const t = new DesktopAxTransport({ shell, platform: "darwin" });
     await t.open(makeCtx());
 
-    const res = await t.action({
-      kind: "ax_screenshot",
-      params: { path: "/tmp/unicli-ax-shot.png" },
-    });
-
-    expect(res.ok).toBe(true);
-    if (res.ok) {
-      expect(res.data).toEqual({
-        path: "/tmp/unicli-ax-shot.png",
-        mime: "image/png",
+    try {
+      const res = await t.action({
+        kind: "ax_screenshot",
+        params: { path: destination },
       });
+
+      expect(res.ok).toBe(true);
+      if (res.ok) {
+        expect(res.data).toEqual({ path: destination, mime: "image/png" });
+      }
+      expect(shell.calls[0]?.command).toBe("screencapture");
+      const stagingPath = String(shell.calls[0]?.args.at(-1));
+      expect(stagingPath).not.toBe(destination);
+      expect(dirname(stagingPath)).toBe(root);
+      expect(readFileSync(destination, "utf8")).toBe("png bytes");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
-    expect(shell.calls[0]).toEqual({
-      command: "screencapture",
-      args: ["-x", "-t", "png", "/tmp/unicli-ax-shot.png"],
-      input: undefined,
-    });
   });
 
   it("launch_app resolves known Electron apps by bundle id", async () => {

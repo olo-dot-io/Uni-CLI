@@ -1,13 +1,13 @@
 /**
  * @owner   src/compute/action-execution.ts
- * @does    Execute compute actions while producing one unified visual evidence record.
- * @needs   transport cascade, compute overlay provider, visual action evidence builders
+ * @does    Bind and execute compute actions while producing one unified visual evidence record.
+ * @needs   compute contracts, transport cascade, compute overlay provider, visual action evidence builders
  * @feeds   computer-use MCP profile, future CLI compute orchestration
- * @breaks  Divergent enrichment between overlay, dispatch, and evidence makes pointer replay untrustworthy.
- * @invariants A single enriched request feeds overlay planning, transport dispatch, and returned evidence.
+ * @breaks  Divergent enrichment between overlay, dispatch, and evidence makes pointer replay untrustworthy; overwriting an authoritative mutation result with late cancellation can cause replay.
+ * @invariants A single immutable ref generation feeds overlay planning, transport dispatch, post-capture, and returned evidence; dispatch settlement is authoritative and late cancellation only suppresses optional post-capture.
  * @side-effects Runs the selected transport and optional overlay provider.
  * @perf    One cascade execution plus optional overlay render per action.
- * @concurrency Overlay render starts before dispatch and is awaited before evidence is returned.
+ * @concurrency Ref binding happens before overlay awaits and is revalidated by the cascade before dispatch.
  * @test    tests/unit/compute-action-execution.test.ts
  * @stability experimental
  * @since   0.224.0
@@ -27,9 +27,11 @@ import {
   type ComputeOverlayProvider,
 } from "./overlay.js";
 import {
-  enrichComputeRequestFromRefs,
+  prepareComputeRequest,
   tryCascade,
+  type PreparedComputeRequest,
 } from "../transport/cascade.js";
+import { computeCommandCanMutate } from "./contracts.js";
 import type {
   ActionRequest,
   ActionResult,
@@ -55,7 +57,16 @@ export async function executeComputeAction(
   req: ActionRequest,
   opts: ComputeActionExecutionOptions,
 ): Promise<ComputeActionExecution> {
-  const evidenceRequest = enrichComputeRequestFromRefs(bus, req);
+  const signal = req.signal ?? opts.transportContext?.signal;
+  signal?.throwIfAborted();
+  const dispatchRequest = {
+    ...req,
+    ...(signal ? { signal } : {}),
+  };
+  const preparation = prepareComputeRequest(bus, dispatchRequest);
+  const prepared =
+    preparation.status === "ready" ? preparation.prepared : undefined;
+  const evidenceRequest = prepared?.request ?? dispatchRequest;
   const evidenceParams = withProviderPointerStart(
     evidenceRequest.params,
     opts.overlayProvider?.currentPoint?.(),
@@ -66,19 +77,29 @@ export async function executeComputeAction(
     params: evidenceParams,
     ok: true,
   });
-  const overlay = await renderOverlay(
-    preDispatchEvidence.visual_action,
-    opts.overlayProvider ?? NOOP_COMPUTE_OVERLAY_PROVIDER,
-  );
-  const result = await tryCascade(
-    bus,
-    req,
-    opts.platform ?? process.platform,
-    opts.transportContext,
-  );
+  const overlay = prepared
+    ? await renderOverlay(
+        preDispatchEvidence.visual_action,
+        opts.overlayProvider ?? NOOP_COMPUTE_OVERLAY_PROVIDER,
+      )
+    : {
+        provider: opts.overlayProvider?.provider ?? ("none" as const),
+        status: "not_requested" as const,
+      };
+  signal?.throwIfAborted();
+  const result =
+    preparation.status === "ready"
+      ? await tryCascade(
+          bus,
+          preparation.prepared.request,
+          opts.platform ?? process.platform,
+          opts.transportContext,
+          preparation.prepared,
+        )
+      : preparation.result;
   const postCapture =
-    opts.postActionCapture === true
-      ? await capturePostAction(bus, evidenceRequest, opts)
+    prepared && opts.postActionCapture === true && signal?.aborted !== true
+      ? await capturePostAction(bus, prepared, opts)
       : undefined;
   const transport = readActionResultTransport(result);
   const evidence = buildComputeActionVisualEvidence({
@@ -104,17 +125,24 @@ export async function executeComputeAction(
 
 async function capturePostAction(
   bus: TransportBus,
-  evidenceRequest: ActionRequest,
+  prepared: PreparedComputeRequest,
   opts: ComputeActionExecutionOptions,
 ): Promise<ComputeVisualActionPostCapture> {
+  const screenshotRequest: ActionRequest = {
+    ...prepared.request,
+    kind: "compute_screenshot",
+    canMutate: computeCommandCanMutate("compute_screenshot"),
+  };
+  const screenshotPrepared: PreparedComputeRequest = {
+    request: screenshotRequest,
+    ...(prepared.refMatch ? { refMatch: prepared.refMatch } : {}),
+  };
   const result = await tryCascade(
     bus,
-    {
-      kind: "compute_screenshot",
-      params: evidenceRequest.params,
-    },
+    screenshotRequest,
     opts.platform ?? process.platform,
     opts.transportContext,
+    screenshotPrepared,
   );
   const transport = readActionResultTransport(result);
   if (result.ok) {

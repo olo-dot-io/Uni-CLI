@@ -40,6 +40,14 @@ describe("REF_LOCATOR_CODES", () => {
 });
 
 describe("errorTypeToCode — PipelineError branches", () => {
+  it("passes through exact structured runtime codes", () => {
+    const err = makePipelineError({
+      errorType: "background_unavailable",
+      preserveErrorCode: true,
+    });
+    expect(errorTypeToCode(err)).toBe("background_unavailable");
+  });
+
   it("maps statusCode 401 to auth_required", () => {
     const err = makePipelineError({ statusCode: 401 });
     expect(errorTypeToCode(err)).toBe("auth_required");

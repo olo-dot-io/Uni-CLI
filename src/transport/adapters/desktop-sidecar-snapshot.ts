@@ -1,3 +1,18 @@
+/**
+ * @owner       src::transport::adapters::desktop-sidecar-snapshot
+ * @does        Normalize UIA/AT-SPI snapshot payloads into public encodings and replace their action-ref bucket.
+ * @needs       snapshot encoder, ref store, transport snapshot types
+ * @feeds       Windows UIA and Linux AT-SPI transports
+ * @breaks      Returning fresh JSON with an old persisted bucket makes the next action stale or immediately expired.
+ * @invariants  Every explicit compact, tree, or JSON snapshot replaces the matching transport/scope bucket with refs from that exact tree.
+ * @side-effects Replaces one caller-owned ref bucket.
+ * @perf        One normalization and encoding traversal per snapshot.
+ * @concurrency Caller-owned transport serialization protects the ref replacement.
+ * @test        tests/unit/transport/adapters/desktop-uia.test.ts and desktop-atspi.test.ts
+ * @stability   stable
+ * @since       2026-05-04
+ */
+
 import { RefAllocator, type RefStore } from "../refs.js";
 import {
   encodeSnapshot,
@@ -16,7 +31,11 @@ export function snapshotFromSidecarRaw(
     refs?: RefStore;
   },
 ): Snapshot {
-  if (opts.format === "compact" || opts.format === "tree") {
+  if (
+    opts.format === "compact" ||
+    opts.format === "tree" ||
+    opts.format === "json"
+  ) {
     const raw = normalizeRawAxNode(data);
     const alloc = new RefAllocator();
     const { encoded, refCount } = encodeSnapshot(raw, {
@@ -25,6 +44,14 @@ export function snapshotFromSidecarRaw(
       alloc,
     });
     opts.refs?.put(alloc.freeze(opts.transport, raw.scope));
+    if (opts.format === "json") {
+      return {
+        format: "json",
+        encoding: "json",
+        data: encoded,
+        refs: { count: refCount, scope: raw.scope },
+      };
+    }
     return {
       format: "text",
       encoding: opts.format,
@@ -35,7 +62,6 @@ export function snapshotFromSidecarRaw(
 
   return {
     format: "json",
-    encoding: opts.format === "json" ? "json" : undefined,
     data: JSON.stringify(data),
   };
 }

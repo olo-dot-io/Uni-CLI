@@ -6,7 +6,10 @@
 
 import { describe, it, expect } from "vitest";
 import { Command } from "commander";
-import { registerMcpCommand } from "../../../src/commands/mcp.js";
+import {
+  buildMcpServerArgs,
+  registerMcpCommand,
+} from "../../../src/commands/mcp.js";
 import { buildDefaultTools } from "../../../src/mcp/tools.js";
 import { validateEnvelope } from "../../../src/output/envelope.js";
 
@@ -36,6 +39,37 @@ function captureStdout(): {
 }
 
 describe("unicli mcp — v2 envelope", () => {
+  it("forwards the complete trusted browser policy to the canonical server", () => {
+    expect(
+      buildMcpServerArgs("/app/server.js", {
+        transport: "streamable",
+        port: "2048",
+        profile: "computer-use",
+        auth: true,
+        browserProvider: "chrome",
+        browserVisibility: "background",
+        browserProfilePartition: "team-login",
+        browserIsolated: true,
+      }),
+    ).toEqual([
+      "/app/server.js",
+      "--profile",
+      "computer-use",
+      "--transport",
+      "streamable",
+      "--port",
+      "2048",
+      "--auth",
+      "--browser-provider",
+      "chrome",
+      "--browser-visibility",
+      "background",
+      "--browser-profile-partition",
+      "team-login",
+      "--browser-isolated",
+    ]);
+  });
+
   function newProgram(): Command {
     const program = new Command();
     program.exitOverride();

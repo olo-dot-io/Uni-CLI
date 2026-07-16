@@ -3,7 +3,7 @@
  * @does        Encode, decode, bound, and stream Chrome Native Messaging length-prefixed JSON frames.
  * @needs       node:stream, src/browser/chrome-native-protocol.ts
  * @feeds       src/browser/native-host-main.ts and native-host framing tests
- * @breaks      NativeMessagingError on oversized, truncated, malformed, non-object, or unwritable frames.
+ * @breaks      NativeMessagingError on oversized, truncated, malformed, non-object, unwritable, or command-deadline failures.
  * @invariants  Each frame has one 4-byte little-endian length and one UTF-8 JSON object; inbound extension frames stay within 64 MiB and outbound host frames within 1 MiB.
  * @side-effects Reads a binary stream and writes framed bytes with drain backpressure.
  * @perf        O(message bytes) with at most one retained incomplete frame.
@@ -24,7 +24,8 @@ type NativeMessagingErrorCode =
   | "native_message_too_large"
   | "native_message_truncated"
   | "native_message_invalid"
-  | "native_message_write_failed";
+  | "native_message_write_failed"
+  | "native_message_timeout";
 
 export class NativeMessagingError extends Error {
   readonly retryable = false;

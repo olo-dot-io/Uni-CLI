@@ -111,6 +111,12 @@ describe("browser pipeline page acquisition", () => {
         method: "Page.addScriptToEvaluateOnNewDocument",
       }),
     ]);
+    expect(runtime.provider.releaseCount).toBe(1);
+    expect(runtime.provider.pages[0]?.closed).toBe(true);
+    await expect(runtime.status()).resolves.toMatchObject({
+      sessions: { sessions: [], target_leases: [] },
+      providers: { managed: [{ target_count: 0 }] },
+    });
   });
 
   it("skips local cookie access for non-user browser sessions", async () => {

@@ -171,29 +171,43 @@ Remembered approvals are bound to the command capability and stable resource
 metadata, such as domain, app, account surface, and path argument slots. Runtime
 argument values stay out of the approval store.
 
-Use local deny rules for scopes that a machine must block:
+Use a deny-first local policy when a machine should allow only bounded
+operations. JSON, `.yaml`, and `.yml` are supported:
 
-```json
-{
-  "schema_version": "1",
-  "rules": [
-    {
-      "id": "deny-public-posting",
-      "decision": "deny",
-      "match": {
-        "effect": "publish_content",
-        "resources": {
-          "domains": ["x.com", "twitter.com"]
-        }
-      },
-      "reason": "Publishing is disabled on this machine"
-    }
-  ]
-}
+```yaml
+schema_version: "2"
+default: deny
+rules:
+  - id: deny-public-posting
+    decision: deny
+    match:
+      effect: publish_content
+    reason: Publishing is disabled on this machine
+  - id: allow-short-compute-input
+    decision: allow
+    match:
+      site: compute
+      command: type
+      arguments:
+        text:
+          max_length: 200
+          pattern: "^[^\\p{Cc}]+$"
 ```
 
 Save the file as `~/.unicli/permission-rules.json`, or point
-`UNICLI_PERMISSION_RULES_PATH` at it.
+`UNICLI_PERMISSION_RULES_PATH` at it. An explicit missing path or malformed
+policy fails closed; an absent implicit default file leaves this layer
+disabled. Schema v1 remains compatible as deny-only/default-allow.
+
+Schema v2 evaluates all matching deny rules before allow rules. If no rule
+matches, `default` decides. Argument constraints are conjunctive and support
+inclusive numeric `min`/`max`, Unicode-code-point `max_length`, linear-time RE2
+`pattern`, and exact JSON-value `allowed` lists. Actual argument values are
+evaluated but never written to approval memory.
+
+The invocation kernel, direct `browser`/`operate` commands, direct `compute`
+commands, and computer-use MCP tools all authorize before acquiring a browser
+target, transport, overlay, file, clipboard, or desktop side effect.
 
 The same rules run again inside the pipeline for runtime resources. A denied
 domain stops `fetch`, `fetch_text`, `download`, and browser `navigate` before

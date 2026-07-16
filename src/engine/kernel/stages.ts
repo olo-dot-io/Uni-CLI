@@ -1,9 +1,10 @@
 /**
  * @owner Uni-CLI Kernel
- * @does Implements explicit invocation stages shared by execute() and tests.
+ * @does Implements explicit cancellable invocation stages shared by execute() and tests.
  * @needs Invocation, compiled command cache, policy evaluator, pipeline runner.
  * @feeds CLI/MCP/ACP kernel execution and stage parity tests.
  * @breaks Any surface that bypasses compile, validate, harden, authorize, execute, observe, envelope, or repair diagnostics.
+ * @invariants Request cancellation reaches live work; settled fulfillment wins, while cancellation-caused rejection after mutating dispatch stays outcome-ambiguous.
  */
 
 import { PipelineError, runPipeline } from "../executor.js";
@@ -34,6 +35,8 @@ import {
 } from "../operation-policy.js";
 import { evaluateOperationPolicyWithApprovals } from "../permission-runtime.js";
 import { PermissionRulesConfigError } from "../permission-rules.js";
+import { settleDispatchedAction } from "../../transport/action-settlement.js";
+import { findOperationOutcomeAmbiguousError } from "../../transport/contained-process.js";
 
 import { getCompiled } from "./compile.js";
 import { KernelLookupError } from "./errors.js";
@@ -298,6 +301,7 @@ export async function authorizeKernelInvocation(
       minimumCapability: inv.command.minimum_capability,
       profile: inv.permissionProfile,
       approved: inv.approved,
+      argumentValues: inv.bag.args,
     });
 
     if (policy.enforcement === "deny") {
@@ -442,6 +446,7 @@ export async function rememberKernelApproval(
 export async function executeKernelCommand(
   inv: Invocation,
   ctx: KernelCommandContext,
+  canMutate: boolean,
 ): Promise<unknown[]> {
   const browserSession = resolveBrowserSessionPreference(
     inv.command,
@@ -456,10 +461,13 @@ export async function executeKernelCommand(
       browserSession,
       surface: inv.surface,
       trace_id: inv.trace_id,
+      signal: inv.signal,
+      canMutate,
     });
   }
 
   if (inv.command.func) {
+    const commandFunc = inv.command.func;
     let page: unknown = null;
     try {
       if (inv.command.browser === true) {
@@ -476,9 +484,16 @@ export async function executeKernelCommand(
           command: inv.cmdName,
           domain: inv.command.domain ?? inv.adapter.domain,
           browserSession,
+          signal: inv.signal,
+          canMutate,
         });
       }
-      const raw = await inv.command.func(page as never, inv.bag.args);
+      const raw = await settleDispatchedAction(
+        ctx.key,
+        canMutate,
+        inv.signal,
+        () => commandFunc(page as never, inv.bag.args),
+      );
       return Array.isArray(raw) ? raw : [raw];
     } finally {
       if (page && typeof page === "object" && "close" in page) {
@@ -542,6 +557,7 @@ export function executionErrorResult(
   warnings: string[],
   err: unknown,
 ): KernelStageFailure {
+  const ambiguity = findOperationOutcomeAmbiguousError(err);
   const fields = errorToAgentFields(
     err,
     ctx.adapterPath,
@@ -551,7 +567,8 @@ export function executionErrorResult(
   );
   const error: AgentError = {
     code: errorTypeToCode(err),
-    message: err instanceof Error ? err.message : String(err),
+    message:
+      ambiguity?.message ?? (err instanceof Error ? err.message : String(err)),
     ...fields,
   };
   const diagnostics = [

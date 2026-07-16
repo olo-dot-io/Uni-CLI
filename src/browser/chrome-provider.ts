@@ -1,13 +1,13 @@
 /**
  * @owner       src/browser/chrome-provider.ts
- * @does        Broker Chrome native-host registration, long polling, command correlation, target metadata, disconnect recovery, and exact provider errors.
+ * @does        Broker Chrome native-host registration, durable inventory reconciliation, long polling, command correlation, target metadata, disconnect recovery, and exact provider errors.
  * @needs       node:crypto, src/browser/chrome-native-protocol.ts, runtime-protocol.ts (type only)
  * @feeds       src/browser/runtime-broker.ts, native-host-main.ts, browser status/doctor
  * @breaks      ChromeProviderError on absent/conflicting/stale hosts, protocol mismatch, unknown targets/results, extension refusal, timeout, or disconnect.
- * @invariants  One live native host owns the extension channel; every command resolves exactly once; claimed tabs remain open on cleanup while owned task tabs close.
+ * @invariants  One live native host owns the extension channel; every command resolves exactly once; canceled queued commands are never dispatched; a dispatched deadline retires the entire host generation instead of waiting forever for a late result; authoritative replacement hello inventory invalidates missing targets and immediately re-enables retained orphan cleanup; orphan finalization and a new claim of the same tab never overlap; claimed tabs remain open while owned task tabs close.
  * @side-effects Holds long-poll promises, queues extension commands, tracks Chrome targets, and rejects work on disconnect/close.
  * @perf        O(1) command/result correlation and target lookup; tabs list cost is extension/Chrome API dependent.
- * @concurrency Native commands are serialized by one host; broker target queues establish mutation order before dispatch.
+ * @concurrency Native commands are serialized by one host; broker target queues establish owned mutation order; per-target reconciliation promises linearize orphan cleanup before a new claim.
  * @test        tests/unit/chrome-provider.test.ts, tests/integration/browser-extension-background.test.ts
  * @stability   experimental
  * @since       2026-07-15
@@ -17,9 +17,10 @@ import { randomUUID } from "node:crypto";
 
 import {
   CHROME_EXTENSION_ID,
+  CHROME_NATIVE_COMMAND_DEADLINE_MS,
   CHROME_NATIVE_PROTOCOL_VERSION,
   chromeTargetId,
-  type ChromeNativeCommand,
+  type ChromeNativeBrokerCommand,
   type ChromeNativeHello,
   type ChromeNativeResult,
   type ChromeNativeTab,
@@ -39,6 +40,13 @@ export interface ChromeProviderStatus {
   in_flight_commands: number;
   target_count: number;
   stale_target_count: number;
+  reconciling_target_count: number;
+  reconciliation_error_count: number;
+}
+
+export interface ChromeHostRegistration {
+  lost_target_ids: string[];
+  orphan_target_ids: string[];
 }
 
 interface ChromeProviderOptions {
@@ -46,22 +54,36 @@ interface ChromeProviderOptions {
   commandTimeoutMs?: number;
   hostTtlMs?: number;
   pollTimeoutMs?: number;
+  hostWaitTimeoutMs?: number;
+  hostShutdownTimeoutMs?: number;
 }
 
 interface RegisteredHost {
   hostInstanceId: string;
   hello: ChromeNativeHello;
   lastSeenMs: number;
-  waiter: ((command: ChromeNativeCommand | null) => void) | null;
+  waiter: ((command: ChromeNativeBrokerCommand | null) => void) | null;
   pollTimer: ReturnType<typeof setTimeout> | null;
 }
 
 interface PendingCommand {
-  command: ChromeNativeCommand;
+  command: ChromeNativeBrokerCommand;
   resolve: (result: ChromeNativeResult) => void;
   reject: (error: ChromeProviderError) => void;
   timer: ReturnType<typeof setTimeout>;
   dispatched: boolean;
+  consumerSettled: boolean;
+  signal?: AbortSignal;
+  abortHandler?: () => void;
+  onLateResult?: (result: ChromeNativeResult) => void;
+}
+
+interface HostWaiter {
+  resolve: () => void;
+  reject: (error: ChromeProviderError) => void;
+  timer: ReturnType<typeof setTimeout>;
+  signal?: AbortSignal;
+  abortHandler?: () => void;
 }
 
 interface ChromeTargetRecord extends ChromeNativeTarget {
@@ -76,18 +98,21 @@ type ChromeProviderErrorCode =
   | "chrome_provider_disconnected"
   | "chrome_target_not_found";
 
-const DEFAULT_COMMAND_TIMEOUT_MS = 120_000;
+const DEFAULT_COMMAND_TIMEOUT_MS = CHROME_NATIVE_COMMAND_DEADLINE_MS + 10_000;
 const DEFAULT_HOST_TTL_MS = 30_000;
 const DEFAULT_POLL_TIMEOUT_MS = 15_000;
+const DEFAULT_HOST_WAIT_TIMEOUT_MS = 5_000;
+const DEFAULT_HOST_SHUTDOWN_TIMEOUT_MS = 1_000;
 
 export class ChromeProviderError extends Error {
   readonly retryable: boolean;
   readonly suggestion: string;
+  readonly outcome_ambiguous: boolean;
 
   constructor(
     readonly code: ChromeProviderErrorCode,
     message: string,
-    options?: ErrorOptions,
+    options?: ErrorOptions & { outcomeAmbiguous?: boolean },
   ) {
     super(message, options);
     this.name = "ChromeProviderError";
@@ -96,6 +121,7 @@ export class ChromeProviderError extends Error {
       code === "chrome_provider_timeout" ||
       code === "chrome_provider_disconnected";
     this.suggestion = chromeProviderSuggestion(code);
+    this.outcome_ambiguous = options?.outcomeAmbiguous === true;
   }
 }
 
@@ -104,9 +130,17 @@ export class ChromeBrowserProvider {
   private readonly commandTimeoutMs: number;
   private readonly hostTtlMs: number;
   private readonly pollTimeoutMs: number;
+  private readonly hostWaitTimeoutMs: number;
+  private readonly hostShutdownTimeoutMs: number;
   private readonly queued: PendingCommand[] = [];
+  private readonly hostWaiters = new Set<HostWaiter>();
   private readonly pending = new Map<string, PendingCommand>();
   private readonly targets = new Map<string, ChromeTargetRecord>();
+  private readonly reconcilingTargets = new Map<string, Promise<void>>();
+  private readonly orphanTargetIds = new Set<string>();
+  private readonly orphanTokens = new Map<string, object>();
+  private readonly reconciliationRetryAfterMs = new Map<string, number>();
+  private reconciliationErrorCount = 0;
   private host: RegisteredHost | null = null;
   private closed = false;
 
@@ -116,9 +150,16 @@ export class ChromeBrowserProvider {
       options.commandTimeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS;
     this.hostTtlMs = options.hostTtlMs ?? DEFAULT_HOST_TTL_MS;
     this.pollTimeoutMs = options.pollTimeoutMs ?? DEFAULT_POLL_TIMEOUT_MS;
+    this.hostWaitTimeoutMs =
+      options.hostWaitTimeoutMs ?? DEFAULT_HOST_WAIT_TIMEOUT_MS;
+    this.hostShutdownTimeoutMs =
+      options.hostShutdownTimeoutMs ?? DEFAULT_HOST_SHUTDOWN_TIMEOUT_MS;
   }
 
-  registerHost(hostInstanceId: string, hello: ChromeNativeHello): void {
+  registerHost(
+    hostInstanceId: string,
+    hello: ChromeNativeHello,
+  ): ChromeHostRegistration {
     this.assertOpen();
     validateHostIdentity(hostInstanceId, hello);
     this.expireStaleHost();
@@ -148,7 +189,14 @@ export class ChromeBrowserProvider {
         );
       }
       this.host.lastSeenMs = this.now();
-      return;
+      this.host.hello = hello;
+      const registration = this.reconcileInventory(hello);
+      for (const targetId of registration.orphan_target_ids) {
+        this.markOrphanTarget(targetId);
+      }
+      this.scheduleOrphanReconciliation();
+      this.resolveHostWaiters();
+      return registration;
     }
     this.host = {
       hostInstanceId,
@@ -157,11 +205,19 @@ export class ChromeBrowserProvider {
       waiter: null,
       pollTimer: null,
     };
+    const registration = this.reconcileInventory(hello);
+    for (const targetId of registration.orphan_target_ids) {
+      this.markOrphanTarget(targetId);
+    }
+    this.scheduleOrphanReconciliation();
+    this.resolveHostWaiters();
+    return registration;
   }
 
-  poll(hostInstanceId: string): Promise<ChromeNativeCommand | null> {
+  poll(hostInstanceId: string): Promise<ChromeNativeBrokerCommand | null> {
     const host = this.requireHost(hostInstanceId);
     host.lastSeenMs = this.now();
+    this.scheduleOrphanReconciliation();
     const command = this.takeQueuedCommand();
     if (command) return Promise.resolve(command);
     if (host.waiter) {
@@ -223,14 +279,26 @@ export class ChromeBrowserProvider {
 
   async acquireTarget(
     visibility: "background" | "foreground",
+    signal?: AbortSignal,
   ): Promise<ChromeNativeTarget> {
+    const hostWait = this.waitForHost(signal);
+    if (hostWait) await hostWait;
     const browserSessionId = this.requireBrowserSessionId();
-    const result = await this.dispatch({
-      type: "command",
-      request_id: randomUUID(),
-      action: "target.allocate",
-      visibility,
-    });
+    const result = await this.dispatch(
+      {
+        type: "command",
+        request_id: randomUUID(),
+        action: "target.allocate",
+        visibility,
+      },
+      signal,
+      (lateResult) =>
+        this.reconcileCanceledTargetResult(
+          lateResult,
+          visibility,
+          browserSessionId,
+        ),
+    );
     const target = readChromeTarget(result, visibility, browserSessionId);
     this.targets.set(target.target_id, { ...target, browserSessionId });
     return target;
@@ -239,16 +307,32 @@ export class ChromeBrowserProvider {
   async claimTarget(
     tabId: number,
     visibility: "background" | "foreground",
+    signal?: AbortSignal,
   ): Promise<ChromeNativeTarget> {
+    const hostWait = this.waitForHost(signal);
+    if (hostWait) await hostWait;
     const browserSessionId = this.requireBrowserSessionId();
-    const result = await this.dispatch({
-      type: "command",
-      request_id: randomUUID(),
-      action: "target.claim",
-      tab_id: tabId,
-      visibility,
-    });
+    const targetId = chromeTargetId(browserSessionId, tabId);
+    await this.reconcilingTargets.get(targetId);
+    this.cancelOrphanReconciliation(targetId);
+    const result = await this.dispatch(
+      {
+        type: "command",
+        request_id: randomUUID(),
+        action: "target.claim",
+        tab_id: tabId,
+        visibility,
+      },
+      signal,
+      (lateResult) =>
+        this.reconcileCanceledTargetResult(
+          lateResult,
+          visibility,
+          browserSessionId,
+        ),
+    );
     const target = readChromeTarget(result, visibility, browserSessionId);
+    this.cancelOrphanReconciliation(target.target_id);
     this.targets.set(target.target_id, { ...target, browserSessionId });
     return target;
   }
@@ -257,17 +341,21 @@ export class ChromeBrowserProvider {
     targetId: string,
     visibility: "background" | "foreground",
     command: BrowserPageCommand,
+    signal?: AbortSignal,
   ): Promise<unknown> {
     const target = this.requireTarget(targetId);
-    const result = await this.dispatch({
-      type: "command",
-      request_id: randomUUID(),
-      action: "page.command",
-      target_id: target.target_id,
-      tab_id: target.tab_id,
-      visibility,
-      command,
-    });
+    const result = await this.dispatch(
+      {
+        type: "command",
+        request_id: randomUUID(),
+        action: "page.command",
+        target_id: target.target_id,
+        tab_id: target.tab_id,
+        visibility,
+        command,
+      },
+      signal,
+    );
     if (visibility === "foreground") target.visibility = "foreground";
     return result;
   }
@@ -283,7 +371,7 @@ export class ChromeBrowserProvider {
       currentBrowserSessionId &&
       target.browserSessionId !== currentBrowserSessionId
     ) {
-      this.targets.delete(targetId);
+      this.forgetTarget(targetId);
       return;
     }
     await this.dispatch({
@@ -295,7 +383,36 @@ export class ChromeBrowserProvider {
       visibility: target.visibility,
       disposition: disposition ?? (target.owned ? "close" : "release"),
     });
-    this.targets.delete(targetId);
+    this.forgetTarget(targetId);
+  }
+
+  async shutdownHost(): Promise<boolean> {
+    this.expireStaleHost();
+    if (!this.host) return false;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      controller.abort(
+        new Error(
+          `Chrome native host did not acknowledge shutdown within ${String(this.hostShutdownTimeoutMs)}ms`,
+        ),
+      );
+    }, this.hostShutdownTimeoutMs);
+    try {
+      await this.dispatch(
+        {
+          type: "command",
+          request_id: randomUUID(),
+          action: "host.shutdown",
+        },
+        controller.signal,
+      );
+      return true;
+    } catch (error) {
+      if (controller.signal.aborted) return false;
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   status(): ChromeProviderStatus {
@@ -303,9 +420,16 @@ export class ChromeBrowserProvider {
     const host = this.host;
     const liveTargetCount = host
       ? [...this.targets.values()].filter(
-          (target) => target.browserSessionId === host.hello.browser_session_id,
+          (target) =>
+            target.browserSessionId === host.hello.browser_session_id &&
+            !this.orphanTargetIds.has(target.target_id),
         ).length
       : 0;
+    const staleTargetCount = host
+      ? [...this.targets.values()].filter(
+          (target) => target.browserSessionId !== host.hello.browser_session_id,
+        ).length
+      : this.targets.size - this.orphanTargetIds.size;
     return {
       connected: host !== null,
       ...(host
@@ -323,11 +447,15 @@ export class ChromeBrowserProvider {
         (command) => command.dispatched,
       ).length,
       target_count: liveTargetCount,
-      stale_target_count: this.targets.size - liveTargetCount,
+      stale_target_count: staleTargetCount,
+      reconciling_target_count: this.orphanTargetIds.size,
+      reconciliation_error_count: this.reconciliationErrorCount,
     };
   }
 
-  targetIdForTab(tabId: number): string {
+  async targetIdForTab(tabId: number, signal?: AbortSignal): Promise<string> {
+    const hostWait = this.waitForHost(signal);
+    if (hostWait) await hostWait;
     return chromeTargetId(this.requireBrowserSessionId(), tabId);
   }
 
@@ -341,6 +469,17 @@ export class ChromeBrowserProvider {
     );
   }
 
+  forgetTarget(targetId: string): void {
+    this.targets.delete(targetId);
+    this.cancelOrphanReconciliation(targetId);
+  }
+
+  abandonTarget(targetId: string): void {
+    if (!this.targets.has(targetId)) return;
+    this.markOrphanTarget(targetId);
+    this.scheduleOrphanReconciliation();
+  }
+
   close(): void {
     if (this.closed) return;
     this.closed = true;
@@ -350,48 +489,315 @@ export class ChromeBrowserProvider {
         "Chrome provider closed",
       ),
     );
+    this.rejectHostWaiters(
+      new ChromeProviderError(
+        "chrome_provider_disconnected",
+        "Chrome provider closed",
+      ),
+    );
     this.targets.clear();
+    this.reconcilingTargets.clear();
+    this.orphanTargetIds.clear();
+    this.orphanTokens.clear();
+    this.reconciliationRetryAfterMs.clear();
   }
 
-  private dispatch(command: ChromeNativeCommand): Promise<unknown> {
+  private dispatch(
+    command: ChromeNativeBrokerCommand,
+    signal?: AbortSignal,
+    onLateResult?: (result: ChromeNativeResult) => void,
+  ): Promise<unknown> {
+    const hostWait = this.waitForHost(signal);
+    return hostWait
+      ? hostWait.then(() =>
+          this.dispatchConnected(command, signal, onLateResult),
+        )
+      : this.dispatchConnected(command, signal, onLateResult);
+  }
+
+  private dispatchConnected(
+    command: ChromeNativeBrokerCommand,
+    signal?: AbortSignal,
+    onLateResult?: (result: ChromeNativeResult) => void,
+  ): Promise<unknown> {
     this.assertOpen();
+    throwIfChromeOperationAborted(signal);
     this.expireStaleHost();
     if (!this.host) {
-      return Promise.reject(
-        new ChromeProviderError(
-          "chrome_provider_unavailable",
-          "The Uni-CLI Chrome extension native host is not connected",
-        ),
+      throw new ChromeProviderError(
+        "chrome_provider_unavailable",
+        "The Uni-CLI Chrome extension native host disconnected before command admission",
       );
     }
     return new Promise((resolve, reject) => {
-      const pending: PendingCommand = {
-        command,
-        resolve: (result) => {
-          if (!result.ok) {
-            reject(readExtensionError(result));
-            return;
-          }
-          resolve(result.data);
-        },
-        reject,
-        timer: setTimeout(() => {
+      let pending!: PendingCommand;
+      const settleConsumer = (
+        outcome:
+          | { result: ChromeNativeResult }
+          | { error: ChromeProviderError },
+      ): void => {
+        if (pending.consumerSettled) return;
+        pending.consumerSettled = true;
+        if (pending.signal && pending.abortHandler) {
+          pending.signal.removeEventListener("abort", pending.abortHandler);
+        }
+        if ("error" in outcome) {
+          reject(outcome.error);
+          return;
+        }
+        if (!outcome.result.ok) {
+          reject(readExtensionError(outcome.result));
+          return;
+        }
+        resolve(outcome.result.data);
+      };
+      const abortHandler = (): void => {
+        if (!pending.dispatched) {
           this.pending.delete(command.request_id);
           const queueIndex = this.queued.indexOf(pending);
           if (queueIndex >= 0) this.queued.splice(queueIndex, 1);
-          reject(
-            new ChromeProviderError(
-              "chrome_provider_timeout",
-              `Chrome command ${command.action} timed out after ${String(this.commandTimeoutMs)}ms`,
-            ),
+          clearTimeout(pending.timer);
+        }
+        settleConsumer({
+          error: new ChromeProviderError(
+            "chrome_provider_disconnected",
+            errorMessage(signal?.reason),
+            {
+              cause: signal?.reason,
+              outcomeAmbiguous: pending.dispatched,
+            },
+          ),
+        });
+      };
+      pending = {
+        command,
+        resolve: (result) => {
+          if (pending.consumerSettled) {
+            pending.onLateResult?.(result);
+            return;
+          }
+          settleConsumer({ result });
+        },
+        reject: (error) => settleConsumer({ error }),
+        timer: setTimeout(() => {
+          const timeoutError = new ChromeProviderError(
+            "chrome_provider_timeout",
+            `Chrome command ${command.action} timed out after ${String(this.commandTimeoutMs)}ms`,
           );
+          if (pending.dispatched) {
+            this.disconnect(timeoutError);
+            return;
+          }
+          this.pending.delete(command.request_id);
+          const queueIndex = this.queued.indexOf(pending);
+          if (queueIndex >= 0) this.queued.splice(queueIndex, 1);
+          settleConsumer({ error: timeoutError });
         }, this.commandTimeoutMs),
         dispatched: false,
+        consumerSettled: false,
+        ...(signal ? { signal, abortHandler } : {}),
+        ...(onLateResult ? { onLateResult } : {}),
       };
       this.pending.set(command.request_id, pending);
       this.queued.push(pending);
+      signal?.addEventListener("abort", abortHandler, { once: true });
       this.wakePoller();
     });
+  }
+
+  private reconcileCanceledTargetResult(
+    result: ChromeNativeResult,
+    visibility: "background" | "foreground",
+    browserSessionId: string,
+  ): void {
+    if (!result.ok) return;
+    const target = readChromeTarget(result.data, visibility, browserSessionId);
+    this.targets.set(target.target_id, { ...target, browserSessionId });
+    this.markOrphanTarget(target.target_id);
+    this.scheduleOrphanReconciliation();
+  }
+
+  private reconcileInventory(hello: ChromeNativeHello): ChromeHostRegistration {
+    const inventory = new Map<string, ChromeTargetRecord>();
+    for (const candidate of hello.targets) {
+      const target = readChromeTarget(
+        candidate,
+        candidate.visibility,
+        hello.browser_session_id,
+      );
+      if (inventory.has(target.target_id)) {
+        throw protocolResultError(
+          `Chrome hello repeats target ${target.target_id}`,
+        );
+      }
+      inventory.set(target.target_id, {
+        ...target,
+        browserSessionId: hello.browser_session_id,
+      });
+    }
+    const lostTargetIds = [...this.targets.keys()]
+      .filter((targetId) => !inventory.has(targetId))
+      .sort();
+    for (const targetId of lostTargetIds) this.forgetTarget(targetId);
+    const orphanTargetIds: string[] = [];
+    for (const [targetId, target] of inventory) {
+      const existing = this.targets.get(targetId);
+      this.targets.set(targetId, target);
+      if (!existing) orphanTargetIds.push(targetId);
+      if (this.orphanTargetIds.has(targetId)) {
+        this.reconciliationRetryAfterMs.delete(targetId);
+      }
+    }
+    orphanTargetIds.sort();
+    return {
+      lost_target_ids: lostTargetIds,
+      orphan_target_ids: orphanTargetIds,
+    };
+  }
+
+  private async reconcileOrphanTarget(
+    targetId: string,
+    orphanToken: object,
+  ): Promise<void> {
+    const target = this.targets.get(targetId);
+    if (!target || this.orphanTokens.get(targetId) !== orphanToken) return;
+    const currentBrowserSessionId = this.host?.hello.browser_session_id;
+    if (
+      currentBrowserSessionId &&
+      target.browserSessionId !== currentBrowserSessionId
+    ) {
+      this.forgetTarget(targetId);
+      return;
+    }
+    try {
+      if (this.orphanTokens.get(targetId) !== orphanToken) return;
+      await this.dispatch({
+        type: "command",
+        request_id: randomUUID(),
+        action: "target.finalize",
+        target_id: target.target_id,
+        tab_id: target.tab_id,
+        visibility: target.visibility,
+        disposition: target.owned ? "close" : "release",
+      });
+      if (this.orphanTokens.get(targetId) === orphanToken) {
+        this.forgetTarget(targetId);
+      }
+    } catch (error) {
+      if (this.orphanTokens.get(targetId) !== orphanToken) return;
+      if (isMissingChromeTargetError(error)) {
+        this.forgetTarget(targetId);
+        return;
+      }
+      this.reconciliationErrorCount += 1;
+      this.reconciliationRetryAfterMs.set(targetId, this.now() + 5_000);
+    }
+  }
+
+  private scheduleOrphanReconciliation(): void {
+    for (const targetId of this.orphanTargetIds) {
+      if (
+        this.reconcilingTargets.has(targetId) ||
+        (this.reconciliationRetryAfterMs.get(targetId) ?? 0) > this.now()
+      ) {
+        continue;
+      }
+      const orphanToken = this.orphanTokens.get(targetId);
+      if (!orphanToken) continue;
+      const reconciliation = Promise.resolve()
+        .then(() => this.reconcileOrphanTarget(targetId, orphanToken))
+        .finally(() => {
+          if (this.reconcilingTargets.get(targetId) === reconciliation) {
+            this.reconcilingTargets.delete(targetId);
+          }
+        });
+      this.reconcilingTargets.set(targetId, reconciliation);
+    }
+  }
+
+  private markOrphanTarget(targetId: string): void {
+    this.orphanTargetIds.add(targetId);
+    if (!this.orphanTokens.has(targetId)) {
+      this.orphanTokens.set(targetId, {});
+    }
+  }
+
+  private cancelOrphanReconciliation(targetId: string): void {
+    this.orphanTargetIds.delete(targetId);
+    this.orphanTokens.delete(targetId);
+    this.reconciliationRetryAfterMs.delete(targetId);
+  }
+
+  private waitForHost(signal?: AbortSignal): Promise<void> | undefined {
+    this.assertOpen();
+    throwIfChromeOperationAborted(signal);
+    this.expireStaleHost();
+    if (this.host) return undefined;
+    return this.waitForHostUntil(Date.now() + this.hostWaitTimeoutMs, signal);
+  }
+
+  private async waitForHostUntil(
+    deadline: number,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    for (;;) {
+      this.assertOpen();
+      throwIfChromeOperationAborted(signal);
+      this.expireStaleHost();
+      if (this.host) return;
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) {
+        throw new ChromeProviderError(
+          "chrome_provider_unavailable",
+          `The Uni-CLI Chrome extension native host did not connect within ${String(this.hostWaitTimeoutMs)}ms`,
+        );
+      }
+      await this.waitForHostRegistration(remainingMs, signal);
+    }
+  }
+
+  private waitForHostRegistration(
+    timeoutMs: number,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      let waiter!: HostWaiter;
+      const settle = (error?: ChromeProviderError): void => {
+        if (!this.hostWaiters.delete(waiter)) return;
+        clearTimeout(waiter.timer);
+        if (waiter.signal && waiter.abortHandler) {
+          waiter.signal.removeEventListener("abort", waiter.abortHandler);
+        }
+        if (error) reject(error);
+        else resolve();
+      };
+      const abortHandler = (): void => {
+        settle(
+          new ChromeProviderError(
+            "chrome_provider_disconnected",
+            errorMessage(signal?.reason),
+            { cause: signal?.reason },
+          ),
+        );
+      };
+      waiter = {
+        resolve: () => settle(),
+        reject: (error) => settle(error),
+        timer: setTimeout(() => settle(), timeoutMs),
+        ...(signal ? { signal, abortHandler } : {}),
+      };
+      this.hostWaiters.add(waiter);
+      signal?.addEventListener("abort", abortHandler, { once: true });
+      if (this.host) waiter.resolve();
+    });
+  }
+
+  private resolveHostWaiters(): void {
+    for (const waiter of this.hostWaiters) waiter.resolve();
+  }
+
+  private rejectHostWaiters(error: ChromeProviderError): void {
+    for (const waiter of this.hostWaiters) waiter.reject(error);
   }
 
   private wakePoller(): void {
@@ -407,7 +813,7 @@ export class ChromeBrowserProvider {
     resolve(command);
   }
 
-  private takeQueuedCommand(): ChromeNativeCommand | null {
+  private takeQueuedCommand(): ChromeNativeBrokerCommand | null {
     const pending = this.queued.shift();
     if (!pending) return null;
     pending.dispatched = true;
@@ -466,7 +872,14 @@ export class ChromeBrowserProvider {
     host?.waiter?.(null);
     for (const pending of this.pending.values()) {
       clearTimeout(pending.timer);
-      pending.reject(error);
+      pending.reject(
+        pending.dispatched && !error.outcome_ambiguous
+          ? new ChromeProviderError(error.code, error.message, {
+              cause: error,
+              outcomeAmbiguous: true,
+            })
+          : error,
+      );
     }
     this.pending.clear();
     this.queued.length = 0;
@@ -494,9 +907,23 @@ function validateHostIdentity(
     hello.version !== CHROME_NATIVE_PROTOCOL_VERSION ||
     hello.extension_id !== CHROME_EXTENSION_ID ||
     !hello.extension_version.trim() ||
-    !isUuid(hello.browser_session_id)
+    !isUuid(hello.browser_session_id) ||
+    !Array.isArray(hello.targets)
   ) {
     throw protocolResultError("Chrome native host hello identity is invalid");
+  }
+  const targetIds = new Set<string>();
+  for (const candidate of hello.targets) {
+    const target = readChromeTarget(
+      candidate,
+      candidate.visibility,
+      hello.browser_session_id,
+    );
+    if (!targetIds.add(target.target_id)) {
+      throw protocolResultError(
+        `Chrome native host hello repeats target ${target.target_id}`,
+      );
+    }
   }
 }
 
@@ -559,6 +986,19 @@ function isOptionalString(value: unknown): boolean {
   return value === undefined || typeof value === "string";
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function throwIfChromeOperationAborted(signal?: AbortSignal): void {
+  if (!signal?.aborted) return;
+  throw new ChromeProviderError(
+    "chrome_provider_disconnected",
+    errorMessage(signal.reason),
+    { cause: signal.reason },
+  );
+}
+
 function isUuid(value: unknown): value is string {
   return (
     typeof value === "string" &&
@@ -578,12 +1018,24 @@ function readExtensionError(result: ChromeNativeResult): Error {
     code: string;
     suggestion: string;
     retryable: boolean;
+    outcome_ambiguous: boolean;
+    target_unusable: boolean;
   };
   error.name = "ChromeExtensionError";
   error.code = result.error.code;
   error.suggestion = result.error.suggestion;
   error.retryable = result.error.retryable;
+  error.outcome_ambiguous = result.error.outcome_ambiguous === true;
+  error.target_unusable = result.error.target_unusable === true;
   return error;
+}
+
+export function isMissingChromeTargetError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null || !("code" in error)) {
+    return false;
+  }
+  const code = (error as { code?: unknown }).code;
+  return code === "chrome_target_not_found" || code === "chrome_target_invalid";
 }
 
 function protocolResultError(message: string): ChromeProviderError {

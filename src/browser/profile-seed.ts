@@ -1,33 +1,37 @@
 /**
  * @owner   src/browser/profile-seed.ts
  * @does    Seed Uni-CLI-owned Chrome user-data dirs from local browser profile login state before CDP launch.
- * @needs   node:fs, node:os, node:path, src/browser/local-profiles.ts
+ * @needs   node:fs, node:os, node:path, src/browser/kernel-file-lock.ts, src/browser/local-profiles.ts
  * @feeds   src/browser/launcher.ts, src/browser/doctor.ts, src/commands/browser/index.ts, scripts/browser-auth-default-acceptance.ts, tests/unit/profile-seed.test.ts
- * @breaks  BrowserProfileSeedError throws on unsupported platforms, missing cookie stores, lock contention, source races, manifest corruption, and copy failures.
- * @invariants Seeded profiles live outside real browser user-data dirs; manifest paths use portable POSIX separators; manifest is written only after all required files copy, and fresh seeds require target files to still exist.
- * @side-effects Creates, replaces, and removes files under Uni-CLI-owned automation profile directories and temporary staging directories.
- * @perf    Copies only Local State, profile preferences, and cookie stores instead of whole browser profiles.
- * @concurrency Uses an exclusive sibling lock file and refuses to seed when another seed owns the target.
+ * @breaks  BrowserProfileSeedError throws on unsupported platforms, missing cookie stores, ownership contention/identity failure, source races, manifest corruption, and copy failures.
+ * @invariants Seeded profiles live outside real browser user-data dirs; the process performing the copy owns a kernel advisory lock for its entire lifetime; interrupted backup publication is recovered before another seed; manifest paths use portable POSIX separators; manifest is written only after all required files copy, and fresh seeds require target files to still exist.
+ * @side-effects Retains one process-owned kernel lock descriptor, creates/replaces files under Uni-CLI-owned automation profile directories, and removes interrupted staging directories while holding that lock.
+ * @perf    Copies only Local State, profile preferences, and cookie stores instead of whole browser profiles; an already-fresh inspection pays one local lock acquisition.
+ * @concurrency The caller owns the kernel-locked open file description for the entire seed, so pausing it retains ownership and termination releases ownership atomically without a guardian process.
  * @test    tests/unit/profile-seed.test.ts
  * @stability experimental
  * @since   2026-06-29
  */
 
 import {
-  closeSync,
   copyFileSync,
   existsSync,
   mkdtempSync,
   mkdirSync,
-  openSync,
   readFileSync,
+  readdirSync,
   renameSync,
   rmSync,
   statSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, posix } from "node:path";
+import { basename, dirname, join, posix } from "node:path";
+import {
+  acquireKernelFileLock,
+  KernelFileLockError,
+  type KernelFileLock,
+} from "./kernel-file-lock.js";
 import type { LocalBrowserProfile } from "./local-profiles.js";
 
 export const AUTOMATION_PROFILE_SEED_MANIFEST = ".unicli-profile-seed.json";
@@ -323,11 +327,11 @@ function readAutomationProfileSeedManifestState(
   }
 }
 
-export function prepareSeededAutomationProfile(
+export async function prepareSeededAutomationProfile(
   profile: LocalBrowserProfile,
   targetUserDataDir: string,
   opts: { platform?: string; force?: boolean } = {},
-): AutomationProfileSeedResult {
+): Promise<AutomationProfileSeedResult> {
   const platform = opts.platform ?? process.platform;
   if (!isSeedPlatformSupported(platform)) {
     throw new BrowserProfileSeedError(
@@ -336,68 +340,56 @@ export function prepareSeededAutomationProfile(
     );
   }
 
-  const initialFingerprint = buildSourceFingerprint(profile);
-  const existingManifest = readAutomationProfileSeedManifest(targetUserDataDir);
+  return runProfileSeedUnderKernelLock(profile, targetUserDataDir, {
+    platform,
+    force: opts.force === true,
+  });
+}
+
+function prepareSeededAutomationProfileUnderOwnedLock(
+  profile: LocalBrowserProfile,
+  targetUserDataDir: string,
+  opts: { platform: string; force: boolean },
+): AutomationProfileSeedResult {
+  recoverInterruptedSeed(targetUserDataDir);
+  const lockedFingerprint = buildSourceFingerprint(profile);
+  const lockedManifest = readAutomationProfileSeedManifest(targetUserDataDir);
   if (
-    opts.force !== true &&
-    existingManifest &&
+    !opts.force &&
+    lockedManifest &&
     isManifestFresh(
-      existingManifest,
+      lockedManifest,
       profile,
       targetUserDataDir,
-      initialFingerprint,
-      platform,
+      lockedFingerprint,
+      opts.platform,
     )
   ) {
     return {
       status: "fresh",
-      manifest: existingManifest,
+      manifest: lockedManifest,
       manifest_path: seedManifestPath(targetUserDataDir),
       target_user_data_dir: targetUserDataDir,
       target_profile_dir: profile.profile_dir,
     };
   }
 
-  return withSeedLock(targetUserDataDir, () => {
-    const lockedFingerprint = buildSourceFingerprint(profile);
-    const lockedManifest = readAutomationProfileSeedManifest(targetUserDataDir);
-    if (
-      opts.force !== true &&
-      lockedManifest &&
-      isManifestFresh(
-        lockedManifest,
-        profile,
-        targetUserDataDir,
-        lockedFingerprint,
-        platform,
-      )
-    ) {
-      return {
-        status: "fresh",
-        manifest: lockedManifest,
-        manifest_path: seedManifestPath(targetUserDataDir),
-        target_user_data_dir: targetUserDataDir,
-        target_profile_dir: profile.profile_dir,
-      };
-    }
-
-    let lastError: unknown;
-    for (let attempt = 0; attempt < MAX_SEED_ATTEMPTS; attempt++) {
-      try {
-        return seedProfileOnce(profile, targetUserDataDir, platform);
-      } catch (err) {
-        lastError = err;
-        if (
-          !(err instanceof BrowserProfileSeedError) ||
-          err.code !== "source-changed" ||
-          attempt === MAX_SEED_ATTEMPTS - 1
-        ) {
-          break;
-        }
+  let lastError: unknown;
+  for (let attempt = 0; attempt < MAX_SEED_ATTEMPTS; attempt++) {
+    try {
+      return seedProfileOnce(profile, targetUserDataDir, opts.platform);
+    } catch (err) {
+      lastError = err;
+      if (
+        !(err instanceof BrowserProfileSeedError) ||
+        err.code !== "source-changed" ||
+        attempt === MAX_SEED_ATTEMPTS - 1
+      ) {
+        break;
       }
     }
-    throw lastError;
-  });
+  }
+  throw lastError;
 }
 
 function seedProfileOnce(
@@ -479,41 +471,89 @@ function seedProfileOnce(
   }
 }
 
-function withSeedLock<T>(targetUserDataDir: string, fn: () => T): T {
+function runProfileSeedUnderKernelLock(
+  profile: LocalBrowserProfile,
+  targetUserDataDir: string,
+  opts: { platform: string; force: boolean },
+): AutomationProfileSeedResult {
   const lockPath = `${targetUserDataDir}.seed.lock`;
   mkdirSync(dirname(lockPath), { recursive: true, mode: 0o700 });
-  let fd: number | null = null;
-  try {
-    fd = openSync(lockPath, "wx", 0o600);
-    writeFileSync(
-      fd,
-      JSON.stringify({
-        pid: process.pid,
-        created_at: new Date().toISOString(),
-        target_user_data_dir: targetUserDataDir,
-      }),
-      "utf-8",
+  if (existsSync(lockPath) && statSync(lockPath).isDirectory()) {
+    throw new BrowserProfileSeedError(
+      "seed-lock-held",
+      `Uni-CLI cannot acquire the profile seed kernel lock because a directory occupies ${lockPath}; wait for its owner to finish or inspect the interrupted seed state.`,
     );
-    return fn();
-  } catch (err) {
-    if (
-      err &&
-      typeof err === "object" &&
-      "code" in err &&
-      err.code === "EEXIST"
-    ) {
+  }
+  let lock: KernelFileLock;
+  try {
+    lock = acquireKernelFileLock(lockPath);
+  } catch (error) {
+    if (error instanceof KernelFileLockError && error.code === "contended") {
       throw new BrowserProfileSeedError(
         "seed-lock-held",
         `Uni-CLI automation profile seed lock is already held: ${lockPath}. Another browser startup is seeding this profile; retry after it exits.`,
-        { cause: err },
       );
     }
-    throw err;
-  } finally {
-    if (fd !== null) {
-      closeSync(fd);
-      rmSync(lockPath, { force: true });
-    }
+    throw new BrowserProfileSeedError(
+      "copy-failed",
+      `Uni-CLI could not acquire the profile seed kernel lock at ${lockPath}: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    );
+  }
+
+  let result: AutomationProfileSeedResult | undefined;
+  let operationError: unknown;
+  try {
+    result = prepareSeededAutomationProfileUnderOwnedLock(
+      profile,
+      targetUserDataDir,
+      opts,
+    );
+  } catch (error) {
+    operationError = error;
+  }
+  try {
+    lock.release();
+  } catch (releaseError) {
+    throw new BrowserProfileSeedError(
+      "copy-failed",
+      operationError
+        ? `Profile seed and kernel lock release both failed for ${targetUserDataDir}.`
+        : `Profile seed kernel lock release failed for ${targetUserDataDir}: ${releaseError instanceof Error ? releaseError.message : String(releaseError)}`,
+      {
+        cause: operationError
+          ? new AggregateError([operationError, releaseError])
+          : releaseError,
+      },
+    );
+  }
+  if (operationError) throw operationError;
+  return result!;
+}
+
+function recoverInterruptedSeed(targetUserDataDir: string): void {
+  const parent = dirname(targetUserDataDir);
+  const targetName = basename(targetUserDataDir);
+  const stagePrefix = `${targetName}.seed-`;
+  const backupPrefix = `${targetName}.previous-`;
+  const entries = existsSync(parent) ? readdirSync(parent).sort() : [];
+  const stages = entries.filter((entry) => entry.startsWith(stagePrefix));
+  const backups = entries.filter((entry) => entry.startsWith(backupPrefix));
+  if (!existsSync(targetUserDataDir) && backups.length > 1) {
+    throw new BrowserProfileSeedError(
+      "copy-failed",
+      `Cannot recover ${targetUserDataDir}: multiple interrupted profile backups exist (${backups.join(", ")}).`,
+    );
+  }
+  if (!existsSync(targetUserDataDir) && backups.length === 1) {
+    renameSync(join(parent, backups[0]!), targetUserDataDir);
+  }
+  for (const stage of stages) {
+    rmSync(join(parent, stage), { recursive: true, force: true });
+  }
+  for (const backup of backups) {
+    const path = join(parent, backup);
+    if (existsSync(path)) rmSync(path, { recursive: true, force: true });
   }
 }
 

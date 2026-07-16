@@ -1,14 +1,16 @@
 /**
- * MCP gateway CLI — wrapper around src/mcp/server.ts.
- *
- *   unicli mcp serve [--transport stdio|http] [--port 19826] [--profile deferred]
- *   unicli mcp health                       # pre-flight check (no server)
- *
- * `serve` shells out to the same `src/mcp/server.ts` entry point as
- * `npm run mcp` so the two paths share exactly one implementation.
- *
- * `health` is intentionally fast and offline: it loads adapters into the
- * registry and prints a structured health report. Exit 0 if healthy, 1 if not.
+ * @owner       src/commands/mcp.ts
+ * @does        Register MCP serve/health commands and forward trusted server/browser policy to the canonical MCP process.
+ * @needs       commander, child_process, MCP tools, discovery/registry, output envelopes
+ * @feeds       src/cli.ts and src/mcp/server.ts
+ * @breaks      Invalid server policy fails in the child before binding; spawn and health failures surface nonzero exits.
+ * @invariants  Browser provider/visibility/partition are server-owned flags and never untrusted MCP tool arguments.
+ * @side-effects Spawns the MCP server or loads adapters and writes a health envelope.
+ * @perf        Serve adds one process; health performs one adapter registry load.
+ * @concurrency The child owns MCP concurrency; this wrapper forwards immutable startup arguments.
+ * @test        tests/unit/commands/mcp.test.ts, tests/unit/mcp-browser-invocation.test.ts
+ * @stability   stable
+ * @since       2026-04-06
  */
 
 import type { Command } from "commander";
@@ -26,10 +28,17 @@ import { buildDefaultTools } from "../mcp/tools.js";
 import type { OutputFormat } from "../types.js";
 
 interface ServeOptions {
-  transport?: "stdio" | "http";
+  transport?: "stdio" | "http" | "streamable";
   port?: string;
   expanded?: boolean;
   profile?: string;
+  auth?: boolean;
+  browserProvider?: string;
+  browserVisibility?: string;
+  browserProfilePartition?: string;
+  browserIsolated?: boolean;
+  browserEphemeral?: boolean;
+  browserProfileId?: string;
 }
 
 interface HealthOptions {
@@ -53,6 +62,35 @@ function resolveServerEntry(): { kind: "ts" | "js"; path: string } {
   return { kind: "ts", path: candidateTs };
 }
 
+export function buildMcpServerArgs(
+  entryPath: string,
+  opts: ServeOptions,
+): string[] {
+  const args = [entryPath];
+  if (opts.expanded) args.push("--expanded");
+  if (opts.profile && opts.profile !== "default") {
+    args.push("--profile", opts.profile);
+  }
+  if (opts.transport) args.push("--transport", opts.transport);
+  if (opts.port) args.push("--port", opts.port);
+  if (opts.auth) args.push("--auth");
+  if (opts.browserProvider) {
+    args.push("--browser-provider", opts.browserProvider);
+  }
+  if (opts.browserVisibility) {
+    args.push("--browser-visibility", opts.browserVisibility);
+  }
+  if (opts.browserProfilePartition) {
+    args.push("--browser-profile-partition", opts.browserProfilePartition);
+  }
+  if (opts.browserIsolated) args.push("--browser-isolated");
+  if (opts.browserEphemeral) args.push("--browser-ephemeral");
+  if (opts.browserProfileId) {
+    args.push("--browser-profile-id", opts.browserProfileId);
+  }
+  return args;
+}
+
 export function registerMcpCommand(program: Command): void {
   const mcp = program
     .command("mcp")
@@ -61,10 +99,11 @@ export function registerMcpCommand(program: Command): void {
   mcp
     .command("serve")
     .description(
-      "Start the MCP server (stdio default, --transport http for HTTP/JSON-RPC)",
+      "Start the MCP server with one trusted browser policy for every client call",
     )
-    .option("--transport <kind>", "stdio or http", "stdio")
-    .option("--port <n>", "Port for http transport", "19826")
+    .option("--transport <kind>", "stdio, http, or streamable", "stdio")
+    .option("--port <n>", "Port for HTTP transports", "19826")
+    .option("--auth", "Enable OAuth for HTTP transports")
     .option(
       "--expanded",
       "Register one tool per adapter command (full catalog)",
@@ -74,19 +113,35 @@ export function registerMcpCommand(program: Command): void {
       "Tool profile: default, deferred, expanded, or computer-use",
       "default",
     )
+    .option(
+      "--browser-provider <provider>",
+      "Trusted browser provider: managed, chrome, or remote",
+      "managed",
+    )
+    .option(
+      "--browser-visibility <mode>",
+      "Trusted visibility: hidden, background, or foreground",
+    )
+    .option(
+      "--browser-profile-partition <id>",
+      "Shared login/storage partition for MCP Agent sessions",
+      "default",
+    )
+    .option(
+      "--browser-isolated",
+      "Allocate a fresh target for each MCP tool invocation",
+    )
+    .option(
+      "--browser-ephemeral",
+      "Use an empty disposable managed-browser profile",
+    )
+    .option(
+      "--browser-profile-id <id>",
+      "Select one managed automation profile",
+    )
     .action((opts: ServeOptions) => {
       const entry = resolveServerEntry();
-      const args: string[] = [entry.path];
-      if (opts.expanded) args.push("--expanded");
-      if (opts.profile && opts.profile !== "default") {
-        args.push("--profile", opts.profile);
-      }
-      if (opts.transport) {
-        args.push("--transport", opts.transport);
-      }
-      if (opts.port) {
-        args.push("--port", opts.port);
-      }
+      const args = buildMcpServerArgs(entry.path, opts);
 
       const child =
         entry.kind === "ts"

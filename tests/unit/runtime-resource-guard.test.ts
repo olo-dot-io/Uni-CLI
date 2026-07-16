@@ -32,6 +32,11 @@ describe("runtime resource deny rules", () => {
       tmp,
       "permission-rules.json",
     );
+    writeFileSync(
+      process.env.UNICLI_PERMISSION_RULES_PATH,
+      JSON.stringify({ schema_version: "1", rules: [] }),
+      "utf-8",
+    );
     server = createServer((_req, res) => {
       requests += 1;
       res.writeHead(200, { "Content-Type": "text/plain" });
@@ -125,6 +130,42 @@ describe("runtime resource deny rules", () => {
       ),
     ).resolves.toEqual([""]);
     expect(requests).toBe(1);
+  });
+
+  it("applies schema v2 default-deny to unmatched runtime domains", async () => {
+    writeFileSync(
+      process.env.UNICLI_PERMISSION_RULES_PATH!,
+      JSON.stringify({
+        schema_version: "2",
+        default: "deny",
+        rules: [
+          {
+            id: "allow-example-only",
+            decision: "allow",
+            match: { resources: { domains: ["example.com"] } },
+            reason: "Only example.com is approved",
+          },
+        ],
+      }),
+      "utf-8",
+    );
+
+    await expect(
+      runPipeline(
+        [{ fetch_text: { url: `${baseUrl}/must-not-run` } }],
+        { args: {}, source: "internal" },
+        undefined,
+        { site: "runtime-fixture" },
+      ),
+    ).rejects.toMatchObject({
+      detail: {
+        action: "fetch_text",
+        errorType: "permission_denied",
+        retryable: false,
+        config: { rule_id: "policy-default-deny" },
+      },
+    });
+    expect(requests).toBe(0);
   });
 
   it("blocks denied download paths before writing a file", async () => {

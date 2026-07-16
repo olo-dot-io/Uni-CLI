@@ -6,12 +6,16 @@
  * `parse_rss`, `html_to_md`, and `download` (via HTTP) pipeline steps.
  *
  * Contract:
- *  - action() never throws — all failures return an `err()` envelope
+ *  - ordinary failures return an `err()` envelope; cancellation throws its exact reason
  *  - capability.steps lists exactly the steps this transport can execute
  *  - snapshot() returns the last response as JSON
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { createServer } from "node:http";
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { HttpTransport } from "../../../../src/transport/adapters/http.js";
 import { createTransportBus } from "../../../../src/transport/bus.js";
 import type { TransportContext } from "../../../../src/transport/types.js";
@@ -51,7 +55,7 @@ describe("HttpTransport", () => {
         "download",
       ]),
     );
-    expect(t.capability.mutatesHost).toBe(false);
+    expect(t.capability.mutatesHost).toBe(true);
     expect(t.capability.snapshotFormats).toEqual(
       expect.arrayContaining(["json", "text"]),
     );
@@ -148,6 +152,118 @@ describe("HttpTransport", () => {
     expect(res.ok).toBe(true);
     if (res.ok) {
       expect(res.data).toBe("<rss>ok</rss>");
+    }
+  });
+
+  it("marks cancellation after an unsafe HTTP request is accepted outcome-ambiguous", async () => {
+    const previousAllowLocal = process.env.UNICLI_ALLOW_LOCAL;
+    process.env.UNICLI_ALLOW_LOCAL = "1";
+    let requestAccepted!: () => void;
+    const accepted = new Promise<void>((resolve) => {
+      requestAccepted = resolve;
+    });
+    const server = createServer((_request, response) => {
+      requestAccepted();
+      const timer = setTimeout(() => {
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end('{"committed":true}');
+      }, 250);
+      response.once("close", () => clearTimeout(timer));
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    const address = server.address();
+    if (!address || typeof address === "string") {
+      throw new Error("local HTTP test server has no address");
+    }
+    const controller = new AbortController();
+    const cancellation = new DOMException("cancel accepted POST", "AbortError");
+    const transport = new HttpTransport();
+
+    try {
+      const action = transport.action({
+        kind: "fetch",
+        params: {
+          url: `http://127.0.0.1:${String(address.port)}/mutate`,
+          method: "POST",
+          body: { value: 1 },
+        },
+        signal: controller.signal,
+      });
+      await accepted;
+      controller.abort(cancellation);
+
+      await expect(action).rejects.toMatchObject({
+        name: "OperationOutcomeAmbiguousError",
+        operation: "HTTP POST",
+        cancellationReason: cancellation,
+        outcome_ambiguous: true,
+      });
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+      if (previousAllowLocal === undefined) {
+        delete process.env.UNICLI_ALLOW_LOCAL;
+      } else {
+        process.env.UNICLI_ALLOW_LOCAL = previousAllowLocal;
+      }
+    }
+  });
+
+  it("preserves a prior download and removes staging after cancellation", async () => {
+    const previousAllowLocal = process.env.UNICLI_ALLOW_LOCAL;
+    const previousNoProxy = process.env.NO_PROXY;
+    process.env.UNICLI_ALLOW_LOCAL = "1";
+    process.env.NO_PROXY = "127.0.0.1,localhost";
+    const root = await mkdtemp(join(tmpdir(), "unicli-http-cancel-"));
+    const destination = join(root, "artifact.bin");
+    await writeFile(destination, "prior");
+    const server = createServer((_request, response) => {
+      response.writeHead(200, { "content-type": "application/octet-stream" });
+      response.write("first-");
+      const timer = setTimeout(() => response.end("late"), 300);
+      response.once("close", () => clearTimeout(timer));
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    const address = server.address();
+    if (!address || typeof address === "string") {
+      throw new Error("local HTTP test server has no address");
+    }
+    const transport = new HttpTransport();
+    await transport.open(makeCtx());
+    const controller = new AbortController();
+    const cancellation = new Error("cancel HTTP artifact");
+
+    try {
+      const action = transport.action({
+        kind: "download",
+        params: {
+          url: `http://127.0.0.1:${String(address.port)}/artifact`,
+          dest: destination,
+        },
+        signal: controller.signal,
+      });
+      setTimeout(() => controller.abort(cancellation), 30);
+
+      await expect(action).rejects.toBe(cancellation);
+      expect(await readFile(destination, "utf8")).toBe("prior");
+      expect(await readdir(root)).toEqual(["artifact.bin"]);
+    } finally {
+      await transport.close();
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+      await rm(root, { recursive: true, force: true });
+      if (previousAllowLocal === undefined) {
+        delete process.env.UNICLI_ALLOW_LOCAL;
+      } else {
+        process.env.UNICLI_ALLOW_LOCAL = previousAllowLocal;
+      }
+      if (previousNoProxy === undefined) delete process.env.NO_PROXY;
+      else process.env.NO_PROXY = previousNoProxy;
     }
   });
 

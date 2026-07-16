@@ -62,6 +62,7 @@ export function evaluateManifestOperationPolicy(input: {
   targetSurface: TargetSurface;
   adapterPath: string;
   startedAt: number;
+  argumentValues?: Record<string, unknown>;
 }): OperationPolicy | null {
   try {
     const policyInput = {
@@ -80,9 +81,12 @@ export function evaluateManifestOperationPolicy(input: {
       minimumCapability: input.command.minimum_capability,
       profile: input.parsed.permissionProfile,
       approved: input.parsed.yes,
+      argumentValues: input.argumentValues,
     };
     const policy = evaluateOperationPolicy(policyInput);
-    const denyRule = findDenyRuleForPolicySync(policy);
+    const denyRule = findDenyRuleForPolicySync(policy, {
+      argumentValues: input.argumentValues,
+    });
     if (denyRule) return applyDenyRuleToPolicy(policy, denyRule);
 
     if (

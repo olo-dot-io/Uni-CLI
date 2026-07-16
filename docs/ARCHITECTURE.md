@@ -294,6 +294,12 @@ Invocation goes through the same kernel regardless of wrapper:
 8. Record usage and optional run trace.
 
 This path protects the product from drift between CLI, MCP, ACP, and docs.
+Direct browser/operate CLI commands, direct compute CLI commands, and
+computer-use MCP tools enter the same policy runtime before they acquire a
+broker target, transport, overlay, file, clipboard, or desktop side effect.
+Permission schema v2 is deny-first, supports an explicit default decision and
+bounded argument constraints, and evaluates actual arguments without storing
+them in approval memory.
 
 ### 4. Observe
 

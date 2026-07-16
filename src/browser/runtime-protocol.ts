@@ -1,10 +1,10 @@
 /**
  * @owner       src/browser/runtime-protocol.ts
- * @does        Define the authenticated Browser Runtime Broker request, response, lifecycle, command, status, and refusal wire contracts.
+ * @does        Define the authenticated Browser Runtime Broker request, response, lifecycle, command-effect, status, and refusal wire contracts.
  * @needs       src/browser/invocation-context.ts, runtime-session.ts, managed-browser.ts, remote-browser.ts, chrome-provider.ts, chrome-native-protocol.ts
  * @feeds       src/browser/runtime-broker.ts, src/browser/runtime-transport.ts, native browser host and CLI/MCP clients
- * @breaks      Protocol consumers reject unknown versions, malformed identities, unknown actions, and structured broker errors.
- * @invariants  Authentication is outside tool arguments; every request has one id; hidden/background/foreground and provider selection are explicit.
+ * @breaks      Protocol consumers reject unknown versions, malformed identities, unknown actions, and structured broker or Chrome extension errors.
+ * @invariants  Authentication is outside tool arguments; every request has one id; active turns renew an explicit broker lease; hidden/background/foreground, provider selection, cancellation effect classification, and extension-reported outcome ambiguity are explicit.
  * @side-effects none (types and constants only)
  * @perf        O(1) serialization shape.
  * @concurrency Request ids allow independent in-flight clients; target ordering is broker-owned, not encoded in transport.
@@ -33,14 +33,17 @@ import { z } from "zod";
 
 export const BROWSER_BROKER_PRODUCT = "unicli";
 export const BROWSER_BROKER_PROTOCOL = "unicli-browser-runtime";
-export const BROWSER_BROKER_PROTOCOL_VERSION = 1;
+export const BROWSER_BROKER_PROTOCOL_VERSION = 3;
 export const BROWSER_BROKER_MAX_MESSAGE_BYTES = 4 * 1024 * 1024;
+export const BROWSER_BROKER_MAX_ARTIFACT_BYTES = 128 * 1024 * 1024;
 export const BROWSER_BROKER_DEFAULT_SESSION_TTL_MS = 5 * 60 * 1000;
+export const BROWSER_BROKER_SHUTDOWN_WAIT_MS = 150_000;
 
 export type BrowserPageCommand =
   | { method: "navigate"; url: string; settle_ms?: number }
   | { method: "evaluate"; expression: string }
   | { method: "click"; selector: string }
+  | { method: "native_click"; x: number; y: number }
   | { method: "type"; selector: string; text: string }
   | { method: "press"; key: string; modifiers?: string[] }
   | { method: "insert_text"; text: string }
@@ -79,6 +82,25 @@ export type BrowserPageCommand =
       dialog_id?: string;
     };
 
+const READ_ONLY_BROWSER_PAGE_COMMANDS = new Set<BrowserPageCommand["method"]>([
+  "cookies",
+  "downloads_read",
+  "screenshot",
+  "snapshot",
+  "title",
+  "url",
+]);
+
+export function browserPageCommandCanMutate(
+  command: BrowserPageCommand,
+): boolean {
+  if (command.method === "network_capture_read") return true;
+  if (command.method === "dialog_read") {
+    return command.clear_recent === true;
+  }
+  return !READ_ONLY_BROWSER_PAGE_COMMANDS.has(command.method);
+}
+
 interface BrowserBrokerRequestBase {
   id: string;
 }
@@ -93,6 +115,11 @@ export interface BrowserBrokerShutdownRequest extends BrowserBrokerRequestBase {
 
 export interface BrowserSessionStartRequest extends BrowserBrokerRequestBase {
   action: "session.start";
+  context: BrowserInvocationContext;
+}
+
+export interface BrowserTurnTouchRequest extends BrowserBrokerRequestBase {
+  action: "turn.touch";
   context: BrowserInvocationContext;
 }
 
@@ -137,6 +164,12 @@ export type BrowserTargetCommandRequest =
   | ManagedBrowserTargetCommandRequest
   | ChromeBrowserTargetCommandRequest
   | RemoteBrowserTargetCommandRequest;
+
+export interface BrowserTargetDiscardRequest extends BrowserBrokerRequestBase {
+  action: "target.discard";
+  context: BrowserInvocationContext;
+  target_id: string;
+}
 
 export interface BrowserTargetHandoffRequest extends BrowserBrokerRequestBase {
   action: "target.handoff";
@@ -196,9 +229,11 @@ export type BrowserBrokerRequest =
   | BrowserBrokerStatusRequest
   | BrowserBrokerShutdownRequest
   | BrowserSessionStartRequest
+  | BrowserTurnTouchRequest
   | BrowserTurnEndRequest
   | BrowserSessionEndRequest
   | BrowserTargetCommandRequest
+  | BrowserTargetDiscardRequest
   | BrowserTargetHandoffRequest
   | BrowserChromeTabsListRequest
   | BrowserChromeTargetClaimRequest
@@ -222,6 +257,8 @@ export interface BrowserBrokerError {
   message: string;
   suggestion: string;
   retryable: boolean;
+  outcome_ambiguous?: true;
+  target_unusable?: true;
 }
 
 export interface BrowserBrokerResponse {
@@ -249,6 +286,7 @@ export interface BrowserBrokerStatus {
   broker_pid: number;
   uptime_ms: number;
   session_ttl_ms: number;
+  lifecycle: "running" | "shutting_down";
   sessions: BrowserRuntimeRegistryStatus;
   providers: {
     managed: ManagedBrowserRuntimeStatus[];
@@ -273,6 +311,12 @@ export interface BrowserSessionEndResult {
   released_targets: BrowserTargetLease[];
 }
 
+export interface BrowserSessionStartResult {
+  agent_session_id: string;
+  turn_id: string;
+  session_ttl_ms: number;
+}
+
 const invocationContextSchema = z
   .object({
     agent_session_id: z.string().trim().min(1).max(512),
@@ -286,6 +330,7 @@ const invocationContextSchema = z
       "broker",
     ]),
     profile_partition_id: z.string().trim().min(1).max(512).optional(),
+    upstream_turn_id: z.string().trim().min(1).max(512).optional(),
   })
   .strict();
 
@@ -302,6 +347,13 @@ const pageCommandSchema = z.discriminatedUnion("method", [
   z.object({ method: z.literal("evaluate"), expression: z.string() }).strict(),
   z
     .object({ method: z.literal("click"), selector: z.string().min(1) })
+    .strict(),
+  z
+    .object({
+      method: z.literal("native_click"),
+      x: z.number().finite().nonnegative(),
+      y: z.number().finite().nonnegative(),
+    })
     .strict(),
   z
     .object({
@@ -393,6 +445,18 @@ const pageCommandSchema = z.discriminatedUnion("method", [
 
 const requestIdSchema = z.string().trim().min(1).max(512);
 
+const chromeNativeTargetSchema = z
+  .object({
+    target_id: z.string().trim().min(1).max(512),
+    tab_id: z.number().int().nonnegative(),
+    window_id: z.number().int().nonnegative(),
+    owned: z.boolean(),
+    visibility: z.enum(["background", "foreground"]),
+    url: z.string().optional(),
+    title: z.string().optional(),
+  })
+  .strict();
+
 const chromeNativeHelloSchema = z
   .object({
     type: z.literal("hello"),
@@ -402,6 +466,7 @@ const chromeNativeHelloSchema = z
     extension_id: z.string().trim().min(1).max(128),
     extension_version: z.string().trim().min(1).max(128),
     browser_session_id: z.string().uuid(),
+    targets: z.array(chromeNativeTargetSchema).max(10_000),
   })
   .strict();
 
@@ -411,6 +476,8 @@ const chromeNativeErrorSchema = z
     message: z.string().max(16_384),
     suggestion: z.string().max(16_384),
     retryable: z.boolean(),
+    outcome_ambiguous: z.boolean().optional(),
+    target_unusable: z.boolean().optional(),
   })
   .strict();
 
@@ -450,6 +517,13 @@ const brokerRequestSchema = z.union([
   z
     .object({
       id: requestIdSchema,
+      action: z.literal("turn.touch"),
+      context: invocationContextSchema,
+    })
+    .strict(),
+  z
+    .object({
+      id: requestIdSchema,
       action: z.literal("turn.end"),
       context: invocationContextSchema,
     })
@@ -474,6 +548,14 @@ const brokerRequestSchema = z.union([
       ephemeral: z.boolean(),
       profile_id: z.string().trim().min(1).max(512).optional(),
       command: pageCommandSchema,
+    })
+    .strict(),
+  z
+    .object({
+      id: requestIdSchema,
+      action: z.literal("target.discard"),
+      context: invocationContextSchema,
+      target_id: z.string().trim().min(1).max(512),
     })
     .strict(),
   z

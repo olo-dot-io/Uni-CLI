@@ -169,4 +169,52 @@ describe("browser session runtime", () => {
       url: "https://fallback.example",
     });
   });
+
+  it("fails closed when an expected target has no authoritative current evidence", async () => {
+    const lease = {
+      ...createBrowserSessionLease({
+        namespace: "browser",
+        workspace: "browser:default",
+      }),
+      target: {
+        kind: "broker-target" as const,
+        captured_at: "2026-07-15T00:00:00.000Z",
+        target_id: "managed-target-42",
+      },
+    };
+    const page = mockPage(null);
+    (
+      page as IPage & {
+        browserTargetInfo: () => Promise<BrowserSessionLeaseTarget | null>;
+      }
+    ).browserTargetInfo = vi.fn(async () => {
+      throw new Error("authoritative target transport unavailable");
+    });
+
+    await expect(
+      assertBrowserSessionLeaseTargetCurrent(lease, page),
+    ).rejects.toMatchObject({
+      code: "browser_target_unavailable",
+      expected: "target:managed-target-42",
+      actual: "unavailable",
+    });
+  });
+
+  it("fails closed when an authoritative provider returns no current target", async () => {
+    const lease = {
+      ...createBrowserSessionLease({
+        namespace: "browser",
+        workspace: "browser:default",
+      }),
+      target: {
+        kind: "broker-target" as const,
+        captured_at: "2026-07-15T00:00:00.000Z",
+        target_id: "managed-target-42",
+      },
+    };
+
+    await expect(
+      assertBrowserSessionLeaseTargetCurrent(lease, mockPage(null)),
+    ).rejects.toMatchObject({ code: "browser_target_unavailable" });
+  });
 });

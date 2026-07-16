@@ -4,9 +4,9 @@
  * @needs       node:crypto, commander, src/browser bridge/doctor/invocation/runtime-launch/runtime-protocol/runtime-transport/remote-browser, output
  * @feeds       src/commands/browser/index.ts and the public `unicli browser` command tree
  * @breaks      Structured broker/provider/lifecycle errors produce nonzero command exits without legacy transport or direct-CDP fallback.
- * @invariants  Status/doctor are probe-only; broker start launches no provider; provider and visibility are explicit; handoff is linearizable.
+ * @invariants  Status/doctor are probe-only; broker start launches no provider; authenticated stop/restart observes the broker's explicit shutdown state and never reports a completed stop while cleanup ownership remains; provider and visibility are explicit; handoff is linearizable.
  * @side-effects Explicit commands may start/stop the broker, start a selected provider, claim a Chrome tab, or transfer/end Agent sessions.
- * @perf        Status is one local IPC; start is lazy; restart waits at most five seconds for endpoint ownership to turn over.
+ * @perf        Status is one local IPC; start is lazy; shutdown waiting uses the shared broker/provider completion budget.
  * @concurrency Broker lock and target queues own cross-process serialization; handoff starts both endpoint turns before atomic transfer.
  * @test        tests/unit/commands/browser.test.ts, tests/unit/browser-doctor.test.ts, tests/integration/browser-runtime-autostart.test.ts
  * @stability   experimental
@@ -14,6 +14,7 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 
 import { Command } from "commander";
 
@@ -27,13 +28,25 @@ import {
   ensureBrowserRuntimeBroker,
   probeBrowserRuntimeBroker,
 } from "../../browser/runtime-launch.js";
-import type { BrowserBrokerStatus } from "../../browser/runtime-protocol.js";
+import {
+  BROWSER_BROKER_SHUTDOWN_WAIT_MS,
+  type BrowserBrokerStatus,
+} from "../../browser/runtime-protocol.js";
+import {
+  browserBrokerPaths,
+  shutdownBrowserRuntimeBroker,
+} from "../../browser/runtime-transport.js";
 import { readRemoteEndpoint } from "../../browser/remote-browser.js";
 import type { OutputFormat } from "../../types.js";
 import { detectFormat, format } from "../../output/formatter.js";
 import { makeCtx } from "../../output/envelope.js";
 import { mapErrorToExitCode } from "../../output/error-map.js";
-import { getOperatorPage, withBrowserOperatorContext } from "./runtime.js";
+import {
+  browserOperatorPermissionArguments,
+  getOperatorPage,
+  withBrowserOperatorContext,
+} from "./runtime.js";
+import { authorizeBrowserCommand } from "./permission.js";
 
 export function registerBrowserLifecycleCommands(
   browser: Command,
@@ -47,18 +60,23 @@ export function registerBrowserLifecycleCommands(
       "Start the selected browser provider through the shared broker",
     )
     .action(() =>
-      runLifecycleCommand(program, "browser.start", async () =>
-        withBrowserOperatorContext(browser, async () => {
-          const page = await getOperatorPage(browser, "browser");
-          await page.title();
-          return {
-            ok: true,
-            provider: page.scope.provider,
-            visibility: page.scope.visibility,
-            profile_partition_id: page.scope.profilePartitionId,
-            target: await page.browserTargetInfo(),
-          };
-        }),
+      runLifecycleCommand(
+        program,
+        "browser.start",
+        async () =>
+          withBrowserOperatorContext(browser, async () => {
+            const page = await getOperatorPage(browser, "browser");
+            await page.title();
+            return {
+              ok: true,
+              provider: page.scope.provider,
+              visibility: page.scope.visibility,
+              profile_partition_id: page.scope.profilePartitionId,
+              target: await page.browserTargetInfo(),
+            };
+          }),
+        false,
+        () => browserOperatorPermissionArguments(browser),
       ),
     );
 
@@ -74,6 +92,7 @@ export function registerBrowserLifecycleCommands(
         "browser.status",
         async () => readRuntimeStatus(),
         options.json,
+        { json: options.json === true },
       ),
     );
 
@@ -115,6 +134,7 @@ export function registerBrowserLifecycleCommands(
           return report;
         },
         options.json,
+        { json: options.json === true, repair: options.repair === true },
       ),
     );
 
@@ -141,6 +161,7 @@ export function registerBrowserLifecycleCommands(
           };
         },
         options.json,
+        { json: options.json === true },
       ),
     );
 
@@ -148,14 +169,20 @@ export function registerBrowserLifecycleCommands(
     .command("session-end <agent-session-id>")
     .description("End one Agent browser session and release all owned targets")
     .action((agentSessionId: string) =>
-      runLifecycleCommand(program, "browser.session_end", async () => {
-        const runtime = await probeBrowserRuntimeBroker();
-        return runtime.client.requestOrThrow({
-          id: randomUUID(),
-          action: "session.end",
-          agent_session_id: agentSessionId,
-        });
-      }),
+      runLifecycleCommand(
+        program,
+        "browser.session_end",
+        async () => {
+          const runtime = await probeBrowserRuntimeBroker();
+          return runtime.client.requestOrThrow({
+            id: randomUUID(),
+            action: "session.end",
+            agent_session_id: agentSessionId,
+          });
+        },
+        false,
+        { agentSessionId },
+      ),
     );
 
   browser
@@ -164,16 +191,26 @@ export function registerBrowserLifecycleCommands(
       "Claim an explicit existing Chrome tab for the current Agent session",
     )
     .action((tabIdRaw: string) =>
-      runLifecycleCommand(program, "browser.bind", async () =>
-        withBrowserOperatorContext(
-          browser,
-          async () => {
-            const tabId = parseNonNegativeInteger(tabIdRaw, "tab id");
-            const page = await getOperatorPage(browser, "browser");
-            return page.claimChromeTab(tabId);
-          },
-          { provider: "chrome", visibility: "background" },
-        ),
+      runLifecycleCommand(
+        program,
+        "browser.bind",
+        async () =>
+          withBrowserOperatorContext(
+            browser,
+            async () => {
+              const tabId = parseNonNegativeInteger(tabIdRaw, "tab id");
+              const page = await getOperatorPage(browser, "browser");
+              return page.claimChromeTab(tabId);
+            },
+            { provider: "chrome", visibility: "background" },
+          ),
+        false,
+        () =>
+          browserOperatorPermissionArguments(
+            browser,
+            { tabId: Number(tabIdRaw) },
+            { provider: "chrome", visibility: "background" },
+          ),
       ),
     );
 
@@ -184,54 +221,64 @@ export function registerBrowserLifecycleCommands(
     .option("--to-turn <id>", "Destination turn id")
     .action(
       (targetId: string, options: { toSession: string; toTurn?: string }) =>
-        runLifecycleCommand(program, "browser.handoff", async () =>
-          withBrowserOperatorContext(browser, async () => {
-            const source = currentBrowserInvocationScope();
-            if (!source) throw new Error("Browser invocation scope is missing");
-            const runtime = await ensureBrowserRuntimeBroker();
-            await runtime.client.requestOrThrow({
-              id: randomUUID(),
-              action: "session.start",
-              context: source.context,
-            });
-            registerBrowserTurnFinalizer(
-              `${source.context.agent_session_id}\0${source.context.turn_id}`,
-              () =>
-                runtime.client.requestOrThrow({
-                  id: randomUUID(),
-                  action: "turn.end",
-                  context: source.context,
-                }),
-            );
-            const destination = createBrowserInvocationContext({
-              transport: "cli",
-              agentSessionId: options.toSession,
-              turnId: options.toTurn ?? `handoff:${randomUUID()}`,
-              profilePartitionId: source.profilePartitionId,
-            });
-            await runtime.client.requestOrThrow({
-              id: randomUUID(),
-              action: "session.start",
-              context: destination,
-            });
-            const lease = await runtime.client.requestOrThrow({
-              id: randomUUID(),
-              action: "target.handoff",
-              target_id: targetId,
-              from: source.context,
-              to: destination,
-            });
-            await runtime.client.requestOrThrow({
-              id: randomUUID(),
-              action: "turn.end",
-              context: destination,
-            });
-            return lease;
-          }),
+        runLifecycleCommand(
+          program,
+          "browser.handoff",
+          async () =>
+            withBrowserOperatorContext(browser, async () => {
+              const source = currentBrowserInvocationScope();
+              if (!source)
+                throw new Error("Browser invocation scope is missing");
+              const runtime = await ensureBrowserRuntimeBroker();
+              await runtime.client.requestOrThrow({
+                id: randomUUID(),
+                action: "session.start",
+                context: source.context,
+              });
+              registerBrowserTurnFinalizer(
+                `${source.context.agent_session_id}\0${source.context.turn_id}`,
+                () =>
+                  runtime.client.requestOrThrow({
+                    id: randomUUID(),
+                    action: "turn.end",
+                    context: source.context,
+                  }),
+              );
+              const destination = createBrowserInvocationContext({
+                transport: "cli",
+                agentSessionId: options.toSession,
+                turnId: options.toTurn ?? `handoff:${randomUUID()}`,
+                profilePartitionId: source.profilePartitionId,
+              });
+              await runtime.client.requestOrThrow({
+                id: randomUUID(),
+                action: "session.start",
+                context: destination,
+              });
+              const lease = await runtime.client.requestOrThrow({
+                id: randomUUID(),
+                action: "target.handoff",
+                target_id: targetId,
+                from: source.context,
+                to: destination,
+              });
+              await runtime.client.requestOrThrow({
+                id: randomUUID(),
+                action: "turn.end",
+                context: destination,
+              });
+              return lease;
+            }),
+          false,
+          () =>
+            browserOperatorPermissionArguments(browser, {
+              targetId,
+              toSession: options.toSession,
+              toTurn: options.toTurn ?? null,
+            }),
         ),
     );
 }
-
 function registerBrokerCommands(browser: Command, program: Command): void {
   const broker = browser
     .command("broker")
@@ -261,21 +308,22 @@ function registerBrokerCommands(browser: Command, program: Command): void {
     .description("Stop the broker and release all sessions/providers")
     .action(() =>
       runLifecycleCommand(program, "browser.broker.stop", async () => {
-        let connection: Awaited<ReturnType<typeof probeBrowserRuntimeBroker>>;
+        let result: Awaited<ReturnType<typeof shutdownBrowserRuntimeBroker>>;
         try {
-          connection = await probeBrowserRuntimeBroker();
+          result = await shutdownBrowserRuntimeBroker();
         } catch (error) {
           if (isBrokerUnavailable(error)) {
             return { state: "stopped", already_stopped: true };
           }
           throw error;
         }
-        const result = await connection.client.requestOrThrow({
-          id: randomUUID(),
-          action: "broker.shutdown",
-        });
-        await waitForBrokerStop();
-        return { state: "stopped", already_stopped: false, result };
+        const state = await waitForBrokerStop();
+        return {
+          state,
+          already_stopped: false,
+          completion_pending: state === "shutting_down",
+          result,
+        };
       }),
     );
   broker
@@ -284,12 +332,11 @@ function registerBrokerCommands(browser: Command, program: Command): void {
     .action(() =>
       runLifecycleCommand(program, "browser.broker.restart", async () => {
         try {
-          const existing = await probeBrowserRuntimeBroker();
-          await existing.client.requestOrThrow({
-            id: randomUUID(),
-            action: "broker.shutdown",
-          });
-          await waitForBrokerStop();
+          await shutdownBrowserRuntimeBroker();
+          const state = await waitForBrokerStop();
+          if (state !== "stopped") {
+            throw new BrokerShutdownPendingError();
+          }
         } catch (error) {
           if (!isBrokerUnavailable(error)) throw error;
         }
@@ -308,7 +355,9 @@ async function readRuntimeStatus(): Promise<{
   status?: BrowserBrokerStatus;
 }> {
   try {
-    const connection = await probeBrowserRuntimeBroker({ timeoutMs: 1_000 });
+    const connection = await probeBrowserRuntimeBroker({
+      requestTimeoutMs: 1_000,
+    });
     return { state: "running", status: connection.status };
   } catch (error) {
     if (isBrokerUnavailable(error)) return { state: "stopped" };
@@ -316,18 +365,34 @@ async function readRuntimeStatus(): Promise<{
   }
 }
 
-async function waitForBrokerStop(): Promise<void> {
-  const deadline = Date.now() + 5_000;
+async function waitForBrokerStop(): Promise<"stopped" | "shutting_down"> {
+  const deadline = Date.now() + BROWSER_BROKER_SHUTDOWN_WAIT_MS;
+  const paths = browserBrokerPaths();
   while (Date.now() < deadline) {
-    try {
-      await probeBrowserRuntimeBroker({ timeoutMs: 250 });
-    } catch (error) {
-      if (isBrokerUnavailable(error)) return;
-      throw error;
+    if (
+      !existsSync(paths.descriptorPath) &&
+      !existsSync(paths.lockPath) &&
+      (process.platform === "win32" || !existsSync(paths.socketPath))
+    ) {
+      return "stopped";
     }
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
-  throw new Error("Browser broker did not stop within 5000ms");
+  return "shutting_down";
+}
+
+class BrokerShutdownPendingError extends Error {
+  readonly code = "browser_broker_shutting_down";
+  readonly retryable = true;
+  readonly suggestion =
+    "Wait for `unicli browser broker status` to report stopped, then retry the restart.";
+
+  constructor() {
+    super(
+      `Browser broker cleanup is still running after ${String(BROWSER_BROKER_SHUTDOWN_WAIT_MS)}ms`,
+    );
+    this.name = "BrokerShutdownPendingError";
+  }
 }
 
 function isBrokerUnavailable(error: unknown): boolean {
@@ -353,6 +418,9 @@ async function runLifecycleCommand(
   command: string,
   operation: () => Promise<unknown>,
   jsonAlias = false,
+  argumentValues:
+    | Record<string, unknown>
+    | (() => Record<string, unknown>) = {},
 ): Promise<void> {
   const startedAt = Date.now();
   const outputFormat = detectFormat(
@@ -360,6 +428,15 @@ async function runLifecycleCommand(
   );
   const context = makeCtx(command, startedAt);
   try {
+    const resolvedArgumentValues =
+      typeof argumentValues === "function" ? argumentValues() : argumentValues;
+    const [namespace = "browser", ...actionParts] = command.split(".");
+    await authorizeBrowserCommand(
+      program,
+      namespace,
+      actionParts.join(" "),
+      resolvedArgumentValues,
+    );
     const result = await operation();
     context.duration_ms = Date.now() - startedAt;
     console.log(
@@ -375,6 +452,7 @@ async function runLifecycleCommand(
       code: string;
       suggestion: string;
       retryable: boolean;
+      exitCode: number;
     }>;
     context.duration_ms = Date.now() - startedAt;
     context.error = {
@@ -384,6 +462,6 @@ async function runLifecycleCommand(
       retryable: structured.retryable ?? false,
     };
     console.error(format(null, undefined, outputFormat, context));
-    process.exitCode = mapErrorToExitCode(error);
+    process.exitCode = structured.exitCode ?? mapErrorToExitCode(error);
   }
 }

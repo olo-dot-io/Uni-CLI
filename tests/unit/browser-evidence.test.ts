@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,6 +12,10 @@ import {
 } from "../../src/engine/browser/evidence.js";
 import { buildBrowserCommandDiagnostic } from "../../src/engine/browser/diagnostics.js";
 import { createBrowserSessionLease } from "../../src/engine/browser/session-lease.js";
+import {
+  createBrowserInvocationScope,
+  runBrowserInvocation,
+} from "../../src/browser/invocation-scope.js";
 import type { IPage } from "../../src/types.js";
 
 describe("browser operator evidence", () => {
@@ -377,5 +381,35 @@ describe("browser operator evidence", () => {
     expect(packet.screenshot).toEqual({ error: "screen denied" });
     expect(packet.capture_scope.screenshot).toBe("failed");
     expect(packet.capture_errors).toContain("screenshot: screen denied");
+  });
+
+  it("does not publish screenshot evidence after invocation cancellation", async () => {
+    const page = mockPage();
+    const controller = new AbortController();
+    const cancellation = new Error("cancel evidence artifact");
+    // REASON: IPage is the external browser-capture boundary; evidence cancellation and filesystem publication remain real.
+    vi.mocked(page.screenshot).mockImplementationOnce(async () => {
+      queueMicrotask(() => controller.abort(cancellation));
+      return Buffer.from("late-evidence");
+    });
+    const scope = createBrowserInvocationScope({
+      context: {
+        agent_session_id: "evidence-agent",
+        turn_id: "evidence-turn",
+        transport: "cli",
+      },
+      signal: controller.signal,
+    });
+
+    await expect(
+      runBrowserInvocation(scope, () =>
+        captureBrowserEvidencePacket(page, {
+          action: "evidence",
+          workspace: "browser:default",
+          screenshotDir: tmp,
+        }),
+      ),
+    ).rejects.toBe(cancellation);
+    expect(readdirSync(tmp)).toEqual([]);
   });
 });

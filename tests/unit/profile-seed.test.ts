@@ -4,12 +4,14 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  statSync,
   utimesSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { acquireKernelFileLock } from "../../src/browser/kernel-file-lock.js";
 import type { LocalBrowserProfile } from "../../src/browser/local-profiles.js";
 import {
   BrowserProfileSeedError,
@@ -54,11 +56,11 @@ describe("automation profile seed", () => {
     };
   }
 
-  it("seeds Local State and cookie stores into a Uni-CLI-owned target", () => {
+  it("seeds Local State and cookie stores into a Uni-CLI-owned target", async () => {
     const profile = createProfile();
     const target = join(root, ".unicli", "chrome-profile");
 
-    const first = prepareSeededAutomationProfile(profile, target, {
+    const first = await prepareSeededAutomationProfile(profile, target, {
       platform: "darwin",
     });
 
@@ -83,7 +85,7 @@ describe("automation profile seed", () => {
       },
     });
 
-    const second = prepareSeededAutomationProfile(profile, target, {
+    const second = await prepareSeededAutomationProfile(profile, target, {
       platform: "darwin",
     });
     expect(second.status).toBe("fresh");
@@ -97,10 +99,12 @@ describe("automation profile seed", () => {
     });
   });
 
-  it("reports target runtime mutation without invalidating the source seed", () => {
+  it("reports target runtime mutation without invalidating the source seed", async () => {
     const profile = createProfile();
     const target = join(root, ".unicli", "chrome-profile");
-    prepareSeededAutomationProfile(profile, target, { platform: "darwin" });
+    await prepareSeededAutomationProfile(profile, target, {
+      platform: "darwin",
+    });
 
     const targetCookieDb = join(target, "Default", "Network", "Cookies");
     writeFileSync(targetCookieDb, "runtime-cookie-db");
@@ -118,14 +122,16 @@ describe("automation profile seed", () => {
     });
   });
 
-  it("force reseeds a runtime-mutated automation profile from the source snapshot", () => {
+  it("force reseeds a runtime-mutated automation profile from the source snapshot", async () => {
     const profile = createProfile();
     const target = join(root, ".unicli", "chrome-profile");
-    prepareSeededAutomationProfile(profile, target, { platform: "darwin" });
+    await prepareSeededAutomationProfile(profile, target, {
+      platform: "darwin",
+    });
 
     const targetCookieDb = join(target, "Default", "Network", "Cookies");
     writeFileSync(targetCookieDb, "runtime-cookie-db");
-    const reseed = prepareSeededAutomationProfile(profile, target, {
+    const reseed = await prepareSeededAutomationProfile(profile, target, {
       platform: "darwin",
       force: true,
     });
@@ -134,10 +140,12 @@ describe("automation profile seed", () => {
     expect(readFileSync(targetCookieDb, "utf-8")).toBe("cookie-db");
   });
 
-  it("reseeds when a manifest exists but a target login-state file is missing", () => {
+  it("reseeds when a manifest exists but a target login-state file is missing", async () => {
     const profile = createProfile();
     const target = join(root, ".unicli", "chrome-profile");
-    prepareSeededAutomationProfile(profile, target, { platform: "darwin" });
+    await prepareSeededAutomationProfile(profile, target, {
+      platform: "darwin",
+    });
 
     rmSync(join(target, "Default", "Network", "Cookies"));
 
@@ -152,7 +160,7 @@ describe("automation profile seed", () => {
       },
     });
 
-    const reseed = prepareSeededAutomationProfile(profile, target, {
+    const reseed = await prepareSeededAutomationProfile(profile, target, {
       platform: "darwin",
     });
     expect(reseed.status).toBe("seeded");
@@ -161,10 +169,12 @@ describe("automation profile seed", () => {
     ).toBe("cookie-db");
   });
 
-  it("marks the seed stale when the source cookie DB changes and reseeds it", () => {
+  it("marks the seed stale when the source cookie DB changes and reseeds it", async () => {
     const profile = createProfile();
     const target = join(root, ".unicli", "chrome-profile");
-    prepareSeededAutomationProfile(profile, target, { platform: "darwin" });
+    await prepareSeededAutomationProfile(profile, target, {
+      platform: "darwin",
+    });
 
     const cookieDb = join(profile.profile_path, "Network", "Cookies");
     writeFileSync(cookieDb, "new-cookie-db");
@@ -180,7 +190,7 @@ describe("automation profile seed", () => {
     });
     expect(isRunningSeedIdentityUsable(stale)).toBe(true);
 
-    const reseed = prepareSeededAutomationProfile(profile, target, {
+    const reseed = await prepareSeededAutomationProfile(profile, target, {
       platform: "darwin",
     });
     expect(reseed.status).toBe("seeded");
@@ -203,26 +213,62 @@ describe("automation profile seed", () => {
     });
   });
 
-  it("fails loudly when another seed owns the target lock", () => {
+  it("refuses to delete an incompatible legacy lock directory", async () => {
     const profile = createProfile();
     const target = join(root, ".unicli", "chrome-profile");
     mkdirSync(join(root, ".unicli"), { recursive: true });
-    writeFileSync(`${target}.seed.lock`, "{}");
+    mkdirSync(`${target}.seed.lock`, { mode: 0o700 });
+    writeFileSync(
+      join(`${target}.seed.lock`, "owner.json"),
+      JSON.stringify({ pid: process.pid, token: "live-owner" }),
+    );
 
-    expect(() =>
+    await expect(
       prepareSeededAutomationProfile(profile, target, { platform: "darwin" }),
-    ).toThrow(BrowserProfileSeedError);
-    expect(existsSync(`${target}.seed.lock`)).toBe(true);
+    ).rejects.toBeInstanceOf(BrowserProfileSeedError);
     expect(existsSync(target)).toBe(false);
   });
 
-  it("does not claim unsupported platforms", () => {
+  it("reuses the persistent kernel lock inode after an earlier owner exited", async () => {
+    const profile = createProfile();
+    const target = join(root, ".unicli", "chrome-profile");
+    mkdirSync(join(root, ".unicli"), { recursive: true });
+    writeFileSync(
+      `${target}.seed.lock`,
+      JSON.stringify({ pid: 999_999, created_at: "2000-01-01T00:00:00Z" }),
+    );
+
+    await expect(
+      prepareSeededAutomationProfile(profile, target, { platform: "darwin" }),
+    ).resolves.toMatchObject({ status: "seeded" });
+    expect(statSync(`${target}.seed.lock`).isFile()).toBe(true);
+  });
+
+  it("maps a live kernel owner to deterministic seed contention", async () => {
+    const profile = createProfile();
+    const target = join(root, ".unicli", "chrome-profile");
+    mkdirSync(join(root, ".unicli"), { recursive: true });
+    const owner = acquireKernelFileLock(`${target}.seed.lock`);
+
+    try {
+      await expect(
+        prepareSeededAutomationProfile(profile, target, {
+          platform: "darwin",
+        }),
+      ).rejects.toMatchObject({ code: "seed-lock-held" });
+      expect(existsSync(target)).toBe(false);
+    } finally {
+      owner.release();
+    }
+  });
+
+  it("does not claim unsupported platforms", async () => {
     const profile = createProfile();
     const target = join(root, ".unicli", "chrome-profile");
 
-    expect(() =>
+    await expect(
       prepareSeededAutomationProfile(profile, target, { platform: "win32" }),
-    ).toThrow(/supported on macOS only/);
+    ).rejects.toThrow(/supported on macOS only/);
     expect(
       inspectAutomationProfileSeed(profile, target, { platform: "win32" }),
     ).toMatchObject({
@@ -230,7 +276,7 @@ describe("automation profile seed", () => {
     });
   });
 
-  it("fails instead of creating an empty target when cookies are missing", () => {
+  it("fails instead of creating an empty target when cookies are missing", async () => {
     const profile = createProfile();
     rmSync(join(profile.profile_path, "Network", "Cookies"), { force: true });
     rmSync(join(profile.profile_path, "Network", "Cookies-wal"), {
@@ -238,9 +284,9 @@ describe("automation profile seed", () => {
     });
     const target = join(root, ".unicli", "chrome-profile");
 
-    expect(() =>
+    await expect(
       prepareSeededAutomationProfile(profile, target, { platform: "darwin" }),
-    ).toThrow(/no Cookies or Network\/Cookies database/);
+    ).rejects.toThrow(/no Cookies or Network\/Cookies database/);
     expect(existsSync(target)).toBe(false);
   });
 });

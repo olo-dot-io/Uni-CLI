@@ -1,23 +1,38 @@
 /**
  * @owner   src/transport/adapters/cdp-browser.ts
- * @does    Expose BrowserPage CDP operations behind the transport adapter envelope contract.
- * @needs   node:child_process, src/browser/page.ts, src/browser/launcher.ts, src/electron-apps.ts, src/transport refs/snapshot-encoder/types
+ * @does    Expose broker-owned browser operations and explicit Electron/CDP attachments behind the transport adapter envelope contract.
+ * @needs   src/browser/bridge.ts, invocation-scope.ts, src/browser/page.ts, src/electron-apps.ts, src/transport/cdp-app-launcher.ts, refs/snapshot-encoder/types
  * @feeds   bus-driven browser steps, adapter execution, tests/unit/transport adapters
- * @breaks  CDP attach, app launch, and browser action failures return structured envelopes or throw during page acquisition.
- * @invariants Default page acquisition delegates profile attach/seed/ephemeral policy to launcher before connecting.
- * @side-effects May launch Chrome/Electron apps and mutate pages through CDP actions.
+ * @breaks  CDP attach, app launch, and ordinary browser action failures return structured envelopes; outcome-ambiguous delivery throws unchanged and retires an unusable page.
+ * @invariants Default page acquisition requires a trusted invocation scope and delegates process/target ownership to the browser broker; only explicit port/app attachment uses direct CDP; a directly launched app remains pending-owned until CDP readiness and is contained on failure/cancellation; one explicit endpoint is cached per Agent turn/provider/profile identity and endpoint changes replace rather than silently reuse it; any structural outcome_ambiguous error escapes the envelope/cascade path without fallback replay.
+ * @side-effects May launch explicitly requested Electron apps and mutate broker-owned or explicitly attached pages through CDP actions; never implicitly launches Chrome.
  * @perf    CDP target probing and post-launch polling are bounded.
- * @concurrency Browser profile concurrency is owned by launcher; transport state is per adapter instance.
+ * @concurrency Browser profile/target concurrency is broker-owned; explicit attachment caches are isolated per ambient Agent scope and released by its turn finalizer even on the process-shared transport bus.
  * @test    tests/unit/transport/adapters/cdp-browser.test.ts
  * @stability experimental
  * @since   2026-06-29
  */
 
 import { err, exitCodeFor, ok } from "../../core/envelope.js";
-import { spawn } from "node:child_process";
+import { BrowserBridge } from "../../browser/bridge.js";
+import {
+  currentBrowserInvocationScope,
+  registerBrowserTurnFinalizer,
+} from "../../browser/invocation-scope.js";
 import { findElectronApp, type ElectronAppEntry } from "../../electron-apps.js";
 import type { Envelope } from "../../core/envelope.js";
 import type { IPage } from "../../types.js";
+import { settleDispatchedAction } from "../action-settlement.js";
+import {
+  findOperationOutcomeAmbiguousError,
+  ProcessContainmentAmbiguousError,
+} from "../contained-process.js";
+import {
+  launchCdpApp,
+  type CdpAppLauncher,
+  type CdpAppLaunchReceipt,
+  type CdpAppLaunchRequest,
+} from "../cdp-app-launcher.js";
 import { RefAllocator } from "../refs.js";
 import {
   encodeSnapshot,
@@ -48,6 +63,8 @@ const CDP_STEPS = [
   "screenshot",
 ] as const;
 
+const CDP_READ_ONLY_ACTIONS = new Set(["snapshot", "screenshot", "wait"]);
+
 const CDP_CAPABILITY: Capability = {
   steps: CDP_STEPS,
   snapshotFormats: ["dom-ax", "screenshot"] as readonly SnapshotFormat[],
@@ -56,26 +73,20 @@ const CDP_CAPABILITY: Capability = {
 
 export interface CdpBrowserTransportOptions {
   /**
-   * Optional factory for an `IPage`. When omitted, the transport defers
-   * page acquisition to the existing launcher bridge in
-   * `src/browser/page.ts`. Tests inject a mock here.
+   * Optional factory for an `IPage`. When omitted, the transport acquires a
+   * broker-owned page from the trusted ambient invocation. Tests inject a
+   * mock here.
    */
   pageFactory?: () => Promise<IPage>;
   pageConnector?: (port: number, wsUrl?: string) => Promise<IPage>;
-  cdpProbe?: (port: number) => Promise<CdpDebuggerInfo | null>;
-  appLauncher?: (request: CdpAppLaunchRequest) => Promise<void>;
+  cdpProbe?: (
+    port: number,
+    signal?: AbortSignal,
+  ) => Promise<CdpDebuggerInfo | null>;
+  appLauncher?: CdpAppLauncher;
 }
 
-export interface CdpAppLaunchRequest {
-  app: string;
-  port: number;
-  processName: string;
-  bundleId?: string;
-  displayName?: string;
-  executableNames?: readonly string[];
-  extraArgs?: readonly string[];
-  relaunchLosesSession?: boolean;
-}
+export type { CdpAppLaunchRequest } from "../cdp-app-launcher.js";
 
 export interface CdpTargetInfo {
   id: string;
@@ -91,29 +102,14 @@ export interface CdpDebuggerInfo {
   targets: CdpTargetInfo[];
 }
 
-/** Default factory — connect or auto-launch Chrome via the existing launcher. */
+/** Default factory — acquire only through the broker-owned ambient scope. */
 async function defaultPageFactory(): Promise<IPage> {
-  const { BrowserPage } = await import("../../browser/page.js");
-  const { launchChrome } = await import("../../browser/launcher.js");
-  const { resolveCdpPort } = await import("../../browser/cdp-client.js");
-  const port = resolveCdpPort();
-  const actualPort = await launchChrome(port);
-  try {
-    return await BrowserPage.connect(actualPort);
-  } catch {
-    let lastErr: unknown;
-    for (let attempt = 0; attempt < 20; attempt++) {
-      try {
-        return await BrowserPage.connect(actualPort);
-      } catch (e) {
-        lastErr = e;
-        await new Promise((r) => setTimeout(r, 500));
-      }
-    }
-    throw lastErr instanceof Error
-      ? lastErr
-      : new Error("failed to connect to Chrome");
+  if (!currentBrowserInvocationScope()) {
+    throw new Error(
+      "Default browser compute actions require a trusted browser invocation scope",
+    );
   }
+  return new BrowserBridge().connect();
 }
 
 async function defaultPageConnector(port: number): Promise<IPage> {
@@ -121,10 +117,16 @@ async function defaultPageConnector(port: number): Promise<IPage> {
   return BrowserPage.connect(port);
 }
 
-async function defaultCdpProbe(port: number): Promise<CdpDebuggerInfo | null> {
+async function defaultCdpProbe(
+  port: number,
+  signal?: AbortSignal,
+): Promise<CdpDebuggerInfo | null> {
   try {
+    signal?.throwIfAborted();
     const resp = await fetch(`http://127.0.0.1:${port}/json`, {
-      signal: AbortSignal.timeout(1500),
+      signal: signal
+        ? AbortSignal.any([signal, AbortSignal.timeout(1500)])
+        : AbortSignal.timeout(1500),
     });
     if (!resp.ok) return null;
     const targets = (await resp.json()) as CdpTargetInfo[];
@@ -140,40 +142,32 @@ async function defaultCdpProbe(port: number): Promise<CdpDebuggerInfo | null> {
   }
 }
 
-async function defaultAppLauncher(request: CdpAppLaunchRequest): Promise<void> {
-  const debugArg = `--remote-debugging-port=${request.port}`;
-  const extraArgs = [...(request.extraArgs ?? []), debugArg];
-  if (process.platform === "darwin") {
-    const args = request.bundleId
-      ? ["-b", request.bundleId, "--args", ...extraArgs]
-      : ["-a", request.processName, "--args", ...extraArgs];
-    await runProcess("open", args);
-    return;
-  }
-
-  const command = request.executableNames?.[0] ?? request.processName;
-  const child = spawn(command, extraArgs, {
-    detached: true,
-    stdio: "ignore",
-  });
-  child.unref();
+function pageScopeKey(): string {
+  const scope = currentBrowserInvocationScope();
+  if (!scope) return "unscoped";
+  return JSON.stringify([
+    scope.context.agent_session_id,
+    scope.context.turn_id,
+    scope.provider,
+    scope.visibility,
+    scope.profilePartitionId,
+    scope.isolated,
+    scope.ephemeral,
+    scope.profileId ?? null,
+  ]);
 }
 
-function runProcess(command: string, args: readonly string[]): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, [...args], {
-      stdio: "ignore",
-    });
-    child.on("error", reject);
-    child.on("close", (code) => {
-      if (code === 0) {
-        resolve();
-        return;
-      }
-      reject(new Error(`${command} exited with code ${code ?? "unknown"}`));
-    });
-  });
+interface CdpAttachmentEndpoint {
+  port: number;
+  webSocketDebuggerUrl?: string;
 }
+
+interface CachedPage {
+  page: IPage;
+  endpoint?: CdpAttachmentEndpoint;
+}
+
+let nextTransportInstanceId = 1;
 
 /**
  * CdpBrowserTransport wraps IPage to expose CDP browser primitives via
@@ -188,18 +182,24 @@ export class CdpBrowserTransport implements TransportAdapter {
     port: number,
     wsUrl?: string,
   ) => Promise<IPage>;
-  private readonly cdpProbe: (port: number) => Promise<CdpDebuggerInfo | null>;
-  private readonly appLauncher: (request: CdpAppLaunchRequest) => Promise<void>;
+  private readonly cdpProbe: (
+    port: number,
+    signal?: AbortSignal,
+  ) => Promise<CdpDebuggerInfo | null>;
+  private readonly appLauncher: CdpAppLauncher;
   private readonly eagerOpen: boolean;
+  private readonly cacheFactoryPage: boolean;
+  private readonly instanceId = nextTransportInstanceId++;
   private refs: TransportContext["refs"] | undefined;
-  private page: IPage | undefined;
+  private readonly pages = new Map<string, CachedPage>();
   private closed = false;
 
   constructor(opts: CdpBrowserTransportOptions = {}) {
     this.pageFactory = opts.pageFactory ?? defaultPageFactory;
     this.pageConnector = opts.pageConnector ?? defaultPageConnector;
     this.cdpProbe = opts.cdpProbe ?? defaultCdpProbe;
-    this.appLauncher = opts.appLauncher ?? defaultAppLauncher;
+    this.appLauncher = opts.appLauncher ?? launchCdpApp;
+    this.cacheFactoryPage = opts.pageFactory !== undefined;
     this.eagerOpen =
       opts.pageFactory !== undefined &&
       opts.pageConnector === undefined &&
@@ -209,23 +209,27 @@ export class CdpBrowserTransport implements TransportAdapter {
   async open(ctx: TransportContext): Promise<void> {
     this.refs = ctx.refs ?? ctx.bus.refs;
     this.closed = false;
-    if (this.eagerOpen && !this.page) {
-      this.page = await this.pageFactory();
+    if (this.eagerOpen && !this.cachedPage()) {
+      await this.replaceCachedPage(await this.pageFactory());
     }
   }
 
   async snapshot(opts?: {
     format?: SnapshotFormat | SnapshotEncoding;
     fresh?: boolean;
+    signal?: AbortSignal;
   }): Promise<Snapshot> {
+    opts?.signal?.throwIfAborted();
     const page = await this.ensurePage();
     const format = opts?.format ?? "dom-ax";
     if (format === "screenshot") {
-      const buf = await page.screenshot();
+      const buf = opts?.signal
+        ? await page.screenshot(undefined, opts.signal)
+        : await page.screenshot();
       return { format: "screenshot", data: buf };
     }
     if (format === "compact" || format === "tree" || format === "json") {
-      const raw = await this.captureDomSnapshot(page);
+      const raw = await this.captureDomSnapshot(page, opts?.signal);
       if (format === "json") {
         return {
           format: "json",
@@ -247,21 +251,41 @@ export class CdpBrowserTransport implements TransportAdapter {
         refs: { count: refCount, scope: raw.scope },
       };
     }
-    const dom = await page.snapshot();
+    const dom = opts?.signal
+      ? await page.snapshot(undefined, opts.signal)
+      : await page.snapshot();
     return { format: "dom-ax", data: dom };
   }
 
   async action<T = unknown>(req: ActionRequest): Promise<ActionResult<T>> {
     const start = Date.now();
+    let page: IPage | undefined;
     try {
-      const page =
+      req.signal?.throwIfAborted();
+      page =
         req.kind === "cdp_attach"
           ? undefined
           : await this.ensurePage(req.params);
-      const envelope = await this.dispatch<T>(page, req);
+      const envelope = await settleDispatchedAction(
+        req.kind,
+        req.canMutate ?? !CDP_READ_ONLY_ACTIONS.has(req.kind),
+        req.signal,
+        () => this.dispatch<T>(page, req),
+      );
       envelope.elapsedMs = Date.now() - start;
       return envelope;
     } catch (e) {
+      const ambiguity = findOperationOutcomeAmbiguousError(e);
+      if (ambiguity) {
+        if (page && ambiguity.target_unusable === true) {
+          await this.retireUnusablePage(
+            page,
+            e instanceof Error ? e : ambiguity,
+          );
+        }
+        throw e;
+      }
+      req.signal?.throwIfAborted();
       const msg = e instanceof Error ? e.message : String(e);
       return err({
         transport: "cdp-browser",
@@ -279,14 +303,21 @@ export class CdpBrowserTransport implements TransportAdapter {
   async close(): Promise<void> {
     if (this.closed) return;
     this.closed = true;
-    if (this.page) {
-      const p = this.page;
-      this.page = undefined;
+    const pages = [
+      ...new Set([...this.pages.values()].map(({ page }) => page)),
+    ];
+    this.pages.clear();
+    const errors: unknown[] = [];
+    for (const page of pages) {
       try {
-        await p.close();
-      } catch {
-        // Best-effort — close must be idempotent and non-throwing.
+        await page.close();
+      } catch (error) {
+        errors.push(error);
       }
+    }
+    if (errors.length === 1) throw errors[0];
+    if (errors.length > 1) {
+      throw new AggregateError(errors, "CDP transport page cleanup failed");
     }
   }
 
@@ -299,7 +330,7 @@ export class CdpBrowserTransport implements TransportAdapter {
     const p = req.params as Record<string, unknown>;
     switch (req.kind) {
       case "cdp_attach":
-        return this.attach(p) as Promise<Envelope<T>>;
+        return this.attach(p, req.signal) as Promise<Envelope<T>>;
       case "navigate": {
         if (!page) return notOpened("navigate");
         const url = typeof p.url === "string" ? p.url : undefined;
@@ -308,17 +339,21 @@ export class CdpBrowserTransport implements TransportAdapter {
           typeof p.settleMs === "number" ? p.settleMs : undefined;
         const waitUntil =
           typeof p.waitUntil === "string" ? p.waitUntil : undefined;
-        await page.goto(url, {
+        const options = {
           ...(settleMs !== undefined ? { settleMs } : {}),
           ...(waitUntil ? { waitUntil } : {}),
-        });
+        };
+        if (req.signal) await page.goto(url, options, req.signal);
+        else await page.goto(url, options);
         return ok(undefined as T);
       }
       case "evaluate": {
         if (!page) return notOpened("evaluate");
         const script = typeof p.script === "string" ? p.script : undefined;
         if (!script) return missingParam("cdp-browser", "evaluate", "script");
-        const data = await page.evaluate(script);
+        const data = req.signal
+          ? await page.evaluate(script, req.signal)
+          : await page.evaluate(script);
         return ok(data as T);
       }
       case "click": {
@@ -328,7 +363,8 @@ export class CdpBrowserTransport implements TransportAdapter {
             ? p.selector
             : readSelectorFromStable(p.stable);
         if (!selector) return missingParam("cdp-browser", "click", "selector");
-        await page.click(selector);
+        if (req.signal) await page.click(selector, req.signal);
+        else await page.click(selector);
         return ok(undefined as T);
       }
       case "type": {
@@ -341,7 +377,8 @@ export class CdpBrowserTransport implements TransportAdapter {
         if (!selector) return missingParam("cdp-browser", "type", "selector");
         if (text === undefined)
           return missingParam("cdp-browser", "type", "text");
-        await page.type(selector, text);
+        if (req.signal) await page.type(selector, text, req.signal);
+        else await page.type(selector, text);
         return ok(undefined as T);
       }
       case "press": {
@@ -351,26 +388,38 @@ export class CdpBrowserTransport implements TransportAdapter {
         const modifiers = Array.isArray(p.modifiers)
           ? (p.modifiers as string[])
           : undefined;
-        await page.press(key, modifiers);
+        if (req.signal) await page.press(key, modifiers, req.signal);
+        else await page.press(key, modifiers);
         return ok(undefined as T);
       }
       case "scroll": {
         if (!page) return notOpened("scroll");
         const direction =
           typeof p.direction === "string" ? p.direction : "down";
-        await page.scroll(direction as "up" | "down" | "top" | "bottom");
+        const scrollDirection = direction as "up" | "down" | "top" | "bottom";
+        if (req.signal) await page.scroll(scrollDirection, req.signal);
+        else await page.scroll(scrollDirection);
         return ok(undefined as T);
       }
       case "wait": {
         if (!page) return notOpened("wait");
         if (typeof p.seconds === "number") {
-          await page.wait(p.seconds);
+          if (req.signal) await page.wait(p.seconds, req.signal);
+          else await page.wait(p.seconds);
         } else if (typeof p.selector === "string") {
           const timeout = typeof p.timeout === "number" ? p.timeout : undefined;
-          await page.waitForSelector(p.selector, timeout);
+          if (req.signal) {
+            await page.waitForSelector(p.selector, timeout, req.signal);
+          } else {
+            await page.waitForSelector(p.selector, timeout);
+          }
         } else if (typeof p.condition === "string") {
           const timeout = typeof p.timeout === "number" ? p.timeout : undefined;
-          await page.waitFor(p.condition, timeout);
+          if (req.signal) {
+            await page.waitFor(p.condition, timeout, req.signal);
+          } else {
+            await page.waitFor(p.condition, timeout);
+          }
         } else {
           return missingParam(
             "cdp-browser",
@@ -382,12 +431,16 @@ export class CdpBrowserTransport implements TransportAdapter {
       }
       case "snapshot": {
         if (!page) return notOpened("snapshot");
-        const dom = await page.snapshot();
+        const dom = req.signal
+          ? await page.snapshot(undefined, req.signal)
+          : await page.snapshot();
         return ok(dom as T);
       }
       case "screenshot": {
         if (!page) return notOpened("screenshot");
-        const buf = await page.screenshot();
+        const buf = req.signal
+          ? await page.screenshot(undefined, req.signal)
+          : await page.screenshot();
         return ok(buf as T);
       }
       default:
@@ -403,7 +456,11 @@ export class CdpBrowserTransport implements TransportAdapter {
     }
   }
 
-  async attach(params: Record<string, unknown>): Promise<Envelope<unknown>> {
+  async attach(
+    params: Record<string, unknown>,
+    signal?: AbortSignal,
+  ): Promise<Envelope<unknown>> {
+    signal?.throwIfAborted();
     const explicitPort =
       typeof params.port === "number"
         ? Math.trunc(params.port)
@@ -417,7 +474,8 @@ export class CdpBrowserTransport implements TransportAdapter {
       return missingParam("cdp-browser", "cdp_attach", "port | app");
     }
 
-    let info = await this.cdpProbe(port);
+    let info = await this.cdpProbe(port, signal);
+    signal?.throwIfAborted();
     let relaunched = false;
     if (!info && app && appEntry && params.relaunch !== false) {
       if (
@@ -436,9 +494,33 @@ export class CdpBrowserTransport implements TransportAdapter {
           exit_code: exitCodeFor("auth_required"),
         });
       }
-      await this.appLauncher(toLaunchRequest(app, port, appEntry));
-      relaunched = true;
-      info = await this.probeAfterLaunch(port);
+      let launchReceipt: CdpAppLaunchReceipt | undefined;
+      try {
+        launchReceipt =
+          (await this.appLauncher({
+            ...toLaunchRequest(app, port, appEntry),
+            ...(signal ? { signal } : {}),
+          })) ?? undefined;
+        signal?.throwIfAborted();
+        relaunched = true;
+        info = await this.probeAfterLaunch(port, signal);
+        if (info) launchReceipt?.release();
+        else await launchReceipt?.contain();
+      } catch (error) {
+        if (launchReceipt) {
+          try {
+            await launchReceipt.contain();
+          } catch (containmentError) {
+            throw new ProcessContainmentAmbiguousError(
+              "cdp_attach",
+              signal?.reason ?? error,
+              error,
+              containmentError,
+            );
+          }
+        }
+        throw error;
+      }
     }
     if (!info) {
       return err({
@@ -453,7 +535,10 @@ export class CdpBrowserTransport implements TransportAdapter {
       });
     }
 
-    this.page = await this.pageConnector(port, info.webSocketDebuggerUrl);
+    await this.replaceCachedPage(
+      await this.pageConnector(port, info.webSocketDebuggerUrl),
+      { port, webSocketDebuggerUrl: info.webSocketDebuggerUrl },
+    );
     return ok({
       port,
       webSocketDebuggerUrl: info.webSocketDebuggerUrl,
@@ -465,12 +550,15 @@ export class CdpBrowserTransport implements TransportAdapter {
 
   private async probeAfterLaunch(
     port: number,
+    signal?: AbortSignal,
   ): Promise<CdpDebuggerInfo | null> {
     let info: CdpDebuggerInfo | null = null;
     for (let attempt = 0; attempt < 20; attempt++) {
-      info = await this.cdpProbe(port);
+      signal?.throwIfAborted();
+      info = await this.cdpProbe(port, signal);
+      signal?.throwIfAborted();
       if (info) return info;
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await cancellableDelay(500, signal);
     }
     return null;
   }
@@ -478,26 +566,124 @@ export class CdpBrowserTransport implements TransportAdapter {
   private async ensurePage(
     params: Record<string, unknown> = {},
   ): Promise<IPage> {
-    if (!this.page) {
-      const port =
-        typeof params.port === "number" && Number.isFinite(params.port)
-          ? Math.trunc(params.port)
-          : undefined;
-      const wsUrl =
-        typeof params.webSocketDebuggerUrl === "string"
-          ? params.webSocketDebuggerUrl
-          : undefined;
-      this.page = port
-        ? await this.pageConnector(port, wsUrl)
-        : await this.pageFactory();
+    const port =
+      typeof params.port === "number" && Number.isFinite(params.port)
+        ? Math.trunc(params.port)
+        : undefined;
+    const wsUrl =
+      typeof params.webSocketDebuggerUrl === "string"
+        ? params.webSocketDebuggerUrl
+        : undefined;
+    const endpoint = port
+      ? {
+          port,
+          ...(wsUrl ? { webSocketDebuggerUrl: wsUrl } : {}),
+        }
+      : undefined;
+    const existing = this.cachedPage(endpoint);
+    if (existing) return existing;
+    if (port) {
+      const page = await this.pageConnector(port, wsUrl);
+      await this.replaceCachedPage(page, endpoint);
+      return page;
     }
-    return this.page;
+    const page = await this.pageFactory();
+    if (this.cacheFactoryPage) await this.replaceCachedPage(page);
+    return page;
   }
 
-  private async captureDomSnapshot(page: IPage): Promise<RawAxNode> {
-    const raw = await page.evaluate(CDP_DOM_SNAPSHOT_SCRIPT);
+  private cachedPage(endpoint?: CdpAttachmentEndpoint): IPage | undefined {
+    const cached = this.pages.get(pageScopeKey());
+    if (!cached) return undefined;
+    if (!endpoint) return cached.page;
+    if (!cached.endpoint || cached.endpoint.port !== endpoint.port) {
+      return undefined;
+    }
+    if (
+      endpoint.webSocketDebuggerUrl &&
+      cached.endpoint.webSocketDebuggerUrl !== endpoint.webSocketDebuggerUrl
+    ) {
+      return undefined;
+    }
+    return cached.page;
+  }
+
+  private async replaceCachedPage(
+    page: IPage,
+    endpoint?: CdpAttachmentEndpoint,
+  ): Promise<void> {
+    const key = pageScopeKey();
+    const previous = this.pages.get(key)?.page;
+    if (previous && previous !== page) {
+      this.pages.delete(key);
+      try {
+        await previous.close();
+      } catch (previousError) {
+        try {
+          await page.close();
+        } catch (replacementError) {
+          throw new AggregateError(
+            [previousError, replacementError],
+            "Previous and replacement CDP pages both failed cleanup",
+          );
+        }
+        throw previousError;
+      }
+    }
+    this.pages.set(key, { page, ...(endpoint ? { endpoint } : {}) });
+    registerBrowserTurnFinalizer(
+      `cdp-browser:${String(this.instanceId)}:${key}`,
+      async () => {
+        const current = this.pages.get(key);
+        if (current?.page !== page) return;
+        this.pages.delete(key);
+        await page.close();
+      },
+    );
+  }
+
+  private async retireUnusablePage(
+    page: IPage,
+    ambiguousError: Error,
+  ): Promise<void> {
+    for (const [key, cached] of this.pages) {
+      if (cached.page === page) this.pages.delete(key);
+    }
+    try {
+      await page.close();
+    } catch (cleanupError) {
+      throw new CdpAmbiguousCleanupError(ambiguousError, cleanupError);
+    }
+  }
+
+  private async captureDomSnapshot(
+    page: IPage,
+    signal?: AbortSignal,
+  ): Promise<RawAxNode> {
+    const raw = signal
+      ? await page.evaluate(CDP_DOM_SNAPSHOT_SCRIPT, signal)
+      : await page.evaluate(CDP_DOM_SNAPSHOT_SCRIPT);
     if (isRawAxNode(raw)) return raw;
     throw new Error("CDP DOM snapshot script returned an invalid tree");
+  }
+}
+
+class CdpAmbiguousCleanupError extends Error {
+  readonly outcome_ambiguous = true;
+  readonly target_unusable = true;
+  readonly retryable = false;
+
+  constructor(ambiguousError: Error, cleanupError: unknown) {
+    super(
+      `CDP outcome is ambiguous and its unusable page failed cleanup: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+      {
+        cause: new AggregateError(
+          [ambiguousError, cleanupError],
+          "CDP delivery and target cleanup both failed",
+        ),
+      },
+    );
+    this.name = "CdpAmbiguousCleanupError";
   }
 }
 
@@ -572,6 +758,32 @@ const CDP_DOM_SNAPSHOT_SCRIPT = `(() => {
     children: candidates
   };
 })()`;
+
+function cancellableDelay(
+  milliseconds: number,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (!signal) {
+    return new Promise((resolve) => setTimeout(resolve, milliseconds));
+  }
+  signal.throwIfAborted();
+  return new Promise((resolve, reject) => {
+    let timer: ReturnType<typeof setTimeout>;
+    const cleanup = (): void => {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", abort);
+    };
+    const abort = (): void => {
+      cleanup();
+      reject(signal.reason);
+    };
+    timer = setTimeout(() => {
+      cleanup();
+      resolve();
+    }, milliseconds);
+    signal.addEventListener("abort", abort, { once: true });
+  });
+}
 
 function toLaunchRequest(
   app: string,

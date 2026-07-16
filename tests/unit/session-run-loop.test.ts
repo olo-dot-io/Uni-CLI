@@ -331,12 +331,10 @@ describe("recorded run wrapper", () => {
     process.env.UNICLI_RECORD_RUN = "1";
     process.env.UNICLI_RUN_ROOT = runRoot;
 
-    const result = await runResolvedCommand(
-      fixture,
-      fixture.commands.read,
-      "read",
-      {},
-    );
+    const result = await runResolvedCommand(fixture, fixture.commands.read, {
+      cmdName: "read",
+      args: {},
+    });
 
     expect(result.isError).not.toBe(true);
     const [runId] = readdirSync(runRoot);

@@ -37,6 +37,7 @@ interface JsonRpcResponse {
   jsonrpc: "2.0";
   id: number | string | null;
   result?: {
+    task?: { taskId?: string };
     content?: Array<{ type: string; text: string }>;
     structuredContent?: { type: string; data: unknown };
   };
@@ -126,19 +127,29 @@ async function invokeMcp(): Promise<{ rows: unknown[]; error?: unknown }> {
       params: { protocolVersion: "2025-11-25" },
     });
 
-    const response = await sendMcpRequest(proc, {
+    const created = await sendMcpRequest(proc, {
       jsonrpc: "2.0",
       id: 2,
       method: "tools/call",
       params: {
         name: "unicli_run",
         arguments: { site: SITE, command: COMMAND, args: { limit: LIMIT } },
+        task: {},
       },
     });
 
-    if (response.error) {
-      return { rows: [], error: response.error };
+    if (created.error) {
+      return { rows: [], error: created.error };
     }
+    const taskId = created.result?.task?.taskId;
+    if (!taskId) return { rows: [], error: "MCP returned no task id" };
+    const response = await sendMcpRequest(proc, {
+      jsonrpc: "2.0",
+      id: 3,
+      method: "tasks/result",
+      params: { taskId },
+    });
+    if (response.error) return { rows: [], error: response.error };
     const content = response.result?.content?.[0]?.text;
     if (!content) return { rows: [] };
     const parsed = JSON.parse(content) as {

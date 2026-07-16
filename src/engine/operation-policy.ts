@@ -1,9 +1,16 @@
 /**
- * User-selectable operation policy.
- *
- * Adapter metadata stays open by default. This layer classifies likely side
- * effects from the command contract and lets users opt into stricter approval
- * profiles without forcing every adapter author to pre-label privacy.
+ * @owner       src::engine::operation-policy
+ * @does        Classify operation effects, capability scope, risk, and user-selectable approval enforcement.
+ * @needs       adapter target metadata, capability policy derivation
+ * @feeds       invocation authorization, permission rules, approvals, dry-run and protocol surfaces
+ * @breaks      Incorrect effects or scopes can under-authorize side effects or invalidate stored approval identity.
+ * @invariants  Explicit trusted-boundary effects outrank heuristics; approval keys bind command, profile, effect, and capability scope.
+ * @side-effects Reads UNICLI_PERMISSION_PROFILE and UNICLI_APPROVE.
+ * @perf        Linear in declared arguments and capabilities.
+ * @concurrency Environment values are sampled per evaluation; returned policy is immutable by convention.
+ * @test        tests/unit/operation-policy.test.ts, tests/unit/permission-rules.test.ts
+ * @stability   stable
+ * @since       2026-07-15
  */
 
 import { AdapterType, type TargetSurface } from "../types.js";
@@ -49,6 +56,8 @@ export interface OperationPolicyInput {
   profile?: string;
   approved?: boolean;
   approvalSource?: "none" | "invocation" | "env" | "memory";
+  effect?: OperationEffect;
+  argumentValues?: Record<string, unknown>;
 }
 
 export interface OperationPolicy {
@@ -436,6 +445,7 @@ export function resolveOperationAdapterPath(
 export function inferOperationEffect(
   input: OperationPolicyInput,
 ): OperationEffect {
+  if (input.effect !== undefined) return input.effect;
   const tokens = commandTokens(input.site, input.command);
 
   if (looksDownloadFileCommand(input, tokens)) return "download_file";

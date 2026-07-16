@@ -1,30 +1,31 @@
 /**
- * DesktopAxTransport — macOS Accessibility (AX) + AppleScript transport.
- *
- * Uses `osascript` and `pbcopy`/`pbpaste` shelled out via
- * `child_process.execFile` for focused-window / menu-select / clipboard /
- * app-launch primitives. On non-darwin hosts, `open()` resolves (so
- * capability queries still work) but `action()` always returns a
- * `service_unavailable` envelope with `minimum_capability: "desktop-ax.*"`
- * so self-repair can suggest a platform-native transport.
- *
- * Design contract:
- *  - `action()` NEVER throws
- *  - every platform-gated call emits a `69` (EX_UNAVAILABLE) envelope on
- *    Linux/Windows — the agent sees `minimum_capability: "desktop-ax.<v>"`
- *    and knows to route to desktop-uia / desktop-atspi / visual
- *  - the `execFile`-backed runner is replaceable via constructor injection
- *    so unit tests can mock it without spawning real osascript
+ * @owner       src::transport::adapters::desktop-ax
+ * @does        Execute macOS Accessibility, AppleScript, clipboard, launch, and screenshot actions through request-contained native processes.
+ * @needs       Swift AX generators, app control policy, cancellable shell, transactional file publication
+ * @feeds       compute cascade and direct desktop-ax transport callers
+ * @breaks      Returning cancellation before native children exit, losing post-dispatch ambiguity, or overwriting fulfilled native mutations permits unsafe replay.
+ * @invariants  Native mutation settlement is authoritative; cancellation-caused rejection after dispatch is outcome-ambiguous; screenshot destinations change only at atomic commit.
+ * @side-effects Can focus apps, mutate accessibility elements, post input, use the clipboard, launch apps, and create screenshot artifacts.
+ * @perf        Swift compilation is content-addressed and cached; each action uses at most one native child after warmup.
+ * @concurrency AbortSignal is request-local; detached process groups prevent descendants from escaping cancellation.
+ * @test        tests/unit/transport/adapters/desktop-ax.test.ts and native compute cancellation blackboxes
+ * @stability   stable
+ * @since       2026-07-15
  */
 
-import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { err, exitCodeFor, ok } from "../../core/envelope.js";
+import { publishFileTransactionally } from "../../engine/transactional-file.js";
 import { resolveAppControlPolicy } from "../../electron-apps.js";
 import type { Envelope } from "../../core/envelope.js";
+import { settleDispatchedAction } from "../action-settlement.js";
+import {
+  isOperationOutcomeAmbiguousError,
+  runContainedProcess,
+} from "../contained-process.js";
 import { RefAllocator } from "../refs.js";
 import { encodeSnapshot, type SnapshotEncoding } from "../snapshot-encoder.js";
 import {
@@ -98,12 +99,26 @@ const AX_CAPABILITY: Capability = {
   mutatesHost: true,
 };
 
+const AX_READ_ONLY_ACTIONS = new Set([
+  "ax_snapshot",
+  "ax_apps",
+  "ax_windows",
+  "ax_focused_read",
+  "ax_screenshot",
+  "clipboard_read",
+]);
+
 /** Minimal shell abstraction so tests can mock `osascript`/`pbcopy` output. */
 export interface AxShell {
   run(
     command: string,
     args: readonly string[],
-    opts?: { input?: string; timeoutMs?: number },
+    opts?: {
+      input?: string;
+      timeoutMs?: number;
+      signal?: AbortSignal;
+      cancellationDelivery?: "contained" | "outcome-ambiguous";
+    },
   ): Promise<{ stdout: string; stderr: string }>;
 }
 
@@ -112,35 +127,21 @@ export interface AxShell {
  * `pbcopy` and capture `pbpaste` output. 10s safety timeout.
  */
 const defaultShell: AxShell = {
-  run(command, args, opts) {
-    return new Promise((resolve, reject) => {
-      const child = spawn(command, [...args], {
-        stdio: ["pipe", "pipe", "pipe"],
-        timeout: opts?.timeoutMs ?? 10_000,
-      });
-      const stdoutChunks: Buffer[] = [];
-      const stderrChunks: Buffer[] = [];
-      child.stdout?.on("data", (c: Buffer) => stdoutChunks.push(c));
-      child.stderr?.on("data", (c: Buffer) => stderrChunks.push(c));
-      child.on("error", reject);
-      child.on("close", (code) => {
-        const stdout = Buffer.concat(stdoutChunks).toString("utf8");
-        const stderr = Buffer.concat(stderrChunks).toString("utf8");
-        if (code !== 0) {
-          reject(
-            new Error(
-              `${command} exited with code ${code}${stderr ? ": " + stderr.slice(0, 200) : ""}`,
-            ),
-          );
-          return;
-        }
-        resolve({ stdout, stderr });
-      });
-      if (opts?.input !== undefined) {
-        child.stdin?.write(opts.input);
-        child.stdin?.end();
-      }
+  async run(command, args, opts) {
+    const result = await runContainedProcess(command, args, {
+      ...(opts?.input === undefined ? {} : { input: opts.input }),
+      timeoutMs: opts?.timeoutMs ?? 10_000,
+      ...(opts?.signal ? { signal: opts.signal } : {}),
+      ...(opts?.cancellationDelivery
+        ? { cancellationDelivery: opts.cancellationDelivery }
+        : {}),
     });
+    if (result.exitCode !== 0) {
+      throw new Error(
+        `${command} exited with code ${String(result.exitCode)}${result.stderr ? ": " + result.stderr.slice(0, 200) : ""}`,
+      );
+    }
+    return { stdout: result.stdout, stderr: result.stderr };
   },
 };
 
@@ -198,13 +199,15 @@ export class DesktopAxTransport implements TransportAdapter {
 
   async snapshot(opts?: {
     format?: SnapshotFormat | SnapshotEncoding;
+    signal?: AbortSignal;
   }): Promise<Snapshot> {
+    opts?.signal?.throwIfAborted();
     const format = opts?.format ?? "os-ax";
     if (format === "text") {
       return { format: "text", data: this.lastClip ?? "" };
     }
     if (this.lastAxSnapshot) {
-      if (format === "compact" || format === "tree") {
+      if (format === "compact" || format === "tree" || format === "json") {
         const raw = normalizeAxSnapshot(this.lastAxSnapshot);
         const alloc = new RefAllocator();
         const { encoded, refCount } = encodeSnapshot(raw, {
@@ -213,6 +216,14 @@ export class DesktopAxTransport implements TransportAdapter {
           alloc,
         });
         this.refs?.put(alloc.freeze(this.kind, raw.scope));
+        if (format === "json") {
+          return {
+            format: "json",
+            encoding: "json",
+            data: encoded,
+            refs: { count: refCount, scope: raw.scope },
+          };
+        }
         return {
           format: "text",
           encoding: format,
@@ -222,7 +233,6 @@ export class DesktopAxTransport implements TransportAdapter {
       }
       return {
         format: "json",
-        encoding: format === "json" ? "json" : undefined,
         data: JSON.stringify(this.lastAxSnapshot),
       };
     }
@@ -238,6 +248,7 @@ export class DesktopAxTransport implements TransportAdapter {
   async action<T = unknown>(req: ActionRequest): Promise<ActionResult<T>> {
     const start = Date.now();
     try {
+      req.signal?.throwIfAborted();
       if (!this.isDarwin()) {
         return err({
           transport: "desktop-ax",
@@ -254,10 +265,17 @@ export class DesktopAxTransport implements TransportAdapter {
           exit_code: exitCodeFor("service_unavailable"),
         });
       }
-      const envelope = await this.dispatch<T>(req);
+      const envelope = await settleDispatchedAction(
+        req.kind,
+        req.canMutate ?? !AX_READ_ONLY_ACTIONS.has(req.kind),
+        req.signal,
+        () => this.dispatch<T>(req),
+      );
       envelope.elapsedMs = Date.now() - start;
       return envelope;
     } catch (e) {
+      if (isOperationOutcomeAmbiguousError(e)) throw e;
+      req.signal?.throwIfAborted();
       const msg = e instanceof Error ? e.message : String(e);
       return err({
         transport: "desktop-ax",
@@ -323,13 +341,19 @@ export class DesktopAxTransport implements TransportAdapter {
     action: string,
     target: ResolvedAxTarget | null,
     opts: { strict?: boolean; waitMs?: number } = {},
+    signal?: AbortSignal,
   ): Promise<Envelope<T> | null> {
+    signal?.throwIfAborted();
     if (!target?.ensureElectronAx) return null;
     const cached = this.getWarmSession(target);
     if (cached?.found && cached.trusted) return null;
 
     try {
-      const result = await this.runElectronAxWarmup(target, opts.waitMs ?? 0);
+      const result = await this.runElectronAxWarmup(
+        target,
+        opts.waitMs ?? 0,
+        signal,
+      );
       if (result.found && result.trusted) {
         this.rememberWarmSession(target, result);
       }
@@ -362,6 +386,7 @@ export class DesktopAxTransport implements TransportAdapter {
         exit_code: exitCodeFor("service_unavailable"),
       });
     } catch (e) {
+      signal?.throwIfAborted();
       if (!opts.strict) return null;
       return this.envelopeFromShellError(action, e);
     }
@@ -370,10 +395,12 @@ export class DesktopAxTransport implements TransportAdapter {
   private async runElectronAxWarmup(
     target: ResolvedAxTarget,
     waitMs: number,
+    signal?: AbortSignal,
   ): Promise<AxWarmupResult> {
     const { stdout } = await this.runSwiftScript(
       buildElectronAxWarmupScript(target, waitMs),
       Math.max(10_000, waitMs + 6_000),
+      signal,
     );
     const raw = stdout.trim();
     if (!raw) {
@@ -385,41 +412,41 @@ export class DesktopAxTransport implements TransportAdapter {
   private async dispatch<T>(req: ActionRequest): Promise<Envelope<T>> {
     switch (req.kind) {
       case "ax_focus":
-        return this.doAxFocus<T>(req.params);
+        return this.doAxFocus<T>(req.params, req.signal);
       case "focus_window":
-        return this.doAxFocus<T>(req.params);
+        return this.doAxFocus<T>(req.params, req.signal);
       case "ax_menu_select":
-        return this.doMenuSelect<T>(req.params);
+        return this.doMenuSelect<T>(req.params, req.signal);
       case "applescript":
-        return this.doApplescript<T>(req.params);
+        return this.doApplescript<T>(req.params, req.signal);
       case "ax_snapshot":
-        return this.doAxSnapshot<T>(req.params);
+        return this.doAxSnapshot<T>(req.params, req.signal);
       case "ax_apps":
-        return this.doAxApps<T>();
+        return this.doAxApps<T>(req.signal);
       case "ax_windows":
-        return this.doAxWindows<T>(req.params);
+        return this.doAxWindows<T>(req.params, req.signal);
       case "ax_focused_read":
-        return this.doAxFocusedRead<T>(req.params);
+        return this.doAxFocusedRead<T>(req.params, req.signal);
       case "ax_set_value":
-        return this.doAxSetValue<T>(req.params);
+        return this.doAxSetValue<T>(req.params, req.signal);
       case "ax_press":
-        return this.doAxPress<T>(req.params);
+        return this.doAxPress<T>(req.params, req.signal);
       case "ax_scroll":
-        return this.doAxScroll<T>(req.params);
+        return this.doAxScroll<T>(req.params, req.signal);
       case "ax_screenshot":
-        return this.doAxScreenshot<T>(req.params);
+        return this.doAxScreenshot<T>(req.params, req.signal);
       case "ax_background_click":
-        return this.doAxBackgroundClick<T>(req.params);
+        return this.doAxBackgroundClick<T>(req.params, req.signal);
       case "ax_background_type":
-        return this.doAxBackgroundType<T>(req.params);
+        return this.doAxBackgroundType<T>(req.params, req.signal);
       case "ax_background_press":
-        return this.doAxBackgroundPress<T>(req.params);
+        return this.doAxBackgroundPress<T>(req.params, req.signal);
       case "clipboard_read":
-        return this.doClipboardRead<T>();
+        return this.doClipboardRead<T>(req.signal);
       case "clipboard_write":
-        return this.doClipboardWrite<T>(req.params);
+        return this.doClipboardWrite<T>(req.params, req.signal);
       case "launch_app":
-        return this.doLaunchApp<T>(req.params);
+        return this.doLaunchApp<T>(req.params, req.signal);
       default:
         return err({
           transport: "desktop-ax",
@@ -446,24 +473,37 @@ export class DesktopAxTransport implements TransportAdapter {
 
   private async doAxFocus<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     const target = resolveAxTarget(params);
     if (!target) return this.missingTargetParam("ax_focus");
     const script = `tell ${target.activationRef} to activate`;
     try {
-      await this.shell.run("osascript", ["-e", script]);
-      await this.maybeWarmupElectronAx("ax_focus", target, { waitMs: 500 });
+      await this.shell.run("osascript", ["-e", script], {
+        signal,
+        cancellationDelivery: "outcome-ambiguous",
+      });
+      if (!signal?.aborted) {
+        await this.maybeWarmupElectronAx(
+          "ax_focus",
+          target,
+          { waitMs: 500 },
+          signal,
+        );
+      }
       return ok({
         app: target.appName,
         bundleId: target.bundleId ?? null,
       } as unknown as T);
     } catch (e) {
+      signal?.throwIfAborted();
       return this.envelopeFromShellError("ax_focus", e);
     }
   }
 
   private async doMenuSelect<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     const target = resolveAxTarget(params);
     const path = Array.isArray(params.path)
@@ -488,6 +528,7 @@ export class DesktopAxTransport implements TransportAdapter {
         "ax_menu_select",
         target,
         { strict: true, waitMs: 500 },
+        signal,
       );
       if (warmupError) return warmupError;
     }
@@ -508,19 +549,24 @@ export class DesktopAxTransport implements TransportAdapter {
       `end tell`,
     ].join("\n");
     try {
-      await this.shell.run("osascript", ["-e", script]);
+      await this.shell.run("osascript", ["-e", script], {
+        signal,
+        cancellationDelivery: "outcome-ambiguous",
+      });
       return ok({
         app: target.appName,
         processName: target.uiProcessName,
         path,
       } as unknown as T);
     } catch (e) {
+      signal?.throwIfAborted();
       return this.envelopeFromShellError("ax_menu_select", e);
     }
   }
 
   private async doApplescript<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     const script =
       typeof params.script === "string"
@@ -535,19 +581,25 @@ export class DesktopAxTransport implements TransportAdapter {
       "applescript",
       target,
       { strict: true, waitMs: 500 },
+      signal,
     );
     if (warmupError) return warmupError;
 
     try {
-      const { stdout } = await this.shell.run("osascript", ["-e", script]);
+      const { stdout } = await this.shell.run("osascript", ["-e", script], {
+        signal,
+        cancellationDelivery: "outcome-ambiguous",
+      });
       return ok({ stdout: stdout.trimEnd() } as unknown as T);
     } catch (e) {
+      signal?.throwIfAborted();
       return this.envelopeFromShellError("applescript", e);
     }
   }
 
   private async doAxSnapshot<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     const target = resolveAxTarget(params);
     if (!target) return this.missingTargetParam("ax_snapshot");
@@ -558,24 +610,28 @@ export class DesktopAxTransport implements TransportAdapter {
       "ax_snapshot",
       target,
       buildAxSnapshotScript(target, { maxDepth, scope }),
+      signal,
     );
   }
 
-  private async doAxApps<T>(): Promise<Envelope<T>> {
-    return this.runSwiftJsonAction<T>("ax_apps", buildAxAppsScript());
+  private async doAxApps<T>(signal?: AbortSignal): Promise<Envelope<T>> {
+    return this.runSwiftJsonAction<T>("ax_apps", buildAxAppsScript(), signal);
   }
 
   private async doAxWindows<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     return this.runSwiftJsonAction<T>(
       "ax_windows",
       buildAxWindowsScript(readAxWindowsFilter(params)),
+      signal,
     );
   }
 
   private async doAxFocusedRead<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     const target = resolveAxTarget(params);
     if (!target) return this.missingTargetParam("ax_focused_read");
@@ -583,11 +639,13 @@ export class DesktopAxTransport implements TransportAdapter {
       "ax_focused_read",
       target,
       buildAxFocusedReadScript(target, readAxElementQuery(params, true)),
+      signal,
     );
   }
 
   private async doAxSetValue<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     const target = resolveAxTarget(params);
     if (!target) return this.missingTargetParam("ax_set_value");
@@ -610,6 +668,7 @@ export class DesktopAxTransport implements TransportAdapter {
       "ax_set_value",
       target,
       buildAxSetValueScript(target, query),
+      signal,
     );
     if (
       semantic.ok ||
@@ -622,13 +681,14 @@ export class DesktopAxTransport implements TransportAdapter {
     }
     return this.backgroundFallback<T>(
       semantic,
-      await this.doAxBackgroundType<T>({ ...params, text: value }),
+      await this.doAxBackgroundType<T>({ ...params, text: value }, signal),
       "ax_set_value",
     );
   }
 
   private async doAxPress<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     const target = resolveAxTarget(params);
     if (!target) return this.missingTargetParam("ax_press");
@@ -652,13 +712,14 @@ export class DesktopAxTransport implements TransportAdapter {
       params.action === undefined &&
       params.focus !== true
     ) {
-      return this.doAxBackgroundPress<T>({ ...params, key: keyCombo });
+      return this.doAxBackgroundPress<T>({ ...params, key: keyCombo }, signal);
     }
 
     const semantic = await this.runSwiftAxAction<T>(
       "ax_press",
       target,
       buildAxPressScript(target, query),
+      signal,
     );
     if (
       semantic.ok ||
@@ -670,13 +731,14 @@ export class DesktopAxTransport implements TransportAdapter {
     }
     return this.backgroundFallback<T>(
       semantic,
-      await this.doAxBackgroundClick<T>(params),
+      await this.doAxBackgroundClick<T>(params, signal),
       "ax_press",
     );
   }
 
   private async doAxScroll<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     const target = resolveAxTarget(params);
     if (!target) return this.missingTargetParam("ax_scroll");
@@ -692,20 +754,31 @@ export class DesktopAxTransport implements TransportAdapter {
       "ax_scroll",
       target,
       buildAxScrollScript(target, query),
+      signal,
     );
   }
 
   private async doAxScreenshot<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     const path = readStringParam(params.path);
     if (path) {
       try {
-        await this.shell.run("screencapture", ["-x", "-t", "png", path], {
-          timeoutMs: 10_000,
-        });
+        await publishFileTransactionally(
+          path,
+          async (temporaryPath) => {
+            await this.shell.run(
+              "screencapture",
+              ["-x", "-t", "png", temporaryPath],
+              { timeoutMs: 10_000, signal },
+            );
+          },
+          { signal },
+        );
         return ok({ path, mime: "image/png" } as unknown as T);
       } catch (e) {
+        signal?.throwIfAborted();
         return this.envelopeFromShellError("ax_screenshot", e);
       }
     }
@@ -715,14 +788,18 @@ export class DesktopAxTransport implements TransportAdapter {
     try {
       await this.shell.run("screencapture", ["-x", "-t", "png", file], {
         timeoutMs: 10_000,
+        signal,
       });
-      const buffer = await readFile(file);
+      signal?.throwIfAborted();
+      const buffer = await readFile(file, signal ? { signal } : undefined);
+      signal?.throwIfAborted();
       return ok({
         base64: buffer.toString("base64"),
         mime: "image/png",
         bytes: buffer.length,
       } as unknown as T);
     } catch (e) {
+      signal?.throwIfAborted();
       return this.envelopeFromShellError("ax_screenshot", e);
     } finally {
       await rm(dir, { recursive: true, force: true });
@@ -731,59 +808,82 @@ export class DesktopAxTransport implements TransportAdapter {
 
   private async doAxBackgroundClick<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
-    return runAxBackgroundClick<T>(this.shell, params);
+    return runAxBackgroundClick<T>(this.shell, params, signal);
   }
 
   private async doAxBackgroundType<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
-    return runAxBackgroundType<T>(this.shell, params);
+    return runAxBackgroundType<T>(this.shell, params, signal);
   }
 
   private async doAxBackgroundPress<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
-    return runAxBackgroundPress<T>(this.shell, params);
+    return runAxBackgroundPress<T>(this.shell, params, signal);
   }
 
-  private async doClipboardRead<T>(): Promise<Envelope<T>> {
+  private async doClipboardRead<T>(signal?: AbortSignal): Promise<Envelope<T>> {
     try {
-      const { stdout } = await this.shell.run("pbpaste", []);
+      const { stdout } = await this.shell.run("pbpaste", [], { signal });
       this.lastClip = stdout;
       return ok({ text: stdout } as unknown as T);
     } catch (e) {
+      signal?.throwIfAborted();
       return this.envelopeFromShellError("clipboard_read", e);
     }
   }
 
   private async doClipboardWrite<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     const text = typeof params.text === "string" ? params.text : undefined;
     if (text === undefined) return this.missingParam("clipboard_write", "text");
     try {
-      await this.shell.run("pbcopy", [], { input: text });
+      await this.shell.run("pbcopy", [], {
+        input: text,
+        signal,
+        cancellationDelivery: "outcome-ambiguous",
+      });
       this.lastClip = text;
       return ok({ bytes: Buffer.byteLength(text, "utf8") } as unknown as T);
     } catch (e) {
+      signal?.throwIfAborted();
       return this.envelopeFromShellError("clipboard_write", e);
     }
   }
 
   private async doLaunchApp<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     const target = resolveAxTarget(params);
     if (!target) return this.missingTargetParam("launch_app");
     try {
-      await this.shell.run("open", launchOpenArgs(target, params));
-      await this.maybeWarmupElectronAx("launch_app", target, { waitMs: 2_000 });
+      await this.shell.run("open", launchOpenArgs(target, params), {
+        signal,
+        cancellationDelivery: "outcome-ambiguous",
+      });
+      if (!signal?.aborted) {
+        await this.maybeWarmupElectronAx(
+          "launch_app",
+          target,
+          { waitMs: 2_000 },
+          signal,
+        );
+      }
       return ok({
         app: target.appName,
         bundleId: target.bundleId ?? null,
       } as unknown as T);
     } catch (e) {
+      if (isOperationOutcomeAmbiguousError(e)) throw e;
+      signal?.throwIfAborted();
       return this.envelopeFromShellError("launch_app", e);
     }
   }
@@ -792,15 +892,26 @@ export class DesktopAxTransport implements TransportAdapter {
     action: string,
     target: ResolvedAxTarget,
     script: string,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
-    const warmupError = await this.maybeWarmupElectronAx<T>(action, target, {
-      strict: true,
-      waitMs: 500,
-    });
+    const warmupError = await this.maybeWarmupElectronAx<T>(
+      action,
+      target,
+      {
+        strict: true,
+        waitMs: 500,
+      },
+      signal,
+    );
     if (warmupError) return warmupError;
 
     try {
-      const { stdout } = await this.runSwiftScript(script, 10_000);
+      const { stdout } = await this.runSwiftScript(
+        script,
+        10_000,
+        signal,
+        "outcome-ambiguous",
+      );
       const raw = stdout.trim();
       if (!raw) {
         throw new Error("swift AX action produced no output");
@@ -857,6 +968,7 @@ export class DesktopAxTransport implements TransportAdapter {
       }
       return ok(result as unknown as T);
     } catch (e) {
+      signal?.throwIfAborted();
       return this.envelopeFromShellError(action, e);
     }
   }
@@ -864,15 +976,17 @@ export class DesktopAxTransport implements TransportAdapter {
   private async runSwiftJsonAction<T>(
     action: string,
     script: string,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     try {
-      const { stdout } = await this.runSwiftScript(script, 10_000);
+      const { stdout } = await this.runSwiftScript(script, 10_000, signal);
       const raw = stdout.trim();
       if (!raw) {
         throw new Error("swift AX action produced no output");
       }
       return ok(JSON.parse(raw) as T);
     } catch (e) {
+      signal?.throwIfAborted();
       return this.envelopeFromShellError(action, e);
     }
   }
@@ -912,17 +1026,24 @@ export class DesktopAxTransport implements TransportAdapter {
   private async runSwiftScript(
     script: string,
     timeoutMs: number,
+    signal?: AbortSignal,
+    cancellationDelivery?: "contained" | "outcome-ambiguous",
   ): Promise<{ stdout: string; stderr: string }> {
-    if (!this.shouldUseSwiftScriptCache()) {
-      return this.shell.run("swift", ["-e", script], { timeoutMs });
+    signal?.throwIfAborted();
+    if (signal || !this.shouldUseSwiftScriptCache()) {
+      return this.shell.run("swift", ["-e", script], {
+        timeoutMs,
+        signal,
+        cancellationDelivery,
+      });
     }
 
-    try {
-      const binary = await ensureSwiftScriptBinary(script, this.shell);
-      return await this.shell.run(binary, [], { timeoutMs });
-    } catch {
-      return this.shell.run("swift", ["-e", script], { timeoutMs });
-    }
+    const binary = await ensureSwiftScriptBinary(script, this.shell);
+    return await this.shell.run(binary, [], {
+      timeoutMs,
+      signal,
+      cancellationDelivery,
+    });
   }
 
   private shouldUseSwiftScriptCache(): boolean {

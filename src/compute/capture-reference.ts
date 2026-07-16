@@ -1,10 +1,10 @@
 /**
  * @owner   src/compute/capture-reference.ts
  * @does    Persist compute capture packets as reusable local app-shot references for agent handoff.
- * @needs   node:crypto, node:fs/promises, node:os, node:path, src/compute/capture.ts
+ * @needs   node:crypto, cancellable node:fs/promises and child processes, src/compute/capture.ts
  * @feeds   src/commands/compute.ts, src/mcp/profiles/computer-use.ts, tests/unit/compute-capture-reference.test.ts
- * @breaks  Throws filesystem errors when the reference root cannot be created or written.
- * @invariants Reference markup always points at local files that were written before it is returned.
+ * @breaks  Throws filesystem or cancellation errors and removes its unique unpublished directory when reference publication fails.
+ * @invariants Reference markup always points at local files that were written before it is returned; cancellation cannot fall through to another clipboard provider.
  * @side-effects Writes metadata/content/image artifacts under ~/.unicli/app-shots or an explicit root.
  * @perf    Copies screenshot bytes once and does not duplicate image bytes into metadata JSON.
  * @concurrency Each save receives a unique id so repeated captures do not overwrite prior handoff artifacts.
@@ -15,7 +15,7 @@
 
 import { createHash, randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -24,6 +24,7 @@ import { buildCaptureVisualTimeline } from "./visual-timeline.js";
 
 export interface ComputeCaptureReferenceOptions {
   rootDir?: string;
+  signal?: AbortSignal;
 }
 
 export interface ComputeCaptureReference {
@@ -43,12 +44,14 @@ export interface ComputeCaptureReference {
 export interface ClipboardCopyOptions {
   platform?: NodeJS.Platform;
   run?: ClipboardCommandRunner;
+  signal?: AbortSignal;
 }
 
 export type ClipboardCommandRunner = (
   command: string,
   args: string[],
   input: string,
+  signal?: AbortSignal,
 ) => Promise<void>;
 
 interface ReferenceEnvelope {
@@ -61,44 +64,58 @@ export async function saveComputeCaptureReference(
   packet: ComputeCapturePacket,
   options: ComputeCaptureReferenceOptions = {},
 ): Promise<ComputeCaptureReference> {
+  options.signal?.throwIfAborted();
   const root = options.rootDir ?? defaultReferenceRoot();
   const id = referenceId(packet);
   const captureDir = join(root, id);
   await mkdir(captureDir, { recursive: true, mode: 0o700 });
+  try {
+    options.signal?.throwIfAborted();
+    const imagePath = await writeImageEvidence(
+      packet,
+      captureDir,
+      options.signal,
+    );
+    const contentPath = join(captureDir, "content.txt");
+    await writeFile(contentPath, captureContent(packet, imagePath), {
+      encoding: "utf-8",
+      mode: 0o600,
+      ...(options.signal ? { signal: options.signal } : {}),
+    });
+    options.signal?.throwIfAborted();
 
-  const imagePath = await writeImageEvidence(packet, captureDir);
-  const contentPath = join(captureDir, "content.txt");
-  await writeFile(contentPath, captureContent(packet, imagePath), {
-    encoding: "utf-8",
-    mode: 0o600,
-  });
+    const metadataPath = join(captureDir, "packet.json");
+    const reference: ComputeCaptureReference = {
+      schema_version: 1,
+      id,
+      created_at: packet.captured_at,
+      ...(packet.app ? { app: packet.app } : {}),
+      root: captureDir,
+      files: {
+        metadata: metadataPath,
+        content: contentPath,
+        ...(imagePath ? { image: imagePath } : {}),
+      },
+      markup: "",
+    };
+    reference.markup = referenceMarkup(reference);
 
-  const metadataPath = join(captureDir, "packet.json");
-  const reference: ComputeCaptureReference = {
-    schema_version: 1,
-    id,
-    created_at: packet.captured_at,
-    ...(packet.app ? { app: packet.app } : {}),
-    root: captureDir,
-    files: {
-      metadata: metadataPath,
-      content: contentPath,
-      ...(imagePath ? { image: imagePath } : {}),
-    },
-    markup: "",
-  };
-  reference.markup = referenceMarkup(reference);
-
-  const envelope: ReferenceEnvelope = {
-    schema_version: 1,
-    reference,
-    packet: packetForMetadata(packet, imagePath),
-  };
-  await writeFile(metadataPath, `${JSON.stringify(envelope, null, 2)}\n`, {
-    encoding: "utf-8",
-    mode: 0o600,
-  });
-  return reference;
+    const envelope: ReferenceEnvelope = {
+      schema_version: 1,
+      reference,
+      packet: packetForMetadata(packet, imagePath),
+    };
+    await writeFile(metadataPath, `${JSON.stringify(envelope, null, 2)}\n`, {
+      encoding: "utf-8",
+      mode: 0o600,
+      ...(options.signal ? { signal: options.signal } : {}),
+    });
+    options.signal?.throwIfAborted();
+    return reference;
+  } catch (error) {
+    await removeFailedReference(captureDir, error);
+    throw error;
+  }
 }
 
 export async function copyReferenceMarkupToClipboard(
@@ -109,10 +126,17 @@ export async function copyReferenceMarkupToClipboard(
   const run = options.run ?? runClipboardCommand;
   const failures: string[] = [];
   for (const command of commands) {
+    options.signal?.throwIfAborted();
     try {
-      await run(command.command, command.args, markup);
+      if (options.signal) {
+        await run(command.command, command.args, markup, options.signal);
+      } else {
+        await run(command.command, command.args, markup);
+      }
+      options.signal?.throwIfAborted();
       return;
     } catch (error) {
+      options.signal?.throwIfAborted();
       failures.push(`${command.command}: ${errorMessage(error)}`);
     }
   }
@@ -153,9 +177,13 @@ function runClipboardCommand(
   command: string,
   args: string[],
   input: string,
+  signal?: AbortSignal,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { stdio: ["pipe", "ignore", "pipe"] });
+    const child = spawn(command, args, {
+      stdio: ["pipe", "ignore", "pipe"],
+      ...(signal ? { signal } : {}),
+    });
     let stderr = "";
     child.stderr?.on("data", (chunk) => {
       stderr += String(chunk);
@@ -217,31 +245,54 @@ function normalizeContentText(value: string): string {
 async function writeImageEvidence(
   packet: ComputeCapturePacket,
   captureDir: string,
+  signal?: AbortSignal,
 ): Promise<string | undefined> {
   const screenshotData = packet.screenshot?.ok
     ? packet.screenshot.data
     : undefined;
-  const bytes = await imageBytes(screenshotData);
+  const bytes = await imageBytes(screenshotData, signal);
+  signal?.throwIfAborted();
   if (!bytes) return undefined;
   const extension = imageExtension(screenshotData, bytes);
   const imagePath = join(captureDir, `image.${extension}`);
-  await writeFile(imagePath, bytes, { mode: 0o600 });
+  await writeFile(imagePath, bytes, {
+    mode: 0o600,
+    ...(signal ? { signal } : {}),
+  });
   return imagePath;
 }
 
-async function imageBytes(data: unknown): Promise<Buffer | undefined> {
+async function imageBytes(
+  data: unknown,
+  signal?: AbortSignal,
+): Promise<Buffer | undefined> {
   if (Buffer.isBuffer(data)) return data;
   if (!isRecord(data)) return undefined;
   if (typeof data.base64 === "string")
     return Buffer.from(data.base64, "base64");
   if (typeof data.path === "string") {
     try {
-      return await readFile(data.path);
+      return await readFile(data.path, signal ? { signal } : undefined);
     } catch {
+      signal?.throwIfAborted();
       return undefined;
     }
   }
   return undefined;
+}
+
+async function removeFailedReference(
+  captureDir: string,
+  publicationError: unknown,
+): Promise<void> {
+  try {
+    await rm(captureDir, { recursive: true, force: true });
+  } catch (cleanupError) {
+    throw new AggregateError(
+      [publicationError, cleanupError],
+      `capture reference publication and cleanup both failed at ${captureDir}`,
+    );
+  }
 }
 
 function imageExtension(data: unknown, bytes: Buffer): "png" | "jpg" | "bin" {

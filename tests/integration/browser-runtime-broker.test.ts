@@ -5,11 +5,16 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
+import {
+  acquireKernelFileLock,
+  type KernelFileLock,
+} from "../../src/browser/kernel-file-lock.js";
 import type {
   BrowserBrokerStatus,
   BrowserSessionEndResult,
   BrowserTargetCommandResult,
 } from "../../src/browser/runtime-protocol.js";
+import { browserBrokerPaths } from "../../src/browser/runtime-transport.js";
 import {
   RealBrowserBrokerHarness,
   collectProcessOutput,
@@ -26,6 +31,12 @@ const clientHelperPath = join(
   "helpers",
   "browser-broker-client.ts",
 );
+const coldClientHelperPath = join(
+  repositoryRoot,
+  "tests",
+  "helpers",
+  "browser-broker-cold-client.ts",
+);
 const browserPath = resolveTestBrowserPath();
 const testIfBrowser = browserPath ? it : it.skip;
 
@@ -40,6 +51,61 @@ afterEach(async () => {
 }, 30_000);
 
 describe("Browser Runtime Broker real process ownership", () => {
+  it("converges simultaneous cold clients on one broker without a loser unlinking the winner socket", async () => {
+    const runtime = new RealBrowserBrokerHarness(
+      browserPath ?? process.execPath,
+    );
+    harness = runtime;
+
+    const clients = await Promise.all(
+      Array.from({ length: 12 }, () =>
+        runColdClientProcess(runtime.runtimeRoot),
+      ),
+    );
+
+    expect(new Set(clients.map((client) => client.runtime_id)).size).toBe(1);
+    expect(new Set(clients.map((client) => client.broker_pid)).size).toBe(1);
+    const status = await runtime.client.requestOrThrow<BrowserBrokerStatus>({
+      id: randomUUID(),
+      action: "broker.status",
+    });
+    expect(status.runtime_id).toBe(clients[0]!.runtime_id);
+    expect(status.broker_pid).toBe(clients[0]!.broker_pid);
+    if (process.platform === "darwin" || process.platform.endsWith("bsd")) {
+      let unexpectedOwnership: KernelFileLock | null = null;
+      let contentionError: unknown;
+      try {
+        unexpectedOwnership = acquireKernelFileLock(
+          browserBrokerPaths(runtime.runtimeRoot).guardPath,
+        );
+      } catch (error) {
+        contentionError = error;
+      } finally {
+        unexpectedOwnership?.release();
+      }
+      expect(unexpectedOwnership).toBeNull();
+      expect(contentionError).toMatchObject({ code: "contended" });
+      expect(
+        readChildProcessCommands(status.broker_pid).every(
+          (command) =>
+            !command.includes("/usr/bin/lockf") &&
+            !command.includes("UNICLI_BROKER_GUARD_READY"),
+        ),
+      ).toBe(true);
+    }
+    await runtime.client.requestOrThrow({
+      id: randomUUID(),
+      action: "broker.shutdown",
+    });
+    await expect
+      .poll(() => processIsAlive(status.broker_pid), {
+        timeout: 12_000,
+        interval: 50,
+      })
+      .toBe(false);
+    expect(runtime.endpointExists()).toBe(false);
+  }, 30_000);
+
   testIfBrowser(
     "shares one broker-owned headless runtime across clients while distinct targets mutate concurrently",
     async () => {
@@ -214,6 +280,62 @@ describe("Browser Runtime Broker real process ownership", () => {
   );
 
   testIfBrowser(
+    "isolates independent CLI processes that omit a stable Agent identity",
+    async () => {
+      const runtime = new RealBrowserBrokerHarness(browserPath!);
+      harness = runtime;
+      const origin = await startHtmlFixture();
+      barrierServer = origin.server;
+      await runtime.start();
+
+      const opened = await runCliProcess(runtime.runtimeRoot, [
+        "browser",
+        "open",
+        origin.url,
+      ]);
+      const currentUrl = await runCliProcess(runtime.runtimeRoot, [
+        "browser",
+        "get",
+        "url",
+      ]);
+
+      expect(opened).toMatchObject({
+        error: null,
+        data: { url: origin.url, title: "shared CLI target" },
+      });
+      expect(currentUrl).toMatchObject({
+        error: null,
+        data: { value: "about:blank" },
+      });
+      const status = await runtime.client.requestOrThrow<BrowserBrokerStatus>({
+        id: randomUUID(),
+        action: "broker.status",
+      });
+      expect(status.sessions.sessions).toHaveLength(2);
+      expect(
+        status.sessions.sessions.every(
+          (session) =>
+            session.agent_session_id.startsWith("cli:anonymous:") &&
+            session.active_turn_ids.length === 0,
+        ),
+      ).toBe(true);
+      expect(
+        new Set(
+          status.sessions.sessions.map((session) => session.agent_session_id),
+        ).size,
+      ).toBe(2);
+      expect(status.sessions.target_leases).toHaveLength(2);
+      expect(status.providers.managed).toEqual([
+        expect.objectContaining({ target_count: 2, visibility: "hidden" }),
+      ]);
+
+      await runtime.shutdownGracefully();
+      expect(runtime.stderr()).toBe("");
+    },
+    45_000,
+  );
+
+  testIfBrowser(
     "recovers the hidden browser after a broker crash and discards targets whose leases were lost",
     async () => {
       const runtime = new RealBrowserBrokerHarness(browserPath!);
@@ -349,6 +471,48 @@ async function startTwoPartyBarrier(): Promise<{
   };
 }
 
+function runColdClientProcess(runtimeRoot: string): Promise<{
+  runtime_id: string;
+  broker_pid: number;
+}> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(tsxPath, [coldClientHelperPath, runtimeRoot], {
+      cwd: repositoryRoot,
+      env: {
+        ...process.env,
+        UNICLI_BROWSER_RUNTIME_DIR: runtimeRoot,
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    const output = collectProcessOutput(child);
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      reject(new Error("Concurrent cold browser client timed out"));
+    }, 20_000);
+    child.once("exit", (code) => {
+      clearTimeout(timer);
+      if (code !== 0) {
+        reject(
+          new Error(
+            `Concurrent cold browser client exited ${String(code)}: ${output.stderr()}`,
+          ),
+        );
+        return;
+      }
+      try {
+        resolve(
+          JSON.parse(output.stdout().trim()) as {
+            runtime_id: string;
+            broker_pid: number;
+          },
+        );
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
+}
+
 async function startHtmlFixture(): Promise<{
   server: Server;
   url: string;
@@ -411,16 +575,19 @@ function runCliProcess(
   args: string[],
 ): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
+    const environment = {
+      ...process.env,
+      UNICLI_ALLOW_LOCAL: "1",
+      UNICLI_BROWSER_RUNTIME_DIR: runtimeRoot,
+    };
+    delete environment.UNICLI_AGENT_SESSION_ID;
+    delete environment.CODEX_THREAD_ID;
     const child = spawn(
-      process.execPath,
-      [join(repositoryRoot, "dist", "main.js"), "-f", "json", ...args],
+      tsxPath,
+      [join(repositoryRoot, "src", "main.ts"), "-f", "json", ...args],
       {
         cwd: repositoryRoot,
-        env: {
-          ...process.env,
-          UNICLI_ALLOW_LOCAL: "1",
-          UNICLI_BROWSER_RUNTIME_DIR: runtimeRoot,
-        },
+        env: environment,
         stdio: ["ignore", "pipe", "pipe"],
       },
     );
@@ -457,4 +624,13 @@ function closeHttpServer(server: Server): Promise<void> {
   return new Promise((resolve, reject) => {
     server.close((error) => (error ? reject(error) : resolve()));
   });
+}
+
+function readChildProcessCommands(pid: number): string[] {
+  return execFileSync("ps", ["-axo", "ppid=,command="], { encoding: "utf8" })
+    .trim()
+    .split("\n")
+    .map((row) => row.trim().match(/^(\d+)\s+(.*)$/))
+    .filter((row): row is RegExpMatchArray => Number(row?.[1]) === pid)
+    .map((row) => row[2]!);
 }

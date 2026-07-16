@@ -71,7 +71,6 @@ interface BrowserProgramOptions {
   yes?: boolean;
   permissionProfile?: string;
 }
-
 type BrowserDomQueryKind = "text" | "value" | "attributes";
 
 const BROWSER_DOM_QUERY_RESULT_MAX_CHARS = 20_000;
@@ -112,7 +111,7 @@ export function applyBrowserOperatorRootOptions(command: Command): void {
     )
     .option(
       "--isolated",
-      "Use a disposable browser context inside the selected profile partition",
+      "Use a disposable managed-browser context inside the selected profile partition",
     )
     .option(
       "--expect-domain <domain>",
@@ -751,26 +750,33 @@ export function registerBrowserOperatorSubcommands(
     .command("open <url>")
     .description("Navigate one broker-owned browser target to a URL")
     .action((url: string) =>
-      operatorAction(program, root, namespace, "open", async () => {
-        const page = await getOperatorPage(root, namespace);
-        await ensureNetworkCapture(page);
-        await page.goto(url, { settleMs: 2000 });
-        const finalUrl = await page.url();
-        const [title, connectionTargetEvidence] = await Promise.all([
-          page.title(),
-          readBrowserConnectionTargetEvidence(page, finalUrl),
-        ]);
-        return {
-          ok: true,
-          requested_url: url,
-          url: finalUrl,
-          title,
-          workspace: resolveWorkspace(root, namespace),
-          ...(connectionTargetEvidence
-            ? { connection_target_evidence: connectionTargetEvidence }
-            : {}),
-        };
-      }),
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "open",
+        async () => {
+          const page = await getOperatorPage(root, namespace);
+          await ensureNetworkCapture(page);
+          await page.goto(url, { settleMs: 2000 });
+          const finalUrl = await page.url();
+          const [title, connectionTargetEvidence] = await Promise.all([
+            page.title(),
+            readBrowserConnectionTargetEvidence(page, finalUrl),
+          ]);
+          return {
+            ok: true,
+            requested_url: url,
+            url: finalUrl,
+            title,
+            workspace: resolveWorkspace(root, namespace),
+            ...(connectionTargetEvidence
+              ? { connection_target_evidence: connectionTargetEvidence }
+              : {}),
+          };
+        },
+        { url },
+      ),
     );
 
   root
@@ -791,29 +797,39 @@ export function registerBrowserOperatorSubcommands(
     .option("--interactive", "only show interactive elements")
     .option("--compact", "omit decorative nodes")
     .action((opts: { interactive?: boolean; compact?: boolean }) =>
-      operatorAction(program, root, namespace, "state", async () => {
-        const page = await getOperatorPage(root, namespace);
-        return await withRecordedBrowserAction(
-          program,
-          root,
-          namespace,
-          "state",
-          page,
-          {
-            interactive: opts.interactive === true,
-            compact: opts.compact === true,
-          },
-          async () => {
-            const url = await page.url();
-            const snapshot = await page.snapshot({
-              interactive: opts.interactive,
-              compact: opts.compact,
-            });
-            console.error(chalk.dim(`URL: ${url}`));
-            return { url, snapshot };
-          },
-        );
-      }),
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "state",
+        async () => {
+          const page = await getOperatorPage(root, namespace);
+          return await withRecordedBrowserAction(
+            program,
+            root,
+            namespace,
+            "state",
+            page,
+            {
+              interactive: opts.interactive === true,
+              compact: opts.compact === true,
+            },
+            async () => {
+              const url = await page.url();
+              const snapshot = await page.snapshot({
+                interactive: opts.interactive,
+                compact: opts.compact,
+              });
+              console.error(chalk.dim(`URL: ${url}`));
+              return { url, snapshot };
+            },
+          );
+        },
+        {
+          interactive: opts.interactive === true,
+          compact: opts.compact === true,
+        },
+      ),
     );
 
   root
@@ -821,33 +837,40 @@ export function registerBrowserOperatorSubcommands(
     .description("Read bounded DOM data from a verified snapshot ref")
     .option("--kind <kind>", "Query kind: text, value, or attributes", "text")
     .action((ref: string, opts: { kind?: string }) =>
-      operatorAction(program, root, namespace, "query", async () => {
-        validateRef(ref);
-        const kind = parseBrowserDomQueryKind(opts.kind);
-        const page = await getOperatorPage(root, namespace);
-        const selector = `[data-unicli-ref="${ref}"]`;
-        return await withRecordedBrowserAction(
-          program,
-          root,
-          namespace,
-          "query",
-          page,
-          { ref, kind },
-          async () => {
-            await verifyRef(page, selector);
-            const url = await page.url();
-            const rawResult = await page.evaluate(
-              buildBrowserDomQueryJs(ref, kind),
-            );
-            return normalizeBrowserDomQueryResult({
-              kind,
-              rawResult,
-              ref,
-              url,
-            });
-          },
-        );
-      }),
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "query",
+        async () => {
+          validateRef(ref);
+          const kind = parseBrowserDomQueryKind(opts.kind);
+          const page = await getOperatorPage(root, namespace);
+          const selector = `[data-unicli-ref="${ref}"]`;
+          return await withRecordedBrowserAction(
+            program,
+            root,
+            namespace,
+            "query",
+            page,
+            { ref, kind },
+            async () => {
+              await verifyRef(page, selector);
+              const url = await page.url();
+              const rawResult = await page.evaluate(
+                buildBrowserDomQueryJs(ref, kind),
+              );
+              return normalizeBrowserDomQueryResult({
+                kind,
+                rawResult,
+                ref,
+                url,
+              });
+            },
+          );
+        },
+        { ref, kind: opts.kind ?? "text" },
+      ),
     );
 
   root
@@ -855,17 +878,24 @@ export function registerBrowserOperatorSubcommands(
     .description("Capture page screenshot")
     .option("--full-page", "capture full scrollable page")
     .action((path: string | undefined, opts: { fullPage?: boolean }) =>
-      operatorAction(program, root, namespace, "screenshot", async () => {
-        const page = await getOperatorPage(root, namespace);
-        const buf = await page.screenshot({
-          fullPage: opts.fullPage,
-          path: path ?? undefined,
-        });
-        if (path) {
-          return { ok: true, path, size: buf.length };
-        }
-        return buf.toString("base64");
-      }),
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "screenshot",
+        async () => {
+          const page = await getOperatorPage(root, namespace);
+          const buf = await page.screenshot({
+            fullPage: opts.fullPage,
+            path: path ?? undefined,
+          });
+          if (path) {
+            return { ok: true, path, size: buf.length };
+          }
+          return buf.toString("base64");
+        },
+        { path: path ?? null, fullPage: opts.fullPage === true },
+      ),
     );
 
   root
@@ -904,44 +934,61 @@ export function registerBrowserOperatorSubcommands(
         timeoutMs: string;
         pollMs: string;
       }) =>
-        operatorAction(program, root, namespace, "evidence", async () => {
-          const page = await getOperatorPage(root, namespace);
-          await ensureNetworkCapture(page);
-          await installBrowserEvidenceHooks(page);
-          const workspace = resolveWorkspace(root, namespace);
-          const lease = await browserSessionLease(
-            root,
-            namespace,
-            workspace,
-            page,
-          );
-          const screenshotDir =
-            opts.screenshot === false
-              ? undefined
-              : (opts.screenshotDir ??
-                join(userHome(), ".unicli", "evidence", "browser"));
-          if (opts.renderAware) {
-            const observation = await captureRenderAwareBrowserEvidence(page, {
+        operatorAction(
+          program,
+          root,
+          namespace,
+          "evidence",
+          async () => {
+            const page = await getOperatorPage(root, namespace);
+            await ensureNetworkCapture(page);
+            await installBrowserEvidenceHooks(page);
+            const workspace = resolveWorkspace(root, namespace);
+            const lease = await browserSessionLease(
+              root,
+              namespace,
+              workspace,
+              page,
+            );
+            const screenshotDir =
+              opts.screenshot === false
+                ? undefined
+                : (opts.screenshotDir ??
+                  join(userHome(), ".unicli", "evidence", "browser"));
+            if (opts.renderAware) {
+              const observation = await captureRenderAwareBrowserEvidence(
+                page,
+                {
+                  action: "evidence",
+                  workspace,
+                  lease,
+                  screenshotDir,
+                  stableForMs: parseInt(opts.stabilityMs, 10),
+                  timeoutMs: parseInt(opts.timeoutMs, 10),
+                  pollMs: parseInt(opts.pollMs, 10),
+                },
+              );
+              return {
+                ...observation.packet,
+                render_stability: observation.stability,
+              };
+            }
+            return await captureBrowserEvidencePacket(page, {
               action: "evidence",
               workspace,
               lease,
               screenshotDir,
-              stableForMs: parseInt(opts.stabilityMs, 10),
-              timeoutMs: parseInt(opts.timeoutMs, 10),
-              pollMs: parseInt(opts.pollMs, 10),
             });
-            return {
-              ...observation.packet,
-              render_stability: observation.stability,
-            };
-          }
-          return await captureBrowserEvidencePacket(page, {
-            action: "evidence",
-            workspace,
-            lease,
-            screenshotDir,
-          });
-        }),
+          },
+          {
+            screenshotDir: opts.screenshotDir ?? null,
+            screenshot: opts.screenshot !== false,
+            renderAware: opts.renderAware === true,
+            stabilityMs: parseInt(opts.stabilityMs, 10),
+            timeoutMs: parseInt(opts.timeoutMs, 10),
+            pollMs: parseInt(opts.pollMs, 10),
+          },
+        ),
     );
 
   root
@@ -951,32 +998,50 @@ export function registerBrowserOperatorSubcommands(
     .option("--max <n>", "Maximum console entries to return", "50")
     .option("--text-max <n>", "Maximum text characters per entry", "1000")
     .action((opts: { clear?: boolean; max: string; textMax: string }) =>
-      operatorAction(program, root, namespace, "console", async () => {
-        const page = await getOperatorPage(root, namespace);
-        return await readBrowserConsole(page, {
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "console",
+        async () => {
+          const page = await getOperatorPage(root, namespace);
+          return await readBrowserConsole(page, {
+            clear: opts.clear === true,
+            maxEntries: parseInt(opts.max, 10),
+            maxTextChars: parseInt(opts.textMax, 10),
+          });
+        },
+        {
           clear: opts.clear === true,
-          maxEntries: parseInt(opts.max, 10),
-          maxTextChars: parseInt(opts.textMax, 10),
-        });
-      }),
+          max: parseInt(opts.max, 10),
+          textMax: parseInt(opts.textMax, 10),
+        },
+      ),
     );
 
   root
     .command("cdp <method> [params]")
     .description("Run a read-only allowlisted Chrome DevTools Protocol command")
     .action((method: string, paramsJson: string | undefined) =>
-      operatorAction(program, root, namespace, "cdp", async () => {
-        assertBrowserCdpReadOnlyMethod(method);
-        const params = parseBrowserCdpParams(paramsJson);
-        const page = await getOperatorPage(root, namespace);
-        const result = await page.sendCDP(method, params);
-        return createBrowserCdpReadOnlyResult({
-          workspace: resolveWorkspace(root, namespace),
-          method,
-          params,
-          result,
-        });
-      }),
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "cdp",
+        async () => {
+          assertBrowserCdpReadOnlyMethod(method);
+          const params = parseBrowserCdpParams(paramsJson);
+          const page = await getOperatorPage(root, namespace);
+          const result = await page.sendCDP(method, params);
+          return createBrowserCdpReadOnlyResult({
+            workspace: resolveWorkspace(root, namespace),
+            method,
+            params,
+            result,
+          });
+        },
+        { method, params: paramsJson ?? null },
+      ),
     );
 
   root
@@ -984,12 +1049,19 @@ export function registerBrowserOperatorSubcommands(
     .description("Start and read provider-owned browser dialog supervision")
     .option("--clear-recent", "Clear recent dialog records after reading")
     .action((opts: { clearRecent?: boolean }) =>
-      operatorAction(program, root, namespace, "dialogs", async () => {
-        const workspace = resolveWorkspace(root, namespace);
-        const page = await getOperatorPage(root, namespace);
-        const result = await page.readDialogs(opts.clearRecent === true);
-        return normalizeBrowserDialogProviderResult(result, workspace);
-      }),
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "dialogs",
+        async () => {
+          const workspace = resolveWorkspace(root, namespace);
+          const page = await getOperatorPage(root, namespace);
+          const result = await page.readDialogs(opts.clearRecent === true);
+          return normalizeBrowserDialogProviderResult(result, workspace);
+        },
+        { clearRecent: opts.clearRecent === true },
+      ),
     );
 
   root
@@ -1002,87 +1074,119 @@ export function registerBrowserOperatorSubcommands(
         dialogId: string | undefined,
         opts: { prompt?: string },
       ) =>
-        operatorAction(program, root, namespace, "dialog", async () => {
-          const action = parseBrowserDialogAction(actionRaw);
-          const workspace = resolveWorkspace(root, namespace);
-          const page = await getOperatorPage(root, namespace);
-          const result = await page.respondDialog({
-            action,
-            ...(dialogId === undefined ? {} : { dialogId }),
-            ...(opts.prompt === undefined ? {} : { promptText: opts.prompt }),
-          });
-          return normalizeBrowserDialogProviderResult(result, workspace);
-        }),
+        operatorAction(
+          program,
+          root,
+          namespace,
+          "dialog",
+          async () => {
+            const action = parseBrowserDialogAction(actionRaw);
+            const workspace = resolveWorkspace(root, namespace);
+            const page = await getOperatorPage(root, namespace);
+            const result = await page.respondDialog({
+              action,
+              ...(dialogId === undefined ? {} : { dialogId }),
+              ...(opts.prompt === undefined ? {} : { promptText: opts.prompt }),
+            });
+            return normalizeBrowserDialogProviderResult(result, workspace);
+          },
+          {
+            action: actionRaw,
+            dialogId: dialogId ?? null,
+            prompt: opts.prompt ?? null,
+          },
+        ),
     );
 
   root
     .command("click <ref>")
     .description("Click element by ref number from state")
     .action((ref: string) =>
-      operatorAction(program, root, namespace, "click", async () => {
-        validateRef(ref);
-        const page = await getOperatorPage(root, namespace);
-        const selector = `[data-unicli-ref="${ref}"]`;
-        return await withRecordedBrowserAction(
-          program,
-          root,
-          namespace,
-          "click",
-          page,
-          { ref },
-          async () => {
-            await verifyRef(page, selector);
-            await page.click(selector);
-            return { ok: true, clicked: ref };
-          },
-        );
-      }),
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "click",
+        async () => {
+          validateRef(ref);
+          const page = await getOperatorPage(root, namespace);
+          const selector = `[data-unicli-ref="${ref}"]`;
+          return await withRecordedBrowserAction(
+            program,
+            root,
+            namespace,
+            "click",
+            page,
+            { ref },
+            async () => {
+              await verifyRef(page, selector);
+              await page.click(selector);
+              return { ok: true, clicked: ref };
+            },
+          );
+        },
+        { ref },
+      ),
     );
 
   root
     .command("type <ref> <text>")
     .description("Type text into element by ref number")
     .action((ref: string, text: string) =>
-      operatorAction(program, root, namespace, "type", async () => {
-        validateRef(ref);
-        const page = await getOperatorPage(root, namespace);
-        const selector = `[data-unicli-ref="${ref}"]`;
-        return await withRecordedBrowserAction(
-          program,
-          root,
-          namespace,
-          "type",
-          page,
-          { ref, text },
-          async () => {
-            await verifyRef(page, selector);
-            await page.click(selector);
-            await page.wait(0.3);
-            await page.insertText(text);
-            return { ok: true, ref, text };
-          },
-        );
-      }),
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "type",
+        async () => {
+          validateRef(ref);
+          const page = await getOperatorPage(root, namespace);
+          const selector = `[data-unicli-ref="${ref}"]`;
+          return await withRecordedBrowserAction(
+            program,
+            root,
+            namespace,
+            "type",
+            page,
+            { ref, text },
+            async () => {
+              await verifyRef(page, selector);
+              await page.click(selector);
+              await page.wait(0.3);
+              await page.insertText(text);
+              return { ok: true, ref, text };
+            },
+          );
+        },
+        { ref, text },
+      ),
     );
 
   root
     .command("keys <key>")
     .description("Press keyboard key (e.g., Enter, Escape, Control+a)")
     .action((key: string) =>
-      operatorAction(program, root, namespace, "keys", async () => {
-        const page = await getOperatorPage(root, namespace);
-        if (key.includes("+")) {
-          const parts = key.split("+");
-          const actualKey = parts.pop()!;
-          await page.press(
-            actualKey,
-            parts.map((modifier) => modifier.toLowerCase()),
-          );
-        } else {
-          await page.press(key);
-        }
-        return { ok: true, key };
-      }),
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "keys",
+        async () => {
+          const page = await getOperatorPage(root, namespace);
+          if (key.includes("+")) {
+            const parts = key.split("+");
+            const actualKey = parts.pop()!;
+            await page.press(
+              actualKey,
+              parts.map((modifier) => modifier.toLowerCase()),
+            );
+          } else {
+            await page.press(key);
+          }
+          return { ok: true, key };
+        },
+        { key },
+      ),
     );
 
   root
@@ -1092,20 +1196,31 @@ export function registerBrowserOperatorSubcommands(
     .option("--max <n>", "max scroll iterations for auto", "10")
     .action(
       (direction: string | undefined, opts: { auto?: boolean; max: string }) =>
-        operatorAction(program, root, namespace, "scroll", async () => {
-          const page = await getOperatorPage(root, namespace);
-          if (opts.auto) {
-            await page.autoScroll({
-              maxScrolls: parseInt(opts.max, 10),
-              delay: 1000,
-            });
-          } else {
-            await page.scroll(
-              (direction ?? "down") as "down" | "up" | "bottom" | "top",
-            );
-          }
-          return { ok: true, direction: direction ?? "down" };
-        }),
+        operatorAction(
+          program,
+          root,
+          namespace,
+          "scroll",
+          async () => {
+            const page = await getOperatorPage(root, namespace);
+            if (opts.auto) {
+              await page.autoScroll({
+                maxScrolls: parseInt(opts.max, 10),
+                delay: 1000,
+              });
+            } else {
+              await page.scroll(
+                (direction ?? "down") as "down" | "up" | "bottom" | "top",
+              );
+            }
+            return { ok: true, direction: direction ?? "down" };
+          },
+          {
+            direction: direction ?? "down",
+            auto: opts.auto === true,
+            max: parseInt(opts.max, 10),
+          },
+        ),
     );
 
   const get = root
@@ -1144,57 +1259,85 @@ export function registerBrowserOperatorSubcommands(
     .command("text <ref>")
     .description("Get text content of element by ref")
     .action((ref: string) =>
-      operatorAction(program, root, namespace, "get text", async () => {
-        validateRef(ref);
-        const page = await getOperatorPage(root, namespace);
-        return await page.evaluate(
-          `document.querySelector('[data-unicli-ref="${ref}"]')?.textContent?.trim() ?? null`,
-        );
-      }),
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "get text",
+        async () => {
+          validateRef(ref);
+          const page = await getOperatorPage(root, namespace);
+          return await page.evaluate(
+            `document.querySelector('[data-unicli-ref="${ref}"]')?.textContent?.trim() ?? null`,
+          );
+        },
+        { ref },
+      ),
     );
 
   get
     .command("value <ref>")
     .description("Get value of input element by ref")
     .action((ref: string) =>
-      operatorAction(program, root, namespace, "get value", async () => {
-        validateRef(ref);
-        const page = await getOperatorPage(root, namespace);
-        return await page.evaluate(
-          `document.querySelector('[data-unicli-ref="${ref}"]')?.value ?? null`,
-        );
-      }),
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "get value",
+        async () => {
+          validateRef(ref);
+          const page = await getOperatorPage(root, namespace);
+          return await page.evaluate(
+            `document.querySelector('[data-unicli-ref="${ref}"]')?.value ?? null`,
+          );
+        },
+        { ref },
+      ),
     );
 
   get
     .command("html [selector]")
     .description("Get outerHTML of element (or full page)")
     .action((selector: string | undefined) =>
-      operatorAction(program, root, namespace, "get html", async () => {
-        const page = await getOperatorPage(root, namespace);
-        if (selector) {
-          const selectorStr = JSON.stringify(selector);
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "get html",
+        async () => {
+          const page = await getOperatorPage(root, namespace);
+          if (selector) {
+            const selectorStr = JSON.stringify(selector);
+            return await page.evaluate(
+              `document.querySelector(${selectorStr})?.outerHTML?.slice(0, 50000) ?? null`,
+            );
+          }
           return await page.evaluate(
-            `document.querySelector(${selectorStr})?.outerHTML?.slice(0, 50000) ?? null`,
+            "document.documentElement.outerHTML.slice(0, 50000)",
           );
-        }
-        return await page.evaluate(
-          "document.documentElement.outerHTML.slice(0, 50000)",
-        );
-      }),
+        },
+        { selector: selector ?? null },
+      ),
     );
 
   get
     .command("attributes <ref>")
     .description("Get all attributes of element by ref")
     .action((ref: string) =>
-      operatorAction(program, root, namespace, "get attributes", async () => {
-        validateRef(ref);
-        const page = await getOperatorPage(root, namespace);
-        return await page.evaluate(
-          `(() => { const el = document.querySelector('[data-unicli-ref="${ref}"]'); if (!el) return null; const attrs = {}; for (const a of el.attributes) attrs[a.name] = a.value; return attrs; })()`,
-        );
-      }),
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "get attributes",
+        async () => {
+          validateRef(ref);
+          const page = await getOperatorPage(root, namespace);
+          return await page.evaluate(
+            `(() => { const el = document.querySelector('[data-unicli-ref="${ref}"]'); if (!el) return null; const attrs = {}; for (const a of el.attributes) attrs[a.name] = a.value; return attrs; })()`,
+          );
+        },
+        { ref },
+      ),
     );
 
   root
@@ -1203,59 +1346,77 @@ export function registerBrowserOperatorSubcommands(
     .option("--timeout <ms>", "timeout in ms", "10000")
     .action(
       (type: string, value: string | undefined, opts: { timeout: string }) =>
-        operatorAction(program, root, namespace, "wait", async () => {
-          const page = await getOperatorPage(root, namespace);
-          const timeout = parseInt(opts.timeout, 10);
-          return await withRecordedBrowserAction(
-            program,
-            root,
-            namespace,
-            "wait",
-            page,
-            { type, value: value ?? null, timeout },
-            async () => {
-              switch (type) {
-                case "time":
-                  await page.wait(parseInt(value ?? "1000", 10) / 1000);
-                  break;
-                case "selector":
-                  if (!value) throw new Error("selector value required");
-                  await page.waitForSelector(value, timeout);
-                  break;
-                case "text": {
-                  if (!value) throw new Error("text value required");
-                  const deadline = Date.now() + timeout;
-                  const valueStr = JSON.stringify(value);
-                  while (Date.now() < deadline) {
-                    const found = await page.evaluate(
-                      `document.body.innerText.includes(${valueStr})`,
+        operatorAction(
+          program,
+          root,
+          namespace,
+          "wait",
+          async () => {
+            const page = await getOperatorPage(root, namespace);
+            const timeout = parseInt(opts.timeout, 10);
+            return await withRecordedBrowserAction(
+              program,
+              root,
+              namespace,
+              "wait",
+              page,
+              { type, value: value ?? null, timeout },
+              async () => {
+                switch (type) {
+                  case "time":
+                    await page.wait(parseInt(value ?? "1000", 10) / 1000);
+                    break;
+                  case "selector":
+                    if (!value) throw new Error("selector value required");
+                    await page.waitForSelector(value, timeout);
+                    break;
+                  case "text": {
+                    if (!value) throw new Error("text value required");
+                    const deadline = Date.now() + timeout;
+                    const valueStr = JSON.stringify(value);
+                    while (Date.now() < deadline) {
+                      const found = await page.evaluate(
+                        `document.body.innerText.includes(${valueStr})`,
+                      );
+                      if (found) return { ok: true, found: true };
+                      await new Promise((resolve) => setTimeout(resolve, 200));
+                    }
+                    throw new Error(
+                      `Text "${value}" not found within ${String(timeout)}ms`,
                     );
-                    if (found) return { ok: true, found: true };
-                    await new Promise((resolve) => setTimeout(resolve, 200));
                   }
-                  throw new Error(
-                    `Text "${value}" not found within ${String(timeout)}ms`,
-                  );
+                  default:
+                    throw new Error(
+                      `Unknown wait type: ${type}. Use: time, selector, text`,
+                    );
                 }
-                default:
-                  throw new Error(
-                    `Unknown wait type: ${type}. Use: time, selector, text`,
-                  );
-              }
-              return { ok: true };
-            },
-          );
-        }),
+                return { ok: true };
+              },
+            );
+          },
+          {
+            type,
+            value: value ?? null,
+            timeout: parseInt(opts.timeout, 10),
+          },
+        ),
     );
 
   root
     .command("eval <js>")
     .description("Execute JavaScript in page context")
     .action((js: string) =>
-      operatorAction(program, root, namespace, "eval", async () => {
-        const page = await getOperatorPage(root, namespace);
-        return await page.evaluate(js);
-      }),
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "eval",
+        async () => {
+          const page = await getOperatorPage(root, namespace);
+          return await page.evaluate(js);
+        },
+        { js },
+      ),
     );
 
   registerBrowserAuthoringSubcommands(root, program, namespace);
@@ -1264,55 +1425,76 @@ export function registerBrowserOperatorSubcommands(
     .command("select <ref> <option>")
     .description("Select option in dropdown by ref")
     .action((ref: string, option: string) =>
-      operatorAction(program, root, namespace, "select", async () => {
-        validateRef(ref);
-        const page = await getOperatorPage(root, namespace);
-        const optionStr = JSON.stringify(option);
-        await page.evaluate(
-          `(() => {
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "select",
+        async () => {
+          validateRef(ref);
+          const page = await getOperatorPage(root, namespace);
+          const optionStr = JSON.stringify(option);
+          await page.evaluate(
+            `(() => {
             const el = document.querySelector('[data-unicli-ref="${ref}"]');
             if (!el || el.tagName !== 'SELECT') throw new Error('Not a <select> element');
             el.value = ${optionStr};
             el.dispatchEvent(new Event('change', { bubbles: true }));
           })()`,
-        );
-        return { ok: true, ref, option };
-      }),
+          );
+          return { ok: true, ref, option };
+        },
+        { ref, option },
+      ),
     );
 
   root
     .command("upload <ref> <path>")
     .description("Upload file to file input element by ref number")
     .action((ref: string, filePath: string) =>
-      operatorAction(program, root, namespace, "upload", async () => {
-        validateRef(ref);
-        const selector = `[data-unicli-ref="${ref}"]`;
-        const absolutePath = resolveAllowedUploadPath(filePath);
-        const page = await getOperatorPage(root, namespace);
-        await page.setFileInput(selector, [absolutePath]);
-        return { ok: true, ref, path: absolutePath };
-      }),
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "upload",
+        async () => {
+          validateRef(ref);
+          const selector = `[data-unicli-ref="${ref}"]`;
+          const absolutePath = resolveAllowedUploadPath(filePath);
+          const page = await getOperatorPage(root, namespace);
+          await page.setFileInput(selector, [absolutePath]);
+          return { ok: true, ref, path: absolutePath };
+        },
+        { ref, path: filePath },
+      ),
     );
 
   root
     .command("hover <ref>")
     .description("Hover over element by ref number")
     .action((ref: string) =>
-      operatorAction(program, root, namespace, "hover", async () => {
-        validateRef(ref);
-        const selector = `[data-unicli-ref="${ref}"]`;
-        const selectorJson = JSON.stringify(selector);
-        const page = await getOperatorPage(root, namespace);
-        await page.evaluate(
-          `(() => {
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "hover",
+        async () => {
+          validateRef(ref);
+          const selector = `[data-unicli-ref="${ref}"]`;
+          const selectorJson = JSON.stringify(selector);
+          const page = await getOperatorPage(root, namespace);
+          await page.evaluate(
+            `(() => {
             const el = document.querySelector(${selectorJson});
             if (!el) throw new Error('Element not found: ' + ${selectorJson});
             el.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
             el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
           })()`,
-        );
-        return { ok: true, ref };
-      }),
+          );
+          return { ok: true, ref };
+        },
+        { ref },
+      ),
     );
 
   root
@@ -1324,46 +1506,57 @@ export function registerBrowserOperatorSubcommands(
       "Cache file (default ~/.unicli/observe-cache.jsonl)",
     )
     .action((query: string, opts: { topK?: string; cache?: string }) =>
-      operatorAction(program, root, namespace, "observe", async () => {
-        const page = await getOperatorPage(root, namespace);
-        const rawSnapshot = await page.snapshot({
-          interactive: true,
-          raw: true,
-        });
-        let parsed: { refs?: SnapshotRef[] } = { refs: [] };
-        if (typeof rawSnapshot === "string") {
-          try {
-            parsed = JSON.parse(rawSnapshot) as { refs?: SnapshotRef[] };
-          } catch {
-            // Ignore malformed raw snapshot payloads.
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "observe",
+        async () => {
+          const page = await getOperatorPage(root, namespace);
+          const rawSnapshot = await page.snapshot({
+            interactive: true,
+            raw: true,
+          });
+          let parsed: { refs?: SnapshotRef[] } = { refs: [] };
+          if (typeof rawSnapshot === "string") {
+            try {
+              parsed = JSON.parse(rawSnapshot) as { refs?: SnapshotRef[] };
+            } catch {
+              // Ignore malformed raw snapshot payloads.
+            }
+          } else {
+            parsed = rawSnapshot as { refs?: SnapshotRef[] };
           }
-        } else {
-          parsed = rawSnapshot as { refs?: SnapshotRef[] };
-        }
-        const refs = Array.isArray(parsed.refs) ? parsed.refs : [];
-        const topK = parseInt(opts.topK ?? "5", 10) || 5;
-        const candidates = rankCandidates(refs, query, topK);
+          const refs = Array.isArray(parsed.refs) ? parsed.refs : [];
+          const topK = parseInt(opts.topK ?? "5", 10) || 5;
+          const candidates = rankCandidates(refs, query, topK);
 
-        const cachePath =
-          opts.cache ?? join(userHome(), ".unicli", "observe-cache.jsonl");
-        try {
-          mkdirSync(pathDirname(cachePath), { recursive: true });
-          appendFileSync(
-            cachePath,
-            JSON.stringify({
-              ts: new Date().toISOString(),
-              url: await page.url(),
-              query,
-              candidates,
-            }) + "\n",
-            "utf-8",
-          );
-        } catch {
-          // Cache failures are non-fatal.
-        }
+          const cachePath =
+            opts.cache ?? join(userHome(), ".unicli", "observe-cache.jsonl");
+          try {
+            mkdirSync(pathDirname(cachePath), { recursive: true });
+            appendFileSync(
+              cachePath,
+              JSON.stringify({
+                ts: new Date().toISOString(),
+                url: await page.url(),
+                query,
+                candidates,
+              }) + "\n",
+              "utf-8",
+            );
+          } catch {
+            // Cache failures are non-fatal.
+          }
 
-        return { query, candidates };
-      }),
+          return { query, candidates };
+        },
+        {
+          query,
+          topK: parseInt(opts.topK ?? "5", 10) || 5,
+          cache: opts.cache ?? null,
+        },
+      ),
     );
 
   root
@@ -1373,22 +1566,33 @@ export function registerBrowserOperatorSubcommands(
     .option("--limit <n>", "Maximum matches to return", "20")
     .option("--text-max <n>", "Maximum text length per row", "120")
     .action((opts: { css: string; limit: string; textMax: string }) =>
-      operatorAction(program, root, namespace, "find", async () => {
-        const page = await getOperatorPage(root, namespace);
-        const results = (await page.evaluate(
-          buildFindJs(
-            opts.css,
-            parseInt(opts.limit, 10) || 20,
-            parseInt(opts.textMax, 10) || 120,
-          ),
-        )) as Array<Record<string, unknown>>;
-        try {
-          await page.evaluate(FINGERPRINT_PERSIST_JS);
-        } catch {
-          // Best-effort only.
-        }
-        return results;
-      }),
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "find",
+        async () => {
+          const page = await getOperatorPage(root, namespace);
+          const results = (await page.evaluate(
+            buildFindJs(
+              opts.css,
+              parseInt(opts.limit, 10) || 20,
+              parseInt(opts.textMax, 10) || 120,
+            ),
+          )) as Array<Record<string, unknown>>;
+          try {
+            await page.evaluate(FINGERPRINT_PERSIST_JS);
+          } catch {
+            // Best-effort only.
+          }
+          return results;
+        },
+        {
+          css: opts.css,
+          limit: parseInt(opts.limit, 10) || 20,
+          textMax: parseInt(opts.textMax, 10) || 120,
+        },
+      ),
     );
 
   root
@@ -1408,17 +1612,24 @@ export function registerBrowserOperatorSubcommands(
     )
     .option("--limit <n>", "Maximum download records to return", "20")
     .action((opts: { limit?: string }) =>
-      operatorAction(program, root, namespace, "downloads", async () => {
-        const workspace = resolveWorkspace(root, namespace);
-        const limit = parseDownloadLimit(opts.limit);
-        const page = await getOperatorPage(root, namespace);
-        const result = await page.readDownloads(limit);
-        return normalizeBrowserDownloadsProviderResult(
-          result,
-          workspace,
-          limit,
-        );
-      }),
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "downloads",
+        async () => {
+          const workspace = resolveWorkspace(root, namespace);
+          const limit = parseDownloadLimit(opts.limit);
+          const page = await getOperatorPage(root, namespace);
+          const result = await page.readDownloads(limit);
+          return normalizeBrowserDownloadsProviderResult(
+            result,
+            workspace,
+            limit,
+          );
+        },
+        { limit: parseDownloadLimit(opts.limit) },
+      ),
     );
 
   root
@@ -1458,57 +1669,79 @@ export function registerBrowserOperatorSubcommands(
         timeoutMs: string;
         pollMs: string;
       }) =>
-        operatorAction(program, root, namespace, "extract", async () => {
-          const page = await getOperatorPage(root, namespace);
-          let renderStability: Record<string, unknown> | undefined;
-          if (opts.renderAware) {
-            await ensureNetworkCapture(page);
-            await installBrowserEvidenceHooks(page);
-            const workspace = resolveWorkspace(root, namespace);
-            const lease = await browserSessionLease(
-              root,
-              namespace,
-              workspace,
-              page,
+        operatorAction(
+          program,
+          root,
+          namespace,
+          "extract",
+          async () => {
+            const page = await getOperatorPage(root, namespace);
+            let renderStability: Record<string, unknown> | undefined;
+            if (opts.renderAware) {
+              await ensureNetworkCapture(page);
+              await installBrowserEvidenceHooks(page);
+              const workspace = resolveWorkspace(root, namespace);
+              const lease = await browserSessionLease(
+                root,
+                namespace,
+                workspace,
+                page,
+              );
+              const observation = await captureRenderAwareBrowserEvidence(
+                page,
+                {
+                  action: "extract",
+                  workspace,
+                  lease,
+                  screenshotDir:
+                    opts.screenshot === false
+                      ? undefined
+                      : join(userHome(), ".unicli", "evidence", "browser"),
+                  stableForMs: parseInt(opts.stabilityMs, 10),
+                  timeoutMs: parseInt(opts.timeoutMs, 10),
+                  pollMs: parseInt(opts.pollMs, 10),
+                },
+              );
+              renderStability = observation.stability;
+            }
+            const result = (await page.evaluate(
+              buildExtractJs(opts.selector),
+            )) as {
+              selector: string;
+              title: string;
+              url: string;
+              content: string;
+            };
+            const start = Math.max(0, parseInt(opts.start, 10) || 0);
+            const chunkSize = Math.max(
+              256,
+              parseInt(opts.chunkSize, 10) || 8000,
             );
-            const observation = await captureRenderAwareBrowserEvidence(page, {
-              action: "extract",
-              workspace,
-              lease,
-              screenshotDir:
-                opts.screenshot === false
-                  ? undefined
-                  : join(userHome(), ".unicli", "evidence", "browser"),
-              stableForMs: parseInt(opts.stabilityMs, 10),
-              timeoutMs: parseInt(opts.timeoutMs, 10),
-              pollMs: parseInt(opts.pollMs, 10),
-            });
-            renderStability = observation.stability;
-          }
-          const result = (await page.evaluate(
-            buildExtractJs(opts.selector),
-          )) as {
-            selector: string;
-            title: string;
-            url: string;
-            content: string;
-          };
-          const start = Math.max(0, parseInt(opts.start, 10) || 0);
-          const chunkSize = Math.max(256, parseInt(opts.chunkSize, 10) || 8000);
-          const end = Math.min(result.content.length, start + chunkSize);
-          return {
-            url: result.url,
-            title: result.title,
-            selector: result.selector,
-            total_chars: result.content.length,
-            chunk_size: chunkSize,
-            start,
-            end,
-            next_start_char: end < result.content.length ? end : null,
-            content: result.content.slice(start, end),
-            ...(renderStability ? { render_stability: renderStability } : {}),
-          };
-        }),
+            const end = Math.min(result.content.length, start + chunkSize);
+            return {
+              url: result.url,
+              title: result.title,
+              selector: result.selector,
+              total_chars: result.content.length,
+              chunk_size: chunkSize,
+              start,
+              end,
+              next_start_char: end < result.content.length ? end : null,
+              content: result.content.slice(start, end),
+              ...(renderStability ? { render_stability: renderStability } : {}),
+            };
+          },
+          {
+            selector: opts.selector ?? null,
+            chunkSize: parseInt(opts.chunkSize, 10) || 8000,
+            start: parseInt(opts.start, 10) || 0,
+            renderAware: opts.renderAware === true,
+            screenshot: opts.screenshot !== false,
+            stabilityMs: parseInt(opts.stabilityMs, 10),
+            timeoutMs: parseInt(opts.timeoutMs, 10),
+            pollMs: parseInt(opts.pollMs, 10),
+          },
+        ),
     );
 
   root
@@ -1526,17 +1759,24 @@ export function registerBrowserOperatorSubcommands(
     .description("Close the automation browser window")
     .option("--all", "Close or release all managed browser sessions")
     .action((opts: { all?: boolean }) =>
-      operatorAction(program, root, namespace, "close", async () => {
-        if (opts.all === true) {
-          return await closeAllBrowserSessions();
-        }
-        const page = await getOperatorPage(root, namespace);
-        await page.closeWindow();
-        return {
-          ok: true,
-          scope: "current_managed_session",
-          workspace: resolveWorkspace(root, namespace),
-        };
-      }),
+      operatorAction(
+        program,
+        root,
+        namespace,
+        "close",
+        async () => {
+          if (opts.all === true) {
+            return await closeAllBrowserSessions();
+          }
+          const page = await getOperatorPage(root, namespace);
+          await page.closeWindow();
+          return {
+            ok: true,
+            scope: "current_managed_session",
+            workspace: resolveWorkspace(root, namespace),
+          };
+        },
+        { all: opts.all === true },
+      ),
     );
 }

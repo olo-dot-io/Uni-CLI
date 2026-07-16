@@ -133,13 +133,17 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, GLib, Gtk
 
 request = None
+response_id = None
+response_kind = None
+response_action_id = None
 started_at = 0.0
 trail = []
 windows = []
 cursor_visual_style = "mac-glass-pointer-v1"
 cursor_skin = "mac-pointer"
 
-def write_protocol(payload):
+def write_protocol(response_id, response_kind, data):
+    payload = {"id": response_id, "kind": response_kind, "ok": True, "data": data}
     sys.stdout.write(json.dumps(payload, separators=(",", ":")) + "\n")
     sys.stdout.flush()
 
@@ -245,7 +249,7 @@ class OverlayWindow(Gtk.Window):
         return False
 
 def tick():
-    global request, trail
+    global request, response_id, response_kind, response_action_id, trail
     if request is None:
         return True
     elapsed = (time.monotonic() - started_at) * 1000.0
@@ -256,13 +260,34 @@ def tick():
     for window in windows:
         window.queue_draw()
     if elapsed >= duration:
-        write_protocol({"provider": "linux-gtk", "status": "arrived", "acknowledged_at_ms": int(duration)})
+        write_protocol(response_id, response_kind, {
+            "provider": "linux-gtk",
+            "status": "arrived",
+            "action_id": response_action_id,
+            "acknowledged_at_ms": int(duration),
+        })
         request = None
+        response_id = None
+        response_kind = None
+        response_action_id = None
     return True
 
-def render(next_request):
-    global request, started_at, trail
+def dispatch(wire):
+    global request, response_id, response_kind, response_action_id, started_at, trail
+    wire_id = wire.get("id")
+    wire_kind = wire.get("kind")
+    if wire_kind == "ready":
+        write_protocol(wire_id, wire_kind, {"provider": "linux-gtk", "status": "ready"})
+        return False
+    params = wire.get("params") or {}
+    next_request = params.get("request")
+    if wire_kind != "render" or not isinstance(next_request, dict):
+        write_protocol(wire_id, wire_kind, {"provider": "linux-gtk", "status": "failed", "error": "invalid request"})
+        return False
     request = next_request
+    response_id = wire_id
+    response_kind = wire_kind
+    response_action_id = next_request.get("action_id")
     started_at = time.monotonic()
     trail = []
     return False
@@ -271,14 +296,15 @@ def read_stdin():
     for line in sys.stdin:
         try:
             parsed = json.loads(line)
-            GLib.idle_add(render, parsed)
+            GLib.idle_add(dispatch, parsed)
         except Exception:
-            write_protocol({"provider": "linux-gtk", "status": "failed", "error": "invalid request"})
+            write_protocol(0, "<parse>", {"provider": "linux-gtk", "status": "failed", "error": "invalid request"})
     GLib.idle_add(Gtk.main_quit)
 
 display = Gdk.Display.get_default()
 if display is None:
-    write_protocol({"provider": "linux-gtk", "status": "failed", "error": "no display"})
+    sys.stderr.write("linux overlay has no display\n")
+    sys.stderr.flush()
     sys.exit(1)
 for index in range(display.get_n_monitors()):
     window = OverlayWindow(display.get_monitor(index))
@@ -286,8 +312,6 @@ for index in range(display.get_n_monitors()):
     window.show_all()
 
 GLib.timeout_add(16, tick)
-write_protocol({"provider": "linux-gtk", "status": "ready"})
-'{"provider":"linux-gtk","status":"ready"}'
 threading.Thread(target=read_stdin, daemon=True).start()
 Gtk.main()
 `;

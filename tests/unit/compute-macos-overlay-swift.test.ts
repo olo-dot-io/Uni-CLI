@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   buildMacosOverlayDaemonSwiftScript,
   buildMacosOverlaySwiftScript,
@@ -25,7 +28,9 @@ describe("macOS AppKit compute overlay", () => {
     const source = buildMacosOverlayDaemonSwiftScript();
 
     expect(source).toContain("while let line = readLine()");
-    expect(source).toContain('\\"status\\":\\"ready\\"');
+    expect(source).toContain("struct WireRequest: Decodable");
+    expect(source).toContain('wire.kind == "ready"');
+    expect(source).toContain("writeStatus(id:");
     expect(source).toContain("DispatchQueue.main.async");
     expect(source).toContain("render(request:");
     expect(source).toContain("NSScreen.screens");
@@ -151,18 +156,31 @@ describe("macOS AppKit compute overlay", () => {
 
   it("does not start the render timeout until the daemon reports ready", async () => {
     const script = `
-      setTimeout(() => {
-        process.stdout.write(JSON.stringify({ provider: "macos-appkit", status: "ready" }) + "\\n");
-      }, 80);
       process.stdin.setEncoding("utf8");
       process.stdin.on("data", (chunk) => {
         for (const line of chunk.trim().split(/\\n+/)) {
           if (!line) continue;
-          const request = JSON.parse(line);
+          const wire = JSON.parse(line);
+          if (wire.kind === "ready") {
+            setTimeout(() => process.stdout.write(JSON.stringify({
+              id: wire.id,
+              kind: wire.kind,
+              ok: true,
+              data: { provider: "macos-appkit", status: "ready" },
+            }) + "\\n"), 80);
+            continue;
+          }
+          const request = wire.params.request;
           process.stdout.write(JSON.stringify({
-            provider: "macos-appkit",
-            status: "arrived",
-            acknowledged_at_ms: request.duration_ms,
+            id: wire.id,
+            kind: wire.kind,
+            ok: true,
+            data: {
+              provider: "macos-appkit",
+              status: "arrived",
+              action_id: request.action_id,
+              acknowledged_at_ms: request.duration_ms,
+            },
           }) + "\\n");
         }
       });
@@ -204,4 +222,146 @@ describe("macOS AppKit compute overlay", () => {
       await session.close();
     }
   });
+
+  it("retires a timed-out overlay generation before rendering the next action", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "unicli-overlay-timeout-"));
+    const firstGenerationMarker = join(directory, "first-generation.txt");
+    const lateAnimationMarker = join(directory, "late-animation.txt");
+    const script = `
+      const fs = require("node:fs");
+      const readline = require("node:readline");
+      const first = ${JSON.stringify(firstGenerationMarker)};
+      const late = ${JSON.stringify(lateAnimationMarker)};
+      readline.createInterface({ input: process.stdin }).on("line", (line) => {
+        const wire = JSON.parse(line);
+        if (wire.kind === "ready") {
+          process.stdout.write(JSON.stringify({
+            id: wire.id,
+            kind: wire.kind,
+            ok: true,
+            data: { provider: "macos-appkit", status: "ready" },
+          }) + "\\n");
+          return;
+        }
+        const request = wire.params.request;
+        if (!fs.existsSync(first)) {
+          fs.writeFileSync(first, String(process.pid));
+          setTimeout(() => {
+            fs.writeFileSync(late, request.action_id);
+            process.stdout.write(JSON.stringify({
+              id: wire.id,
+              kind: wire.kind,
+              ok: true,
+              data: {
+                provider: "macos-appkit",
+                status: "arrived",
+                action_id: request.action_id,
+              },
+            }) + "\\n");
+          }, 200);
+          return;
+        }
+        process.stdout.write(JSON.stringify({
+          id: wire.id,
+          kind: wire.kind,
+          ok: true,
+          data: {
+            provider: "macos-appkit",
+            status: "arrived",
+            action_id: request.action_id,
+          },
+        }) + "\\n");
+      });
+    `;
+    const session = new StdioComputeOverlayDaemonSession(process.execPath, [
+      "-e",
+      script,
+    ]);
+
+    try {
+      await expect(session.render(overlayRequest("first"), 30)).rejects.toThrow(
+        "response timed out",
+      );
+      await expect(
+        session.render(overlayRequest("second"), 500),
+      ).resolves.toEqual({
+        provider: "macos-appkit",
+        status: "arrived",
+      });
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      expect(existsSync(lateAnimationMarker)).toBe(false);
+    } finally {
+      await session.close();
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("contains overlay descendants before close resolves", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "unicli-overlay-close-"));
+    const lateAnimationMarker = join(directory, "late-animation.txt");
+    const script = `
+      const { spawn } = require("node:child_process");
+      const readline = require("node:readline");
+      readline.createInterface({ input: process.stdin }).on("line", (line) => {
+        const wire = JSON.parse(line);
+        if (wire.kind === "ready") {
+          spawn(process.execPath, ["-e", ${JSON.stringify(
+            `setTimeout(() => require("node:fs").writeFileSync(${JSON.stringify(lateAnimationMarker)}, "late"), 200)`,
+          )}], { stdio: "inherit" });
+          process.stdout.write(JSON.stringify({
+            id: wire.id,
+            kind: wire.kind,
+            ok: true,
+            data: { provider: "macos-appkit", status: "ready" },
+          }) + "\\n");
+          return;
+        }
+        const request = wire.params.request;
+        process.stdout.write(JSON.stringify({
+          id: wire.id,
+          kind: wire.kind,
+          ok: true,
+          data: {
+            provider: "macos-appkit",
+            status: "arrived",
+            action_id: request.action_id,
+          },
+        }) + "\\n");
+      });
+    `;
+    const session = new StdioComputeOverlayDaemonSession(process.execPath, [
+      "-e",
+      script,
+    ]);
+
+    try {
+      await session.render(overlayRequest("close"), 500);
+      await session.close();
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      expect(existsSync(lateAnimationMarker)).toBe(false);
+    } finally {
+      await session.close();
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
 });
+
+function overlayRequest(actionId: string) {
+  return {
+    action_id: actionId,
+    action: "compute_click",
+    visual_style: "mac-glass-pointer-v1",
+    state: "press",
+    affordance: {
+      cursor: "mac-pointer",
+      halo: "pressure-bloom",
+      click_ripple: true,
+    },
+    target: { at_ms: 120, x: 10, y: 20 },
+    duration_ms: 120,
+    samples: [
+      { at_ms: 0, x: 1, y: 2 },
+      { at_ms: 120, x: 10, y: 20 },
+    ],
+  };
+}

@@ -1,3 +1,18 @@
+/**
+ * @owner       src::transport::snapshot-encoder
+ * @does        Encode native accessibility trees and allocate deterministic action refs for every public snapshot format.
+ * @needs       transport ref allocator
+ * @feeds       desktop AX, UIA, and AT-SPI snapshots plus persisted compute refs
+ * @breaks      A snapshot that renders fresh state but retains old refs makes the next action target stale geometry or fail as expired.
+ * @invariants  Compact, tree, and JSON formats allocate the same traversal refs; output encoding never changes ref identity or scope.
+ * @side-effects Mutates only the caller-owned ref allocator.
+ * @perf        One bounded tree traversal per snapshot.
+ * @concurrency Safe when each snapshot owns its allocator.
+ * @test        tests/unit/snapshot-encoder.test.ts and desktop adapter snapshot tests
+ * @stability   stable
+ * @since       2026-05-04
+ */
+
 import type { ElementRef, RefAllocator } from "./refs.js";
 
 export type SnapshotEncoding = "compact" | "tree" | "json";
@@ -31,13 +46,12 @@ export function encodeSnapshot(
   opts: EncodeOpts,
 ): { encoded: string; refCount: number } {
   const format = opts.format ?? "compact";
-  if (format === "json") {
-    return { encoded: JSON.stringify(root), refCount: 0 };
-  }
-
   const lines: string[] = [];
   walk(root, opts, lines, 0);
-  return { encoded: lines.join("\n"), refCount: opts.alloc.size };
+  return {
+    encoded: format === "json" ? JSON.stringify(root) : lines.join("\n"),
+    refCount: opts.alloc.size,
+  };
 }
 
 function walk(

@@ -1,13 +1,13 @@
 /**
  * @owner   src/transport/adapters/visual.ts
- * @does    Provide Uni-CLI's screenshot-plus-model visual fallback transport behind the transport bus.
+ * @does    Provide Uni-CLI's request-contained screenshot-plus-model visual fallback transport, with explicit test mocks and fail-closed production selection.
  * @needs   core/envelope, transport/types
  * @feeds   src/transport/bus.ts, src/engine/steps/visual.ts, compute cascade visual fallback
- * @breaks  Throws no public errors; backend failures become structured envelopes.
- * @invariants Backend selection is deterministic from env; action() never throws.
+ * @breaks  A backend without explicit abort containment, or a shell that overwrites fulfillment with late cancellation, can duplicate desktop input.
+ * @invariants Backend selection is deterministic and never silently chooses a mock; legacy non-cancellable backends fail closed; mutations invalidate cached screenshots; fulfilled actions are authoritative and cancellation-caused mutation rejection is outcome-ambiguous.
  * @side-effects May click, type, scroll, drag, or launch through a configured backend.
  * @perf    Screenshot payload size dominates memory use.
- * @concurrency Backend implementations own their own synchronization.
+ * @concurrency Backend implementations own synchronization and must settle cancellation only after their external work is contained.
  * @test    tests/unit/transport/adapters/visual.test.ts
  * @stability beta
  * @since   0.222.0
@@ -15,6 +15,8 @@
 
 import { err, exitCodeFor, ok } from "../../core/envelope.js";
 import type { Envelope } from "../../core/envelope.js";
+import { settleDispatchedAction } from "../action-settlement.js";
+import { isOperationOutcomeAmbiguousError } from "../contained-process.js";
 import type {
   ActionRequest,
   ActionResult,
@@ -28,23 +30,37 @@ import type {
 
 export interface VisualBackend {
   readonly name: VisualBackendName;
-  snapshot(): Promise<{
+  readonly cancellation: typeof VISUAL_CANCELLATION_PROTOCOL;
+  snapshot(signal?: AbortSignal): Promise<{
     base64: string;
     width: number;
     height: number;
     mime?: string;
   }>;
-  click(x: number, y: number, button?: "left" | "right"): Promise<void>;
-  type(text: string): Promise<void>;
-  key(key: string): Promise<void>;
-  scroll(dx: number, dy: number): Promise<void>;
-  drag(fromX: number, fromY: number, toX: number, toY: number): Promise<void>;
-  wait(ms: number): Promise<void>;
-  ask?(question: string): Promise<string>;
-  launch?(app: string): Promise<void>;
+  click(
+    x: number,
+    y: number,
+    button?: "left" | "right",
+    signal?: AbortSignal,
+  ): Promise<void>;
+  type(text: string, signal?: AbortSignal): Promise<void>;
+  key(key: string, signal?: AbortSignal): Promise<void>;
+  scroll(dx: number, dy: number, signal?: AbortSignal): Promise<void>;
+  drag(
+    fromX: number,
+    fromY: number,
+    toX: number,
+    toY: number,
+    signal?: AbortSignal,
+  ): Promise<void>;
+  wait(ms: number, signal?: AbortSignal): Promise<void>;
+  ask?(question: string, signal?: AbortSignal): Promise<string>;
+  launch?(app: string, signal?: AbortSignal): Promise<void>;
 }
 
-export type VisualBackendName = "mock" | "remote";
+export const VISUAL_CANCELLATION_PROTOCOL = "request-contained-v1" as const;
+
+export type VisualBackendName = "mock" | "remote" | "unavailable";
 
 export const VISUAL_STEPS = [
   "visual_snapshot",
@@ -66,23 +82,33 @@ const VISUAL_CAPABILITY: Capability = {
   mutatesHost: true,
 };
 
+const VISUAL_READ_ONLY_ACTIONS = new Set([
+  "visual_snapshot",
+  "visual_wait",
+  "visual_assert",
+  "visual_ask",
+  "visual_backend",
+]);
+
 const MOCK_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkAAIAAAoAAv/lxKUAAAAASUVORK5CYII=";
 
 export class MockBackend implements VisualBackend {
   readonly name: VisualBackendName = "mock";
+  readonly cancellation = VISUAL_CANCELLATION_PROTOCOL;
   readonly history: Array<{ verb: string; args: unknown[] }> = [];
 
   private record(verb: string, ...args: unknown[]): void {
     this.history.push({ verb, args });
   }
 
-  async snapshot(): Promise<{
+  async snapshot(signal?: AbortSignal): Promise<{
     base64: string;
     width: number;
     height: number;
     mime: string;
   }> {
+    signal?.throwIfAborted();
     this.record("snapshot");
     return { base64: MOCK_PNG_BASE64, width: 1, height: 1, mime: "image/png" };
   }
@@ -91,19 +117,24 @@ export class MockBackend implements VisualBackend {
     x: number,
     y: number,
     button: "left" | "right" = "left",
+    signal?: AbortSignal,
   ): Promise<void> {
+    signal?.throwIfAborted();
     this.record("click", x, y, button);
   }
 
-  async type(text: string): Promise<void> {
+  async type(text: string, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
     this.record("type", text);
   }
 
-  async key(key: string): Promise<void> {
+  async key(key: string, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
     this.record("key", key);
   }
 
-  async scroll(dx: number, dy: number): Promise<void> {
+  async scroll(dx: number, dy: number, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
     this.record("scroll", dx, dy);
   }
 
@@ -112,20 +143,25 @@ export class MockBackend implements VisualBackend {
     fromY: number,
     toX: number,
     toY: number,
+    signal?: AbortSignal,
   ): Promise<void> {
+    signal?.throwIfAborted();
     this.record("drag", fromX, fromY, toX, toY);
   }
 
-  async wait(ms: number): Promise<void> {
+  async wait(ms: number, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
     this.record("wait", ms);
   }
 
-  async ask(question: string): Promise<string> {
+  async ask(question: string, signal?: AbortSignal): Promise<string> {
+    signal?.throwIfAborted();
     this.record("ask", question);
     return "yes";
   }
 
-  async launch(app: string): Promise<void> {
+  async launch(app: string, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
     this.record("launch", app);
   }
 }
@@ -141,8 +177,87 @@ class BackendNotReadyError extends Error {
   }
 }
 
+class BackendContractError extends Error {
+  constructor(readonly backend: string) {
+    super(
+      `visual backend "${backend}" does not implement ${VISUAL_CANCELLATION_PROTOCOL} cancellation`,
+    );
+    this.name = "BackendContractError";
+  }
+}
+
+export class UnavailableVisualBackend implements VisualBackend {
+  readonly name: VisualBackendName = "unavailable";
+  readonly cancellation = VISUAL_CANCELLATION_PROTOCOL;
+
+  constructor(readonly reason: string) {}
+
+  private unavailable(verb: string): never {
+    throw new BackendNotReadyError(this.name, verb, this.reason);
+  }
+
+  async snapshot(
+    signal?: AbortSignal,
+  ): Promise<{ base64: string; width: number; height: number }> {
+    signal?.throwIfAborted();
+    this.unavailable("snapshot");
+  }
+
+  async click(
+    _x: number,
+    _y: number,
+    _button?: "left" | "right",
+    signal?: AbortSignal,
+  ): Promise<void> {
+    signal?.throwIfAborted();
+    this.unavailable("click");
+  }
+
+  async type(_text: string, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
+    this.unavailable("type");
+  }
+
+  async key(_key: string, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
+    this.unavailable("key");
+  }
+
+  async scroll(_dx: number, _dy: number, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
+    this.unavailable("scroll");
+  }
+
+  async drag(
+    _fromX: number,
+    _fromY: number,
+    _toX: number,
+    _toY: number,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    signal?.throwIfAborted();
+    this.unavailable("drag");
+  }
+
+  async wait(_ms: number, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
+    this.unavailable("wait");
+  }
+
+  async ask(_question: string, signal?: AbortSignal): Promise<string> {
+    signal?.throwIfAborted();
+    this.unavailable("ask");
+  }
+
+  async launch(_app: string, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
+    this.unavailable("launch");
+  }
+}
+
 export class RemoteVisualBackend implements VisualBackend {
   readonly name: VisualBackendName = "remote";
+  readonly cancellation = VISUAL_CANCELLATION_PROTOCOL;
 
   constructor(
     readonly endpoint: string,
@@ -157,28 +272,52 @@ export class RemoteVisualBackend implements VisualBackend {
     );
   }
 
-  async snapshot(): Promise<{ base64: string; width: number; height: number }> {
+  async snapshot(
+    signal?: AbortSignal,
+  ): Promise<{ base64: string; width: number; height: number }> {
+    signal?.throwIfAborted();
     this.notReady("snapshot");
   }
-  async click(): Promise<void> {
+  async click(
+    _x?: number,
+    _y?: number,
+    _button?: "left" | "right",
+    signal?: AbortSignal,
+  ): Promise<void> {
+    signal?.throwIfAborted();
     this.notReady("click");
   }
-  async type(): Promise<void> {
+  async type(_text?: string, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
     this.notReady("type");
   }
-  async key(): Promise<void> {
+  async key(_key?: string, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
     this.notReady("key");
   }
-  async scroll(): Promise<void> {
+  async scroll(
+    _dx?: number,
+    _dy?: number,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    signal?.throwIfAborted();
     this.notReady("scroll");
   }
-  async drag(): Promise<void> {
+  async drag(
+    _fromX?: number,
+    _fromY?: number,
+    _toX?: number,
+    _toY?: number,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    signal?.throwIfAborted();
     this.notReady("drag");
   }
-  async wait(ms: number): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)));
+  async wait(ms: number, signal?: AbortSignal): Promise<void> {
+    await waitForVisualDelay(Math.max(0, ms), signal);
   }
-  async ask(): Promise<string> {
+  async ask(_question?: string, signal?: AbortSignal): Promise<string> {
+    signal?.throwIfAborted();
     this.notReady("ask");
   }
 }
@@ -192,14 +331,27 @@ export interface VisualEnv {
 export function selectVisualBackend(
   env: VisualEnv = process.env,
 ): VisualBackend {
-  const requested = (env.VISUAL_BACKEND ?? "").toLowerCase();
-  if (requested === "remote" && env.VISUAL_BACKEND_ENDPOINT) {
+  const requested = (env.VISUAL_BACKEND ?? "").trim().toLowerCase();
+  if (requested === "mock") return new MockBackend();
+  if (requested === "remote" && env.VISUAL_BACKEND_ENDPOINT?.trim()) {
     return new RemoteVisualBackend(
-      env.VISUAL_BACKEND_ENDPOINT,
+      env.VISUAL_BACKEND_ENDPOINT.trim(),
       env.VISUAL_BACKEND_API_KEY,
     );
   }
-  return new MockBackend();
+  if (requested === "remote") {
+    return new UnavailableVisualBackend(
+      "VISUAL_BACKEND=remote requires VISUAL_BACKEND_ENDPOINT",
+    );
+  }
+  if (requested) {
+    return new UnavailableVisualBackend(
+      `unsupported VISUAL_BACKEND value ${JSON.stringify(env.VISUAL_BACKEND)}; supported values are remote and explicit test-only mock`,
+    );
+  }
+  return new UnavailableVisualBackend(
+    "set VISUAL_BACKEND=remote and VISUAL_BACKEND_ENDPOINT; mock must be selected explicitly for tests",
+  );
 }
 
 export interface VisualTransportOptions {
@@ -224,37 +376,54 @@ export class VisualTransport implements TransportAdapter {
 
   setBackend(backend: VisualBackend): void {
     this.backend = backend;
+    this.lastSnapshot = undefined;
   }
 
   async open(_ctx: TransportContext): Promise<void> {}
 
-  async snapshot(opts?: { format?: SnapshotFormat }): Promise<Snapshot> {
+  async snapshot(opts?: {
+    format?: SnapshotFormat;
+    signal?: AbortSignal;
+  }): Promise<Snapshot> {
+    opts?.signal?.throwIfAborted();
     const format = opts?.format ?? "screenshot";
     if (this.lastSnapshot && format === this.lastSnapshot.format) {
       return this.lastSnapshot;
     }
-    try {
-      const raw = await this.backend.snapshot();
-      const snap: Snapshot = {
-        format: "screenshot",
-        data: Buffer.from(raw.base64, "base64"),
-        width: raw.width,
-        height: raw.height,
-      };
-      this.lastSnapshot = snap;
-      return snap;
-    } catch {
-      return { format: "json", data: JSON.stringify({ ok: false }) };
-    }
+    const raw = await this.requireCancellableBackend().snapshot(opts?.signal);
+    const snap: Snapshot = {
+      format: "screenshot",
+      data: Buffer.from(raw.base64, "base64"),
+      width: raw.width,
+      height: raw.height,
+    };
+    this.lastSnapshot = snap;
+    return snap;
   }
 
   async action<T = unknown>(req: ActionRequest): Promise<ActionResult<T>> {
     const start = Date.now();
+    if (!VISUAL_READ_ONLY_ACTIONS.has(req.kind)) {
+      this.lastSnapshot = undefined;
+    }
     try {
-      const envelope = await this.dispatch<T>(req);
+      const envelope = await settleDispatchedAction(
+        req.kind,
+        req.canMutate ?? !VISUAL_READ_ONLY_ACTIONS.has(req.kind),
+        req.signal,
+        () => this.dispatch<T>(req),
+      );
       envelope.elapsedMs = Date.now() - start;
       return envelope;
     } catch (e) {
+      if (isOperationOutcomeAmbiguousError(e)) throw e;
+      req.signal?.throwIfAborted();
+      if (
+        e instanceof BackendContractError ||
+        e instanceof BackendNotReadyError
+      ) {
+        return this.envelopeFromBackendError<T>(req.kind, e);
+      }
       const msg = e instanceof Error ? e.message : String(e);
       return err({
         transport: "visual",
@@ -274,27 +443,27 @@ export class VisualTransport implements TransportAdapter {
   private async dispatch<T>(req: ActionRequest): Promise<Envelope<T>> {
     switch (req.kind) {
       case "visual_snapshot":
-        return this.doSnapshot<T>();
+        return this.doSnapshot<T>(req.signal);
       case "visual_click":
-        return this.doClick<T>(req.params);
+        return this.doClick<T>(req.params, req.signal);
       case "visual_type":
-        return this.doType<T>(req.params);
+        return this.doType<T>(req.params, req.signal);
       case "visual_key":
-        return this.doKey<T>(req.params);
+        return this.doKey<T>(req.params, req.signal);
       case "visual_scroll":
-        return this.doScroll<T>(req.params);
+        return this.doScroll<T>(req.params, req.signal);
       case "visual_drag":
-        return this.doDrag<T>(req.params);
+        return this.doDrag<T>(req.params, req.signal);
       case "visual_wait":
-        return this.doWait<T>(req.params);
+        return this.doWait<T>(req.params, req.signal);
       case "visual_assert":
-        return this.doAssert<T>(req.params);
+        return this.doAssert<T>(req.params, req.signal);
       case "visual_ask":
-        return this.doAsk<T>(req.params);
+        return this.doAsk<T>(req.params, req.signal);
       case "visual_backend":
         return this.doBackendInfo<T>();
       case "visual_launch":
-        return this.doLaunch<T>(req.params);
+        return this.doLaunch<T>(req.params, req.signal);
       default:
         return err({
           transport: "visual",
@@ -310,26 +479,34 @@ export class VisualTransport implements TransportAdapter {
 
   private envelopeFromBackendError<T>(verb: string, e: unknown): Envelope<T> {
     const msg = e instanceof Error ? e.message : String(e);
-    const notReady = e instanceof BackendNotReadyError;
+    const configurationError =
+      e instanceof BackendNotReadyError || e instanceof BackendContractError;
     return err({
       transport: "visual",
       step: 0,
       action: verb,
       reason: msg,
-      suggestion: notReady
+      suggestion: configurationError
         ? `configure the \`${this.backend.name}\` visual backend before calling visual.${verb}`
         : "inspect backend error and retry",
       minimum_capability: `visual.${verb}`,
-      retryable: !notReady,
-      exit_code: notReady
+      retryable: !configurationError,
+      exit_code: configurationError
         ? exitCodeFor("config_error")
         : exitCodeFor("service_unavailable"),
     });
   }
 
-  private async doSnapshot<T>(): Promise<Envelope<T>> {
+  private requireCancellableBackend(): VisualBackend {
+    if (this.backend.cancellation !== VISUAL_CANCELLATION_PROTOCOL) {
+      throw new BackendContractError(String(this.backend.name));
+    }
+    return this.backend;
+  }
+
+  private async doSnapshot<T>(signal?: AbortSignal): Promise<Envelope<T>> {
     try {
-      const raw = await this.backend.snapshot();
+      const raw = await this.requireCancellableBackend().snapshot(signal);
       this.lastSnapshot = {
         format: "screenshot",
         data: Buffer.from(raw.base64, "base64"),
@@ -343,12 +520,14 @@ export class VisualTransport implements TransportAdapter {
         base64: raw.base64,
       } as unknown as T);
     } catch (e) {
+      signal?.throwIfAborted();
       return this.envelopeFromBackendError<T>("snapshot", e);
     }
   }
 
   private async doClick<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     const x = typeof params.x === "number" ? params.x : undefined;
     const y = typeof params.y === "number" ? params.y : undefined;
@@ -365,15 +544,17 @@ export class VisualTransport implements TransportAdapter {
     const button =
       params.button === "right" ? ("right" as const) : ("left" as const);
     try {
-      await this.backend.click(x, y, button);
+      await this.requireCancellableBackend().click(x, y, button, signal);
       return ok({ x, y, button } as unknown as T);
     } catch (e) {
+      signal?.throwIfAborted();
       return this.envelopeFromBackendError<T>("click", e);
     }
   }
 
   private async doType<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     const text = typeof params.text === "string" ? params.text : undefined;
     if (text === undefined) {
@@ -387,15 +568,17 @@ export class VisualTransport implements TransportAdapter {
       });
     }
     try {
-      await this.backend.type(text);
+      await this.requireCancellableBackend().type(text, signal);
       return ok({ text } as unknown as T);
     } catch (e) {
+      signal?.throwIfAborted();
       return this.envelopeFromBackendError<T>("type", e);
     }
   }
 
   private async doKey<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     const key =
       typeof params.key === "string"
@@ -414,28 +597,32 @@ export class VisualTransport implements TransportAdapter {
       });
     }
     try {
-      await this.backend.key(key);
+      await this.requireCancellableBackend().key(key, signal);
       return ok({ key } as unknown as T);
     } catch (e) {
+      signal?.throwIfAborted();
       return this.envelopeFromBackendError<T>("key", e);
     }
   }
 
   private async doScroll<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     const dx = typeof params.dx === "number" ? params.dx : 0;
     const dy = typeof params.dy === "number" ? params.dy : 0;
     try {
-      await this.backend.scroll(dx, dy);
+      await this.requireCancellableBackend().scroll(dx, dy, signal);
       return ok({ dx, dy } as unknown as T);
     } catch (e) {
+      signal?.throwIfAborted();
       return this.envelopeFromBackendError<T>("scroll", e);
     }
   }
 
   private async doDrag<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     const fromX = typeof params.fromX === "number" ? params.fromX : undefined;
     const fromY = typeof params.fromY === "number" ? params.fromY : undefined;
@@ -457,15 +644,23 @@ export class VisualTransport implements TransportAdapter {
       });
     }
     try {
-      await this.backend.drag(fromX, fromY, toX, toY);
+      await this.requireCancellableBackend().drag(
+        fromX,
+        fromY,
+        toX,
+        toY,
+        signal,
+      );
       return ok({ fromX, fromY, toX, toY } as unknown as T);
     } catch (e) {
+      signal?.throwIfAborted();
       return this.envelopeFromBackendError<T>("drag", e);
     }
   }
 
   private async doWait<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     const ms =
       typeof params.ms === "number"
@@ -474,15 +669,17 @@ export class VisualTransport implements TransportAdapter {
           ? params.seconds * 1000
           : 0;
     try {
-      await this.backend.wait(Math.max(0, ms));
+      await this.requireCancellableBackend().wait(Math.max(0, ms), signal);
       return ok({ ms } as unknown as T);
     } catch (e) {
+      signal?.throwIfAborted();
       return this.envelopeFromBackendError<T>("wait", e);
     }
   }
 
   private async doAssert<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     const predicate =
       typeof params.predicate === "string" ? params.predicate : undefined;
@@ -497,9 +694,22 @@ export class VisualTransport implements TransportAdapter {
       });
     }
     try {
-      const answer = this.backend.ask
-        ? await this.backend.ask(`Does the screen satisfy: ${predicate}?`)
-        : "yes";
+      const backend = this.requireCancellableBackend();
+      if (!backend.ask) {
+        return err({
+          transport: "visual",
+          step: 0,
+          action: "visual_assert",
+          reason: `backend ${this.backend.name} does not implement ask()`,
+          suggestion: "configure a visual backend with ask() support",
+          minimum_capability: "visual.assert",
+          exit_code: exitCodeFor("service_unavailable"),
+        });
+      }
+      const answer = await backend.ask(
+        `Does the screen satisfy: ${predicate}?`,
+        signal,
+      );
       const truthy = /^(y|yes|true|1)$/i.test(answer.trim());
       if (!truthy) {
         return err({
@@ -513,12 +723,14 @@ export class VisualTransport implements TransportAdapter {
       }
       return ok({ predicate, answer } as unknown as T);
     } catch (e) {
+      signal?.throwIfAborted();
       return this.envelopeFromBackendError<T>("assert", e);
     }
   }
 
   private async doAsk<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     const question =
       typeof params.question === "string" ? params.question : undefined;
@@ -532,7 +744,8 @@ export class VisualTransport implements TransportAdapter {
         exit_code: exitCodeFor("usage_error"),
       });
     }
-    if (!this.backend.ask) {
+    const backend = this.requireCancellableBackend();
+    if (!backend.ask) {
       return err({
         transport: "visual",
         step: 0,
@@ -544,9 +757,10 @@ export class VisualTransport implements TransportAdapter {
       });
     }
     try {
-      const answer = await this.backend.ask(question);
+      const answer = await backend.ask(question, signal);
       return ok({ question, answer } as unknown as T);
     } catch (e) {
+      signal?.throwIfAborted();
       return this.envelopeFromBackendError<T>("ask", e);
     }
   }
@@ -557,6 +771,7 @@ export class VisualTransport implements TransportAdapter {
 
   private async doLaunch<T>(
     params: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<Envelope<T>> {
     const app = typeof params.app === "string" ? params.app : undefined;
     if (!app) {
@@ -569,7 +784,8 @@ export class VisualTransport implements TransportAdapter {
         exit_code: exitCodeFor("usage_error"),
       });
     }
-    if (!this.backend.launch) {
+    const backend = this.requireCancellableBackend();
+    if (!backend.launch) {
       return err({
         transport: "visual",
         step: 0,
@@ -581,10 +797,34 @@ export class VisualTransport implements TransportAdapter {
       });
     }
     try {
-      await this.backend.launch(app);
+      await backend.launch(app, signal);
       return ok({ app } as unknown as T);
     } catch (e) {
+      signal?.throwIfAborted();
       return this.envelopeFromBackendError<T>("launch", e);
     }
   }
+}
+
+async function waitForVisualDelay(
+  ms: number,
+  signal?: AbortSignal,
+): Promise<void> {
+  signal?.throwIfAborted();
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(finish, ms);
+    const abort = (): void => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
+      reject(
+        signal?.reason ?? new DOMException("Visual wait aborted", "AbortError"),
+      );
+    };
+    function finish(): void {
+      signal?.removeEventListener("abort", abort);
+      resolve();
+    }
+    signal?.addEventListener("abort", abort, { once: true });
+    if (signal?.aborted) abort();
+  });
 }

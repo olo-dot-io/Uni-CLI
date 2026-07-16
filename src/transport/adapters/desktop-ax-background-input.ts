@@ -3,11 +3,19 @@
  * @does    Validate and execute macOS desktop-ax background input actions through generated Swift.
  * @needs   desktop-ax shell abstraction, target resolution, background input Swift generator
  * @feeds   DesktopAxTransport background click/type/press actions
- * @breaks  Bad validation can route unscoped input to the wrong app or hide host permission failures.
+ * @breaks  Bad validation can route unscoped input to the wrong app; dropped post-dispatch ambiguity permits duplicate background input.
+ * @invariants Every native input process receives the owning request signal and reports cancellation after dispatch as outcome-ambiguous.
+ * @side-effects Posts background mouse and keyboard input to a declared macOS target.
+ * @perf    One Swift child per action.
+ * @concurrency Request signals are passed explicitly and never stored globally.
+ * @test    tests/unit/transport/adapters/desktop-ax.test.ts
+ * @stability stable
+ * @since   2026-07-15
  */
 
 import { err, exitCodeFor, ok } from "../../core/envelope.js";
 import type { Envelope } from "../../core/envelope.js";
+import { isOperationOutcomeAmbiguousError } from "../contained-process.js";
 import type { AxShell } from "./desktop-ax.js";
 import { buildAxBackgroundInputScript } from "./desktop-ax-background-input-swift.js";
 import type { AxBackgroundInputAction } from "./desktop-ax-background-input-swift.js";
@@ -31,41 +39,61 @@ interface BackgroundInputRunOptions {
 export async function runAxBackgroundClick<T>(
   shell: AxShell,
   params: Record<string, unknown>,
+  signal?: AbortSignal,
 ): Promise<Envelope<T>> {
-  return runAxBackgroundInput<T>(shell, params, {
-    action: "click",
-    sourceAction: "ax_background_click",
-    requirePoint: true,
-  });
+  return runAxBackgroundInput<T>(
+    shell,
+    params,
+    {
+      action: "click",
+      sourceAction: "ax_background_click",
+      requirePoint: true,
+    },
+    signal,
+  );
 }
 
 export async function runAxBackgroundType<T>(
   shell: AxShell,
   params: Record<string, unknown>,
+  signal?: AbortSignal,
 ): Promise<Envelope<T>> {
-  return runAxBackgroundInput<T>(shell, params, {
-    action: "type_text",
-    sourceAction: "ax_background_type",
-    textParam: typeof params.value === "string" ? "value" : "text",
-  });
+  return runAxBackgroundInput<T>(
+    shell,
+    params,
+    {
+      action: "type_text",
+      sourceAction: "ax_background_type",
+      textParam: typeof params.value === "string" ? "value" : "text",
+    },
+    signal,
+  );
 }
 
 export async function runAxBackgroundPress<T>(
   shell: AxShell,
   params: Record<string, unknown>,
+  signal?: AbortSignal,
 ): Promise<Envelope<T>> {
-  return runAxBackgroundInput<T>(shell, params, {
-    action: "press_key",
-    sourceAction: "ax_background_press",
-    keyParam: typeof params.key === "string" ? "key" : "combo",
-  });
+  return runAxBackgroundInput<T>(
+    shell,
+    params,
+    {
+      action: "press_key",
+      sourceAction: "ax_background_press",
+      keyParam: typeof params.key === "string" ? "key" : "combo",
+    },
+    signal,
+  );
 }
 
 async function runAxBackgroundInput<T>(
   shell: AxShell,
   params: Record<string, unknown>,
   opts: BackgroundInputRunOptions,
+  signal?: AbortSignal,
 ): Promise<Envelope<T>> {
+  signal?.throwIfAborted();
   const target = resolveAxTarget(params);
   if (!target) {
     return err({
@@ -124,7 +152,11 @@ async function runAxBackgroundInput<T>(
           clickBeforeText: params.clickBeforeText !== false,
         }),
       ],
-      { timeoutMs: 10_000 },
+      {
+        timeoutMs: 10_000,
+        signal,
+        cancellationDelivery: "outcome-ambiguous",
+      },
     );
     const result = JSON.parse(stdout.trim()) as BackgroundInputResult;
     if (!result.found || result.posted === false) {
@@ -140,6 +172,8 @@ async function runAxBackgroundInput<T>(
     }
     return ok(result as unknown as T);
   } catch (e) {
+    if (isOperationOutcomeAmbiguousError(e)) throw e;
+    signal?.throwIfAborted();
     const msg = e instanceof Error ? e.message : String(e);
     const timeout = /timeout|timed out|ETIMEDOUT/i.test(msg);
     return err({

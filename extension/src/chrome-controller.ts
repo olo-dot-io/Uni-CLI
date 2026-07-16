@@ -1,13 +1,13 @@
 /**
  * @owner       extension/src/chrome-controller.ts
- * @does        Execute broker-issued tab list/allocation/claim/finalize and page commands through Chrome APIs with background UI postconditions.
- * @needs       chrome.tabs, chrome.windows, chrome.debugger, chrome.cookies, extension network-capture.ts, src/browser/chrome-native-protocol.ts
+ * @does        Execute broker-issued tab list/allocation/claim/finalize and page commands through Chrome APIs while delegating background lifetime ownership to one durable supervisor.
+ * @needs       chrome.tabs/windows/debugger/cookies, extension background-supervisor.ts, debugger-dispatch.ts, dialog-supervisor.ts, target-ledger.ts, network-capture.ts, src/browser/chrome-native-protocol.ts
  * @feeds       extension/src/background.ts
- * @breaks      Returns structured ChromeNativeError for absent windows/tabs, unsupported surfaces, debugger/CDP failure, and background postcondition changes.
- * @invariants  Background never calls windows.create, activates a tab, focuses a window, or accepts changed window/focus/active-tab state.
- * @side-effects Creates inactive tabs only in existing windows, claims tabs, dispatches CDP/page mutations, detaches debuggers, and closes owned targets on finalize.
- * @perf        Background verification adds two windows/tabs snapshots per mutation; page commands otherwise map to direct Chrome API/CDP calls.
- * @concurrency The native host is sequential and broker target queues serialize mutations; Chrome event listeners are removed on load or timeout.
+ * @breaks      Returns structured ChromeNativeError for absent windows/tabs, unsupported surfaces, debugger/CDP failure, incomplete popup compensation, and background postcondition changes.
+ * @invariants  Background never calls windows.create or mutates claimed tabs; non-idempotent debugger commands never replay after ambiguous detach; canceled owned allocation cleans its late Chrome artifact and ledger; finalize requires target identity and tab existence but never page-URL support.
+ * @side-effects Creates inactive tabs only in existing windows, claims tabs, dispatches CDP/page operations, detaches debuggers, and closes owned targets on finalize.
+ * @perf        Page commands map to direct Chrome API/CDP calls; background postcondition cost belongs to background-supervisor.ts.
+ * @concurrency The native host is sequential and broker target queues serialize mutations; debugger attach state is tab-scoped.
  * @test        tests/integration/browser-extension-background.test.ts, tests/unit/extension/network-capture.test.ts
  * @stability   experimental
  * @since       2026-07-15
@@ -22,15 +22,31 @@ import {
   type ChromeNativeTarget,
 } from "../../src/browser/chrome-native-protocol.js";
 import type { BrowserPageCommand } from "../../src/browser/runtime-protocol.js";
+import { raceWithCancellation } from "./cancellable-operation.js";
+import {
+  assertBackgroundTargetCanFinalize,
+  assertChromeUiStateUnchanged as assertUiStateUnchanged,
+  BackgroundCommandRecoveryError,
+  BackgroundSupervisionError,
+  captureChromeUiState as captureUiState,
+  forgetBackgroundTargetSupervision,
+  superviseBackgroundPageCommand,
+  trackBackgroundTarget,
+} from "./background-supervisor.js";
 import { getChromeBrowserSessionId } from "./browser-session.js";
 import { readDialogSnapshot, respondToDialog } from "./dialog-supervisor.js";
+import type { DebuggerCommandDispatch } from "./debugger-dispatch.js";
 import { readNetworkCapture, startNetworkCapture } from "./network-capture.js";
-
-interface ChromeUiState {
-  window_ids: number[];
-  focused_window_id: number | null;
-  active_tabs: Array<{ window_id: number; tab_id: number }>;
-}
+import {
+  allocationMarker,
+  beginOwnedAllocation,
+  cancelOwnedAllocation,
+  commitOwnedAllocation,
+  forgetChromeTab,
+  forgetChromeTarget,
+  readChromeTarget,
+  rememberChromeTarget,
+} from "./target-ledger.js";
 
 interface RuntimeEvaluateResult {
   result?: { value?: unknown };
@@ -60,10 +76,13 @@ registerDebuggerLifecycleListeners();
 
 export async function handleChromeNativeCommand(
   command: ChromeNativeCommand,
+  signal?: AbortSignal,
 ): Promise<ChromeNativeResult> {
   try {
     validateCommandEnvelope(command);
-    const data = await executeChromeCommand(command);
+    signal?.throwIfAborted();
+    const data = await executeChromeCommand(command, signal);
+    signal?.throwIfAborted();
     return {
       type: "result",
       request_id: command.request_id,
@@ -82,20 +101,22 @@ export async function handleChromeNativeCommand(
 
 async function executeChromeCommand(
   command: ChromeNativeCommand,
+  signal?: AbortSignal,
 ): Promise<unknown> {
   switch (command.action) {
     case "tabs.list":
       return listTabsWithoutUiChange();
     case "target.allocate":
-      return allocateTarget(command.visibility);
+      return allocateTarget(command.request_id, command.visibility, signal);
     case "target.claim":
-      return claimTarget(command.tab_id, command.visibility);
+      return claimTarget(command.tab_id, command.visibility, signal);
     case "target.finalize":
       return finalizeTarget(
         command.target_id,
         command.tab_id,
         command.visibility,
         command.disposition,
+        signal,
       );
     case "page.command":
       return executeTargetPageCommand(
@@ -103,13 +124,16 @@ async function executeChromeCommand(
         command.tab_id,
         command.visibility,
         command.command,
+        signal,
       );
   }
 }
 
 async function listTabsWithoutUiChange(): Promise<ChromeNativeTab[]> {
   const before = await captureUiState();
-  const normalWindowIds = new Set(before.window_ids);
+  const normalWindowIds = new Set(
+    (await normalWindows()).map((window) => window.id),
+  );
   const tabs = await chrome.tabs.query({});
   const result = tabs
     .filter(
@@ -137,38 +161,84 @@ async function listTabsWithoutUiChange(): Promise<ChromeNativeTab[]> {
 }
 
 async function allocateTarget(
+  requestId: string,
   visibility: "background" | "foreground",
+  signal?: AbortSignal,
 ): Promise<ChromeNativeTarget> {
-  if (visibility === "background") return allocateBackgroundTarget();
-  const windows = await normalWindows();
-  if (windows.length === 0) {
-    const created = await chrome.windows.create({
-      type: "normal",
-      focused: true,
-      url: "about:blank",
-    });
-    const tab = created?.tabs?.[0];
-    if (!created || created.id === undefined || tab?.id === undefined) {
-      throw controllerError(
-        "chrome_target_create_failed",
-        "Chrome did not return a window and tab for foreground allocation",
-      );
-    }
-    return targetFromTab(tab, created.id, true, "foreground");
+  if (visibility === "background") {
+    return allocateBackgroundTarget(requestId, signal);
   }
+  signal?.throwIfAborted();
+  const windows = await normalWindows();
+  signal?.throwIfAborted();
   const window = windows.find((candidate) => candidate.focused) ?? windows[0];
-  const tab = await chrome.tabs.create({
-    windowId: window.id,
-    url: "about:blank",
-    active: true,
-  });
-  await chrome.windows.update(window.id, { focused: true });
-  return targetFromTab(tab, window.id, true, "foreground");
+  await persistLedger(
+    beginOwnedAllocation(requestId, visibility, window?.id),
+    "begin foreground allocation",
+  );
+  signal?.throwIfAborted();
+  let createdTabId: number | undefined;
+  let createdWindowId: number | undefined;
+  try {
+    let tab: chrome.tabs.Tab;
+    let windowId: number;
+    if (!window) {
+      const created = await chrome.windows.create({
+        type: "normal",
+        focused: true,
+        url: allocationMarker(requestId),
+      });
+      createdWindowId = created?.id;
+      const createdTab = created?.tabs?.[0];
+      createdTabId = createdTab?.id;
+      signal?.throwIfAborted();
+      if (
+        !created ||
+        created.id === undefined ||
+        createdTab?.id === undefined
+      ) {
+        throw controllerError(
+          "chrome_target_create_failed",
+          "Chrome did not return a window and tab for foreground allocation",
+        );
+      }
+      tab = createdTab;
+      windowId = created.id;
+    } else {
+      tab = await chrome.tabs.create({
+        windowId: window.id,
+        url: allocationMarker(requestId),
+        active: true,
+      });
+      createdTabId = tab.id;
+      signal?.throwIfAborted();
+      windowId = window.id;
+      await chrome.windows.update(window.id, { focused: true });
+      signal?.throwIfAborted();
+    }
+    createdTabId = tab.id;
+    const target = await targetFromTab(tab, windowId, true, "foreground");
+    signal?.throwIfAborted();
+    await persistLedger(
+      commitOwnedAllocation(requestId, target),
+      "commit foreground allocation",
+    );
+    signal?.throwIfAborted();
+    return target;
+  } catch (error) {
+    return failOwnedAllocation(requestId, createdTabId, createdWindowId, error);
+  }
 }
 
-async function allocateBackgroundTarget(): Promise<ChromeNativeTarget> {
+async function allocateBackgroundTarget(
+  requestId: string,
+  signal?: AbortSignal,
+): Promise<ChromeNativeTarget> {
+  signal?.throwIfAborted();
   const before = await captureUiState();
+  signal?.throwIfAborted();
   const windows = await normalWindows();
+  signal?.throwIfAborted();
   const window = windows.find((candidate) => candidate.focused) ?? windows[0];
   if (!window) {
     throw new ChromeControllerError(
@@ -178,43 +248,76 @@ async function allocateBackgroundTarget(): Promise<ChromeNativeTarget> {
       false,
     );
   }
-  const tab = await chrome.tabs.create({
-    windowId: window.id,
-    url: "about:blank",
-    active: false,
-  });
-  if (tab.active === true) {
-    return failBackgroundAllocation(
-      tab.id,
-      new ChromeControllerError(
+  await persistLedger(
+    beginOwnedAllocation(requestId, "background", window.id),
+    "begin background allocation",
+  );
+  signal?.throwIfAborted();
+  let tabId: number | undefined;
+  try {
+    const tab = await chrome.tabs.create({
+      windowId: window.id,
+      url: allocationMarker(requestId),
+      active: false,
+    });
+    tabId = tab.id;
+    signal?.throwIfAborted();
+    if (tab.active === true) {
+      throw new ChromeControllerError(
         "background_postcondition_failed",
         "Chrome activated a tab requested as background",
         "Keep the target closed and use the managed hidden provider until Chrome background allocation is available.",
         false,
-      ),
-    );
-  }
-  try {
+      );
+    }
     await assertUiStateUnchanged(before, "target.allocate");
+    signal?.throwIfAborted();
+    const target = await targetFromTab(tab, window.id, true, "background");
+    signal?.throwIfAborted();
+    await persistLedger(
+      commitOwnedAllocation(requestId, target),
+      "commit background allocation",
+    );
+    await trackBackgroundTarget(target, before);
+    signal?.throwIfAborted();
+    return target;
   } catch (error) {
-    return failBackgroundAllocation(tab.id, error);
+    return failOwnedAllocation(requestId, tabId, undefined, error);
   }
-  return targetFromTab(tab, window.id, true, "background");
 }
 
 async function claimTarget(
   tabId: number,
   visibility: "background" | "foreground",
+  signal?: AbortSignal,
 ): Promise<ChromeNativeTarget> {
+  signal?.throwIfAborted();
   const before = visibility === "background" ? await captureUiState() : null;
   const tab = await readSupportedTab(tabId);
+  signal?.throwIfAborted();
   if (visibility === "foreground") {
     await chrome.tabs.update(tabId, { active: true });
     await chrome.windows.update(tab.windowId, { focused: true });
+    signal?.throwIfAborted();
   } else if (before) {
     await assertUiStateUnchanged(before, "target.claim");
+    signal?.throwIfAborted();
   }
-  return targetFromTab(tab, tab.windowId, false, visibility);
+  const target = await targetFromTab(tab, tab.windowId, false, visibility);
+  await persistLedger(rememberChromeTarget(target), "remember claimed target");
+  try {
+    if (before) await trackBackgroundTarget(target, before);
+    else
+      await forgetBackgroundTargetSupervision(target.target_id, target.tab_id);
+  } catch (error) {
+    await persistLedger(
+      forgetChromeTarget(target.target_id),
+      "roll back an unsupervised claimed target",
+    );
+    throw error;
+  }
+  signal?.throwIfAborted();
+  return target;
 }
 
 async function finalizeTarget(
@@ -222,8 +325,24 @@ async function finalizeTarget(
   tabId: number,
   visibility: "background" | "foreground",
   disposition: "close" | "release",
+  signal?: AbortSignal,
 ): Promise<void> {
+  signal?.throwIfAborted();
   await assertTargetIdentity(targetId, tabId);
+  try {
+    await readExistingTab(tabId);
+  } catch (error) {
+    if (!isMissingTabError(error)) throw error;
+    await persistLedger(
+      forgetChromeTarget(targetId),
+      "forget already-closed target",
+    );
+    await forgetBackgroundTargetSupervision(targetId, tabId);
+    return;
+  }
+  if (visibility === "background") {
+    await assertBackgroundTargetCanFinalize(targetId, tabId, disposition);
+  }
   const before = visibility === "background" ? await captureUiState() : null;
   if (
     disposition === "close" &&
@@ -236,9 +355,17 @@ async function finalizeTarget(
       false,
     );
   }
-  await detachDebugger(tabId);
-  if (disposition === "close") await chrome.tabs.remove(tabId);
+  try {
+    await detachDebugger(tabId);
+    if (disposition === "close") await chrome.tabs.remove(tabId);
+    signal?.throwIfAborted();
+  } catch (error) {
+    if (!isMissingTabError(error)) throw error;
+  }
   if (before) await assertUiStateUnchanged(before, "target.finalize");
+  await persistLedger(forgetChromeTarget(targetId), "forget finalized target");
+  await forgetBackgroundTargetSupervision(targetId, tabId);
+  signal?.throwIfAborted();
 }
 
 async function executeTargetPageCommand(
@@ -246,19 +373,146 @@ async function executeTargetPageCommand(
   tabId: number,
   visibility: "background" | "foreground",
   command: BrowserPageCommand,
+  signal?: AbortSignal,
 ): Promise<unknown> {
+  signal?.throwIfAborted();
   await assertTargetIdentity(targetId, tabId);
+  const trackedTarget = await readChromeTarget(targetId);
+  if (!trackedTarget || trackedTarget.tab_id !== tabId) {
+    throw new ChromeControllerError(
+      "chrome_target_invalid",
+      `Chrome target ${targetId} is not present in the durable target ledger`,
+      "List, allocate, or claim the tab again through the current broker session.",
+      false,
+      false,
+      { targetUnusable: true },
+    );
+  }
   const tab = await readSupportedTab(tabId);
   const before = visibility === "background" ? await captureUiState() : null;
   if (visibility === "foreground") {
     await chrome.tabs.update(tabId, { active: true });
     await chrome.windows.update(tab.windowId, { focused: true });
+    try {
+      const result = await raceWithCancellation(
+        () => executePageCommand(tabId, command),
+        signal,
+      );
+      signal?.throwIfAborted();
+      return result;
+    } catch (error) {
+      if (!signal?.aborted) throw error;
+      await invalidateCancelledForegroundTarget(trackedTarget);
+      throw new ChromeControllerError(
+        "chrome_command_cancelled",
+        `Chrome foreground page.${command.method} was cancelled after dispatch; its target was invalidated`,
+        "Continue on a newly allocated or claimed Chrome target.",
+        false,
+        true,
+        { cause: error, targetUnusable: true },
+      );
+    }
   }
-  const result = await executePageCommand(tabId, command);
-  if (before) {
-    await assertUiStateUnchanged(before, `page.${command.method}`);
+  try {
+    const result = await superviseBackgroundPageCommand(
+      targetId,
+      tabId,
+      command,
+      before!,
+      () => executePageCommand(tabId, command),
+      signal,
+    );
+    signal?.throwIfAborted();
+    return result;
+  } catch (error) {
+    if (error instanceof BackgroundCommandRecoveryError) {
+      throw combineCommandAndBackgroundFailure(
+        error.commandError,
+        error.backgroundError,
+      );
+    }
+    throw error;
   }
-  return result;
+}
+
+async function invalidateCancelledForegroundTarget(
+  target: ChromeNativeTarget,
+): Promise<void> {
+  const errors: unknown[] = [];
+  try {
+    await detachDebugger(target.tab_id);
+  } catch (error) {
+    errors.push(error);
+  }
+  if (target.owned) {
+    try {
+      await chrome.tabs.remove(target.tab_id);
+    } catch (error) {
+      if (!isMissingTabError(error)) errors.push(error);
+    }
+  }
+  try {
+    await persistLedger(
+      forgetChromeTarget(target.target_id),
+      "invalidate cancelled foreground target",
+    );
+    await forgetBackgroundTargetSupervision(target.target_id, target.tab_id);
+  } catch (error) {
+    errors.push(error);
+  }
+  if (errors.length > 0) {
+    throw new ChromeControllerError(
+      "chrome_target_invalidation_failed",
+      `Cancelled Chrome target ${target.target_id} could not be fully invalidated: ${errors.map(errorMessage).join("; ")}`,
+      "Reload the Uni-CLI extension and reconcile targets before continuing.",
+      false,
+      true,
+      {
+        cause: new AggregateError(errors, "Foreground invalidation failed"),
+        targetUnusable: true,
+      },
+    );
+  }
+}
+
+function combineCommandAndBackgroundFailure(
+  commandError: unknown,
+  backgroundError: unknown,
+): ChromeControllerError {
+  const source =
+    commandError instanceof ChromeControllerError
+      ? commandError
+      : new ChromeControllerError(
+          "chrome_command_failed",
+          errorMessage(commandError),
+          "Inspect the Chrome extension debugger permission and target state before retrying.",
+          false,
+          controllerOutcomeIsAmbiguous(commandError),
+          { cause: commandError },
+        );
+  return new ChromeControllerError(
+    source.code,
+    `${source.message}; background recovery failed: ${errorMessage(backgroundError)}`,
+    source.suggestion,
+    false,
+    source.outcomeAmbiguous || controllerOutcomeIsAmbiguous(backgroundError),
+    {
+      cause: new AggregateError(
+        [commandError, backgroundError],
+        "Chrome command and background recovery both failed",
+      ),
+      targetUnusable: controllerTargetIsUnusable(backgroundError),
+    },
+  );
+}
+
+function controllerTargetIsUnusable(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "targetUnusable" in error &&
+    (error as { targetUnusable?: unknown }).targetUnusable === true
+  );
 }
 
 async function executePageCommand(
@@ -273,6 +527,9 @@ async function executePageCommand(
       return evaluate(tabId, command.expression);
     case "click":
       await click(tabId, command.selector);
+      return undefined;
+    case "native_click":
+      await nativeClick(tabId, command.x, command.y);
       return undefined;
     case "type":
       await click(tabId, command.selector);
@@ -295,6 +552,9 @@ async function executePageCommand(
       const result = (await sendDebuggerCommand(
         tabId,
         "Network.getCookies",
+        {},
+        undefined,
+        true,
       )) as { cookies?: Array<{ name?: string; value?: string }> };
       return Object.fromEntries(
         (result.cookies ?? [])
@@ -311,20 +571,32 @@ async function executePageCommand(
     case "url":
       return (await chrome.tabs.get(tabId)).url ?? "";
     case "snapshot":
-      return sendDebuggerCommand(tabId, "Accessibility.getFullAXTree", {
-        ...command.options,
-      });
+      return sendDebuggerCommand(
+        tabId,
+        "Accessibility.getFullAXTree",
+        {
+          ...command.options,
+        },
+        undefined,
+        true,
+      );
     case "screenshot":
       return readScreenshotData(
-        await sendDebuggerCommand(tabId, "Page.captureScreenshot", {
-          format: command.format ?? "png",
-          ...(command.quality === undefined
-            ? {}
-            : { quality: command.quality }),
-          captureBeyondViewport: command.full_page === true,
-          fromSurface: true,
-          ...(command.clip ? { clip: { ...command.clip, scale: 1 } } : {}),
-        }),
+        await sendDebuggerCommand(
+          tabId,
+          "Page.captureScreenshot",
+          {
+            format: command.format ?? "png",
+            ...(command.quality === undefined
+              ? {}
+              : { quality: command.quality }),
+            captureBeyondViewport: command.full_page === true,
+            fromSurface: true,
+            ...(command.clip ? { clip: { ...command.clip, scale: 1 } } : {}),
+          },
+          undefined,
+          true,
+        ),
       );
     case "cdp":
       return sendDebuggerCommand(
@@ -337,18 +609,22 @@ async function executePageCommand(
       await setFileInput(tabId, command.selector, command.files);
       return undefined;
     case "network_capture_start":
-      await startNetworkCapture(tabId, command.pattern);
+      await startNetworkCapture(
+        tabId,
+        debuggerCommandDispatch(tabId),
+        command.pattern,
+      );
       return true;
     case "network_capture_read":
       return readNetworkCapture(tabId);
     case "downloads_read":
       return readDownloads(command.limit);
     case "dialog_read":
-      return readDialogSnapshot(tabId, {
+      return readDialogSnapshot(tabId, debuggerCommandDispatch(tabId), {
         clearRecent: command.clear_recent === true,
       });
     case "dialog_respond":
-      return respondToDialog(tabId, {
+      return respondToDialog(tabId, debuggerCommandDispatch(tabId), {
         action: command.action,
         ...(command.prompt_text === undefined
           ? {}
@@ -418,76 +694,126 @@ async function normalWindows(): Promise<
   );
 }
 
-async function captureUiState(): Promise<ChromeUiState> {
-  const windows = await normalWindows();
-  const windowIds = windows.map((window) => window.id).sort((a, b) => a - b);
-  const normalWindowIds = new Set(windowIds);
-  const activeTabs = (await chrome.tabs.query({ active: true }))
-    .filter(
-      (tab): tab is chrome.tabs.Tab & { id: number; windowId: number } =>
-        typeof tab.id === "number" &&
-        typeof tab.windowId === "number" &&
-        normalWindowIds.has(tab.windowId),
-    )
-    .map((tab) => ({ window_id: tab.windowId, tab_id: tab.id }))
-    .sort(
-      (left, right) =>
-        left.window_id - right.window_id || left.tab_id - right.tab_id,
-    );
-  return {
-    window_ids: windowIds,
-    focused_window_id: windows.find((window) => window.focused)?.id ?? null,
-    active_tabs: activeTabs,
-  };
-}
-
-async function assertUiStateUnchanged(
-  before: ChromeUiState,
-  action: string,
-): Promise<void> {
-  const after = await captureUiState();
-  if (JSON.stringify(after) !== JSON.stringify(before)) {
-    throw new ChromeControllerError(
-      "background_postcondition_failed",
-      `Chrome UI state changed during ${action}: before=${JSON.stringify(before)} after=${JSON.stringify(after)}`,
-      "Stop background work on this target and use the managed hidden provider or explicit foreground visibility.",
-      false,
-    );
-  }
-}
-
 async function navigateTab(tabId: number, url: string): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
+    let updateDispatched = false;
+    let dispatchStartedAt = Number.POSITIVE_INFINITY;
+    let navigationStarted = false;
+    let committedDocumentId: string | null = null;
+    let finished = false;
     const finish = (error?: Error): void => {
-      chrome.tabs.onUpdated.removeListener(listener);
+      if (finished) return;
+      finished = true;
+      chrome.webNavigation.onBeforeNavigate.removeListener(onBeforeNavigate);
+      chrome.webNavigation.onCommitted.removeListener(onCommitted);
+      chrome.webNavigation.onCompleted.removeListener(onCompleted);
+      chrome.webNavigation.onErrorOccurred.removeListener(onErrorOccurred);
+      chrome.webNavigation.onHistoryStateUpdated.removeListener(onSameDocument);
+      chrome.webNavigation.onReferenceFragmentUpdated.removeListener(
+        onSameDocument,
+      );
       if (timeout) clearTimeout(timeout);
       if (error) reject(error);
       else resolve();
     };
-    const listener = (
-      updatedTabId: number,
-      info: chrome.tabs.OnUpdatedInfo,
+    const isCurrentMainFrame = (details: {
+      tabId: number;
+      frameId: number;
+      timeStamp: number;
+    }): boolean =>
+      updateDispatched &&
+      details.tabId === tabId &&
+      details.frameId === 0 &&
+      details.timeStamp >= dispatchStartedAt;
+    const onBeforeNavigate = (
+      details: chrome.webNavigation.WebNavigationBaseCallbackDetails,
     ): void => {
-      if (updatedTabId === tabId && info.status === "complete") finish();
+      if (isCurrentMainFrame(details) && urlsEquivalent(details.url, url)) {
+        navigationStarted = true;
+      }
     };
-    chrome.tabs.onUpdated.addListener(listener);
+    const onCommitted = (
+      details: chrome.webNavigation.WebNavigationTransitionCallbackDetails,
+    ): void => {
+      if (!navigationStarted || !isCurrentMainFrame(details)) return;
+      committedDocumentId = details.documentId;
+    };
+    const onCompleted = (
+      details: chrome.webNavigation.WebNavigationFramedCallbackDetails,
+    ): void => {
+      if (
+        committedDocumentId !== null &&
+        isCurrentMainFrame(details) &&
+        details.documentId === committedDocumentId
+      ) {
+        finish();
+      }
+    };
+    const onErrorOccurred = (
+      details: chrome.webNavigation.WebNavigationFramedErrorCallbackDetails,
+    ): void => {
+      if (
+        committedDocumentId !== null &&
+        isCurrentMainFrame(details) &&
+        details.documentId === committedDocumentId
+      ) {
+        finish(
+          new ChromeControllerError(
+            "chrome_navigation_failed",
+            `Chrome target ${String(tabId)} navigation failed: ${details.error}`,
+            "Inspect the target URL and document state before navigating again.",
+            false,
+            true,
+          ),
+        );
+      }
+    };
+    const onSameDocument = (
+      details: chrome.webNavigation.WebNavigationTransitionCallbackDetails,
+    ): void => {
+      if (isCurrentMainFrame(details) && urlsEquivalent(details.url, url)) {
+        finish();
+      }
+    };
+    chrome.webNavigation.onBeforeNavigate.addListener(onBeforeNavigate);
+    chrome.webNavigation.onCommitted.addListener(onCommitted);
+    chrome.webNavigation.onCompleted.addListener(onCompleted);
+    chrome.webNavigation.onErrorOccurred.addListener(onErrorOccurred);
+    chrome.webNavigation.onHistoryStateUpdated.addListener(onSameDocument);
+    chrome.webNavigation.onReferenceFragmentUpdated.addListener(onSameDocument);
     timeout = setTimeout(
       () =>
         finish(
-          controllerError(
+          new ChromeControllerError(
             "chrome_navigation_timeout",
             `Chrome target ${String(tabId)} did not finish navigation within ${String(NAVIGATION_TIMEOUT_MS)}ms`,
+            "Inspect the target URL before navigating again; Chrome accepted the update but did not confirm completion.",
+            false,
+            updateDispatched,
           ),
         ),
       NAVIGATION_TIMEOUT_MS,
     );
-    chrome.tabs
-      .update(tabId, { url })
-      .catch((error: unknown) =>
+    try {
+      dispatchStartedAt = Date.now();
+      updateDispatched = true;
+      const update = chrome.tabs.update(tabId, { url });
+      void update.catch((error: unknown) =>
         finish(error instanceof Error ? error : new Error(String(error))),
       );
+    } catch (error) {
+      finish(error instanceof Error ? error : new Error(String(error)));
+    }
   });
+}
+
+function urlsEquivalent(left: string, right: string): boolean {
+  try {
+    return new URL(left).href === new URL(right).href;
+  } catch {
+    return left === right;
+  }
 }
 
 async function evaluate(tabId: number, expression: string): Promise<unknown> {
@@ -512,6 +838,9 @@ async function click(tabId: number, selector: string): Promise<void> {
   const document = (await sendDebuggerCommand(
     tabId,
     "DOM.getDocument",
+    {},
+    undefined,
+    true,
   )) as DomDocumentResult;
   const rootNodeId = document.root?.nodeId;
   if (!rootNodeId) {
@@ -520,19 +849,31 @@ async function click(tabId: number, selector: string): Promise<void> {
       "Chrome did not return a DOM root node",
     );
   }
-  const query = (await sendDebuggerCommand(tabId, "DOM.querySelector", {
-    nodeId: rootNodeId,
-    selector,
-  })) as DomQueryResult;
+  const query = (await sendDebuggerCommand(
+    tabId,
+    "DOM.querySelector",
+    {
+      nodeId: rootNodeId,
+      selector,
+    },
+    undefined,
+    true,
+  )) as DomQueryResult;
   if (!query.nodeId) {
     throw controllerError(
       "chrome_selector_not_found",
       `Chrome selector did not match an element: ${selector}`,
     );
   }
-  const box = (await sendDebuggerCommand(tabId, "DOM.getBoxModel", {
-    nodeId: query.nodeId,
-  })) as DomBoxResult;
+  const box = (await sendDebuggerCommand(
+    tabId,
+    "DOM.getBoxModel",
+    {
+      nodeId: query.nodeId,
+    },
+    undefined,
+    true,
+  )) as DomBoxResult;
   const content = box.model?.content;
   if (!content || content.length < 8) {
     throw controllerError(
@@ -542,20 +883,24 @@ async function click(tabId: number, selector: string): Promise<void> {
   }
   const x = (content[0] + content[2] + content[4] + content[6]) / 4;
   const y = (content[1] + content[3] + content[5] + content[7]) / 4;
-  await sendDebuggerCommand(tabId, "Input.dispatchMouseEvent", {
-    type: "mousePressed",
-    x,
-    y,
-    button: "left",
-    clickCount: 1,
-  });
-  await sendDebuggerCommand(tabId, "Input.dispatchMouseEvent", {
-    type: "mouseReleased",
-    x,
-    y,
-    button: "left",
-    clickCount: 1,
-  });
+  await dispatchDebuggerInputPair(
+    tabId,
+    "Input.dispatchMouseEvent",
+    {
+      type: "mousePressed",
+      x,
+      y,
+      button: "left",
+      clickCount: 1,
+    },
+    {
+      type: "mouseReleased",
+      x,
+      y,
+      button: "left",
+      clickCount: 1,
+    },
+  );
 }
 
 async function press(
@@ -582,14 +927,65 @@ async function press(
     nativeVirtualKeyCode: keyCode,
     ...(modifierMask ? { modifiers: modifierMask } : {}),
   };
-  await sendDebuggerCommand(tabId, "Input.dispatchKeyEvent", {
-    type: "keyDown",
-    ...params,
-  });
-  await sendDebuggerCommand(tabId, "Input.dispatchKeyEvent", {
-    type: "keyUp",
-    ...params,
-  });
+  await dispatchDebuggerInputPair(
+    tabId,
+    "Input.dispatchKeyEvent",
+    { type: "keyDown", ...params },
+    { type: "keyUp", ...params },
+  );
+}
+
+async function nativeClick(tabId: number, x: number, y: number): Promise<void> {
+  await dispatchDebuggerInputPair(
+    tabId,
+    "Input.dispatchMouseEvent",
+    {
+      type: "mousePressed",
+      x,
+      y,
+      button: "left",
+      clickCount: 1,
+    },
+    {
+      type: "mouseReleased",
+      x,
+      y,
+      button: "left",
+      clickCount: 1,
+    },
+  );
+}
+
+async function dispatchDebuggerInputPair(
+  tabId: number,
+  method: "Input.dispatchMouseEvent" | "Input.dispatchKeyEvent",
+  down: Record<string, unknown>,
+  up: Record<string, unknown>,
+): Promise<void> {
+  const errors: unknown[] = [];
+  try {
+    await sendDebuggerCommand(tabId, method, down);
+  } catch (error) {
+    errors.push(error);
+  }
+  try {
+    await sendDebuggerCommand(tabId, method, up, undefined, true);
+  } catch (error) {
+    errors.push(error);
+  }
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1) {
+    throw new ChromeControllerError(
+      "chrome_input_pair_failed",
+      `Paired ${method} dispatch and compensating release both failed`,
+      "Inspect the page input state before issuing another mutation.",
+      false,
+      errors.some(controllerOutcomeIsAmbiguous),
+      {
+        cause: new AggregateError(errors, `Paired ${method} dispatch failed`),
+      },
+    );
+  }
 }
 
 async function setFileInput(
@@ -600,6 +996,9 @@ async function setFileInput(
   const document = (await sendDebuggerCommand(
     tabId,
     "DOM.getDocument",
+    {},
+    undefined,
+    true,
   )) as DomDocumentResult;
   const rootNodeId = document.root?.nodeId;
   if (!rootNodeId) {
@@ -608,10 +1007,16 @@ async function setFileInput(
       "Chrome did not return a DOM root node",
     );
   }
-  const query = (await sendDebuggerCommand(tabId, "DOM.querySelector", {
-    nodeId: rootNodeId,
-    selector,
-  })) as DomQueryResult;
+  const query = (await sendDebuggerCommand(
+    tabId,
+    "DOM.querySelector",
+    {
+      nodeId: rootNodeId,
+      selector,
+    },
+    undefined,
+    true,
+  )) as DomQueryResult;
   if (!query.nodeId) {
     throw controllerError(
       "chrome_selector_not_found",
@@ -629,6 +1034,7 @@ async function sendDebuggerCommand(
   method: string,
   params: Record<string, unknown> = {},
   sessionId?: string,
+  replayOnDetach = false,
 ): Promise<unknown> {
   await ensureDebuggerAttached(tabId);
   const target = { tabId, ...(sessionId ? { sessionId } : {}) };
@@ -637,9 +1043,59 @@ async function sendDebuggerCommand(
   } catch (error) {
     if (!isDebuggerDetachError(error)) throw error;
     attachedTabs.delete(tabId);
-    await ensureDebuggerAttached(tabId);
-    return chrome.debugger.sendCommand(target, method, params);
+    if (!replayOnDetach) throw ambiguousDebuggerError(method, error);
+    try {
+      await ensureDebuggerAttached(tabId);
+      return await chrome.debugger.sendCommand(target, method, params);
+    } catch (retryError) {
+      throw ambiguousDebuggerError(
+        method,
+        new AggregateError(
+          [error, retryError],
+          `Debugger retry failed for ${method}`,
+        ),
+      );
+    }
   }
+}
+
+function debuggerCommandDispatch(tabId: number): DebuggerCommandDispatch {
+  return (method, params, replayOnDetach) =>
+    sendDebuggerCommand(tabId, method, params, undefined, replayOnDetach);
+}
+
+function ambiguousDebuggerError(
+  method: string,
+  cause: unknown,
+): ChromeControllerError {
+  return new ChromeControllerError(
+    "chrome_command_failed",
+    `${method} lost its debugger response after dispatch: ${errorMessage(cause)}`,
+    "Inspect the target state before issuing another mutation; the debugger detached after command dispatch.",
+    false,
+    true,
+    { cause },
+  );
+}
+
+function controllerOutcomeIsAmbiguous(error: unknown): boolean {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "outcomeAmbiguous" in error &&
+    (error as { outcomeAmbiguous?: unknown }).outcomeAmbiguous === true
+  ) {
+    return true;
+  }
+  if (error instanceof AggregateError) {
+    return error.errors.some(controllerOutcomeIsAmbiguous);
+  }
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "cause" in error &&
+    controllerOutcomeIsAmbiguous((error as { cause?: unknown }).cause)
+  );
 }
 
 function registerDebuggerLifecycleListeners(): void {
@@ -654,6 +1110,19 @@ function registerDebuggerLifecycleListeners(): void {
 function isDebuggerDetachError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return /not attached|debugger[^\n]*detach|detached while/i.test(message);
+}
+
+function isMissingTabError(error: unknown): boolean {
+  if (
+    error instanceof ChromeControllerError &&
+    error.code === "chrome_target_not_found"
+  ) {
+    return true;
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  return /no tab with id|invalid tab id|tab (?:was )?closed|target closed/i.test(
+    message,
+  );
 }
 
 async function ensureDebuggerAttached(tabId: number): Promise<void> {
@@ -681,18 +1150,47 @@ async function detachDebugger(tabId: number): Promise<void> {
   }
 }
 
-async function failBackgroundAllocation(
+async function failOwnedAllocation(
+  requestId: string,
   tabId: number | undefined,
+  windowId: number | undefined,
   cause: unknown,
 ): Promise<never> {
-  if (tabId === undefined) throw cause;
+  const cleanupErrors: unknown[] = [];
+  let allocationArtifactRemoved = false;
   try {
-    await chrome.tabs.remove(tabId);
+    if (tabId !== undefined) await chrome.tabs.remove(tabId);
+    else if (windowId !== undefined) await chrome.windows.remove(windowId);
+    else {
+      const marker = allocationMarker(requestId);
+      const orphanedTabIds = (await chrome.tabs.query({}))
+        .filter(
+          (tab): tab is chrome.tabs.Tab & { id: number } =>
+            tab.url === marker && typeof tab.id === "number",
+        )
+        .map((tab) => tab.id);
+      for (const orphanedTabId of orphanedTabIds) {
+        await chrome.tabs.remove(orphanedTabId);
+      }
+    }
+    allocationArtifactRemoved = true;
   } catch (cleanupError) {
+    if (isMissingTabError(cleanupError)) allocationArtifactRemoved = true;
+    else cleanupErrors.push(cleanupError);
+  }
+  if (allocationArtifactRemoved) {
+    try {
+      if (tabId !== undefined) await forgetChromeTab(tabId);
+      await cancelOwnedAllocation(requestId);
+    } catch (cleanupError) {
+      cleanupErrors.push(cleanupError);
+    }
+  }
+  if (cleanupErrors.length > 0) {
     throw new ChromeControllerError(
-      "background_cleanup_failed",
-      `Chrome background allocation failed and tab ${String(tabId)} could not be removed: allocation=${errorMessage(cause)} cleanup=${errorMessage(cleanupError)}`,
-      "Close the reported task tab manually, then use the managed hidden provider until Chrome background allocation is repaired.",
+      "chrome_target_cleanup_failed",
+      `Chrome allocation failed and cleanup was incomplete: allocation=${errorMessage(cause)} cleanup=${cleanupErrors.map(errorMessage).join("; ")}`,
+      "Reconnect the Uni-CLI extension so its retained allocation intent can reconcile and close any surviving task tab.",
       false,
     );
   }
@@ -700,7 +1198,7 @@ async function failBackgroundAllocation(
 }
 
 async function readSupportedTab(tabId: number): Promise<chrome.tabs.Tab> {
-  const tab = await chrome.tabs.get(tabId);
+  const tab = await readExistingTab(tabId);
   if (!isSupportedTabUrl(tab.url)) {
     throw new ChromeControllerError(
       "chrome_target_unsupported",
@@ -710,6 +1208,37 @@ async function readSupportedTab(tabId: number): Promise<chrome.tabs.Tab> {
     );
   }
   return tab;
+}
+
+async function readExistingTab(tabId: number): Promise<chrome.tabs.Tab> {
+  let tab: chrome.tabs.Tab;
+  try {
+    tab = await chrome.tabs.get(tabId);
+  } catch (error) {
+    throw new ChromeControllerError(
+      "chrome_target_not_found",
+      `Chrome tab ${String(tabId)} no longer exists: ${errorMessage(error)}`,
+      "Allow Uni-CLI to allocate a replacement task tab, or claim another live tab.",
+      true,
+    );
+  }
+  return tab;
+}
+
+async function persistLedger(
+  operation: Promise<void>,
+  action: string,
+): Promise<void> {
+  try {
+    await operation;
+  } catch (error) {
+    throw new ChromeControllerError(
+      "chrome_target_ledger_failed",
+      `Chrome target ledger could not ${action}: ${errorMessage(error)}`,
+      "Reconnect or reload the Uni-CLI extension, then retry after target-ledger reconciliation succeeds.",
+      true,
+    );
+  }
 }
 
 async function targetFromTab(
@@ -792,14 +1321,19 @@ function readScreenshotData(value: unknown): string {
 }
 
 class ChromeControllerError extends Error {
+  readonly targetUnusable: boolean;
+
   constructor(
     readonly code: string,
     message: string,
     readonly suggestion: string,
     readonly retryable: boolean,
+    readonly outcomeAmbiguous = false,
+    options?: ErrorOptions & { targetUnusable?: boolean },
   ) {
-    super(message);
+    super(message, options);
     this.name = "ChromeControllerError";
+    this.targetUnusable = options?.targetUnusable === true;
   }
 }
 
@@ -813,12 +1347,24 @@ function controllerError(code: string, message: string): ChromeControllerError {
 }
 
 function readControllerError(error: unknown): ChromeNativeError {
+  if (error instanceof BackgroundSupervisionError) {
+    return {
+      code: error.code,
+      message: error.message,
+      suggestion: error.suggestion,
+      retryable: error.retryable,
+      ...(error.outcomeAmbiguous ? { outcome_ambiguous: true } : {}),
+      ...(error.targetUnusable ? { target_unusable: true } : {}),
+    };
+  }
   if (error instanceof ChromeControllerError) {
     return {
       code: error.code,
       message: error.message,
       suggestion: error.suggestion,
       retryable: error.retryable,
+      ...(error.outcomeAmbiguous ? { outcome_ambiguous: true } : {}),
+      ...(error.targetUnusable ? { target_unusable: true } : {}),
     };
   }
   return {

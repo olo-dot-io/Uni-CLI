@@ -18,7 +18,11 @@ async function dispatch<T>(
 ): Promise<Envelope<T>> {
   return tryCascade(
     ctx.bus,
-    { kind, params },
+    {
+      kind,
+      params,
+      ...(ctx.transportCtx.signal ? { signal: ctx.transportCtx.signal } : {}),
+    },
     ctx.platform,
     ctx.transportCtx,
   ) as Promise<Envelope<T>>;
@@ -129,3 +133,17 @@ function makeRegisteredStep(kind: ComputeStepKind): StepHandler {
 for (const kind of Object.keys(COMPUTE_STEP_HANDLERS) as ComputeStepKind[]) {
   registerStep(kind, makeRegisteredStep(kind));
 }
+/**
+ * @owner       src::engine::steps::compute
+ * @does        Register compute pipeline steps and route each through the capability cascade with request identity and cancellation intact.
+ * @needs       transport bus/context/cascade, pipeline context, step registry.
+ * @feeds       YAML pipeline compute actions.
+ * @breaks      Returns transport envelopes; cancellation escapes immediately rather than falling through to another physical transport.
+ * @invariants  The PipelineContext AbortSignal is present on both TransportContext and ActionRequest.
+ * @side-effects Dispatches desktop/browser/visual/subprocess operations selected by the cascade.
+ * @perf        Constant wrapper overhead around transport work.
+ * @concurrency Request state is structural and never stored at module scope.
+ * @test        tests/unit/engine/compute-steps.test.ts, tests/unit/engine/executor.test.ts
+ * @stability   stable
+ * @since       2026-06-29
+ */

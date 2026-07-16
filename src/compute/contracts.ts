@@ -2,9 +2,9 @@
  * @owner   src/compute/contracts.ts
  * @does    Define the shared compute command and ref-provenance contract projected into CLI discovery, schema, and MCP.
  * @needs   none
- * @feeds   src/discovery/core-catalog.ts, src/mcp/profiles/computer-use.ts, src/transport/cascade.ts
+ * @feeds   src/discovery/core-catalog.ts, src/mcp/profiles/computer-use.ts, src/compute/permission.ts, src/transport/cascade.ts
  * @breaks  Drift here makes agents compile invalid computer-use calls or route refs to the wrong provider.
- * @invariants Ref-consuming commands declare accepted namespaces in the same description used by describe/schema/MCP.
+ * @invariants Ref-consuming commands declare accepted namespaces in the same description used by describe/schema/MCP; readOnly is the single source of compute mutation truth.
  * @side-effects none
  * @perf    Static data and O(argument count) schema projection.
  * @concurrency immutable constants.
@@ -497,6 +497,13 @@ export function getComputeCommandContractByMcpSuffix(
   return COMPUTE_COMMAND_CONTRACTS.find(
     (candidate) => candidate.mcpSuffix === suffix,
   );
+}
+
+export function computeCommandCanMutate(kind: string): boolean {
+  const contract = COMPUTE_COMMAND_CONTRACTS.find(
+    (candidate) => candidate.kind === kind,
+  );
+  return contract !== undefined && contract.readOnly !== true;
 }
 
 export function buildComputeInputSchema(

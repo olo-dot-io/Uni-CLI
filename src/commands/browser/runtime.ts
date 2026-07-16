@@ -1,7 +1,7 @@
 /**
  * @owner   src/commands/browser/runtime.ts
  * @does    Provide shared browser operator invocation identity, provider policy, broker page access, evidence normalization, and output formatting.
- * @needs   commander, src/browser bridge/invocation-context/invocation-scope, src/engine interceptor/user-home, permissions, output, types
+ * @needs   commander, browser broker invocation scope, direct operator permission policy, sensitive-path permissions, output
  * @feeds   src/commands/browser/actions.ts, src/commands/browser/authoring.ts
  * @breaks  Bridge, workspace, permission, and formatting failures return structured errors and nonzero exits. No fallback.
  * @invariants One invocation scope owns one immutable Agent/session/turn/provider/visibility/profile-partition identity.
@@ -31,6 +31,7 @@ import { detectFormat, format } from "../../output/formatter.js";
 import { makeCtx } from "../../output/envelope.js";
 import { errorTypeToCode, mapErrorToExitCode } from "../../output/error-map.js";
 import { userHome } from "../../engine/user-home.js";
+import { authorizeBrowserCommand } from "./permission.js";
 
 export interface BrowserOperatorRootOptions {
   workspace?: string;
@@ -44,11 +45,22 @@ export interface BrowserOperatorRootOptions {
   isolated?: boolean;
   focus?: boolean;
   background?: boolean;
+  expectDomain?: string;
+  expectPathPrefix?: string;
 }
 
 export interface BrowserOperatorContextDefaults {
   provider?: BrowserProvider;
   visibility?: "hidden" | "background" | "foreground";
+}
+
+interface ResolvedBrowserOperatorSelection {
+  provider: BrowserProvider;
+  visibility: "hidden" | "background" | "foreground";
+  profilePartitionId: string;
+  isolated: boolean;
+  ephemeral: boolean;
+  profileId?: string;
 }
 
 export interface NormalizedNetworkEntry {
@@ -81,41 +93,76 @@ export function resolveWorkspace(root: Command, namespace: string): string {
   return opts.profileId ? `profile:${opts.profileId}` : "default";
 }
 
+export function browserOperatorPermissionArguments(
+  root: Command,
+  argumentValues: Record<string, unknown> = {},
+  defaults: BrowserOperatorContextDefaults = {},
+): Record<string, unknown> {
+  const selection = resolveBrowserOperatorSelection(root, defaults);
+  const opts = getRootOpts(root);
+  return {
+    provider: selection.provider,
+    visibility: selection.visibility,
+    profilePartitionId: selection.profilePartitionId,
+    isolated: selection.isolated,
+    ephemeral: selection.ephemeral,
+    profileId: selection.profileId ?? null,
+    expectDomain: opts.expectDomain ?? null,
+    expectPathPrefix: opts.expectPathPrefix ?? null,
+    ...argumentValues,
+  };
+}
+
 export async function withBrowserOperatorContext<T>(
   root: Command,
   fn: () => Promise<T>,
   defaults: BrowserOperatorContextDefaults = {},
 ): Promise<T> {
   const opts = getRootOpts(root);
+  const selection = resolveBrowserOperatorSelection(root, defaults);
+  const context = createBrowserInvocationContext({
+    transport: "cli",
+    agentSessionId: opts.session,
+    turnId: opts.turn,
+    profilePartitionId: selection.profilePartitionId,
+  });
+  const scope = createBrowserInvocationScope({
+    context,
+    ...selection,
+  });
+  return runBrowserInvocation(scope, fn);
+}
+
+function resolveBrowserOperatorSelection(
+  root: Command,
+  defaults: BrowserOperatorContextDefaults,
+): ResolvedBrowserOperatorSelection {
+  const opts = getRootOpts(root);
   if (opts.focus && opts.background) {
     throw new Error("--focus and --background cannot be combined");
   }
-  const visibility =
+  const requestedVisibility =
     parseVisibility(opts.visibility) ??
     (opts.focus ? "foreground" : opts.background ? "background" : undefined);
   const provider =
     parseProvider(opts.provider) ??
     defaults.provider ??
-    (visibility === "background" || visibility === "foreground"
+    (requestedVisibility === "background" ||
+    requestedVisibility === "foreground"
       ? "chrome"
       : "managed");
-  const profilePartitionId = resolveWorkspace(root, "browser");
-  const context = createBrowserInvocationContext({
-    transport: "cli",
-    agentSessionId: opts.session,
-    turnId: opts.turn,
-    profilePartitionId,
-  });
-  const scope = createBrowserInvocationScope({
-    context,
+  const visibility =
+    requestedVisibility ??
+    defaults.visibility ??
+    (provider === "chrome" ? "background" : "hidden");
+  return {
     provider,
-    visibility: visibility ?? defaults.visibility,
-    profilePartitionId,
-    isolated: opts.isolated,
-    ephemeral: opts.ephemeral,
-    profileId: opts.profileId,
-  });
-  return runBrowserInvocation(scope, fn);
+    visibility,
+    profilePartitionId: resolveWorkspace(root, "browser"),
+    isolated: opts.isolated === true,
+    ephemeral: opts.ephemeral === true,
+    ...(opts.profileId ? { profileId: opts.profileId } : {}),
+  };
 }
 
 function parseProvider(value: string | undefined): BrowserProvider | undefined {
@@ -158,12 +205,19 @@ export async function operatorAction(
   namespace: string,
   name: string,
   fn: () => Promise<unknown>,
+  argumentValues: Record<string, unknown> = {},
 ): Promise<void> {
   const startedAt = Date.now();
   const ctx = makeCtx(`${namespace}.${name.split(" ").join("_")}`, startedAt);
   const fmt = detectFormat(program.opts().format as OutputFormat | undefined);
 
   try {
+    await authorizeBrowserCommand(
+      program,
+      namespace,
+      name,
+      browserOperatorPermissionArguments(root, argumentValues),
+    );
     const result = await withBrowserOperatorContext(root, fn);
     let data: unknown[] | Record<string, unknown>;
     if (result === undefined || result === null) {
@@ -182,7 +236,11 @@ export async function operatorAction(
     console.log(format(data, undefined, fmt, ctx));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const tagged = err as Partial<{ code: string; suggestion: string }>;
+    const tagged = err as Partial<{
+      code: string;
+      suggestion: string;
+      exitCode: number;
+    }>;
     const code = tagged.code ?? errorTypeToCode(err);
     ctx.error = {
       code,
@@ -197,7 +255,7 @@ export async function operatorAction(
     };
     ctx.duration_ms = Date.now() - startedAt;
     console.error(format(null, undefined, fmt, ctx));
-    process.exitCode = mapErrorToExitCode(err);
+    process.exitCode = tagged.exitCode ?? mapErrorToExitCode(err);
   }
 }
 

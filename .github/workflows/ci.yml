@@ -81,6 +81,15 @@ jobs:
       - name: Install dependencies
         run: npm ci --include=dev
 
+      - name: Build Windows process owner
+        if: matrix.profile == 'windows-smoke'
+        shell: pwsh
+        run: |
+          rustup toolchain install 1.82.0 --profile minimal
+          rustup default 1.82.0
+          cargo build --locked -p unicli-process-owner
+          "UNICLI_PROCESS_OWNER=$PWD\\target\\debug\\unicli-process-owner.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Format check
         run: npm run format:check
 
@@ -186,6 +195,7 @@ jobs:
         with:
           name: sidecars-${{ matrix.target }}
           path: |
+            target/${{ matrix.target }}/release-sidecar/unicli-process-owner*
             target/${{ matrix.target }}/release-sidecar/unicli-uia*
             target/${{ matrix.target }}/release-sidecar/unicli-atspi*
 
@@ -242,6 +252,7 @@ jobs:
         with:
           name: sidecars-extended-${{ matrix.target }}
           path: |
+            target/${{ matrix.target }}/release-sidecar/unicli-process-owner*
             target/${{ matrix.target }}/release-sidecar/unicli-uia*
             target/${{ matrix.target }}/release-sidecar/unicli-atspi*
 

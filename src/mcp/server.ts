@@ -37,8 +37,7 @@
  * each call via the same code path as the CLI.
  */
 
-import { randomUUID } from "node:crypto";
-import { createInterface } from "node:readline";
+import { parseArgs as parseNodeArgs } from "node:util";
 import { loadAllAdapters, loadTsAdapters } from "../discovery/loader.js";
 import { getAllAdapters, listCommands } from "../registry.js";
 import { VERSION } from "../constants.js";
@@ -50,11 +49,15 @@ import {
 } from "./tools.js";
 import {
   buildHandler,
-  type JsonRpcRequest,
-  type JsonRpcResponse,
+  createMcpBrowserPolicy,
+  type McpBrowserPolicyInput,
 } from "./handler.js";
-import { startHttp } from "./http-transport.js";
-import { startStreamableHttp } from "./streamable-http/index.js";
+import { startHttp, stopHttp } from "./http-transport.js";
+import {
+  startStreamableHttp,
+  stopStreamableHttp,
+} from "./streamable-http/index.js";
+import { startStdioTransport } from "./stdio-transport.js";
 import { installProxyAwareFetch } from "../engine/proxy.js";
 
 installProxyAwareFetch();
@@ -67,97 +70,100 @@ interface ServerOptions {
   port: number;
   auth: boolean;
   profile: string;
+  browserPolicy: McpBrowserPolicyInput;
 }
 
 function parseArgs(argv: string[]): ServerOptions {
-  const opts: ServerOptions = {
-    expanded: false,
-    transport: "stdio",
-    port: 19826,
-    auth: false,
-    profile: "default",
+  const { values } = parseNodeArgs({
+    args: argv,
+    strict: true,
+    allowPositionals: false,
+    options: {
+      expanded: { type: "boolean", default: false },
+      auth: { type: "boolean", default: false },
+      profile: { type: "string", default: "default" },
+      transport: { type: "string", default: "stdio" },
+      port: { type: "string", default: "19826" },
+      "browser-provider": { type: "string" },
+      "browser-visibility": { type: "string" },
+      "browser-profile-partition": { type: "string" },
+      "browser-isolated": { type: "boolean", default: false },
+      "browser-ephemeral": { type: "boolean", default: false },
+      "browser-profile-id": { type: "string" },
+    },
+  });
+  const profile = parseProfile(values.profile);
+  return {
+    expanded: values.expanded || profile === "expanded",
+    transport: parseTransport(values.transport),
+    port: parsePort(values.port),
+    auth: values.auth,
+    profile,
+    browserPolicy: {
+      provider: parseBrowserProvider(values["browser-provider"]),
+      visibility: parseBrowserVisibility(values["browser-visibility"]),
+      profilePartitionId: values["browser-profile-partition"],
+      isolated: values["browser-isolated"],
+      ephemeral: values["browser-ephemeral"],
+      profileId: values["browser-profile-id"],
+    },
   };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === "--expanded") opts.expanded = true;
-    else if (a === "--auth") opts.auth = true;
-    else if (a === "--profile") {
-      opts.profile = argv[++i] || "default";
-      if (opts.profile === "expanded") opts.expanded = true;
-    } else if (a === "--transport") {
-      const v = argv[++i];
-      if (v === "stdio" || v === "http" || v === "streamable") {
-        opts.transport = v;
-      } else if (v === "sse") {
-        // Deprecated alias — SSE replaced by Streamable HTTP in spec 2025-03-26
-        opts.transport = "streamable";
-      }
-    } else if (a === "--port") {
-      const v = parseInt(argv[++i], 10);
-      if (Number.isFinite(v)) opts.port = v;
-    }
+}
+
+function parseProfile(value: string): string {
+  if (
+    value === "default" ||
+    value === "deferred" ||
+    value === "expanded" ||
+    value === "computer-use"
+  ) {
+    return value;
   }
-  return opts;
+  throw new Error(
+    `Invalid MCP profile "${value}"; expected default, deferred, expanded, or computer-use`,
+  );
 }
 
-function send(response: JsonRpcResponse): void {
-  process.stdout.write(JSON.stringify(response) + "\n");
+function parseTransport(value: string): ServerOptions["transport"] {
+  if (value === "stdio" || value === "http" || value === "streamable") {
+    return value;
+  }
+  if (value === "sse") return "streamable";
+  throw new Error(
+    `Invalid MCP transport "${value}"; expected stdio, http, or streamable`,
+  );
 }
 
-async function startStdio(
-  handler: ReturnType<typeof buildHandler>,
-): Promise<void> {
-  const rl = createInterface({ input: process.stdin, terminal: false });
-  const mcpSessionId = randomUUID();
-  let pending = 0;
-  let inputClosed = false;
+function parsePort(value: string): number {
+  const port = Number(value);
+  if (!Number.isInteger(port) || port < 0 || port > 65_535) {
+    throw new Error(`Invalid MCP port "${value}"; expected 0-65535`);
+  }
+  return port;
+}
 
-  const exitIfDrained = () => {
-    if (inputClosed && pending === 0) {
-      process.exit(0);
-    }
-  };
+function parseBrowserProvider(
+  value: string | undefined,
+): McpBrowserPolicyInput["provider"] {
+  if (value === undefined) return undefined;
+  if (value === "managed" || value === "chrome" || value === "remote") {
+    return value;
+  }
+  throw new Error(
+    `Invalid browser provider "${value}"; expected managed, chrome, or remote`,
+  );
+}
 
-  rl.on("line", async (line: string) => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-
-    let req: JsonRpcRequest;
-    try {
-      req = JSON.parse(trimmed) as JsonRpcRequest;
-    } catch {
-      send({
-        jsonrpc: "2.0",
-        id: null,
-        error: { code: -32700, message: "Parse error" },
-      });
-      return;
-    }
-
-    pending++;
-    try {
-      const response = await handler(req, {
-        transport: "mcp-stdio",
-        mcpSessionId,
-      });
-      if (response) send(response);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      send({
-        jsonrpc: "2.0",
-        id: req.id ?? null,
-        error: { code: -32603, message: `Internal error: ${message}` },
-      });
-    } finally {
-      pending--;
-      exitIfDrained();
-    }
-  });
-
-  rl.on("close", () => {
-    inputClosed = true;
-    exitIfDrained();
-  });
+function parseBrowserVisibility(
+  value: string | undefined,
+): McpBrowserPolicyInput["visibility"] {
+  if (value === undefined) return undefined;
+  if (value === "hidden" || value === "background" || value === "foreground") {
+    return value;
+  }
+  throw new Error(
+    `Invalid browser visibility "${value}"; expected hidden, background, or foreground`,
+  );
 }
 
 async function main(): Promise<void> {
@@ -182,16 +188,18 @@ async function main(): Promise<void> {
     tools.length = 0;
     tools.push(...deferredTools);
   }
-  const handler = buildHandler(tools, prompts);
+  const browserPolicy = createMcpBrowserPolicy(opts.browserPolicy);
+  const handler = buildHandler(tools, prompts, { browserPolicy });
 
   const adapterCount = getAllAdapters().length;
   const commandCount = listCommands().length;
 
   if (opts.transport === "http") {
-    await startHttp(handler, opts.port, opts.auth);
+    const httpPort = await startHttp(handler, opts.port, opts.auth);
+    installSignalShutdown((reason) => stopHttp(httpPort, reason));
     const authLabel = opts.auth ? ", OAuth enabled" : "";
     process.stderr.write(
-      `unicli MCP server v${VERSION} — ${adapterCount} sites, ${commandCount} commands (${tools.length} tools registered, mode=${mode}${authLabel})\n`,
+      `unicli MCP server v${VERSION} — ${adapterCount} sites, ${commandCount} commands (${tools.length} tools registered, mode=${mode}, ${formatBrowserPolicy(browserPolicy)}${authLabel})\n`,
     );
     return;
   }
@@ -200,18 +208,48 @@ async function main(): Promise<void> {
     // v0.213.3 P3: streamable-http.Handler now returns
     // `Promise<JsonRpcResponse | undefined>`, so the pre-P3 cast-adapt
     // is gone — the types match the `undefined`-for-notification contract.
-    await startStreamableHttp(opts.port, handler, { auth: opts.auth });
+    const streamablePort = await startStreamableHttp(opts.port, handler, {
+      auth: opts.auth,
+    });
+    installSignalShutdown((reason) =>
+      stopStreamableHttp(streamablePort, reason),
+    );
     const authLabel = opts.auth ? ", OAuth enabled" : "";
     process.stderr.write(
-      `unicli MCP server v${VERSION} — ${adapterCount} sites, ${commandCount} commands (${tools.length} tools, mode=${mode}, transport=streamable${authLabel})\n`,
+      `unicli MCP server v${VERSION} — ${adapterCount} sites, ${commandCount} commands (${tools.length} tools, mode=${mode}, transport=streamable, ${formatBrowserPolicy(browserPolicy)}${authLabel})\n`,
     );
     return;
   }
 
-  await startStdio(handler);
   process.stderr.write(
-    `unicli MCP server v${VERSION} — ${adapterCount} sites, ${commandCount} commands (${tools.length} tools registered, mode=${mode})\n`,
+    `unicli MCP server v${VERSION} — ${adapterCount} sites, ${commandCount} commands (${tools.length} tools registered, mode=${mode}, ${formatBrowserPolicy(browserPolicy)})\n`,
   );
+  startStdioTransport(handler);
+}
+
+function installSignalShutdown(close: (reason: string) => Promise<void>): void {
+  let shuttingDown = false;
+  const shutdown = (signal: NodeJS.Signals): void => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    void close(`MCP server received ${signal}`).then(
+      () => process.exit(0),
+      (error: unknown) => {
+        process.stderr.write(
+          `Fatal: ${error instanceof Error ? error.message : String(error)}\n`,
+        );
+        process.exit(1);
+      },
+    );
+  };
+  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", shutdown);
+}
+
+function formatBrowserPolicy(
+  policy: ReturnType<typeof createMcpBrowserPolicy>,
+): string {
+  return `browser=${policy.provider}/${policy.visibility}, partition=${policy.profilePartitionId}`;
 }
 
 main().catch((err) => {

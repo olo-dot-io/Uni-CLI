@@ -1,10 +1,10 @@
 /**
  * @owner       src/browser/remote-browser.ts
- * @does        Own broker-lifetime remote CDP page connections and expose their target/status lifecycle without local browser fallback.
+ * @does        Own broker-lifetime remote browser contexts, targets, flattened CDP sessions, and expose their status lifecycle without local browser fallback.
  * @needs       node:crypto, src/browser/cdp-client.ts, page.ts
  * @feeds       src/browser/runtime-broker.ts, runtime-protocol.ts
  * @breaks      RemoteBrowserError on missing/malformed configuration, connection failure, unknown targets, and teardown failure.
- * @invariants  Remote endpoints are explicit, hidden-only, secret-redacted in status, and never replaced by a local provider.
+ * @invariants  Remote endpoints are explicit browser-level CDP sockets, hidden-only, secret-redacted in status, never replaced by a local provider, and every target runs in its own owned BrowserContext and flattened session; malformed optional remote configuration disables only remote acquisition; a confirmed root disconnect disposes its disposeOnDetach context and supersedes lost cleanup acknowledgements.
  * @side-effects Opens authenticated remote WebSocket connections and closes them on target/session/broker teardown.
  * @perf        One remote CDP connection per owned target; status is O(targets).
  * @concurrency Distinct remote targets own distinct CDP clients; broker queues serialize commands per target.
@@ -15,7 +15,12 @@
 
 import { randomUUID } from "node:crypto";
 
-import { CDPClient, type RemoteEndpoint } from "./cdp-client.js";
+import {
+  CDPClient,
+  CDPSessionClient,
+  type CDPTarget,
+  type RemoteEndpoint,
+} from "./cdp-client.js";
 import { BrowserPage } from "./page.js";
 
 export interface RemoteBrowserStatus {
@@ -32,13 +37,21 @@ interface RemoteBrowserProviderOptions {
 }
 
 interface RemoteTarget {
+  root: CDPClient;
   page: BrowserPage;
+  session_id: string;
+  cdp_target_id: string;
+  browser_context_id: string;
+  page_closed: boolean;
+  context_disposed: boolean;
+  root_closed: boolean;
 }
 
 type RemoteBrowserErrorCode =
   | "remote_browser_unavailable"
   | "remote_browser_configuration_invalid"
   | "remote_browser_connect_failed"
+  | "remote_browser_endpoint_unsupported"
   | "remote_browser_target_not_found"
   | "remote_browser_shutdown_failed";
 
@@ -60,27 +73,45 @@ export class RemoteBrowserError extends Error {
 
 export class RemoteBrowserProvider {
   private readonly endpoint: RemoteEndpoint | null;
+  private readonly configurationError: RemoteBrowserError | null;
   private readonly targets = new Map<string, RemoteTarget>();
 
   constructor(options: RemoteBrowserProviderOptions = {}) {
-    this.endpoint =
-      options.endpoint === undefined
-        ? readRemoteEndpoint(options.env ?? process.env)
-        : options.endpoint;
+    let endpoint: RemoteEndpoint | null = null;
+    let configurationError: RemoteBrowserError | null = null;
+    try {
+      endpoint =
+        options.endpoint === undefined
+          ? readRemoteEndpoint(options.env ?? process.env)
+          : options.endpoint;
+    } catch (error) {
+      if (
+        !(error instanceof RemoteBrowserError) ||
+        error.code !== "remote_browser_configuration_invalid"
+      ) {
+        throw error;
+      }
+      configurationError = error;
+    }
+    this.endpoint = endpoint;
+    this.configurationError = configurationError;
   }
 
-  async acquireTarget(): Promise<string> {
+  async acquireTarget(signal?: AbortSignal): Promise<string> {
+    signal?.throwIfAborted();
+    if (this.configurationError) throw this.configurationError;
     if (!this.endpoint) {
       throw new RemoteBrowserError(
         "remote_browser_unavailable",
         "The remote browser provider is not configured",
       );
     }
-    let client: CDPClient;
+    let root: CDPClient;
     try {
-      client = await CDPClient.connectToRemote(
+      root = await CDPClient.connectToRemote(
         this.endpoint.endpoint,
         this.endpoint.headers,
+        signal,
       );
     } catch (error) {
       throw new RemoteBrowserError(
@@ -89,9 +120,111 @@ export class RemoteBrowserProvider {
         { cause: error },
       );
     }
-    const targetId = `remote:${randomUUID()}`;
-    this.targets.set(targetId, { page: new BrowserPage(client) });
-    return targetId;
+    let stage: "context" | "target" | "attach" | "page" = "context";
+    let browserContextId: string | undefined;
+    try {
+      const context = (await root.send(
+        "Target.createBrowserContext",
+        { disposeOnDetach: true },
+        undefined,
+        signal,
+      )) as { browserContextId?: string };
+      if (!context.browserContextId) {
+        throw new Error("Remote endpoint did not return a browserContextId");
+      }
+      browserContextId = context.browserContextId;
+      stage = "target";
+      const target = (await root.send(
+        "Target.createTarget",
+        {
+          url: "about:blank",
+          browserContextId,
+        },
+        undefined,
+        signal,
+      )) as { targetId?: string };
+      if (!target.targetId) {
+        throw new Error("Remote endpoint did not return a targetId");
+      }
+      stage = "attach";
+      const attached = (await root.send(
+        "Target.attachToTarget",
+        {
+          targetId: target.targetId,
+          flatten: true,
+        },
+        undefined,
+        signal,
+      )) as { sessionId?: string };
+      if (!attached.sessionId) {
+        throw new Error("Remote endpoint did not return a flattened sessionId");
+      }
+      const connectedTarget: CDPTarget = {
+        id: target.targetId,
+        type: "page",
+        title: "",
+        url: "about:blank",
+        webSocketDebuggerUrl: this.endpoint.endpoint,
+      };
+      const session = new CDPSessionClient(
+        root,
+        attached.sessionId,
+        connectedTarget,
+      );
+      stage = "page";
+      await session.send("Page.enable", undefined, undefined, signal);
+      const targetId = `remote:${randomUUID()}`;
+      this.targets.set(targetId, {
+        root,
+        page: new BrowserPage(session),
+        session_id: attached.sessionId,
+        cdp_target_id: target.targetId,
+        browser_context_id: browserContextId,
+        page_closed: false,
+        context_disposed: false,
+        root_closed: false,
+      });
+      return targetId;
+    } catch (error) {
+      const cleanupErrors: unknown[] = [];
+      if (browserContextId) {
+        try {
+          await root.send("Target.disposeBrowserContext", {
+            browserContextId,
+          });
+        } catch (cleanupError) {
+          cleanupErrors.push(cleanupError);
+        }
+      }
+      try {
+        await root.close();
+      } catch (cleanupError) {
+        cleanupErrors.push(cleanupError);
+      }
+      if (cleanupErrors.length > 0) {
+        throw new RemoteBrowserError(
+          "remote_browser_shutdown_failed",
+          `Remote CDP allocation failed during ${stage} and cleanup was incomplete: ${errorMessage(cleanupErrors[0])}`,
+          {
+            cause: new AggregateError(
+              [error, ...cleanupErrors],
+              "Remote browser allocation and cleanup failed",
+            ),
+          },
+        );
+      }
+      const code =
+        stage === "context"
+          ? "remote_browser_endpoint_unsupported"
+          : "remote_browser_connect_failed";
+      throw new RemoteBrowserError(
+        code,
+        stage === "context"
+          ? `Remote CDP endpoint does not expose browser-level context ownership: ${errorMessage(error)}`
+          : `Remote CDP target allocation failed during ${stage}: ${errorMessage(error)}`,
+        { cause: error },
+      );
+    }
   }
 
   getPage(targetId: string): BrowserPage {
@@ -106,21 +239,57 @@ export class RemoteBrowserProvider {
   async releaseTarget(targetId: string): Promise<void> {
     const target = this.targets.get(targetId);
     if (!target) return;
-    try {
-      await target.page.close();
-      this.targets.delete(targetId);
-    } catch (error) {
+    const cleanupErrors: unknown[] = [];
+    if (!target.page_closed) {
+      try {
+        await target.page.close();
+        target.page_closed = true;
+      } catch (error) {
+        cleanupErrors.push(error);
+      }
+    }
+    if (!target.context_disposed) {
+      try {
+        await target.root.send("Target.disposeBrowserContext", {
+          browserContextId: target.browser_context_id,
+        });
+        target.context_disposed = true;
+      } catch (error) {
+        cleanupErrors.push(error);
+      }
+    }
+    if (!target.root_closed) {
+      try {
+        await target.root.close();
+        target.root_closed = true;
+      } catch (error) {
+        cleanupErrors.push(error);
+      }
+    }
+    if (target.root_closed) target.context_disposed = true;
+    if (!target.context_disposed || !target.root_closed) {
       throw new RemoteBrowserError(
         "remote_browser_shutdown_failed",
-        `Remote browser target ${targetId} did not close cleanly: ${errorMessage(error)}`,
-        { cause: error },
+        `Remote browser target ${targetId} remained partially owned after cleanup: ${errorMessage(cleanupErrors[0])}`,
+        cleanupErrors.length > 0
+          ? {
+              cause: new AggregateError(
+                cleanupErrors,
+                "Remote target cleanup did not converge",
+              ),
+            }
+          : undefined,
       );
     }
+    this.targets.delete(targetId);
   }
 
   status(): RemoteBrowserStatus {
     return {
       configured: this.endpoint !== null,
+      ...(this.configurationError
+        ? { configuration_error: this.configurationError.message }
+        : {}),
       ...(this.endpoint
         ? { endpoint_origin: redactEndpoint(this.endpoint.endpoint) }
         : {}),
@@ -212,6 +381,8 @@ function suggestionFor(code: RemoteBrowserErrorCode): string {
       return "Correct UNICLI_CDP_ENDPOINT and UNICLI_CDP_HEADERS, then restart the broker.";
     case "remote_browser_connect_failed":
       return "Verify the remote endpoint, authentication headers, and network reachability.";
+    case "remote_browser_endpoint_unsupported":
+      return "Configure a browser-level CDP WebSocket endpoint that supports Target.createBrowserContext and flattened target sessions.";
     case "remote_browser_target_not_found":
       return "Start a new remote browser turn instead of reusing an ended target.";
     case "remote_browser_shutdown_failed":

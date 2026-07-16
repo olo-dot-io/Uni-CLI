@@ -9,6 +9,7 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { PipelineError, runPipeline } from "../../../src/engine/executor.js";
+import { BrowserBrokerClientError } from "../../../src/browser/runtime-transport.js";
 import {
   registerStep,
   unregisterStep,
@@ -117,6 +118,34 @@ describe("executor integration — TargetError → PipelineError", () => {
       expect(err).toBeInstanceOf(PipelineError);
       if (!(err instanceof PipelineError)) throw err;
       expect(err.detail.alternatives).toHaveLength(5);
+    }
+  });
+
+  it("preserves structured browser runtime errors without coercing them to parse_error", async () => {
+    registerStep(STEP_NAME, () => {
+      throw new BrowserBrokerClientError({
+        code: "background_unavailable",
+        message: "No background browser provider is connected",
+        suggestion: "Connect the Chrome extension and retry.",
+        retryable: true,
+      });
+    });
+
+    try {
+      await runPipeline([{ [STEP_NAME]: {} } as never], {
+        args: {},
+        source: "internal",
+      });
+      expect.unreachable("runPipeline should have thrown");
+    } catch (err) {
+      expect(err).toBeInstanceOf(PipelineError);
+      if (!(err instanceof PipelineError)) throw err;
+      expect(err.detail).toMatchObject({
+        errorType: "background_unavailable",
+        suggestion: "Connect the Chrome extension and retry.",
+        retryable: true,
+        preserveErrorCode: true,
+      });
     }
   });
 });

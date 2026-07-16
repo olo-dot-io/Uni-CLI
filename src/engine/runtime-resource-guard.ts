@@ -87,6 +87,7 @@ function assertRuntimeResourceAllowed(
   const rule = findDenyRuleForRuntimeResourceSync({
     site: ctx.site,
     command: ctx.command,
+    argumentValues: ctx.args,
     ...input,
   });
   if (!rule) return;

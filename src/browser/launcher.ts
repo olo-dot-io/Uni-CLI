@@ -216,7 +216,7 @@ export async function launchChrome(
   }
 
   if (!ephemeral && seedProfile) {
-    prepareSeededAutomationProfile(seedProfile, profileDir, {
+    await prepareSeededAutomationProfile(seedProfile, profileDir, {
       force: options?.refreshProfile === true,
     });
   }

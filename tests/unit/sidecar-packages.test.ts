@@ -15,6 +15,8 @@ function readPackage(relativeDir: string): Record<string, unknown> {
 describe("sidecar platform packages", () => {
   it("all sidecar packages expose a postinstall helper", () => {
     for (const dir of [
+      "packages/sidecars/unicli-process-owner-win32-x64",
+      "packages/sidecars/unicli-process-owner-win32-arm64",
       "packages/sidecars/unicli-atspi-linux-x64",
       "packages/sidecars/unicli-atspi-linux-arm64",
       "packages/sidecars/unicli-uia-win32-x64",
@@ -27,6 +29,20 @@ describe("sidecar platform packages", () => {
       expect(scripts?.postinstall).toBe("node postinstall.mjs");
       expect(files).toContain("postinstall.mjs");
       expect(existsSync(join(ROOT, dir, "postinstall.mjs"))).toBe(true);
+    }
+  });
+
+  it("Windows process-owner packages install the Job Object supervisor", () => {
+    for (const dir of [
+      "packages/sidecars/unicli-process-owner-win32-x64",
+      "packages/sidecars/unicli-process-owner-win32-arm64",
+    ]) {
+      const pkg = readPackage(dir);
+      expect(pkg.os).toEqual(["win32"]);
+      expect(pkg.bin).toEqual({
+        "unicli-process-owner": "unicli-process-owner.exe",
+      });
+      expect(pkg.files).toContain("unicli-process-owner.exe");
     }
   });
 
@@ -81,5 +97,22 @@ describe("sidecar platform packages", () => {
 
     expect(output).toContain("Uni-CLI UIA sidecar installed");
     expect(output).toContain("unicli doctor compute");
+  });
+
+  it("process-owner postinstall confirms Windows tree containment", () => {
+    const output = execFileSync(
+      process.execPath,
+      ["packages/sidecars/unicli-process-owner-win32-x64/postinstall.mjs"],
+      {
+        cwd: ROOT,
+        env: {
+          ...process.env,
+          UNICLI_SIDECAR_POSTINSTALL_PLATFORM: "win32",
+        },
+        encoding: "utf8",
+      },
+    );
+
+    expect(output).toContain("Windows process-tree containment installed");
   });
 });

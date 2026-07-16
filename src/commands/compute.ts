@@ -1,5 +1,26 @@
+/**
+ * @owner       src::commands::compute
+ * @does        Register CLI computer-control commands and execute each command inside one trusted, finalizable browser invocation.
+ * @needs       commander, compute capture/action modules, browser invocation context/scope, process-shared transport bus, output envelopes/formatting
+ * @feeds       unicli compute CLI surface
+ * @breaks      Invalid options and transport failures become structured action envelopes; invocation finalization failures remain visible.
+ * @invariants  Every top-level compute command owns one CLI turn; an already-trusted ambient invocation is preserved; default web actions can acquire only broker-owned targets.
+ * @side-effects Operates apps/browsers, persists explicit CDP attachment metadata and refs, writes formatted output, and closes CLI-owned transport resources.
+ * @perf        One invocation context allocation per top-level command; transport cost dominates.
+ * @concurrency AsyncLocalStorage isolates concurrent callers even though the transport registry is process-shared.
+ * @test        tests/unit/commands/compute.test.ts, tests/unit/transport/adapters/cdp-browser.test.ts
+ * @stability   experimental
+ * @since       2026-07-15
+ */
+
 import { Command } from "commander";
 
+import { createBrowserInvocationContext } from "../browser/invocation-context.js";
+import {
+  createBrowserInvocationScope,
+  currentBrowserInvocationScope,
+  runBrowserInvocation,
+} from "../browser/invocation-scope.js";
 import {
   executeComputeAction,
   type ComputeActionExecution,
@@ -10,6 +31,7 @@ import { tryCascade } from "../transport/cascade.js";
 import { loadCdpSession, saveCdpSession } from "../transport/cdp-session.js";
 import { loadRefStore, saveRefStore } from "../transport/refs.js";
 import { captureComputeContext } from "../compute/capture.js";
+import { authorizeComputeOperation } from "../compute/permission.js";
 import {
   copyReferenceMarkupToClipboard,
   saveComputeCaptureReference,
@@ -235,9 +257,10 @@ export function registerComputeCommand(program: Command): void {
     .option("--text <text>", "Text to wait for")
     .option("--timeout <ms>", "Timeout in ms", "10000")
     .action(async (opts: Record<string, unknown>) => {
+      const { timeout, ...rest } = opts;
       await run(program, "compute.wait", "compute_wait", {
-        ...opts,
-        timeout: parseInt(String(opts.timeout ?? "10000"), 10),
+        ...rest,
+        timeoutMs: parseInt(String(timeout ?? "10000"), 10),
       });
     });
 
@@ -266,7 +289,31 @@ async function run(
   params: Record<string, unknown>,
   opts: { overlay?: boolean } = {},
 ): Promise<void> {
+  return runComputeInvocation(() =>
+    runInInvocation(program, command, kind, params, opts),
+  );
+}
+
+async function runInInvocation(
+  program: Command,
+  command: string,
+  kind: string,
+  params: Record<string, unknown>,
+  opts: { overlay?: boolean },
+): Promise<void> {
   const startedAt = Date.now();
+  const signal = currentBrowserInvocationScope()?.signal;
+  signal?.throwIfAborted();
+  const authorization = await authorizeComputeOperation(
+    command.slice("compute.".length),
+    params,
+    readComputePermissionOptions(program),
+  );
+  if (!authorization.ok) {
+    print(program, command, startedAt, authorization.result);
+    return;
+  }
+  signal?.throwIfAborted();
   const bus = getBus();
   const overlayProvider =
     opts.overlay === true ? createPlatformComputeOverlayProvider() : undefined;
@@ -277,7 +324,7 @@ async function run(
       ? resultWithVisualEvidence(
           await executeComputeAction(
             bus,
-            { kind, params: dispatchParams },
+            { kind, params: dispatchParams, ...(signal ? { signal } : {}) },
             {
               tool: command,
               overlayProvider,
@@ -285,7 +332,11 @@ async function run(
             },
           ),
         )
-      : await tryCascade(bus, { kind, params: dispatchParams });
+      : await tryCascade(bus, {
+          kind,
+          params: dispatchParams,
+          ...(signal ? { signal } : {}),
+        });
     if (result.ok && kind === "compute_snapshot") {
       saveRefStore(bus.refs);
     }
@@ -303,31 +354,56 @@ async function runCapture(
   program: Command,
   opts: Record<string, unknown>,
 ): Promise<void> {
+  return runComputeInvocation(() => runCaptureInInvocation(program, opts));
+}
+
+async function runCaptureInInvocation(
+  program: Command,
+  opts: Record<string, unknown>,
+): Promise<void> {
   const startedAt = Date.now();
+  const app = typeof opts.app === "string" ? opts.app : undefined;
+  const snapshotFormat = readSnapshotFormat(program, opts.format, "capture");
+  if (!snapshotFormat.ok) {
+    print(
+      program,
+      "compute.capture",
+      startedAt,
+      invalidOptionResult(
+        "compute_capture",
+        `invalid snapshot format: ${snapshotFormat.value}`,
+        "use --format compact, tree, or json",
+        "compute.capture",
+      ),
+    );
+    return;
+  }
+  const maxDepth = parseInt(String(opts.maxDepth ?? "64"), 10);
+  const screenshotPath =
+    typeof opts.screenshotPath === "string" && opts.screenshotPath
+      ? opts.screenshotPath
+      : undefined;
+  const permissionArguments = {
+    ...opts,
+    format: snapshotFormat.value,
+    maxDepth,
+    ...(screenshotPath ? { screenshotPath } : {}),
+  };
+  const signal = currentBrowserInvocationScope()?.signal;
+  signal?.throwIfAborted();
+  const authorization = await authorizeComputeOperation(
+    "capture",
+    permissionArguments,
+    readComputePermissionOptions(program),
+  );
+  if (!authorization.ok) {
+    print(program, "compute.capture", startedAt, authorization.result);
+    return;
+  }
+  signal?.throwIfAborted();
   const bus = getBus();
   try {
     loadPersistedRefs(bus);
-    const app = typeof opts.app === "string" ? opts.app : undefined;
-    const snapshotFormat = readSnapshotFormat(program, opts.format, "capture");
-    if (!snapshotFormat.ok) {
-      print(
-        program,
-        "compute.capture",
-        startedAt,
-        invalidOptionResult(
-          "compute_capture",
-          `invalid snapshot format: ${snapshotFormat.value}`,
-          "use --format compact, tree, or json",
-          "compute.capture",
-        ),
-      );
-      return;
-    }
-    const maxDepth = parseInt(String(opts.maxDepth ?? "64"), 10);
-    const screenshotPath =
-      typeof opts.screenshotPath === "string" && opts.screenshotPath
-        ? opts.screenshotPath
-        : undefined;
     const result = await captureComputeContext(
       bus,
       {
@@ -337,7 +413,10 @@ async function runCapture(
         maxDepth,
         ...(screenshotPath ? { screenshotPath } : {}),
       },
-      { onSnapshotSuccess: () => saveRefStore(bus.refs) },
+      {
+        onSnapshotSuccess: () => saveRefStore(bus.refs),
+        ...(signal ? { signal } : {}),
+      },
     );
     const shouldSaveReference =
       opts.saveReference === true || opts.copyReference === true;
@@ -347,14 +426,19 @@ async function runCapture(
         typeof opts.referenceRoot === "string" && opts.referenceRoot
           ? opts.referenceRoot
           : undefined;
-      const reference = await saveComputeCaptureReference(
-        result.data,
-        referenceRoot ? { rootDir: referenceRoot } : {},
-      );
+      const reference = await saveComputeCaptureReference(result.data, {
+        ...(referenceRoot ? { rootDir: referenceRoot } : {}),
+        ...(signal ? { signal } : {}),
+      });
+      signal?.throwIfAborted();
       if (opts.copyReference === true) {
         try {
-          await copyReferenceMarkupToClipboard(reference.markup);
+          await copyReferenceMarkupToClipboard(
+            reference.markup,
+            signal ? { signal } : {},
+          );
         } catch (error) {
+          signal?.throwIfAborted();
           printableResult = err({
             transport: "subprocess",
             step: 0,
@@ -385,6 +469,15 @@ async function runCapture(
   } finally {
     await closeTransports(bus);
   }
+}
+
+async function runComputeInvocation<T>(
+  operation: () => Promise<T>,
+): Promise<T> {
+  if (currentBrowserInvocationScope()) return operation();
+  const context = createBrowserInvocationContext({ transport: "cli" });
+  const scope = createBrowserInvocationScope({ context });
+  return runBrowserInvocation(scope, operation);
 }
 
 function loadPersistedRefs(bus: ReturnType<typeof getBus>): void {
@@ -531,6 +624,8 @@ function invalidOptionResult(
 function computeEnvelopeErrorCode(
   minimumCapability: string | undefined,
 ): string {
+  if (minimumCapability === "permission.denied") return "permission_denied";
+  if (minimumCapability === "permission.config") return "invalid_input";
   const reasonCode = minimumCapability?.split(".").at(-1);
   if (
     reasonCode === "foreign_ref" ||
@@ -540,6 +635,23 @@ function computeEnvelopeErrorCode(
     return reasonCode;
   }
   return "compute_failed";
+}
+
+function readComputePermissionOptions(program: Command): {
+  profile?: string;
+  approved?: boolean;
+  rememberApproval?: boolean;
+} {
+  const opts = program.opts() as {
+    permissionProfile?: string;
+    yes?: boolean;
+    rememberApproval?: boolean;
+  };
+  return {
+    profile: opts.permissionProfile,
+    approved: opts.yes === true,
+    rememberApproval: opts.rememberApproval === true,
+  };
 }
 
 function normalizeFocusOptions(

@@ -1,16 +1,26 @@
 /**
- * SubprocessTransport — wraps `child_process.spawn` behind the
- * TransportAdapter interface.
- *
- * Mirrors the contract of the pipeline `exec` step (command + args +
- * stdin + env + cwd + timeout) and adds a lightweight event stream
- * (`stream()`) for callers that want to observe stdout/stderr chunks as
- * they arrive.
+ * @owner       src::transport::adapters::subprocess
+ * @does        Execute commands, waits, and desktop launch plans through request-contained native process groups.
+ * @needs       contained process runner, transport envelopes, event queue
+ * @feeds       compute launch/wait fallback and direct subprocess transport actions
+ * @breaks      Ignoring request cancellation lets launcher descendants mutate the host after the owning Agent turn ends.
+ * @invariants  Abort and timeout await the owned process group; ordinary command failures become envelopes; arbitrary commands and external app delivery are outcome-ambiguous because they may daemonize outside that group.
+ * @side-effects Executes arbitrary declared commands and can launch desktop applications.
+ * @perf        Buffers stdout/stderr once and streams each chunk to observers.
+ * @concurrency Each action owns one process group; event streaming is serialized through one adapter queue.
+ * @test        tests/unit/transport/adapters/subprocess.test.ts and compute launch cancellation blackboxes
+ * @stability   stable
+ * @since       2026-07-15
  */
 
-import { spawn } from "node:child_process";
+import { setTimeout as delay } from "node:timers/promises";
 import { err, exitCodeFor, ok } from "../../core/envelope.js";
 import type { Envelope } from "../../core/envelope.js";
+import {
+  isOperationOutcomeAmbiguousError,
+  runContainedProcess,
+  type CancellationDelivery,
+} from "../contained-process.js";
 import type {
   ActionRequest,
   ActionResult,
@@ -150,7 +160,11 @@ export class SubprocessTransport implements TransportAdapter {
     this.ctx = ctx;
   }
 
-  async snapshot(opts?: { format?: SnapshotFormat }): Promise<Snapshot> {
+  async snapshot(opts?: {
+    format?: SnapshotFormat;
+    signal?: AbortSignal;
+  }): Promise<Snapshot> {
+    opts?.signal?.throwIfAborted();
     const format = opts?.format ?? "text";
     if (format === "json") {
       return {
@@ -164,13 +178,17 @@ export class SubprocessTransport implements TransportAdapter {
   async action<T = unknown>(req: ActionRequest): Promise<ActionResult<T>> {
     const start = Date.now();
     try {
+      req.signal?.throwIfAborted();
       let envelope: Envelope<unknown>;
       switch (req.kind) {
         case "exec":
-          envelope = await this.doExec(req.params as ExecParams);
+          envelope = await this.doExec(req.params as ExecParams, req.signal);
           break;
         case "launch_app":
-          envelope = await this.doLaunch(req.params as LaunchParams);
+          envelope = await this.doLaunch(
+            req.params as LaunchParams,
+            req.signal,
+          );
           break;
         case "wait": {
           const p = req.params as { seconds?: unknown; ms?: unknown };
@@ -180,7 +198,13 @@ export class SubprocessTransport implements TransportAdapter {
               : typeof p.seconds === "number"
                 ? p.seconds * 1000
                 : 0;
-          if (ms > 0) await new Promise((r) => setTimeout(r, ms));
+          if (ms > 0) {
+            await delay(
+              ms,
+              undefined,
+              req.signal ? { signal: req.signal } : {},
+            );
+          }
           envelope = ok(undefined);
           break;
         }
@@ -198,6 +222,8 @@ export class SubprocessTransport implements TransportAdapter {
       envelope.elapsedMs = Date.now() - start;
       return envelope as ActionResult<T>;
     } catch (e) {
+      if (isOperationOutcomeAmbiguousError(e)) throw e;
+      req.signal?.throwIfAborted();
       const msg = e instanceof Error ? e.message : String(e);
       return err({
         transport: "subprocess",
@@ -237,7 +263,10 @@ export class SubprocessTransport implements TransportAdapter {
 
   // ── internals ────────────────────────────────────────────────────
 
-  private async doLaunch(p: LaunchParams): Promise<Envelope<ExecOutcome>> {
+  private async doLaunch(
+    p: LaunchParams,
+    signal?: AbortSignal,
+  ): Promise<Envelope<ExecOutcome>> {
     const app = typeof p.app === "string" ? p.app.trim() : "";
     if (!app) {
       return err({
@@ -259,14 +288,22 @@ export class SubprocessTransport implements TransportAdapter {
           ? Number(p.debugPort)
           : undefined;
     const plan = launchPlanForPlatform(process.platform, app, args, debugPort);
-    return this.doExec({
-      command: plan.command,
-      args: plan.args,
-      timeoutMs: p.timeoutMs,
-    });
+    return this.doExec(
+      {
+        command: plan.command,
+        args: plan.args,
+        timeoutMs: p.timeoutMs,
+      },
+      signal,
+      "outcome-ambiguous",
+    );
   }
 
-  private async doExec(p: ExecParams): Promise<Envelope<ExecOutcome>> {
+  private async doExec(
+    p: ExecParams,
+    signal?: AbortSignal,
+    cancellationDelivery: CancellationDelivery = "outcome-ambiguous",
+  ): Promise<Envelope<ExecOutcome>> {
     const command = typeof p.command === "string" ? p.command : undefined;
     if (!command) {
       return err({
@@ -296,96 +333,44 @@ export class SubprocessTransport implements TransportAdapter {
           ? Number(p.timeoutMs)
           : undefined;
 
-    return new Promise<Envelope<ExecOutcome>>((resolve) => {
-      let settled = false;
-      let child;
-      try {
-        child = spawn(command, args, {
-          cwd,
-          env,
-          timeout,
-          stdio: ["pipe", "pipe", "pipe"],
-        });
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        resolve(
-          err({
-            transport: "subprocess",
-            step: 0,
-            action: "exec",
-            reason: msg,
-            suggestion: `check that \`${command}\` is installed and on PATH`,
-            retryable: false,
-          }),
-        );
-        return;
-      }
-
-      const stdoutChunks: Buffer[] = [];
-      const stderrChunks: Buffer[] = [];
-
-      child.stdout?.on("data", (chunk: Buffer) => {
-        stdoutChunks.push(chunk);
+    const result = await runContainedProcess(command, args, {
+      ...(cwd ? { cwd } : {}),
+      ...(env ? { env } : {}),
+      ...(stdin === undefined ? {} : { input: stdin }),
+      ...(timeout === undefined ? {} : { timeoutMs: timeout }),
+      ...(signal ? { signal } : {}),
+      cancellationDelivery,
+      onStdout: (chunk) => {
         this.queue.push({
           ts: Date.now(),
           kind: "stdout",
           payload: chunk.toString("utf8"),
         });
-      });
-      child.stderr?.on("data", (chunk: Buffer) => {
-        stderrChunks.push(chunk);
+      },
+      onStderr: (chunk) => {
         this.queue.push({
           ts: Date.now(),
           kind: "stderr",
           payload: chunk.toString("utf8"),
         });
-      });
-
-      child.on("error", (error) => {
-        if (settled) return;
-        settled = true;
-        resolve(
-          err({
-            transport: "subprocess",
-            step: 0,
-            action: "exec",
-            reason: error.message,
-            suggestion: `check that \`${command}\` is installed and on PATH`,
-            retryable: false,
-          }),
-        );
-      });
-
-      child.on("close", (code, signal) => {
-        if (settled) return;
-        settled = true;
-        const stdout = Buffer.concat(stdoutChunks).toString("utf8");
-        const stderr = Buffer.concat(stderrChunks).toString("utf8");
-        const exitCode = code ?? (signal ? 1 : 0);
-        const outcome: ExecOutcome = { stdout, stderr, exitCode };
-        this.lastOutcome = outcome;
-        if (exitCode !== 0) {
-          resolve(
-            err({
-              transport: "subprocess",
-              step: 0,
-              action: "exec",
-              reason: `process \`${command}\` exited with code ${exitCode}${
-                stderr ? `: ${stderr.slice(0, 200)}` : ""
-              }`,
-              suggestion: "inspect stderr for the failure cause",
-              retryable: false,
-            }),
-          );
-          return;
-        }
-        resolve(ok(outcome));
-      });
-
-      if (stdin !== undefined) {
-        child.stdin?.write(stdin);
-        child.stdin?.end();
-      }
+      },
     });
+    const outcome: ExecOutcome = {
+      stdout: result.stdout,
+      stderr: result.stderr,
+      exitCode: result.exitCode,
+    };
+    this.lastOutcome = outcome;
+    if (outcome.exitCode !== 0) {
+      return err({
+        transport: "subprocess",
+        step: 0,
+        action: "exec",
+        reason: `process \`${command}\` exited with code ${String(outcome.exitCode)}${outcome.stderr ? `: ${outcome.stderr.slice(0, 200)}` : ""}`,
+        suggestion: "inspect stderr for the failure cause",
+        retryable: false,
+      });
+    }
+    return ok(outcome);
   }
 }

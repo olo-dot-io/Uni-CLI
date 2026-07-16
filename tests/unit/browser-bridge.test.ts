@@ -1,16 +1,23 @@
 import { randomUUID } from "node:crypto";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { BrowserBridge } from "../../src/browser/bridge.js";
+import { BrowserBridge, BrowserBrokerPage } from "../../src/browser/bridge.js";
 import { createBrowserInvocationContext } from "../../src/browser/invocation-context.js";
 import {
   createBrowserInvocationScope,
   runBrowserInvocation,
 } from "../../src/browser/invocation-scope.js";
+import { BROWSER_BROKER_PROTOCOL_VERSION } from "../../src/browser/runtime-protocol.js";
 import type {
   BrowserBrokerRequest,
   BrowserBrokerResponse,
@@ -18,6 +25,7 @@ import type {
   BrowserTargetCommandResult,
 } from "../../src/browser/runtime-protocol.js";
 import { BrowserRuntimeBrokerServer } from "../../src/browser/runtime-transport.js";
+import { InMemoryBrowserRuntimeHarness } from "../helpers/in-memory-browser-runtime.js";
 
 let runtimeRoot: string | null = null;
 let server: BrowserRuntimeBrokerServer | null = null;
@@ -74,6 +82,63 @@ describe("broker-backed browser bridge", () => {
     await bridge.close();
   });
 
+  it("rejects a sequential reconnect that changes the connected Agent identity", async () => {
+    const requests: BrowserBrokerRequest[] = [];
+    await startRecordingBroker(requests);
+    const bridge = new BrowserBridge();
+    const first = await bridge.connect({
+      runtimeRoot: runtimeRoot!,
+      sessionId: "first-agent",
+      turnId: "first-turn",
+      profilePartitionId: "first-profile",
+    });
+
+    await expect(
+      bridge.connect({
+        runtimeRoot: runtimeRoot!,
+        sessionId: "second-agent",
+        turnId: "second-turn",
+        profilePartitionId: "second-profile",
+      }),
+    ).rejects.toThrow("cannot change Agent identity");
+    expect(
+      (first as { scope?: { context: { agent_session_id: string } } }).scope,
+    ).toMatchObject({ context: { agent_session_id: "first-agent" } });
+    await bridge.close();
+  });
+
+  it("retries turn cleanup after a response-level transport failure", async () => {
+    const requests: BrowserBrokerRequest[] = [];
+    let turnEndAttempts = 0;
+    await startRecordingBroker(requests, (request, runtimeId) => {
+      if (request.action === "turn.end" && ++turnEndAttempts === 1) {
+        return {
+          id: request.id,
+          ok: false,
+          error: {
+            code: "browser_broker_unavailable",
+            message: "injected response loss",
+            suggestion: "Retry the idempotent lifecycle request.",
+            retryable: true,
+          },
+        };
+      }
+      return responseFor(request, runtimeId);
+    });
+    const bridge = new BrowserBridge();
+    await bridge.connect({
+      runtimeRoot: runtimeRoot!,
+      sessionId: "cleanup-agent",
+      turnId: "cleanup-turn",
+    });
+
+    await expect(bridge.close()).rejects.toMatchObject({
+      code: "browser_broker_unavailable",
+    });
+    await expect(bridge.close()).resolves.toBeUndefined();
+    expect(turnEndAttempts).toBe(2);
+  });
+
   it("carries explicit CLI identity and reuses its owned target without a provider fallback", async () => {
     const requests: BrowserBrokerRequest[] = [];
     await startRecordingBroker(requests);
@@ -124,9 +189,98 @@ describe("broker-backed browser bridge", () => {
     expect(commands[1]).toMatchObject({ target_id: "target-owned" });
   });
 
-  it("finalizes an MCP turn once after all page work and retains its session target", async () => {
+  it("sends a coordinate click as one broker mutation", async () => {
     const requests: BrowserBrokerRequest[] = [];
     await startRecordingBroker(requests);
+    const bridge = new BrowserBridge();
+    const page = await bridge.connect({
+      runtimeRoot: runtimeRoot!,
+      sessionId: "native-click-agent",
+      turnId: "native-click-turn",
+    });
+
+    await page.nativeClick(23, 47);
+    await bridge.close();
+
+    expect(
+      requests.filter((request) => request.action === "target.command"),
+    ).toEqual([
+      expect.objectContaining({
+        command: { method: "native_click", x: 23, y: 47 },
+      }),
+    ]);
+  });
+
+  it.each([
+    { code: "browser_target_discarded", retryable: true },
+    { code: "browser_target_unusable", retryable: true },
+    { code: "browser_command_outcome_ambiguous", retryable: false },
+    { code: "browser_command_canceled", retryable: false },
+  ])(
+    "clears a cached target after $code without replaying the failed command",
+    async ({ code, retryable }) => {
+      const requests: BrowserBrokerRequest[] = [];
+      let rejectedCachedTarget = false;
+      await startRecordingBroker(requests, (request, runtimeId) => {
+        if (
+          request.action === "target.command" &&
+          request.target_id &&
+          !rejectedCachedTarget
+        ) {
+          rejectedCachedTarget = true;
+          return {
+            id: request.id,
+            ok: false,
+            error: {
+              code,
+              message: "cached target lease was invalidated",
+              suggestion: "Issue the next command without the old target id.",
+              retryable,
+            },
+          };
+        }
+        return responseFor(request, runtimeId);
+      });
+      const bridge = new BrowserBridge();
+      const page = await bridge.connect({
+        runtimeRoot: runtimeRoot!,
+        sessionId: "stale-target-agent",
+        turnId: "stale-target-turn",
+      });
+
+      await expect(page.title()).resolves.toBe("Example title");
+      await expect(page.title()).rejects.toMatchObject({ code, retryable });
+      expect(
+        requests.filter((request) => request.action === "target.command"),
+      ).toHaveLength(2);
+
+      await expect(page.title()).resolves.toBe("Example title");
+      const commands = requests.filter(
+        (request) => request.action === "target.command",
+      );
+      expect(commands).toHaveLength(3);
+      expect(commands[1]).toMatchObject({ target_id: "target-owned" });
+      expect(commands[2]).not.toHaveProperty("target_id");
+      await bridge.close();
+    },
+  );
+
+  it("finalizes an MCP turn once after all page work and retains its session target", async () => {
+    const requests: BrowserBrokerRequest[] = [];
+    await startRecordingBroker(requests, (request, runtimeId) => {
+      if (request.action === "session.start") {
+        return {
+          id: request.id,
+          ok: true,
+          data: {
+            agent_session_id: request.context.agent_session_id,
+            turn_id: request.context.turn_id,
+            session_ttl_ms: 30,
+          },
+        };
+      }
+      return responseFor(request, runtimeId);
+    });
     const scope = createBrowserInvocationScope({
       context: createBrowserInvocationContext({
         transport: "mcp-http",
@@ -144,11 +298,26 @@ describe("broker-backed browser bridge", () => {
         second.connect({ runtimeRoot: runtimeRoot! }),
       ]);
       await Promise.all([left.url(), right.title()]);
+      await expect
+        .poll(
+          () =>
+            requests.filter((request) => request.action === "turn.touch")
+              .length,
+          { timeout: 500, interval: 5 },
+        )
+        .toBeGreaterThanOrEqual(2);
     });
 
+    const touchCount = requests.filter(
+      (request) => request.action === "turn.touch",
+    ).length;
+    await new Promise((resolve) => setTimeout(resolve, 60));
     expect(
       requests.filter((request) => request.action === "turn.end"),
     ).toHaveLength(1);
+    expect(
+      requests.filter((request) => request.action === "turn.touch"),
+    ).toHaveLength(touchCount);
     expect(
       requests.filter((request) => request.action === "session.end"),
     ).toHaveLength(0);
@@ -161,6 +330,81 @@ describe("broker-backed browser bridge", () => {
             request.context.turn_id === "mcp-turn",
         ),
     ).toBe(true);
+  });
+
+  it("cancels a browser wait immediately and finalizes its turn", async () => {
+    const requests: BrowserBrokerRequest[] = [];
+    await startRecordingBroker(requests);
+    const controller = new AbortController();
+    const scope = createBrowserInvocationScope({
+      context: createBrowserInvocationContext({
+        transport: "mcp-http",
+        agentSessionId: "cancelled-wait-session",
+        turnId: "cancelled-wait-turn",
+      }),
+      signal: controller.signal,
+    });
+    const startedAt = Date.now();
+
+    await expect(
+      runBrowserInvocation(scope, async () => {
+        const page = await new BrowserBridge().connect({
+          runtimeRoot: runtimeRoot!,
+        });
+        const waiting = page.wait(60);
+        controller.abort(new Error("cancelled browser wait"));
+        await waiting;
+      }),
+    ).rejects.toThrow("cancelled browser wait");
+
+    expect(Date.now() - startedAt).toBeLessThan(1_000);
+    expect(
+      requests.filter((request) => request.action === "turn.end"),
+    ).toHaveLength(1);
+  });
+
+  it("keeps an active Agent turn and target leased during a local wait longer than the broker TTL", async () => {
+    let now = 0;
+    const runtime = new InMemoryBrowserRuntimeHarness({
+      now: () => now,
+      sessionTtlMs: 90,
+    });
+    const bridge = new BrowserBridge();
+    await runtime.start();
+    try {
+      const page = await bridge.connect({
+        runtimeRoot: runtime.runtimeRoot,
+        sessionId: "long-wait-agent",
+        turnId: "long-wait-turn",
+      });
+      await expect(page.title()).resolves.toBe("Blank");
+      const targetId =
+        runtime.broker.status().sessions.target_leases[0]!.target_id;
+      const waiting = page.wait(0.2);
+
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      now = 1_000;
+      await expect
+        .poll(
+          () => runtime.broker.status().sessions.sessions[0]?.last_activity_ms,
+          { timeout: 1_000, interval: 10 },
+        )
+        .toBe(1_000);
+      now = 1_050;
+
+      await expect(runtime.broker.reapIdleSessions()).resolves.toEqual([]);
+      expect(runtime.broker.status().sessions.target_leases).toEqual([
+        expect.objectContaining({ target_id: targetId }),
+      ]);
+      await waiting;
+      await expect(page.title()).resolves.toBe("Blank");
+      expect(runtime.broker.status().sessions.target_leases[0]?.target_id).toBe(
+        targetId,
+      );
+    } finally {
+      await bridge.close().catch(() => undefined);
+      await runtime.cleanup();
+    }
   });
 
   it("accepts a value-equivalent explicit context inside its trusted invocation scope", async () => {
@@ -271,10 +515,50 @@ describe("broker-backed browser bridge", () => {
       },
     });
   });
+
+  it("preserves an existing screenshot when cancellation wins before artifact commit", async () => {
+    runtimeRoot = mkdtempSync(join(tmpdir(), "unicli-bridge-screenshot-"));
+    const outputPath = join(runtimeRoot, "capture.png");
+    writeFileSync(outputPath, "previous-capture");
+    const controller = new AbortController();
+    const cancellation = new Error("cancel screenshot artifact");
+    // REASON: this client is the external broker-response boundary; screenshot decoding, cancellation, and filesystem publication remain real.
+    const client = {
+      async requestOrThrow(): Promise<BrowserTargetCommandResult> {
+        queueMicrotask(() => controller.abort(cancellation));
+        return {
+          target_id: "target-owned",
+          runtime_id: "runtime-owned",
+          provider: "managed",
+          visibility: "hidden",
+          data: Buffer.from("replacement-capture").toString("base64"),
+        };
+      },
+    };
+    const scope = createBrowserInvocationScope({
+      context: createBrowserInvocationContext({
+        transport: "cli",
+        agentSessionId: "screenshot-agent",
+        turnId: "screenshot-turn",
+      }),
+      signal: controller.signal,
+    });
+    const page = new BrowserBrokerPage(client as never, scope, 0);
+
+    await expect(page.screenshot({ path: outputPath })).rejects.toBe(
+      cancellation,
+    );
+    expect(readFileSync(outputPath, "utf8")).toBe("previous-capture");
+    expect(readdirSync(runtimeRoot)).toEqual(["capture.png"]);
+  });
 });
 
 async function startRecordingBroker(
   requests: BrowserBrokerRequest[],
+  responder: (
+    request: BrowserBrokerRequest,
+    runtimeId: string,
+  ) => BrowserBrokerResponse = responseFor,
 ): Promise<void> {
   runtimeRoot = mkdtempSync(join(tmpdir(), "unicli-bridge-unit-"));
   const runtimeId = randomUUID();
@@ -283,7 +567,7 @@ async function startRecordingBroker(
     runtimeId,
     handler: async (request) => {
       requests.push(request);
-      return responseFor(request, runtimeId);
+      return responder(request, runtimeId);
     },
   });
   await server.start();
@@ -346,7 +630,7 @@ function status(runtimeId: string): BrowserBrokerStatus {
     ok: true,
     product: "unicli",
     protocol: "unicli-browser-runtime",
-    version: 1,
+    version: BROWSER_BROKER_PROTOCOL_VERSION,
     runtime_id: runtimeId,
     broker_pid: process.pid,
     uptime_ms: 1,

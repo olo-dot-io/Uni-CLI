@@ -11,6 +11,7 @@ import {
   VisualTransport,
   MockBackend,
   RemoteVisualBackend,
+  UnavailableVisualBackend,
   selectVisualBackend,
   type VisualBackend,
   type VisualEnv,
@@ -23,10 +24,17 @@ function makeCtx(): TransportContext {
 }
 
 describe("selectVisualBackend", () => {
-  it("falls back to MockBackend when VISUAL_BACKEND is unset", () => {
+  it("fails closed when VISUAL_BACKEND is unset", () => {
     const env: VisualEnv = {};
     const backend = selectVisualBackend(env);
+    expect(backend.name).toBe("unavailable");
+    expect(backend).toBeInstanceOf(UnavailableVisualBackend);
+  });
+
+  it("selects MockBackend only when explicitly requested", () => {
+    const backend = selectVisualBackend({ VISUAL_BACKEND: "mock" });
     expect(backend.name).toBe("mock");
+    expect(backend).toBeInstanceOf(MockBackend);
   });
 
   it("selects RemoteVisualBackend when a remote endpoint is configured", () => {
@@ -40,16 +48,18 @@ describe("selectVisualBackend", () => {
     expect(backend).toBeInstanceOf(RemoteVisualBackend);
   });
 
-  it("falls back to mock when VISUAL_BACKEND=remote but no endpoint", () => {
+  it("fails closed when VISUAL_BACKEND=remote has no endpoint", () => {
     const env: VisualEnv = { VISUAL_BACKEND: "remote" };
     const backend = selectVisualBackend(env);
-    expect(backend.name).toBe("mock");
+    expect(backend.name).toBe("unavailable");
+    expect(backend).toBeInstanceOf(UnavailableVisualBackend);
   });
 
-  it("treats unknown VISUAL_BACKEND values as mock fallback", () => {
+  it("fails closed for unknown VISUAL_BACKEND values", () => {
     const env: VisualEnv = { VISUAL_BACKEND: "no-such-backend" };
     const backend = selectVisualBackend(env);
-    expect(backend.name).toBe("mock");
+    expect(backend.name).toBe("unavailable");
+    expect(backend).toBeInstanceOf(UnavailableVisualBackend);
   });
 });
 
@@ -209,6 +219,164 @@ describe("VisualTransport", () => {
     }
   });
 
+  it("fails default actions and snapshots instead of fabricating mock success", async () => {
+    const transport = new VisualTransport({ env: {} });
+
+    const action = await transport.action({
+      kind: "visual_click",
+      params: { x: 10, y: 20 },
+    });
+    expect(action).toMatchObject({
+      ok: false,
+      error: {
+        exit_code: 78,
+        reason: expect.stringContaining("mock must be selected explicitly"),
+      },
+    });
+    await expect(transport.snapshot()).rejects.toThrow(
+      /mock must be selected explicitly/,
+    );
+  });
+
+  it("invalidates a cached screenshot after mutation and backend replacement", async () => {
+    const first = new MockBackend();
+    const second = new MockBackend();
+    const transport = new VisualTransport({ backend: first });
+
+    await transport.snapshot();
+    await transport.snapshot();
+    expect(
+      first.history.filter(({ verb }) => verb === "snapshot"),
+    ).toHaveLength(1);
+
+    const click = await transport.action({
+      kind: "visual_click",
+      params: { x: 10, y: 20 },
+    });
+    expect(click.ok).toBe(true);
+    await transport.snapshot();
+    expect(
+      first.history.filter(({ verb }) => verb === "snapshot"),
+    ).toHaveLength(2);
+
+    transport.setBackend(second);
+    await transport.snapshot();
+    expect(
+      second.history.filter(({ verb }) => verb === "snapshot"),
+    ).toHaveLength(1);
+  });
+
+  it("invalidates a cached screenshot before a dispatched mutation loses its acknowledgement", async () => {
+    let captures = 0;
+    const backend: VisualBackend = {
+      name: "mock",
+      cancellation: "request-contained-v1",
+      async snapshot() {
+        captures++;
+        return { base64: "", width: captures, height: 1 };
+      },
+      async click() {
+        throw new Error("click completed but acknowledgement was lost");
+      },
+      async type() {},
+      async key() {},
+      async scroll() {},
+      async drag() {},
+      async wait() {},
+    };
+    const transport = new VisualTransport({ backend });
+
+    expect((await transport.snapshot()).width).toBe(1);
+    const mutation = await transport.action({
+      kind: "visual_click",
+      params: { x: 10, y: 20 },
+    });
+    expect(mutation.ok).toBe(false);
+    expect((await transport.snapshot()).width).toBe(2);
+  });
+
+  it("fails visual_assert when the backend cannot evaluate predicates", async () => {
+    const backend: VisualBackend = {
+      name: "mock",
+      cancellation: "request-contained-v1",
+      async snapshot() {
+        return { base64: "", width: 0, height: 0 };
+      },
+      async click() {},
+      async type() {},
+      async key() {},
+      async scroll() {},
+      async drag() {},
+      async wait() {},
+    };
+    const transport = new VisualTransport({ backend });
+
+    const result = await transport.action({
+      kind: "visual_assert",
+      params: { predicate: "the dialog is open" },
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        exit_code: 69,
+        minimum_capability: "visual.assert",
+      },
+    });
+  });
+
+  it("fails closed before invoking a legacy backend without cancellation containment", async () => {
+    let invoked = false;
+    const legacyBackend = {
+      name: "mock" as const,
+      async snapshot() {
+        return { base64: "", width: 0, height: 0 };
+      },
+      async click() {
+        invoked = true;
+      },
+      async type() {},
+      async key() {},
+      async scroll() {},
+      async drag() {},
+      async wait() {},
+    } as unknown as VisualBackend;
+    const transport = new VisualTransport({ backend: legacyBackend });
+    await transport.open(makeCtx());
+
+    const result = await transport.action({
+      kind: "visual_click",
+      params: { x: 10, y: 20 },
+      signal: new AbortController().signal,
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        exit_code: 78,
+        reason: expect.stringContaining("request-contained-v1"),
+      },
+    });
+    expect(invoked).toBe(false);
+  });
+
+  it("propagates active wait cancellation through the backend contract", async () => {
+    const transport = new VisualTransport({
+      backend: new RemoteVisualBackend("http://localhost:8800"),
+    });
+    await transport.open(makeCtx());
+    const controller = new AbortController();
+    const cancellation = new Error("cancel visual wait");
+    const action = transport.action({
+      kind: "visual_wait",
+      params: { ms: 10_000 },
+      signal: controller.signal,
+    });
+    controller.abort(cancellation);
+
+    await expect(action).rejects.toBe(cancellation);
+  });
+
   it("visual_launch uses the backend launch when available", async () => {
     const backend = new MockBackend();
     const t = new VisualTransport({ backend });
@@ -224,6 +392,7 @@ describe("VisualTransport", () => {
   it("visual_launch on a backend without launch() returns service_unavailable", async () => {
     const minimal: VisualBackend = {
       name: "mock",
+      cancellation: "request-contained-v1",
       async snapshot() {
         return { base64: "", width: 0, height: 0 };
       },

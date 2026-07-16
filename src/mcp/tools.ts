@@ -1,5 +1,10 @@
 /**
- * MCP tool-definition builders.
+ * @owner       src/mcp/tools.ts
+ * @does        Build compact, expanded, deferred, and computer-use MCP tool definitions with cancellable handler contracts.
+ * @needs       registry, command contracts, MCP schemas/profiles
+ * @feeds       MCP handler and every MCP transport profile
+ * @breaks      Tool/schema/handler/task-support drift breaks discovery, durable mutation execution, or request cancellation across MCP clients.
+ * @invariants  Read-only tools permit tasks while every statically mutating tool requires task augmentation.
  *
  * Three build modes:
  *   1. `buildDefaultTools()`  — 4 meta-tools (~200 tokens handshake)
@@ -33,6 +38,14 @@ export interface McpToolAnnotations {
   openWorldHint?: boolean;
 }
 
+export interface McpToolExecution {
+  taskSupport: "forbidden" | "optional" | "required";
+}
+
+export interface McpToolExecutionContext {
+  signal?: AbortSignal;
+}
+
 export interface McpTool {
   name: string;
   description: string;
@@ -40,8 +53,10 @@ export interface McpTool {
   outputSchema?: JsonSchemaObject;
   _meta?: Record<string, unknown>;
   annotations?: McpToolAnnotations;
+  execution?: McpToolExecution;
   handler?: (
     args: Record<string, unknown>,
+    context?: McpToolExecutionContext,
   ) => McpToolResult | Promise<McpToolResult>;
 }
 
@@ -93,6 +108,14 @@ function annotationsForCommand(
   };
 }
 
+function executionForAnnotations(
+  annotations: McpToolAnnotations,
+): McpToolExecution {
+  return {
+    taskSupport: annotations.readOnlyHint === true ? "optional" : "required",
+  };
+}
+
 export function buildDefaultTools(): McpTool[] {
   return [
     {
@@ -128,6 +151,7 @@ export function buildDefaultTools(): McpTool[] {
         idempotentHint: false,
         openWorldHint: true,
       },
+      execution: { taskSupport: "required" },
     },
     {
       name: "unicli_list",
@@ -162,6 +186,7 @@ export function buildDefaultTools(): McpTool[] {
         idempotentHint: true,
         openWorldHint: false,
       },
+      execution: { taskSupport: "optional" },
     },
     {
       name: "unicli_search",
@@ -198,6 +223,7 @@ export function buildDefaultTools(): McpTool[] {
         idempotentHint: true,
         openWorldHint: false,
       },
+      execution: { taskSupport: "optional" },
     },
     {
       name: "unicli_explore",
@@ -224,6 +250,7 @@ export function buildDefaultTools(): McpTool[] {
         idempotentHint: false,
         openWorldHint: true,
       },
+      execution: { taskSupport: "required" },
     },
   ];
 }
@@ -315,6 +342,7 @@ export function buildExpandedTools(): McpTool[] {
     }
     seen.add(toolName);
     expandedRegistry.set(toolName, { adapter, cmdName, cmd });
+    const annotations = annotationsForCommand(adapter, cmdName, cmd);
     tools.push({
       name: toolName,
       description: truncateDescription(`[${adapter.name}] ${rawDesc}`),
@@ -323,7 +351,8 @@ export function buildExpandedTools(): McpTool[] {
       _meta: {
         "anthropic/searchHint": `${adapter.name}: ${rawDesc}`,
       },
-      annotations: annotationsForCommand(adapter, cmdName, cmd),
+      annotations,
+      execution: executionForAnnotations(annotations),
     });
   }
 
@@ -365,6 +394,7 @@ export function buildDeferredTools(): McpTool[] {
 
     // Lightweight stub: name + searchHint + minimal schema.
     // Full inputSchema is resolved at call time via expandedRegistry.
+    const annotations = annotationsForCommand(adapter, cmdName, cmd);
     tools.push({
       name: toolName,
       description: truncateDescription(`[${adapter.name}] ${rawDesc}`),
@@ -381,7 +411,8 @@ export function buildDeferredTools(): McpTool[] {
       _meta: {
         "anthropic/searchHint": `${adapter.name}: ${rawDesc}`,
       },
-      annotations: annotationsForCommand(adapter, cmdName, cmd),
+      annotations,
+      execution: executionForAnnotations(annotations),
     });
   }
 

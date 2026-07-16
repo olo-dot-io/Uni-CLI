@@ -1,5 +1,17 @@
 /**
  * Core type definitions for unicli adapter system.
+ * @owner       src::types
+ * @does        Define adapter manifests, browser-page operations, pipeline steps, and shared output/network contracts.
+ * @needs       TypeScript standard types only.
+ * @feeds       Every adapter, engine, browser provider, command, and transport.
+ * @breaks      Compile-time contract mismatches across public Uni-CLI surfaces.
+ * @invariants  Every potentially blocking page operation accepts request cancellation without making cleanup cancellable.
+ * @side-effects none
+ * @perf        Type-only declarations.
+ * @concurrency AbortSignal parameters carry caller ownership across asynchronous page operations.
+ * @test        npm run typecheck and browser/engine behavior suites
+ * @stability   stable
+ * @since       2026-04-01
  *
  * Five adapter types cover the full spectrum:
  *   web-api   → REST API calls (public or authenticated via browser cookies)
@@ -277,43 +289,67 @@ export interface IPage {
   goto(
     url: string,
     options?: { settleMs?: number; waitUntil?: string },
+    signal?: AbortSignal,
   ): Promise<void>;
 
   // Evaluation
-  evaluate(script: string): Promise<unknown>;
+  evaluate(script: string, signal?: AbortSignal): Promise<unknown>;
 
   // Waiting
-  wait(seconds: number): Promise<void>;
-  waitForSelector(selector: string, timeout?: number): Promise<void>;
-  waitFor(condition: number | string, timeout?: number): Promise<void>;
+  wait(seconds: number, signal?: AbortSignal): Promise<void>;
+  waitForSelector(
+    selector: string,
+    timeout?: number,
+    signal?: AbortSignal,
+  ): Promise<void>;
+  waitFor(
+    condition: number | string,
+    timeout?: number,
+    signal?: AbortSignal,
+  ): Promise<void>;
 
   // Interaction
-  click(selector: string): Promise<void>;
-  type(selector: string, text: string): Promise<void>;
-  press(key: string, modifiers?: string[]): Promise<void>;
-  insertText(text: string): Promise<void>;
-  scroll(direction: "down" | "up" | "bottom" | "top"): Promise<void>;
-  autoScroll(opts?: { maxScrolls?: number; delay?: number }): Promise<void>;
+  click(selector: string, signal?: AbortSignal): Promise<void>;
+  type(selector: string, text: string, signal?: AbortSignal): Promise<void>;
+  press(key: string, modifiers?: string[], signal?: AbortSignal): Promise<void>;
+  insertText(text: string, signal?: AbortSignal): Promise<void>;
+  scroll(
+    direction: "down" | "up" | "bottom" | "top",
+    signal?: AbortSignal,
+  ): Promise<void>;
+  autoScroll(
+    opts?: { maxScrolls?: number; delay?: number },
+    signal?: AbortSignal,
+  ): Promise<void>;
 
   // Native CDP input (coordinate-based)
-  nativeClick(x: number, y: number): Promise<void>;
-  nativeKeyPress(key: string, modifiers?: string[]): Promise<void>;
-  setFileInput(selector: string, files: string[]): Promise<void>;
+  nativeClick(x: number, y: number, signal?: AbortSignal): Promise<void>;
+  nativeKeyPress(
+    key: string,
+    modifiers?: string[],
+    signal?: AbortSignal,
+  ): Promise<void>;
+  setFileInput(
+    selector: string,
+    files: string[],
+    signal?: AbortSignal,
+  ): Promise<void>;
 
   // Data extraction
-  cookies(): Promise<Record<string, string>>;
-  title(): Promise<string>;
-  url(): Promise<string>;
-  snapshot(opts?: SnapshotOptions): Promise<string>;
-  screenshot(opts?: ScreenshotOptions): Promise<Buffer>;
-  networkRequests(): Promise<NetworkRequest[]>;
+  cookies(signal?: AbortSignal): Promise<Record<string, string>>;
+  title(signal?: AbortSignal): Promise<string>;
+  url(signal?: AbortSignal): Promise<string>;
+  snapshot(opts?: SnapshotOptions, signal?: AbortSignal): Promise<string>;
+  screenshot(opts?: ScreenshotOptions, signal?: AbortSignal): Promise<Buffer>;
+  networkRequests(signal?: AbortSignal): Promise<NetworkRequest[]>;
 
   // Lifecycle
-  addInitScript(source: string): Promise<void>;
+  addInitScript(source: string, signal?: AbortSignal): Promise<void>;
   sendCDP(
     method: string,
     params?: Record<string, unknown>,
     sessionId?: string,
+    signal?: AbortSignal,
   ): Promise<unknown>;
   close(): Promise<void>;
   closeWindow(): Promise<void>;

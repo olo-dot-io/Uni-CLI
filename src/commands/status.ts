@@ -175,7 +175,9 @@ async function probeRuntime(): Promise<{
   error?: string;
 }> {
   try {
-    const connection = await probeBrowserRuntimeBroker({ timeoutMs: 1_000 });
+    const connection = await probeBrowserRuntimeBroker({
+      requestTimeoutMs: 1_000,
+    });
     return { state: "running", status: connection.status };
   } catch (error) {
     const code =

@@ -4,6 +4,7 @@ members = [
   "crates/unicli-shared",
   "crates/unicli-uia",
   "crates/unicli-atspi",
+  "crates/unicli-process-owner",
 ]
 
 [workspace.package]

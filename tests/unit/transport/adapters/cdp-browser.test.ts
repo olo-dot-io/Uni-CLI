@@ -7,6 +7,11 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
+import { createBrowserInvocationContext } from "../../../../src/browser/invocation-context.js";
+import {
+  createBrowserInvocationScope,
+  runBrowserInvocation,
+} from "../../../../src/browser/invocation-scope.js";
 import { CdpBrowserTransport } from "../../../../src/transport/adapters/cdp-browser.js";
 import { createTransportBus } from "../../../../src/transport/bus.js";
 import type { TransportContext } from "../../../../src/transport/types.js";
@@ -396,6 +401,128 @@ describe("CdpBrowserTransport", () => {
       "ws://127.0.0.1:9240/page-1",
     );
     expect(page.evaluate).toHaveBeenCalledWith("document.title");
+  });
+
+  it("replaces an explicit endpoint instead of silently controlling the previous port", async () => {
+    const firstPage = makeMockPage({
+      evaluate: vi.fn().mockResolvedValue("first"),
+    });
+    const secondPage = makeMockPage({
+      evaluate: vi.fn().mockResolvedValue("second"),
+    });
+    const pageConnector = vi
+      .fn()
+      .mockResolvedValueOnce(firstPage)
+      .mockResolvedValueOnce(secondPage);
+    const transport = new CdpBrowserTransport({
+      pageFactory: async () => {
+        throw new Error("explicit endpoints must not use the default page");
+      },
+      pageConnector,
+      cdpProbe: vi.fn(),
+    });
+    await transport.open(makeCtx());
+
+    await transport.action({
+      kind: "evaluate",
+      params: { script: "location.href", port: 9222 },
+    });
+    const switched = await transport.action<string>({
+      kind: "evaluate",
+      params: { script: "location.href", port: 9333 },
+    });
+
+    expect(switched).toMatchObject({ ok: true, data: "second" });
+    expect(pageConnector).toHaveBeenNthCalledWith(1, 9222, undefined);
+    expect(pageConnector).toHaveBeenNthCalledWith(2, 9333, undefined);
+    expect(firstPage.close).toHaveBeenCalledOnce();
+    expect(secondPage.evaluate).toHaveBeenCalledWith("location.href");
+  });
+
+  it("keeps same-Agent explicit attachments isolated by turn and closes each at its own boundary", async () => {
+    const firstPage = makeMockPage();
+    const secondPage = makeMockPage();
+    const pageConnector = vi
+      .fn()
+      .mockResolvedValueOnce(firstPage)
+      .mockResolvedValueOnce(secondPage);
+    const transport = new CdpBrowserTransport({
+      pageFactory: async () => {
+        throw new Error("explicit endpoints must not use the default page");
+      },
+      pageConnector,
+      cdpProbe: vi.fn(),
+    });
+    await transport.open(makeCtx());
+    const firstScope = createBrowserInvocationScope({
+      context: createBrowserInvocationContext({
+        transport: "mcp-http",
+        agentSessionId: "shared-agent",
+        turnId: "turn-a",
+      }),
+    });
+    const secondScope = createBrowserInvocationScope({
+      context: createBrowserInvocationContext({
+        transport: "mcp-http",
+        agentSessionId: "shared-agent",
+        turnId: "turn-b",
+      }),
+    });
+
+    await runBrowserInvocation(firstScope, async () => {
+      await transport.action({
+        kind: "evaluate",
+        params: { script: "1", port: 9222 },
+      });
+      await runBrowserInvocation(secondScope, async () => {
+        await transport.action({
+          kind: "evaluate",
+          params: { script: "2", port: 9333 },
+        });
+        expect(firstPage.close).not.toHaveBeenCalled();
+        expect(secondPage.close).not.toHaveBeenCalled();
+      });
+      expect(firstPage.close).not.toHaveBeenCalled();
+      expect(secondPage.close).toHaveBeenCalledOnce();
+    });
+
+    expect(firstPage.close).toHaveBeenCalledOnce();
+    expect(secondPage.close).toHaveBeenCalledOnce();
+  });
+
+  it("marks cancellation of an unsettled page mutation outcome-ambiguous", async () => {
+    const controller = new AbortController();
+    const cancellation = new Error("cancel direct CDP mutation");
+    const click = vi.fn(
+      async (_selector: string, signal?: AbortSignal): Promise<void> => {
+        await new Promise<void>((_resolve, reject) => {
+          signal?.addEventListener("abort", () => reject(signal.reason), {
+            once: true,
+          });
+        });
+      },
+    );
+    const page = makeMockPage({ click });
+    const transport = new CdpBrowserTransport({
+      pageFactory: async () => page,
+    });
+    await transport.open(makeCtx());
+    const action = transport.action({
+      kind: "click",
+      params: { selector: "#submit" },
+      signal: controller.signal,
+    });
+    await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
+
+    controller.abort(cancellation);
+
+    await expect(action).rejects.toMatchObject({
+      name: "OperationOutcomeAmbiguousError",
+      operation: "click",
+      cancellationReason: cancellation,
+      outcome_ambiguous: true,
+    });
+    expect(click).toHaveBeenCalledWith("#submit", controller.signal);
   });
 
   it("returns err envelope when required param missing", async () => {

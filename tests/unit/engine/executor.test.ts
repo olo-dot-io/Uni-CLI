@@ -21,6 +21,7 @@ import {
 } from "../../../src/engine/step-registry.js";
 import type { ArgSource, ResolvedArgs } from "../../../src/engine/args.js";
 import type { IPage } from "../../../src/types.js";
+import { OperationOutcomeAmbiguousError } from "../../../src/transport/contained-process.js";
 
 interface Capture {
   args?: Record<string, unknown>;
@@ -54,12 +55,32 @@ beforeAll(() => {
   registerStep("__execution_failure_probe__", () => {
     throw new Error("execution probe failed");
   });
+  registerStep("__blocking_probe__", async (ctx, config) => {
+    const probe = config as {
+      started: () => void;
+      wait: Promise<void>;
+    };
+    probe.started();
+    await probe.wait;
+    return ctx;
+  });
+  registerStep("__side_effect_probe__", (ctx, config) => {
+    (config as { effect: () => void }).effect();
+    return ctx;
+  });
+  registerStep("__settled_effect_probe__", (ctx, config) => {
+    (config as { effect: () => void }).effect();
+    return { ...ctx, data: { committed: true } };
+  });
 });
 
 afterAll(() => {
   unregisterStep("__probe__");
   unregisterStep("__cleanup_probe__");
   unregisterStep("__execution_failure_probe__");
+  unregisterStep("__blocking_probe__");
+  unregisterStep("__side_effect_probe__");
+  unregisterStep("__settled_effect_probe__");
 });
 
 describe("runPipeline — ResolvedArgs bag plumbing", () => {
@@ -136,5 +157,105 @@ describe("runPipeline — ResolvedArgs bag plumbing", () => {
     } finally {
       cleanupFailure = null;
     }
+  });
+
+  it("cancels between actions before the next side effect can run", async () => {
+    const controller = new AbortController();
+    const cancellation = new Error("cancelled by MCP client");
+    cancellation.name = "AbortError";
+    let release!: () => void;
+    const wait = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let markStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    let sideEffects = 0;
+
+    const execution = runPipeline(
+      [
+        { __blocking_probe__: { started: markStarted, wait } },
+        {
+          __side_effect_probe__: {
+            effect: () => {
+              sideEffects += 1;
+            },
+          },
+        },
+      ],
+      { args: {}, source: "mcp" },
+      undefined,
+      { signal: controller.signal, canMutate: false },
+    );
+    await started;
+    controller.abort(cancellation);
+    release();
+
+    await expect(execution).rejects.toBe(cancellation);
+    expect(sideEffects).toBe(0);
+  });
+
+  it("keeps an authoritative fulfillment when cancellation arrives inside the final mutating action", async () => {
+    const controller = new AbortController();
+    let effects = 0;
+
+    const result = await runPipeline(
+      [
+        {
+          __settled_effect_probe__: {
+            effect: () => {
+              effects += 1;
+              controller.abort(
+                new DOMException("late client cancellation", "AbortError"),
+              );
+            },
+          },
+        },
+      ],
+      { args: {}, source: "mcp" },
+      undefined,
+      { signal: controller.signal, canMutate: true },
+    );
+
+    expect(result).toEqual([{ committed: true }]);
+    expect(effects).toBe(1);
+  });
+
+  it("marks a partially completed mutating pipeline ambiguous instead of running its next action", async () => {
+    const controller = new AbortController();
+    let committedEffects = 0;
+    let laterEffects = 0;
+
+    const execution = runPipeline(
+      [
+        {
+          __settled_effect_probe__: {
+            effect: () => {
+              committedEffects += 1;
+              controller.abort(
+                new DOMException("cancel after first action", "AbortError"),
+              );
+            },
+          },
+        },
+        {
+          __side_effect_probe__: {
+            effect: () => {
+              laterEffects += 1;
+            },
+          },
+        },
+      ],
+      { args: {}, source: "mcp" },
+      undefined,
+      { signal: controller.signal, canMutate: true },
+    );
+
+    await expect(execution).rejects.toBeInstanceOf(
+      OperationOutcomeAmbiguousError,
+    );
+    expect(committedEffects).toBe(1);
+    expect(laterEffects).toBe(0);
   });
 });

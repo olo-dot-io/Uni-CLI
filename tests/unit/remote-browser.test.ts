@@ -50,4 +50,21 @@ describe("remote browser configuration", () => {
       retryable: false,
     });
   });
+
+  it("quarantines malformed optional configuration until remote is requested", async () => {
+    const provider = new RemoteBrowserProvider({
+      env: { UNICLI_CDP_ENDPOINT: "https://example.com/not-a-websocket" },
+    });
+
+    expect(provider.status()).toEqual({
+      configured: false,
+      configuration_error: "UNICLI_CDP_ENDPOINT must use ws:// or wss://",
+      target_count: 0,
+      visibility: "hidden",
+    });
+    await expect(provider.acquireTarget()).rejects.toMatchObject({
+      code: "remote_browser_configuration_invalid",
+      retryable: false,
+    });
+  });
 });

@@ -1,3 +1,18 @@
+/**
+ * @owner       src/engine/browser/session-runtime.ts
+ * @does        Capture browser target/auth evidence and enforce immutable lease target identity at the command boundary.
+ * @needs       src/types.ts IPage, src/engine/browser/session-lease.ts
+ * @feeds       src/commands/browser/actions.ts and browser action evidence
+ * @breaks      BrowserSessionLeaseGuardError when authoritative target evidence is unavailable or differs from a leased target.
+ * @invariants  Evidence enrichment is best-effort; lease enforcement is authoritative and fail-closed; a cached connected-target hint never proves current identity after transport failure.
+ * @side-effects Reads target metadata and cookies from the active page.
+ * @perf        At most one provider probe plus one CDP fallback per capture.
+ * @concurrency Capture calls are independent and do not mutate page ownership.
+ * @test        tests/unit/browser-session-runtime.test.ts, tests/unit/browser-page.test.ts
+ * @stability   stable
+ * @since       2026-07-15
+ */
+
 import type { IPage } from "../../types.js";
 import {
   BrowserSessionLeaseGuardError,
@@ -7,8 +22,15 @@ import {
 } from "./session-lease.js";
 
 type BrowserTargetInfoProvider = {
-  browserTargetInfo?: () => Promise<BrowserSessionLeaseTarget | null>;
+  browserTargetInfo?: (options?: {
+    authoritative?: boolean;
+  }) => Promise<BrowserSessionLeaseTarget | null>;
 };
+
+interface ProvidedBrowserTargetCapture {
+  supported: boolean;
+  target?: BrowserSessionLeaseTarget;
+}
 
 interface CdpTargetInfoResult {
   targetInfo?: {
@@ -44,9 +66,29 @@ export async function assertBrowserSessionLeaseTargetCurrent(
   const expected = browserSessionTargetKey(lease.target);
   if (!expected) return;
 
-  const current = await captureBrowserSessionTarget(page);
+  let current: BrowserSessionLeaseTarget | undefined;
+  try {
+    current = await captureBrowserSessionTarget(page, () => new Date(), {
+      authoritative: true,
+    });
+  } catch {
+    throw new BrowserSessionLeaseGuardError(
+      "browser_target_unavailable",
+      lease,
+      expected,
+      "unavailable",
+    );
+  }
   const actual = browserSessionTargetKey(current);
-  if (!actual || actual === expected) return;
+  if (!actual) {
+    throw new BrowserSessionLeaseGuardError(
+      "browser_target_unavailable",
+      lease,
+      expected,
+      "unavailable",
+    );
+  }
+  if (actual === expected) return;
 
   throw new BrowserSessionLeaseGuardError(
     "browser_target_mismatch",
@@ -59,9 +101,11 @@ export async function assertBrowserSessionLeaseTargetCurrent(
 export async function captureBrowserSessionTarget(
   page: IPage,
   now: () => Date = () => new Date(),
+  options: { authoritative?: boolean } = {},
 ): Promise<BrowserSessionLeaseTarget | undefined> {
-  const provided = await captureProvidedBrowserTarget(page, now);
-  if (provided) return provided;
+  const provided = await captureProvidedBrowserTarget(page, now, options);
+  if (provided.target) return provided.target;
+  if (provided.supported && options.authoritative) return undefined;
 
   try {
     const raw = (await page.sendCDP("Target.getTargetInfo")) as
@@ -77,7 +121,8 @@ export async function captureBrowserSessionTarget(
       ...(info.url ? { url: info.url } : {}),
       ...(info.title ? { title: info.title } : {}),
     };
-  } catch {
+  } catch (error) {
+    if (options.authoritative) throw error;
     return undefined;
   }
 }
@@ -118,14 +163,27 @@ export function browserSessionTargetKey(
 async function captureProvidedBrowserTarget(
   page: IPage,
   now: () => Date,
-): Promise<BrowserSessionLeaseTarget | undefined> {
+  options: { authoritative?: boolean },
+): Promise<ProvidedBrowserTargetCapture> {
   const provider = page as IPage & BrowserTargetInfoProvider;
-  if (typeof provider.browserTargetInfo !== "function") return undefined;
+  if (typeof provider.browserTargetInfo !== "function") {
+    return { supported: false };
+  }
 
-  const target = await provider.browserTargetInfo().catch(() => null);
-  if (!target) return undefined;
-  return {
-    ...target,
-    captured_at: target.captured_at ?? now().toISOString(),
-  };
+  try {
+    const target = await provider.browserTargetInfo({
+      authoritative: options.authoritative === true,
+    });
+    if (!target) return { supported: true };
+    return {
+      supported: true,
+      target: {
+        ...target,
+        captured_at: target.captured_at ?? now().toISOString(),
+      },
+    };
+  } catch (error) {
+    if (options.authoritative) throw error;
+    return { supported: true };
+  }
 }

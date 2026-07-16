@@ -30,6 +30,10 @@ vi.mock("../../../src/compute/action-execution.js", () => ({
 const { registerComputeCommand } =
   await import("../../../src/commands/compute.js");
 
+const originalRulesPath = process.env.UNICLI_PERMISSION_RULES_PATH;
+const originalPermissionProfile = process.env.UNICLI_PERMISSION_PROFILE;
+const originalApprove = process.env.UNICLI_APPROVE;
+
 function captureConsole(): {
   getStdout: () => string;
   getStderr: () => string;
@@ -59,6 +63,9 @@ function newProgram(): Command {
   const program = new Command();
   program.exitOverride();
   program.option("-f, --format <fmt>", "output format");
+  program.option("--permission-profile <profile>", "permission profile");
+  program.option("--yes", "approve this operation");
+  program.option("--remember-approval", "persist this approval");
   registerComputeCommand(program);
   return program;
 }
@@ -74,6 +81,11 @@ function expectedNativeOverlayProvider():
   return undefined;
 }
 
+function restoreEnvironment(name: string, value: string | undefined): void {
+  if (value === undefined) delete process.env[name];
+  else process.env[name] = value;
+}
+
 describe("unicli compute", () => {
   beforeEach(() => {
     cascadeMock.tryCascade.mockReset();
@@ -82,6 +94,9 @@ describe("unicli compute", () => {
     delete process.env.UNICLI_COMPUTE_REFS_PATH;
     delete process.env.UNICLI_COMPUTE_CDP_SESSION_PATH;
     delete process.env.UNICLI_APP_SHOTS_ROOT;
+    restoreEnvironment("UNICLI_PERMISSION_RULES_PATH", originalRulesPath);
+    restoreEnvironment("UNICLI_PERMISSION_PROFILE", originalPermissionProfile);
+    restoreEnvironment("UNICLI_APPROVE", originalApprove);
   });
 
   afterEach(() => {
@@ -89,6 +104,49 @@ describe("unicli compute", () => {
     delete process.env.UNICLI_COMPUTE_REFS_PATH;
     delete process.env.UNICLI_COMPUTE_CDP_SESSION_PATH;
     delete process.env.UNICLI_APP_SHOTS_ROOT;
+    restoreEnvironment("UNICLI_PERMISSION_RULES_PATH", originalRulesPath);
+    restoreEnvironment("UNICLI_PERMISSION_PROFILE", originalPermissionProfile);
+    restoreEnvironment("UNICLI_APPROVE", originalApprove);
+  });
+
+  it("blocks direct CLI computer actions before transport or overlay setup", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "unicli-compute-cli-policy-"));
+    try {
+      const policyPath = join(tmp, "policy.json");
+      writeFileSync(
+        policyPath,
+        JSON.stringify({
+          schema_version: "2",
+          default: "deny",
+          rules: [],
+        }),
+        "utf-8",
+      );
+      process.env.UNICLI_PERMISSION_RULES_PATH = policyPath;
+      const cap = captureConsole();
+      try {
+        await newProgram().parseAsync(
+          ["-f", "json", "compute", "click", "@e7", "--overlay"],
+          { from: "user" },
+        );
+      } finally {
+        cap.restore();
+      }
+
+      expect(cascadeMock.tryCascade).not.toHaveBeenCalled();
+      expect(actionExecutionMock.executeComputeAction).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(77);
+      const envelope = JSON.parse(cap.getStderr()) as {
+        error?: Record<string, unknown>;
+      };
+      expect(envelope.error).toMatchObject({
+        code: "permission_denied",
+        minimum_capability: "permission.denied",
+        exit_code: 77,
+      });
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
   });
 
   it("snapshot forwards normalized options and emits a desktop envelope", async () => {

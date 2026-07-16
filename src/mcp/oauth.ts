@@ -1,8 +1,16 @@
 /**
- * OAuth 2.1 Authorization Code + PKCE for MCP HTTP transport.
- *
- * S256-only, public clients (no client_secret), in-memory storage.
- * Zero external dependencies — uses Node.js crypto + http built-ins.
+ * @owner       src::mcp::oauth
+ * @does        Provide local OAuth 2.1 Authorization Code + PKCE and bind each authenticated HTTP request to its stable client principal.
+ * @needs       node:crypto, node:http
+ * @feeds       simple and Streamable MCP HTTP transports
+ * @breaks      Treating any valid bearer as the same principal lets one authorized client adopt another client's MCP session and durable tasks.
+ * @invariants  Authorization codes are single-use/short-lived; PKCE is S256; tokens are bounded and compared in constant time; successful middleware records the issuing clientId on exactly that request.
+ * @side-effects Owns in-memory authorization-code/token stores and a weak request-to-principal association.
+ * @perf        Bearer validation scans the bounded resident token set to avoid match-position timing leakage.
+ * @concurrency Node's event loop serializes store mutation; request principals are immutable after authentication.
+ * @test        tests/unit/mcp-oauth.test.ts, tests/unit/streamable-http.test.ts
+ * @stability   stable
+ * @since       2026-04-01
  */
 
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
@@ -33,6 +41,7 @@ interface Token {
 
 const authCodes = new Map<string, AuthCode>();
 const tokens = new Map<string, Token>();
+const requestPrincipals = new WeakMap<IncomingMessage, string>();
 const AUTH_CODE_TTL_MS = 60_000;
 const TOKEN_TTL_S = 3_600;
 const TOKEN_TTL_MS = TOKEN_TTL_S * 1_000;
@@ -243,14 +252,14 @@ const MAX_TOKEN_LENGTH = 128;
  * timer, because the set is already pruned on issuance and the active set
  * is bounded by `MAX_SESSIONS` (see streamable-http.ts).
  */
-function validateBearer(req: IncomingMessage): boolean {
+function validateBearer(req: IncomingMessage): string | undefined {
   const h = req.headers.authorization;
-  if (!h) return false;
+  if (!h) return undefined;
   const parts = h.split(" ");
-  if (parts.length !== 2 || parts[0] !== "Bearer") return false;
+  if (parts.length !== 2 || parts[0] !== "Bearer") return undefined;
   const presented = parts[1];
   if (presented.length === 0 || presented.length > MAX_TOKEN_LENGTH)
-    return false;
+    return undefined;
 
   const presentedBuf = Buffer.from(presented, "utf8");
   let match: { key: string; entry: Token } | undefined;
@@ -266,14 +275,14 @@ function validateBearer(req: IncomingMessage): boolean {
       // late in the set.
     }
   }
-  if (!match) return false;
+  if (!match) return undefined;
   // The expiresAt check is redundant with the continue above, kept for
   // defensive reading.
   if (match.entry.expiresAt <= now) {
     tokens.delete(match.key);
-    return false;
+    return undefined;
   }
-  return true;
+  return match.entry.clientId;
 }
 
 // ── Public API ─────────────────────────────────────────────────────────────
@@ -311,7 +320,11 @@ export function createOAuthMiddleware(): (
   res: ServerResponse,
 ) => boolean {
   return (req, res) => {
-    if (validateBearer(req)) return false;
+    const principalId = validateBearer(req);
+    if (principalId) {
+      requestPrincipals.set(req, principalId);
+      return false;
+    }
     res.writeHead(401, {
       "Content-Type": "application/json",
       "WWW-Authenticate": 'Bearer realm="unicli-mcp"',
@@ -328,6 +341,12 @@ export function createOAuthMiddleware(): (
     );
     return true;
   };
+}
+
+export function getAuthenticatedPrincipal(
+  req: IncomingMessage,
+): string | undefined {
+  return requestPrincipals.get(req);
 }
 
 // Test helpers — exported for unit tests only

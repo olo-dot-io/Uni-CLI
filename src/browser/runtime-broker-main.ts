@@ -4,10 +4,10 @@
  * @needs       node:crypto, src/browser/runtime-broker.ts, runtime-protocol.ts, runtime-transport.ts
  * @feeds       unicli browser broker lifecycle, lazy BrowserBridge auto-start, native host, and integration tests
  * @breaks      Exits nonzero after emitting a structured error when configuration, transport startup, reaping, or shutdown fails.
- * @invariants  One process owns one broker transport; shutdown stops admission before releasing sessions, targets, browsers, descriptors, and locks.
+ * @invariants  One process owns one broker transport; shutdown rejects ordinary Agent work but preserves the authenticated Chrome host cleanup lane until sessions, targets, and providers finish teardown, then releases descriptors, sockets, and locks.
  * @side-effects Creates the broker endpoint, starts browser providers lazily, installs signal handlers and a reaper timer, and writes failures to stderr.
  * @perf        Idle process cost is one bounded periodic session scan; page work is event-driven.
- * @concurrency Shutdown is idempotent; transport close drains accepted requests before provider teardown.
+ * @concurrency Shutdown is idempotent; broker admission and provider teardown precede transport close so native-host cleanup can progress.
  * @test        tests/integration/browser-runtime-broker.test.ts
  * @stability   experimental
  * @since       2026-07-15
@@ -33,13 +33,14 @@ async function shutdown(): Promise<void> {
       reaper = null;
     }
     let shutdownError: unknown;
+    broker?.beginShutdown();
     try {
-      await server?.stop();
+      await broker?.close();
     } catch (error) {
       shutdownError = error;
     }
     try {
-      await broker?.close();
+      await server?.stop();
     } catch (error) {
       shutdownError ??= error;
     }
@@ -101,7 +102,7 @@ async function main(): Promise<void> {
   broker = runtimeBroker;
   server = new BrowserRuntimeBrokerServer({
     runtimeId,
-    handler: (request) => runtimeBroker.dispatch(request),
+    handler: (request, signal) => runtimeBroker.dispatch(request, signal),
     onShutdown: () => shutdown(),
   });
   const descriptor = await server.start();

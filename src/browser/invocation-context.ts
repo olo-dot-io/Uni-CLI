@@ -1,12 +1,12 @@
 /**
  * @owner       src/browser/invocation-context.ts
- * @does        Define and validate transport-independent identity for one browser invocation.
+ * @does        Define and validate transport-independent identity for one request-owned browser invocation while retaining optional upstream conversation correlation.
  * @needs       node:crypto
  * @feeds       src/browser/runtime-session.ts, src/browser/runtime-protocol.ts, src/mcp/handler.ts, src/commands/browser/runtime.ts
  * @breaks      BrowserInvocationContextError on malformed or conflicting caller identity.
- * @invariants  Agent-session and turn ids are non-empty bounded strings; transport metadata never enters command arguments.
- * @side-effects Uses the operating-system random source when a caller does not declare identity.
- * @perf        O(1) validation with at most three UUID allocations per anonymous invocation.
+ * @invariants  Agent-session and request-local turn ids are non-empty bounded strings; an upstream conversation turn is correlation only and is never reused as the broker lifecycle key; transport metadata never enters command arguments; an unidentified CLI invocation never shares target ownership with another process.
+ * @side-effects Reads supported CLI identity environment variables and uses the operating-system random source for turns and anonymous sessions.
+ * @perf        O(1) validation with at most two UUID allocations per anonymous invocation.
  * @concurrency Pure except for thread-safe random UUID generation.
  * @test        tests/unit/browser-invocation-context.test.ts, tests/unit/browser-runtime-session.test.ts
  * @stability   experimental
@@ -28,15 +28,18 @@ export interface BrowserInvocationContext {
   turn_id: string;
   transport: BrowserInvocationTransport;
   profile_partition_id?: string;
+  upstream_turn_id?: string;
 }
 
 export interface BrowserInvocationContextInput {
   transport: BrowserInvocationTransport;
   agentSessionId?: string;
   turnId?: string;
+  upstreamTurnId?: string;
   profilePartitionId?: string;
   mcpSessionId?: string;
   metadata?: unknown;
+  environment?: NodeJS.ProcessEnv;
 }
 
 export class BrowserInvocationContextError extends Error {
@@ -59,13 +62,16 @@ export function createBrowserInvocationContext(
       codex?.thread_id ??
       codex?.session_id ??
       input.mcpSessionId ??
-      `cli:${randomUUID()}`,
+      defaultAgentSessionId(input),
     "agent session",
   );
   const turnId = validateIdentity(
-    input.turnId ?? codex?.turn_id ?? `turn:${randomUUID()}`,
+    input.turnId ?? `invocation:${randomUUID()}`,
     "turn",
   );
+  const upstreamTurnId =
+    input.upstreamTurnId ??
+    (input.turnId === undefined ? codex?.turn_id : undefined);
   const profilePartitionId = input.profilePartitionId
     ? validateIdentity(input.profilePartitionId, "profile partition")
     : undefined;
@@ -75,7 +81,22 @@ export function createBrowserInvocationContext(
     turn_id: turnId,
     transport: input.transport,
     ...(profilePartitionId ? { profile_partition_id: profilePartitionId } : {}),
+    ...(upstreamTurnId
+      ? {
+          upstream_turn_id: validateIdentity(upstreamTurnId, "upstream turn"),
+        }
+      : {}),
   };
+}
+
+function defaultAgentSessionId(input: BrowserInvocationContextInput): string {
+  if (input.transport !== "cli") return `anonymous:${randomUUID()}`;
+  const environment = input.environment ?? process.env;
+  return (
+    environment.UNICLI_AGENT_SESSION_ID ??
+    environment.CODEX_THREAD_ID ??
+    `cli:anonymous:${randomUUID()}`
+  );
 }
 
 interface CodexTurnMetadata {

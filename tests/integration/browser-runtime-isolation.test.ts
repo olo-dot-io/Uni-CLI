@@ -160,6 +160,27 @@ describe("managed browser profile partitions and target ownership", () => {
           sharedATarget.target_id,
         ),
       ).rejects.toMatchObject({ code: "browser_target_owned" });
+      await command(
+        runtime,
+        sharedA,
+        false,
+        {
+          method: "evaluate",
+          expression: 'document.title = "handed-off target"; document.title',
+        },
+        sharedATarget.target_id,
+      );
+      await command(
+        runtime,
+        sharedB,
+        false,
+        {
+          method: "evaluate",
+          expression:
+            'document.title = "previous active target"; document.title',
+        },
+        sharedBTarget.target_id,
+      );
       const handedOff = await runtime.client.requestOrThrow<{
         owner_session_id: string;
         target_id: string;
@@ -176,6 +197,16 @@ describe("managed browser profile partitions and target ownership", () => {
           owner_session_id: sharedB.agent_session_id,
         }),
       );
+      const implicitDestinationCommand = await command(
+        runtime,
+        sharedB,
+        false,
+        { method: "title" },
+      );
+      expect(implicitDestinationCommand).toMatchObject({
+        target_id: sharedATarget.target_id,
+        data: "handed-off target",
+      });
       expect(
         await evaluateStorage(runtime, sharedB, false, sharedATarget.target_id),
       ).toBe("shared-token");
