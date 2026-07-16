@@ -1,21 +1,22 @@
 /**
- * @owner   src/compute/overlay-daemon.ts
- * @does    Manage JSONL stdio sessions for native compute overlay HUD daemons.
- * @needs   child_process spawn, readline, visual overlay status protocol
- * @feeds   macOS AppKit, Windows Win32, and Linux GTK overlay providers
- * @breaks  Missing ready separation causes cold-start time to consume render animation timeouts.
- * @invariants A daemon must emit provider/status=ready before render requests are written.
- * @side-effects Starts and kills native helper processes.
- * @perf    One persistent process per overlay provider instance.
- * @concurrency Render calls are serialized through one active JSONL request.
- * @test    tests/unit/compute-macos-overlay-swift.test.ts
- * @stability experimental
- * @since   0.224.0
+ * @owner       src::compute::overlay-daemon
+ * @does        Adapt native overlay requests to the shared bounded sidecar protocol with a readiness handshake for every process generation.
+ * @needs       src/transport/sidecar and visual overlay contracts
+ * @feeds       macOS AppKit, Windows Win32, and Linux GTK overlay providers
+ * @breaks      Caching readiness across process generations starts render deadlines during cold startup; accepting an uncorrelated status can attribute an old animation to a new action.
+ * @invariants  Each generation proves ready before its first render; response id/kind and action_id match exactly; timeout/failure/close inherit whole-tree containment from StdioSidecarClient.
+ * @side-effects Starts and terminates native overlay helpers through the shared sidecar owner.
+ * @perf        Healthy renders reuse one ready process; cold-start readiness is excluded from render deadlines.
+ * @concurrency The sidecar serializes renders and gates replacement generations on containment.
+ * @test        tests/unit/compute-macos-overlay-swift.test.ts, tests/unit/compute-linux-overlay.test.ts, tests/unit/compute-windows-overlay.test.ts
+ * @stability   experimental
+ * @since       0.224.0
  */
 
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { createInterface, type Interface } from "node:readline";
-
+import {
+  StdioSidecarClient,
+  type SidecarInitialization,
+} from "../transport/sidecar.js";
 import type { ComputeOverlayRequest } from "./overlay.js";
 import type { ComputeVisualOverlayStatus } from "./visual-timeline.js";
 
@@ -28,207 +29,99 @@ export interface ComputeOverlayDaemonSession {
 }
 
 export class StdioComputeOverlayDaemonSession implements ComputeOverlayDaemonSession {
-  private child: ChildProcessWithoutNullStreams | undefined;
-  private lines: Interface | undefined;
-  private active: PendingOverlayCall | undefined;
-  private readiness: PendingOverlayReady | undefined;
-  private readonly queue: PendingOverlayCall[] = [];
-  private closed = false;
-  private readonly readyTimeoutMs: number;
+  private readonly sidecar: StdioSidecarClient;
 
   constructor(
-    private readonly command: string,
-    private readonly args: readonly string[],
+    command: string,
+    args: readonly string[],
     opts: { readyTimeoutMs?: number } = {},
   ) {
-    this.readyTimeoutMs = opts.readyTimeoutMs ?? 8_000;
+    const initialization: SidecarInitialization = {
+      kind: "ready",
+      timeoutMs: opts.readyTimeoutMs ?? 8_000,
+      validate: validateOverlayReadiness,
+    };
+    this.sidecar = new StdioSidecarClient(command, args, {
+      initialize: initialization,
+    });
   }
 
-  render(
+  async render(
     request: ComputeOverlayRequest,
     timeoutMs: number,
   ): Promise<ComputeVisualOverlayStatus> {
-    return new Promise((resolve, reject) => {
-      this.queue.push({ request, timeoutMs, resolve, reject });
-      this.processNext();
-    });
+    const value = await this.sidecar.call(
+      "render",
+      { request },
+      {
+        timeoutMs,
+        validate: (data) => parseOverlayStatus(data, request.action_id),
+      },
+    );
+    return parseOverlayStatus(value, request.action_id);
   }
 
   async close(): Promise<void> {
-    if (this.closed) return;
-    this.closed = true;
-    this.lines?.close();
-    this.rejectReadiness(new Error("overlay daemon closed"));
-    this.rejectActive(new Error("overlay daemon closed"));
-    this.rejectQueue(new Error("overlay daemon closed"));
-    this.child?.kill();
-    this.child = undefined;
-  }
-
-  private processNext(): void {
-    if (this.active || this.queue.length === 0 || this.closed) return;
-    const call = this.queue.shift();
-    if (!call) return;
-    this.active = call;
-    void this.ensureReadyChild()
-      .then((child) => this.writeActiveCall(child))
-      .catch((error) => {
-        this.rejectActive(error);
-        this.processNext();
-      });
-  }
-
-  private writeActiveCall(child: ChildProcessWithoutNullStreams): void {
-    const call = this.active;
-    if (!call || this.closed) return;
-    call.timeout = setTimeout(() => {
-      this.rejectActive(new Error("overlay render timed out"));
-      this.processNext();
-    }, call.timeoutMs);
-    child.stdin.write(`${JSON.stringify(call.request)}\n`, (error) => {
-      if (!error) return;
-      this.rejectActive(error);
-      this.processNext();
-    });
-  }
-
-  private async ensureReadyChild(): Promise<ChildProcessWithoutNullStreams> {
-    const child = this.ensureChild();
-    if (this.readiness?.ready) return child;
-    await this.readiness?.promise;
-    return child;
-  }
-
-  private ensureChild(): ChildProcessWithoutNullStreams {
-    if (this.child) return this.child;
-    if (this.closed) throw new Error("overlay daemon session is closed");
-    const child = spawn(this.command, [...this.args], {
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-    this.child = child;
-    this.readiness = this.createReadiness();
-    this.lines = createInterface({ input: child.stdout });
-    this.lines.on("line", (line) => this.handleLine(line));
-    child.on("error", (error) => {
-      this.rejectReadiness(error);
-      this.rejectActive(error);
-      this.child = undefined;
-      this.processNext();
-    });
-    child.on("close", (code) => {
-      const error = new Error(
-        `overlay daemon exited with code ${code ?? "unknown"}`,
-      );
-      this.rejectReadiness(error);
-      this.rejectActive(error);
-      this.child = undefined;
-      this.processNext();
-    });
-    child.stderr.on("data", () => {
-      // stderr is reserved for native diagnostics; protocol responses stay on stdout.
-    });
-    return child;
-  }
-
-  private handleLine(line: string): void {
-    if (this.resolveReadinessIfReady(line)) return;
-    let status: ComputeVisualOverlayStatus;
-    try {
-      status = parseOverlayStatus(line);
-    } catch (error) {
-      this.rejectActive(error);
-      this.processNext();
-      return;
-    }
-    const call = this.active;
-    if (!call) return;
-    clearTimeout(call.timeout);
-    this.active = undefined;
-    call.resolve(status);
-    this.processNext();
-  }
-
-  private createReadiness(): PendingOverlayReady {
-    const ready: PendingOverlayReady = {
-      ready: false,
-      promise: Promise.resolve(),
-      resolve: () => {},
-      reject: () => {},
-    };
-    ready.promise = new Promise<void>((resolve, reject) => {
-      ready.resolve = resolve;
-      ready.reject = reject;
-    });
-    ready.timeout = setTimeout(() => {
-      if (ready.ready) return;
-      ready.reject(new Error("overlay daemon did not report ready"));
-    }, this.readyTimeoutMs);
-    return ready;
-  }
-
-  private resolveReadinessIfReady(line: string): boolean {
-    let value: unknown;
-    try {
-      value = JSON.parse(line);
-    } catch {
-      return false;
-    }
-    if (!isRecord(value)) return false;
-    if (value.status !== "ready" || typeof value.provider !== "string") {
-      return false;
-    }
-    const readiness = this.readiness;
-    if (!readiness || readiness.ready) return true;
-    readiness.ready = true;
-    if (readiness.timeout) clearTimeout(readiness.timeout);
-    readiness.resolve();
-    return true;
-  }
-
-  private rejectActive(error: unknown): void {
-    const call = this.active;
-    if (!call) return;
-    clearTimeout(call.timeout);
-    this.active = undefined;
-    call.reject(error);
-  }
-
-  private rejectQueue(error: unknown): void {
-    while (this.queue.length > 0) this.queue.shift()?.reject(error);
-  }
-
-  private rejectReadiness(error: unknown): void {
-    const readiness = this.readiness;
-    if (!readiness || readiness.ready) return;
-    if (readiness.timeout) clearTimeout(readiness.timeout);
-    readiness.reject(error);
+    await this.sidecar.close();
   }
 }
 
-interface PendingOverlayCall {
-  request: ComputeOverlayRequest;
-  timeoutMs: number;
-  timeout?: NodeJS.Timeout;
-  resolve(value: ComputeVisualOverlayStatus): void;
-  reject(error: unknown): void;
-}
-
-interface PendingOverlayReady {
-  ready: boolean;
-  promise: Promise<void>;
-  timeout?: NodeJS.Timeout;
-  resolve(): void;
-  reject(error: unknown): void;
-}
-
-function parseOverlayStatus(stdout: string): ComputeVisualOverlayStatus {
-  const value = JSON.parse(
-    stdout.trim(),
-  ) as Partial<ComputeVisualOverlayStatus>;
-  if (typeof value.provider === "string" && typeof value.status === "string") {
-    return value as ComputeVisualOverlayStatus;
+function validateOverlayReadiness(value: unknown): void {
+  if (
+    !isRecord(value) ||
+    !isOverlayProvider(value.provider) ||
+    value.status !== "ready"
+  ) {
+    throw new Error("overlay sidecar returned invalid readiness data");
   }
-  throw new Error("overlay sidecar returned invalid JSON");
+}
+
+function parseOverlayStatus(
+  value: unknown,
+  actionId: string,
+): ComputeVisualOverlayStatus {
+  if (
+    !isRecord(value) ||
+    !isOverlayProvider(value.provider) ||
+    value.action_id !== actionId ||
+    !isOverlayStatus(value.status) ||
+    (value.acknowledged_at_ms !== undefined &&
+      typeof value.acknowledged_at_ms !== "number") ||
+    (value.error !== undefined && typeof value.error !== "string")
+  ) {
+    throw new Error("overlay sidecar returned invalid render data");
+  }
+  return {
+    provider: value.provider,
+    status: value.status,
+    ...(typeof value.acknowledged_at_ms === "number"
+      ? { acknowledged_at_ms: value.acknowledged_at_ms }
+      : {}),
+    ...(typeof value.error === "string" ? { error: value.error } : {}),
+  };
+}
+
+function isOverlayProvider(
+  value: unknown,
+): value is "macos-appkit" | "windows-win32" | "linux-gtk" {
+  return (
+    value === "macos-appkit" ||
+    value === "windows-win32" ||
+    value === "linux-gtk"
+  );
+}
+
+function isOverlayStatus(
+  value: unknown,
+): value is ComputeVisualOverlayStatus["status"] {
+  return (
+    value === "not_requested" ||
+    value === "unavailable" ||
+    value === "scheduled" ||
+    value === "arrived" ||
+    value === "timeout" ||
+    value === "failed"
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

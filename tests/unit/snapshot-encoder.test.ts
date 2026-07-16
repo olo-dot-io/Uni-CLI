@@ -102,15 +102,22 @@ describe("encodeSnapshot", () => {
     ]);
   });
 
-  it("returns raw JSON without allocating refs in json mode", () => {
+  it("returns raw JSON while allocating refs from the same tree", () => {
+    const alloc = new RefAllocator();
     const result = encodeSnapshot(loadFixture("safari-front-page"), {
       format: "json",
       transport: "desktop-ax",
-      alloc: new RefAllocator(),
+      alloc,
     });
 
     expect(JSON.parse(result.encoded).name).toBe("Safari");
-    expect(result.refCount).toBe(0);
+    expect(result.refCount).toBeGreaterThan(0);
+    expect(
+      alloc.freeze("desktop-ax", "pid-300").byAlias.get("@e1"),
+    ).toMatchObject({
+      stable: "desktop-ax:pid-300:AXWindow[0]",
+      name: "Safari",
+    });
   });
 
   it("falls back to lowercase role names for unknown roles", () => {

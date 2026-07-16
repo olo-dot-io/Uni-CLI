@@ -3,8 +3,8 @@
  * @does        Describe browser evidence leases and enforce exact domain/path/target guards independently of the runtime transport.
  * @needs       node:crypto
  * @feeds       src/commands/browser/actions.ts, src/engine/browser/session-runtime.ts, browser action evidence
- * @breaks      BrowserSessionLeaseGuardError on domain, path, or target drift.
- * @invariants  Domain matching is exact-host or subdomain only; paths are prefix-matched; captured target identity is immutable evidence.
+ * @breaks      BrowserSessionLeaseGuardError on domain, path, target drift, or unavailable authoritative target evidence.
+ * @invariants  Domain matching is exact-host or subdomain only; paths are prefix-matched; captured target identity is immutable evidence; an expected target never matches unknown current identity.
  * @side-effects none
  * @perf        O(length of guard and captured target strings).
  * @concurrency Pure value construction and validation.
@@ -70,7 +70,8 @@ export class BrowserSessionLeaseGuardError extends Error {
     readonly code:
       | "browser_domain_mismatch"
       | "browser_path_mismatch"
-      | "browser_target_mismatch",
+      | "browser_target_mismatch"
+      | "browser_target_unavailable",
     readonly lease: BrowserSessionLease,
     readonly expected: string,
     readonly actual: string,
@@ -80,7 +81,9 @@ export class BrowserSessionLeaseGuardError extends Error {
         ? `Browser tab hostname "${actual}" does not match expected domain "${expected}"`
         : code === "browser_path_mismatch"
           ? `Browser tab path "${actual}" does not match expected path prefix "${expected}"`
-          : `Browser target "${actual}" does not match expected target "${expected}"`,
+          : code === "browser_target_unavailable"
+            ? `Browser target evidence is unavailable while target "${expected}" is leased`
+            : `Browser target "${actual}" does not match expected target "${expected}"`,
     );
     this.name = "BrowserSessionLeaseGuardError";
   }

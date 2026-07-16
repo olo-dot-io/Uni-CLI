@@ -126,11 +126,14 @@ Visual 只有在后端真的能看见、行动、验证时才算 live。没有�
   metadata。`--remember-approval` 会把允许的 scope 存到
   `~/.unicli/approvals.jsonl`，文件只含 scope metadata。`unicli approvals list`、
   `revoke`、`clear` 用来查看或移除已记住的 scope。
-- `deny_rule`：`~/.unicli/permission-rules.json` 命中时返回本地规则 id 和原因。
-  规则可以按站点、命令、effect、capability 维度和资源 scope 匹配，优先级高于
-  `--yes` 和已记住的审批。同一层规则还会守住运行时域名、浏览器跳转目标、下载和输出
-  路径、子进程可执行文件，在操作碰到资源之前停下。配置文件格式错误时，执行会以
-  `invalid_input` 停下。
+- `deny_rule`：本地 JSON/YAML 策略命中时返回规则 id 和原因。schema v1 保留
+  deny-only/default-allow；schema v2 支持 deny 优先的 `allow`/`deny`、显式
+  `default`，以及 `min`、`max`、`max_length`、RE2 `pattern`、`allowed` 参数
+  约束。规则还可以按站点、命令、effect、capability 维度和资源 scope 匹配，
+  优先级高于 `--yes` 和已记住的审批。调用内核、直接 browser/operate、直接
+  compute 与 computer-use MCP 使用同一授权边界。同一层规则还会守住 pipeline
+  运行时域名、浏览器跳转目标、下载和输出路径、子进程可执行文件，在操作碰到资源
+  之前停下。显式策略文件缺失或格式错误时，执行以 `invalid_input` fail closed。
 
 这样默认仍然足够开放，团队或个人需要收紧时也不用改 adapter metadata。
 

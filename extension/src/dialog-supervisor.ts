@@ -1,11 +1,18 @@
 /**
  * @owner   extension/src/dialog-supervisor.ts
  * @does    Maintain provider-owned browser JavaScript dialog state for broker-owned Chrome targets.
- * @needs   chrome.debugger, chrome.tabs
+ * @needs   chrome.debugger events, chrome.tabs events, debugger-dispatch.ts
  * @feeds   extension/src/chrome-controller.ts dialog_read/dialog_respond commands
- * @breaks  extension dialog supervision tests when pending/recent dialog state or response routing drifts.
+ * @breaks  extension dialog supervision tests when pending/recent dialog state, response routing, or debugger ambiguity propagation drifts.
+ * @invariants Dialog mutations use the controller-owned non-replay debugger transport; Page.enable may replay after detach because it is idempotent.
+ * @side-effects Enables Page dialog events, records bounded pending/recent evidence, and accepts or dismisses an explicitly selected dialog.
+ * @concurrency Chrome events update per-tab state synchronously; native commands are serialized by the host and broker target queue.
  * @test    tests/integration/browser-extension-background.test.ts
+ * @stability experimental
+ * @since   2026-07-15
  */
+
+import type { DebuggerCommandDispatch } from "./debugger-dispatch.js";
 
 export type DialogSupervisorAction = "accept" | "dismiss";
 
@@ -53,14 +60,14 @@ const MAX_RECENT_DIALOGS = 20;
 const MAX_DIALOG_TEXT_CHARS = 1_000;
 
 const dialogStates = new Map<number, DialogState>();
-const attachedTabs = new Set<number>();
 let listenersRegistered = false;
 
 export async function readDialogSnapshot(
   tabId: number,
+  dispatch: DebuggerCommandDispatch,
   opts?: { clearRecent?: boolean },
 ): Promise<ExtensionDialogSnapshot> {
-  await ensureDialogSupervision(tabId);
+  await ensureDialogSupervision(dispatch);
   const snapshot = snapshotDialogState(tabId);
   if (opts?.clearRecent === true) {
     stateForTab(tabId).recent = [];
@@ -70,6 +77,7 @@ export async function readDialogSnapshot(
 
 export async function respondToDialog(
   tabId: number,
+  dispatch: DebuggerCommandDispatch,
   input: {
     action: DialogSupervisorAction;
     promptText?: string;
@@ -78,13 +86,17 @@ export async function respondToDialog(
 ): Promise<
   ExtensionDialogSnapshot & { responded_dialog: ExtensionDialogEntry }
 > {
-  await ensureDialogSupervision(tabId);
+  await ensureDialogSupervision(dispatch);
   const state = stateForTab(tabId);
   const dialog = selectPendingDialog(state, input.dialogId);
-  await chrome.debugger.sendCommand({ tabId }, "Page.handleJavaScriptDialog", {
-    accept: input.action === "accept",
-    promptText: input.promptText ?? "",
-  });
+  await dispatch(
+    "Page.handleJavaScriptDialog",
+    {
+      accept: input.action === "accept",
+      promptText: input.promptText ?? "",
+    },
+    false,
+  );
   archiveDialog(tabId, dialog, "agent", input.action);
   return {
     ...(snapshotDialogState(tabId) as ExtensionDialogSnapshot),
@@ -92,21 +104,11 @@ export async function respondToDialog(
   };
 }
 
-async function ensureDialogSupervision(tabId: number): Promise<void> {
+async function ensureDialogSupervision(
+  dispatch: DebuggerCommandDispatch,
+): Promise<void> {
   registerDialogListeners();
-  await ensureDebuggerAttached(tabId);
-  await chrome.debugger.sendCommand({ tabId }, "Page.enable");
-}
-
-async function ensureDebuggerAttached(tabId: number): Promise<void> {
-  if (attachedTabs.has(tabId)) return;
-  try {
-    await chrome.debugger.attach({ tabId }, "1.3");
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    if (!/already attached/i.test(message)) throw err;
-  }
-  attachedTabs.add(tabId);
+  await dispatch("Page.enable", {}, true);
 }
 
 function registerDialogListeners(): void {
@@ -232,7 +234,6 @@ function stateForTab(tabId: number): DialogState {
 
 function clearTab(tabId?: number): void {
   if (tabId === undefined) return;
-  attachedTabs.delete(tabId);
   const state = dialogStates.get(tabId);
   if (state === undefined) return;
   for (const dialog of state.pending.values()) {

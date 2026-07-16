@@ -1,7 +1,24 @@
+/**
+ * @owner       src::engine::browser::evidence
+ * @does        Capture browser DOM, console, network, screenshot, and render-stability evidence with cancellation-safe artifact publication.
+ * @needs       IPage, browser invocation scope, session leases, hashing, filesystem directories, transactional file publication
+ * @feeds       browser operator evidence, action recording, render-aware extraction, and diagnostics
+ * @breaks      Swallowed cancellation or direct artifact writes can publish stale evidence after an Agent turn has ended.
+ * @invariants  Ambient or explicit cancellation reaches every page read, render wait, and screenshot commit; cancellation is never downgraded to partial evidence; committed screenshot files are complete and prior files survive pre-commit failure.
+ * @side-effects Installs observational page hooks and may create an evidence directory and one screenshot artifact.
+ * @perf        Evidence capture is sequential and bounded; render-aware mode polls at the configured interval.
+ * @concurrency Each invocation uses its own AbortSignal and content-addressed artifact name; transactional writes expose only complete files.
+ * @test        tests/unit/browser-evidence.test.ts, tests/unit/browser-action-evidence.test.ts
+ * @stability   stable
+ * @since       2026-07-15
+ */
+
 import { createHash } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { currentBrowserInvocationScope } from "../../browser/invocation-scope.js";
 import type { IPage, NetworkRequest } from "../../types.js";
+import { writeFileTransactionally } from "../transactional-file.js";
 import type { BrowserSessionLease } from "./session-lease.js";
 
 export interface BrowserEvidenceOptions {
@@ -12,6 +29,7 @@ export interface BrowserEvidenceOptions {
   timestamp?: string;
   snapshot?: string;
   maxPreviewChars?: number;
+  signal?: AbortSignal;
 }
 
 export interface RenderAwareBrowserEvidenceOptions extends BrowserEvidenceOptions {
@@ -19,7 +37,7 @@ export interface RenderAwareBrowserEvidenceOptions extends BrowserEvidenceOption
   pollMs?: number;
   stableForMs?: number;
   now?: () => number;
-  sleep?: (ms: number) => Promise<void>;
+  sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
 }
 
 export interface RenderAwareBrowserEvidence {
@@ -108,6 +126,7 @@ export interface BrowserConsoleReadOptions {
   maxEntries?: number;
   maxTextChars?: number;
   timestamp?: string;
+  signal?: AbortSignal;
 }
 
 export interface BrowserConsoleEntry {
@@ -243,16 +262,27 @@ function readConsoleSnapshotJs(clear: boolean): string {
   })()`;
 }
 
-export async function installBrowserEvidenceHooks(page: IPage): Promise<void> {
+export async function installBrowserEvidenceHooks(
+  page: IPage,
+  explicitSignal?: AbortSignal,
+): Promise<void> {
+  const signal = browserEvidenceSignal(explicitSignal);
+  signal?.throwIfAborted();
   try {
-    await page.addInitScript(BROWSER_EVIDENCE_HOOK_JS);
+    if (signal) await page.addInitScript(BROWSER_EVIDENCE_HOOK_JS, signal);
+    else await page.addInitScript(BROWSER_EVIDENCE_HOOK_JS);
+    signal?.throwIfAborted();
   } catch {
+    signal?.throwIfAborted();
     // Best effort: older backends may only support evaluate on the current page.
   }
 
   try {
-    await page.evaluate(BROWSER_EVIDENCE_HOOK_JS);
+    if (signal) await page.evaluate(BROWSER_EVIDENCE_HOOK_JS, signal);
+    else await page.evaluate(BROWSER_EVIDENCE_HOOK_JS);
+    signal?.throwIfAborted();
   } catch {
+    signal?.throwIfAborted();
     // Evidence hooks are observational and must not block the browser command.
   }
 }
@@ -261,28 +291,42 @@ export async function captureBrowserEvidencePacket(
   page: IPage,
   options: BrowserEvidenceOptions,
 ): Promise<BrowserEvidencePacket> {
+  const signal = browserEvidenceSignal(options.signal);
+  signal?.throwIfAborted();
   const captureErrors: string[] = [];
   const capturedAt = options.timestamp ?? new Date().toISOString();
   const maxPreviewChars = Math.max(1, options.maxPreviewChars ?? 2000);
 
-  const url = await captureValue(() => page.url(), "", "url", captureErrors);
+  const url = await captureValue(
+    () => page.url(signal),
+    "",
+    "url",
+    captureErrors,
+    signal,
+  );
   const title = await captureValue(
-    () => page.title(),
+    () => page.title(signal),
     "",
     "title",
     captureErrors,
+    signal,
   );
   const snapshot =
     options.snapshot ??
     (await captureValue(
-      () => page.snapshot({ interactive: true }),
+      () => page.snapshot({ interactive: true }, signal),
       "",
       "snapshot",
       captureErrors,
+      signal,
     ));
-  const consoleResult = await readConsoleSummary(page, captureErrors);
-  const networkResult = await readNetworkEntries(page, captureErrors);
-  const screenshot = await captureScreenshot(page, options, capturedAt);
+  const consoleResult = await readConsoleSummary(page, captureErrors, signal);
+  const networkResult = await readNetworkEntries(page, captureErrors, signal);
+  const screenshot = await captureScreenshot(
+    page,
+    { ...options, signal },
+    capturedAt,
+  );
   if (screenshot.error) captureErrors.push(`screenshot: ${screenshot.error}`);
   const captureScope = {
     console: consoleResult.scope,
@@ -320,23 +364,33 @@ export async function readBrowserConsole(
   page: IPage,
   options: BrowserConsoleReadOptions = {},
 ): Promise<BrowserConsoleSnapshot> {
+  const signal = browserEvidenceSignal(options.signal);
+  signal?.throwIfAborted();
   const captureErrors: string[] = [];
   const capturedAt = options.timestamp ?? new Date().toISOString();
   const maxEntries = boundedInteger(options.maxEntries, 50, 0, 100);
   const maxTextChars = boundedInteger(options.maxTextChars, 1000, 1, 2000);
 
-  await installBrowserEvidenceHooks(page);
-  const url = await captureValue(() => page.url(), "", "url", captureErrors);
+  await installBrowserEvidenceHooks(page, signal);
+  const url = await captureValue(
+    () => page.url(signal),
+    "",
+    "url",
+    captureErrors,
+    signal,
+  );
   const title = await captureValue(
-    () => page.title(),
+    () => page.title(signal),
     "",
     "title",
     captureErrors,
+    signal,
   );
   const consoleResult = await readConsoleSnapshot(
     page,
     captureErrors,
     options.clear === true,
+    signal,
   );
   const { entries, truncated } = boundedConsoleEntries(
     consoleResult.entries ?? [],
@@ -364,26 +418,29 @@ export async function captureRenderAwareBrowserEvidence(
   page: IPage,
   options: RenderAwareBrowserEvidenceOptions,
 ): Promise<RenderAwareBrowserEvidence> {
+  const signal = browserEvidenceSignal(options.signal);
+  signal?.throwIfAborted();
   const timeoutMs = Math.max(0, finiteNumber(options.timeoutMs, 3000));
   const pollMs = Math.max(10, finiteNumber(options.pollMs, 100));
   const stableForMs = Math.max(0, finiteNumber(options.stableForMs, 500));
   const now = options.now ?? Date.now;
   const sleep =
     options.sleep ??
-    (async (ms: number) => {
-      await new Promise((resolve) => setTimeout(resolve, ms));
-    });
+    (async (ms: number, sleepSignal?: AbortSignal) =>
+      sleepWithSignal(ms, sleepSignal));
+  const captureOptions = { ...options, signal };
 
   const startedAt = now();
   let samples = 1;
-  let packet = await captureBrowserEvidencePacket(page, options);
+  let packet = await captureBrowserEvidencePacket(page, captureOptions);
   let signature = renderSignature(packet);
   let stableSince = now();
 
   while (now() - startedAt < timeoutMs) {
-    await sleep(pollMs);
+    await sleep(pollMs, signal);
+    signal?.throwIfAborted();
     samples += 1;
-    packet = await captureBrowserEvidencePacket(page, options);
+    packet = await captureBrowserEvidencePacket(page, captureOptions);
     const nextSignature = renderSignature(packet);
     if (nextSignature !== signature) {
       signature = nextSignature;
@@ -431,6 +488,38 @@ function finiteNumber(value: number | undefined, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
+function browserEvidenceSignal(
+  explicitSignal?: AbortSignal,
+): AbortSignal | undefined {
+  return explicitSignal ?? currentBrowserInvocationScope()?.signal;
+}
+
+function sleepWithSignal(
+  milliseconds: number,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (!signal) {
+    return new Promise((resolve) => setTimeout(resolve, milliseconds));
+  }
+  if (signal.aborted) return Promise.reject(browserEvidenceAbortReason(signal));
+  return new Promise((resolve, reject) => {
+    const onAbort = (): void => {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", onAbort);
+      reject(browserEvidenceAbortReason(signal));
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, milliseconds);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+function browserEvidenceAbortReason(signal: AbortSignal): unknown {
+  return signal.reason ?? new Error("Browser evidence capture aborted");
+}
+
 function renderSignature(packet: BrowserEvidencePacket): string {
   return [
     packet.page.url,
@@ -447,10 +536,14 @@ async function captureValue<T>(
   fallback: T,
   label: string,
   errors: string[],
+  signal?: AbortSignal,
 ): Promise<T> {
   try {
-    return await fn();
+    const value = await fn();
+    signal?.throwIfAborted();
+    return value;
   } catch (err) {
+    signal?.throwIfAborted();
     errors.push(`${label}: ${errorMessage(err)}`);
     return fallback;
   }
@@ -484,15 +577,18 @@ function countSnapshotRefs(snapshot: string): number {
 async function readConsoleSummary(
   page: IPage,
   errors: string[],
+  signal?: AbortSignal,
 ): Promise<ConsoleReadResult> {
   try {
-    const raw = await page.evaluate(READ_CONSOLE_SUMMARY_JS);
+    const raw = await page.evaluate(READ_CONSOLE_SUMMARY_JS, signal);
+    signal?.throwIfAborted();
     if (typeof raw === "string") {
       const parsed = JSON.parse(raw) as unknown;
       return consoleReadResult(parsed);
     }
     return consoleReadResult(raw);
   } catch (err) {
+    signal?.throwIfAborted();
     errors.push(`console: ${errorMessage(err)}`);
     return {
       summary: {},
@@ -506,9 +602,11 @@ async function readConsoleSnapshot(
   page: IPage,
   errors: string[],
   clear: boolean,
+  signal?: AbortSignal,
 ): Promise<ConsoleReadResult> {
   try {
-    const raw = await page.evaluate(readConsoleSnapshotJs(clear));
+    const raw = await page.evaluate(readConsoleSnapshotJs(clear), signal);
+    signal?.throwIfAborted();
     const parsed = typeof raw === "string" ? (JSON.parse(raw) as unknown) : raw;
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       const record = parsed as {
@@ -527,6 +625,7 @@ async function readConsoleSnapshot(
     }
     return consoleReadResult(parsed);
   } catch (err) {
+    signal?.throwIfAborted();
     errors.push(`console: ${errorMessage(err)}`);
     return {
       summary: {},
@@ -540,24 +639,31 @@ async function readConsoleSnapshot(
 async function readNetworkEntries(
   page: IPage,
   errors: string[],
+  signal?: AbortSignal,
 ): Promise<NetworkReadResult> {
   const pageWithCapture = page as IPage & {
-    readNetworkCapture?: () => Promise<NetworkCaptureEntry[]>;
+    readNetworkCapture?: (
+      signal?: AbortSignal,
+    ) => Promise<NetworkCaptureEntry[]>;
   };
 
   let captured: NetworkCaptureEntry[] = [];
   if (typeof pageWithCapture.readNetworkCapture === "function") {
     try {
-      captured = (await pageWithCapture.readNetworkCapture()) ?? [];
+      captured = (await pageWithCapture.readNetworkCapture(signal)) ?? [];
+      signal?.throwIfAborted();
     } catch (err) {
+      signal?.throwIfAborted();
       errors.push(`network_capture: ${errorMessage(err)}`);
     }
   }
 
   let fallback: NetworkCaptureEntry[] = [];
   try {
-    fallback = (await page.networkRequests()).map(fromNetworkRequest);
+    fallback = (await page.networkRequests(signal)).map(fromNetworkRequest);
+    signal?.throwIfAborted();
   } catch (err) {
+    signal?.throwIfAborted();
     errors.push(`network: ${errorMessage(err)}`);
   }
 
@@ -624,23 +730,29 @@ async function captureScreenshot(
   options: BrowserEvidenceOptions,
   capturedAt: string,
 ): Promise<BrowserEvidencePacket["screenshot"]> {
+  const signal = browserEvidenceSignal(options.signal);
+  signal?.throwIfAborted();
   if (!options.screenshotDir) return { skipped: true };
 
   try {
-    const buffer = await page.screenshot({ fullPage: false });
+    const buffer = await page.screenshot({ fullPage: false }, signal);
+    signal?.throwIfAborted();
     const sha256 = `sha256:${createHash("sha256").update(buffer).digest("hex")}`;
+    signal?.throwIfAborted();
     await mkdir(options.screenshotDir, { recursive: true, mode: 0o700 });
+    signal?.throwIfAborted();
     const path = join(
       options.screenshotDir,
       `browser-evidence-${safeTimestamp(capturedAt)}-${sha256.slice(7, 19)}.png`,
     );
-    await writeFile(path, buffer, { mode: 0o600 });
+    await writeFileTransactionally(path, buffer, { mode: 0o600, signal });
     return {
       path,
       bytes: buffer.length,
       sha256,
     };
   } catch (err) {
+    signal?.throwIfAborted();
     return { error: errorMessage(err) };
   }
 }

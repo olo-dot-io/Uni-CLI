@@ -112,6 +112,7 @@ async function evaluatePermissionForEvent(
       args: inv.command.adapterArgs,
       profile: inv.permissionProfile,
       approved: inv.approved,
+      argumentValues: inv.bag.args,
     });
     return { ...policy };
   } catch (err) {

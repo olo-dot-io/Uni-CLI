@@ -18,25 +18,35 @@ import {
 } from "../../src/browser/runtime-transport.js";
 
 export class InMemoryBrowserRuntimeHarness {
-  readonly runtimeRoot = mkdtempSync(
-    join(tmpdir(), "unicli-browser-in-memory-"),
-  );
-  readonly provider = new InMemoryManagedProvider(this.runtimeRoot);
-  readonly broker = new BrowserRuntimeBroker({
-    runtimeId: randomUUID(),
-    // REASON: Chromium is external; this provider keeps broker ownership, IPC, sessions, queues, and page command routing real.
-    provider: this.provider as unknown as ManagedBrowserProvider,
-  });
-  readonly server = new BrowserRuntimeBrokerServer({
-    runtimeRoot: this.runtimeRoot,
-    runtimeId: this.broker.runtimeId,
-    handler: (request) => this.broker.dispatch(request),
-  });
-  readonly client = new BrowserRuntimeBrokerClient({
-    runtimeRoot: this.runtimeRoot,
-  });
+  readonly runtimeRoot: string;
+  readonly provider: InMemoryManagedProvider;
+  readonly broker: BrowserRuntimeBroker;
+  readonly server: BrowserRuntimeBrokerServer;
+  readonly client: BrowserRuntimeBrokerClient;
   private serverRunning = false;
   private brokerClosed = false;
+
+  constructor(options: { now?: () => number; sessionTtlMs?: number } = {}) {
+    this.runtimeRoot = mkdtempSync(join(tmpdir(), "unicli-browser-in-memory-"));
+    this.provider = new InMemoryManagedProvider(this.runtimeRoot);
+    this.broker = new BrowserRuntimeBroker({
+      runtimeId: randomUUID(),
+      ...(options.now ? { now: options.now } : {}),
+      ...(options.sessionTtlMs === undefined
+        ? {}
+        : { sessionTtlMs: options.sessionTtlMs }),
+      // REASON: Chromium is external; this provider keeps broker ownership, IPC, sessions, queues, and page command routing real.
+      provider: this.provider as unknown as ManagedBrowserProvider,
+    });
+    this.server = new BrowserRuntimeBrokerServer({
+      runtimeRoot: this.runtimeRoot,
+      runtimeId: this.broker.runtimeId,
+      handler: (request, signal) => this.broker.dispatch(request, signal),
+    });
+    this.client = new BrowserRuntimeBrokerClient({
+      runtimeRoot: this.runtimeRoot,
+    });
+  }
 
   async start(): Promise<void> {
     await this.server.start();
@@ -78,6 +88,8 @@ export class InMemoryManagedProvider {
   releaseCount = 0;
   releaseAttemptCount = 0;
   releaseFailuresRemaining = 0;
+  acquireGate?: Promise<void>;
+  releaseGate?: Promise<void>;
   private partitionId: string | null = null;
 
   constructor(private readonly runtimeRoot: string) {}
@@ -85,13 +97,14 @@ export class InMemoryManagedProvider {
   async acquireTarget(
     request: ManagedBrowserTargetRequest,
   ): Promise<ManagedBrowserTarget> {
-    this.acquireCount++;
+    const acquisitionNumber = ++this.acquireCount;
+    await this.acquireGate;
     this.partitionId ??= request.profile_partition_id;
     if (this.partitionId !== request.profile_partition_id) {
       throw new Error("This fixture supports one shared profile runtime");
     }
     const page = new InMemoryPage(
-      `target-${String(this.acquireCount)}`,
+      `target-${String(acquisitionNumber)}`,
       this.evaluationResults,
       (expression) => this.evaluationResolver?.(expression),
     );
@@ -117,6 +130,7 @@ export class InMemoryManagedProvider {
       this.releaseFailuresRemaining--;
       throw new Error(`Injected target release failure: ${targetId}`);
     }
+    await this.releaseGate;
     const page = this.pages.find(
       (candidate) => candidate.targetId === targetId,
     );
@@ -157,6 +171,7 @@ export class InMemoryPage {
   }> = [];
   readonly evaluations: string[] = [];
   readonly clicks: string[] = [];
+  readonly nativeClicks: Array<{ x: number; y: number }> = [];
   readonly typed: Array<{ selector: string; text: string }> = [];
   readonly presses: Array<{ key: string; modifiers?: string[] }> = [];
   readonly scrolls: string[] = [];
@@ -220,6 +235,9 @@ export class InMemoryPage {
 
   async click(selector: string): Promise<void> {
     this.clicks.push(selector);
+  }
+  async nativeClick(x: number, y: number): Promise<void> {
+    this.nativeClicks.push({ x, y });
   }
   async type(selector: string, text: string): Promise<void> {
     this.typed.push({ selector, text });

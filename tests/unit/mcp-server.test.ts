@@ -53,6 +53,27 @@ function sendRequest(
   });
 }
 
+async function sendTaskRequest(
+  proc: ChildProcess,
+  request: Record<string, unknown>,
+  resultRequestId: number,
+): Promise<Record<string, unknown>> {
+  const params = request.params as Record<string, unknown>;
+  const created = await sendRequest(proc, {
+    ...request,
+    params: { ...params, task: {} },
+  });
+  const taskId = (created.result as { task?: { taskId?: string } } | undefined)
+    ?.task?.taskId;
+  expect(taskId).toEqual(expect.any(String));
+  return sendRequest(proc, {
+    jsonrpc: "2.0",
+    id: resultRequestId,
+    method: "tasks/result",
+    params: { taskId },
+  });
+}
+
 describe("MCP server — smart default mode", () => {
   let proc: ChildProcess;
 
@@ -187,15 +208,19 @@ describe("MCP server — smart default mode", () => {
   });
 
   it("unicli_run returns error for unknown command", async () => {
-    const response = await sendRequest(proc, {
-      jsonrpc: "2.0",
-      id: 5,
-      method: "tools/call",
-      params: {
-        name: "unicli_run",
-        arguments: { site: "nonexistent", command: "nope" },
+    const response = await sendTaskRequest(
+      proc,
+      {
+        jsonrpc: "2.0",
+        id: 5,
+        method: "tools/call",
+        params: {
+          name: "unicli_run",
+          arguments: { site: "nonexistent", command: "nope" },
+        },
       },
-    });
+      5005,
+    );
 
     const result = response.result as {
       content: Array<{ type: string; text: string }>;
@@ -228,15 +253,19 @@ describe("MCP server — smart default mode", () => {
   });
 
   it("backwards-compat: run_command still works", async () => {
-    const response = await sendRequest(proc, {
-      jsonrpc: "2.0",
-      id: 51,
-      method: "tools/call",
-      params: {
-        name: "run_command",
-        arguments: { site: "nonexistent", command: "nope" },
+    const response = await sendTaskRequest(
+      proc,
+      {
+        jsonrpc: "2.0",
+        id: 51,
+        method: "tools/call",
+        params: {
+          name: "run_command",
+          arguments: { site: "nonexistent", command: "nope" },
+        },
       },
-    });
+      5051,
+    );
 
     const result = response.result as {
       content: Array<{ type: string; text: string }>;
@@ -488,7 +517,7 @@ describe("MCP server — deferred profile", () => {
 
 describe("MCP server — stdio shutdown", () => {
   it(
-    "drains an in-flight async tools/call before exiting on stdin close",
+    "contains an unsettled request and exits without a synthetic cancellation response",
     async () => {
       const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
       const proc = spawn(npxBin, ["tsx", SERVER_PATH], {
@@ -539,16 +568,10 @@ describe("MCP server — stdio shutdown", () => {
         .toString("utf8")
         .split("\n")
         .filter((line) => line.trim().length > 0);
-      const response = lines
+      const matchingResponses = lines
         .map((line) => JSON.parse(line) as Record<string, unknown>)
-        .find((line) => line.id === 90);
-
-      expect(response).toBeDefined();
-      expect(response?.jsonrpc).toBe("2.0");
-      const result = response?.result as
-        | { structuredContent?: { data?: { count?: number } } }
-        | undefined;
-      expect(result?.structuredContent?.data?.count).toBe(1);
+        .filter((line) => line.id === 90);
+      expect(matchingResponses).toEqual([]);
     },
     SERVER_START_TIMEOUT_MS,
   );

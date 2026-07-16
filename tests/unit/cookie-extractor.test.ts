@@ -2,10 +2,50 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 afterEach(() => {
   vi.doUnmock("../../src/browser/cdp-client.js");
+  vi.doUnmock("../../src/browser/bridge.js");
   vi.resetModules();
 });
 
 describe("cookie extraction", () => {
+  it("uses a broker-owned target when no explicit CDP port is requested", async () => {
+    const close = vi.fn().mockResolvedValue(undefined);
+    const sendCDP = vi.fn().mockResolvedValue({
+      cookies: [
+        {
+          name: "sid",
+          value: "broker-secret",
+          domain: ".example.com",
+          path: "/",
+          expires: 0,
+          httpOnly: true,
+          secure: true,
+        },
+      ],
+    });
+    vi.doMock("../../src/browser/bridge.js", () => ({
+      BrowserBridge: class {
+        async connect() {
+          return { sendCDP, close };
+        }
+      },
+    }));
+    const { extractCookiesViaCDP } =
+      await import("../../src/engine/cookie-extractor.js");
+
+    await expect(extractCookiesViaCDP("example.com")).resolves.toEqual({
+      sid: "broker-secret",
+    });
+    expect(sendCDP).toHaveBeenCalledWith("Network.getCookies", {
+      urls: [
+        "https://example.com",
+        "https://www.example.com",
+        "http://example.com",
+        "http://www.example.com",
+      ],
+    });
+    expect(close).toHaveBeenCalledOnce();
+  });
+
   it("rejects when CDP is unavailable without creating storage", async () => {
     const { extractCookiesViaCDP } =
       await import("../../src/engine/cookie-extractor.js");
@@ -39,7 +79,7 @@ describe("cookie extraction", () => {
     const { extractCookiesViaCDP } =
       await import("../../src/engine/cookie-extractor.js");
 
-    await expect(extractCookiesViaCDP("example.com")).rejects.toThrow(
+    await expect(extractCookiesViaCDP("example.com", 9222)).rejects.toThrow(
       "close failed",
     );
   });
@@ -61,7 +101,7 @@ describe("cookie extraction", () => {
     const { extractCookiesViaCDP } =
       await import("../../src/engine/cookie-extractor.js");
 
-    const result = extractCookiesViaCDP("example.com");
+    const result = extractCookiesViaCDP("example.com", 9222);
     await expect(result).rejects.toThrow(
       "Cookie extraction and CDP cleanup both failed",
     );

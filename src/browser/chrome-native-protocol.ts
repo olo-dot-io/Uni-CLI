@@ -1,10 +1,10 @@
 /**
  * @owner       src/browser/chrome-native-protocol.ts
- * @does        Define the versioned Chrome extension/native-host command, result, target, tab, and error contract shared by broker, host, extension, and tests.
+ * @does        Define the versioned Chrome extension/native-host command, result, durable target inventory, tab, and error contract shared by broker, host, extension, and tests.
  * @needs       src/browser/runtime-protocol.ts (type only)
  * @feeds       src/browser/chrome-provider.ts, native-host-main.ts, extension/src/background.ts, extension/src/chrome-controller.ts
  * @breaks      Consumers reject unknown product/protocol/version, malformed commands/results, mismatched request ids, and unsupported visibility states.
- * @invariants  Native messages are request-correlated; background is explicit; target allocation/claim/finalization is separate from page mutation.
+ * @invariants  Native messages are request-correlated; hello reports the extension's reconciled target ledger; background is explicit; target allocation/claim/finalization is separate from page mutation; extension and host abandon a command generation before the broker's consumer deadline.
  * @side-effects none (constants and types only)
  * @perf        O(1) serialization shape; native framing enforces the byte limit separately.
  * @concurrency One native host executes commands sequentially while the broker preserves per-target ordering.
@@ -17,11 +17,12 @@ import type { BrowserPageCommand } from "./runtime-protocol.js";
 
 export const CHROME_NATIVE_PRODUCT = "unicli";
 export const CHROME_NATIVE_PROTOCOL = "unicli-chrome-native";
-export const CHROME_NATIVE_PROTOCOL_VERSION = 1;
+export const CHROME_NATIVE_PROTOCOL_VERSION = 2;
 export const CHROME_NATIVE_HOST_NAME = "io.unicli.browser";
 export const CHROME_EXTENSION_ID = "decklegbfaimflikbihddclmbiiaiakg";
 export const CHROME_NATIVE_MAX_HOST_TO_EXTENSION_BYTES = 1024 * 1024;
 export const CHROME_NATIVE_MAX_EXTENSION_TO_HOST_BYTES = 64 * 1024 * 1024;
+export const CHROME_NATIVE_COMMAND_DEADLINE_MS = 110_000;
 
 export interface ChromeNativeHello {
   type: "hello";
@@ -31,6 +32,7 @@ export interface ChromeNativeHello {
   extension_id: string;
   extension_version: string;
   browser_session_id: string;
+  targets: ChromeNativeTarget[];
 }
 
 export interface ChromeNativeTab {
@@ -83,11 +85,17 @@ export type ChromeNativeCommand =
       command: BrowserPageCommand;
     });
 
+export type ChromeNativeBrokerCommand =
+  | ChromeNativeCommand
+  | (ChromeNativeCommandBase & { action: "host.shutdown" });
+
 export interface ChromeNativeError {
   code: string;
   message: string;
   suggestion: string;
   retryable: boolean;
+  outcome_ambiguous?: boolean;
+  target_unusable?: boolean;
 }
 
 interface ChromeNativeResultBase {

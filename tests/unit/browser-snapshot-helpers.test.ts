@@ -16,7 +16,10 @@ describe("snapshotWithFingerprint", () => {
         interactive: true,
       }),
     ).resolves.toBe("[1]<button>Continue</button>");
-    expect(evaluate).toHaveBeenLastCalledWith(FINGERPRINT_PERSIST_JS);
+    expect(evaluate).toHaveBeenLastCalledWith(
+      FINGERPRINT_PERSIST_JS,
+      undefined,
+    );
   });
 
   it("rejects a snapshot whose fingerprint could not be persisted", async () => {
@@ -28,5 +31,32 @@ describe("snapshotWithFingerprint", () => {
     await expect(
       snapshotWithFingerprint({ evaluate } as unknown as IPage),
     ).rejects.toThrow("renderer navigated");
+  });
+
+  it("does not persist a fingerprint after a cancelled snapshot evaluation finishes late", async () => {
+    let finishEvaluation!: (value: unknown) => void;
+    const evaluate = vi.fn(
+      (_script: string, _signal?: AbortSignal) =>
+        new Promise<unknown>((resolve) => {
+          finishEvaluation = resolve;
+        }),
+    );
+    const controller = new AbortController();
+    const operation = snapshotWithFingerprint(
+      { evaluate } as unknown as IPage,
+      undefined,
+      controller.signal,
+    );
+
+    const cancellation = new Error("cancel snapshot");
+    controller.abort(cancellation);
+    finishEvaluation("[1]<button>Continue</button>");
+
+    await expect(operation).rejects.toBe(cancellation);
+    expect(evaluate).toHaveBeenCalledTimes(1);
+    expect(evaluate).toHaveBeenCalledWith(
+      expect.any(String),
+      controller.signal,
+    );
   });
 });

@@ -117,18 +117,17 @@ describe("broker-backed browser pipeline steps", () => {
     ]);
   });
 
-  it("routes coordinate clicks and focused typing through broker CDP commands", async () => {
+  it("routes coordinate clicks and focused typing through the broker provider", async () => {
     await runBrokerPipeline(
       [{ click: { x: 150, y: 300 } }, { type: { text: "focused input" } }],
       { args: {}, source: "internal" },
     );
 
+    expect(runtime.provider.pages[0]?.nativeClicks).toEqual([
+      { x: 150, y: 300 },
+    ]);
     expect(runtime.provider.pages[0]?.cdpCalls).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({
-          method: "Input.dispatchMouseEvent",
-          params: expect.objectContaining({ x: 150, y: 300 }),
-        }),
         {
           method: "Input.insertText",
           params: { text: "focused input" },

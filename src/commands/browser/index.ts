@@ -22,6 +22,7 @@ import {
 import { registerBrowserAdapterAuthoringSubcommands } from "./adapter.js";
 import { registerBrowserLifecycleCommands } from "./lifecycle.js";
 import { registerBrowserNativeHostCommands } from "./native-host.js";
+import { authorizeBrowserCommand } from "./permission.js";
 import {
   browserCookieIdForLocalProfile,
   detectLocalBrowserProfiles,
@@ -60,19 +61,37 @@ function registerProfileCommand(browser: Command, program: Command): void {
     .command("profiles")
     .description("List local Chromium-family browser profiles without cookies")
     .option("--json", "JSON output (alias for -f json)")
-    .action((options: { json?: boolean }) => {
-      const profiles = detectLocalBrowserProfiles();
-      printCommandResult(
-        program,
-        "browser.profiles",
-        {
-          source: "local-filesystem",
-          raw_cookie_values_returned: false,
-          count: profiles.length,
-          profiles,
-        },
-        options.json,
-      );
+    .action(async (options: { json?: boolean }) => {
+      const startedAt = Date.now();
+      const outputFormat = commandFormat(program, options.json);
+      const context = makeCtx("browser.profiles", startedAt);
+      try {
+        await authorizeBrowserCommand(program, "browser", "profiles", {
+          json: options.json === true,
+        });
+        const profiles = detectLocalBrowserProfiles();
+        printCommandResult(
+          program,
+          "browser.profiles",
+          {
+            source: "local-filesystem",
+            raw_cookie_values_returned: false,
+            count: profiles.length,
+            profiles,
+          },
+          options.json,
+          startedAt,
+        );
+      } catch (error) {
+        emitBrowserCommandFailure({
+          context,
+          startedAt,
+          outputFormat,
+          error,
+          fallbackCode: "browser_profiles_failed",
+          fallbackSuggestion: "Repair local Chromium profile access and retry.",
+        });
+      }
     });
 }
 
@@ -99,6 +118,11 @@ function registerCookieCommand(browser: Command, program: Command): void {
         );
         const context = makeCtx("browser.cookies", startedAt);
         try {
+          await authorizeBrowserCommand(program, "browser", "cookies", {
+            domain,
+            profileId: options.profileId ?? null,
+            saveAs: options.saveAs ?? null,
+          });
           const profile = resolveCookieProfile(options.profileId);
           const browserId = browserCookieIdForLocalProfile(profile);
           if (!browserId) {
@@ -151,19 +175,18 @@ function registerCookieCommand(browser: Command, program: Command): void {
             ),
           );
         } catch (error) {
-          context.duration_ms = Date.now() - startedAt;
-          context.error = {
-            code:
+          emitBrowserCommandFailure({
+            context,
+            startedAt,
+            outputFormat,
+            error,
+            fallbackCode:
               error instanceof ChromiumCookieError
                 ? `cookie_${error.code.replaceAll("-", "_")}`
                 : "browser_cookie_import_failed",
-            message: error instanceof Error ? error.message : String(error),
-            suggestion:
+            fallbackSuggestion:
               "Run `unicli browser profiles --json`, select a readable signed-in profile, and retry.",
-            retryable: false,
-          };
-          console.error(format(null, undefined, outputFormat, context));
-          process.exitCode = mapErrorToExitCode(error);
+          });
         }
       },
     );
@@ -187,13 +210,43 @@ function printCommandResult(
   program: Command,
   command: string,
   result: Record<string, unknown>,
-  jsonAlias = false,
+  jsonAlias: boolean | undefined,
+  startedAt: number,
 ): void {
-  const startedAt = Date.now();
-  const outputFormat = detectFormat(
-    jsonAlias ? "json" : (program.opts().format as OutputFormat | undefined),
-  );
+  const outputFormat = commandFormat(program, jsonAlias);
   const context = makeCtx(command, startedAt);
   context.duration_ms = Date.now() - startedAt;
   console.log(format(result, undefined, outputFormat, context));
+}
+
+function commandFormat(program: Command, jsonAlias = false): OutputFormat {
+  return detectFormat(
+    jsonAlias ? "json" : (program.opts().format as OutputFormat | undefined),
+  );
+}
+
+function emitBrowserCommandFailure(input: {
+  context: ReturnType<typeof makeCtx>;
+  startedAt: number;
+  outputFormat: OutputFormat;
+  error: unknown;
+  fallbackCode: string;
+  fallbackSuggestion: string;
+}): void {
+  const tagged = input.error as Partial<{
+    code: string;
+    suggestion: string;
+    retryable: boolean;
+    exitCode: number;
+  }>;
+  input.context.duration_ms = Date.now() - input.startedAt;
+  input.context.error = {
+    code: tagged.code ?? input.fallbackCode,
+    message:
+      input.error instanceof Error ? input.error.message : String(input.error),
+    suggestion: tagged.suggestion ?? input.fallbackSuggestion,
+    retryable: tagged.retryable ?? false,
+  };
+  console.error(format(null, undefined, input.outputFormat, input.context));
+  process.exitCode = tagged.exitCode ?? mapErrorToExitCode(input.error);
 }

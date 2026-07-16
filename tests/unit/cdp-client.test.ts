@@ -459,10 +459,83 @@ describe("CDPClient send/receive", () => {
     await client.connect(`ws://localhost:${String(port)}`);
 
     const promise = client.send("Page.enable");
+    const rejected = expect(promise).rejects.toThrow("CDP connection closed");
     // Close immediately -- should reject the pending send
     await client.close();
 
-    await expect(promise).rejects.toThrow("CDP connection closed");
+    await rejected;
+  });
+
+  it("marks a command pending during unexpected socket loss as outcome-ambiguous", async () => {
+    server.on("connection", (ws) => {
+      ws.on("message", () => ws.terminate());
+    });
+    await client.connect(`ws://localhost:${String(port)}`);
+
+    await expect(
+      client.send("Runtime.evaluate", { expression: "window.submit()" }),
+    ).rejects.toMatchObject({
+      code: "cdp_connection_lost",
+      outcome_ambiguous: true,
+      target_unusable: true,
+      retryable: true,
+    });
+  });
+
+  it("aborts one pending command, ignores its late response, and keeps the socket usable", async () => {
+    let firstRequestId: number | undefined;
+    let resolveFirstObserved!: () => void;
+    const firstObserved = new Promise<void>((resolve) => {
+      resolveFirstObserved = resolve;
+    });
+    server.on("connection", (ws) => {
+      ws.on("message", (data) => {
+        const message = JSON.parse(data.toString()) as { id: number };
+        if (firstRequestId === undefined) {
+          firstRequestId = message.id;
+          resolveFirstObserved();
+          return;
+        }
+        ws.send(JSON.stringify({ id: firstRequestId, result: { late: true } }));
+        ws.send(JSON.stringify({ id: message.id, result: { ready: true } }));
+      });
+    });
+    await client.connect(`ws://localhost:${String(port)}`);
+    const controller = new AbortController();
+    const cancellation = new Error("cancel CDP wait");
+    const first = client.send(
+      "Runtime.evaluate",
+      { expression: "slow()" },
+      undefined,
+      controller.signal,
+    );
+    await firstObserved;
+
+    controller.abort(cancellation);
+
+    await expect(first).rejects.toBe(cancellation);
+    await expect(client.send("Page.getFrameTree")).resolves.toEqual({
+      ready: true,
+    });
+  });
+
+  it("waits for the exact peer socket to close before reconnecting", async () => {
+    server.on("connection", (ws) => {
+      ws.on("message", (data) => {
+        const message = JSON.parse(data.toString()) as { id: number };
+        ws.send(JSON.stringify({ id: message.id, result: { ready: true } }));
+      });
+    });
+
+    await client.connect(`ws://localhost:${String(port)}`);
+    expect(server.clients.size).toBe(1);
+    await client.close();
+    await waitUntil(() => server.clients.size === 0);
+
+    await client.connect(`ws://localhost:${String(port)}`);
+    await expect(client.send("Runtime.evaluate")).resolves.toEqual({
+      ready: true,
+    });
   });
 
   it("throws if connect called while already connected", async () => {
@@ -476,6 +549,15 @@ describe("CDPClient send/receive", () => {
     ).rejects.toThrow("already connected");
   });
 });
+
+async function waitUntil(predicate: () => boolean): Promise<void> {
+  const deadline = Date.now() + 1_000;
+  while (Date.now() < deadline) {
+    if (predicate()) return;
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  }
+  throw new Error("Timed out waiting for WebSocket close propagation");
+}
 
 // ── Event subscription tests ─────────────────────────────────────────
 

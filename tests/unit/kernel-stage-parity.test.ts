@@ -15,6 +15,11 @@ import {
 } from "../../src/engine/kernel/stages.js";
 import { AdapterType, type AdapterManifest } from "../../src/types.js";
 import { registerAdapter } from "../../src/registry.js";
+import { runResolvedCommand } from "../../src/mcp/dispatch.js";
+import { OperationOutcomeAmbiguousError } from "../../src/transport/contained-process.js";
+
+let sendImplementation: () => Promise<unknown>;
+let registeredAdapter: AdapterManifest;
 
 function stageAdapter(): AdapterManifest {
   return {
@@ -48,7 +53,7 @@ function stageAdapter(): AdapterManifest {
         description: "Send a message",
         adapter_path: "src/adapters/kernel-stage-fixture/send.yaml",
         adapterArgs: [{ name: "text", type: "str", required: true }],
-        func: async () => [{ sent: true }],
+        func: async () => sendImplementation(),
       },
     },
   };
@@ -56,9 +61,10 @@ function stageAdapter(): AdapterManifest {
 
 beforeEach(() => {
   _resetCompiledCacheForTests();
-  const adapter = stageAdapter();
-  registerAdapter(adapter);
-  compileAll([adapter]);
+  sendImplementation = async () => [{ sent: true }];
+  registeredAdapter = stageAdapter();
+  registerAdapter(registeredAdapter);
+  compileAll([registeredAdapter]);
 });
 
 describe("kernel stage parity", () => {
@@ -127,5 +133,53 @@ describe("kernel stage parity", () => {
     expect(stage.blocked?.result.error).toEqual(result.error);
     expect(stage.blocked?.result.exitCode).toBe(result.exitCode);
     expect(stage.blocked?.result.envelope.error).toEqual(result.envelope.error);
+  });
+
+  it("keeps a mutating function command fulfillment authoritative over late cancellation", async () => {
+    const controller = new AbortController();
+    let effects = 0;
+    sendImplementation = async () => {
+      effects += 1;
+      controller.abort(
+        new DOMException("late client cancellation", "AbortError"),
+      );
+      return [{ sent: true }];
+    };
+    const inv = buildInvocation(
+      "mcp",
+      "kernel-stage-fixture",
+      "send",
+      { args: { text: "hello" }, source: "mcp" },
+      { signal: controller.signal },
+    )!;
+
+    const result = await execute(inv);
+
+    expect(result.error).toBeUndefined();
+    expect(result.results).toEqual([{ sent: true }]);
+    expect(effects).toBe(1);
+  });
+
+  it("preserves structural outcome ambiguity through the MCP envelope", async () => {
+    sendImplementation = async () => {
+      throw new OperationOutcomeAmbiguousError(
+        "fixture send",
+        new DOMException("client cancelled", "AbortError"),
+      );
+    };
+    const command = registeredAdapter.commands.send!;
+
+    const result = await runResolvedCommand(registeredAdapter, command, {
+      cmdName: "send",
+      args: { text: "hello" },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.structuredContent?.data).toMatchObject({
+      code: "operation_outcome_ambiguous",
+      outcome_ambiguous: true,
+      operation: "fixture send",
+      retryable: false,
+    });
   });
 });

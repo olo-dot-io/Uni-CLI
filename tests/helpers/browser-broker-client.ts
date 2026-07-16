@@ -26,7 +26,7 @@ async function main(): Promise<void> {
   };
   const client = new BrowserRuntimeBrokerClient({
     runtimeRoot: input.runtime_root,
-    timeoutMs: 20_000,
+    requestTimeoutMs: 20_000,
   });
   await client.requestOrThrow({
     id: randomUUID(),

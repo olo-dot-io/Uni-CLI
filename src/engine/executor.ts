@@ -1,10 +1,10 @@
 /**
  * @owner       src::engine::executor
- * @does        Orchestrates YAML pipelines and dispatches registered, transport-native, then plugin actions.
- * @needs       step registry/barrel, transport handler tables, operation args, cookie acquisition, runtime recovery, observer
+ * @does        Orchestrates cancellable YAML pipelines and dispatches registered, transport-native, then plugin actions.
+ * @needs       browser invocation context/scope, step registry/barrel, transport handler tables, operation args, cookie acquisition, runtime recovery, observer
  * @feeds       adapter execution across CLI/MCP/ACP and repair verification
- * @breaks      Unknown actions and step failures become typed PipelineError instances with owning step evidence.
- * @invariants  Every built-in non-transport action is registry-owned; retry/fallback remain bounded sibling metadata.
+ * @breaks      Unknown actions and step failures become typed PipelineError instances with owning step evidence; structured runtime errors retain their exact code and recovery guidance.
+ * @invariants  Every built-in non-transport action is registry-owned; pre-dispatch cancellation is exact, settled fulfillment wins, and mutating partial completion is outcome-ambiguous; retry/fallback remain bounded sibling metadata.
  * @side-effects Executes network/browser/desktop/subprocess actions, observes steps, and cleans temporary directories.
  * @perf        O(pipeline length) orchestration excluding action-owned I/O.
  * @concurrency Parallelism exists only in explicit parallel/each handlers; the main pipeline is ordered.
@@ -16,6 +16,12 @@
 import { rmSync } from "node:fs";
 import type { IPage, PipelineStep } from "../types.js";
 import type { BrowserSessionPreference } from "../types.js";
+import { createBrowserInvocationContext } from "../browser/invocation-context.js";
+import {
+  createBrowserInvocationScope,
+  currentBrowserInvocationScope,
+  runBrowserInvocation,
+} from "../browser/invocation-scope.js";
 import { isTargetError } from "../browser/target-errors.js";
 import { acquireCookies, formatCookieHeader } from "./cookies.js";
 import { describeCookieFailure } from "./cookie-source.js";
@@ -35,6 +41,8 @@ import {
   _resetTransportBusForTests,
 } from "../transport/bus.js";
 import type { ArgSource, ResolvedArgs } from "./args.js";
+import { settleDispatchedAction } from "../transport/action-settlement.js";
+import { isOperationOutcomeAmbiguousError } from "../transport/contained-process.js";
 import {
   type StepObserver,
   type StepObservation,
@@ -79,6 +87,10 @@ export interface PipelineOptions {
    * result/error envelope. Undefined = zero overhead (the default).
    */
   observer?: StepObserver;
+  /** Request-owned cancellation propagated across pipeline and recovery boundaries. */
+  signal?: AbortSignal;
+  /** Whether the authorized command can mutate external state. Defaults true for direct callers. */
+  canMutate?: boolean;
 }
 
 export type PipelineContext = {
@@ -103,6 +115,10 @@ export type PipelineContext = {
   site?: string;
   /** Adapter command that owns this pipeline, when routed through the kernel. */
   command?: string;
+  /** Request-owned cancellation propagated to nested and browser steps. */
+  signal?: AbortSignal;
+  /** Whether the owning command can mutate external state. */
+  canMutate: boolean;
 };
 
 /** Structured pipeline error — designed for AI agent consumption. */
@@ -113,26 +129,14 @@ export class PipelineError extends Error {
       step: number;
       action: string;
       config: unknown;
-      errorType:
-        | "http_error"
-        | "selector_miss"
-        | "empty_result"
-        | "parse_error"
-        | "network_error"
-        | "timeout"
-        | "expression_error"
-        | "assertion_failed"
-        | "permission_denied"
-        | "stale_ref"
-        | "ambiguous"
-        | "ref_not_found"
-        | "unknown_action";
+      errorType: string;
       url?: string;
       statusCode?: number;
       responsePreview?: string;
       suggestion: string;
       retryable?: boolean;
       alternatives?: string[];
+      preserveErrorCode?: boolean;
     },
   ) {
     super(message);
@@ -183,8 +187,11 @@ export async function executeStep(
   fullStep?: PipelineStep,
   depth?: number,
 ): Promise<PipelineContext> {
+  ctx.signal?.throwIfAborted();
   const handler = getStep(action);
-  if (handler) return handler(ctx, config, stepIndex, fullStep, depth);
+  if (handler) {
+    return handler(ctx, config, stepIndex, fullStep, depth);
+  }
 
   if (
     isVisualStep(action) ||
@@ -258,6 +265,18 @@ function buildPipelineError(
       alternatives,
     });
   }
+  if (isStructuredActionableError(err)) {
+    return new PipelineError(err.message, {
+      step: stepIndex,
+      action,
+      config,
+      errorType: err.code,
+      suggestion: err.suggestion,
+      retryable: err.retryable,
+      alternatives: err.alternatives ?? [],
+      preserveErrorCode: true,
+    });
+  }
   const errMsg = err instanceof Error ? err.message : String(err);
   const httpStatus = /\bHTTP\s+(\d{3})\b/i.exec(errMsg)?.[1];
   if (httpStatus) {
@@ -303,6 +322,33 @@ function buildPipelineError(
   });
 }
 
+function isStructuredActionableError(error: unknown): error is Error & {
+  code: string;
+  suggestion: string;
+  retryable: boolean;
+  alternatives?: string[];
+} {
+  if (!(error instanceof Error)) return false;
+  const candidate = error as Error & {
+    code?: unknown;
+    suggestion?: unknown;
+    retryable?: unknown;
+    alternatives?: unknown;
+  };
+  return (
+    typeof candidate.code === "string" &&
+    candidate.code.length > 0 &&
+    typeof candidate.suggestion === "string" &&
+    candidate.suggestion.length > 0 &&
+    typeof candidate.retryable === "boolean" &&
+    (candidate.alternatives === undefined ||
+      (Array.isArray(candidate.alternatives) &&
+        candidate.alternatives.every(
+          (alternative) => typeof alternative === "string",
+        )))
+  );
+}
+
 /**
  * Emit a step observation through the sink, guarding against a misbehaving
  * observer. Observation is a side channel that must never break a run.
@@ -346,6 +392,29 @@ export async function runPipeline(
   base?: string,
   options?: PipelineOptions,
 ): Promise<unknown[]> {
+  if (currentBrowserInvocationScope()) {
+    return runPipelineInInvocation(steps, bag, base, options);
+  }
+  const context = createBrowserInvocationContext({
+    transport: pipelineInvocationTransport(options?.surface),
+    ...(options?.trace_id ? { turnId: options.trace_id } : {}),
+  });
+  const scope = createBrowserInvocationScope({
+    context,
+    ...(options?.signal ? { signal: options.signal } : {}),
+  });
+  return runBrowserInvocation(scope, () =>
+    runPipelineInInvocation(steps, bag, base, options),
+  );
+}
+
+async function runPipelineInInvocation(
+  steps: PipelineStep[],
+  bag: ResolvedArgs,
+  base?: string,
+  options?: PipelineOptions,
+): Promise<unknown[]> {
+  options?.signal?.throwIfAborted();
   const rt = await import("./runtime.js");
   let cookieHeader: string | undefined;
   if (
@@ -353,6 +422,7 @@ export async function runPipeline(
     options?.site
   ) {
     const outcome = await acquireCookies(options.site, options.domain);
+    options.signal?.throwIfAborted();
     if (outcome.status !== "loaded") {
       const failure = describeCookieFailure(
         outcome,
@@ -385,6 +455,8 @@ export async function runPipeline(
     command: options?.command,
     domain: options?.domain,
     browserSession: options?.browserSession,
+    signal: options?.signal,
+    canMutate: options?.canMutate ?? true,
   };
   let tempDir: string | undefined;
   let executionFailed = false;
@@ -392,52 +464,97 @@ export async function runPipeline(
   let pipelineResult: unknown[] = [];
 
   try {
-    for (let i = 0; i < steps.length; i++) {
-      const step = steps[i];
-      const [action, config] = getActionEntry(step);
-      const { config: extracted, fallbacks } = rt.extractFallbacks(
-        step,
-        config,
-      );
-      const retryCount = rt.getRetryCount(step, extracted);
-      const backoffMs = rt.getBackoffMs(step, extracted);
-      const stepConfig = rt.stripRetryKeys(extracted);
+    const operation =
+      [options?.site, options?.command].filter(Boolean).join(".") || "pipeline";
+    pipelineResult = await settleDispatchedAction(
+      operation,
+      ctx.canMutate,
+      ctx.signal,
+      async () => {
+        for (let i = 0; i < steps.length; i++) {
+          ctx.signal?.throwIfAborted();
+          const step = steps[i];
+          const [action, config] = getActionEntry(step);
+          const { config: extracted, fallbacks } = rt.extractFallbacks(
+            step,
+            config,
+          );
+          const retryCount = rt.getRetryCount(step, extracted);
+          const backoffMs = rt.getBackoffMs(step, extracted);
+          const stepConfig = rt.stripRetryKeys(extracted);
 
-      const startedAt = performance.now();
-      try {
-        ctx =
-          retryCount > 0
-            ? await rt.runWithRetry(
-                ctx,
+          const startedAt = performance.now();
+          try {
+            ctx =
+              retryCount > 0
+                ? await rt.runWithRetry(
+                    ctx,
+                    action,
+                    stepConfig,
+                    fallbacks,
+                    retryCount,
+                    backoffMs,
+                    i,
+                    step,
+                  )
+                : await rt.runWithFallbacks(
+                    ctx,
+                    action,
+                    stepConfig,
+                    fallbacks,
+                    i,
+                    step,
+                  );
+          } catch (err) {
+            if (isOperationOutcomeAmbiguousError(err) || ctx.signal?.aborted) {
+              throw err;
+            }
+            const fixed = options?.site
+              ? await rt.tryAutoFixSelect(
+                  err,
+                  ctx,
+                  action,
+                  stepConfig,
+                  i,
+                  options.site,
+                )
+              : undefined;
+            if (fixed) {
+              ctx = fixed;
+              recordObservation(options?.observer, {
+                index: i,
                 action,
-                stepConfig,
-                fallbacks,
-                retryCount,
-                backoffMs,
-                i,
-                step,
-              )
-            : await rt.runWithFallbacks(
-                ctx,
-                action,
-                stepConfig,
-                fallbacks,
-                i,
-                step,
-              );
-      } catch (err) {
-        const fixed = options?.site
-          ? await rt.tryAutoFixSelect(
+                status: "ok",
+                durationMs: performance.now() - startedAt,
+                output: summarizeOutput(ctx.data),
+              });
+              if (ctx.tempDir) tempDir = ctx.tempDir;
+              continue;
+            }
+
+            if (ctx.signal?.aborted) throw err;
+            await rt.emitDiagnosticIfEnabled(err, ctx, options?.site);
+            if (ctx.signal?.aborted) throw err;
+            await rt.maybeRefreshCookies(err, options);
+
+            const pipelineError = buildPipelineError(
               err,
-              ctx,
-              action,
-              stepConfig,
               i,
-              options.site,
-            )
-          : undefined;
-        if (fixed) {
-          ctx = fixed;
+              action,
+              config,
+              options,
+            );
+            recordObservation(options?.observer, {
+              index: i,
+              action,
+              status: "error",
+              durationMs: performance.now() - startedAt,
+              errorType: pipelineError.detail.errorType,
+              errorMessage: pipelineError.message,
+            });
+            throw pipelineError;
+          }
+
           recordObservation(options?.observer, {
             index: i,
             action,
@@ -446,43 +563,13 @@ export async function runPipeline(
             output: summarizeOutput(ctx.data),
           });
           if (ctx.tempDir) tempDir = ctx.tempDir;
-          continue;
         }
 
-        await rt.emitDiagnosticIfEnabled(err, ctx, options?.site);
-        await rt.maybeRefreshCookies(err, options);
-
-        const pipelineError = buildPipelineError(
-          err,
-          i,
-          action,
-          config,
-          options,
-        );
-        recordObservation(options?.observer, {
-          index: i,
-          action,
-          status: "error",
-          durationMs: performance.now() - startedAt,
-          errorType: pipelineError.detail.errorType,
-          errorMessage: pipelineError.message,
-        });
-        throw pipelineError;
-      }
-
-      recordObservation(options?.observer, {
-        index: i,
-        action,
-        status: "ok",
-        durationMs: performance.now() - startedAt,
-        output: summarizeOutput(ctx.data),
-      });
-      if (ctx.tempDir) tempDir = ctx.tempDir;
-    }
-
-    const result = ctx.data;
-    if (Array.isArray(result)) pipelineResult = result;
-    else if (result !== null && result !== undefined) pipelineResult = [result];
+        const result = ctx.data;
+        if (Array.isArray(result)) return result;
+        return result === null || result === undefined ? [] : [result];
+      },
+    );
   } catch (error) {
     executionFailed = true;
     executionError = error;
@@ -517,4 +604,13 @@ export async function runPipeline(
     throw new AggregateError(cleanupErrors, "Pipeline resource cleanup failed");
   }
   return pipelineResult;
+}
+
+function pipelineInvocationTransport(
+  surface: PipelineOptions["surface"],
+): "cli" | "mcp-stdio" | "plugin" | "broker" {
+  if (surface === "cli") return "cli";
+  if (surface === "mcp") return "mcp-stdio";
+  if (surface === "acp") return "plugin";
+  return "broker";
 }

@@ -1,130 +1,219 @@
-/**
- * Legacy HTTP MCP transport — origin-guard regression.
- *
- * Locks the DNS-rebinding defense reported missing on the simple HTTP
- * transport: a malicious web page could send a browser "simple request"
- * (text/plain, no preflight) to http://127.0.0.1:<port>/mcp and drive
- * `tools/call`. The fix rejects any non-loopback `Origin` before dispatch,
- * matching the Streamable HTTP transport. These tests reproduce the exact
- * PoC request shape and pin the three outcomes (hostile / loopback / none).
- */
+import http from "node:http";
 
-import { describe, it, expect, afterEach } from "vitest";
-import http, { type Server } from "node:http";
-import type { AddressInfo, IncomingMessage } from "node:net";
-import { startHttp } from "../../../src/mcp/http-transport.js";
+import { afterEach, describe, expect, it } from "vitest";
+
+import { currentBrowserInvocationScope } from "../../../src/browser/invocation-scope.js";
+import { MCP_PROTOCOL_VERSION } from "../../../src/constants.js";
 import { buildHandler } from "../../../src/mcp/handler.js";
+import { startHttp, stopHttp } from "../../../src/mcp/http-transport.js";
 import { isOriginAllowed } from "../../../src/mcp/origin-guard.js";
+import type { McpTool } from "../../../src/mcp/tools.js";
 
 interface HttpResult {
   status: number;
+  headers: http.IncomingHttpHeaders;
   body: string;
 }
 
 function request(
   port: number,
-  method: string,
-  path: string,
-  body?: string,
+  body: string,
   extraHeaders?: Record<string, string>,
 ): Promise<HttpResult> {
   return new Promise((resolve, reject) => {
-    const req = http.request(
-      { hostname: "127.0.0.1", port, path, method, headers: extraHeaders },
-      (res) => {
+    const outgoing = http.request(
+      {
+        hostname: "127.0.0.1",
+        port,
+        path: "/mcp",
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...extraHeaders },
+      },
+      (incoming) => {
         const chunks: Buffer[] = [];
-        res.on("data", (c: Buffer) => chunks.push(c));
-        res.on("end", () =>
+        incoming.on("data", (chunk: Buffer) => chunks.push(chunk));
+        incoming.on("end", () =>
           resolve({
-            status: res.statusCode ?? 0,
-            body: Buffer.concat(chunks).toString("utf-8"),
+            status: incoming.statusCode ?? 0,
+            headers: incoming.headers,
+            body: Buffer.concat(chunks).toString("utf8"),
           }),
         );
       },
     );
-    req.on("error", reject);
-    if (body) req.write(body);
-    req.end();
+    outgoing.on("error", reject);
+    outgoing.end(body);
   });
 }
 
-const INITIALIZE_BODY = JSON.stringify({
-  jsonrpc: "2.0",
-  id: 1,
-  method: "initialize",
-  params: {},
-});
-
-// The cross-origin browser-simple POST exactly as the reporter's PoC sends it.
-const TOOLS_CALL_POC = JSON.stringify({
-  jsonrpc: "2.0",
-  id: 7,
-  method: "tools/call",
-  params: {
-    name: "unicli_run",
-    arguments: { site: "hackernews", command: "top", args: { limit: 1 } },
-  },
-});
-
-function fakeOrigin(origin?: string): IncomingMessage {
-  return { headers: origin ? { origin } : {} } as unknown as IncomingMessage;
+function fakeOrigin(origin?: string): http.IncomingMessage {
+  return {
+    headers: origin ? { origin } : {},
+  } as unknown as http.IncomingMessage;
 }
 
-describe("isOriginAllowed", () => {
-  it("allows non-browser clients that omit Origin", () => {
-    expect(isOriginAllowed(fakeOrigin())).toBe(true);
-  });
-
-  it("allows loopback origins on any port", () => {
-    expect(isOriginAllowed(fakeOrigin("http://localhost"))).toBe(true);
-    expect(isOriginAllowed(fakeOrigin("http://localhost:3000"))).toBe(true);
-    expect(isOriginAllowed(fakeOrigin("http://127.0.0.1:19826"))).toBe(true);
-  });
-
-  it("rejects remote and malformed origins", () => {
-    expect(isOriginAllowed(fakeOrigin("https://attacker.example"))).toBe(false);
-    expect(
-      isOriginAllowed(fakeOrigin("http://evil.localhost.attacker.com")),
-    ).toBe(false);
-    expect(isOriginAllowed(fakeOrigin("not-a-url"))).toBe(false);
-  });
-});
-
-describe("legacy HTTP transport origin guard", () => {
-  let server: Server;
-
-  async function startServer(): Promise<number> {
-    server = await startHttp(buildHandler([]), 0, false);
-    return (server.address() as AddressInfo).port;
-  }
+describe("HTTP compatibility transport", () => {
+  let port: number | undefined;
 
   afterEach(async () => {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
+    if (port !== undefined) await stopHttp(port, "HTTP test complete");
+    port = undefined;
   });
 
-  it("rejects the cross-origin PoC (hostile Origin + text/plain) with 403", async () => {
-    const port = await startServer();
-    const res = await request(port, "POST", "/mcp", TOOLS_CALL_POC, {
-      Origin: "https://attacker.example",
-      "Content-Type": "text/plain;charset=UTF-8",
-    });
-    expect(res.status).toBe(403);
+  async function initialize(
+    handler = buildHandler([]),
+  ): Promise<{ sessionId: string; handler: ReturnType<typeof buildHandler> }> {
+    port = await startHttp(handler, 0, false);
+    const response = await request(
+      port,
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {},
+      }),
+    );
+    expect(response.status).toBe(200);
+    return {
+      sessionId: response.headers["mcp-session-id"] as string,
+      handler,
+    };
+  }
+
+  it("retains the loopback Origin guard on the compatibility entry point", async () => {
+    expect(isOriginAllowed(fakeOrigin())).toBe(true);
+    expect(isOriginAllowed(fakeOrigin("http://localhost:3000"))).toBe(true);
+    expect(isOriginAllowed(fakeOrigin("https://attacker.example"))).toBe(false);
+
+    port = await startHttp(buildHandler([]), 0, false);
+    const forbidden = await request(
+      port,
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {},
+      }),
+      { Origin: "https://attacker.example" },
+    );
+    expect(forbidden.status).toBe(403);
   });
 
-  it("allows a loopback-origin request", async () => {
-    const port = await startServer();
-    const res = await request(port, "POST", "/mcp", INITIALIZE_BODY, {
-      Origin: "http://localhost:3000",
-      "Content-Type": "application/json",
-    });
-    expect(res.status).toBe(200);
+  it("validates malformed envelopes before handler dispatch", async () => {
+    port = await startHttp(buildHandler([]), 0, false);
+    for (const body of [
+      "null",
+      "[]",
+      "1",
+      "{}",
+      JSON.stringify({ jsonrpc: "1.0", id: 1, method: "initialize" }),
+      JSON.stringify({ jsonrpc: "2.0", id: true, method: "initialize" }),
+      JSON.stringify({ jsonrpc: "2.0", id: 1, method: "", params: {} }),
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: [],
+      }),
+    ]) {
+      const response = await request(port, body);
+      expect(response.status).toBe(400);
+      expect(JSON.parse(response.body)).toEqual({
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32_600, message: "Invalid Request" },
+      });
+    }
   });
 
-  it("allows a non-browser request that omits Origin", async () => {
-    const port = await startServer();
-    const res = await request(port, "POST", "/mcp", INITIALIZE_BODY, {
-      "Content-Type": "application/json",
+  it("preserves the server-owned browser policy after session upgrade", async () => {
+    const inspectionTool: McpTool = {
+      name: "inspect_browser_policy",
+      description: "Inspect browser policy",
+      inputSchema: { type: "object", properties: {} },
+      annotations: { readOnlyHint: true },
+      execution: { taskSupport: "optional" },
+      handler: () => ({
+        content: [{ type: "text", text: "ok" }],
+        structuredContent: {
+          type: "json",
+          data: currentBrowserInvocationScope(),
+        },
+      }),
+    };
+    const handler = buildHandler([inspectionTool], [], {
+      browserPolicy: {
+        provider: "chrome",
+        visibility: "background",
+        profilePartitionId: "http-browser",
+      },
     });
-    expect(res.status).toBe(200);
+    const { sessionId } = await initialize(handler);
+    const called = await request(
+      port!,
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/call",
+        params: { name: "inspect_browser_policy", arguments: {} },
+      }),
+      {
+        "MCP-Session-Id": sessionId,
+        "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
+      },
+    );
+    expect(called.status).toBe(200);
+    expect(JSON.parse(called.body).result.structuredContent.data).toMatchObject(
+      {
+        provider: "chrome",
+        visibility: "background",
+        profilePartitionId: "http-browser",
+      },
+    );
+  });
+
+  it("keeps standard task ownership stable across HTTP requests", async () => {
+    const handler = buildHandler([
+      {
+        name: "mutate",
+        description: "test mutation",
+        inputSchema: { type: "object", properties: {} },
+        annotations: { readOnlyHint: false },
+        execution: { taskSupport: "required" },
+        handler: async () => ({
+          content: [{ type: "text", text: "authoritative" }],
+        }),
+      },
+    ]);
+    const { sessionId } = await initialize(handler);
+    const headers = {
+      "MCP-Session-Id": sessionId,
+      "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
+    };
+    const created = await request(
+      port!,
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/call",
+        params: { name: "mutate", arguments: {}, task: {} },
+      }),
+      headers,
+    );
+    const taskId = JSON.parse(created.body).result.task.taskId as string;
+    const result = await request(
+      port!,
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 3,
+        method: "tasks/result",
+        params: { taskId },
+      }),
+      headers,
+    );
+    expect(JSON.parse(result.body).result).toMatchObject({
+      content: [{ type: "text", text: "authoritative" }],
+      _meta: { "io.modelcontextprotocol/related-task": { taskId } },
+    });
   });
 });

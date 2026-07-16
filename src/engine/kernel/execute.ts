@@ -4,6 +4,7 @@
  * @needs Registry resolution, compiled command cache, and explicit kernel stages.
  * @feeds CLI/MCP/ACP transport renderers through InvocationResult.
  * @breaks Surface parity when wrappers rebuild validation, authorization, execution, diagnostics, or envelopes.
+ * @invariants Cancellation is checked before dispatch; authorized effect determines whether an unsettled post-dispatch cancellation is exact or outcome-ambiguous.
  */
 
 import { resolveCommand } from "../../registry.js";
@@ -39,6 +40,7 @@ export function buildInvocation(
     permissionProfile?: string;
     approved?: boolean;
     rememberApproval?: boolean;
+    signal?: AbortSignal;
   } = {},
 ): Invocation | null {
   const resolved = resolveCommand(site, cmd);
@@ -52,6 +54,7 @@ export function buildInvocation(
     permissionProfile: options.permissionProfile,
     approved: options.approved,
     rememberApproval: options.rememberApproval,
+    signal: options.signal,
     trace_id: newULID(),
   };
 }
@@ -65,6 +68,16 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
   const startedAt = Date.now();
   const warnings: string[] = [];
   const ctx = resolveKernelCommandContext(inv);
+
+  if (inv.signal?.aborted) {
+    return executionErrorResult(
+      inv,
+      ctx,
+      startedAt,
+      warnings,
+      inv.signal.reason,
+    ).result;
+  }
 
   const invalid = validateKernelInput(inv, ctx, startedAt, warnings);
   if (invalid) return invalid.result;
@@ -80,13 +93,28 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
   );
   if (authorization.blocked) return authorization.blocked.result;
 
+  if (inv.signal?.aborted) {
+    return executionErrorResult(
+      inv,
+      ctx,
+      startedAt,
+      warnings,
+      inv.signal.reason,
+    ).result;
+  }
+
   await rememberKernelApproval(inv, authorization.policy, warnings);
 
   try {
+    inv.signal?.throwIfAborted();
     if (!inv.command.pipeline && !inv.command.func) {
       return malformedCommandResult(inv, ctx, startedAt, warnings).result;
     }
-    const results = await executeKernelCommand(inv, ctx);
+    const results = await executeKernelCommand(
+      inv,
+      ctx,
+      authorization.policy.effect !== "read",
+    );
     return successKernelResult(inv, ctx, startedAt, warnings, results);
   } catch (err) {
     return executionErrorResult(inv, ctx, startedAt, warnings, err).result;

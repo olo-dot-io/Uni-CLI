@@ -58,7 +58,7 @@ describe("RefAllocator", () => {
 });
 
 describe("RefStore", () => {
-  it("resolves aliases and stable tokens across latest buckets", () => {
+  it("rejects duplicate aliases while preserving unique stable tokens", () => {
     const ax = new RefAllocator();
     const uia = new RefAllocator();
     ax.alloc({
@@ -76,9 +76,14 @@ describe("RefStore", () => {
     store.put(ax.freeze("desktop-ax", "slack"));
     store.put(uia.freeze("desktop-uia", "notepad"));
 
-    expect(store.resolve("@e1")?.stable).toBe(
+    expect(store.resolve("@e1")).toBeUndefined();
+    expect(store.matches("@e1").map(({ ref }) => ref.stable)).toEqual([
       "desktop-ax:slack:AXWindow[0]/AXButton[0]",
-    );
+      "desktop-uia:notepad:Window[0]/Edit[0]",
+    ]);
+    expect(
+      store.matches("desktop-uia:notepad:Window[0]/Edit[0]")[0]?.ref.role,
+    ).toBe("Edit");
     expect(
       store.resolveStable("desktop-uia:notepad:Window[0]/Edit[0]")?.role,
     ).toBe("Edit");
@@ -109,6 +114,32 @@ describe("RefStore", () => {
     expect(store.resolve("@e1")?.stable).toBe(
       "desktop-ax:slack:AXWindow[0]/AXTextField[0]",
     );
+  });
+
+  it("invalidates an exact binding when its bucket generation changes", () => {
+    const first = new RefAllocator();
+    first.alloc({
+      stable: "desktop-ax:calc:AXWindow[0]/AXButton[0]",
+      role: "AXButton",
+      name: "1",
+    });
+    const second = new RefAllocator();
+    second.alloc({
+      stable: "desktop-ax:calc:AXWindow[0]/AXButton[1]",
+      role: "AXButton",
+      name: "2",
+    });
+    const store = new RefStore();
+    store.put(first.freeze("desktop-ax", "calc"));
+    const binding = store.matches("@e1")[0];
+
+    expect(binding).toBeDefined();
+    expect(binding && store.isCurrent(binding)).toBe(true);
+
+    store.put(second.freeze("desktop-ax", "calc"));
+
+    expect(binding && store.isCurrent(binding)).toBe(false);
+    expect(store.resolve("@e1")?.name).toBe("2");
   });
 
   it("lists refs, clones buckets, and clears current buckets", () => {
@@ -169,6 +200,39 @@ describe("RefStore", () => {
       expect(
         loaded.resolveStable("desktop-ax:calc:AXWindow[0]/AXButton[4]"),
       ).toBeTruthy();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves alias ambiguity after persisted buckets reload", () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-refs-"));
+    const file = join(dir, "refs.json");
+    try {
+      const left = new RefAllocator();
+      left.alloc({
+        stable: "desktop-ax:left:AXWindow[0]/AXButton[0]",
+        role: "AXButton",
+        name: "Left",
+      });
+      const right = new RefAllocator();
+      right.alloc({
+        stable: "desktop-ax:right:AXWindow[0]/AXButton[0]",
+        role: "AXButton",
+        name: "Right",
+      });
+      const store = new RefStore();
+      store.put(left.freeze("desktop-ax", "left"));
+      store.put(right.freeze("desktop-ax", "right"));
+      saveRefStore(store, file);
+
+      const loaded = loadRefStore(file);
+
+      expect(loaded.resolve("@e1")).toBeUndefined();
+      expect(loaded.matches("@e1")).toHaveLength(2);
+      expect(
+        loaded.resolveStable("desktop-ax:right:AXWindow[0]/AXButton[0]")?.name,
+      ).toBe("Right");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

@@ -140,29 +140,41 @@ unicli approvals revoke <approval_key>
 记住的审批会绑定命令 capability 和稳定资源 metadata，比如域名、应用、账号面和路径参数槽。
 原始运行参数不会写进 approval store。
 
-需要让某台机器固定挡住一类操作时，写本地 deny 规则：
+需要让某台机器只允许边界明确的操作时，使用 deny 优先的本地策略。支持 JSON、
+`.yaml` 和 `.yml`：
 
-```json
-{
-  "schema_version": "1",
-  "rules": [
-    {
-      "id": "deny-public-posting",
-      "decision": "deny",
-      "match": {
-        "effect": "publish_content",
-        "resources": {
-          "domains": ["x.com", "twitter.com"]
-        }
-      },
-      "reason": "这台机器禁用公开发布"
-    }
-  ]
-}
+```yaml
+schema_version: "2"
+default: deny
+rules:
+  - id: deny-public-posting
+    decision: deny
+    match:
+      effect: publish_content
+    reason: 这台机器禁用公开发布
+  - id: allow-short-compute-input
+    decision: allow
+    match:
+      site: compute
+      command: type
+      arguments:
+        text:
+          max_length: 200
+          pattern: "^[^\\p{Cc}]+$"
 ```
 
 文件保存到 `~/.unicli/permission-rules.json`，也可以用
-`UNICLI_PERMISSION_RULES_PATH` 指到其他位置。
+`UNICLI_PERMISSION_RULES_PATH` 指到其他位置。显式指定的文件缺失或格式错误时会
+fail closed；未创建默认文件时，这一层保持关闭。schema v1 继续兼容 deny-only、
+default-allow 行为。
+
+schema v2 先评估所有匹配的 deny，再评估 allow；都不匹配时由 `default` 决定。
+参数约束采用 AND 语义，支持闭区间数字 `min`/`max`、按 Unicode code point 计数的
+`max_length`、线性时间 RE2 `pattern`，以及精确 JSON 值 `allowed` 列表。运行参数会
+参与判断，但不会写入 approval memory。
+
+调用内核、直接 `browser`/`operate`、直接 `compute` 和 computer-use MCP 工具都会
+先授权，再获取 browser target、transport、overlay，或触发文件、剪贴板和桌面副作用。
 
 同一套规则也会进入 pipeline 运行时。被 deny 的域名会在 `fetch`、`fetch_text`、
 `download` 和浏览器 `navigate` 发请求前停下；被 deny 的路径会在下载或命令输出创建目录、

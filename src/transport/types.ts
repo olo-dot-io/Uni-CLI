@@ -1,5 +1,17 @@
 /**
  * Transport types — the v0.212 "operate anything" contract.
+ * @owner       src::transport::types
+ * @does        Define transport capabilities, action/snapshot requests, shared context, adapters, and the transport bus.
+ * @needs       core envelope, ref store, snapshot encoding.
+ * @feeds       transport adapters, cascade routing, engine compute steps, plugins.
+ * @breaks      Compile-time mismatch in transport implementations or callers, or coercing cancellation/ambiguous delivery into an ordinary failure envelope.
+ * @invariants  Request cancellation is available to open/action/snapshot boundaries; ordinary failures return envelopes, while cancellation and outcome ambiguity remain typed control-flow throws; cleanup remains unconditional and idempotent.
+ * @side-effects none
+ * @perf        Type-only declarations.
+ * @concurrency AbortSignal belongs to one request and must not be replaced by process-global state.
+ * @test        npm run typecheck and transport unit suites
+ * @stability   stable
+ * @since       2026-06-29
  *
  * A `TransportAdapter` is a physical execution channel (HTTP, Chrome CDP,
  * subprocess, macOS AX, Windows UIA, Linux AT-SPI, screenshot-based Visual)
@@ -7,8 +19,9 @@
  * close.
  *
  * Design contract:
- *  - `action()` NEVER throws — all failures become an `ActionResult.error`
- *    envelope so the YAML runner can sequence fallbacks without try/catch.
+ *  - `action()` returns ordinary failures as an `ActionResult.error` envelope
+ *    so the YAML runner can sequence fallbacks. Exact cancellation and
+ *    outcome-ambiguous delivery throw because replay would be unsafe.
  *  - `Capability.steps` is the single source of truth for pipeline-step
  *    dispatch; the runner validates at parse time, not at execution time.
  *  - `minimum_capability` in an error envelope drives the self-repair loop:
@@ -67,11 +80,14 @@ export interface ActionRequest {
   params: Record<string, unknown>;
   timeoutMs?: number;
   signal?: AbortSignal;
+  /** Canonical command-contract projection; transports default conservatively when absent. */
+  canMutate?: boolean;
 }
 
 /**
- * Uniform action result. Success returns `ok:true` + `data`; failure
- * returns `ok:false` + `error` envelope. Never throws.
+ * Uniform ordinary action result. Success returns `ok:true` + `data`; failure
+ * returns `ok:false` + `error` envelope. Cancellation and outcome ambiguity
+ * remain typed throws outside this union.
  *
  * Aliased to {@link Envelope} so the core envelope helpers (`ok()`, `err()`)
  * work directly with transport return values.
@@ -155,7 +171,8 @@ export interface TransportContext {
  *                subprocess shell).
  *   snapshot() — perception. Always returns a uniform {@link Snapshot}
  *                even across transports (screenshot vs AX tree vs DOM).
- *   action()   — execute one pipeline step. NEVER throws.
+ *   action()   — execute one pipeline step; ordinary failures are envelopes,
+ *                cancellation and ambiguous delivery are typed throws.
  *   stream()   — optional async iterable of {@link TransportEvent}.
  *   close()    — release resources. Must be idempotent.
  */
@@ -168,6 +185,7 @@ export interface TransportAdapter {
   snapshot(opts?: {
     format?: SnapshotFormat | SnapshotEncoding;
     fresh?: boolean;
+    signal?: AbortSignal;
   }): Promise<Snapshot>;
 
   action<T = unknown>(req: ActionRequest): Promise<ActionResult<T>>;

@@ -1,5 +1,21 @@
+/**
+ * @owner       src::engine::browser::action-evidence
+ * @does        Record before/after browser evidence and movement diagnostics around one authorized browser action.
+ * @needs       browser evidence capture, invocation scope, run-event store, operation policy, session leases
+ * @feeds       browser and operate command recording
+ * @breaks      Post-cancellation capture can publish stale artifacts or falsely record a completed action.
+ * @invariants  The invocation AbortSignal gates hooks, capture, action, and all post-action evidence; cancellation never starts a late capture.
+ * @side-effects Installs page hooks and appends run events and optional screenshot evidence.
+ * @perf        Recording performs two bounded evidence captures plus append-only event writes.
+ * @concurrency Per-invocation signals and trace ids isolate overlapping Agent actions.
+ * @test        tests/unit/browser-action-evidence.test.ts, tests/unit/browser-evidence.test.ts
+ * @stability   stable
+ * @since       2026-07-15
+ */
+
 import { createHash, randomUUID } from "node:crypto";
 import { join } from "node:path";
+import { currentBrowserInvocationScope } from "../../browser/invocation-scope.js";
 import { isTargetError } from "../../browser/target-errors.js";
 import { AdapterType, Strategy, type IPage } from "../../types.js";
 import { evaluateOperationPolicy } from "../operation-policy.js";
@@ -50,6 +66,7 @@ export interface BrowserActionEvidenceOptions {
   screenshotDir?: string;
   watchdog?: BrowserActionWatchdogOptions;
   lease?: BrowserSessionLease;
+  signal?: AbortSignal;
 }
 
 type BrowserEvidencePhase = "before" | "after";
@@ -113,6 +130,9 @@ export async function withBrowserActionEvidence<T>(
     return await action();
   }
 
+  const signal = options.signal ?? currentBrowserInvocationScope()?.signal;
+  signal?.throwIfAborted();
+
   const store = options.store ?? createRunStore();
   const traceId = options.traceId ?? `trace-${randomUUID()}`;
   const metadata = metadataForBrowserAction(options, traceId);
@@ -141,8 +161,9 @@ export async function withBrowserActionEvidence<T>(
     warnings,
   );
 
-  await installBrowserEvidenceHooks(page);
-  const before = await captureEvidence(page, options, "before");
+  await installBrowserEvidenceHooks(page, signal);
+  signal?.throwIfAborted();
+  const before = await captureEvidence(page, options, "before", signal);
   await appendAll(
     store,
     [
@@ -158,7 +179,8 @@ export async function withBrowserActionEvidence<T>(
 
   try {
     const result = await action();
-    const after = await captureEvidence(page, options, "after");
+    signal?.throwIfAborted();
+    const after = await captureEvidence(page, options, "after", signal);
     const movement = evidenceMovement(before, after);
     const watchdog = evaluateWatchdog(options, movement);
     if (watchdog.mode === "error" && !watchdog.passed) {
@@ -226,7 +248,8 @@ export async function withBrowserActionEvidence<T>(
     return result;
   } catch (err) {
     if (err instanceof BrowserActionWatchdogError) throw err;
-    const after = await captureEvidence(page, options, "after");
+    signal?.throwIfAborted();
+    const after = await captureEvidence(page, options, "after", signal);
     const movement = evidenceMovement(before, after);
     const error = errorData(err);
     await appendAll(
@@ -266,12 +289,14 @@ async function captureEvidence(
   page: IPage,
   options: BrowserActionEvidenceOptions,
   phase: BrowserEvidencePhase,
+  signal?: AbortSignal,
 ): Promise<BrowserEvidencePacket> {
   return await captureBrowserEvidencePacket(page, {
     action: `${options.action}.${phase}`,
     workspace: options.workspace,
     lease: options.lease,
     screenshotDir: options.screenshotDir ?? defaultScreenshotDir(),
+    signal,
   });
 }
 

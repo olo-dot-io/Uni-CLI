@@ -1,6 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import { CDPCommandTransportError } from "../../src/browser/cdp-client.js";
+import { BrowserBrokerClientError } from "../../src/browser/runtime-transport.js";
 import { err, ok } from "../../src/core/envelope.js";
+import { CdpBrowserTransport } from "../../src/transport/adapters/cdp-browser.js";
+import type { IPage } from "../../src/types.js";
 import { createTransportBus, RefAllocator } from "../../src/transport/bus.js";
 import {
   enrichComputeRequestFromRefs,
@@ -22,6 +26,8 @@ class StubTransport implements TransportAdapter {
   readonly calls: ActionRequest[] = [];
   readonly snapshots: Array<{ format?: string }> = [];
   snapshotResult: Snapshot = { format: "text", data: "" };
+  snapshotFailure: Error | undefined;
+  onOpen: (() => void) | undefined;
   openCount = 0;
 
   constructor(
@@ -38,10 +44,12 @@ class StubTransport implements TransportAdapter {
 
   async open(_ctx: TransportContext): Promise<void> {
     this.openCount++;
+    this.onOpen?.();
   }
 
   async snapshot(opts?: { format?: string }): Promise<Snapshot> {
     this.snapshots.push({ format: opts?.format });
+    if (this.snapshotFailure) throw this.snapshotFailure;
     return this.snapshotResult;
   }
 
@@ -65,6 +73,297 @@ function failure(kind: TransportKind, action: string): ActionResult<unknown> {
 }
 
 describe("compute cascade", () => {
+  it("never replays a structurally ambiguous CDP mutation on a fallback transport", async () => {
+    const bus = createTransportBus();
+    const ambiguity = new CDPCommandTransportError(
+      "cdp_connection_lost",
+      "CDP disconnected after click dispatch",
+      { outcomeAmbiguous: true, targetUnusable: true },
+    );
+    const close = vi.fn().mockResolvedValue(undefined);
+    // REASON: the CDP page is the external browser boundary; the real adapter, bus, and cascade remain integrated.
+    const cdp = new CdpBrowserTransport({
+      pageFactory: async () =>
+        ({
+          click: async () => {
+            throw ambiguity;
+          },
+          close,
+        }) as IPage,
+    });
+    const visual = new StubTransport(
+      "visual",
+      ["visual_click"],
+      ok({ transport: "visual" }),
+    );
+    bus.register(cdp);
+    bus.register(visual);
+
+    await expect(
+      tryCascade(
+        bus,
+        { kind: "compute_click", params: { selector: "#submit" } },
+        "darwin",
+      ),
+    ).rejects.toBe(ambiguity);
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(visual.calls).toEqual([]);
+  });
+
+  it.each(["browser_command_outcome_ambiguous", "browser_command_canceled"])(
+    "never replays broker %s after dispatch",
+    async (code) => {
+      const bus = createTransportBus();
+      const ambiguity = new BrowserBrokerClientError({
+        code,
+        message: "Broker lost mutation settlement after dispatch",
+        suggestion: "Inspect page state before continuing on a fresh target",
+        retryable: false,
+      });
+      const cdp = new CdpBrowserTransport({
+        pageFactory: async () =>
+          ({
+            click: async () => {
+              throw ambiguity;
+            },
+            close: async () => {},
+          }) as IPage,
+      });
+      const visual = new StubTransport(
+        "visual",
+        ["visual_click"],
+        ok({ transport: "visual" }),
+      );
+      bus.register(cdp);
+      bus.register(visual);
+
+      await expect(
+        tryCascade(
+          bus,
+          { kind: "compute_click", params: { selector: "#submit" } },
+          "linux",
+        ),
+      ).rejects.toMatchObject({
+        outcome_ambiguous: true,
+        target_unusable: true,
+        retryable: false,
+      });
+      expect(visual.calls).toEqual([]);
+    },
+  );
+
+  it("marks cancellation of an unsettled mutation ambiguous and never falls through", async () => {
+    const bus = createTransportBus();
+    const controller = new AbortController();
+    const cancellation = new Error("cancel compute mutation");
+    let startAction: (() => void) | undefined;
+    const actionStarted = new Promise<void>((resolve) => {
+      startAction = resolve;
+    });
+    const cdp: TransportAdapter = {
+      kind: "cdp-browser",
+      capability: {
+        steps: ["click"],
+        snapshotFormats: [],
+        mutatesHost: true,
+      },
+      async open(ctx) {
+        expect(ctx.signal).toBe(controller.signal);
+      },
+      async snapshot() {
+        return { format: "text", data: "" };
+      },
+      action(req) {
+        expect(req.signal).toBe(controller.signal);
+        startAction?.();
+        return new Promise((_resolve, reject) => {
+          req.signal?.addEventListener(
+            "abort",
+            () => reject(req.signal?.reason),
+            {
+              once: true,
+            },
+          );
+        });
+      },
+      async close() {},
+    };
+    const visual = new StubTransport(
+      "visual",
+      ["visual_click"],
+      ok({ transport: "visual" }),
+    );
+    bus.register(cdp);
+    bus.register(visual);
+    const execution = tryCascade(
+      bus,
+      {
+        kind: "compute_click",
+        params: { ref: "cdp-browser:page:#submit" },
+        signal: controller.signal,
+      },
+      "linux",
+      {
+        vars: {},
+        bus,
+        refs: bus.refs,
+        signal: controller.signal,
+      },
+    );
+    await actionStarted;
+
+    controller.abort(cancellation);
+
+    await expect(execution).rejects.toMatchObject({
+      name: "OperationOutcomeAmbiguousError",
+      operation: "compute_click",
+      cancellationReason: cancellation,
+      outcome_ambiguous: true,
+    });
+    expect(visual.calls).toHaveLength(0);
+  });
+
+  it("keeps cancellation exact when adapter setup aborts before action dispatch", async () => {
+    const bus = createTransportBus();
+    const controller = new AbortController();
+    const cancellation = new Error("cancel during adapter setup");
+    const cdp: TransportAdapter = {
+      kind: "cdp-browser",
+      capability: {
+        steps: ["click"],
+        snapshotFormats: [],
+        mutatesHost: true,
+      },
+      async open() {
+        controller.abort(cancellation);
+        throw cancellation;
+      },
+      async snapshot() {
+        return { format: "text", data: "" };
+      },
+      async action() {
+        throw new Error("action must not be dispatched");
+      },
+      async close() {},
+    };
+    bus.register(cdp);
+
+    await expect(
+      tryCascade(
+        bus,
+        {
+          kind: "compute_click",
+          params: { selector: "#submit" },
+          signal: controller.signal,
+        },
+        "linux",
+      ),
+    ).rejects.toBe(cancellation);
+  });
+
+  it("keeps an authoritative mutation success when cancellation arrives as it settles", async () => {
+    const bus = createTransportBus();
+    const controller = new AbortController();
+    const cancellation = new Error("late cancellation");
+    const cdp: TransportAdapter = {
+      kind: "cdp-browser",
+      capability: {
+        steps: ["click"],
+        snapshotFormats: [],
+        mutatesHost: true,
+      },
+      async open() {},
+      async snapshot() {
+        return { format: "text", data: "" };
+      },
+      async action<T = unknown>() {
+        controller.abort(cancellation);
+        return ok({
+          transport: "cdp-browser",
+          committed: true,
+        }) as ActionResult<T>;
+      },
+      async close() {},
+    };
+    const visual = new StubTransport(
+      "visual",
+      ["visual_click"],
+      ok({ transport: "visual" }),
+    );
+    bus.register(cdp);
+    bus.register(visual);
+
+    await expect(
+      tryCascade(
+        bus,
+        {
+          kind: "compute_click",
+          params: { selector: "#submit" },
+          signal: controller.signal,
+        },
+        "darwin",
+      ),
+    ).resolves.toMatchObject({
+      ok: true,
+      data: { committed: true },
+    });
+    expect(visual.calls).toEqual([]);
+  });
+
+  it("derives launch cancellation ambiguity from the command contract", async () => {
+    const bus = createTransportBus();
+    const controller = new AbortController();
+    const cancellation = new Error("cancel launched app");
+    let actionStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      actionStarted = resolve;
+    });
+    const subprocess: TransportAdapter = {
+      kind: "subprocess",
+      capability: {
+        steps: ["launch_app"],
+        snapshotFormats: [],
+        mutatesHost: true,
+      },
+      async open() {},
+      async snapshot() {
+        return { format: "text", data: "" };
+      },
+      action(req) {
+        actionStarted();
+        return new Promise((_resolve, reject) => {
+          req.signal?.addEventListener(
+            "abort",
+            () => reject(req.signal?.reason),
+            {
+              once: true,
+            },
+          );
+        });
+      },
+      async close() {},
+    };
+    bus.register(subprocess);
+    const execution = tryCascade(
+      bus,
+      {
+        kind: "compute_launch",
+        params: { app: "Example" },
+        signal: controller.signal,
+      },
+      "darwin",
+    );
+    await started;
+
+    controller.abort(cancellation);
+
+    await expect(execution).rejects.toMatchObject({
+      operation: "compute_launch",
+      cancellationReason: cancellation,
+      outcome_ambiguous: true,
+    });
+  });
+
   it("filters native desktop transports by host platform", () => {
     expect(preferenceFor("compute_click", "darwin")).toEqual([
       "desktop-ax",
@@ -305,7 +604,11 @@ describe("compute cascade", () => {
 
     expect(result.ok).toBe(true);
     expect(subprocess.calls).toEqual([
-      { kind: "launch_app", params: { app: "Calculator" } },
+      {
+        kind: "launch_app",
+        params: { app: "Calculator" },
+        canMutate: true,
+      },
     ]);
     expect(ax.calls).toHaveLength(0);
   });
@@ -333,7 +636,11 @@ describe("compute cascade", () => {
 
     expect(winResult.ok).toBe(true);
     expect(uia.calls).toEqual([
-      { kind: "launch_app", params: { app: "Code.exe", debugPort: 9230 } },
+      {
+        kind: "launch_app",
+        params: { app: "Code.exe", debugPort: 9230 },
+        canMutate: true,
+      },
     ]);
 
     const linuxBus = createTransportBus();
@@ -361,7 +668,11 @@ describe("compute cascade", () => {
 
     expect(linuxResult.ok).toBe(true);
     expect(atspi.calls).toEqual([
-      { kind: "launch_app", params: { app: "code.desktop", debugPort: 9230 } },
+      {
+        kind: "launch_app",
+        params: { app: "code.desktop", debugPort: 9230 },
+        canMutate: true,
+      },
     ]);
   });
 
@@ -730,6 +1041,90 @@ describe("compute cascade", () => {
     });
   });
 
+  it("returns ref_ambiguous instead of selecting the oldest duplicate alias", async () => {
+    const bus = createTransportBus();
+    const left = new RefAllocator();
+    left.alloc({
+      stable: "desktop-ax:left:AXWindow[0]/AXButton[0]",
+      role: "AXButton",
+      name: "Left",
+    });
+    const right = new RefAllocator();
+    right.alloc({
+      stable: "desktop-ax:right:AXWindow[0]/AXButton[0]",
+      role: "AXButton",
+      name: "Right",
+    });
+    bus.refs.put(left.freeze("desktop-ax", "left"));
+    bus.refs.put(right.freeze("desktop-ax", "right"));
+    const ax = new StubTransport(
+      "desktop-ax",
+      ["ax_press"],
+      ok({ transport: "desktop-ax" }),
+    );
+    bus.register(ax);
+
+    const result = await tryCascade(
+      bus,
+      { kind: "compute_click", params: { ref: "@e1" } },
+      "darwin",
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.minimum_capability).toBe(
+        "compute.compute_click.ref_ambiguous",
+      );
+      expect(result.error.reason).toContain("desktop-ax/left");
+      expect(result.error.reason).toContain("desktop-ax/right");
+      expect(result.error.suggestion).toContain("stable ref");
+    }
+    expect(ax.openCount).toBe(0);
+    expect(ax.calls).toEqual([]);
+  });
+
+  it("returns ref_expired when adapter setup replaces the bound generation", async () => {
+    const bus = createTransportBus();
+    const first = new RefAllocator();
+    first.alloc({
+      stable: "desktop-ax:calc:AXWindow[0]/AXButton[0]",
+      role: "AXButton",
+      name: "1",
+    });
+    bus.refs.put(first.freeze("desktop-ax", "calc"));
+    const ax = new StubTransport(
+      "desktop-ax",
+      ["ax_press"],
+      ok({ transport: "desktop-ax" }),
+    );
+    ax.onOpen = () => {
+      const replacement = new RefAllocator();
+      replacement.alloc({
+        stable: "desktop-ax:calc:AXWindow[0]/AXButton[1]",
+        role: "AXButton",
+        name: "2",
+      });
+      bus.refs.put(replacement.freeze("desktop-ax", "calc"));
+    };
+    bus.register(ax);
+
+    const result = await tryCascade(
+      bus,
+      { kind: "compute_click", params: { ref: "@e1" } },
+      "darwin",
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.minimum_capability).toBe(
+        "compute.compute_click.ref_expired",
+      );
+      expect(result.error.reason).toContain("binding changed");
+    }
+    expect(ax.openCount).toBe(1);
+    expect(ax.calls).toEqual([]);
+  });
+
   it("returns a ref_expired envelope before dispatching unknown element refs", async () => {
     const bus = createTransportBus();
     const ax = new StubTransport(
@@ -1059,7 +1454,34 @@ describe("compute cascade", () => {
         refs: { count: 1, scope: "pid-1234" },
       });
     }
-    expect(atspi.calls.map((call) => call.kind)).toEqual(["atspi_snapshot"]);
+    expect(atspi.calls).toEqual([]);
+    expect(atspi.snapshots).toEqual([{ format: "compact" }]);
+  });
+
+  it("executes native sidecar snapshots once and never converts failure to success", async () => {
+    const bus = createTransportBus();
+    const atspi = new StubTransport(
+      "desktop-atspi",
+      ["atspi_snapshot"],
+      ok({ raw: true }),
+    );
+    atspi.snapshotFailure = new Error("AT-SPI snapshot failed");
+    bus.register(atspi);
+
+    const result = await tryCascade(
+      bus,
+      {
+        kind: "compute_snapshot",
+        params: { app: "Terminal", format: "compact" },
+      },
+      "linux",
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.reason).toContain("AT-SPI snapshot failed");
+    }
+    expect(atspi.calls).toEqual([]);
     expect(atspi.snapshots).toEqual([{ format: "compact" }]);
   });
 
@@ -1106,7 +1528,7 @@ describe("compute cascade", () => {
         refs: { count: 1, scope: "renderer" },
       });
     }
-    expect(cdp.calls.map((call) => call.kind)).toEqual(["snapshot"]);
+    expect(cdp.calls).toEqual([]);
     expect(cdp.snapshots).toEqual([{ format: "compact" }]);
     expect(ax.calls).toHaveLength(0);
   });

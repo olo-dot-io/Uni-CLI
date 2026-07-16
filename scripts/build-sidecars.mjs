@@ -9,6 +9,18 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const TARGETS = [
   {
     target: "x86_64-pc-windows-msvc",
+    crate: "unicli-process-owner",
+    binary: "unicli-process-owner.exe",
+    packageDir: "packages/sidecars/unicli-process-owner-win32-x64",
+  },
+  {
+    target: "aarch64-pc-windows-msvc",
+    crate: "unicli-process-owner",
+    binary: "unicli-process-owner.exe",
+    packageDir: "packages/sidecars/unicli-process-owner-win32-arm64",
+  },
+  {
+    target: "x86_64-pc-windows-msvc",
     crate: "unicli-uia",
     binary: "unicli-uia.exe",
     packageDir: "packages/sidecars/unicli-uia-win32-x64",

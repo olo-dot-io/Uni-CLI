@@ -1,10 +1,10 @@
 /**
  * @owner       src/mcp/handler.ts
- * @does        Dispatch MCP JSON-RPC methods and run each tool call inside its transport-derived browser invocation scope.
- * @needs       registry/discovery, MCP tools/dispatch/elicitation, browser invocation context/scope, constants
+ * @does        Dispatch MCP JSON-RPC methods, standard durable Tasks, and each tool call inside its transport-derived browser invocation scope.
+ * @needs       registry/discovery, MCP tools/tasks/dispatch/elicitation, browser invocation context/scope, generate permission, constants
  * @feeds       MCP stdio, simple HTTP, and Streamable HTTP transports
  * @breaks      Invalid methods/arguments return JSON-RPC errors; tool and browser-finalization failures propagate to the owning transport.
- * @invariants  Every tools/call receives one Agent session/turn identity before any browser-capable command runs.
+ * @invariants  Every tools/call receives one Agent session/turn identity before any browser-capable command runs; mutating tools require task augmentation; tasks are scoped to the transport session that created them.
  * @side-effects Executes registered tools, adapters, elicitation resolution, and browser turn finalizers.
  * @perf        Tool lookup is linear in the selected MCP profile; browser scope setup is O(1).
  * @concurrency Async-local browser scopes isolate overlapping tool calls across MCP sessions and turns.
@@ -27,15 +27,66 @@ import { createBrowserInvocationContext } from "../browser/invocation-context.js
 import {
   createBrowserInvocationScope,
   runBrowserInvocation,
+  type BrowserProvider,
 } from "../browser/invocation-scope.js";
+import type { BrowserVisibility } from "../browser/runtime-session.js";
 import type {
   JsonRpcHandler,
   JsonRpcRequest,
   JsonRpcResponse,
   McpRequestContext,
 } from "./jsonrpc.js";
+import {
+  authorizeGenerateOperation,
+  resolveGenerateOperation,
+} from "../commands/generate-permission.js";
+import { McpTaskManager } from "./tasks.js";
 
 export type { JsonRpcRequest, JsonRpcResponse };
+
+export interface McpBrowserPolicyInput {
+  provider?: BrowserProvider;
+  visibility?: BrowserVisibility;
+  profilePartitionId?: string;
+  isolated?: boolean;
+  ephemeral?: boolean;
+  profileId?: string;
+}
+
+export interface McpBrowserPolicy {
+  readonly provider: BrowserProvider;
+  readonly visibility: BrowserVisibility;
+  readonly profilePartitionId: string;
+  readonly isolated: boolean;
+  readonly ephemeral: boolean;
+  readonly profileId?: string;
+}
+
+export interface McpHandlerOptions {
+  browserPolicy?: McpBrowserPolicyInput;
+}
+
+export function createMcpBrowserPolicy(
+  input: McpBrowserPolicyInput = {},
+): McpBrowserPolicy {
+  const validated = createBrowserInvocationScope({
+    context: {
+      agent_session_id: "mcp:startup-policy",
+      turn_id: "mcp:startup-policy",
+      transport: "mcp-stdio",
+    },
+    ...input,
+    profilePartitionId: input.profilePartitionId ?? "default",
+  });
+  return Object.freeze({
+    provider: validated.provider,
+    visibility: validated.visibility,
+    profilePartitionId: validated.profilePartitionId,
+    isolated: validated.isolated,
+    ephemeral: validated.ephemeral,
+    ...(validated.profileId ? { profileId: validated.profileId } : {}),
+  });
+}
 
 function handleListAdapters(params: Record<string, unknown>): McpToolResult {
   let commands = [
@@ -110,6 +161,7 @@ function handleListAdapters(params: Record<string, unknown>): McpToolResult {
 
 async function handleRunCommand(
   params: Record<string, unknown>,
+  signal?: AbortSignal,
 ): Promise<McpToolResult> {
   const site = params.site as string;
   const command = params.command as string;
@@ -148,7 +200,11 @@ async function handleRunCommand(
     };
   }
 
-  return runResolvedCommand(resolved.adapter, resolved.command, command, args);
+  return runResolvedCommand(resolved.adapter, resolved.command, {
+    cmdName: command,
+    args,
+    signal,
+  });
 }
 
 /**
@@ -158,16 +214,16 @@ async function handleRunCommand(
 async function handleExpandedTool(
   toolName: string,
   args: Record<string, unknown>,
+  signal?: AbortSignal,
 ): Promise<McpToolResult | undefined> {
   if (!toolName.startsWith("unicli_")) return undefined;
   const entry = expandedRegistry.get(toolName);
   if (!entry) return undefined;
-  return runResolvedCommand(
-    entry.adapter,
-    entry.cmd,
-    entry.cmdName,
-    expandedToolArgs(args),
-  );
+  return runResolvedCommand(entry.adapter, entry.cmd, {
+    cmdName: entry.cmdName,
+    args: expandedToolArgs(args),
+    signal,
+  });
 }
 
 function expandedToolArgs(
@@ -200,6 +256,11 @@ function initializeResponse(
         tools: { listChanged: false },
         ...(prompts.length > 0 ? { prompts: { listChanged: false } } : {}),
         elicitation: { supported: true },
+        tasks: {
+          list: {},
+          cancel: {},
+          requests: { tools: { call: {} } },
+        },
       },
       serverInfo: { name: "unicli", version: VERSION },
     },
@@ -263,6 +324,7 @@ async function dispatchBuiltin(
   id: JsonRpcResponse["id"],
   name: string,
   toolArgs: Record<string, unknown>,
+  signal?: AbortSignal,
 ): Promise<JsonRpcResponse | undefined> {
   switch (name) {
     case "unicli_list":
@@ -272,14 +334,14 @@ async function dispatchBuiltin(
     }
     case "unicli_run":
     case "run_command": {
-      const result = await handleRunCommand(toolArgs);
+      const result = await handleRunCommand(toolArgs, signal);
       return { jsonrpc: "2.0", id, result: annotateIfLarge(result) };
     }
     case "unicli_search":
       return dispatchSearch(id, toolArgs);
     case "unicli_explore":
     case "unicli_discover":
-      return dispatchExplore(id, toolArgs);
+      return dispatchExplore(id, toolArgs, signal);
   }
   return undefined;
 }
@@ -329,6 +391,7 @@ async function dispatchSearch(
 async function dispatchExplore(
   id: JsonRpcResponse["id"],
   toolArgs: Record<string, unknown>,
+  signal?: AbortSignal,
 ): Promise<JsonRpcResponse> {
   const discoverUrl = toolArgs.url as string;
   const discoverGoal = toolArgs.goal as string | undefined;
@@ -352,17 +415,25 @@ async function dispatchExplore(
       },
     };
   }
-  const [{ execFile: ef }, { promisify: prom }] = await Promise.all([
-    import("node:child_process"),
-    import("node:util"),
-  ]);
-  const execFileP = prom(ef);
-  const discoverArgs = ["generate", discoverUrl, "--json"];
-  if (discoverGoal) discoverArgs.push("--goal", discoverGoal);
   try {
+    signal?.throwIfAborted();
+    const operation = resolveGenerateOperation({
+      url: discoverUrl,
+      goal: discoverGoal,
+    });
+    await authorizeGenerateOperation(operation);
+    signal?.throwIfAborted();
+    const [{ execFile: ef }, { promisify: prom }] = await Promise.all([
+      import("node:child_process"),
+      import("node:util"),
+    ]);
+    const execFileP = prom(ef);
+    const discoverArgs = ["generate", discoverUrl, "--json"];
+    if (discoverGoal) discoverArgs.push("--goal", discoverGoal);
     const { stdout } = await execFileP("unicli", discoverArgs, {
       timeout: 120_000,
       encoding: "utf-8",
+      signal,
     });
     return {
       jsonrpc: "2.0",
@@ -373,11 +444,23 @@ async function dispatchExplore(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    const tagged = err as Partial<{
+      code: string;
+      suggestion: string;
+      retryable: boolean;
+    }>;
+    const data = {
+      error: message,
+      ...(tagged.code ? { code: tagged.code } : {}),
+      ...(tagged.suggestion ? { suggestion: tagged.suggestion } : {}),
+      retryable: tagged.retryable ?? false,
+    };
     return {
       jsonrpc: "2.0",
       id,
       result: annotateIfLarge({
-        content: [{ type: "text", text: JSON.stringify({ error: message }) }],
+        content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+        structuredContent: { type: "json", data },
         isError: true,
       }),
     };
@@ -388,6 +471,7 @@ async function handleToolsCall(
   id: JsonRpcResponse["id"],
   req: JsonRpcRequest,
   tools: McpTool[],
+  browserPolicy: McpBrowserPolicy,
   requestContext?: McpRequestContext,
 ): Promise<JsonRpcResponse> {
   const params = req.params as
@@ -407,18 +491,30 @@ async function handleToolsCall(
   });
   const scope = createBrowserInvocationScope({
     context: invocationContext,
-    profilePartitionId: "default",
+    ...browserPolicy,
+    signal: requestContext?.signal,
   });
   return runBrowserInvocation(scope, async () => {
     const toolArgs = params.arguments ?? {};
     const directTool = tools.find((tool) => tool.name === params.name);
     if (directTool?.handler) {
-      const result = await directTool.handler(toolArgs);
+      const result = await directTool.handler(toolArgs, {
+        signal: requestContext?.signal,
+      });
       return { jsonrpc: "2.0", id, result: annotateIfLarge(result) };
     }
-    const builtin = await dispatchBuiltin(id, params.name, toolArgs);
+    const builtin = await dispatchBuiltin(
+      id,
+      params.name,
+      toolArgs,
+      requestContext?.signal,
+    );
     if (builtin) return builtin;
-    const result = await handleExpandedTool(params.name, toolArgs);
+    const result = await handleExpandedTool(
+      params.name,
+      toolArgs,
+      requestContext?.signal,
+    );
     if (result) {
       return { jsonrpc: "2.0", id, result: annotateIfLarge(result) };
     }
@@ -457,12 +553,17 @@ function handleElicitationResponse(
 export function buildHandler(
   tools: McpTool[],
   prompts: McpPrompt[] = [],
+  options: McpHandlerOptions = {},
 ): JsonRpcHandler {
-  return function handleRequest(
+  const browserPolicy = createMcpBrowserPolicy(options.browserPolicy);
+  const taskManager = new McpTaskManager();
+  const advertisedTools = tools.map(withDefaultTaskSupport);
+  const handleRequest: JsonRpcHandler = function handleRequest(
     req: JsonRpcRequest,
     requestContext?: McpRequestContext,
   ): JsonRpcResponse | undefined | Promise<JsonRpcResponse | undefined> {
     const id = req.id ?? null;
+    const sessionId = requestContext?.mcpSessionId ?? "mcp:default";
 
     switch (req.method) {
       case "initialize":
@@ -471,9 +572,72 @@ export function buildHandler(
         // Notifications have no response — transports already guard `if (response)`.
         return undefined;
       case "tools/list":
-        return { jsonrpc: "2.0", id, result: { tools } };
-      case "tools/call":
-        return handleToolsCall(id, req, tools, requestContext);
+        return { jsonrpc: "2.0", id, result: { tools: advertisedTools } };
+      case "tools/call": {
+        const params = req.params;
+        const tool = resolveAdvertisedTool(advertisedTools, params?.name);
+        if (!tool) {
+          return {
+            jsonrpc: "2.0",
+            id,
+            error: {
+              code: -32602,
+              message: `Unknown tool: ${String(params?.name ?? "")}. Use unicli_list to see available commands.`,
+            },
+          };
+        }
+        const requestedTask = parseTaskRequest(params);
+        if (requestedTask instanceof Error) {
+          return {
+            jsonrpc: "2.0",
+            id,
+            error: { code: -32602, message: requestedTask.message },
+          };
+        }
+        const taskSupport = tool.execution?.taskSupport ?? "forbidden";
+        if (requestedTask === undefined && taskSupport === "required") {
+          return taskSupportError(id, tool.name, "requires task augmentation");
+        }
+        if (requestedTask !== undefined && taskSupport === "forbidden") {
+          return taskSupportError(id, tool.name, "forbids task augmentation");
+        }
+        if (requestedTask !== undefined) {
+          return taskManager.create({
+            requestId: id,
+            sessionId,
+            requestedTtl: requestedTask.ttl,
+            transport: requestContext?.transport ?? "mcp-stdio",
+            execute: (taskId, taskContext) =>
+              handleToolsCall(
+                id,
+                withRelatedTaskRequest(req, taskId),
+                advertisedTools,
+                browserPolicy,
+                taskContext,
+              ),
+          });
+        }
+        return handleToolsCall(
+          id,
+          req,
+          advertisedTools,
+          browserPolicy,
+          requestContext,
+        );
+      }
+      case "tasks/get":
+        return taskManager.get(id, sessionId, req.params?.taskId);
+      case "tasks/result":
+        return taskManager.result(
+          id,
+          sessionId,
+          req.params?.taskId,
+          requestContext?.signal,
+        );
+      case "tasks/list":
+        return taskManager.list(id, sessionId, req.params?.cursor);
+      case "tasks/cancel":
+        return taskManager.cancel(id, sessionId, req.params?.taskId);
       case "prompts/list":
         return handlePromptsList(id, prompts);
       case "prompts/get":
@@ -495,5 +659,87 @@ export function buildHandler(
         }
         return undefined;
     }
+  };
+  handleRequest.closeSession = (sessionId, reason) =>
+    taskManager.closeSession(sessionId, reason);
+  handleRequest.closeAll = (reason) => taskManager.closeAll(reason);
+  return handleRequest;
+}
+
+function withDefaultTaskSupport(tool: McpTool): McpTool {
+  if (tool.execution) return tool;
+  return {
+    ...tool,
+    execution: {
+      taskSupport:
+        tool.annotations?.readOnlyHint === true ? "optional" : "required",
+    },
+  };
+}
+
+function resolveAdvertisedTool(
+  tools: readonly McpTool[],
+  name: unknown,
+): McpTool | undefined {
+  if (typeof name !== "string") return undefined;
+  const canonical =
+    name === "run_command"
+      ? "unicli_run"
+      : name === "list_adapters"
+        ? "unicli_list"
+        : name === "unicli_discover"
+          ? "unicli_explore"
+          : name;
+  return tools.find((tool) => tool.name === canonical);
+}
+
+function parseTaskRequest(
+  params: Record<string, unknown> | undefined,
+): { ttl?: number } | undefined | Error {
+  if (!params || !Object.hasOwn(params, "task")) return undefined;
+  const task = params.task;
+  if (typeof task !== "object" || task === null || Array.isArray(task)) {
+    return new Error("Task metadata must be an object");
+  }
+  const ttl = (task as Record<string, unknown>).ttl;
+  if (ttl !== undefined && typeof ttl !== "number") {
+    return new Error("Task ttl must be a number in milliseconds");
+  }
+  return ttl === undefined ? {} : { ttl };
+}
+
+function taskSupportError(
+  id: JsonRpcResponse["id"],
+  toolName: string,
+  reason: string,
+): JsonRpcResponse {
+  return {
+    jsonrpc: "2.0",
+    id,
+    error: { code: -32601, message: `Tool ${toolName} ${reason}` },
+  };
+}
+
+function withRelatedTaskRequest(
+  request: JsonRpcRequest,
+  taskId: string,
+): JsonRpcRequest {
+  const params = request.params ?? {};
+  const meta =
+    typeof params._meta === "object" &&
+    params._meta !== null &&
+    !Array.isArray(params._meta)
+      ? (params._meta as Record<string, unknown>)
+      : {};
+  const { task: _task, ...withoutTask } = params;
+  return {
+    ...request,
+    params: {
+      ...withoutTask,
+      _meta: {
+        ...meta,
+        "io.modelcontextprotocol/related-task": { taskId },
+      },
+    },
   };
 }

@@ -7,8 +7,12 @@
  * keep working without churn. All logic lives in `streamable-http/`.
  */
 
-export { startStreamableHttp, _test } from "./streamable-http/index.js";
+export {
+  startStreamableHttp,
+  stopStreamableHttp,
+  _test,
+} from "./streamable-http/index.js";
 export type {
   Handler,
   StreamableHttpOptions,
-} from "./streamable-http/session.js";
+} from "./streamable-http/index.js";

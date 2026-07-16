@@ -1,10 +1,10 @@
 /**
  * @owner       src::engine::runtime
- * @does        Executes per-step fallback, retry, diagnostic, selector recovery, and authenticated-session refresh helpers.
+ * @does        Executes cancellable per-step fallback, retry, diagnostic, selector recovery, and authenticated-session refresh helpers.
  * @needs       executor pipeline types, step registry, diagnostic/select-fix/cookie-refresh lazy modules
  * @feeds       src::engine::executor pipeline orchestration
  * @breaks      Recovery failures remain subordinate to the original pipeline error but are reported on stderr.
- * @invariants  Retries are bounded, domain-aware cookie refresh never persists, and the original error remains authoritative.
+ * @invariants  Retries are bounded, cancellation stops unsettled fallback/retry/backoff, outcome ambiguity is never replayed, domain-aware cookie refresh never persists, and settled results remain authoritative.
  * @side-effects May retry steps, sleep, emit diagnostics, mutate in-memory pipeline context, navigate Chrome, and write stderr.
  * @concurrency Each helper call owns its retry counter and pipeline context.
  * @test        tests/unit/engine/runtime-cookie-refresh.test.ts and pipeline executor suites
@@ -13,6 +13,7 @@
  */
 
 import type { PipelineStep } from "../types.js";
+import { setTimeout as delay } from "node:timers/promises";
 import {
   type PipelineContext,
   type PipelineOptions,
@@ -20,6 +21,7 @@ import {
   executeStep,
 } from "./executor.js";
 import { getStep } from "./step-registry.js";
+import { isOperationOutcomeAmbiguousError } from "../transport/contained-process.js";
 
 export function extractFallbacks(
   step: PipelineStep,
@@ -89,15 +91,23 @@ export async function runWithFallbacks(
   stepIndex: number,
   step: PipelineStep,
 ): Promise<PipelineContext> {
+  ctx.signal?.throwIfAborted();
   try {
     return await executeStep(ctx, action, config, stepIndex, step);
   } catch (primaryErr) {
+    if (isOperationOutcomeAmbiguousError(primaryErr) || ctx.signal?.aborted) {
+      throw primaryErr;
+    }
     if (!fallbacks || fallbacks.length === 0) throw primaryErr;
     let lastErr = primaryErr;
     for (const fb of fallbacks) {
+      ctx.signal?.throwIfAborted();
       try {
         return await executeStep(ctx, action, fb, stepIndex, step);
       } catch (fbErr) {
+        if (isOperationOutcomeAmbiguousError(fbErr) || ctx.signal?.aborted) {
+          throw fbErr;
+        }
         lastErr = fbErr;
       }
     }
@@ -117,6 +127,7 @@ export async function runWithRetry(
 ): Promise<PipelineContext> {
   let lastErr: unknown;
   for (let attempt = 0; attempt <= retryCount; attempt++) {
+    ctx.signal?.throwIfAborted();
     try {
       return await runWithFallbacks(
         ctx,
@@ -127,11 +138,14 @@ export async function runWithRetry(
         step,
       );
     } catch (err) {
+      if (isOperationOutcomeAmbiguousError(err) || ctx.signal?.aborted) {
+        throw err;
+      }
       lastErr = err;
       if (attempt < retryCount) {
-        await new Promise((r) =>
-          setTimeout(r, backoffMs * Math.pow(2, attempt)),
-        );
+        await delay(backoffMs * Math.pow(2, attempt), undefined, {
+          signal: ctx.signal,
+        });
       }
     }
   }
@@ -210,7 +224,16 @@ export async function maybeRefreshCookies(
   if (!options?.site) return;
   try {
     const { refreshCookies } = await import("./cookie-refresh.js");
-    const outcome = await refreshCookies(options.site, options.domain);
+    options.signal?.throwIfAborted();
+    const outcome = options.signal
+      ? await refreshCookies(
+          options.site,
+          options.domain,
+          undefined,
+          options.signal,
+        )
+      : await refreshCookies(options.site, options.domain);
+    options.signal?.throwIfAborted();
     if (outcome.status === "refreshed") {
       process.stderr.write(
         `[cookie-refresh] refreshed ${outcome.cookieCount} cookie(s) for ${options.site}; retry the command.\n`,

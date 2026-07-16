@@ -34,6 +34,7 @@ export interface ComputeCaptureOptions {
 
 export interface ComputeCaptureHooks {
   onSnapshotSuccess?: () => void;
+  signal?: AbortSignal;
 }
 
 export interface ComputeCapturePart {
@@ -84,6 +85,7 @@ export async function captureComputeContext(
   options: ComputeCaptureOptions,
   hooks: ComputeCaptureHooks = {},
 ): Promise<ActionResult<ComputeCapturePacket>> {
+  hooks.signal?.throwIfAborted();
   const parsedIncludes = readCaptureIncludes(options.include);
   if (parsedIncludes.invalid.length > 0) {
     const plural = parsedIncludes.invalid.length === 1 ? "" : "s";
@@ -103,6 +105,7 @@ export async function captureComputeContext(
   const trajectory: ComputeCaptureTrajectoryStep[] = [];
 
   if (includes.includes("snapshot")) {
+    hooks.signal?.throwIfAborted();
     const params = {
       ...(options.app ? { app: options.app } : {}),
       format: options.format ?? "compact",
@@ -111,7 +114,9 @@ export async function captureComputeContext(
     const snapshotResult = await tryCascade(bus, {
       kind: "compute_snapshot",
       params,
+      ...(hooks.signal ? { signal: hooks.signal } : {}),
     });
+    hooks.signal?.throwIfAborted();
     parts.snapshot = capturePart(snapshotResult);
     trajectory.push({
       index: trajectory.length,
@@ -123,6 +128,7 @@ export async function captureComputeContext(
   }
 
   if (includes.includes("screenshot")) {
+    hooks.signal?.throwIfAborted();
     const params = {
       ...(options.app ? { app: options.app } : {}),
       ...(options.screenshotPath ? { path: options.screenshotPath } : {}),
@@ -130,8 +136,14 @@ export async function captureComputeContext(
     const screenshotResult = await tryCascade(bus, {
       kind: "compute_screenshot",
       params,
+      ...(hooks.signal ? { signal: hooks.signal } : {}),
     });
-    parts.screenshot = await captureScreenshotPart(screenshotResult);
+    hooks.signal?.throwIfAborted();
+    parts.screenshot = await captureScreenshotPart(
+      screenshotResult,
+      hooks.signal,
+    );
+    hooks.signal?.throwIfAborted();
     trajectory.push({
       index: trajectory.length,
       action: "compute_screenshot",
@@ -140,6 +152,7 @@ export async function captureComputeContext(
     });
   }
 
+  hooks.signal?.throwIfAborted();
   const successes = Object.values(parts).filter((part) => part?.ok).length;
   if (successes === 0) {
     return err({
@@ -185,16 +198,22 @@ function capturePart(result: ActionResult<unknown>): ComputeCapturePart {
 
 async function captureScreenshotPart(
   result: ActionResult<unknown>,
+  signal?: AbortSignal,
 ): Promise<ComputeCapturePart> {
   if (!result.ok) return capturePart(result);
+  signal?.throwIfAborted();
   return {
     ok: true,
-    data: await enrichScreenshotData(result.data),
+    data: await enrichScreenshotData(result.data, signal),
   };
 }
 
-async function enrichScreenshotData(data: unknown): Promise<unknown> {
-  const buffer = await screenshotBuffer(data);
+async function enrichScreenshotData(
+  data: unknown,
+  signal?: AbortSignal,
+): Promise<unknown> {
+  const buffer = await screenshotBuffer(data, signal);
+  signal?.throwIfAborted();
   if (!buffer) return data;
   const image = readImageMetadata(buffer, readMime(data, buffer));
   if (Buffer.isBuffer(data)) {
@@ -208,7 +227,10 @@ async function enrichScreenshotData(data: unknown): Promise<unknown> {
   return { data, image };
 }
 
-async function screenshotBuffer(data: unknown): Promise<Buffer | undefined> {
+async function screenshotBuffer(
+  data: unknown,
+  signal?: AbortSignal,
+): Promise<Buffer | undefined> {
   if (Buffer.isBuffer(data)) return data;
   if (!isRecord(data)) return undefined;
   if (typeof data.base64 === "string") {
@@ -216,8 +238,9 @@ async function screenshotBuffer(data: unknown): Promise<Buffer | undefined> {
   }
   if (typeof data.path === "string") {
     try {
-      return await readFile(data.path);
+      return await readFile(data.path, signal ? { signal } : undefined);
     } catch {
+      signal?.throwIfAborted();
       return undefined;
     }
   }

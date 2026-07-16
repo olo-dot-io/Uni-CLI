@@ -1,10 +1,10 @@
 /**
  * @owner       src::engine::download
- * @does        Streams HTTP content or invokes yt-dlp, while providing filename and bounded-concurrency utilities.
- * @needs       canonical proxy-aware fetch, node streams/fs/path, yt-dlp subprocess when selected
+ * @does        Transactionally streams HTTP content or invokes yt-dlp, while providing filename and bounded-concurrency utilities.
+ * @needs       canonical proxy-aware fetch, transactional file publication, node streams/fs/path, yt-dlp subprocess when selected
  * @feeds       download pipeline action, HTTP transport, scholarly/media adapters, public package download export
- * @breaks      HTTP, stream, filesystem, and subprocess failures return explicit failed DownloadResult values.
- * @invariants  HTTP downloads use the same fetch/proxy boundary as pipeline requests; result order is preserved.
+ * @breaks      Direct destination writes can replace valid artifacts after cancellation; ordinary HTTP, stream, filesystem, and subprocess failures return explicit failed DownloadResult values.
+ * @invariants  HTTP downloads use the canonical proxy boundary, publish only by atomic rename, preserve prior destinations on abort, and rethrow the exact cancellation reason; result order is preserved.
  * @side-effects Creates directories/files and may launch yt-dlp.
  * @perf        HTTP streams without whole-body buffering; mapConcurrent is caller-bounded.
  * @concurrency Worker-pool mapping preserves input order; each destination stream has one owner.
@@ -15,10 +15,13 @@
 
 import { execFile } from "node:child_process";
 import { createWriteStream, mkdirSync, statSync } from "node:fs";
+import { mkdir, stat } from "node:fs/promises";
 import { dirname } from "node:path";
 import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
 import { fetchWithProxy } from "./proxy.js";
+import { publishFileTransactionally } from "./transactional-file.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -91,12 +94,18 @@ export async function httpDownload(
   url: string,
   destPath: string,
   headers?: Record<string, string>,
+  signal?: AbortSignal,
 ): Promise<DownloadResult> {
   const t0 = Date.now();
   try {
-    mkdirSync(dirname(destPath), { recursive: true });
+    signal?.throwIfAborted();
+    await mkdir(dirname(destPath), { recursive: true });
 
-    const res = await fetchWithProxy(url, { headers });
+    const res = await fetchWithProxy(url, {
+      headers,
+      ...(signal ? { signal } : {}),
+    });
+    signal?.throwIfAborted();
     if (!res.ok) {
       return {
         status: "failed",
@@ -107,20 +116,19 @@ export async function httpDownload(
       return { status: "failed", error: "Response body is null" };
     }
 
-    const ws = createWriteStream(destPath);
-    // `res.body` is a web ReadableStream — Node 18+ supports fromWeb()
-    const readable = Readable.fromWeb(
-      res.body as Parameters<typeof Readable.fromWeb>[0],
+    await publishFileTransactionally(
+      destPath,
+      async (temporaryPath) => {
+        const ws = createWriteStream(temporaryPath, { flags: "wx" });
+        const readable = Readable.fromWeb(
+          res.body as Parameters<typeof Readable.fromWeb>[0],
+        );
+        await pipeline(readable, ws, signal ? { signal } : {});
+      },
+      { signal },
     );
 
-    await new Promise<void>((resolve, reject) => {
-      readable.pipe(ws);
-      ws.on("finish", resolve);
-      ws.on("error", reject);
-      readable.on("error", reject);
-    });
-
-    const { size } = statSync(destPath);
+    const { size } = await stat(destPath);
     return {
       status: "success",
       path: destPath,
@@ -128,6 +136,7 @@ export async function httpDownload(
       duration: Date.now() - t0,
     };
   } catch (err) {
+    signal?.throwIfAborted();
     return {
       status: "failed",
       error: err instanceof Error ? err.message : String(err),

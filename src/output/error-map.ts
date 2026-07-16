@@ -1,20 +1,17 @@
 /**
- * Error-to-envelope mapping helpers.
- *
- * Translates caught exceptions into the fields required by the v2 AgentError
- * envelope (`code`, `adapter_path`, `step`, `suggestion`, `retryable`,
- * `alternatives`) and into sysexits.h-style exit codes.
- *
- * Lives alongside `envelope.ts` because the output here is strictly envelope-
- * shaped — no dispatch-specific state. Extracted from `src/commands/dispatch.ts`
- * in v0.213.1 Task T4 to collapse the 7-way `err instanceof` ternary into one
- * call to `errorToAgentFields`.
+ * @owner       src::output::error-map
+ * @does        Maps caught failures, including nested outcome ambiguity, into stable AgentError fields and exit codes.
+ * @needs       pipeline, browser bridge/target, contained-process error contracts, auth guidance
+ * @feeds       kernel envelopes and every CLI/MCP/ACP error renderer
+ * @breaks      Flattening structured runtime truth can make agents retry an already-committed mutation.
+ * @invariants  Nested outcome ambiguity is non-retryable and retains operation/target usability metadata across AggregateError boundaries.
  */
 
 import { PipelineError } from "../engine/executor.js";
 import { BridgeConnectionError } from "../browser/bridge.js";
 import { isTargetError } from "../browser/target-errors.js";
 import { ExitCode } from "../types.js";
+import { findOperationOutcomeAmbiguousError } from "../transport/contained-process.js";
 import {
   authFailureSuggestion,
   challengeFailureSuggestion,
@@ -62,9 +59,13 @@ function isChallengeMessage(message: string): boolean {
  * contract. Covers the most common pipeline / network / HTTP failure modes.
  */
 export function errorTypeToCode(err: unknown): string {
+  if (findOperationOutcomeAmbiguousError(err)) {
+    return "operation_outcome_ambiguous";
+  }
   if (isTargetError(err)) return err.detail.code;
   if (err instanceof PipelineError) {
-    const { errorType, statusCode } = err.detail;
+    const { errorType, preserveErrorCode, statusCode } = err.detail;
+    if (preserveErrorCode) return errorType;
     if (isChallengeMessage(err.message)) return "challenge_required";
     if (
       statusCode === 401 ||
@@ -171,7 +172,25 @@ export function errorToAgentFields(
   suggestion: string;
   retryable: boolean;
   alternatives: string[];
+  outcome_ambiguous?: true;
+  target_unusable?: true;
+  operation?: string;
 } {
+  const ambiguity = findOperationOutcomeAmbiguousError(err);
+  if (ambiguity) {
+    return {
+      adapter_path: undefined,
+      step: undefined,
+      suggestion: ambiguity.target_unusable
+        ? "Discard the affected target, inspect external state from a fresh target, and do not replay the operation automatically."
+        : "Inspect external state before deciding whether to issue a new operation; do not replay automatically.",
+      retryable: false,
+      alternatives: [],
+      outcome_ambiguous: true,
+      ...(ambiguity.target_unusable ? { target_unusable: true } : {}),
+      ...(ambiguity.operation ? { operation: ambiguity.operation } : {}),
+    };
+  }
   if (isTargetError(err)) {
     return {
       adapter_path: undefined,

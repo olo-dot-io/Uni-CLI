@@ -6,6 +6,8 @@ import { spawnSync } from "node:child_process";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PACKAGE_DIRS = [
+  "packages/sidecars/unicli-process-owner-win32-x64",
+  "packages/sidecars/unicli-process-owner-win32-arm64",
   "packages/sidecars/unicli-uia-win32-x64",
   "packages/sidecars/unicli-uia-win32-arm64",
   "packages/sidecars/unicli-atspi-linux-x64",

@@ -1,14 +1,14 @@
 /**
  * @owner       src/browser/cdp-client.ts
- * @does        Provide raw browser-level and target-level Chrome DevTools Protocol connections.
+ * @does        Provide raw browser-level, target-level, and flattened session-scoped Chrome DevTools Protocol connections.
  * @needs       node:http, ws
- * @feeds       src/browser/page.ts, src/browser/managed-browser.ts, transport CDP adapters
+ * @feeds       src/browser/page.ts, src/browser/managed-browser.ts, src/browser/remote-browser.ts, transport CDP adapters
  * @breaks      Throws on invalid endpoints, unavailable targets, protocol errors, connection loss, and command timeouts.
- * @invariants  Every request id resolves once; a client binds to one WebSocket endpoint until close; target selection excludes non-page surfaces.
+ * @invariants  Every request id resolves once; abort removes only that request and ignores any late response; close waits for or forcibly terminates its exact socket before reconnect; flattened-session events never cross session listeners; target selection excludes non-page surfaces.
  * @side-effects Opens HTTP and WebSocket connections and mutates pending-request/listener state.
  * @perf        O(1) pending dispatch; target discovery is O(number of exposed DevTools targets).
  * @concurrency Multiple in-flight commands are correlated by id; close rejects every pending command.
- * @test        tests/unit/cdp-client.test.ts, tests/integration/browser-runtime-broker.test.ts
+ * @test        tests/unit/cdp-client.test.ts, tests/integration/browser-runtime-broker.test.ts, tests/integration/browser-remote-provider.test.ts
  * @stability   experimental
  * @since       2026-04-04
  */
@@ -27,6 +27,7 @@ interface CDPResponse {
 interface CDPEvent {
   method: string;
   params?: unknown;
+  sessionId?: string;
 }
 
 export interface CDPTarget {
@@ -52,6 +53,8 @@ interface PendingRequest {
   resolve: (value: unknown) => void;
   reject: (reason: Error) => void;
   timer: ReturnType<typeof setTimeout>;
+  signal?: AbortSignal;
+  abortHandler?: () => void;
 }
 
 export interface ConnectToChromeOptions {
@@ -66,10 +69,55 @@ export interface RemoteEndpoint {
   headers: Record<string, string>;
 }
 
+export interface CDPCommandClient {
+  send(
+    method: string,
+    params?: Record<string, unknown>,
+    sessionId?: string,
+    signal?: AbortSignal,
+  ): Promise<unknown>;
+  on(event: string, handler: (params: unknown) => void): void;
+  off(event: string, handler: (params: unknown) => void): void;
+  close(): Promise<void>;
+  getConnectedTarget(): CDPTarget | undefined;
+}
+
+type CDPCommandTransportErrorCode =
+  | "cdp_connection_not_open"
+  | "cdp_command_timeout"
+  | "cdp_command_send_failed"
+  | "cdp_connection_lost";
+
+interface CDPCommandTransportErrorOptions extends ErrorOptions {
+  outcomeAmbiguous: boolean;
+  targetUnusable: boolean;
+}
+
+export class CDPCommandTransportError extends Error {
+  readonly retryable = true;
+  readonly suggestion =
+    "Inspect the target state before retrying a mutation; reconnect before issuing another CDP command.";
+  readonly outcome_ambiguous: boolean;
+  readonly target_unusable: boolean;
+
+  constructor(
+    readonly code: CDPCommandTransportErrorCode,
+    message: string,
+    options: CDPCommandTransportErrorOptions,
+  ) {
+    super(message, options);
+    this.name = "CDPCommandTransportError";
+    this.outcome_ambiguous = options.outcomeAmbiguous;
+    this.target_unusable = options.targetUnusable;
+  }
+}
+
 // ── Constants ────────────────────────────────────────────────────────
 
 const CDP_SEND_TIMEOUT = 30_000;
 const CDP_CONNECT_TIMEOUT = 10_000;
+const CDP_CLOSE_TIMEOUT = 5_000;
+const CDP_TERMINATE_TIMEOUT = 1_000;
 const CDP_DEFAULT_PORT = 9222;
 const CDP_FETCH_TIMEOUT = 10_000;
 const NON_NAVIGABLE_TARGET_TYPES = new Set([
@@ -132,7 +180,12 @@ export class CDPClient {
   private nextId = 1;
   private pending = new Map<number, PendingRequest>();
   private listeners = new Map<string, Set<(params: unknown) => void>>();
+  private sessionListeners = new Map<
+    string,
+    Map<string, Set<(params: unknown) => void>>
+  >();
   private connectedTarget?: CDPTarget;
+  private closing: Promise<void> | null = null;
 
   /**
    * Connect to a Chrome tab via WebSocket.
@@ -141,9 +194,13 @@ export class CDPClient {
   async connect(
     wsUrl: string,
     options?: { headers?: Record<string, string> },
+    signal?: AbortSignal,
   ): Promise<void> {
-    if (this.ws) {
-      throw new Error("CDPClient is already connected. Call close() first.");
+    signal?.throwIfAborted();
+    if (this.ws || this.closing) {
+      throw new Error(
+        "CDPClient is already connected or closing. Await close() before reconnecting.",
+      );
     }
 
     return new Promise<void>((resolve, reject) => {
@@ -152,20 +209,45 @@ export class CDPClient {
         wsOptions.headers = options.headers;
       }
       const ws = new WebSocket(wsUrl, wsOptions);
-      const timer = setTimeout(() => {
+      let settled = false;
+      let timer: ReturnType<typeof setTimeout>;
+      const cleanup = (): void => {
+        clearTimeout(timer);
+        signal?.removeEventListener("abort", abort);
+      };
+      const abort = (): void => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        ws.terminate();
+        reject(signal?.reason ?? new Error("CDP connection cancelled"));
+      };
+      timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        cleanup();
         ws.terminate();
         reject(new Error(`CDP connect timeout after ${CDP_CONNECT_TIMEOUT}ms`));
       }, CDP_CONNECT_TIMEOUT);
+      signal?.addEventListener("abort", abort, { once: true });
+      if (signal?.aborted) abort();
 
       ws.on("open", () => {
-        clearTimeout(timer);
+        if (settled) {
+          ws.terminate();
+          return;
+        }
+        settled = true;
+        cleanup();
         this.ws = ws;
         resolve();
       });
 
       ws.on("error", (err: Error) => {
-        clearTimeout(timer);
         debugLog(`WebSocket error: ${err.message}`);
+        if (settled) return;
+        settled = true;
+        cleanup();
         reject(err);
       });
 
@@ -174,7 +256,13 @@ export class CDPClient {
       });
 
       ws.on("close", () => {
-        this.handleClose();
+        if (!settled) {
+          settled = true;
+          cleanup();
+          reject(new Error("CDP connection closed before opening"));
+          return;
+        }
+        this.handleClose(ws);
       });
     });
   }
@@ -187,26 +275,77 @@ export class CDPClient {
     method: string,
     params?: Record<string, unknown>,
     sessionId?: string,
+    signal?: AbortSignal,
   ): Promise<unknown> {
+    signal?.throwIfAborted();
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      throw new Error("CDP connection is not open");
+      throw new CDPCommandTransportError(
+        "cdp_connection_not_open",
+        "CDP connection is not open",
+        { outcomeAmbiguous: false, targetUnusable: true },
+      );
     }
 
     const id = this.nextId++;
     return new Promise<unknown>((resolve, reject) => {
+      let entry!: PendingRequest;
       const timer = setTimeout(() => {
-        this.pending.delete(id);
+        if (this.pending.get(id) !== entry) return;
+        this.clearPendingRequest(id, entry);
         reject(
-          new Error(
+          new CDPCommandTransportError(
+            "cdp_command_timeout",
             `CDP command '${method}' timed out after ${CDP_SEND_TIMEOUT / 1000}s`,
+            { outcomeAmbiguous: true, targetUnusable: false },
           ),
         );
       }, CDP_SEND_TIMEOUT);
 
-      this.pending.set(id, { resolve, reject, timer });
+      const abortHandler = (): void => {
+        if (this.pending.get(id) !== entry) return;
+        this.clearPendingRequest(id, entry);
+        reject(signal?.reason);
+      };
+      entry = {
+        resolve,
+        reject,
+        timer,
+        ...(signal ? { signal, abortHandler } : {}),
+      };
+      this.pending.set(id, entry);
+      signal?.addEventListener("abort", abortHandler, { once: true });
       const msg: Record<string, unknown> = { id, method, params: params ?? {} };
       if (sessionId) msg.sessionId = sessionId;
-      this.ws!.send(JSON.stringify(msg));
+      try {
+        this.ws!.send(JSON.stringify(msg), (error) => {
+          if (!error || this.pending.get(id) !== entry) return;
+          this.clearPendingRequest(id, entry);
+          reject(
+            new CDPCommandTransportError(
+              "cdp_command_send_failed",
+              `CDP command '${method}' send failed: ${error.message}`,
+              {
+                cause: error,
+                outcomeAmbiguous: true,
+                targetUnusable: true,
+              },
+            ),
+          );
+        });
+      } catch (error) {
+        this.clearPendingRequest(id, entry);
+        reject(
+          new CDPCommandTransportError(
+            "cdp_command_send_failed",
+            `CDP command '${method}' could not be handed to the socket: ${error instanceof Error ? error.message : String(error)}`,
+            {
+              cause: error,
+              outcomeAmbiguous: false,
+              targetUnusable: true,
+            },
+          ),
+        );
+      }
     });
   }
 
@@ -233,25 +372,70 @@ export class CDPClient {
     this.listeners.get(event)?.delete(handler);
   }
 
+  onSession(
+    sessionId: string,
+    event: string,
+    handler: (params: unknown) => void,
+  ): void {
+    let listeners = this.sessionListeners.get(sessionId);
+    if (!listeners) {
+      listeners = new Map();
+      this.sessionListeners.set(sessionId, listeners);
+    }
+    let handlers = listeners.get(event);
+    if (!handlers) {
+      handlers = new Set();
+      listeners.set(event, handlers);
+    }
+    handlers.add(handler);
+  }
+
+  offSession(
+    sessionId: string,
+    event: string,
+    handler: (params: unknown) => void,
+  ): void {
+    this.sessionListeners.get(sessionId)?.get(event)?.delete(handler);
+  }
+
+  clearSessionListeners(sessionId: string): void {
+    this.sessionListeners.delete(sessionId);
+  }
+
   /**
    * Clean disconnect -- reject all pending requests and close WebSocket.
    */
   async close(): Promise<void> {
+    if (this.closing) return this.closing;
     const ws = this.ws;
-    this.ws = null;
     this.connectedTarget = undefined;
 
     // Reject all pending requests
     for (const entry of this.pending.values()) {
-      clearTimeout(entry.timer);
-      entry.reject(new Error("CDP connection closed"));
+      this.clearPendingRequest(undefined, entry);
+      entry.reject(
+        new CDPCommandTransportError(
+          "cdp_connection_lost",
+          "CDP connection closed",
+          { outcomeAmbiguous: true, targetUnusable: true },
+        ),
+      );
     }
     this.pending.clear();
     this.listeners.clear();
+    this.sessionListeners.clear();
 
-    if (ws && ws.readyState !== WebSocket.CLOSED) {
-      ws.close();
+    if (!ws || ws.readyState === WebSocket.CLOSED) {
+      if (this.ws === ws) this.ws = null;
+      return;
     }
+    let closing!: Promise<void>;
+    closing = waitForWebSocketClose(ws).finally(() => {
+      if (this.ws === ws) this.ws = null;
+      if (this.closing === closing) this.closing = null;
+    });
+    this.closing = closing;
+    return closing;
   }
 
   // ── Static methods ───────────────────────────────────────────────
@@ -260,10 +444,13 @@ export class CDPClient {
    * Discover Chrome tabs via HTTP endpoint.
    * Default port: 9222.
    */
-  static async discoverTargets(port?: number): Promise<CDPTarget[]> {
+  static async discoverTargets(
+    port?: number,
+    signal?: AbortSignal,
+  ): Promise<CDPTarget[]> {
     const p = port ?? CDP_DEFAULT_PORT;
     const url = `http://127.0.0.1:${String(p)}/json`;
-    const raw = await fetchJson(url);
+    const raw = await fetchJson(url, undefined, signal);
 
     if (!Array.isArray(raw)) {
       throw new Error("CDP /json did not return an array");
@@ -277,9 +464,16 @@ export class CDPClient {
     );
   }
 
-  static async discoverBrowser(port?: number): Promise<CDPBrowserVersion> {
+  static async discoverBrowser(
+    port?: number,
+    signal?: AbortSignal,
+  ): Promise<CDPBrowserVersion> {
     const p = port ?? CDP_DEFAULT_PORT;
-    const raw = await fetchJson(`http://127.0.0.1:${String(p)}/json/version`);
+    const raw = await fetchJson(
+      `http://127.0.0.1:${String(p)}/json/version`,
+      undefined,
+      signal,
+    );
     if (
       typeof raw !== "object" ||
       raw === null ||
@@ -349,27 +543,32 @@ export class CDPClient {
     return client;
   }
 
-  static async connectToBrowser(port?: number): Promise<CDPClient> {
-    const browser = await CDPClient.discoverBrowser(port);
+  static async connectToBrowser(
+    port?: number,
+    signal?: AbortSignal,
+  ): Promise<CDPClient> {
+    const browser = await CDPClient.discoverBrowser(port, signal);
     const client = new CDPClient();
-    await client.connect(browser.webSocketDebuggerUrl);
+    await client.connect(browser.webSocketDebuggerUrl, undefined, signal);
     return client;
   }
 
   static async connectToTarget(
     targetId: string,
     port?: number,
+    signal?: AbortSignal,
   ): Promise<CDPClient> {
-    const target = (await CDPClient.discoverTargets(port)).find(
+    signal?.throwIfAborted();
+    const target = (await CDPClient.discoverTargets(port, signal)).find(
       (candidate) => candidate.id === targetId,
     );
     if (!target) {
       throw new Error(`Chrome target not found: ${targetId}`);
     }
     const client = new CDPClient();
-    await client.connect(target.webSocketDebuggerUrl);
+    await client.connect(target.webSocketDebuggerUrl, undefined, signal);
     client.connectedTarget = target;
-    await client.send("Page.enable");
+    await client.send("Page.enable", undefined, undefined, signal);
     return client;
   }
 
@@ -396,24 +595,14 @@ export class CDPClient {
     return null;
   }
 
-  /**
-   * Connect directly to a remote CDP endpoint (e.g., Cloudflare Browser Rendering).
-   * Returns a connected CDPClient ready to use.
-   */
+  /** Connect directly to an explicit remote CDP WebSocket endpoint. */
   static async connectToRemote(
     endpoint: string,
     headers?: Record<string, string>,
+    signal?: AbortSignal,
   ): Promise<CDPClient> {
     const client = new CDPClient();
-    await client.connect(endpoint, headers ? { headers } : undefined);
-
-    // Enable Page domain immediately after connection
-    try {
-      await client.send("Page.enable");
-    } catch {
-      debugLog("Failed to enable Page domain on remote (non-fatal)");
-    }
-
+    await client.connect(endpoint, headers ? { headers } : undefined, signal);
     return client;
   }
 
@@ -431,8 +620,7 @@ export class CDPClient {
     // Handle responses (messages with an id matching a pending request)
     if (isCDPResponse(msg) && this.pending.has(msg.id)) {
       const entry = this.pending.get(msg.id)!;
-      clearTimeout(entry.timer);
-      this.pending.delete(msg.id);
+      this.clearPendingRequest(msg.id, entry);
 
       if (msg.error) {
         entry.reject(
@@ -447,7 +635,9 @@ export class CDPClient {
 
     // Handle events (messages with a method field)
     if (isCDPEvent(msg)) {
-      const set = this.listeners.get(msg.method);
+      const set = msg.sessionId
+        ? this.sessionListeners.get(msg.sessionId)?.get(msg.method)
+        : this.listeners.get(msg.method);
       if (set) {
         for (const handler of set) {
           handler(msg.params);
@@ -456,16 +646,116 @@ export class CDPClient {
     }
   }
 
-  private handleClose(): void {
+  private handleClose(ws: WebSocket): void {
+    if (this.ws !== ws) return;
     debugLog("WebSocket closed");
     // Reject all pending requests on unexpected close
     for (const entry of this.pending.values()) {
-      clearTimeout(entry.timer);
-      entry.reject(new Error("CDP connection closed unexpectedly"));
+      this.clearPendingRequest(undefined, entry);
+      entry.reject(
+        new CDPCommandTransportError(
+          "cdp_connection_lost",
+          "CDP connection closed unexpectedly",
+          { outcomeAmbiguous: true, targetUnusable: true },
+        ),
+      );
     }
     this.pending.clear();
     this.ws = null;
     this.connectedTarget = undefined;
+    this.listeners.clear();
+    this.sessionListeners.clear();
+  }
+
+  private clearPendingRequest(
+    id: number | undefined,
+    entry: PendingRequest,
+  ): void {
+    if (id !== undefined && this.pending.get(id) === entry) {
+      this.pending.delete(id);
+    }
+    clearTimeout(entry.timer);
+    if (entry.signal && entry.abortHandler) {
+      entry.signal.removeEventListener("abort", entry.abortHandler);
+    }
+  }
+}
+
+function waitForWebSocketClose(ws: WebSocket): Promise<void> {
+  if (ws.readyState === WebSocket.CLOSED) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    let terminateTimer: ReturnType<typeof setTimeout> | null = null;
+    const cleanup = (): void => {
+      clearTimeout(closeTimer);
+      if (terminateTimer) clearTimeout(terminateTimer);
+      ws.off("close", onClose);
+    };
+    const onClose = (): void => {
+      cleanup();
+      resolve();
+    };
+    const closeTimer = setTimeout(() => {
+      ws.terminate();
+      terminateTimer = setTimeout(() => {
+        cleanup();
+        reject(
+          new Error(
+            `CDP WebSocket did not close within ${String(CDP_TERMINATE_TIMEOUT)}ms after forced termination`,
+          ),
+        );
+      }, CDP_TERMINATE_TIMEOUT);
+    }, CDP_CLOSE_TIMEOUT);
+    ws.once("close", onClose);
+    try {
+      ws.close();
+    } catch (error) {
+      cleanup();
+      reject(error);
+    }
+  });
+}
+
+export class CDPSessionClient implements CDPCommandClient {
+  private closed = false;
+
+  constructor(
+    private readonly root: CDPClient,
+    private readonly sessionId: string,
+    private readonly connectedTarget: CDPTarget,
+  ) {}
+
+  send(
+    method: string,
+    params?: Record<string, unknown>,
+    sessionId?: string,
+    signal?: AbortSignal,
+  ): Promise<unknown> {
+    if (this.closed) return Promise.reject(new Error("CDP session is closed"));
+    if (sessionId && sessionId !== this.sessionId) {
+      return Promise.reject(
+        new Error("A scoped CDP client cannot address another session"),
+      );
+    }
+    return this.root.send(method, params, this.sessionId, signal);
+  }
+
+  on(event: string, handler: (params: unknown) => void): void {
+    if (this.closed) throw new Error("CDP session is closed");
+    this.root.onSession(this.sessionId, event, handler);
+  }
+
+  off(event: string, handler: (params: unknown) => void): void {
+    this.root.offSession(this.sessionId, event, handler);
+  }
+
+  getConnectedTarget(): CDPTarget {
+    return this.connectedTarget;
+  }
+
+  async close(): Promise<void> {
+    if (this.closed) return;
+    this.closed = true;
+    this.root.clearSessionListeners(this.sessionId);
   }
 }
 
@@ -556,7 +846,9 @@ export function getRemoteEndpoint(): RemoteEndpoint | null {
 function fetchJson(
   url: string,
   options?: { method?: "GET" | "PUT" },
+  signal?: AbortSignal,
 ): Promise<unknown> {
+  signal?.throwIfAborted();
   return new Promise((resolve, reject) => {
     const parsed = new URL(url);
     const req = httpRequest(
@@ -586,6 +878,16 @@ function fetchJson(
       },
     );
 
+    const abort = (): void => {
+      req.destroy(
+        signal?.reason instanceof Error
+          ? signal.reason
+          : new Error("CDP discovery cancelled"),
+      );
+    };
+    signal?.addEventListener("abort", abort, { once: true });
+    req.once("close", () => signal?.removeEventListener("abort", abort));
+    if (signal?.aborted) abort();
     req.on("error", reject);
     req.setTimeout(CDP_FETCH_TIMEOUT, () =>
       req.destroy(new Error("Timed out fetching CDP targets")),

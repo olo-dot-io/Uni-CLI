@@ -27,6 +27,7 @@ import { CHROME_EXTENSION_ID } from "../../browser/chrome-native-protocol.js";
 import { makeCtx } from "../../output/envelope.js";
 import { detectFormat, format } from "../../output/formatter.js";
 import type { OutputFormat } from "../../types.js";
+import { authorizeBrowserCommand } from "./permission.js";
 
 interface NativeHostCommandOptions {
   browser: string;
@@ -55,11 +56,11 @@ export function registerBrowserNativeHostCommands(
     .option("--browser <browser>", browserOptionDescription(), "chrome")
     .option("--all", "Inspect every supported Chromium browser")
     .option("--json", "JSON output (alias for -f json)")
-    .action((options: NativeHostCommandOptions) => {
+    .action((options: NativeHostCommandOptions) =>
       runNativeHostCommand(program, "status", options, (browsers) =>
         inspectChromeNativeHost({ browsers }),
-      );
-    });
+      ),
+    );
 
   nativeHost
     .command("install")
@@ -67,11 +68,11 @@ export function registerBrowserNativeHostCommands(
     .option("--browser <browser>", browserOptionDescription(), "chrome")
     .option("--all", "Install for every supported Chromium browser")
     .option("--json", "JSON output (alias for -f json)")
-    .action((options: NativeHostCommandOptions) => {
+    .action((options: NativeHostCommandOptions) =>
       runNativeHostCommand(program, "install", options, (browsers) =>
         installChromeNativeHost({ browsers }),
-      );
-    });
+      ),
+    );
 
   nativeHost
     .command("uninstall")
@@ -79,44 +80,40 @@ export function registerBrowserNativeHostCommands(
     .option("--browser <browser>", browserOptionDescription(), "chrome")
     .option("--all", "Remove every supported Chromium registration")
     .option("--json", "JSON output (alias for -f json)")
-    .action((options: NativeHostCommandOptions) => {
+    .action((options: NativeHostCommandOptions) =>
       runNativeHostCommand(program, "uninstall", options, (browsers) =>
         uninstallChromeNativeHost({ browsers }),
-      );
-    });
+      ),
+    );
 
   nativeHost
     .command("extension-path")
     .description("Print the unpacked Uni-CLI Chrome extension directory")
     .option("--json", "JSON output (alias for -f json)")
-    .action((options: { json?: boolean }) => {
-      const startedAt = Date.now();
-      const ctx = makeCtx("browser.native_host.extension_path", startedAt);
-      ctx.duration_ms = Date.now() - startedAt;
-      console.log(
-        format(
-          {
-            extension_id: CHROME_EXTENSION_ID,
-            extension_directory: chromeExtensionDirectory(),
-          },
-          undefined,
-          commandFormat(program, options.json),
-          ctx,
-        ),
-      );
-    });
+    .action((options: { json?: boolean }) =>
+      runNativeHostExtensionPath(program, options.json),
+    );
 }
 
-function runNativeHostCommand(
+async function runNativeHostCommand(
   program: Command,
   operation: "status" | "install" | "uninstall",
   options: NativeHostCommandOptions,
   execute: (browsers: ChromeNativeHostBrowser[]) => ChromeNativeHostStatus[],
-): void {
+): Promise<void> {
   const startedAt = Date.now();
   const ctx = makeCtx(`browser.native_host.${operation}`, startedAt);
   const outputFormat = commandFormat(program, options.json);
   try {
+    await authorizeBrowserCommand(
+      program,
+      "browser",
+      `native host ${operation}`,
+      {
+        browser: options.browser,
+        all: options.all === true,
+      },
+    );
     const browsers = selectedBrowsers(options);
     const registrations = execute(browsers);
     const ready = registrations.every(
@@ -139,21 +136,62 @@ function runNativeHostCommand(
     );
     if (operation === "status" && !ready) process.exitCode = 1;
   } catch (error) {
-    const tagged = error as Partial<{
-      code: string;
-      suggestion: string;
-      retryable: boolean;
-    }>;
-    ctx.error = {
-      code: tagged.code ?? "native_host_command_failed",
-      message: error instanceof Error ? error.message : String(error),
-      ...(tagged.suggestion ? { suggestion: tagged.suggestion } : {}),
-      retryable: tagged.retryable ?? false,
-    };
-    ctx.duration_ms = Date.now() - startedAt;
-    console.error(format(null, undefined, outputFormat, ctx));
-    process.exitCode = 1;
+    emitNativeHostFailure(ctx, startedAt, outputFormat, error);
   }
+}
+
+async function runNativeHostExtensionPath(
+  program: Command,
+  json?: boolean,
+): Promise<void> {
+  const startedAt = Date.now();
+  const ctx = makeCtx("browser.native_host.extension_path", startedAt);
+  const outputFormat = commandFormat(program, json);
+  try {
+    await authorizeBrowserCommand(
+      program,
+      "browser",
+      "native host extension path",
+      { json: json === true },
+    );
+    ctx.duration_ms = Date.now() - startedAt;
+    console.log(
+      format(
+        {
+          extension_id: CHROME_EXTENSION_ID,
+          extension_directory: chromeExtensionDirectory(),
+        },
+        undefined,
+        outputFormat,
+        ctx,
+      ),
+    );
+  } catch (error) {
+    emitNativeHostFailure(ctx, startedAt, outputFormat, error);
+  }
+}
+
+function emitNativeHostFailure(
+  ctx: ReturnType<typeof makeCtx>,
+  startedAt: number,
+  outputFormat: OutputFormat,
+  error: unknown,
+): void {
+  const tagged = error as Partial<{
+    code: string;
+    suggestion: string;
+    retryable: boolean;
+    exitCode: number;
+  }>;
+  ctx.error = {
+    code: tagged.code ?? "native_host_command_failed",
+    message: error instanceof Error ? error.message : String(error),
+    ...(tagged.suggestion ? { suggestion: tagged.suggestion } : {}),
+    retryable: tagged.retryable ?? false,
+  };
+  ctx.duration_ms = Date.now() - startedAt;
+  console.error(format(null, undefined, outputFormat, ctx));
+  process.exitCode = tagged.exitCode ?? 1;
 }
 
 function selectedBrowsers(

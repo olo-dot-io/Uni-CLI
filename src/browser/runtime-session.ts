@@ -1,14 +1,14 @@
 /**
  * @owner       src/browser/runtime-session.ts
- * @does        Own browser Agent-session lifecycle, turn cancellation, target leases, atomic finalization, handoff, TTL reclamation, and per-target mutation ordering.
+ * @does        Own browser Agent-session lifecycle, bounded request-turn tombstones, draining cancellation, target quarantine, leases, atomic finalization, handoff, TTL reclamation, and per-target mutation ordering.
  * @needs       src/browser/invocation-context.ts
  * @feeds       src/browser/runtime-broker.ts, src/browser/runtime-protocol.ts
  * @breaks      BrowserRuntimeSessionError on ended/unknown sessions, ended turns, ownership conflicts, and invalid leases.
- * @invariants  A target has one mutating owner; ended identities cannot resurrect without startSession; mutations are FIFO per target and parallel across targets.
+ * @invariants  A target has one mutating owner; cancellation synchronously quarantines a mutation target until its FIFO drains; idle reaping never aborts a queued or dispatched mutation; turn-lifetime targets are inaccessible to sibling turns unless explicitly handed off into session lifetime; recent ended request identities cannot resurrect; per-session tombstones are TTL- and count-bounded; mutations are FIFO per target and parallel across targets.
  * @side-effects Mutates broker-local session, tombstone, target, queue, and AbortController state.
  * @perf        O(1) session/target operations amortized; status and idle reaping are O(sessions + targets).
  * @concurrency Linearizable within one JavaScript event loop; target queues serialize mutation while distinct target queues progress independently.
- * @test        tests/unit/browser-runtime-session.test.ts
+ * @test        tests/unit/browser-runtime-session.test.ts, tests/unit/commands/browser.test.ts
  * @stability   experimental
  * @since       2026-07-15
  */
@@ -36,8 +36,11 @@ export interface BrowserTargetLease extends BrowserTargetLeaseInput {
 export interface BrowserRuntimeSessionStatus {
   agent_session_id: string;
   active_turn_ids: string[];
+  ending_turn_ids?: string[];
   target_ids: string[];
+  active_target_id?: string;
   last_activity_ms: number;
+  ended_turn_tombstone_count?: number;
 }
 
 export interface BrowserRuntimeRegistryStatus {
@@ -46,6 +49,7 @@ export interface BrowserRuntimeRegistryStatus {
   target_leases: BrowserTargetLease[];
   pending_release_session_ids?: string[];
   pending_release_target_ids?: string[];
+  quarantined_target_ids?: string[];
 }
 
 export interface ReapedBrowserSession {
@@ -78,13 +82,15 @@ export class BrowserRuntimeSessionError extends Error {
 
 interface LiveTurn {
   controller: AbortController;
+  mutationTargetCounts: Map<string, number>;
 }
 
 interface LiveSession {
   generation: number;
   lastActivityMs: number;
   turns: Map<string, LiveTurn>;
-  endedTurnIds: Set<string>;
+  endedTurnIds: Map<string, number>;
+  activeTargetId?: string;
 }
 
 interface OwnedTargetLease {
@@ -96,10 +102,14 @@ interface SessionRegistryOptions {
   now?: () => number;
   tombstoneTtlMs?: number;
   maxTombstones?: number;
+  turnTombstoneTtlMs?: number;
+  maxTurnTombstones?: number;
 }
 
 const DEFAULT_TOMBSTONE_TTL_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_MAX_TOMBSTONES = 4096;
+const DEFAULT_TURN_TOMBSTONE_TTL_MS = 15 * 60 * 1000;
+const DEFAULT_MAX_TURN_TOMBSTONES = 4096;
 
 class TargetMutationQueue {
   private tail = Promise.resolve();
@@ -123,17 +133,24 @@ export class BrowserRuntimeSessionRegistry {
   private readonly now: () => number;
   private readonly tombstoneTtlMs: number;
   private readonly maxTombstones: number;
+  private readonly turnTombstoneTtlMs: number;
+  private readonly maxTurnTombstones: number;
   private readonly sessions = new Map<string, LiveSession>();
   private readonly sessionTombstones = new Map<string, number>();
   private readonly endingSessionIds = new Set<string>();
   private readonly targets = new Map<string, OwnedTargetLease>();
   private readonly targetQueues = new Map<string, TargetMutationQueue>();
+  private readonly quarantinedTargetIds = new Set<string>();
   private nextGeneration = 1;
 
   constructor(options: SessionRegistryOptions = {}) {
     this.now = options.now ?? Date.now;
     this.tombstoneTtlMs = options.tombstoneTtlMs ?? DEFAULT_TOMBSTONE_TTL_MS;
     this.maxTombstones = options.maxTombstones ?? DEFAULT_MAX_TOMBSTONES;
+    this.turnTombstoneTtlMs =
+      options.turnTombstoneTtlMs ?? DEFAULT_TURN_TOMBSTONE_TTL_MS;
+    this.maxTurnTombstones =
+      options.maxTurnTombstones ?? DEFAULT_MAX_TURN_TOMBSTONES;
   }
 
   startSession(context: BrowserInvocationContext): void {
@@ -155,9 +172,15 @@ export class BrowserRuntimeSessionRegistry {
       generation: this.nextGeneration++,
       lastActivityMs: this.now(),
       turns: new Map([
-        [context.turn_id, { controller: new AbortController() }],
+        [
+          context.turn_id,
+          {
+            controller: new AbortController(),
+            mutationTargetCounts: new Map(),
+          },
+        ],
       ]),
-      endedTurnIds: new Set(),
+      endedTurnIds: new Map(),
     });
   }
 
@@ -179,6 +202,9 @@ export class BrowserRuntimeSessionRegistry {
         existing.publicLease.owner_session_id === context.agent_session_id &&
         existing.ownerGeneration === session.generation
       ) {
+        this.assertTargetNotQuarantined(input.target_id);
+        assertTargetTurnOwner(existing.publicLease, context);
+        session.activeTargetId = input.target_id;
         return existing.publicLease;
       }
       throw targetOwnedError(
@@ -196,7 +222,9 @@ export class BrowserRuntimeSessionRegistry {
       publicLease,
       ownerGeneration: session.generation,
     });
+    this.quarantinedTargetIds.delete(input.target_id);
     this.targetQueues.set(input.target_id, new TargetMutationQueue());
+    session.activeTargetId = input.target_id;
     return publicLease;
   }
 
@@ -210,14 +238,25 @@ export class BrowserRuntimeSessionRegistry {
       const source = this.requireLiveContext(from);
       const destination = this.requireLiveContext(to);
       const lease = this.requireTargetLease(targetId);
+      this.assertTargetNotQuarantined(targetId);
       assertTargetOwner(lease, from.agent_session_id, source.generation);
+      assertTargetTurnOwner(lease.publicLease, from);
       lease.publicLease = {
         ...lease.publicLease,
         owner_session_id: to.agent_session_id,
         owner_turn_id: to.turn_id,
+        lifetime: "session",
         claimed_at: new Date(this.now()).toISOString(),
       };
       lease.ownerGeneration = destination.generation;
+      if (source.activeTargetId === targetId) {
+        source.activeTargetId = this.firstOwnedTargetId(
+          from.agent_session_id,
+          source.generation,
+          targetId,
+        );
+      }
+      destination.activeTargetId = targetId;
       return lease.publicLease;
     });
   }
@@ -226,19 +265,63 @@ export class BrowserRuntimeSessionRegistry {
     context: BrowserInvocationContext,
     targetId: string,
     mutation: (signal: AbortSignal) => Promise<T>,
+    requestSignal?: AbortSignal,
+    quarantineOnAbort = true,
   ): Promise<T> {
-    this.requireLiveContext(context);
+    const initialSession = this.requireLiveContext(context);
+    const initialTurn = this.requireLiveTurn(initialSession, context.turn_id);
     const queue = this.requireTargetQueue(targetId);
-    return queue.enqueue(async () => {
-      const session = this.requireLiveContext(context);
-      const lease = this.requireTargetLease(targetId);
-      assertTargetOwner(lease, context.agent_session_id, session.generation);
-      const turn = this.requireLiveTurn(session, context.turn_id);
-      if (turn.controller.signal.aborted) {
-        throw turnEndedError(context.turn_id);
+    const signal = requestSignal
+      ? AbortSignal.any([initialTurn.controller.signal, requestSignal])
+      : initialTurn.controller.signal;
+    let mutationDispatched = false;
+    const quarantine = (): void => {
+      if (mutationDispatched && quarantineOnAbort) {
+        this.quarantinedTargetIds.add(targetId);
       }
-      return mutation(turn.controller.signal);
-    });
+    };
+    initialTurn.mutationTargetCounts.set(
+      targetId,
+      (initialTurn.mutationTargetCounts.get(targetId) ?? 0) + 1,
+    );
+    signal.addEventListener("abort", quarantine, { once: true });
+    if (signal.aborted) quarantine();
+    try {
+      return await queue.enqueue(async () => {
+        const session = this.requireLiveContext(context);
+        const lease = this.requireTargetLease(targetId);
+        assertTargetOwner(lease, context.agent_session_id, session.generation);
+        assertTargetTurnOwner(lease.publicLease, context);
+        if (signal.aborted) {
+          if (requestSignal?.aborted) throw requestSignal.reason;
+          throw turnEndedError(context.turn_id);
+        }
+        this.assertTargetNotQuarantined(targetId);
+        mutationDispatched = true;
+        const result = await mutation(signal);
+        if (signal.aborted) {
+          if (requestSignal?.aborted) throw requestSignal.reason;
+          throw turnEndedError(context.turn_id);
+        }
+        return result;
+      });
+    } finally {
+      signal.removeEventListener("abort", quarantine);
+      const remaining =
+        (initialTurn.mutationTargetCounts.get(targetId) ?? 1) - 1;
+      if (remaining === 0) initialTurn.mutationTargetCounts.delete(targetId);
+      else initialTurn.mutationTargetCounts.set(targetId, remaining);
+    }
+  }
+
+  quarantineTarget(targetId: string): void {
+    if (!this.targets.has(targetId)) {
+      throw new BrowserRuntimeSessionError(
+        "browser_target_not_found",
+        `Browser target "${targetId}" is not registered`,
+      );
+    }
+    this.quarantinedTargetIds.add(targetId);
   }
 
   async finalizeTarget(
@@ -251,7 +334,9 @@ export class BrowserRuntimeSessionRegistry {
     return queue.enqueue(async () => {
       const session = this.requireLiveContext(context);
       const lease = this.requireTargetLease(targetId);
+      this.assertTargetNotQuarantined(targetId);
       assertTargetOwner(lease, context.agent_session_id, session.generation);
+      assertTargetTurnOwner(lease.publicLease, context);
       const turn = this.requireLiveTurn(session, context.turn_id);
       if (turn.controller.signal.aborted) {
         throw turnEndedError(context.turn_id);
@@ -265,6 +350,12 @@ export class BrowserRuntimeSessionRegistry {
       }
       this.targets.delete(targetId);
       this.targetQueues.delete(targetId);
+      this.quarantinedTargetIds.delete(targetId);
+      this.refreshActiveTarget(
+        lease.publicLease.owner_session_id,
+        lease.ownerGeneration,
+        targetId,
+      );
       return lease.publicLease;
     });
   }
@@ -273,11 +364,19 @@ export class BrowserRuntimeSessionRegistry {
     context: BrowserInvocationContext,
   ): Promise<BrowserTargetLease[]> {
     const session = this.requireLiveSession(context.agent_session_id);
+    if (session.endedTurnIds.has(context.turn_id)) return [];
     const turn = this.requireLiveTurn(session, context.turn_id);
-    session.turns.delete(context.turn_id);
-    session.endedTurnIds.add(context.turn_id);
     session.lastActivityMs = this.now();
     turn.controller.abort(new Error(`Browser turn ended: ${context.turn_id}`));
+    const queues = [...turn.mutationTargetCounts.keys()]
+      .map((targetId) => this.targetQueues.get(targetId))
+      .filter((queue): queue is TargetMutationQueue => queue !== undefined);
+    await Promise.all(
+      queues.map((queue) => queue.enqueue(async () => undefined)),
+    );
+    session.turns.delete(context.turn_id);
+    session.endedTurnIds.set(context.turn_id, this.now());
+    this.purgeTurnTombstones(session);
     return this.releaseTargets(
       (lease) =>
         lease.ownerGeneration === session.generation &&
@@ -318,17 +417,7 @@ export class BrowserRuntimeSessionRegistry {
   }
 
   async reapIdleSessions(ttlMs: number): Promise<ReapedBrowserSession[]> {
-    if (!Number.isFinite(ttlMs) || ttlMs < 0) {
-      throw new BrowserRuntimeSessionError(
-        "browser_session_not_started",
-        "Browser session TTL must be a non-negative finite number",
-      );
-    }
-    const cutoff = this.now() - ttlMs;
-    const idleSessionIds = [...this.sessions.entries()]
-      .filter(([, session]) => session.lastActivityMs <= cutoff)
-      .map(([agentSessionId]) => agentSessionId)
-      .sort();
+    const idleSessionIds = this.idleSessionIds(ttlMs);
     const reaped: ReapedBrowserSession[] = [];
     for (const agentSessionId of idleSessionIds) {
       reaped.push({
@@ -339,22 +428,114 @@ export class BrowserRuntimeSessionRegistry {
     return reaped;
   }
 
+  idleSessionIds(ttlMs: number): string[] {
+    validateTtl(ttlMs);
+    return [...this.sessions.entries()]
+      .filter(([agentSessionId]) => this.isSessionIdle(agentSessionId, ttlMs))
+      .map(([agentSessionId]) => agentSessionId)
+      .sort();
+  }
+
+  isSessionIdle(agentSessionId: string, ttlMs: number): boolean {
+    validateTtl(ttlMs);
+    const session = this.sessions.get(agentSessionId);
+    return session
+      ? session.lastActivityMs <= this.now() - ttlMs &&
+          [...session.turns.values()].every(
+            (turn) => turn.mutationTargetCounts.size === 0,
+          )
+      : false;
+  }
+
+  targetIdsForSession(agentSessionId: string): string[] {
+    const session = this.sessions.get(agentSessionId);
+    if (!session) return [];
+    const targetIds = [...this.targets.values()]
+      .filter(
+        (lease) =>
+          lease.ownerGeneration === session.generation &&
+          lease.publicLease.owner_session_id === agentSessionId,
+      )
+      .map((lease) => lease.publicLease.target_id)
+      .sort();
+    return session.activeTargetId && targetIds.includes(session.activeTargetId)
+      ? [
+          session.activeTargetId,
+          ...targetIds.filter(
+            (targetId) => targetId !== session.activeTargetId,
+          ),
+        ]
+      : targetIds;
+  }
+
+  targetIdsForContext(context: BrowserInvocationContext): string[] {
+    const session = this.sessions.get(context.agent_session_id);
+    if (!session) return [];
+    const targetIds = [...this.targets.values()]
+      .filter(
+        (lease) =>
+          lease.ownerGeneration === session.generation &&
+          lease.publicLease.owner_session_id === context.agent_session_id &&
+          (lease.publicLease.lifetime === "session" ||
+            lease.publicLease.owner_turn_id === context.turn_id) &&
+          !this.quarantinedTargetIds.has(lease.publicLease.target_id),
+      )
+      .map((lease) => lease.publicLease.target_id)
+      .sort();
+    return session.activeTargetId && targetIds.includes(session.activeTargetId)
+      ? [
+          session.activeTargetId,
+          ...targetIds.filter(
+            (targetId) => targetId !== session.activeTargetId,
+          ),
+        ]
+      : targetIds;
+  }
+
+  targetLease(targetId: string): BrowserTargetLease | null {
+    return this.targets.get(targetId)?.publicLease ?? null;
+  }
+
+  async discardTarget(targetId: string): Promise<BrowserTargetLease | null> {
+    const candidate = this.targets.get(targetId);
+    if (!candidate) return null;
+    const queue = this.requireTargetQueue(targetId);
+    return queue.enqueue(async () => {
+      if (this.targets.get(targetId) !== candidate) return null;
+      this.targets.delete(targetId);
+      this.targetQueues.delete(targetId);
+      this.quarantinedTargetIds.delete(targetId);
+      this.refreshActiveTarget(
+        candidate.publicLease.owner_session_id,
+        candidate.ownerGeneration,
+        targetId,
+      );
+      return candidate.publicLease;
+    });
+  }
+
   status(): BrowserRuntimeRegistryStatus {
     this.purgeTombstones();
     const sessions = [...this.sessions.entries()]
-      .map(([agentSessionId, session]) => ({
-        agent_session_id: agentSessionId,
-        active_turn_ids: [...session.turns.keys()].sort(),
-        target_ids: [...this.targets.values()]
-          .filter(
-            (lease) =>
-              lease.ownerGeneration === session.generation &&
-              lease.publicLease.owner_session_id === agentSessionId,
-          )
-          .map((lease) => lease.publicLease.target_id)
-          .sort(),
-        last_activity_ms: session.lastActivityMs,
-      }))
+      .map(([agentSessionId, session]) => {
+        this.purgeTurnTombstones(session);
+        const targetIds = this.targetIdsForSession(agentSessionId);
+        return {
+          agent_session_id: agentSessionId,
+          active_turn_ids: [...session.turns.entries()]
+            .filter(([, turn]) => !turn.controller.signal.aborted)
+            .map(([turnId]) => turnId)
+            .sort(),
+          ending_turn_ids: [...session.turns.entries()]
+            .filter(([, turn]) => turn.controller.signal.aborted)
+            .map(([turnId]) => turnId)
+            .sort(),
+          target_ids: targetIds,
+          ...(targetIds[0] ? { active_target_id: targetIds[0] } : {}),
+          last_activity_ms: session.lastActivityMs,
+          ended_turn_tombstone_count: session.endedTurnIds.size,
+        };
+      })
       .sort((left, right) =>
         left.agent_session_id.localeCompare(right.agent_session_id),
       );
@@ -364,6 +545,7 @@ export class BrowserRuntimeSessionRegistry {
       target_leases: [...this.targets.values()]
         .map((lease) => lease.publicLease)
         .sort((left, right) => left.target_id.localeCompare(right.target_id)),
+      quarantined_target_ids: [...this.quarantinedTargetIds].sort(),
     };
   }
 
@@ -395,14 +577,21 @@ export class BrowserRuntimeSessionRegistry {
   }
 
   private touchLiveSession(session: LiveSession, turnId: string): void {
+    this.purgeTurnTombstones(session);
     if (session.endedTurnIds.has(turnId)) throw turnEndedError(turnId);
     if (!session.turns.has(turnId)) {
-      session.turns.set(turnId, { controller: new AbortController() });
+      session.turns.set(turnId, {
+        controller: new AbortController(),
+        mutationTargetCounts: new Map(),
+      });
+    } else if (session.turns.get(turnId)?.controller.signal.aborted) {
+      throw turnEndedError(turnId);
     }
     session.lastActivityMs = this.now();
   }
 
   private requireLiveTurn(session: LiveSession, turnId: string): LiveTurn {
+    this.purgeTurnTombstones(session);
     if (session.endedTurnIds.has(turnId)) throw turnEndedError(turnId);
     const turn = session.turns.get(turnId);
     if (!turn) {
@@ -444,6 +633,12 @@ export class BrowserRuntimeSessionRegistry {
           if (this.targets.get(targetId) !== candidate) return null;
           this.targets.delete(targetId);
           this.targetQueues.delete(targetId);
+          this.quarantinedTargetIds.delete(targetId);
+          this.refreshActiveTarget(
+            candidate.publicLease.owner_session_id,
+            candidate.ownerGeneration,
+            targetId,
+          );
           return candidate.publicLease;
         });
       }),
@@ -451,6 +646,43 @@ export class BrowserRuntimeSessionRegistry {
     return released.filter(
       (lease): lease is BrowserTargetLease => lease !== null,
     );
+  }
+
+  private refreshActiveTarget(
+    agentSessionId: string,
+    generation: number,
+    removedTargetId: string,
+  ): void {
+    const session = this.sessions.get(agentSessionId);
+    if (
+      !session ||
+      session.generation !== generation ||
+      session.activeTargetId !== removedTargetId
+    ) {
+      return;
+    }
+    session.activeTargetId = this.firstOwnedTargetId(
+      agentSessionId,
+      generation,
+      removedTargetId,
+    );
+  }
+
+  private firstOwnedTargetId(
+    agentSessionId: string,
+    generation: number,
+    excludedTargetId: string,
+  ): string | undefined {
+    return [...this.targets.values()]
+      .filter(
+        (lease) =>
+          lease.ownerGeneration === generation &&
+          lease.publicLease.owner_session_id === agentSessionId &&
+          lease.publicLease.target_id !== excludedTargetId &&
+          !this.quarantinedTargetIds.has(lease.publicLease.target_id),
+      )
+      .map((lease) => lease.publicLease.target_id)
+      .sort()[0];
   }
 
   private recordTombstone(agentSessionId: string): void {
@@ -472,6 +704,28 @@ export class BrowserRuntimeSessionRegistry {
       this.sessionTombstones.delete(oldest);
     }
   }
+
+  private purgeTurnTombstones(session: LiveSession): void {
+    const cutoff = this.now() - this.turnTombstoneTtlMs;
+    for (const [turnId, endedAt] of session.endedTurnIds) {
+      if (endedAt < cutoff) session.endedTurnIds.delete(turnId);
+    }
+    while (session.endedTurnIds.size > this.maxTurnTombstones) {
+      const oldest = session.endedTurnIds.keys().next().value as
+        | string
+        | undefined;
+      if (oldest === undefined) break;
+      session.endedTurnIds.delete(oldest);
+    }
+  }
+
+  private assertTargetNotQuarantined(targetId: string): void {
+    if (!this.quarantinedTargetIds.has(targetId)) return;
+    throw new BrowserRuntimeSessionError(
+      "browser_target_invalid",
+      `Browser target "${targetId}" is quarantined after cancellation because its last mutation has an ambiguous outcome`,
+    );
+  }
 }
 
 function validateContext(context: BrowserInvocationContext): void {
@@ -479,6 +733,15 @@ function validateContext(context: BrowserInvocationContext): void {
     throw new BrowserRuntimeSessionError(
       "browser_session_not_started",
       "Browser invocation requires non-empty Agent-session and turn ids",
+    );
+  }
+}
+
+function validateTtl(ttlMs: number): void {
+  if (!Number.isFinite(ttlMs) || ttlMs < 0) {
+    throw new BrowserRuntimeSessionError(
+      "browser_session_not_started",
+      "Browser session TTL must be a non-negative finite number",
     );
   }
 }
@@ -510,6 +773,18 @@ function assertTargetOwner(
     throw targetOwnedError(
       lease.publicLease.target_id,
       lease.publicLease.owner_session_id,
+    );
+  }
+}
+
+function assertTargetTurnOwner(
+  lease: BrowserTargetLease,
+  context: BrowserInvocationContext,
+): void {
+  if (lease.lifetime === "turn" && lease.owner_turn_id !== context.turn_id) {
+    throw new BrowserRuntimeSessionError(
+      "browser_target_owned",
+      `Browser target "${lease.target_id}" belongs to turn "${lease.owner_turn_id}", not "${context.turn_id}"`,
     );
   }
 }

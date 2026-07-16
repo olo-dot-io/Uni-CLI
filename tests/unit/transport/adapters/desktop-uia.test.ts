@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { DesktopUiaTransport } from "../../../../src/transport/adapters/desktop-uia.js";
 import { createTransportBus } from "../../../../src/transport/bus.js";
-import type { SidecarClient } from "../../../../src/transport/sidecar.js";
+import type {
+  SidecarCallOptions,
+  SidecarClient,
+} from "../../../../src/transport/sidecar.js";
 import type { TransportContext } from "../../../../src/transport/types.js";
 
 function makeCtx(): TransportContext {
@@ -9,22 +12,29 @@ function makeCtx(): TransportContext {
 }
 
 class FakeSidecar implements SidecarClient {
+  readonly cancellation = "process-contained-v2" as const;
   readonly calls: Array<{ kind: string; params: Record<string, unknown> }> = [];
+  readonly signals: Array<AbortSignal | undefined> = [];
+  readonly deliveries: Array<SidecarCallOptions["cancellationDelivery"]> = [];
   closeCount = 0;
 
   constructor(
     private readonly responder: (
       kind: string,
       params: Record<string, unknown>,
+      signal?: AbortSignal,
     ) => Promise<unknown>,
   ) {}
 
   async call<T = unknown>(
     kind: string,
     params: Record<string, unknown>,
+    options?: SidecarCallOptions,
   ): Promise<T> {
     this.calls.push({ kind, params });
-    return (await this.responder(kind, params)) as T;
+    this.signals.push(options?.signal);
+    this.deliveries.push(options?.cancellationDelivery);
+    return (await this.responder(kind, params, options?.signal)) as T;
   }
 
   async close(): Promise<void> {
@@ -82,6 +92,7 @@ describe("DesktopUiaTransport", () => {
     expect(sidecar.calls).toEqual([
       { kind: "uia_invoke", params: { ref: "@e1" } },
     ]);
+    expect(sidecar.deliveries).toEqual(["outcome-ambiguous"]);
   });
 
   it("forwards UIA assert actions to the sidecar on Windows", async () => {
@@ -214,7 +225,8 @@ describe("DesktopUiaTransport", () => {
     };
     const sidecar = new FakeSidecar(async () => raw);
     const t = new DesktopUiaTransport({ platform: "win32", sidecar });
-    await t.open(makeCtx());
+    const ctx = makeCtx();
+    await t.open(ctx);
 
     const snapshot = await t.snapshot({ format: "json" });
 
@@ -222,9 +234,27 @@ describe("DesktopUiaTransport", () => {
       format: "json",
       encoding: "json",
       data: JSON.stringify(raw),
+      refs: { count: 1, scope: "123" },
     });
+    expect(ctx.bus.refs.resolve("@e1")?.stable).toBe(
+      "desktop-uia:123:Window[0]",
+    );
     expect(sidecar.calls).toEqual([
       { kind: "uia_snapshot", params: { format: "json" } },
+    ]);
+  });
+
+  it("propagates one UIA snapshot failure instead of encoding false success", async () => {
+    const failure = new Error("UIA snapshot unavailable");
+    const sidecar = new FakeSidecar(async () => {
+      throw failure;
+    });
+    const t = new DesktopUiaTransport({ platform: "win32", sidecar });
+    await t.open(makeCtx());
+
+    await expect(t.snapshot({ format: "compact" })).rejects.toBe(failure);
+    expect(sidecar.calls).toEqual([
+      { kind: "uia_snapshot", params: { format: "compact" } },
     ]);
   });
 

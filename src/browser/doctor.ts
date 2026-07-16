@@ -25,6 +25,7 @@ import {
   ensureBrowserRuntimeBroker,
   probeBrowserRuntimeBroker,
 } from "./runtime-launch.js";
+import { CHROME_NATIVE_PROTOCOL_VERSION } from "./chrome-native-protocol.js";
 import type { BrowserBrokerStatus } from "./runtime-protocol.js";
 import { browserBrokerPaths } from "./runtime-transport.js";
 import { readRemoteEndpoint } from "./remote-browser.js";
@@ -292,7 +293,9 @@ async function readBrokerProbe(): Promise<{
   error?: string;
 }> {
   try {
-    const connection = await probeBrowserRuntimeBroker({ timeoutMs: 1_000 });
+    const connection = await probeBrowserRuntimeBroker({
+      requestTimeoutMs: 1_000,
+    });
     return { state: "running", status: connection.status };
   } catch (error) {
     const code =
@@ -316,7 +319,7 @@ function offlineProviders(): BrowserDoctorReport["providers"] {
     managed: [],
     chrome: {
       connected: false,
-      protocol_version: 1,
+      protocol_version: CHROME_NATIVE_PROTOCOL_VERSION,
       queued_commands: 0,
       in_flight_commands: 0,
       target_count: 0,

@@ -1,13 +1,20 @@
-import { describe, it, expect, afterEach } from "vitest";
 import http from "node:http";
 
-// Import the test helpers and the server starter
-const mod = await import("../../src/mcp/streamable-http.js");
-const { startStreamableHttp, _test } = mod;
-const { sessions, asyncTasks, pruneStaleSessions, MCP_PROTOCOL_VERSION } =
-  _test;
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-// ── Helper: send HTTP request to the server ──────────────────────────────
+import { MCP_PROTOCOL_VERSION } from "../../src/constants.js";
+import { buildHandler } from "../../src/mcp/handler.js";
+import type { JsonRpcHandler, JsonRpcResponse } from "../../src/mcp/jsonrpc.js";
+import { _test as oauthTest } from "../../src/mcp/oauth.js";
+import {
+  _test,
+  startStreamableHttp,
+  stopStreamableHttp,
+} from "../../src/mcp/streamable-http.js";
+import type { McpTool } from "../../src/mcp/tools.js";
+import { OperationOutcomeAmbiguousError } from "../../src/transport/contained-process.js";
+
+const { sessions, pruneStaleSessions } = _test;
 
 interface HttpResult {
   status: number;
@@ -23,7 +30,7 @@ function request(
   extraHeaders?: Record<string, string>,
 ): Promise<HttpResult> {
   return new Promise((resolve, reject) => {
-    const req = http.request(
+    const outgoing = http.request(
       {
         hostname: "127.0.0.1",
         port,
@@ -31,492 +38,172 @@ function request(
         method,
         headers: {
           "Content-Type": "application/json",
-          Accept: "application/json, text/event-stream",
+          Accept: "application/json",
           ...extraHeaders,
         },
       },
-      (res) => {
+      (incoming) => {
         const chunks: Buffer[] = [];
-        res.on("data", (c: Buffer) => chunks.push(c));
-        res.on("end", () =>
+        incoming.on("data", (chunk: Buffer) => chunks.push(chunk));
+        incoming.on("end", () =>
           resolve({
-            status: res.statusCode ?? 0,
-            headers: res.headers,
-            body: Buffer.concat(chunks).toString("utf-8"),
+            status: incoming.statusCode ?? 0,
+            headers: incoming.headers,
+            body: Buffer.concat(chunks).toString("utf8"),
           }),
         );
       },
     );
-    req.on("error", reject);
-    if (body) req.write(body);
-    req.end();
+    outgoing.on("error", reject);
+    if (body) outgoing.write(body);
+    outgoing.end();
   });
 }
 
-// ── Helper: initialize a session and return its ID ───────────────────────
+function rpc(
+  port: number,
+  payload: Record<string, unknown>,
+  sessionId?: string,
+  extraHeaders?: Record<string, string>,
+): Promise<HttpResult> {
+  return request(port, "POST", "/mcp", JSON.stringify(payload), {
+    ...(sessionId
+      ? {
+          "MCP-Session-Id": sessionId,
+          "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
+        }
+      : {}),
+    ...extraHeaders,
+  });
+}
 
-async function initSession(port: number): Promise<string> {
-  const res = await request(
-    port,
-    "POST",
-    "/mcp",
-    JSON.stringify({
+function parse(response: HttpResult): JsonRpcResponse {
+  return JSON.parse(response.body) as JsonRpcResponse;
+}
+
+const echoHandler: JsonRpcHandler = (request) => {
+  if (request.method === "initialize") {
+    return {
       jsonrpc: "2.0",
-      id: 1,
-      method: "initialize",
-      params: {},
-    }),
-  );
-  return res.headers["mcp-session-id"] as string;
-}
-
-// ── Helper: headers for post-init requests ───────────────────────────────
-
-function postInitHeaders(sessionId: string): Record<string, string> {
+      id: request.id ?? null,
+      result: {
+        protocolVersion: MCP_PROTOCOL_VERSION,
+        capabilities: { tools: {} },
+        serverInfo: { name: "test", version: "0.0.1" },
+      },
+    };
+  }
+  if (request.method === "notifications/initialized") return undefined;
+  if (request.method === "tools/list") {
+    return { jsonrpc: "2.0", id: request.id ?? null, result: { tools: [] } };
+  }
+  if (request.method === "tools/call") {
+    return {
+      jsonrpc: "2.0",
+      id: request.id ?? null,
+      result: { content: [{ type: "text", text: "ok" }] },
+    };
+  }
   return {
-    "MCP-Session-Id": sessionId,
-    "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
+    jsonrpc: "2.0",
+    id: request.id ?? null,
+    error: { code: -32_601, message: "Method not found" },
   };
-}
-
-// ── Tests ────────────────────────────────────────────────────────────────
+};
 
 describe("Streamable HTTP transport", () => {
-  let port: number;
+  let runtimePort: number | undefined;
 
-  // Simple echo handler for testing
-  const echoHandler = (req: {
-    jsonrpc: "2.0";
-    id?: number | string | null;
-    method: string;
-    params?: Record<string, unknown>;
-  }) => {
-    if (req.method === "initialize") {
-      return {
-        jsonrpc: "2.0" as const,
-        id: req.id ?? null,
-        result: {
-          protocolVersion: MCP_PROTOCOL_VERSION,
-          capabilities: { tools: {} },
-          serverInfo: { name: "test", version: "0.0.1" },
-        },
-      };
-    }
-    if (req.method === "notifications/initialized") {
-      return null as never;
-    }
-    if (req.method === "tools/list") {
-      return {
-        jsonrpc: "2.0" as const,
-        id: req.id ?? null,
-        result: { tools: [] },
-      };
-    }
-    if (req.method === "tools/call") {
-      return {
-        jsonrpc: "2.0" as const,
-        id: req.id ?? null,
-        result: { content: [{ type: "text", text: "ok" }] },
-      };
-    }
-    return {
-      jsonrpc: "2.0" as const,
-      id: req.id ?? null,
-      error: { code: -32601, message: "Method not found" },
-    };
-  };
-
-  // Slow handler that resolves after a delay — for async task tests
-  const slowHandler = (req: {
-    jsonrpc: "2.0";
-    id?: number | string | null;
-    method: string;
-    params?: Record<string, unknown>;
-  }) => {
-    if (req.method === "initialize") {
-      return {
-        jsonrpc: "2.0" as const,
-        id: req.id ?? null,
-        result: {
-          protocolVersion: MCP_PROTOCOL_VERSION,
-          capabilities: { tools: {} },
-          serverInfo: { name: "test-slow", version: "0.0.1" },
-        },
-      };
-    }
-    if (req.method === "tools/call") {
-      return new Promise<{
-        jsonrpc: "2.0";
-        id: number | string | null;
-        result: { content: Array<{ type: string; text: string }> };
-      }>((resolve) => {
-        setTimeout(() => {
-          resolve({
-            jsonrpc: "2.0" as const,
-            id: req.id ?? null,
-            result: { content: [{ type: "text", text: "slow-done" }] },
-          });
-        }, 50);
-      });
-    }
-    return {
-      jsonrpc: "2.0" as const,
-      id: req.id ?? null,
-      error: { code: -32601, message: "Method not found" },
-    };
-  };
-
-  // Handler that always rejects for tools/call — for async error tests
-  const failHandler = (req: {
-    jsonrpc: "2.0";
-    id?: number | string | null;
-    method: string;
-    params?: Record<string, unknown>;
-  }) => {
-    if (req.method === "initialize") {
-      return {
-        jsonrpc: "2.0" as const,
-        id: req.id ?? null,
-        result: {
-          protocolVersion: MCP_PROTOCOL_VERSION,
-          capabilities: { tools: {} },
-          serverInfo: { name: "test-fail", version: "0.0.1" },
-        },
-      };
-    }
-    if (req.method === "tools/call") {
-      return Promise.reject(new Error("adapter exploded"));
-    }
-    return {
-      jsonrpc: "2.0" as const,
-      id: req.id ?? null,
-      error: { code: -32601, message: "Method not found" },
-    };
-  };
-
-  async function startServer(handler?: typeof echoHandler): Promise<number> {
-    sessions.clear();
-    asyncTasks.clear();
-    // port: 0 → OS picks a free ephemeral port. Avoids EADDRINUSE on Windows
-    // CI where prior tests can leave entries in TIME_WAIT for several seconds.
-    port = await startStreamableHttp(0, handler ?? echoHandler);
-    return port;
+  async function start(
+    handler: JsonRpcHandler = echoHandler,
+    options?: { auth?: boolean },
+  ): Promise<number> {
+    runtimePort = await startStreamableHttp(0, handler, options);
+    return runtimePort;
   }
 
-  afterEach(() => {
+  async function initialize(
+    port: number,
+    authorization?: string,
+  ): Promise<{ sessionId: string; response: JsonRpcResponse }> {
+    const initialized = await rpc(
+      port,
+      { jsonrpc: "2.0", id: 1, method: "initialize", params: {} },
+      undefined,
+      authorization ? { Authorization: authorization } : undefined,
+    );
+    return {
+      sessionId: initialized.headers["mcp-session-id"] as string,
+      response: parse(initialized),
+    };
+  }
+
+  afterEach(async () => {
+    if (runtimePort !== undefined) {
+      await stopStreamableHttp(runtimePort, "Streamable HTTP test complete");
+    }
+    runtimePort = undefined;
     sessions.clear();
-    asyncTasks.clear();
+    oauthTest.tokens.clear();
   });
 
-  // ── Existing tests (B1-B3) ─────────────────────────────────────────────
-
-  it("GET /health returns server info", async () => {
-    const p = await startServer();
-    const res = await request(p, "GET", "/health");
-    expect(res.status).toBe(200);
-    const json = JSON.parse(res.body);
-    expect(json.status).toBe("ok");
-    expect(json.transport).toBe("streamable-http");
-    expect(json.protocolVersion).toBe(MCP_PROTOCOL_VERSION);
-  });
-
-  it("POST /mcp with initialize creates session", async () => {
-    const p = await startServer();
-    const res = await request(
-      p,
-      "POST",
-      "/mcp",
-      JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "initialize",
-        params: {},
-      }),
-    );
-    expect(res.status).toBe(200);
-    const sessionId = res.headers["mcp-session-id"] as string;
-    expect(sessionId).toBeTruthy();
-    expect(sessions.has(sessionId)).toBe(true);
-
-    const json = JSON.parse(res.body);
-    expect(json.result.protocolVersion).toBe(MCP_PROTOCOL_VERSION);
-  });
-
-  it("POST /mcp without session ID for non-initialize returns 404", async () => {
-    const p = await startServer();
-    const res = await request(
-      p,
-      "POST",
-      "/mcp",
-      JSON.stringify({
-        jsonrpc: "2.0",
-        id: 2,
-        method: "tools/list",
-        params: {},
-      }),
-    );
-    // MCP spec: expired/invalid session returns 404
-    expect(res.status).toBe(404);
-    const json = JSON.parse(res.body);
-    expect(json.error.message).toContain("MCP-Session-Id");
-  });
-
-  it("POST /mcp with valid session returns tools/list as JSON", async () => {
-    const p = await startServer();
-
-    // Initialize first
-    const init = await request(
-      p,
-      "POST",
-      "/mcp",
-      JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "initialize",
-        params: {},
-      }),
-    );
-    const sessionId = init.headers["mcp-session-id"] as string;
-
-    // Call tools/list with session + protocol version header
-    const res = await request(
-      p,
-      "POST",
-      "/mcp",
-      JSON.stringify({
-        jsonrpc: "2.0",
-        id: 2,
-        method: "tools/list",
-        params: {},
-      }),
-      postInitHeaders(sessionId),
-    );
-    expect(res.status).toBe(200);
-    expect(res.headers["content-type"]).toContain("application/json");
-    const json = JSON.parse(res.body);
-    expect(json.result.tools).toEqual([]);
-  });
-
-  it("POST /mcp tools/call returns SSE when client accepts it", async () => {
-    const p = await startServer();
-
-    // Initialize
-    const init = await request(
-      p,
-      "POST",
-      "/mcp",
-      JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "initialize",
-        params: {},
-      }),
-    );
-    const sessionId = init.headers["mcp-session-id"] as string;
-
-    // tools/call with Accept: text/event-stream
-    const res = await request(
-      p,
-      "POST",
-      "/mcp",
-      JSON.stringify({
-        jsonrpc: "2.0",
-        id: 3,
-        method: "tools/call",
-        params: { name: "test", arguments: {} },
-      }),
-      {
-        ...postInitHeaders(sessionId),
-        Accept: "text/event-stream",
-      },
-    );
-    expect(res.status).toBe(200);
-    expect(res.headers["content-type"]).toContain("text/event-stream");
-    // SSE body contains "event: message" and "data:" lines
-    expect(res.body).toContain("event: message");
-    expect(res.body).toContain("data:");
-    expect(res.body).toContain('"id":3');
-  });
-
-  it("DELETE /mcp terminates session", async () => {
-    const p = await startServer();
-
-    // Initialize
-    const init = await request(
-      p,
-      "POST",
-      "/mcp",
-      JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "initialize",
-        params: {},
-      }),
-    );
-    const sessionId = init.headers["mcp-session-id"] as string;
-    expect(sessions.has(sessionId)).toBe(true);
-
-    // Delete session
-    const del = await request(p, "DELETE", "/mcp", undefined, {
-      "MCP-Session-Id": sessionId,
+  it("serves health, CORS preflight, and bounded session initialization", async () => {
+    const port = await start();
+    const health = await request(port, "GET", "/health");
+    expect(health.status).toBe(200);
+    expect(JSON.parse(health.body)).toMatchObject({
+      status: "ok",
+      transport: "streamable-http",
+      protocolVersion: MCP_PROTOCOL_VERSION,
     });
-    expect(del.status).toBe(204);
-    expect(sessions.has(sessionId)).toBe(false);
-  });
+    expect(health.headers["access-control-allow-origin"]).toBe(
+      "http://localhost",
+    );
 
-  it("DELETE /mcp without session returns 404", async () => {
-    const p = await startServer();
-    const del = await request(p, "DELETE", "/mcp", undefined, {
-      "MCP-Session-Id": "nonexistent-id",
+    const options = await request(port, "OPTIONS", "/mcp");
+    expect(options.status).toBe(204);
+    expect(options.headers["access-control-allow-headers"]).not.toContain(
+      "X-MCP-Async",
+    );
+    const unsupportedGet = await request(port, "GET", "/mcp");
+    expect(unsupportedGet.status).toBe(405);
+
+    const initialized = await initialize(port);
+    expect(initialized.sessionId).toEqual(expect.any(String));
+    expect(initialized.response.result).toMatchObject({
+      protocolVersion: MCP_PROTOCOL_VERSION,
     });
-    // MCP spec: expired/invalid session returns 404
-    expect(del.status).toBe(404);
+    expect(sessions.has(initialized.sessionId)).toBe(true);
   });
 
-  it("notification (no id) returns 204", async () => {
-    const p = await startServer();
-
-    // Initialize
-    const init = await request(
-      p,
-      "POST",
-      "/mcp",
-      JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "initialize",
-        params: {},
-      }),
-    );
-    const sessionId = init.headers["mcp-session-id"] as string;
-
-    // Send notification (no id field)
-    const res = await request(
-      p,
-      "POST",
-      "/mcp",
-      JSON.stringify({
-        jsonrpc: "2.0",
-        method: "notifications/initialized",
-      }),
-      postInitHeaders(sessionId),
-    );
-    expect(res.status).toBe(204);
-  });
-
-  it("invalid JSON returns 400 parse error", async () => {
-    const p = await startServer();
-    const res = await request(p, "POST", "/mcp", "{broken json");
-    expect(res.status).toBe(400);
-    const json = JSON.parse(res.body);
-    expect(json.error.code).toBe(-32700);
-  });
-
-  it("rejects request with bad Origin header", async () => {
-    const p = await startServer();
-    const res = await request(
-      p,
-      "POST",
-      "/mcp",
-      JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "initialize",
-        params: {},
-      }),
+  it("rejects invalid origins, malformed JSON, and missing sessions", async () => {
+    const port = await start();
+    const forbidden = await rpc(
+      port,
+      { jsonrpc: "2.0", id: 1, method: "initialize", params: {} },
+      undefined,
       { Origin: "https://evil.example.com" },
     );
-    expect(res.status).toBe(403);
-  });
+    expect(forbidden.status).toBe(403);
 
-  it("allows request with localhost Origin", async () => {
-    const p = await startServer();
-    const res = await request(
-      p,
-      "POST",
-      "/mcp",
-      JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "initialize",
-        params: {},
-      }),
-      { Origin: "http://localhost:3000" },
-    );
-    expect(res.status).toBe(200);
-  });
+    const malformed = await request(port, "POST", "/mcp", "{broken");
+    expect(malformed.status).toBe(400);
+    expect(parse(malformed).error?.code).toBe(-32_700);
 
-  it("pruneStaleSessions removes expired sessions", () => {
-    sessions.clear();
-    const oldId = "stale-session";
-    sessions.set(oldId, {
-      created: Date.now() - 7_200_000, // 2 hours ago
-      lastSeen: Date.now() - 7_200_000,
-      protocolVersion: MCP_PROTOCOL_VERSION,
+    const missingSession = await rpc(port, {
+      jsonrpc: "2.0",
+      id: 2,
+      method: "tools/list",
+      params: {},
     });
-    const freshId = "fresh-session";
-    sessions.set(freshId, {
-      created: Date.now(),
-      lastSeen: Date.now(),
-      protocolVersion: MCP_PROTOCOL_VERSION,
-    });
-
-    pruneStaleSessions();
-    expect(sessions.has(oldId)).toBe(false);
-    expect(sessions.has(freshId)).toBe(true);
+    expect(missingSession.status).toBe(404);
   });
 
-  it("404 for unknown paths", async () => {
-    const p = await startServer();
-    const res = await request(p, "GET", "/unknown");
-    expect(res.status).toBe(404);
-  });
-
-  it("OPTIONS /mcp returns CORS preflight", async () => {
-    const p = await startServer();
-    const res = await request(p, "OPTIONS", "/mcp");
-    expect(res.status).toBe(204);
-    expect(res.headers["access-control-allow-methods"]).toContain("GET");
-    expect(res.headers["access-control-allow-methods"]).toContain("POST");
-    expect(res.headers["access-control-allow-methods"]).toContain("DELETE");
-    expect(res.headers["access-control-allow-headers"]).toContain(
-      "MCP-Session-Id",
-    );
-    expect(res.headers["access-control-expose-headers"]).toContain(
-      "MCP-Session-Id",
-    );
-  });
-
-  it("GET /mcp returns server capabilities", async () => {
-    const p = await startServer();
-    const res = await request(p, "GET", "/mcp");
-    expect(res.status).toBe(200);
-    const json = JSON.parse(res.body);
-    expect(json.protocolVersion).toBe(MCP_PROTOCOL_VERSION);
-    expect(json.serverInfo.name).toBe("unicli");
-    expect(json.capabilities).toEqual({});
-  });
-
-  it("POST /mcp without MCP-Protocol-Version header returns 400", async () => {
-    const p = await startServer();
-
-    // Initialize
-    const init = await request(
-      p,
-      "POST",
-      "/mcp",
-      JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "initialize",
-        params: {},
-      }),
-    );
-    const sessionId = init.headers["mcp-session-id"] as string;
-
-    // Send post-init request without MCP-Protocol-Version
-    const res = await request(
-      p,
+  it("enforces the negotiated protocol version", async () => {
+    const port = await start();
+    const { sessionId } = await initialize(port);
+    const missing = await request(
+      port,
       "POST",
       "/mcp",
       JSON.stringify({
@@ -527,36 +214,16 @@ describe("Streamable HTTP transport", () => {
       }),
       { "MCP-Session-Id": sessionId },
     );
-    expect(res.status).toBe(400);
-    const json = JSON.parse(res.body);
-    expect(json.error.message).toContain("Missing MCP-Protocol-Version");
-  });
+    expect(missing.status).toBe(400);
+    expect(parse(missing).error?.message).toContain("Missing");
 
-  it("POST /mcp with wrong MCP-Protocol-Version returns 400", async () => {
-    const p = await startServer();
-
-    // Initialize
-    const init = await request(
-      p,
+    const wrong = await request(
+      port,
       "POST",
       "/mcp",
       JSON.stringify({
         jsonrpc: "2.0",
-        id: 1,
-        method: "initialize",
-        params: {},
-      }),
-    );
-    const sessionId = init.headers["mcp-session-id"] as string;
-
-    // Send with wrong version
-    const res = await request(
-      p,
-      "POST",
-      "/mcp",
-      JSON.stringify({
-        jsonrpc: "2.0",
-        id: 2,
+        id: 3,
         method: "tools/list",
         params: {},
       }),
@@ -565,423 +232,576 @@ describe("Streamable HTTP transport", () => {
         "MCP-Protocol-Version": "1999-01-01",
       },
     );
-    expect(res.status).toBe(400);
-    const json = JSON.parse(res.body);
-    expect(json.error.message).toContain("Unsupported protocol version");
+    expect(wrong.status).toBe(400);
+    expect(parse(wrong).error?.message).toContain("Unsupported");
   });
 
-  it("JSON responses include CORS headers", async () => {
-    const p = await startServer();
-    const res = await request(p, "GET", "/health");
-    expect(res.status).toBe(200);
-    expect(res.headers["access-control-allow-origin"]).toBe("http://localhost");
-    expect(res.headers["access-control-expose-headers"]).toContain(
-      "MCP-Session-Id",
+  it("accepts successful and failed notifications with an empty 202", async () => {
+    let calls = 0;
+    const handler: JsonRpcHandler = (message) => {
+      if (message.method === "initialize") return echoHandler(message);
+      calls += 1;
+      if (message.method === "notifications/fail") {
+        throw new Error("notification exploded");
+      }
+      return undefined;
+    };
+    const port = await start(handler);
+    const { sessionId } = await initialize(port);
+    const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+
+    const successful = await rpc(
+      port,
+      { jsonrpc: "2.0", method: "notifications/initialized" },
+      sessionId,
+    );
+    const failed = await rpc(
+      port,
+      { jsonrpc: "2.0", method: "notifications/fail" },
+      sessionId,
+    );
+    expect(successful).toMatchObject({ status: 202, body: "" });
+    expect(failed).toMatchObject({ status: 202, body: "" });
+    expect(calls).toBe(2);
+    expect(stderr.mock.calls.flat().join("")).toContain(
+      "notification notifications/fail failed",
     );
   });
 
-  // ── Async Task Tests (F1) ──────────────────────────────────────────────
+  it("returns a single MCP response as SSE only when requested", async () => {
+    const port = await start();
+    const { sessionId } = await initialize(port);
+    const response = await rpc(
+      port,
+      {
+        jsonrpc: "2.0",
+        id: 3,
+        method: "tools/call",
+        params: { name: "test", arguments: {} },
+      },
+      sessionId,
+      { Accept: "text/event-stream" },
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers["content-type"]).toContain("text/event-stream");
+    expect(response.body).toContain("event: message");
+    expect(response.body).toContain('"id":3');
+  });
 
-  describe("Async Tasks", () => {
-    it("tools/call with X-MCP-Async returns 202 with taskId", async () => {
-      const p = await startServer();
-      const sessionId = await initSession(p);
-
-      const res = await request(
-        p,
-        "POST",
-        "/mcp",
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: 10,
-          method: "tools/call",
-          params: { name: "test", arguments: {} },
-        }),
-        {
-          ...postInitHeaders(sessionId),
-          "X-MCP-Async": "true",
-          Accept: "application/json",
-        },
-      );
-      expect(res.status).toBe(202);
-      const json = JSON.parse(res.body);
-      expect(json.jsonrpc).toBe("2.0");
-      expect(json.id).toBe(10);
-      expect(json.result._meta.taskId).toBeTruthy();
-      expect(json.result._meta.status).toBe("running");
-
-      // Task should exist in the registry
-      const taskId = json.result._meta.taskId;
-      expect(asyncTasks.has(taskId)).toBe(true);
+  it("validates Origin on every route and protocol version before DELETE", async () => {
+    const port = await start();
+    const { sessionId } = await initialize(port);
+    const hostile = { Origin: "https://attacker.example" };
+    expect(
+      (await request(port, "GET", "/health", undefined, hostile)).status,
+    ).toBe(403);
+    expect(
+      (await request(port, "GET", "/mcp", undefined, hostile)).status,
+    ).toBe(403);
+    const hostileDelete = await request(port, "DELETE", "/mcp", undefined, {
+      ...hostile,
+      "MCP-Session-Id": sessionId,
+      "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
     });
+    expect(hostileDelete.status).toBe(403);
+    expect(sessions.has(sessionId)).toBe(true);
 
-    it("async task completes and is queryable via tasks/status", async () => {
-      const p = await startServer(slowHandler as typeof echoHandler);
-      const sessionId = await initSession(p);
-
-      // Start async task
-      const res = await request(
-        p,
-        "POST",
-        "/mcp",
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: 11,
-          method: "tools/call",
-          params: { name: "slow-tool", arguments: {} },
-        }),
-        {
-          ...postInitHeaders(sessionId),
-          "X-MCP-Async": "true",
-          Accept: "application/json",
-        },
-      );
-      const taskId = JSON.parse(res.body).result._meta.taskId;
-
-      // Wait for the slow handler to complete
-      await new Promise((r) => setTimeout(r, 100));
-
-      // Query task status
-      const statusRes = await request(
-        p,
-        "POST",
-        "/mcp",
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: 12,
-          method: "tasks/status",
-          params: { taskId },
-        }),
-        postInitHeaders(sessionId),
-      );
-      expect(statusRes.status).toBe(200);
-      const statusJson = JSON.parse(statusRes.body);
-      expect(statusJson.result.status).toBe("completed");
-      expect(statusJson.result.taskId).toBe(taskId);
-      expect(statusJson.result.result).toBeTruthy();
+    const wrongProtocol = await request(port, "DELETE", "/mcp", undefined, {
+      "MCP-Session-Id": sessionId,
+      "MCP-Protocol-Version": "1999-01-01",
     });
+    expect(wrongProtocol.status).toBe(400);
+    expect(sessions.has(sessionId)).toBe(true);
+  });
 
-    it("tasks/status returns error for missing taskId param", async () => {
-      const p = await startServer();
-      const sessionId = await initSession(p);
-
-      const res = await request(
-        p,
-        "POST",
-        "/mcp",
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: 13,
-          method: "tasks/status",
-          params: {},
-        }),
-        postInitHeaders(sessionId),
-      );
-      expect(res.status).toBe(200);
-      const json = JSON.parse(res.body);
-      expect(json.error.code).toBe(-32602);
-      expect(json.error.message).toContain("Missing required param");
-    });
-
-    it("tasks/status returns error for unknown task", async () => {
-      const p = await startServer();
-      const sessionId = await initSession(p);
-
-      const res = await request(
-        p,
-        "POST",
-        "/mcp",
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: 14,
-          method: "tasks/status",
-          params: { taskId: "nonexistent-task-id" },
-        }),
-        postInitHeaders(sessionId),
-      );
-      expect(res.status).toBe(200);
-      const json = JSON.parse(res.body);
-      expect(json.error.code).toBe(-32602);
-      expect(json.error.message).toContain("Task not found");
-    });
-
-    it("tasks/cancel sets running task to cancelled", async () => {
-      const p = await startServer(slowHandler as typeof echoHandler);
-      const sessionId = await initSession(p);
-
-      // Start async task
-      const res = await request(
-        p,
-        "POST",
-        "/mcp",
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: 15,
-          method: "tools/call",
-          params: { name: "slow-tool", arguments: {} },
-        }),
-        {
-          ...postInitHeaders(sessionId),
-          "X-MCP-Async": "true",
-          Accept: "application/json",
-        },
-      );
-      const taskId = JSON.parse(res.body).result._meta.taskId;
-
-      // Cancel it before it completes
-      const cancelRes = await request(
-        p,
-        "POST",
-        "/mcp",
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: 16,
-          method: "tasks/cancel",
-          params: { taskId },
-        }),
-        postInitHeaders(sessionId),
-      );
-      expect(cancelRes.status).toBe(200);
-      const cancelJson = JSON.parse(cancelRes.body);
-      expect(cancelJson.result.taskId).toBe(taskId);
-      expect(cancelJson.result.status).toBe("cancelled");
-
-      // Verify via direct map access
-      expect(asyncTasks.get(taskId)!.status).toBe("cancelled");
-    });
-
-    it("tasks/cancel returns error for missing taskId param", async () => {
-      const p = await startServer();
-      const sessionId = await initSession(p);
-
-      const res = await request(
-        p,
-        "POST",
-        "/mcp",
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: 17,
-          method: "tasks/cancel",
-          params: {},
-        }),
-        postInitHeaders(sessionId),
-      );
-      const json = JSON.parse(res.body);
-      expect(json.error.code).toBe(-32602);
-    });
-
-    it("tasks/cancel returns error for unknown task", async () => {
-      const p = await startServer();
-      const sessionId = await initSession(p);
-
-      const res = await request(
-        p,
-        "POST",
-        "/mcp",
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: 18,
-          method: "tasks/cancel",
-          params: { taskId: "ghost-task" },
-        }),
-        postInitHeaders(sessionId),
-      );
-      const json = JSON.parse(res.body);
-      expect(json.error.code).toBe(-32602);
-      expect(json.error.message).toContain("Task not found");
-    });
-
-    it("tasks/cancel on already-completed task preserves completed status", async () => {
-      const p = await startServer();
-      const sessionId = await initSession(p);
-
-      // Start async task (echoHandler resolves instantly)
-      const res = await request(
-        p,
-        "POST",
-        "/mcp",
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: 19,
-          method: "tools/call",
-          params: { name: "test", arguments: {} },
-        }),
-        {
-          ...postInitHeaders(sessionId),
-          "X-MCP-Async": "true",
-          Accept: "application/json",
-        },
-      );
-      const taskId = JSON.parse(res.body).result._meta.taskId;
-
-      // Wait for instant handler to resolve
-      await new Promise((r) => setTimeout(r, 20));
-
-      // Try to cancel the completed task
-      const cancelRes = await request(
-        p,
-        "POST",
-        "/mcp",
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: 20,
-          method: "tasks/cancel",
-          params: { taskId },
-        }),
-        postInitHeaders(sessionId),
-      );
-      const cancelJson = JSON.parse(cancelRes.body);
-      expect(cancelJson.result.status).toBe("completed");
-    });
-
-    it("async task with SSE returns 202 and streams events", async () => {
-      const p = await startServer(slowHandler as typeof echoHandler);
-      const sessionId = await initSession(p);
-
-      // tools/call with X-MCP-Async + Accept: text/event-stream
-      const res = await request(
-        p,
-        "POST",
-        "/mcp",
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: 21,
-          method: "tools/call",
-          params: { name: "slow-tool", arguments: {} },
-        }),
-        {
-          ...postInitHeaders(sessionId),
-          "X-MCP-Async": "true",
-          Accept: "text/event-stream",
-        },
-      );
-      expect(res.status).toBe(202);
-      expect(res.headers["content-type"]).toContain("text/event-stream");
-      // Should contain the accepted event and the complete event
-      expect(res.body).toContain("event: accepted");
-      expect(res.body).toContain("event: complete");
-      expect(res.body).toContain('"status":"running"');
-    });
-
-    it("async task with SSE streams error event on handler failure", async () => {
-      const p = await startServer(failHandler as typeof echoHandler);
-      const sessionId = await initSession(p);
-
-      const res = await request(
-        p,
-        "POST",
-        "/mcp",
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: 22,
-          method: "tools/call",
-          params: { name: "fail-tool", arguments: {} },
-        }),
-        {
-          ...postInitHeaders(sessionId),
-          "X-MCP-Async": "true",
-          Accept: "text/event-stream",
-        },
-      );
-      expect(res.status).toBe(202);
-      expect(res.body).toContain("event: accepted");
-      expect(res.body).toContain("event: error");
-      expect(res.body).toContain("adapter exploded");
-    });
-
-    it("failed async task is queryable via tasks/status", async () => {
-      const p = await startServer(failHandler as typeof echoHandler);
-      const sessionId = await initSession(p);
-
-      // Start async task (non-SSE)
-      const res = await request(
-        p,
-        "POST",
-        "/mcp",
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: 23,
-          method: "tools/call",
-          params: { name: "fail-tool", arguments: {} },
-        }),
-        {
-          ...postInitHeaders(sessionId),
-          "X-MCP-Async": "true",
-          Accept: "application/json",
-        },
-      );
-      const taskId = JSON.parse(res.body).result._meta.taskId;
-
-      // Wait for handler to reject
-      await new Promise((r) => setTimeout(r, 50));
-
-      const statusRes = await request(
-        p,
-        "POST",
-        "/mcp",
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: 24,
-          method: "tasks/status",
-          params: { taskId },
-        }),
-        postInitHeaders(sessionId),
-      );
-      const statusJson = JSON.parse(statusRes.body);
-      expect(statusJson.result.status).toBe("failed");
-      expect(statusJson.result.error).toContain("adapter exploded");
-    });
-
-    it("tools/call without X-MCP-Async header uses synchronous path", async () => {
-      const p = await startServer();
-      const sessionId = await initSession(p);
-
-      const res = await request(
-        p,
-        "POST",
-        "/mcp",
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: 25,
-          method: "tools/call",
-          params: { name: "test", arguments: {} },
-        }),
-        {
-          ...postInitHeaders(sessionId),
-          Accept: "application/json",
-        },
-      );
-      // Synchronous: returns 200 with result directly
-      expect(res.status).toBe(200);
-      const json = JSON.parse(res.body);
-      expect(json.result.content[0].text).toBe("ok");
-      // No task created
-      expect(asyncTasks.size).toBe(0);
-    });
-
-    it("pruneStaleSessions also removes expired async tasks", () => {
-      asyncTasks.clear();
-      sessions.clear();
-
-      const oldTaskId = "old-task";
-      asyncTasks.set(oldTaskId, {
-        id: oldTaskId,
-        sessionId: "some-session",
-        status: "completed",
-        created: Date.now() - 7_200_000, // 2 hours ago
+  it("cancels an addressed live request across HTTP connections", async () => {
+    const started = deferred<AbortSignal>();
+    const handler: JsonRpcHandler = (message, context) => {
+      if (message.method === "initialize") return echoHandler(message);
+      if (message.method !== "tools/call") return echoHandler(message);
+      const signal = context!.signal!;
+      started.resolve(signal);
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener("abort", () => reject(signal.reason), {
+          once: true,
+        });
       });
+    };
+    const port = await start(handler);
+    const { sessionId } = await initialize(port);
+    const original = rpc(
+      port,
+      {
+        jsonrpc: "2.0",
+        id: 22,
+        method: "tools/call",
+        params: { name: "slow", arguments: {} },
+      },
+      sessionId,
+    );
+    const signal = await started.promise;
+    const cancelled = await rpc(
+      port,
+      {
+        jsonrpc: "2.0",
+        method: "notifications/cancelled",
+        params: { requestId: 22, reason: "client no longer needs result" },
+      },
+      sessionId,
+    );
 
-      const freshTaskId = "fresh-task";
-      asyncTasks.set(freshTaskId, {
-        id: freshTaskId,
-        sessionId: "some-session",
-        status: "running",
-        created: Date.now(),
-      });
+    expect(cancelled).toMatchObject({ status: 202, body: "" });
+    expect(signal.aborted).toBe(true);
+    expect(await original).toMatchObject({ status: 202, body: "" });
+  });
 
-      pruneStaleSessions();
-      expect(asyncTasks.has(oldTaskId)).toBe(false);
-      expect(asyncTasks.has(freshTaskId)).toBe(true);
+  it("does not reinterpret an HTTP disconnect as MCP cancellation", async () => {
+    const observed = deferred<AbortSignal>();
+    let effects = 0;
+    const handler: JsonRpcHandler = async (message, context) => {
+      if (message.method === "initialize") return echoHandler(message);
+      const signal = context!.signal!;
+      observed.resolve(signal);
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      effects += 1;
+      return {
+        jsonrpc: "2.0",
+        id: message.id ?? null,
+        result: { content: [{ type: "text", text: "settled" }] },
+      };
+    };
+    const port = await start(handler);
+    const { sessionId } = await initialize(port);
+    const client = http.request({
+      hostname: "127.0.0.1",
+      port,
+      path: "/mcp",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "MCP-Session-Id": sessionId,
+        "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
+      },
+    });
+    client.on("error", () => undefined);
+    client.end(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 23,
+        method: "tools/call",
+        params: { name: "read", arguments: {} },
+      }),
+    );
+    const signal = await observed.promise;
+    client.destroy();
+
+    await vi.waitFor(() => expect(effects).toBe(1));
+    expect(signal.aborted).toBe(false);
+  });
+
+  it("expires session authority before awaiting durable containment", async () => {
+    const closed = deferred<void>();
+    const handler: JsonRpcHandler = echoHandler;
+    handler.closeSession = async (sessionId, reason) => {
+      expect(sessionId).toBe("stale");
+      expect(reason).toBe("MCP session expired");
+      closed.resolve();
+    };
+    sessions.set("stale", {
+      created: 0,
+      lastSeen: 0,
+      protocolVersion: MCP_PROTOCOL_VERSION,
+    });
+    sessions.set("fresh", {
+      created: Date.now(),
+      lastSeen: Date.now(),
+      protocolVersion: MCP_PROTOCOL_VERSION,
+    });
+
+    await pruneStaleSessions(handler.closeSession);
+    expect(sessions.has("stale")).toBe(false);
+    expect(sessions.has("fresh")).toBe(true);
+    await closed.promise;
+  });
+
+  it("runs the full standard Tasks flow through one handler-owned registry", async () => {
+    const gate = deferred<ReturnType<typeof toolSuccess>>();
+    const handler = buildHandler([mutatingTool(async () => gate.promise)]);
+    const port = await start(handler);
+    const { sessionId, response: initialized } = await initialize(port);
+    expect(initialized.result).toMatchObject({
+      capabilities: {
+        tasks: {
+          list: {},
+          cancel: {},
+          requests: { tools: { call: {} } },
+        },
+      },
+    });
+
+    const created = parse(
+      await rpc(
+        port,
+        {
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/call",
+          params: {
+            name: "mutate",
+            arguments: {},
+            task: { ttl: 60_000 },
+          },
+        },
+        sessionId,
+      ),
+    );
+    const taskId = (created.result as { task: { taskId: string } }).task.taskId;
+    expect(created.result).toMatchObject({
+      task: { taskId, status: "working", ttl: 60_000 },
+    });
+
+    const listed = parse(
+      await rpc(
+        port,
+        { jsonrpc: "2.0", id: 3, method: "tasks/list", params: {} },
+        sessionId,
+      ),
+    );
+    expect(listed.result).toMatchObject({
+      tasks: [{ taskId, status: "working" }],
+    });
+
+    const resultRequest = rpc(
+      port,
+      {
+        jsonrpc: "2.0",
+        id: 4,
+        method: "tasks/result",
+        params: { taskId },
+      },
+      sessionId,
+    );
+    let didResolve = false;
+    void resultRequest.then(() => {
+      didResolve = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(didResolve).toBe(false);
+    gate.resolve(toolSuccess("mutated"));
+
+    const result = parse(await resultRequest);
+    expect(result.result).toMatchObject({
+      content: [{ type: "text", text: "mutated" }],
+      _meta: { "io.modelcontextprotocol/related-task": { taskId } },
+    });
+    const status = parse(
+      await rpc(
+        port,
+        {
+          jsonrpc: "2.0",
+          id: 5,
+          method: "tasks/get",
+          params: { taskId },
+        },
+        sessionId,
+      ),
+    );
+    expect(status.result).toMatchObject({ taskId, status: "completed" });
+  });
+
+  it("isolates standard tasks by session", async () => {
+    const handler = buildHandler([mutatingTool(async () => toolSuccess("ok"))]);
+    const port = await start(handler);
+    const first = await initialize(port);
+    const second = await initialize(port);
+    const created = parse(
+      await rpc(
+        port,
+        {
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/call",
+          params: { name: "mutate", arguments: {}, task: {} },
+        },
+        first.sessionId,
+      ),
+    );
+    const taskId = (created.result as { task: { taskId: string } }).task.taskId;
+    const foreign = parse(
+      await rpc(
+        port,
+        {
+          jsonrpc: "2.0",
+          id: 3,
+          method: "tasks/get",
+          params: { taskId },
+        },
+        second.sessionId,
+      ),
+    );
+    expect(foreign.error).toMatchObject({
+      code: -32_602,
+      message: "Task not found",
     });
   });
+
+  it("waits for cancellation settlement and preserves outcome ambiguity", async () => {
+    const cancellationObserved = deferred<void>();
+    const settle = deferred<void>();
+    const handler = buildHandler([
+      mutatingTool(
+        async (_arguments, context) =>
+          new Promise((_resolve, reject) => {
+            const abort = (): void => {
+              cancellationObserved.resolve();
+              void settle.promise.then(() =>
+                reject(
+                  new OperationOutcomeAmbiguousError(
+                    "test dispatched mutation",
+                    context?.signal?.reason,
+                  ),
+                ),
+              );
+            };
+            if (context?.signal?.aborted) abort();
+            else
+              context?.signal?.addEventListener("abort", abort, { once: true });
+          }),
+      ),
+    ]);
+    const port = await start(handler);
+    const { sessionId } = await initialize(port);
+    const created = parse(
+      await rpc(
+        port,
+        {
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/call",
+          params: { name: "mutate", arguments: {}, task: {} },
+        },
+        sessionId,
+      ),
+    );
+    const taskId = (created.result as { task: { taskId: string } }).task.taskId;
+    const cancellation = rpc(
+      port,
+      {
+        jsonrpc: "2.0",
+        id: 3,
+        method: "tasks/cancel",
+        params: { taskId },
+      },
+      sessionId,
+    );
+    await cancellationObserved.promise;
+    let didResolve = false;
+    void cancellation.then(() => {
+      didResolve = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(didResolve).toBe(false);
+    settle.resolve();
+
+    expect(parse(await cancellation).result).toMatchObject({
+      taskId,
+      status: "cancelled",
+      statusMessage: expect.stringContaining("ambiguous"),
+    });
+    const result = parse(
+      await rpc(
+        port,
+        {
+          jsonrpc: "2.0",
+          id: 4,
+          method: "tasks/result",
+          params: { taskId },
+        },
+        sessionId,
+      ),
+    );
+    expect(result.error?.data).toMatchObject({
+      outcome_ambiguous: true,
+      retryable: false,
+    });
+  });
+
+  it("DELETE revokes the session and waits for task containment before 204", async () => {
+    const cancellationObserved = deferred<void>();
+    const settle = deferred<void>();
+    let effects = 0;
+    const handler = buildHandler([
+      mutatingTool(async (_arguments, context) =>
+        new Promise((_resolve, reject) => {
+          const abort = (): void => {
+            cancellationObserved.resolve();
+            void settle.promise.then(() => reject(context?.signal?.reason));
+          };
+          if (context?.signal?.aborted) abort();
+          else
+            context?.signal?.addEventListener("abort", abort, { once: true });
+        }).then(() => {
+          effects += 1;
+          return toolSuccess("unexpected");
+        }),
+      ),
+    ]);
+    const port = await start(handler);
+    const { sessionId } = await initialize(port);
+    await rpc(
+      port,
+      {
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/call",
+        params: { name: "mutate", arguments: {}, task: {} },
+      },
+      sessionId,
+    );
+
+    const deletion = request(port, "DELETE", "/mcp", undefined, {
+      "MCP-Session-Id": sessionId,
+      "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
+    });
+    await cancellationObserved.promise;
+    expect(sessions.has(sessionId)).toBe(false);
+    let didResolve = false;
+    void deletion.then(() => {
+      didResolve = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(didResolve).toBe(false);
+    settle.resolve();
+    expect((await deletion).status).toBe(204);
+    expect(effects).toBe(0);
+  });
+
+  it("awaits durable containment before server close resolves", async () => {
+    const cancellationObserved = deferred<void>();
+    const settle = deferred<void>();
+    const handler = buildHandler([
+      mutatingTool(
+        async (_arguments, context) =>
+          new Promise((_resolve, reject) => {
+            context?.signal?.addEventListener(
+              "abort",
+              () => {
+                cancellationObserved.resolve();
+                void settle.promise.then(() => reject(context.signal?.reason));
+              },
+              { once: true },
+            );
+          }),
+      ),
+    ]);
+    const port = await start(handler);
+    const { sessionId } = await initialize(port);
+    await rpc(
+      port,
+      {
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/call",
+        params: { name: "mutate", arguments: {}, task: {} },
+      },
+      sessionId,
+    );
+
+    const closing = stopStreamableHttp(runtimePort!, "test shutdown");
+    await cancellationObserved.promise;
+    let didResolve = false;
+    void closing.then(() => {
+      didResolve = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(didResolve).toBe(false);
+    settle.resolve();
+    await closing;
+    expect(didResolve).toBe(true);
+  });
+
+  it("binds an authenticated session to the OAuth client principal", async () => {
+    oauthTest.tokens.set("client-a-token", {
+      clientId: "client-a",
+      expiresAt: Date.now() + 60_000,
+    });
+    oauthTest.tokens.set("client-b-token", {
+      clientId: "client-b",
+      expiresAt: Date.now() + 60_000,
+    });
+    const port = await start(echoHandler, { auth: true });
+    const { sessionId } = await initialize(port, "Bearer client-a-token");
+    const adopted = await rpc(
+      port,
+      { jsonrpc: "2.0", id: 2, method: "tools/list", params: {} },
+      sessionId,
+      { Authorization: "Bearer client-b-token" },
+    );
+    expect(adopted.status).toBe(403);
+    expect(parse(adopted).error?.message).toContain(
+      "different authenticated client",
+    );
+  });
+
+  it("does not revive the removed X-MCP-Async task protocol", async () => {
+    const handler = buildHandler([mutatingTool(async () => toolSuccess("ok"))]);
+    const port = await start(handler);
+    const { sessionId } = await initialize(port);
+    const legacy = parse(
+      await rpc(
+        port,
+        {
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/call",
+          params: { name: "mutate", arguments: {} },
+        },
+        sessionId,
+        { "X-MCP-Async": "true" },
+      ),
+    );
+    expect(legacy.error).toMatchObject({
+      code: -32_601,
+      message: expect.stringContaining("requires task augmentation"),
+    });
+    const oldStatus = parse(
+      await rpc(
+        port,
+        {
+          jsonrpc: "2.0",
+          id: 3,
+          method: "tasks/status",
+          params: { taskId: "legacy" },
+        },
+        sessionId,
+      ),
+    );
+    expect(oldStatus.error?.code).toBe(-32_601);
+  });
 });
+
+function mutatingTool(handler: McpTool["handler"]): McpTool {
+  return {
+    name: "mutate",
+    description: "test mutation",
+    inputSchema: { type: "object", properties: {} },
+    annotations: { readOnlyHint: false },
+    execution: { taskSupport: "required" },
+    handler,
+  };
+}
+
+function toolSuccess(text: string) {
+  return { content: [{ type: "text" as const, text }] };
+}
+
+function deferred<T>(): {
+  promise: Promise<T>;
+  resolve(value: T): void;
+} {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((accept) => {
+    resolve = accept;
+  });
+  return { promise, resolve };
+}

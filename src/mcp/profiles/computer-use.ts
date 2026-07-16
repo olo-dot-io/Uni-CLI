@@ -9,6 +9,7 @@ import {
   saveComputeCaptureReference,
 } from "../../compute/capture-reference.js";
 import { createPlatformComputeOverlayProvider } from "../../compute/platform-overlays.js";
+import { authorizeComputeOperation } from "../../compute/permission.js";
 import { buildComputeActionVisualEvidence } from "../../compute/visual-timeline.js";
 import {
   buildComputeInputSchema,
@@ -17,18 +18,23 @@ import {
 import { err, exitCodeFor } from "../../core/envelope.js";
 import type { ActionResult } from "../../transport/types.js";
 import type { McpToolResult } from "../dispatch.js";
-import type { McpPrompt, McpTool } from "../tools.js";
+import type { McpPrompt, McpTool, McpToolExecutionContext } from "../tools.js";
 
 type Params = Record<string, unknown>;
 
 interface ToolDef {
+  command: string;
   suffix: string;
   description: string;
   kind: string;
   inputSchema: McpTool["inputSchema"];
   readOnly?: boolean;
   transform?: (input: Params) => Params;
-  handler?: (input: Params, def: ToolDef) => Promise<McpToolResult>;
+  handler?: (
+    input: Params,
+    def: ToolDef,
+    context?: McpToolExecutionContext,
+  ) => Promise<McpToolResult>;
 }
 
 const DEFINITIONS: ToolDef[] = [
@@ -36,7 +42,7 @@ const DEFINITIONS: ToolDef[] = [
   computeToolDef("windows"),
   {
     ...computeToolDef("capture"),
-    handler: async (input, def) => {
+    handler: async (input, def, context) => {
       const format = readCaptureFormat(input.format);
       if (!format.ok) {
         return actionResultToMcp(
@@ -52,37 +58,48 @@ const DEFINITIONS: ToolDef[] = [
           def,
         );
       }
-      const result = await captureComputeContext(getBus(), {
-        ...(typeof input.app === "string" ? { app: input.app } : {}),
-        ...(typeof input.include === "string"
-          ? { include: input.include }
-          : {}),
-        format: format.value,
-        maxDepth:
-          typeof input.maxDepth === "number" && Number.isFinite(input.maxDepth)
-            ? input.maxDepth
-            : 64,
-        ...(typeof input.screenshotPath === "string"
-          ? { screenshotPath: input.screenshotPath }
-          : {}),
-      });
+      const result = await captureComputeContext(
+        getBus(),
+        {
+          ...(typeof input.app === "string" ? { app: input.app } : {}),
+          ...(typeof input.include === "string"
+            ? { include: input.include }
+            : {}),
+          format: format.value,
+          maxDepth:
+            typeof input.maxDepth === "number" &&
+            Number.isFinite(input.maxDepth)
+              ? input.maxDepth
+              : 64,
+          ...(typeof input.screenshotPath === "string"
+            ? { screenshotPath: input.screenshotPath }
+            : {}),
+        },
+        context?.signal ? { signal: context.signal } : {},
+      );
       const shouldSaveReference =
         input.saveReference === true || input.copyReference === true;
       if (!result.ok || !shouldSaveReference) {
         return actionResultToMcp(result, def);
       }
+      context?.signal?.throwIfAborted();
       const referenceRoot =
         typeof input.referenceRoot === "string" && input.referenceRoot
           ? input.referenceRoot
           : undefined;
-      const reference = await saveComputeCaptureReference(
-        result.data,
-        referenceRoot ? { rootDir: referenceRoot } : {},
-      );
+      const reference = await saveComputeCaptureReference(result.data, {
+        ...(referenceRoot ? { rootDir: referenceRoot } : {}),
+        ...(context?.signal ? { signal: context.signal } : {}),
+      });
+      context?.signal?.throwIfAborted();
       if (input.copyReference === true) {
         try {
-          await copyReferenceMarkupToClipboard(reference.markup);
+          await copyReferenceMarkupToClipboard(
+            reference.markup,
+            context?.signal ? { signal: context.signal } : {},
+          );
         } catch (error) {
+          context?.signal?.throwIfAborted();
           return actionResultToMcp(
             err({
               transport: "subprocess",
@@ -161,8 +178,17 @@ export const COMPUTER_USE_TOOLS: McpTool[] = DEFINITIONS.map((def) => ({
     destructiveHint: false,
     idempotentHint: def.readOnly ?? false,
   },
-  handler: async (args) => {
-    if (def.handler) return def.handler(args, def);
+  execution: {
+    taskSupport: def.readOnly === true ? "optional" : "required",
+  },
+  handler: async (args, context) => {
+    context?.signal?.throwIfAborted();
+    const authorization = await authorizeComputeOperation(def.command, args);
+    if (!authorization.ok) {
+      return actionResultToMcp(authorization.result, def, args);
+    }
+    context?.signal?.throwIfAborted();
+    if (def.handler) return def.handler(args, def, context);
     const rawParams = def.transform ? def.transform(args) : args;
     const { params, overlay } = splitOverlayParams(rawParams);
     const overlayProvider =
@@ -173,6 +199,7 @@ export const COMPUTER_USE_TOOLS: McpTool[] = DEFINITIONS.map((def) => ({
         {
           kind: def.kind,
           params,
+          ...(context?.signal ? { signal: context.signal } : {}),
         },
         {
           tool: `computer-use.${def.suffix}`,
@@ -198,6 +225,7 @@ function computeToolDef(command: string): ToolDef {
     throw new Error(`missing compute command contract for ${command}`);
   }
   return {
+    command: contract.command,
     suffix: contract.mcpSuffix,
     description: contract.description,
     kind: contract.kind,
@@ -212,7 +240,12 @@ function actionResultToMcp(
   params: Params = {},
   evidence?: ComputeActionExecution["evidence"],
 ): McpToolResult {
-  const data = result.ok ? result.data : result.error;
+  const rawData = result.ok ? result.data : result.error;
+  const image =
+    result.ok && (def.command === "screenshot" || def.command === "capture")
+      ? readImagePayload(rawData)
+      : undefined;
+  const data = image ? withoutImageBytes(rawData, image.mimeType) : rawData;
   const transport = result.ok
     ? readResultTransport(result.data)
     : result.error.transport;
@@ -232,7 +265,18 @@ function actionResultToMcp(
     evidence?.visual_action ??
     generatedEvidence.visual_action;
   return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+    content: [
+      ...(image
+        ? [
+            {
+              type: "image" as const,
+              data: image.data,
+              mimeType: image.mimeType,
+            },
+          ]
+        : []),
+      { type: "text", text: JSON.stringify(data, null, 2) },
+    ],
     structuredContent: { type: "json", data },
     _meta: {
       evidence: {
@@ -254,6 +298,78 @@ function actionResultToMcp(
     },
     ...(result.ok ? {} : { isError: true }),
   };
+}
+
+interface McpImagePayload {
+  data: string;
+  mimeType: string;
+}
+
+function readImagePayload(data: unknown): McpImagePayload | undefined {
+  const candidate = captureScreenshotData(data) ?? data;
+  if (Buffer.isBuffer(candidate)) {
+    const mimeType = inferImageMime(candidate);
+    return mimeType
+      ? { data: candidate.toString("base64"), mimeType }
+      : undefined;
+  }
+  if (!isRecord(candidate) || typeof candidate.base64 !== "string") {
+    return undefined;
+  }
+  const bytes = Buffer.from(candidate.base64, "base64");
+  const declaredMime =
+    typeof candidate.mime === "string"
+      ? candidate.mime
+      : isRecord(candidate.image) && typeof candidate.image.mime === "string"
+        ? candidate.image.mime
+        : undefined;
+  const mimeType =
+    declaredMime?.startsWith("image/") === true
+      ? declaredMime
+      : inferImageMime(bytes);
+  if (!mimeType || bytes.length === 0) return undefined;
+  return { data: candidate.base64, mimeType };
+}
+
+function captureScreenshotData(data: unknown): unknown {
+  if (!isRecord(data) || !isRecord(data.screenshot)) return undefined;
+  return data.screenshot.ok === true ? data.screenshot.data : undefined;
+}
+
+function withoutImageBytes(data: unknown, mimeType: string): unknown {
+  if (Buffer.isBuffer(data)) {
+    return { bytes: data.length, mime: mimeType };
+  }
+  if (Array.isArray(data)) {
+    return data.map((entry) => withoutImageBytes(entry, mimeType));
+  }
+  if (!isRecord(data)) return data;
+  return Object.fromEntries(
+    Object.entries(data)
+      .filter(([key]) => key !== "base64")
+      .map(([key, value]) => [key, withoutImageBytes(value, mimeType)]),
+  );
+}
+
+function inferImageMime(bytes: Buffer): string | undefined {
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes.subarray(1, 4).toString("ascii") === "PNG"
+  ) {
+    return "image/png";
+  }
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8) {
+    return "image/jpeg";
+  }
+  if (
+    bytes.length >= 12 &&
+    bytes.subarray(0, 4).toString("ascii") === "RIFF" &&
+    bytes.subarray(8, 12).toString("ascii") === "WEBP"
+  ) {
+    return "image/webp";
+  }
+  return undefined;
 }
 
 function readResultTransport(data: unknown): string | undefined {
@@ -301,3 +417,17 @@ function readCaptureFormat(
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+/**
+ * @owner       src::mcp::profiles::computer-use
+ * @does        Project compute contracts into cancellable, permission-enforced MCP computer-use tools and visual evidence.
+ * @needs       compute authorization/capture/action modules, transport bus, MCP tool contracts
+ * @feeds       compact and computer-use MCP profiles
+ * @breaks      Tool handlers must never create overlays, transports, files, clipboard writes, or desktop actions before authorization.
+ * @invariants  Every tool is authorized from canonical pre-transform arguments; request AbortSignal reaches the final transport and capture side effects.
+ * @side-effects Controls local apps and browsers and may persist explicitly requested capture references.
+ * @perf        One permission evaluation plus one selected compute cascade per ordinary call.
+ * @concurrency MCP request signals isolate cancellation; the transport bus and ref store retain their documented process scope.
+ * @test        tests/unit/mcp/tools.test.ts, tests/unit/mcp-server.test.ts
+ * @stability   stable
+ * @since       2026-07-15
+ */

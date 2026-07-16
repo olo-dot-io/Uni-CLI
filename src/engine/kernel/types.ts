@@ -1,5 +1,9 @@
 /**
- * Kernel types — Invocation, CompiledCommand, InvocationResult.
+ * @owner       src/engine/kernel/types.ts
+ * @does        Define cancellable invocation, compiled-command, result, and diagnostic contracts.
+ * @needs       resolved arguments, output envelopes, adapter domain types
+ * @feeds       kernel execution, session recording, CLI/MCP/ACP surfaces
+ * @breaks      Type drift here breaks cross-surface execution and cancellation semantics.
  *
  * Pure type declarations only; no runtime dependencies beyond shared domain
  * types. Kept isolated so surfaces (MCP/ACP/CLI) can import types without
@@ -23,6 +27,8 @@ export interface Invocation {
   permissionProfile?: string;
   approved?: boolean;
   rememberApproval?: boolean;
+  /** Request-owned cancellation propagated by transports that support it. */
+  signal?: AbortSignal;
   /** ULID — 26-char Crockford Base32, time-sortable and monotonic within ms. */
   trace_id: string;
 }

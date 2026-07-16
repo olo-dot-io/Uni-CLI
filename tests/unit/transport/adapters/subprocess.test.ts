@@ -3,7 +3,8 @@
  *
  * SubprocessTransport spawns OS subprocesses with the same contract as
  * the existing `exec` pipeline step (stdin/stdout/stderr/env/cwd).
- * Each action run must emit an envelope — `action()` never throws.
+ * Ordinary failures emit envelopes; cancellation and ambiguous external
+ * delivery remain typed throws so callers cannot replay a mutation blindly.
  */
 
 import { describe, it, expect } from "vitest";

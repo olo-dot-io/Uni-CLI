@@ -541,12 +541,18 @@ Docs:
   `unicli approvals list`, `revoke`, and `clear` to inspect or remove remembered
   scopes. The file stores scope metadata; runtime args stay out of approval
   memory.
-- Local deny rules live at `~/.unicli/permission-rules.json`, or at
-  `UNICLI_PERMISSION_RULES_PATH`. They match site, command, effect, capability
-  dimensions, and resource metadata, then block before `--yes` and remembered
-  approvals. Runtime guards also check fetched domains, browser navigation
-  targets, download and output paths, and subprocess executables before the
-  request, write, or process spawn happens.
+- Local JSON or YAML rules live at `~/.unicli/permission-rules.json`, or at
+  `UNICLI_PERMISSION_RULES_PATH`. Schema v1 remains deny-only. Schema v2 adds
+  deny-first `allow`/`deny` rules, an explicit `default`, and bounded argument
+  constraints (`min`, `max`, `max_length`, RE2 `pattern`, `allowed`). Rules can
+  also match site, command, effect, capability dimensions, and resource
+  metadata. Direct `browser`/`operate`, `compute`, and computer-use MCP calls
+  authorize before broker, transport, overlay, file, clipboard, or desktop
+  side effects. Denials outrank `--yes` and remembered approvals. An explicit
+  missing or malformed policy fails closed; the absent implicit default file
+  leaves policy disabled. Pipeline runtime guards additionally check fetched
+  domains, navigation targets, download/output paths, and subprocess
+  executables at their resolved boundary.
 - Run recording is opt-in. Use `--record` or `UNICLI_RECORD_RUN=1` when you need
   append-only evidence under `~/.unicli/runs`.
 - Visual fallback routes require a configured real backend. Declared-but-unavailable providers fail closed with structured errors.

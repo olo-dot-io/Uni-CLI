@@ -1255,6 +1255,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "unicli-process-owner"
+version = "0.218.0"
+dependencies = [
+ "windows",
+]
+
+[[package]]
 name = "unicli-shared"
 version = "0.218.0"
 dependencies = [

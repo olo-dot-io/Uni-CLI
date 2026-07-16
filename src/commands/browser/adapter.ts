@@ -32,6 +32,7 @@ import {
 } from "../../output/envelope.js";
 import { detectFormat, format } from "../../output/formatter.js";
 import type { AdapterArg, OutputFormat } from "../../types.js";
+import { authorizeBrowserCommand } from "./permission.js";
 
 type BrowserVerifyOptions = {
   writeFixture?: boolean;
@@ -181,6 +182,31 @@ function internalError(err: unknown): AgentError {
   };
 }
 
+function browserCommandError(
+  err: unknown,
+  fallbackCode: string,
+  fallbackExitCode: number,
+): {
+  error: AgentError;
+  exitCode: number;
+} {
+  const tagged = err as Partial<{
+    code: string;
+    suggestion: string;
+    retryable: boolean;
+    exitCode: number;
+  }>;
+  return {
+    error: {
+      ...internalError(err),
+      code: tagged.code ?? fallbackCode,
+      ...(tagged.suggestion ? { suggestion: tagged.suggestion } : {}),
+      retryable: tagged.retryable ?? false,
+    },
+    exitCode: tagged.exitCode ?? fallbackExitCode,
+  };
+}
+
 function buildVerifyInvocation(
   site: string,
   command: string,
@@ -260,30 +286,25 @@ function buildVerifyData(
   };
 }
 
-function runBrowserInit(
+async function runBrowserInit(
   program: Command,
   target: string,
   opts: { force?: boolean },
-): void {
+): Promise<void> {
   const startedAt = Date.now();
   const ctx = makeCtx("browser.init", startedAt);
   const fmt = detectFormat(program.opts().format as OutputFormat | undefined);
   try {
+    await authorizeBrowserCommand(program, "browser", "init", {
+      target,
+      force: opts.force === true,
+    });
     const data = createAdapterSkeleton(target, { force: opts.force });
     ctx.duration_ms = Date.now() - startedAt;
     console.log(format({ ...data }, undefined, fmt, ctx));
   } catch (err) {
-    emitError(
-      ctx,
-      startedAt,
-      fmt,
-      {
-        code: "invalid_input",
-        message: err instanceof Error ? err.message : String(err),
-        retryable: false,
-      },
-      78,
-    );
+    const failure = browserCommandError(err, "invalid_input", 78);
+    emitError(ctx, startedAt, fmt, failure.error, failure.exitCode);
   }
 }
 
@@ -296,6 +317,12 @@ async function runBrowserVerify(
   const ctx = makeCtx("browser.verify", startedAt);
   const fmt = detectFormat(program.opts().format as OutputFormat | undefined);
   try {
+    await authorizeBrowserCommand(program, "browser", "verify", {
+      target,
+      writeFixture: opts.writeFixture === true,
+      updateFixture: opts.updateFixture === true,
+      strictMemory: opts.strictMemory === true,
+    });
     const { site, command } = parseAdapterTarget(target);
     const missing = missingStrictMemoryFiles(site, command);
     if (opts.strictMemory && missing.length > 0) {
@@ -358,7 +385,8 @@ async function runBrowserVerify(
     console.log(format(data, undefined, fmt, ctx));
     process.exitCode = execution.result.exitCode;
   } catch (err) {
-    emitError(ctx, startedAt, fmt, internalError(err), 1);
+    const failure = browserCommandError(err, "internal_error", 1);
+    emitError(ctx, startedAt, fmt, failure.error, failure.exitCode);
   }
 }
 

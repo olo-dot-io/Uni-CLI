@@ -279,20 +279,19 @@ final class ComputeOverlayView: NSView {
   func update(point: CGPoint, trail: [CGPoint], request: OverlayRequest, elapsedMs: Double, durationMs: Double) {
     CATransaction.begin()
     CATransaction.setDisableActions(true)
-    let local = CGPoint(x: point.x - screenFrame.minX, y: point.y - screenFrame.minY)
-    let hotspot = local
+    let hotspot = CGPoint(x: point.x - screenFrame.minX, y: point.y - screenFrame.minY)
     let pointerPath = CGMutablePath()
-    pointerPath.move(to: local)
-    pointerPath.addLine(to: CGPoint(x: local.x, y: local.y + 45))
-    pointerPath.addLine(to: CGPoint(x: local.x + 13, y: local.y + 32))
-    pointerPath.addLine(to: CGPoint(x: local.x + 21, y: local.y + 55))
-    pointerPath.addLine(to: CGPoint(x: local.x + 31, y: local.y + 51))
-    pointerPath.addLine(to: CGPoint(x: local.x + 23, y: local.y + 29))
-    pointerPath.addLine(to: CGPoint(x: local.x + 43, y: local.y + 29))
+    pointerPath.move(to: hotspot)
+    pointerPath.addLine(to: CGPoint(x: hotspot.x, y: hotspot.y + 45))
+    pointerPath.addLine(to: CGPoint(x: hotspot.x + 13, y: hotspot.y + 32))
+    pointerPath.addLine(to: CGPoint(x: hotspot.x + 21, y: hotspot.y + 55))
+    pointerPath.addLine(to: CGPoint(x: hotspot.x + 31, y: hotspot.y + 51))
+    pointerPath.addLine(to: CGPoint(x: hotspot.x + 23, y: hotspot.y + 29))
+    pointerPath.addLine(to: CGPoint(x: hotspot.x + 43, y: hotspot.y + 29))
     pointerPath.closeSubpath()
     let highlightPath = CGMutablePath()
-    highlightPath.move(to: CGPoint(x: local.x + 6, y: local.y + 8))
-    highlightPath.addLine(to: CGPoint(x: local.x + 6, y: local.y + 34))
+    highlightPath.move(to: CGPoint(x: hotspot.x + 6, y: hotspot.y + 8))
+    highlightPath.addLine(to: CGPoint(x: hotspot.x + 6, y: hotspot.y + 34))
     let trailPath = CGMutablePath()
     for (index, global) in trail.enumerated() {
       let p = CGPoint(x: global.x - screenFrame.minX, y: global.y - screenFrame.minY)
@@ -305,7 +304,7 @@ final class ComputeOverlayView: NSView {
     let isPressure = (state == "press" || halo == "pressure-bloom" || clickRipple) && pressProgress >= 0.78
     let isOrbit = state == "wait" || halo == "busy-orbit"
     let statePath = CGMutablePath()
-    statePath.addEllipse(in: CGRect(x: local.x - 14, y: local.y - 14, width: 30, height: 30))
+    statePath.addEllipse(in: CGRect(x: hotspot.x - 14, y: hotspot.y - 14, width: 30, height: 30))
     haloLayer.path = pointerPath
     coreLayer.path = highlightPath
     trailLayer.path = trailPath
@@ -420,6 +419,16 @@ struct OverlayRequest: Decodable {
   let samples: [OverlaySample]
 }
 
+struct WireParams: Decodable {
+  let request: OverlayRequest?
+}
+
+struct WireRequest: Decodable {
+  let id: Int
+  let kind: String
+  let params: WireParams
+}
+
 final class ComputeOverlayWindow: NSWindow {
   override var canBecomeKey: Bool { false }
   override var canBecomeMain: Bool { false }
@@ -466,20 +475,19 @@ final class ComputeOverlayView: NSView {
   func update(point: CGPoint, trail: [CGPoint], request: OverlayRequest, elapsedMs: Double, durationMs: Double) {
     CATransaction.begin()
     CATransaction.setDisableActions(true)
-    let local = CGPoint(x: point.x - screenFrame.minX, y: point.y - screenFrame.minY)
-    let hotspot = local
+    let hotspot = CGPoint(x: point.x - screenFrame.minX, y: point.y - screenFrame.minY)
     let pointerPath = CGMutablePath()
-    pointerPath.move(to: local)
-    pointerPath.addLine(to: CGPoint(x: local.x, y: local.y + 45))
-    pointerPath.addLine(to: CGPoint(x: local.x + 13, y: local.y + 32))
-    pointerPath.addLine(to: CGPoint(x: local.x + 21, y: local.y + 55))
-    pointerPath.addLine(to: CGPoint(x: local.x + 31, y: local.y + 51))
-    pointerPath.addLine(to: CGPoint(x: local.x + 23, y: local.y + 29))
-    pointerPath.addLine(to: CGPoint(x: local.x + 43, y: local.y + 29))
+    pointerPath.move(to: hotspot)
+    pointerPath.addLine(to: CGPoint(x: hotspot.x, y: hotspot.y + 45))
+    pointerPath.addLine(to: CGPoint(x: hotspot.x + 13, y: hotspot.y + 32))
+    pointerPath.addLine(to: CGPoint(x: hotspot.x + 21, y: hotspot.y + 55))
+    pointerPath.addLine(to: CGPoint(x: hotspot.x + 31, y: hotspot.y + 51))
+    pointerPath.addLine(to: CGPoint(x: hotspot.x + 23, y: hotspot.y + 29))
+    pointerPath.addLine(to: CGPoint(x: hotspot.x + 43, y: hotspot.y + 29))
     pointerPath.closeSubpath()
     let highlightPath = CGMutablePath()
-    highlightPath.move(to: CGPoint(x: local.x + 6, y: local.y + 8))
-    highlightPath.addLine(to: CGPoint(x: local.x + 6, y: local.y + 34))
+    highlightPath.move(to: CGPoint(x: hotspot.x + 6, y: hotspot.y + 8))
+    highlightPath.addLine(to: CGPoint(x: hotspot.x + 6, y: hotspot.y + 34))
     let trailPath = CGMutablePath()
     for (index, global) in trail.enumerated() {
       let p = CGPoint(x: global.x - screenFrame.minX, y: global.y - screenFrame.minY)
@@ -492,7 +500,7 @@ final class ComputeOverlayView: NSView {
     let isPressure = (state == "press" || halo == "pressure-bloom" || clickRipple) && pressProgress >= 0.78
     let isOrbit = state == "wait" || halo == "busy-orbit"
     let statePath = CGMutablePath()
-    statePath.addEllipse(in: CGRect(x: local.x - 14, y: local.y - 14, width: 30, height: 30))
+    statePath.addEllipse(in: CGRect(x: hotspot.x - 14, y: hotspot.y - 14, width: 30, height: 30))
     haloLayer.path = pointerPath
     coreLayer.path = highlightPath
     trailLayer.path = trailPath
@@ -508,6 +516,26 @@ app.setActivationPolicy(.accessory)
 let displayHeight = NSScreen.screens.map { $0.frame.maxY }.max() ?? 0
 var views: [ComputeOverlayView] = []
 var activeTimer: Timer?
+
+func writeStatus(id: Int, kind: String, status: String, actionId: String? = nil, acknowledgedAtMs: Int? = nil, error: String? = nil) {
+  var data: [String: Any] = ["provider": "macos-appkit", "status": status]
+  if let actionId { data["action_id"] = actionId }
+  if let acknowledgedAtMs { data["acknowledged_at_ms"] = acknowledgedAtMs }
+  if let error { data["error"] = error }
+  let envelope: [String: Any] = ["id": id, "kind": kind, "ok": true, "data": data]
+  do {
+    let encoded = try JSONSerialization.data(withJSONObject: envelope)
+    guard let line = String(data: encoded, encoding: .utf8) else {
+      fputs("overlay protocol encoding failed\n", stderr)
+      exit(70)
+    }
+    print(line)
+    fflush(stdout)
+  } catch {
+    fputs("overlay protocol encoding failed\n", stderr)
+    exit(70)
+  }
+}
 
 for screen in NSScreen.screens {
   let window = ComputeOverlayWindow(
@@ -528,9 +556,6 @@ for screen in NSScreen.screens {
   window.orderFrontRegardless()
   views.append(view)
 }
-
-print("{\"provider\":\"macos-appkit\",\"status\":\"ready\"}")
-fflush(stdout)
 
 func appKitPoint(_ sample: OverlaySample) -> CGPoint {
   CGPoint(x: sample.x, y: displayHeight - sample.y)
@@ -555,7 +580,7 @@ func sampleAt(_ request: OverlayRequest, elapsedMs: Double) -> OverlaySample {
   return request.target
 }
 
-func render(request: OverlayRequest) {
+func render(request: OverlayRequest, responseId: Int, responseKind: String) {
   activeTimer?.invalidate()
   let start = ProcessInfo.processInfo.systemUptime
   let duration = max(120, request.duration_ms)
@@ -566,8 +591,7 @@ func render(request: OverlayRequest) {
     let trail = request.samples.filter { $0.at_ms <= elapsed }.suffix(10).map(appKitPoint)
     for view in views { view.update(point: point, trail: trail, request: request, elapsedMs: elapsed, durationMs: duration) }
     if elapsed >= duration {
-      print("{\"provider\":\"macos-appkit\",\"status\":\"arrived\",\"acknowledged_at_ms\":\(Int(duration))}")
-      fflush(stdout)
+      writeStatus(id: responseId, kind: responseKind, status: "arrived", actionId: request.action_id, acknowledgedAtMs: Int(duration))
       timer.invalidate()
       activeTimer = nil
     }
@@ -578,13 +602,18 @@ DispatchQueue.global(qos: .userInitiated).async {
   while let line = readLine() {
     guard let data = line.data(using: .utf8) else { continue }
     do {
-      let request = try JSONDecoder().decode(OverlayRequest.self, from: data)
-      DispatchQueue.main.async {
-        render(request: request)
+      let wire = try JSONDecoder().decode(WireRequest.self, from: data)
+      if wire.kind == "ready" {
+        writeStatus(id: wire.id, kind: wire.kind, status: "ready")
+      } else if wire.kind == "render", let request = wire.params.request {
+        DispatchQueue.main.async {
+          render(request: request, responseId: wire.id, responseKind: wire.kind)
+        }
+      } else {
+        writeStatus(id: wire.id, kind: wire.kind, status: "failed", error: "invalid request")
       }
     } catch {
-      print("{\"provider\":\"macos-appkit\",\"status\":\"failed\",\"error\":\"invalid request\"}")
-      fflush(stdout)
+      writeStatus(id: 0, kind: "<parse>", status: "failed", error: "invalid request")
     }
   }
   DispatchQueue.main.async { app.terminate(nil) }

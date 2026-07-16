@@ -14,7 +14,9 @@ describe("Windows Win32 compute overlay", () => {
     expect(source).toContain("WS_EX_TRANSPARENT");
     expect(source).toContain("TopMost = $true");
     expect(source).toContain("AllScreens");
-    expect(source).toContain('"status":"ready"');
+    expect(source).toContain('if ([string]$wire.kind -eq "ready")');
+    expect(source).toContain("action_id = $script:ResponseActionId");
+    expect(source).toContain("Write-Protocol $wire.id $wire.kind");
     expect(source).toContain("while (($line = [Console]::In.ReadLine())");
   });
 

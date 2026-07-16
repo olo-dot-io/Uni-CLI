@@ -1,13 +1,13 @@
 /**
  * @owner       src::transport::adapters::http
- * @does        Exposes JSON/text fetch and download through the uniform transport envelope contract.
+ * @does        Exposes cancellation-linearized JSON/text HTTP requests and transactional download through the uniform transport envelope contract.
  * @needs       canonical proxy-aware fetch, SSRF guard, core envelopes, transport types, download engine
  * @feeds       transport bus and public `@zenalexa/unicli/transport/http` export
- * @breaks      Invalid input, policy, HTTP, network, and download failures return typed error envelopes.
- * @invariants  Actions never throw to callers; direct public transport use honors the same proxy path as the CLI.
+ * @breaks      Treating post-dispatch write cancellation as retryable can replay an accepted HTTP mutation; dropped signals allow late network/file work.
+ * @invariants  Safe reads cancel exactly; unsafe methods rejected by cancellation after dispatch are outcome-ambiguous; authoritative responses win late cancellation; downloads publish atomically.
  * @side-effects Performs HTTP I/O and optional destination-file writes.
  * @perf        Response previews are capped; downloads stream through the download engine.
- * @concurrency One instance retains only its latest envelope/preview; callers own instance sharing.
+ * @concurrency Each request owns its AbortSignal; one instance retains only its latest completed envelope/preview.
  * @test        tests/unit/transport/adapters/http.test.ts, tests/unit/proxy.test.ts
  * @stability   public
  * @since       2026-04-14
@@ -18,6 +18,8 @@ import { err, exitCodeFor, ok } from "../../core/envelope.js";
 import { assertSafeRequestUrl } from "../../engine/executor.js";
 import { fetchWithProxy } from "../../engine/proxy.js";
 import type { Envelope } from "../../core/envelope.js";
+import { settleDispatchedAction } from "../action-settlement.js";
+import { isOperationOutcomeAmbiguousError } from "../contained-process.js";
 import type {
   ActionRequest,
   ActionResult,
@@ -50,7 +52,7 @@ const HTTP_STEPS = [
 const HTTP_CAPABILITY: Capability = {
   steps: HTTP_STEPS,
   snapshotFormats: ["json", "text"] as readonly SnapshotFormat[],
-  mutatesHost: false,
+  mutatesHost: true,
 };
 
 /**
@@ -69,7 +71,11 @@ export class HttpTransport implements TransportAdapter {
     this.ctx = ctx;
   }
 
-  async snapshot(opts?: { format?: SnapshotFormat }): Promise<Snapshot> {
+  async snapshot(opts?: {
+    format?: SnapshotFormat;
+    signal?: AbortSignal;
+  }): Promise<Snapshot> {
+    opts?.signal?.throwIfAborted();
     const format = opts?.format ?? "json";
     const payload = this.lastEnvelope ?? { ok: true, data: null };
     if (format === "text") {
@@ -80,49 +86,37 @@ export class HttpTransport implements TransportAdapter {
 
   async action<T = unknown>(req: ActionRequest): Promise<ActionResult<T>> {
     const start = Date.now();
+    const signal = requestSignal(req.signal, req.params.timeoutMs);
     try {
-      switch (req.kind) {
-        case "fetch": {
-          const envelope = await this.doFetchJson<T>(req.params as FetchParams);
-          this.lastEnvelope = envelope;
-          envelope.elapsedMs = Date.now() - start;
-          return envelope;
-        }
-        case "fetch_text": {
-          const envelope = await this.doFetchText(req.params as FetchParams);
-          this.lastEnvelope = envelope;
-          envelope.elapsedMs = Date.now() - start;
-          return envelope as ActionResult<T>;
-        }
-        case "download": {
-          const envelope = await this.doDownload(
-            req.params as { url?: unknown; dest?: unknown },
-          );
-          this.lastEnvelope = envelope;
-          envelope.elapsedMs = Date.now() - start;
-          return envelope as ActionResult<T>;
-        }
-        default:
-          return err({
-            transport: "http",
-            step: 0,
-            action: req.kind,
-            reason: `unsupported action "${req.kind}" for http transport`,
-            suggestion: `http transport supports: ${HTTP_STEPS.join(", ")}`,
-            minimum_capability: `http.${req.kind}`,
-            exit_code: exitCodeFor("usage_error"),
-          });
-      }
+      req.signal?.throwIfAborted();
+      signal?.throwIfAborted();
+      const envelope = await settleDispatchedAction(
+        httpOperation(req),
+        httpActionCanMutate(req),
+        signal,
+        () => this.dispatch<T>(req, signal),
+      );
+      this.lastEnvelope = envelope;
+      envelope.elapsedMs = Date.now() - start;
+      return envelope;
     } catch (e) {
-      // Safety net — action() must never throw.
+      if (isOperationOutcomeAmbiguousError(e)) throw e;
+      req.signal?.throwIfAborted();
+      signal?.throwIfAborted();
       const msg = e instanceof Error ? e.message : String(e);
+      const timeout = signal?.aborted === true;
       return err({
         transport: "http",
         step: 0,
         action: req.kind,
         reason: `unexpected error in http.${req.kind}: ${msg}`,
-        suggestion: "inspect the transport input or file a bug report",
-        retryable: false,
+        suggestion: timeout
+          ? "HTTP request timed out; retry with backoff or raise timeoutMs"
+          : "inspect the transport input or file a bug report",
+        retryable: timeout,
+        exit_code: timeout
+          ? exitCodeFor("temp_failure")
+          : exitCodeFor("generic_error"),
       });
     }
   }
@@ -130,6 +124,36 @@ export class HttpTransport implements TransportAdapter {
   async close(): Promise<void> {
     // Stateless wrapper — nothing to release. Idempotent by construction.
     this.ctx = undefined;
+  }
+
+  private async dispatch<T>(
+    req: ActionRequest,
+    signal?: AbortSignal,
+  ): Promise<ActionResult<T>> {
+    switch (req.kind) {
+      case "fetch":
+        return this.doFetchJson<T>(req.params as FetchParams, signal);
+      case "fetch_text":
+        return (await this.doFetchText(
+          req.params as FetchParams,
+          signal,
+        )) as ActionResult<T>;
+      case "download":
+        return (await this.doDownload(
+          req.params as { url?: unknown; dest?: unknown },
+          signal,
+        )) as ActionResult<T>;
+      default:
+        return err({
+          transport: "http",
+          step: 0,
+          action: req.kind,
+          reason: `unsupported action "${req.kind}" for http transport`,
+          suggestion: `http transport supports: ${HTTP_STEPS.join(", ")}`,
+          minimum_capability: `http.${req.kind}`,
+          exit_code: exitCodeFor("usage_error"),
+        });
+    }
   }
 
   // ── internals ────────────────────────────────────────────────────
@@ -156,7 +180,10 @@ export class HttpTransport implements TransportAdapter {
     return headers;
   }
 
-  private async doFetchJson<T>(p: FetchParams): Promise<Envelope<T>> {
+  private async doFetchJson<T>(
+    p: FetchParams,
+    signal?: AbortSignal,
+  ): Promise<Envelope<T>> {
     const url = typeof p.url === "string" ? p.url : undefined;
     if (!url) {
       return err({
@@ -195,7 +222,11 @@ export class HttpTransport implements TransportAdapter {
         : undefined;
     const headers = this.buildHeaders(extraHeaders, "application/json");
 
-    const init: Record<string, unknown> = { method, headers };
+    const init: Record<string, unknown> = {
+      method,
+      headers,
+      ...(signal ? { signal } : {}),
+    };
     if (p.body !== undefined && method !== "GET") {
       headers["Content-Type"] = "application/json";
       init.body = JSON.stringify(p.body);
@@ -208,10 +239,12 @@ export class HttpTransport implements TransportAdapter {
       );
       if (!resp.ok) {
         let preview = "";
-        try {
-          preview = (await resp.text()).slice(0, 200);
-        } catch {
-          /* ignore */
+        if (!signal?.aborted) {
+          try {
+            preview = (await resp.text()).slice(0, 200);
+          } catch (error) {
+            preview = `response preview unavailable: ${error instanceof Error ? error.message : String(error)}`;
+          }
         }
         this.lastBodyPreview = preview;
         const retryable =
@@ -247,6 +280,7 @@ export class HttpTransport implements TransportAdapter {
       }
       return ok(data);
     } catch (e) {
+      signal?.throwIfAborted();
       const msg = e instanceof Error ? e.message : String(e);
       const transient =
         /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|socket hang up/i.test(msg);
@@ -266,7 +300,10 @@ export class HttpTransport implements TransportAdapter {
     }
   }
 
-  private async doFetchText(p: FetchParams): Promise<Envelope<string>> {
+  private async doFetchText(
+    p: FetchParams,
+    signal?: AbortSignal,
+  ): Promise<Envelope<string>> {
     const url = typeof p.url === "string" ? p.url : undefined;
     if (!url) {
       return err({
@@ -303,6 +340,7 @@ export class HttpTransport implements TransportAdapter {
       const resp = await fetchWithProxy(url, {
         method,
         headers: this.buildHeaders(extraHeaders),
+        ...(signal ? { signal } : {}),
       });
       if (!resp.ok) {
         return err({
@@ -323,6 +361,7 @@ export class HttpTransport implements TransportAdapter {
       this.lastBodyPreview = text.slice(0, 200);
       return ok(text);
     } catch (e) {
+      signal?.throwIfAborted();
       const msg = e instanceof Error ? e.message : String(e);
       return err({
         transport: "http",
@@ -335,10 +374,13 @@ export class HttpTransport implements TransportAdapter {
     }
   }
 
-  private async doDownload(p: {
-    url?: unknown;
-    dest?: unknown;
-  }): Promise<Envelope<{ path: string; size: number }>> {
+  private async doDownload(
+    p: {
+      url?: unknown;
+      dest?: unknown;
+    },
+    signal?: AbortSignal,
+  ): Promise<Envelope<{ path: string; size: number }>> {
     const url = typeof p.url === "string" ? p.url : undefined;
     const dest = typeof p.dest === "string" ? p.dest : undefined;
     if (!url || !dest) {
@@ -371,7 +413,7 @@ export class HttpTransport implements TransportAdapter {
       const { httpDownload } = await import("../../engine/download.js");
       const headers: Record<string, string> = {};
       if (this.ctx?.cookieHeader) headers["Cookie"] = this.ctx.cookieHeader;
-      const result = await httpDownload(url, dest, headers);
+      const result = await httpDownload(url, dest, headers, signal);
       if (result.status !== "success" || !result.path) {
         return err({
           transport: "http",
@@ -385,6 +427,7 @@ export class HttpTransport implements TransportAdapter {
       }
       return ok({ path: result.path, size: result.size ?? 0 });
     } catch (e) {
+      signal?.throwIfAborted();
       const msg = e instanceof Error ? e.message : String(e);
       return err({
         transport: "http",
@@ -397,4 +440,43 @@ export class HttpTransport implements TransportAdapter {
       });
     }
   }
+}
+
+function httpActionCanMutate(req: ActionRequest): boolean {
+  if (req.canMutate !== undefined) return req.canMutate;
+  if (req.kind !== "fetch" && req.kind !== "fetch_text") return false;
+  const method =
+    typeof req.params.method === "string"
+      ? req.params.method.toUpperCase()
+      : "GET";
+  return !new Set(["GET", "HEAD", "OPTIONS", "TRACE"]).has(method);
+}
+
+function httpOperation(req: ActionRequest): string {
+  const method =
+    typeof req.params.method === "string"
+      ? req.params.method.toUpperCase()
+      : "GET";
+  return req.kind === "fetch" || req.kind === "fetch_text"
+    ? `HTTP ${method}`
+    : `HTTP ${req.kind}`;
+}
+
+function requestSignal(
+  callerSignal: AbortSignal | undefined,
+  timeoutValue: unknown,
+): AbortSignal | undefined {
+  const timeoutMs =
+    typeof timeoutValue === "number"
+      ? timeoutValue
+      : typeof timeoutValue === "string"
+        ? Number(timeoutValue)
+        : undefined;
+  if (timeoutMs === undefined || !Number.isFinite(timeoutMs) || timeoutMs < 0) {
+    return callerSignal;
+  }
+  const timeoutSignal = AbortSignal.timeout(Math.max(1, timeoutMs));
+  return callerSignal
+    ? AbortSignal.any([callerSignal, timeoutSignal])
+    : timeoutSignal;
 }

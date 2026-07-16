@@ -26,7 +26,7 @@ export class RealBrowserBrokerHarness {
   );
   readonly client = new BrowserRuntimeBrokerClient({
     runtimeRoot: this.runtimeRoot,
-    timeoutMs: 20_000,
+    requestTimeoutMs: 20_000,
   });
   private processHandle: ChildProcess | null = null;
   private output: ReturnType<typeof collectProcessOutput> | null = null;
@@ -101,6 +101,25 @@ export class RealBrowserBrokerHarness {
         await waitForExit(child, 12_000);
       } catch {
         child.kill("SIGKILL");
+      }
+    }
+    if (
+      !child &&
+      existsSync(browserBrokerPaths(this.runtimeRoot).descriptorPath)
+    ) {
+      try {
+        const status = await this.client.requestOrThrow<BrowserBrokerStatus>({
+          id: randomUUID(),
+          action: "broker.status",
+        });
+        await this.client.requestOrThrow({
+          id: randomUUID(),
+          action: "broker.shutdown",
+        });
+        await waitForPidExit(status.broker_pid, 12_000);
+      } catch {
+        // REASON: a failed cold-start test may leave only stale endpoint files;
+        // no owned child handle exists to signal safely from this harness.
       }
     }
     for (const pid of this.orphanedBrowserPids) {

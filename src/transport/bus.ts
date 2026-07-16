@@ -1,6 +1,18 @@
 /**
  * TransportBus — composition layer that routes a pipeline step to the
  * transport that can execute it on the current host.
+ * @owner       src::transport::bus
+ * @does        Own transport registration/routing and build request-scoped transport context for pipelines.
+ * @needs       transport adapters, capability matrix, refs, core envelopes.
+ * @feeds       engine steps, compute CLI, plugin transport registration.
+ * @breaks      NoTransportForStepError when capability routing cannot select an adapter.
+ * @invariants  The shared adapter registry never becomes the owner of per-request cancellation or Agent identity; those arrive only through TransportContext.
+ * @side-effects Lazily constructs process-shared adapters and reads cwd/environment when building context.
+ * @perf        O(number of candidate transports) routing.
+ * @concurrency Shared adapters receive independent request contexts; per-request state must not be stored globally.
+ * @test        tests/unit/transport/*.test.ts, tests/unit/engine/executor.test.ts
+ * @stability   stable
+ * @since       2026-06-29
  *
  * The bus consults {@link CAPABILITY_MATRIX} at parse time so the YAML
  * runner can refuse a pipeline before any I/O happens. When no transport
@@ -229,6 +241,7 @@ export function _resetTransportBusForTests(): void {
 export interface TransportCtxInput {
   cookieHeader?: string;
   vars: Record<string, unknown>;
+  signal?: AbortSignal;
 }
 
 /** Build a {@link TransportContext} for a dispatched step. */
@@ -239,6 +252,7 @@ export function buildTransportCtx(ctx: TransportCtxInput): TransportContext {
     env: process.env as Record<string, string>,
     cookieHeader: ctx.cookieHeader,
     vars: ctx.vars,
+    signal: ctx.signal,
     bus,
     refs: bus.refs,
   };

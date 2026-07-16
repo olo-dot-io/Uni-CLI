@@ -75,6 +75,18 @@ function createPage(): { page: BrowserPage; mock: MockCDPClient } {
   return { page, mock };
 }
 
+function fireLifecycle(
+  mock: MockCDPClient,
+  loaderId = "loader-new",
+  name = "load",
+): void {
+  mock.fireEvent("Page.lifecycleEvent", {
+    frameId: "abc",
+    loaderId,
+    name,
+  });
+}
+
 // ── Tests ───────────────────────────────────────────────────────────
 
 describe("BrowserPage", () => {
@@ -196,14 +208,17 @@ describe("BrowserPage", () => {
 
   describe("goto()", () => {
     it("calls Page.navigate and waits for load event", async () => {
-      mock.responses.set("Page.navigate", { frameId: "abc" });
+      mock.responses.set("Page.navigate", {
+        frameId: "abc",
+        loaderId: "loader-new",
+      });
 
       // Fire load event after a microtask to simulate async page load
       const gotoPromise = page.goto("https://example.com");
 
       // The page should have registered a listener; fire the event
       // Use setTimeout to fire after the navigate call
-      setTimeout(() => mock.fireEvent("Page.loadEventFired"), 10);
+      setTimeout(() => fireLifecycle(mock), 10);
 
       await gotoPromise;
 
@@ -212,24 +227,129 @@ describe("BrowserPage", () => {
       expect(navigateCall!.params).toEqual({ url: "https://example.com" });
     });
 
+    it("ignores a stale lifecycle event from the previous loader", async () => {
+      let releaseNavigate: (() => void) | undefined;
+      const navigateGate = new Promise<void>((resolve) => {
+        releaseNavigate = resolve;
+      });
+      const originalSend = mock.send.bind(mock);
+      mock.send = async (
+        method: string,
+        params?: Record<string, unknown>,
+      ): Promise<unknown> => {
+        if (method !== "Page.navigate") return originalSend(method, params);
+        mock.calls.push({ method, params });
+        await navigateGate;
+        return { frameId: "abc", loaderId: "loader-new" };
+      };
+      const pending = page.goto("https://new.example/");
+      await vi.waitFor(() =>
+        expect(mock.calls.some((call) => call.method === "Page.navigate")).toBe(
+          true,
+        ),
+      );
+
+      fireLifecycle(mock, "loader-old");
+      releaseNavigate?.();
+      await Promise.resolve();
+      let completed = false;
+      void pending.then(() => {
+        completed = true;
+      });
+      await Promise.resolve();
+      expect(completed).toBe(false);
+
+      fireLifecycle(mock, "loader-new");
+      await expect(pending).resolves.toBeUndefined();
+    });
+
+    it("accepts a matching lifecycle event that arrives before navigate responds", async () => {
+      const originalSend = mock.send.bind(mock);
+      mock.send = async (
+        method: string,
+        params?: Record<string, unknown>,
+      ): Promise<unknown> => {
+        if (method !== "Page.navigate") return originalSend(method, params);
+        mock.calls.push({ method, params });
+        fireLifecycle(mock, "loader-new");
+        return { frameId: "abc", loaderId: "loader-new" };
+      };
+
+      await expect(
+        page.goto("https://early.example/"),
+      ).resolves.toBeUndefined();
+    });
+
+    it("returns on a same-document navigation that has no new loader", async () => {
+      mock.responses.set("Page.navigate", { frameId: "abc" });
+
+      await expect(
+        page.goto("https://example.com/#next"),
+      ).resolves.toBeUndefined();
+      expect(mock.listeners.get("Page.lifecycleEvent")?.size ?? 0).toBe(0);
+    });
+
+    it("waits for DOMContentLoaded on the exact new loader", async () => {
+      mock.responses.set("Page.navigate", {
+        frameId: "abc",
+        loaderId: "loader-new",
+      });
+      const pending = page.goto("https://dom.example/", {
+        waitUntil: "domcontentloaded",
+      });
+      await vi.waitFor(() =>
+        expect(mock.listeners.get("Page.lifecycleEvent")?.size ?? 0).toBe(1),
+      );
+      fireLifecycle(mock, "loader-new", "load");
+      await Promise.resolve();
+      fireLifecycle(mock, "loader-new", "DOMContentLoaded");
+
+      await expect(pending).resolves.toBeUndefined();
+    });
+
     it("throws when navigation returns errorText", async () => {
       mock.responses.set("Page.navigate", {
         errorText: "net::ERR_NAME_NOT_RESOLVED",
       });
-
-      // Fire load event so the load promise resolves (goto checks error before waiting)
-      setTimeout(() => mock.fireEvent("Page.loadEventFired"), 5);
 
       await expect(page.goto("https://invalid.test")).rejects.toThrow(
         "Navigation failed: net::ERR_NAME_NOT_RESOLVED",
       );
     });
 
+    it("reports a dispatched navigation as ambiguous when no load event arrives", async () => {
+      vi.useFakeTimers();
+      try {
+        mock.responses.set("Page.navigate", {
+          frameId: "abc",
+          loaderId: "loader-timeout",
+        });
+        const pending = page.goto("https://timeout.test");
+        const rejection = expect(pending).rejects.toMatchObject({
+          code: "browser_navigation_timeout",
+          retryable: false,
+          outcome_ambiguous: true,
+          target_unusable: false,
+        });
+
+        await vi.advanceTimersByTimeAsync(0);
+        await vi.advanceTimersByTimeAsync(30_000);
+
+        await rejection;
+        expect(mock.listeners.get("Page.lifecycleEvent")?.size ?? 0).toBe(0);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it("respects settleMs option by calling evaluate with DOM settle", async () => {
-      mock.responses.set("Page.navigate", { frameId: "abc" });
+      mock.responses.set("Page.navigate", {
+        frameId: "abc",
+        loaderId: "loader-new",
+      });
       mock.responses.set("Runtime.evaluate", { result: { value: undefined } });
 
-      setTimeout(() => mock.fireEvent("Page.loadEventFired"), 5);
+      setTimeout(() => fireLifecycle(mock), 5);
 
       await page.goto("https://example.com", { settleMs: 2000 });
 
@@ -241,6 +361,33 @@ describe("BrowserPage", () => {
       const expr = evaluateCall!.params?.expression as string;
       expect(expr).toContain("MutationObserver");
       expect(expr).toContain("2000"); // maxMs = settleMs
+    });
+
+    it("does not turn DOM-settle target loss into a successful delay", async () => {
+      mock.responses.set("Page.navigate", {
+        frameId: "abc",
+        loaderId: "loader-new",
+      });
+      const targetLoss = Object.assign(
+        new Error("CDP target connection closed"),
+        {
+          code: "cdp_connection_lost",
+          target_unusable: true,
+        },
+      );
+      const originalSend = mock.send.bind(mock);
+      mock.send = async (
+        method: string,
+        params?: Record<string, unknown>,
+      ): Promise<unknown> => {
+        if (method === "Runtime.evaluate") throw targetLoss;
+        return originalSend(method, params);
+      };
+      setTimeout(() => fireLifecycle(mock), 5);
+
+      await expect(
+        page.goto("https://lost.test", { settleMs: 1 }),
+      ).rejects.toBe(targetLoss);
     });
   });
 
@@ -307,6 +454,76 @@ describe("BrowserPage", () => {
       expect(mousePressed!.params?.x).toBe(150);
       expect(mousePressed!.params?.y).toBe(150);
       expect(mousePressed!.params?.button).toBe("left");
+    });
+
+    it("never replays a click after an ambiguous input response failure", async () => {
+      mock.responses.set("DOM.getDocument", { root: { nodeId: 1 } });
+      mock.responses.set("DOM.querySelector", { nodeId: 5 });
+      mock.responses.set("DOM.getBoxModel", {
+        model: { content: [0, 0, 10, 0, 10, 10, 0, 10] },
+      });
+      const originalSend = mock.send.bind(mock);
+      mock.send = async (
+        method: string,
+        params?: Record<string, unknown>,
+      ): Promise<unknown> => {
+        if (
+          method === "Input.dispatchMouseEvent" &&
+          params?.type === "mouseReleased"
+        ) {
+          mock.calls.push({ method, params });
+          throw new Error("response lost after mouseReleased");
+        }
+        return originalSend(method, params);
+      };
+
+      await expect(page.click("#pay")).rejects.toThrow(
+        "response lost after mouseReleased",
+      );
+
+      expect(
+        mock.calls.filter((call) => call.method === "Runtime.evaluate"),
+      ).toEqual([]);
+      expect(
+        mock.calls.filter(
+          (call) =>
+            call.method === "Input.dispatchMouseEvent" &&
+            call.params?.type === "mouseReleased",
+        ),
+      ).toHaveLength(1);
+    });
+
+    it("releases the mouse before surfacing cancellation after mousePressed", async () => {
+      mock.responses.set("DOM.getDocument", { root: { nodeId: 1 } });
+      mock.responses.set("DOM.querySelector", { nodeId: 5 });
+      mock.responses.set("DOM.getBoxModel", {
+        model: { content: [0, 0, 10, 0, 10, 10, 0, 10] },
+      });
+      const controller = new AbortController();
+      const cancellation = new Error("cancel after mousePressed");
+      const originalSend = mock.send.bind(mock);
+      mock.send = async (
+        method: string,
+        params?: Record<string, unknown>,
+      ): Promise<unknown> => {
+        const result = await originalSend(method, params);
+        if (
+          method === "Input.dispatchMouseEvent" &&
+          params?.type === "mousePressed"
+        ) {
+          controller.abort(cancellation);
+        }
+        return result;
+      };
+
+      await expect(page.click("#cancel", controller.signal)).rejects.toBe(
+        cancellation,
+      );
+      expect(
+        mock.calls
+          .filter((call) => call.method === "Input.dispatchMouseEvent")
+          .map((call) => call.params?.type),
+      ).toEqual(["mousePressed", "mouseReleased"]);
     });
 
     it("falls back to JS click when nodeId is 0 (not found)", async () => {
@@ -379,6 +596,31 @@ describe("BrowserPage", () => {
       );
       expect(keyDown!.params?.key).toBe("a");
       expect(keyDown!.params?.code).toBe("a");
+    });
+
+    it("releases the key before surfacing cancellation after keyDown", async () => {
+      const controller = new AbortController();
+      const cancellation = new Error("cancel after keyDown");
+      const originalSend = mock.send.bind(mock);
+      mock.send = async (
+        method: string,
+        params?: Record<string, unknown>,
+      ): Promise<unknown> => {
+        const result = await originalSend(method, params);
+        if (method === "Input.dispatchKeyEvent" && params?.type === "keyDown") {
+          controller.abort(cancellation);
+        }
+        return result;
+      };
+
+      await expect(
+        page.press("Enter", undefined, controller.signal),
+      ).rejects.toBe(cancellation);
+      expect(
+        mock.calls
+          .filter((call) => call.method === "Input.dispatchKeyEvent")
+          .map((call) => call.params?.type),
+      ).toEqual(["keyDown", "keyUp"]);
     });
   });
 
@@ -589,6 +831,30 @@ describe("BrowserPage", () => {
       expect(released.params?.x).toBe(100);
       expect(released.params?.y).toBe(200);
     });
+
+    it("releases the mouse before surfacing coordinate-click cancellation", async () => {
+      const controller = new AbortController();
+      const cancellation = new Error("cancel native click");
+      const originalSend = mock.send.bind(mock);
+      mock.send = async (
+        method: string,
+        params?: Record<string, unknown>,
+      ): Promise<unknown> => {
+        const result = await originalSend(method, params);
+        if (params?.type === "mousePressed") {
+          controller.abort(cancellation);
+        }
+        return result;
+      };
+
+      await expect(page.nativeClick(100, 200, controller.signal)).rejects.toBe(
+        cancellation,
+      );
+      expect(mock.calls.map((call) => call.params?.type)).toEqual([
+        "mousePressed",
+        "mouseReleased",
+      ]);
+    });
   });
 
   describe("nativeKeyPress()", () => {
@@ -682,6 +948,23 @@ describe("BrowserPage", () => {
         (c) => c.method === "Runtime.evaluate",
       );
       expect(evalCalls.length).toBe(2);
+    });
+
+    it("propagates target loss instead of reporting a completed scroll", async () => {
+      const targetLoss = Object.assign(
+        new Error("CDP target connection closed"),
+        {
+          code: "cdp_connection_lost",
+          target_unusable: true,
+        },
+      );
+      mock.send = async () => {
+        throw targetLoss;
+      };
+
+      await expect(page.autoScroll({ maxScrolls: 5, delay: 1 })).rejects.toBe(
+        targetLoss,
+      );
     });
   });
 
@@ -816,11 +1099,14 @@ describe("BrowserPage", () => {
 
   describe("goto() with DOM settle", () => {
     it("uses DOM settle via evaluate when settleMs is provided", async () => {
-      mock.responses.set("Page.navigate", { frameId: "abc" });
+      mock.responses.set("Page.navigate", {
+        frameId: "abc",
+        loaderId: "loader-new",
+      });
       // The evaluate call for DOM settle should return (promise resolves)
       mock.responses.set("Runtime.evaluate", { result: { value: undefined } });
 
-      setTimeout(() => mock.fireEvent("Page.loadEventFired"), 5);
+      setTimeout(() => fireLifecycle(mock), 5);
       await page.goto("https://example.com", { settleMs: 1000 });
 
       // Should have called evaluate with the DOM settle IIFE
@@ -834,24 +1120,17 @@ describe("BrowserPage", () => {
       expect(expr).toContain("500"); // quietMs = min(1000, 500)
     });
 
-    it("falls back to setTimeout when evaluate throws", async () => {
-      mock.responses.set("Page.navigate", { frameId: "abc" });
-
-      // Make evaluate throw to trigger fallback
-      const originalSend = mock.send.bind(mock);
-      mock.send = async (
-        method: string,
-        params?: Record<string, unknown>,
-      ): Promise<unknown> => {
-        if (method === "Runtime.evaluate") {
-          mock.calls.push({ method, params });
-          throw new Error("Evaluate failed on about:blank");
-        }
-        return originalSend(method, params);
-      };
+    it("falls back to a delay when the DOM-settle script itself fails", async () => {
+      mock.responses.set("Page.navigate", {
+        frameId: "abc",
+        loaderId: "loader-new",
+      });
+      mock.responses.set("Runtime.evaluate", {
+        exceptionDetails: { text: "MutationObserver is unavailable" },
+      });
 
       const start = Date.now();
-      setTimeout(() => mock.fireEvent("Page.loadEventFired"), 5);
+      setTimeout(() => fireLifecycle(mock), 5);
       await page.goto("https://example.com", { settleMs: 100 });
       const elapsed = Date.now() - start;
 
@@ -860,9 +1139,12 @@ describe("BrowserPage", () => {
     });
 
     it("skips settle when settleMs is 0", async () => {
-      mock.responses.set("Page.navigate", { frameId: "abc" });
+      mock.responses.set("Page.navigate", {
+        frameId: "abc",
+        loaderId: "loader-new",
+      });
 
-      setTimeout(() => mock.fireEvent("Page.loadEventFired"), 5);
+      setTimeout(() => fireLifecycle(mock), 5);
       await page.goto("https://example.com", { settleMs: 0 });
 
       // No evaluate call should have been made
@@ -962,6 +1244,10 @@ describe("BrowserPage", () => {
         type: "Stylesheet",
         timestamp: 1000,
       });
+      mock.fireEvent("Network.loadingFailed", {
+        requestId: "req-1",
+        errorText: "Body completion omitted by this fixture",
+      });
 
       const entries = await page.readNetworkCapture();
       expect(entries).toHaveLength(0);
@@ -1033,6 +1319,7 @@ describe("BrowserPage", () => {
         },
         timestamp: 1000,
       });
+      mock.fireEvent("Network.loadingFinished", { requestId: "req-1" });
 
       const entries = await page.readNetworkCapture();
       expect(entries).toHaveLength(1);
@@ -1049,6 +1336,10 @@ describe("BrowserPage", () => {
         requestId: "req-1",
         response: { url: "https://a.com", status: 200 },
         timestamp: 1000,
+      });
+      mock.fireEvent("Network.loadingFailed", {
+        requestId: "req-1",
+        errorText: "Body completion omitted by this fixture",
       });
 
       const first = await page.readNetworkCapture();
@@ -1092,6 +1383,108 @@ describe("BrowserPage", () => {
       expect(entries[0].responseBody).toBe("Hello World");
     });
 
+    it("waits for in-flight response bodies before atomically draining", async () => {
+      let resolveBody!: (value: unknown) => void;
+      const body = new Promise<unknown>((resolve) => {
+        resolveBody = resolve;
+      });
+      const originalSend = mock.send.bind(mock);
+      mock.send = async (
+        method: string,
+        params?: Record<string, unknown>,
+      ): Promise<unknown> => {
+        if (method === "Network.getResponseBody") return body;
+        return originalSend(method, params);
+      };
+      await page.startNetworkCapture();
+      mock.fireEvent("Network.responseReceived", {
+        requestId: "pending-body",
+        response: {
+          url: "https://a.com/pending",
+          status: 200,
+          mimeType: "application/json",
+        },
+      });
+      const reading = page.readNetworkCapture();
+      let settled = false;
+      void reading.finally(() => {
+        settled = true;
+      });
+      await Promise.resolve();
+      expect(settled).toBe(false);
+      mock.fireEvent("Network.loadingFinished", {
+        requestId: "pending-body",
+      });
+      await Promise.resolve();
+      expect(settled).toBe(false);
+      resolveBody({ body: '{"complete":true}', base64Encoded: false });
+
+      await expect(reading).resolves.toEqual([
+        expect.objectContaining({ responseBody: '{"complete":true}' }),
+      ]);
+      await expect(page.readNetworkCapture()).resolves.toEqual([]);
+    });
+
+    it("delivers each captured response to exactly one concurrent reader", async () => {
+      let resolveBody!: (value: unknown) => void;
+      const body = new Promise<unknown>((resolve) => {
+        resolveBody = resolve;
+      });
+      const originalSend = mock.send.bind(mock);
+      mock.send = async (
+        method: string,
+        params?: Record<string, unknown>,
+      ): Promise<unknown> => {
+        if (method === "Network.getResponseBody") return body;
+        return originalSend(method, params);
+      };
+      await page.startNetworkCapture();
+      mock.fireEvent("Network.responseReceived", {
+        requestId: "single-consumer-body",
+        response: {
+          url: "https://a.com/single-consumer",
+          status: 200,
+          mimeType: "application/json",
+        },
+      });
+
+      const first = page.readNetworkCapture();
+      const second = page.readNetworkCapture();
+      mock.fireEvent("Network.loadingFinished", {
+        requestId: "single-consumer-body",
+      });
+      resolveBody({ body: '{"reader":1}', base64Encoded: false });
+
+      await expect(first).resolves.toEqual([
+        expect.objectContaining({ responseBody: '{"reader":1}' }),
+      ]);
+      await expect(second).resolves.toEqual([]);
+    });
+
+    it("surfaces target loss during body capture without draining evidence", async () => {
+      const targetLoss = Object.assign(new Error("CDP connection closed"), {
+        code: "cdp_connection_lost",
+        target_unusable: true,
+      });
+      const originalSend = mock.send.bind(mock);
+      mock.send = async (
+        method: string,
+        params?: Record<string, unknown>,
+      ): Promise<unknown> => {
+        if (method === "Network.getResponseBody") throw targetLoss;
+        return originalSend(method, params);
+      };
+      await page.startNetworkCapture();
+      mock.fireEvent("Network.responseReceived", {
+        requestId: "lost-body",
+        response: { url: "https://a.com/lost", status: 200 },
+      });
+      mock.fireEvent("Network.loadingFinished", { requestId: "lost-body" });
+
+      await expect(page.readNetworkCapture()).rejects.toBe(targetLoss);
+      await expect(page.readNetworkCapture()).rejects.toBe(targetLoss);
+    });
+
     it("reuses Network.enable from networkRequests()", async () => {
       // First enable via networkRequests
       await page.networkRequests();
@@ -1124,6 +1517,10 @@ describe("BrowserPage", () => {
             mimeType: "text/html",
           },
           timestamp: i,
+        });
+        mock.fireEvent("Network.loadingFailed", {
+          requestId: id,
+          errorText: "Body completion omitted by this fixture",
         });
       }
 

@@ -13,7 +13,9 @@ describe("Linux GTK compute overlay", () => {
     expect(source).toContain('gi.require_version("Gtk", "3.0")');
     expect(source).toContain("set_keep_above(True)");
     expect(source).toContain("input_shape_combine_region");
-    expect(source).toContain('"status":"ready"');
+    expect(source).toContain('wire_kind == "ready"');
+    expect(source).toContain('"action_id": response_action_id');
+    expect(source).toContain('payload = {"id": response_id');
     expect(source).toContain("for line in sys.stdin");
   });
 

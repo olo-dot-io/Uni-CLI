@@ -1,6 +1,9 @@
 /**
- * MCP tool-call dispatcher — the bridge between JSON-RPC tool invocations
- * and the invocation kernel.
+ * @owner       src/mcp/dispatch.ts
+ * @does        Dispatch cancellable MCP tool calls through the shared invocation kernel and shape stable text/image MCP envelopes.
+ * @needs       invocation kernel, run recorder, argument coercion, adapter types
+ * @feeds       MCP default and expanded tool handlers
+ * @breaks      Bypassing this boundary breaks CLI/MCP envelope, authorization, recording, or cancellation parity.
  *
  * v0.213.3 R2: every MCP tool call funnels through the invocation kernel so
  * the CLI and MCP surfaces produce byte-identical envelopes (modulo trace_id
@@ -23,11 +26,21 @@ export interface McpStructuredContent {
   data: unknown;
 }
 
+export type McpContent =
+  | { type: "text"; text: string }
+  | { type: "image"; data: string; mimeType: string };
+
 export interface McpToolResult {
-  content: Array<{ type: "text"; text: string }>;
+  content: McpContent[];
   structuredContent?: McpStructuredContent;
   isError?: boolean;
   _meta?: Record<string, unknown>;
+}
+
+export interface ResolvedCommandExecution {
+  cmdName: string;
+  args: Record<string, unknown>;
+  signal?: AbortSignal;
 }
 
 /**
@@ -42,7 +55,10 @@ export const MAX_RESULT_SIZE_CHARS = 10_000;
  * serialized payload exceeds MAX_RESULT_SIZE_CHARS.
  */
 export function annotateIfLarge(result: McpToolResult): McpToolResult {
-  const totalChars = result.content.reduce((sum, c) => sum + c.text.length, 0);
+  const totalChars = result.content.reduce(
+    (sum, content) => sum + (content.type === "text" ? content.text.length : 0),
+    0,
+  );
   if (totalChars > MAX_RESULT_SIZE_CHARS) {
     return {
       ...result,
@@ -74,9 +90,9 @@ function withWarnings(
 export async function runResolvedCommand(
   adapter: AdapterManifest,
   cmd: AdapterCommand,
-  cmdName: string,
-  args: Record<string, unknown>,
+  execution: ResolvedCommandExecution,
 ): Promise<McpToolResult> {
+  const { cmdName, args, signal } = execution;
   // MCP preserves the flat-params contract. Apply the default `limit: 20`
   // only when the adapter declares a `limit` arg — the kernel's ajv
   // validator runs in strict mode (`additionalProperties: false`), so
@@ -91,10 +107,16 @@ export async function runResolvedCommand(
     if (coerced !== undefined) mergedArgs.limit = coerced;
   }
 
-  const inv = buildInvocation("mcp", adapter.name, cmdName, {
-    args: mergedArgs,
-    source: "mcp",
-  });
+  const inv = buildInvocation(
+    "mcp",
+    adapter.name,
+    cmdName,
+    {
+      args: mergedArgs,
+      source: "mcp",
+    },
+    { signal },
+  );
   if (!inv) {
     // Already filtered by handleRunCommand / handleExpandedTool before this
     // point; still, guard so a misrouted call doesn't crash the server.
@@ -112,12 +134,10 @@ export async function runResolvedCommand(
   const result = await executeWithRunRecording(inv);
 
   if (result.error) {
+    const { message, ...details } = result.error;
     const errorData = {
-      error: result.error.message,
-      code: result.error.code,
-      adapter_path: result.error.adapter_path,
-      step: result.error.step,
-      suggestion: result.error.suggestion,
+      error: message,
+      ...details,
       trace_id: inv.trace_id,
     };
     const base: McpToolResult = {

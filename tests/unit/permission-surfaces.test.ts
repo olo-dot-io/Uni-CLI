@@ -48,12 +48,10 @@ describe("permission enforcement across protocol surfaces", () => {
   });
 
   it("blocks matching MCP tool calls before execution", async () => {
-    const result = await runResolvedCommand(
-      fixture,
-      fixture.commands.send,
-      "send",
-      { text: "hello" },
-    );
+    const result = await runResolvedCommand(fixture, fixture.commands.send, {
+      cmdName: "send",
+      args: { text: "hello" },
+    });
 
     expect(result.isError).toBe(true);
     expect(result.structuredContent?.data).toMatchObject({

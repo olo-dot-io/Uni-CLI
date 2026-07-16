@@ -277,6 +277,7 @@ export function registerAdapterDispatch(program: Command): void {
               args: adapterArgs,
               profile: rootOpts.permissionProfile,
               approved: rootOpts.yes === true,
+              argumentValues: mergedArgs,
             });
           } catch (err) {
             if (

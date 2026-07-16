@@ -5,6 +5,9 @@
  */
 
 import { describe, it, expect, beforeAll, afterEach, vi } from "vitest";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   buildDefaultTools,
   buildDeferredTools,
@@ -22,6 +25,8 @@ import { describe as describeUnicli } from "../../../src/commands/describe.js";
 import { invalidateCache } from "../../../src/discovery/search.js";
 import { AdapterType } from "../../../src/types.js";
 import type { AdapterManifest } from "../../../src/types.js";
+
+const originalRulesPath = process.env.UNICLI_PERMISSION_RULES_PATH;
 
 // Two synthetic adapters whose (site, command) pairs normalize to the same
 // tool name via buildToolName — `unicli_collider_twin_x` is produced by
@@ -84,6 +89,11 @@ beforeAll(async () => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  if (originalRulesPath === undefined) {
+    delete process.env.UNICLI_PERMISSION_RULES_PATH;
+  } else {
+    process.env.UNICLI_PERMISSION_RULES_PATH = originalRulesPath;
+  }
 });
 
 describe("deterministic tool ordering", () => {
@@ -229,6 +239,41 @@ describe("DEFAULT_TOOL_NAMES registry", () => {
 });
 
 describe("computer-use profile", () => {
+  it("enforces default-deny policy before direct MCP computer dispatch", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "unicli-compute-mcp-policy-"));
+    try {
+      const path = join(tmp, "policy.json");
+      writeFileSync(
+        path,
+        JSON.stringify({
+          schema_version: "2",
+          default: "deny",
+          rules: [],
+        }),
+        "utf-8",
+      );
+      process.env.UNICLI_PERMISSION_RULES_PATH = path;
+      const toolsModule = await import("../../../src/mcp/tools.js");
+      const click = toolsModule
+        .selectTools("computer-use")
+        .find((tool) => tool.name === "computer-use.click");
+
+      const result = await click?.handler?.({
+        ref: "olo:accessibility:foreign",
+      });
+
+      expect(result?.isError).toBe(true);
+      expect(result?.structuredContent?.data).toMatchObject({
+        action: "compute_click.authorize",
+        minimum_capability: "permission.denied",
+        exit_code: 77,
+        reason: expect.stringContaining("policy-default-deny"),
+      });
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   it("selectTools returns exactly the 16 computer-use tools", async () => {
     const toolsModule = await import("../../../src/mcp/tools.js");
     const selectTools = (
@@ -534,14 +579,27 @@ describe("collision warnings — expanded vs deferred parity", () => {
 
   it("deferred tool calls unwrap _args before invoking the kernel", async () => {
     const handler = buildHandler(buildDeferredTools());
-    const response = await handler({
+    const created = await handler({
       jsonrpc: "2.0",
       id: 301,
       method: "tools/call",
       params: {
         name: "unicli_contract_write_delete",
         arguments: { _args: {} },
+        task: {},
       },
+    });
+
+    expect(created?.error).toBeUndefined();
+    const taskId = (
+      created?.result as { task?: { taskId?: string } } | undefined
+    )?.task?.taskId;
+    expect(taskId).toEqual(expect.any(String));
+    const response = await handler({
+      jsonrpc: "2.0",
+      id: 302,
+      method: "tasks/result",
+      params: { taskId },
     });
 
     expect(response?.error).toBeUndefined();

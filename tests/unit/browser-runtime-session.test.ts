@@ -82,6 +82,126 @@ describe("BrowserRuntimeSessionRegistry", () => {
     expect(events).toEqual(["a1-start", "b", "a1-end", "a2"]);
   });
 
+  it("cancels a queued mutation without quarantining a target it never reached", async () => {
+    const registry = new BrowserRuntimeSessionRegistry();
+    const firstTurn = context("shared-agent", "turn-a");
+    const secondTurn = context("shared-agent", "turn-b");
+    registry.startSession(firstTurn);
+    registry.touchSession(secondTurn);
+    registry.claimTarget(firstTurn, {
+      target_id: "shared-target",
+      provider: "managed",
+      profile_partition_id: "shared",
+      visibility: "hidden",
+      lifetime: "session",
+    });
+    const firstStarted = deferred();
+    const firstGate = deferred();
+    const first = registry.runTargetMutation(
+      firstTurn,
+      "shared-target",
+      async () => {
+        firstStarted.resolve();
+        await firstGate.promise;
+      },
+    );
+    await firstStarted.promise;
+    const controller = new AbortController();
+    let queuedMutationRan = false;
+    const cancellation = new Error("cancel queued mutation");
+    const queued = registry.runTargetMutation(
+      secondTurn,
+      "shared-target",
+      async () => {
+        queuedMutationRan = true;
+      },
+      controller.signal,
+    );
+
+    controller.abort(cancellation);
+    expect(registry.status().quarantined_target_ids).toEqual([]);
+    expect(registry.targetIdsForContext(secondTurn)).toEqual(["shared-target"]);
+    firstGate.resolve();
+    await first;
+    await expect(queued).rejects.toBe(cancellation);
+    expect(queuedMutationRan).toBe(false);
+    await expect(
+      registry.runTargetMutation(
+        secondTurn,
+        "shared-target",
+        async () => "still-live",
+      ),
+    ).resolves.toBe("still-live");
+  });
+
+  it("reports an ending turn and drains every same-target mutation before completion", async () => {
+    const registry = new BrowserRuntimeSessionRegistry();
+    const owner = context("draining-agent", "draining-turn");
+    registry.startSession(owner);
+    registry.claimTarget(owner, {
+      target_id: "draining-target",
+      provider: "managed",
+      profile_partition_id: "shared",
+      visibility: "hidden",
+      lifetime: "session",
+    });
+    const firstStarted = deferred();
+    const firstGate = deferred();
+    const secondStarted = deferred();
+    const secondGate = deferred();
+    const first = registry.runTargetMutation(
+      owner,
+      "draining-target",
+      async () => {
+        firstStarted.resolve();
+        await firstGate.promise;
+      },
+    );
+    await firstStarted.promise;
+    const second = registry.runTargetMutation(
+      owner,
+      "draining-target",
+      async () => {
+        secondStarted.resolve();
+        await secondGate.promise;
+      },
+    );
+    firstGate.resolve();
+    await first;
+    await secondStarted.promise;
+
+    let endSettled = false;
+    const ending = registry.endTurn(owner).then((leases) => {
+      endSettled = true;
+      return leases;
+    });
+    await Promise.resolve();
+
+    expect(endSettled).toBe(false);
+    expect(registry.status()).toMatchObject({
+      sessions: [
+        {
+          agent_session_id: "draining-agent",
+          active_turn_ids: [],
+          ending_turn_ids: ["draining-turn"],
+        },
+      ],
+      quarantined_target_ids: ["draining-target"],
+    });
+    expect(registry.targetIdsForContext(owner)).toEqual([]);
+
+    secondGate.resolve();
+    await expect(second).rejects.toMatchObject({
+      code: "browser_turn_ended",
+    });
+    await expect(ending).resolves.toEqual([]);
+    expect(endSettled).toBe(true);
+    expect(registry.status().sessions[0]).toMatchObject({
+      active_turn_ids: [],
+      ending_turn_ids: [],
+    });
+  });
+
   it("requires explicit handoff before another session can mutate a target", async () => {
     const registry = new BrowserRuntimeSessionRegistry();
     const sessionA = context("agent-a", "turn-a");
@@ -106,6 +226,45 @@ describe("BrowserRuntimeSessionRegistry", () => {
     ).rejects.toMatchObject({ code: "browser_target_owned" });
     await expect(
       registry.runTargetMutation(sessionB, "shared-tab", async () => "ok"),
+    ).resolves.toBe("ok");
+  });
+
+  it("promotes a handed-off turn target and makes it the destination active target", async () => {
+    const registry = new BrowserRuntimeSessionRegistry();
+    const source = context("source", "source-turn");
+    const destination = context("destination", "destination-turn");
+    registry.startSession(source);
+    registry.startSession(destination);
+    registry.claimTarget(destination, {
+      target_id: "destination-old",
+      provider: "managed",
+      profile_partition_id: "shared",
+      visibility: "hidden",
+      lifetime: "session",
+    });
+    registry.claimTarget(source, {
+      target_id: "handoff-target",
+      provider: "managed",
+      profile_partition_id: "shared",
+      visibility: "hidden",
+      lifetime: "turn",
+    });
+
+    const lease = await registry.handoffTarget(
+      "handoff-target",
+      source,
+      destination,
+    );
+
+    expect(lease.lifetime).toBe("session");
+    expect(registry.targetIdsForSession("destination")).toEqual([
+      "handoff-target",
+      "destination-old",
+    ]);
+    await expect(registry.endTurn(destination)).resolves.toEqual([]);
+    const nextTurn = context("destination", "destination-next");
+    await expect(
+      registry.runTargetMutation(nextTurn, "handoff-target", async () => "ok"),
     ).resolves.toBe("ok");
   });
 
@@ -188,6 +347,43 @@ describe("BrowserRuntimeSessionRegistry", () => {
     ]);
   });
 
+  it("bounds ended request tombstones while preserving recent stale-turn refusal", async () => {
+    let now = 1_000;
+    const registry = new BrowserRuntimeSessionRegistry({
+      now: () => now,
+      maxTurnTombstones: 2,
+      turnTombstoneTtlMs: 500,
+    });
+    const first = context("long-lived-agent", "request-1");
+    registry.startSession(first);
+    await registry.endTurn(first);
+    now += 1;
+    const second = context("long-lived-agent", "request-2");
+    registry.touchSession(second);
+    await registry.endTurn(second);
+    now += 1;
+    const third = context("long-lived-agent", "request-3");
+    registry.touchSession(third);
+    await registry.endTurn(third);
+
+    expect(registry.status().sessions[0]).toMatchObject({
+      ended_turn_tombstone_count: 2,
+    });
+    expect(() => registry.touchSession(second)).toThrowError(
+      expect.objectContaining({ code: "browser_turn_ended" }),
+    );
+    expect(() => registry.touchSession(third)).toThrowError(
+      expect.objectContaining({ code: "browser_turn_ended" }),
+    );
+    expect(() => registry.touchSession(first)).not.toThrow();
+
+    now += 501;
+    expect(() => registry.touchSession(second)).not.toThrow();
+    expect(registry.status().sessions[0]).toMatchObject({
+      ended_turn_tombstone_count: 0,
+    });
+  });
+
   it("reclaims only idle sessions and preserves a touched neighbor", async () => {
     let now = 1_000;
     const registry = new BrowserRuntimeSessionRegistry({ now: () => now });
@@ -226,6 +422,48 @@ describe("BrowserRuntimeSessionRegistry", () => {
         agent_session_id: "agent-b",
         target_ids: ["target-b"],
       }),
+    ]);
+  });
+
+  it("never reaps a stale session while a target mutation is still in flight", async () => {
+    let now = 1_000;
+    const registry = new BrowserRuntimeSessionRegistry({ now: () => now });
+    const owner = context("long-running-agent", "long-running-turn");
+    registry.startSession(owner);
+    registry.claimTarget(owner, {
+      target_id: "long-running-target",
+      provider: "managed",
+      profile_partition_id: "default",
+      visibility: "hidden",
+      lifetime: "session",
+    });
+    const started = deferred();
+    const completion = deferred();
+    const mutation = registry.runTargetMutation(
+      owner,
+      "long-running-target",
+      async () => {
+        started.resolve();
+        await completion.promise;
+        return "complete";
+      },
+    );
+    await started.promise;
+
+    now = 10_000;
+    expect(registry.isSessionIdle(owner.agent_session_id, 500)).toBe(false);
+    await expect(registry.reapIdleSessions(500)).resolves.toEqual([]);
+
+    completion.resolve();
+    await expect(mutation).resolves.toBe("complete");
+    expect(registry.isSessionIdle(owner.agent_session_id, 500)).toBe(true);
+    await expect(registry.reapIdleSessions(500)).resolves.toEqual([
+      {
+        agent_session_id: owner.agent_session_id,
+        target_leases: [
+          expect.objectContaining({ target_id: "long-running-target" }),
+        ],
+      },
     ]);
   });
 });

@@ -1,9 +1,12 @@
 /**
  * @owner   src/transport/refs.ts
- * @does    Allocate, persist, and reload stable desktop element references across CLI processes.
+ * @does    Allocate, persist, uniquely resolve, and generation-bind stable desktop element references across CLI processes.
  * @needs   filesystem, process env, home directory
  * @feeds   desktop transports, compute commands, compute ref-provenance output
- * @breaks  Lost or invalid refs prevent follow-up desktop actions from targeting prior snapshots.
+ * @breaks  First-match alias resolution or reuse after bucket replacement can target a different application than the observed element.
+ * @invariants A bare alias resolves only when exactly one current bucket owns it; every put creates a new in-process generation; captured matches become stale when their exact bucket is replaced or cleared.
+ * @concurrency RefStore mutation is synchronous; callers can bind before an await and revalidate the exact generation afterward.
+ * @test    tests/unit/refs.test.ts and tests/unit/compute-action-execution.test.ts
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -29,6 +32,12 @@ export interface RefBucket {
   createdAt: number;
   transport: string;
   scope: string;
+}
+
+export interface RefStoreMatch {
+  ref: ElementRef;
+  bucket: RefBucket;
+  generation: number;
 }
 
 export interface ElementRefProvenance {
@@ -102,36 +111,60 @@ export class RefAllocator {
 }
 
 export class RefStore {
-  private readonly latest = new Map<string, RefBucket>();
+  private readonly latest = new Map<
+    string,
+    { bucket: RefBucket; generation: number }
+  >();
+  private nextGeneration = 0;
 
   put(bucket: RefBucket): void {
-    this.latest.set(this.key(bucket.transport, bucket.scope), bucket);
+    this.latest.set(this.key(bucket.transport, bucket.scope), {
+      bucket,
+      generation: ++this.nextGeneration,
+    });
+  }
+
+  matches(value: string): RefStoreMatch[] {
+    const matches: RefStoreMatch[] = [];
+    for (const { bucket, generation } of this.latest.values()) {
+      const ref = bucket.byAlias.get(value) ?? bucket.byStable.get(value);
+      if (ref) matches.push({ ref, bucket, generation });
+    }
+    return matches;
   }
 
   resolve(alias: string): ElementRef | undefined {
-    for (const bucket of this.latest.values()) {
-      const ref = bucket.byAlias.get(alias);
-      if (ref) return ref;
-    }
-    return undefined;
+    const matches = this.matches(alias);
+    return matches.length === 1 ? matches[0]?.ref : undefined;
   }
 
   resolveStable(stable: string): ElementRef | undefined {
-    for (const bucket of this.latest.values()) {
+    const matches: ElementRef[] = [];
+    for (const { bucket } of this.latest.values()) {
       const ref = bucket.byStable.get(stable);
-      if (ref) return ref;
+      if (ref) matches.push(ref);
     }
-    return undefined;
+    return matches.length === 1 ? matches[0] : undefined;
+  }
+
+  isCurrent(match: RefStoreMatch): boolean {
+    const current = this.latest.get(
+      this.key(match.bucket.transport, match.bucket.scope),
+    );
+    return (
+      current?.generation === match.generation &&
+      current.bucket.byStable.get(match.ref.stable) === match.ref
+    );
   }
 
   list(): ElementRef[] {
-    return Array.from(this.latest.values()).flatMap((bucket) =>
+    return Array.from(this.latest.values()).flatMap(({ bucket }) =>
       Array.from(bucket.byAlias.values()),
     );
   }
 
   buckets(): RefBucket[] {
-    return Array.from(this.latest.values()).map((bucket) => ({
+    return Array.from(this.latest.values()).map(({ bucket }) => ({
       byAlias: new Map(bucket.byAlias),
       byStable: new Map(bucket.byStable),
       createdAt: bucket.createdAt,

@@ -1,3 +1,19 @@
+/**
+ * @owner       extension/src/network-capture.ts
+ * @does        Maintain bounded provider-owned network request evidence for broker-owned Chrome targets.
+ * @needs       chrome.debugger/tabs events, debugger-dispatch.ts
+ * @feeds       extension/src/chrome-controller.ts network_capture_start/network_capture_read commands
+ * @breaks      Network capture evidence loses request correlation, bounded retention, or replay-safe Network.enable semantics.
+ * @invariants  Network.enable uses the controller-owned idempotent debugger path; capture state is cleared on detach/tab close; response body absence never discards response metadata.
+ * @side-effects Enables Chrome Network events and stores at most 100 evidence entries per supervised tab.
+ * @concurrency Chrome events may enrich entries after command completion; tab detach/removal deletes the owning state.
+ * @test        tests/integration/browser-extension-background.test.ts, tests/unit/extension/network-capture.test.ts
+ * @stability   experimental
+ * @since       2026-07-15
+ */
+
+import type { DebuggerCommandDispatch } from "./debugger-dispatch.js";
+
 export interface ExtensionNetworkCaptureEntry {
   url: string;
   method: string;
@@ -46,7 +62,6 @@ interface NetworkGetResponseBodyResult {
 }
 
 const captureStates = new Map<number, CaptureState>();
-const attachedTabs = new Set<number>();
 let listenersRegistered = false;
 
 function parseMatcher(pattern?: string): CaptureMatcher {
@@ -88,18 +103,6 @@ function contentLengthFrom(
   return 0;
 }
 
-async function ensureAttached(tabId: number): Promise<void> {
-  if (!attachedTabs.has(tabId)) {
-    try {
-      await chrome.debugger.attach({ tabId }, "1.3");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (!/already attached/i.test(message)) throw err;
-    }
-    attachedTabs.add(tabId);
-  }
-}
-
 function compactRequestIndexes(state: CaptureState): void {
   const next = new Map<string, number>();
   for (const [requestId, index] of state.requestToIndex) {
@@ -120,17 +123,12 @@ function decodeBase64Utf8(value: string): string {
 
 export async function startNetworkCapture(
   tabId: number,
+  dispatch: DebuggerCommandDispatch,
   pattern?: string,
 ): Promise<void> {
   registerNetworkCaptureListeners();
   const matcher = parseMatcher(pattern);
-  await ensureAttached(tabId);
-  try {
-    await chrome.debugger.sendCommand({ tabId }, "Network.enable");
-  } catch (err) {
-    attachedTabs.delete(tabId);
-    throw err;
-  }
+  await dispatch("Network.enable", {}, true);
   captureStates.set(tabId, {
     matcher,
     entries: [],
@@ -221,7 +219,6 @@ async function handleLoadingFinished(
 
 function clearTab(tabId?: number): void {
   if (tabId === undefined) return;
-  attachedTabs.delete(tabId);
   captureStates.delete(tabId);
 }
 

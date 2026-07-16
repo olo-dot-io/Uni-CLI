@@ -48,8 +48,7 @@ describe("MCP hardening parity — path traversal", () => {
     const result = await runResolvedCommand(
       resolved!.adapter,
       resolved!.command,
-      "dump",
-      { output: "/etc/passwd" },
+      { cmdName: "dump", args: { output: "/etc/passwd" } },
     );
     expect(result.isError).toBe(true);
     const data = result.structuredContent?.data as Record<string, unknown>;
@@ -63,8 +62,7 @@ describe("MCP hardening parity — path traversal", () => {
     const result = await runResolvedCommand(
       resolved!.adapter,
       resolved!.command,
-      "dump",
-      { output: "./safe-output.json" },
+      { cmdName: "dump", args: { output: "./safe-output.json" } },
     );
     expect(result.isError).toBeUndefined();
     const data = result.structuredContent?.data as Record<string, unknown>;
@@ -76,8 +74,7 @@ describe("MCP hardening parity — path traversal", () => {
     const result = await runResolvedCommand(
       resolved!.adapter,
       resolved!.command,
-      "dump",
-      { output: "foo\x00bar" },
+      { cmdName: "dump", args: { output: "foo\x00bar" } },
     );
     expect(result.isError).toBe(true);
     const data = result.structuredContent?.data as Record<string, unknown>;

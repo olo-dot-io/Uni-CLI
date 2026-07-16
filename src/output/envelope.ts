@@ -1,11 +1,10 @@
 /**
- * Agent-Native v2 envelope — stable contract for machine-readable output.
- *
- * All `--json` / `--yaml` / `--md` output wraps payloads in this envelope.
- * Hard-switch: v0.215 removes any legacy v1 path (DECISION 3 confirmed 2026-04-17).
- *
- * NOTE: Names are prefixed "Agent*" to avoid collision with the transport-layer
- * EnvelopeMeta / EnvelopeError re-exported from src/errors.ts (src/core/envelope.ts).
+ * @owner       src::output::envelope
+ * @does        Defines the stable Agent-native success/error envelope for every rendered surface.
+ * @needs       schema-version and target-surface contracts
+ * @feeds       CLI JSON/YAML/Markdown, MCP structured content, ACP, recordings
+ * @breaks      Dropped or renamed error fields prevent agents from repairing failures or safely handling uncertain mutations.
+ * @invariants  Error envelopes preserve non-retryable outcome ambiguity and target usability metadata without changing schema version 2.
  */
 
 export const SCHEMA_VERSION = "2" as const;
@@ -112,6 +111,9 @@ export interface AgentError {
   exit_code?: number;
   retryable?: boolean;
   alternatives?: string[];
+  outcome_ambiguous?: true;
+  target_unusable?: true;
+  operation?: string;
 }
 
 /** Caller-supplied context used to build an envelope. */

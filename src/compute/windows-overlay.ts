@@ -147,13 +147,17 @@ public static class UniCliOverlayNative {
 $script:CursorVisualStyle = "mac-glass-pointer-v1"
 $script:CursorSkin = "mac-pointer"
 $script:Request = $null
+$script:ResponseId = $null
+$script:ResponseKind = $null
+$script:ResponseActionId = $null
 $script:StartedAt = [DateTime]::UtcNow
 $script:Trail = New-Object System.Collections.ArrayList
 $script:Timer = New-Object System.Windows.Forms.Timer
 $script:Timer.Interval = 16
 $script:Forms = New-Object System.Collections.ArrayList
 
-function Write-Protocol($payload) {
+function Write-Protocol($id, $kind, $data) {
+  $payload = @{ id = $id; kind = $kind; ok = $true; data = $data }
   [Console]::Out.WriteLine(($payload | ConvertTo-Json -Compress -Depth 8))
   [Console]::Out.Flush()
 }
@@ -258,12 +262,27 @@ function New-OverlayForm($screen) {
   return $form
 }
 
-function Start-Render($request) {
-  $script:Request = $request
+function Start-Render($wire) {
+  $script:Request = $wire.params.request
+  $script:ResponseId = $wire.id
+  $script:ResponseKind = $wire.kind
+  $script:ResponseActionId = $wire.params.request.action_id
   $script:StartedAt = [DateTime]::UtcNow
   [void]$script:Trail.Clear()
   $script:Timer.Stop()
   $script:Timer.Start()
+}
+
+function Handle-Request($wire) {
+  if ([string]$wire.kind -eq "ready") {
+    Write-Protocol $wire.id $wire.kind @{ provider = "windows-win32"; status = "ready" }
+    return
+  }
+  if ([string]$wire.kind -ne "render" -or $null -eq $wire.params.request) {
+    Write-Protocol $wire.id $wire.kind @{ provider = "windows-win32"; status = "failed"; error = "invalid request" }
+    return
+  }
+  Start-Render $wire
 }
 
 $script:Timer.Add_Tick({
@@ -276,7 +295,16 @@ $script:Timer.Add_Tick({
   foreach ($form in $script:Forms) { $form.Invalidate() }
   if ($elapsed -ge $duration) {
     $script:Timer.Stop()
-    Write-Protocol @{ provider = "windows-win32"; status = "arrived"; acknowledged_at_ms = [int]$duration }
+    Write-Protocol $script:ResponseId $script:ResponseKind @{
+      provider = "windows-win32"
+      status = "arrived"
+      action_id = $script:ResponseActionId
+      acknowledged_at_ms = [int]$duration
+    }
+    $script:Request = $null
+    $script:ResponseId = $null
+    $script:ResponseKind = $null
+    $script:ResponseActionId = $null
   }
 })
 
@@ -286,16 +314,13 @@ foreach ($screen in [System.Windows.Forms.Screen]::AllScreens) {
 
 foreach ($form in $script:Forms) { $form.Show() }
 
-Write-Protocol @{ provider = "windows-win32"; status = "ready" }
-'{"provider":"windows-win32","status":"ready"}' | Out-Null
-
 [System.Threading.ThreadPool]::QueueUserWorkItem({
   while (($line = [Console]::In.ReadLine()) -ne $null) {
     try {
-      $request = $line | ConvertFrom-Json
-      [void][System.Windows.Forms.Application]::OpenForms[0].BeginInvoke([Action[object]]{ param($r) Start-Render $r }, $request)
+      $wire = $line | ConvertFrom-Json
+      [void][System.Windows.Forms.Application]::OpenForms[0].BeginInvoke([Action[object]]{ param($r) Handle-Request $r }, $wire)
     } catch {
-      Write-Protocol @{ provider = "windows-win32"; status = "failed"; error = "invalid request" }
+      Write-Protocol 0 "<parse>" @{ provider = "windows-win32"; status = "failed"; error = "invalid request" }
     }
   }
   [System.Windows.Forms.Application]::Exit()

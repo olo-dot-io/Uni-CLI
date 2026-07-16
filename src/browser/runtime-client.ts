@@ -36,7 +36,6 @@ export {
   createBrowserInvocationScope,
   currentBrowserInvocationScope,
   runBrowserInvocation,
-  runWithBrowserInvocationScope,
 } from "./invocation-scope.js";
 export type {
   BrowserInvocationScope,
