@@ -32,6 +32,10 @@
   the locked Rust workspace, validates their PE payloads, bundles both into the
   provenance-signed npm artifact, and exposes architecture-labelled Release
   assets; clean installs no longer depend on unpublished platform packages.
+- Windows Native Messaging registration now selects the architecture-matched
+  PE launcher and publishes content-addressed, immutable host generations, so
+  reinstall or upgrade cannot replace an executable used by an active Chrome
+  connection.
 - Release metadata now distinguishes a complete local delivery from an npm or
   GitHub publication, so generated documentation cannot claim an event that did
   not occur.
@@ -50,12 +54,18 @@
 - Transport close retries unacknowledged session cleanup, raw snapshots stop at
   their producer-side bound, and composed-tree redaction crosses open shadow
   roots, same-origin frames, and slots.
+- Native-host and broker boundaries now share one exact, bounded Chrome error
+  contract. Target-invalidating results close and reacquire only the affected
+  target while preserving outcome ambiguity and the live host connection.
 
 ### Verification
 
-- The complete `npm run verify` gate passed with 2,987 unit, 94 integration,
-  6,467 adapter, 5 performance, and 23 targeted coverage behaviors; expected
-  platform/network exclusions remained explicit skips.
+- The complete `npm run verify` gate passed with 2,992 unit (4 skipped), 94
+  integration (16 platform-skipped), 6,467 adapter, 5 performance (1 skipped),
+  and 23 targeted coverage behaviors at 100%.
+- GitHub Actions run `29567020303` passed Ubuntu Node 22/24, macOS Node 22,
+  Windows Node 22 including the real Native Messaging integration, and all
+  three x64 Rust sidecar jobs.
 - Independent bounded audit and counterexample rerun reported no remaining
   P0/P1/P2 findings for the delivered browser-control scope.
 - Real Chrome behavior covers shared runtime ownership, no-focus background
