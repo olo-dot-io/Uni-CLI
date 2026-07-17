@@ -1,10 +1,10 @@
 /**
  * @owner       scripts::release-truth-check
  * @does        Cross-checks release-facing runtime, workflow, dependency, privacy, and security claims against executable repository state.
- * @needs       package.json, CI/release workflows, updater constant, PRIVACY.md, SECURITY.md
+ * @needs       package.json, package-lock.json, CI/release workflows, updater constant, PRIVACY.md, SECURITY.md
  * @feeds       npm run truth:check, CI, release verification
- * @breaks      Any missing Node/audit gate, wrong scoped URL, or resurrected false security claim fails non-zero.
- * @invariants  Checks derive package identity and dependency count from package.json rather than copying them into docs.
+ * @breaks      Any missing Node/audit gate, npm 10-incompatible optional-peer closure, wrong scoped URL, or resurrected false security claim fails non-zero.
+ * @invariants  Checks derive package identity and dependency count from package.json rather than copying them into docs; the lock retains DocSearch's npm 10-required optional React peer closure even when newer npm clients would prune it.
  * @side-effects Reads repository files and writes one summary line.
  * @test        Executed by npm run verify and both publish/mainline workflow gates.
  * @stability   stable
@@ -43,6 +43,10 @@ interface PackageManifest {
   scripts?: Record<string, string>;
 }
 
+interface PackageLock {
+  packages?: Record<string, unknown>;
+}
+
 function fail(message: string): never {
   throw new Error(`release-truth-check: ${message}`);
 }
@@ -64,6 +68,7 @@ function hasRun(steps: WorkflowStep[], command: string): boolean {
 }
 
 const manifest = JSON.parse(read("package.json")) as PackageManifest;
+const lockfile = JSON.parse(read("package-lock.json")) as PackageLock;
 const ci = workflow(".github/workflows/ci.yml");
 const release = workflow(".github/workflows/release.yml");
 const privacy = read("PRIVACY.md");
@@ -73,6 +78,20 @@ if (manifest.engines?.node !== ">=22.19.0") {
   fail(
     `unexpected Node support contract: ${manifest.engines?.node ?? "missing"}`,
   );
+}
+
+for (const path of [
+  "node_modules/@docsearch/js/node_modules/@types/react",
+  "node_modules/@docsearch/js/node_modules/react",
+  "node_modules/@docsearch/js/node_modules/react-dom",
+  "node_modules/@docsearch/js/node_modules/scheduler",
+  "node_modules/@types/prop-types",
+  "node_modules/js-tokens",
+  "node_modules/loose-envify",
+]) {
+  if (!lockfile.packages?.[path]) {
+    fail(`package-lock omits npm 10-required optional peer: ${path}`);
+  }
 }
 
 const verifyMatrix = ci.jobs?.verify?.strategy?.matrix?.include ?? [];
@@ -217,5 +236,5 @@ for (const pattern of retiredClaims) {
 
 const dependencyCount = Object.keys(manifest.dependencies ?? {}).length;
 process.stdout.write(
-  `release-truth-check: PASS — Node 22/24, scoped updater, audit gates, ${dependencyCount} direct runtime dependencies, and credential claims agree\n`,
+  `release-truth-check: PASS — Node 22/24, npm 10 lock closure, scoped updater, audit gates, ${dependencyCount} direct runtime dependencies, and credential claims agree\n`,
 );
