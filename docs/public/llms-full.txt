@@ -4129,10 +4129,13 @@ Release facts:
 - the generic computer-use profile exposes direct browser state, navigation,
   trusted input, tabs, bounded content/history search, dialogs, downloads, and
   explicit foreground presence;
-- the complete repository gate passed with 2,987 unit, 94 integration, 6,467
-  adapter, 5 performance, and 23 targeted coverage behaviors; package dry run,
-  generated-doc checks, and local installed-CLI smoke remain separate required
-  acceptance steps.
+- Windows Native Messaging uses architecture-matched PE launchers in immutable,
+  side-by-side generations so reinstall and update do not replace an active
+  Chrome host;
+- the complete repository gate passed with 2,992 unit (4 skipped), 94
+  integration (16 platform-skipped), 6,467 adapter, 5 performance (1 skipped),
+  and 23 targeted coverage behaviors at 100%; GitHub Actions run `29567020303`
+  also passed the real Windows host integration and x64 Rust sidecar gates.
 
 | Release line | Historical role                                                                                                 | Audit lesson for `0.400.0`                                                                         |
 | ------------ | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |

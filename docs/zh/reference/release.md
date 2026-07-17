@@ -49,7 +49,8 @@ Release 已发布。
 - 本机 package 目标为 `0.400.0`；没有创建远端 tag，也没有表示已完成远端发布；
 - 共享 Browser Runtime Broker 统一负责 provider 生命周期、Agent session、target lease、可见性、取消和清理；
 - 通用 computer-use profile 暴露直接的浏览器 state、navigation、可信 input、tab、有界内容/历史搜索、dialog、download 和显式前台 presence；
-- 完整仓库门禁已通过 2,987 个 unit、94 个 integration、6,467 个 adapter、5 个 performance 和 23 个定向 coverage 行为；package dry run、生成文档检查与本机 CLI smoke 仍是独立的必需验收项。
+- Windows Native Messaging 使用架构匹配的 PE launcher 和不可变、并行存在的 generation，重装或升级不会替换活跃 Chrome host 正在使用的可执行文件；
+- 完整仓库门禁已通过 2,992 个 unit（4 个跳过）、94 个 integration（16 个平台跳过）、6,467 个 adapter、5 个 performance（1 个跳过）和 23 个 100% 定向 coverage 行为；GitHub Actions run `29567020303` 也通过了真实 Windows host integration 与 x64 Rust sidecar 门禁。
 
 | Release line | 历史角色                                                                                               | 对 `0.400.0` 的审计结论                                                                |
 | ------------ | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
