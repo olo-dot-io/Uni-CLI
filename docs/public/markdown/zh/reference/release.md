@@ -47,7 +47,7 @@ npm run release:check
 ## 历史发布审计
 
 当前公开 git/tag 历史从 2026 年的 `0.200.x` 线开始。`0.400.0 — Apollo · Young`
-已经从下述精确 annotated tag 发布到 npm 与 GitHub。
+已经从下述精确的 annotated tag 发布到 npm 与 GitHub。
 
 交付事实：
 
